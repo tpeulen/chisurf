@@ -190,15 +190,15 @@ class FittingClient:
                 session_state_from_live_chisurf,
             )
 
-            mfdb_cfg = cs_settings.cs_settings.get("mfdb", {}) or {}
-            host = str(mfdb_cfg.get("rpc_host", mfdb_cfg.get("last_server", "127.0.0.1")))
-            cmd_port = int(mfdb_cfg.get("cmd_port", mfdb_cfg.get("last_port", 8765)))
-            pub_port = int(mfdb_cfg.get("pub_port", cmd_port + 1))
-            timeout_ms = int(mfdb_cfg.get("fitting_timeout_ms", 5000))
+            mmfdb_cfg = cs_settings.cs_settings.get("mmfdb", {}) or {}
+            host = str(mmfdb_cfg.get("rpc_host", mmfdb_cfg.get("last_server", "127.0.0.1")))
+            cmd_port = int(mmfdb_cfg.get("cmd_port", mmfdb_cfg.get("last_port", 8765)))
+            pub_port = int(mmfdb_cfg.get("pub_port", cmd_port + 1))
+            timeout_ms = int(mmfdb_cfg.get("fitting_timeout_ms", 5000))
 
             server = (
                 getattr(chisurf, "__chisurf_rpc_server__", None)
-                or getattr(chisurf, "__mfdb_rpc_server__", None)
+                or getattr(chisurf, "__mmfdb_rpc_server__", None)
             )
             if not rpc_is_available(host, cmd_port, pub_port, timeout_ms=100):
                 if server is not None:
@@ -218,8 +218,8 @@ class FittingClient:
                         server = None
                         chisurf.__chisurf_rpc_server__ = None
                         chisurf.__chisurf_rpc_server_thread__ = None
-                        chisurf.__mfdb_rpc_server__ = None
-                        chisurf.__mfdb_rpc_server_thread__ = None
+                        chisurf.__mmfdb_rpc_server__ = None
+                        chisurf.__mmfdb_rpc_server_thread__ = None
 
                 if server is None:
                     from chisurf.server.app import ChiSurfServer
@@ -238,8 +238,8 @@ class FittingClient:
                     thread.start()
                     chisurf.__chisurf_rpc_server__ = server
                     chisurf.__chisurf_rpc_server_thread__ = thread
-                    chisurf.__mfdb_rpc_server__ = server
-                    chisurf.__mfdb_rpc_server_thread__ = thread
+                    chisurf.__mmfdb_rpc_server__ = server
+                    chisurf.__mmfdb_rpc_server_thread__ = thread
                     atexit.register(server.stop)
 
                 deadline = time.time() + 3.0

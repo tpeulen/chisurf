@@ -26,7 +26,7 @@ from chisurf.plugins.burst.burst_selection.api.models import (
     BurstFilterMode,
     DeltaMacroTimeFilterSettings,
     GMMSettings,
-    MFDBContext,
+    MMFDBContext,
     PhotonFilterSettings,
 )
 from chisurf.plugins.burst.burst_selection.api.selection import (
@@ -80,9 +80,9 @@ def test_contract_descriptor_defines_workflow_io() -> None:
         "output_paths",
         "metadata",
     ]
-    assert "mfdb" in contract["inputs"]["AnalyzeFiles"]["properties"]
+    assert "mmfdb" in contract["inputs"]["AnalyzeFiles"]["properties"]
     assert "output_paths_by_file" in contract["outputs"]["AnalysisResult"]["properties"]
-    assert "mfdb_artifacts" in contract["outputs"]["AnalysisResult"]["properties"]
+    assert "mmfdb_artifacts" in contract["outputs"]["AnalysisResult"]["properties"]
     assert contract["rpc_methods"][METHOD_ANALYZE_FILES]["input"] == "AnalyzeFiles"
 
 
@@ -116,15 +116,15 @@ def test_analysis_request_payload_roundtrip_normalizes_json_inputs() -> None:
     payload = analysis_request_to_payload(request)
     assert payload["windows"] == {"prompt": [0, 2048]}
     assert payload["settings"]["photon_filter"]["used_filter"] == "burst"
-    assert payload["mfdb"]["enabled"] is True
+    assert payload["mmfdb"]["enabled"] is True
 
 
-def test_analysis_request_accepts_nested_mfdb_context() -> None:
-    """Workflow payloads should accept nested MFDB archival context."""
+def test_analysis_request_accepts_nested_mmfdb_context() -> None:
+    """Workflow payloads should accept nested MMFDB archival context."""
     request = analysis_request_from_payload(
         {
             "files": ["m000.spc"],
-            "mfdb": {
+            "mmfdb": {
                 "enabled": False,
                 "sample_id": "sample_1",
                 "source_artifact_ids": {"m000.spc": "artifact_1"},
@@ -135,13 +135,13 @@ def test_analysis_request_accepts_nested_mfdb_context() -> None:
         }
     )
 
-    assert isinstance(request.mfdb, MFDBContext)
-    assert request.mfdb.enabled is False
-    assert request.mfdb.sample_id == "sample_1"
-    assert request.mfdb.source_artifact_ids == {"m000.spc": "artifact_1"}
-    assert request.mfdb.register_missing_inputs is False
-    assert request.mfdb.setup_id == "tttr_detector_setup:bh_spc_130"
-    assert request.mfdb.setup_version == 1
+    assert isinstance(request.mmfdb, MMFDBContext)
+    assert request.mmfdb.enabled is False
+    assert request.mmfdb.sample_id == "sample_1"
+    assert request.mmfdb.source_artifact_ids == {"m000.spc": "artifact_1"}
+    assert request.mmfdb.register_missing_inputs is False
+    assert request.mmfdb.setup_id == "tttr_detector_setup:bh_spc_130"
+    assert request.mmfdb.setup_version == 1
 
 
 def test_analysis_result_payload_is_json_safe() -> None:
@@ -152,16 +152,16 @@ def test_analysis_result_payload_is_json_safe() -> None:
             dataframes={str(BH_SPC_FILE): [{"First Photon": 0}]},
             output_paths={"bur": str(BH_SPC_FILE.with_suffix(".bur"))},
             metadata={"n_photons": 1},
-            mfdb_artifacts={"burst_table_artifacts": {str(BH_SPC_FILE): "artifact_1"}},
-            warnings=["mfdb unavailable"],
+            mmfdb_artifacts={"burst_table_artifacts": {str(BH_SPC_FILE): "artifact_1"}},
+            warnings=["mmfdb unavailable"],
         )
     )
 
     assert payload["files"] == [str(BH_SPC_FILE)]
     assert payload["dataframes"][str(BH_SPC_FILE)][0]["First Photon"] == 0
     assert payload["output_paths"]["bur"].endswith(".bur")
-    assert payload["mfdb_artifacts"]["burst_table_artifacts"][str(BH_SPC_FILE)] == "artifact_1"
-    assert payload["warnings"] == ["mfdb unavailable"]
+    assert payload["mmfdb_artifacts"]["burst_table_artifacts"][str(BH_SPC_FILE)] == "artifact_1"
+    assert payload["warnings"] == ["mmfdb unavailable"]
 
 
 def test_find_bursts_bridges_configured_gap() -> None:

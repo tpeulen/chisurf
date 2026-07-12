@@ -46,7 +46,7 @@ def _html_code(text: str) -> str:
 
 
 def _close_db(db) -> None:
-    """Best-effort close of an MFDB handle opened for a read-only probe."""
+    """Best-effort close of an MMFDB handle opened for a read-only probe."""
     try:
         if db is not None and hasattr(db, "close"):
             db.close()
@@ -54,16 +54,16 @@ def _close_db(db) -> None:
         pass
 
 
-def mfdb_info() -> dict:
+def mmfdb_info() -> dict:
     """Return ``{'connected': bool, 'path': str}`` for the metadata database.
 
-    The MFDB is the authoritative store for detector/FCS setups (and more); when
+    The MMFDB is the authoritative store for detector/FCS setups (and more); when
     it is reachable, the legacy JSON files are expected to be absent, so their
     absence must not be reported as an error.
     """
     path = ""
     try:
-        from chisurf.core.mfdb.store.database_resolver import resolve_database_path
+        from mmfdb.store.database_resolver import resolve_database_path
 
         path = str(resolve_database_path())
     except Exception:
@@ -83,7 +83,7 @@ def mfdb_info() -> dict:
 def detector_setups_summary() -> dict:
     """Return ``{'count', 'store', 'detail'}`` for detector setups (read-only).
 
-    Prefers MFDB (the authoritative store) and falls back to the legacy JSON
+    Prefers MMFDB (the authoritative store) and falls back to the legacy JSON
     file, counting quietly without triggering the file-missing warning dialog or
     any migration side effect.
     """
@@ -91,7 +91,7 @@ def detector_setups_summary() -> dict:
         from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
             DETECTOR_SETUPS_FILE,
             _db,
-            _load_mfdb_detector_setups,
+            _load_mmfdb_detector_setups,
         )
     except Exception:
         return {"count": None, "store": "unknown", "detail": ""}
@@ -103,9 +103,9 @@ def detector_setups_summary() -> dict:
         db = None
     if db is not None:
         try:
-            res = _load_mfdb_detector_setups(db)
+            res = _load_mmfdb_detector_setups(db)
             n = len((res or {}).get("setups", {}) or {})
-            return {"count": n, "store": "mfdb", "detail": "in MFDB"}
+            return {"count": n, "store": "mmfdb", "detail": "in MMFDB"}
         except Exception:
             pass
         finally:
@@ -134,15 +134,15 @@ def fcs_setups_summary() -> dict:
     except Exception:
         return {"count": None, "store": "unknown", "detail": ""}
 
-    # The FCS loader is MFDB-first with a quiet JSON fallback (no dialogs).
+    # The FCS loader is MMFDB-first with a quiet JSON fallback (no dialogs).
     try:
         data = load_fcs_channel_setups(skip_migration=True)
         n = len((data or {}).get("setups", {}) or {})
     except Exception:
         n = None
 
-    if mfdb_info()["connected"]:
-        return {"count": n, "store": "mfdb", "detail": "in MFDB"}
+    if mmfdb_info()["connected"]:
+        return {"count": n, "store": "mmfdb", "detail": "in MMFDB"}
     p = FCS_CHANNEL_SETUPS_FILE
     if p.exists():
         return {"count": n, "store": "file", "detail": f"in {p}"}
@@ -176,7 +176,7 @@ def _file_row(label: str, ok: bool, detail: str = "") -> str:
 
 
 def _setups_row(label: str, summary: dict) -> str:
-    """Render an MFDB-aware row for a setup type.
+    """Render an MMFDB-aware row for a setup type.
 
     A count > 0 is ``OK``; an empty store is a neutral "none yet" (not an error,
     since setups are created on demand); an unknown count is neutral too.
@@ -190,20 +190,20 @@ def _setups_row(label: str, summary: dict) -> str:
         noun = "setup" if count == 1 else "setups"
         return _status_row(label, "OK", _OK_COLOR, f"{count} {noun} {where}".strip())
     # count == 0 → nothing defined yet; phrase by store so it never looks broken.
-    if store == "mfdb":
-        return _status_row(label, "none yet", _NEUTRAL_COLOR, "MFDB connected — none defined yet")
+    if store == "mmfdb":
+        return _status_row(label, "none yet", _NEUTRAL_COLOR, "MMFDB connected — none defined yet")
     return _status_row(label, "none yet", _NEUTRAL_COLOR, "define one when needed")
 
 
 def build_status_html() -> str:
     """Return an HTML table describing the settings files and setup stores.
 
-    Setup types that live in the MFDB (detectors, FCS channels) are reported by
+    Setup types that live in the MMFDB (detectors, FCS channels) are reported by
     their actual availability — not by the presence of a legacy JSON file — so a
-    connected MFDB with setups never shows a misleading "MISSING" file.
+    connected MMFDB with setups never shows a misleading "MISSING" file.
     """
     p = settings_paths()
-    mfdb = mfdb_info()
+    mmfdb = mmfdb_info()
 
     rows = []
     rows.append(
@@ -237,11 +237,11 @@ def build_status_html() -> str:
     rows.append(_file_row("logs/", p["logs_dir"].is_dir(), str(p["logs_dir"])))
 
     # Metadata store + the setup types it now backs (not plain files anymore).
-    if mfdb["connected"]:
-        rows.append(_status_row("Metadata store (MFDB)", "connected", _OK_COLOR, mfdb["path"]))
+    if mmfdb["connected"]:
+        rows.append(_status_row("Metadata store (MMFDB)", "connected", _OK_COLOR, mmfdb["path"]))
     else:
         rows.append(
-            _status_row("Metadata store (MFDB)", "local files", _NEUTRAL_COLOR, "not connected")
+            _status_row("Metadata store (MMFDB)", "local files", _NEUTRAL_COLOR, "not connected")
         )
     rows.append(_setups_row("Detector setups", detector_setups_summary()))
     rows.append(_setups_row("FCS channel setups", fcs_setups_summary()))

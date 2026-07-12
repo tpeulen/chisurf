@@ -11,7 +11,7 @@ timestamp: '2026-07-05T00:00:00Z'
 
 `chisurf/core/project/` provides the GUI-independent project format. A project
 is saved as a `.csp` ZIP archive containing at least `project.json`; optional
-entries include history, a chinet session, embedded data, and MFDB export
+entries include history, a chinet session, embedded data, and MMFDB export
 material.
 
 | Module | Role |
@@ -38,4 +38,4 @@ best-effort: failure to restore geometry or a dock layout should not make the
 scientific project unreadable.
 
 See also [data model](/subsystems/data-model.md), [operation history](/subsystems/history.md),
-and the [MFDB store](/architecture/mfdb.md).
+and the [MMFDB store](/architecture/mmfdb.md).

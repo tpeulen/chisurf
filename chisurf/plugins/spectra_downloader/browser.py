@@ -1,10 +1,10 @@
 """A basic data browser for the spectra downloader's staging ``spectra.db``.
 
-Lets you inspect what was scraped *before* pushing it into the MFDB: a filterable
+Lets you inspect what was scraped *before* pushing it into the MMFDB: a filterable
 table of components on the left; an AutoForm-driven detail panel, the raw optical
 properties, and the spectrum plot on the right. It reads the staging database
-directly (no MFDB RPC), reusing the shared ``AutoForm`` detail form and
-``SpectrumView`` from the mfdb-admin optical-components package.
+directly (no MMFDB RPC), reusing the shared ``AutoForm`` detail form and
+``SpectrumView`` from the mmfdb-admin optical-components package.
 
 Drafted from the old ``_dev/fluorophore_db/db_manager_widget.py`` browser, but
 modernised onto AutoForm + the canonical view schemes.
@@ -18,9 +18,9 @@ from pathlib import Path
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
-import chisurf.plugins.core.mfdb_admin.gui.optical_components as _optical_components
+import chisurf.plugins.core.mmfdb_admin.gui.optical_components as _optical_components
 from chisurf.gui.widgets.spectrum_view import SpectrumView
-from chisurf.plugins.core.mfdb_admin.gui.optical_components.component_detail_form import (
+from chisurf.plugins.core.mmfdb_admin.gui.optical_components.component_detail_form import (
     ComponentDetailForm,
 )
 
@@ -110,11 +110,11 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
         push_bar = QtWidgets.QHBoxLayout()
         push_bar.addStretch()
         self._push_sel_btn = QtWidgets.QPushButton("⬆ Push selected")
-        self._push_sel_btn.setToolTip("Push the selected component(s) into the connected MFDB.")
+        self._push_sel_btn.setToolTip("Push the selected component(s) into the connected MMFDB.")
         self._push_sel_btn.clicked.connect(self._push_selected)
         push_bar.addWidget(self._push_sel_btn)
         self._push_all_btn = QtWidgets.QPushButton("⬆ Push all")
-        self._push_all_btn.setToolTip("Push every component in this staging DB into the connected MFDB.")
+        self._push_all_btn.setToolTip("Push every component in this staging DB into the connected MMFDB.")
         self._push_all_btn.clicked.connect(self._push_all)
         push_bar.addWidget(self._push_all_btn)
         rlayout.addLayout(push_bar)
@@ -230,7 +230,7 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
         # spectrum
         self._spectrum.display(data)
 
-    # -- push to MFDB --------------------------------------------------------
+    # -- push to MMFDB --------------------------------------------------------
     def _selected_probe_ids(self) -> list[int]:
         ids = []
         for idx in self._table.selectionModel().selectedRows():
@@ -250,17 +250,17 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
         self._push(None, f"all {len(self._rows)} component(s)")
 
     def _push(self, probe_ids, label: str) -> None:
-        from chisurf.plugins.spectra_downloader.download.merge import push_staging_to_mfdb
+        from chisurf.plugins.spectra_downloader.download.merge import push_staging_to_mmfdb
 
         if QtWidgets.QMessageBox.question(
-            self, "Push to MFDB",
-            f"Push {label} from this staging database into the connected MFDB?",
+            self, "Push to MMFDB",
+            f"Push {label} from this staging database into the connected MMFDB?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No,
         ) != QtWidgets.QMessageBox.Yes:
             return
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         try:
-            summary = push_staging_to_mfdb(str(self._db.db_path), probe_ids=probe_ids)
+            summary = push_staging_to_mmfdb(str(self._db.db_path), probe_ids=probe_ids)
         except Exception as e:  # pragma: no cover - surfaced to the user
             QtWidgets.QApplication.restoreOverrideCursor()
             QtWidgets.QMessageBox.critical(self, "Push failed", str(e))
@@ -268,7 +268,7 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
         QtWidgets.QApplication.restoreOverrideCursor()
         QtWidgets.QMessageBox.information(
             self, "Push complete",
-            f"Pushed {summary.get('merged', 0)} component(s) into the MFDB.\n"
+            f"Pushed {summary.get('merged', 0)} component(s) into the MMFDB.\n"
             f"Consolidated: {summary.get('consolidated')}",
         )
 
@@ -318,7 +318,7 @@ def main() -> None:
     """Launch the browser on the bundled staging spectra.db."""
     import sys
 
-    from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import (
+    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
         DEFAULT_DATABASE_PATH,
         FluorophoreDatabase,
     )

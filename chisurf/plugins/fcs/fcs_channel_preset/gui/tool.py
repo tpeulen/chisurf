@@ -80,7 +80,7 @@ class FCSChannelWidget(QtWidgets.QWidget):
         self._public_checkbox.setChecked(False)
         self._public_checkbox.setToolTip(
             "When checked, this setup is visible to all users in "
-            "the MFDB. Only the owner can change this setting."
+            "the MMFDB. Only the owner can change this setting."
         )
         self._public_checkbox.setEnabled(False)
 

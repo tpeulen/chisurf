@@ -1,7 +1,7 @@
 ---
 type: Subsystem
 title: Operation History
-description: Append-only recording of user/scripted actions with headless replay, projected durably into the MFDB provenance store.
+description: Append-only recording of user/scripted actions with headless replay, projected durably into the MMFDB provenance store.
 resource: chisurf/history/
 tags: [history, core, provenance]
 timestamp: '2026-07-05T00:00:00Z'
@@ -45,20 +45,20 @@ auto-compacts past ~5000 events.
   server-side; applying the state to live widgets is the GUI adapter's job
   (`chisurf/gui/main_helper.py`).
 
-# Durable projection into MFDB ([PRD-43](/prds/prd-43.md))
+# Durable projection into MMFDB ([PRD-43](/prds/prd-43.md))
 
 The in-memory list is authoritative for the live session; each event is also
-**best-effort** persisted to the [MFDB](/architecture/mfdb.md) durable event log:
+**best-effort** persisted to the [MMFDB](/architecture/mmfdb.md) durable event log:
 
-- `OperationHistory._persist_event` → `chisurf.core.mfdb.event_log.append_event`
-  (into `mfdb_event_log`). This is a no-op without a database, so history works
+- `OperationHistory._persist_event` → `chisurf.core.mmfdb.event_log.append_event`
+  (into `mmfdb_event_log`). This is a no-op without a database, so history works
   identically offline (local mode).
-- `list_events(source="mfdb")` reads the durable log back; `source="memory"`
-  (default) returns the live view. `action_type` values use the dotted MFDB
+- `list_events(source="mmfdb")` reads the durable log back; `source="memory"`
+  (default) returns the live view. `action_type` values use the dotted MMFDB
   vocabulary, normalized in `replay.py`.
 
 Per [PRD-43](/prds/prd-43.md) the GUI history browser is a **projection over
-MFDB** rather than a parallel store, aligning session history with the
+MMFDB** rather than a parallel store, aligning session history with the
 provenance DAG.
 
 See also: [overview](/overview.md), [Core](/subsystems/core.md),

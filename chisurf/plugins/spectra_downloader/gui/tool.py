@@ -39,11 +39,11 @@ def _make_download(db):
     return factory
 
 
-def _make_add_to_mfdb(db):
+def _make_add_to_mmfdb(db):
     def factory(parent):
-        from chisurf.plugins.spectra_downloader.gui.add_to_mfdb_panel import AddToMfdbPanel
+        from chisurf.plugins.spectra_downloader.gui.add_to_mmfdb_panel import AddToMmfdbPanel
 
-        return AddToMfdbPanel(db, parent)
+        return AddToMmfdbPanel(db, parent)
 
     return factory
 
@@ -72,7 +72,7 @@ class SpectraTool(NavigationPanelTool):
                 "icon": "🔎",
                 "factory": _make_browser(db),
                 "description": "Browse scraped components — filter, inspect "
-                               "metadata, view spectra, push to the MFDB.",
+                               "metadata, view spectra, push to the MMFDB.",
             },
             {
                 "name": "Download",
@@ -81,11 +81,11 @@ class SpectraTool(NavigationPanelTool):
                 "description": "Run source scrapers into the staging DB.",
             },
             {
-                "name": "Add to MFDB",
+                "name": "Add to MMFDB",
                 "icon": "⬆️",
-                "factory": _make_add_to_mfdb(db),
+                "factory": _make_add_to_mmfdb(db),
                 "description": "Choose an endpoint (local file or server), "
-                               "authenticate, and add the staging components to the MFDB.",
+                               "authenticate, and add the staging components to the MMFDB.",
             },
         ]
         super().__init__(

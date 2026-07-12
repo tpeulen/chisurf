@@ -1,15 +1,15 @@
-"""Qt widgets for selecting and creating MFDB samples (PRD-39 GUI)."""
+"""Qt widgets for selecting and creating MMFDB samples (PRD-39 GUI)."""
 from __future__ import annotations
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.core.mfdb.samples.external_refs import diff_sequences, fetch_uniprot
-from chisurf.core.mfdb.models import (
+from mmfdb.samples.external_refs import diff_sequences, fetch_uniprot
+from mmfdb.models import (
     EntityDefinition,
     MutationDefinition,
     SampleDefinition,
 )
-from chisurf.core.mfdb.samples.sample_manager import create_sample, list_samples
+from mmfdb.samples.sample_manager import create_sample, list_samples
 
 
 class SamplePicker(QtWidgets.QWidget):

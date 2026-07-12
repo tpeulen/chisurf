@@ -74,7 +74,7 @@ class OperationHistory:
             except Exception:
                 pass
         self._emit_log(event)
-        # Durable, best-effort projection into MFDB. The in-memory list above is
+        # Durable, best-effort projection into MMFDB. The in-memory list above is
         # authoritative for the live session; this is a no-op without a database
         # (local mode), so history works identically offline. ``persist=False``
         # is used when re-inserting events on restore/replay to stay idempotent.
@@ -83,9 +83,9 @@ class OperationHistory:
         return event
 
     def _persist_event(self, event: typing.Dict[str, typing.Any]) -> None:
-        """Best-effort durable append of ``event`` to the MFDB event log."""
+        """Best-effort durable append of ``event`` to the MMFDB event log."""
         try:
-            from chisurf.core.mfdb.lifecycle import event_log
+            from mmfdb.lifecycle import event_log
             event_log.append_event(event, history_version=self.HISTORY_VERSION)
         except Exception:
             pass
@@ -127,12 +127,12 @@ class OperationHistory:
         """Return history events.
 
         ``source="memory"`` (default) returns the in-memory log — the authoritative
-        live-session view. ``source="mfdb"`` reads the durable event log from the
-        database (the projection's backing store); it returns ``[]`` when no MFDB
+        live-session view. ``source="mmfdb"`` reads the durable event log from the
+        database (the projection's backing store); it returns ``[]`` when no MMFDB
         is available, so callers degrade gracefully offline.
         """
-        if source == "mfdb":
-            from chisurf.core.mfdb.lifecycle import event_log
+        if source == "mmfdb":
+            from mmfdb.lifecycle import event_log
             return event_log.read_events()
         with self._lock:
             return list(self._events)

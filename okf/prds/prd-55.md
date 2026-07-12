@@ -144,7 +144,7 @@ exploration*, and the two halves go to different homes:
   the per-pixel phasor point-cloud DataFrame — columns `x, y, g, s, tau_phi, tau_m,
   fraction, intensity, n_photons`, already emitted as the standard imaging HDF5 —
   into the companion tool via
-  `chisurf/plugins/ndxplorer/mfdb_launcher.py::open_path_in_ndxplorer(path)`. Gating
+  `chisurf/plugins/ndxplorer/mmfdb_launcher.py::open_path_in_ndxplorer(path)`. Gating
   a region on the `g–s` density there already back-projects to the selected pixels.
 
 Net: the plugin implements the four domain ops as pure functions (headless/CLI/tests

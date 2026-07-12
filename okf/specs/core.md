@@ -16,7 +16,7 @@ parameters that describe it, the models that predict it, and the fitting that
 reconciles the two. It is the part that would still make sense if every UI,
 server, and storage backend were replaced. It owns *what the science is*, not
 *how it is shown, moved, or stored* — those belong to [Plugins](plugins.md),
-[RPC & API](rpc.md), and [MFDB](mfdb.md) respectively.
+[RPC & API](rpc.md), and [MMFDB](mmfdb.md) respectively.
 
 ## Design principles
 

@@ -7,7 +7,7 @@ from typing import Any
 # Qt-free lets the Qt-free server reuse ``load_detector_setups`` /
 # ``save_detector_setups`` from ``chisurf.server.services.detector_setups``.
 
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.repository import MFDatabase
 from chisurf.core.settings.path_utils import get_path
 from .tttr_setup_utils import (
     SetupTypeConfig,
@@ -49,9 +49,9 @@ def _db(db_path=None):
     return get_db(db_path)
 
 
-def _use_mfdb(file_path=None) -> bool:
-    from .tttr_setup_utils import use_mfdb
-    return use_mfdb(file_path, DETECTOR_SETUPS_FILE)
+def _use_mmfdb(file_path=None) -> bool:
+    from .tttr_setup_utils import use_mmfdb
+    return use_mmfdb(file_path, DETECTOR_SETUPS_FILE)
 
 
 def _setup_row_data(
@@ -59,7 +59,7 @@ def _setup_row_data(
     detector_channels: list | None = None,
     pie_windows: list | None = None,
 ) -> dict:
-    """Extract detector setup payload from an MFDB row with child tables."""
+    """Extract detector setup payload from an MMFDB row with child tables."""
     configuration = json_loads(row.get("configuration_json"))
     setup_data = configuration.get("setup_data")
     if isinstance(setup_data, dict):
@@ -139,12 +139,12 @@ def _setup_row_data(
 
 
 def _detector_row_to_data(row: dict) -> dict:
-    """Callback for ``load_mfdb_setups`` to extract detector data with child
+    """Callback for ``load_mmfdb_setups`` to extract detector data with child
     table priority."""
     full = None
     dcs, pws = None, None
     if row.get("setup_id"):
-        from chisurf.core.mfdb.store.database_resolver import resolve_database_path
+        from mmfdb.store.database_resolver import resolve_database_path
         with MFDatabase(resolve_database_path()) as _db_tmp:
             full = _db_tmp.get_setup(row["setup_id"])
         if full:
@@ -180,9 +180,9 @@ def _detector_save_row_fn(
     _save_setup_row(db, setup_name, data, user_id=user_id, is_public=is_public)
 
 
-def _load_mfdb_detector_setups(db: MFDatabase, user_id: str | None = None) -> dict:
-    from .tttr_setup_utils import load_mfdb_setups
-    return load_mfdb_setups(db, DETECTOR_CONFIG, user_id, row_to_data=_detector_row_to_data)
+def _load_mmfdb_detector_setups(db: MFDatabase, user_id: str | None = None) -> dict:
+    from .tttr_setup_utils import load_mmfdb_setups
+    return load_mmfdb_setups(db, DETECTOR_CONFIG, user_id, row_to_data=_detector_row_to_data)
 
 
 def _set_last_used(db: MFDatabase, setup_name: str) -> None:
@@ -190,13 +190,13 @@ def _set_last_used(db: MFDatabase, setup_name: str) -> None:
     set_last_used(db, DETECTOR_CONFIG, setup_name)
 
 
-def _migrate_json_setups_to_mfdb(
+def _migrate_json_setups_to_mmfdb(
     db: MFDatabase,
     path: pathlib.Path,
     user_id: str | None = None,
 ) -> bool:
-    from .tttr_setup_utils import migrate_json_to_mfdb
-    return migrate_json_to_mfdb(db, DETECTOR_CONFIG, path, user_id=user_id, save_row_fn=_detector_save_row_fn)
+    from .tttr_setup_utils import migrate_json_to_mmfdb
+    return migrate_json_to_mmfdb(db, DETECTOR_CONFIG, path, user_id=user_id, save_row_fn=_detector_save_row_fn)
 
 
 def _load_json_detector_setups(path: pathlib.Path, file_path=None) -> dict:
@@ -208,12 +208,12 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
     from .tttr_setup_utils import load_setups as _load_setups
 
     path = pathlib.Path(file_path or DETECTOR_SETUPS_FILE)
-    if _use_mfdb(file_path):
+    if _use_mmfdb(file_path):
         db = _db(db_path) if db_path is not None else _db()
         if db is not None:
             uid = user_id if user_id is not None else _resolve_active_user_id()
             if not skip_migration:
-                imported = _migrate_json_setups_to_mfdb(db, path, user_id=uid)
+                imported = _migrate_json_setups_to_mmfdb(db, path, user_id=uid)
                 # Only remove legacy file when data was actually imported
                 if imported:
                     try:
@@ -221,7 +221,7 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
                             path.unlink()
                     except Exception:
                         pass
-            return _load_mfdb_detector_setups(db, user_id=uid)
+            return _load_mmfdb_detector_setups(db, user_id=uid)
 
     try:
         import chisurf.core.settings
@@ -317,7 +317,7 @@ def save_detector_setups(setups_data, file_path=None, replace=False, is_public=N
         setups_data, DETECTOR_CONFIG,
         file_path=file_path, replace=replace, is_public=is_public,
         save_row_fn=_detector_save_row_fn,
-        load_scoped_fn=lambda db, cfg, uid: load_mfdb_setups(db, cfg, uid, row_to_data=_detector_row_to_data),
+        load_scoped_fn=lambda db, cfg, uid: load_mmfdb_setups(db, cfg, uid, row_to_data=_detector_row_to_data),
         get_db_fn=get_db_fn,
         resolve_user_fn=resolve_user_fn,
     )

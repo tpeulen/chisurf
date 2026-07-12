@@ -125,8 +125,8 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 # Discover chisurf from the repo root plus vendored, pure-Python packages.
-where = [".", "modules/chinet", "modules/mfdb/src"]
-include = ["chisurf*", "chinet*", "mfdb*"]
+where = [".", "modules/chinet", "modules/mmfdb/src"]
+include = ["chisurf*", "chinet*", "mmfdb*"]
 namespaces = true
 
 [tool.setuptools.package-data]

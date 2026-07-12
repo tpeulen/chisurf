@@ -1,16 +1,16 @@
 from chisurf.gui.widgets.node_editor.graph import GraphDef
 from chisurf.gui.widgets.node_editor.validation import validate_graph_dict
-from chisurf.plugins.core.mfdb_admin.gui.provenance_graph import (
+from chisurf.plugins.core.mmfdb_admin.gui.provenance_graph import (
     layout_nodes,
-    mfdb_graph_to_node_editor_graph,
+    mmfdb_graph_to_node_editor_graph,
     node_key,
     record_title,
     relation_color,
 )
 
 
-def test_empty_mfdb_graph():
-    out = mfdb_graph_to_node_editor_graph({})
+def test_empty_mmfdb_graph():
+    out = mmfdb_graph_to_node_editor_graph({})
     assert out["version"] == 1
     assert out["nodes"] == []
     assert out["edges"] == []
@@ -37,7 +37,7 @@ def test_raw_to_process_to_product():
         ]
     }
 
-    out = mfdb_graph_to_node_editor_graph(graph)
+    out = mmfdb_graph_to_node_editor_graph(graph)
     assert len(out["nodes"]) == 3
     assert len(out["edges"]) == 2
 
@@ -75,7 +75,7 @@ def test_edge_only_dependency_graph_synthesizes_endpoint_nodes():
         ]
     }
 
-    out = mfdb_graph_to_node_editor_graph(graph)
+    out = mmfdb_graph_to_node_editor_graph(graph)
 
     assert len(out["nodes"]) == 2
     assert len(out["edges"]) == 1
@@ -98,7 +98,7 @@ def test_missing_nodes_edges_skipped():
             }
         ]
     }
-    out = mfdb_graph_to_node_editor_graph(graph)
+    out = mmfdb_graph_to_node_editor_graph(graph)
     assert len(out["nodes"]) == 1
     assert len(out["edges"]) == 0
 
@@ -124,7 +124,7 @@ def test_converted_graph_validates_with_node_editor_schema():
         ],
     }
 
-    out = mfdb_graph_to_node_editor_graph(graph)
+    out = mmfdb_graph_to_node_editor_graph(graph)
 
     validate_graph_dict(out)
     graph_def = GraphDef.from_scene_dict(out)
@@ -137,8 +137,8 @@ def test_converted_graph_validates_with_node_editor_schema():
 
 def test_layout_is_deterministic_by_level_kind_title_id():
     nodes = [
-        {"id": "n2", "type": "mfdb_record", "title": "Product: bur", "config": {"node_type": "processed_data"}},
-        {"id": "n1", "type": "mfdb_record", "title": "Raw: ptu", "config": {"node_type": "raw_data"}},
+        {"id": "n2", "type": "mmfdb_record", "title": "Product: bur", "config": {"node_type": "processed_data"}},
+        {"id": "n1", "type": "mmfdb_record", "title": "Raw: ptu", "config": {"node_type": "raw_data"}},
     ]
 
     positions = layout_nodes(nodes, [])

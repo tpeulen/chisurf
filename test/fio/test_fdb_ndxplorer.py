@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import numpy as np
 
-from mfdb.repository import MFDatabase
-from mfdb.admin.backend.ndxplorer_services import (
+from mmfdb.repository import MFDatabase
+from mmfdb.admin.backend.ndxplorer_services import (
     load_burst_product_handler,
     record_analysis_handler,
 )
@@ -69,7 +69,7 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
 
     # Patch database resolver to use our temporary test database
     patcher = patch(
-        "mfdb.admin.backend.ndxplorer_services.resolve_database_path",
+        "mmfdb.admin.backend.ndxplorer_services.resolve_database_path",
         return_value=db_path,
     )
     patcher.start()
@@ -111,7 +111,7 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
             software_version="1.0.0",
         )
         
-        assert rec_result["ok"] is True
+        assert rec_result["ok"] is True, rec_result
         ndx_run = rec_result["processing_run"]
         assert ndx_run["processing_type"] == "ndxplorer_selection"
         assert ndx_run["settings"] == analysis_settings

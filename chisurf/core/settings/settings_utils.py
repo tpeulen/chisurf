@@ -200,13 +200,13 @@ def set_check_experiment_config_updates_on_startup(check_updates: bool) -> bool:
         return False
 
 
-def set_mfdb_login_settings(mfdb_settings: dict) -> bool:
-    """Persist MFDB login settings in the user's settings YAML.
+def set_mmfdb_login_settings(mmfdb_settings: dict) -> bool:
+    """Persist MMFDB login settings in the user's settings YAML.
 
     Parameters
     ----------
-    mfdb_settings : dict
-        MFDB settings to merge into the ``mfdb`` section of
+    mmfdb_settings : dict
+        MMFDB settings to merge into the ``mmfdb`` section of
         ``settings_chisurf.yaml``.
 
     Returns
@@ -224,11 +224,11 @@ def set_mfdb_login_settings(mfdb_settings: dict) -> bool:
         )
         if not isinstance(data, dict):
             data = {}
-        mfdb_cfg = data.get('mfdb')
-        if not isinstance(mfdb_cfg, dict):
-            mfdb_cfg = {}
-            data['mfdb'] = mfdb_cfg
-        mfdb_cfg.update(mfdb_settings)
+        mmfdb_cfg = data.get('mmfdb')
+        if not isinstance(mmfdb_cfg, dict):
+            mmfdb_cfg = {}
+            data['mmfdb'] = mmfdb_cfg
+        mmfdb_cfg.update(mmfdb_settings)
         with open(settings_file, 'w', encoding='utf-8') as fh:
             yaml.safe_dump(data, fh, default_flow_style=False)
         return True

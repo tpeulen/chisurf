@@ -123,11 +123,11 @@ class TestPluginRegistryServices:
     def test_register_services_excludes_startup_entrypoints(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = pathlib.Path(tmp)
-            _make_plugin_dir(base, "mfdb", {
-                "id": "mfdb_admin",
+            _make_plugin_dir(base, "mmfdb", {
+                "id": "mmfdb_admin",
                 "version": "1.0.0",
                 "entrypoints": {
-                    "services": "mfdb_register_fn",
+                    "services": "mmfdb_register_fn",
                 },
             })
             _make_plugin_dir(base, "other", {
@@ -146,7 +146,7 @@ class TestPluginRegistryServices:
                 load.side_effect = lambda entrypoint: MagicMock()
                 reg.register_services(
                     dispatcher,
-                    exclude_entrypoints={"mfdb_register_fn"},
+                    exclude_entrypoints={"mmfdb_register_fn"},
                 )
 
             loaded = [call.args[0] for call in load.call_args_list]

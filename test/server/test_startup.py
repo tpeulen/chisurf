@@ -55,8 +55,8 @@ def test_rpc_config_from_settings_returns_defaults():
     assert config["editor"]["cmd_port"] == 8775
 
 
-def test_rpc_config_from_settings_mfdb_namespace():
-    config = rpc_config_from_settings("mfdb")
+def test_rpc_config_from_settings_mmfdb_namespace():
+    config = rpc_config_from_settings("mmfdb")
     assert config["chisurf"]["host"] == "127.0.0.1"
 
 

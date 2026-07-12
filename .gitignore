@@ -30,7 +30,7 @@ junk
 # Don't ignore JSON wholesale -- most JSON here is source (*.view.json view
 # specs, manifest.json, registries, templates). Only ignore generated/cache
 # JSON explicitly.
-chisurf/core/mfdb/data/_dictionary_cache.json
+chisurf/core/mmfdb/data/_dictionary_cache.json
 # Build-time generated static version (see setup.py / chisurf/core/info.py)
 chisurf/core/_version.py
 *.log

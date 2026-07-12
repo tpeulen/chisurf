@@ -67,9 +67,9 @@ def list_methods() -> dict[str, str]:
     """Return the light-path simulator RPC method catalogue."""
     return {
         METHOD_SIMULATE: "Run a light-path simulation for a JSON graph.",
-        METHOD_SAVE: "Persist a light-path graph and simulated outputs in MFDB.",
-        METHOD_LIST: "List saved light-path simulations from MFDB.",
-        METHOD_GET: "Load one saved light-path simulation from MFDB.",
+        METHOD_SAVE: "Persist a light-path graph and simulated outputs in MMFDB.",
+        METHOD_LIST: "List saved light-path simulations from MMFDB.",
+        METHOD_GET: "Load one saved light-path simulation from MMFDB.",
         METHOD_GET_PROBES_INFO: "Return probe metadata for the light-path simulator.",
         METHOD_DESCRIBE_CONTRACT: "Return the light-path simulator workflow contract.",
     }
@@ -100,7 +100,7 @@ def save_handler(
     session: LightPathSessionState | None = None,
     **_: Any,
 ) -> dict[str, Any]:
-    """Persist a graph and simulation outputs in MFDB."""
+    """Persist a graph and simulation outputs in MMFDB."""
     try:
         result = save_lightpath(graph, name=name, db_path=db_path)
         if session is not None:

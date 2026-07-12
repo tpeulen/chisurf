@@ -105,7 +105,7 @@ def lookup_forster_radius(
     acceptor_name: str,
     db=None,
 ) -> float | None:
-    """Look up the Förster radius R0 for a donor-acceptor pair in MFDB.
+    """Look up the Förster radius R0 for a donor-acceptor pair in MMFDB.
 
     This is a convenience wrapper over :meth:`MFDatabase.lookup_forster_radius`.
     Returns ``None`` when the pair is not found or the database is unavailable.
@@ -126,8 +126,8 @@ def lookup_forster_radius(
     """
     if db is None:
         try:
-            from chisurf.core.mfdb.repository import MFDatabase
-            from chisurf.core.mfdb.store.database_resolver import resolve_database_path
+            from mmfdb.repository import MFDatabase
+            from mmfdb.store.database_resolver import resolve_database_path
             db = MFDatabase(resolve_database_path(), readonly=True)
         except Exception:
             return None

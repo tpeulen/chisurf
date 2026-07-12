@@ -2,36 +2,36 @@
 type: PRD
 prd: "06"
 title: "PRD-06: Expand the Fluorophore Database"
-description: Populate MFDB with real, provenance-tracked spectral data for common dyes and compute Förster radii from spectral overlap.
+description: Populate MMFDB with real, provenance-tracked spectral data for common dyes and compute Förster radii from spectral overlap.
 status: in-progress
 phase: "4"
-resource: chisurf/core/mfdb
-tags: [prd, mfdb]
+resource: chisurf/core/mmfdb
+tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-MFDB should ship real spectral data (absorption/emission, quantum yield, extinction) for common single-molecule FRET dyes, so a donor–acceptor pair yields a Förster radius computed from the spectral-overlap integral. The core Förster calculator (`forster.py`: overlap integral, R0, R0-from-spectra) has landed. The remaining work integrates two previously un-shipped internal tools — a fluorophore-curation engine and a spectral scraper carrying ~1,954 scraped probes — into the live MFDB as a single store, adds `source`/verification/quality provenance, and routes downstream consumers (R0 lookup, calibration feeds) to approved-only data. An AI-assisted triage pass (provider-neutral, via the existing local/OpenAI-compatible AI settings) proposes categories, quality grades, name canonicalization, and deduplication for human approval, never auto-approving.
+MMFDB should ship real spectral data (absorption/emission, quantum yield, extinction) for common single-molecule FRET dyes, so a donor–acceptor pair yields a Förster radius computed from the spectral-overlap integral. The core Förster calculator (`forster.py`: overlap integral, R0, R0-from-spectra) has landed. The remaining work integrates two previously un-shipped internal tools — a fluorophore-curation engine and a spectral scraper carrying ~1,954 scraped probes — into the live MMFDB as a single store, adds `source`/verification/quality provenance, and routes downstream consumers (R0 lookup, calibration feeds) to approved-only data. An AI-assisted triage pass (provider-neutral, via the existing local/OpenAI-compatible AI settings) proposes categories, quality grades, name canonicalization, and deduplication for human approval, never auto-approving.
 
 # Status
 In progress. Task 1 (Förster calculator + tests) is done; integration of the curation/scraper tools, the verification/approval workflow, and AI triage remain.
 
 # Goal
-MFDB ships with real spectral data for common smFRET dyes. Users can look up a
+MMFDB ships with real spectral data for common smFRET dyes. Users can look up a
 donor-acceptor pair and get the Förster radius automatically computed from the
 spectral overlap integral.
 
 # Background
 Relevant code:
-- `chisurf/core/mfdb/seed_data.py` — current seed data (7 probes, 3-point placeholder spectra)
-- `chisurf/core/mfdb/schema.py` — `probes`, `optical_properties`, `spectra`, `flr_fret_forster_radius`
-- `chisurf/core/mfdb/repository.py` — probe/spectra methods
+- `chisurf/core/mmfdb/seed_data.py` — current seed data (7 probes, 3-point placeholder spectra)
+- `chisurf/core/mmfdb/schema.py` — `probes`, `optical_properties`, `spectra`, `flr_fret_forster_radius`
+- `chisurf/core/mmfdb/repository.py` — probe/spectra methods
 - `chisurf/core/models/tcspc/fret.py` — `R0`, `FRETParameters`
 
 # Current state
 Two parallel realities exist.
 
-**1. The shipped seed (`chisurf/core/mfdb/seed_data.py`)** — 7 probes with
+**1. The shipped seed (`chisurf/core/mmfdb/seed_data.py`)** — 7 probes with
 placeholder spectra (3 wavelength points each): Alexa488, Alexa594, Cy3, Cy5,
 ATTO647N, Trp, 2-aminopurine. The `spectra` table stores wavelength/intensity
 arrays as BLOBs; the `flr_fret_forster_radius` table stores R0 for donor-acceptor
@@ -41,8 +41,8 @@ pairs. Neither table is populated with real data in the shipped DB.
 story).** A working fluorophore-curation engine and a spectra scraper already
 exist under `chisurf/plugins/_dev/` and are NOT wired into the app:
 
-- **`_dev/fluorophore_db/`** — the curation engine. `mfdb_adapter.py`
-  (`FluorophoreDatabase(MFDatabase)`) already speaks the **canonical MFDB schema**
+- **`_dev/fluorophore_db/`** — the curation engine. `mmfdb_adapter.py`
+  (`FluorophoreDatabase(MFDatabase)`) already speaks the **canonical MMFDB schema**
   (`probes`/`optical_properties`/`spectra`/`probe_types`/`images`), with
   `add_probe`, `add_spectrum`, `add_optical_property`, `get_probe_full`,
   `search_probes`, `validate_probe`, and
@@ -53,13 +53,13 @@ exist under `chisurf/plugins/_dev/` and are NOT wired into the app:
   per-source importer scripts (one per external fluorophore/spectra database or
   optics-vendor datasheet) as subprocesses against a `--db` path, writing into a
   `FluorophoreDatabase`.
-- **`_dev/fluorophore_db/spectra.db`** — already a full canonical-schema MFDB
+- **`_dev/fluorophore_db/spectra.db`** — already a full canonical-schema MMFDB
   carrying **~1,954 probes, ~3,226 spectra, ~15,456 optical-property rows**
   scraped from those sources.
 
 **Why this is "not properly integrated" (the problems this PRD owns):**
 1. **Separate store.** The scraped data lives in a plugin-local `spectra.db`, not
-   the user's working MFDB. Both the curation GUI and the scraper point only at
+   the user's working MMFDB. Both the curation GUI and the scraper point only at
    that file.
 2. **In `_dev/`.** Neither tool is discoverable/shipped.
 3. **Unverified, low quality.** Only **~35 of 1,954** probes are marked
@@ -92,7 +92,7 @@ M⁻¹ cm⁻¹ nm⁴, R0 in cm; ×1e8 for Å). Test against a well-known pair (C
 expected ~54 Å).
 
 ## Task 2: Add real spectral data (fallback)
-`chisurf/core/mfdb/spectral_data/` — a Python module with embedded absorption/
+`chisurf/core/mmfdb/spectral_data/` — a Python module with embedded absorption/
 emission spectra per dye (normalized, 1 nm spacing, extinction in M⁻¹ cm⁻¹). Where
 real arrays are unavailable, generate Gaussian approximations from known abs_max,
 em_max, and FWHM — better than 3-point placeholders. Typical FWHM: Alexa abs
@@ -100,7 +100,7 @@ em_max, and FWHM — better than 3-point placeholders. Typical FWHM: Alexa abs
 Superseded by Tasks 7–9 (real scraped data); kept as a fallback only.
 
 ## Task 3: Update seed data
-`chisurf/core/mfdb/seed_data.py` — replace 3-point placeholders with real/Gaussian
+`chisurf/core/mmfdb/seed_data.py` — replace 3-point placeholders with real/Gaussian
 spectra; target ≥20 common dyes. Minimum smFRET set (abs_max / em_max / QY /
 ext_coeff / FWHM_abs / FWHM_em): Alexa 488, 546, 555, 568, 594, 647; Cy3, Cy3B,
 Cy5, Cy5.5; ATTO 488, 532, 550, 565, 590, 594, 647N, 655, 680; Rhodamine 110.
@@ -126,20 +126,20 @@ manually).
 overlapping give J > 0; a known pair gives R0 within ~20% of literature; zero QY
 gives R0 = 0.
 
-## Task 7: Integrate the curation + scraper tools with MFDB
+## Task 7: Integrate the curation + scraper tools with MMFDB
 The two `_dev` tools are the real-data engine and supersede the embedded-Gaussian
 approach of Task 2 — the data is sourced from authoritative databases, not
 hand-rolled. The work is **integration + curation**, not building from scratch.
 
 - **7.1 Promote both tools out of `_dev/`** to shipped, manifest-discovered
   plugins. Mark them **experimental** initially (the data is unverified).
-- **7.2 Make MFDB the single store (no parallel `spectra.db`).** The engine
+- **7.2 Make MMFDB the single store (no parallel `spectra.db`).** The engine
   already subclasses `MFDatabase` on the canonical schema, so the gap is *which
-  database* it opens. Point the curation GUI and the scraper at the active MFDB
+  database* it opens. Point the curation GUI and the scraper at the active MMFDB
   resolved through `ChiSurfAPI`/`resolve_database_path` (the configured DB, or an
   explicit `--db`), not the hardcoded plugin-local `spectra.db`. Keep `spectra.db`
   only as an *import source* — a one-time `import_reference_set` that copies its
-  probes/spectra/optical-properties into the target MFDB (idempotent, dedup by
+  probes/spectra/optical-properties into the target MMFDB (idempotent, dedup by
   name+source), stamping every imported row as unverified (Task 8).
 - **7.3 Add `source` provenance.** Add a `source` column to `probes` identifying
   the origin (a specific public fluorophore database, dye manufacturer,
@@ -159,7 +159,7 @@ hand-rolled. The work is **integration + curation**, not building from scratch.
   without the GUI (`csc fluorophore import-reference-set`, `… approve <probe>`,
   `… list --status unverified`). The curation GUI is thin wiring over these.
 
-Keep the importers/curation pure-Python (network + spectra parsing); MFDB
+Keep the importers/curation pure-Python (network + spectra parsing); MMFDB
 read/write goes through the plugin backend services mirroring the repository
 methods.
 
@@ -249,7 +249,7 @@ non-positive donor area / negative inputs. Tests:
 
 **Reworked (Tasks 7–9):** the real data is the ~1,954-entry scraped set in the two
 `_dev` tools (curation engine + scraper), not hand-rolled Gaussians. Remaining
-work: integrate both tools with the live MFDB (Task 7), add a
+work: integrate both tools with the live MMFDB (Task 7), add a
 verification/approval/quality + `source` provenance workflow treating all scraped
 data as unverified until human-approved (Task 8), and an AI-assisted triage pass
 that proposes category/quality/dedup/approval with rationale for human sign-off
@@ -258,10 +258,10 @@ no vendor SDK). Tasks 2–3 (hand-authored Gaussian data) become a fallback only
 
 # Definition of Done
 - [x] `forster.py` computes overlap integral and R0 correctly
-- [ ] At least 20 common dyes have **approved** spectral data in MFDB (curated
+- [ ] At least 20 common dyes have **approved** spectral data in MMFDB (curated
       real entries; Gaussian approximations only as a fallback)
 - [ ] Both `_dev` tools (`fluorophore_db`, `spectra_downloader`) are promoted out
-      of `_dev/` and operate on the **live MFDB** (no parallel `spectra.db` source
+      of `_dev/` and operate on the **live MMFDB** (no parallel `spectra.db` source
       of truth; `spectra.db` used only as a one-time reference import)
 - [ ] `probes` carries `source` / `source_ref` / `retrieved_at` provenance, and
       each scraper records its source
@@ -285,4 +285,4 @@ no vendor SDK). Tasks 2–3 (hand-authored Gaussian data) become a fallback only
 # Relationships
 - Feeds R0 / crosstalk into [PRD-08](prd-08.md) (optical configuration) and the calibration provenance work.
 - Reagent inventory [PRD-15](prd-15.md) may link fluorophore lots to probe records.
-- Builds on the dictionary-driven schema of [MFDB (current)](/architecture/mfdb.md); target in [MFDB target](/specs/mfdb.md).
+- Builds on the dictionary-driven schema of [MMFDB (current)](/architecture/mmfdb.md); target in [MMFDB target](/specs/mmfdb.md).

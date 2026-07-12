@@ -15,7 +15,7 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core.fio.mmcif.db.pdbx_metadata import get_pdbx_metadata_keys
-from chisurf.core.mfdb.security.base import MFDBClientBase
+from mmfdb.security.base import MMFDBClientBase
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.progress import EnhancedProgressDialog
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
@@ -32,22 +32,22 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups impo
 from chisurf.gui.widgets.wizard.tttr_photonfilter.tttr_photon_filter import WizardTTTRPhotonFilter
 from chisurf.server.rpc_logging import RpcLogWriter
 
-from ..api.mfdb import (
-    acquire_mfdb_connection as _acquire_mfdb_connection,
+from ..api.mmfdb import (
+    acquire_mmfdb_connection as _acquire_mmfdb_connection,
 )
-from ..api.mfdb import (
+from ..api.mmfdb import (
     file_md5 as _file_md5,
 )
-from ..api.mfdb import (
+from ..api.mmfdb import (
     raw_artifact_id_for_path as _raw_artifact_id_for_path,
 )
-from ..api.mfdb import (
+from ..api.mmfdb import (
     raw_file_data_format as _raw_file_data_format,
 )
-from ..api.mfdb import (
+from ..api.mmfdb import (
     register_raw_input_for_sample as _register_raw_input_for_sample,
 )
-from ..api.mfdb import (
+from ..api.mmfdb import (
     sample_id_for_raw_path as _sample_id_for_raw_path,
 )
 from ..api.models import (
@@ -409,7 +409,7 @@ class BurstSelectionTool(ChisurfDockTool):
         self._closed_diagnostic_plots: set[str] = set()
         self._selected_setup_name: str | None = None
         self._selected_filetype: str | None = None
-        self._mfdb_db: MFDBClientBase | None = None
+        self._mmfdb_db: MMFDBClientBase | None = None
         self._fit_gmm_on_update = False
         self.gmm_settings = dict(DEFAULT_GMM_SETTINGS)
         self._building_ui = True
@@ -766,18 +766,18 @@ class BurstSelectionTool(ChisurfDockTool):
         self.csv_output_check.setChecked(True)
         self.hdf_output_check = QtWidgets.QCheckBox("MFD-HDF", group)
         self.hdf_output_check.setEnabled(False)
-        self.mfdb_output_check = QtWidgets.QCheckBox("MFDB", group)
+        self.mmfdb_output_check = QtWidgets.QCheckBox("MMFDB", group)
         self.zip_output_check = QtWidgets.QCheckBox("Zip Output", group)
         self.remove_folder_check = QtWidgets.QCheckBox("Remove Folder", group)
         format_layout.addWidget(self.csv_output_check)
         format_layout.addWidget(self.hdf_output_check)
-        format_layout.addWidget(self.mfdb_output_check)
+        format_layout.addWidget(self.mmfdb_output_check)
         format_layout.addWidget(self.zip_output_check)
         format_layout.addWidget(self.remove_folder_check)
         group_layout.addLayout(format_layout)
         self.csv_output_check.stateChanged.connect(self._sync_output_format_controls)
         self.hdf_output_check.stateChanged.connect(self._sync_output_format_controls)
-        self.mfdb_output_check.stateChanged.connect(self._sync_output_format_controls)
+        self.mmfdb_output_check.stateChanged.connect(self._sync_output_format_controls)
         self.zip_output_check.stateChanged.connect(self._sync_output_format_controls)
         layout.addWidget(group)
         return panel
@@ -1406,7 +1406,7 @@ class BurstSelectionTool(ChisurfDockTool):
         return None
 
     def _selected_sample_id(self) -> str:
-        """Return the selected MFDB sample ID when the tool exposes one."""
+        """Return the selected MMFDB sample ID when the tool exposes one."""
         def safe_getattr(obj: object, name: str, default: object = None) -> object:
             """Read an attribute from Qt test doubles that may skip ``__init__``."""
             try:
@@ -1430,53 +1430,53 @@ class BurstSelectionTool(ChisurfDockTool):
         sample_id = safe_getattr(self, "sample_id", "")
         return str(sample_id) if sample_id else ""
 
-    def _mfdb_output_selected(self) -> bool:
-        """Return whether MFDB archival is selected as an output mode.
+    def _mmfdb_output_selected(self) -> bool:
+        """Return whether MMFDB archival is selected as an output mode.
 
         Returns
         -------
         bool
-            ``True`` when the MFDB output checkbox is checked.
+            ``True`` when the MMFDB output checkbox is checked.
 
         """
-        check = self._safe_getattr("mfdb_output_check")
+        check = self._safe_getattr("mmfdb_output_check")
         try:
             return bool(check is not None and check.isChecked())
         except RuntimeError:
             return False
 
-    def acquire_mfdb_connection(self) -> MFDBClientBase | None:
-        """Return the cached/opened MFDB connection (PRD-23 base hook)."""
+    def acquire_mmfdb_connection(self) -> MMFDBClientBase | None:
+        """Return the cached/opened MMFDB connection (PRD-23 base hook)."""
         return self._db()
 
-    def _db(self) -> MFDBClientBase | None:
-        """Return the MFDB connection used by the output preflight.
+    def _db(self) -> MMFDBClientBase | None:
+        """Return the MMFDB connection used by the output preflight.
 
         Returns
         -------
-        MFDBClientBase or None
-            Active or newly opened MFDB connection.
+        MMFDBClientBase or None
+            Active or newly opened MMFDB connection.
 
         """
-        if self._mfdb_db is not None:
-            return self._mfdb_db
+        if self._mmfdb_db is not None:
+            return self._mmfdb_db
         # Connection acquisition is api-layer logic (PRD-23): prefer the global
         # connection, else open the resolved default DB.
-        self._mfdb_db = _acquire_mfdb_connection()
-        return self._mfdb_db
+        self._mmfdb_db = _acquire_mmfdb_connection()
+        return self._mmfdb_db
 
-    def _ensure_selected_setup_in_mfdb(self, db: MFDBClientBase) -> str:
+    def _ensure_selected_setup_in_mmfdb(self, db: MMFDBClientBase) -> str:
         """Return the selected setup ID, saving the current setup when missing.
 
         Parameters
         ----------
-        db : MFDBClientBase
-            MFDB connection used for archival preflight.
+        db : MMFDBClientBase
+            MMFDB connection used for archival preflight.
 
         Returns
         -------
         str
-            MFDB setup ID, or an empty string when no setup is selected.
+            MMFDB setup ID, or an empty string when no setup is selected.
 
         """
         selected_setup = self.wizard.comboBox.currentText()
@@ -1509,8 +1509,8 @@ class BurstSelectionTool(ChisurfDockTool):
         )
         return setup_id
 
-    def _prepare_mfdb_context_for_paths(self, paths: list[Path]) -> dict[str, Any] | None:
-        """Build MFDB context and prompt for sample registration when needed.
+    def _prepare_mmfdb_context_for_paths(self, paths: list[Path]) -> dict[str, Any] | None:
+        """Build MMFDB context and prompt for sample registration when needed.
 
         Parameters
         ----------
@@ -1520,16 +1520,16 @@ class BurstSelectionTool(ChisurfDockTool):
         Returns
         -------
         dict or None
-            MFDB context for the analysis request, or ``None`` when MFDB output
+            MMFDB context for the analysis request, or ``None`` when MMFDB output
             is disabled.
 
         Raises
         ------
         RuntimeError
-            If MFDB output is selected but no sample is selected or created.
+            If MMFDB output is selected but no sample is selected or created.
 
         """
-        if not self._mfdb_output_selected():
+        if not self._mmfdb_output_selected():
             return None
 
         db = self._db()
@@ -1544,12 +1544,12 @@ class BurstSelectionTool(ChisurfDockTool):
         if not sample_id or any(_sample_id_for_raw_path(db, path) is None for path in normalized_paths):
             selected = show_sample_picker_dialog(db=db, parent=self)
             if not selected:
-                raise RuntimeError("MFDB output requires a registered sample for the raw data.")
+                raise RuntimeError("MMFDB output requires a registered sample for the raw data.")
             sample_id = selected
 
         source_artifact_ids: dict[str, str] = {}
         selected_setup = self.wizard.comboBox.currentText()
-        setup_id = self._ensure_selected_setup_in_mfdb(db)
+        setup_id = self._ensure_selected_setup_in_mmfdb(db)
         for path in normalized_paths:
             artifact_id = _raw_artifact_id_for_path(db, path)
             if not artifact_id:
@@ -1624,7 +1624,7 @@ class BurstSelectionTool(ChisurfDockTool):
             legacy_output=False,
             selected_setup=self.wizard.comboBox.currentText(),
             legacy_parameters=self._legacy_parameters(),
-            mfdb=None,
+            mmfdb=None,
         )
         frame = self._frame_from_result(path, result.get("dataframes", {}))
         self._last_frames_by_file[path.resolve()] = frame
@@ -1752,11 +1752,11 @@ class BurstSelectionTool(ChisurfDockTool):
             self.summary.setPlainText("No TTTR files selected.")
             return
         settings = self._settings_from_controls()
-        if not settings.output_formats and not self._mfdb_output_selected():
+        if not settings.output_formats and not self._mmfdb_output_selected():
             self.summary.setPlainText("No output format selected.")
             return
         try:
-            mfdb_context = self._prepare_mfdb_context_for_paths(self._file_paths)
+            mmfdb_context = self._prepare_mmfdb_context_for_paths(self._file_paths)
         except RuntimeError as exc:
             self.summary.setPlainText(str(exc))
             return
@@ -1790,7 +1790,7 @@ class BurstSelectionTool(ChisurfDockTool):
                     legacy_output=True,
                     selected_setup=self.wizard.comboBox.currentText(),
                     legacy_parameters=legacy_parameters,
-                    mfdb=mfdb_context,
+                    mmfdb=mmfdb_context,
                 )
                 self._last_service_result = result
             except RuntimeError as rpc_err:
@@ -1811,7 +1811,7 @@ class BurstSelectionTool(ChisurfDockTool):
                 metadata.update(result.get("metadata", {}))
                 if result.get("warnings"):
                     metadata["warnings"] = result["warnings"]
-                    _LOG.warning("MFDB registration warnings", warnings=result["warnings"])
+                    _LOG.warning("MMFDB registration warnings", warnings=result["warnings"])
                 dialog.update_progress(100, "Processing files...")
         finally:
             final_text = "Burst selection cancelled." if cancelled else "Burst selection finished."
@@ -2919,7 +2919,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
         ndx_action = QtWidgets.QAction("🔬 to ndXplorer", self)
         ndx_action.setToolTip(
-            "Open a registered burst selection from MFDB in ndXplorer"
+            "Open a registered burst selection from MMFDB in ndXplorer"
         )
         ndx_action.triggered.connect(self._open_in_ndxplorer)
         toolbar.addAction(ndx_action)
@@ -2952,11 +2952,11 @@ class BurstSelectionTool(ChisurfDockTool):
         dialog.exec_()
 
     def _open_in_ndxplorer(self) -> None:
-        """Open a registered burst selection from MFDB in ndXplorer (PRD-28)."""
+        """Open a registered burst selection from MMFDB in ndXplorer (PRD-28)."""
         try:
-            from chisurf.plugins.ndxplorer.mfdb_launcher import open_burst_selection_from_mfdb
+            from chisurf.plugins.ndxplorer.mmfdb_launcher import open_burst_selection_from_mmfdb
 
-            open_burst_selection_from_mfdb(parent=self)
+            open_burst_selection_from_mmfdb(parent=self)
         except Exception as exc:
             self._status_bar.showMessage(f"Could not open ndXplorer: {exc}")
 

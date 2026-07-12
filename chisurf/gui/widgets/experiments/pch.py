@@ -666,7 +666,7 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
             pass
 
     def _db(self):
-        """Return the MFDB connection from the current reader when available."""
+        """Return the MMFDB connection from the current reader when available."""
         try:
             return self.db
         except Exception:

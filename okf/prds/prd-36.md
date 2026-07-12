@@ -2,7 +2,7 @@
 type: PRD
 prd: "36"
 title: "PRD-36: Dockable-Tool Base Migration Tracker"
-description: Tracks the per-tool rollout of the shared dockable-tool base across remaining QMainWindow plugin tools so drag-drop, dock, geometry, and MFDB-connectivity boilerplate is implemented once.
+description: Tracks the per-tool rollout of the shared dockable-tool base across remaining QMainWindow plugin tools so drag-drop, dock, geometry, and MMFDB-connectivity boilerplate is implemented once.
 status: in-progress
 phase: "cross-cutting"
 resource: chisurf/gui/widgets/tools
@@ -11,7 +11,7 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
+Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MMFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MMFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
 
 # Status
 In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; three reference tools are migrated and a backlog of ~20 tools remains.
@@ -21,7 +21,7 @@ In progress. The base, smoke-test pattern, and the repo-wide read-only-construct
 Track the per-tool rollout of the shared dockable-tool base
 (`chisurf/gui/widgets/tools/ChisurfDockTool` + `PathDropListWidget`, PRD-23 Task 1)
 across every remaining `QMainWindow` plugin tool, so the drag-drop / dock / window-
-geometry / MFDB-connectivity boilerplate is implemented once and not re-forked. This
+geometry / MMFDB-connectivity boilerplate is implemented once and not re-forked. This
 is the incremental rollout half of **PRD-23**; the base, smoke-test pattern, and the
 read-only-construction guard already exist.
 
@@ -31,7 +31,7 @@ read-only-construction guard already exist.
   extension-filtered) every tool copied.
 - `ChisurfDockTool(QMainWindow)` — window-level path drag-drop → `on_paths_dropped`
   hook (default → `_add_paths`), geometry persistence (`tool_settings_name`), and
-  lazy MFDB accessors (`acquire_mfdb_connection`/`mfdb_connection`/`mfdb_connected`)
+  lazy MMFDB accessors (`acquire_mmfdb_connection`/`mmfdb_connection`/`mmfdb_connected`)
   that do **no** work on construction.
 
 # Migration recipe (per tool)
@@ -42,12 +42,12 @@ read-only-construction guard already exist.
    if it filtered by extension).
 3. Delete the tool's window-level `dragEnterEvent`/`dropEvent` (the base dispatches to
    `on_paths_dropped` → `_add_paths`).
-4. Route MFDB connection acquisition through `acquire_mfdb_connection` (delegate the
+4. Route MMFDB connection acquisition through `acquire_mmfdb_connection` (delegate the
    tool's `_db()` to it); no `MFDatabase`/`_get_global_db` in the view.
 5. Lazy-load the GUI tool in the plugin `__init__.py` (PEP 562 `__getattr__`) so the
    `api`/`cli` import headlessly.
 6. Add an offscreen construction smoke test (PRD-23 Task 3) asserting it constructs,
-   `isinstance(tool, ChisurfDockTool)`, and opens no MFDB connection on init.
+   `isinstance(tool, ChisurfDockTool)`, and opens no MMFDB connection on init.
 
 # Done (reference + first rollout)
 
@@ -66,7 +66,7 @@ handlers):**
       not a `QWizard`/`QWizardPage`; only the `QMainWindow` form fits this base).
 - [ ] `tttr/ptu_alex_creator/wizard.py` — drag-drop (same `QMainWindow` caveat).
 
-**Priority B — plain `QMainWindow` tools (adopt for geometry + MFDB status + the
+**Priority B — plain `QMainWindow` tools (adopt for geometry + MMFDB status + the
 read-only-construction guarantee; no drop list to dedupe):**
 
 - [ ] `tttr/trace_browser/gui/tool.py`
@@ -81,7 +81,7 @@ read-only-construction guarantee; no drop list to dedupe):**
 - [ ] `modelling/hydropro/hydrogui.py`
 - [ ] `traj/traj_tools/gui/tool.py`
 - [ ] `core/project_browser/gui/tool.py`
-- [ ] `core/mfdb_admin/gui/tool.py`
+- [ ] `core/mmfdb_admin/gui/tool.py`
 - [ ] `core/setup/gui/tool.py`
 - [ ] `core/lightpath_simulator/gui/tool.py`
 - [ ] `core/globalview/gui/tool.py`
@@ -110,4 +110,4 @@ read-only-construction guarantee; no drop list to dedupe):**
 
 # Relationships
 - The rollout backlog for [PRD-23](prd-23.md) Task 1 (thin dockable tools); each migration also advances Task 3 (smoke tests) and reinforces Task 4 (read-only construction).
-- Touches the [plugin system](/architecture/plugin-system.md) and the [Plugins target](/specs/plugins.md); read-only-construction rule keeps tools from opening [MFDB (current)](/architecture/mfdb.md) connections on init.
+- Touches the [plugin system](/architecture/plugin-system.md) and the [Plugins target](/specs/plugins.md); read-only-construction rule keeps tools from opening [MMFDB (current)](/architecture/mmfdb.md) connections on init.

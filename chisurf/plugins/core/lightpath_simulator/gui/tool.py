@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 class _ProbeInfoLoader(QtCore.QObject):
-    """Load the MFDB spectra catalogue without blocking the GUI thread."""
+    """Load the MMFDB spectra catalogue without blocking the GUI thread."""
 
     finished = QtCore.Signal(list)
     failed = QtCore.Signal(str)
@@ -110,7 +110,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         
         # Initialize the RPC client used by interactive commands.  Probe metadata
         # is loaded asynchronously below so opening the plugin never blocks on ZMQ.
-        self.client = self.make_mfdb_client()
+        self.client = self.make_mmfdb_client()
         
         # Ensure our node registry is populated
         build_optical_registry()
@@ -187,11 +187,11 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         self._restore_window_geometry()
         self._restore_dock_layout()
 
-        # Load MFDB spectra after the window has been constructed.
+        # Load MMFDB spectra after the window has been constructed.
         QtCore.QTimer.singleShot(0, self._start_probe_loading)
 
-    def make_mfdb_client(self):
-        """Create an MFDB client using the current session token when available."""
+    def make_mmfdb_client(self):
+        """Create an MMFDB client using the current session token when available."""
         client = LightPathClient.from_settings(timeout_ms=1500)
         logger.info(
             "Light Path Simulator: created plugin RPC client",
@@ -330,7 +330,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
             logger.error("Failed to save lightpath graph state: %s", exc)
 
     def _start_probe_loading(self) -> None:
-        """Start the asynchronous MFDB probe catalogue load."""
+        """Start the asynchronous MMFDB probe catalogue load."""
         if self._probe_loader_thread is not None:
             return
 
@@ -360,7 +360,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
     def _on_probes_loaded(self, probes: list[dict[str, Any]]) -> None:
         """Install loaded probe metadata and build the startup graph."""
         self.probes = probes or []
-        logger.info("Loaded %d light-path MFDB spectra entries", len(self.probes))
+        logger.info("Loaded %d light-path MMFDB spectra entries", len(self.probes))
         self._build_easy_mode_tab()
         self._setup_default_path()
 
@@ -412,13 +412,13 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         
         file_menu.addSeparator()
 
-        save_mfdb_act = QtWidgets.QAction("Save Simulation to MFDB...", self)
-        save_mfdb_act.triggered.connect(self._on_save_to_mfdb)
-        file_menu.addAction(save_mfdb_act)
+        save_mmfdb_act = QtWidgets.QAction("Save Simulation to MMFDB...", self)
+        save_mmfdb_act.triggered.connect(self._on_save_to_mmfdb)
+        file_menu.addAction(save_mmfdb_act)
 
-        load_mfdb_act = QtWidgets.QAction("Load Simulation from MFDB...", self)
-        load_mfdb_act.triggered.connect(self._on_load_from_mfdb)
-        file_menu.addAction(load_mfdb_act)
+        load_mmfdb_act = QtWidgets.QAction("Load Simulation from MMFDB...", self)
+        load_mmfdb_act.triggered.connect(self._on_load_from_mmfdb)
+        file_menu.addAction(load_mmfdb_act)
 
         file_menu.addSeparator()
 
@@ -495,11 +495,11 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
             except Exception as e:
                 QtWidgets.QMessageBox.critical(self, "Load Failed", f"Could not load graph:\n{e}")
 
-    def _on_save_to_mfdb(self):
-        """Persist the current graph and simulation result as MFDB artifacts."""
+    def _on_save_to_mmfdb(self):
+        """Persist the current graph and simulation result as MMFDB artifacts."""
         name, ok = QtWidgets.QInputDialog.getText(
             self,
-            "Save Simulation to MFDB",
+            "Save Simulation to MMFDB",
             "Name:",
             text="Light path simulation",
         )
@@ -510,23 +510,23 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         try:
             res = self.client.save(graph, name=name or "Light path simulation")
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "MFDB Save Failed", str(exc))
+            QtWidgets.QMessageBox.critical(self, "MMFDB Save Failed", str(exc))
             return
         QtWidgets.QMessageBox.information(
             self,
-            "Saved to MFDB",
+            "Saved to MMFDB",
             f"Saved operation {res.get('operation_id')}",
         )
 
-    def _on_load_from_mfdb(self):
-        """Load a previously saved lightpath graph from MFDB."""
+    def _on_load_from_mmfdb(self):
+        """Load a previously saved lightpath graph from MMFDB."""
         try:
             records = self.client.list_saved()
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "MFDB Load Failed", str(exc))
+            QtWidgets.QMessageBox.critical(self, "MMFDB Load Failed", str(exc))
             return
         if not records:
-            QtWidgets.QMessageBox.information(self, "MFDB", "No saved light path simulations found.")
+            QtWidgets.QMessageBox.information(self, "MMFDB", "No saved light path simulations found.")
             return
         labels = [
             f"{item.get('name') or item.get('operation_id')} ({item.get('operation_id')})"
@@ -534,7 +534,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         ]
         label, ok = QtWidgets.QInputDialog.getItem(
             self,
-            "Load Simulation from MFDB",
+            "Load Simulation from MMFDB",
             "Simulation:",
             labels,
             0,
@@ -546,7 +546,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         try:
             load_res = self.client.get(operation_id)
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "MFDB Load Failed", str(exc))
+            QtWidgets.QMessageBox.critical(self, "MMFDB Load Failed", str(exc))
             return
         self.scene.clear()
         self.scene.from_dict(normalize_lightpath_graph(load_res["graph"]))
@@ -596,20 +596,20 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         save_preset_act.setToolTip("Save as optical path preset for the Easy Mode")
         save_preset_act.triggered.connect(self._on_save_optical_preset)
 
-        save_mfdb_act = QtWidgets.QAction("Save to MFDB", self)
-        save_mfdb_act.setToolTip("Persist the current graph and simulation to MFDB")
-        save_mfdb_act.triggered.connect(self._on_save_to_mfdb)
+        save_mmfdb_act = QtWidgets.QAction("Save to MMFDB", self)
+        save_mmfdb_act.setToolTip("Persist the current graph and simulation to MMFDB")
+        save_mmfdb_act.triggered.connect(self._on_save_to_mmfdb)
 
-        load_mfdb_act = QtWidgets.QAction("Load from MFDB", self)
-        load_mfdb_act.setToolTip("Load a previously saved graph from MFDB")
-        load_mfdb_act.triggered.connect(self._on_load_from_mfdb)
+        load_mmfdb_act = QtWidgets.QAction("Load from MMFDB", self)
+        load_mmfdb_act.setToolTip("Load a previously saved graph from MMFDB")
+        load_mmfdb_act.triggered.connect(self._on_load_from_mmfdb)
 
         toolbar.addAction(save_act)
         toolbar.addAction(load_act)
         toolbar.addAction(save_preset_act)
         toolbar.addSeparator()
-        toolbar.addAction(save_mfdb_act)
-        toolbar.addAction(load_mfdb_act)
+        toolbar.addAction(save_mmfdb_act)
+        toolbar.addAction(load_mmfdb_act)
 
         self.addToolBar(toolbar)
 

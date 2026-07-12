@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import FluorophoreDatabase
+from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import FluorophoreDatabase
 
 
 @pytest.fixture
@@ -11,8 +11,8 @@ def db():
 
 def test_connection_and_version(db):
     assert db.conn is not None
-    # The dev fluorophore database is now backed by the canonical MFDB schema.
-    assert db._get_schema_version() >= 4
+    # The dev fluorophore database is now backed by the canonical MMFDB schema.
+    assert db.get_schema_version() >= 4
 
     # Check if WAL mode is enabled (journal_mode might be 'memory' for :memory: but we check pragma anyway)
     # Actually for :memory: it might stay as 'memory' or 'delete'.

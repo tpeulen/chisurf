@@ -60,7 +60,7 @@ class SampleLookupDialog(QtWidgets.QDialog):
         layout.addWidget(QtWidgets.QLabel("Details / description:"))
         self.details_edit = QtWidgets.QTextEdit(self)
         self.details_edit.setPlaceholderText(
-            "Optional details for this sample. These are stored in MFDB."
+            "Optional details for this sample. These are stored in MMFDB."
         )
         self.details_edit.setMaximumHeight(120)
         layout.addWidget(self.details_edit, 1)
@@ -82,11 +82,11 @@ class SampleLookupDialog(QtWidgets.QDialog):
         return getattr(self.controller, "experiment_reader", None)
 
     def _db(self):
-        """Return the MFDB connection, if available."""
+        """Return the MMFDB connection, if available."""
         return getattr(self._reader(), "db", None) or getattr(self.controller, "db", None)
 
     def _populate_samples(self):
-        """Populate the sample combo box from MFDB."""
+        """Populate the sample combo box from MMFDB."""
         if self._updating:
             return
         self._updating = True
@@ -121,7 +121,7 @@ class SampleLookupDialog(QtWidgets.QDialog):
             self._updating = False
 
     def _on_edit_text_changed(self, text):
-        """Search MFDB dynamically as the user types."""
+        """Search MMFDB dynamically as the user types."""
         if self._updating:
             return
         if len(text) >= 2:
@@ -153,7 +153,7 @@ class SampleLookupDialog(QtWidgets.QDialog):
             reader.sample_id = sample_id
 
     def _store_sample(self, sample_id, details, object_uuid=None):
-        """Store the selected sample ID in MFDB and object metadata."""
+        """Store the selected sample ID in MMFDB and object metadata."""
         try:
             db = self._db()
             reader = self._reader()

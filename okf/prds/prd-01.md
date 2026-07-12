@@ -1,17 +1,17 @@
 ---
 type: PRD
 prd: "01"
-title: "PRD-01: Fix MFDB Project Round-Trip"
-description: Make archiving a project to MFDB and restoring it produce an identical project
+title: "PRD-01: Fix MMFDB Project Round-Trip"
+description: Make archiving a project to MMFDB and restoring it produce an identical project
 status: planned
 phase: "0"
-resource: modules/mfdb/src/mfdb/project_archiver.py
-tags: [prd, mfdb]
+resource: modules/mmfdb/src/mmfdb/project_archiver.py
+tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Archiving a project to MFDB and then restoring it must reproduce the original
+Archiving a project to MMFDB and then restoring it must reproduce the original
 project exactly. Today the round-trip is lossy: only the inner fit-state payload
 is stored (dropping fit id, name, model name, plot state, and range), multiple
 datasets collapse to a single key, project-level metadata is not persisted, and
@@ -25,13 +25,13 @@ Planned. The PRD enumerates concrete fixes in `project_archiver.py` and the
 project-browser restore handler, with a new round-trip test as the gate.
 
 # Goal
-`archive_project_to_mfdb()` followed by `restore_project_from_artifacts()` must
+`archive_project_to_mmfdb()` followed by `restore_project_from_artifacts()` must
 produce a project identical to the original. Currently it doesn't — fit
 structure is lost, datasets can vanish, chinet sessions are discarded.
 
 # Background
 Read these files before starting:
-- `project_archiver.py` — the archiver and restorer (in the mfdb package)
+- `project_archiver.py` — the archiver and restorer (in the mmfdb package)
 - `chisurf/core/project/fit_state.py` — fit serialization
 - `chisurf/core/project/project.py` — Project dataclass
 - `chisurf/plugins/core/project_browser/backend/services.py` — restore handler
@@ -64,7 +64,7 @@ The artifact data stored in the object store should be the full `fit_record`
 dict as JSON.
 
 ## Task 2: Store project-level metadata
-In `archive_project_to_mfdb()` the metadata dict (around line 162) only has
+In `archive_project_to_mmfdb()` the metadata dict (around line 162) only has
 `project_id`, `version_number`, `fit_count`, `dataset_count`. Add
 `chisurf_version`, `project_format_version`, `description`, `created`,
 `ui_state`, and `experiments`:
@@ -84,14 +84,14 @@ metadata={
 ## Task 3: Fix dataset restore
 Two bugs in `restore_project_from_artifacts()` (around line 580):
 - It filters by `kind == "processed_data" and role == "dataset"`, but `role`
-  comes from the `mfdb_operation_artifact` junction table. If the query doesn't
+  comes from the `mmfdb_operation_artifact` junction table. If the query doesn't
   JOIN properly, `role` is always empty and ALL datasets are silently dropped.
 - The fallback `ds_id = ds_id.get("ds_id", role)` means all datasets get key
   `"dataset"`, so only the last one survives.
 
 Fix:
 1. Verify `db.get_operation_artifacts()` (in `repository.py`) returns rows with
-   a `role` column from `mfdb_operation_artifact`; fix the query to JOIN and
+   a `role` column from `mmfdb_operation_artifact`; fix the query to JOIN and
    include `role` if not.
 2. Change the dataset-key logic:
    ```python
@@ -143,7 +143,7 @@ payload = {
 ```
 
 ## Task 6: Query parameters and edges on restore
-`restore_project_from_artifacts()` never reads `mfdb_parameter` or `mfdb_edge`.
+`restore_project_from_artifacts()` never reads `mmfdb_parameter` or `mmfdb_edge`.
 After collecting fits, query parameters per fit operation and the dependency
 edges, and return them alongside `ui_state`/`experiments` from the project
 operation's `metadata_json`:
@@ -152,12 +152,12 @@ operation's `metadata_json`:
 all_parameters = {}
 for fit_op_id in fit_operation_ids:
     rows = db.con.execute(
-        "SELECT * FROM mfdb_parameter WHERE operation_id = ?", (fit_op_id,)
+        "SELECT * FROM mmfdb_parameter WHERE operation_id = ?", (fit_op_id,)
     ).fetchall()
     all_parameters[fit_op_id] = [dict(r) for r in rows]
 
 dependency_edges = [dict(r) for r in db.con.execute(
-    "SELECT * FROM mfdb_edge WHERE relationship_type = 'parameter_depends_on'"
+    "SELECT * FROM mmfdb_edge WHERE relationship_type = 'parameter_depends_on'"
 ).fetchall()]
 
 return {
@@ -175,7 +175,7 @@ Collect `fit_operation_ids` while iterating fits, and read `project_metadata`
 from the project operation's `metadata_json`.
 
 ## Task 7: Write a round-trip test
-Create `test/fio/test_mfdb_project_roundtrip.py` with a temporary MFDB fixture
+Create `test/fio/test_mmfdb_project_roundtrip.py` with a temporary MMFDB fixture
 and a minimal payload (2 datasets, 2 fits, `ui_state`, `experiments`). The key
 assertions:
 1. Two datasets in → two datasets out (not collapsed to a single key).
@@ -184,8 +184,8 @@ assertions:
 4. Dataset UIDs are preserved.
 
 # Definition of Done
-- [ ] `archive_project_to_mfdb()` stores full fit records with id/name/model_name
-- [ ] `archive_project_to_mfdb()` stores project-level metadata (version, ui_state, experiments)
+- [ ] `archive_project_to_mmfdb()` stores full fit records with id/name/model_name
+- [ ] `archive_project_to_mmfdb()` stores project-level metadata (version, ui_state, experiments)
 - [ ] `restore_project_from_artifacts()` returns fit-group records, not flat dicts
 - [ ] `restore_project_from_artifacts()` returns all datasets with unique keys
 - [ ] `restore_project_from_artifacts()` returns parameters and dependency edges
@@ -194,4 +194,4 @@ assertions:
 
 # Relationships
 - Foundational fix that later result/provenance PRDs build on: [PRD-030](prd-030.md), [PRD-03](prd-03.md).
-- Operates on the [MFDB (current)](/architecture/mfdb.md) store toward its [MFDB target](/specs/mfdb.md).
+- Operates on the [MMFDB (current)](/architecture/mmfdb.md) store toward its [MMFDB target](/specs/mmfdb.md).

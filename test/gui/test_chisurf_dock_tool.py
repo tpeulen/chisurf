@@ -2,7 +2,7 @@
 
 Constructs `ChisurfDockTool` (and `PathDropListWidget`) and asserts the factored
 behaviour the transformer tools now reuse: window-level path-drop dispatch to a
-hook, lazy MFDB-connectivity accessors that do no work on construction, and
+hook, lazy MMFDB-connectivity accessors that do no work on construction, and
 geometry-persistence helpers.
 """
 
@@ -29,13 +29,13 @@ def test_path_drop_list_widget_accepts_optional_filter(qapp):
 
 
 def test_dock_tool_constructs_read_only(qapp):
-    """Construction wires Qt only — no MFDB connection acquired."""
+    """Construction wires Qt only — no MMFDB connection acquired."""
     tool = ChisurfDockTool()
     assert tool.acceptDrops() is True
     # base hook defaults to no connection; construction did not open one
-    assert tool.acquire_mfdb_connection() is None
-    assert tool.mfdb_connection() is None
-    assert tool.mfdb_connected() is False
+    assert tool.acquire_mmfdb_connection() is None
+    assert tool.mmfdb_connection() is None
+    assert tool.mmfdb_connected() is False
     tool.close()
 
 
@@ -54,26 +54,26 @@ def test_on_paths_dropped_forwards_to_add_paths(qapp):
     tool.close()
 
 
-def test_acquire_mfdb_connection_override_is_used(qapp):
+def test_acquire_mmfdb_connection_override_is_used(qapp):
     sentinel = object()
 
     class _Tool(ChisurfDockTool):
-        def acquire_mfdb_connection(self):
+        def acquire_mmfdb_connection(self):
             return sentinel
 
     tool = _Tool()
-    assert tool.mfdb_connection() is sentinel
-    assert tool.mfdb_connected() is True
+    assert tool.mmfdb_connection() is sentinel
+    assert tool.mmfdb_connected() is True
     tool.close()
 
 
-def test_mfdb_connection_swallows_hook_errors(qapp):
+def test_mmfdb_connection_swallows_hook_errors(qapp):
     class _Tool(ChisurfDockTool):
-        def acquire_mfdb_connection(self):
+        def acquire_mmfdb_connection(self):
             raise RuntimeError("boom")
 
     tool = _Tool()
-    # mfdb_connection is defensive: a failing hook yields None, not a crash
-    assert tool.mfdb_connection() is None
-    assert tool.mfdb_connected() is False
+    # mmfdb_connection is defensive: a failing hook yields None, not a crash
+    assert tool.mmfdb_connection() is None
+    assert tool.mmfdb_connected() is False
     tool.close()

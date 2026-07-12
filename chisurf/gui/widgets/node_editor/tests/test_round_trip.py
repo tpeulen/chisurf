@@ -118,9 +118,9 @@ def test_node_ids_and_edge_metadata_round_trip(editor):
             {
                 "id": "raw:1",
                 "title": "Raw",
-                "inputs": [{"name": "in", "type": "mfdb"}],
-                "outputs": [{"name": "out", "type": "mfdb"}],
-                "type": "mfdb_record",
+                "inputs": [{"name": "in", "type": "mmfdb"}],
+                "outputs": [{"name": "out", "type": "mmfdb"}],
+                "type": "mmfdb_record",
                 "config": {"record": {"node_type": "raw_data", "node_id": "1"}, "extra": 1},
                 "pos": [0.0, 0.0],
                 "collapsed": False,
@@ -129,9 +129,9 @@ def test_node_ids_and_edge_metadata_round_trip(editor):
             {
                 "id": "product:1",
                 "title": "Product",
-                "inputs": [{"name": "in", "type": "mfdb"}],
-                "outputs": [{"name": "out", "type": "mfdb"}],
-                "type": "mfdb_record",
+                "inputs": [{"name": "in", "type": "mmfdb"}],
+                "outputs": [{"name": "out", "type": "mmfdb"}],
+                "type": "mmfdb_record",
                 "config": {"record": {"node_type": "processed_data", "node_id": "1"}, "extra": 2},
                 "pos": [260.0, 0.0],
                 "collapsed": False,
@@ -147,7 +147,7 @@ def test_node_ids_and_edge_metadata_round_trip(editor):
                 "config": {
                     "edge_id": "edge-1",
                     "relationship_type": "produced",
-                    "metadata": {"source": "mfdb"},
+                    "metadata": {"source": "mmfdb"},
                     "color": [70, 180, 100],
                 },
             }
@@ -161,7 +161,7 @@ def test_node_ids_and_edge_metadata_round_trip(editor):
     assert {node["id"] for node in loaded["nodes"]} == {"raw:1", "product:1"}
     assert loaded["meta"] == graph["meta"]
     assert loaded["edges"][0]["config"]["edge_id"] == "edge-1"
-    assert loaded["edges"][0]["config"]["metadata"] == {"source": "mfdb"}
+    assert loaded["edges"][0]["config"]["metadata"] == {"source": "mmfdb"}
     assert loaded["edges"][0]["config"]["color"] == [70, 180, 100]
 
 

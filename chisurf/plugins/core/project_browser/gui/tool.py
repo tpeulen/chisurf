@@ -117,7 +117,7 @@ class CollisionDialog(QtWidgets.QDialog):
 
 
 class ProjectBrowserTool(QtWidgets.QMainWindow):
-    """Browser for MFDB-backed project versions."""
+    """Browser for MMFDB-backed project versions."""
 
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)

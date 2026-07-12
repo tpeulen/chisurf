@@ -1,33 +1,33 @@
 ---
 type: PRD
 prd: "43"
-title: "PRD-43: Align GUI Operation History with MFDB Provenance"
-description: Makes the in-memory operation history a projection over a durable MFDB event log so undo/redo and the exploration trail survive database save/restore, and incrementally aligns the GUI event stream with the backend provenance model.
+title: "PRD-43: Align GUI Operation History with MMFDB Provenance"
+description: Makes the in-memory operation history a projection over a durable MMFDB event log so undo/redo and the exploration trail survive database save/restore, and incrementally aligns the GUI event stream with the backend provenance model.
 status: in-progress
 phase: "cross-cutting"
 resource: chisurf/history/
-tags: [prd, mfdb]
+tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-PRD-43 closes the gap where saving a project to a local `.csp` archive preserved the full action history but saving to MFDB discarded it, losing the undo stack and scientific-exploration trail. The original "opaque history blob" plan was superseded by a stronger design in which MFDB is the durable source of truth and the in-memory `OperationHistory` is a projection over it, delivered in four staged headless-tested increments (Qt-free replay, dictionary-declared vocabulary alignment, bounded snapshots, and an append-only `mfdb_event_log` with best-effort dual-write). Making recording live again also exposed and fixed three stacked latent bugs in the interactive undo/redo replay path plus UID-remapping on redo. Later phases (auto-creating operation rows in the dispatcher, transactional GUI-to-DB operations, unified replay) ride other architecture PRDs.
+PRD-43 closes the gap where saving a project to a local `.csp` archive preserved the full action history but saving to MMFDB discarded it, losing the undo stack and scientific-exploration trail. The original "opaque history blob" plan was superseded by a stronger design in which MMFDB is the durable source of truth and the in-memory `OperationHistory` is a projection over it, delivered in four staged headless-tested increments (Qt-free replay, dictionary-declared vocabulary alignment, bounded snapshots, and an append-only `mmfdb_event_log` with best-effort dual-write). Making recording live again also exposed and fixed three stacked latent bugs in the interactive undo/redo replay path plus UID-remapping on redo. Later phases (auto-creating operation rows in the dispatcher, transactional GUI-to-DB operations, unified replay) ride other architecture PRDs.
 
 # Status
 In-progress (cross-cutting phase, STATUS TABLE authoritative). Recording, undo, and redo (re-create fits, restore name-keyed state, remap model-state fit groups) work; several known undo/redo edges and duplicate-recording consolidation remain, and Phases 2–4 are deferred.
 
 > **Scope:** Inspection of the current history mechanism + incremental alignment plan. Phase 1 is shippable now (no new dependencies); Phases 3–4 ride PRD-21/27 and are deferred until the architecture track lands.
 
-# IMPLEMENTED (2026-06-27) — history is now a projection over MFDB
+# IMPLEMENTED (2026-06-27) — history is now a projection over MMFDB
 
-The original Phase-1 ("store history as an opaque `history.jsonl` blob") was **superseded** by a stronger design: **MFDB is the durable source of truth and the in-memory `OperationHistory` is a projection over it.** Delivered in four staged, headless-tested increments (all degrade to a no-op without a database):
+The original Phase-1 ("store history as an opaque `history.jsonl` blob") was **superseded** by a stronger design: **MMFDB is the durable source of truth and the in-memory `OperationHistory` is a projection over it.** Delivered in four staged, headless-tested increments (all degrade to a no-op without a database):
 
 1. **Headless replay** — the checkpoint/delta merge moved out of the Qt layer into Qt-free `chisurf/history/projection.py` (`DomainState` + `build_target_state`); `main_helper.py` is a thin adapter.
-2. **Vocabulary alignment** — the controlled action vocabulary + the coarse `action→operation_type` map are declared **in the dictionary** (`_mfdb_event_log.action_type` enumeration + `_item_enumeration.detail`) and read at runtime; `canonical()` (pure separator syntax) replaces the fragile `resolve_name` munging. Fixed a latent model-state replay bug.
+2. **Vocabulary alignment** — the controlled action vocabulary + the coarse `action→operation_type` map are declared **in the dictionary** (`_mmfdb_event_log.action_type` enumeration + `_item_enumeration.detail`) and read at runtime; `canonical()` (pure separator syntax) replaces the fragile `resolve_name` munging. Fixed a latent model-state replay bug.
 3. **Bounded snapshots** — `OperationHistory._checkpoints` is capped + evicts (keep earliest + most-recent N); evicted snapshots are rebuildable by replay.
-4. **MFDB persistence as projection** — new `mfdb_event_log` table (authored in `mfdb_flr_ext.dic`, materialized by `reconcile_schema`). `record()` dual-writes best-effort; `list_events(source="mfdb")` reads the durable log; `chisurf/core/mfdb/event_log.py` is the append-only writer/reader. `archive_project_to_mfdb` stamps events with `project_id`; `restore_project_from_artifacts` returns them under `extra.history_events` (the existing `.csp` consumer seam) — **this subsumes the Phase-1 goal**: MFDB save/restore no longer loses history.
+4. **MMFDB persistence as projection** — new `mmfdb_event_log` table (authored in `mmfdb_flr_ext.dic`, materialized by `reconcile_schema`). `record()` dual-writes best-effort; `list_events(source="mmfdb")` reads the durable log; `chisurf/core/mmfdb/event_log.py` is the append-only writer/reader. `archive_project_to_mmfdb` stamps events with `project_id`; `restore_project_from_artifacts` returns them under `extra.history_events` (the existing `.csp` consumer seam) — **this subsumes the Phase-1 goal**: MMFDB save/restore no longer loses history.
 
-**Still deferred (Phase 2/3):** auto-creating `mfdb_operation` rows from coarse GUI events inside the dispatcher (the `operation_id` column + dic mapping are ready; the linking belongs with the PRD-11/16 operation-creation channels).
+**Still deferred (Phase 2/3):** auto-creating `mmfdb_operation` rows from coarse GUI events inside the dispatcher (the `operation_id` column + dic mapping are ready; the linking belongs with the PRD-11/16 operation-creation channels).
 
 # UNDO/REDO via the History Browser (2026-06-27) — now functional
 
@@ -56,7 +56,7 @@ The sections below are the original analysis that motivated this work.
 
 Preserve the interactive client-side undo/redo session history (`OperationHistory`) across database save/restore cycles, and incrementally align the GUI event stream with the backend's provenance model.
 
-Today, saving a project to a local `.csp` archive preserves the full action history. Saving to MFDB (Project Browser) discards it entirely — the user loses their undo stack and the scientific exploration trail.
+Today, saving a project to a local `.csp` archive preserves the full action history. Saving to MMFDB (Project Browser) discards it entirely — the user loses their undo stack and the scientific exploration trail.
 
 # Current State Analysis
 
@@ -99,18 +99,18 @@ In `chisurf/macros/core_fit.py`:
 
 Result: full round-trip — history survives save/load.
 
-## 3. Database Persistence (MFDB Project Browser)
+## 3. Database Persistence (MMFDB Project Browser)
 
-In `chisurf/core/mfdb/project_archiver.py`:
+In `chisurf/core/mmfdb/project_archiver.py`:
 
-- **Save (`archive_project_to_mfdb`):** decomposes the project into relational artifacts (datasets, fits, parameters, edges). **The `OperationHistory` is not touched** — no history artifact is created.
+- **Save (`archive_project_to_mmfdb`):** decomposes the project into relational artifacts (datasets, fits, parameters, edges). **The `OperationHistory` is not touched** — no history artifact is created.
 - **Restore (`restore_project_from_artifacts`):** returns datasets, fits, chinet sessions, parameters, and dependency edges. **No history events** are included in the restored payload.
 
 Result: history is silently lost on every database round-trip.
 
 # Design Gap Summary
 
-| Concern | `.csp` archive | MFDB database |
+| Concern | `.csp` archive | MMFDB database |
 |---------|----------------|---------------|
 | History preserved? | ✅ yes (`history.jsonl` in zip) | ❌ no (not stored) |
 | Undo/redo works after restore? | ✅ yes | ❌ no (empty history) |
@@ -118,7 +118,7 @@ Result: history is silently lost on every database round-trip.
 
 **Additional mismatches:**
 
-1. **Divergent event vocabularies:** GUI uses `dataset.add`, `parameter.value`, `fit.add`; MFDB uses `measurement_import`, `local_fit`, `derived_from`. PRD-27 introduces `mfdb_state_transition` as a separate append-only log. There is no mapping between the two vocabularies.
+1. **Divergent event vocabularies:** GUI uses `dataset.add`, `parameter.value`, `fit.add`; MMFDB uses `measurement_import`, `local_fit`, `derived_from`. PRD-27 introduces `mmfdb_state_transition` as a separate append-only log. There is no mapping between the two vocabularies.
 2. **Checkpoint size:** snapshots store the full domain state as in-memory dicts. For large projects these grow unbounded — no eviction, no compression, no streaming to disk.
 
 # Proposed Alignment (Phased)
@@ -127,11 +127,11 @@ Result: history is silently lost on every database round-trip.
 
 **Dependencies:** PRD-03 object store + artifact registration (already done).
 
-**Goal:** Stop losing history on MFDB save/restore.
+**Goal:** Stop losing history on MMFDB save/restore.
 
 **Mechanism:**
 
-1. In `archive_project_to_mfdb()`, serialize `cs.history.list_events()` to a JSONL byte string.
+1. In `archive_project_to_mmfdb()`, serialize `cs.history.list_events()` to a JSONL byte string.
 2. `db.put_object(data=jsonl_bytes, …)` → content-addressed blob.
 3. `db.register_artifact(artifact_kind="project_history", role="history_log")`.
 4. Create a `project_contains` edge from the version operation to this artifact.
@@ -147,14 +147,14 @@ Result: history is silently lost on every database round-trip.
 Ensure GUI events carry database entity IDs where they overlap:
 
 - `dataset.add` payloads include `artifact_id` when the dataset was registered.
-- `fit.run.finish` payloads include `operation_id` of the MFDB operation.
-- Document a mapping table between client-side `action_type` names and backend `operation_type` / `mfdb_state_transition` event types.
+- `fit.run.finish` payloads include `operation_id` of the MMFDB operation.
+- Document a mapping table between client-side `action_type` names and backend `operation_type` / `mmfdb_state_transition` event types.
 
 ## Phase 3 — Transactional GUI↔DB Operations (after PRD-21/27)
 
 **Dependencies:** PRD-21 (lineage API + event model), PRD-27 (append-only core).
 
-Heavy GUI operations (fit runs, dataset imports) write an MFDB operation record in real-time rather than only at project-archive time. Lightweight operations (parameter slider moves) remain client-only and are reconciled on save.
+Heavy GUI operations (fit runs, dataset imports) write an MMFDB operation record in real-time rather than only at project-archive time. Lightweight operations (parameter slider moves) remain client-only and are reconciled on save.
 
 ## Phase 4 — Unified Replay (long-term, after PRD-22 pipeline engine)
 
@@ -164,15 +164,15 @@ Replace client-side checkpoint snapshots with database version pointers. Moving 
 
 # Tasks
 
-1. **[Phase 1]** Update `archive_project_to_mfdb()` to serialize and store the history log as a `project_history` artifact.
+1. **[Phase 1]** Update `archive_project_to_mmfdb()` to serialize and store the history log as a `project_history` artifact.
 2. **[Phase 1]** Update `restore_project_from_artifacts()` to extract `project_history` artifacts and return them in the payload.
 3. **[Phase 1]** Add a round-trip test: archive a project with *N* history events → restore → verify all *N* events are present in `cs.history`.
 4. **[Phase 2]** Document the action-type ↔ operation-type vocabulary mapping.
-5. **[Phase 2]** Enrich GUI event payloads with MFDB entity IDs where available.
+5. **[Phase 2]** Enrich GUI event payloads with MMFDB entity IDs where available.
 
 # Definition of Done
 
-- [ ] Project save/restore via MFDB (Project Browser) preserves the full undo/redo history stack.
+- [ ] Project save/restore via MMFDB (Project Browser) preserves the full undo/redo history stack.
 - [ ] History is stored as a content-addressed `project_history` artifact — no new database tables required.
 - [ ] Round-trip test passes: archive with history → restore → history intact.
 
@@ -181,8 +181,8 @@ Replace client-side checkpoint snapshots with database version pointers. Moving 
 History persistence uses the existing object store and artifact registration APIs (no parallel storage path). No GUI logic in the archiver. History events are opaque JSONL blobs to the database — the database does not parse or index individual events.
 
 # Relationships
-- Extends PRD-01 (fix roundtrip): closes the remaining MFDB round-trip history gap (`.csp` round-trips already work; MFDB round-trips did not).
+- Extends PRD-01 (fix roundtrip): closes the remaining MMFDB round-trip history gap (`.csp` round-trips already work; MMFDB round-trips did not).
 - Uses the PRD-03 object store and artifact-registration infrastructure.
 - Aligns GUI events with the PRD-21 lineage API / event model (Phase 3) and folds into the PRD-27 append-only provenance core (Phase 4) in later phases.
-- Introduced the `mfdb_event_log` table that [PRD-44](prd-44.md)'s namespace sweep rewrites.
-- Projects the GUI history over the [MFDB (current)](/architecture/mfdb.md) toward the [MFDB target](/specs/mfdb.md).
+- Introduced the `mmfdb_event_log` table that [PRD-44](prd-44.md)'s namespace sweep rewrites.
+- Projects the GUI history over the [MMFDB (current)](/architecture/mmfdb.md) toward the [MMFDB target](/specs/mmfdb.md).

@@ -17,7 +17,7 @@ The companion photon-data exploration tool derives columns from local formulas b
 In-progress / unassigned (STATUS TABLE authoritative). Backbone plus calculator done per memory; companion-tool GUI panel remains.
 
 Related: [PRD-55](prd-55.md) (phasor analysis toolkit — provides the phasor math this
-PRD exposes over RPC and consumes), PRD-28 (companion-tool ↔ MFDB burst integration),
+PRD exposes over RPC and consumes), PRD-28 (companion-tool ↔ MMFDB burst integration),
 PRD-31 (companion-tool headless CLI), PRD-37 (network deployment security — gates
 non-loopback exposure), [PRD-51](prd-51.md) (imaging correlation).
 
@@ -217,7 +217,7 @@ E-vs-τ plane.
   (extended to draw overlays).
 - **Companion-tool lines**: `modules/ndxplorer/ndxplorer/rpc/lines.py`
   (`OverlayProvider` / `PhasorLines` / `FretLines` / `LinesService`).
-- **Glue**: `chisurf/plugins/ndxplorer/mfdb_launcher.py::open_path_in_ndxplorer`
+- **Glue**: `chisurf/plugins/ndxplorer/mmfdb_launcher.py::open_path_in_ndxplorer`
   (inject client / port), `chisurf/plugins/ndxplorer/cli.py`.
 - **No new dependencies**; no open-source-phasor-library import.
 

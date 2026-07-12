@@ -1,9 +1,9 @@
-"""PRD-23 Task 4: widget construction must be read-only (no MFDB writes/opens).
+"""PRD-23 Task 4: widget construction must be read-only (no MMFDB writes/opens).
 
-A class of bugs (the FCS dialog writing to MFDB on construction; opening an
+A class of bugs (the FCS dialog writing to MMFDB on construction; opening an
 ``MFDatabase`` in ``__init__`` triggering schema reconcile/migration writes) comes
 from doing I/O during widget construction. This static guard parses every GUI module
-and fails if any class ``__init__`` *directly* calls an MFDB write/open entrypoint.
+and fails if any class ``__init__`` *directly* calls an MMFDB write/open entrypoint.
 
 It is AST-only (no Qt needed, runs anywhere). Calls inside nested functions/lambdas
 defined in ``__init__`` are deferred callbacks and are intentionally not flagged.
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-#: MFDB write / connection-open entrypoints that must not run during construction.
+#: MMFDB write / connection-open entrypoints that must not run during construction.
 FORBIDDEN_CALLS = frozenset(
     {
         "register_result",
@@ -107,7 +107,7 @@ def _scan() -> dict[str, list[tuple[str, int]]]:
     return found
 
 
-def test_no_mfdb_writes_in_widget_init():
+def test_no_mmfdb_writes_in_widget_init():
     violations = _scan()
     if violations:
         lines = [
@@ -115,13 +115,13 @@ def test_no_mfdb_writes_in_widget_init():
             for f, hits in sorted(violations.items())
         ]
         pytest.fail(
-            "Widget __init__ must be read-only (PRD-23). MFDB write/open calls "
+            "Widget __init__ must be read-only (PRD-23). MMFDB write/open calls "
             "found during construction:\n" + "\n".join(lines)
         )
 
 
 def test_guard_detects_a_planted_violation(tmp_path):
-    """The guard itself catches a construction-time MFDB write (meta-test)."""
+    """The guard itself catches a construction-time MMFDB write (meta-test)."""
     planted = tmp_path / "gui_bad.py"
     planted.write_text(
         "class W:\n"

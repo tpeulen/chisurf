@@ -9,8 +9,8 @@ def _is(action_type: str, *names: str) -> bool:
     """Return whether ``action_type`` matches any of ``names`` under normal form.
 
     ``action_type`` is expected pre-normalized via :func:`canonical`; the literal
-    ``names`` are written in the authoritative dotted form (matching the MFDB
-    ``_mfdb_event_log.action_type`` vocabulary) and normalized here, so dotted and
+    ``names`` are written in the authoritative dotted form (matching the MMFDB
+    ``_mmfdb_event_log.action_type`` vocabulary) and normalized here, so dotted and
     underscored event spellings compare equal.
     """
     return action_type in {_canon(n) for n in names}

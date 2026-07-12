@@ -7,22 +7,22 @@ from typing import Any
 
 
 @dataclass
-class MFDBContext:
-    """MFDB archival context for a micro-time shift request.
+class MMFDBContext:
+    """MMFDB archival context for a micro-time shift request.
 
     Attributes
     ----------
     enabled : bool
-        If ``False``, skip MFDB registration for this request.
+        If ``False``, skip MMFDB registration for this request.
     sample_id : str
-        Optional existing MFDB sample identifier.
+        Optional existing MMFDB sample identifier.
     source_artifact_ids : dict
         Mapping from input file path to an existing raw artifact ID.
     register_missing_inputs : bool
         If ``True``, archive input files that do not already have a
         source artifact ID.
     setup_id : str
-        Optional MFDB setup identifier.
+        Optional MMFDB setup identifier.
     setup_version : int, optional
         Optional setup version.
 
@@ -53,8 +53,8 @@ class ShiftRequest:
         Explicit tttrlib file type. ``None`` lets tttrlib infer.
     output_dir : str, optional
         Directory for shifted output files.
-    mfdb : MFDBContext
-        Optional MFDB archival context.
+    mmfdb : MMFDBContext
+        Optional MMFDB archival context.
 
     """
 
@@ -63,7 +63,7 @@ class ShiftRequest:
     channel_shifts: dict[int, int] = field(default_factory=dict)
     filetype: str | None = None
     output_dir: str | None = None
-    mfdb: MFDBContext = field(default_factory=MFDBContext)
+    mmfdb: MMFDBContext = field(default_factory=MMFDBContext)
 
 
 @dataclass
@@ -77,16 +77,16 @@ class ShiftResult:
     applied_shifts_by_file : dict
         Mapping from input file path to dict with ``global_shift`` and
         ``channel_shifts`` keys showing the exact shifts applied.
-    mfdb_artifacts : dict
-        MFDB artifact IDs returned by the archival layer.
+    mmfdb_artifacts : dict
+        MMFDB artifact IDs returned by the archival layer.
     warnings : list
-        Non-fatal warnings from the shift or MFDB registration.
+        Non-fatal warnings from the shift or MMFDB registration.
 
     """
 
     output_paths_by_file: dict[str, str] = field(default_factory=dict)
     applied_shifts_by_file: dict[str, dict[str, Any]] = field(default_factory=dict)
-    mfdb_artifacts: dict[str, Any] = field(default_factory=dict)
+    mmfdb_artifacts: dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:

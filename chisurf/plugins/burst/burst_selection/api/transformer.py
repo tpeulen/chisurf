@@ -2,7 +2,7 @@
 
 Adapts the plugin's pure ``analyze_request`` to the general transformer contract:
 declared typed ports, an ``operation_type`` ("burst_selection") whose parameter
-schema lives in the `.dic` (``mfdb_operation_parameter_def``), and a pure
+schema lives in the `.dic` (``mmfdb_operation_parameter_def``), and a pure
 ``transform``. No Qt, no DB. The flat declared parameters are mapped back onto the
 nested ``AnalysisSettings`` (the inverse of ``extract_burst_parameters``).
 """
@@ -23,7 +23,7 @@ from chisurf.plugins.burst.burst_selection.api.models import (
 )
 from chisurf.plugins.burst.burst_selection.api.selection import analyze_request
 
-#: Vocabulary value shared with mfdb_operation_parameter_def / register_operation.
+#: Vocabulary value shared with mmfdb_operation_parameter_def / register_operation.
 OPERATION_TYPE = "burst_selection"
 
 
@@ -54,7 +54,7 @@ def _channels_from_parameters(parameters: dict) -> list[int]:
 def settings_from_parameters(parameters: dict) -> AnalysisSettings:
     """Build nested ``AnalysisSettings`` from the flat declared parameters.
 
-    The inverse of ``api.mfdb.extract_burst_parameters``; only the declared
+    The inverse of ``api.mmfdb.extract_burst_parameters``; only the declared
     operation-parameter names are consumed. The channel stream mask and the GMM
     determinism fields are part of the reproducible compute spec, so they round-trip
     here too (so a replay reproduces the same photon selection and clustering).

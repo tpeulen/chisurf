@@ -7,10 +7,10 @@ import pytest
 
 @pytest.fixture
 def seeded_db(tmp_path, monkeypatch):
-    from mfdb.repository import MFDatabase
+    from mmfdb.repository import MFDatabase
     from chisurf.plugins.core.database_connector import services
 
-    db_path = tmp_path / "mfdb.db"
+    db_path = tmp_path / "mmfdb.db"
     source_path = tmp_path / "source.db"
     object_root = tmp_path / "objects"
     with MFDatabase(db_path) as db:
@@ -42,11 +42,11 @@ def seeded_db(tmp_path, monkeypatch):
     monkeypatch.setattr(services, "source_database_path", lambda: source_path)
     monkeypatch.setattr(services, "user_database_path", lambda: db_path)
     monkeypatch.setattr(
-        "mfdb.store.database_resolver.resolve_database_path",
+        "mmfdb.store.database_resolver.resolve_database_path",
         lambda: db_path,
     )
     monkeypatch.setattr(
-        "mfdb.store.database_resolver.object_store_root",
+        "mmfdb.store.database_resolver.object_store_root",
         lambda: object_root,
     )
     services.close_handler()
@@ -54,7 +54,7 @@ def seeded_db(tmp_path, monkeypatch):
     services.close_handler()
 
 
-def test_repository_reports_seeded_mfdb_counts(seeded_db):
+def test_repository_reports_seeded_mmfdb_counts(seeded_db):
     from chisurf.plugins.core.database_connector.services import repository_handler
 
     result = repository_handler()
@@ -94,8 +94,8 @@ def test_repository_is_available_through_inprocess_rpc(seeded_db):
     assert "database_connector.repository" in dispatcher.list_methods()
 
 
-def test_backup_import_export_and_reset_use_temporary_mfdb(seeded_db, tmp_path):
-    from mfdb.repository import MFDatabase
+def test_backup_import_export_and_reset_use_temporary_mmfdb(seeded_db, tmp_path):
+    from mmfdb.repository import MFDatabase
     from chisurf.plugins.core.database_connector.services import (
         backup_handler,
         export_sample_handler,

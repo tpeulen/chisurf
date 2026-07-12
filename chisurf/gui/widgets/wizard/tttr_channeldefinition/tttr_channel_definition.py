@@ -191,7 +191,7 @@ class DetectorWizardPage(QWizardPage):
         self.public_checkbox.setChecked(False)
         self.public_checkbox.setToolTip(
             "When checked, this setup is visible to all users in "
-            "the MFDB. Only the owner can change this setting."
+            "the MMFDB. Only the owner can change this setting."
         )
         # Disabled by default; enabled when an owned setup is selected
         self.public_checkbox.setEnabled(False)
@@ -1391,11 +1391,11 @@ class DetectorWizardPage(QWizardPage):
             setups["last_used"] = setup_name
             save_detector_setups(setups, self.current_setups_file)
 
-        # Populate calibration date combobox from MFDB
+        # Populate calibration date combobox from MMFDB
         self._populate_calibration_combo(setup_name)
 
     def _populate_calibration_combo(self, setup_name: str) -> None:
-        """Populate the calibration date combobox from MFDB calibration history.
+        """Populate the calibration date combobox from MMFDB calibration history.
 
         Parameters
         ----------
@@ -1403,8 +1403,8 @@ class DetectorWizardPage(QWizardPage):
             The setup name to look up calibration snapshots for.
         """
         try:
-            from chisurf.core.mfdb.repository import MFDatabase
-            from chisurf.core.mfdb.store.database_resolver import resolve_database_path
+            from mmfdb.repository import MFDatabase
+            from mmfdb.store.database_resolver import resolve_database_path
             from .tttr_setup_utils import setup_id_for_name
 
             setup_id = setup_id_for_name(setup_name, _resolve_active_user_id())
@@ -1436,8 +1436,8 @@ class DetectorWizardPage(QWizardPage):
             return
 
         try:
-            from chisurf.core.mfdb.repository import MFDatabase
-            from chisurf.core.mfdb.store.database_resolver import resolve_database_path
+            from mmfdb.repository import MFDatabase
+            from mmfdb.store.database_resolver import resolve_database_path
             from .tttr_setup_utils import setup_id_for_name
 
             setup_id = setup_id_for_name(self.current_setup_name, _resolve_active_user_id())
@@ -1542,13 +1542,13 @@ class DetectorWizardPage(QWizardPage):
 
     def _on_optical_setup(self):
         """Open the Light Path easy mode dialog for optical configuration."""
-        # Fetch probes synchronously from MFDB
+        # Fetch probes synchronously from MMFDB
         try:
             probes_result = get_probes_info(resolve_db_path())
             probes = probes_result.get("probes", [])
         except Exception as exc:
             QMessageBox.critical(
-                self, "MFDB Error",
+                self, "MMFDB Error",
                 f"Could not load probe catalogue:\n{exc}"
             )
             return

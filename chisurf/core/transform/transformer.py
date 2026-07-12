@@ -2,7 +2,7 @@
 
 A transformer is an ``operation_type`` (PRD-11) plus a small mandatory contract:
 typed input/output **ports**, parameters declared in the ``.dic`` (not code), a
-**pure** ``transform`` (no Qt, no DB), and uniform MFDB registration via the PRD-11
+**pure** ``transform`` (no Qt, no DB), and uniform MMFDB registration via the PRD-11
 operation-node path. This module defines the contract, a self-registering registry,
 and a conformance check that gates new transformers.
 """
@@ -65,7 +65,7 @@ class Transformer(Protocol):
         Stable id (e.g. ``"microtime_shifter"``).
     operation_type : str
         PRD-11 operation vocabulary value; its parameter schema is declared in the
-        ``.dic`` (``mfdb_operation_parameter_def``), never in code.
+        ``.dic`` (``mmfdb_operation_parameter_def``), never in code.
     version : str
         Contract/implementation version.
     input_spec, output_spec : list[PortSpec]
@@ -123,7 +123,7 @@ def check_transformer_conformance(transformer: Transformer, conn: Any = None) ->
 
     Checks the required attributes, that it declares input/output ports, and that
     its ``operation_type`` has a ``.dic`` parameter schema (when a DB connection is
-    supplied, via PRD-11 ``mfdb_operation_parameter_def``). Raises
+    supplied, via PRD-11 ``mmfdb_operation_parameter_def``). Raises
     :class:`TransformerConformanceError` on any violation.
     """
     for attr in ("transformer_id", "operation_type", "version"):
@@ -147,11 +147,11 @@ def check_transformer_conformance(transformer: Transformer, conn: Any = None) ->
             f"{transformer.transformer_id}: transform is not callable"
         )
     if conn is not None:
-        from chisurf.core.mfdb.provenance.operation_parameters import get_operation_parameter_defs
+        from mmfdb.provenance.operation_parameters import get_operation_parameter_defs
 
         if not get_operation_parameter_defs(conn, transformer.operation_type):
             raise TransformerConformanceError(
                 f"{transformer.transformer_id}: operation_type "
                 f"{transformer.operation_type!r} has no .dic parameter schema "
-                "(mfdb_operation_parameter_def)"
+                "(mmfdb_operation_parameter_def)"
             )

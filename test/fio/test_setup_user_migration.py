@@ -17,11 +17,11 @@ from pathlib import Path
 
 import pytest
 
-from chisurf.core.mfdb.store.database_resolver import resolve_database_path
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.store.database_resolver import resolve_database_path
+from mmfdb.repository import MFDatabase
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-    _load_mfdb_detector_setups,
-    _migrate_json_setups_to_mfdb,
+    _load_mmfdb_detector_setups,
+    _migrate_json_setups_to_mmfdb,
     _resolve_active_user_id,
     _save_setup_row,
     load_detector_setups,
@@ -115,11 +115,11 @@ def test_per_user_migration_idempotent(tmp_path: Path) -> None:
         )
 
         # First migration
-        _migrate_json_setups_to_mfdb(db, legacy, user_id=user_id)
+        _migrate_json_setups_to_mmfdb(db, legacy, user_id=user_id)
         count_after_first = len(db.list_setups())
 
         # Second migration — should be idempotent
-        _migrate_json_setups_to_mfdb(db, legacy, user_id=user_id)
+        _migrate_json_setups_to_mmfdb(db, legacy, user_id=user_id)
         count_after_second = len(db.list_setups())
 
         assert count_after_first == count_after_second, (
@@ -146,12 +146,12 @@ def test_different_user_gets_separate_migration(tmp_path: Path) -> None:
         legacy = tmp_path / "detector_setups.json"
         _write_legacy_json(legacy, {"Shared": {"detectors": {}, "windows": {}}})
 
-        _migrate_json_setups_to_mfdb(db, legacy, user_id=alice)
+        _migrate_json_setups_to_mmfdb(db, legacy, user_id=alice)
         alice_count = len(
             [s for s in db.list_setups() if s.get("created_by_user_id") == alice]
         )
 
-        _migrate_json_setups_to_mfdb(db, legacy, user_id=bob)
+        _migrate_json_setups_to_mmfdb(db, legacy, user_id=bob)
         bob_count = len(
             [s for s in db.list_setups() if s.get("created_by_user_id") == bob]
         )
@@ -186,8 +186,8 @@ def test_load_excludes_other_users_private_setups(tmp_path: Path) -> None:
         _save_setup_row(db, "AliceOnly", {"detectors": {}, "windows": {}}, user_id=alice, is_public=False)
         _save_setup_row(db, "BobOnly", {"detectors": {}, "windows": {}}, user_id=bob, is_public=False)
 
-        alice_setups = _load_mfdb_detector_setups(db, user_id=alice)["setups"]
-        bob_setups = _load_mfdb_detector_setups(db, user_id=bob)["setups"]
+        alice_setups = _load_mmfdb_detector_setups(db, user_id=alice)["setups"]
+        bob_setups = _load_mmfdb_detector_setups(db, user_id=bob)["setups"]
 
         assert "AliceOnly" in alice_setups
         assert "BobOnly" not in alice_setups, "Alice sees Bob's private setup"
@@ -217,8 +217,8 @@ def test_load_includes_shared_and_public_setups(tmp_path: Path) -> None:
         # Alice's private setup
         _save_setup_row(db, "AlicePrivate", {"detectors": {}, "windows": {}}, user_id=alice, is_public=False)
 
-        alice_setups = _load_mfdb_detector_setups(db, user_id=alice)["setups"]
-        bob_setups = _load_mfdb_detector_setups(db, user_id=bob)["setups"]
+        alice_setups = _load_mmfdb_detector_setups(db, user_id=alice)["setups"]
+        bob_setups = _load_mmfdb_detector_setups(db, user_id=bob)["setups"]
 
         assert "Shared" in alice_setups
         assert "Shared" in bob_setups
@@ -289,8 +289,8 @@ def test_default_user_migration_and_load(tmp_path: Path) -> None:
         )
 
         # Migrate via the internal function (simulates the default-user path)
-        _migrate_json_setups_to_mfdb(db, legacy, user_id=user_id)
-        loaded = _load_mfdb_detector_setups(db, user_id=user_id)
+        _migrate_json_setups_to_mmfdb(db, legacy, user_id=user_id)
+        loaded = _load_mmfdb_detector_setups(db, user_id=user_id)
 
         assert "Default" in loaded.get("setups", {}), (
             "Default user should be able to load setups after migration"

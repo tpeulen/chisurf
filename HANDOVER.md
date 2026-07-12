@@ -1,32 +1,32 @@
-# MFDB — HANDOVER
+# MMFDB — HANDOVER
 
 **Branch:** `development` · **HEAD:** `24f49c0f` · all commits **local** (never push).
 
-This is the start-fresh brief. Two big MFDB threads have **landed** since this file was
+This is the start-fresh brief. Two big MMFDB threads have **landed** since this file was
 first written — the SQL→DAO migration (PRD-26; see §3, now historical) and a new
 **pluggable authentication** layer (PRD-59) + api.py auth enforcement (INC-04). A third,
-the **`mfdb.admin` → `mfdb_admin` package extraction, is IN FLIGHT in the working tree**
+the **`mmfdb.admin` → `mmfdb_admin` package extraction, is IN FLIGHT in the working tree**
 (uncommitted). See §0 for what's next.
 
 ---
 
 ## 0. What's next (read first)
 
-**⚠️ In-flight, uncommitted refactor:** `mfdb.admin` is being extracted into a new
-standalone package `modules/mfdb-admin/src/mfdb_admin/`. The old `mfdb/admin/*` files are
-now `from mfdb_admin… import *` wrappers, and `chisurf/plugins/core/mfdb_admin/*` re-exports
+**⚠️ In-flight, uncommitted refactor:** `mmfdb.admin` is being extracted into a new
+standalone package `modules/mmfdb-admin/src/mmfdb_admin/`. The old `mmfdb/admin/*` files are
+now `from mmfdb_admin… import *` wrappers, and `chisurf/plugins/core/mmfdb_admin/*` re-exports
 from it. This is **not committed** — finish/land it before large new work. Because of it,
-the test path now needs `mfdb-admin/src` (see §1). Watch: `import *` wrappers don't
-re-export underscore-prefixed names (`_validate_mfdb_methods_in_manifest` broke collection
-once — fixed). GUI (`mfdb-admin/src/mfdb_admin/gui/`) + `pyproject.toml`/`README` are still
+the test path now needs `mmfdb-admin/src` (see §1). Watch: `import *` wrappers don't
+re-export underscore-prefixed names (`_validate_mmfdb_methods_in_manifest` broke collection
+once — fixed). GUI (`mmfdb-admin/src/mmfdb_admin/gui/`) + `pyproject.toml`/`README` are still
 untracked.
 
 **Prioritized next steps:**
-1. **Land the `mfdb-admin` extraction** — commit it coherently; add its `pyproject.toml`
+1. **Land the `mmfdb-admin` extraction** — commit it coherently; add its `pyproject.toml`
    to the workspace; confirm both suites green with the new path.
 2. **INC-04 follow-ups** (auth enforcement, PRD-59-adjacent): extend owner ACLs to
    `setups`/`parameters`/`branches` on write (samples/experiments/artifacts/operations
-   already do); add **v1-dispatcher round-trip tests** (drive `mfdb.v1.*` through the
+   already do); add **v1-dispatcher round-trip tests** (drive `mmfdb.v1.*` through the
    dispatcher with a token, not just the api functions directly).
 3. **Lower-priority cleanup** (see §4): drop `security/base.py` ABC; delete dead
    `CREATE_TABLES_SQL` text; `boundary_validation.py` lint debt (D102 ×); local-auth
@@ -38,8 +38,8 @@ untracked.
 `LocalAuthProvider`/`LdapAuthProvider`; `security/login.py` = `resolve_provider` (fixed local/ldap
 dispatch) + `login()` orchestrator (authenticate → resolve/JIT-provision via
 `flr_sample_users.auth_provider`/`external_id` → group reconcile → session). `api.py` threads
-`auth` through all `mfdb.v1.*` functions with graceful ACL enforcement. Concept: **PRD-59**
-(`okf/prds/prd-59.md`). Headless CLI: `mfdb-admin auth login|whoami|status`.
+`auth` through all `mmfdb.v1.*` functions with graceful ACL enforcement. Concept: **PRD-59**
+(`okf/prds/prd-59.md`). Headless CLI: `mmfdb-admin auth login|whoami|status`.
 
 ---
 
@@ -48,15 +48,15 @@ dispatch) + `login()` orchestrator (authenticate → resolve/JIT-provision via
 - **Python:** the **arm64 conda env**, NOT pixi/base:
   `PY=/Users/tpeulen/mambaforge/envs/arm64/bin/python`. `ldap3` is installed there for the
   LDAP tests (optional `[ldap]` extra for real installs).
-- **MFDB standalone suite (the primary gate)** — note the **`mfdb-admin/src` path** now
+- **MMFDB standalone suite (the primary gate)** — note the **`mmfdb-admin/src` path** now
   required (admin extraction):
   ```
-  cd modules/mfdb && PYTHONPATH=src:../mfdb-admin/src $PY -m pytest tests -q
+  cd modules/mmfdb && PYTHONPATH=src:../mmfdb-admin/src $PY -m pytest tests -q
   ```
   **Expected: 466 passed, 1 skipped.** Run after every change to the package.
-- **ChiSurf-side integration suite** (also add `mfdb-admin/src`):
+- **ChiSurf-side integration suite** (also add `mmfdb-admin/src`):
   ```
-  PYTHONPATH="modules/mfdb/src:modules/mfdb-admin/src:modules/chinet:modules/imp-tricks/src:." \
+  PYTHONPATH="modules/mmfdb/src:modules/mmfdb-admin/src:modules/chinet:modules/imp-tricks/src:." \
     $PY -m pytest test/fio -q -p no:cacheprovider
   ```
   Expected: **236 passed, 1 pre-existing fail** (`test_ndxplorer_cli` — needs the
@@ -70,7 +70,7 @@ dispatch) + `login()` orchestrator (authenticate → resolve/JIT-provision via
 
 ## 2. What the package looks like now (architecture — DONE, good)
 
-`modules/mfdb/src/mfdb/` — top level is **5 files** (`__init__`, `api`, `config`,
+`modules/mmfdb/src/mmfdb/` — top level is **5 files** (`__init__`, `api`, `config`,
 `models`, `repository`) over concern subpackages:
 
 ```
@@ -95,10 +95,10 @@ data/       bundled .dic dictionaries + config JSON
   `StudyMixin`, `BranchMixin`, `LifecycleMixin`, `ExperimentMixin`, `UserDeviceMixin`.
   What remains in `repository.py` is the legitimate core (init/connection/
   properties, migration, audit, vocabulary, experiment key-values, pdbx metadata).
-- **admin GUI moved OUT** of the package to `chisurf/plugins/core/mfdb_admin/gui/`
-  (it's chisurf-coupled). The admin **backend** stays in `mfdb.admin` (chisurf-free).
-- **Hermetic standalone test suite** at `modules/mfdb/tests/` (isolated via
-  `MFDB_SETTINGS_DIR`, no chisurf import).
+- **admin GUI moved OUT** of the package to `chisurf/plugins/core/mmfdb_admin/gui/`
+  (it's chisurf-coupled). The admin **backend** stays in `mmfdb.admin` (chisurf-free).
+- **Hermetic standalone test suite** at `modules/mmfdb/tests/` (isolated via
+  `MMFDB_SETTINGS_DIR`, no chisurf import).
 - A reusable **method-extractor** for further god-class splitting is at
   `<scratchpad>/extract_mixin.py` (handles multi-line sigs/decorators, leaves
   class attrs in place, reports needed imports). Note the scratchpad path is
@@ -108,7 +108,7 @@ data/       bundled .dic dictionaries + config JSON
 
 ## 3. THE ACTIVE TASK — eliminate scattered raw SQL (route CRUD through `db.dao`)
 
-**Directive:** "No raw scattered SQL allowed. Use the chainsaw — mfdb is not in
+**Directive:** "No raw scattered SQL allowed. Use the chainsaw — mmfdb is not in
 production; make the arch good first, fix later." → aggressive migration; breakage
 is acceptable if the suite stays green; correctness of the store matters.
 
@@ -133,7 +133,7 @@ is acceptable if the suite stays green; correctness of the store matters.
   `product_categories`) have no PK *and* no UNIQUE in the reconciled schema →
   `INSERT OR REPLACE` was silently a plain insert (dup ids possible). Converted to
   `dao.insert`; a real upsert needs a schema PK first (see §4 follow-up).
-- **Composite-PK junctions** (`mfdb_operation_artifact` = 4-col PK) → **convertible
+- **Composite-PK junctions** (`mmfdb_operation_artifact` = 4-col PK) → **convertible
   after all**: `dao.upsert(conflict=[<all PK cols>])`. When the values are exactly
   the PK columns it's an idempotent `DO NOTHING` (identity-preserving, unlike
   `INSERT OR REPLACE`). `primary_key()` returns the first PK col and does not raise,
@@ -149,7 +149,7 @@ is acceptable if the suite stays green; correctness of the store matters.
   re-add. `dao.get(table, pk_value, *, pk_column=None, include_deleted=False)`.
   `dao.list(table, *, filters=<equality dict>, order_by=, descending=, limit=, offset=)`.
 
-### Burn-down (audit table: `okf/specs/mfdb-sql-audit.md` — keep it updated)
+### Burn-down (audit table: `okf/specs/mmfdb-sql-audit.md` — keep it updated)
 Package totals now: **151 select · 52 insert · 48 update · 12 delete ·
 95 bespoke · 30 ddl** (down from 264/109/76/17/44/30). The **non-query-module
 scattered CRUD is fully eliminated** (api.py, adapters/chinet.py,
@@ -166,7 +166,7 @@ home / bespoke:
 `queries/` JOIN/aggregate/`DISTINCT`/`json_extract`/compound-`ORDER BY` SELECTs,
 `bootstrap_*` bulk seeders on a bare conn (incl. `schema.py` group-member
 `INSERT OR IGNORE`), hand-written `INSERT … ON CONFLICT DO UPDATE`
-(dao-equivalent), the append-only `mfdb_parameter`/`mfdb_audit_log` core inserts,
+(dao-equivalent), the append-only `mmfdb_parameter`/`mmfdb_audit_log` core inserts,
 bespoke import/merge routines, `provenance/lineage.py`+
 `graph.py` traversal, `project/project_archiver.py` JOIN/count reads, and
 `schema/*` DDL. (Composite-PK junctions are no longer a remaining item —
@@ -182,13 +182,13 @@ optical/spectra reference-import writes; **this session:** all writes in
 `bootstrap_*` seeders (`provenance/operation_parameters.py`, `lifecycle/lifecycle.py`)
 are **intentional-raw** (bulk-reseed on a bare conn: aggregate reindex + delete-by-
 non-PK). **DAO enhancement:** `DictionaryDao.insert` is now keyless-tolerant
-(returns lastrowid on UNIQUE-only junctions like `mfdb_group_member` /
-`mfdb_object_acl`) — this unblocks junction-table inserts; covered by
+(returns lastrowid on UNIQUE-only junctions like `mmfdb_group_member` /
+`mmfdb_object_acl`) — this unblocks junction-table inserts; covered by
 `test_insert_into_keyless_junction_returns_rowid`.
 
 **Intentional-raw patterns now flagged `# raw` (leave them):** composite-key
-updates/soft-deletes on PK-less UNIQUE junctions (`mfdb_group_member`,
-`mfdb_object_acl`), resurrecting updates (reset `deleted_at = NULL` — `dao.update`
+updates/soft-deletes on PK-less UNIQUE junctions (`mmfdb_group_member`,
+`mmfdb_object_acl`), resurrecting updates (reset `deleted_at = NULL` — `dao.update`
 refuses soft-deleted rows), hard deletes (soft-delete would block re-add on a
 UNIQUE), conditional/multi-column `WHERE` updates, `INSERT … SELECT` bulk copies,
 `COUNT`/JOIN reads, and column-projection reads that must exclude a column
@@ -196,13 +196,13 @@ UNIQUE), conditional/multi-column `WHERE` updates, `INSERT … SELECT` bulk copi
 
 ### Recommended next order (the scattered-SQL core is DONE; these are cleanup)
 1. ~~`admin/seed_example.py`~~ — **DONE**, now **zero raw SQL** (including the two
-   composite-PK `mfdb_operation_artifact` writes, via `dao.upsert(conflict=[4 PK cols])`).
+   composite-PK `mmfdb_operation_artifact` writes, via `dao.upsert(conflict=[4 PK cols])`).
 2. **Keyless writes** currently raw (`analysis_metadata`, `flr_sample_key_value`):
    truly keyless (no PK, no targetable UNIQUE) → leave as the documented `upsert`
    limitation, or add a PK/UNIQUE to the schema if you want them gone. **Note:**
    composite-PK junctions are *no longer* in this bucket — they convert via
    `dao.upsert(conflict=[<all PK cols>])`; sweep other `# raw` composite writes
-   (e.g. remaining `mfdb_operation_artifact` / `mfdb_group_member` INSERTs) for the
+   (e.g. remaining `mmfdb_operation_artifact` / `mmfdb_group_member` INSERTs) for the
    same conversion.
 3. ~~**Low-value single-table SELECTs in the mixins**~~ → **DONE**: swept all 13
    `queries/*.py` files; trivial select-by-PK / equality reads now go through
@@ -214,7 +214,7 @@ UNIQUE), conditional/multi-column `WHERE` updates, `INSERT … SELECT` bulk copi
 statement of this lives in [`okf/workflows/change-tracking.md`](okf/workflows/change-tracking.md);
 in short, for each landed unit of work:
 1. Update the matching OKF concept **and** any burn-down table
-   (`okf/specs/mfdb-sql-audit.md`) / PRD Definition-of-Done in the same change.
+   (`okf/specs/mmfdb-sql-audit.md`) / PRD Definition-of-Done in the same change.
 2. Append a dated bullet to `okf/log.md` — what changed, why, verification result.
 3. Mark done when done (PRD `status:`/glyph, assessment row).
 4. **Commit** per file or small coherent batch, message stating the change +
@@ -243,7 +243,7 @@ the audit table = running totals, git history = small self-describing commits.
   columns don't match what the methods use). If you touch repository.py, watch for
   more such schema-mismatched legacy methods — verify against `PRAGMA table_info`
   before assuming a method works.
-- Drop `security/base.py` `MFDBClientBase` ABC only if you also retarget ~40 type-hint
+- Drop `security/base.py` `MMFDBClientBase` ABC only if you also retarget ~40 type-hint
   sites to `MFDatabase` (used across `result_registry` + chisurf plugins). Decided
   **skip** this session — low value, single-backend, churny/risky.
 - Delete the dead hardcoded canonical DDL text in `schema/schema.py`'s
@@ -256,9 +256,9 @@ the audit table = running totals, git history = small self-describing commits.
 ## 5. Pointers
 - **Process rule:** `okf/workflows/change-tracking.md` (always update OKF + commit,
   keep it traceable — applies to all work).
-- Architecture concept: `okf/architecture/mfdb.md` (has the "no scattered SQL is an
+- Architecture concept: `okf/architecture/mmfdb.md` (has the "no scattered SQL is an
   antipattern" section + package layout + queries/ mixin list).
-- SQL audit / burn-down: `okf/specs/mfdb-sql-audit.md`.
+- SQL audit / burn-down: `okf/specs/mmfdb-sql-audit.md`.
 - Change log: `okf/log.md` (top bullets = this session's work).
 - PRDs: PRD-19 (dictionary schema), PRD-26 (model-driven/dao data layer),
   PRD-24 (standalone extraction), PRD-48 (ELN adapters).

@@ -76,11 +76,11 @@ def cli(ctx: click.Context, version: bool) -> None:
 @click.option("--windows-json", type=click.Path(exists=True), help="PIE windows JSON file.")
 @click.option("--detectors-json", type=click.Path(exists=True), help="Detector definitions JSON file.")
 @click.option(
-    "--mfdb/--no-mfdb",
-    "use_mfdb",
+    "--mmfdb/--no-mmfdb",
+    "use_mmfdb",
     default=False,
     show_default=True,
-    help="Register the run in MFDB (raw inputs linked to a sample, burst tables, and the "
+    help="Register the run in MMFDB (raw inputs linked to a sample, burst tables, and the "
     "co-located output folder) so downstream tools such as ndXplorer can open it.",
 )
 @click.option(
@@ -88,21 +88,21 @@ def cli(ctx: click.Context, version: bool) -> None:
     "db_path",
     type=click.Path(dir_okay=False),
     default=None,
-    help="MFDB SQLite path for --mfdb. Defaults to the configured database.",
+    help="MMFDB SQLite path for --mmfdb. Defaults to the configured database.",
 )
-@click.option("--sample-id", default=None, help="Existing MFDB sample ID to link the run to.")
+@click.option("--sample-id", default=None, help="Existing MMFDB sample ID to link the run to.")
 @click.option(
     "--sample-name",
     default=None,
     help="Sample name to find-or-create (idempotent) when --sample-id is not given.",
 )
-@click.option("--selected-setup", default=None, help="Detector setup label stored in MFDB metadata.")
+@click.option("--selected-setup", default=None, help="Detector setup label stored in MMFDB metadata.")
 @click.option(
     "--legacy-output/--no-legacy-output",
     "legacy_output",
     default=None,
     help="Write the legacy burstwise output folder next to the TTTR files "
-    "(default: on when --mfdb so ndXplorer has a folder to open).",
+    "(default: on when --mmfdb so ndXplorer has a folder to open).",
 )
 def analyze(
     files: list[str],
@@ -117,7 +117,7 @@ def analyze(
     count_rate_window: float,
     windows_json: str | None,
     detectors_json: str | None,
-    use_mfdb: bool,
+    use_mmfdb: bool,
     db_path: str | None,
     sample_id: str | None,
     sample_name: str | None,
@@ -126,7 +126,7 @@ def analyze(
 ) -> None:
     """Analyze TTTR FILES with the shared Burst Selection API.
 
-    With ``--mfdb`` the run is archived to MFDB: raw inputs are registered and
+    With ``--mmfdb`` the run is archived to MMFDB: raw inputs are registered and
     linked to a sample (``raw+sample``), burst tables are stored, and the
     co-located burst output folder is registered as a single group whose
     artifact ID is reported in the output (consumed by ndXplorer).
@@ -145,8 +145,8 @@ def analyze(
         output_formats=list(output_formats),
     )
 
-    if use_mfdb:
-        _analyze_with_mfdb(
+    if use_mmfdb:
+        _analyze_with_mmfdb(
             files=list(files),
             filetype=filetype,
             windows=load_json_file(windows_json),
@@ -174,7 +174,7 @@ def analyze(
     click.echo(json.dumps(analysis_result_to_payload(result), indent=2, default=str))
 
 
-def _analyze_with_mfdb(
+def _analyze_with_mmfdb(
     *,
     files: list[str],
     filetype: str | None,
@@ -187,18 +187,18 @@ def _analyze_with_mfdb(
     selected_setup: str | None,
     legacy_output: bool | None,
 ) -> None:
-    """Run analysis with MFDB registration (``raw+sample -> BS``).
+    """Run analysis with MMFDB registration (``raw+sample -> BS``).
 
     Reuses the backend ``analyze_files_handler`` (the same path the GUI and RPC
     use) so input registration, burst tables, and the output-folder group are
     registered identically. Prints the service response, including
-    ``mfdb_artifacts`` with the artifact IDs ndXplorer can open.
+    ``mmfdb_artifacts`` with the artifact IDs ndXplorer can open.
     """
     from dataclasses import asdict
 
-    from chisurf.core.mfdb.repository import MFDatabase
-    from chisurf.core.mfdb.provenance.result_registry import set_global_db
-    from chisurf.core.mfdb.samples.sample_manager import SampleDefinition, create_sample
+    from mmfdb.repository import MFDatabase
+    from mmfdb.provenance.result_registry import set_global_db
+    from mmfdb.samples.sample_manager import SampleDefinition, create_sample
 
     from ..backend.services import analyze_files_handler
 
@@ -209,9 +209,9 @@ def _analyze_with_mfdb(
     resolved_sample_id = sample_id
     if not resolved_sample_id:
         if not sample_name:
-            raise click.UsageError("--mfdb requires --sample-id or --sample-name.")
+            raise click.UsageError("--mmfdb requires --sample-id or --sample-name.")
         if db is None:
-            raise click.UsageError("--mfdb with --sample-name requires --db (or a configured database).")
+            raise click.UsageError("--mmfdb with --sample-name requires --db (or a configured database).")
         # create_sample is idempotent by name (find-or-create).
         resolved_sample_id = create_sample(db, SampleDefinition(name=sample_name))
 
@@ -224,7 +224,7 @@ def _analyze_with_mfdb(
         settings=asdict(settings),
         legacy_output=legacy,
         selected_setup=selected_setup,
-        mfdb={
+        mmfdb={
             "enabled": True,
             "sample_id": resolved_sample_id,
             "register_missing_inputs": True,

@@ -2,17 +2,17 @@
 type: PRD
 prd: "05"
 title: "PRD-05: Calibration Provenance"
-description: Track calibration parameters in MFDB with links to the reference measurements they derive from
+description: Track calibration parameters in MMFDB with links to the reference measurements they derive from
 status: in-progress
 phase: "4"
-resource: chisurf/core/mfdb
-tags: [prd, mfdb, fret]
+resource: chisurf/core/mmfdb
+tags: [prd, mmfdb, fret]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
 Calibration parameters — g-factor, gamma, crosstalk, direct excitation, donor
-lifetime, Förster radius — are tracked in MFDB with links to the reference
+lifetime, Förster radius — are tracked in MMFDB with links to the reference
 measurements they were derived from, so that when a calibration value changes,
 every downstream fit that used it can be identified. Today these live as free
 fitting-parameter objects with no record of where their values came from. The
@@ -28,7 +28,7 @@ setup rather than a measurement.
 
 # Goal
 Calibration parameters (g-factor, gamma, crosstalk, direct excitation, Förster
-radius) are tracked in MFDB with links to the reference measurements they came
+radius) are tracked in MMFDB with links to the reference measurements they came
 from. When a calibration value changes, all downstream fits that used it can be
 identified.
 
@@ -40,7 +40,7 @@ Relevant code:
 - `chisurf/core/models/pda/nusiance.py` — `crosstalk`, `gamma`, `direct_excitation`
 - `chisurf/core/fluorescence/fret/__init__.py` — intensity-based FRET corrections
 - `chisurf/plugins/jordi_g_factor/` — g-factor calculator plugin
-- `chisurf/core/mfdb/result_registry.py` — the result registry (PRD-03)
+- `chisurf/core/mmfdb/result_registry.py` — the result registry (PRD-03)
 
 # What are calibration parameters
 In smFRET, before real distances can be recovered, these correction parameters
@@ -70,7 +70,7 @@ first-class calibration source.
 # Design and tasks
 
 ## Task 1: Calibration data model
-`chisurf/core/mfdb/models.py` — a `CalibrationRecord` dataclass for calibration
+`chisurf/core/mmfdb/models.py` — a `CalibrationRecord` dataclass for calibration
 records. Calibration values come from two sources: derived from a reference
 measurement (`method="tail_matching"`, `"intensity_ratio"`, … →
 `source_artifact_id` points to the reference measurement artifact); or entered
@@ -85,12 +85,12 @@ Fields: `calibration_type` (`g_factor`/`gamma`/`crosstalk`/`direct_excitation`/
 - **g-factor** (`chisurf/plugins/jordi_g_factor/`): after the g-factor is
   computed and displayed, call `register_calibration(...)` with
   `calibration_type="g_factor"` and `parent_artifact_id=<fast-rotating dye
-  measurement>`. Wrap in try/except so the plugin still works without MFDB.
+  measurement>`. Wrap in try/except so the plugin still works without MMFDB.
 - **Donor lifetime** (`chisurf/plugins/fluorescence_decay/lltf/`): after a simple
   lifetime fit on a dataset tagged donor-only (sample has a donor probe but no
   acceptor probe), register `tau_D0` with `calibration_type="donor_lifetime"`.
 - **Crosstalk / direct excitation**: typically entered manually or from intensity
-  ratios. Provide a "Save to MFDB" button in the PDA nuisance parameter widget
+  ratios. Provide a "Save to MMFDB" button in the PDA nuisance parameter widget
   (`chisurf/gui/widgets/models/`).
 
 ## Task 2b: Register "god given" calibration values
@@ -100,24 +100,24 @@ experiments. `register_calibration()` handles this with `method="user_provided"`
 and an empty `parent_artifact_id`. The function stores `calibration_type` in
 metadata and accepts `method` (how the value was determined) and `notes`
 (free-text, e.g. a literature citation for user-provided values). Any calibration
-widget should offer a "Save to MFDB" button with a small text input for an
+widget should offer a "Save to MMFDB" button with a small text input for an
 optional citation.
 
 ## Task 3: Link fits to their calibration sources
-`chisurf/core/mfdb/project_archiver.py` — in `_archive_fits()`, after creating the
+`chisurf/core/mmfdb/project_archiver.py` — in `_archive_fits()`, after creating the
 fit operation and recording parameters, check whether any parameter matches a
 known calibration record (`g_factor`, `gamma`, `crosstalk`, `direct_excitation`,
 `delta`, `alpha`, `R0`, `forster_radius`, `tauD0`, `tau_D0`). If found, create a
 `calibrated_by` edge from the fit operation to the calibration artifact.
 
-## Task 4: Link background curves to MFDB
+## Task 4: Link background curves to MMFDB
 In `_archive_fits()`, if the fit state includes a background curve file, register
 it as a raw-measurement artifact (`purpose="background_reference"`) and add a
 `calibrated_by` edge. Prerequisite: `chisurf/core/project/fit_state.py`
 `_model_to_state()` must serialize the background curve file path.
 
 ## Task 5: Staleness detection
-`chisurf/core/mfdb/staleness.py` — find fits that use outdated calibrations. A use
+`chisurf/core/mmfdb/staleness.py` — find fits that use outdated calibrations. A use
 is "stale" if it has a `calibrated_by` edge to a calibration artifact and a newer
 calibration artifact of the same `calibration_type` exists. Returns the fit
 operation, calibration type, used vs. latest artifact ids, and used vs. latest
@@ -134,13 +134,13 @@ calibration-change impact loop PRD-21 Task 4 left open (`Lineage.impact_of` /
 `what_used` already forward-listed `calibrated_by`).
 
 - `calibrated_by` is now in the `relationship_type` vocabulary
-  (`mfdb_flr_ext.dic`); `add_edge(..., relationship_type="calibrated_by")`
+  (`mmfdb_flr_ext.dic`); `add_edge(..., relationship_type="calibrated_by")`
   validates. The column's CHECK is a *negative* constraint, so no DB migration is
   needed.
 - `register_calibration` (in `result_registry.py`) already supports `method`/
   `notes` and the `user_provided` (no-parent) path; the `calibration_data` kind
   and `calibration` operation type already exist.
-- `chisurf/core/mfdb/staleness.py`: `record_calibration_use` (the
+- `chisurf/core/mmfdb/staleness.py`: `record_calibration_use` (the
   consumer→calibration `calibrated_by` edge) and `find_stale_calibration_uses` (a
   use is stale when a newer calibration of the same `calibration_type` exists;
   recency by `rowid`).
@@ -160,13 +160,13 @@ every field; a standalone, unconsumed dataclass would be dead code against the
 - [x] `staleness.py` can find fits using outdated calibrations (`find_stale_calibration_uses`)
 - [x] Headless usage-link API (`record_calibration_use`) creates `calibrated_by` edges
 - [x] All headless tests pass (including user_provided calibration + the PRD-21 loop)
-- [x] mfdb-admin **Calibrations view** (`gui/calibrations_view.py`) lists calibrations,
+- [x] mmfdb-admin **Calibrations view** (`gui/calibrations_view.py`) lists calibrations,
       registers literature/user-provided values (the "god-given" Task 2b path), and
       surfaces **stale uses** (`find_stale_calibration_uses`) — PRD-05's goal made visible.
-      Over `mfdb.calibrations.*` handlers + `MFDBClient` methods + `staleness.list_calibrations`.
+      Over `mmfdb.calibrations.*` handlers + `MMFDBClient` methods + `staleness.list_calibrations`.
       Headless-tested (`test_calibration_handlers.py` 4, `test_calibrations_view.py` 4) and
       screenshot-verified offscreen.
-- [ ] g-factor plugin / PDA-nuisance per-widget "Save to MFDB" buttons _(GUI; the admin
+- [ ] g-factor plugin / PDA-nuisance per-widget "Save to MMFDB" buttons _(GUI; the admin
       view now covers manual registration, so these are convenience-only)_
 - [ ] Fit archiver auto-links via `calibrated_by` _(deferred — the spec's value-matching
       heuristic is fragile; the explicit `record_calibration_use` API is the maintainable
@@ -176,4 +176,4 @@ every field; a standalone, unconsumed dataclass would be dead code against the
 # Relationships
 - Depends on the [PRD-03](prd-03.md) result registry; consumes samples/FRET pairs from [PRD-02](prd-02.md).
 - Predicted values relate to an optical-configuration setup extended from [PRD-04](prd-04.md).
-- Records calibration provenance in the [MFDB (current)](/architecture/mfdb.md) store toward the [MFDB target](/specs/mfdb.md).
+- Records calibration provenance in the [MMFDB (current)](/architecture/mmfdb.md) store toward the [MMFDB target](/specs/mmfdb.md).

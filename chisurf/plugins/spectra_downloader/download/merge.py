@@ -14,7 +14,7 @@ import sqlite3
 
 import numpy as np
 
-from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import (
+from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
     DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )
@@ -135,23 +135,23 @@ def merge_all(target_path: str, source_paths: list[str], consolidate: bool = Tru
     return summary
 
 
-def push_staging_to_mfdb(
+def push_staging_to_mmfdb(
     staging_path: str,
     probe_ids: "set[int] | list[int] | None" = None,
-    mfdb_path: str | None = None,
+    mmfdb_path: str | None = None,
     consolidate: bool = True,
 ) -> dict:
-    """Push staging probes (a selection, or all) into the connected MFDB.
+    """Push staging probes (a selection, or all) into the connected MMFDB.
 
-    Re-ingests via ``register_component`` so the MFDB records stay canonical,
+    Re-ingests via ``register_component`` so the MMFDB records stay canonical,
     then de-duplicates. Used by the browser's "Push selected / Push all" actions.
     Returns ``{"merged": n, "consolidated": {...}}``.
     """
-    from chisurf.core.mfdb.store.database_resolver import resolve_database_path
+    from mmfdb.store.database_resolver import resolve_database_path
 
-    target = mfdb_path or str(resolve_database_path())
+    target = mmfdb_path or str(resolve_database_path())
     # Open as FluorophoreDatabase so register_component is available (it is an
-    # MFDatabase subclass, so it works on the live MFDB too).
+    # MFDatabase subclass, so it works on the live MMFDB too).
     db = FluorophoreDatabase(target)
     summary: dict = {}
     with db:

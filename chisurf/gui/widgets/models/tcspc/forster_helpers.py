@@ -5,7 +5,7 @@ from typing import Optional
 from qtpy import QtWidgets
 
 def open_forster_calculator(owner: QtWidgets.QWidget) -> None:
-    """Open the Förster radius calculator widget using MFDB spectra."""
+    """Open the Förster radius calculator widget using MMFDB spectra."""
     if not hasattr(owner, '_forster_calculator_window'):
         try:
             from chisurf.gui.widgets.models.tcspc.forster_calculator_dialog import (

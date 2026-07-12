@@ -28,7 +28,7 @@ import numpy as np
 import requests
 from bs4 import BeautifulSoup
 
-from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import (
+from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
     DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )
@@ -39,7 +39,7 @@ BASE_URL = "https://www.3doptix.com"
 CATALOG_FILTER_URL = f"{BASE_URL}/catalog/optics/filter/"
 
 # 3DOptix catalog subtype label → canonical component kind (resolved via
-# COMPONENT_KINDS in mfdb_adapter to its category + default spectrum type).
+# COMPONENT_KINDS in mmfdb_adapter to its category + default spectrum type).
 SUBTYPE_KIND_MAP: dict[str, str] = {
     "Bandpass Filter": "bandpass",
     "Longpass Filter": "longpass",

@@ -5,8 +5,8 @@ title: "PRD-39: Sequence Provenance & External References"
 description: Records each entity's canonical sequence/structure cross-references and its engineered mutations as structured, exportable flrCIF/PDBx data using the standard struct_ref category family.
 status: planned
 phase: "4"
-resource: chisurf/core/mfdb/
-tags: [prd, mfdb]
+resource: chisurf/core/mmfdb/
+tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
@@ -30,8 +30,8 @@ PRD-02 (DONE) built the sample graph: entities, `entity_poly_seq` sequences, pro
 
 Concretely, today:
 
-- `EntityDefinition` (`chisurf/core/mfdb/models.py`) has only `name`, `entity_type`, `sequence`, `details` — **no `uniprot_accession`, `pdb_id`, `organism`**.
-- There are **no `struct_ref` / `struct_ref_seq` / `struct_ref_seq_dif` tables** in `chisurf/core/mfdb/schema.py`, and no sequence/structure cross-reference fetch code anywhere in `chisurf/core/mfdb/`.
+- `EntityDefinition` (`chisurf/core/mmfdb/models.py`) has only `name`, `entity_type`, `sequence`, `details` — **no `uniprot_accession`, `pdb_id`, `organism`**.
+- There are **no `struct_ref` / `struct_ref_seq` / `struct_ref_seq_dif` tables** in `chisurf/core/mmfdb/schema.py`, and no sequence/structure cross-reference fetch code anywhere in `chisurf/core/mmfdb/`.
 
 A smFRET sample is meaningless without "what protein is this, what was mutated and why, and where do the canonical sequence/structure live." This PRD answers that.
 
@@ -41,13 +41,13 @@ A smFRET sample is meaningless without "what protein is this, what was mutated a
 
 | File | What to look at |
 |------|-----------------|
-| `chisurf/core/mfdb/data/mmcif_std.dic`, `mmcif_pdbx_v50.dic` | `struct_ref`, `struct_ref_seq`, `struct_ref_seq_dif` categories — **the standard mechanism for this exact problem** (see below). |
-| `chisurf/core/mfdb/models.py` | `EntityDefinition`, `ProbeDefinition` (`seq_id`, `comp_id`, `mutation_flag`, `auth_name`), `ENTITY_TYPES`. |
-| `chisurf/core/mfdb/schema.py` | `entities`, `entity_poly_seq`, `flr_poly_probe_position`; soft-delete + audit column conventions to mirror. |
-| `chisurf/core/mfdb/sample_manager.py` | `create_sample` (`:31`), `get_sample_full_description` (`:1199`), `set_sample_metadata`, `validate_sample_for_export`. |
-| `chisurf/core/mfdb/repository.py` | `export_flr_cif` (`:2505`), `export_flr_cif_to_text` (`:2918`). |
-| `chisurf/core/mfdb/importer.py` | `import_structure_file` (`:14`). |
-| `chisurf/core/mfdb/orm/models.py` | reflected ORM classes; new tables need reflection here. |
+| `chisurf/core/mmfdb/data/mmcif_std.dic`, `mmcif_pdbx_v50.dic` | `struct_ref`, `struct_ref_seq`, `struct_ref_seq_dif` categories — **the standard mechanism for this exact problem** (see below). |
+| `chisurf/core/mmfdb/models.py` | `EntityDefinition`, `ProbeDefinition` (`seq_id`, `comp_id`, `mutation_flag`, `auth_name`), `ENTITY_TYPES`. |
+| `chisurf/core/mmfdb/schema.py` | `entities`, `entity_poly_seq`, `flr_poly_probe_position`; soft-delete + audit column conventions to mirror. |
+| `chisurf/core/mmfdb/sample_manager.py` | `create_sample` (`:31`), `get_sample_full_description` (`:1199`), `set_sample_metadata`, `validate_sample_for_export`. |
+| `chisurf/core/mmfdb/repository.py` | `export_flr_cif` (`:2505`), `export_flr_cif_to_text` (`:2918`). |
+| `chisurf/core/mmfdb/importer.py` | `import_structure_file` (`:14`). |
+| `chisurf/core/mmfdb/orm/models.py` | reflected ORM classes; new tables need reflection here. |
 | `chisurf/core/fio/structure/coordinates.py` | `fetch_pdb` (`:247`), `fetch_pdb_string` (`:233`) — reuse the network/error style for downloads. |
 
 ## The standard categories are already in our dictionaries
@@ -88,13 +88,13 @@ Map all cross-references and mutations onto `struct_ref` / `struct_ref_seq` / `s
 
 ## 2. New schema tables
 
-**File:** `chisurf/core/mfdb/schema.py`
+**File:** `chisurf/core/mmfdb/schema.py`
 
-Add `struct_ref`, `struct_ref_seq`, `struct_ref_seq_dif`, keyed by `entity_id` (FK → `entities`), each with the same soft-delete (`deleted_at`) and audit columns as sibling flrCIF tables. Then reflect them in `chisurf/core/mfdb/orm/models.py` alongside `Entity` / `EntityPolySeq`, with the entity → struct_ref → struct_ref_seq → struct_ref_seq_dif relationship chain.
+Add `struct_ref`, `struct_ref_seq`, `struct_ref_seq_dif`, keyed by `entity_id` (FK → `entities`), each with the same soft-delete (`deleted_at`) and audit columns as sibling flrCIF tables. Then reflect them in `chisurf/core/mmfdb/orm/models.py` alongside `Entity` / `EntityPolySeq`, with the entity → struct_ref → struct_ref_seq → struct_ref_seq_dif relationship chain.
 
 ## 3. Dataclass extensions
 
-**File:** `chisurf/core/mfdb/models.py`
+**File:** `chisurf/core/mmfdb/models.py`
 
 Extend `EntityDefinition` (additive, all optional — backward compatible):
 
@@ -144,7 +144,7 @@ A labeled-cysteine probe position (`flr_poly_probe_position.mutation_flag="yes"`
 
 ## 5. Sequence-reference fetch service
 
-**New file:** `chisurf/core/mfdb/external_refs.py`
+**New file:** `chisurf/core/mmfdb/external_refs.py`
 
 Functions to fetch the canonical sequence + organism + entry name from the sequence reference database's REST API:
 
@@ -152,7 +152,7 @@ Functions to fetch the canonical sequence + organism + entry name from the seque
 def fetch_uniprot(accession: str, *, cache_dir: Path | None = None) -> dict | None:
     """Fetch sequence + organism + entry_name from the sequence reference DB REST API.
 
-    Result cached on disk under the mfdb data dir. Returns None on network
+    Result cached on disk under the mmfdb data dir. Returns None on network
     failure so callers degrade to manual entry (offline/headless-safe).
     """
 ```
@@ -212,14 +212,14 @@ Everything above is usable through the headless API/CLI first (project rule: eve
 
 - [x] Tests (run in the `arm64` conda env): sequence/mapping fetch tested offline via primed disk cache (`tmp_path/uniprot_*.json`, `sifts_*.json`) + empty-input `None` — equivalent to HTTP mocking, no network; auto-diff on known WT→mutant pairs **incl. T4L S48C/S131C** (`test_diff_detects_engineered_cysteines`); flrCIF round-trip (`test_flr_cif_round_trip_preserves_struct_ref`); probe↔mutation consistency validator. **39 pass** (`test_external_refs.py` 18 + `test_sample_manager.py` 21), verified 2026-06-27.
 - [x] All network access optional + cached; no test hits the live network (`fetch_uniprot`/`fetch_sifts_uniprot_mapping` read the cache first via `_fetch_json`; tests prime the cache so `urllib` is never invoked).
-- [x] No custom `.dic` extension introduced — standard `struct_ref` / `struct_ref_seq` / `struct_ref_seq_dif` categories only (0 `struct_ref` occurrences in `mfdb_flr_ext.dic`).
+- [x] No custom `.dic` extension introduced — standard `struct_ref` / `struct_ref_seq` / `struct_ref_seq_dif` categories only (0 `struct_ref` occurrences in `mmfdb_flr_ext.dic`).
 
 # Implementation status
 
 **All tasks complete (2026-06-27):**
-- [x] Task 1 — `struct_ref` / `struct_ref_seq` / `struct_ref_seq_dif` tables added to `chisurf/core/mfdb/schema.py` (`CREATE_TABLES_SQL`, after `entity_poly_seq`).
-- [x] Task 2 — `EntityDefinition` extended (`uniprot_accession`, `pdb_id`, `pdb_chain_id`, `organism`, `reference_sequence`, `mutations`) + new `MutationDefinition` dataclass in `chisurf/core/mfdb/models.py`.
-- [x] Task 3 — `fetch_uniprot()` in `chisurf/core/mfdb/external_refs.py`, offline-safe with disk cache.
+- [x] Task 1 — `struct_ref` / `struct_ref_seq` / `struct_ref_seq_dif` tables added to `chisurf/core/mmfdb/schema.py` (`CREATE_TABLES_SQL`, after `entity_poly_seq`).
+- [x] Task 2 — `EntityDefinition` extended (`uniprot_accession`, `pdb_id`, `pdb_chain_id`, `organism`, `reference_sequence`, `mutations`) + new `MutationDefinition` dataclass in `chisurf/core/mmfdb/models.py`.
+- [x] Task 3 — `fetch_uniprot()` in `chisurf/core/mmfdb/external_refs.py`, offline-safe with disk cache.
 - [x] Task 4 — structure↔sequence chain/offset mapping (`fetch_sifts_uniprot_mapping` in `external_refs.py`, offline-safe, shares the `_fetch_json` cache helper with `fetch_uniprot`).
 - [x] Task 5 — `diff_sequences()` auto-diff wired into `_persist_external_refs`. Auto-fills `struct_ref_seq_dif` when `reference_sequence` is set and `mutations` is empty; manual mutations preserved. Tested in `test_auto_diff_wired_in_create_sample`.
 - [x] Task 6 — `validate_sample_for_export` warns on probe↔mutation inconsistencies.
@@ -238,6 +238,6 @@ Everything above is usable through the headless API/CLI first (project rule: eve
 
 # Relationships
 - Depends on PRD-02 (sample tracking), PRD-02a (mmCIF dictionary infrastructure), and PRD-02c (flrCIF alignment) — consumes their entity/sequence/probe model and the dictionary infrastructure.
-- Adjacent to PRD-06 (fluorophore database) and PRD-33 (acquisition to MFDB registration): samples those flows create carry these references and mutation records.
+- Adjacent to PRD-06 (fluorophore database) and PRD-33 (acquisition to MMFDB registration): samples those flows create carry these references and mutation records.
 - Named by [PRD-41](prd-41.md) as on the critical path (the dictionary and CIF round-trip), and a chemistry analogue of [PRD-45](prd-45.md) (CAS as the identity axis for chemistry).
-- Extends the [MFDB (current)](/architecture/mfdb.md) toward the [MFDB target](/specs/mfdb.md).
+- Extends the [MMFDB (current)](/architecture/mmfdb.md) toward the [MMFDB target](/specs/mmfdb.md).

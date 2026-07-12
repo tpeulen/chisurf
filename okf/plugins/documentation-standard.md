@@ -41,7 +41,7 @@ Short one-paragraph summary: what the plugin does and who uses it.
 | Category | `<manifest categories>` |
 | Maturity | `stable` / `active` / `experimental` / `deprecated` |
 | Architecture | `legacy-qt` / `layered` / `client-server` / `declarative-ui` |
-| MFDB | `none` / `reads` / `writes` / `full provenance` |
+| MMFDB | `none` / `reads` / `writes` / `full provenance` |
 
 ## User Workflows
 
@@ -54,7 +54,7 @@ Short one-paragraph summary: what the plugin does and who uses it.
 | Kind | Formats | Notes |
 | --- | --- | --- |
 | Input | `.ptu`, `.spc`, `.csv`, ... | Required assumptions. |
-| Output | `.bur`, `.h5`, MFDB artifact, ... | Where results are written. |
+| Output | `.bur`, `.h5`, MMFDB artifact, ... | Where results are written. |
 
 ## UI Surface
 
@@ -80,9 +80,9 @@ Map the plugin's layers:
 
 State any known rule breaks explicitly.
 
-## MFDB And Provenance
+## MMFDB And Provenance
 
-Say whether the plugin reads/writes MFDB, which artifact kinds it creates, which
+Say whether the plugin reads/writes MMFDB, which artifact kinds it creates, which
 operation type it records, and whether registration is best-effort or fail-loud.
 
 ## Verification

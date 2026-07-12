@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from chisurf.core.mfdb.schema import schema
-from chisurf.core.mfdb.schema.dictionary_schema_map import build_dictionary_schema_map
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.schema import schema
+from mmfdb.schema.dictionary_schema_map import build_dictionary_schema_map
+from mmfdb.repository import MFDatabase
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
     _resolve_active_user_id,
     _save_setup_row,
@@ -41,8 +41,8 @@ def _db(tmp_path: Path) -> MFDatabase:
 
 
 def test_save_setup_creates_structured_child_tables(tmp_path: Path) -> None:
-    """Saving a detector setup creates queryable mfdb_setup_detector_channel
-    and mfdb_setup_pie_window rows plus the parent mfdb_setup row."""
+    """Saving a detector setup creates queryable mmfdb_setup_detector_channel
+    and mmfdb_setup_pie_window rows plus the parent mmfdb_setup row."""
     db = _db(tmp_path)
     try:
         setup_name = "Test MFD Setup"
@@ -151,14 +151,14 @@ def test_legacy_json_import_backfills_structured_tables(tmp_path: Path) -> None:
 
 
 def _setup_dictionary_mapper(tmp_path: Path):
-    """Return a DictionarySchemaMap for a fresh MFDB."""
+    """Return a DictionarySchemaMap for a fresh MMFDB."""
     db_path = os.path.join(tmp_path, "test_dict.db")
     db = MFDatabase(db_path)
     db.close()
     return build_dictionary_schema_map(db_path)
 
 
-_SETUP_CATEGORIES = {"mfdb_setup", "mfdb_setup_detector_channel", "mfdb_setup_pie_window", "mfdb_setup_fcs_pair", "mfdb_setup_calibration", "mfdb_artifact", "mfdb_parameter", "mfdb_operation_parameter_def"}
+_SETUP_CATEGORIES = {"mmfdb_setup", "mmfdb_setup_detector_channel", "mmfdb_setup_pie_window", "mmfdb_setup_fcs_pair", "mmfdb_setup_calibration", "mmfdb_artifact", "mmfdb_parameter", "mmfdb_operation_parameter_def"}
 
 
 def test_every_setup_dictionary_item_maps_to_live_column(tmp_path: Path) -> None:
@@ -198,8 +198,8 @@ def test_no_setup_dictionary_items_are_unmapped(tmp_path: Path) -> None:
 
 
 def test_fresh_db_has_no_legacy_or_duplicate_tables(tmp_path: Path) -> None:
-    """PRD-19: a freshly built MFDB contains no legacy ``fdb_*`` tables and no
-    duplicate-of-flrCIF ``mfdb_sample``/``mfdb_experiment`` tables, while the
+    """PRD-19: a freshly built MMFDB contains no legacy ``fdb_*`` tables and no
+    duplicate-of-flrCIF ``mmfdb_sample``/``mmfdb_experiment`` tables, while the
     canonical tables are present. Guards the dictionary-driven schema against
     legacy regressions."""
     import sqlite3
@@ -218,16 +218,16 @@ def test_fresh_db_has_no_legacy_or_duplicate_tables(tmp_path: Path) -> None:
         con.close()
 
     legacy = sorted(t for t in tables if t.startswith("fdb_"))
-    duplicates = sorted(t for t in tables if t in {"mfdb_sample", "mfdb_experiment"})
+    duplicates = sorted(t for t in tables if t in {"mmfdb_sample", "mmfdb_experiment"})
     assert not legacy, f"Legacy fdb_* tables must not exist: {legacy}"
     assert not duplicates, f"Duplicate-of-flrCIF tables must not exist: {duplicates}"
-    # Canonical tables are present (flrCIF authoritative + mfdb_* extensions).
-    for canonical in ("flr_sample", "mfdb_artifact", "mfdb_operation", "mfdb_edge"):
+    # Canonical tables are present (flrCIF authoritative + mmfdb_* extensions).
+    for canonical in ("flr_sample", "mmfdb_artifact", "mmfdb_operation", "mmfdb_edge"):
         assert canonical in tables, f"Canonical table {canonical!r} missing"
 
 
 # ---------------------------------------------------------------------------
-# Test 4: mfdb-admin setup list/detail RPC returns structured fields
+# Test 4: mmfdb-admin setup list/detail RPC returns structured fields
 # ---------------------------------------------------------------------------
 
 
@@ -237,7 +237,7 @@ def _admin_auth(db_path: str) -> dict:
     A fresh MFDatabase seeds an admin user, so _require_auth no longer treats
     writes as bootstrap and rejects anonymous requests; handlers need a token.
     """
-    from mfdb.security.auth import create_session
+    from mmfdb.security.auth import create_session
 
     with MFDatabase(db_path) as db:
         token = create_session(db.conn, "user_default")["token"]
@@ -246,8 +246,8 @@ def _admin_auth(db_path: str) -> dict:
 
 
 def test_list_setups_handler_returns_structured_fields(tmp_path: Path) -> None:
-    """mfdb.setups.list returns detector_channels and pie_windows keys."""
-    from mfdb.admin.backend.services import (
+    """mmfdb.setups.list returns detector_channels and pie_windows keys."""
+    from mmfdb.admin.backend.services import (
         list_setups_handler,
         get_setup_handler,
     )
@@ -260,18 +260,18 @@ def test_list_setups_handler_returns_structured_fields(tmp_path: Path) -> None:
 
     patchers = [
         patch(
-            "mfdb.admin.backend.services.resolve_database_path",
+            "mmfdb.admin.backend.services.resolve_database_path",
             return_value=db_path,
         ),
         patch(
-            "mfdb.admin.backend.services.resolve_database_path",
+            "mmfdb.admin.backend.services.resolve_database_path",
             return_value=db_path,
         ),
-        # list_setups_handler / get_setup_handler delegate to chisurf.core.mfdb.api,
+        # list_setups_handler / get_setup_handler delegate to mmfdb.api,
         # which binds its own resolve_database_path — patch it too so the read path
         # uses this temp DB and the test never touches the real user database.
         patch(
-            "chisurf.core.mfdb.api.resolve_database_path",
+            "mmfdb.api.resolve_database_path",
             return_value=db_path,
         ),
     ]
@@ -279,7 +279,7 @@ def test_list_setups_handler_returns_structured_fields(tmp_path: Path) -> None:
         p.start()
     try:
         # Save a setup with detectors and windows
-        from mfdb.admin.backend.services import (
+        from mmfdb.admin.backend.services import (
             save_setup_handler,
         )
         setup_payload = {
@@ -312,11 +312,11 @@ def test_list_setups_handler_returns_structured_fields(tmp_path: Path) -> None:
 
 
 def test_setup_detail_rpc_includes_child_tables(tmp_path: Path) -> None:
-    """mfdb.setups.get returns detector_channels and pie_windows lists."""
-    from mfdb.admin.backend.services import (
+    """mmfdb.setups.get returns detector_channels and pie_windows lists."""
+    from mmfdb.admin.backend.services import (
         save_setup_handler,
     )
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         get_setup_handler,
     )
     from unittest.mock import patch
@@ -328,18 +328,18 @@ def test_setup_detail_rpc_includes_child_tables(tmp_path: Path) -> None:
 
     patchers = [
         patch(
-            "mfdb.admin.backend.services.resolve_database_path",
+            "mmfdb.admin.backend.services.resolve_database_path",
             return_value=db_path,
         ),
         patch(
-            "mfdb.admin.backend.services.resolve_database_path",
+            "mmfdb.admin.backend.services.resolve_database_path",
             return_value=db_path,
         ),
-        # list_setups_handler / get_setup_handler delegate to chisurf.core.mfdb.api,
+        # list_setups_handler / get_setup_handler delegate to mmfdb.api,
         # which binds its own resolve_database_path — patch it too so the read path
         # uses this temp DB and the test never touches the real user database.
         patch(
-            "chisurf.core.mfdb.api.resolve_database_path",
+            "mmfdb.api.resolve_database_path",
             return_value=db_path,
         ),
     ]

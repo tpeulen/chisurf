@@ -1,8 +1,8 @@
 ---
 type: PRD
 prd: "07"
-title: "PRD-07: Plugin MFDB Integration"
-description: Have high-priority plugins register their results in MFDB via a single registration call at each output point.
+title: "PRD-07: Plugin MMFDB Integration"
+description: Have high-priority plugins register their results in MMFDB via a single registration call at each output point.
 status: superseded
 phase: "unassigned"
 resource: chisurf/plugins
@@ -11,13 +11,13 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-This PRD proposed adding a single `register_result()` call at the output point of each high-priority plugin (lifetime fitting, maximum entropy, anisotropy, the companion photon-data exploration tool, microtime histogram, FCS correlation, etc.) so their results land in MFDB with sample-id propagation and provenance edges, wrapped in try/except so plugins still work without MFDB. It defined priority tiers and a per-plugin recipe (find output point, register, propagate sample id, test).
+This PRD proposed adding a single `register_result()` call at the output point of each high-priority plugin (lifetime fitting, maximum entropy, anisotropy, the companion photon-data exploration tool, microtime histogram, FCS correlation, etc.) so their results land in MMFDB with sample-id propagation and provenance edges, wrapped in try/except so plugins still work without MMFDB. It defined priority tiers and a per-plugin recipe (find output point, register, propagate sample id, test).
 
 # Status
 Superseded by [PRD-16](prd-16.md), the strict, uniform transformer contract that replaces these ad-hoc per-plugin registration calls. Retained here as the record of the original per-plugin approach and its plugin inventory.
 
 # Goal
-High-priority plugins register their results in MFDB via the result registry
+High-priority plugins register their results in MMFDB via the result registry
 (PRD-03). Not a rewrite — just add one `register_result()` call at the output
 point of each plugin.
 
@@ -25,7 +25,7 @@ point of each plugin.
 Every plugin integration follows the same pattern:
 1. Find where the plugin produces its output (file, array, plot data).
 2. Add `register_result()` after that point.
-3. Wrap in try/except so the plugin works without MFDB.
+3. Wrap in try/except so the plugin works without MMFDB.
 4. Add `sample_id` propagation if the plugin has a GUI.
 
 No other changes to the plugin.
@@ -35,7 +35,7 @@ No other changes to the plugin.
   processing.
 - **Tier 2 — supporting analysis:** results worth archiving but off the critical
   path.
-- **Tier 3 — future:** would benefit from MFDB but low priority.
+- **Tier 3 — future:** would benefit from MMFDB but low priority.
 
 ## Tier 1 plugins
 1. **burst_selection** — skip; covered in PRD-04.
@@ -100,18 +100,18 @@ Add `register_result()` when someone works on them: `fret_calculator`,
 4. **Propagate `sample_id`.** GUI: add a `SamplePicker` (PRD-02) and pass the
    selected id. Headless: add a `--sample-id` argument. Downstream plugin: read
    `sample_id` from the input data's metadata.
-5. **Test.** Create a temporary MFDB, run the plugin's main function on test data,
+5. **Test.** Create a temporary MMFDB, run the plugin's main function on test data,
    assert an artifact was registered and the provenance edge exists (if
    `parent_artifact_id` was set).
 
 # Definition of Done
-- [ ] All Tier 1 plugins (7) register results in MFDB
+- [ ] All Tier 1 plugins (7) register results in MMFDB
 - [ ] All Tier 1 plugins have `sample_id` propagation
-- [ ] All Tier 1 plugins have tests for MFDB registration
-- [ ] At least 3 Tier 2 plugins register results in MFDB
-- [ ] mfdb-admin shows results from all integrated plugins
+- [ ] All Tier 1 plugins have tests for MMFDB registration
+- [ ] At least 3 Tier 2 plugins register results in MMFDB
+- [ ] mmfdb-admin shows results from all integrated plugins
 
 # Relationships
 - Superseded by [PRD-16](prd-16.md) (uniform transformer contract).
-- Its registration model is formalized by [PRD-11](prd-11.md) (operation-node abstraction in MFDB).
+- Its registration model is formalized by [PRD-11](prd-11.md) (operation-node abstraction in MMFDB).
 - Touches the [plugin system](/architecture/plugin-system.md) and [Plugins target](/specs/plugins.md).

@@ -28,15 +28,15 @@
     },
     {
       "name": "lightpath.save",
-      "summary": "Persist a light-path graph and simulated outputs as MFDB artifacts."
+      "summary": "Persist a light-path graph and simulated outputs as MMFDB artifacts."
     },
     {
       "name": "lightpath.list",
-      "summary": "List saved light-path simulations from MFDB."
+      "summary": "List saved light-path simulations from MMFDB."
     },
     {
       "name": "lightpath.get",
-      "summary": "Load one saved light-path simulation from MFDB."
+      "summary": "Load one saved light-path simulation from MMFDB."
     },
     {
       "name": "lightpath.get_probes_info",

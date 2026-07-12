@@ -113,7 +113,7 @@ class ChiSurfServer:
     @staticmethod
     def _init_flr_database():
         """Create or attach the FLR database."""
-        from chisurf.core.mfdb.repository import MFDatabase
+        from mmfdb.repository import MFDatabase
         return MFDatabase()
 
     def _zmq_dispatch(self, method: str, params: dict | None = None) -> dict:

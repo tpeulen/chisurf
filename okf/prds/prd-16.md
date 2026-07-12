@@ -21,19 +21,19 @@ Define **one transformer abstraction** that every data-transformer plugin (Burst
 Selection, Microtime Shifter, background correction, correlation, …) must obey, so
 they stop being individual ad-hoc pieces and behave identically: declared typed
 **inputs**, declared typed **outputs**, a `.dic`-declared **parameter schema**, a
-**pure transform**, and **uniform MFDB registration** as an operation node. A
+**pure transform**, and **uniform MMFDB registration** as an operation node. A
 transformer becomes a conformant, discoverable unit — not a bespoke plugin. This is
-the plugin-side counterpart of PRD-11 (which maps transformers to MFDB operation
+the plugin-side counterpart of PRD-11 (which maps transformers to MMFDB operation
 nodes): PRD-11 defines *how the data graph records a transformer*; PRD-16 defines
 *what a transformer is and the rules it must follow*.
 
 # Problem
 The workflow plugins emerged by copying Burst Selection's layout, but nothing
-**enforces** it. Each re-invents request/result models, parameter handling, MFDB
+**enforces** it. Each re-invents request/result models, parameter handling, MMFDB
 registration, RPC wiring, and error behaviour. Consequences: inconsistent parameter
-recording (some use `mfdb_parameter`, the shifter used a bespoke table),
+recording (some use `mmfdb_parameter`, the shifter used a bespoke table),
 inconsistent ownership/validation, no discovery, no way to compose them, and
-per-plugin bugs (the shifter MFDB round-trip failures). There is no single contract
+per-plugin bugs (the shifter MMFDB round-trip failures). There is no single contract
 a transformer must satisfy.
 
 # The transformer contract
@@ -49,7 +49,7 @@ class Transformer(Protocol):
     input_spec:  list[PortSpec]  # typed input ports  (kinds/formats, arity)
     output_spec: list[PortSpec]  # typed output ports (kinds)
     # parameter schema is NOT defined in code — it is read from the .dic
-    # (PRD-11 mfdb_operation_parameter_def for this operation_type)
+    # (PRD-11 mmfdb_operation_parameter_def for this operation_type)
 
     def transform(self, inputs: TransformInputs,
                   parameters: dict) -> TransformResult: ...   # PURE: no Qt, no DB
@@ -68,20 +68,20 @@ Rules every transformer must obey:
    arity (the data-side ports). The contract validates that what a caller passes
    matches the declared ports.
 2. **Parameters are `.dic`-declared, not code-defined.** A transformer's parameters
-   come from PRD-11's `mfdb_operation_parameter_def` for its `operation_type`
+   come from PRD-11's `mmfdb_operation_parameter_def` for its `operation_type`
    (typed, units, bounds, required, repeatable). The transformer does not hardcode a
    parameter list; it reads/validates against the dictionary. No JSON blob.
 3. **Pure `transform`.** Computation is a pure function over inputs + parameters →
    outputs, with no Qt and no DB imports — directly unit-testable (the Burst/Shift
    `api/*.py` pattern, mandated).
-4. **Uniform MFDB registration.** Persistence goes through the single PRD-11
+4. **Uniform MMFDB registration.** Persistence goes through the single PRD-11
    `register_operation(operation_type, inputs, outputs, parameters)` path (built on
    the result registry, which stamps ownership and **raises on real errors**). A
-   transformer never hand-writes MFDB rows and never keeps a bespoke table.
-5. **Best-effort archival, fail-loud on bugs.** MFDB-unavailable → warn, the
+   transformer never hand-writes MMFDB rows and never keeps a bespoke table.
+5. **Best-effort archival, fail-loud on bugs.** MMFDB-unavailable → warn, the
    transform still works; a real registration error (FK/vocab/validation) is
    surfaced, not swallowed.
-6. **Standard layering.** `api/` (models, contract, pure transform, mfdb),
+6. **Standard layering.** `api/` (models, contract, pure transform, mmfdb),
    `backend/services.py` (RPC handlers on the dispatcher), `cli/`, `gui/`
    (RPC-client + dockable tool). The GUI talks to the API only via RPC.
 7. **Transformer invocation is a serializable spec value.** A bound invocation —
@@ -104,7 +104,7 @@ the next — the chinet-style data-level graph).
 
 # Conformance
 - **Refactor the reference transformers** (Burst Selection, Microtime Shifter) onto
-  the contract; fold the shifter's `mfdb_microtime_shift` into role-indexed
+  the contract; fold the shifter's `mmfdb_microtime_shift` into role-indexed
   parameters (PRD-11).
 - **Conformance test** parametrised over the registry: every transformer (1) has a
   `.dic` parameter schema for its `operation_type`; (2) declares input/output
@@ -136,12 +136,12 @@ the next — the chinet-style data-level graph).
 
 # Definition of Clean
 Layer purity (pure transform, GUI→RPC only); `.dic` dictates parameters (PRD-11), no
-blobs, no hardcoded SQL; uniform registration (no bespoke tables); best-effort MFDB
+blobs, no hardcoded SQL; uniform registration (no bespoke tables); best-effort MMFDB
 but fail-loud on real bugs; DI over monkeypatching; behavior-asserting + conformance
 tests; GUI construction smoke for each tool.
 
 # Relationships
-- Plugin-side counterpart of [PRD-11](prd-11.md), which maps transformers to MFDB operation nodes and defines the parameter schema storage.
+- Plugin-side counterpart of [PRD-11](prd-11.md), which maps transformers to MMFDB operation nodes and defines the parameter schema storage.
 - Reference transformers derive from [PRD-04](prd-04.md) and [PRD-09](prd-09.md).
 - A transformer execution may reference a protocol/version per [PRD-14](prd-14.md).
 - Serializable invocations feed [PRD-21](prd-21.md) (replayable compute spec) and [PRD-22](prd-22.md) (pipeline composition).

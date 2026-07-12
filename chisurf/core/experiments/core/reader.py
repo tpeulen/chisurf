@@ -7,7 +7,7 @@ for turning files into :class:`chisurf.core.data.ExperimentalData` objects.
 
 When ``record_provenance`` is enabled and a database connection is available,
 :meth:`ExperimentReader.get_data` automatically registers source files and
-derived data in the object store and records provenance in MFDB.
+derived data in the object store and records provenance in MMFDB.
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ class ExperimentReader(chisurf.core.base.Base):
 
     When ``record_provenance`` is True and ``db`` is set, ``get_data()``
     automatically registers source files and derived data in the object
-    store and records provenance in MFDB.
+    store and records provenance in MMFDB.
 
     Class Attributes
     ----------------
@@ -207,7 +207,7 @@ class ExperimentReader(chisurf.core.base.Base):
         Attaches the experiment, setup, and data_reader references
         to each dataset in the group. When ``record_provenance`` is
         enabled, also registers source files and derived data in the
-        object store and records provenance in MFDB.
+        object store and records provenance in MMFDB.
 
         Parameters
         ----------
@@ -247,7 +247,7 @@ class ExperimentReader(chisurf.core.base.Base):
         return data
 
     def _ensure_sample_exists(self, sample_id: str) -> None:
-        """Create a selected sample in MFDB if it does not exist yet.
+        """Create a selected sample in MMFDB if it does not exist yet.
 
         Parameters
         ----------
@@ -268,7 +268,7 @@ class ExperimentReader(chisurf.core.base.Base):
             self._prompt_for_sample(filename, content_md5, object_uuid)
 
     def _prompt_for_sample(self, filename, content_md5, object_uuid):
-        """Prompt the user to assign a sample if the file is new to MFDB."""
+        """Prompt the user to assign a sample if the file is new to MMFDB."""
         try:
             from chisurf.gui.widgets.experiments.sample_selector_widget import (
                 show_sample_lookup_dialog,
@@ -393,7 +393,7 @@ class ExperimentReader(chisurf.core.base.Base):
     def _record_read_operation(
         self, source_uuids: list[str], derived_uuids: list[str]
     ) -> str | None:
-        """Record an MFDB operation linking source and derived artifacts.
+        """Record an MMFDB operation linking source and derived artifacts.
 
         Parameters
         ----------
@@ -477,7 +477,7 @@ class ExperimentReader(chisurf.core.base.Base):
                 curve.meta_data = {}
             if self.sample_id:
                 curve.meta_data["sample_id"] = self.sample_id
-            curve.meta_data["mfdb"] = {
+            curve.meta_data["mmfdb"] = {
                 **provenance,
                 "derived_object_uuid": derived_uuids[i] if i < len(derived_uuids) else None,
             }

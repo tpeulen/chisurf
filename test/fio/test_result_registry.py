@@ -1,4 +1,4 @@
-"""Tests for the MFDB result registry."""
+"""Tests for the MMFDB result registry."""
 from __future__ import annotations
 
 import os
@@ -7,12 +7,12 @@ import tempfile
 import numpy as np
 import pytest
 
-from mfdb.security.base import MFDBClientBase
-from mfdb.models import SampleDefinition
-from mfdb.store.payload_codec import PayloadSchemaError, encode_payload
-from mfdb.store.payload_models import BurstSelection, FcsCorrelation
-from mfdb.repository import MFDatabase
-from mfdb.provenance.result_registry import (
+from mmfdb.security.base import MMFDBClientBase
+from mmfdb.models import SampleDefinition
+from mmfdb.store.payload_codec import PayloadSchemaError, encode_payload
+from mmfdb.store.payload_models import BurstSelection, FcsCorrelation
+from mmfdb.repository import MFDatabase
+from mmfdb.provenance.result_registry import (
     LinkValidationError,
     read_result,
     register_calibration,
@@ -22,7 +22,7 @@ from mfdb.provenance.result_registry import (
     register_result,
     set_global_db,
 )
-from mfdb.samples.sample_manager import create_sample, get_artifacts_for_sample
+from mmfdb.samples.sample_manager import create_sample, get_artifacts_for_sample
 
 
 @pytest.fixture
@@ -47,7 +47,7 @@ def test_register_result_with_dict_data(db):
 
     assert art_id
     row = db.conn.execute(
-        "SELECT artifact_kind, data_format, object_uuid FROM mfdb_artifact WHERE artifact_id = ?",
+        "SELECT artifact_kind, data_format, object_uuid FROM mmfdb_artifact WHERE artifact_id = ?",
         (art_id,),
     ).fetchone()
     assert row is not None
@@ -73,15 +73,15 @@ def test_register_result_with_file(db, tmp_path):
 
     assert art_id
     row = db.conn.execute(
-        "SELECT data_format FROM mfdb_artifact WHERE artifact_id = ?",
+        "SELECT data_format FROM mmfdb_artifact WHERE artifact_id = ?",
         (art_id,),
     ).fetchone()
     assert row["data_format"] == "ptu"
 
 
 def test_mfdatabase_implements_client_base(db, tmp_path):
-    """MFDatabase should satisfy the core MFDB client contract."""
-    assert isinstance(db, MFDBClientBase)
+    """MFDatabase should satisfy the core MMFDB client contract."""
+    assert isinstance(db, MMFDBClientBase)
 
     sample_id = create_sample(db, SampleDefinition(name="contract sample"))
     file_path = tmp_path / "raw.spc"
@@ -114,7 +114,7 @@ def test_register_result_creates_derived_from_edge(db):
     )
 
     row = db.conn.execute(
-        """SELECT relationship_type FROM mfdb_edge
+        """SELECT relationship_type FROM mmfdb_edge
            WHERE source_node_id = ? AND target_node_id = ? AND deleted_at IS NULL""",
         (child_id, parent_id),
     ).fetchone()
@@ -139,8 +139,8 @@ def test_register_result_input_link(db):
     )
 
     row = db.conn.execute(
-        """SELECT input_link.direction FROM mfdb_operation_artifact input_link
-           JOIN mfdb_operation_artifact output_link
+        """SELECT input_link.direction FROM mmfdb_operation_artifact input_link
+           JOIN mmfdb_operation_artifact output_link
              ON output_link.operation_id = input_link.operation_id
            WHERE input_link.artifact_id = ?
              AND input_link.direction = 'input'
@@ -167,7 +167,7 @@ def test_register_result_with_sample(db):
 
 
 def test_register_result_with_parameters(db):
-    """Scalar and structured parameters are written to mfdb_parameter."""
+    """Scalar and structured parameters are written to mmfdb_parameter."""
     art_id = register_result(
         kind="fit_result",
         data={"chi2": 1.05},
@@ -180,8 +180,8 @@ def test_register_result_with_parameters(db):
     )
 
     rows = db.conn.execute(
-        """SELECT p.name, p.value FROM mfdb_parameter p
-           JOIN mfdb_operation_artifact oa ON oa.operation_id = p.operation_id
+        """SELECT p.name, p.value FROM mmfdb_parameter p
+           JOIN mmfdb_operation_artifact oa ON oa.operation_id = p.operation_id
            WHERE oa.artifact_id = ? AND oa.direction = 'output'""",
         (art_id,),
     ).fetchall()
@@ -203,10 +203,10 @@ def test_register_result_missing_parent_rolls_back_all_rows(db):
             db=db,
         )
 
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_artifact").fetchone()[0] == 0
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_operation").fetchone()[0] == 0
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_operation_artifact").fetchone()[0] == 0
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_object").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_artifact").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_operation").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_operation_artifact").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_object").fetchone()[0] == 0
 
 
 def test_register_result_missing_sample_rolls_back_all_rows(db):
@@ -220,8 +220,8 @@ def test_register_result_missing_sample_rolls_back_all_rows(db):
             db=db,
         )
 
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_artifact").fetchone()[0] == 0
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_object").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_artifact").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_object").fetchone()[0] == 0
 
 
 def test_register_result_rejects_unreadable_object_dtype_table(db):
@@ -234,8 +234,8 @@ def test_register_result_rejects_unreadable_object_dtype_table(db):
             db=db,
         )
 
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_artifact").fetchone()[0] == 0
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_object").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_artifact").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_object").fetchone()[0] == 0
 
 
 def test_register_result_rejects_artifact_payload_kind_mismatch(db):
@@ -248,7 +248,7 @@ def test_register_result_rejects_artifact_payload_kind_mismatch(db):
     with pytest.raises(ValueError):
         register_result(kind="spectra", data=payload, operation_type="analysis", db=db)
 
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_artifact").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_artifact").fetchone()[0] == 0
 
 
 def test_register_result_accepts_burst_selection_payload_kind(db):
@@ -259,7 +259,7 @@ def test_register_result_accepts_burst_selection_payload_kind(db):
 
     assert art_id
     row = db.conn.execute(
-        "SELECT artifact_kind, data_format FROM mfdb_artifact WHERE artifact_id = ?",
+        "SELECT artifact_kind, data_format FROM mmfdb_artifact WHERE artifact_id = ?",
         (art_id,),
     ).fetchone()
     assert row["artifact_kind"] == "burst_selection"
@@ -291,8 +291,8 @@ def test_register_result_burst_selection_dataframe_rejects_ambiguous_mask_value(
     with pytest.raises(ValueError):
         register_result(kind="burst_selection", data=df, operation_type="burst_selection", db=db)
 
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_artifact").fetchone()[0] == 0
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_object").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_artifact").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_object").fetchone()[0] == 0
 
 
 def test_register_result_fcs_dataframe_preserves_payload_kind(db):
@@ -366,7 +366,7 @@ def test_register_result_spectrum_dataframe_rejects_ambiguous_normalized_value(d
     with pytest.raises(ValueError):
         register_result(kind="spectra", data=df, operation_type="analysis", db=db)
 
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_artifact").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_artifact").fetchone()[0] == 0
 
 
 def test_register_result_rejects_unsupported_known_kind_dataframe(db):
@@ -377,8 +377,8 @@ def test_register_result_rejects_unsupported_known_kind_dataframe(db):
     with pytest.raises(ValueError):
         register_result(kind="pda_histogram", data=df, operation_type="analysis", db=db)
 
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_artifact").fetchone()[0] == 0
-    assert db.conn.execute("SELECT COUNT(*) FROM mfdb_object").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_artifact").fetchone()[0] == 0
+    assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_object").fetchone()[0] == 0
 
 
 def test_read_result_rejects_known_artifact_payload_kind_mismatch(db):
@@ -407,11 +407,11 @@ def test_object_store_dedup(db):
     second = register_result(kind="processed_data", data=b"same", operation_type="analysis", db=db)
 
     first_uuid = db.conn.execute(
-        "SELECT object_uuid FROM mfdb_artifact WHERE artifact_id = ?",
+        "SELECT object_uuid FROM mmfdb_artifact WHERE artifact_id = ?",
         (first,),
     ).fetchone()["object_uuid"]
     second_uuid = db.conn.execute(
-        "SELECT object_uuid FROM mfdb_artifact WHERE artifact_id = ?",
+        "SELECT object_uuid FROM mmfdb_artifact WHERE artifact_id = ?",
         (second,),
     ).fetchone()["object_uuid"]
     assert first_uuid == second_uuid
@@ -423,7 +423,7 @@ def test_metadata_only_artifact(db):
 
     assert art_id
     row = db.conn.execute(
-        "SELECT object_uuid, metadata_json FROM mfdb_artifact WHERE artifact_id = ?",
+        "SELECT object_uuid, metadata_json FROM mmfdb_artifact WHERE artifact_id = ?",
         (art_id,),
     ).fetchone()
     assert row["object_uuid"] is None
@@ -432,7 +432,7 @@ def test_metadata_only_artifact(db):
 
 def test_no_db_returns_empty(monkeypatch):
     """No available database returns an empty artifact ID and does not raise."""
-    import mfdb.provenance.result_registry as result_registry
+    import mmfdb.provenance.result_registry as result_registry
 
     set_global_db(None)
     monkeypatch.setattr(result_registry, "_get_global_db", lambda: None)
@@ -470,7 +470,7 @@ def test_convenience_wrappers(db, tmp_path):
 
     assert raw and processed and fit and calibration
     row = db.conn.execute(
-        "SELECT artifact_kind, data_format, metadata_json FROM mfdb_artifact WHERE artifact_id = ?",
+        "SELECT artifact_kind, data_format, metadata_json FROM mmfdb_artifact WHERE artifact_id = ?",
         (calibration,),
     ).fetchone()
     assert row["artifact_kind"] == "calibration_data"

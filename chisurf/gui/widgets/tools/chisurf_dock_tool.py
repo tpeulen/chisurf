@@ -2,12 +2,12 @@
 
 `ChisurfDockTool` factors the boilerplate every transformer tool re-implemented
 (drag-drop of file/folder paths, a `DockArea` central widget, window-geometry
-persistence, and MFDB-connectivity status) into one base, so fixes propagate and
+persistence, and MMFDB-connectivity status) into one base, so fixes propagate and
 the per-tool widget stays a thin view. `PathDropListWidget` is the byte-identical
 drag-drop list both tools had copied.
 
 The base performs **no** I/O or DB work on construction (PRD-23 Task 4): it only
-wires Qt widgets. MFDB access is via the overridable `acquire_mfdb_connection`
+wires Qt widgets. MMFDB access is via the overridable `acquire_mmfdb_connection`
 hook, called lazily on demand — never in `__init__`.
 """
 
@@ -101,12 +101,12 @@ class PathDropListWidget(QtWidgets.QListWidget):
 
 
 class ChisurfDockTool(QtWidgets.QMainWindow):
-    """Base for dockable transformer tools (drag-drop, docks, MFDB status).
+    """Base for dockable transformer tools (drag-drop, docks, MMFDB status).
 
     Subclasses build their own widgets/docks/toolbar in ``__init__`` as before;
     this base adds window-level path drag-drop (dispatched to
     :meth:`on_paths_dropped`), window-geometry persistence helpers, and lazy
-    MFDB-connectivity accessors. It accepts and forwards ``*args``/``**kwargs`` to
+    MMFDB-connectivity accessors. It accepts and forwards ``*args``/``**kwargs`` to
     ``QMainWindow`` so existing ``super().__init__(*args, **kwargs)`` calls keep
     working.
     """
@@ -142,26 +142,26 @@ class ChisurfDockTool(QtWidgets.QMainWindow):
         if callable(add_paths):
             add_paths(paths)
 
-    # -- MFDB connectivity (lazy; never on construction) ----------------------
+    # -- MMFDB connectivity (lazy; never on construction) ----------------------
 
-    def acquire_mfdb_connection(self) -> Any | None:
-        """Return an MFDB connection, or ``None``. Override per tool.
+    def acquire_mmfdb_connection(self) -> Any | None:
+        """Return an MMFDB connection, or ``None``. Override per tool.
 
         The base returns ``None`` (no connection). Tools override to delegate to
         their api-layer connection helper. Called lazily — never in ``__init__``.
         """
         return None
 
-    def mfdb_connection(self) -> Any | None:
-        """Return the active MFDB connection (via :meth:`acquire_mfdb_connection`)."""
+    def mmfdb_connection(self) -> Any | None:
+        """Return the active MMFDB connection (via :meth:`acquire_mmfdb_connection`)."""
         try:
-            return self.acquire_mfdb_connection()
+            return self.acquire_mmfdb_connection()
         except Exception:
             return None
 
-    def mfdb_connected(self) -> bool:
-        """Return whether an MFDB connection is currently available."""
-        return self.mfdb_connection() is not None
+    def mmfdb_connected(self) -> bool:
+        """Return whether an MMFDB connection is currently available."""
+        return self.mmfdb_connection() is not None
 
     # -- window geometry persistence ------------------------------------------
 

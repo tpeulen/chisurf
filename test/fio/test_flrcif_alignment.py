@@ -7,11 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from mfdb.schema.pdbx_metadata import MmcifDictionary
-from mfdb.adapters.chinet import (
-    _load_parameter_registry,
-    _lookup_flrcif_name,
-)
+from chisurf.core.project.mmfdb_adapter import resolve_parameter_name
+from mmfdb.adapters.chinet import _lookup_flrcif_name
+from mmfdb.schema.pdbx_metadata import MmcifDictionary
 
 
 REGISTRY_PATH = (
@@ -23,9 +21,9 @@ REGISTRY_PATH = (
     / "parameter_registry.json"
 )
 
-from mfdb.schema.pdbx_metadata import MmcifDictionary as _MmcifDictionary
+from mmfdb.schema.pdbx_metadata import MmcifDictionary as _MmcifDictionary
 
-DIC_PATH = _MmcifDictionary.DATA_DIR / "mfdb_flr_ext.dic"
+DIC_PATH = _MmcifDictionary.DATA_DIR / "mmfdb_flr_ext.dic"
 
 
 def test_registry_file_exists():
@@ -78,7 +76,7 @@ def test_flrcif_item_ids_are_unique():
 
 def test_dic_file_exists():
     """The extension dictionary file exists."""
-    assert DIC_PATH.is_file(), f"mfdb_flr_ext.dic not found at {DIC_PATH}"
+    assert DIC_PATH.is_file(), f"mmfdb_flr_ext.dic not found at {DIC_PATH}"
 
 
 def test_dic_parses_correctly():
@@ -130,20 +128,20 @@ def test_dic_item_metadata_matches_registry():
 
 def test_lookup_flrcif_name_resolves_known_parameters():
     """Known parameter short names resolve to canonical identifiers."""
-    assert _lookup_flrcif_name("E_FRET") == "_flr_chisurf_parameter.E_FRET"
-    assert _lookup_flrcif_name("bg") == "_flr_chisurf_parameter.bg"
-    assert _lookup_flrcif_name("R0") == "_flr_chisurf_parameter.R0"
+    assert _lookup_flrcif_name("E_FRET", resolve_parameter_name) == "_flr_chisurf_parameter.E_FRET"
+    assert _lookup_flrcif_name("bg", resolve_parameter_name) == "_flr_chisurf_parameter.bg"
+    assert _lookup_flrcif_name("R0", resolve_parameter_name) == "_flr_chisurf_parameter.R0"
 
 
 def test_lookup_flrcif_name_returns_none_for_unknown():
     """Unknown parameter names return None."""
-    assert _lookup_flrcif_name("__nonexistent__") is None
-    assert _lookup_flrcif_name("") is None
+    assert _lookup_flrcif_name("__nonexistent__", resolve_parameter_name) is None
+    assert _lookup_flrcif_name("", resolve_parameter_name) is None
 
 
 def test_lookup_flrcif_name_resolves_family_prefixed():
     """Family-prefixed parameter names also resolve correctly."""
-    result = _lookup_flrcif_name("fcs.N")
+    result = _lookup_flrcif_name("fcs.N", resolve_parameter_name)
     assert result == "_flr_chisurf_parameter.fcs_N"
 
 

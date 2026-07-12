@@ -17,11 +17,11 @@ SESSION_FILENAME = "session.jsonl"
 DATA_DIR = "data"
 PROJECT_ARCHIVE_SUFFIX = ".csp"
 
-# V5 MFDB artifact layer
-MFDB_DIR = "mfdb"
-MFDB_MANIFEST_JSON = "mfdb/manifest.json"
-MFDB_PROVENANCE_JSONL = "mfdb/provenance.jsonl"
-MFDB_OBJECTS_DIR = "mfdb/objects"
+# V5 MMFDB artifact layer
+MMFDB_DIR = "mmfdb"
+MMFDB_MANIFEST_JSON = "mmfdb/manifest.json"
+MMFDB_PROVENANCE_JSONL = "mmfdb/provenance.jsonl"
+MMFDB_OBJECTS_DIR = "mmfdb/objects"
 EXPORT_JSON = "export.json"
 
 
@@ -383,42 +383,42 @@ class ProjectArchive:
         """Close the underlying ZIP file."""
         self._zip.close()
 
-    def write_mfdb_layer(
+    def write_mmfdb_layer(
         self,
         manifest: dict[str, Any],
         provenance_lines: list[str],
         object_blobs: dict[str, bytes] | None = None,
         overwrite: bool = False,
     ) -> None:
-        """Write the V5 MFDB artifact layer to the archive.
+        """Write the V5 MMFDB artifact layer to the archive.
 
         Parameters
         ----------
         manifest : dict
-            Artifact registry (``mfdb/manifest.json`` content).
+            Artifact registry (``mmfdb/manifest.json`` content).
         provenance_lines : list of str
-            JSONL lines for ``mfdb/provenance.jsonl``.
+            JSONL lines for ``mmfdb/provenance.jsonl``.
         object_blobs : dict, optional
             Mapping of ``{object_uuid: blob_bytes}`` to write under
-            ``mfdb/objects/``.
+            ``mmfdb/objects/``.
         overwrite : bool, default=False
             If True, overwrite existing entries.
         """
         import json as _json
 
         self.write_text(
-            MFDB_MANIFEST_JSON,
+            MMFDB_MANIFEST_JSON,
             _json.dumps(manifest, sort_keys=True, ensure_ascii=True, indent=2),
             overwrite=overwrite,
         )
         self.write_text(
-            MFDB_PROVENANCE_JSONL,
+            MMFDB_PROVENANCE_JSONL,
             "\n".join(provenance_lines) + "\n" if provenance_lines else "",
             overwrite=overwrite,
         )
         if object_blobs:
             for obj_uuid, blob in object_blobs.items():
-                entry_name = f"{MFDB_OBJECTS_DIR}/{obj_uuid}.blob"
+                entry_name = f"{MMFDB_OBJECTS_DIR}/{obj_uuid}.blob"
                 self.write_bytes(entry_name, blob, overwrite=overwrite)
 
     def __enter__(self) -> ProjectArchive:

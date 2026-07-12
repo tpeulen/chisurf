@@ -1,29 +1,29 @@
 ---
 type: PRD
 prd: "59"
-title: "PRD-59: Pluggable MFDB Authentication (local / LDAP)"
-description: A pluggable authentication layer for MFDB with local-password and LDAP/Active-Directory providers behind one interface, resolving to the existing Principal/session, with JIT provisioning and directory-group mapping.
+title: "PRD-59: Pluggable MMFDB Authentication (local / LDAP)"
+description: A pluggable authentication layer for MMFDB with local-password and LDAP/Active-Directory providers behind one interface, resolving to the existing Principal/session, with JIT provisioning and directory-group mapping.
 status: in-progress
 phase: "landed: local + LDAP providers, CLI, hardening; no further providers planned"
-resource: modules/mfdb/src/mfdb/security/
-tags: [prd, mfdb, auth, security, ldap]
+resource: modules/mmfdb/src/mmfdb/security/
+tags: [prd, mmfdb, auth, security, ldap]
 timestamp: '2026-07-08T00:00:00Z'
 ---
 
 # Summary
-MFDB is the prototype for an institute-hosted public fluorescence databank; its users are
+MMFDB is the prototype for an institute-hosted public fluorescence databank; its users are
 researchers at institutions, so authentication should ride on the institutional **LDAP / Active
 Directory** while a **local** password provider stays available for the bootstrap admin and
-offline/standalone use. Previously MFDB auth was 100% local and hardcoded. This PRD introduces a
+offline/standalone use. Previously MMFDB auth was 100% local and hardcoded. This PRD introduces a
 small **pluggable `AuthProvider`** layer in `security/`: providers turn a credential into a neutral
-`AuthIdentity`, and a `login()` orchestrator maps it onto the existing MFDB `Principal`/session —
+`AuthIdentity`, and a `login()` orchestrator maps it onto the existing MMFDB `Principal`/session —
 matching or JIT-provisioning the `flr_sample_users` row and mapping directory groups onto
-`mfdb_group_member`. eLabFTW/ELN integration was explicitly dropped from scope (PRD-48 untouched).
+`mmfdb_group_member`. eLabFTW/ELN integration was explicitly dropped from scope (PRD-48 untouched).
 
 # Goal / Motivation
 Institutional deployments need directory-backed sign-in (one identity per person, central
-credential/group management) without giving up MFDB's self-contained local login. The design must
-keep MFDB standalone (optional deps stay lazy), be testable offline (no live directory in CI), and
+credential/group management) without giving up MMFDB's self-contained local login. The design must
+keep MMFDB standalone (optional deps stay lazy), be testable offline (no live directory in CI), and
 preserve the existing token→`Principal`→ACL machinery unchanged.
 
 # Design
@@ -32,7 +32,7 @@ orchestrator that owns identity resolution and session minting.
 
 ## Provider interface (`security/auth_providers.py`)
 - `AuthIdentity(provider, external_id, email, display_name, is_admin, groups, managed_groups, raw)`
-  — the neutral result of a successful authentication. `managed_groups` is the universe of MFDB
+  — the neutral result of a successful authentication. `managed_groups` is the universe of MMFDB
   groups the provider authoritatively controls (`groups ⊆ managed_groups`), enabling directory
   reconciliation.
 - `AuthProvider` `Protocol`: `authenticate(*, user_id, password) -> AuthIdentity | None` (returns
@@ -48,7 +48,7 @@ orchestrator that owns identity resolution and session minting.
   — logging anyone in as them without the directory. The legacy in-process `password_services.
   login_handler` carries the same guard.
 - `LdapAuthProvider` — **search+bind**: service-account bind → search `user_filter` under `base_dn`
-  → re-bind as the located user DN to verify the password → map `memberOf` to MFDB groups
+  → re-bind as the located user DN to verify the password → map `memberOf` to MMFDB groups
   (`group_map`) and admin status (`admin_groups`). The `ldap3` dependency is optional and lazy
   (`_require_ldap3`; `[ldap]` extra); an injectable `connection_factory` allows fully-offline
   `ldap3` `MOCK_SYNC` testing. Hardened: LDAP-filter values escaped against injection, required-key
@@ -65,7 +65,7 @@ success (prior behaviour preserved). `resolve_or_provision_user` matches by
 external providers (configurable); `local` returns its row unchanged. Email-matching only adopts a
 **placeholder** local account (local-homed, no password) — a real local-credential or other-provider
 account is never silently converted, so a directory email collision cannot hijack (e.g.) a local
-admin. The RPC handler `mfdb.security.auth.login` (`admin/backend/auth_services.login_handler`)
+admin. The RPC handler `mmfdb.security.auth.login` (`admin/backend/auth_services.login_handler`)
 delegates here.
 
 **Directory-authoritative reconciliation** (`sync_identity`): on each external-provider login the
@@ -85,13 +85,13 @@ The fixed-salt bootstrap-admin password hash was replaced with a per-user random
 
 ## Config & secrets (`config.py`, `security/credentials.py`)
 `configured_auth_config()` resolves provider selection + the LDAP block from a host-injected resolver
-(`set_auth_config_resolver`, mirroring the PRD-24 default-user bridge) → `MFDB_AUTH_PROVIDER` /
-`MFDB_LDAP_*` env → `None` (local). The LDAP service-account bind password is sourced from the OS
+(`set_auth_config_resolver`, mirroring the PRD-24 default-user bridge) → `MMFDB_AUTH_PROVIDER` /
+`MMFDB_LDAP_*` env → `None` (local). The LDAP service-account bind password is sourced from the OS
 credential store (`store/load_ldap_bind_password`) or env — **never** settings JSON.
 
 ## Headless CLI (`admin/cli`)
-`mfdb-admin auth login --user … [--password …] [--provider local|ldap]`, `auth whoami --token …`,
-`auth status`. A standalone `mfdb-admin` console-script entry keeps the path headless-first (repo
+`mmfdb-admin auth login --user … [--password …] [--provider local|ldap]`, `auth whoami --token …`,
+`auth status`. A standalone `mmfdb-admin` console-script entry keeps the path headless-first (repo
 rule), independent of ChiSurf's `csc` plugin mounting.
 
 # Decisions
@@ -109,8 +109,8 @@ Offline tests only (no live directory/network): `tests/test_auth_providers.py` (
 `login()` session round-trip + throttle, JIT/link/email-fallback/match-only, group sync, stub-LDAP
 end-to-end), `tests/test_ldap_auth.py` (`ldap3` `MOCK_SYNC`: attr+group mapping, wrong/empty
 password, unknown user, service-bind-failure, filter-injection escaping, missing-dep error, `login()`
-JIT end-to-end, env/resolver config), `tests/test_auth_cli.py` (headless `mfdb-admin auth`). The
-existing `test_mfdb_auth.py` / `test_mfdb_user_management.py` stay green (Local behaviour preserved).
+JIT end-to-end, env/resolver config), `tests/test_auth_cli.py` (headless `mmfdb-admin auth`). The
+existing `test_mmfdb_auth.py` / `test_mmfdb_user_management.py` stay green (Local behaviour preserved).
 
 # Non-goals
 - **No further auth providers** beyond local + LDAP (no OIDC/SAML/external-IdP). eLabFTW/ELN
@@ -118,6 +118,6 @@ existing `test_mfdb_auth.py` / `test_mfdb_user_management.py` stay green (Local 
 - Argon2/bcrypt hash upgrade; per-provider password-reset flows.
 
 # Relationships
-Extends the [MFDB architecture](/architecture/mfdb.md) security layer; aligns with network-security
+Extends the [MMFDB architecture](/architecture/mmfdb.md) security layer; aligns with network-security
 (PRD-37) and the standalone/default-user bridge (PRD-24); adjacent to the auth-threading gap
 (INC-04) in [assessment](/specs/assessment.md).

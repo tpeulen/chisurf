@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import (
+from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
     COMPONENT_KINDS,
     FluorophoreDatabase,
     resolve_component_kind,
@@ -225,7 +225,7 @@ def test_categories_match_gui_registry(db):
 
     registry_path = (
         Path(__file__).resolve().parents[3]
-        / "core" / "mfdb_admin" / "gui" / "optical_components" / "components.json"
+        / "core" / "mmfdb_admin" / "gui" / "optical_components" / "components.json"
     )
     if not registry_path.exists():
         pytest.skip("optical-components GUI registry not present")

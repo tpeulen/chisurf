@@ -50,29 +50,29 @@ chisurf_settings_file = chisurf_settings_path / 'settings_chisurf.yaml'
 # if set to true uses settings in source folder.
 cs_settings = get_chisurf_settings(chisurf_settings_file, use_source_folder=False)
 
-# MFDB is vendored as a standalone package and must not import ChiSurf settings.
+# MMFDB is vendored as a standalone package and must not import ChiSurf settings.
 # Publish path-like runtime values through environment variables, and register a
-# live resolver so runtime changes to the default user id propagate to MFDB
-# without MFDB importing ChiSurf (the resolver reads cs_settings on each call).
-os.environ.setdefault("MFDB_SETTINGS_DIR", str(chisurf_settings_path))
+# live resolver so runtime changes to the default user id propagate to MMFDB
+# without MMFDB importing ChiSurf (the resolver reads cs_settings on each call).
+os.environ.setdefault("MMFDB_SETTINGS_DIR", str(chisurf_settings_path))
 
 
-def _mfdb_default_user_id() -> str | None:
-    mfdb_cfg = cs_settings.get("mfdb", {}) if isinstance(cs_settings, dict) else {}
-    return mfdb_cfg.get("default_user_id") if isinstance(mfdb_cfg, dict) else None
+def _mmfdb_default_user_id() -> str | None:
+    mmfdb_cfg = cs_settings.get("mmfdb", {}) if isinstance(cs_settings, dict) else {}
+    return mmfdb_cfg.get("default_user_id") if isinstance(mmfdb_cfg, dict) else None
 
 
 try:
-    from mfdb.config import set_default_user_id_resolver as _set_mfdb_user_resolver
+    from mmfdb.config import set_default_user_id_resolver as _set_mmfdb_user_resolver
 
-    _set_mfdb_user_resolver(_mfdb_default_user_id)
-except Exception:  # pragma: no cover - MFDB always importable in supported envs
+    _set_mmfdb_user_resolver(_mmfdb_default_user_id)
+except Exception:  # pragma: no cover - MMFDB always importable in supported envs
     pass
-_mfdb_settings = cs_settings.get("mfdb", {}) if isinstance(cs_settings, dict) else {}
-_object_store = _mfdb_settings.get("object_store", {}) if isinstance(_mfdb_settings, dict) else {}
+_mmfdb_settings = cs_settings.get("mmfdb", {}) if isinstance(cs_settings, dict) else {}
+_object_store = _mmfdb_settings.get("object_store", {}) if isinstance(_mmfdb_settings, dict) else {}
 _object_store_root = _object_store.get("root") if isinstance(_object_store, dict) else None
 if _object_store_root:
-    os.environ["MFDB_OBJECT_STORE_ROOT"] = str(_object_store_root)
+    os.environ["MMFDB_OBJECT_STORE_ROOT"] = str(_object_store_root)
 
 anisotropy = dict()
 anisotropy_data = safe_open_file(

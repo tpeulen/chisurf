@@ -18,7 +18,7 @@ from ..api.contract import (
     service_success,
     shift_request_from_payload,
 )
-from ..api.mfdb import MicrotimeShiftMFDBPipeline
+from ..api.mmfdb import MicrotimeShiftMMFDBPipeline
 from ..api.models import ShiftResult
 from ..api.shift import load_file_metadata, load_histogram, shift_file
 
@@ -59,7 +59,7 @@ def list_methods() -> dict[str, str]:
     return {
         METHOD_APPLY: "Apply micro-time shifts to TTTR files.",
         METHOD_LOAD_METADATA: "Return routing channels and n_mt for a file.",
-        METHOD_IDENTIFY: "Look up a file in the MFDB object store.",
+        METHOD_IDENTIFY: "Look up a file in the MMFDB object store.",
         METHOD_HISTOGRAM: "Return shifted histogram data for preview.",
         METHOD_DESCRIBE_CONTRACT: "Return the workflow contract.",
     }
@@ -71,7 +71,7 @@ def apply_handler(
     channel_shifts: dict[str, int] | None = None,
     filetype: str | None = None,
     output_dir: str | None = None,
-    mfdb: dict[str, Any] | None = None,
+    mmfdb: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Apply micro-time shifts to TTTR files.
 
@@ -87,8 +87,8 @@ def apply_handler(
         Explicit TTTR file type.
     output_dir : str, optional
         Output directory.
-    mfdb : dict, optional
-        MFDB archival context.
+    mmfdb : dict, optional
+        MMFDB archival context.
 
     Returns
     -------
@@ -107,12 +107,12 @@ def apply_handler(
             "channel_shifts": channel_shifts or {},
             "filetype": filetype,
             "output_dir": output_dir,
-            "mfdb": mfdb or {},
+            "mmfdb": mmfdb or {},
         })
         result = ShiftResult()
         norm_ch = {int(k): int(v) for k, v in (channel_shifts or {}).items()}
 
-        use_temp_dir = bool(request.mfdb.enabled)
+        use_temp_dir = bool(request.mmfdb.enabled)
         temp_dir = None
         target_output_dir = request.output_dir
         if use_temp_dir:
@@ -135,9 +135,9 @@ def apply_handler(
                     "channel_shifts": {int(k): int(v) for k, v in applied.items()},
                 }
 
-            if request.mfdb.enabled:
-                registration = MicrotimeShiftMFDBPipeline().register_run(request, result)
-                result.mfdb_artifacts = {
+            if request.mmfdb.enabled:
+                registration = MicrotimeShiftMMFDBPipeline().register_run(request, result)
+                result.mmfdb_artifacts = {
                     "input_artifacts": registration.input_artifacts,
                     "output_artifacts": registration.output_artifacts,
                 }
@@ -179,7 +179,7 @@ def load_metadata_handler(
 def identify_handler(
     path: str,
 ) -> dict[str, Any]:
-    """Look up a file in the MFDB object store.
+    """Look up a file in the MMFDB object store.
 
     Parameters
     ----------
@@ -193,9 +193,9 @@ def identify_handler(
 
     """
     try:
-        from ..api.mfdb import MicrotimeShiftMFDBPipeline, _file_md5
+        from ..api.mmfdb import MicrotimeShiftMMFDBPipeline, _file_md5
 
-        pipeline = MicrotimeShiftMFDBPipeline()
+        pipeline = MicrotimeShiftMMFDBPipeline()
         md5 = _file_md5(path)
         artifact_id = pipeline._find_raw_artifact_by_md5(md5)
         return service_success({

@@ -1,21 +1,20 @@
 """Legacy repository — deprecated shim.
 
-All functionality has moved to :mod:`chisurf.core.mfdb.repository`.
+All functionality has moved to :mod:`mmfdb.repository`.
 This module re-exports the canonical ``FluorescenceDatabase`` and
 ``FluorophoreDatabase`` classes and a few private helpers for
 backward compatibility.  New code should import from
-``chisurf.core.mfdb.repository`` directly.
+``mmfdb.repository`` directly.
 """
 
 from __future__ import annotations
 
 import warnings
-from typing import Any
 
-from chisurf.core.mfdb.repository import (
-    MFDatabase,
-    _json_hash,
+from mmfdb.repository import MFDatabase
+from mmfdb.schema._sqlutil import (
     _json_dumps,
+    _json_hash,
     _json_loads,
     _row_to_dict,
     _utc_now,
@@ -23,7 +22,7 @@ from chisurf.core.mfdb.repository import (
 
 warnings.warn(
     "chisurf.core.fio.mmcif.db.repository is deprecated. "
-    "Use chisurf.core.mfdb.repository instead.",
+    "Use mmfdb.repository instead.",
     DeprecationWarning,
     stacklevel=2,
 )
@@ -32,7 +31,7 @@ warnings.warn(
 class FluorescenceDatabase(MFDatabase):
     def __init__(self, *args, **kwargs):
         warnings.warn(
-            "FluorescenceDatabase is deprecated. Use chisurf.core.mfdb.repository.MFDatabase instead.",
+            "FluorescenceDatabase is deprecated. Use mmfdb.repository.MFDatabase instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -42,7 +41,7 @@ class FluorescenceDatabase(MFDatabase):
 class FluorophoreDatabase(MFDatabase):
     def __init__(self, *args, **kwargs):
         warnings.warn(
-            "FluorophoreDatabase is deprecated. Use chisurf.core.mfdb.repository.MFDatabase instead.",
+            "FluorophoreDatabase is deprecated. Use mmfdb.repository.MFDatabase instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -58,4 +57,3 @@ __all__ = [
     "_row_to_dict",
     "_utc_now",
 ]
-

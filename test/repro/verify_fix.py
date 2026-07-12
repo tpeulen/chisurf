@@ -5,14 +5,14 @@ import sqlite3
 # Add project root
 sys.path.append(r"e:\dev\chisurf")
 
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.repository import MFDatabase
 
 db_path = r"e:\dev\chisurf\chisurf\plugins\_dev\fluorophore_db\spectra.db"
 
 print(f"Initializing MFDatabase with {db_path}...")
 db = MFDatabase(db_path)
 
-print(f"New Database Version: {db._get_schema_version()}")
+print(f"New Database Version: {db.get_schema_version()}")
 
 conn = sqlite3.connect(db_path)
 conn.row_factory = sqlite3.Row

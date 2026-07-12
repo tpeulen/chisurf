@@ -41,8 +41,8 @@ def test_tool_constructs_without_crash() -> None:
         # reuses the shared dockable-tool base (PRD-23)
         assert isinstance(tool, ChisurfDockTool)
         assert tool.acceptDrops() is True
-        # no MFDB connection was opened on construction
-        assert tool._mfdb_db is None
+        # no MMFDB connection was opened on construction
+        assert tool._mmfdb_db is None
     finally:
         tool.close()
 

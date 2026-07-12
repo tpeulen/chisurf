@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import (
+from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
     DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )
@@ -189,10 +189,10 @@ def import_detectors(db, assets_dir, ini_data):
             print(f"Error importing detector {name}: {e}")
 
 def main():
-    """Import QuickFit spectra assets into the configured MFDB database."""
+    """Import QuickFit spectra assets into the configured MMFDB database."""
     parser = argparse.ArgumentParser(description="Import qfe_spectraviewer spectra into ChiSurf database")
     parser.add_argument("assets_dir", help="Path to qfe_spectraviewer assets directory")
-    parser.add_argument("--db", help="MFDB SQLite database path", default=str(DEFAULT_DATABASE_PATH))
+    parser.add_argument("--db", help="MMFDB SQLite database path", default=str(DEFAULT_DATABASE_PATH))
     args = parser.parse_args()
 
     assets_path = Path(args.assets_dir)

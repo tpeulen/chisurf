@@ -54,7 +54,7 @@ class BurstSelectionClient:
         legacy_output_folder_name: str | None = None,
         selected_setup: str | None = None,
         legacy_parameters: dict[str, Any] | None = None,
-        mfdb: dict[str, Any] | None = None,
+        mmfdb: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Run burst selection analysis over files.
 
@@ -80,8 +80,8 @@ class BurstSelectionClient:
             Detector setup name stored in legacy metadata.
         legacy_parameters : dict, optional
             Additional legacy metadata fields.
-        mfdb : dict, optional
-            MFDB archival context.
+        mmfdb : dict, optional
+            MMFDB archival context.
 
         Returns
         -------
@@ -116,8 +116,8 @@ class BurstSelectionClient:
             params["selected_setup"] = selected_setup
         if legacy_parameters is not None:
             params["legacy_parameters"] = legacy_parameters
-        if mfdb is not None:
-            params["mfdb"] = mfdb
+        if mmfdb is not None:
+            params["mmfdb"] = mmfdb
         svc_result = self._client.call(
             "burst_selection.jobs.analyze_files", params
         )

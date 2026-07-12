@@ -106,7 +106,7 @@ def archive_project(
     input_processed_data_ids: list[str] | None = None,
     notes: str | None = None,
 ):
-    """Archive the current project state to the canonical MFDB project store."""
+    """Archive the current project state to the canonical MMFDB project store."""
     from chisurf.macros.core_fit import get_project_payload
     from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient
 
@@ -141,7 +141,7 @@ def _project_counts_from_payload(payload: dict[str, Any] | None) -> tuple[int, i
 
 @action("project.restore", schema={"project_id": str})
 def restore_project(project_id: str):
-    """Restore a project version, or the latest version of a project id, from MFDB."""
+    """Restore a project version, or the latest version of a project id, from MMFDB."""
     from chisurf.core.project import Project as CSProject
     from chisurf.macros.core_fit import load_project_payload
     from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient

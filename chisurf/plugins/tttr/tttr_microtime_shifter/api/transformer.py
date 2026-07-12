@@ -2,7 +2,7 @@
 
 Adapts the plugin's pure ``shift_file`` to the general transformer contract:
 declared typed ports, an ``operation_type`` whose parameter schema lives in the
-`.dic` (``mfdb_operation_parameter_def``: ``global_shift`` + the repeatable
+`.dic` (``mmfdb_operation_parameter_def``: ``global_shift`` + the repeatable
 role-indexed ``shift``), and a pure ``transform``. No Qt, no DB.
 """
 
@@ -13,7 +13,7 @@ from typing import Any
 from chisurf.core.transform import PortSpec, TransformInputs, TransformResult, register_transformer
 from chisurf.plugins.tttr.tttr_microtime_shifter.api.shift import shift_file
 
-#: Vocabulary value shared with mfdb_operation_parameter_def / register_operation.
+#: Vocabulary value shared with mmfdb_operation_parameter_def / register_operation.
 OPERATION_TYPE = "microtime_shift"
 
 

@@ -115,7 +115,7 @@ Grouped by area; captured June 2026.
   the loaded-data location (see file-save gotcha).
 - BH / SPC-130 micro-time resolution is wrong and not corrected on load (data
   correctness).
-- mfdb-admin: cancelling the password prompt still opens the UI.
+- mmfdb-admin: cancelling the password prompt still opens the UI.
 
 **Environment**
 - Built-in Jupyter/notebook integration is disabled/broken; the notebook menu is

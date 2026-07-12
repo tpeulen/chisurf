@@ -1,14 +1,14 @@
 ---
 type: Reference
 title: "PRD Implementation Order"
-description: The single authoritative, dependency-ordered sequence for implementing the MFDB/ChiSurf overhaul PRDs across five phases plus cross-cutting tracks.
+description: The single authoritative, dependency-ordered sequence for implementing the MMFDB/ChiSurf overhaul PRDs across five phases plus cross-cutting tracks.
 tags: [prd, roadmap, ordering]
 timestamp: '2026-07-06T00:00:00Z'
 ---
 
 # PRD Implementation Order
 
-Single authoritative sequence for the MFDB/ChiSurf overhaul: the original feature
+Single authoritative sequence for the MMFDB/ChiSurf overhaul: the original feature
 PRDs (03–10), the operation/transformer spine + LIMS layers (11–16), and the
 architecture track (17–27). Ordered by dependency → de-risking → value. Phases
 ship independently; cross-cutting PRDs interleave.
@@ -45,7 +45,7 @@ the PRD-04 `.dic`→DDL generator, and the `validate_mapping` gate.
 
 - **[PRD-05](prd-05.md)** calibration provenance — largely delivered by PRD-04
   sidequest C/D (g-factor reference-decay archival + time-versioned
-  `mfdb_setup_calibration`); mostly-subsumed. Finish only the non-g-factor
+  `mmfdb_setup_calibration`); mostly-subsumed. Finish only the non-g-factor
   calibrations (gamma, crosstalk, R0) under the same pattern.
 - **[PRD-07](prd-07.md)** plugin integration ("add one `register_result()` call")
   — **superseded by [PRD-16](prd-16.md)**, the strict, uniform transformer contract;
@@ -62,12 +62,12 @@ These make everything after cheaper and safer; do them right after 03/04.
 
 1. **[PRD-18](prd-18.md)** Dependency injection + **hermetic test harness** — land
    the autouse temp-DB fixture *immediately* (tests currently touch the real DB),
-   then the DI / `MFDBClient.call` contract.
+   then the DI / `MMFDBClient.call` contract.
 2. **[PRD-17](prd-17.md)** Canonical identity/session context — kills the
    owner-mismatch class.
 3. **[PRD-19](prd-19.md)** Single canonical dictionary-driven schema (folds I + K)
    — flrCIF authoritative (extended via the `.dic`); delete legacy `fdb_*` and the
-   `mfdb_*` duplicates of flrCIF concepts; vocab from the `.dic`; versionless
+   `mmfdb_*` duplicates of flrCIF concepts; vocab from the `.dic`; versionless
    declarative `reconcile_schema`. Removes the vocab-drift class and the brittle
    39-version chain *before* PRD-11 adds many new definitions. (Subsumes PRD-25 H3;
    fulfils PRD-02c by making flrCIF the single authoritative model.)
@@ -90,11 +90,11 @@ These make everything after cheaper and safer; do them right after 03/04.
      PRD-16's contract + conformance test, then refactor burst/shifter onto it.
    - Exit criteria: both transformers register via the uniform path; parameters are
      `.dic`-declared and validated; no bespoke transformer tables (retire
-     `mfdb_microtime_shift`); the conformance test gates new transformers.
-   - **[PRD-28](prd-28.md)** companion-tool ↔ MFDB burst-selection round trip — a
+     `mmfdb_microtime_shift`); the conformance test gates new transformers.
+   - **[PRD-28](prd-28.md)** companion-tool ↔ MMFDB burst-selection round trip — a
      manual-test enabler that rides this spine (send a burst selection to the
-     companion tool; open one from MFDB via the dataset picker). Do once Burst
-     Selection registers conformantly. The CLI handoff (`BS analyze --mfdb` →
+     companion tool; open one from MMFDB via the dataset picker). Do once Burst
+     Selection registers conformantly. The CLI handoff (`BS analyze --mmfdb` →
      resolvable group artifact) is implemented and verified.
    - **[PRD-31](prd-31.md)** companion-tool headless CLI (parameter-based burst
      filtering + headless imaging) — completes the CLI leg of PRD-28; specified for
@@ -114,12 +114,12 @@ These make everything after cheaper and safer; do them right after 03/04.
    operation `status` folds cleanly into the generic transition log now that
    operations are uniform.
 10. **[PRD-14](prd-14.md)** protocols (LIMS P3) — needs PRD-11 parameter schemas
-    (`mfdb_operation_parameter_def`) and references `operation_type`; extends the same
+    (`mmfdb_operation_parameter_def`) and references `operation_type`; extends the same
     operation/parameter code as PRD-11, so it may run immediately after the spine if
     you prefer cohesion over the P2-before-P3 value order.
 11. **[PRD-13](prd-13.md)** study/project (LIMS P2) — independent; organizational
     grouping with own+public scoping and a dataset-browser study facet; backfills
-    `mfdb_study` from existing `project_id` values. May run parallel with 9/10.
+    `mmfdb_study` from existing `project_id` values. May run parallel with 9/10.
 
 Parallelization after the spine: **track A** = PRD-12 then PRD-14
 (provenance/process spine); **track B** = PRD-13 then PRD-15
@@ -133,7 +133,7 @@ Parallelization after the spine: **track A** = PRD-12 then PRD-14
     remainder** (gamma/crosstalk/R0 — g-factor done via PRD-04 C/D),
     **[PRD-06](prd-06.md)** fluorophore DB (folds in the `_dev/fluorophore_db` plugin
     as the curated real-spectra source — spectral-database/dye-vendor/photochem
-    importers + curation GUI — registered into MFDB), **[PRD-08](prd-08.md)** optical
+    importers + curation GUI — registered into MMFDB), **[PRD-08](prd-08.md)** optical
     configuration (now also folds in the Light Path Simulator as the optics
     authoring/visualization tool + a computed crosstalk/R₀ source feeding PRD-05) —
     independent; slot as needed.
@@ -144,7 +144,7 @@ Parallelization after the spine: **track A** = PRD-12 then PRD-14
 
 ## Phase 5 — Capstone
 
-14. **[PRD-24](prd-24.md)** extract MFDB into `modules/mfdb` — last, once
+14. **[PRD-24](prd-24.md)** extract MMFDB into `modules/mmfdb` — last, once
     PRD-17/18/19/26 have stabilized the interfaces.
 
 ## Cross-cutting (interleave throughout)
@@ -157,14 +157,14 @@ Parallelization after the spine: **track A** = PRD-12 then PRD-14
   convenient.
 - **[PRD-32](prd-32.md)** acquisition standard output folder — setup-defined default
   save path for new measurements; independent and shippable now.
-- **[PRD-33](prd-33.md)** acquisition-to-MFDB registration — sample-linked or
+- **[PRD-33](prd-33.md)** acquisition-to-MMFDB registration — sample-linked or
   new-sample measurement registration; depends on PRD-02/03 and stays separate from
   the file-output path.
-- **[PRD-34](prd-34.md)** BID saves to MFDB + downstream plugins ingest MFDB BIDs
-  directly — when connected, a burst selection (BID) registers to MFDB (reference,
+- **[PRD-34](prd-34.md)** BID saves to MMFDB + downstream plugins ingest MMFDB BIDs
+  directly — when connected, a burst selection (BID) registers to MMFDB (reference,
   not a loose file) and the burst tools open BIDs from the dataset picker.
   Generalizes PRD-28 to all BID producers/consumers; rides PRD-03/11/16 + PRD-10.
-- **[PRD-43](prd-43.md)** Align GUI Operation History with MFDB Provenance — Phase 1
+- **[PRD-43](prd-43.md)** Align GUI Operation History with MMFDB Provenance — Phase 1
   (store history as a `project_history` artifact) is shippable now on PRD-03
   infrastructure. Phases 3–4 ride PRD-21/27.
 
@@ -208,7 +208,7 @@ Cross-cutting:  PRD-43 Phase 1 ◄── PRD-03 (shippable now)
   at data level).
 - **[PRD-23](prd-23.md)** thin widgets → no logic/side-effects in GUI; smoke-tested
   tools.
-- **[PRD-24](prd-24.md)** package extraction → clean `modules/mfdb` boundary
+- **[PRD-24](prd-24.md)** package extraction → clean `modules/mmfdb` boundary
   (capstone).
 - **[PRD-25](prd-25.md)** hardening (+N) → fail-loud, one RPC envelope, typed IDs,
   units, boundary validation, caching, N+1, dead code.

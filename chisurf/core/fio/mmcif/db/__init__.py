@@ -13,7 +13,7 @@ except ModuleNotFoundError:
         """
         return None
 from .repository import FluorescenceDatabase, FluorophoreDatabase
-from chisurf.core.mfdb.schema import schema
+from mmfdb.schema import schema
 try:
     from .importer import import_structure_file
 except ModuleNotFoundError:
@@ -41,4 +41,4 @@ try:
     from .zmq_client import FlrDatabaseClient
 except ModuleNotFoundError:
     FlrDatabaseClient = None
-from chisurf.core.mfdb.models import *
+from mmfdb.models import *

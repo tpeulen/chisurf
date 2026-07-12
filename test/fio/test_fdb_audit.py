@@ -1,13 +1,13 @@
 import pathlib
 from unittest.mock import patch
 
-from mfdb.repository import MFDatabase
-from mfdb.admin.backend.measurement_services import (
+from mmfdb.repository import MFDatabase
+from mmfdb.admin.backend.measurement_services import (
     archive_project_handler,
     database_backup_handler,
     restore_project_handler,
 )
-from chisurf.plugins.core.mfdb_admin.gui.client import MFDBClient
+from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
 
 def test_automatic_repository_audit_logging(tmp_path: pathlib.Path) -> None:
@@ -74,13 +74,13 @@ def test_automatic_repository_audit_logging(tmp_path: pathlib.Path) -> None:
         assert logs[0]["action"] == "create"
         assert logs[0]["target_id"] == prod_id
 
-        # 5. Add setup definition -> audit create setup_definition
-        db.add_setup_definition(
+        # 5. Add setup -> audit canonical setup entity
+        db.save_setup(
             setup_id="setup_mfd",
             name="MFD ALEX Setup",
         )
 
-        logs = db.get_audit_logs(target_type="setup_definition")
+        logs = db.get_audit_logs(target_type="setup")
         assert len(logs) == 1
         assert logs[0]["action"] == "create"
         assert logs[0]["target_id"] == "setup_mfd"
@@ -113,7 +113,7 @@ def test_service_level_audit_logging(tmp_path: pathlib.Path) -> None:
 
     # Patch database resolver to use our temporary test database
     patcher = patch(
-        "mfdb.admin.backend.measurement_services.resolve_database_path",
+        "mmfdb.admin.backend.measurement_services.resolve_database_path",
         return_value=db_path,
     )
     patcher.start()
@@ -171,7 +171,7 @@ def test_client_list_audit_logs(tmp_path: pathlib.Path) -> None:
 
     # Patch database resolver to use our temporary test database
     patcher = patch(
-        "mfdb.admin.backend.measurement_services.resolve_database_path",
+        "mmfdb.admin.backend.measurement_services.resolve_database_path",
         return_value=db_path,
     )
     patcher.start()
@@ -190,7 +190,7 @@ def test_client_list_audit_logs(tmp_path: pathlib.Path) -> None:
                 checksum="0" * 64,
             )
 
-        client = MFDBClient(inprocess=True)
+        client = MMFDBClient(inprocess=True)
         logs = client.list_audit_logs()
         assert len(logs) == 1
         assert logs[0]["target_type"] == "raw_data"

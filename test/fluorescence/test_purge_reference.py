@@ -1,6 +1,6 @@
 """Replace mode for the reference set (``purge_reference_probes`` / ``replace``).
 
-When the MFDB's optical-component set is messy, it is rebuilt cleanly: purge the
+When the MMFDB's optical-component set is messy, it is rebuilt cleanly: purge the
 existing probes (+ spectra / optical properties / images) and re-import from a
 freshly scraped staging DB. The purge refuses to run if any sample / FRET /
 reagent row still references a probe, so user data is never orphaned.
@@ -14,11 +14,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.repository import MFDatabase
 
 
 @pytest.fixture
-def mfdb():
+def mmfdb():
     db = MFDatabase(":memory:")
     yield db
     db.close()
@@ -78,16 +78,16 @@ def _mini_staging():
     return path
 
 
-def test_replace_purges_then_imports(mfdb):
-    _seed_probe(mfdb, "oldjunk")
-    assert mfdb.conn.execute("SELECT COUNT(*) FROM probes").fetchone()[0] == 1
+def test_replace_purges_then_imports(mmfdb):
+    _seed_probe(mmfdb, "oldjunk")
+    assert mmfdb.conn.execute("SELECT COUNT(*) FROM probes").fetchone()[0] == 1
 
     staging = _mini_staging()
-    counts = mfdb.import_reference_set(source_path=staging, replace=True)
+    counts = mmfdb.import_reference_set(source_path=staging, replace=True)
 
     assert counts["purged"]["probes"] == 1
     assert counts["purged"]["spectra"] == 1
-    rows = mfdb.conn.execute(
+    rows = mmfdb.conn.execute(
         "SELECT chromophore_name, category, source FROM probes WHERE deleted_at IS NULL"
     ).fetchall()
     assert len(rows) == 1
@@ -97,17 +97,17 @@ def test_replace_purges_then_imports(mfdb):
     Path(staging).unlink(missing_ok=True)
 
 
-def test_purge_refuses_when_probe_is_referenced(mfdb):
-    pid = _seed_probe(mfdb, "used")
+def test_purge_refuses_when_probe_is_referenced(mmfdb):
+    pid = _seed_probe(mmfdb, "used")
     # a sample references the probe → purge must refuse rather than orphan it.
     # FK enforcement is disabled only to seed the reference without a full sample.
-    mfdb.conn.execute("PRAGMA foreign_keys=OFF")
-    mfdb.conn.execute(
+    mmfdb.conn.execute("PRAGMA foreign_keys=OFF")
+    mmfdb.conn.execute(
         "INSERT INTO flr_sample_probe (sample_id, probe_id) VALUES ('S1', ?)", (pid,)
     )
-    mfdb.conn.commit()
-    mfdb.conn.execute("PRAGMA foreign_keys=ON")
+    mmfdb.conn.commit()
+    mmfdb.conn.execute("PRAGMA foreign_keys=ON")
     with pytest.raises(RuntimeError, match="reference probes"):
-        mfdb.purge_reference_probes()
+        mmfdb.purge_reference_probes()
     # nothing deleted
-    assert mfdb.conn.execute("SELECT COUNT(*) FROM probes").fetchone()[0] == 1
+    assert mmfdb.conn.execute("SELECT COUNT(*) FROM probes").fetchone()[0] == 1

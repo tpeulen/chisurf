@@ -46,7 +46,7 @@ def prepare_workflow_handler(
                 "bur_files": [str(path) for path in files],
                 "raw_files": list(context.get("raw_files", [])),
                 "channel_settings": context.get("channel_settings", {}),
-                "mfdb_artifacts": context.get("mfdb_artifacts", {}),
+                "mmfdb_artifacts": context.get("mmfdb_artifacts", {}),
                 "settings": settings or {},
             },
         }

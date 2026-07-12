@@ -8,8 +8,7 @@ cannot see.
 
 The numerical core is a self-contained **Numba** re-implementation of the
 algorithm of Pirchi *et al.* (J. Phys. Chem. B 2016, 120, 13065) and the
-reference `H2MM_C` library by P. D. Harris — no external H2MM dependency is
-required.
+reference `H2MM_C` library by P. D. Harris.
 
 ## What it does
 

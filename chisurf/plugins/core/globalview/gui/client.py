@@ -32,18 +32,18 @@ class GlobalViewClient:
         Returns
         -------
         ZmqClient
-            Connected ZMQ client using the MFDB RPC port settings.
+            Connected ZMQ client using the MMFDB RPC port settings.
         """
         from chisurf.server.transport.zmq import ZmqClient
         try:
             import chisurf.core.settings as _cs_settings
-            mfdb_cfg = _cs_settings.cs_settings.get("mfdb", {}) or {}
+            mmfdb_cfg = _cs_settings.cs_settings.get("mmfdb", {}) or {}
         except Exception:
-            mfdb_cfg = {}
+            mmfdb_cfg = {}
         client = ZmqClient(
-            cmd_port=int(mfdb_cfg.get("cmd_port", 8765)),
-            pub_port=int(mfdb_cfg.get("pub_port", 8766)),
-            host=str(mfdb_cfg.get("rpc_host", "127.0.0.1")),
+            cmd_port=int(mmfdb_cfg.get("cmd_port", 8765)),
+            pub_port=int(mmfdb_cfg.get("pub_port", 8766)),
+            host=str(mmfdb_cfg.get("rpc_host", "127.0.0.1")),
         )
         client.connect()
         return client

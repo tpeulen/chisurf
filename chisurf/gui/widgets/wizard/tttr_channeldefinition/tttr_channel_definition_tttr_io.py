@@ -300,7 +300,7 @@ def on_calc_g_factor(page, row=None):
                             "l2": l2_val,
                             "micro_time_resolution": float(page.effective_micro_time_resolution) if hasattr(page, "effective_micro_time_resolution") else None,
                         }
-                        logger.info("Archiving G-factor reference decay and calibration to MFDB: %s", jordi_file)
+                        logger.info("Archiving G-factor reference decay and calibration to MMFDB: %s", jordi_file)
                         archive_res = client.archive_g_factor(
                             file_path=jordi_file,
                             parameters=calib_params,
@@ -310,7 +310,7 @@ def on_calc_g_factor(page, row=None):
                             g_factor_calibration_id = archive_res.get("calibration_id")
                             g_factor_decay_uuid = archive_res.get("reference_decay_id")
                     except Exception as e:
-                        logger.warning("Failed to archive G-factor to MFDB: %s", e)
+                        logger.warning("Failed to archive G-factor to MMFDB: %s", e)
 
                     g_factor_text = f"{g_factor_val:.3f}"
                     page._set_g_factor_programmatically(
@@ -452,7 +452,7 @@ def on_calc_g_factor(page, row=None):
                         if hasattr(g_factor_calculator, "bg_region_bounds") and g_factor_calculator.bg_region_bounds is not None:
                             calib_params["bg_region_bounds"] = list(g_factor_calculator.bg_region_bounds)
 
-                        logger.info("Archiving G-factor reference decay and calibration to MFDB: %s", file_path)
+                        logger.info("Archiving G-factor reference decay and calibration to MMFDB: %s", file_path)
                         archive_res = client.archive_g_factor(
                             file_path=file_path,
                             parameters=calib_params,
@@ -462,7 +462,7 @@ def on_calc_g_factor(page, row=None):
                             g_factor_calibration_id = archive_res.get("calibration_id")
                             g_factor_decay_uuid = archive_res.get("reference_decay_id")
                     except Exception as e:
-                        logger.warning("Failed to archive G-factor to MFDB: %s", e)
+                        logger.warning("Failed to archive G-factor to MMFDB: %s", e)
 
                     l1_text = f"{l1_param:.5f}"
                     l2_text = f"{l2_param:.5f}"

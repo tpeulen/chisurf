@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.repository import MFDatabase
 from chisurf.core.transform import check_transformer_conformance, get_transformer
 from chisurf.plugins.tttr.tttr_microtime_shifter.api.transformer import (
     MicrotimeShifterTransformer,

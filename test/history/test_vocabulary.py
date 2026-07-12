@@ -5,8 +5,8 @@ Pins three things:
   2. ``ActionRegistry.resolve_name`` resolves any separator spelling — including
      names with underscores *inside* a verb, which the old two-shot ``replace``
      corrupted.
-  3. The MFDB dictionary is the single source of truth for the action vocabulary:
-     every registered ``@action`` name appears in the ``_mfdb_event_log.action_type``
+  3. The MMFDB dictionary is the single source of truth for the action vocabulary:
+     every registered ``@action`` name appears in the ``_mmfdb_event_log.action_type``
      enumeration, and the coarse action->operation_type mapping is read from the
      dictionary's ``_item_enumeration.detail``, not from Python.
 
@@ -18,7 +18,7 @@ from __future__ import annotations
 import chisurf as cs
 import chisurf.core.actions  # noqa: F401  (triggers @action registration)
 from chisurf.core.actions import canonical, get_action_catalog
-from chisurf.core.mfdb.schema.pdbx_metadata import MmcifDictionary
+from mmfdb.schema.pdbx_metadata import MmcifDictionary
 
 
 def test_canonical_collapses_separators():
@@ -50,7 +50,7 @@ def test_resolve_name_handles_underscored_and_multiword():
 
 def _action_enum():
     dic = MmcifDictionary.load_bundled()
-    return dic, dic.get_enumerations("_mfdb_event_log.action_type")
+    return dic, dic.get_enumerations("_mmfdb_event_log.action_type")
 
 
 def test_dictionary_is_single_source_of_action_vocabulary():
@@ -59,13 +59,13 @@ def test_dictionary_is_single_source_of_action_vocabulary():
     enum_norm = {canonical(v) for v in enum}
     registered = {c["name"] for c in get_action_catalog()}
     missing = {n for n in registered if canonical(n) not in enum_norm}
-    assert not missing, f"actions missing from _mfdb_event_log.action_type enum: {sorted(missing)}"
+    assert not missing, f"actions missing from _mmfdb_event_log.action_type enum: {sorted(missing)}"
 
 
 def test_coarse_operation_mapping_comes_from_dictionary():
     """The action->operation_type map is the enumeration detail, not Python."""
     dic, _enum = _action_enum()
-    item = dic.get_item("_mfdb_event_log.action_type")
+    item = dic.get_item("_mmfdb_event_log.action_type")
     assert item is not None
     assert item.enum_details.get("dataset.add") == "measurement_import"
     assert item.enum_details.get("fit.run.finish") == "local_fit"

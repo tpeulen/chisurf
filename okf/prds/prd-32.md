@@ -11,7 +11,7 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Gives acquisition a single, user-configurable standard output folder so new measurements have a predictable save location without the user picking a directory every time. The setting is made explicit in the Setup surface, persisted in `gui.acquisition`, used to prefill the acquisition dock, and resolved as the default runtime destination (creating the folder before a run writes files). Intentionally narrow: no direct MFDB registration, no device-format changes, no project-scoped output-tree policy.
+Gives acquisition a single, user-configurable standard output folder so new measurements have a predictable save location without the user picking a directory every time. The setting is made explicit in the Setup surface, persisted in `gui.acquisition`, used to prefill the acquisition dock, and resolved as the default runtime destination (creating the folder before a run writes files). Intentionally narrow: no direct MMFDB registration, no device-format changes, no project-scoped output-tree policy.
 
 # Status
 Planned per the authoritative status table, though the configuration/runtime path is implemented in the current branch: the acquisition settings panel exposes a standard output folder, the acquisition dock reads it by default, and new runs resolve their output location from that setting before starting.
@@ -41,7 +41,7 @@ runtime destination for acquisition output.
 
 # Non-goals
 
-- Direct MFDB registration.
+- Direct MMFDB registration.
 - Changing the device-specific file formats.
 - Introducing a new project-scoped output tree policy.
 
@@ -55,10 +55,10 @@ runtime destination for acquisition output.
 
 # Notes
 
-This PRD is intentionally narrow. The MFDB alternative is a separate, more
+This PRD is intentionally narrow. The MMFDB alternative is a separate, more
 complex PRD ([PRD-33](prd-33.md)) because it needs sample ownership and
 provenance decisions first.
 
 # Relationships
-- Deliberately kept separate from [PRD-33](prd-33.md) (acquisition→MFDB registration), which remains the more complex database path requiring sample ownership/provenance decisions first.
+- Deliberately kept separate from [PRD-33](prd-33.md) (acquisition→MMFDB registration), which remains the more complex database path requiring sample ownership/provenance decisions first.
 - Relates to acquisition/acq and the [plugin system](/architecture/plugin-system.md).

@@ -3,7 +3,7 @@
 chinet is the pure-Python graph and parameter runtime used by ChiSurf for
 reactive model evaluation. It provides `Port`, `Node`, `Session`, and
 `BaseObject` classes for building parameter dependency graphs, evaluating node
-callbacks, and persisting sessions through JSONL or MFDB-backed adapters.
+callbacks, and persisting sessions through JSONL or MMFDB-backed adapters.
 
 ## Runtime API
 
@@ -31,12 +31,12 @@ session.save("session.jsonl")
 restored = cn.Session.load("session.jsonl")
 ```
 
-ChiSurf can also configure transparent MFDB persistence:
+ChiSurf can also configure transparent MMFDB persistence:
 
 ```python
 session.connect_to_db(
-    "mfdb",
-    db_path="chisurf.mfdb.sqlite",
+    "mmfdb",
+    db_path="chisurf.mmfdb.sqlite",
     operation_id="fit-operation-id",
     experiment_id="experiment-id",
     store_node_artifacts=False,
@@ -44,8 +44,8 @@ session.connect_to_db(
 session.write_to_db()
 ```
 
-MFDB storage writes one embedded `chinet_session` artifact by default, optional
-per-node `chinet_node` artifacts, queryable `mfdb_parameter` rows, and
+MMFDB storage writes one embedded `chinet_session` artifact by default, optional
+per-node `chinet_node` artifacts, queryable `mmfdb_parameter` rows, and
 `parameter_depends_on` edges for port links.
 
 ## License

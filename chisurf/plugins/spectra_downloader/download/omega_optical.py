@@ -2,7 +2,7 @@ import csv
 import requests
 from typing import Any, List, Tuple
 
-from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import FluorophoreDatabase
+from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import FluorophoreDatabase
 
 
 class OmegaOpticalDownloader:
@@ -11,7 +11,7 @@ class OmegaOpticalDownloader:
 
     def download_and_store(self, product_id: str, name: str, filter_type: str) -> None:
         """
-        Download CSV for a specific product and store in MFDB.
+        Download CSV for a specific product and store in MMFDB.
         
         Parameters
         ----------
@@ -56,7 +56,7 @@ class OmegaOpticalDownloader:
         if not wavelengths:
             raise RuntimeError(f"No valid data parsed from CSV for {product_id}")
 
-        # Store in MFDB through the canonical ingestion contract. ``filter_type``
+        # Store in MMFDB through the canonical ingestion contract. ``filter_type``
         # already matches a COMPONENT_KINDS key (longpass/shortpass/bandpass/
         # dichroic), so the category and spectrum group are derived consistently.
         with self.db:

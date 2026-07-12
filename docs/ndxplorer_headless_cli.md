@@ -6,7 +6,7 @@ layers:
 
 - **`ndxplorer filter|image`** — the pure primitives (in `modules/ndxplorer`,
   chisurf-free): operate on a burst folder / image file on disk.
-- **`csc ndxplorer filter|image`** — the chisurf MFDB wrappers: resolve an MFDB
+- **`csc ndxplorer filter|image`** — the chisurf MMFDB wrappers: resolve an MMFDB
   artifact to a local path, run the primitive, and optionally register the result
   back under a sample.
 
@@ -34,25 +34,25 @@ The filtered folder writes `<tttr>.bst` files that reference photons **by index 
 the original TTTR file** — the selection stays next to the same raw data, it is
 never copied.
 
-### MFDB round trip
+### MMFDB round trip
 
 ```bash
 # 1) raw + sample -> Burst Selection (PRD-28)
 csc burst-selection analyze m000.spc m001.spc \
     --filetype SPC-130 --detectors-json det.json \
-    --mfdb --db mfdb.sqlite --sample-name "DNA burst sample"
+    --mmfdb --db mmfdb.sqlite --sample-name "DNA burst sample"
 #   => prints the output-folder artifact id.
 
 # 2) Burst Selection -> ndXplorer filter (PRD-31)
-csc ndxplorer filter --from-mfdb <output_folder_artifact_id> --db mfdb.sqlite \
+csc ndxplorer filter --from-mmfdb <output_folder_artifact_id> --db mmfdb.sqlite \
     --select "proximity_ratio:0.30-0.70" --select "n_photons:50-" \
-    --to-mfdb --sample-id <sample_id>
+    --to-mmfdb --sample-id <sample_id>
 #   => writes a FILTERED burst folder beside the same TTTR and registers it as a
 #      new burst selection (operation_type="burst_filter", parent=source).
 ```
 
-`--from-mfdb`/`--db` resolve against the configured database by default; pass the
-**same** DB to both CLIs for a real round trip. With `--to-mfdb` omitted, the
+`--from-mmfdb`/`--db` resolve against the configured database by default; pass the
+**same** DB to both CLIs for a real round trip. With `--to-mmfdb` omitted, the
 command only writes the filtered folder and prints its path.
 
 ## 2. ndXplorer headless imaging
@@ -80,13 +80,13 @@ ndxplorer image --file clsm.h5 --map intensity \
 The ROI is a TIFF class mask (nonzero = selected); it is binarized and resized to
 the pixel grid if needed.
 
-### MFDB round trip
+### MMFDB round trip
 
 ```bash
-csc ndxplorer image --from-mfdb <tttr_or_image_artifact_id> --db mfdb.sqlite \
+csc ndxplorer image --from-mmfdb <tttr_or_image_artifact_id> --db mmfdb.sqlite \
     --map lifetime --roi roi_mask.tiff \
     --out lifetime_map.tiff \
-    --to-mfdb --sample-id <sample_id>
+    --to-mmfdb --sample-id <sample_id>
 #   => registers the exported map (and any masked sub-selection) under the sample,
 #      parented to the source artifact.
 ```
@@ -100,6 +100,6 @@ for expressions over any loaded column.
 
 ## Round-trip parity
 
-Outputs re-open identically in the GUI and resolve through `mfdb.datasets.open`,
+Outputs re-open identically in the GUI and resolve through `mmfdb.datasets.open`,
 so `raw+sample → BS → ndXplorer filter` and `raw(+sample) → ndXplorer image` work
 the same in scripts and by hand.

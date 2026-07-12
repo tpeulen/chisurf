@@ -15,7 +15,7 @@ need durable context on how the repository is organized.
 
 # Subdirectories
 
-* [architecture](architecture/index.md) - The hybrid local/server design: API facade, action layer, runtime globals, plugin system, and the MFDB metadata store.
+* [architecture](architecture/index.md) - The hybrid local/server design: API facade, action layer, runtime globals, plugin system, and the MMFDB metadata store.
 * [subsystems](subsystems/index.md) - The major code areas: core domain, GUI/AutoForm, headless server, and the plugin ecosystem.
 * [plugins](plugins/index.md) - Plugin group pages, documentation standards, worklists, and high-priority plugin profiles.
 * [workflows](workflows/index.md) - Developer workflows: environment/build with pixi, and running the test suites.

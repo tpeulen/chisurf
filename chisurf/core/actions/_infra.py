@@ -17,8 +17,8 @@ def canonical(name: str) -> str:
     therefore the only lossless, collision-free normalization: dotted and
     underscored spellings of the same action map to one normal form and compare
     equal.  This is pure syntax — it defines no vocabulary.  The controlled
-    vocabulary of action names lives in the MFDB dictionary
-    (``_mfdb_event_log.action_type``), not here.
+    vocabulary of action names lives in the MMFDB dictionary
+    (``_mmfdb_event_log.action_type``), not here.
     """
     return str(name).replace(".", "_")
 

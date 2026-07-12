@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download Thorlabs optical component spectra (filters, detectors) into MFDB.
+"""Download Thorlabs optical component spectra (filters, detectors) into MMFDB.
 
 Sources data from publicly available transmission measurements digitised by the
 ``thor2`` R package (https://github.com/tjconstant/thor2). The original data
@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 import openpyxl
 
-from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import (
+from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
     DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )
@@ -41,7 +41,7 @@ THOR2_DATA_URL = (
 )
 
 # Map a data-file prefix → a canonical component kind (resolved via
-# COMPONENT_KINDS in mfdb_adapter to its category + default spectrum type).
+# COMPONENT_KINDS in mmfdb_adapter to its category + default spectrum type).
 COMPONENT_KIND_BY_PREFIX: dict[str, str] = {
     "FEL": "longpass",
     "FES": "shortpass",

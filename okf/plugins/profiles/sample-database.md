@@ -3,7 +3,7 @@ type: Plugin Profile
 title: Sample Database legacy marker
 description: OKF profile for the retired root-level sample database plugin.
 resource: chisurf/plugins/sample_database/
-tags: [plugins, mfdb, legacy, rpc]
+tags: [plugins, mmfdb, legacy, rpc]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
@@ -19,34 +19,34 @@ timestamp: '2026-07-05T00:00:00Z'
 | Local README | Missing |
 
 This is a deleted prerelease surface. All active database administration belongs
-in `core/mfdb_admin` and canonical `mfdb.admin`, `mfdb.*`, and `mfdb.v1.*` services.
+in `core/mmfdb_admin` and canonical `mmfdb.admin`, `mmfdb.*`, and `mmfdb.v1.*` services.
 
 # Architecture Evidence
 
 | Layer | Evidence |
 | --- | --- |
 | GUI | Deleted with the root-level plugin. |
-| Backend services | Deleted with the root-level plugin; active handlers live under `mfdb.admin.backend`. |
+| Backend services | Deleted with the root-level plugin; active handlers live under `mmfdb.admin.backend`. |
 | API placeholder | Deleted. |
-| Tests | Legacy compatibility test deleted; active coverage moved to canonical MFDB Admin/FDB tests. |
+| Tests | Legacy compatibility test deleted; active coverage moved to canonical MMFDB Admin/FDB tests. |
 
 The plugin directory and manifest are deleted. This profile remains only as a
 retirement/tombstone note.
 
 # Data And Provenance Impact
 
-This plugin used to overlap MFDB Admin. Because ChiSurf is prerelease, legacy support
-is not required; work should move directly to `core/mfdb_admin` and old aliases should
+This plugin used to overlap MMFDB Admin. Because ChiSurf is prerelease, legacy support
+is not required; work should move directly to `core/mmfdb_admin` and old aliases should
 be removed instead of documented as supported compatibility.
 
 # Verification Surface
 
 No plugin-local tests are needed for this retired surface. Verification should prove
-the canonical `core/mfdb_admin` surface works and that no live code calls
+the canonical `core/mmfdb_admin` surface works and that no live code calls
 `sample_database.*`.
 
 # Documentation Work
 
 - Keep `sample_database` out of active plugin manifests and loader paths.
 - Do not add new `sample_database.*` aliases.
-- Move any remaining useful implementation into `core/mfdb_admin`.
+- Move any remaining useful implementation into `core/mmfdb_admin`.

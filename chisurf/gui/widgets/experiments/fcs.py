@@ -79,7 +79,7 @@ class FCSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         return path
 
     def _db(self):
-        """Return the MFDB connection from the current reader when available."""
+        """Return the MMFDB connection from the current reader when available."""
         try:
             return self.db
         except Exception:

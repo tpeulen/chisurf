@@ -649,7 +649,7 @@ Used by: `chisurf.experiments.tcspc.TCSPCReader` and its GUI controller via
 
 ---
 
-### 1.17 `mfdb` (Measurement File Database settings)
+### 1.17 `mmfdb` (Measurement File Database settings)
 
 Used by: Measurement File Database APIs and repository code.
 

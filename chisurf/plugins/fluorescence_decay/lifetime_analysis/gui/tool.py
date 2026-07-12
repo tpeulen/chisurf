@@ -69,6 +69,8 @@ LIFETIME_PANELS = [
         "name": "3. Lazy Lifetime Analysis",
         "icon": "⏱️",
         "description": "Analyze TCSPC decays with the LLTF workflow.",
+        "experimental": True,
+        "experimental_message": "Lazy Lifetime Analysis is experimental and not yet validated.",
         "factory": _lazy_lifetime,
         "role": "lazy_lifetime",
     },

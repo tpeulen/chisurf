@@ -37,11 +37,11 @@ def _fcs_config():
 
 
 # ---------------------------------------------------------------------------
-# MFDB-backed persistence (mirrors the detector setup pattern)
+# MMFDB-backed persistence (mirrors the detector setup pattern)
 # ---------------------------------------------------------------------------
 
-def _use_mfdb(file_path: str | None = None) -> bool:
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import use_mfdb as _use
+def _use_mmfdb(file_path: str | None = None) -> bool:
+    from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import use_mmfdb as _use
     return _use(file_path, FCS_CHANNEL_SETUPS_FILE)
 
 
@@ -80,7 +80,7 @@ def _save_setup_row(
 
 
 def _fcs_row_to_data(row: dict) -> dict:
-    """Extract FCS channel setup payload from an MFDB row, including
+    """Extract FCS channel setup payload from an MMFDB row, including
     child-table data (``fcs_pairs``) and typed correlator columns."""
     from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import json_loads
 
@@ -95,8 +95,8 @@ def _fcs_row_to_data(row: dict) -> dict:
         data.pop("setup_data", None)
 
     # Fetch full setup with child tables
-    from chisurf.core.mfdb.store.database_resolver import resolve_database_path
-    from chisurf.core.mfdb.repository import MFDatabase
+    from mmfdb.store.database_resolver import resolve_database_path
+    from mmfdb.repository import MFDatabase
     sid = row.get("setup_id")
     if sid:
         with MFDatabase(resolve_database_path()) as _db:
@@ -144,11 +144,11 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
                             db_path: str | None = None,
                             skip_migration: bool = False,
                             user_id: str | None = None) -> Dict[str, Any]:
-    """Load FCS channel-pair setups from MFDB (preferred) or JSON fallback.
+    """Load FCS channel-pair setups from MMFDB (preferred) or JSON fallback.
 
-    When using the canonical path and MFDB is available, data is loaded
+    When using the canonical path and MMFDB is available, data is loaded
     from the database with user-scoped filtering and automatic migration
-    of legacy JSON data.  A custom ``file_path`` bypasses MFDB and reads
+    of legacy JSON data.  A custom ``file_path`` bypasses MMFDB and reads
     the JSON file directly.
 
     Parameters
@@ -156,7 +156,7 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
     file_path : str or Path or None
         Explicit path.  When None, the canonical settings file is used.
     db_path : str or None
-        Override the resolved MFDB path (injection seam for tests so they
+        Override the resolved MMFDB path (injection seam for tests so they
         never touch the real database).
     skip_migration : bool
         If True, skip legacy JSON migration into the database.
@@ -166,18 +166,18 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
     """
     path = pathlib.Path(file_path) if file_path is not None else FCS_CHANNEL_SETUPS_FILE
 
-    if _use_mfdb(str(path) if file_path else None):
+    if _use_mmfdb(str(path) if file_path else None):
         from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
-            get_db, load_mfdb_setups, resolve_active_user_id,
+            get_db, load_mmfdb_setups, resolve_active_user_id,
         )
         db = get_db(db_path)
         if db is not None:
             if user_id is None:
                 user_id = resolve_active_user_id()
             if not skip_migration:
-                imported = _migrate_json_to_mfdb(db, path, user_id=user_id)
+                imported = _migrate_json_to_mmfdb(db, path, user_id=user_id)
                 # Only remove the legacy file when we actually imported data
-                # (so users who already have MFDB setups don't lose a stale
+                # (so users who already have MMFDB setups don't lose a stale
                 # JSON file that may contain additional data).
                 if imported:
                     try:
@@ -185,7 +185,7 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
                             path.unlink()
                     except Exception:
                         pass
-            result = load_mfdb_setups(db, _fcs_config(), user_id, row_to_data=_fcs_row_to_data)
+            result = load_mmfdb_setups(db, _fcs_config(), user_id, row_to_data=_fcs_row_to_data)
             return {
                 "version": 1,
                 "setups": result.get("setups", {}),
@@ -212,24 +212,24 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
 
 def save_fcs_channel_setups(setups_data: Dict[str, Any], file_path: str | pathlib.Path | None = None,
                             is_public: bool | int | None = None) -> bool:
-    """Save FCS channel-pair setups to MFDB (preferred) or JSON file.
+    """Save FCS channel-pair setups to MMFDB (preferred) or JSON file.
 
     Returns True on success.
     """
     path = pathlib.Path(file_path) if file_path is not None else FCS_CHANNEL_SETUPS_FILE
 
-    if _use_mfdb(str(path) if file_path else None):
+    if _use_mmfdb(str(path) if file_path else None):
         from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
             save_setups as _save_setups, load_setups as _load_setups,
         )
         # Convert the setups_data to the format expected by save_setups
         # (which uses "setups" dict and "last_used" key)
-        mfdb_payload = {
+        mmfdb_payload = {
             "setups": setups_data.get("setups", {}),
             "last_used": setups_data.get("last_used_setup"),
         }
         return _save_setups(
-            mfdb_payload, _fcs_config(),
+            mmfdb_payload, _fcs_config(),
             file_path=None if file_path is None else str(path),
             replace=False,
             is_public=is_public,
@@ -249,19 +249,19 @@ def save_fcs_channel_setups(setups_data: Dict[str, Any], file_path: str | pathli
         return False
 
 
-def _migrate_json_to_mfdb(db, path: pathlib.Path, user_id: str | None = None) -> bool:
-    """Per-user idempotent migration from fcs_channel_setups.json to MFDB.
+def _migrate_json_to_mmfdb(db, path: pathlib.Path, user_id: str | None = None) -> bool:
+    """Per-user idempotent migration from fcs_channel_setups.json to MMFDB.
 
     Returns ``True`` when at least one setup was imported.
     """
     from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
-        migrate_json_to_mfdb as _migrate,
+        migrate_json_to_mmfdb as _migrate,
     )
     return _migrate(db, _fcs_config(), path, user_id=user_id, save_row_fn=_save_setup_row)
 
 
 # ---------------------------------------------------------------------------
-# Legacy channel builder (no MFDB changes needed)
+# Legacy channel builder (no MMFDB changes needed)
 # ---------------------------------------------------------------------------
 
 def build_channels_from_setup(windows: Dict[str, tuple[int, int]],

@@ -34,22 +34,22 @@ def test_h2mm_panel_is_flagged_experimental() -> None:
 
 
 def test_workflow_context_payload_is_json_ready(tmp_path: Path) -> None:
-    """Workflow context serializes paths and MFDB artifact handoff data."""
+    """Workflow context serializes paths and MMFDB artifact handoff data."""
     from chisurf.plugins.burst.burst_analysis.gui.tool import BurstWorkflowContext
 
     context = BurstWorkflowContext(
         raw_files=[tmp_path / "a.spc"],
         burst_folder=tmp_path / "burstwise",
         bur_files=[tmp_path / "burstwise" / "bi4_bur" / "a.bur"],
-        mfdb_artifacts={"sidecar_artifacts": {"output_folder": "artifact-1"}},
-        raw_mfdb_artifacts={"imports": {"a.spc": {"object_result": {"ok": True}}}},
+        mmfdb_artifacts={"sidecar_artifacts": {"output_folder": "artifact-1"}},
+        raw_mmfdb_artifacts={"imports": {"a.spc": {"object_result": {"ok": True}}}},
     )
     payload = context.to_payload()
     assert payload["raw_files"] == [str(tmp_path / "a.spc")]
     assert payload["burst_folder"] == str(tmp_path / "burstwise")
     assert payload["bur_files"] == [str(tmp_path / "burstwise" / "bi4_bur" / "a.bur")]
-    assert payload["mfdb_artifacts"]["sidecar_artifacts"]["output_folder"] == "artifact-1"
-    assert payload["raw_mfdb_artifacts"]["imports"]["a.spc"]["object_result"]["ok"] is True
+    assert payload["mmfdb_artifacts"]["sidecar_artifacts"]["output_folder"] == "artifact-1"
+    assert payload["raw_mmfdb_artifacts"]["imports"]["a.spc"]["object_result"]["ok"] is True
 
 
 def test_bva_factory_hides_internal_channel_tab(monkeypatch) -> None:
@@ -153,8 +153,8 @@ def test_bva_embedded_mode_does_not_restore_top_level_geometry(monkeypatch) -> N
     assert tool.dock_area.applied == ({"tabs": []}, False)
 
 
-def test_data_selection_imports_local_files_to_mfdb(tmp_path: Path) -> None:
-    """Adding local TTTR data imports it through MFDB RPC."""
+def test_data_selection_imports_local_files_to_mmfdb(tmp_path: Path) -> None:
+    """Adding local TTTR data imports it through MMFDB RPC."""
     from qtpy import QtWidgets
 
     from chisurf.plugins.burst.burst_analysis.gui.tool import BurstDataSelectionWidget
@@ -167,27 +167,27 @@ def test_data_selection_imports_local_files_to_mfdb(tmp_path: Path) -> None:
     class Client:
         def call(self, method, params=None):
             calls.append((method, params or {}))
-            if method == "mfdb.objects.put":
+            if method == "mmfdb.objects.put":
                 return {"ok": True, "object": {"object_uuid": "obj-1"}}
             if method == "raw_data.register":
                 return {"ok": True, "raw_data": {"raw_data_id": "raw-1"}}
             return {}
 
     widget = BurstDataSelectionWidget()
-    widget._mfdb_client = Client()
+    widget._mmfdb_client = Client()
     widget.add_paths([spc])
 
     assert widget.paths() == [spc.resolve()]
-    assert [call[0] for call in calls] == ["mfdb.objects.put", "raw_data.register"]
-    payload = widget.mfdb_payload()
+    assert [call[0] for call in calls] == ["mmfdb.objects.put", "raw_data.register"]
+    payload = widget.mmfdb_payload()
     assert payload["imports"][str(spc.resolve())]["object_result"]["object"]["object_uuid"] == "obj-1"
     assert payload["imports"][str(spc.resolve())]["raw_data_result"]["raw_data"]["raw_data_id"] == "raw-1"
     widget.close()
     app.processEvents()
 
 
-def test_data_selection_resolves_mfdb_dataset_path() -> None:
-    """MFDB data selection resolves artifact IDs through mfdb.datasets.open."""
+def test_data_selection_resolves_mmfdb_dataset_path() -> None:
+    """MMFDB data selection resolves artifact IDs through mmfdb.datasets.open."""
     from qtpy import QtWidgets
 
     from chisurf.plugins.burst.burst_analysis.gui.tool import BurstDataSelectionWidget
@@ -198,11 +198,11 @@ def test_data_selection_resolves_mfdb_dataset_path() -> None:
     class Client:
         def call(self, method, params=None):
             calls.append((method, params or {}))
-            return {"local_path": "/tmp/from-mfdb.spc"}
+            return {"local_path": "/tmp/from-mmfdb.spc"}
 
     widget = BurstDataSelectionWidget()
-    widget._mfdb_client = Client()
-    assert widget._open_mfdb_dataset("artifact-1") == "/tmp/from-mfdb.spc"
-    assert calls == [("mfdb.datasets.open", {"artifact_id": "artifact-1"})]
+    widget._mmfdb_client = Client()
+    assert widget._open_mmfdb_dataset("artifact-1") == "/tmp/from-mmfdb.spc"
+    assert calls == [("mmfdb.datasets.open", {"artifact_id": "artifact-1"})]
     widget.close()
     app.processEvents()

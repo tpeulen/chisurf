@@ -2,7 +2,7 @@
 type: Reference
 title: Visual node/workflow toolkit — architecture lessons
 description: Durable architecture lessons drawn from an established visual node/workflow analysis toolkit, mapped to ChiSurf's provenance, transformer, and schema PRDs.
-tags: [reference, architecture, mfdb]
+tags: [reference, architecture, mmfdb]
 timestamp: '2026-07-06T00:00:00Z'
 ---
 
@@ -17,7 +17,7 @@ That toolkit is deliberately in-memory, single-process, matrix-centric, and
 single-user, with no persistence layer, no multi-owner ACL, and no
 content-addressed store. ChiSurf takes its *concepts*, not its storage model:
 `chisurf`'s persistence, multi-owner access, content-addressing, and
-flrCIF-authoritative `mfdb` schema are all out of that toolkit's scope. What
+flrCIF-authoritative `mmfdb` schema are all out of that toolkit's scope. What
 follows are the abstractions worth adopting, each linked to the PRD it informs.
 
 ## Replayable lineage: provenance baked into the data model
@@ -31,7 +31,7 @@ data "just works," and the transformation objects are serializable.
 
 **Lesson for ChiSurf → [PRD-21](/prds/prd-21.md) (lineage) and
 [PRD-27](/prds/prd-27.md) (append-only provenance / what-if branches).** Today
-`mfdb` provenance lives only in the `mfdb_edge` / `mfdb_operation` side tables.
+`mmfdb` provenance lives only in the `mmfdb_edge` / `mmfdb_operation` side tables.
 The compute-value pattern suggests the *artifact itself* should also carry a
 serializable "how I was produced" spec (operation type + parameters + source
 artifact ids). Then an artifact is replayable, not merely traceable;
@@ -77,7 +77,7 @@ schema-conversion object maps a table from one schema to another
 
 **Lesson for ChiSurf → [PRD-26](/prds/prd-26.md) (model-driven data layer) and
 [PRD-25](/prds/prd-25.md) (typed IDs / units).** A typed schema object — the
-`.dic`-generated `mfdb` model — is the right shape; the toolkit validates the
+`.dic`-generated `mmfdb` model — is the right shape; the toolkit validates the
 "typed columns, not bare strings" direction, and its time/units-bearing
 variables echo first-class units. Its explicit schema-conversion object is a
 clean pattern for the flrCIF codec and schema reconcile: adapt records between
@@ -89,7 +89,7 @@ ad-hoc migration SQL.
 The toolkit's tables carry a *metas* channel: columns that ride along with the
 data (ids, labels, provenance) but are excluded from the analysis matrix — a
 clean separation of payload versus annotation. This mirrors and validates
-`mfdb`'s split of metadata/provenance columns from payload: keep artifact
+`mmfdb`'s split of metadata/provenance columns from payload: keep artifact
 metadata as a distinct, typed, queryable channel rather than a JSON blob.
 
 ## Data-only settings migration

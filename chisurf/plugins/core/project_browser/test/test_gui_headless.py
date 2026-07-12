@@ -18,8 +18,8 @@ def qapp():
 
 
 def _seed_project_browser_db(tmp_path, monkeypatch):
-    from mfdb.security.auth import create_session
-    from mfdb.repository import MFDatabase
+    from mmfdb.security.auth import create_session
+    from mmfdb.repository import MFDatabase
     from chisurf.plugins.core.project_browser.backend import services
 
     db_path = tmp_path / "project_browser_gui.db"
@@ -32,11 +32,11 @@ def _seed_project_browser_db(tmp_path, monkeypatch):
 
     monkeypatch.setattr(services, "resolve_database_path", lambda: db_path)
     monkeypatch.setattr(
-        "mfdb.store.database_resolver.resolve_database_path",
+        "mmfdb.store.database_resolver.resolve_database_path",
         lambda: db_path,
     )
     monkeypatch.setattr(
-        "mfdb.store.database_resolver.object_store_root",
+        "mmfdb.store.database_resolver.object_store_root",
         lambda: object_root,
     )
     return db_path, {"token": session["token"]}
@@ -185,7 +185,7 @@ def test_project_browser_gui_deletes_selected_version_with_confirmation(
     monkeypatch,
 ):
     from qtpy import QtWidgets
-    from mfdb.security.credentials import _RUNTIME_SESSION_TOKENS
+    from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
     from chisurf.plugins.core.project_browser.backend.services import (
         save_project_handler,
     )
@@ -297,7 +297,7 @@ def test_project_browser_gui_restores_selected_version_into_chisurf_context(
 ):
     import chisurf as cs
     import chisurf.macros.core_fit as core_fit
-    from mfdb.security.credentials import _RUNTIME_SESSION_TOKENS
+    from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
     from qtpy import QtCore, QtWidgets
     from chisurf.plugins.core.project_browser.backend.services import (
         save_project_handler,

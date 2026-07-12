@@ -60,12 +60,12 @@ sampling fix, OLGA evaluator graph) are captured as [PRD-58](/prds/prd-58.md); t
 evaluator subpackage has already landed. The [ChiMOL viewer](/plugins/profiles/chimol.md)
 roadmap is [PRD-57](/prds/prd-57.md).
 
-## Idea: structure-aware MFDB sample definer
+## Idea: structure-aware MMFDB sample definer
 
 `fps_json_editor` already implements most of what a flrCIF-grade sample definer
 needs — PDB loading, atom-level position picking, accessible-volume simulation,
 and distance restraints. Its sub-widgets (`PositionPanel`, `MolView`, `AVWorker`)
-are reuse candidates for a future `sample_definer` that produces MFDB
+are reuse candidates for a future `sample_definer` that produces MMFDB
 `SampleDefinition`/`ProbeDefinition`/`FretPairDefinition` records (a structure-aware
 replacement for the flat sample picker), auto-filling AV parameters and
 photophysics from the fluorophore database and computing R0 from spectral overlap.

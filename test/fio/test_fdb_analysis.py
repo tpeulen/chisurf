@@ -6,9 +6,9 @@ import pathlib
 import sqlite3
 from unittest.mock import patch
 
-from chisurf.core.mfdb.schema import schema
-from chisurf.core.mfdb.repository import MFDatabase
-from mfdb.admin.backend.measurement_services import (
+from mmfdb.schema import schema
+from mmfdb.repository import MFDatabase
+from mmfdb.admin.backend.measurement_services import (
     archive_project_handler,
     delete_analysis_run_handler,
     get_analysis_run_handler,
@@ -25,7 +25,7 @@ def test_analysis_provenance_and_linkages(tmp_path: pathlib.Path) -> None:
 
     # Patch database resolver to use our temporary test database
     patcher = patch(
-        "mfdb.admin.backend.measurement_services.resolve_database_path",
+        "mmfdb.admin.backend.measurement_services.resolve_database_path",
         return_value=db_path,
     )
     patcher.start()
@@ -190,7 +190,7 @@ def test_project_archive_and_restore(tmp_path: pathlib.Path) -> None:
     db_path = tmp_path / "test_project.db"
 
     patcher = patch(
-        "mfdb.admin.backend.measurement_services.resolve_database_path",
+        "mmfdb.admin.backend.measurement_services.resolve_database_path",
         return_value=db_path,
     )
     patcher.start()
@@ -310,7 +310,7 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
     db_path = tmp_path / "test_actions.db"
 
     patcher = patch(
-        "mfdb.admin.backend.measurement_services.resolve_database_path",
+        "mmfdb.admin.backend.measurement_services.resolve_database_path",
         return_value=db_path,
     )
     project_browser_patcher = patch(
@@ -318,7 +318,7 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
         return_value=db_path,
     )
     database_resolver_patcher = patch(
-        "mfdb.store.database_resolver.resolve_database_path",
+        "mmfdb.store.database_resolver.resolve_database_path",
         return_value=db_path,
     )
     patcher.start()
@@ -367,10 +367,10 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
             assert archive_res["project_id"] == "act_proj_123"
             with MFDatabase(db_path) as db:
                 project_operations = db.conn.execute(
-                    "SELECT COUNT(*) FROM mfdb_operation WHERE operation_type = 'project' AND deleted_at IS NULL"
+                    "SELECT COUNT(*) FROM mmfdb_operation WHERE operation_type = 'project' AND deleted_at IS NULL"
                 ).fetchone()[0]
                 legacy_table = db.conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfdb_analysis_run', 'fdb_analysis_run')"
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mmfdb_analysis_run', 'fdb_analysis_run')"
                 ).fetchone()
                 legacy_runs = 0
                 if legacy_table:
@@ -404,8 +404,8 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
 
 
 def test_archive_project_creates_artifacts(tmp_path: pathlib.Path) -> None:
-    """Verify archive_project_to_mfdb creates proper artifacts for datasets."""
-    from chisurf.core.mfdb.project.project_archiver import archive_project_to_mfdb
+    """Verify archive_project_to_mmfdb creates proper artifacts for datasets."""
+    from mmfdb.project.project_archiver import archive_project_to_mmfdb
 
     db_path = tmp_path / "test_archiver.db"
 
@@ -427,7 +427,7 @@ def test_archive_project_creates_artifacts(tmp_path: pathlib.Path) -> None:
     }
 
     with MFDatabase(db_path) as db:
-        result = archive_project_to_mfdb(
+        result = archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload,
             version_id="ver_test_001",
@@ -453,7 +453,7 @@ def test_archive_project_creates_artifacts(tmp_path: pathlib.Path) -> None:
 
         # Verify project_contains edge exists
         edges = db.conn.execute(
-            """SELECT * FROM mfdb_edge
+            """SELECT * FROM mmfdb_edge
                WHERE source_node_id = 'ver_test_001'
                  AND relationship_type = 'project_contains'
                  AND deleted_at IS NULL""",
@@ -462,8 +462,8 @@ def test_archive_project_creates_artifacts(tmp_path: pathlib.Path) -> None:
 
 
 def test_archive_project_creates_source_objects(tmp_path: pathlib.Path) -> None:
-    """Verify archive_project_to_mfdb stores source files in object store."""
-    from chisurf.core.mfdb.project.project_archiver import archive_project_to_mfdb
+    """Verify archive_project_to_mmfdb stores source files in object store."""
+    from mmfdb.project.project_archiver import archive_project_to_mmfdb
 
     db_path = tmp_path / "test_source_objects.db"
 
@@ -489,7 +489,7 @@ def test_archive_project_creates_source_objects(tmp_path: pathlib.Path) -> None:
     }
 
     with MFDatabase(db_path) as db:
-        result = archive_project_to_mfdb(
+        result = archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload,
             version_id="ver_src_001",
@@ -512,15 +512,15 @@ def test_archive_project_creates_source_objects(tmp_path: pathlib.Path) -> None:
 
         # Verify derived_from edge
         edges = db.conn.execute(
-            """SELECT * FROM mfdb_edge
+            """SELECT * FROM mmfdb_edge
                WHERE relationship_type = 'derived_from' AND deleted_at IS NULL""",
         ).fetchall()
         assert len(edges) >= 1
 
 
 def test_archive_project_version_lineage(tmp_path: pathlib.Path) -> None:
-    """Verify archive_project_to_mfdb creates supersedes edges for version lineage."""
-    from chisurf.core.mfdb.project.project_archiver import archive_project_to_mfdb
+    """Verify archive_project_to_mmfdb creates supersedes edges for version lineage."""
+    from mmfdb.project.project_archiver import archive_project_to_mmfdb
 
     db_path = tmp_path / "test_lineage.db"
 
@@ -532,7 +532,7 @@ def test_archive_project_version_lineage(tmp_path: pathlib.Path) -> None:
 
     with MFDatabase(db_path) as db:
         # Create first version
-        archive_project_to_mfdb(
+        archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload,
             version_id="ver_v1",
@@ -541,7 +541,7 @@ def test_archive_project_version_lineage(tmp_path: pathlib.Path) -> None:
         )
 
         # Create second version superseding first
-        archive_project_to_mfdb(
+        archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload,
             version_id="ver_v2",
@@ -552,7 +552,7 @@ def test_archive_project_version_lineage(tmp_path: pathlib.Path) -> None:
 
         # Verify supersedes edge
         edges = db.conn.execute(
-            """SELECT * FROM mfdb_edge
+            """SELECT * FROM mmfdb_edge
                WHERE relationship_type = 'supersedes' AND deleted_at IS NULL""",
         ).fetchall()
         assert len(edges) == 1
@@ -563,8 +563,8 @@ def test_archive_project_version_lineage(tmp_path: pathlib.Path) -> None:
 
 def test_restore_project_from_artifacts(tmp_path: pathlib.Path) -> None:
     """Verify restore_project_from_artifacts reconstructs from individual artifacts."""
-    from chisurf.core.mfdb.project.project_archiver import (
-        archive_project_to_mfdb,
+    from mmfdb.project.project_archiver import (
+        archive_project_to_mmfdb,
         restore_project_from_artifacts,
     )
 
@@ -588,7 +588,7 @@ def test_restore_project_from_artifacts(tmp_path: pathlib.Path) -> None:
     }
 
     with MFDatabase(db_path) as db:
-        archive_project_to_mfdb(
+        archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload,
             version_id="ver_restore",
@@ -605,7 +605,7 @@ def test_restore_project_from_artifacts(tmp_path: pathlib.Path) -> None:
 
 def test_archive_project_deduplicates_objects(tmp_path: pathlib.Path) -> None:
     """Verify same source file produces one object with refcount > 1."""
-    from chisurf.core.mfdb.project.project_archiver import archive_project_to_mfdb
+    from mmfdb.project.project_archiver import archive_project_to_mmfdb
 
     db_path = tmp_path / "test_dedup.db"
 
@@ -633,7 +633,7 @@ def test_archive_project_deduplicates_objects(tmp_path: pathlib.Path) -> None:
     }
 
     with MFDatabase(db_path) as db:
-        archive_project_to_mfdb(
+        archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload,
             version_id="ver_dedup",
@@ -643,7 +643,7 @@ def test_archive_project_deduplicates_objects(tmp_path: pathlib.Path) -> None:
 
         # Check that source file is stored once (deduplicated)
         objects = db.conn.execute(
-            "SELECT refcount FROM mfdb_object WHERE original_filename LIKE '%shared.txt'"
+            "SELECT refcount FROM mmfdb_object WHERE original_filename LIKE '%shared.txt'"
         ).fetchall()
         assert len(objects) == 1
         assert objects[0][0] >= 2  # refcount >= 2 (two put_object calls)
@@ -651,7 +651,7 @@ def test_archive_project_deduplicates_objects(tmp_path: pathlib.Path) -> None:
 
 def test_version_branching(tmp_path: pathlib.Path) -> None:
     """Verify branching creates correct supersedes edges forming a DAG."""
-    from chisurf.core.mfdb.project.project_archiver import archive_project_to_mfdb
+    from mmfdb.project.project_archiver import archive_project_to_mmfdb
 
     db_path = tmp_path / "test_branching.db"
 
@@ -663,7 +663,7 @@ def test_version_branching(tmp_path: pathlib.Path) -> None:
 
     with MFDatabase(db_path) as db:
         # Create root version
-        archive_project_to_mfdb(
+        archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload,
             version_id="ver_root",
@@ -672,7 +672,7 @@ def test_version_branching(tmp_path: pathlib.Path) -> None:
         )
 
         # Create branch A from root
-        archive_project_to_mfdb(
+        archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload,
             version_id="ver_branch_a",
@@ -683,7 +683,7 @@ def test_version_branching(tmp_path: pathlib.Path) -> None:
         )
 
         # Create branch B from root (fork)
-        archive_project_to_mfdb(
+        archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload,
             version_id="ver_branch_b",
@@ -695,7 +695,7 @@ def test_version_branching(tmp_path: pathlib.Path) -> None:
 
         # Verify two supersedes edges (DAG with fork)
         edges = db.conn.execute(
-            """SELECT source_node_id, target_node_id FROM mfdb_edge
+            """SELECT source_node_id, target_node_id FROM mmfdb_edge
                WHERE relationship_type = 'supersedes' AND deleted_at IS NULL
                ORDER BY source_node_id""",
         ).fetchall()

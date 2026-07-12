@@ -4,11 +4,13 @@ Settings module for lltf.
 This module provides functions for loading and managing settings.
 """
 
-import os
+from importlib import resources
+
 import yaml
-import pkg_resources
 
 PACKAGE_NAME = "chisurf.plugins.fluorescence_decay.lltf.core"
+SETTINGS_RESOURCE = "settings/lifetime_settings.yml"
+
 
 def get_default_settings():
     """
@@ -19,11 +21,8 @@ def get_default_settings():
     dict
         Default settings
     """
-    # Get the path to the default settings file bundled with the plugin
-    settings_file = pkg_resources.resource_filename(PACKAGE_NAME, 'settings/lifetime_settings.yml')
-
-    # Load the settings
-    with open(settings_file, 'r') as f:
+    settings_file = resources.files(PACKAGE_NAME).joinpath(SETTINGS_RESOURCE)
+    with settings_file.open("r", encoding="utf-8") as f:
         settings = yaml.safe_load(f)
 
     return settings
@@ -43,7 +42,7 @@ def load_settings(filename):
         Settings
     """
     # Load the settings
-    with open(filename, 'r') as f:
+    with open(filename, encoding="utf-8") as f:
         settings = yaml.safe_load(f)
 
     return settings
@@ -60,5 +59,5 @@ def save_settings(settings, filename):
         Path to the settings file
     """
     # Save the settings
-    with open(filename, 'w') as f:
+    with open(filename, "w", encoding="utf-8") as f:
         yaml.dump(settings, f, default_flow_style=False)

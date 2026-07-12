@@ -44,11 +44,11 @@ class _FakeDispatcher:
 def test_load_app_startup_services_uses_prefixed_config_order():
     """Prefixed config filenames define default startup order."""
     specs = load_app_startup_services()
-    assert [spec.id for spec in specs] == ["mfdb", "gui_imports", "setup_ipython", "startup_interface", "setup_logging", "init_setups", "restore_setup_defaults", "define_actions", "load_tools", "init_executors", "arrange_widgets", "setup_style", "deferred_gui_imports", "populate_plugins", "check_updates", "gui.start_jupyter", "gui.populate_notebooks", "warmup_imports"]
-    mfdb_spec = next(s for s in specs if s.id == "mfdb")
-    assert mfdb_spec.surface == "server"
-    assert mfdb_spec.phase == "pre_server_listen"
-    assert mfdb_spec.order == 10
+    assert [spec.id for spec in specs] == ["mmfdb", "gui_imports", "setup_ipython", "startup_interface", "setup_logging", "init_setups", "restore_setup_defaults", "define_actions", "load_tools", "init_executors", "arrange_widgets", "setup_style", "deferred_gui_imports", "populate_plugins", "check_updates", "gui.start_jupyter", "gui.populate_notebooks", "warmup_imports"]
+    mmfdb_spec = next(s for s in specs if s.id == "mmfdb")
+    assert mmfdb_spec.surface == "server"
+    assert mmfdb_spec.phase == "pre_server_listen"
+    assert mmfdb_spec.order == 10
 
 
 def test_load_app_startup_services_explicit_order_overrides_prefix(tmp_path):
@@ -83,19 +83,19 @@ def test_app_startup_manager_orders_dependencies_before_order():
     assert [spec.id for spec in manager.ordered_specs()] == ["a", "b"]
 
 
-def test_mfdb_auth_service_registers_auth_methods():
-    """The MFDB auth service exposes auth methods."""
-    from mfdb.admin.backend import auth_services
+def test_mmfdb_auth_service_registers_auth_methods():
+    """The MMFDB auth service exposes auth methods."""
+    from mmfdb.admin.backend import auth_services
 
     dispatcher = _FakeDispatcher()
 
     auth_services.register_services(dispatcher)
 
     assert {
-        "mfdb.security.auth.login",
-        "mfdb.security.auth.logout",
-        "mfdb.security.auth.me",
-        "mfdb.security.auth.change_password",
+        "mmfdb.security.auth.login",
+        "mmfdb.security.auth.logout",
+        "mmfdb.security.auth.me",
+        "mmfdb.security.auth.change_password",
     }.issubset(dispatcher.handlers)
 
 
@@ -103,13 +103,13 @@ def test_app_startup_manager_starts_background_services_in_order():
     """Background services start sequentially and receive dependency results."""
     calls: list[tuple[str, list[str]]] = []
     specs = [
-        AppStartupServiceSpec(id="mfdb", entrypoint="pkg:mfdb", order=10, thread="background"),
+        AppStartupServiceSpec(id="mmfdb", entrypoint="pkg:mmfdb", order=10, thread="background"),
         AppStartupServiceSpec(
             id="password",
             entrypoint="pkg:password",
             order=20,
             thread="background",
-            depends_on=("mfdb",),
+            depends_on=("mmfdb",),
         ),
     ]
     manager = AppStartupServiceManager.from_specs(
@@ -119,15 +119,15 @@ def test_app_startup_manager_starts_background_services_in_order():
 
     manager.start()
 
-    assert calls == [("pkg:mfdb", []), ("pkg:password", ["mfdb"])]
-    assert manager.entrypoints == {"pkg:mfdb", "pkg:password"}
+    assert calls == [("pkg:mmfdb", []), ("pkg:password", ["mmfdb"])]
+    assert manager.entrypoints == {"pkg:mmfdb", "pkg:password"}
     manager.stop()
 
 
 def test_app_startup_manager_rejects_missing_dependency():
     """Missing dependencies fail startup early."""
     specs = [
-        AppStartupServiceSpec(id="password", entrypoint="pkg:password", depends_on=("mfdb",)),
+        AppStartupServiceSpec(id="password", entrypoint="pkg:password", depends_on=("mmfdb",)),
     ]
     manager = AppStartupServiceManager.from_specs(specs)
 

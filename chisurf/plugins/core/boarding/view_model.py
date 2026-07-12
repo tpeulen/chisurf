@@ -149,12 +149,12 @@ class BoardingViewModel:
 
     @property
     def has_detector_setups(self) -> bool:
-        """Whether any detector setup exists (MFDB-aware, not just the JSON file)."""
+        """Whether any detector setup exists (MMFDB-aware, not just the JSON file)."""
         return bool(utils.detector_setups_summary().get("count"))
 
     @property
     def has_fcs_setups(self) -> bool:
-        """Whether any FCS channel setup exists (MFDB-aware, not just the JSON file)."""
+        """Whether any FCS channel setup exists (MMFDB-aware, not just the JSON file)."""
         return bool(utils.fcs_setups_summary().get("count"))
 
     # ── actions (button-row callbacks) ─────────────────────────────────

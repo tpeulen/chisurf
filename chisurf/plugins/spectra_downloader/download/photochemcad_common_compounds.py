@@ -3,7 +3,7 @@
 
 This script reads the `Common Compounds DB.db` text database and the associated
 `.abs.txt` / `.ems.txt` spectra and `.tif` structure images from PhotochemCAD
-and populates the ChiSurf MFDB-backed `spectra.db`.
+and populates the ChiSurf MMFDB-backed `spectra.db`.
 
 All PhotochemCAD metadata is stored as optical properties so it is visible in
 Spectra Viewer (item info table) and usable by the Förster-radius calculator
@@ -23,7 +23,7 @@ from pathlib import Path
 
 import numpy as np
 
-from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import (
+from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
     DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )

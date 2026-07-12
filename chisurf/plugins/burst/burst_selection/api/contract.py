@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .models import AnalysisRequest, AnalysisResult, AnalysisSettings, MFDBContext
+from .models import AnalysisRequest, AnalysisResult, AnalysisSettings, MMFDBContext
 from .serialization import settings_from_dict, to_jsonable
 
 PLUGIN_ID = "burst_selection"
@@ -90,7 +90,7 @@ def analysis_request_from_payload(payload: dict[str, Any]) -> AnalysisRequest:
         legacy_output_folder_name=payload.get("legacy_output_folder_name"),
         selected_setup=payload.get("selected_setup"),
         legacy_parameters=payload.get("legacy_parameters") or {},
-        mfdb=_mfdb_context_from_payload(payload),
+        mmfdb=_mmfdb_context_from_payload(payload),
     )
 
 
@@ -104,8 +104,8 @@ def analysis_result_to_payload(result: AnalysisResult) -> dict[str, Any]:
     return to_jsonable(result)
 
 
-def _mfdb_context_from_payload(payload: dict[str, Any]) -> MFDBContext:
-    """Normalize nested and convenience MFDB request fields.
+def _mmfdb_context_from_payload(payload: dict[str, Any]) -> MMFDBContext:
+    """Normalize nested and convenience MMFDB request fields.
 
     Parameters
     ----------
@@ -114,15 +114,15 @@ def _mfdb_context_from_payload(payload: dict[str, Any]) -> MFDBContext:
 
     Returns
     -------
-    MFDBContext
+    MMFDBContext
         Normalized archival context.
 
     """
-    raw_context = payload.get("mfdb") or {}
-    if isinstance(raw_context, MFDBContext):
+    raw_context = payload.get("mmfdb") or {}
+    if isinstance(raw_context, MMFDBContext):
         context = raw_context
     elif isinstance(raw_context, dict):
-        context = MFDBContext(
+        context = MMFDBContext(
             enabled=bool(raw_context.get("enabled", True)),
             sample_id=str(raw_context.get("sample_id") or ""),
             source_artifact_ids={
@@ -135,7 +135,7 @@ def _mfdb_context_from_payload(payload: dict[str, Any]) -> MFDBContext:
             setup_version=raw_context.get("setup_version"),
         )
     else:
-        context = MFDBContext()
+        context = MMFDBContext()
 
     return context
 
@@ -184,7 +184,7 @@ def contract_descriptor() -> dict[str, Any]:
                     "legacy_output_folder_name": {"type": ["string", "null"]},
                     "selected_setup": {"type": ["string", "null"]},
                     "legacy_parameters": {"type": "object"},
-                    "mfdb": {"$ref": "#/definitions/MFDBContext"},
+                    "mmfdb": {"$ref": "#/definitions/MMFDBContext"},
                 },
             },
             "InspectBur": {
@@ -231,13 +231,13 @@ def contract_descriptor() -> dict[str, Any]:
                     "output_paths": {"type": "object"},
                     "output_paths_by_file": {"type": "object"},
                     "metadata": {"type": "object"},
-                    "mfdb_artifacts": {"type": "object"},
+                    "mmfdb_artifacts": {"type": "object"},
                     "warnings": {"type": "array", "items": {"type": "string"}},
                 },
             },
         },
         "definitions": {
-            "MFDBContext": {
+            "MMFDBContext": {
                 "type": "object",
                 "properties": {
                     "enabled": {"type": "boolean"},

@@ -24,7 +24,7 @@ Four subsystems, each with a single clear responsibility and a spec:
 |------|-----------|------|
 | [Core](core.md) | Domain layer | The scientific objects: data, parameters, curves, fits, models, and the math that operates on them |
 | [RPC & API](rpc.md) | Server + facade | The one boundary between UI and domain: a headless service layer and the `ChiSurfAPI` facade over it |
-| [MFDB](mfdb.md) | Metadata store | Provenance and metadata — what was measured, how it was analyzed, and where results came from |
+| [MMFDB](mmfdb.md) | Metadata store | Provenance and metadata — what was measured, how it was analyzed, and where results came from |
 | [Plugins](plugins.md) | Extension system | How features are added: self-describing plugins that reach the domain only through the facade |
 
 ## How they fit together
@@ -38,7 +38,7 @@ UI · plugins · macros · CLI          (presentation — knows nothing about st
         │  which routes to ▼
    service layer (headless, Qt-free)  (owns session + domain state; the only writer)
         │  reads/writes ▼
-   domain objects  ·  MFDB            (core scientific model + provenance store)
+   domain objects  ·  MMFDB            (core scientific model + provenance store)
 ```
 
 Presentation never touches domain state directly and never talks to storage or
@@ -64,7 +64,7 @@ These bind every subsystem. Each spec restates the ones it must uphold.
    Python objects whose identity or type the far side would depend on.
 5. **One transport, one protocol.** Remote operation uses a single, documented
    request/response contract. No side channels.
-6. **Metadata is authored once, upstream.** MFDB's schema derives from its
+6. **Metadata is authored once, upstream.** MMFDB's schema derives from its
    dictionaries; provenance is recorded as an operation graph, not reconstructed
    after the fact.
 7. **Features are plugins.** Anything beyond the core is a self-describing

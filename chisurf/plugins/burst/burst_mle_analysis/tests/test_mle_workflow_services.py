@@ -17,7 +17,7 @@ def test_mle_prepare_resolves_bur_files_from_context(tmp_path) -> None:
             "burst_folder": str(tmp_path / "burstwise"),
             "raw_files": [str(tmp_path / "a.spc")],
             "channel_settings": {"detectors": {"green": {"chs": [8]}}},
-            "mfdb_artifacts": {"sidecar_artifacts": {"output_folder": "artifact-1"}},
+            "mmfdb_artifacts": {"sidecar_artifacts": {"output_folder": "artifact-1"}},
         }
     )
 
@@ -26,7 +26,7 @@ def test_mle_prepare_resolves_bur_files_from_context(tmp_path) -> None:
     assert result["bur_files"] == [str(bur_file)]
     assert result["raw_files"] == [str(tmp_path / "a.spc")]
     assert result["channel_settings"]["detectors"]["green"]["chs"] == [8]
-    assert result["mfdb_artifacts"]["sidecar_artifacts"]["output_folder"] == "artifact-1"
+    assert result["mmfdb_artifacts"]["sidecar_artifacts"]["output_folder"] == "artifact-1"
 
 
 def test_mle_services_register_workflow_prepare() -> None:

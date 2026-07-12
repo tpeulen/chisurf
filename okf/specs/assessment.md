@@ -43,14 +43,14 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [BUG-03](#bug-03) | S1 | BUG | Server | `model_component_remove` references undefined `component_type` → `NameError` | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-04](#bug-04) | S2 | BUG | Core | `@abc.abstractmethod` not enforced: `Base(object)` has no `ABCMeta` | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-01](#data-01) | S1 | DATA | Plugins | **3** manifests fail validation and are silently dropped by `load_manifest()` | ~~VERIFIED~~ ✅ FIXED |
-| [DATA-02](#data-02) | S2 | DATA | MFDB | `SCHEMA_VERSION = 40` is a stamp with no migration waterfall | ~~VERIFIED~~ ✅ FIXED |
-| [DATA-03](#data-03) | S2 | DATA | MFDB | Core `mfdb_*` DDL is hand-written and defined twice (must be hand-synced) | ~~REPORTED~~ ✅ FIXED |
-| [DATA-04](#data-04) | S2 | DATA | MFDB | `add_processing_run` partial-write; MD5 mislabeled as checksum | REPORTED |
+| [DATA-02](#data-02) | S2 | DATA | MMFDB | `SCHEMA_VERSION = 40` is a stamp with no migration waterfall | ~~VERIFIED~~ ✅ FIXED |
+| [DATA-03](#data-03) | S2 | DATA | MMFDB | Core `mmfdb_*` DDL is hand-written and defined twice (must be hand-synced) | ~~REPORTED~~ ✅ FIXED |
+| [DATA-04](#data-04) | S2 | DATA | MMFDB | `add_processing_run` partial-write; MD5 mislabeled as checksum | REPORTED |
 | [INC-01](#inc-01) | S2 | INC | Core | Three overlapping instance registries with different lifetimes | REPORTED |
 | [INC-02](#inc-02) | S2 | INC | Core | `@register` renames classes → fragile name-based `isinstance` | REPORTED |
-| [INC-03](#inc-03) | S3 | INC | Server/MFDB | Legacy flat/`mfdb.*` aliases coexist with namespaced/`mfdb.v1.*` | REPORTED |
-| [INC-04](#inc-04) | S2 | INC | MFDB | Auth enforced in ~5/40 `api.py` fns; ACL rows exist for few entity kinds | 🚧 ADDRESSED — `api.py` boundary now threads/enforces `auth` |
-| [INC-05](#inc-05) | S3 | INC | MFDB | `MFDatabase` is a ~312 KB monolith with 3 parallel access styles | 🚧 IN PROGRESS (orm/ deleted; 3→2) |
+| [INC-03](#inc-03) | S3 | INC | Server/MMFDB | Legacy flat/`mmfdb.*` aliases coexist with namespaced/`mmfdb.v1.*` | REPORTED |
+| [INC-04](#inc-04) | S2 | INC | MMFDB | Auth enforced in ~5/40 `api.py` fns; ACL rows exist for few entity kinds | 🚧 ADDRESSED — `api.py` boundary now threads/enforces `auth` |
+| [INC-05](#inc-05) | S3 | INC | MMFDB | Repository composition and API boundaries | 🚧 IN PROGRESS (one DAO/repository authority; request context + shallow root landed) |
 | [INC-06](#inc-06) | S2 | INC | Plugins | Two plugin identity conventions coexist; `ndxplorer` has no manifest | ~~REPORTED~~ ✅ FIXED |
 | [INC-07](#inc-07) | S3 | INC | Plugins | `categories` drifts from directory group & `display_name`; demo games mixed in | REPORTED |
 | [INC-08](#inc-08) | S3 | INC | Server | Generic `JobManager` bypassed by the only real long-running jobs | REPORTED |
@@ -153,24 +153,24 @@ The single largest source of non-uniformity across the codebase (see [core steer
 - ✅ **FIXED** (2026-07-05): Fixed all 3 manifests. Added validation logging in `PluginRegistry.discover()`. Added `test_builtin_manifests_all_valid` that asserts all 86+ manifests pass `validate_manifest()`.
 
 ### DATA-02
-**S2 · `SCHEMA_VERSION` is a bookkeeping stamp.** [mfdb steering](mfdb.md#steering-notes).
+**S2 · `SCHEMA_VERSION` is a bookkeeping stamp.** [mmfdb steering](mmfdb.md#steering-notes).
 
-- Location: `chisurf/core/mfdb/schema.py:14` → `SCHEMA_VERSION = 40`. There is no ordered migration waterfall behind the number; it is bumped by hand.
+- Location: `chisurf/core/mmfdb/schema.py:14` → `SCHEMA_VERSION = 40`. There is no ordered migration waterfall behind the number; it is bumped by hand.
 - Impact: a v40 stamp does not guarantee a v40 physical schema; existing user DBs cannot be reliably upgraded.
 - Fix: back the version with an explicit, ordered migration list and a startup check that applies pending migrations.
 - ✅ **FIXED** (2026-07-05): Added `MIGRATIONS` `OrderedDict[int, Callable]` with v1 (fresh-DB setup) and v40 (existing-DB reconciliation). `migrate_schema()` reads stored version, applies each pending migration in order. Added `_bootstrap()` helper. 6 tests cover fresh/already-current/resume/persistent/bump scenarios.
 
 ### DATA-03
-**S2 · Core `mfdb_*` schema is hand-written and duplicated.** [mfdb steering](mfdb.md#steering-notes).
+**S2 · Core `mmfdb_*` schema is hand-written and duplicated.** [mmfdb steering](mmfdb.md#steering-notes).
 
-- Detail: only `flr_*`/PDBx and six setup tables are truly dictionary-generated per the [overview principle 6](overview.md#architectural-principles) authority rule; the core `mfdb_*` tables are hand-authored DDL that exists twice — a permissive `CREATE_TABLES_SQL` and a CHECK-constrained `_CANONICAL_CHECK_SQL` — which must be kept in sync by hand.
+- Detail: only `flr_*`/PDBx and six setup tables are truly dictionary-generated per the [overview principle 6](overview.md#architectural-principles) authority rule; the core `mmfdb_*` tables are hand-authored DDL that exists twice — a permissive `CREATE_TABLES_SQL` and a CHECK-constrained `_CANONICAL_CHECK_SQL` — which must be kept in sync by hand.
 - Fix: converge on one authoritative DDL (ideally dictionary-driven, per the invariant), and generate the CHECK-constrained form rather than maintaining a parallel copy.
-- ✅ **FIXED** (2026-07-05): Defined each canonical `mfdb_*` table once as `_TableDef` + `_Column` dataclasses in `_CANONICAL_TABLE_DEFS`. `_build_permissive_ddl()` / `_build_canonical_ddl()` generate both forms from the same source. Removed `_CANONICAL_CHECK_SQL` and `_CANONICAL_TABLE_MAP`. 2 guardrail tests.
+- ✅ **FIXED** (2026-07-05): Defined each canonical `mmfdb_*` table once as `_TableDef` + `_Column` dataclasses in `_CANONICAL_TABLE_DEFS`. `_build_permissive_ddl()` / `_build_canonical_ddl()` generate both forms from the same source. Removed `_CANONICAL_CHECK_SQL` and `_CANONICAL_TABLE_MAP`. 2 guardrail tests.
 
 ### DATA-04
-**S2 · `add_processing_run` partial write; MD5 mislabeled.** [mfdb steering](mfdb.md#steering-notes).
+**S2 · `add_processing_run` partial write; MD5 mislabeled.** [mmfdb steering](mmfdb.md#steering-notes).
 
-- Location: `chisurf/core/mfdb/repository.py:6385` (`add_processing_run`). The documented partial-write path can leave an operation without its artifacts/edges, and an MD5 digest is stored/labeled as a generic "checksum".
+- Location: `chisurf/core/mmfdb/repository.py:6385` (`add_processing_run`). The documented partial-write path can leave an operation without its artifacts/edges, and an MD5 digest is stored/labeled as a generic "checksum".
 - Fix: wrap the run insertion in a single transaction (see `transactions.py`) and label the digest algorithm explicitly.
 
 ## Inconsistencies / legacy overhang (INC)
@@ -182,15 +182,15 @@ The single largest source of non-uniformity across the codebase (see [core steer
 **S2 · `@register` renames classes.** [core steering](core.md#steering-notes). `chisurf/core/decorators.py:64` sets `__class__.__name__`, which forces name-based `isinstance` fallbacks in `base.find_objects` / `find_parameters`. → Stop mutating `__name__`; match on type or an explicit tag attribute.
 
 ### INC-03
-**S3 · Legacy method aliases coexist with the canonical ones.** [rpc steering](rpc.md#steering-notes), [mfdb steering](mfdb.md#steering-notes). Flat `list_datasets`/`run_fit` vs namespaced `dataset.*`/`fit.*`; MFDB `mfdb.*` (73) vs `mfdb.v1.*` (40). The prerelease `sample_database` surface is retired rather than supported for compatibility. → Remove remaining aliases directly; no compatibility schedule is required.
+**S3 · Legacy method aliases coexist with the canonical ones.** [rpc steering](rpc.md#steering-notes), [mmfdb steering](mmfdb.md#steering-notes). Flat `list_datasets`/`run_fit` vs namespaced `dataset.*`/`fit.*`; MMFDB `mmfdb.*` (73) vs `mmfdb.v1.*` (40). The prerelease `sample_database` surface is retired rather than supported for compatibility. → Remove remaining aliases directly; no compatibility schedule is required.
 
 ### INC-04
-**S2 · MFDB auth is incomplete and decentralized.** [mfdb steering](mfdb.md#steering-notes), contradicts `docs/prd_mfdb_auth_rights.md`. Only ~5 of ~40 `api.py` functions check auth; ACL rows are created for essentially only `artifact` (conditionally `mfdb_operation`), so `can_access` has nothing to evaluate for samples/experiments/setups/parameters/branches; real enforcement is scattered in plugin services. → Centralize enforcement at the `api.py` boundary and create ACL rows for every guarded entity kind.
-- 🚧 **ADDRESSED** (2026-07-08): threaded `auth` through **all ~40 `mfdb.v1.*` `api.py` functions** — previously most lacked an `auth` parameter, so the versioned RPC layer (`h(**params, auth=auth)`) would have `TypeError`'d; the authentication boundary (`_require_auth`) now composes with per-function principal resolution. Shared helpers (`_acting_user_id`, `_acl_read_or_pass`, `_acl_filter_or_pass`, `_new_object_acl`, `_effective_target_user`) give **progressive enforcement**: writes stamp the authenticated owner + a default ACL (samples/experiments, atop the existing artifact/operation ACLs), reads enforce ACLs **where they exist** and stay open otherwise (no legacy lockout), and user-scoped branch ops (`set/get_user_active_branch`, `jump_user_to_operation`) are now **self-or-admin** (fixed an IDOR). In-process/unauthenticated calls fall back to the configured default user, preserving GUI/macros. New `tests/test_api_auth.py` (5). Remaining for full closure: extend owner ACLs to setups/parameters/branches and add v1-dispatcher round-trip tests. Advances the [mfdb steering](mfdb.md#steering-notes) auth item and PRD-59.
+**S2 · MMFDB auth is incomplete and decentralized.** [mmfdb steering](mmfdb.md#steering-notes), contradicts `docs/prd_mmfdb_auth_rights.md`. Only ~5 of ~40 `api.py` functions check auth; ACL rows are created for essentially only `artifact` (conditionally `mmfdb_operation`), so `can_access` has nothing to evaluate for samples/experiments/setups/parameters/branches; real enforcement is scattered in plugin services. → Centralize enforcement at the `api.py` boundary and create ACL rows for every guarded entity kind.
+- 🚧 **ADDRESSED** (2026-07-08): threaded `auth` through **all ~40 `mmfdb.v1.*` `api.py` functions** — previously most lacked an `auth` parameter, so the versioned RPC layer (`h(**params, auth=auth)`) would have `TypeError`'d; the authentication boundary (`_require_auth`) now composes with per-function principal resolution. Shared helpers (`_acting_user_id`, `_acl_read_or_pass`, `_acl_filter_or_pass`, `_new_object_acl`, `_effective_target_user`) give **progressive enforcement**: writes stamp the authenticated owner + a default ACL (samples/experiments, atop the existing artifact/operation ACLs), reads enforce ACLs **where they exist** and stay open otherwise (no legacy lockout), and user-scoped branch ops (`set/get_user_active_branch`, `jump_user_to_operation`) are now **self-or-admin** (fixed an IDOR). In-process/unauthenticated calls fall back to the configured default user, preserving GUI/macros. New `tests/test_api_auth.py` (5). Remaining for full closure: extend owner ACLs to setups/parameters/branches and add v1-dispatcher round-trip tests. Advances the [mmfdb steering](mmfdb.md#steering-notes) auth item and PRD-59.
 
 ### INC-05
-**S3 · `MFDatabase` is a monolith.** [mfdb steering](mfdb.md#steering-notes). ~312 KB with three parallel access styles (`repository` raw SQL, `DictionaryDao`, `orm/SampleRepository`). → Choose one access layer per concern and split the module.
-- 🚧 **IN PROGRESS** (2026-07-06): (1) the SQLAlchemy `orm/` layer (~1,965 lines) is **deleted** — three parallel access styles are now two (its only consumer already had a raw-SQL fallback). (2) The `MFDatabase` god-class is being split into per-concern mixins under `mfdb/queries/` — **7 extracted so far** (Parameter, Study, Protocol, Lifecycle, Branch, UserDevice, Experiment); `repository.py` **7,322 → 6,389 lines / 245 → 197 methods**; shared pure helpers consolidated in `mfdb/_sqlutil.py`. Added `DictionaryDao.upsert` (identity-preserving) as the single insert path. **Remaining:** the tightly-coupled provenance core (probes/spectra, samples, artifacts/operations/objects/edges, provenance-graph, setups/calibrations, entities, analysis-metadata), then fully `.dic`-generated schema and import-path unification. Advances [PRD-19](/prds/prd-19.md)/[PRD-26](/prds/prd-26.md)/[PRD-24](/prds/prd-24.md). Resume: `~/.claude/plans/mfdb-is-a-bit-bubbly-sparrow.md`.
+**S3 · Repository/API composition remains broader than the target.** [mmfdb steering](mmfdb.md#steering-notes). The former monolith mixed raw SQL, a generated DAO, and a parallel ORM while transports repeatedly reopened the database. → Keep one repository authority, explicit concern boundaries, and one request lifetime.
+- 🚧 **IN PROGRESS** (2026-07-11): the SQLAlchemy `orm/` layer is deleted; the dictionary DAO plus `MFDatabase` are the single persistence authority; the repository is split into 13 concern modules and is ~1,650 lines. The package root now has five deliberate exports instead of eagerly importing the whole system, duplicate shadowed methods and prerelease setup aliases are removed, versioned RPC calls share one database/principal context, and the `chisurf.core.mmfdb` compatibility facade is deleted after a direct-import cutover. Remaining: decide whether the mixin composition should become explicit composed repositories and close the residual sanctioned raw-SQL/DAO migration in PRD-26.
 
 ### INC-06
 **S2 · Two plugin identity conventions.** [plugins steering](plugins.md#steering-notes). Legacy module-level `name = "Category:Plugin"` + `if __name__ == "plugin":` vs manifest `id`/`display_name`/`entrypoints`; most plugins carry both, merged by `_read_manifest_metadata()`; `ndxplorer` is a first-class plugin with **no manifest at all**. → Make the manifest the single source of identity; backfill `ndxplorer`.

@@ -52,7 +52,7 @@ def setup_kappa2_controls(
 
     calc_r0_btn = QtWidgets.QToolButton()
     calc_r0_btn.setText("calc R0")
-    calc_r0_btn.setToolTip("Open the Förster radius calculator to compute R₀ from MFDB spectra")
+    calc_r0_btn.setToolTip("Open the Förster radius calculator to compute R₀ from MMFDB spectra")
     mode_layout.addWidget(calc_r0_btn)
     calc_r0_btn.clicked.connect(lambda: open_forster_calculator(owner))
 

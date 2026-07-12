@@ -9,12 +9,12 @@ import numpy as np
 import pytest
 from click.testing import CliRunner
 
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.repository import MFDatabase
 from chisurf.plugins.ndxplorer.cli import filter_cmd, image_cmd
 
 
 @pytest.fixture
-def temp_mfdb(tmp_path):
+def temp_mmfdb(tmp_path):
     """Setup a temporary MFDatabase with a dummy raw and burst selection product."""
     db_path = tmp_path / "test_ndx_cli.db"
     
@@ -78,18 +78,18 @@ def temp_mfdb(tmp_path):
     return db_path, "art_burst_src", "sample_1"
 
 
-def test_csc_ndxplorer_filter(temp_mfdb, tmp_path):
-    """Test csc ndxplorer filter command registers filtered bursts in MFDB."""
-    db_path, art_id, sample_id = temp_mfdb
+def test_csc_ndxplorer_filter(temp_mmfdb, tmp_path):
+    """Test csc ndxplorer filter command registers filtered bursts in MMFDB."""
+    db_path, art_id, sample_id = temp_mmfdb
     runner = CliRunner()
     
     out_dir = tmp_path / "filtered_output"
     
     result = runner.invoke(filter_cmd, [
-        "--from-mfdb", art_id,
+        "--from-mmfdb", art_id,
         "--select", "proximity_ratio:0.3-0.6",
         "--out", str(out_dir),
-        "--to-mfdb",
+        "--to-mmfdb",
         "--sample-id", sample_id,
         "--db", str(db_path),
         "--skip-nth-row", "1",

@@ -4,7 +4,7 @@ This directory contains small, maintenance-oriented scripts that help keep
 `chisurf`'s global **parameter registry**
 (`chisurf/settings/constants/parameter_registry.json`) in sync with the
 codebase and with the FCS/TCSPC model definitions, as well as with the
-flrCIF standard dictionary used by MFDB export.
+flrCIF standard dictionary used by MMFDB export.
 
 These tools are **for developers** and are not part of the public API.
 They are typically run from the repository root using the Python module

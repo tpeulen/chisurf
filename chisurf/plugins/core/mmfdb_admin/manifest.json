@@ -1,0 +1,798 @@
+{
+  "id": "mmfdb_admin",
+  "version": "1.1.0",
+  "display_name": "Tools:MMFDB Admin",
+  "description": "Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "Fluorescence",
+    "Database"
+  ],
+  "icon": "icon.png",
+  "state_namespace": "mmfdb_admin",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.core.mmfdb_admin.gui.tool:MMFDBWidget",
+    "services": "chisurf.core.mmfdb_services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "mmfdb.security.auth.change_password"
+    },
+    {
+      "name": "mmfdb.security.auth.login"
+    },
+    {
+      "name": "mmfdb.security.auth.logout"
+    },
+    {
+      "name": "mmfdb.security.auth.me"
+    },
+    {
+      "name": "mmfdb.security.auth.sessions.list"
+    },
+    {
+      "name": "mmfdb.security.auth.sessions.revoke"
+    },
+    {
+      "name": "mmfdb.status"
+    },
+    {
+      "name": "mmfdb.samples.list"
+    },
+    {
+      "name": "mmfdb.samples.get"
+    },
+    {
+      "name": "mmfdb.samples.save"
+    },
+    {
+      "name": "mmfdb.samples.delete"
+    },
+    {
+      "name": "mmfdb.samples.search"
+    },
+    {
+      "name": "mmfdb.samples.key_values.save"
+    },
+    {
+      "name": "mmfdb.samples.full_description"
+    },
+    {
+      "name": "mmfdb.samples.validate_export"
+    },
+    {
+      "name": "mmfdb.samples.create_structured"
+    },
+    {
+      "name": "mmfdb.sample_conditions.list"
+    },
+    {
+      "name": "mmfdb.sample_conditions.get"
+    },
+    {
+      "name": "mmfdb.sample_conditions.save"
+    },
+    {
+      "name": "mmfdb.sample_conditions.delete"
+    },
+    {
+      "name": "mmfdb.entities.list"
+    },
+    {
+      "name": "mmfdb.entities.get"
+    },
+    {
+      "name": "mmfdb.entities.save"
+    },
+    {
+      "name": "mmfdb.entities.delete"
+    },
+    {
+      "name": "mmfdb.probes.list"
+    },
+    {
+      "name": "mmfdb.probes.get"
+    },
+    {
+      "name": "mmfdb.probes.save"
+    },
+    {
+      "name": "mmfdb.probes.delete"
+    },
+    {
+      "name": "mmfdb.probes.optical_properties.get"
+    },
+    {
+      "name": "mmfdb.probes.optical_properties.save"
+    },
+    {
+      "name": "mmfdb.probes.positions.list"
+    },
+    {
+      "name": "mmfdb.probes.positions.get"
+    },
+    {
+      "name": "mmfdb.probes.positions.save"
+    },
+    {
+      "name": "mmfdb.probes.positions.delete"
+    },
+    {
+      "name": "mmfdb.fret_pairs.list"
+    },
+    {
+      "name": "mmfdb.fret_pairs.get"
+    },
+    {
+      "name": "mmfdb.fret_pairs.save"
+    },
+    {
+      "name": "mmfdb.fret_pairs.delete"
+    },
+    {
+      "name": "mmfdb.pdbx.suggest_keys"
+    },
+    {
+      "name": "mmfdb.pdbx.validate_value"
+    },
+    {
+      "name": "mmfdb.mock_data.populate"
+    },
+    {
+      "name": "mmfdb.users.list"
+    },
+    {
+      "name": "mmfdb.users.save"
+    },
+    {
+      "name": "mmfdb.users.delete"
+    },
+    {
+      "name": "mmfdb.devices.list"
+    },
+    {
+      "name": "mmfdb.devices.get"
+    },
+    {
+      "name": "mmfdb.devices.save"
+    },
+    {
+      "name": "mmfdb.devices.delete"
+    },
+    {
+      "name": "mmfdb.experiment_types.list"
+    },
+    {
+      "name": "mmfdb.experiment_types.get"
+    },
+    {
+      "name": "mmfdb.experiment_types.save"
+    },
+    {
+      "name": "mmfdb.experiment_types.delete"
+    },
+    {
+      "name": "mmfdb.experiments.list"
+    },
+    {
+      "name": "mmfdb.experiments.get"
+    },
+    {
+      "name": "mmfdb.experiments.save"
+    },
+    {
+      "name": "mmfdb.experiments.delete"
+    },
+    {
+      "name": "mmfdb.experiments.key_values.save"
+    },
+    {
+      "name": "mmfdb.experiments.data.save"
+    },
+    {
+      "name": "mmfdb.experiments.data.delete"
+    },
+    {
+      "name": "mmfdb.setups.list"
+    },
+    {
+      "name": "mmfdb.setups.get"
+    },
+    {
+      "name": "mmfdb.setups.save"
+    },
+    {
+      "name": "mmfdb.setups.delete"
+    },
+    {
+      "name": "mmfdb.setups.validate"
+    },
+    {
+      "name": "mmfdb.setups.detector_channels.list"
+    },
+    {
+      "name": "mmfdb.setups.pie_windows.list"
+    },
+    {
+      "name": "mmfdb.setups.fcs_pairs.list"
+    },
+    {
+      "name": "raw_data.register"
+    },
+    {
+      "name": "raw_data.list"
+    },
+    {
+      "name": "raw_data.get"
+    },
+    {
+      "name": "processing.burst_selection.record"
+    },
+    {
+      "name": "processing.burst_selection.run"
+    },
+    {
+      "name": "processing.burst_selection.get"
+    },
+    {
+      "name": "processing.burst_selection.list"
+    },
+    {
+      "name": "processed_data.register"
+    },
+    {
+      "name": "processed_data.list"
+    },
+    {
+      "name": "processed_data.get"
+    },
+    {
+      "name": "provenance.edges.list"
+    },
+    {
+      "name": "provenance.trace_processed_data"
+    },
+    {
+      "name": "archive.burst_processing_manifest.export"
+    },
+    {
+      "name": "mmfdb.import_file"
+    },
+    {
+      "name": "mmfdb.export_sample"
+    },
+    {
+      "name": "mmfdb.export_table"
+    },
+    {
+      "name": "mmfdb.backup"
+    },
+    {
+      "name": "mmfdb.reset_from_source"
+    },
+    {
+      "name": "mmfdb.v1.samples.register"
+    },
+    {
+      "name": "mmfdb.v1.samples.get"
+    },
+    {
+      "name": "mmfdb.v1.samples.list"
+    },
+    {
+      "name": "mmfdb.v1.experiments.register"
+    },
+    {
+      "name": "mmfdb.v1.experiments.get"
+    },
+    {
+      "name": "mmfdb.v1.experiments.list"
+    },
+    {
+      "name": "mmfdb.v1.artifacts.register"
+    },
+    {
+      "name": "mmfdb.v1.artifacts.get"
+    },
+    {
+      "name": "mmfdb.v1.artifacts.list"
+    },
+    {
+      "name": "mmfdb.v1.operations.record"
+    },
+    {
+      "name": "mmfdb.v1.operations.record_with_artifacts"
+    },
+    {
+      "name": "mmfdb.v1.operations.get"
+    },
+    {
+      "name": "mmfdb.v1.operations.list"
+    },
+    {
+      "name": "mmfdb.v1.operations.link_artifact"
+    },
+    {
+      "name": "mmfdb.v1.operations.link"
+    },
+    {
+      "name": "mmfdb.v1.operations.transition_status"
+    },
+    {
+      "name": "mmfdb.v1.graph.traverse"
+    },
+    {
+      "name": "mmfdb.v1.graph.upstream"
+    },
+    {
+      "name": "mmfdb.v1.graph.downstream"
+    },
+    {
+      "name": "mmfdb.v1.graph.export"
+    },
+    {
+      "name": "mmfdb.v1.parameters.record"
+    },
+    {
+      "name": "mmfdb.v1.parameters.get"
+    },
+    {
+      "name": "mmfdb.v1.parameters.list"
+    },
+    {
+      "name": "mmfdb.v1.chinet.sessions.save"
+    },
+    {
+      "name": "mmfdb.v1.chinet.sessions.get"
+    },
+    {
+      "name": "mmfdb.v1.chinet.sessions.list"
+    },
+    {
+      "name": "mmfdb.v1.chinet.sessions.restore"
+    },
+    {
+      "name": "mmfdb.v1.setups.save"
+    },
+    {
+      "name": "mmfdb.v1.setups.get"
+    },
+    {
+      "name": "mmfdb.v1.setups.list"
+    },
+    {
+      "name": "mmfdb.v1.audit.list"
+    },
+    {
+      "name": "mmfdb.v1.branches.create"
+    },
+    {
+      "name": "mmfdb.v1.branches.fork"
+    },
+    {
+      "name": "mmfdb.v1.branches.get"
+    },
+    {
+      "name": "mmfdb.v1.branches.list"
+    },
+    {
+      "name": "mmfdb.v1.branches.update_head"
+    },
+    {
+      "name": "mmfdb.v1.branches.delete"
+    },
+    {
+      "name": "mmfdb.v1.users.set_active_branch"
+    },
+    {
+      "name": "mmfdb.v1.users.get_active_branch"
+    },
+    {
+      "name": "mmfdb.v1.users.jump_to_operation"
+    },
+    {
+      "name": "mmfdb.groups.list"
+    },
+    {
+      "name": "mmfdb.groups.get"
+    },
+    {
+      "name": "mmfdb.groups.create"
+    },
+    {
+      "name": "mmfdb.groups.update"
+    },
+    {
+      "name": "mmfdb.groups.delete"
+    },
+    {
+      "name": "mmfdb.groups.members.list"
+    },
+    {
+      "name": "mmfdb.groups.members.add"
+    },
+    {
+      "name": "mmfdb.groups.members.remove"
+    },
+    {
+      "name": "mmfdb.permissions.get"
+    },
+    {
+      "name": "mmfdb.permissions.chmod"
+    },
+    {
+      "name": "mmfdb.permissions.chown"
+    },
+    {
+      "name": "mmfdb.permissions.chgrp"
+    },
+    {
+      "name": "mmfdb.permissions.grant"
+    },
+    {
+      "name": "mmfdb.permissions.revoke"
+    },
+    {
+      "name": "mmfdb.objects.put",
+      "summary": "Store a file or bytes in the object store (deduplicates by MD5).",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Server-side file path to store."
+          },
+          "data": {
+            "type": "string",
+            "description": "Base64-encoded binary data."
+          },
+          "filename": {
+            "type": "string",
+            "description": "Original filename."
+          },
+          "mime_type": {
+            "type": "string",
+            "description": "MIME type."
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "object_uuid": {
+            "type": "string"
+          },
+          "content_md5": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer"
+          },
+          "deduplicated": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "name": "mmfdb.objects.put_bytes",
+      "summary": "Store base64-encoded bytes in the object store.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Base64-encoded binary data."
+          },
+          "filename": {
+            "type": "string",
+            "description": "Original filename."
+          },
+          "mime_type": {
+            "type": "string",
+            "description": "MIME type."
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata."
+          }
+        },
+        "required": [
+          "data",
+          "filename"
+        ]
+      }
+    },
+    {
+      "name": "mmfdb.objects.get",
+      "summary": "Retrieve blob content by object UUID (returns base64-encoded data).",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "object_uuid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_uuid"
+        ]
+      }
+    },
+    {
+      "name": "mmfdb.objects.get_info",
+      "summary": "Retrieve object metadata by UUID.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "object_uuid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_uuid"
+        ]
+      }
+    },
+    {
+      "name": "mmfdb.objects.delete",
+      "summary": "Delete an object or decrement its refcount.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "object_uuid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_uuid"
+        ]
+      }
+    },
+    {
+      "name": "mmfdb.objects.list",
+      "summary": "List objects with optional filtering.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "Substring filter on original filename."
+          },
+          "user_uuid": {
+            "type": "string",
+            "description": "Filter by creator user UUID."
+          },
+          "limit": {
+            "type": "integer",
+            "default": 100
+          },
+          "offset": {
+            "type": "integer",
+            "default": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "analysis.run.delete"
+    },
+    {
+      "name": "analysis.run.get"
+    },
+    {
+      "name": "analysis.run.list"
+    },
+    {
+      "name": "analysis.run.record"
+    },
+    {
+      "name": "archive.zip.export"
+    },
+    {
+      "name": "audit_log.list"
+    },
+    {
+      "name": "database.backup"
+    },
+    {
+      "name": "fluorophores.ai_triage"
+    },
+    {
+      "name": "fluorophores.approve"
+    },
+    {
+      "name": "fluorophores.find_duplicates"
+    },
+    {
+      "name": "fluorophores.forster_radius.lookup"
+    },
+    {
+      "name": "fluorophores.get"
+    },
+    {
+      "name": "fluorophores.get_spectra_batch"
+    },
+    {
+      "name": "fluorophores.import_reference_set"
+    },
+    {
+      "name": "fluorophores.list"
+    },
+    {
+      "name": "fluorophores.merge"
+    },
+    {
+      "name": "fluorophores.probe_types.list"
+    },
+    {
+      "name": "fluorophores.reject"
+    },
+    {
+      "name": "fluorophores.set_quality"
+    },
+    {
+      "name": "mmfdb.analysis.get"
+    },
+    {
+      "name": "mmfdb.analysis.full"
+    },
+    {
+      "name": "mmfdb.analysis.list"
+    },
+    {
+      "name": "mmfdb.artifacts.delete"
+    },
+    {
+      "name": "mmfdb.artifacts.validation.set"
+    },
+    {
+      "name": "mmfdb.branches.delete"
+    },
+    {
+      "name": "mmfdb.branches.get"
+    },
+    {
+      "name": "mmfdb.branches.list"
+    },
+    {
+      "name": "mmfdb.branches.save"
+    },
+    {
+      "name": "mmfdb.calibrations.create"
+    },
+    {
+      "name": "mmfdb.calibrations.list"
+    },
+    {
+      "name": "mmfdb.calibrations.stale"
+    },
+    {
+      "name": "mmfdb.datasets.browse"
+    },
+    {
+      "name": "mmfdb.datasets.open"
+    },
+    {
+      "name": "mmfdb.lifecycle.definitions"
+    },
+    {
+      "name": "mmfdb.lifecycle.history"
+    },
+    {
+      "name": "mmfdb.lifecycle.state"
+    },
+    {
+      "name": "mmfdb.lifecycle.transition"
+    },
+    {
+      "name": "mmfdb.pipelines.get"
+    },
+    {
+      "name": "mmfdb.pipelines.list"
+    },
+    {
+      "name": "mmfdb.pipelines.runs"
+    },
+    {
+      "name": "mmfdb.processed_data.get"
+    },
+    {
+      "name": "mmfdb.processed_data.list"
+    },
+    {
+      "name": "mmfdb.processing.get"
+    },
+    {
+      "name": "mmfdb.processing.list"
+    },
+    {
+      "name": "mmfdb.projects.get"
+    },
+    {
+      "name": "mmfdb.projects.list"
+    },
+    {
+      "name": "mmfdb.protocols.create"
+    },
+    {
+      "name": "mmfdb.protocols.for_operation"
+    },
+    {
+      "name": "mmfdb.protocols.get"
+    },
+    {
+      "name": "mmfdb.protocols.list"
+    },
+    {
+      "name": "mmfdb.protocols.versions"
+    },
+    {
+      "name": "mmfdb.raw_data.get"
+    },
+    {
+      "name": "mmfdb.raw_data.list"
+    },
+    {
+      "name": "mmfdb.reagents.create"
+    },
+    {
+      "name": "mmfdb.reagents.expired"
+    },
+    {
+      "name": "mmfdb.reagents.list"
+    },
+    {
+      "name": "mmfdb.reagents.usage.add"
+    },
+    {
+      "name": "mmfdb.reagents.usage.list"
+    },
+    {
+      "name": "mmfdb.studies.create"
+    },
+    {
+      "name": "mmfdb.studies.fields.set"
+    },
+    {
+      "name": "mmfdb.studies.get"
+    },
+    {
+      "name": "mmfdb.studies.list"
+    },
+    {
+      "name": "mmfdb.studies.members.add"
+    },
+    {
+      "name": "ndxplorer.load_burst_product"
+    },
+    {
+      "name": "ndxplorer.record_analysis"
+    },
+    {
+      "name": "processing.run.record"
+    },
+    {
+      "name": "provenance.dependencies.downstream"
+    },
+    {
+      "name": "provenance.dependencies.upstream"
+    },
+    {
+      "name": "provenance.graph.export"
+    }
+  ]
+}

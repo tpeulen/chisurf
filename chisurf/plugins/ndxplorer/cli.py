@@ -27,32 +27,32 @@ def _get_ndxplorer_env():
 
 @click.group()
 def cli():
-    """ndXplorer Headless CLI with MFDB integration."""
+    """ndXplorer Headless CLI with MMFDB integration."""
     pass
 
 
 @cli.command("filter")
-@click.option('--from-mfdb', required=True, type=str, help="Source MFDB burst selection artifact ID.")
+@click.option('--from-mmfdb', required=True, type=str, help="Source MMFDB burst selection artifact ID.")
 @click.option('--select', '-s', multiple=True, type=str, help="Selection format: param:min-max")
 @click.option('--query', '-q', type=str, help="Pandas eval query string.")
-@click.option('--out', '-o', type=click.Path(), help="Output folder. If --to-mfdb is set, defaults to a sibling directory.")
-@click.option('--to-mfdb/--no-to-mfdb', default=False, show_default=True, help="Register the resulting folder in MFDB.")
-@click.option('--sample-id', type=str, help="MFDB sample ID to link the filtered selection to.")
+@click.option('--out', '-o', type=click.Path(), help="Output folder. If --to-mmfdb is set, defaults to a sibling directory.")
+@click.option('--to-mmfdb/--no-to-mmfdb', default=False, show_default=True, help="Register the resulting folder in MMFDB.")
+@click.option('--sample-id', type=str, help="MMFDB sample ID to link the filtered selection to.")
 @click.option('--db', 'db_path', type=click.Path(dir_okay=False), help="SQLite database path. Defaults to configured DB.")
 @click.option('--skip-nth-row', type=int, default=1, show_default=True, help="Skip every Nth row (1 to load all).")
-def filter_cmd(from_mfdb, select, query, out, to_mfdb, sample_id, db_path, skip_nth_row):
-    """Run parameter-based burst filtering on a burst selection from MFDB."""
-    from chisurf.core.mfdb.store.database_resolver import resolve_database_path
-    from chisurf.core.mfdb.repository import MFDatabase
-    from chisurf.core.mfdb.provenance.result_registry import register_result
+def filter_cmd(from_mmfdb, select, query, out, to_mmfdb, sample_id, db_path, skip_nth_row):
+    """Run parameter-based burst filtering on a burst selection from MMFDB."""
+    from mmfdb.store.database_resolver import resolve_database_path
+    from mmfdb.repository import MFDatabase
+    from mmfdb.provenance.result_registry import register_result
     
     resolved_db_path = db_path or resolve_database_path()
     logging.info(f"Opening database: {resolved_db_path}")
     
     with MFDatabase(resolved_db_path) as db:
-        local_path = db.open_dataset(from_mfdb)
+        local_path = db.open_dataset(from_mmfdb)
         if not local_path:
-            click.echo(json.dumps({"error": f"Failed to resolve artifact: {from_mfdb}"}), err=True)
+            click.echo(json.dumps({"error": f"Failed to resolve artifact: {from_mmfdb}"}), err=True)
             sys.exit(1)
             
     logging.info(f"Resolved source burst selection to: {local_path}")
@@ -95,8 +95,8 @@ def filter_cmd(from_mfdb, select, query, out, to_mfdb, sample_id, db_path, skip_
             sys.exit(1)
         
     new_artifact_id = None
-    if to_mfdb:
-        # Register in MFDB
+    if to_mmfdb:
+        # Register in MMFDB
         with MFDatabase(resolved_db_path) as db:
             try:
                 db.validate_extensible_vocab("operation_type", "burst_filter")
@@ -112,7 +112,7 @@ def filter_cmd(from_mfdb, select, query, out, to_mfdb, sample_id, db_path, skip_
                 kind="external_reference",
                 data=None,
                 sample_id=sample_id or "",
-                parent_artifact_id=from_mfdb,
+                parent_artifact_id=from_mmfdb,
                 operation_type="burst_filter",
                 metadata={
                     "path": str(Path(out).resolve()),
@@ -138,30 +138,30 @@ def filter_cmd(from_mfdb, select, query, out, to_mfdb, sample_id, db_path, skip_
 
 
 @cli.command("image")
-@click.option('--from-mfdb', required=True, type=str, help="Source MFDB image/TTTR artifact ID.")
+@click.option('--from-mmfdb', required=True, type=str, help="Source MMFDB image/TTTR artifact ID.")
 @click.option('--map', 'map_param', required=True, type=str, help="Parameter map to render (intensity, lifetime, etc.)")
 @click.option('--select', '-s', multiple=True, type=str, help="Selection format: param:min-max")
 @click.option('--query', '-q', type=str, help="Pandas eval query string.")
 @click.option('--roi', type=click.Path(exists=True), help="TIFF file class mask ROI.")
 @click.option('--out', '-o', required=True, type=click.Path(), help="Rendered map output image path (.png, .tiff).")
 @click.option('--out-selection', type=click.Path(), help="Folder to write filtered burst sub-selection from ROI/gate.")
-@click.option('--to-mfdb/--no-to-mfdb', default=False, show_default=True, help="Register the resulting image in MFDB.")
-@click.option('--sample-id', type=str, help="MFDB sample ID to link the filtered selection to.")
+@click.option('--to-mmfdb/--no-to-mmfdb', default=False, show_default=True, help="Register the resulting image in MMFDB.")
+@click.option('--sample-id', type=str, help="MMFDB sample ID to link the filtered selection to.")
 @click.option('--db', 'db_path', type=click.Path(dir_okay=False), help="SQLite database path. Defaults to configured DB.")
 @click.option('--skip-nth-row', type=int, default=1, show_default=True, help="Skip every Nth row (1 to load all).")
-def image_cmd(from_mfdb, map_param, select, query, roi, out, out_selection, to_mfdb, sample_id, db_path, skip_nth_row):
-    """Run parameter map rendering and ROI selection from MFDB image/TTTR data."""
-    from chisurf.core.mfdb.store.database_resolver import resolve_database_path
-    from chisurf.core.mfdb.repository import MFDatabase
-    from chisurf.core.mfdb.provenance.result_registry import register_result
+def image_cmd(from_mmfdb, map_param, select, query, roi, out, out_selection, to_mmfdb, sample_id, db_path, skip_nth_row):
+    """Run parameter map rendering and ROI selection from MMFDB image/TTTR data."""
+    from mmfdb.store.database_resolver import resolve_database_path
+    from mmfdb.repository import MFDatabase
+    from mmfdb.provenance.result_registry import register_result
     
     resolved_db_path = db_path or resolve_database_path()
     logging.info(f"Opening database: {resolved_db_path}")
     
     with MFDatabase(resolved_db_path) as db:
-        local_path = db.open_dataset(from_mfdb)
+        local_path = db.open_dataset(from_mmfdb)
         if not local_path:
-            click.echo(json.dumps({"error": f"Failed to resolve artifact: {from_mfdb}"}), err=True)
+            click.echo(json.dumps({"error": f"Failed to resolve artifact: {from_mmfdb}"}), err=True)
             sys.exit(1)
             
     logging.info(f"Resolved source artifact to: {local_path}")
@@ -203,8 +203,8 @@ def image_cmd(from_mfdb, map_param, select, query, roi, out, out_selection, to_m
         
     new_artifact_id = None
     new_selection_artifact_id = None
-    if to_mfdb:
-        # Register in MFDB
+    if to_mmfdb:
+        # Register in MMFDB
         with MFDatabase(resolved_db_path) as db:
             try:
                 db.validate_extensible_vocab("operation_type", "image_generation")
@@ -231,7 +231,7 @@ def image_cmd(from_mfdb, map_param, select, query, roi, out, out_selection, to_m
                 kind="processed_data",
                 data=out,
                 sample_id=sample_id or "",
-                parent_artifact_id=from_mfdb,
+                parent_artifact_id=from_mmfdb,
                 operation_type="image_generation",
                 metadata={
                     "map": map_param,
@@ -249,7 +249,7 @@ def image_cmd(from_mfdb, map_param, select, query, roi, out, out_selection, to_m
                     kind="external_reference",
                     data=None,
                     sample_id=sample_id or "",
-                    parent_artifact_id=from_mfdb,
+                    parent_artifact_id=from_mmfdb,
                     operation_type="roi_selection",
                     metadata={
                         "path": str(Path(out_selection).resolve()),

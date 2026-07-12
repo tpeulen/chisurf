@@ -25,6 +25,17 @@ def test_lifetime_panel_order() -> None:
     ]
 
 
+def test_lazy_lifetime_panel_marked_experimental() -> None:
+    """Lazy Lifetime panel carries experimental metadata for the navigation shell."""
+    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool import (
+        LIFETIME_PANELS,
+    )
+
+    lazy_panel = next(panel for panel in LIFETIME_PANELS if panel["role"] == "lazy_lifetime")
+    assert lazy_panel["experimental"] is True
+    assert "experimental" in lazy_panel["experimental_message"].lower()
+
+
 def test_lifetime_panel_factories_import_expected_widgets(monkeypatch) -> None:
     """Panel factories instantiate the existing standalone widget classes."""
     from qtpy import QtWidgets
@@ -84,7 +95,9 @@ def test_lifetime_analysis_menu_metadata() -> None:
     root = Path(__file__).resolve().parents[1]
     visible = load_manifest(root / "manifest.json")
     assert visible is not None
-    assert visible.display_name == "Spectroscopy:Fluorescence decay:Lifetime Analysis"
+    assert visible.display_name == "Spectroscopy:Fluorescence decay:Decay Analysis"
+    assert visible.experimental is True
+    assert "experimental" in visible.experimental_message.lower()
     assert visible.menu_hidden is False
 
     hidden_manifests = [

@@ -16,5 +16,7 @@
   "entrypoints": {
     "gui": "chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool:LifetimeAnalysisTool"
   },
+  "experimental": true,
+  "experimental_message": "Decay Analysis is experimental and not yet validated",
   "menu_hidden": false
 }

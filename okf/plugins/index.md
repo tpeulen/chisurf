@@ -12,4 +12,4 @@
 * [TTTR tools](tttr.md) - photon-stream conversion, browsing, count-rate, micro-time and image-browser tools.
 * [Trajectory tools](trajectory.md) - molecular-dynamics trajectory conversion, alignment, energy, FRET, and clash/topology utilities.
 * [Sample, spectra & curation](sample-spectra.md) - sample database, spectra downloader, PCH, Jordi calibration, and AI settings.
-* [Core tools](core-tools.md) - setup, onboarding, MFDB admin, user editor and other infrastructure plugins.
+* [Core tools](core-tools.md) - setup, onboarding, MMFDB admin, user editor and other infrastructure plugins.

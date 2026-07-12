@@ -19,7 +19,7 @@ reaching for [runtime globals](/architecture/runtime-globals.md).
 The tree ships ~86 plugin manifests, grouped by domain — e.g. `burst/`
 (smFRET burst analysis), `fcs/` (correlation), `fluorescence_decay/`
 (TCSPC lifetime), `modelling/` (FRET/HydroPro/FPS), and `core/`
-(infrastructure tools like `mfdb_admin`, `setup`, `plugin_manager`,
+(infrastructure tools like `mmfdb_admin`, `setup`, `plugin_manager`,
 `user_editor`).
 
 A cookiecutter template for new plugins lives at

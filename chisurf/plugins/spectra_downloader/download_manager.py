@@ -5,7 +5,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 
 class DownloadPanel(QtWidgets.QWidget):
-    """Run scrapers into the staging DB and push it to the MFDB.
+    """Run scrapers into the staging DB and push it to the MMFDB.
 
     A plain ``QWidget`` so it can live as a panel inside the Spectra tool's
     navigation shell, or be wrapped in :class:`DownloadManagerDialog`.
@@ -42,8 +42,8 @@ class DownloadPanel(QtWidgets.QWidget):
         self.info_layout.addWidget(self.browse_source_btn)
         self.layout.addLayout(self.info_layout)
 
-        # Adding the staging DB into the MFDB is its own dedicated panel
-        # (endpoint + authentication) — see gui/add_to_mfdb_panel.py.
+        # Adding the staging DB into the MMFDB is its own dedicated panel
+        # (endpoint + authentication) — see gui/add_to_mmfdb_panel.py.
 
         self.log_output = QtWidgets.QPlainTextEdit()
         self.log_output.setReadOnly(True)

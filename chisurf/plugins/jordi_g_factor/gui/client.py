@@ -25,11 +25,11 @@ class JordiGFactorClient:
             self._client = self._make_local_client()
 
     def put_object(self, path: str) -> dict[str, Any]:
-        """Upload a file to the MFDB object store via ZMQ RPC."""
+        """Upload a file to the MMFDB object store via ZMQ RPC."""
         logger.debug("JordiGFactorClient: put_object path=%s", path)
-        result = self._client.call("mfdb.objects.put", {"path": path})
+        result = self._client.call("mmfdb.objects.put", {"path": path})
         if isinstance(result, dict) and not result.get("ok", True):
-            raise RuntimeError(result.get("error", "Unknown error in mfdb.objects.put RPC call"))
+            raise RuntimeError(result.get("error", "Unknown error in mmfdb.objects.put RPC call"))
         res = result.get("result", result)
         logger.info("JordiGFactorClient: put_object succeeded: %s", res)
         return res
@@ -88,7 +88,7 @@ class JordiGFactorClient:
         parameters: dict[str, Any],
         active_user: str | None = None,
     ) -> dict[str, Any]:
-        """Archive a G-factor calculation and reference decay in MFDB."""
+        """Archive a G-factor calculation and reference decay in MMFDB."""
         logger.debug("JordiGFactorClient: archive_g_factor file_path=%s", file_path)
         try:
             result = self._client.call(

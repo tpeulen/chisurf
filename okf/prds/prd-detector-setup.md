@@ -11,7 +11,7 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-The full-featured detector/PIE-window definition wizard page is instantiated in 15+ plugin UIs, cluttering windows where detector setup is secondary, duplicating complexity, and multiplying maintenance burden as any wizard change propagates to every embedding site. This PRD introduces a lightweight `SetupSelectorWidget` — a combo box of saved setups, a "Setup Editor…" button that opens the full wizard in a modal dialog, and a tooltip summarizing the selected setup. The full wizard page remains available for the settings tool, the onboarding wizard, and the on-demand modal dialog. Usage sites are migrated in priority order (direct embeds, layout-adaptation sites, wizard-page replacements, and near-pattern simplifications), leaving the setups file format and MFDB integration unchanged.
+The full-featured detector/PIE-window definition wizard page is instantiated in 15+ plugin UIs, cluttering windows where detector setup is secondary, duplicating complexity, and multiplying maintenance burden as any wizard change propagates to every embedding site. This PRD introduces a lightweight `SetupSelectorWidget` — a combo box of saved setups, a "Setup Editor…" button that opens the full wizard in a modal dialog, and a tooltip summarizing the selected setup. The full wizard page remains available for the settings tool, the onboarding wizard, and the on-demand modal dialog. Usage sites are migrated in priority order (direct embeds, layout-adaptation sites, wizard-page replacements, and near-pattern simplifications), leaving the setups file format and MMFDB integration unchanged.
 
 # Status
 Planned / unassigned (STATUS TABLE authoritative). New widget plus staged P0–P3 migration across plugin UIs; a small set of sites remain unchanged by design.
@@ -59,7 +59,7 @@ The central `DetectorWizardPage` remains available for:
 └──────────────────────────────────────────────┘
 ```
 
-- `QComboBox` — setup names from `detector_setups.json` / MFDB.
+- `QComboBox` — setup names from `detector_setups.json` / MMFDB.
 - `QToolButton` / `QPushButton` — "Setup Editor…".
 - Tooltip dynamically generated from the selected setup data.
 - A `QHBoxLayout` in a `QWidget` or `QGroupBox`.
@@ -147,11 +147,11 @@ These already use a button-to-dialog pattern but still instantiate a hidden `Det
 
 # Non-Goals
 - Removing `DetectorWizardPage` or `DetectorWizard` — these remain as the centralised full editors.
-- Changing the detector setups file format or MFDB integration.
+- Changing the detector setups file format or MMFDB integration.
 - Changing the `tttr_detector_setups.py` / `tttr_setup_utils.py` backend.
 - Adding new plugin features unrelated to setup selection.
 
 # Relationships
 - Cross-cutting GUI simplification across many plugins in the [plugin system](/architecture/plugin-system.md).
 - Aligns with the short-label/tooltip and centralized-editing conventions in [GUI & AutoForm](/subsystems/gui-autoform.md).
-- Preserves the existing detector-setups backend and MFDB integration ([MFDB (current)](/architecture/mfdb.md)).
+- Preserves the existing detector-setups backend and MMFDB integration ([MMFDB (current)](/architecture/mmfdb.md)).

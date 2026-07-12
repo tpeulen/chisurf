@@ -38,7 +38,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self._channel_shifts: dict[int, int] = {}
         self._orig_mt: np.ndarray | None = None
         self._routing: np.ndarray | None = None
-        self._mfdb_status: str = ""
+        self._mmfdb_status: str = ""
 
         # Trigger / Auto-align state
         self._trigger_level: int = 0
@@ -283,17 +283,17 @@ class MicrotimeShifterTool(ChisurfDockTool):
     # ── file loading ───────────────────────────────────────────────
 
     def _on_load(self) -> None:
-        """Load TTTR files — from MFDB if connected, otherwise file dialog."""
+        """Load TTTR files — from MMFDB if connected, otherwise file dialog."""
         db = self._db()
         if db is not None:
             try:
-                from chisurf.gui.widgets.mfdb.dataset_browser import (
-                    MfdbDatasetPickerDialog,
+                from chisurf.gui.widgets.mmfdb.dataset_browser import (
+                    MmfdbDatasetPickerDialog,
                 )
-                from chisurf.plugins.core.mfdb_admin.gui.client import MFDBClient
+                from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
-                client = MFDBClient(inprocess=True)
-                sel = MfdbDatasetPickerDialog.pick_dataset(
+                client = MMFDBClient(inprocess=True)
+                sel = MmfdbDatasetPickerDialog.pick_dataset(
                     parent=self,
                     # Both raw measurements and shifted (processed) TTTR outputs
                     # are loadable; the format filter keeps it to TTTR files.
@@ -303,14 +303,14 @@ class MicrotimeShifterTool(ChisurfDockTool):
                     client=client,
                 )
             except Exception as exc:
-                self.statusBar().showMessage(f"MFDB picker error: {exc}")
+                self.statusBar().showMessage(f"MMFDB picker error: {exc}")
                 return
 
             if sel is None:
                 return
 
             try:
-                result = client.call("mfdb.datasets.open", {"artifact_id": sel.artifact_id})
+                result = client.call("mmfdb.datasets.open", {"artifact_id": sel.artifact_id})
                 local_path = (result or {}).get("local_path")
                 if not local_path:
                     self.statusBar().showMessage(
@@ -319,11 +319,11 @@ class MicrotimeShifterTool(ChisurfDockTool):
                     return
                 self._add_paths([Path(local_path)])
                 self.statusBar().showMessage(
-                    f"Loaded from MFDB: {sel.artifact_id[:16]}..."
+                    f"Loaded from MMFDB: {sel.artifact_id[:16]}..."
                 )
                 return
             except Exception as exc:
-                self.statusBar().showMessage(f"MFDB open error: {exc}")
+                self.statusBar().showMessage(f"MMFDB open error: {exc}")
                 return
 
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
@@ -483,21 +483,21 @@ class MicrotimeShifterTool(ChisurfDockTool):
         try:
             info = self._client.identify(Path(self._current_path))
             if info.get("found"):
-                self._mfdb_status = (
+                self._mmfdb_status = (
                     f"Identified (artifact: {info.get('artifact_id', '?')[:8]})"
                 )
             else:
-                self._mfdb_status = "New file (not in MFDB)"
+                self._mmfdb_status = "New file (not in MMFDB)"
         except Exception:
-            self._mfdb_status = "MFDB check unavailable"
+            self._mmfdb_status = "MMFDB check unavailable"
         self._update_status()
 
     def _update_status(self) -> None:
         parts = []
         if self._current_path:
             parts.append(f"File: {self._current_path}")
-        if self._mfdb_status:
-            parts.append(f"MFDB: {self._mfdb_status}")
+        if self._mmfdb_status:
+            parts.append(f"MMFDB: {self._mmfdb_status}")
         if not self._current_path:
             parts.append("No file loaded.")
         self.status_label.setText("\n".join(parts))
@@ -741,15 +741,15 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self._update_plot()
         self.plot.getPlotItem().vb.autoRange()
 
-    def acquire_mfdb_connection(self) -> Any:
-        """Return the active MFDB connection (PRD-23 base hook)."""
-        from ..api.mfdb import active_mfdb_connection
+    def acquire_mmfdb_connection(self) -> Any:
+        """Return the active MMFDB connection (PRD-23 base hook)."""
+        from ..api.mmfdb import active_mmfdb_connection
 
-        return active_mfdb_connection()
+        return active_mmfdb_connection()
 
     def _db(self) -> Any:
-        """Return the active MFDB connection if available."""
-        return self.acquire_mfdb_connection()
+        """Return the active MMFDB connection if available."""
+        return self.acquire_mmfdb_connection()
 
     # ── save ───────────────────────────────────────────────────────
 
@@ -759,13 +759,13 @@ class MicrotimeShifterTool(ChisurfDockTool):
         paths_to_shift = self._file_paths
 
         db = self._db()
-        has_mfdb = db is not None
+        has_mmfdb = db is not None
 
         mode = "file"
-        if has_mfdb:
+        if has_mmfdb:
             msg_box = QtWidgets.QMessageBox(self)
             msg_box.setWindowTitle("Save Shifted Files")
-            msg_box.setText("An active MFDB database connection was found.")
+            msg_box.setText("An active MMFDB database connection was found.")
             msg_box.setInformativeText("Would you like to register the shifted files in the database, or save them to a local file/folder?")
             
             btn_register = msg_box.addButton("Register in DB", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
@@ -787,8 +787,8 @@ class MicrotimeShifterTool(ChisurfDockTool):
             if not sample_id:
                 return
 
-            # Prepare the MFDB Context
-            mfdb_context = {
+            # Prepare the MMFDB Context
+            mmfdb_context = {
                 "enabled": True,
                 "sample_id": sample_id,
                 "register_missing_inputs": True,
@@ -799,17 +799,17 @@ class MicrotimeShifterTool(ChisurfDockTool):
                     file_paths=paths_to_shift,
                     global_shift=self._global_shift,
                     channel_shifts=self._channel_shifts,
-                    mfdb=mfdb_context,
+                    mmfdb=mmfdb_context,
                 )
                 warnings = result.get("warnings", [])
                 warn_str = "\nWarnings:\n" + "\n".join(warnings) if warnings else ""
                 QtWidgets.QMessageBox.information(
-                    self, "Success", f"Successfully registered {len(paths_to_shift)} file(s) in MFDB.{warn_str}"
+                    self, "Success", f"Successfully registered {len(paths_to_shift)} file(s) in MMFDB.{warn_str}"
                 )
-                self.statusBar().showMessage(f"Registered in MFDB: {len(paths_to_shift)} file(s)")
+                self.statusBar().showMessage(f"Registered in MMFDB: {len(paths_to_shift)} file(s)")
             except Exception as exc:
                 QtWidgets.QMessageBox.critical(
-                    self, "Error", f"Failed to register in MFDB:\n{exc}"
+                    self, "Error", f"Failed to register in MMFDB:\n{exc}"
                 )
 
         else:  # mode == "file"
@@ -828,7 +828,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
                         global_shift=self._global_shift,
                         channel_shifts=self._channel_shifts,
                         output_dir=Path(sp).parent,
-                        mfdb={"enabled": False},
+                        mmfdb={"enabled": False},
                     )
                     shifted_generated = result.get("output_paths_by_file", {}).get(str(path))
                     saved_path = sp
@@ -861,7 +861,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
                         global_shift=self._global_shift,
                         channel_shifts=self._channel_shifts,
                         output_dir=Path(output_dir),
-                        mfdb={"enabled": False},
+                        mmfdb={"enabled": False},
                     )
                     self.statusBar().showMessage(f"Saved {len(paths_to_shift)} file(s) to: {output_dir}")
                     QtWidgets.QMessageBox.information(

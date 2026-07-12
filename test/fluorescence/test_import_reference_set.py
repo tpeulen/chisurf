@@ -8,12 +8,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.repository import MFDatabase
 
 
 @pytest.fixture
 def mem_db():
-    """Create an in-memory MFDB for testing."""
+    """Create an in-memory MMFDB for testing."""
     db = MFDatabase(":memory:")
     yield db
     db.close()

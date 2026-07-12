@@ -5,7 +5,7 @@ level (the chinet node/port model applied to data operations). A node binds a
 transformer's ``operation_type`` (PRD-11/16) to parameters; an edge wires a
 producer's output port to a consumer's input port.
 
-This module is pure: it knows nothing about MFDB, files, or Qt. It resolves a
+This module is pure: it knows nothing about MMFDB, files, or Qt. It resolves a
 node's ``operation_type`` to its registered transformer (PRD-16) purely to read the
 declared port kinds, and validates every edge against them — so an invalid
 composition fails *at definition time*, before anything runs. Execution lives in

@@ -3,8 +3,8 @@ from __future__ import annotations
 import yaml
 
 
-def test_set_mfdb_login_settings_persists_values(tmp_path, monkeypatch) -> None:
-    """MFDB login settings are merged into the user settings YAML."""
+def test_set_mmfdb_login_settings_persists_values(tmp_path, monkeypatch) -> None:
+    """MMFDB login settings are merged into the user settings YAML."""
     from chisurf.core.settings import settings_utils
 
     settings_file = tmp_path / "settings_chisurf.yaml"
@@ -12,7 +12,7 @@ def test_set_mfdb_login_settings_persists_values(tmp_path, monkeypatch) -> None:
         yaml.safe_dump(
             {
                 "existing": True,
-                "mfdb": {
+                "mmfdb": {
                     "autologin": False,
                     "default_user_id": "old_user",
                 },
@@ -22,7 +22,7 @@ def test_set_mfdb_login_settings_persists_values(tmp_path, monkeypatch) -> None:
     )
     monkeypatch.setattr(settings_utils, "get_path", lambda name: tmp_path)
 
-    saved = settings_utils.set_mfdb_login_settings(
+    saved = settings_utils.set_mmfdb_login_settings(
         {
             "autologin": True,
             "default_user_id": "admin_user",
@@ -33,6 +33,6 @@ def test_set_mfdb_login_settings_persists_values(tmp_path, monkeypatch) -> None:
     data = yaml.safe_load(settings_file.read_text(encoding="utf-8"))
     assert saved is True
     assert data["existing"] is True
-    assert data["mfdb"]["autologin"] is True
-    assert data["mfdb"]["default_user_id"] == "admin_user"
-    assert data["mfdb"]["save_login"] is True
+    assert data["mmfdb"]["autologin"] is True
+    assert data["mmfdb"]["default_user_id"] == "admin_user"
+    assert data["mmfdb"]["save_login"] is True

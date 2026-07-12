@@ -16,15 +16,15 @@ import pytest
 
 pytest.importorskip("tttrlib")
 
-from chisurf.core.mfdb.provenance.compute_spec import get_compute_spec, recompute
-from chisurf.core.mfdb.repository import MFDatabase
-from chisurf.core.mfdb.provenance.result_registry import (
+from mmfdb.provenance.compute_spec import get_compute_spec, recompute
+from mmfdb.repository import MFDatabase
+from mmfdb.provenance.result_registry import (
     register_raw_measurement,
     register_result,
     set_global_db,
 )
 from chisurf.plugins.burst.burst_selection.api import replay as _replay  # noqa: F401
-from chisurf.plugins.burst.burst_selection.api.mfdb import extract_burst_parameters
+from chisurf.plugins.burst.burst_selection.api.mmfdb import extract_burst_parameters
 from chisurf.plugins.burst.burst_selection.api.models import (
     AnalysisRequest,
     AnalysisSettings,

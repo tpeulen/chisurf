@@ -217,7 +217,7 @@ mc_settings:
       weight: 1
   scale: 0.0025
   update_rmsd: false
-mfdb:
+mmfdb:
   fitting_timeout_ms: 5000  # max ms to wait for a fit.run RPC response; raise for slow models
   default_user_id: user_default
   save_login: true

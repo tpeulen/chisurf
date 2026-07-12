@@ -1,17 +1,17 @@
 ---
 type: PRD
 prd: "02b"
-title: "PRD-02b: MFDB Admin Overhaul — Manual Inspection & Editing"
-description: Make the mfdb-admin plugin inspect, add, and edit every record the sample data model produces
+title: "PRD-02b: MMFDB Admin Overhaul — Manual Inspection & Editing"
+description: Make the mmfdb-admin plugin inspect, add, and edit every record the sample data model produces
 status: done
 phase: "foundation"
-resource: chisurf/plugins/core/mfdb_admin/
-tags: [prd, mfdb, gui]
+resource: chisurf/plugins/core/mmfdb_admin/
+tags: [prd, mmfdb, gui]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-The mfdb-admin plugin must be able to inspect, add, and edit every record the
+The mmfdb-admin plugin must be able to inspect, add, and edit every record the
 sample data model produces — entities, multi-probe positions with flrCIF fields,
 FRET pairs, optical properties and spectra, and per-sample key-value metadata —
 so a user can manually verify the database is correct before downstream
@@ -26,7 +26,7 @@ work.
 Done. Serves as the human verification gate for the sample-tracking data model.
 
 # Goal
-The mfdb-admin plugin must **inspect, add, and edit** every record the
+The mmfdb-admin plugin must **inspect, add, and edit** every record the
 [PRD-02](prd-02.md) data model produces. Before progressing to downstream PRDs
 (result registry, burst pipeline, plugin integration), the user needs to
 manually verify that the sample/probe/entity/FRET data is correct in the
@@ -41,15 +41,15 @@ the GUI counterpart of PRD-02) between implementing the data model and trusting
 it in downstream workflows.
 
 # Background — what exists
-- `gui/tool.py` (~4569 lines) — `MFDBWidget` with 21 tabs; Sample/Condition/
+- `gui/tool.py` (~4569 lines) — `MMFDBWidget` with 21 tabs; Sample/Condition/
   Entities/Probes/Positions tabs show only raw table columns.
-- `gui/client.py` (~752 lines) — `MFDBClient` RPC wrapper.
+- `gui/client.py` (~752 lines) — `MMFDBClient` RPC wrapper.
 - `backend/services.py` (~1330 lines) — RPC handlers; `save_sample_handler`
   uses raw SQL (not `create_sample()`); missing full-description,
   export-validation, and probe-edit handlers.
 - `backend/measurement_services.py` (~1850 lines) — raw data, processing runs,
   provenance edges; works but not sample-aware in the PRD-02 sense.
-- The mfdb package provides `create_sample()`, `get_sample_full_description()`,
+- The mmfdb package provides `create_sample()`, `get_sample_full_description()`,
   `validate_sample_for_export()`, `set_sample_metadata()`, `suggest_pdbx_keys()`,
   `EntityDefinition`/`ProbeDefinition`/`FretPairDefinition`/`SampleDefinition`,
   `DEFAULT_FLUOROPHORE_SPECTRA`, `compute_forster_radius()`, and the
@@ -107,7 +107,7 @@ Create `fret_pairs_tab()` over `flr_fret_forster_radius` (columns id, sample,
 donor, acceptor, R₀, κ², n, overlap_integral, details) with a sample filter,
 CRUD buttons, optional Recompute-R₀, wired into `setup_ui()` and
 `_all_items_sources`. Requires the R15-3 schema fix (`sample_id` was `INTEGER
-NOT NULL` while `mfdb_sample.sample_id` is `TEXT PRIMARY KEY`).
+NOT NULL` while `mmfdb_sample.sample_id` is `TEXT PRIMARY KEY`).
 
 ## Task 6: Overhaul the Label Positions tab
 Expand columns to show the flrCIF fields added by PRD-02 (atom_id,
@@ -133,7 +133,7 @@ Show an import summary with created-record counts; run
 "Preview flrCIF" button.
 
 ## Task 10: Standardize all tables
-Give every mfdb-admin table the same baseline interaction model via a
+Give every mmfdb-admin table the same baseline interaction model via a
 `_setup_standard_table(...)` helper: a dedicated checkbox column (column 0,
 replacing "first column is checkable"), full-row selection, a standard
 right-click context menu (Open details, Copy checked IDs / selected row / cell,
@@ -149,7 +149,7 @@ defaulting to **soft delete** (`deleted_at`, preserved audit log, never physical
 delete user files).
 
 ## Task 11: Workflow-oriented docks
-Make mfdb-admin a provenance browser, not just a row editor. Add a
+Make mmfdb-admin a provenance browser, not just a row editor. Add a
 `Measurements` dock aggregating raw data / processing runs / processed products
 (columns include sample, sample QA red/yellow/green, project, experiment, setup/
 device, status, location; filter by kind / QA / project / experiment). Make
@@ -174,7 +174,7 @@ GUI thread updates widgets — never mutate Qt widgets from the worker thread).
 
 ## Task 13: General UX polish
 Unblock GUI startup: run `refresh()` data fetching in a background
-`_MFDBBackgroundTask` (or sequential `QTimer` calls) with a progress
+`_MMFDBBackgroundTask` (or sequential `QTimer` calls) with a progress
 dialog/bar. Wrap table + detail form in `QSplitter(Vertical)` across the listed
 tabs. Unlock detail editing (remove `setReadOnly(True)` on descriptive/name/JSON
 fields, add a "Save Changes" button per tab committing via `client.update_*`,
@@ -187,14 +187,14 @@ Handlers should call `sample_manager` functions (e.g.
 `create_sample(db, request.to_sample_definition())` → returns
 `get_sample_full_description`), not raw SQL. The GUI uses `QTableWidget`,
 `QFormLayout`, `DockArea`, `_install_table_context_menu`, and status-label
-updates — follow these patterns. `MFDBClient` supports in-process mode
+updates — follow these patterns. `MMFDBClient` supports in-process mode
 (`inprocess=True`, a direct `ServiceDispatcher`, the primary local mode); new
 handlers must be registered in `register_services()` to work in both modes.
 
 **Prerequisite R15 fixes (before starting):** R15-1 `add_entity()` accepts but
 never stores `sequence`; R15-2 `asym_id="A"` default makes `not self.asym_id`
 always False, breaking legacy chain_id / default-spectra lookups; R15-3
-`flr_fret_forster_radius.sample_id` INTEGER vs `mfdb_sample.sample_id` TEXT FK
+`flr_fret_forster_radius.sample_id` INTEGER vs `mmfdb_sample.sample_id` TEXT FK
 mismatch; R15-6 `add_fret_forster_radius()` ignores `forster_radius_id`; R15-7
 `__init__.py` missing exports for new PRD-02 symbols.
 
@@ -237,4 +237,4 @@ reporting.
 
 # Relationships
 - Depends on [PRD-02](prd-02.md); gates downstream [PRD-03](prd-03.md) and [PRD-04](prd-04.md).
-- A [plugin](/architecture/plugin-system.md) surfacing the [MFDB (current)](/architecture/mfdb.md) store; aligns with the [Plugins target](/specs/plugins.md).
+- A [plugin](/architecture/plugin-system.md) surfacing the [MMFDB (current)](/architecture/mmfdb.md) store; aligns with the [Plugins target](/specs/plugins.md).

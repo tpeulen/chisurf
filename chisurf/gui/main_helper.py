@@ -65,7 +65,7 @@ class ProjectMixin:
         return fit_count, dataset_count
 
     def onSaveProject(self: Main, event: QtCore.QEvent = None):
-        """Save the current project to the MFDB database with versioning."""
+        """Save the current project to the MMFDB database with versioning."""
         from chisurf.plugins.core.project_browser.gui.tool import SaveProjectDialog
 
         current_project_id = getattr(self, "_current_project_id", None)
@@ -116,12 +116,12 @@ class ProjectMixin:
             self._current_project_visibility = result.get("visibility", visibility)
             self._current_project_path = None
             cs.logging.info(
-                "Project saved to MFDB: %s v%s (id=%s, ver=%s)",
+                "Project saved to MMFDB: %s v%s (id=%s, ver=%s)",
                 project_name, result.get("version_number"),
                 result.get("project_id"), result.get("version_id"),
             )
         except Exception as exc:
-            cs.logging.exception("Failed to save project to MFDB")
+            cs.logging.exception("Failed to save project to MMFDB")
             QtWidgets.QMessageBox.warning(self, "Save Failed", str(exc))
 
     def onExportProject(self: Main, event: QtCore.QEvent = None):
@@ -193,17 +193,17 @@ class ProjectMixin:
         self.add_recent_project(project_path)
 
     def onLoadProject(self: Main, event: QtCore.QEvent = None):
-        """Open a project from the MFDB project browser."""
+        """Open a project from the MMFDB project browser."""
         try:
             self.load_and_show_plugin("chisurf.plugins.core.project_browser")
         except Exception as exc:
             QtWidgets.QMessageBox.critical(
                 self, "Open Project Failed",
-                f"Could not open projects from MFDB:\n{exc}"
+                f"Could not open projects from MMFDB:\n{exc}"
             )
 
     def onImportProject(self: Main, event: QtCore.QEvent = None):
-        """Import a project archive file into the MFDB database."""
+        """Import a project archive file into the MMFDB database."""
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Import Project", "", "ChiSurf Project (*.csp)",
         )

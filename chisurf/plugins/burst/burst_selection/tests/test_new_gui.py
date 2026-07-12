@@ -8,9 +8,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from chisurf.core.mfdb.models import SampleDefinition
-from chisurf.core.mfdb.repository import MFDatabase
-from chisurf.core.mfdb.samples.sample_manager import create_sample
+from mmfdb.models import SampleDefinition
+from mmfdb.repository import MFDatabase
+from mmfdb.samples.sample_manager import create_sample
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
     _resolve_active_user_id,
@@ -39,7 +39,7 @@ from chisurf.plugins.burst.burst_selection.gui.tool import (
 
 
 def _bh_spc130_files() -> list[Path]:
-    """Return the real BH SPC-130 fixture set used for MFDB preflight tests."""
+    """Return the real BH SPC-130 fixture set used for MMFDB preflight tests."""
     fixture_dir = Path(__file__).resolve().parent / "data" / "bh_spc132_sm_dna"
     return sorted(fixture_dir.glob("*.spc"))
 
@@ -227,12 +227,12 @@ def test_analyze_selected_file_updates_selected_table_and_histogram() -> None:
 
 
 def test_analyze_selected_file_does_not_archive_preview() -> None:
-    """Selected-file preview should not emit MFDB context as an output side effect."""
+    """Selected-file preview should not emit MMFDB context as an output side effect."""
     path = Path("selected.spc")
     settings = default_analysis_settings()
 
     class FakeClient:
-        """Client stub that records MFDB context for preview analysis."""
+        """Client stub that records MMFDB context for preview analysis."""
 
         def __init__(self) -> None:
             self.calls: list[dict[str, object]] = []
@@ -268,12 +268,12 @@ def test_analyze_selected_file_does_not_archive_preview() -> None:
 
     BurstSelectionTool._analyze_file_frame(tool, path, settings)
 
-    assert client.calls[0]["mfdb"] is None
+    assert client.calls[0]["mmfdb"] is None
 
 
-def test_mfdb_raw_registration_binds_content_to_sample(tmp_path: Path) -> None:
+def test_mmfdb_raw_registration_binds_content_to_sample(tmp_path: Path) -> None:
     """Registering raw input should make future content-MD5 lookups find the sample."""
-    db = MFDatabase(tmp_path / "mfdb.sqlite")
+    db = MFDatabase(tmp_path / "mmfdb.sqlite")
     sample_id = create_sample(db, SampleDefinition(name="DNA burst sample"))
     raw_paths = _bh_spc130_files()
 
@@ -292,9 +292,9 @@ def test_mfdb_raw_registration_binds_content_to_sample(tmp_path: Path) -> None:
         assert _sample_id_for_raw_path(db, raw_path) == sample_id
 
 
-def test_prepare_mfdb_context_prompts_when_raw_sample_is_missing(tmp_path: Path, monkeypatch: object) -> None:
-    """MFDB output should open sample registration when raw content has no sample."""
-    db = MFDatabase(tmp_path / "mfdb.sqlite")
+def test_prepare_mmfdb_context_prompts_when_raw_sample_is_missing(tmp_path: Path, monkeypatch: object) -> None:
+    """MMFDB output should open sample registration when raw content has no sample."""
+    db = MFDatabase(tmp_path / "mmfdb.sqlite")
     sample_id = create_sample(db, SampleDefinition(name="Registered sample"))
     raw_paths = _bh_spc130_files()
     prompts: list[str] = []
@@ -327,13 +327,13 @@ def test_prepare_mfdb_context_prompts_when_raw_sample_is_missing(tmp_path: Path,
     monkeypatch.setattr(tool_module, "show_sample_picker_dialog", fake_sample_picker)
     monkeypatch.setattr(tool_module, "_resolve_active_user_id", lambda: "")
     tool = BurstSelectionTool.__new__(BurstSelectionTool)
-    tool._mfdb_db = db
-    tool.mfdb_output_check = FakeCheck()
+    tool._mmfdb_db = db
+    tool.mmfdb_output_check = FakeCheck()
     tool._selected_filetype = "SPC-130"
     tool.wizard = FakeWizard()
     tool._selected_sample_id = lambda: ""
 
-    context = BurstSelectionTool._prepare_mfdb_context_for_paths(tool, raw_paths)
+    context = BurstSelectionTool._prepare_mmfdb_context_for_paths(tool, raw_paths)
 
     assert prompts == ["shown"]
     assert context is not None
@@ -346,12 +346,12 @@ def test_prepare_mfdb_context_prompts_when_raw_sample_is_missing(tmp_path: Path,
     assert all(_sample_id_for_raw_path(db, raw_path) == sample_id for raw_path in raw_paths)
 
 
-def test_mfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: object) -> None:
-    """Batch analysis should accept MFDB as the only selected output mode."""
+def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: object) -> None:
+    """Batch analysis should accept MMFDB as the only selected output mode."""
     paths = _bh_spc130_files()
     settings = default_analysis_settings()
     settings.output_formats = []
-    mfdb_context = {"enabled": True, "sample_id": "sample_1", "source_artifact_ids": {}}
+    mmfdb_context = {"enabled": True, "sample_id": "sample_1", "source_artifact_ids": {}}
 
     class FakeClient:
         """Client stub that records batch-analysis calls."""
@@ -405,8 +405,8 @@ def test_mfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: objec
     tool.wizard = FakeWizard()
     tool._selected_filetype = "SPC-130"
     tool._settings_from_controls = lambda: settings
-    tool._mfdb_output_selected = lambda: True
-    tool._prepare_mfdb_context_for_paths = lambda paths: mfdb_context
+    tool._mmfdb_output_selected = lambda: True
+    tool._prepare_mmfdb_context_for_paths = lambda paths: mmfdb_context
     tool._legacy_parameters = lambda: {}
     tool._selected_file_paths_from_list = lambda: paths
     tool._display_frame_set = lambda frames, current_settings, indices: True
@@ -418,13 +418,13 @@ def test_mfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: objec
 
     assert client.calls[0]["file_paths"] == paths
     assert client.calls[0]["detectors"] == _bh_spc130_detectors()
-    assert client.calls[0]["mfdb"] == mfdb_context
+    assert client.calls[0]["mmfdb"] == mmfdb_context
     assert client.calls[0]["legacy_output"] is True
     assert "No output format selected." not in summary_text
 
 
-def test_mfdb_only_output_keeps_zip_controls_disabled() -> None:
-    """MFDB-only output should not expose packaging controls for file outputs."""
+def test_mmfdb_only_output_keeps_zip_controls_disabled() -> None:
+    """MMFDB-only output should not expose packaging controls for file outputs."""
 
     class FakeCheck:
         """Minimal checkbox stand-in with mutable state."""
@@ -445,7 +445,7 @@ def test_mfdb_only_output_keeps_zip_controls_disabled() -> None:
     tool = BurstSelectionTool.__new__(BurstSelectionTool)
     tool.csv_output_check = FakeCheck(False)
     tool.hdf_output_check = FakeCheck(False)
-    tool.mfdb_output_check = FakeCheck(True)
+    tool.mmfdb_output_check = FakeCheck(True)
     tool.zip_output_check = FakeCheck(True)
     tool.remove_folder_check = FakeCheck(True)
 
@@ -1356,7 +1356,7 @@ def test_client_analyze_files_passes_detector_setup_context() -> None:
         legacy_output_folder_name="burstwise_All 0.2000#60",
         selected_setup="Test",
         legacy_parameters={"decay_coarse": 8},
-        mfdb={
+        mmfdb={
             "enabled": True,
             "sample_id": "sample_1",
             "source_artifact_ids": {"example.spc": "artifact_1"},
@@ -1372,7 +1372,7 @@ def test_client_analyze_files_passes_detector_setup_context() -> None:
     assert fake.calls[0][1]["legacy_output_folder_name"] == "burstwise_All 0.2000#60"
     assert fake.calls[0][1]["selected_setup"] == "Test"
     assert fake.calls[0][1]["legacy_parameters"] == {"decay_coarse": 8}
-    assert fake.calls[0][1]["mfdb"] == {
+    assert fake.calls[0][1]["mmfdb"] == {
         "enabled": True,
         "sample_id": "sample_1",
         "source_artifact_ids": {"example.spc": "artifact_1"},

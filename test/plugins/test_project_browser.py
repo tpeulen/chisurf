@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from chisurf.core.mfdb.security.auth import PERM_READ, PERM_WRITE, PERM_MANAGE
+from mmfdb.security.auth import PERM_READ, PERM_WRITE, PERM_MANAGE
 from chisurf.core.project.archive import ProjectArchive
 from chisurf.plugins.core.project_browser.backend.services import (
     list_projects_handler,
@@ -36,11 +36,11 @@ def admin_auth():
 
 @pytest.fixture
 def temp_db(monkeypatch, tmp_path):
-    """Create a temporary MFDB and patch resolve_database_path to use it."""
-    from chisurf.core.mfdb.repository import MFDatabase
-    from chisurf.core.mfdb.security.auth import _hash_token
+    """Create a temporary MMFDB and patch resolve_database_path to use it."""
+    from mmfdb.repository import MFDatabase
+    from mmfdb.security.auth import _hash_token
 
-    db_path = tmp_path / "test_mfdb.db"
+    db_path = tmp_path / "test_mmfdb.db"
     db = MFDatabase(db_path)
 
     session_token = "test-session-token"
@@ -58,12 +58,12 @@ def temp_db(monkeypatch, tmp_path):
         ("admin_user", "Admin User", 1),
     )
     db.conn.execute(
-        """INSERT INTO mfdb_session (session_id, user_id, token_hash, expires_at)
+        """INSERT INTO mmfdb_session (session_id, user_id, token_hash, expires_at)
            VALUES (?, ?, ?, ?)""",
         ("sess_test", "user_test", token_hash, "2099-12-31T23:59:59"),
     )
     db.conn.execute(
-        """INSERT INTO mfdb_session (session_id, user_id, token_hash, expires_at)
+        """INSERT INTO mmfdb_session (session_id, user_id, token_hash, expires_at)
            VALUES (?, ?, ?, ?)""",
         ("sess_admin", "admin_user", admin_hash, "2099-12-31T23:59:59"),
     )
@@ -77,7 +77,7 @@ def temp_db(monkeypatch, tmp_path):
         _mock_resolve,
     )
     monkeypatch.setattr(
-        "chisurf.core.mfdb.store.database_resolver.resolve_database_path",
+        "mmfdb.store.database_resolver.resolve_database_path",
         _mock_resolve,
     )
 

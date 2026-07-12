@@ -24,15 +24,15 @@ Before the ChiSurf server may bind to anything other than loopback, the RPC tran
 - **Transport:** ZeroMQ REQ/REP (commands, default `:8765`) + PUB/SUB (event broadcast, default `:8766`), bound to `127.0.0.1`.
 - **Fail-closed guard (good, keep):** `chisurf/server/transport/zmq.py` refuses any non-loopback `host` — *"Non-loopback host requires CURVE/ZAP transport security which is not yet implemented."* So the server cannot accidentally be exposed.
 - **On the wire:** plaintext, **no encryption, no endpoint authentication**.
-- **Per-call:** the dispatcher does **not** authenticate or authorize callers. `resolve_active_user_id(auth, conn)` (`chisurf/core/mfdb/session.py`) *resolves* a principal from an `auth` payload but nothing *verifies* that payload or checks whether the principal may call the requested method. `dispatcher.py`'s `auth`/`password`/`token` handling is **log redaction only**.
+- **Per-call:** the dispatcher does **not** authenticate or authorize callers. `resolve_active_user_id(auth, conn)` (`chisurf/core/mmfdb/session.py`) *resolves* a principal from an `auth` payload but nothing *verifies* that payload or checks whether the principal may call the requested method. `dispatcher.py`'s `auth`/`password`/`token` handling is **log redaction only**.
 - **Events:** `chisurf/server/app.py` bridges `"*"` (every server event) to the PUB socket — any subscriber receives every event, unscoped.
-- **In-process MFDB event bus** (`chisurf/core/mfdb/events.py`, PRD-21): in-process only, **not** bridged to the network. It must stay that way (or be reviewed under this PRD) before any network exposure — see "Event scoping" below.
+- **In-process MMFDB event bus** (`chisurf/core/mmfdb/events.py`, PRD-21): in-process only, **not** bridged to the network. It must stay that way (or be reviewed under this PRD) before any network exposure — see "Event scoping" below.
 
 Trust boundary today = "any local process/user on this machine."
 
 # Existing building blocks to reuse (don't reinvent)
 
-- **Session tokens:** `chisurf/core/mfdb/credentials.py` already stores/loads/rotates per-`(host, port, user)` session tokens via the OS credential store.
+- **Session tokens:** `chisurf/core/mmfdb/credentials.py` already stores/loads/rotates per-`(host, port, user)` session tokens via the OS credential store.
 - **Principal resolution:** `resolve_active_user_id(auth, conn)` + the `flr_sample_users` table (`is_admin`, `password_hash`, `allow_passwordless_login`) from PRD-17.
 - **Per-service `auth` param:** services already accept an `auth` payload threaded by the dispatcher — the hook where verification/authorization belongs.
 
@@ -53,13 +53,13 @@ Trust boundary today = "any local process/user on this machine."
 ## Authorization (what they may do)
 
 - Per-method **capability/role checks** at the dispatcher (e.g. read vs. write vs. admin), tied to the resolved principal and `flr_sample_users.is_admin` / roles.
-- Default-deny for unknown/unscoped methods; deny mutating MFDB calls to read-only principals.
+- Default-deny for unknown/unscoped methods; deny mutating MMFDB calls to read-only principals.
 
 ## Event scoping (broadcast hygiene)
 
 - Replace the unconditional `"*"` → PUB bridge with **per-subscription authorization** and **topic/visibility filtering**, so a subscriber only receives events it is entitled to (e.g. owner/visibility from PRD-17).
 - **Payload hygiene:** no secrets/tokens/PII in event payloads. Treat any network-broadcast payload as readable by every authorized subscriber.
-- The in-process MFDB event bus (PRD-21) **must not** be bridged to the network PUB socket without passing it through this scoping + payload review first.
+- The in-process MMFDB event bus (PRD-21) **must not** be bridged to the network PUB socket without passing it through this scoping + payload review first.
 
 ## Operational
 
@@ -71,7 +71,7 @@ Trust boundary today = "any local process/user on this machine."
 1. CURVE/ZAP transport security on both sockets + key management; gate non-loopback bind behind it.
 2. Login handshake → signed expiring session token; dispatcher-level token verification (fail-closed); wire verified principal into `resolve_active_user_id`.
 3. Per-method authorization (capabilities/roles); default-deny.
-4. Scope the event broadcast (per-subscription authz + payload hygiene); review any MFDB-event bridge.
+4. Scope the event broadcast (per-subscription authz + payload hygiene); review any MMFDB-event bridge.
 5. Rate limiting + authn/authz audit logging.
 6. Tests: rejected unauthenticated call; rejected unauthorized (under-privileged) call; tampered/expired token rejected; encrypted-transport round trip; a subscriber receives only authorized events; non-loopback bind refused unless security active.
 
@@ -79,7 +79,7 @@ Trust boundary today = "any local process/user on this machine."
 
 - [ ] Non-loopback bind is possible **only** with CURVE/ZAP + authn + authz active; otherwise fail-closed (the existing guard).
 - [ ] Every command is authenticated (verified session token) and authorized (per-method capability) before dispatch; unauthenticated/unauthorized calls are rejected and audited.
-- [ ] Event broadcast is scoped per subscriber; no secrets in payloads; the in-process MFDB bus is not bridged to the network without review.
+- [ ] Event broadcast is scoped per subscriber; no secrets in payloads; the in-process MMFDB bus is not bridged to the network without review.
 
 # Definition of Clean
 
@@ -91,4 +91,4 @@ The transport is encrypted and endpoint-authenticated; the dispatcher is the sin
 - Consumes the PRD-21 event model for audit and constrains how those events may cross the process boundary.
 - Independent of the data-model PRDs; required before the server's loopback guard is ever relaxed.
 - Hardens the write path referenced by [PRD-41](prd-41.md)'s deposition strategy.
-- Concerns the [server](/architecture/server.md), [RPC target](/specs/rpc.md), and [MFDB (current)](/architecture/mfdb.md).
+- Concerns the [server](/architecture/server.md), [RPC target](/specs/rpc.md), and [MMFDB (current)](/architecture/mmfdb.md).

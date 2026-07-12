@@ -6,7 +6,7 @@ This script:
 1. Reads parameter_registry.json and extracts parameter names + descriptions.
 2. Checks each parameter against the bundled flrCIF dictionaries.
 3. For parameters missing from the dictionaries, generates standard-compliant
-   .dic entries and appends them to mfdb_flr_ext.dic.
+   .dic entries and appends them to mmfdb_flr_ext.dic.
 4. Adds a ``flrcif_item_id`` field to each parameter entry in the JSON,
    linking internal short names to canonical dictionary item identifiers.
 """
@@ -19,7 +19,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from chisurf.core.mfdb.pdbx_metadata import MmcifDictionary
+from chisurf.core.mmfdb.pdbx_metadata import MmcifDictionary
 
 
 CATEGORY = "flr_chisurf_parameter"
@@ -87,16 +87,16 @@ def save_parameter_registry(path: Path, data: Dict[str, Any]) -> None:
     tmp.replace(path)
 
 
-def get_existing_dic_items(mfdb_ext_path: Path) -> Set[str]:
+def get_existing_dic_items(mmfdb_ext_path: Path) -> Set[str]:
     """Return the set of item names already defined in the extension .dic.
 
     Parses the dictionary to find items in the ``flr_chisurf_parameter``
     category and any items with schema bindings.
     """
-    if not mfdb_ext_path.exists():
+    if not mmfdb_ext_path.exists():
         return set()
     try:
-        d = MmcifDictionary(mfdb_ext_path)
+        d = MmcifDictionary(mmfdb_ext_path)
     except Exception:
         return set()
     existing: Set[str] = set()
@@ -134,7 +134,7 @@ def generate_category_def() -> List[str]:
         "   _category.description",
         ";     ChiSurf-internal parameters mapped to flrCIF.",
         "      This category holds model/fit parameters that are used internally",
-        "      by ChiSurf and exported to MFDB using standard flrCIF identifiers.",
+        "      by ChiSurf and exported to MMFDB using standard flrCIF identifiers.",
         "      Each item corresponds to one entry in the ChiSurf parameter registry.",
         ";",
         "   _category.mandatory_code  no",
@@ -238,7 +238,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         description=(
             "Align ChiSurf's parameter registry with the flrCIF dictionary. "
             "Adds flrcif_item_id mappings to parameter_registry.json and "
-            "generates missing .dic entries in mfdb_flr_ext.dic."
+            "generates missing .dic entries in mmfdb_flr_ext.dic."
         )
     )
     parser.add_argument(
@@ -255,8 +255,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         type=str,
         default=None,
         help=(
-            "Path to mfdb_flr_ext.dic "
-            "(defaults to chisurf/core/mfdb/data/mfdb_flr_ext.dic)."
+            "Path to mmfdb_flr_ext.dic "
+            "(defaults to chisurf/core/mmfdb/data/mmfdb_flr_ext.dic)."
         ),
     )
     parser.add_argument(
@@ -280,7 +280,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     if args.dic is not None:
         dic_path = Path(args.dic).resolve()
     else:
-        dic_path = default_root / "chisurf" / "core" / "mfdb" / "data" / "mfdb_flr_ext.dic"
+        dic_path = default_root / "chisurf" / "core" / "mmfdb" / "data" / "mmfdb_flr_ext.dic"
 
     added = process(registry_path, dic_path, dry_run=args.dry_run)
     if args.dry_run:

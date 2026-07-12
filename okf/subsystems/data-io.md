@@ -20,7 +20,7 @@ and the fitting models.
 | `fluorescence/tcspc.py`, `sdtfile.py`, `bhfiles.py`, `thdfile.py` | TCSPC decays / B&H |
 | `ascii.py`, `jordi.py`, `zipped.py` | generic text / Jordi curves / gz-bz2 wrappers |
 | `structure/coordinates.py`, `density.py` | PDB / density structures |
-| `mmcif/` | mmCIF importer + database resolver (feeds [MFDB](/architecture/mfdb.md)) |
+| `mmcif/` | mmCIF importer + database resolver (feeds [MMFDB](/architecture/mmfdb.md)) |
 | `staging.py` | slow/network-file staging (below) |
 
 # Format registry (`chisurf/core/file_formats.py` + `file_formats.json`)

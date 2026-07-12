@@ -3,7 +3,7 @@
 Provides a common dockable-tool base (`ChisurfDockTool`) and a reusable
 path-drop list (`PathDropListWidget`) so every transformer GUI reuses one
 implementation of drag-drop, dock central widget, window geometry persistence,
-and MFDB-connectivity status instead of forking its own.
+and MMFDB-connectivity status instead of forking its own.
 """
 
 from __future__ import annotations

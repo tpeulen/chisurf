@@ -1,9 +1,9 @@
 ---
 type: Plugin Profile
 title: Project Browser plugin
-description: OKF profile for MFDB-backed project browsing and archival.
+description: OKF profile for MMFDB-backed project browsing and archival.
 resource: chisurf/plugins/core/project_browser/
-tags: [plugins, projects, mfdb, provenance]
+tags: [plugins, projects, mmfdb, provenance]
 timestamp: '2026-07-06T00:00:00Z'
 ---
 
@@ -19,7 +19,7 @@ timestamp: '2026-07-06T00:00:00Z'
 | Local README | `chisurf/plugins/core/project_browser/README.md` |
 
 The manifest describes browsing, saving, restoring, exporting, and importing ChiSurf
-projects using MFDB-backed version control.
+projects using MMFDB-backed version control.
 
 # Architecture Evidence
 
@@ -43,7 +43,7 @@ target for project persistence and provenance.
 # Verification Surface
 
 ```bash
-PYTHONPATH="modules/mfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
+PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
   chisurf/plugins/core/project_browser/test
 ```
 
@@ -55,7 +55,7 @@ fit-parameter listing, and delete manage-permission enforcement.
 
 Latest verification: Project Browser plugin-local suite reported 11 passed / 1
 warning; the focused GUI/admin/database smoke reported 55 passed / 2 warnings; the
-broad MFDB Admin + Database Connector + Project Browser smoke reported 130 passed /
+broad MMFDB Admin + Database Connector + Project Browser smoke reported 130 passed /
 2 warnings.
 
 Remaining gap: branch/artifact/parameter endpoints are service-covered and

@@ -41,7 +41,7 @@ Manifest RPC methods include `lightpath.simulate`, `save`, `list`, `get`,
 
 The plugin is a strong reference candidate for the client-server plugin standard:
 it has explicit API, core, backend, RPC, CLI, GUI, templates, and tests. It should
-document whether saved sessions are local plugin state, MFDB records, or ordinary
+document whether saved sessions are local plugin state, MMFDB records, or ordinary
 files.
 
 # Verification Surface
@@ -78,4 +78,4 @@ PYTHONPATH="modules/chinet:modules/imp-tricks/src:." python3 -m pytest chisurf/p
 - Add `chisurf/plugins/core/lightpath_simulator/README.md`.
 - Add `docs/CONTRACT.md` if `api/contract.py` is expected to be stable.
 - Document template file format and CLI examples.
-- State persistence location and MFDB involvement explicitly.
+- State persistence location and MMFDB involvement explicitly.

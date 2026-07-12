@@ -1,6 +1,6 @@
 # Project Browser
 
-MFDB-backed project persistence plugin for browsing, saving, restoring, exporting,
+MMFDB-backed project persistence plugin for browsing, saving, restoring, exporting,
 importing, and versioning ChiSurf projects.
 
 ## Runtime Surface
@@ -32,7 +32,7 @@ Mutating or filesystem-writing methods:
 - `project_browser.delete_version`
 - `project_browser.create_branch`
 
-All project data is stored through MFDB operations, artifacts, object-store blobs,
+All project data is stored through MMFDB operations, artifacts, object-store blobs,
 branch heads, and provenance edges. Dataset payloads are decomposed into source-file
 objects where available and processed-data JSON artifacts.
 
@@ -45,13 +45,13 @@ version; selecting a child restores that exact version.
 ## Verification
 
 ```bash
-PYTHONPATH="modules/mfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
+PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
   chisurf/plugins/core/project_browser/test
 ```
 
 The plugin-local tests cover:
 
-- sample-data-backed save/list/restore/export using a temporary MFDB and object store;
+- sample-data-backed save/list/restore/export using a temporary MMFDB and object store;
 - import preview rejection plus collision-remapped import from an exported `.csp`
   archive;
 - branch creation, branch-scoped version counts, and version DAG roots/leaves;
@@ -60,7 +60,7 @@ The plugin-local tests cover:
 - in-process RPC registration through `ServiceDispatcher` and `InProcessClient`;
 - headless Qt construction of the project tree with sample project/version data;
 - headless Qt construction using the real in-process ChiSurf services against a
-  temporary MFDB seeded with a CSV-backed sample project;
+  temporary MMFDB seeded with a CSV-backed sample project;
 - headless Qt restore of a selected version into a patched ChiSurf context, verifying
   project payload load and active project metadata updates;
 - headless Qt delete confirmation and collision-remapped `.csp` import actions.

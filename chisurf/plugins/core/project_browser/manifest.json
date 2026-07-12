@@ -2,7 +2,7 @@
   "id": "project_browser",
   "version": "1.0.0",
   "display_name": "Tools:Open Project",
-  "description": "Browse, save, restore, export, and import Chisurf projects using the MFDB database with version control.",
+  "description": "Browse, save, restore, export, and import Chisurf projects using the MMFDB database with version control.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Tools", "Project"],
   "state_namespace": "project_browser",

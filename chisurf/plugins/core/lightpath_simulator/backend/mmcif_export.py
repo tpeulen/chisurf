@@ -34,7 +34,7 @@ class LaserLine:
 class FilterSetting:
     """→ _flr_inst_setting (filter/dichroic/splitter)"""
     name: str
-    probe_id: Optional[int]   # references MFDB probe/spectra records
+    probe_id: Optional[int]   # references MMFDB probe/spectra records
     role: str   # 'excitation_filter' | 'emission_filter' | 'dichroic' | 'splitter'
 
 @dataclass

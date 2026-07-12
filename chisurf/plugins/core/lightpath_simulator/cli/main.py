@@ -51,7 +51,7 @@ def contract() -> None:
 
 @cli.command()
 @click.argument("graph_json", type=click.Path(exists=True, dir_okay=False))
-@click.option("--db", "db_path", type=click.Path(dir_okay=False), default=None, help="MFDB SQLite path.")
+@click.option("--db", "db_path", type=click.Path(dir_okay=False), default=None, help="MMFDB SQLite path.")
 def simulate(graph_json: str, db_path: str | None) -> None:
     """Run a simulation from GRAPH_JSON."""
     emit_json(simulate_lightpath(load_json_file(graph_json), db_path=db_path))
@@ -60,14 +60,14 @@ def simulate(graph_json: str, db_path: str | None) -> None:
 @cli.command(name="save")
 @click.argument("graph_json", type=click.Path(exists=True, dir_okay=False))
 @click.option("--name", default=None, help="Saved simulation name.")
-@click.option("--db", "db_path", type=click.Path(dir_okay=False), default=None, help="MFDB SQLite path.")
+@click.option("--db", "db_path", type=click.Path(dir_okay=False), default=None, help="MMFDB SQLite path.")
 def save_cmd(graph_json: str, name: str | None, db_path: str | None) -> None:
-    """Save a simulation from GRAPH_JSON to MFDB."""
+    """Save a simulation from GRAPH_JSON to MMFDB."""
     emit_json(save_lightpath(load_json_file(graph_json), name=name, db_path=db_path))
 
 
 @cli.command(name="list")
-@click.option("--db", "db_path", type=click.Path(dir_okay=False), default=None, help="MFDB SQLite path.")
+@click.option("--db", "db_path", type=click.Path(dir_okay=False), default=None, help="MMFDB SQLite path.")
 def list_cmd(db_path: str | None) -> None:
     """List saved light-path simulations."""
     emit_json(list_lightpaths(db_path=db_path))
@@ -75,14 +75,14 @@ def list_cmd(db_path: str | None) -> None:
 
 @cli.command(name="get")
 @click.argument("operation_id")
-@click.option("--db", "db_path", type=click.Path(dir_okay=False), default=None, help="MFDB SQLite path.")
+@click.option("--db", "db_path", type=click.Path(dir_okay=False), default=None, help="MMFDB SQLite path.")
 def get_cmd(operation_id: str, db_path: str | None) -> None:
     """Load a saved light-path simulation by operation id."""
     emit_json(get_lightpath(operation_id, db_path=db_path))
 
 
 @cli.command(name="probes")
-@click.option("--db", "db_path", type=click.Path(dir_okay=False), default=None, help="MFDB SQLite path.")
+@click.option("--db", "db_path", type=click.Path(dir_okay=False), default=None, help="MMFDB SQLite path.")
 def probes_cmd(db_path: str | None) -> None:
     """List probe metadata used by the simulator."""
     emit_json(get_probes_info(db_path=db_path))

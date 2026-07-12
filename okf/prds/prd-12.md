@@ -5,45 +5,45 @@ title: "PRD-12: Lifecycle State Machines + Transition History"
 description: Turn flat entity status flags into tracked lifecycles with a recorded, validated transition log (who, when, why).
 status: done
 phase: "3"
-resource: chisurf/core/mfdb
-tags: [prd, mfdb, lims]
+resource: chisurf/core/mmfdb
+tags: [prd, mmfdb, lims]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-MFDB entity status was flat flags with no history or defined lifecycle. This PRD adds a single generic, dictionary-driven transition log (`mfdb_state_transition`) plus allowed-transition rules (`mfdb_state_transition_rule`), with per-entity-type state vocabularies (sample, artifact, operation). Current state is the fold over the transition log (optionally cached), giving every sample/dataset/operation an auditable "where is it and how did it get here." The repository API (`transition_state`, `get_state`, `get_state_history`) validates transitions, records operator and timestamp, and is idempotent; registration paths emit initial and advancing states best-effort. An admin lifecycle view surfaces current state and history. It is designed as a projection over the append-only event core.
+MMFDB entity status was flat flags with no history or defined lifecycle. This PRD adds a single generic, dictionary-driven transition log (`mmfdb_state_transition`) plus allowed-transition rules (`mmfdb_state_transition_rule`), with per-entity-type state vocabularies (sample, artifact, operation). Current state is the fold over the transition log (optionally cached), giving every sample/dataset/operation an auditable "where is it and how did it get here." The repository API (`transition_state`, `get_state`, `get_state_history`) validates transitions, records operator and timestamp, and is idempotent; registration paths emit initial and advancing states best-effort. An admin lifecycle view surfaces current state and history. It is designed as a projection over the append-only event core.
 
 # Status
 Done. Schema, transition API with rule validation, registration wiring, and a standalone admin lifecycle view all landed (27 tests). The only deferred step is slotting the view into the admin tool's dock layout after the dock rewrite.
 
 **Projection over the append-only core (PRD-27).** If PRD-27's append-only
-decision is taken first (it should be), `mfdb_state_transition` **is** the state
+decision is taken first (it should be), `mmfdb_state_transition` **is** the state
 event log and "current state" is the fold over it — there is no separate mutable
 status flag to reconcile. Build this *on* PRD-27 so it is built once. The design
 below already assumes "the transition log is the source of truth; current_state is
 a cache"; PRD-27 makes that the universal rule.
 
 # Goal
-Turn MFDB entity status from flat flags into **tracked lifecycles** with recorded
+Turn MMFDB entity status from flat flags into **tracked lifecycles** with recorded
 transitions (who, when, why), so a sample/dataset/operation has an auditable
-"where is it and how did it get here" — the defining LIMS capability MFDB lacks.
+"where is it and how did it get here" — the defining LIMS capability MMFDB lacks.
 
 # Background
 - LIMS reference: a mature LIMS tracks every entity through explicit per-entity
   state tables (samples, runs, library-prep, service state, …) with transition
   history.
-- MFDB today: only flat fields — `mfdb_operation.status`,
-  `mfdb_artifact.validation_status`, `flr_experiment.status` — no transition
+- MMFDB today: only flat fields — `mmfdb_operation.status`,
+  `mmfdb_artifact.validation_status`, `flr_experiment.status` — no transition
   history, no defined lifecycle, no per-entity "current state" beyond the column.
 
 # Design (generic, dictionary-driven)
 One generic transition log instead of per-entity status columns:
-- **`mfdb_state_transition`** (`.dic`-declared, generated, gate-covered):
+- **`mmfdb_state_transition`** (`.dic`-declared, generated, gate-covered):
   `(id PK, entity_type, entity_id, from_state, to_state, reason,
   operator_user_id FK flr_sample_users, created_at)`, index on
   `(entity_type, entity_id, created_at)`.
 - **States are an extensible vocabulary** keyed by entity_type. Reuse
-  `mfdb_vocabulary` with `field_name = "state:<entity_type>"` (e.g. `state:sample`,
+  `mmfdb_vocabulary` with `field_name = "state:<entity_type>"` (e.g. `state:sample`,
   `state:artifact`, `state:operation`). Lifecycles:
   - **sample**: `registered → measured → processed → validated → archived`
   - **artifact/dataset**: `registered → validated → published → archived`
@@ -51,7 +51,7 @@ One generic transition log instead of per-entity status columns:
     into the same machinery.
 - **Allowed transitions** per entity_type declared in the `.dic` (a small
   transition table seeded from the dictionary,
-  `mfdb_state_transition_rule(entity_type, from_state, to_state)`), so illegal
+  `mmfdb_state_transition_rule(entity_type, from_state, to_state)`), so illegal
   jumps are rejected.
 - **Current state** = the latest non-deleted transition's `to_state`. Optionally
   cache it in a `current_state` column on the entity for fast filtering
@@ -68,20 +68,20 @@ One generic transition log instead of per-entity status columns:
   status changes go through `transition_state`.
 
 # Tasks
-1. `.dic` + schema: declare `mfdb_state_transition` (and the optional
-   `mfdb_state_transition_rule`); generate DDL; `SCHEMA_VERSION` bump; seed the
+1. `.dic` + schema: declare `mmfdb_state_transition` (and the optional
+   `mmfdb_state_transition_rule`); generate DDL; `SCHEMA_VERSION` bump; seed the
    per-entity-type state vocabularies + transition rules from the dictionary; add
    to the total-coverage gate.
 2. Repository: `transition_state` / `get_state` / `get_state_history` with rule
    validation; optional cached `current_state` columns (dict-declared).
 3. Wire registration paths to emit initial + advancing transitions (best-effort in
    GUI flows; strict in tests).
-4. mfdb-admin: show current state + history per entity; allow admin transitions.
+4. mmfdb-admin: show current state + history per entity; allow admin transitions.
 5. Tests: legal transition recorded; illegal transition rejected; history ordered;
    current state resolves; idempotent re-transition; dict gate green.
 
 # Definition of Done
-- [x] `mfdb_state_transition` exists (dict-declared, generated, gate-covered) with
+- [x] `mmfdb_state_transition` exists (dict-declared, generated, gate-covered) with
       per-entity-type state vocabularies and transition rules.
 - [x] sample / artifact / operation lifecycles defined; transitions validated and
       recorded with operator + timestamp; history queryable.
@@ -94,24 +94,24 @@ One generic transition log instead of per-entity status columns:
 # Definition of Clean
 `.dic` dictates the schema (no hardcoded SQL, no blob); validation rejects illegal
 transitions (surfaced, not swallowed, on real errors; best-effort for
-MFDB-unavailable); behavior-asserting tests; DI over monkeypatching; GUI smoke for
+MMFDB-unavailable); behavior-asserting tests; DI over monkeypatching; GUI smoke for
 the admin view.
 
 # Implementation status
 **Increment 1 (schema foundation) — DONE.** The `.dic` declares
-`mfdb_state_transition` (the transition log) and `mfdb_state_transition_rule`
-(allowed transitions); both are `mfdb_*` extension tables so `reconcile_schema`
+`mmfdb_state_transition` (the transition log) and `mmfdb_state_transition_rule`
+(allowed transitions); both are `mmfdb_*` extension tables so `reconcile_schema`
 creates them on migrate (no hand DDL). `data/state_lifecycle_defs.json` is the
 authored single source for per-entity-type states + allowed transitions (sample/
-artifact/operation); `core/mfdb/lifecycle.py` (`LifecycleDef`,
+artifact/operation); `core/mmfdb/lifecycle.py` (`LifecycleDef`,
 `load_lifecycle_defs`, `get_lifecycle_def`, `bootstrap_lifecycle_defs`) seeds the
-state vocabularies (`mfdb_vocabulary` `field_name="state:<entity_type>"`) and the
+state vocabularies (`mmfdb_vocabulary` `field_name="state:<entity_type>"`) and the
 rule table (idempotent), wired into both migrate paths in `schema.py`. Covered by
 `test/fio/test_lifecycle_schema.py` (6).
 
 **Increment 2 (transition API) — DONE.** `repository.py` has
 `transition_state(entity_type, entity_id, to_state, reason="",
-operator_user_id=None)` (validates against `mfdb_state_transition_rule`, raises
+operator_user_id=None)` (validates against `mmfdb_state_transition_rule`, raises
 `lifecycle.StateTransitionError` on an illegal jump, idempotent no-op returning
 `False` when already in `to_state`, records the row + audit log, publishes PRD-21's
 `state.changed` post-commit), `get_state` (latest non-deleted `to_state`), and
@@ -129,8 +129,8 @@ logged at debug and swallowed), mirroring the post-commit event publish. Covered
 `test/fio/test_lifecycle.py` (+3).
 
 **Increment 4 (admin view) — DONE.** 4a: backend RPC handlers
-`mfdb.lifecycle.{state,history,transition,definitions}` (an illegal jump returns an
-`error` field, not an exception, across the boundary) + `MFDBClient` methods,
+`mmfdb.lifecycle.{state,history,transition,definitions}` (an illegal jump returns an
+`error` field, not an exception, across the boundary) + `MMFDBClient` methods,
 covered end-to-end through the `InProcessClient` (`test_lifecycle_handlers.py`, 5).
 4b: a **standalone** `gui/lifecycle_view.py::LifecycleView` (entity picker, current
 state, legal next-state combo, history table, apply-transition surfacing illegal
@@ -150,6 +150,6 @@ replaced legacy tab framework). When ready: add a dock that constructs
 # Relationships
 - A projection over the append-only event/provenance core; emits `state.changed` events.
 - Operation status from [PRD-11](prd-11.md) folds into the generic transition machinery.
-- Shares the `mfdb_vocabulary` / dictionary machinery with [PRD-19](prd-19.md); emitted via the [PRD-21](prd-21.md) event model.
+- Shares the `mmfdb_vocabulary` / dictionary machinery with [PRD-19](prd-19.md); emitted via the [PRD-21](prd-21.md) event model.
 - Referenced by the study ([PRD-13](prd-13.md)) and protocol ([PRD-14](prd-14.md)) layers for audit.
-- Builds on [MFDB (current)](/architecture/mfdb.md); target in [MFDB target](/specs/mfdb.md).
+- Builds on [MMFDB (current)](/architecture/mmfdb.md); target in [MMFDB target](/specs/mmfdb.md).

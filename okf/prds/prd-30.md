@@ -10,7 +10,7 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Equips every burst/TTTR CLI tool to read photon streams from stdin and write results to stdout so users can compose ad-hoc processing pipelines with Unix pipes. Because binary TTTR formats are file-position-dependent and not naively pipeable, a streamable, length-prefixed msgpack frame format (`PipeFrame`, reusing the MFDB payload codec) carries typed, self-describing packets for photon streams, burst tables, and results. Each Click command gains a positional `input` accepting a file path or `-`; no `--output` means stdout, and stderr is reserved for logging so piped data stays clean. New lean commands (`csc burst-select`, `csc photon-filter`, `csc compute-fret`, etc.) plus retrofits of existing tools make CLI tools composable building blocks.
+Equips every burst/TTTR CLI tool to read photon streams from stdin and write results to stdout so users can compose ad-hoc processing pipelines with Unix pipes. Because binary TTTR formats are file-position-dependent and not naively pipeable, a streamable, length-prefixed msgpack frame format (`PipeFrame`, reusing the MMFDB payload codec) carries typed, self-describing packets for photon streams, burst tables, and results. Each Click command gains a positional `input` accepting a file path or `-`; no `--output` means stdout, and stderr is reserved for logging so piped data stays clean. New lean commands (`csc burst-select`, `csc photon-filter`, `csc compute-fret`, etc.) plus retrofits of existing tools make CLI tools composable building blocks.
 
 # Status
 Planned. Phased: frame format + reader/writer utilities, core pipe commands, analysis pipe commands, then retrofitting existing CLIs.
@@ -62,7 +62,7 @@ Options:
 
 | Format | Pros | Cons |
 |--------|------|------|
-| **msgpack frames** | Compact binary, typed, streamable, already used in MFDB payload codec | Need to define frame schema |
+| **msgpack frames** | Compact binary, typed, streamable, already used in MMFDB payload codec | Need to define frame schema |
 | **JSON lines (JSONL)** | Human-readable, inspectable with `head`, works with `jq` | Larger, slower for high-rate streams |
 | **numpy .npy frames** | Compact, zero-copy for array data | Binary, not self-describing |
 | **Custom binary frames** | Optimized for photon data | Yet another format |
@@ -83,7 +83,7 @@ self-describing packet:
 }
 ```
 
-This is essentially the MFDB payload format (the streaming payload codec)
+This is essentially the MMFDB payload format (the streaming payload codec)
 adapted for streaming.
 
 ## Relationship to existing infrastructure
@@ -91,7 +91,7 @@ adapted for streaming.
 | Existing piece | How it maps |
 |----------------|-------------|
 | **tttrlib** | Reads/writes binary TTTR formats. The pipe-aware CLI wraps tttrlib to serialize/deserialize the pipe format. |
-| **MFDB payload codec** (`payload_codec.py`) | Already has msgpack encode/decode for typed payloads — reuse for pipe frames. |
+| **MMFDB payload codec** (`payload_codec.py`) | Already has msgpack encode/decode for typed payloads — reuse for pipe frames. |
 | **PRD-03 result registry** | `burst_table` payload model matches what a pipe would carry. |
 | **PRD-16 transformer contract** | Each CLI tool maps to a transformer with typed input/output. |
 | **PRD-22 pipeline engine** | A shell pipe is an ad-hoc pipeline; PRD-22's runner is the structured version. |
@@ -331,7 +331,7 @@ socat TCP:server:9999 - | csc burst-select - | csc compute-fret -
 ## `fret_result.v1`, `fit_result.v1`, `distance_result.v1`
 
 Follow the same pattern — typed metadata + typed columnar data, corresponding
-to the existing MFDB payload models.
+to the existing MMFDB payload models.
 
 # Relationships
 - Each command maps to a typed transformer per [PRD-16](prd-16.md); the burst_table payload matches [PRD-03](prd-03.md).

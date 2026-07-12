@@ -68,5 +68,5 @@ and project state through the [API facade](/architecture/api-facade.md) /
 Fitting consumes a `DataCurve` alongside a model — see [fitting](/subsystems/fitting.md),
 [models](/subsystems/models.md), and [parameters](/subsystems/parameters.md).
 Provenance and metadata about datasets are recorded in the
-[MFDB store](/architecture/mfdb.md). See also [Core](/subsystems/core.md) and the
+[MMFDB store](/architecture/mmfdb.md). See also [Core](/subsystems/core.md) and the
 [Core target](/specs/core.md).

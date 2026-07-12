@@ -2,22 +2,22 @@
 type: PRD
 prd: "48"
 title: "PRD-48: Provider-Agnostic ELN Integration"
-description: A provider-agnostic ELN integration layer for MFDB with a single gateway abstraction and two concrete electronic-lab-notebook backends, supporting bidirectional deposit, import, and reconciliation.
+description: A provider-agnostic ELN integration layer for MMFDB with a single gateway abstraction and two concrete electronic-lab-notebook backends, supporting bidirectional deposit, import, and reconciliation.
 status: draft
 phase: "unassigned"
-resource: chisurf/core/mfdb/eln/
-tags: [prd, mfdb, eln]
+resource: chisurf/core/mmfdb/eln/
+tags: [prd, mmfdb, eln]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-MFDB is the prototype implementation for a planned public fluorescence databank, so it must interoperate with the community's electronic lab notebook (ELN) platforms rather than live as an island. This PRD specifies a provider-agnostic `ElnGateway` abstraction under `chisurf/core/mfdb/eln/`, with a neutral entity model (Record, Resource, Chemical, Instrument, Link, Scope) and two concrete adapters plus a declared capability set so callers degrade gracefully. Integration is bidirectional — push (deposit records + attachments + links), pull (import chemicals/resources/instruments with CAS/InChIKey dedup), and conflict reconciliation — keeping a clean split between deposition and DOI dissemination. The guiding invariant is one identity per real-world object; users and groups are matched, never provisioned, and credentials live in the OS store per PRD-37.
+MMFDB is the prototype implementation for a planned public fluorescence databank, so it must interoperate with the community's electronic lab notebook (ELN) platforms rather than live as an island. This PRD specifies a provider-agnostic `ElnGateway` abstraction under `chisurf/core/mmfdb/eln/`, with a neutral entity model (Record, Resource, Chemical, Instrument, Link, Scope) and two concrete adapters plus a declared capability set so callers degrade gracefully. Integration is bidirectional — push (deposit records + attachments + links), pull (import chemicals/resources/instruments with CAS/InChIKey dedup), and conflict reconciliation — keeping a clean split between deposition and DOI dissemination. The guiding invariant is one identity per real-world object; users and groups are matched, never provisioned, and credentials live in the OS store per PRD-37.
 
 # Status
 Draft / unassigned (STATUS TABLE authoritative). Design complete; phased 1–4 from prime-backend push through import, secondary backend, and reconciliation/dissemination/GUI.
 
 # Goal / Motivation
-ChiSurf's **MFDB** (`chisurf/core/mfdb/`) is the prototype implementation for a planned **public fluorescence databank for chemical biology** under a national research-data initiative (grant in preparation). For that vision the databank must interoperate with the community's electronic lab notebooks, not live as an island.
+ChiSurf's **MMFDB** (`chisurf/core/mmfdb/`) is the prototype implementation for a planned **public fluorescence databank for chemical biology** under a national research-data initiative (grant in preparation). For that vision the databank must interoperate with the community's electronic lab notebooks, not live as an island.
 
 This PRD specifies a **provider-agnostic ELN integration layer**: a single `ElnGateway` abstraction with two concrete backends.
 
@@ -26,19 +26,19 @@ This PRD specifies a **provider-agnostic ELN integration layer**: a single `ElnG
 
 Both are reached over their REST APIs. The integration is **bidirectional** (push deposition + pull import + reconciliation) and keeps a clean separation between **deposition** (writing the working record into an ELN) and **dissemination** (minting DOIs / publishing to a repository) — for the prime backend the latter is a first-class, later-phase capability; for the secondary backend it does not exist.
 
-The guiding invariant is **one identity per real-world object** — a fluorophore, sample, instrument, or operator is the same thing in MFDB and in the ELN.
+The guiding invariant is **one identity per real-world object** — a fluorophore, sample, instrument, or operator is the same thing in MMFDB and in the ELN.
 
 # Background — what already exists
 
-## MFDB seams (`chisurf/core/mfdb/`)
+## MMFDB seams (`chisurf/core/mmfdb/`)
 `api.py` is transport-agnostic ("the API is just functions", per the access-layer strategy) and is the layer a sync engine drives. Entry points (all take `auth` → `principal_from_rpc_auth`): `register_artifact()` (~ln 60, has `url`+`metadata`), `record_operation()` (~ln 218), `record_operation_with_artifacts()` (~ln 303), `register_sample()` (~ln 440), `register_experiment()` (~ln 485), `record_operation_link()` (~ln 576), `export_graph()` (~ln 690).
 
-- `models.py` — `MfdbOperation.metadata_json`, `MfdbArtifact.url` + `.metadata_json`, `SampleDefinition.extra`, reagent lots, `MfdbSetup`, `flr_instrument`.
+- `models.py` — `MmfdbOperation.metadata_json`, `MmfdbArtifact.url` + `.metadata_json`, `SampleDefinition.extra`, reagent lots, `MmfdbSetup`, `flr_instrument`.
 - `object_store.py` — content-addressed (md5, dedup): the byte source for uploads.
 - `payload_codec.py` / `payload_models.py` — typed payloads (`tcspc_decay`, `spectra`, `fcs_correlation`, `anisotropy_curve`, `pda_histogram`, `burst_table`) → natural ELN *datasets*.
 - `events.py` — `EVENT_ARTIFACT_REGISTERED`, `EVENT_STATE_CHANGED` (async push).
-- `auth/`, `session.py`, `credentials.py` — `Principal`/`SessionContext`, `flr_sample_users`, `mfdb_group`; OS credential store (PRD-37) for ELN tokens.
-- `project_archiver.py` (`archive_project_to_mfdb`, ~ln 88) — the "decompose a workflow into operations+artifacts+edges" template; push mirrors it in reverse.
+- `auth/`, `session.py`, `credentials.py` — `Principal`/`SessionContext`, `flr_sample_users`, `mmfdb_group`; OS credential store (PRD-37) for ELN tokens.
+- `project_archiver.py` (`archive_project_to_mmfdb`, ~ln 88) — the "decompose a workflow into operations+artifacts+edges" template; push mirrors it in reverse.
 
 ## Prime backend (chemistry-native national ELN)
 - **API:** REST, base `/api/v1`; an OpenAPI/swagger doc at `/api/v1/swagger_doc`. No canonical Python SDK.
@@ -56,10 +56,10 @@ The guiding invariant is **one identity per real-world object** — a fluorophor
 # Design
 
 ## 1. Provider-agnostic `ElnGateway`
-A new subpackage **`chisurf/core/mfdb/eln/`** isolates all ELN knowledge; `api.py` stays transport-agnostic. One neutral interface, two adapters, a declared capability set so callers degrade gracefully where a backend lacks a feature:
+A new subpackage **`chisurf/core/mmfdb/eln/`** isolates all ELN knowledge; `api.py` stays transport-agnostic. One neutral interface, two adapters, a declared capability set so callers degrade gracefully where a backend lacks a feature:
 
 ```
-chisurf/core/mfdb/eln/
+chisurf/core/mmfdb/eln/
   __init__.py        # ElnGateway Protocol, ExternalRef, capability constants
   model.py           # neutral dataclasses: ElnRecord/Resource/Chemical/Instrument
   prime.py           # prime-backend gateway  (PRIME)
@@ -67,7 +67,7 @@ chisurf/core/mfdb/eln/
   fake.py            # FakeElnGateway for offline tests
   identity.py        # user/team match (email/ORCID), no provisioning
   instruments.py     # instrument mapping (+ booking where supported)
-  mapping.py         # MFDB node <-> neutral model + id-lookup helpers
+  mapping.py         # MMFDB node <-> neutral model + id-lookup helpers
   sync.py            # push()/pull() orchestration (backend-neutral)
   reconcile.py       # conflict policy
   test/
@@ -100,7 +100,7 @@ All ELN traffic raises a single `ElnUnavailable` on network/auth failure, treate
 
 ## 2. Neutral entity model & per-backend mapping
 
-| ChiSurf / MFDB | neutral | prime backend | secondary backend |
+| ChiSurf / MMFDB | neutral | prime backend | secondary backend |
 |---|---|---|---|
 | operation (measurement/analysis/fit) | **Record** | research plan + analysis container tree | experiment |
 | result artifact / typed payload | **Attachment** | attachment on analysis→dataset container | upload on experiment |
@@ -118,7 +118,7 @@ All ELN traffic raises a single `ElnUnavailable` on network/auth failure, treate
 Capability matrix (what each backend can do): the prime backend adds `analysis_tree`, `reaction`, `doi`; the secondary backend adds `booking`. `sync.py` checks `capabilities()` before invoking an optional operation and records "skipped: unsupported" in the sync report rather than failing.
 
 ## 3. ID linkage + idempotency
-External ids are written back into the MFDB record's existing JSON under a reserved `eln` namespace, **keyed by backend** so multiple ELNs coexist:
+External ids are written back into the MMFDB record's existing JSON under a reserved `eln` namespace, **keyed by backend** so multiple ELNs coexist:
 
 ```json
 "metadata_json": {
@@ -132,9 +132,9 @@ External ids are written back into the MFDB record's existing JSON under a reser
 }
 ```
 
-On the **ELN side**, the reverse pointer to the MFDB node is stored in that backend's free-form field — the prime backend's sample cross-reference / container extended-metadata / research-plan related-identifier; the secondary backend's entity extra-fields. `mapping.py` provides `set_external_ref(...)` / `find_node_by_external_id(backend, external_id)`; because `metadata_json` is not indexed, reverse lookup builds a cached `{external_id → node}` map per run (one scan). Adequate at current scale.
+On the **ELN side**, the reverse pointer to the MMFDB node is stored in that backend's free-form field — the prime backend's sample cross-reference / container extended-metadata / research-plan related-identifier; the secondary backend's entity extra-fields. `mapping.py` provides `set_external_ref(...)` / `find_node_by_external_id(backend, external_id)`; because `metadata_json` is not indexed, reverse lookup builds a cached `{external_id → node}` map per run (one scan). Adequate at current scale.
 
-> **Future option (non-blocking).** Promote the mapping to a generic dictionary-driven `mfdb_external_ref(node_type, node_id, system, external_id, url, synced_at)` index if scans get hot. `mapping.py` is the seam; callers don't change. Deferred deliberately (no new schema now).
+> **Future option (non-blocking).** Promote the mapping to a generic dictionary-driven `mmfdb_external_ref(node_type, node_id, system, external_id, url, synced_at)` index if scans get hot. `mapping.py` is the seam; callers don't change. Deferred deliberately (no new schema now).
 
 ## 4. Push (deposit) flow
 `sync.push(node_type, node_id, *, gateway, auth)` mirrors `project_archiver`:
@@ -146,10 +146,10 @@ On the **ELN side**, the reverse pointer to the MFDB node is stored in that back
 5. Input sample/reagent/fluorophore → `upsert_resource`/`upsert_chemical` (deduped, §5), then `link` to the record.
 6. Optional per capability: `upsert_instrument` + (`book` on the secondary backend) / (record the device on the prime backend); provenance edges → links / container nesting.
 
-The gateway hides transport differences (the prime backend's chunked upload + complete + link-to-container vs the secondary backend's single multipart). An opt-in `EVENT_ARTIFACT_REGISTERED` subscriber enqueues async pushes (best-effort + retry; failure leaves MFDB untouched).
+The gateway hides transport differences (the prime backend's chunked upload + complete + link-to-container vs the secondary backend's single multipart). An opt-in `EVENT_ARTIFACT_REGISTERED` subscriber enqueues async pushes (best-effort + retry; failure leaves MMFDB untouched).
 
 ## 5. Pull (import) flow
-`sync.pull(*, gateway, auth, kinds=("chemicals","resources","instruments"))`: list the backend's chemicals (prime-backend molecules / secondary-backend compounds), resources (samples/items), and instruments; for each, `find_node_by_external_id` → update, else create an MFDB sample/reagent/fluorophore/`flr_instrument`. **Dedup before create** via PRD-45 `normalize_cas` + PRD-06 fluorophore identity (and, for the prime backend, InChIKey) so the same substance is matched, not duplicated.
+`sync.pull(*, gateway, auth, kinds=("chemicals","resources","instruments"))`: list the backend's chemicals (prime-backend molecules / secondary-backend compounds), resources (samples/items), and instruments; for each, `find_node_by_external_id` → update, else create an MMFDB sample/reagent/fluorophore/`flr_instrument`. **Dedup before create** via PRD-45 `normalize_cas` + PRD-06 fluorophore identity (and, for the prime backend, InChIKey) so the same substance is matched, not duplicated.
 
 ## 6. Conflict reconciliation (`reconcile.py`)
 Compare local change time vs `metadata_json.eln.<backend>.remote_modified_at` and live remote `modified_at`:
@@ -170,13 +170,13 @@ Genuine both-sides-changed conflicts are **surfaced** in the sync report, never 
 - **Fail-closed:** no credential / no network / TLS failure → `ElnUnavailable`, graceful degrade, no partial writes. TLS verification on by default.
 
 ## 8. Users & teams/groups — match, never provision
-MFDB (`flr_sample_users`, `mfdb_group`) and each ELN are **independent identity authorities**. `identity.py` matches by **email** then **ORCID**; unmatched users are **surfaced, not created** (both ELNs restrict user creation to admins). A matched external `user_id` is cached in the record's `eln.<backend>` block. On push the record is authored by the matched operator (`mfdb_operation.operator_user_id`), falling back to the token's own user. No password/role/permission material ever crosses the boundary.
+MMFDB (`flr_sample_users`, `mmfdb_group`) and each ELN are **independent identity authorities**. `identity.py` matches by **email** then **ORCID**; unmatched users are **surfaced, not created** (both ELNs restrict user creation to admins). A matched external `user_id` is cached in the record's `eln.<backend>` block. On push the record is authored by the matched operator (`mmfdb_operation.operator_user_id`), falling back to the token's own user. No password/role/permission material ever crosses the boundary.
 
 ## 9. Instruments & bookings
-MFDB `flr_instrument` + versioned `mfdb_setup` (opaque JSON today; PRD-08 will structure it; PRD-35 presets) maps to the prime backend's device + device metadata (DOI-bearing — a natural home for a citable instrument record) or a secondary-backend bookable item. Setup config → the prime backend's device description / extended metadata or the secondary backend's extra-fields. **Booking is an optional capability**: on the secondary backend an operation's time window becomes a team event bound to the experiment (usage record for free); the prime backend has no booking model, so that step is skipped (reported as unsupported). The ELN is authoritative for the instrument record.
+MMFDB `flr_instrument` + versioned `mmfdb_setup` (opaque JSON today; PRD-08 will structure it; PRD-35 presets) maps to the prime backend's device + device metadata (DOI-bearing — a natural home for a citable instrument record) or a secondary-backend bookable item. Setup config → the prime backend's device description / extended metadata or the secondary backend's extra-fields. **Booking is an optional capability**: on the secondary backend an operation's time window becomes a team event bound to the experiment (usage record for free); the prime backend has no booking model, so that step is skipped (reported as unsupported). The ELN is authoritative for the instrument record.
 
 ## 10. Scope boundary
-Prime-backend **collections** (with collection shares) and secondary-backend **teams** are the sync/sharing boundary. Config binds one MFDB `mfdb_group` to one collection / team per backend. `ensure_scope` creates/resolves it; nothing is deposited outside the configured scope.
+Prime-backend **collections** (with collection shares) and secondary-backend **teams** are the sync/sharing boundary. Config binds one MMFDB `mmfdb_group` to one collection / team per backend. `ensure_scope` creates/resolves it; nothing is deposited outside the configured scope.
 
 ## 11. Dissemination / DOI (prime backend, later phase)
 Distinct from deposition ("deposition ≠ dissemination", "two clocks"). Once a record is deposited and curated, `mint_doi` (prime backend `CAP_DOI`) requests a DOI via the prime backend's public-repository path — the route by which databank content becomes citable and public. The secondary backend offers only trusted-timestamping, not DOIs. No dissemination happens automatically; it is an explicit, curated action.
@@ -194,47 +194,47 @@ Headless path required (repo rule — not GUI-only). `csc eln` group, backend se
 - `csc eln publish <node-id>` — mint DOI (prime backend `CAP_DOI` only).
 - `csc eln status` — endpoint(s), scope, credential presence, capabilities, last sync.
 
-GUI (a button in `mfdb_admin`) is a thin wrapper, deferred.
+GUI (a button in `mmfdb_admin`) is a thin wrapper, deferred.
 
 # Files
 
 | Path | Change |
 |---|---|
-| `chisurf/core/mfdb/eln/__init__.py` | new — `ElnGateway` Protocol, `ExternalRef`, capability constants |
-| `chisurf/core/mfdb/eln/model.py` | new — neutral `ElnRecord/Resource/Chemical/Instrument` |
-| `chisurf/core/mfdb/eln/prime.py` | new — prime-backend gateway + thin REST client (prime) |
-| `chisurf/core/mfdb/eln/secondary.py` | new — secondary-backend gateway (wraps its SDK) |
-| `chisurf/core/mfdb/eln/fake.py` | new — `FakeElnGateway`, `ElnUnavailable` |
-| `chisurf/core/mfdb/eln/identity.py` | new — user/team match, no provisioning (§8) |
-| `chisurf/core/mfdb/eln/instruments.py` | new — instrument mapping + optional booking (§9) |
-| `chisurf/core/mfdb/eln/mapping.py` | new — MFDB↔neutral translation + id lookup |
-| `chisurf/core/mfdb/eln/sync.py` | new — capability-aware push/pull |
-| `chisurf/core/mfdb/eln/reconcile.py` | new — conflict policy |
-| `chisurf/core/mfdb/eln/test/` | new — offline unit + round-trip tests, both backends |
+| `chisurf/core/mmfdb/eln/__init__.py` | new — `ElnGateway` Protocol, `ExternalRef`, capability constants |
+| `chisurf/core/mmfdb/eln/model.py` | new — neutral `ElnRecord/Resource/Chemical/Instrument` |
+| `chisurf/core/mmfdb/eln/prime.py` | new — prime-backend gateway + thin REST client (prime) |
+| `chisurf/core/mmfdb/eln/secondary.py` | new — secondary-backend gateway (wraps its SDK) |
+| `chisurf/core/mmfdb/eln/fake.py` | new — `FakeElnGateway`, `ElnUnavailable` |
+| `chisurf/core/mmfdb/eln/identity.py` | new — user/team match, no provisioning (§8) |
+| `chisurf/core/mmfdb/eln/instruments.py` | new — instrument mapping + optional booking (§9) |
+| `chisurf/core/mmfdb/eln/mapping.py` | new — MMFDB↔neutral translation + id lookup |
+| `chisurf/core/mmfdb/eln/sync.py` | new — capability-aware push/pull |
+| `chisurf/core/mmfdb/eln/reconcile.py` | new — conflict policy |
+| `chisurf/core/mmfdb/eln/test/` | new — offline unit + round-trip tests, both backends |
 | `chisurf-env.yaml` | add the secondary backend's Python SDK |
 | CLI registration (`csc`) | new `eln` group |
-| `chisurf/core/mfdb/events.py` | (opt) async push subscriber, later phase |
+| `chisurf/core/mmfdb/events.py` | (opt) async push subscriber, later phase |
 
 # Verification
 - **Offline unit tests** against `FakeElnGateway` and per-backend record/replay of the swagger / OpenAPI v2 shapes; no live network in CI (per `external_refs`).
 - **Capability tests** — push against a backend lacking a capability skips it and reports "unsupported", never errors (e.g. booking on the prime backend, DOI on the secondary backend).
 - **Round-trip** (both backends) — push an operation → pull it back → identity preserved, no duplicate node, ids reconciled under `metadata_json.eln.<backend>`.
-- **Dedup** — importing a chemical whose registry number / InChIKey already exists matches the existing MFDB node (PRD-45/06) instead of creating a second.
+- **Dedup** — importing a chemical whose registry number / InChIKey already exists matches the existing MMFDB node (PRD-45/06) instead of creating a second.
 - **Reconciliation** — both-sides-changed is reported, not overwritten.
 - **Live smoke (opt-in)** — env-gated against throwaway ELN instances; never in default CI.
 
 # Phasing
 1. **Phase 1 (prime backend)** — `ElnGateway` + neutral model + capabilities; prime-backend gateway auth + user match + push (operation → research plan + analysis/dataset attachments) into a collection; id write-back; CLI `push`/`users`/`status`.
-2. **Phase 2 (prime pull + chemicals/instruments)** — pull molecules/samples/devices → MFDB with registry-number/InChIKey/fluorophore dedup; instrument → device metadata.
+2. **Phase 2 (prime pull + chemicals/instruments)** — pull molecules/samples/devices → MMFDB with registry-number/InChIKey/fluorophore dedup; instrument → device metadata.
 3. **Phase 3 (secondary backend)** — secondary-backend gateway behind the same interface (experiments + uploads + bookable-item usage team event); reuse sync/reconcile.
-4. **Phase 4 (reconciliation + dissemination + GUI)** — interactive conflicts, event-driven async push, prime-backend `mint_doi` / repository deposit, `mfdb_admin` button.
+4. **Phase 4 (reconciliation + dissemination + GUI)** — interactive conflicts, event-driven async push, prime-backend `mint_doi` / repository deposit, `mmfdb_admin` button.
 
 # Non-goals
 - No changes to either ELN's schemas/servers.
 - No real-time live-sync daemon (best-effort queue only).
-- No migration of pre-existing ELN history into MFDB.
+- No migration of pre-existing ELN history into MMFDB.
 - No user/account provisioning in any system — match only (§8).
-- No import of secondary-backend bookings / prime-backend device-analyses as MFDB entities.
+- No import of secondary-backend bookings / prime-backend device-analyses as MMFDB entities.
 - No password/role/permission synchronisation.
 - Automatic DOI minting — dissemination is always an explicit, curated action.
 
@@ -242,10 +242,10 @@ GUI (a button in `mfdb_admin`) is a thin wrapper, deferred.
 - **Prime-backend record type.** Is a research plan the right home for a fluorescence measurement, or should some measurements become a sample + analysis tree only? Affects how operations map to records.
 - **Prime-backend Python client.** Hand-roll a thin `requests` client vs. generate from `/api/v1/swagger_doc` — pin against a known release.
 - **Dissemination scope.** Which databank content goes to the prime backend's public repository vs. stays in-ELN, and who curates the DOI step.
-- **User match fallback.** When email/ORCID don't match, manual link via config map or `csc eln users --link <mfdb_user> <external_user_id>`?
-- **Index table.** Confirm `metadata_json` scans stay acceptable, or schedule the optional `mfdb_external_ref` index (§3).
+- **User match fallback.** When email/ORCID don't match, manual link via config map or `csc eln users --link <mmfdb_user> <external_user_id>`?
+- **Index table.** Confirm `metadata_json` scans stay acceptable, or schedule the optional `mmfdb_external_ref` index (§3).
 
 # Relationships
-- Extends the [MFDB (current)](/architecture/mfdb.md) toward the [MFDB target](/specs/mfdb.md); mirrors the project-archiver decomposition into operations + artifacts + edges.
+- Extends the [MMFDB (current)](/architecture/mmfdb.md) toward the [MMFDB target](/specs/mmfdb.md); mirrors the project-archiver decomposition into operations + artifacts + edges.
 - Keeps `api.py` transport-agnostic per the [RPC target](/specs/rpc.md).
 - Related to fluorophore-identity ([PRD-06]) and chemical-identity ([PRD-45](prd-45.md)) work; aligns with the network-security (PRD-37), lineage/event-model (PRD-21), study/project entity (PRD-13), optical-configuration (PRD-08), and lightpath-storage (PRD-35) PRDs; CLI-first per the repo headless rule.

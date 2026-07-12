@@ -4,28 +4,28 @@ import numpy as np
 from .db import DB
 
 
-def _is_mfdb_request(args, kwargs):
-    """Return whether connect arguments request the optional MFDB backend."""
-    if args and args[0] == "mfdb":
+def _is_mmfdb_request(args, kwargs):
+    """Return whether connect arguments request the optional MMFDB backend."""
+    if args and args[0] == "mmfdb":
         return True
     return (
-        kwargs.get("backend") == "mfdb"
-        or str(kwargs.get("uri_string", "")).lower().startswith(("mfdb:", "mfdb://"))
+        kwargs.get("backend") == "mmfdb"
+        or str(kwargs.get("uri_string", "")).lower().startswith(("mmfdb:", "mmfdb://"))
     )
 
 
 def _configure_backend_from_request(args, kwargs):
     """Configure and return a backend requested through connect_to_db."""
     backend = kwargs.get("backend")
-    if backend == "mfdb":
+    if backend == "mmfdb":
         kwargs.pop("backend", None)
-    if backend is not None and backend != "mfdb":
+    if backend is not None and backend != "mmfdb":
         DB.set_backend(backend)
         return backend
-    if _is_mfdb_request(args, kwargs):
-        from chisurf.core.mfdb.adapters.chinet import configure_mfdb_backend
+    if _is_mmfdb_request(args, kwargs):
+        from mmfdb.adapters.chinet import configure_mmfdb_backend
 
-        if args and args[0] == "mfdb":
+        if args and args[0] == "mmfdb":
             db_path = kwargs.pop("db_path", None)
             operation_id = kwargs.pop("operation_id", None)
             experiment_id = kwargs.pop("experiment_id", None)
@@ -33,7 +33,7 @@ def _configure_backend_from_request(args, kwargs):
             parameters = kwargs.pop("parameters", None)
             operation_type = kwargs.pop("operation_type", "model_fitting")
             metadata = kwargs.pop("metadata", None)
-            backend = configure_mfdb_backend(
+            backend = configure_mmfdb_backend(
                 db_path=db_path,
                 operation_id=operation_id,
                 experiment_id=experiment_id,
@@ -43,7 +43,7 @@ def _configure_backend_from_request(args, kwargs):
                 metadata=metadata,
             )
         else:
-            backend = configure_mfdb_backend(**kwargs)
+            backend = configure_mmfdb_backend(**kwargs)
         return backend
     return None
 

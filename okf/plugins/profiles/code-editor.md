@@ -37,7 +37,7 @@ and `ruff_fix`.
 # Data And Provenance Impact
 
 This plugin can mutate open documents and optionally run code-assistance or lint-fix
-flows. It is not an MFDB plugin, but it is high-impact because file edits and agent
+flows. It is not an MMFDB plugin, but it is high-impact because file edits and agent
 integration need a clear execution and safety model.
 
 # Verification Surface

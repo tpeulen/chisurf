@@ -8,8 +8,8 @@
 * [Fitting models](models.md) - TCSPC/FCS/PDA/PCH/DEER/RICS/structure models and data-described editors.
 * [Parameters](parameters.md) - Scalar parameters, bounds, links, dependency graph, and fit degrees of freedom.
 * [GUI & AutoForm](gui-autoform.md) - The Qt application and the data-driven AutoForm UI framework.
-* [Operation history](history.md) - Append-only action history, headless replay, and MFDB event-log projection.
+* [Operation history](history.md) - Append-only action history, headless replay, and MMFDB event-log projection.
 * [Macros, CLI & scripting](macros-cli.md) - Macros, `csc`, GUI scripts, and the recording QtConsole.
 * [Project persistence](project-persistence.md) - `.csp` archive format, UID-keyed project state, and UI-state capture.
-* [Pipelines](pipeline.md) - Typed DAGs of transformer invocations persisted and replayed through MFDB provenance.
+* [Pipelines](pipeline.md) - Typed DAGs of transformer invocations persisted and replayed through MMFDB provenance.
 * [Compiled Modules](compiled-modules.md) - The C++ extensions in `modules/` that must be built before tests.

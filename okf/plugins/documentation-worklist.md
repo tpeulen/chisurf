@@ -20,14 +20,14 @@ Current inventory from `chisurf/plugins/`:
 
 The documentation backlog is therefore not just missing READMEs. Several high-impact
 plugins have manifest/RPC surfaces but no local human contract, while some older
-READMEs describe user features without the architecture, MFDB, and verification
+READMEs describe user features without the architecture, MMFDB, and verification
 sections needed for maintainers.
 
 # Priority Rules
 
 Document plugins in this order:
 
-1. **Data or provenance risk:** plugins that write MFDB, mutate files, archive projects,
+1. **Data or provenance risk:** plugins that write MMFDB, mutate files, archive projects,
    or register operations.
 2. **Large RPC/API surface:** plugins with services, CLI, or many manifest RPC methods.
 3. **Reference architecture:** plugins that should become examples for future work.
@@ -41,10 +41,10 @@ substantial.
 
 | Plugin | Current gap | Why it matters | Recommended docs |
 | --- | --- | --- | --- |
-| `core/mfdb_admin` | README plus contract/status now exist; per-method schemas, workflow docs, and AutoForm migration remain. | Central database/provenance admin surface; many PRDs depend on it. | Extend `docs/CONTRACT.md`, add `docs/WORKFLOWS.md`, migrate ordinary panels to AutoForm JSON specs. |
-| `sample_database` | Retired prerelease surface; tracked plugin files deleted. | Avoids documenting/supporting a duplicate MFDB namespace. | Keep references limited to retirement notes; do not document as an active plugin. |
-| `core/database_connector` | README and temporary-MFDB smoke tests now exist; destructive-path schemas/tests remain. | Backup/reset/import/export touches user data. | Extend service contract and add backup/reset/import/export tests. |
-| `core/project_browser` | README and sample-data-backed service/headless-GUI tests now exist; deeper branch/import tests remain. | Project persistence is high-impact and easy to misuse. | Add workflow examples, MFDB artifact diagrams, and import/branch coverage. |
+| `core/mmfdb_admin` | README plus contract/status now exist; per-method schemas, workflow docs, and AutoForm migration remain. | Central database/provenance admin surface; many PRDs depend on it. | Extend `docs/CONTRACT.md`, add `docs/WORKFLOWS.md`, migrate ordinary panels to AutoForm JSON specs. |
+| `sample_database` | Retired prerelease surface; tracked plugin files deleted. | Avoids documenting/supporting a duplicate MMFDB namespace. | Keep references limited to retirement notes; do not document as an active plugin. |
+| `core/database_connector` | README and temporary-MMFDB smoke tests now exist; destructive-path schemas/tests remain. | Backup/reset/import/export touches user data. | Extend service contract and add backup/reset/import/export tests. |
+| `core/project_browser` | README and sample-data-backed service/headless-GUI tests now exist; deeper branch/import tests remain. | Project persistence is high-impact and easy to misuse. | Add workflow examples, MMFDB artifact diagrams, and import/branch coverage. |
 | `core/lightpath_simulator` | No README; full api/core/backend/rpc/cli/gui stack. | Good client-server reference and scientific workflow. | `README.md`, `docs/CONTRACT.md`, verification commands. |
 | `core/code_editor` | No README; backend services. | Executes user scripts/macros; safety and state need clarity. | `README.md` with execution model and service methods. |
 | `modelling/hydropro` | No README; CLI/RPC/GUI and external executable assumptions. | External binary dependencies and generated outputs need explicit docs. | `README.md`, CLI examples, external-tool setup. |
@@ -62,9 +62,9 @@ These need at least the standard README, usually without a separate docs folder.
 | `fcs/fcs_filter_calculator` | No README; backend/CLI/gui split. | Explain lifetime-filter math, input decays, output filters. |
 | `microscopy/img_pixel_mle` | No README; API/backend/CLI/gui split. | Explain pixel-wise MLE workflow and HDF5/image outputs. |
 | `fret_line` | No README; core/backend/gui split. | Explain FRET-line models, RPC/service status, ndxplorer overlays. |
-| `spectra_downloader` | No README and missing manifest id. | Clarify staging-to-MFDB workflow and fix manifest identity separately. |
+| `spectra_downloader` | No README and missing manifest id. | Clarify staging-to-MMFDB workflow and fix manifest identity separately. |
 | `calculator/phasor_calculator` | No README; user-facing calculator. | Small README with phasor formulae, controls, and tests. |
-| `core/user_editor` | No README; MFDB user mutation. | Safety rules, backend-enforced immutability constraints. |
+| `core/user_editor` | No README; MMFDB user mutation. | Safety rules, backend-enforced immutability constraints. |
 | `core/setup` | No README; settings mutation. | Settings panels, persisted keys, verification. |
 | `core/boarding` | No README; onboarding workflow. | First-run state, page model, tests. |
 | `tttr/audifier` | No README. | Input formats, audio output, preview limits. |
@@ -81,7 +81,7 @@ These are smaller, older, or lower-risk GUI tools missing a README.
 | `burst/burst_analysis` | Aggregator shell and included panels. |
 | `burst/burst_browser` | Accepted burst table formats and plot actions. |
 | `core/plugin_check` | Startup-check semantics and failure categories. |
-| `core/switch_user` | Active-user switch behavior and MFDB implications. |
+| `core/switch_user` | Active-user switch behavior and MMFDB implications. |
 | `fcs/fcs_channel_preset` | Detector/channel preset workflow. |
 | `fluorescence_decay/lifetime_analysis` | Aggregator shell and included decay tools. |
 | `microscopy/imaging_tools` | Imaging toolbox aggregator. |
@@ -99,8 +99,8 @@ Use these as models, but normalize them to the standard format over time:
 
 | Plugin | Strength |
 | --- | --- |
-| `burst/burst_selection` | Best reference for API/backend/CLI/GUI/MFDB layering; already has `docs/CONTRACT.md`, `docs/REFERENCE_IMPLEMENTATION.md`, and `docs/STATUS.md`. |
-| `modelling/fret` | Good domain README plus CLI/API docs. Needs MFDB/provenance and verification sections to match the standard. |
+| `burst/burst_selection` | Best reference for API/backend/CLI/GUI/MMFDB layering; already has `docs/CONTRACT.md`, `docs/REFERENCE_IMPLEMENTATION.md`, and `docs/STATUS.md`. |
+| `modelling/fret` | Good domain README plus CLI/API docs. Needs MMFDB/provenance and verification sections to match the standard. |
 | `fluorescence_decay/maxent_decay` | Has a docs folder and layered structure; should be checked against the new README order. |
 | `pch` | Existing README plus GUI/CLI/service split; good candidate for a quick standardization pass. |
 
@@ -112,4 +112,4 @@ For each plugin:
 2. Fill the standard README sections from code evidence, not assumptions.
 3. If the plugin has RPC/CLI/API surfaces, add `docs/CONTRACT.md` or link an existing one.
 4. Add or update verification commands using the plugin's own tests.
-5. Do not claim client-server or MFDB provenance unless the code implements it.
+5. Do not claim client-server or MMFDB provenance unless the code implements it.

@@ -262,9 +262,9 @@ def _strip_chisurf_payload(sp: Path) -> None:
 
 def _gzip_mmcif_dicts(sp: Path) -> None:
     """Compress bundled mmCIF dictionaries to .dic.gz. The loader reads either
-    form (chisurf/core/mfdb/pdbx_metadata.py), and they are only parsed when the
+    form (chisurf/core/mmfdb/pdbx_metadata.py), and they are only parsed when the
     JSON cache is (re)built, so the on-disk win is effectively free at runtime."""
-    data_dir = sp / "chisurf" / "core" / "mfdb" / "data"
+    data_dir = sp / "chisurf" / "core" / "mmfdb" / "data"
     if not data_dir.exists():
         return
     for dic in list(data_dir.glob("*.dic")):

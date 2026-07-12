@@ -3,7 +3,7 @@
 This plugin manages a centralized database of fluorophore spectra and optical properties.
 """
 
-from .mfdb_adapter import DEFAULT_DATABASE_PATH, FluorophoreDatabase
+from .mmfdb_adapter import DEFAULT_DATABASE_PATH, FluorophoreDatabase
 
 name = "Dev:Spectroscopy:Fluorophore DB"
 

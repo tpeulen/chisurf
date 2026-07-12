@@ -17,7 +17,7 @@ faces: a **facade** that presentation code calls, and a **headless service
 layer** that owns the state and does the work. The facade may satisfy a call
 in-process or route it to the service layer running in a separate process — and
 the caller cannot tell which. It owns *how state is reached and moved*, not *what
-the state means* ([Core](core.md)) or *how it persists* ([MFDB](mfdb.md)).
+the state means* ([Core](core.md)) or *how it persists* ([MMFDB](mmfdb.md)).
 
 ## Design principles
 

@@ -602,16 +602,16 @@ The implemented migration makes real progress:
   calls
 
 However, the implementation is not yet architecturally settled. It currently
-introduces another database core (`mfdb`) while retaining the old mmCIF database
+introduces another database core (`mmfdb`) while retaining the old mmCIF database
 module, legacy FDB tables, canonical FDB tables, legacy service names, new
-`mfdb.v1.*` names, and `fdb.v1.*` aliases. This keeps the project functional but
+`mmfdb.v1.*` names, and `fdb.v1.*` aliases. This keeps the project functional but
 still leaves developers with multiple overlapping mental models.
 
 ### Required Improvement 1 - Choose One Public Name and One Schema Authority
 
 Problem:
 
-The implementation created `chisurf/core/mfdb/` while the PRD target and user
+The implementation created `chisurf/core/mmfdb/` while the PRD target and user
 language use `fdb`. The compatibility package
 `chisurf.core.fio.mmcif.db` re-exports the new repository, but the old local
 `chisurf/core/fio/mmcif/db/schema.py` still exists at schema version 16. Some
@@ -620,7 +620,7 @@ imports resolve to the v17 schema and others still resolve to the v16 schema.
 Required direction:
 
 - Choose one canonical public name: preferably `fdb`.
-- Keep `mfdb` only as a temporary alias if the rename has already leaked.
+- Keep `mmfdb` only as a temporary alias if the rename has already leaked.
 - Make all schema creation, migration, and backup decisions use one schema
   module.
 - Stop copying the whole legacy schema into a second core module as a long-term
@@ -632,8 +632,8 @@ Acceptance criteria:
   handlers all resolve the same schema module and same `SCHEMA_VERSION`.
 - Creating an empty database through `resolve_database_path()` creates the
   current canonical schema, not an older intermediate schema.
-- There is a deprecation note for any retained `mfdb` import path.
-- There is no developer-facing ambiguity between `fdb`, `mfdb`, and
+- There is a deprecation note for any retained `mmfdb` import path.
+- There is no developer-facing ambiguity between `fdb`, `mmfdb`, and
   `sample_database`.
 
 ### Required Improvement 2 - Make Repository Mutations Truly Atomic
@@ -752,7 +752,7 @@ Acceptance criteria:
 
 Problem:
 
-The service registry registers both `mfdb.v1.*` and `fdb.v1.*`, but the plugin
+The service registry registers both `mmfdb.v1.*` and `fdb.v1.*`, but the plugin
 manifest still advertises only the old sample database and early phase methods.
 The implemented versioned API also differs from the PRD shape: it has
 `graph.traverse` but not explicit `graph.upstream` / `graph.downstream`, and it
@@ -762,7 +762,7 @@ Required direction:
 
 - Generate or validate the manifest from registered methods.
 - Prefer `fdb.v1.*` as the public API namespace.
-- Keep `mfdb.v1.*` only if there is a clear product decision to rename the
+- Keep `mmfdb.v1.*` only if there is a clear product decision to rename the
   project.
 - Add versioned wrappers for graph upstream/downstream, archives, and project
   archive/restore before encouraging new clients to use the API.
@@ -870,16 +870,16 @@ Definition of done for v18:
 
 ## Educational Examples and Non-GUI API/CLI Usage
 
-### Rebranded Multiparameter Fluorescence Database (MFDB)
-The core database class has been rebranded from `FluorophoreDatabase` to `FluorescenceDatabase` (mapped to `mfdb`). For backwards compatibility, an alias `FluorophoreDatabase = FluorescenceDatabase` is maintained.
+### Rebranded Multiparameter Fluorescence Database (MMFDB)
+The core database class has been rebranded from `FluorophoreDatabase` to `FluorescenceDatabase` (mapped to `mmfdb`). For backwards compatibility, an alias `FluorophoreDatabase = FluorescenceDatabase` is maintained.
 
 ### Non-GUI API Usage via ZMQ
 The ZMQ server (`ChiSurfServer`) exposes all database and plugin operations via JSON-RPC. A python client `ChisurfClient` allows connecting to the server and invoking operations programmatically without a GUI.
 
-To simplify direct, in-process database connections and analysis execution, a high-level helper class `BurstPipeline` is provided in `chisurf.core.mfdb`. This class wraps database connection and multi-step data registration calls. The database connection is instantiated explicitly first, allowing the user to direct the pipeline to any SQLite database file:
+To simplify direct, in-process database connections and analysis execution, a high-level helper class `BurstPipeline` is provided in `chisurf.core.mmfdb`. This class wraps database connection and multi-step data registration calls. The database connection is instantiated explicitly first, allowing the user to direct the pipeline to any SQLite database file:
 
 ```python
-from chisurf.core.mfdb import FluorescenceDatabase, BurstPipeline
+from chisurf.core.mmfdb import FluorescenceDatabase, BurstPipeline
 
 # 1. Connect to the database explicitly (optional custom DB file path)
 db = FluorescenceDatabase("/path/to/database.db")
@@ -897,11 +897,11 @@ lineage = pipeline.get_lineage()
 ### Database Connection and Storage Details
 
 #### SQLite Storage Path
-By default, the Multiparameter Fluorescence Database (MFDB) stores its data in an SQLite database file.
+By default, the Multiparameter Fluorescence Database (MMFDB) stores its data in an SQLite database file.
 - **Default Location**: `chisurf/core/fio/mmcif/db/sample_management.db`
 - **Dynamic Selection**: You can specify a custom SQLite file by passing a path to the `FluorescenceDatabase` constructor:
   ```python
-  from chisurf.core.mfdb import FluorescenceDatabase
+  from chisurf.core.mmfdb import FluorescenceDatabase
 
   with FluorescenceDatabase("/path/to/custom_database.db") as db:
       # Direct Python API access (No ZMQ required)
@@ -952,7 +952,7 @@ client = ChisurfClient(cmd_port=8765, pub_port=8766, host="127.0.0.1")
 client.connect()
 
 # Call any registered service
-result = client.call("mfdb.v1.artifacts.list")
+result = client.call("mmfdb.v1.artifacts.list")
 print(result)
 
 # Clean up ZMQ socket connection when finished

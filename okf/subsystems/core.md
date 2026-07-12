@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 - Domain objects, data structures, and fitting models.
 - The [action layer](/architecture/action-layer.md) (`chisurf/core/actions/`).
 - The [API facade](/architecture/api-facade.md) (`chisurf/core/api/`).
-- The [MFDB metadata store](/architecture/mfdb.md) (`chisurf/core/mfdb/`).
+- The [MMFDB metadata store](/architecture/mmfdb.md) (`chisurf/core/mmfdb/`).
 - Data specifications (`chisurf/core/dataspec/`) that drive the PRD-40
   model/UI split consumed by [AutoForm](/subsystems/gui-autoform.md).
 - Plugin infrastructure (`chisurf/core/plugin/`).

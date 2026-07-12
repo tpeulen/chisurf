@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from chisurf.core.mfdb.repository import MFDatabase
-from chisurf.core.mfdb.provenance.result_registry import set_global_db
+from mmfdb.repository import MFDatabase
+from mmfdb.provenance.result_registry import set_global_db
 from chisurf.plugins.burst.burst_selection.api.contract import (
     METHOD_ANALYZE_FILES,
     METHOD_DESCRIBE_CONTRACT,
@@ -74,11 +74,11 @@ def test_backend_method_catalogue_includes_contract_method() -> None:
     assert methods["burst_selection.contract.describe"] == "Return the Burst Selection workflow contract."
 
 
-def test_analyze_files_handler_returns_mfdb_artifacts(
+def test_analyze_files_handler_returns_mmfdb_artifacts(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    """Service handler should append MFDB artifact IDs when registration succeeds."""
+    """Service handler should append MMFDB artifact IDs when registration succeeds."""
     input_path = tmp_path / "m000.spc"
     input_path.write_bytes(b"fake photons")
 
@@ -104,7 +104,7 @@ def test_analyze_files_handler_returns_mfdb_artifacts(
         db.close()
 
     assert response["ok"] is True
-    artifacts = response["result"]["mfdb_artifacts"]
+    artifacts = response["result"]["mmfdb_artifacts"]
     assert artifacts["input_artifacts"][str(input_path.resolve())]
     assert artifacts["burst_table_artifacts"][str(input_path.resolve())]
 
@@ -122,7 +122,7 @@ def test_multi_file_run_registers_single_grouped_directory(
     folder should be registered, and it must surface a real name (the folder
     basename) rather than its artifact UUID.
     """
-    from chisurf.gui.widgets.mfdb.dataset_browser import _get_display_name
+    from chisurf.gui.widgets.mmfdb.dataset_browser import _get_display_name
 
     files = [tmp_path / f"m00{i}.spc" for i in range(3)]
     for f in files:
@@ -162,7 +162,7 @@ def test_multi_file_run_registers_single_grouped_directory(
         )
         assert response["ok"] is True
         rows = db.conn.execute(
-            "SELECT * FROM mfdb_artifact "
+            "SELECT * FROM mmfdb_artifact "
             "WHERE artifact_kind = 'external_reference' AND data_format = 'directory' "
             "AND deleted_at IS NULL"
         ).fetchall()

@@ -101,7 +101,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - **Fit wiring:** register with the fitting stack so the model is selectable in the
   add-fit flow (the seam the `test-model-editor` skill exercises).
 - **Data source:** consume burst tables / photon selections produced by
-  `burst_selection` (E/S, corrections, PIE channels) and MFDB-registered datasets via
+  `burst_selection` (E/S, corrections, PIE channels) and MMFDB-registered datasets via
   `ChiSurfAPI` — not globals.
 
 # Reuse

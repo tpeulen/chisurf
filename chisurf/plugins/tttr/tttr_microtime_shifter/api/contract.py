@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .models import MFDBContext, ShiftRequest, ShiftResult
+from .models import MMFDBContext, ShiftRequest, ShiftResult
 
 PLUGIN_ID = "microtime_shifter"
 CONTRACT_VERSION = "1.0.0"
@@ -28,13 +28,13 @@ CANONICAL_METHODS = (
 )
 
 
-def _mfdb_context_from_payload(payload: dict[str, Any]) -> MFDBContext:
-    """Normalize MFDB context from a JSON payload."""
-    raw = payload.get("mfdb") or {}
-    if isinstance(raw, MFDBContext):
+def _mmfdb_context_from_payload(payload: dict[str, Any]) -> MMFDBContext:
+    """Normalize MMFDB context from a JSON payload."""
+    raw = payload.get("mmfdb") or {}
+    if isinstance(raw, MMFDBContext):
         return raw
     if isinstance(raw, dict):
-        return MFDBContext(
+        return MMFDBContext(
             enabled=bool(raw.get("enabled", True)),
             sample_id=str(raw.get("sample_id") or ""),
             source_artifact_ids={
@@ -46,7 +46,7 @@ def _mfdb_context_from_payload(payload: dict[str, Any]) -> MFDBContext:
             setup_id=str(raw.get("setup_id") or ""),
             setup_version=raw.get("setup_version"),
         )
-    return MFDBContext()
+    return MMFDBContext()
 
 
 def _normalize_channel_shifts(
@@ -78,7 +78,7 @@ def shift_request_from_payload(payload: dict[str, Any]) -> ShiftRequest:
         channel_shifts=_normalize_channel_shifts(payload.get("channel_shifts")),
         filetype=payload.get("filetype"),
         output_dir=payload.get("output_dir"),
-        mfdb=_mfdb_context_from_payload(payload),
+        mmfdb=_mmfdb_context_from_payload(payload),
     )
 
 
@@ -90,13 +90,13 @@ def shift_request_to_payload(request: ShiftRequest) -> dict[str, Any]:
         "channel_shifts": {str(k): v for k, v in request.channel_shifts.items()},
         "filetype": request.filetype,
         "output_dir": request.output_dir,
-        "mfdb": {
-            "enabled": request.mfdb.enabled,
-            "sample_id": request.mfdb.sample_id,
-            "source_artifact_ids": dict(request.mfdb.source_artifact_ids),
-            "register_missing_inputs": request.mfdb.register_missing_inputs,
-            "setup_id": request.mfdb.setup_id,
-            "setup_version": request.mfdb.setup_version,
+        "mmfdb": {
+            "enabled": request.mmfdb.enabled,
+            "sample_id": request.mmfdb.sample_id,
+            "source_artifact_ids": dict(request.mmfdb.source_artifact_ids),
+            "register_missing_inputs": request.mmfdb.register_missing_inputs,
+            "setup_id": request.mmfdb.setup_id,
+            "setup_version": request.mmfdb.setup_version,
         },
     }
 
@@ -142,7 +142,7 @@ def contract_descriptor() -> dict[str, Any]:
                     },
                     "filetype": {"type": ["string", "null"]},
                     "output_dir": {"type": ["string", "null"]},
-                    "mfdb": {"$ref": "#/definitions/MFDBContext"},
+                    "mmfdb": {"$ref": "#/definitions/MMFDBContext"},
                 },
             },
             "LoadMetadata": {
@@ -195,13 +195,13 @@ def contract_descriptor() -> dict[str, Any]:
                         "type": "object",
                         "additionalProperties": {"type": "object"},
                     },
-                    "mfdb_artifacts": {"type": "object"},
+                    "mmfdb_artifacts": {"type": "object"},
                     "warnings": {"type": "array", "items": {"type": "string"}},
                 },
             },
         },
         "definitions": {
-            "MFDBContext": {
+            "MMFDBContext": {
                 "type": "object",
                 "properties": {
                     "enabled": {"type": "boolean"},

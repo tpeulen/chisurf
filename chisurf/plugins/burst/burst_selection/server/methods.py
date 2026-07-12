@@ -59,7 +59,7 @@ def analyze_files(
     legacy_output_folder_name: str | None = None,
     selected_setup: str | None = None,
     legacy_parameters: dict[str, Any] | None = None,
-    mfdb: dict[str, Any] | None = None,
+    mmfdb: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run Burst Selection analysis over TTTR files."""
     return analyze_files_handler(
@@ -73,7 +73,7 @@ def analyze_files(
         legacy_output_folder_name=legacy_output_folder_name,
         selected_setup=selected_setup,
         legacy_parameters=legacy_parameters,
-        mfdb=mfdb,
+        mmfdb=mmfdb,
     )
 
 

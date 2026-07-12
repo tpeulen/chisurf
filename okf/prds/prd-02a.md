@@ -5,8 +5,8 @@ title: "PRD-02a: mmCIF Dictionary Infrastructure"
 description: Parse bundled mmCIF dictionaries into a cached API for vocabulary validation and autocomplete
 status: done
 phase: "foundation"
-resource: modules/mfdb/src/mfdb/
-tags: [prd, mfdb]
+resource: modules/mmfdb/src/mmfdb/
+tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
@@ -35,7 +35,7 @@ fields such as `_flr_sample.id` matter as much as enum-bearing fields because
 export validation depends on them.
 
 **Execution order:** do not start until [PRD-020](prd-020.md) has established the
-bounded MFDB SQLAlchemy mapping and fixed sample-scoped FRET-pair persistence.
+bounded MMFDB SQLAlchemy mapping and fixed sample-scoped FRET-pair persistence.
 This PRD can remain file/cache based, but its validation APIs are consumed by the
 sample/probe ORM boundary; that boundary must exist first so dictionary
 validation is wired into one canonical persistence path.
@@ -46,7 +46,7 @@ validation is wired into one canonical persistence path.
 an `update_dictionaries.sh` downloader; a partial parser in `pdbx_metadata.py`; a
 JSON cache `_dictionary_cache.json`; an external flrCIF/IHM Python library whose
 FLR module (its `ihm.flr`-style class set) maps 1:1 to flrCIF categories; and the
-MFDB ORM boundary from PRD-020.
+MMFDB ORM boundary from PRD-020.
 
 **What the legacy parser got wrong:** only parsed one dictionary (hardcoded
 `mmcif_pdbx_v50.dic`, so all FLR/IHM/ModelCIF categories were invisible);
@@ -161,4 +161,4 @@ latest from wwPDB); the JSON cache auto-regenerates when any `.dic` is newer.
 # Relationships
 - Depends on [PRD-020](prd-020.md); prerequisite for [PRD-02](prd-02.md) vocabulary validation.
 - Feeds export alignment in [PRD-02c](prd-02c.md).
-- Encodes the dictionary-as-authority principle of the [MFDB (current)](/architecture/mfdb.md) store and its [MFDB target](/specs/mfdb.md).
+- Encodes the dictionary-as-authority principle of the [MMFDB (current)](/architecture/mmfdb.md) store and its [MMFDB target](/specs/mmfdb.md).

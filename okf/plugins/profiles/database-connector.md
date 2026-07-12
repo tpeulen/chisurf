@@ -3,7 +3,7 @@ type: Plugin Profile
 title: Database Connector plugin
 description: OKF profile for core database connector services.
 resource: chisurf/plugins/core/database_connector/
-tags: [plugins, mfdb, database, rpc]
+tags: [plugins, mmfdb, database, rpc]
 timestamp: '2026-07-06T00:00:00Z'
 ---
 
@@ -27,7 +27,7 @@ repository access, and FLR CIF import/export.
 | Services | `services.py` with `DatabaseConnector`, `register_services`, and handlers for status/open/close/backup/reset/repository/import/export. |
 | GUI | None exposed by manifest. |
 | CLI | None exposed by manifest. |
-| Tests | `test/test_database_connector_services.py` covers temporary-MFDB handler counts, explicit open path status, in-process RPC registration, backup, reset-from-source, minimal CIF import, and FLR CIF text/file export. |
+| Tests | `test/test_database_connector_services.py` covers temporary-MMFDB handler counts, explicit open path status, in-process RPC registration, backup, reset-from-source, minimal CIF import, and FLR CIF text/file export. |
 
 Manifest RPC methods are `database_connector.status`, `open`, `close`, `backup`,
 `reset_from_source`, `repository`, `import_file`, and `export_sample`.
@@ -41,7 +41,7 @@ contract for other plugins.
 # Verification Surface
 
 ```bash
-PYTHONPATH="modules/mfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
+PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -m pytest \
   chisurf/plugins/core/database_connector/test
 ```
 

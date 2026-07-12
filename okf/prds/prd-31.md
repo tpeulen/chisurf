@@ -2,19 +2,19 @@
 type: PRD
 prd: "31"
 title: "PRD-31: Headless CLI for the Companion Photon-Data Exploration Tool"
-description: Adds a windowless CLI to the companion exploration tool for parameter-based burst filtering and imaging, integrated with MFDB.
+description: Adds a windowless CLI to the companion exploration tool for parameter-based burst filtering and imaging, integrated with MMFDB.
 status: planned
 phase: "2"
 resource: chisurf/plugins/ndxplorer
-tags: [prd, imaging, mfdb]
+tags: [prd, imaging, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Gives the companion photon-data exploration tool a headless CLI for its two core jobs, both previously GUI-only: burst filtering (select a subset of bursts by parameter ranges/gates and emit a filtered burst selection) and imaging (render intensity or per-pixel parameter maps from image-axis/CLSM data, apply gates/ROIs, and export images or a masked sub-selection). Both run with no window, print JSON to stdout, and complete the MFDB round trip. Pure primitives live in the chisurf-free external module; MFDB resolution and write-back live in the ChiSurf-side wrapper. Filtered/masked outputs stay a reference beside the same TTTR so photon-index linkage is preserved.
+Gives the companion photon-data exploration tool a headless CLI for its two core jobs, both previously GUI-only: burst filtering (select a subset of bursts by parameter ranges/gates and emit a filtered burst selection) and imaging (render intensity or per-pixel parameter maps from image-axis/CLSM data, apply gates/ROIs, and export images or a masked sub-selection). Both run with no window, print JSON to stdout, and complete the MMFDB round trip. Pure primitives live in the chisurf-free external module; MMFDB resolution and write-back live in the ChiSurf-side wrapper. Filtered/masked outputs stay a reference beside the same TTTR so photon-index linkage is preserved.
 
 # Status
-Planned overall, though implementation of the headless CLI landed 2026-06-27: the two primitives and both wrappers exist; the `image` MFDB round trip is implemented but not yet covered by a ChiSurf-side test. A separate, completed (2026-06-24) GUI-migration variant carrying the same number is folded below as "# Companion: pyqtgraph migration".
+Planned overall, though implementation of the headless CLI landed 2026-06-27: the two primitives and both wrappers exist; the `image` MMFDB round trip is implemented but not yet covered by a ChiSurf-side test. A separate, completed (2026-06-24) GUI-migration variant carrying the same number is folded below as "# Companion: pyqtgraph migration".
 
 ## Implementation state (headless CLI, 2026-06-27)
 
@@ -28,9 +28,9 @@ Both primitives + both chisurf wrappers landed.
   sub-selection). JSON to stdout; registered as click subcommands in
   `__main__.py` with pre-import offscreen handling.
 - **chisurf wrappers (`chisurf/plugins/ndxplorer/cli.py`, `cli_entrypoint`
-  `ndxplorer=…:cli` so `csc ndxplorer …` works):** resolve `--from-mfdb` via
+  `ndxplorer=…:cli` so `csc ndxplorer …` works):** resolve `--from-mmfdb` via
   `resolve_database_path`, call the primitive over subprocess (keeps the submodule
-  chisurf-free), and with `--to-mfdb` register the result via `register_result`
+  chisurf-free), and with `--to-mmfdb` register the result via `register_result`
   (`operation_type="burst_filter"`, parented to the source, under `--sample-id`).
 - **No chisurf imports in `modules/ndxplorer`** (DoD constraint verified).
 - **Tests green:** `modules/ndxplorer/ndxplorer/tests/test_cli.py` (5 — filter
@@ -38,7 +38,7 @@ Both primitives + both chisurf wrappers landed.
   `test/fio/test_ndxplorer_cli.py` (chisurf filter round trip, 1).
 - **Recipe doc:** `docs/ndxplorer_headless_cli.md` (both pipelines from raw+sample).
 
-**Remaining gap:** the `csc ndxplorer image` MFDB round trip is implemented but
+**Remaining gap:** the `csc ndxplorer image` MMFDB round trip is implemented but
 not yet covered by a chisurf-side test (needs an image artifact fixture under the
 hermetic harness); the `filter` round trip is tested. Everything else in the DoD
 is met.
@@ -55,21 +55,21 @@ both otherwise GUI-only:
    maps, CLSM TTTR), apply parameter gates and/or pixel ROIs, and **export
    images / parameter maps** (and optionally a masked photon/burst sub-selection).
 
-Both run with no window shown, print JSON to stdout, and integrate with MFDB.
+Both run with no window shown, print JSON to stdout, and integrate with MMFDB.
 This closes the CLI round trip (burst leg shown):
 
 ```bash
-# 1) raw + sample  ->  Burst Selection  (already works, PRD-28 / BS CLI --mfdb)
+# 1) raw + sample  ->  Burst Selection  (already works, PRD-28 / BS CLI --mmfdb)
 csc burst-selection analyze m000.spc m001.spc \
     --filetype SPC-130 --detectors-json det.json \
-    --mfdb --db mfdb.sqlite --sample-name "DNA burst sample"
+    --mmfdb --db mmfdb.sqlite --sample-name "DNA burst sample"
 #   => registers raw inputs (sample-linked), burst tables, and ONE output-folder
-#      group artifact; prints mfdb_artifacts with that artifact id.
+#      group artifact; prints mmfdb_artifacts with that artifact id.
 
 # 2) Burst Selection  ->  exploration tool  (THIS PRD)
-ndxplorer filter --from-mfdb <output_folder_artifact_id> --db mfdb.sqlite \
+ndxplorer filter --from-mmfdb <output_folder_artifact_id> --db mmfdb.sqlite \
     --select "proximity_ratio:0.30-0.70" --select "n_photons:50-" \
-    --to-mfdb --sample-id <sample_id>
+    --to-mmfdb --sample-id <sample_id>
 #   => writes a FILTERED burst selection (a new burst folder / burst_table)
 #      referencing the same TTTR files, registered under the same sample.
 ```
@@ -87,25 +87,25 @@ pixel ROI selection). But its **CLI is only a GUI launcher**:
 calls `win.show(); app.exec_()`. There is no headless mode that loads data,
 applies a gate/ROI, and writes a filtered selection or an exported image. So
 neither the burst-filter nor the imaging workflow can participate in scripted/CI
-pipelines or in the MFDB round trip non-interactively.
+pipelines or in the MMFDB round trip non-interactively.
 
 # Current state (verified)
 
-- **BS → MFDB works headlessly.** `csc burst-selection analyze … --mfdb`
+- **BS → MMFDB works headlessly.** `csc burst-selection analyze … --mmfdb`
   registers raw inputs linked to a sample, burst tables, and a single
   output-folder `external_reference` (`data_format="directory"`). Verified on
   `bh_spc132_sm_dna`: 2 inputs, 2 burst tables, 1 group; the group resolves via
-  `MFDatabase.open_dataset` (what `mfdb.datasets.open` / the launcher call) to
+  `MFDatabase.open_dataset` (what `mmfdb.datasets.open` / the launcher call) to
   the on-disk burstwise folder containing `m000.bur`/`m001.bur` co-located with
   the TTTR files.
 - **`.bur` files reference photons by index in the original TTTR file** (PRD-28).
   A filtered selection must therefore stay a *reference next to the same TTTR*
   (a burst sub-selection / new `.bur` folder beside the TTTR), never an
   object-store copy — otherwise the photon-index linkage breaks.
-- **Shared-DB requirement (learned in testing).** The in-process `MFDBClient`
+- **Shared-DB requirement (learned in testing).** The in-process `MMFDBClient`
   used by the chisurf-side launcher opens the **configured** database, not an
   arbitrary `--db` path. For a real round trip, BS and the exploration tool must
-  point at the *same* MFDB (use the configured DB, or thread the same DB path
+  point at the *same* MMFDB (use the configured DB, or thread the same DB path
   through both CLIs). The headless CLI must accept an explicit DB/source so it
   reads what BS wrote.
 
@@ -125,17 +125,17 @@ pipelines or in the MFDB round trip non-interactively.
   `_open_report_images_for_folder`). The headless imaging mode must drive this
   same machinery, not a second imaging stack.
 - **chisurf glue (keep `modules/ndxplorer` chisurf-free):**
-  `chisurf/plugins/ndxplorer/mfdb_launcher.py` already resolves an MFDB artifact
-  to a local path (`resolve_dataset_path`) and opens it. MFDB write-back can
-  reuse `chisurf.core.mfdb.result_registry.register_result` / `BurstMFDBPipeline`.
-- **BS CLI `--mfdb`** — the upstream half; the contract is the printed
-  `mfdb_artifacts.output_folder` artifact id.
+  `chisurf/plugins/ndxplorer/mmfdb_launcher.py` already resolves an MMFDB artifact
+  to a local path (`resolve_dataset_path`) and opens it. MMFDB write-back can
+  reuse `chisurf.core.mmfdb.result_registry.register_result` / `BurstMMFDBPipeline`.
+- **BS CLI `--mmfdb`** — the upstream half; the contract is the printed
+  `mmfdb_artifacts.output_folder` artifact id.
 
 # Constraints
 
 - **`modules/ndxplorer` stays dependency-free of chisurf.** The pure parameter
   filter primitive (open burst folder → apply parameter gates → write filtered
-  burst folder) lives in `modules/ndxplorer`; all MFDB resolution/registration
+  burst folder) lives in `modules/ndxplorer`; all MMFDB resolution/registration
   lives in `chisurf/plugins/ndxplorer`.
 - **Preserve photon-index linkage** (write filtered `.bur`/sub-selection beside
   the same TTTR; reference, don't copy).
@@ -161,13 +161,13 @@ Add a headless subcommand, e.g. `ndxplorer filter`:
 - Parameter names should match the tool's column ids (document the canonical set
   — proximity ratio, stoichiometry, lifetime, duration, count rate, n_photons).
 
-## B. chisurf MFDB wrapper (in `chisurf/plugins/ndxplorer`)
+## B. chisurf MMFDB wrapper (in `chisurf/plugins/ndxplorer`)
 
 Add a chisurf-side CLI (e.g. `csc ndxplorer filter`) that:
-1. Resolves `--from-mfdb <artifact_id>` (or `--folder`) to a local burst path via
+1. Resolves `--from-mmfdb <artifact_id>` (or `--folder`) to a local burst path via
    `resolve_dataset_path` (the configured/`--db` database).
 2. Calls the A-primitive to produce a filtered burst folder beside the TTTR.
-3. With `--to-mfdb`, registers the filtered folder as a new burst selection
+3. With `--to-mmfdb`, registers the filtered folder as a new burst selection
    (operation_type e.g. `"burst_filter"`, parent = the source burst selection,
    linked to `--sample-id`), reusing `register_result`/the burst pipeline so the
    single-group + real-name conventions (PRD-28) hold.
@@ -189,15 +189,15 @@ maps from CLSM TTTR, and report images). Add a headless subcommand, e.g.
   - the rendered image / parameter map (`--out img.png` / `--out-tiff map.tiff`,
     16-bit/float preserved for quantitative maps), and/or
   - a **masked sub-selection** (the photons/bursts inside the ROI/gate) written
-    beside the source TTTR, so it can re-enter the burst/MFDB flow.
+    beside the source TTTR, so it can re-enter the burst/MMFDB flow.
 - Emits JSON: `{"input": …, "map": …, "shape": [h, w], "n_selected_px": …,
   "out": …}`.
 - Must be deterministic and headless (`QT_QPA_PLATFORM=offscreen`, no `.show()`).
 
-## E. chisurf MFDB wrapper for imaging (in `chisurf/plugins/ndxplorer`)
+## E. chisurf MMFDB wrapper for imaging (in `chisurf/plugins/ndxplorer`)
 
-Mirror section B for images: `csc ndxplorer image --from-mfdb <id>` resolves the
-source via `resolve_dataset_path`, runs the D-primitive, and with `--to-mfdb`
+Mirror section B for images: `csc ndxplorer image --from-mmfdb <id>` resolves the
+source via `resolve_dataset_path`, runs the D-primitive, and with `--to-mmfdb`
 registers the exported image / parameter map (kind e.g. `"image"` /
 `"processed_data"`) and any masked sub-selection under `--sample-id`, parented to
 the source artifact.
@@ -205,7 +205,7 @@ the source artifact.
 ## F. Round-trip parity
 
 Both modes must produce outputs that re-open identically in the GUI and resolve
-through `mfdb.datasets.open`, so `raw+sample → BS → filter` and
+through `mmfdb.datasets.open`, so `raw+sample → BS → filter` and
 `raw(+sample) → image` work the same in scripts and by hand.
 
 # Tasks
@@ -217,8 +217,8 @@ through `mfdb.datasets.open`, so `raw+sample → BS → filter` and
    sub-selection), no GUI shown; JSON stdout.
 3. Define and document the canonical parameter/column ids usable in `--select`
    and the supported image maps (`intensity`, `lifetime`, named parameters).
-4. `chisurf/plugins/ndxplorer`: `filter` and `image` CLI wrappers doing MFDB
-   resolve → primitive → optional MFDB write-back under the sample; JSON stdout.
+4. `chisurf/plugins/ndxplorer`: `filter` and `image` CLI wrappers doing MMFDB
+   resolve → primitive → optional MMFDB write-back under the sample; JSON stdout.
 5. Tests: (a) primitive filter on a bundled burst folder
    (`modules/ndxplorer/test/mfd/...`) asserting `n_out < n_in` for a tight gate
    with index-linkage preserved; (b) primitive image render on a CLSM/MFD-HDF5
@@ -234,19 +234,19 @@ through `mfdb.datasets.open`, so `raw+sample → BS → filter` and
       --out <dir>` writes a filtered burst selection headlessly (no window).
 - [x] `ndxplorer image --file <clsm.ptu> --map lifetime --out map.tiff` renders
       and exports a parameter map headlessly; `--roi`/`--select` masks it.
-- [~] `csc ndxplorer filter|image --from-mfdb <id> --to-mfdb --sample-id <id>`
-      completes the MFDB round trip; outputs resolve via `mfdb.datasets.open`.
+- [~] `csc ndxplorer filter|image --from-mmfdb <id> --to-mmfdb --sample-id <id>`
+      completes the MMFDB round trip; outputs resolve via `mmfdb.datasets.open`.
       **filter tested; image wrapper implemented but not yet tested.**
-- [x] `modules/ndxplorer` has no chisurf imports; MFDB logic is chisurf-side only.
+- [x] `modules/ndxplorer` has no chisurf imports; MMFDB logic is chisurf-side only.
 - [x] Burst/masked outputs reference the same TTTR (photon-index linkage intact).
 - [x] Tests + the recipes pass.
 
 # Definition of Clean
 
 Reuse the tool's existing open + selection + imaging core (no parallel gating or
-rendering engine); keep `modules/ndxplorer` chisurf-free; MFDB
+rendering engine); keep `modules/ndxplorer` chisurf-free; MMFDB
 resolution/registration only in `chisurf/plugins/ndxplorer`; JSON stdout like the
-BS CLI; identity/scope via the PRD-17 resolver for any MFDB write-back.
+BS CLI; identity/scope via the PRD-17 resolver for any MMFDB write-back.
 
 # Companion: pyqtgraph migration
 
@@ -335,7 +335,7 @@ only). **Remaining out-of-scope work tracked separately:**
 the legacy toolkit (not part of the exploration tool).
 
 # Relationships
-- Completes the CLI leg of [PRD-28](prd-28.md) (companion-tool ↔ MFDB burst integration).
+- Completes the CLI leg of [PRD-28](prd-28.md) (companion-tool ↔ MMFDB burst integration).
 - Complements [PRD-30](prd-30.md) (Unix-pipe CLI composability) by making the exploration tool a headless filter/imaging stage.
-- Honors [PRD-23](prd-23.md) (thin widgets) and [PRD-17](prd-17.md) (identity) for MFDB write-back.
-- Registers results via [PRD-03](prd-03.md) result registry; resolves through [MFDB (current)](/architecture/mfdb.md) and the [plugin system](/architecture/plugin-system.md).
+- Honors [PRD-23](prd-23.md) (thin widgets) and [PRD-17](prd-17.md) (identity) for MMFDB write-back.
+- Registers results via [PRD-03](prd-03.md) result registry; resolves through [MMFDB (current)](/architecture/mmfdb.md) and the [plugin system](/architecture/plugin-system.md).

@@ -47,7 +47,7 @@ class MicrotimeShifterClient:
         channel_shifts: dict[int, int] | None = None,
         filetype: str | None = None,
         output_dir: str | Path | None = None,
-        mfdb: dict[str, Any] | None = None,
+        mmfdb: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Apply micro-time shifts to files.
 
@@ -63,8 +63,8 @@ class MicrotimeShifterClient:
             Explicit file type.
         output_dir : str or Path, optional
             Output directory.
-        mfdb : dict, optional
-            MFDB archival context.
+        mmfdb : dict, optional
+            MMFDB archival context.
 
         Returns
         -------
@@ -87,8 +87,8 @@ class MicrotimeShifterClient:
             params["filetype"] = filetype
         if output_dir is not None:
             params["output_dir"] = str(output_dir)
-        if mfdb is not None:
-            params["mfdb"] = mfdb
+        if mmfdb is not None:
+            params["mmfdb"] = mmfdb
         svc_result = self._client.call(METHOD_APPLY, params)
         if not svc_result.get("ok", True):
             err_msg = svc_result.get("error", "unknown error")
@@ -116,7 +116,7 @@ class MicrotimeShifterClient:
         return result.get("result", {})
 
     def identify(self, path: Path) -> dict[str, Any]:
-        """Look up a file in the MFDB object store.
+        """Look up a file in the MMFDB object store.
 
         Parameters
         ----------

@@ -1,4 +1,4 @@
-"""Tests for MFDB dataset browser (PRD-10).
+"""Tests for MMFDB dataset browser (PRD-10).
 
 Asserts browsing, scoping, pagination, open, shifter round-trip, and GUI
 construction.  Uses DI via in-process RPC client with a temp database path.
@@ -13,8 +13,8 @@ from unittest.mock import patch
 
 import pytest
 
-from chisurf.core.mfdb.security.auth import _hash_token
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.security.auth import _hash_token
+from mmfdb.repository import MFDatabase
 
 
 # ---------------------------------------------------------------------------
@@ -39,8 +39,8 @@ def temp_db(
     user_alice_token: str,
     user_bob_token: str,
 ) -> Path:
-    """Create a temp MFDB with Alice (admin, not admin) and Bob users."""
-    db_path = tmp_path / "test_mfdb.db"
+    """Create a temp MMFDB with Alice (admin, not admin) and Bob users."""
+    db_path = tmp_path / "test_mmfdb.db"
     db = MFDatabase(db_path)
 
     alice_hash = _hash_token(user_alice_token)
@@ -55,11 +55,11 @@ def temp_db(
         ("bob", "Bob", 0),
     )
     db.conn.execute(
-        "INSERT INTO mfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO mmfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
         ("sess_alice", "alice", alice_hash, "2099-12-31T23:59:59"),
     )
     db.conn.execute(
-        "INSERT INTO mfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO mmfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
         ("sess_bob", "bob", bob_hash, "2099-12-31T23:59:59"),
     )
     db.conn.commit()
@@ -102,11 +102,11 @@ def temp_db(
 
     # Patch resolve_database_path in the services module to point to our temp db
     monkeypatch.setattr(
-        "mfdb.admin.backend.services.resolve_database_path",
+        "mmfdb.admin.backend.services.resolve_database_path",
         lambda: db_path,
     )
     monkeypatch.setattr(
-        "chisurf.core.mfdb.store.database_resolver.resolve_database_path",
+        "mmfdb.store.database_resolver.resolve_database_path",
         lambda: db_path,
     )
 
@@ -131,7 +131,7 @@ def test_browse_mine_returns_only_active_user_datasets(
     user_alice_token: str,
 ) -> None:
     """'Mine' scope returns only artifacts owned by the authenticated user."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
 
@@ -153,7 +153,7 @@ def test_browse_public_includes_public_datasets(
     user_alice_token: str,
 ) -> None:
     """'Public' scope returns only public artifacts regardless of owner."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
 
@@ -175,7 +175,7 @@ def test_browse_all_includes_public_and_own(
     user_alice_token: str,
 ) -> None:
     """'All' scope returns public datasets + those owned by the user."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
 
@@ -197,7 +197,7 @@ def test_browse_kinds_filter(
     user_alice_token: str,
 ) -> None:
     """kinds filter narrows results to matching artifact_kind."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
 
@@ -217,7 +217,7 @@ def test_browse_formats_filter(
     user_alice_token: str,
 ) -> None:
     """formats filter narrows results to matching data_format."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
 
@@ -237,7 +237,7 @@ def test_browse_query_filter(
     user_alice_token: str,
 ) -> None:
     """query filters by artifact_id substring."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
 
@@ -257,7 +257,7 @@ def test_browse_pagination(
     user_alice_token: str,
 ) -> None:
     """Pagination produces non-overlapping, correctly bounded pages."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
 
@@ -309,7 +309,7 @@ def test_user_b_cannot_see_a_private_dataset(
     user_bob_token: str,
 ) -> None:
     """Bob cannot see Alice's private dataset via 'all' scope."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
 
@@ -328,7 +328,7 @@ def test_user_b_can_see_a_public_dataset(
     user_bob_token: str,
 ) -> None:
     """Bob can see Alice's public dataset via 'public' scope."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
 
@@ -352,14 +352,14 @@ def test_open_dataset_returns_local_path_for_object_store(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """datasets.open returns a readable local path for a registered object."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_open_handler,
     )
 
     obj_root = tmp_path / "obj_store"
     obj_root.mkdir()
     monkeypatch.setattr(
-        "chisurf.core.mfdb.store.database_resolver.object_store_root",
+        "mmfdb.store.database_resolver.object_store_root",
         lambda: obj_root,
     )
 
@@ -367,11 +367,11 @@ def test_open_dataset_returns_local_path_for_object_store(
     db = MFDatabase(db_path)
 
     monkeypatch.setattr(
-        "mfdb.admin.backend.services.resolve_database_path",
+        "mmfdb.admin.backend.services.resolve_database_path",
         lambda: db_path,
     )
     monkeypatch.setattr(
-        "chisurf.core.mfdb.store.database_resolver.resolve_database_path",
+        "mmfdb.store.database_resolver.resolve_database_path",
         lambda: db_path,
     )
 
@@ -383,7 +383,7 @@ def test_open_dataset_returns_local_path_for_object_store(
         ("open_user", "Open User", 0),
     )
     db.conn.execute(
-        "INSERT INTO mfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO mmfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
         ("sess_open", "open_user", tok_hash, "2099-12-31T23:59:59"),
     )
     db.conn.commit()
@@ -393,7 +393,7 @@ def test_open_dataset_returns_local_path_for_object_store(
     store = db._get_object_store()
     ref = store.put_bytes(content, filename="test.ptu")
     db.conn.execute(
-        "INSERT INTO mfdb_object (object_uuid, content_md5, original_filename, "
+        "INSERT INTO mmfdb_object (object_uuid, content_md5, original_filename, "
         "size_bytes, storage_path, refcount) VALUES (?, ?, ?, ?, ?, 1)",
         (ref.uuid, ref.md5, "test.ptu", ref.size, ref.storage_path),
     )
@@ -433,7 +433,7 @@ def test_shifter_round_trip(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Register a TTTR raw_measurement, browse lists it, open reads it."""
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
         datasets_open_handler,
     )
@@ -441,7 +441,7 @@ def test_shifter_round_trip(
     obj_root = tmp_path / "obj_store"
     obj_root.mkdir()
     monkeypatch.setattr(
-        "chisurf.core.mfdb.store.database_resolver.object_store_root",
+        "mmfdb.store.database_resolver.object_store_root",
         lambda: obj_root,
     )
 
@@ -449,11 +449,11 @@ def test_shifter_round_trip(
     db = MFDatabase(db_path)
 
     monkeypatch.setattr(
-        "mfdb.admin.backend.services.resolve_database_path",
+        "mmfdb.admin.backend.services.resolve_database_path",
         lambda: db_path,
     )
     monkeypatch.setattr(
-        "chisurf.core.mfdb.store.database_resolver.resolve_database_path",
+        "mmfdb.store.database_resolver.resolve_database_path",
         lambda: db_path,
     )
 
@@ -464,14 +464,14 @@ def test_shifter_round_trip(
         ("alice", "Alice", 0),
     )
     db.conn.execute(
-        "INSERT INTO mfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO mmfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
         ("sess_alice2", "alice", tok_hash, "2099-12-31T23:59:59"),
     )
     db.conn.commit()
 
     # Patch _resolve_active_user_id to return alice for this test
     monkeypatch.setattr(
-        "chisurf.core.mfdb.provenance.result_registry._resolve_active_user_id",
+        "mmfdb.provenance.result_registry._resolve_active_user_id",
         lambda: "alice",
     )
 
@@ -480,7 +480,7 @@ def test_shifter_round_trip(
     src_file = tmp_path / "test_input.ptu"
     src_file.write_bytes(content)
 
-    from chisurf.core.mfdb.provenance.result_registry import register_raw_measurement
+    from mmfdb.provenance.result_registry import register_raw_measurement
     art_id = register_raw_measurement(
         file_path=str(src_file),
         db=db,
@@ -523,15 +523,15 @@ def test_processed_data_appears_in_browse(
 
     This guards against silent registration failures (Bug C).
     """
-    from mfdb.admin.backend.services import (
+    from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
-    from chisurf.core.mfdb.provenance.result_registry import register_result
+    from mmfdb.provenance.result_registry import register_result
 
     obj_root = tmp_path / "obj_store"
     obj_root.mkdir()
     monkeypatch.setattr(
-        "chisurf.core.mfdb.store.database_resolver.object_store_root",
+        "mmfdb.store.database_resolver.object_store_root",
         lambda: obj_root,
     )
 
@@ -539,11 +539,11 @@ def test_processed_data_appears_in_browse(
     db = MFDatabase(db_path)
 
     monkeypatch.setattr(
-        "mfdb.admin.backend.services.resolve_database_path",
+        "mmfdb.admin.backend.services.resolve_database_path",
         lambda: db_path,
     )
     monkeypatch.setattr(
-        "chisurf.core.mfdb.store.database_resolver.resolve_database_path",
+        "mmfdb.store.database_resolver.resolve_database_path",
         lambda: db_path,
     )
 
@@ -555,14 +555,14 @@ def test_processed_data_appears_in_browse(
         ("regr_user", "Regression User", 0),
     )
     db.conn.execute(
-        "INSERT INTO mfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO mmfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
         ("sess_regr", "regr_user", tok_hash, "2099-12-31T23:59:59"),
     )
     db.conn.commit()
 
     # Patch _resolve_active_user_id to return our test user
     monkeypatch.setattr(
-        "chisurf.core.mfdb.provenance.result_registry._resolve_active_user_id",
+        "mmfdb.provenance.result_registry._resolve_active_user_id",
         lambda: "regr_user",
     )
 
@@ -599,7 +599,7 @@ def test_register_result_fails_loud_on_real_error(tmp_path: Path) -> None:
     A vocabulary violation (bad operation_type) must propagate, not silently
     return "".
     """
-    from chisurf.core.mfdb.provenance.result_registry import register_result
+    from mmfdb.provenance.result_registry import register_result
 
     db_path = tmp_path / "loud_fail.db"
     db = MFDatabase(db_path)
@@ -626,20 +626,20 @@ def test_register_result_fails_loud_on_real_error(tmp_path: Path) -> None:
     reason="Qt smoke test disabled by default; "
     "run manually with QT_QPA_PLATFORM=offscreen pytest ...",
 )
-def test_mfdb_dataset_browser_constructs() -> None:
-    """MfdbDatasetBrowser constructs without crashing (no client → disabled)."""
+def test_mmfdb_dataset_browser_constructs() -> None:
+    """MmfdbDatasetBrowser constructs without crashing (no client → disabled)."""
     from qtpy import QtWidgets
 
     app = QtWidgets.QApplication.instance()
     if app is None:
         app = QtWidgets.QApplication([])
 
-    from chisurf.gui.widgets.mfdb.dataset_browser import MfdbDatasetBrowser
+    from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetBrowser
 
-    browser = MfdbDatasetBrowser(client=None)
+    browser = MmfdbDatasetBrowser(client=None)
     assert browser is not None
     assert browser._is_connected() is False
-    assert browser.status_label.text() == "MFDB not connected"
+    assert browser.status_label.text() == "MMFDB not connected"
     browser.close()
 
 
@@ -648,7 +648,7 @@ def test_mfdb_dataset_browser_constructs() -> None:
     reason="Qt smoke test disabled by default; "
     "run manually with QT_QPA_PLATFORM=offscreen pytest ...",
 )
-def test_mfdb_dataset_picker_dialog_returns_none_when_no_client() -> None:
+def test_mmfdb_dataset_picker_dialog_returns_none_when_no_client() -> None:
     """pick_dataset returns None when client is None."""
     from qtpy import QtWidgets
 
@@ -656,11 +656,11 @@ def test_mfdb_dataset_picker_dialog_returns_none_when_no_client() -> None:
     if app is None:
         app = QtWidgets.QApplication([])
 
-    from chisurf.gui.widgets.mfdb.dataset_browser import (
-        MfdbDatasetPickerDialog,
+    from chisurf.gui.widgets.mmfdb.dataset_browser import (
+        MmfdbDatasetPickerDialog,
     )
 
-    result = MfdbDatasetPickerDialog.pick_dataset(client=None)
+    result = MmfdbDatasetPickerDialog.pick_dataset(client=None)
     assert result is None
 
 
@@ -675,11 +675,11 @@ def test_processed_dataset_with_unseeded_user_registers_and_browses(tmp_path, mo
         fail the created_by_user_id foreign key (ensure_user bootstraps it).
     """
     import chisurf.core.settings
-    from chisurf.core.mfdb.provenance import result_registry as rr
+    from mmfdb.provenance import result_registry as rr
 
     # Active user that is NOT pre-seeded in flr_sample_users (config injection).
     monkeypatch.setitem(
-        chisurf.core.settings.cs_settings, "mfdb", {"default_user_id": "scientist_x"}
+        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "scientist_x"}
     )
 
     db = MFDatabase(str(tmp_path / "reg.db"))
@@ -708,10 +708,10 @@ def test_processed_dataset_with_unseeded_user_registers_and_browses(tmp_path, mo
 
 def test_browse_datasets_format_filter_normalizes_dot(tmp_path):
     """Regression: browse_datasets must match the dot-less stored data_format
-    whether the caller passes 'ptu', '.ptu', or '.PTU'. The shifter's MFDB
+    whether the caller passes 'ptu', '.ptu', or '.PTU'. The shifter's MMFDB
     picker passed dotted formats, so it always returned zero datasets and the
-    load-from-MFDB roundtrip was broken."""
-    from chisurf.core.mfdb.provenance import result_registry as rr
+    load-from-MMFDB roundtrip was broken."""
+    from mmfdb.provenance import result_registry as rr
 
     db = MFDatabase(str(tmp_path / "fmt.db"))
     f = tmp_path / "meas.ptu"
@@ -721,7 +721,7 @@ def test_browse_datasets_format_filter_normalizes_dot(tmp_path):
     uid = rr._resolve_active_user_id()
 
     row = db.conn.execute(
-        "SELECT data_format FROM mfdb_artifact WHERE artifact_id=?", (raw,)
+        "SELECT data_format FROM mmfdb_artifact WHERE artifact_id=?", (raw,)
     ).fetchone()
     assert row[0] == "ptu"  # stored without the dot
 
@@ -735,11 +735,11 @@ def test_browse_handler_own_scope_uses_default_user_when_anonymous(tmp_path, mon
     must fall back to the configured default_user_id so it matches the owner that
     registration stamps. Otherwise 'Mine' shows nothing despite registered data."""
     import chisurf.core.settings
-    from chisurf.core.mfdb.provenance import result_registry as rr
-    from mfdb.admin.backend import services as svc
+    from mmfdb.provenance import result_registry as rr
+    from mmfdb.admin.backend import services as svc
 
     monkeypatch.setitem(
-        chisurf.core.settings.cs_settings, "mfdb", {"default_user_id": "tpeulen"}
+        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"}
     )
     dbp = str(tmp_path / "own.db")
     db = MFDatabase(dbp)
@@ -754,23 +754,23 @@ def test_browse_handler_own_scope_uses_default_user_when_anonymous(tmp_path, mon
     assert r["total"] == 1, "own scope must match the registration owner when anonymous"
 
 
-def test_real_mfdbclient_call_browses_datasets(tmp_path, monkeypatch):
-    """Integration regression: the real MFDBClient must expose ``call`` and
+def test_real_mmfdbclient_call_browses_datasets(tmp_path, monkeypatch):
+    """Integration regression: the real MMFDBClient must expose ``call`` and
     return datasets through the in-process dispatcher.
 
-    The browser widget and shifter use ``client.call(...)``; MFDBClient only
+    The browser widget and shifter use ``client.call(...)``; MMFDBClient only
     had ``_call``, so every browse raised AttributeError (swallowed) and the
     picker showed 0 — even though the backend handler worked. This exercises the
     real client end to end.
     """
     import chisurf.core.settings
-    from chisurf.core.mfdb.provenance import result_registry as rr
-    import chisurf.core.mfdb.store.database_resolver as dr
-    from mfdb.admin.backend import services as svc
-    from chisurf.plugins.core.mfdb_admin.gui.client import MFDBClient
+    from mmfdb.provenance import result_registry as rr
+    import mmfdb.store.database_resolver as dr
+    from mmfdb.admin.backend import services as svc
+    from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
     monkeypatch.setitem(
-        chisurf.core.settings.cs_settings, "mfdb", {"default_user_id": "tpeulen"}
+        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"}
     )
     dbp = str(tmp_path / "client.db")
     db = MFDatabase(dbp)
@@ -781,10 +781,10 @@ def test_real_mfdbclient_call_browses_datasets(tmp_path, monkeypatch):
     monkeypatch.setattr(dr, "resolve_database_path", lambda: dbp)
     monkeypatch.setattr(svc, "resolve_database_path", lambda: dbp)
 
-    client = MFDBClient(inprocess=True)
-    assert hasattr(client, "call"), "MFDBClient must expose a public call()"
+    client = MMFDBClient(inprocess=True)
+    assert hasattr(client, "call"), "MMFDBClient must expose a public call()"
     res = client.call(
-        "mfdb.datasets.browse",
+        "mmfdb.datasets.browse",
         {"scope": "own", "kinds": ["raw_measurement"], "formats": ["ptu"]},
     )
     assert isinstance(res, dict)
@@ -797,11 +797,11 @@ def test_datasets_open_allows_anonymous_with_default_user(tmp_path, monkeypatch)
     default user is configured (the in-process GUI client is anonymous). It
     previously failed with 'Authentication required', breaking the load."""
     import chisurf.core.settings
-    from chisurf.core.mfdb.provenance import result_registry as rr
-    from mfdb.admin.backend import services as svc
+    from mmfdb.provenance import result_registry as rr
+    from mmfdb.admin.backend import services as svc
 
     monkeypatch.setitem(
-        chisurf.core.settings.cs_settings, "mfdb", {"default_user_id": "tpeulen"}
+        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"}
     )
     dbp = str(tmp_path / "open.db")
     db = MFDatabase(dbp)
@@ -830,7 +830,7 @@ def test_browse_datasets_joins_sample_name_and_refcount(
 
     # 2. Insert an object (for refcount and original_filename)
     db.conn.execute(
-        "INSERT INTO mfdb_object (object_uuid, content_md5, storage_path, refcount, original_filename) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO mmfdb_object (object_uuid, content_md5, storage_path, refcount, original_filename) VALUES (?, ?, ?, ?, ?)",
         ("obj_uuid_123", "md5_content_123", "/tmp/nonexistent", 5, "my_original_file.ptu"),
     )
 
@@ -845,13 +845,13 @@ def test_browse_datasets_joins_sample_name_and_refcount(
         is_public=True,
     )
     db.conn.execute(
-        "UPDATE mfdb_artifact SET object_uuid = ? WHERE artifact_id = ?",
+        "UPDATE mmfdb_artifact SET object_uuid = ? WHERE artifact_id = ?",
         ("obj_uuid_123", "art_with_sample_01"),
     )
 
     # 4. Link artifact to sample via edge
     db.conn.execute(
-        "INSERT INTO mfdb_edge (source_node_type, source_node_id, target_node_type, target_node_id, relationship_type) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO mmfdb_edge (source_node_type, source_node_id, target_node_type, target_node_id, relationship_type) VALUES (?, ?, ?, ?, ?)",
         ("artifact", "art_with_sample_01", "sample", "sample_xxx", "measured_sample"),
     )
     db.conn.commit()
@@ -889,9 +889,9 @@ def test_name_only_sample_appears_in_flr_sample_and_list(tmp_path):
     """Regression: a sample created with only a name (no description) must carry
     that name into flr_sample.description (the flrCIF/pdbx-canonical table), so it
     is not nameless in list_samples / search / browse. Previously the name lived
-    only in mfdb_sample.display_name and flr_sample.description was empty."""
-    from chisurf.core.mfdb.samples.sample_manager import create_sample
-    from chisurf.core.mfdb.samples.sample_requests import SampleDefinition
+    only in mmfdb_sample.display_name and flr_sample.description was empty."""
+    from mmfdb.samples.sample_manager import create_sample
+    from mmfdb.samples.sample_requests import SampleDefinition
 
     db = MFDatabase(str(tmp_path / "s.db"))
     sid = create_sample(db, SampleDefinition(name="DNA-Al488-Cy5"))
@@ -905,9 +905,9 @@ def test_name_only_sample_appears_in_flr_sample_and_list(tmp_path):
 
 
 # Note: the former test_backfill_fills_empty_flr_sample_description test simulated the
-# legacy state by inserting into mfdb_sample and backfilling flr_sample from it. PRD-19
-# collapsed that duplicate — mfdb_sample no longer exists (flr_sample is the single
-# source of truth) — so the backfill-from-mfdb_sample path is gone.
+# legacy state by inserting into mmfdb_sample and backfilling flr_sample from it. PRD-19
+# collapsed that duplicate — mmfdb_sample no longer exists (flr_sample is the single
+# source of truth) — so the backfill-from-mmfdb_sample path is gone.
 
 
 def test_browse_datasets_excludes_grouped_members(
@@ -949,11 +949,11 @@ def test_browse_datasets_excludes_grouped_members(
 
     # 3. Create grouped_in edges: member -> grouped_in -> group
     db.conn.execute(
-        "INSERT INTO mfdb_edge (source_node_type, source_node_id, target_node_type, target_node_id, relationship_type) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO mmfdb_edge (source_node_type, source_node_id, target_node_type, target_node_id, relationship_type) VALUES (?, ?, ?, ?, ?)",
         ("artifact", "art_member_01", "artifact", "art_group_01", "grouped_in"),
     )
     db.conn.execute(
-        "INSERT INTO mfdb_edge (source_node_type, source_node_id, target_node_type, target_node_id, relationship_type) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO mmfdb_edge (source_node_type, source_node_id, target_node_type, target_node_id, relationship_type) VALUES (?, ?, ?, ?, ?)",
         ("artifact", "art_member_02", "artifact", "art_group_01", "grouped_in"),
     )
     db.conn.commit()
@@ -972,13 +972,13 @@ def test_browse_datasets_excludes_grouped_members(
 
 def test_multi_owner_browse_and_dict_mapping(tmp_path, monkeypatch):
     """A dataset can be co-owned: each owner sees it under 'own'; non-owners do
-    not. The mfdb_artifact_owner items map to live columns (dict-driven)."""
+    not. The mmfdb_artifact_owner items map to live columns (dict-driven)."""
     import chisurf.core.settings
-    from chisurf.core.mfdb.provenance import result_registry as rr
-    from chisurf.core.mfdb.schema.dictionary_schema_map import build_dictionary_schema_map
+    from mmfdb.provenance import result_registry as rr
+    from mmfdb.schema.dictionary_schema_map import build_dictionary_schema_map
 
     monkeypatch.setitem(
-        chisurf.core.settings.cs_settings, "mfdb", {"default_user_id": "alice"}
+        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "alice"}
     )
     dbp = str(tmp_path / "mo.db")
     db = MFDatabase(dbp)
@@ -1001,12 +1001,12 @@ def test_multi_owner_browse_and_dict_mapping(tmp_path, monkeypatch):
 
     mapper = build_dictionary_schema_map(dbp)
     unmapped = [u.dictionary_name for u in mapper.get_unmapped_flr_items()
-                if u.category == "mfdb_artifact_owner"]
+                if u.category == "mmfdb_artifact_owner"]
     assert unmapped == []
 
 
 # Note: the former test_v39_backfills_artifact_owner_from_creator test drove the removed
 # version-chain migration (set_schema_version(38) + migrate_schema → v39 owner backfill).
 # PRD-19 deleted the version chain (pre-PRD-19 DBs are disposable). On the current path
-# register_result records the owner in mfdb_artifact_owner directly (covered by the
+# register_result records the owner in mmfdb_artifact_owner directly (covered by the
 # scope/own browse tests above), so no migration backfill is needed.

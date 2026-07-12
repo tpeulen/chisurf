@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import types
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -105,3 +106,32 @@ def test_contract_describe_rpc():
     res = client.call("burst_h2mm.contract.describe", {})
     assert res.get("ok") is True
     assert res["result"]["plugin_id"] == "burst_h2mm"
+
+
+def test_load_tttrs_resolves_legacy_burst_folder_parent(tmp_path, monkeypatch):
+    """CUSUM/burstwise .bur folders reference TTTR files in the dataset root."""
+    from chisurf.plugins.burst.burst_h2mm.backend import services
+    import tttrlib
+
+    data_root = tmp_path / "bh_spc132_sm_dna"
+    burst_dir = data_root / "cusum_All 0.2000#30" / "bi4_bur"
+    burst_dir.mkdir(parents=True)
+    tttr_path = data_root / "m000.spc"
+    tttr_path.write_bytes(b"dummy")
+
+    loaded: list[tuple[str, str]] = []
+
+    def fake_tttr(path: str, file_type: str):
+        loaded.append((path, file_type))
+        return types.SimpleNamespace(path=Path(path), file_type=file_type)
+
+    monkeypatch.setattr(tttrlib, "TTTR", fake_tttr)
+    df = pd.DataFrame(
+        [("0", 0, 0), ("m000.spc", 1, 10)],
+        columns=["First File", "First Photon", "Last Photon"],
+    )
+
+    tttrs = services._load_tttrs(df, burst_dir, "SPC-130")
+
+    assert tttrs["m000.spc"].path == tttr_path
+    assert loaded == [(str(tttr_path), "SPC-130")]

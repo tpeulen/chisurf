@@ -148,7 +148,7 @@ class PasswordChangeDialog(QDialog):
 
 class UserEditorWidget(QWidget):
     """
-    A GUI plugin for managing users in Chisurf coupled with MFDB.
+    A GUI plugin for managing users in Chisurf coupled with MMFDB.
     Communicates with the backend using the ZMQ JSON-RPC client,
     ensuring conformance to the new plugin architecture.
     """
@@ -321,16 +321,16 @@ class UserEditorWidget(QWidget):
         self.table.setRowCount(0)
 
         try:
-            client = self.make_mfdb_client()
-            logging.info("User Editor: loading users via MFDB RPC")
+            client = self.make_mmfdb_client()
+            logging.info("User Editor: loading users via MMFDB RPC")
             self.users = client.list_users()
             logging.info("User Editor: loaded %d users", len(self.users))
         except Exception as e:
-            logging.exception("User Editor: failed to load users via MFDB RPC")
+            logging.exception("User Editor: failed to load users via MMFDB RPC")
             QMessageBox.critical(self, "ZMQ RPC Error", f"Could not load users via JSON-RPC:\n{e}")
             self.users = []
 
-        active_id = cs_settings.cs_settings.get("mfdb", {}).get("default_user_id", "user_default")
+        active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
 
         self.table.setRowCount(len(self.users))
         for i, user in enumerate(self.users):
@@ -434,7 +434,7 @@ class UserEditorWidget(QWidget):
         self.temp_password = None
 
         # Permission checks for enabling fields
-        active_id = cs_settings.cs_settings.get("mfdb", {}).get("default_user_id", "user_default")
+        active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
         current_user_data = next((u for u in self.users if u["user_id"] == active_id), None)
         is_current_admin = current_user_data.get("is_admin") == 1 if current_user_data else False
         
@@ -488,7 +488,7 @@ class UserEditorWidget(QWidget):
         self.btn_set_active.setEnabled(False)
         
         # Check permissions for is_admin for new user creation
-        active_id = cs_settings.cs_settings.get("mfdb", {}).get("default_user_id", "user_default")
+        active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
         current_user_data = next((u for u in self.users if u["user_id"] == active_id), None)
         is_current_admin = current_user_data.get("is_admin") == 1 if current_user_data else False
         has_any_admin = any(u.get("is_admin") == 1 for u in self.users)
@@ -544,14 +544,14 @@ class UserEditorWidget(QWidget):
                 QMessageBox.warning(self, "Validation Error", f"Invalid email format: '{email}'")
                 return
 
-        active_id = cs_settings.cs_settings.get("mfdb", {}).get("default_user_id", "user_default")
+        active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
 
         try:
-            client = self.make_mfdb_client()
+            client = self.make_mmfdb_client()
             has_token = bool(getattr(client, "token", None))
             old_user_id = self.selected_user_id if not self.is_creating_new else None
             logging.info(
-                "User Editor: saving user '%s' via MFDB RPC (old_user_id=%s, auth_token=%s, allow_autologin=%s)",
+                "User Editor: saving user '%s' via MMFDB RPC (old_user_id=%s, auth_token=%s, allow_autologin=%s)",
                 user_id,
                 old_user_id,
                 has_token,
@@ -588,7 +588,7 @@ class UserEditorWidget(QWidget):
             self.status_bar.showMessage(f"Successfully saved user: {display_name}")
             self.load_users(select_user_id=user_id)
         except Exception as e:
-            logging.exception("User Editor: failed to save user '%s' via MFDB RPC", user_id)
+            logging.exception("User Editor: failed to save user '%s' via MMFDB RPC", user_id)
             QMessageBox.critical(self, "ZMQ RPC Error", f"Could not save user:\n{e}")
 
     def rename_local_user_state(self, old_user_id: str, new_user_id: str) -> None:
@@ -601,45 +601,45 @@ class UserEditorWidget(QWidget):
         new_user_id : str
             New username.
         """
-        from chisurf.core.mfdb.security.credentials import (
+        from mmfdb.security.credentials import (
             rename_runtime_session_token,
             rename_session_token,
         )
-        from chisurf.core.settings.settings_utils import set_mfdb_login_settings
+        from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
 
-        mfdb_settings = cs_settings.cs_settings.setdefault("mfdb", {})
-        server_host = mfdb_settings.get("last_server", "127.0.0.1")
-        server_port = int(mfdb_settings.get("last_port", 8765))
+        mmfdb_settings = cs_settings.cs_settings.setdefault("mmfdb", {})
+        server_host = mmfdb_settings.get("last_server", "127.0.0.1")
+        server_port = int(mmfdb_settings.get("last_port", 8765))
         rename_runtime_session_token(server_host, server_port, old_user_id, new_user_id)
         rename_session_token(server_host, server_port, old_user_id, new_user_id)
-        if mfdb_settings.get("default_user_id") == old_user_id:
-            mfdb_settings["default_user_id"] = new_user_id
-            os.environ["MFDB_DEFAULT_USER_ID"] = new_user_id
-            if hasattr(cs_settings, "mfdb"):
-                cs_settings.mfdb["default_user_id"] = new_user_id
-            set_mfdb_login_settings(mfdb_settings)
+        if mmfdb_settings.get("default_user_id") == old_user_id:
+            mmfdb_settings["default_user_id"] = new_user_id
+            os.environ["MMFDB_DEFAULT_USER_ID"] = new_user_id
+            if hasattr(cs_settings, "mmfdb"):
+                cs_settings.mmfdb["default_user_id"] = new_user_id
+            set_mmfdb_login_settings(mmfdb_settings)
         logging.info("User Editor: renamed local user state from '%s' to '%s'", old_user_id, new_user_id)
 
-    def make_mfdb_client(self):
-        """Create an MFDB client using the current session token when available.
+    def make_mmfdb_client(self):
+        """Create an MMFDB client using the current session token when available.
 
         Returns
         -------
-        MFDBClient
+        MMFDBClient
             Client configured with the current user's runtime or stored token.
         """
-        from chisurf.core.mfdb.security.credentials import (
+        from mmfdb.security.credentials import (
             load_runtime_session_token,
             load_session_token,
             store_runtime_session_token,
         )
-        from chisurf.plugins.core.mfdb_admin.gui.client import MFDBClient
+        from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
-        mfdb_settings = cs_settings.cs_settings.get("mfdb", {})
-        server_host = mfdb_settings.get("last_server", "127.0.0.1")
-        server_port = int(mfdb_settings.get("last_port", 8765))
-        user_id = mfdb_settings.get("default_user_id", "user_default")
-        client = MFDBClient(host=server_host, cmd_port=server_port, pub_port=server_port + 1)
+        mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
+        server_host = mmfdb_settings.get("last_server", "127.0.0.1")
+        server_port = int(mmfdb_settings.get("last_port", 8765))
+        user_id = mmfdb_settings.get("default_user_id", "user_default")
+        client = MMFDBClient(host=server_host, cmd_port=server_port, pub_port=server_port + 1)
         token = load_runtime_session_token(server_host, server_port, user_id)
         if token is None:
             token = load_session_token(server_host, server_port, user_id)
@@ -647,7 +647,7 @@ class UserEditorWidget(QWidget):
             client.token = token
             store_runtime_session_token(server_host, server_port, user_id, token)
         logging.info(
-            "User Editor: created MFDB client for %s:%s as '%s' (auth_token=%s)",
+            "User Editor: created MMFDB client for %s:%s as '%s' (auth_token=%s)",
             server_host,
             server_port,
             user_id,
@@ -661,23 +661,23 @@ class UserEditorWidget(QWidget):
         Parameters
         ----------
         user_id : str
-            MFDB user whose local autologin state should be cleared.
+            MMFDB user whose local autologin state should be cleared.
         """
-        from chisurf.core.mfdb.security.credentials import delete_runtime_session_token, delete_session_token
-        from chisurf.core.settings.settings_utils import set_mfdb_login_settings
+        from mmfdb.security.credentials import delete_runtime_session_token, delete_session_token
+        from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
 
-        mfdb_settings = cs_settings.cs_settings.setdefault("mfdb", {})
-        server_host = mfdb_settings.get("last_server", "127.0.0.1")
-        server_port = int(mfdb_settings.get("last_port", 8765))
+        mmfdb_settings = cs_settings.cs_settings.setdefault("mmfdb", {})
+        server_host = mmfdb_settings.get("last_server", "127.0.0.1")
+        server_port = int(mmfdb_settings.get("last_port", 8765))
         delete_session_token(server_host, server_port, user_id)
         delete_runtime_session_token(server_host, server_port, user_id)
         logging.info("User Editor: cleared local autologin tokens for user '%s'", user_id)
 
-        if mfdb_settings.get("default_user_id") == user_id:
-            mfdb_settings["autologin"] = False
-            if hasattr(cs_settings, "mfdb"):
-                cs_settings.mfdb["autologin"] = False
-            if not set_mfdb_login_settings(mfdb_settings):
+        if mmfdb_settings.get("default_user_id") == user_id:
+            mmfdb_settings["autologin"] = False
+            if hasattr(cs_settings, "mmfdb"):
+                cs_settings.mmfdb["autologin"] = False
+            if not set_mmfdb_login_settings(mmfdb_settings):
                 self.status_bar.showMessage("Autologin disabled, but settings could not be written.")
 
     def on_set_active_clicked(self):
@@ -686,14 +686,14 @@ class UserEditorWidget(QWidget):
             return
 
         # Update in-memory settings
-        if "mfdb" not in cs_settings.cs_settings:
-            cs_settings.cs_settings["mfdb"] = {}
-        cs_settings.cs_settings["mfdb"]["default_user_id"] = self.selected_user_id
-        os.environ["MFDB_DEFAULT_USER_ID"] = self.selected_user_id
+        if "mmfdb" not in cs_settings.cs_settings:
+            cs_settings.cs_settings["mmfdb"] = {}
+        cs_settings.cs_settings["mmfdb"]["default_user_id"] = self.selected_user_id
+        os.environ["MMFDB_DEFAULT_USER_ID"] = self.selected_user_id
 
         # Update the properties loaded in the package scope
-        if hasattr(cs_settings, "mfdb"):
-            cs_settings.mfdb["default_user_id"] = self.selected_user_id
+        if hasattr(cs_settings, "mmfdb"):
+            cs_settings.mmfdb["default_user_id"] = self.selected_user_id
 
         # Write to settings_chisurf.yaml
         try:
@@ -727,7 +727,7 @@ class UserEditorWidget(QWidget):
             return
 
         # 2. Currently active default user cannot be deleted
-        active_id = cs_settings.cs_settings.get("mfdb", {}).get("default_user_id", "user_default")
+        active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
         if user_id == active_id:
             QMessageBox.warning(
                 self, "Action Prohibited",
@@ -745,14 +745,14 @@ class UserEditorWidget(QWidget):
 
         if reply == QMessageBox.Yes:
             try:
-                client = self.make_mfdb_client()
-                logging.info("User Editor: deleting user '%s' via MFDB RPC", user_id)
+                client = self.make_mmfdb_client()
+                logging.info("User Editor: deleting user '%s' via MMFDB RPC", user_id)
                 client.delete_user(user_id, force=False)
                 logging.info("User Editor: deleted user '%s'", user_id)
                 self.status_bar.showMessage(f"Successfully deleted user: {user_id}")
                 self.load_users()
             except Exception as e:
-                logging.exception("User Editor: failed to delete user '%s' via MFDB RPC", user_id)
+                logging.exception("User Editor: failed to delete user '%s' via MMFDB RPC", user_id)
                 # The backend raises a ValueError if deletion is prohibited (e.g., committed data)
                 current_user_data = next((u for u in self.users if u["user_id"] == active_id), None)
                 is_current_admin = current_user_data.get("is_admin") == 1 if current_user_data else False
@@ -765,7 +765,7 @@ class UserEditorWidget(QWidget):
                     )
                     if override_reply == QMessageBox.Yes:
                         try:
-                            logging.warning("User Editor: force-deleting user '%s' via MFDB RPC", user_id)
+                            logging.warning("User Editor: force-deleting user '%s' via MMFDB RPC", user_id)
                             client.delete_user(user_id, force=True, requester_id=active_id)
                             logging.info("User Editor: force-deleted user '%s'", user_id)
                             self.status_bar.showMessage(f"Successfully force-deleted user: {user_id}")

@@ -26,8 +26,8 @@ Each profile follows the same shape:
 
 | Plugin | Why it is prioritized |
 | --- | --- |
-| [MFDB Admin](mfdb-admin.md) | Central database/provenance admin surface with a large RPC contract. |
-| [Sample Database](sample-database.md) | Legacy/root MFDB surface that overlaps newer MFDB admin services. |
+| [MMFDB Admin](mmfdb-admin.md) | Central database/provenance admin surface with a large RPC contract. |
+| [Sample Database](sample-database.md) | Legacy/root MMFDB surface that overlaps newer MMFDB admin services. |
 | [Database Connector](database-connector.md) | Backup/reset/import/export services touch user databases and external files. |
 | [Project Browser](project-browser.md) | Project archive/restore/import/export can mutate persistent project state. |
 | [Light Path Simulator](lightpath-simulator.md) | Full API/core/backend/RPC/CLI/GUI stack and a good client-server reference. |

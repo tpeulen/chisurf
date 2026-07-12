@@ -6,7 +6,7 @@ the canonical ``register_component`` contract:
 
     download+sort (register_component)  →  per-source DBs
     merge_all (parallel-merge + dedup)  →  one staging spectra.db
-    import_reference_set(replace)       →  the live MFDB (import ALL)
+    import_reference_set(replace)       →  the live MMFDB (import ALL)
 
 and asserts the end state: every optical category present, provenance populated,
 cross-source duplicates merged (metadata unioned), spectra carried through, and
@@ -19,8 +19,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.core.mfdb.repository import MFDatabase
-from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import FluorophoreDatabase
+from mmfdb.repository import MFDatabase
+from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import FluorophoreDatabase
 from chisurf.plugins.spectra_downloader.download.merge import merge_all
 
 
@@ -75,9 +75,9 @@ def test_pipeline_scrape_merge_import_all(tmp_path):
     staged.close()
     assert n_staged == 6
 
-    # -- stage 3: import ALL into a fresh MFDB (admin) with replace -----------
-    mfdb_path = tmp_path / "live.mfdb"
-    with MFDatabase(str(mfdb_path)) as d:
+    # -- stage 3: import ALL into a fresh MMFDB (admin) with replace -----------
+    mmfdb_path = tmp_path / "live.mmfdb"
+    with MFDatabase(str(mmfdb_path)) as d:
         d.add_user("user_default", "Default User", is_admin=1)
         # seed some junk to prove `replace` purges it
         d.conn.execute(
@@ -87,18 +87,18 @@ def test_pipeline_scrape_merge_import_all(tmp_path):
         d.conn.commit()
 
     # session/permission gate: the active admin may add without a password
-    from chisurf.plugins.core.mfdb_admin.gui.session import local_admin_status
-    is_admin, _ = local_admin_status(str(mfdb_path), "user_default")
+    from chisurf.plugins.core.mmfdb_admin.gui.session import local_admin_status
+    is_admin, _ = local_admin_status(str(mmfdb_path), "user_default")
     assert is_admin
 
-    with MFDatabase(str(mfdb_path)) as db:
+    with MFDatabase(str(mmfdb_path)) as db:
         counts = db.import_reference_set(source_path=str(staging), replace=True)
 
     assert counts["purged"]["probes"] == 1  # JUNK removed
     assert counts["skipped"] == 0
 
     # -- verify the end state -------------------------------------------------
-    with MFDatabase(str(mfdb_path)) as db:
+    with MFDatabase(str(mmfdb_path)) as db:
         cats = {
             r["category"]: r["n"]
             for r in db.conn.execute(

@@ -1,7 +1,7 @@
 """Replay executor for the ``microtime_shift`` operation (PRD-21 Task 2 follow-on).
 
 PRD-21 Task 2 records each derived artifact's producing operation as a replayable
-:class:`~chisurf.core.mfdb.provenance.compute_spec.ComputeSpec`; ``recompute``/``replay`` dispatch
+:class:`~mmfdb.provenance.compute_spec.ComputeSpec`; ``recompute``/``replay`` dispatch
 to a registered executor per ``operation_type``. This module fills that seam for the
 Micro-time Shifter: it materializes each source artifact's stored TTTR file, re-runs
 the conformant transformer with the spec's parameters, and registers each shifted
@@ -18,8 +18,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from chisurf.core.mfdb.provenance.compute_spec import ComputeSpec, register_replay_executor
-from chisurf.core.mfdb.provenance.result_registry import register_result
+from mmfdb.provenance.compute_spec import ComputeSpec, register_replay_executor
+from mmfdb.provenance.result_registry import register_result
 from chisurf.core.transform import TransformInputs
 from chisurf.plugins.tttr.tttr_microtime_shifter.api.transformer import (
     MICROTIME_SHIFTER,
@@ -39,7 +39,7 @@ def microtime_shift_replay_executor(spec: ComputeSpec, db: Any) -> str:
     if not spec.source_artifact_ids:
         raise ValueError("microtime_shift replay needs at least one source artifact")
 
-    work_dir = tempfile.mkdtemp(prefix="mfdb_replay_shift_")
+    work_dir = tempfile.mkdtemp(prefix="mmfdb_replay_shift_")
     paths = [
         db.materialize_artifact_file(aid, into=work_dir)
         for aid in spec.source_artifact_ids

@@ -1,4 +1,4 @@
-"""Tests for FCS channel setup MFDB integration (mirrors detector setup tests)."""
+"""Tests for FCS channel setup MMFDB integration (mirrors detector setup tests)."""
 
 import os
 import json
@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.repository import MFDatabase
 from chisurf.core.fluorescence.fcs.channel_setups import (
     FCS_CHANNEL_SETUPS_FILE,
     FCS_SETUP_TYPE,
@@ -17,7 +17,7 @@ from chisurf.core.fluorescence.fcs.channel_setups import (
     save_fcs_channel_setups,
     _save_setup_row,
     _fcs_row_to_data,
-    _use_mfdb,
+    _use_mmfdb,
     build_channels_from_setup,
 )
 FCS_CONFIG = _fcs_config()
@@ -26,7 +26,7 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
     get_db,
     setup_id_for_name as _sifn_shared,
     resolve_active_user_id,
-    load_mfdb_setups,
+    load_mmfdb_setups,
     set_last_used,
 )
 
@@ -49,7 +49,7 @@ def setup_id_for_name(name: str, user_id: str = "") -> str:
 
 
 # ---------------------------------------------------------------------------
-# S-B1: Save and load FCS channel setups in MFDB
+# S-B1: Save and load FCS channel setups in MMFDB
 # ---------------------------------------------------------------------------
 
 
@@ -73,7 +73,7 @@ def test_save_and_load_roundtrip(tmp_path: Path) -> None:
 
         _save_setup_row(db, "TestSetup", data, user_id=user_id)
 
-        loaded = load_mfdb_setups(db, FCS_CONFIG, user_id, row_to_data=_fcs_row_to_data)
+        loaded = load_mmfdb_setups(db, FCS_CONFIG, user_id, row_to_data=_fcs_row_to_data)
         assert "TestSetup" in loaded.get("setups", {})
         sd = loaded["setups"]["TestSetup"]
         assert sd.get("correlator", {}).get("n_bins") == 4
@@ -85,7 +85,7 @@ def test_save_and_load_roundtrip(tmp_path: Path) -> None:
 
 
 def test_fcs_pairs_child_table_written(tmp_path: Path) -> None:
-    """FCS pairs are stored in the mfdb_setup_fcs_pair child table."""
+    """FCS pairs are stored in the mmfdb_setup_fcs_pair child table."""
     db = _fresh_db(tmp_path)
     try:
         user_id = "user_alice"
@@ -105,7 +105,7 @@ def test_fcs_pairs_child_table_written(tmp_path: Path) -> None:
 
         sid = setup_id_for_name("PairTest", user_id)
         rows = db.conn.execute(
-            "SELECT * FROM mfdb_setup_fcs_pair WHERE setup_id = ? AND deleted_at IS NULL ORDER BY id",
+            "SELECT * FROM mmfdb_setup_fcs_pair WHERE setup_id = ? AND deleted_at IS NULL ORDER BY id",
             (sid,)
         ).fetchall()
         assert len(rows) == 2
@@ -136,7 +136,7 @@ def test_correlator_typed_columns(tmp_path: Path) -> None:
 
         sid = setup_id_for_name("CorrTest", user_id)
         row = db.conn.execute(
-            "SELECT n_bins, n_casc, make_fine FROM mfdb_setup WHERE setup_id = ?",
+            "SELECT n_bins, n_casc, make_fine FROM mmfdb_setup WHERE setup_id = ?",
             (sid,)
         ).fetchone()
         assert row is not None
@@ -177,8 +177,8 @@ def test_fcs_same_name_different_users_no_collision(tmp_path: Path) -> None:
         _save_setup_row(db, "MySetup", data, user_id=alice)
         _save_setup_row(db, "MySetup", data, user_id=bob)
 
-        alice_loaded = load_mfdb_setups(db, FCS_CONFIG, alice, row_to_data=_fcs_row_to_data)
-        bob_loaded = load_mfdb_setups(db, FCS_CONFIG, bob, row_to_data=_fcs_row_to_data)
+        alice_loaded = load_mmfdb_setups(db, FCS_CONFIG, alice, row_to_data=_fcs_row_to_data)
+        bob_loaded = load_mmfdb_setups(db, FCS_CONFIG, bob, row_to_data=_fcs_row_to_data)
 
         assert "MySetup" in alice_loaded["setups"]
         assert "MySetup" in bob_loaded["setups"]
@@ -272,8 +272,8 @@ def test_fcs_load_excludes_other_users_private_setups(tmp_path: Path) -> None:
         _save_setup_row(db, "AliceOnly", data, user_id=alice, is_public=False)
         _save_setup_row(db, "BobOnly", data, user_id=bob, is_public=False)
 
-        alice_s = load_mfdb_setups(db, FCS_CONFIG, alice, row_to_data=_fcs_row_to_data)
-        bob_s = load_mfdb_setups(db, FCS_CONFIG, bob, row_to_data=_fcs_row_to_data)
+        alice_s = load_mmfdb_setups(db, FCS_CONFIG, alice, row_to_data=_fcs_row_to_data)
+        bob_s = load_mmfdb_setups(db, FCS_CONFIG, bob, row_to_data=_fcs_row_to_data)
 
         assert "AliceOnly" in alice_s["setups"]
         assert "BobOnly" not in alice_s["setups"]
@@ -301,8 +301,8 @@ def test_fcs_load_includes_shared_and_public_setups(tmp_path: Path) -> None:
         _save_setup_row(db, "AlicePub", data, user_id=alice, is_public=True)
         _save_setup_row(db, "AlicePriv", data, user_id=alice, is_public=False)
 
-        alice_s = load_mfdb_setups(db, FCS_CONFIG, alice, row_to_data=_fcs_row_to_data)
-        bob_s = load_mfdb_setups(db, FCS_CONFIG, bob, row_to_data=_fcs_row_to_data)
+        alice_s = load_mmfdb_setups(db, FCS_CONFIG, alice, row_to_data=_fcs_row_to_data)
+        bob_s = load_mmfdb_setups(db, FCS_CONFIG, bob, row_to_data=_fcs_row_to_data)
 
         assert "Shared" in alice_s["setups"]
         assert "Shared" in bob_s["setups"]
@@ -336,11 +336,11 @@ def test_fcs_migration_idempotent(tmp_path: Path) -> None:
             "pairs": [{"name": "GG", "channel_a": "GG", "channel_b": "GG"}],
         }})
 
-        from chisurf.core.fluorescence.fcs.channel_setups import _migrate_json_to_mfdb
-        _migrate_json_to_mfdb(db, legacy, user_id=user_id)
+        from chisurf.core.fluorescence.fcs.channel_setups import _migrate_json_to_mmfdb
+        _migrate_json_to_mmfdb(db, legacy, user_id=user_id)
         count_after_first = len(db.list_setups())
 
-        _migrate_json_to_mfdb(db, legacy, user_id=user_id)
+        _migrate_json_to_mmfdb(db, legacy, user_id=user_id)
         count_after_second = len(db.list_setups())
 
         assert count_after_second == count_after_first
@@ -355,7 +355,7 @@ def test_fcs_migration_idempotent(tmp_path: Path) -> None:
 
 
 def test_fcs_custom_file_uses_json(tmp_path: Path) -> None:
-    """A custom file path falls back to JSON, not MFDB."""
+    """A custom file path falls back to JSON, not MMFDB."""
     custom = tmp_path / "custom_fcs.json"
     data = {"version": 1, "setups": {}, "last_used_setup": None}
     ok = save_fcs_channel_setups(data, file_path=str(custom))
@@ -424,7 +424,7 @@ def test_per_pair_correlator_roundtrip(tmp_path: Path) -> None:
         _save_setup_row(db, "PerPairTest", data, user_id=user_id)
 
         # Load back and verify per-pair values
-        loaded = load_mfdb_setups(db, FCS_CONFIG, user_id, row_to_data=_fcs_row_to_data)
+        loaded = load_mmfdb_setups(db, FCS_CONFIG, user_id, row_to_data=_fcs_row_to_data)
         sd = loaded["setups"]["PerPairTest"]
         loaded_pairs = sd.get("pairs", [])
         assert len(loaded_pairs) == 2
@@ -443,7 +443,7 @@ def test_per_pair_correlator_roundtrip(tmp_path: Path) -> None:
 
 
 def test_per_pair_correlator_stored_in_child_table(tmp_path: Path) -> None:
-    """Per-pair correlator values are stored in the mfdb_setup_fcs_pair
+    """Per-pair correlator values are stored in the mmfdb_setup_fcs_pair
     child-table columns, not only on the parent row."""
     db = _fresh_db(tmp_path)
     try:
@@ -465,7 +465,7 @@ def test_per_pair_correlator_stored_in_child_table(tmp_path: Path) -> None:
 
         sid = setup_id_for_name("ChildColTest", user_id)
         row = db.conn.execute(
-            "SELECT n_bins, n_casc, make_fine FROM mfdb_setup_fcs_pair "
+            "SELECT n_bins, n_casc, make_fine FROM mmfdb_setup_fcs_pair "
             "WHERE setup_id = ? AND deleted_at IS NULL",
             (sid,),
         ).fetchone()
@@ -487,12 +487,12 @@ def test_per_pair_correlator_stored_in_child_table(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Sidequest B addendum 2: MFDB-only default save; migration removes legacy
+# Sidequest B addendum 2: MMFDB-only default save; migration removes legacy
 # ---------------------------------------------------------------------------
 
 
-def test_default_fcs_save_uses_mfdb_no_json(tmp_path: Path) -> None:
-    """Default save (no file_path) writes to MFDB and does NOT create a JSON
+def test_default_fcs_save_uses_mmfdb_no_json(tmp_path: Path) -> None:
+    """Default save (no file_path) writes to MMFDB and does NOT create a JSON
     side-file at the canonical path."""
     import chisurf.core.fluorescence.fcs.channel_setups as fcs_mod
     import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils as utils
@@ -519,12 +519,12 @@ def test_default_fcs_save_uses_mfdb_no_json(tmp_path: Path) -> None:
     try:
         data = {
             "setups": {
-                "MfdbOnlySetup": {
+                "MmfdbOnlySetup": {
                     "correlator": {"n_bins": 4, "n_casc": 32, "make_fine": True},
                     "pairs": [],
                 },
             },
-            "last_used_setup": "MfdbOnlySetup",
+            "last_used_setup": "MmfdbOnlySetup",
         }
 
         ok = save_fcs_channel_setups(data)
@@ -535,13 +535,13 @@ def test_default_fcs_save_uses_mfdb_no_json(tmp_path: Path) -> None:
             "Default save must not create JSON at the canonical path"
         )
 
-        # Data must be loadable from MFDB
+        # Data must be loadable from MMFDB
         loaded = load_fcs_channel_setups(
             db_path=db.db_path, user_id=user_id, skip_migration=True,
         )
-        assert "MfdbOnlySetup" in loaded["setups"]
-        assert loaded["last_used_setup"] == "MfdbOnlySetup"
-        sd = loaded["setups"]["MfdbOnlySetup"]
+        assert "MmfdbOnlySetup" in loaded["setups"]
+        assert loaded["last_used_setup"] == "MmfdbOnlySetup"
+        sd = loaded["setups"]["MmfdbOnlySetup"]
         assert sd["correlator"]["n_bins"] == 4
     finally:
         fcs_mod.FCS_CHANNEL_SETUPS_FILE = orig_file
@@ -561,7 +561,7 @@ def test_fcs_migration_removes_legacy_file(tmp_path: Path) -> None:
     fcs_mod.FCS_CHANNEL_SETUPS_FILE = tmp_path / "fcs_channel_setups.json"
     fcs_mod._FCS_CONFIG_CACHE = None
 
-    db_path = str(tmp_path / "mfdb.sqlite")
+    db_path = str(tmp_path / "mmfdb.sqlite")
     with MFDatabase(db_path):
         pass
     db = MFDatabase(db_path)

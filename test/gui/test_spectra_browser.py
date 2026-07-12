@@ -19,7 +19,7 @@ def qapp():
 
 
 def _staging_db():
-    from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import FluorophoreDatabase
+    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import FluorophoreDatabase
 
     path = os.path.join(tempfile.mkdtemp(), "staging.db")
     db = FluorophoreDatabase(path)
@@ -88,7 +88,7 @@ def test_spectra_tool_navigation_panels_build(qapp):
     tool = SpectraTool(db)
     assert isinstance(tool, NavigationPanelTool)
     names = [p.get("name") for p in tool.panels]
-    assert names == ["Overview", "Browse", "Download", "Add to MFDB"]
+    assert names == ["Overview", "Browse", "Download", "Add to MMFDB"]
     for i in range(len(tool.panels)):
         tool.nav_list.setCurrentRow(i)
         qapp.processEvents()
@@ -96,24 +96,24 @@ def test_spectra_tool_navigation_panels_build(qapp):
     db.close()
 
 
-def test_add_to_mfdb_panel_local(qapp):
+def test_add_to_mmfdb_panel_local(qapp):
     import tempfile, sqlite3
 
-    from chisurf.plugins.spectra_downloader.gui.add_to_mfdb_panel import AddToMfdbPanel
+    from chisurf.plugins.spectra_downloader.gui.add_to_mmfdb_panel import AddToMmfdbPanel
 
     db = _staging_db()  # EGFP (protein) + SPCMxxA (detector)
-    panel = AddToMfdbPanel(db)
+    panel = AddToMmfdbPanel(db)
     # AutoForm-backed endpoint/auth model with sane local defaults
     assert panel._model.mode == "local"
     assert panel._model.cmd_port == 8765
-    # add into a fresh local MFDB
-    mfdb = tempfile.mktemp(suffix=".mfdb")
-    panel._model.db_path = mfdb
+    # add into a fresh local MMFDB
+    mmfdb = tempfile.mktemp(suffix=".mmfdb")
+    panel._model.db_path = mmfdb
     panel._add_all()
     qapp.processEvents()
     cats = {
         r[0]
-        for r in sqlite3.connect(mfdb).execute(
+        for r in sqlite3.connect(mmfdb).execute(
             "SELECT category FROM probes WHERE deleted_at IS NULL"
         )
     }
@@ -121,29 +121,29 @@ def test_add_to_mfdb_panel_local(qapp):
     db.close()
 
 
-def test_add_to_mfdb_session_admin_gate(qapp):
+def test_add_to_mmfdb_session_admin_gate(qapp):
     """Admins add without a login; non-admins are refused (session-first)."""
     import tempfile, sqlite3
 
-    from chisurf.core.mfdb.repository import MFDatabase
-    from chisurf.plugins.spectra_downloader.gui.add_to_mfdb_panel import AddToMfdbPanel
+    from mmfdb.repository import MFDatabase
+    from chisurf.plugins.spectra_downloader.gui.add_to_mmfdb_panel import AddToMmfdbPanel
 
     db = _staging_db()
-    panel = AddToMfdbPanel(db)
+    panel = AddToMmfdbPanel(db)
 
-    # target MFDB with an admin user_default and a non-admin guest
-    mfdb = tempfile.mktemp(suffix=".mfdb")
-    with MFDatabase(mfdb) as d:
+    # target MMFDB with an admin user_default and a non-admin guest
+    mmfdb = tempfile.mktemp(suffix=".mmfdb")
+    with MFDatabase(mmfdb) as d:
         d.add_user("user_default", "Default User", is_admin=1)
         d.add_user("guest", "Guest", is_admin=0)
-    panel._model.db_path = mfdb
+    panel._model.db_path = mmfdb
     panel._model.password = ""  # no password — rely on the session
 
     # admin → add succeeds with no login
     panel._model.user = "user_default"
     panel._add_all()
     qapp.processEvents()
-    assert sqlite3.connect(mfdb).execute(
+    assert sqlite3.connect(mmfdb).execute(
         "SELECT COUNT(*) FROM probes WHERE deleted_at IS NULL"
     ).fetchone()[0] >= 2
 
@@ -190,7 +190,7 @@ def test_source_filter_and_push(qapp):
     import tempfile
 
     from chisurf.plugins.spectra_downloader.browser import SpectraBrowserWidget
-    from chisurf.plugins.spectra_downloader.download.merge import push_staging_to_mfdb
+    from chisurf.plugins.spectra_downloader.download.merge import push_staging_to_mmfdb
 
     db = _staging_db()  # EGFP (fpbase), SPCMxxA (fpbase) — both source fpbase
     # add a second source
@@ -205,22 +205,22 @@ def test_source_filter_and_push(qapp):
     assert w._source.currentText() == "thorlabs"
     assert w._table.rowCount() == 1  # only the thorlabs component
 
-    # push the selected (thorlabs) component into a fresh MFDB
+    # push the selected (thorlabs) component into a fresh MMFDB
     w._table.selectRow(0)
     qapp.processEvents()
-    mfdb = tempfile.mktemp(suffix=".mfdb")
-    summary = push_staging_to_mfdb(str(db.db_path), probe_ids=w._selected_probe_ids(), mfdb_path=mfdb)
+    mmfdb = tempfile.mktemp(suffix=".mmfdb")
+    summary = push_staging_to_mmfdb(str(db.db_path), probe_ids=w._selected_probe_ids(), mmfdb_path=mmfdb)
     assert summary["merged"] == 1
 
     import sqlite3
-    rows = sqlite3.connect(mfdb).execute(
+    rows = sqlite3.connect(mmfdb).execute(
         "SELECT chromophore_name, category, source FROM probes WHERE deleted_at IS NULL"
     ).fetchall()
     assert rows == [("FB340-10", "filter", "thorlabs")]
 
     # push all → the other two components arrive too
-    push_staging_to_mfdb(str(db.db_path), mfdb_path=mfdb)
-    total = sqlite3.connect(mfdb).execute(
+    push_staging_to_mmfdb(str(db.db_path), mmfdb_path=mmfdb)
+    total = sqlite3.connect(mmfdb).execute(
         "SELECT COUNT(*) FROM probes WHERE deleted_at IS NULL"
     ).fetchone()[0]
     assert total == 3

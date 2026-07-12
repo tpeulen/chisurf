@@ -63,7 +63,7 @@ def rpc_config_from_settings(namespace: str = "agent") -> Dict[str, Any]:
     ----------
     namespace : str
         Settings prefix.  ``"agent"`` reads ``agent_chisurf_rpc_*`` and
-        ``agent_editor_rpc_*``.  ``"mfdb"`` reads ``mfdb_rpc_*``.
+        ``agent_editor_rpc_*``.  ``"mmfdb"`` reads ``mmfdb_rpc_*``.
         ``"server"`` reads plain ``cmd_port`` / ``pub_port``.
 
     Returns
@@ -87,10 +87,10 @@ def rpc_config_from_settings(namespace: str = "agent") -> Dict[str, Any]:
             config["editor"]["host"] = str(settings.get("agent_editor_rpc_host", "127.0.0.1"))
             config["editor"]["cmd_port"] = int(settings.get("agent_editor_rpc_cmd_port", 8775))
             config["editor"]["pub_port"] = int(settings.get("agent_editor_rpc_pub_port", 8776))
-        elif namespace == "mfdb":
-            config["chisurf"]["host"] = str(settings.get("mfdb_rpc_host", "127.0.0.1"))
-            config["chisurf"]["cmd_port"] = int(settings.get("mfdb_rpc_cmd_port", 8765))
-            config["chisurf"]["pub_port"] = int(settings.get("mfdb_rpc_pub_port", 8766))
+        elif namespace == "mmfdb":
+            config["chisurf"]["host"] = str(settings.get("mmfdb_rpc_host", "127.0.0.1"))
+            config["chisurf"]["cmd_port"] = int(settings.get("mmfdb_rpc_cmd_port", 8765))
+            config["chisurf"]["pub_port"] = int(settings.get("mmfdb_rpc_pub_port", 8766))
     except Exception:
         _LOG.debug("editor settings not available, using defaults")
     return config
@@ -166,7 +166,7 @@ def get_shared_event_bus() -> Any:
         import chisurf as _cs
         server = (
             getattr(_cs, "__chisurf_rpc_server__", None)
-            or getattr(_cs, "__mfdb_rpc_server__", None)
+            or getattr(_cs, "__mmfdb_rpc_server__", None)
         )
         if server is not None:
             return getattr(server, "event_bus", None)

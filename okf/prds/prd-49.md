@@ -25,7 +25,7 @@ local read-only checkout under `thirdparty/`.
 
 **Goal.** Reach *feature parity* with the incumbent across every analysis modality,
 then *surpass* it — leveraging ChiSurf's advantages (open Python/Qt, plugin system,
-headless/CLI/server modes, MFDB provenance, deep structural-FRET integration,
+headless/CLI/server modes, MMFDB provenance, deep structural-FRET integration,
 standardized data exchange). ChiSurf already matches or beats the incumbent in most
 areas; this PRD gives an honest parity matrix, enumerates the real gaps, and lays
 out a phased roadmap that spawns per-module sub-PRDs (PRD-50…54).
@@ -64,7 +64,7 @@ incomplete) · **ENGINE-ONLY** (compute core present, no ChiSurf model/UI) ·
 | Incumbent capability | Status | ChiSurf location / note |
 |---|---|---|
 | TTTR read-in (ptu/ht3/pt3/spc/PhotonHDF5/T3R) | PARITY+ | tttrlib readers; `tttr_toolbox`, staging cache |
-| PIE / µsALEX channel & detector setup | PARITY | MFDB `mfdb_setup_pie_window`, `burst_selection`, `ptu_alex_creator` |
+| PIE / µsALEX channel & detector setup | PARITY | MMFDB `mmfdb_setup_pie_window`, `burst_selection`, `ptu_alex_creator` |
 | Correlation (auto/cross) from stream | PARITY | tttrlib correlators; `burst_fcs_correlator`, `fcs_*` |
 | CLSM image from stream (intensity, mean µtime) | PARITY | `clsm` (CLSM-Draw), `tttr_image_browser` |
 | Unified "one-window" data browser hub | PARTIAL | Capabilities exist but spread across plugins; no single incumbent-style hub (acceptable — different UX philosophy) |
@@ -91,7 +91,7 @@ incomplete) · **ENGINE-ONLY** (compute core present, no ChiSurf model/UI) ·
 | FCCS dual-color *fitting* model | PARTIAL | cross-corr read/compute yes; dedicated FCCS fit model no → PRD-54 |
 | fFCS (lifetime-filtered FCS) | PARITY | `fcs_filter_calculator`, `flc_2d` |
 | nsFCS / antibunching model | ABSENT | → PRD-54 |
-| Session save/load, multi-file global | PARITY | `globalview`, project/MFDB state |
+| Session save/load, multi-file global | PARITY | `globalview`, project/MMFDB state |
 
 ### Lifetime / TCSPC fitting
 | Incumbent capability | Status | ChiSurf location / note |
@@ -162,7 +162,7 @@ These are net differentiators to *keep and lean into*, not gaps:
   IMP.pmi), κ² distributions (`kappa2_dist`), static/dynamic/WLC FRET lines
   (`fret_line`), molecular viewer (`chimol`), HYDROPRO diffusion (`hydropro`),
   MD-trajectory FRET (`traj_*`).
-- **Provenance & data management:** MFDB lineage/audit/ACL (`chisurf/core/mfdb/`),
+- **Provenance & data management:** MMFDB lineage/audit/ACL (`chisurf/core/mmfdb/`),
   PDB-IHM / FLR-CIF standardized exchange, sample/reagent database — the incumbent
   stores loose session files only.
 - **Modern burst detection:** Bayesian (BOCPD), Kalman, CUSUM change-point search
@@ -251,4 +251,4 @@ implementer builds on.
 # Relationships
 - Parent of children [PRD-50](prd-50.md), [PRD-51](prd-51.md), [PRD-52](prd-52.md), [PRD-53](prd-53.md), [PRD-54](prd-54.md).
 - Mandates the model/view-spec split rendered through [GUI & AutoForm](/subsystems/gui-autoform.md).
-- Leans on ChiSurf differentiators over the incumbent: MFDB provenance ([MFDB (current)](/architecture/mfdb.md)), structural-FRET, and headless/server modes ([Core target](/specs/core.md)).
+- Leans on ChiSurf differentiators over the incumbent: MMFDB provenance ([MMFDB (current)](/architecture/mmfdb.md)), structural-FRET, and headless/server modes ([Core target](/specs/core.md)).

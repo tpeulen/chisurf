@@ -4,8 +4,8 @@
 * [Project Instructions](claude-md.md) - CLAUDE.md, the agent-facing guidance for this repo.
 * [Roadmap PRDs](roadmap-prds.md) - Numbered PRD design notes that drive current work.
 * [Known issues & gotchas](known-issues.md) - Open functional bugs and recurring engineering pitfalls distilled from working bug logs.
-* [MFDB architecture ideas](mfdb-architecture-ideas.md) - The observed-problem → design-decision rationale behind the MFDB architecture PRDs (17–27).
-* [MFDB LIMS diagnosis](mfdb-lims-diagnosis.md) - LIMS gap analysis and prior-art comparison behind the provenance/LIMS PRDs (12–15).
+* [MMFDB architecture ideas](mmfdb-architecture-ideas.md) - The observed-problem → design-decision rationale behind the MMFDB architecture PRDs (17–27).
+* [MMFDB LIMS diagnosis](mmfdb-lims-diagnosis.md) - LIMS gap analysis and prior-art comparison behind the provenance/LIMS PRDs (12–15).
 * [Node/workflow-toolkit lessons](orange3-lessons.md) - Architecture lessons from an established visual node/workflow analysis toolkit, mapped to PRDs.
-* [ELN crosslinking & info-management lessons](eln-crosslinking-lessons.md) - What a mature ELN's auth/linking/tagging/metadata model teaches MFDB; adopted metadata→edge materialization + resolvable audit labels, deferred a tags layer.
+* [ELN crosslinking & info-management lessons](eln-crosslinking-lessons.md) - What a mature ELN's auth/linking/tagging/metadata model teaches MMFDB; adopted metadata→edge materialization + resolvable audit labels, deferred a tags layer.
 * [Modelling / ProteinMC roadmap](modelling-roadmap.md) - Durable modelling/simulation roadmap notes salvaged from a personal worklist.

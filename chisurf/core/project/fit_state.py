@@ -349,7 +349,7 @@ def apply_state_to_fit(
     state : Dict[str, Any]
         The state dictionary from :func:`fit_to_state` or similar.
     dependency_edges : list[dict], optional
-        MFDB-sourced dependency edges for parameter links. These are used
+        MMFDB-sourced dependency edges for parameter links. These are used
         to re-establish parameter links in the correct order, handling
         the case where the linked-to fit must exist before the linking fit.
     fit_record_id : str, optional
@@ -367,7 +367,7 @@ def _restore_parameter_links_from_edges(
     dependency_edges: list[dict[str, Any]],
     fit_record_id: str = "",
 ) -> None:
-    """Restore parameter links from MFDB dependency edges.
+    """Restore parameter links from MMFDB dependency edges.
 
     This function filters dependency_edges to those belonging to the current
     fit's operation and uses them to establish parameter links in the correct
@@ -379,7 +379,7 @@ def _restore_parameter_links_from_edges(
     model : Any
         The model instance whose parameters should have links restored.
     dependency_edges : list[dict]
-        List of dependency edges from MFDB. Each edge should have:
+        List of dependency edges from MMFDB. Each edge should have:
         - source_node_id: UID of the parameter being linked TO
         - target_node_id: UID of the parameter that has the link
         - operation_id: The operation ID for this fit

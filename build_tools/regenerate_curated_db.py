@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the shipped curated MFDB on the current schema.
+"""Regenerate the shipped curated MMFDB on the current schema.
 
 The curated source database (``chisurf/core/fio/mmCIF/db/sample_management.db``)
 is copied to each user's settings dir on first run. After PRD-19 removed the
@@ -45,7 +45,7 @@ def regenerate(source_db: Path, out_db: Path) -> dict[str, int]:
     out_db.parent.mkdir(parents=True, exist_ok=True)
 
     # 1. Fresh current-schema database (triggers migrate_schema + bootstrap).
-    from chisurf.core.mfdb.repository import MFDatabase
+    from chisurf.core.mmfdb.repository import MFDatabase
 
     MFDatabase(str(out_db)).close()
 
@@ -99,8 +99,8 @@ def verify(db_path: Path) -> None:
 
     # Real round trip: register a raw measurement against a COPY (so we don't
     # mutate the regenerated artifact), which exercises put_object's FK path.
-    from chisurf.core.mfdb.repository import MFDatabase
-    from chisurf.core.mfdb.result_registry import register_raw_measurement, set_global_db
+    from chisurf.core.mmfdb.repository import MFDatabase
+    from chisurf.core.mmfdb.result_registry import register_raw_measurement, set_global_db
 
     tmp = Path(tempfile.mkdtemp()) / "verify.db"
     shutil.copy(db_path, tmp)

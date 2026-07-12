@@ -72,7 +72,7 @@ def run_all(db, only, keep_temp, no_consolidate, threed_max_pages):
     contention; the final stage merges every per-source DB into one canonical
     ``spectra.db`` and de-duplicates across sources.
     """
-    from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import DEFAULT_DATABASE_PATH
+    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import DEFAULT_DATABASE_PATH
     from chisurf.plugins.spectra_downloader.download.merge import merge_all
 
     target = db or str(DEFAULT_DATABASE_PATH)
@@ -129,7 +129,7 @@ def run_all(db, only, keep_temp, no_consolidate, threed_max_pages):
 @click.option("--no-consolidate", is_flag=True, help="Skip de-duplication after merge.")
 def merge_cmd(db, sources, no_consolidate):
     """Merge already-scraped per-source DBs into the target spectra.db."""
-    from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import DEFAULT_DATABASE_PATH
+    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import DEFAULT_DATABASE_PATH
     from chisurf.plugins.spectra_downloader.download.merge import merge_all
 
     target = db or str(DEFAULT_DATABASE_PATH)
@@ -142,7 +142,7 @@ def merge_cmd(db, sources, no_consolidate):
 @click.option("--db", default=None, help="Path to the SQLite database.")
 def consolidate(db):
     """Consolidate duplicate probes and merge their spectra/properties."""
-    from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import DEFAULT_DATABASE_PATH, FluorophoreDatabase
+    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import DEFAULT_DATABASE_PATH, FluorophoreDatabase
     db_path = db or str(DEFAULT_DATABASE_PATH)
     click.echo(f"Consolidating database at {db_path}...")
     with FluorophoreDatabase(db_path) as fdb:
@@ -153,28 +153,28 @@ def consolidate(db):
 @cli.command("push")
 @click.option("--staging", "--db", "staging", default=None,
               help="Scraped staging spectra.db to push (default: the bundled one).")
-@click.option("--mfdb", default=None,
-              help="Target MFDB (default: the resolved/connected live MFDB).")
+@click.option("--mmfdb", default=None,
+              help="Target MMFDB (default: the resolved/connected live MMFDB).")
 @click.option("--replace", is_flag=True,
               help="Purge the existing reference probes first, then import cleanly.")
 @click.option("--mark-verified", is_flag=True,
               help="Stamp imported probes as approved (default: unverified).")
 @click.option("--backup/--no-backup", default=True, show_default=True,
-              help="Back up the MFDB before a --replace push.")
-def push(staging, mfdb, replace, mark_verified, backup):
-    """Push a scraped staging spectra.db into the connected MFDB.
+              help="Back up the MMFDB before a --replace push.")
+def push(staging, mmfdb, replace, mark_verified, backup):
+    """Push a scraped staging spectra.db into the connected MMFDB.
 
     Scrapers write to their own staging DB; this is the explicit integration
-    (stage 3) step that pushes that scrape into the live MFDB.
+    (stage 3) step that pushes that scrape into the live MMFDB.
     """
     import shutil
 
-    from chisurf.core.mfdb.store.database_resolver import resolve_database_path
-    from chisurf.core.mfdb.repository import MFDatabase
-    from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import DEFAULT_DATABASE_PATH
+    from mmfdb.store.database_resolver import resolve_database_path
+    from mmfdb.repository import MFDatabase
+    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import DEFAULT_DATABASE_PATH
 
     staging = staging or str(DEFAULT_DATABASE_PATH)
-    target = mfdb or str(resolve_database_path())
+    target = mmfdb or str(resolve_database_path())
     if not Path(staging).exists():
         click.echo(f"Staging DB not found: {staging}")
         sys.exit(1)
@@ -182,9 +182,9 @@ def push(staging, mfdb, replace, mark_verified, backup):
     if replace and backup and Path(target).exists():
         bak = f"{target}.bak"
         shutil.copy2(target, bak)
-        click.echo(f"  backed up MFDB -> {bak}")
+        click.echo(f"  backed up MMFDB -> {bak}")
 
-    click.echo(f"Pushing {staging} -> MFDB {target}" + (" (replace)" if replace else ""))
+    click.echo(f"Pushing {staging} -> MMFDB {target}" + (" (replace)" if replace else ""))
     with MFDatabase(target) as db:
         counts = db.import_reference_set(
             source_path=staging, replace=replace, mark_verified=mark_verified,

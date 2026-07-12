@@ -4,7 +4,7 @@ Mirrors ``tttr_microtime_shifter/api/replay.py`` for burst selection: it materia
 the source artifact's stored TTTR file, reconstructs an :class:`AnalysisRequest` from the
 compute spec's parameters (``settings_from_parameters`` is the inverse of
 ``extract_burst_parameters``), re-runs the pure ``analyze_request``, and registers the
-outputs through :class:`BurstMFDBPipeline` so the replay lands in the same shape as a
+outputs through :class:`BurstMMFDBPipeline` so the replay lands in the same shape as a
 normal run (PRD-28: a burst-table artifact derived from the source plus its sidecars).
 
 Faithful replay depends on the compute spec capturing the full reproducible parameter
@@ -19,9 +19,9 @@ from __future__ import annotations
 import tempfile
 from typing import Any
 
-from chisurf.core.mfdb.provenance.compute_spec import ComputeSpec, register_replay_executor
-from chisurf.plugins.burst.burst_selection.api.mfdb import BurstMFDBPipeline
-from chisurf.plugins.burst.burst_selection.api.models import AnalysisRequest, MFDBContext
+from mmfdb.provenance.compute_spec import ComputeSpec, register_replay_executor
+from chisurf.plugins.burst.burst_selection.api.mmfdb import BurstMMFDBPipeline
+from chisurf.plugins.burst.burst_selection.api.models import AnalysisRequest, MMFDBContext
 from chisurf.plugins.burst.burst_selection.api.selection import analyze_request
 from chisurf.plugins.burst.burst_selection.api.transformer import (
     OPERATION_TYPE,
@@ -39,7 +39,7 @@ def burst_selection_replay_executor(spec: ComputeSpec, db: Any) -> str:
         raise ValueError("burst_selection replay needs a source artifact")
     source_id = spec.source_artifact_ids[0]
 
-    work_dir = tempfile.mkdtemp(prefix="mfdb_replay_burst_")
+    work_dir = tempfile.mkdtemp(prefix="mmfdb_replay_burst_")
     src_path = db.materialize_artifact_file(source_id, into=work_dir)
 
     request = AnalysisRequest(
@@ -47,7 +47,7 @@ def burst_selection_replay_executor(spec: ComputeSpec, db: Any) -> str:
         settings=settings_from_parameters(spec.parameters),
         filetype=spec.parameters.get("filetype"),
         output_dir=work_dir,
-        mfdb=MFDBContext(
+        mmfdb=MMFDBContext(
             enabled=True,
             register_missing_inputs=False,
             # Link the replayed burst table to the original source artifact rather
@@ -56,7 +56,7 @@ def burst_selection_replay_executor(spec: ComputeSpec, db: Any) -> str:
         ),
     )
     result = analyze_request(request)
-    registration = BurstMFDBPipeline(db=db).register_run(request, result)
+    registration = BurstMMFDBPipeline(db=db).register_run(request, result)
 
     if not registration.burst_table_artifacts:
         raise RuntimeError(

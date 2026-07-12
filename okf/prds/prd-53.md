@@ -11,7 +11,7 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-ChiSurf owns the compute engines for Monte-Carlo fluorescence simulation — burst/diffusion simulator, a C++ decay/photon simulator, and a dye-diffusion quenching simulator — but exposes no surfaced workflow. This PRD wraps them as a headless + AutoForm simulator covering Brownian diffusion (2D/3D), distance-dependent FRET (static and dynamic/kinetic), photon emission with IRF/TCSPC, triplet/blinking/bleaching, and detector response, emitting TTTR streams, burst tables, decay histograms, and image/camera stacks. Beyond parity, it provides the reproducible, seed-deterministic synthetic ground truth that the PDA, imaging-correlation, and phasor-imaging acceptance tests depend on, with MFDB-registered synthetic datasets so downstream analyses stay provenance-tracked.
+ChiSurf owns the compute engines for Monte-Carlo fluorescence simulation — burst/diffusion simulator, a C++ decay/photon simulator, and a dye-diffusion quenching simulator — but exposes no surfaced workflow. This PRD wraps them as a headless + AutoForm simulator covering Brownian diffusion (2D/3D), distance-dependent FRET (static and dynamic/kinetic), photon emission with IRF/TCSPC, triplet/blinking/bleaching, and detector response, emitting TTTR streams, burst tables, decay histograms, and image/camera stacks. Beyond parity, it provides the reproducible, seed-deterministic synthetic ground truth that the PDA, imaging-correlation, and phasor-imaging acceptance tests depend on, with MMFDB-registered synthetic datasets so downstream analyses stay provenance-tracked.
 
 # Status
 Stub / unassigned (STATUS TABLE authoritative). Engines exist (partial/engine-only); no surfaced workflow yet.
@@ -34,7 +34,7 @@ simulator) but **no surfaced workflow**. Beyond parity, this simulator provides 
   distance-dependent FRET (static & dynamic/kinetic), photon emission with IRF/TCSPC,
   triplet/blinking/bleaching, detector response; outputs → TTTR stream, burst tables,
   decay histograms, and image/camera stacks.
-- Parameter presets and reproducible seeds; MFDB-registered synthetic datasets so
+- Parameter presets and reproducible seeds; MMFDB-registered synthetic datasets so
   downstream analyses are provenance-tracked.
 
 # Reuse

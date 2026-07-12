@@ -1,7 +1,7 @@
-"""Shared utilities for TTTR and FCS setup persistence (MFDB + JSON fallback).
+"""Shared utilities for TTTR and FCS setup persistence (MMFDB + JSON fallback).
 
-Both ``tttr_detector_setups`` and ``fcs_channel_setups`` use the same MFDB
-infrastructure (``mfdb_setup`` rows keyed by ``setup_type`` in the configuration
+Both ``tttr_detector_setups`` and ``fcs_channel_setups`` use the same MMFDB
+infrastructure (``mmfdb_setup`` rows keyed by ``setup_type`` in the configuration
 JSON).  This module factors out the common logic so neither duplicates it.
 """
 import json
@@ -10,8 +10,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from chisurf.core.mfdb.store.database_resolver import resolve_database_path
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.store.database_resolver import resolve_database_path
+from mmfdb.repository import MFDatabase
 from chisurf.core.settings.file_utils import safe_open_file
 
 
@@ -36,7 +36,7 @@ def setup_id_for_name(name: str, user_id: str, prefix: str) -> str:
 def resolve_active_user_id() -> str:
     try:
         import chisurf.core.settings
-        uid = chisurf.core.settings.cs_settings.get("mfdb", {}).get("default_user_id")
+        uid = chisurf.core.settings.cs_settings.get("mmfdb", {}).get("default_user_id")
         if uid:
             return uid
     except Exception:
@@ -44,7 +44,7 @@ def resolve_active_user_id() -> str:
     return "user_default"
 
 
-def use_mfdb(file_path: str | None, canonical: pathlib.Path) -> bool:
+def use_mmfdb(file_path: str | None, canonical: pathlib.Path) -> bool:
     if file_path is None:
         return True
     try:
@@ -54,7 +54,7 @@ def use_mfdb(file_path: str | None, canonical: pathlib.Path) -> bool:
 
 
 def get_db(db_path: str | None = None) -> MFDatabase | None:
-    """Open the MFDB. ``db_path`` overrides the resolved default (test seam)."""
+    """Open the MMFDB. ``db_path`` overrides the resolved default (test seam)."""
     try:
         return MFDatabase(db_path or resolve_database_path())
     except Exception:
@@ -96,13 +96,13 @@ def save_setup_row(
     )
 
 
-def load_mfdb_setups(
+def load_mmfdb_setups(
     db: MFDatabase,
     config: SetupTypeConfig,
     user_id: str | None = None,
     row_to_data: Callable[[dict], dict] | None = None,
 ) -> dict:
-    """Load setups from MFDB, scoped by user and visibility.
+    """Load setups from MMFDB, scoped by user and visibility.
 
     Parameters
     ----------
@@ -155,7 +155,7 @@ def set_last_used(db: MFDatabase, config: SetupTypeConfig, setup_name: str) -> N
     )
 
 
-def migrate_json_to_mfdb(
+def migrate_json_to_mmfdb(
     db: MFDatabase,
     config: SetupTypeConfig,
     path: pathlib.Path,
@@ -199,16 +199,16 @@ def save_setups(
     get_db_fn: Callable | None = None,
     resolve_user_fn: Callable | None = None,
 ) -> bool:
-    """Save setups to MFDB or JSON fallback.
+    """Save setups to MMFDB or JSON fallback.
 
     This is the generic version of ``save_detector_setups``.
     ``save_row_fn`` and ``load_scoped_fn`` default to the generic
-    ``save_setup_row`` / ``load_mfdb_setups`` when not provided.
+    ``save_setup_row`` / ``load_mmfdb_setups`` when not provided.
     ``get_db_fn`` / ``resolve_user_fn`` let callers inject the DB and
     active-user resolution seams (used by tests and per-setup-type modules);
     they default to the shared ``get_db`` / ``resolve_active_user_id``.
     """
-    if use_mfdb(file_path, config.canonical_file):
+    if use_mmfdb(file_path, config.canonical_file):
         db = (get_db_fn or get_db)()
         if db is not None:
             try:
@@ -216,7 +216,7 @@ def save_setups(
                 payloads = (setups_data or {}).get("setups") or {}
                 if replace:
                     desired = set(payloads)
-                    loader = load_scoped_fn or load_mfdb_setups
+                    loader = load_scoped_fn or load_mmfdb_setups
                     for en in loader(db, config, user_id).get("setups", {}):
                         if en not in desired:
                             db.delete_setup(setup_id_for_name(en, user_id, config.id_prefix))
@@ -231,12 +231,12 @@ def save_setups(
                     set_last_used(db, config, str(setups_data.get("last_used") or ""))
                 return True
             except Exception as e:
-                print(f"Error saving {config.setup_type} setups to MFDB: {e}")
+                print(f"Error saving {config.setup_type} setups to MMFDB: {e}")
 
-        # MFDB unavailable — soft fallback to JSON at canonical path.
+        # MMFDB unavailable — soft fallback to JSON at canonical path.
         target = config.canonical_file if file_path is None else pathlib.Path(file_path)
         print(
-            f"Warning: MFDB unavailable for {config.description}. "
+            f"Warning: MMFDB unavailable for {config.description}. "
             f"Saved to {target} (local JSON, not in database)."
         )
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -280,15 +280,15 @@ def load_setups(
     file_path_override: pathlib.Path | None = None,
     row_to_data: Callable[[dict], dict] | None = None,
 ) -> dict:
-    """Main load entry point — MFDB first, JSON fallback.
+    """Main load entry point — MMFDB first, JSON fallback.
 
-    When using MFDB, automatically migrates legacy JSON data on first access.
+    When using MMFDB, automatically migrates legacy JSON data on first access.
     """
     path = pathlib.Path(file_path or config.canonical_file)
-    if use_mfdb(file_path, config.canonical_file):
+    if use_mmfdb(file_path, config.canonical_file):
         db = get_db()
         if db is not None:
             user_id = resolve_active_user_id()
-            migrate_json_to_mfdb(db, config, path, user_id=user_id)
-            return load_mfdb_setups(db, config, user_id, row_to_data=row_to_data)
+            migrate_json_to_mmfdb(db, config, path, user_id=user_id)
+            return load_mmfdb_setups(db, config, user_id, row_to_data=row_to_data)
     return load_json_setups(path, file_path=file_path)

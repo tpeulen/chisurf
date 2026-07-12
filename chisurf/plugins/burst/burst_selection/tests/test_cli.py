@@ -117,14 +117,14 @@ def test_analyze_command_uses_shared_api(tmp_path: Path) -> None:
     assert payload["metadata"]["n_photons"] == 174438
 
 
-def test_analyze_mfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
-    """``analyze --mfdb`` registers raw+sample, burst tables, and a single
+def test_analyze_mmfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
+    """``analyze --mmfdb`` registers raw+sample, burst tables, and a single
     output-folder group whose artifact resolves to the on-disk burst folder —
     the handoff Burst Selection -> ndXplorer relies on."""
     import shutil
 
-    from chisurf.core.mfdb.repository import MFDatabase
-    from chisurf.core.mfdb.provenance.result_registry import set_global_db
+    from mmfdb.repository import MFDatabase
+    from mmfdb.provenance.result_registry import set_global_db
 
     # Copy the fixture so the co-located burst output folder lands in tmp.
     spc = tmp_path / "m000.spc"
@@ -138,7 +138,7 @@ def test_analyze_mfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
             }
         )
     )
-    db_path = tmp_path / "mfdb.sqlite"
+    db_path = tmp_path / "mmfdb.sqlite"
 
     try:
         result = CliRunner().invoke(
@@ -149,7 +149,7 @@ def test_analyze_mfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
                 "--filetype", "SPC-130",
                 "--detectors-json", str(det_json),
                 "--min-photons", "20",
-                "--mfdb",
+                "--mmfdb",
                 "--db", str(db_path),
                 "--sample-name", "DNA burst sample",
                 "--selected-setup", "BS",
@@ -158,12 +158,12 @@ def test_analyze_mfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
         assert result.exit_code == 0, result.output
         payload = json.loads(result.output)
         assert payload["ok"] is True
-        artifacts = payload["result"]["mfdb_artifacts"]
+        artifacts = payload["result"]["mmfdb_artifacts"]
         assert artifacts["input_artifacts"], "raw input not registered"
         assert artifacts["burst_table_artifacts"], "burst table not registered"
         group_id = artifacts["sidecar_artifacts"]["output_folder"]
 
-        # The group artifact resolves (as mfdb.datasets.open does) to the on-disk
+        # The group artifact resolves (as mmfdb.datasets.open does) to the on-disk
         # burst folder co-located with the TTTR — what ndXplorer opens.
         db = MFDatabase(db_path)
         try:

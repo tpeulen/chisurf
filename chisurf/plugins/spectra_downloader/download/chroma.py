@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download Chroma Technology optical filter and fluorochrome spectra into MFDB.
+"""Download Chroma Technology optical filter and fluorochrome spectra into MMFDB.
 
 Sources data from Chroma's public Spectra Viewer API
 (https://www.chroma.com/spectra-viewer). Spectral curves are
@@ -25,7 +25,7 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.plugins._dev.fluorophore_db.mfdb_adapter import (
+from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
     DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )
@@ -37,7 +37,7 @@ ASCII_BASE_URL = "https://www.chroma.com/files/part_spectra"
 
 
 # Map each Chroma filter "Type" code → a canonical component kind. The kind
-# resolves (via COMPONENT_KINDS in mfdb_adapter) to the canonical category and
+# resolves (via COMPONENT_KINDS in mmfdb_adapter) to the canonical category and
 # default spectrum type, so filters/dichroics/mirrors land in the right tab.
 FILTER_KIND_MAP: dict[str, str] = {
     "BP": "bandpass",
@@ -238,7 +238,7 @@ def _import_item_batch(
 
 
 def download_chroma_to_db(db: FluorophoreDatabase) -> dict[str, int]:
-    """Download and import all Chroma spectral data into MFDB.
+    """Download and import all Chroma spectral data into MMFDB.
 
     Parameters
     ----------

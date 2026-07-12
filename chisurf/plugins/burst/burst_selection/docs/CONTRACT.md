@@ -2,7 +2,7 @@
 
 Burst Selection is the reference ChiSurf plugin for workflow-ready plugins. It
 has a defined input model, output model, API layer, CLI adapter, ZMQ/RPC adapter,
-GUI client, and MFDB archival adapter. The broader implementation pattern is
+GUI client, and MMFDB archival adapter. The broader implementation pattern is
 documented in `REFERENCE_IMPLEMENTATION.md`.
 
 ## Boundary Rule
@@ -12,7 +12,7 @@ Keep responsibilities split:
 - `api/`: pure Python domain API. No Qt, no RPC transport, no CLI parsing.
 - `api/models.py`: dataclass input/output models.
 - `api/contract.py`: JSON-safe workflow contract, RPC method names, and payload normalization.
-- `api/mfdb.py`: plugin-owned MFDB archival for successful analysis results.
+- `api/mmfdb.py`: plugin-owned MMFDB archival for successful analysis results.
 - `backend/services.py`: ServiceDispatcher/RPC handlers. It accepts JSON payloads and delegates to `api/`.
 - `server/`: ZMQ entry points. It delegates to `backend/services.py`.
 - `cli/`: command-line adapter. It builds the same `AnalysisRequest` used by RPC.
@@ -92,7 +92,7 @@ Input payload:
   "output_dir": "/tmp/output",
   "legacy_output": true,
   "selected_setup": "Test",
-  "mfdb": {
+  "mmfdb": {
     "enabled": true,
     "sample_id": "sample_1",
     "source_artifact_ids": {},
@@ -134,7 +134,7 @@ The service envelope is always:
       "n_selected": 0,
       "n_photons": 0
     },
-    "mfdb_artifacts": {
+    "mmfdb_artifacts": {
       "input_artifacts": {
         "/data/m000.spc": "raw_artifact_id"
       },
@@ -170,13 +170,13 @@ On failure:
 No legacy aliases are part of the reference contract. New integrations should
 use only the canonical dotted names.
 
-## MFDB Context
+## MMFDB Context
 
-MFDB archival context is nested under `mfdb`:
+MMFDB archival context is nested under `mmfdb`:
 
 ```json
 {
-  "mfdb": {
+  "mmfdb": {
     "enabled": true,
     "sample_id": "sample_1",
     "source_artifact_ids": {
@@ -196,19 +196,19 @@ Semantics:
 - `source_artifact_ids`: reuse pre-existing raw artifacts by normalized input path.
 - `register_missing_inputs=true`: archive inputs not already present in
   `source_artifact_ids`.
-- `setup_id`: link MFDB operations to the detector/PIE setup in `mfdb_setup`.
+- `setup_id`: link MMFDB operations to the detector/PIE setup in `mmfdb_setup`.
 - `setup_version`: optional setup version stored in operation/artifact metadata.
 
 GUI behavior:
 
-- MFDB is an explicit output mode and may be selected without CSV/HDF5 output.
-- When MFDB output is selected, the GUI checks whether each raw input's content
+- MMFDB is an explicit output mode and may be selected without CSV/HDF5 output.
+- When MMFDB output is selected, the GUI checks whether each raw input's content
   MD5 is already associated with a sample in the object store.
 - If the raw content has no sample association, the GUI opens the sample
   registration dialog before calling `burst_selection.jobs.analyze_files`.
 - The resulting request contains the selected `sample_id` and any pre-registered
-  raw artifacts under the nested `mfdb` object shown above.
-- The selected detector setup is stored in MFDB before analysis and included as
-  `mfdb.setup_id`, so processed data can be traced to the setup used.
+  raw artifacts under the nested `mmfdb` object shown above.
+- The selected detector setup is stored in MMFDB before analysis and included as
+  `mmfdb.setup_id`, so processed data can be traced to the setup used.
 
 Top-level provenance fields are intentionally not part of the contract.

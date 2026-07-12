@@ -10,8 +10,8 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.core.mfdb.store.database_resolver import resolve_database_path
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.store.database_resolver import resolve_database_path
+from mmfdb.repository import MFDatabase
 from chisurf.plugins.core.lightpath_simulator.backend.simulator import (
     OpticalPathSimulator,
 )
@@ -20,18 +20,18 @@ from chisurf.plugins.core.lightpath_simulator.backend.simulator import (
 
 
 class MFDatabaseAdapter:
-    """Adapt MFDB records to the simulator's small spectra/probe interface."""
+    """Adapt MMFDB records to the simulator's small spectra/probe interface."""
 
     def __init__(self, db: MFDatabase) -> None:
-        """Wrap an open MFDB connection."""
+        """Wrap an open MMFDB connection."""
         self.db = db
 
     def __enter__(self) -> MFDatabaseAdapter:
-        """Return the adapter without closing the outer MFDB connection."""
+        """Return the adapter without closing the outer MMFDB connection."""
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """Leave transaction ownership to the outer MFDB context."""
+        """Leave transaction ownership to the outer MMFDB context."""
         return None
 
     def get_probe_spectrum(
@@ -39,7 +39,7 @@ class MFDatabaseAdapter:
         probe_id: int,
         spectrum_type: str,
     ) -> tuple[np.ndarray, np.ndarray] | None:
-        """Return one MFDB probe spectrum as ``(wavelengths, values)`` arrays."""
+        """Return one MMFDB probe spectrum as ``(wavelengths, values)`` arrays."""
         rec = self.db.get_spectrum_record(probe_id, spectrum_type)
         if rec is None:
             return None
@@ -81,12 +81,12 @@ def serialize_numpy(obj: Any) -> Any:
 
 
 def json_dumps(data: Any) -> str:
-    """Serialize lightpath payloads consistently for embedded MFDB JSON."""
+    """Serialize lightpath payloads consistently for embedded MMFDB JSON."""
     return json.dumps(serialize_numpy(data), sort_keys=True, separators=(",", ":"))
 
 
 def resolve_db_path(db_path: str | None = None) -> str:
-    """Resolve the MFDB database used by light-path spectra workflows."""
+    """Resolve the MMFDB database used by light-path spectra workflows."""
     if db_path:
         return str(db_path)
 
@@ -104,7 +104,7 @@ def _configured_spectra_db_path() -> Path | None:
     except Exception:
         return None
 
-    for section_name in ("lightpath_simulator", "mfdb"):
+    for section_name in ("lightpath_simulator", "mmfdb"):
         section = cs_settings.get(section_name) or {}
         configured = section.get("spectra_db_path") or section.get("spectra_database")
         if configured:
@@ -124,7 +124,7 @@ def _utc_stamp() -> str:
 
 
 def _simulate_with_db(graph: dict[str, Any], db: MFDatabase) -> dict[str, Any]:
-    """Run the simulator against an open MFDB connection."""
+    """Run the simulator against an open MMFDB connection."""
     adapter = MFDatabaseAdapter(db)
     sim = OpticalPathSimulator(adapter)
     sim.load_from_dict(graph)
@@ -163,7 +163,7 @@ def save_lightpath(
     name: str | None = None,
     db_path: str | None = None,
 ) -> dict[str, Any]:
-    """Persist a graph and its simulated outputs as MFDB artifacts."""
+    """Persist a graph and its simulated outputs as MMFDB artifacts."""
     with MFDatabase(resolve_db_path(db_path)) as db:
         result = _simulate_with_db(graph, db)
         operation_id = f"lightpath_{_utc_stamp()}_{uuid.uuid4().hex[:8]}"
@@ -248,7 +248,7 @@ def save_lightpath(
 
 
 def list_lightpaths(db_path: str | None = None) -> dict[str, Any]:
-    """List saved light-path simulations from MFDB."""
+    """List saved light-path simulations from MMFDB."""
     with MFDatabase(resolve_db_path(db_path)) as db:
         rows = db.get_operations(operation_type="analysis", status="succeeded")
         simulations = []
@@ -302,9 +302,9 @@ def get_lightpath(operation_id: str, db_path: str | None = None) -> dict[str, An
 
 
 def _spectra_types_by_probe_id(db: MFDatabase) -> dict[int, set[str]]:
-    """Return available spectrum types keyed by MFDB probe id.
+    """Return available spectrum types keyed by MMFDB probe id.
 
-    MFDB databases in the wild use ``id`` as the spectra primary key, while
+    MMFDB databases in the wild use ``id`` as the spectra primary key, while
     older repository helpers still assume ``spectrum_id``.  The lightpath
     palette only needs probe ownership and spectrum type, so query those stable
     fields directly.

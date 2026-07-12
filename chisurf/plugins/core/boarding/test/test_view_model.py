@@ -73,28 +73,28 @@ def test_repair_status_updates_after_action(monkeypatch) -> None:
     assert "done" in vm.repair_status_html()
 
 
-def test_status_html_is_mfdb_aware_for_detectors(monkeypatch) -> None:
-    """A connected MFDB with detector setups reports OK, not a MISSING JSON file."""
+def test_status_html_is_mmfdb_aware_for_detectors(monkeypatch) -> None:
+    """A connected MMFDB with detector setups reports OK, not a MISSING JSON file."""
     from chisurf.plugins.core.boarding import utils
 
-    monkeypatch.setattr(utils, "mfdb_info", lambda: {"connected": True, "path": "/tmp/x.db"})
+    monkeypatch.setattr(utils, "mmfdb_info", lambda: {"connected": True, "path": "/tmp/x.db"})
     monkeypatch.setattr(
         utils,
         "detector_setups_summary",
-        lambda: {"count": 2, "store": "mfdb", "detail": "in MFDB"},
+        lambda: {"count": 2, "store": "mmfdb", "detail": "in MMFDB"},
     )
     monkeypatch.setattr(
         utils,
         "fcs_setups_summary",
-        lambda: {"count": 0, "store": "mfdb", "detail": "in MFDB"},
+        lambda: {"count": 0, "store": "mmfdb", "detail": "in MMFDB"},
     )
     html = utils.build_status_html()
-    # the misleading raw-file row is gone; MFDB-backed setups reported logically
+    # the misleading raw-file row is gone; MMFDB-backed setups reported logically
     assert "detector_setups.json" not in html
     assert "Detector setups" in html
-    assert "2 setups in MFDB" in html
+    assert "2 setups in MMFDB" in html
     assert "MISSING" not in html.split("Detector setups")[1].split("</tr>")[0]
-    # an empty MFDB store is neutral, never "MISSING"
+    # an empty MMFDB store is neutral, never "MISSING"
     assert "none yet" in html
 
 
@@ -102,8 +102,8 @@ def test_setups_row_states() -> None:
     """The setup-row renderer maps count/store to OK / neutral, never a false error."""
     from chisurf.plugins.core.boarding import utils
 
-    assert "MISSING" not in utils._setups_row("D", {"count": 0, "store": "mfdb"})
-    assert "OK" in utils._setups_row("D", {"count": 1, "store": "mfdb", "detail": "in MFDB"})
+    assert "MISSING" not in utils._setups_row("D", {"count": 0, "store": "mmfdb"})
+    assert "OK" in utils._setups_row("D", {"count": 1, "store": "mmfdb", "detail": "in MMFDB"})
     assert "—" in utils._setups_row("D", {"count": None, "store": "unknown"})
 
 

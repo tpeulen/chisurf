@@ -66,21 +66,21 @@ if __name__ == "plugin":
     ndx.raise_()
     ndx.activateWindow()
 
-    # Add MFDB toolbar button if MFDB is connected
+    # Add MMFDB toolbar button if MMFDB is connected
     try:
-        from chisurf.plugins.core.mfdb_admin.gui.client import MFDBClient
-        from chisurf.plugins.ndxplorer.mfdb_launcher import (
+        from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
+        from chisurf.plugins.ndxplorer.mmfdb_launcher import (
             BURST_FORMATS, BURST_KINDS, resolve_dataset_path,
         )
-        from chisurf.gui.widgets.mfdb.dataset_browser import MfdbDatasetPickerDialog
+        from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetPickerDialog
         from ndxplorer.__main__ import open_path_like_drop
         from qtpy import QtCore
 
-        client = MFDBClient(inprocess=True)
-        client.status()  # raises if MFDB database is not accessible
+        client = MMFDBClient(inprocess=True)
+        client.status()  # raises if MMFDB database is not accessible
 
         def _open_burst_in_current_ndx() -> None:
-            sel = MfdbDatasetPickerDialog.pick_dataset(
+            sel = MmfdbDatasetPickerDialog.pick_dataset(
                 parent=ndx,
                 kinds=BURST_KINDS,
                 formats=BURST_FORMATS,
@@ -96,13 +96,13 @@ if __name__ == "plugin":
                 0, lambda: open_path_like_drop(ndx, str(path))
             )
 
-        toolbar = ndx.addToolBar("MFDB")
-        toolbar.setObjectName("ndxplorerMfdbToolbar")
-        mfdb_action = toolbar.addAction("🗄️ Open from MFDB")
-        mfdb_action.setToolTip("Open a burst selection registered in MFDB")
-        mfdb_action.triggered.connect(_open_burst_in_current_ndx)
+        toolbar = ndx.addToolBar("MMFDB")
+        toolbar.setObjectName("ndxplorerMmfdbToolbar")
+        mmfdb_action = toolbar.addAction("🗄️ Open from MMFDB")
+        mmfdb_action.setToolTip("Open a burst selection registered in MMFDB")
+        mmfdb_action.triggered.connect(_open_burst_in_current_ndx)
     except Exception:
-        pass  # MFDB not available — skip toolbar button
+        pass  # MMFDB not available — skip toolbar button
 
 
 cli_entrypoint = "ndxplorer=chisurf.plugins.ndxplorer.cli:cli"

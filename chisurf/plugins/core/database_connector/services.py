@@ -6,14 +6,14 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from mfdb.store.database_resolver import (
+from mmfdb.store.database_resolver import (
     backup_database,
     resolve_database_path,
     source_database_path,
     user_database_path,
 )
-from mfdb.samples.importer import import_structure_file
-from mfdb.repository import MFDatabase
+from mmfdb.samples.importer import import_structure_file
+from mmfdb.repository import MFDatabase
 
 
 class DatabaseConnector:
@@ -72,7 +72,7 @@ class DatabaseConnector:
                 "source_database": str(source_database_path()),
                 "user_database": str(path),
                 "active_database": str(path),
-                "schema_version": db._get_schema_version(),
+                "schema_version": db.get_schema_version(),
                 "sample_count": len(db.list_samples()),
                 "user_count": len(db.get_users()),
                 "device_count": len(db.get_devices()),
@@ -134,7 +134,7 @@ class DatabaseConnector:
         with MFDatabase(path) as db:
             data: dict[str, Any] = {
                 "database_path": str(path),
-                "schema_version": db._get_schema_version(),
+                "schema_version": db.get_schema_version(),
             }
             if include_counts:
                 experiment_rows = db.get_experiments()

@@ -19,7 +19,7 @@ from chisurf.plugins.tttr.tttr_microtime_shifter.api.contract import (
     shift_result_to_payload,
 )
 from chisurf.plugins.tttr.tttr_microtime_shifter.api.models import (
-    MFDBContext,
+    MMFDBContext,
     ShiftRequest,
     ShiftResult,
 )
@@ -42,7 +42,7 @@ def test_shift_request_payload_roundtrip() -> None:
         channel_shifts={0: 1, 1: -1},
         filetype="ptu",
         output_dir="/output",
-        mfdb=MFDBContext(enabled=True, sample_id="sample_001"),
+        mmfdb=MMFDBContext(enabled=True, sample_id="sample_001"),
     )
     payload = shift_request_to_payload(original)
     restored = shift_request_from_payload(payload)
@@ -51,8 +51,8 @@ def test_shift_request_payload_roundtrip() -> None:
     assert restored.channel_shifts == original.channel_shifts
     assert restored.filetype == original.filetype
     assert restored.output_dir == original.output_dir
-    assert restored.mfdb.enabled == original.mfdb.enabled
-    assert restored.mfdb.sample_id == original.mfdb.sample_id
+    assert restored.mmfdb.enabled == original.mmfdb.enabled
+    assert restored.mmfdb.sample_id == original.mmfdb.sample_id
 
 
 def test_shift_result_payload_is_json_safe() -> None:
@@ -65,20 +65,20 @@ def test_shift_result_payload_is_json_safe() -> None:
                 "channel_shifts": {0: 1, 1: 3},
             },
         },
-        mfdb_artifacts={"input_artifacts": {}, "output_artifacts": {}},
+        mmfdb_artifacts={"input_artifacts": {}, "output_artifacts": {}},
         warnings=[],
     )
     payload = shift_result_to_payload(result)
     json.dumps(payload)  # must not raise
 
 
-def test_shift_request_from_payload_accepts_nested_mfdb() -> None:
-    """MFDB context is properly parsed from nested payload."""
+def test_shift_request_from_payload_accepts_nested_mmfdb() -> None:
+    """MMFDB context is properly parsed from nested payload."""
     payload: dict[str, Any] = {
         "files": ["/data/test.ptu"],
         "global_shift": 1,
         "channel_shifts": {"0": 2, "1": -1},
-        "mfdb": {
+        "mmfdb": {
             "enabled": True,
             "sample_id": "s1",
             "register_missing_inputs": False,
@@ -87,9 +87,9 @@ def test_shift_request_from_payload_accepts_nested_mfdb() -> None:
         },
     }
     request = shift_request_from_payload(payload)
-    assert request.mfdb.enabled is True
-    assert request.mfdb.sample_id == "s1"
-    assert request.mfdb.register_missing_inputs is False
+    assert request.mmfdb.enabled is True
+    assert request.mmfdb.sample_id == "s1"
+    assert request.mmfdb.register_missing_inputs is False
 
 
 def test_shift_request_from_payload_normalizes_channel_shifts() -> None:

@@ -20,7 +20,7 @@ def load_detector_setups(
     Returns ``{"setups": {...}, "last_used": str}``.
 
     This is the Qt-free variant used by the headless server.  It does not
-    attempt MFDB migration and does not show a warning dialog when the file
+    attempt MMFDB migration and does not show a warning dialog when the file
     is missing — it simply returns an empty dict.
     """
     path = pathlib.Path(file_path) if file_path is not None else DETECTOR_SETUPS_FILE
@@ -52,7 +52,7 @@ def save_detector_setups(
     file_path : str or Path, optional
         Override the default file path.
     is_public : bool, optional
-        Ignored in the headless JSON-only variant (only relevant for MFDB).
+        Ignored in the headless JSON-only variant (only relevant for MMFDB).
     """
     path = pathlib.Path(file_path) if file_path is not None else DETECTOR_SETUPS_FILE
     path.parent.mkdir(parents=True, exist_ok=True)

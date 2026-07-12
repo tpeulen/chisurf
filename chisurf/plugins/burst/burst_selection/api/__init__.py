@@ -36,11 +36,11 @@ from .models import (
     CountRateFilterSettings,
     DeltaMacroTimeFilterSettings,
     GMMSettings,
-    MFDBContext,
+    MMFDBContext,
     PhotonFilterSettings,
 )
-from .mfdb import (
-    BurstMFDBPipeline,
+from .mmfdb import (
+    BurstMMFDBPipeline,
     BurstRegistrationResult,
     build_burst_metadata,
     extract_burst_parameters,
@@ -65,8 +65,8 @@ __all__ = [
     "CountRateFilterSettings",
     "DeltaMacroTimeFilterSettings",
     "GMMSettings",
-    "MFDBContext",
-    "BurstMFDBPipeline",
+    "MMFDBContext",
+    "BurstMMFDBPipeline",
     "BurstRegistrationResult",
     "METHOD_ANALYZE_FILES",
     "METHOD_DESCRIBE_CONTRACT",

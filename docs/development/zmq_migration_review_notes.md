@@ -50,7 +50,7 @@ Failures to check:
   expose the `created_at`, `updated_at`, and `deleted_at` columns expected by
   the canonical repository methods.
 - `test_v17_migration_uses_flr_sample_model_and_constrained_migrated_schema`
-  still expects the constrained migrated schema behavior around `mfdb_edge`.
+  still expects the constrained migrated schema behavior around `mmfdb_edge`.
 - `test_json_rpc_versioned_services` now fails with `Authentication required`,
   so the versioned API tests need an authenticated principal or a deliberate
   public-test path.

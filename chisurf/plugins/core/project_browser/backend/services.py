@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from chisurf import logging
-from mfdb.store.database_resolver import resolve_database_path
-from mfdb.repository import MFDatabase
-from mfdb.security.auth import (
+from mmfdb.store.database_resolver import resolve_database_path
+from mmfdb.repository import MFDatabase
+from mmfdb.security.auth import (
     PERM_READ,
     PERM_MANAGE,
     filter_readable,
@@ -17,11 +17,11 @@ from mfdb.security.auth import (
     require_authenticated,
     require_access,
 )
-from mfdb.repository import _json_loads, _utc_now
+from mmfdb.schema._sqlutil import _json_loads, _utc_now
 from chisurf.core.project.archive import ProjectArchive, PROJECT_JSON, DATA_DIR
 from chisurf.server.services import INVALID_INPUT, NOT_FOUND, OPERATION_FAILED, service_error
 
-MFDB_EXPORT_JSON = "mfdb_export.json"
+MMFDB_EXPORT_JSON = "mmfdb_export.json"
 
 
 def register_services(dispatcher: Any) -> None:
@@ -110,7 +110,7 @@ def _decode_project_operation(row: dict[str, Any] | Any) -> dict[str, Any]:
 
 def _get_operation_mode(conn: Any, operation_id: str) -> int | None:
     row = conn.execute(
-        "SELECT mode FROM mfdb_object_acl WHERE object_type = 'mfdb_operation' AND object_id = ? AND deleted_at IS NULL",
+        "SELECT mode FROM mmfdb_object_acl WHERE object_type = 'mmfdb_operation' AND object_id = ? AND deleted_at IS NULL",
         (operation_id,),
     ).fetchone()
     if row:
@@ -135,7 +135,7 @@ def _get_project_visibility(conn: Any, operation_id: str) -> str:
     if other_bits & PERM_READ:
         return "public"
     entry_rows = conn.execute(
-        "SELECT entry_id FROM mfdb_acl_entry WHERE object_type = 'mfdb_operation' AND object_id = ? AND deleted_at IS NULL LIMIT 1",
+        "SELECT entry_id FROM mmfdb_acl_entry WHERE object_type = 'mmfdb_operation' AND object_id = ? AND deleted_at IS NULL LIMIT 1",
         (operation_id,),
     ).fetchall()
     if entry_rows:
@@ -155,7 +155,7 @@ def list_projects_handler(
             """SELECT operation_id, operation_type, experiment_id,
                       operator_user_id, software_package, software_module, software_version,
                       settings_json, status, metadata_json, created_at, updated_at
-               FROM mfdb_operation
+               FROM mmfdb_operation
                WHERE operation_type = 'project' AND deleted_at IS NULL
                ORDER BY created_at DESC""",
         ).fetchall()
@@ -175,7 +175,7 @@ def list_projects_handler(
 
         if not principal.is_admin:
             projects_raw = filter_readable(
-                conn, principal, "mfdb_operation",
+                conn, principal, "mmfdb_operation",
                 projects_raw, id_key="operation_id",
             )
             if not show_public:
@@ -267,7 +267,7 @@ def save_project_handler(
         # Ensure a default branch exists for this project
         if not branch_uuid:
             branch_row = conn.execute(
-                "SELECT branch_uuid FROM mfdb_branch WHERE name = ? AND deleted_at IS NULL",
+                "SELECT branch_uuid FROM mmfdb_branch WHERE name = ? AND deleted_at IS NULL",
                 (f"project_{project_id}",),
             ).fetchone()
             if branch_row:
@@ -276,7 +276,7 @@ def save_project_handler(
             else:
                 branch_uuid = f"br_{_uuid.uuid4().hex[:12]}"
                 conn.execute(
-                    "INSERT OR IGNORE INTO mfdb_branch (branch_uuid, name, description, created_by_user_id) VALUES (?, ?, ?, ?)",
+                    "INSERT OR IGNORE INTO mmfdb_branch (branch_uuid, name, description, created_by_user_id) VALUES (?, ?, ?, ?)",
                     (branch_uuid, f"project_{project_id}", f"Default branch for {project_id}", user_id),
                 )
                 conn.commit()
@@ -285,7 +285,7 @@ def save_project_handler(
         version_number = 1
         if parent_version_id:
             parent_row = conn.execute(
-                "SELECT metadata_json FROM mfdb_operation WHERE operation_id = ? AND deleted_at IS NULL",
+                "SELECT metadata_json FROM mmfdb_operation WHERE operation_id = ? AND deleted_at IS NULL",
                 (parent_version_id,),
             ).fetchone()
             if parent_row:
@@ -296,7 +296,7 @@ def save_project_handler(
         else:
             max_vn_row = conn.execute(
                 """SELECT MAX(json_extract(metadata_json, '$.version_number')) AS max_vn
-                   FROM mfdb_operation
+                   FROM mmfdb_operation
                    WHERE operation_type = 'project' AND deleted_at IS NULL
                      AND json_extract(metadata_json, '$.project_id') = ?
                      AND json_extract(metadata_json, '$.branch_uuid') = ?""",
@@ -309,9 +309,9 @@ def save_project_handler(
                     version_number = int(max_vn) + 1
 
         # Use the new project_archiver for full artifact decomposition
-        from mfdb.project.project_archiver import archive_project_to_mfdb
+        from mmfdb.project.project_archiver import archive_project_to_mmfdb
 
-        result = archive_project_to_mfdb(
+        result = archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload or {},
             version_id=version_id,
@@ -326,8 +326,8 @@ def save_project_handler(
 
         with db.transaction():
             if visibility == "public":
-                import mfdb.security.auth as authmod
-                authmod.chmod(conn, principal, "mfdb_operation", version_id, 0o704)
+                import mmfdb.security.auth as authmod
+                authmod.chmod(conn, principal, "mmfdb_operation", version_id, 0o704)
             db.add_audit_log(
                 action="archive",
                 target_type="project",
@@ -364,7 +364,7 @@ def _reconstruct_payload(
     meta: dict[str, Any],
 ) -> dict[str, Any]:
     """Reconstruct a project payload from artifacts, or build empty default."""
-    from mfdb.project.project_archiver import restore_project_from_artifacts
+    from mmfdb.project.project_archiver import restore_project_from_artifacts
     artifact_payload = restore_project_from_artifacts(db, version_id)
     if artifact_payload:
         return {
@@ -437,7 +437,7 @@ def restore_project_handler(
     try:
         principal, conn, db = _require_auth(auth)
         if version_id:
-            require_access(conn, principal, "mfdb_operation", version_id, PERM_READ)
+            require_access(conn, principal, "mmfdb_operation", version_id, PERM_READ)
             result = _build_restore_payload(db, conn, principal, version_id)
             if not result.get("ok", True):
                 return result
@@ -459,7 +459,7 @@ def restore_project_handler(
             }
         else:
             rows = conn.execute(
-                """SELECT operation_id FROM mfdb_operation
+                """SELECT operation_id FROM mmfdb_operation
                    WHERE operation_type = 'project' AND deleted_at IS NULL
                    ORDER BY created_at DESC LIMIT 1""",
             ).fetchall()
@@ -469,7 +469,7 @@ def restore_project_handler(
             if not isinstance(row0, dict):
                 row0 = dict(row0)
             latest_id = row0.get("operation_id")
-            require_access(conn, principal, "mfdb_operation", latest_id, PERM_READ)
+            require_access(conn, principal, "mmfdb_operation", latest_id, PERM_READ)
             result = _build_restore_payload(db, conn, principal, latest_id)
             if not result.get("ok", True):
                 return result
@@ -579,7 +579,7 @@ def export_csp_handler(
 ) -> dict[str, Any]:
     try:
         principal, conn, db = _require_auth(auth)
-        require_access(conn, principal, "mfdb_operation", version_id, PERM_READ)
+        require_access(conn, principal, "mmfdb_operation", version_id, PERM_READ)
         run = db.get_analysis_run_full(version_id)
         if not run:
             return service_error(f"Project version not found: {version_id}", error_code=NOT_FOUND)
@@ -606,7 +606,7 @@ def export_csp_handler(
 
         archive = ProjectArchive()
         archive.write_text(PROJECT_JSON, json.dumps(payload, indent=2, sort_keys=True))
-        archive.write_text(MFDB_EXPORT_JSON, json.dumps(export_meta, indent=2, sort_keys=True))
+        archive.write_text(MMFDB_EXPORT_JSON, json.dumps(export_meta, indent=2, sort_keys=True))
 
         file_refs = _collect_file_refs(payload)
         project_root = Path(meta.get("project_root", "."))
@@ -663,25 +663,25 @@ def _find_collisions(conn: Any, export_meta: dict[str, Any]) -> dict[str, list[s
     for op in deps.get("operations", []):
         oid = op.get("operation_id", "")
         if oid:
-            row = conn.execute("SELECT 1 FROM mfdb_operation WHERE operation_id = ? AND deleted_at IS NULL", (oid,)).fetchone()
+            row = conn.execute("SELECT 1 FROM mmfdb_operation WHERE operation_id = ? AND deleted_at IS NULL", (oid,)).fetchone()
             if row:
                 collisions["operations"].append(oid)
     for art in deps.get("artifacts", []):
         aid = art.get("artifact_id", art.get("processed_data_id", art.get("raw_data_id", "")))
         if aid:
-            row = conn.execute("SELECT 1 FROM mfdb_artifact WHERE artifact_id = ? AND deleted_at IS NULL", (aid,)).fetchone()
+            row = conn.execute("SELECT 1 FROM mmfdb_artifact WHERE artifact_id = ? AND deleted_at IS NULL", (aid,)).fetchone()
             if row:
                 collisions["artifacts"].append(aid)
     for obj in deps.get("objects", []):
         ou = obj.get("object_uuid", "")
         if ou:
-            row = conn.execute("SELECT 1 FROM mfdb_object WHERE object_uuid = ?", (ou,)).fetchone()
+            row = conn.execute("SELECT 1 FROM mmfdb_object WHERE object_uuid = ?", (ou,)).fetchone()
             if row:
                 collisions["objects"].append(ou)
     for param in deps.get("parameters", []):
         pu = param.get("parameter_uuid", param.get("parameter_id", ""))
         if pu:
-            row = conn.execute("SELECT 1 FROM mfdb_parameter WHERE parameter_uuid = ? AND deleted_at IS NULL", (pu,)).fetchone()
+            row = conn.execute("SELECT 1 FROM mmfdb_parameter WHERE parameter_uuid = ? AND deleted_at IS NULL", (pu,)).fetchone()
             if row:
                 collisions["parameters"].append(pu)
     return collisions
@@ -746,7 +746,7 @@ def _apply_remap_to_export(export_meta: dict[str, Any], remap: dict[str, dict[st
     return meta
 
 
-def _populate_mfdb_from_export(
+def _populate_mmfdb_from_export(
     conn: Any,
     db: MFDatabase,
     export_meta: dict[str, Any],
@@ -891,10 +891,10 @@ def import_preview_handler(
             return service_error("Either archive_base64 or file_path is required", error_code=INVALID_INPUT)
 
         archive = ProjectArchive.open_bytes(data)
-        if not archive.has_entry(MFDB_EXPORT_JSON):
-            return service_error("Not a valid MFDB export archive (missing mfdb_export.json)", error_code=INVALID_INPUT)
+        if not archive.has_entry(MMFDB_EXPORT_JSON):
+            return service_error("Not a valid MMFDB export archive (missing mmfdb_export.json)", error_code=INVALID_INPUT)
 
-        export_text = archive.read_text(MFDB_EXPORT_JSON)
+        export_text = archive.read_text(MMFDB_EXPORT_JSON)
         export_meta = json.loads(export_text)
 
         export_meta["id_remap"] = {}
@@ -938,10 +938,10 @@ def import_csp_handler(
             return service_error("Either archive_base64 or file_path is required", error_code=INVALID_INPUT)
 
         archive = ProjectArchive.open_bytes(data)
-        if not archive.has_entry(MFDB_EXPORT_JSON):
-            return service_error("Not a valid MFDB export archive (missing mfdb_export.json)", error_code=INVALID_INPUT)
+        if not archive.has_entry(MMFDB_EXPORT_JSON):
+            return service_error("Not a valid MMFDB export archive (missing mmfdb_export.json)", error_code=INVALID_INPUT)
 
-        export_text = archive.read_text(MFDB_EXPORT_JSON)
+        export_text = archive.read_text(MMFDB_EXPORT_JSON)
         export_meta = json.loads(export_text)
 
         collisions = _find_collisions(conn, export_meta)
@@ -959,7 +959,7 @@ def import_csp_handler(
         else:
             export_meta["id_remap"] = {}
 
-        result = _populate_mfdb_from_export(conn, db, export_meta, user_id)
+        result = _populate_mmfdb_from_export(conn, db, export_meta, user_id)
 
         return {
             "ok": True,
@@ -979,14 +979,14 @@ def delete_version_handler(
         principal, conn, db = _require_auth(auth)
         if not version_id:
             return service_error("version_id is required", error_code=INVALID_INPUT)
-        require_access(conn, principal, "mfdb_operation", version_id, PERM_MANAGE)
+        require_access(conn, principal, "mmfdb_operation", version_id, PERM_MANAGE)
         with db.transaction():
             conn.execute(
-                "UPDATE mfdb_operation SET deleted_at = ? WHERE operation_id = ?",
+                "UPDATE mmfdb_operation SET deleted_at = ? WHERE operation_id = ?",
                 (_utc_now(), version_id),
             )
             conn.execute(
-                "UPDATE mfdb_object_acl SET deleted_at = ? WHERE object_type = 'mfdb_operation' AND object_id = ?",
+                "UPDATE mmfdb_object_acl SET deleted_at = ? WHERE object_type = 'mmfdb_operation' AND object_id = ?",
                 (_utc_now(), version_id),
             )
             db.add_audit_log(
@@ -1034,14 +1034,14 @@ def create_branch_handler(
         if not project_id or not from_version_id or not branch_name:
             return service_error("project_id, from_version_id, and branch_name are required", error_code=INVALID_INPUT)
 
-        require_access(conn, principal, "mfdb_operation", from_version_id, PERM_READ)
+        require_access(conn, principal, "mmfdb_operation", from_version_id, PERM_READ)
 
         import uuid as _uuid
         branch_uuid = f"br_{_uuid.uuid4().hex[:12]}"
 
         with db.transaction():
             conn.execute(
-                """INSERT INTO mfdb_branch (branch_uuid, name, description, head_operation_id, created_by_user_id)
+                """INSERT INTO mmfdb_branch (branch_uuid, name, description, head_operation_id, created_by_user_id)
                    VALUES (?, ?, ?, ?, ?)""",
                 (branch_uuid, branch_name, f"Forked from {from_version_id}", from_version_id, user_id),
             )
@@ -1096,7 +1096,7 @@ def list_branches_handler(
             """SELECT DISTINCT
                    json_extract(m.metadata_json, '$.branch_uuid') AS branch_uuid,
                    json_extract(m.metadata_json, '$.project_name') AS project_name
-               FROM mfdb_operation m
+               FROM mmfdb_operation m
                WHERE m.operation_type = 'project'
                  AND m.deleted_at IS NULL
                  AND json_extract(m.metadata_json, '$.project_id') = ?""",
@@ -1109,7 +1109,7 @@ def list_branches_handler(
             if not buuid:
                 continue
             branch_row = conn.execute(
-                "SELECT branch_uuid, name, head_operation_id FROM mfdb_branch WHERE branch_uuid = ?",
+                "SELECT branch_uuid, name, head_operation_id FROM mmfdb_branch WHERE branch_uuid = ?",
                 (buuid,),
             ).fetchone()
             if not branch_row:
@@ -1117,7 +1117,7 @@ def list_branches_handler(
 
             # Count versions on this branch for this project
             vn_count = conn.execute(
-                """SELECT COUNT(*) FROM mfdb_operation
+                """SELECT COUNT(*) FROM mmfdb_operation
                    WHERE operation_type = 'project' AND deleted_at IS NULL
                      AND json_extract(metadata_json, '$.project_id') = ?
                      AND json_extract(metadata_json, '$.branch_uuid') = ?""",
@@ -1164,7 +1164,7 @@ def get_version_graph_handler(
         # Get all versions for this project
         rows = conn.execute(
             """SELECT operation_id, metadata_json, created_at
-               FROM mfdb_operation
+               FROM mmfdb_operation
                WHERE operation_type = 'project' AND deleted_at IS NULL
                  AND json_extract(metadata_json, '$.project_id') = ?
                ORDER BY created_at""",
@@ -1210,13 +1210,13 @@ def get_version_graph_handler(
                     "relationship": "supersedes",
                 })
 
-        # Also query mfdb_edge for supersedes edges. A supersedes edge is stored
+        # Also query mmfdb_edge for supersedes edges. A supersedes edge is stored
         # as newer_version -> parent_version.
         edge_rows = []
         if node_ids:
             edge_rows = conn.execute(
                 """SELECT source_node_id, target_node_id, metadata_json
-                   FROM mfdb_edge
+                   FROM mmfdb_edge
                    WHERE relationship_type = 'supersedes' AND deleted_at IS NULL
                      AND source_node_id IN ({})""".format(",".join("?" * len(node_ids))),
                 list(node_ids),
@@ -1272,7 +1272,7 @@ def list_project_artifacts_handler(
         principal, conn, db = _require_auth(auth)
         if not version_id:
             return service_error("version_id is required", error_code=INVALID_INPUT)
-        require_access(conn, principal, "mfdb_operation", version_id, PERM_READ)
+        require_access(conn, principal, "mmfdb_operation", version_id, PERM_READ)
 
         artifacts_by_id = {}
         for art_row in db.get_operation_artifacts(version_id):
@@ -1282,8 +1282,8 @@ def list_project_artifacts_handler(
                 artifacts_by_id[artifact_id] = art
         edge_rows = conn.execute(
             """SELECT a.*, e.relationship_type
-               FROM mfdb_edge AS e
-               JOIN mfdb_artifact AS a ON a.artifact_id = e.target_node_id
+               FROM mmfdb_edge AS e
+               JOIN mmfdb_artifact AS a ON a.artifact_id = e.target_node_id
                WHERE e.source_node_type = 'operation'
                  AND e.source_node_id = ?
                  AND e.target_node_type = 'artifact'
@@ -1342,11 +1342,11 @@ def list_project_parameters_handler(
         principal, conn, db = _require_auth(auth)
         if not version_id:
             return service_error("version_id is required", error_code=INVALID_INPUT)
-        require_access(conn, principal, "mfdb_operation", version_id, PERM_READ)
+        require_access(conn, principal, "mmfdb_operation", version_id, PERM_READ)
 
         # Find all fit operations that belong to this version
         fit_ops = conn.execute(
-            """SELECT operation_id FROM mfdb_operation
+            """SELECT operation_id FROM mmfdb_operation
                WHERE operation_id LIKE ? AND deleted_at IS NULL""",
             (f"fit_{version_id}:%",),
         ).fetchall()
@@ -1357,7 +1357,7 @@ def list_project_parameters_handler(
             params = conn.execute(
                 """SELECT parameter_uuid, name, value, initial_value,
                           lower_bound, upper_bound, bounds_on, parameter_type, metadata_json
-                   FROM mfdb_parameter
+                   FROM mmfdb_parameter
                    WHERE operation_id = ? AND deleted_at IS NULL""",
                 (op_id,),
             ).fetchall()

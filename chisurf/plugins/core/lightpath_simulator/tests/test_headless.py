@@ -39,7 +39,7 @@ def test_propagate_headless():
     mock_db.get_standardized_optical_properties.return_value = {"qy": 0.8, "ext_coeff": 92000}
     # Mock return for get_probe_by_id
     mock_db.get_probe_by_id.return_value = {"chromophore_name": "Test Dye"}
-    # Mock return for MFDB probe spectra
+    # Mock return for MMFDB probe spectra
     # We return a simple unit spectrum (flat)
     mock_db.get_probe_spectrum.return_value = (WAVELENGTHS, np.ones_like(WAVELENGTHS))
 
@@ -145,7 +145,7 @@ def test_json_safe_strips_runtime_callables():
 
 
 def test_lightpath_save_list_get_roundtrip(tmp_path):
-    """Persist a simulated lightpath graph as MFDB operation/artifacts."""
+    """Persist a simulated lightpath graph as MMFDB operation/artifacts."""
     from chisurf.plugins.core.lightpath_simulator.rpc.services import (
         get_handler,
         list_handler,
@@ -175,9 +175,9 @@ def test_lightpath_save_list_get_roundtrip(tmp_path):
     assert "crosstalk_matrices" in loaded_result
 
 
-def test_lightpath_simulates_from_mfdb_probe_spectra(tmp_path):
-    """Simulation should read spectra from canonical MFDB probe records."""
-    from chisurf.core.mfdb.repository import MFDatabase
+def test_lightpath_simulates_from_mmfdb_probe_spectra(tmp_path):
+    """Simulation should read spectra from canonical MMFDB probe records."""
+    from mmfdb.repository import MFDatabase
     from chisurf.plugins.core.lightpath_simulator.core.workflow import simulate_lightpath
 
     db_path = tmp_path / "spectra.db"
@@ -188,8 +188,8 @@ def test_lightpath_simulates_from_mfdb_probe_spectra(tmp_path):
             ("test", "Test probes"),
         )
         type_id = cursor.lastrowid
-        dye_id = db.add_probe("MFDB Dye", type_id, category="organic_dye")
-        detector_id = db.add_probe("MFDB Detector", type_id, category="other")
+        dye_id = db.add_probe("MMFDB Dye", type_id, category="organic_dye")
+        detector_id = db.add_probe("MMFDB Detector", type_id, category="other")
         db.add_optical_property(dye_id, "qy", "0.8")
         db.add_optical_property(dye_id, "ext_coeff", "100000")
         db.add_spectrum(dye_id, "absorption", wavelengths, np.array([0.2, 1.0, 0.5, 0.0]))
@@ -223,7 +223,7 @@ def test_lightpath_simulates_from_mfdb_probe_spectra(tmp_path):
                 "title": "Detector",
                 "inputs": [{"name": "In", "is_output": False}],
                 "outputs": [],
-                "config": {"detector_name": "MFDB detector", "probe_id": detector_id},
+                "config": {"detector_name": "MMFDB detector", "probe_id": detector_id},
             },
         ],
         "edges": [
@@ -235,15 +235,15 @@ def test_lightpath_simulates_from_mfdb_probe_spectra(tmp_path):
     result = simulate_lightpath(graph, db_path=str(db_path))
     signals = result["detector_signals"]
     assert signals
-    assert signals[0]["dye"] == "MFDB Dye"
-    assert signals[0]["detector"] == "MFDB detector"
+    assert signals[0]["dye"] == "MMFDB Dye"
+    assert signals[0]["detector"] == "MMFDB detector"
     assert signals[0]["intensity"] > 0.0
     matrices = result["crosstalk_matrices"]
     assert matrices["excitation"]["rows"] == ["488 nm"]
-    assert matrices["excitation"]["columns"] == ["MFDB Dye"]
-    assert matrices["emission"]["rows"] == ["MFDB Dye"]
-    assert matrices["emission"]["columns"] == ["MFDB detector"]
-    assert matrices["detected"]["columns"] == ["MFDB detector"]
+    assert matrices["excitation"]["columns"] == ["MMFDB Dye"]
+    assert matrices["emission"]["rows"] == ["MMFDB Dye"]
+    assert matrices["emission"]["columns"] == ["MMFDB detector"]
+    assert matrices["detected"]["columns"] == ["MMFDB detector"]
     assert result["instrument_setting"]["fluorophores"][0]["probe_id"] == dye_id
 
 
@@ -296,7 +296,7 @@ def test_lightpath_api_client_unwraps_rpc_envelope(tmp_path):
 
 
 def test_lightpath_rpc_handlers_accept_auth_metadata(tmp_path):
-    """MFDB clients inject auth metadata that lightpath handlers must tolerate."""
+    """MMFDB clients inject auth metadata that lightpath handlers must tolerate."""
     from chisurf.plugins.core.lightpath_simulator.api.contract import (
         METHOD_DESCRIBE_CONTRACT,
         METHOD_GET_PROBES_INFO,

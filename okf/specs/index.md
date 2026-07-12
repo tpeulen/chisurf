@@ -16,7 +16,7 @@ good looks like. Read [overview](overview.md) first for the whole-system shape.
 * [Target Architecture (Overview)](overview.md) - The whole-system shape, dependency direction, and the architectural principles every subsystem shares.
 * [Core Domain Layer](core.md) - The scientific objects and the math that operates on them.
 * [RPC & API Facade](rpc.md) - The single boundary between UI and domain.
-* [MFDB — Metadata & Provenance](mfdb.md) - Provenance and metadata as the target sees it.
+* [MMFDB — Metadata & Provenance](mmfdb.md) - Provenance and metadata as the target sees it.
 * [Plugin System](plugins.md) - How features are packaged and integrated.
 
 # Backlog

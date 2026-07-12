@@ -56,7 +56,7 @@ def render_spectra_thumbnail(probe_id: int, adapter) -> str:
     Parameters
     ----------
     probe_id : int
-        Probe identifier in the MFDB.
+        Probe identifier in the MMFDB.
     adapter : MFDatabaseAdapter or None
         Database adapter used to fetch spectra.
 

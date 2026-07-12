@@ -18,7 +18,7 @@ The primary plotting method :meth:`plot_series` accepts a list of trace dicts::
     view.plot_series([trace, ...])
 
 Convenience methods :meth:`display` and :meth:`display_multiple` accept the
-legacy mfdb ``fluorophores.get`` response format (probe dicts with a ``"spectra"``
+legacy mmfdb ``fluorophores.get`` response format (probe dicts with a ``"spectra"``
 key) and internally convert to the generic trace format.
 
 AutoForm declaration
@@ -97,7 +97,7 @@ class SpectrumView(QtWidgets.QWidget):
     """Displays one or more spectral traces (absorption, emission, …).
 
     Accepts data in a generic trace format via :meth:`plot_series`, or in the
-    legacy mfdb ``fluorophores.get`` response format via :meth:`display` /
+    legacy mmfdb ``fluorophores.get`` response format via :meth:`display` /
     :meth:`display_multiple`.
 
     Multi-trace mode
@@ -219,11 +219,11 @@ class SpectrumView(QtWidgets.QWidget):
         ))
 
     # ------------------------------------------------------------------
-    # Legacy mfdb convenience API
+    # Legacy mmfdb convenience API
     # ------------------------------------------------------------------
 
     def display(self, data: dict[str, Any]) -> None:
-        """Display spectra for a single probe (mfdb ``fluorophores.get`` format).
+        """Display spectra for a single probe (mmfdb ``fluorophores.get`` format).
 
         Parameters
         ----------

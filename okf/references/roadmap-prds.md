@@ -14,7 +14,7 @@ The [prds group](/prds/index.md) holds the numbered PRD design notes
 that drive current work. Consult the relevant PRD before large changes in its
 area — e.g. [PRD-40](/prds/prd-40.md) (model/UI split feeding
 [AutoForm](/subsystems/gui-autoform.md)), [PRD-43](/prds/prd-43.md) /
-[PRD-44](/prds/prd-44.md) (history as an [MFDB](/architecture/mfdb.md) projection),
+[PRD-44](/prds/prd-44.md) (history as an [MMFDB](/architecture/mmfdb.md) projection),
 and [PRD-48](/prds/prd-48.md) (provider-agnostic ELN gateway). The authoritative
 implementation ordering is [PRD Implementation Order](/prds/master-order.md).
 

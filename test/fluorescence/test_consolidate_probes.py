@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.repository import MFDatabase
 
 
 @pytest.fixture

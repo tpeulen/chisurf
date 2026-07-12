@@ -1,7 +1,7 @@
 """Tests for append-only calibration snapshot history (PRD-04 Sidequest D).
 
 Covers:
-- D1: ``mfdb_setup_calibration`` table exists and maps to live columns.
+- D1: ``mmfdb_setup_calibration`` table exists and maps to live columns.
 - D2: ``save_setup`` with calibration data creates append-only snapshots.
 - D4: ``add_setup_calibration``, ``list_setup_calibration_dates``,
       ``get_setup_calibration`` work correctly.
@@ -17,9 +17,9 @@ from pathlib import Path
 
 import pytest
 
-from chisurf.core.mfdb.store.database_resolver import resolve_database_path
-from chisurf.core.mfdb.repository import MFDatabase
-from chisurf.core.mfdb.schema.schema import migrate_schema, get_schema_version, SCHEMA_VERSION
+from mmfdb.store.database_resolver import resolve_database_path
+from mmfdb.repository import MFDatabase
+from mmfdb.schema.schema import migrate_schema, get_schema_version, SCHEMA_VERSION
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
     setup_id_for_name,
 )
@@ -42,13 +42,13 @@ def _fresh_db(tmp_path: Path, name: str = "test.db") -> MFDatabase:
 
 
 def test_calibration_table_exists(tmp_path: Path) -> None:
-    """After fresh schema setup, mfdb_setup_calibration exists and
+    """After fresh schema setup, mmfdb_setup_calibration exists and
     has the expected columns."""
     db = _fresh_db(tmp_path)
     try:
         cols = {
             r[1] for r in db.conn.execute(
-                "PRAGMA table_info(mfdb_setup_calibration)"
+                "PRAGMA table_info(mmfdb_setup_calibration)"
             ).fetchall()
         }
         required = {
@@ -64,19 +64,19 @@ def test_calibration_table_exists(tmp_path: Path) -> None:
 
 
 def test_calibration_dictionary_maps(tmp_path: Path) -> None:
-    """All mfdb_setup_calibration dictionary items map to live columns."""
-    from chisurf.core.mfdb.schema.dictionary_schema_map import build_dictionary_schema_map
+    """All mmfdb_setup_calibration dictionary items map to live columns."""
+    from mmfdb.schema.dictionary_schema_map import build_dictionary_schema_map
 
     db_path = os.path.join(tmp_path, "test_dict_cal.db")
     db = MFDatabase(db_path)
     db.close()
 
     mapper = build_dictionary_schema_map(db_path)
-    cat = mapper.dictionary.get_category("mfdb_setup_calibration")
-    assert cat is not None, "mfdb_setup_calibration category not found in dictionary"
+    cat = mapper.dictionary.get_category("mmfdb_setup_calibration")
+    assert cat is not None, "mmfdb_setup_calibration category not found in dictionary"
     failures = []
     for attr, item in cat.items.items():
-        full_name = item.name or f"_mfdb_setup_calibration.{attr}"
+        full_name = item.name or f"_mmfdb_setup_calibration.{attr}"
         mapped = mapper.map_dictionary_item(full_name)
         if mapped is None:
             failures.append(f"{full_name}: no mapping produced")
@@ -119,7 +119,7 @@ def test_save_setup_creates_calibration_snapshots(tmp_path: Path) -> None:
 
         # Check calibration snapshots exist
         snapshots = db.conn.execute(
-            "SELECT * FROM mfdb_setup_calibration WHERE setup_id = ? ORDER BY channel_name",
+            "SELECT * FROM mmfdb_setup_calibration WHERE setup_id = ? ORDER BY channel_name",
             (setup_id,),
         ).fetchall()
         assert len(snapshots) == 2
@@ -145,7 +145,7 @@ def test_save_setup_creates_calibration_snapshots(tmp_path: Path) -> None:
             },
         )
         assert len(db.conn.execute(
-            "SELECT 1 FROM mfdb_setup_calibration WHERE setup_id = ?", (setup_id,)
+            "SELECT 1 FROM mmfdb_setup_calibration WHERE setup_id = ?", (setup_id,)
         ).fetchall()) == 2
 
         # Changing a factor DOES append a new snapshot for that channel.
@@ -158,7 +158,7 @@ def test_save_setup_creates_calibration_snapshots(tmp_path: Path) -> None:
             },
         )
         green_snaps = db.conn.execute(
-            "SELECT g_factor FROM mfdb_setup_calibration "
+            "SELECT g_factor FROM mmfdb_setup_calibration "
             "WHERE setup_id = ? AND channel_name = 'green' ORDER BY calibrated_at",
             (setup_id,),
         ).fetchall()
@@ -200,7 +200,7 @@ def test_add_setup_calibration_appends_snapshots(tmp_path: Path) -> None:
 
         # Both rows exist
         rows = db.conn.execute(
-            "SELECT * FROM mfdb_setup_calibration WHERE setup_id = ? AND channel_name = ? ORDER BY id",
+            "SELECT * FROM mmfdb_setup_calibration WHERE setup_id = ? AND channel_name = ? ORDER BY id",
             (setup_id, "green"),
         ).fetchall()
         assert len(rows) == 2
@@ -316,7 +316,7 @@ def test_get_setup_includes_calibration(tmp_path: Path) -> None:
 
 # ---------------------------------------------------------------------------
 # Note: the former test_v35_migration_backfills_existing_channels test exercised the
-# removed version-chain migration (mfdb_schema_version stepping v34→v35 with a calibration
+# removed version-chain migration (mmfdb_schema_version stepping v34→v35 with a calibration
 # backfill, method="migrated"). PRD-19 deleted the version chain (pre-PRD-19 DBs are
 # disposable). Calibration-snapshot creation on the current path is covered by
 # test_save_setup_creates_calibration_snapshots / _appends_snapshots above.

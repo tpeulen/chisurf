@@ -1,22 +1,22 @@
 ---
 type: PRD
 prd: "35"
-title: "PRD-35: Light-Path Optical Presets Stored in MFDB"
-description: Migrates optical-path presets from JSON files on disk into MFDB as queryable, versioned, provenance-tracked entities.
+title: "PRD-35: Light-Path Optical Presets Stored in MMFDB"
+description: Migrates optical-path presets from JSON files on disk into MMFDB as queryable, versioned, provenance-tracked entities.
 status: planned
 phase: "unassigned"
 resource: chisurf/plugins/core/lightpath_simulator
-tags: [prd, mfdb]
+tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Makes every optical-path preset — the complete graph of laser lines, dichroics, splitters, filters, detector QE curves, and sample dyes — a first-class, queryable, provenance-tracked MFDB entity instead of a raw JSON file on disk. A new `mfdb_optical_preset` table stores the opaque graph payload in the content-addressed object store, with a JSON metadata column of searchable tags (laser lines, dye probes, detector count, polarizer, etc.) and RPC endpoints to list/get/put/delete presets. The graph stays opaque to SQL (the canonical node-graph serialization is unchanged); a future join table records which preset was active for a measurement, giving provenance. Migration is phased with a transparent JSON-on-disk fallback and backward compatibility retained.
+Makes every optical-path preset — the complete graph of laser lines, dichroics, splitters, filters, detector QE curves, and sample dyes — a first-class, queryable, provenance-tracked MMFDB entity instead of a raw JSON file on disk. A new `mmfdb_optical_preset` table stores the opaque graph payload in the content-addressed object store, with a JSON metadata column of searchable tags (laser lines, dye probes, detector count, polarizer, etc.) and RPC endpoints to list/get/put/delete presets. The graph stays opaque to SQL (the canonical node-graph serialization is unchanged); a future join table records which preset was active for a measurement, giving provenance. Migration is phased with a transparent JSON-on-disk fallback and backward compatibility retained.
 
 # Status
 Planned (Proposed). The light path simulator currently stores optical path
 presets as raw JSON files on disk (`~/.chisurf/presets/lightpath_optical/`); the
-JSON-on-disk code path (Phase 0) is the approved interim and is done. The MFDB
+JSON-on-disk code path (Phase 0) is the approved interim and is done. The MMFDB
 write path, provenance join table, and offline fallback are future phases.
 Complementary to, not a replacement for, the detailed instrument/optical-channel
 schema.
@@ -25,7 +25,7 @@ schema.
 
 Make every optical path preset — the complete graph (laser lines, dichroics,
 splitters, bandpass filters, detector QE curves, sample dyes with QY/EC) — a
-first-class, queryable, provenance-tracked MFDB entity. Once stored, a preset
+first-class, queryable, provenance-tracked MMFDB entity. Once stored, a preset
 can be:
 
 - Shared across users on the same machine (single object store)
@@ -37,16 +37,16 @@ can be:
 # Non-goals
 
 - **Replacing the Full Simulator node graph** — the `GraphDef` dict (nodes +
-  edges) remains the canonical serialization. The MFDB entity stores the graph
+  edges) remains the canonical serialization. The MMFDB entity stores the graph
   payload, not a decomposed optical model.
 - **Structuring every component as a separate row** — PRD-08 already defines a
-  detailed optical channel schema (`mfdb_optical_channel`) for instrument
+  detailed optical channel schema (`mmfdb_optical_channel`) for instrument
   settings. This PRD is about *presets* (named, reusable configurations), not
   about breaking each component into relational columns. The two schemas are
   complementary: a preset's graph can be *exported* into the PRD-08 instrument
   schema when the preset is *applied* to a measurement.
 - **Decomposing the graph into SQL** — the graph stays opaque to SQL queries
-  (`mfdb_object` blob). Metadata tags enable queryability.
+  (`mmfdb_object` blob). Metadata tags enable queryability.
 
 # Context: What Exists Today
 
@@ -54,30 +54,30 @@ can be:
 |-----------|---------|-------|
 | Optical path presets | `~/.chisurf/presets/lightpath_optical/*.json` | Full `GraphDef` dicts saved by the Full Simulator |
 | Easy-mode last config | `~/.chisurf/settings/lightpath_easy_last.json` | Preset name + params |
-| Probe catalogue (spectra) | MFDB (`get_probes_info()`) | Already in MFDB; the light path reads from it |
+| Probe catalogue (spectra) | MMFDB (`get_probes_info()`) | Already in MMFDB; the light path reads from it |
 | Object store | `~/.chisurf/objects/{md5[0:2]}/{md5[2:4]}/{md5}` | Content-addressed blob store, shared across users |
 
 The interim JSON path is clean and functional. The only missing piece is
-MFDB integration.
+MMFDB integration.
 
 # Proposed Schema
 
-## New table: `mfdb_optical_preset`
+## New table: `mmfdb_optical_preset`
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `preset_id` | INTEGER PK | Auto-increment |
 | `name` | TEXT NOT NULL UNIQUE | Human-readable name, e.g. "4ch-smFRET 488/561/640" |
 | `description` | TEXT | Free-text notes |
-| `graph_object_uuid` | TEXT NOT NULL | UUID of the `mfdb_object` row holding the `GraphDef` JSON |
+| `graph_object_uuid` | TEXT NOT NULL | UUID of the `mmfdb_object` row holding the `GraphDef` JSON |
 | `metadata` | TEXT (JSON) | Key-value tags: `laser_lines`, `dye_probes`, `detector_count`, `has_polarizer`, etc. |
-| `owner_user_id` | INTEGER FK → mfdb_user | Who created/saved this preset |
+| `owner_user_id` | INTEGER FK → mmfdb_user | Who created/saved this preset |
 | `created_at` | TEXT (ISO-8601) | |
 | `updated_at` | TEXT (ISO-8601) | |
-| `superseded_by` | INTEGER FK → mfdb_optical_preset.preset_id | NULL = active; non-NULL = replaced |
+| `superseded_by` | INTEGER FK → mmfdb_optical_preset.preset_id | NULL = active; non-NULL = replaced |
 
 The graph payload is stored in the existing object store via
-`mfdb.objects.put`. The `graph_object_uuid` column holds the object UUID that
+`mmfdb.objects.put`. The `graph_object_uuid` column holds the object UUID that
 resolves to the MD5-addressed blob.
 
 ## Metadata tags (stored in the `metadata` JSON column)
@@ -99,56 +99,56 @@ These enable filtered queries without parsing the graph blob:
 Cached crosstalk matrices and Förster radii are ephemeral — they change when
 the dye profile changes. They stay in the auto-saved JSON
 (`lightpath_easy_last.json`) or can be stored as a separate
-`mfdb_artifact` linked to the preset + dye-profile combination if needed.
+`mmfdb_artifact` linked to the preset + dye-profile combination if needed.
 
 # How It Connects to Existing Entities
 
 ```
-mfdb_optical_preset ──graph_object_uuid──▶ mfdb_object (content-addressed GraphDef)
+mmfdb_optical_preset ──graph_object_uuid──▶ mmfdb_object (content-addressed GraphDef)
         │
-        ├──owner_user_id──────────────────▶ mfdb_user
+        ├──owner_user_id──────────────────▶ mmfdb_user
         │
-        └── (used_by) ───────────────────▶ mfdb_setup / flr_inst_setting
+        └── (used_by) ───────────────────▶ mmfdb_setup / flr_inst_setting
                                            (via a future link column or a
-                                            join table: mfdb_optical_preset_use)
+                                            join table: mmfdb_optical_preset_use)
 ```
 
-The `mfdb_optical_preset_use` join table (future) records which preset was
+The `mmfdb_optical_preset_use` join table (future) records which preset was
 active when a measurement was taken, creating the provenance chain:
 
 ```sql
-CREATE TABLE mfdb_optical_preset_use (
+CREATE TABLE mmfdb_optical_preset_use (
     id INTEGER PRIMARY KEY,
-    preset_id INTEGER NOT NULL REFERENCES mfdb_optical_preset(preset_id),
+    preset_id INTEGER NOT NULL REFERENCES mmfdb_optical_preset(preset_id),
     experiment_id INTEGER REFERENCES flr_experiment(experiment_id),
-    setup_id INTEGER REFERENCES mfdb_setup(setup_id),
+    setup_id INTEGER REFERENCES mmfdb_setup(setup_id),
     applied_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
 
 # RPC Endpoints
 
-## `mfdb.optical_presets.list` → `list[{id, name, description, metadata}]`
+## `mmfdb.optical_presets.list` → `list[{id, name, description, metadata}]`
 
 List all active (non-superseded) presets. Supports optional tag filters:
 `laser_lines`, `dye_probe_ids`, `detector_count`.
 
-## `mfdb.optical_presets.get` → `{id, name, description, graph, metadata, ...}`
+## `mmfdb.optical_presets.get` → `{id, name, description, graph, metadata, ...}`
 
 Fetch a preset by ID or name. Returns the full `GraphDef` dict from the
 object store.
 
-## `mfdb.optical_presets.put` → `{preset_id}`
+## `mmfdb.optical_presets.put` → `{preset_id}`
 
 Save a preset. Accepts `{name, description, graph (dict), metadata (dict)}`.
 Stores the graph in the object store (deduplicated by MD5), creates/updates
-the `mfdb_optical_preset` row.
+the `mmfdb_optical_preset` row.
 
-## `mfdb.optical_presets.delete`
+## `mmfdb.optical_presets.delete`
 
 Soft-delete (set `superseded_by` to the next version or a tombstone).
 
-## `mfdb.optical_presets.list_tags` → `list[str]`
+## `mmfdb.optical_presets.list_tags` → `list[str]`
 
 Return the union of all values for a given metadata key across active presets
 (e.g., all distinct `laser_lines` values). Powers autocomplete in the easy-mode
@@ -161,41 +161,41 @@ combo box.
 JSON files on disk. Full Simulator saves to `~/.chisurf/presets/lightpath_optical/`.
 Easy mode reads from there.
 
-## Phase 1 — MFDB write path (next)
+## Phase 1 — MMFDB write path (next)
 
-- Backend: add `mfdb.optical_presets.put` RPC handler. Writes graph to object
-  store, creates `mfdb_optical_preset` row, extracts metadata tags from the
+- Backend: add `mmfdb.optical_presets.put` RPC handler. Writes graph to object
+  store, creates `mmfdb_optical_preset` row, extracts metadata tags from the
   graph.
 - Full Simulator: "Save as Optical Path Preset…" calls
-  `mfdb.optical_presets.put` instead of (or in addition to) writing a JSON file.
-- Easy mode: populate the path combo from `mfdb.optical_presets.list` instead
+  `mmfdb.optical_presets.put` instead of (or in addition to) writing a JSON file.
+- Easy mode: populate the path combo from `mmfdb.optical_presets.list` instead
   of scanning the filesystem.
-- CLI: `imp-tricks lightpath ...` can read/write presets from MFDB.
+- CLI: `imp-tricks lightpath ...` can read/write presets from MMFDB.
 
 ## Phase 2 — Provenance (future)
 
-- Add `mfdb_optical_preset_use` join table.
+- Add `mmfdb_optical_preset_use` join table.
 - When a detector wizard setup is saved, link to the active preset.
 - Expose in the experiment browser: "show me all measurements that used the
   4-channel FRET preset".
 
 ## Phase 3 — Offline fallback (future)
 
-- When MFDB is not available, fall back to the JSON-on-disk path
-  transparently. The easy mode tries MFDB first, falls back to `glob()`.
+- When MMFDB is not available, fall back to the JSON-on-disk path
+  transparently. The easy mode tries MMFDB first, falls back to `glob()`.
 
 # Backward Compatibility
 
 - The JSON path is not removed. Old presets on disk are readable regardless
-  of MFDB state.
-- When MFDB is connected, users can import on-disk JSON presets into MFDB
+  of MMFDB state.
+- When MMFDB is connected, users can import on-disk JSON presets into MMFDB
   via a "Migrate…" button in the Full Simulator or easy mode.
 
 # Open Questions
 
-1. Should `mfdb_optical_preset_use` be a separate PRD (linked to the
+1. Should `mmfdb_optical_preset_use` be a separate PRD (linked to the
    instrument/setup overhaul in PRD-08), or rolled into this one?
-2. Should the easy-mode last-config auto-save also go to MFDB (as a "most
+2. Should the easy-mode last-config auto-save also go to MMFDB (as a "most
    recently used" preference on the user row)?
 3. Do we need a permission model for presets (read-only shared presets vs.
    user-private)? Current JSON presets are world-readable on a multi-user
@@ -203,5 +203,5 @@ Easy mode reads from there.
 
 # Relationships
 - Complementary to [PRD-08](prd-08.md) optical-channel/instrument schema (a preset's graph can be exported into it when applied); open question whether the use/provenance join table belongs here or with PRD-08.
-- Reads probe/spectra data already in MFDB and reuses the content-addressed object store and refcounting.
-- Exposes presets over RPC: [RPC target](/specs/rpc.md); stores in [MFDB (current)](/architecture/mfdb.md) / [MFDB target](/specs/mfdb.md).
+- Reads probe/spectra data already in MMFDB and reuses the content-addressed object store and refcounting.
+- Exposes presets over RPC: [RPC target](/specs/rpc.md); stores in [MMFDB (current)](/architecture/mmfdb.md) / [MMFDB target](/specs/mmfdb.md).

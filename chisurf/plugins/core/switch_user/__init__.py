@@ -1,4 +1,4 @@
-"""Core plugin for switching the active MFDB user."""
+"""Core plugin for switching the active MMFDB user."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ name = _manifest.display_name if _manifest is not None else "Setup:Switch User"
 
 
 def show_switch_user(parent: QtWidgets.QWidget | None = None) -> None:
-    """Open the ChiSurf login dialog to switch the active MFDB user.
+    """Open the ChiSurf login dialog to switch the active MMFDB user.
 
     Parameters
     ----------
@@ -27,7 +27,7 @@ def show_switch_user(parent: QtWidgets.QWidget | None = None) -> None:
 
 
 class SwitchUserWidget(QtWidgets.QWidget):
-    """Transient plugin widget that opens the MFDB login dialog."""
+    """Transient plugin widget that opens the MMFDB login dialog."""
 
     def showEvent(self, event) -> None:
         """Open the switch-user dialog when the plugin is shown.

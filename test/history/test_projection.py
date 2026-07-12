@@ -2,7 +2,7 @@
 
 These pin the behaviour of ``chisurf.history.build_target_state`` so the Stage-1
 extraction from ``main_helper.py`` is verifiably a move, not a rewrite, and so
-later stages (MFDB-backed log) can assert projection-equivalence against it.
+later stages (MMFDB-backed log) can assert projection-equivalence against it.
 
 No Qt, no DB — pure event lists in, ``DomainState`` out.
 """

@@ -44,7 +44,7 @@
     },
     {
       "name": "microtime_shift.identify",
-      "summary": "Look up a file in the MFDB object store.",
+      "summary": "Look up a file in the MMFDB object store.",
       "params_schema": "api.contract#/inputs/Identify",
       "result_schema": "api.contract#/outputs/ServiceResult",
       "long_running": false,

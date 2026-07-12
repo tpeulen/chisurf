@@ -6,7 +6,7 @@ import tempfile
 # Add the project root to the Python path
 sys.path.insert(0, os.path.abspath('..'))
 
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.repository import MFDatabase
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
     load_detector_setups,
     save_detector_setups,
@@ -71,13 +71,13 @@ def test_save_detector_setups():
             os.remove(temp_path)
 
 
-def test_default_detector_setups_store_in_mfdb(tmp_path):
-    """Default detector setup storage should persist in MFDB, not JSON.
+def test_default_detector_setups_store_in_mmfdb(tmp_path):
+    """Default detector setup storage should persist in MMFDB, not JSON.
 
     Uses dependency injection (``db_path`` / ``user_id`` / ``skip_migration``)
     so the test never touches the real database — no monkeypatching.
     """
-    db_path = str(tmp_path / "mfdb.sqlite")
+    db_path = str(tmp_path / "mmfdb.sqlite")
 
     setup_data = {
         "setups": {

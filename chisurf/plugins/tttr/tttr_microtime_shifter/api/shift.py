@@ -1,4 +1,4 @@
-"""Pure micro-time shift logic (no GUI, no MFDB)."""
+"""Pure micro-time shift logic (no GUI, no MMFDB)."""
 
 from __future__ import annotations
 
@@ -165,7 +165,7 @@ def shift_file(
 ) -> tuple[str, dict[int, int]]:
     """Shift micro-times in a TTTR file and write the result.
 
-    This is the pure API entry point.  No GUI or MFDB imports.
+    This is the pure API entry point.  No GUI or MMFDB imports.
 
     Parameters
     ----------

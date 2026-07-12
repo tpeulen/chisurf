@@ -1,4 +1,4 @@
-"""Förster radius calculator widget backed by MFDB spectra."""
+"""Förster radius calculator widget backed by MMFDB spectra."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import numpy as np
 from qtpy import QtCore, QtWidgets
 
 from chisurf.core.fluorescence.fret.forster import forster_radius_from_spectra
-from chisurf.core.mfdb.store.database_resolver import resolve_database_path
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.store.database_resolver import resolve_database_path
+from mmfdb.repository import MFDatabase
 
 _EXT_COEFF_ALIASES = frozenset({
     "ext_coeff", "molar_extinction", "molar_ec", "epsilon",
@@ -131,9 +131,9 @@ class ForsterCalculatorModel:
 
 
 class ForsterCalculatorWidget(QtWidgets.QWidget):
-    """A widget to calculate Förster radius from MFDB spectra.
+    """A widget to calculate Förster radius from MMFDB spectra.
 
-    Queries the MFDB for probes with emission / absorption spectra, lets
+    Queries the MMFDB for probes with emission / absorption spectra, lets
     the user pick donor and acceptor probes via searchable combo boxes,
     and computes R₀ via the canonical overlap integral.  Emits
     ``forster_radius_calculated`` with the result in Ångström.
@@ -225,7 +225,7 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
             db_path = resolve_database_path()
             db = MFDatabase(str(db_path), readonly=True)
         except Exception:
-            self.result_label.setText("Could not open MFDB database.")
+            self.result_label.setText("Could not open MMFDB database.")
             self.apply_btn.setEnabled(False)
             return
 
@@ -347,7 +347,7 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
             self.apply_btn.setEnabled(False)
             return
 
-        # Try MFDB cached R0 first
+        # Try MMFDB cached R0 first
         donor_name = self._probe_name(donor_pid)
         acceptor_name = self._probe_name(acceptor_pid)
         db = self._db_for_read()

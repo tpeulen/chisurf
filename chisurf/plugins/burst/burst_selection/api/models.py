@@ -150,22 +150,22 @@ class AnalysisSettings:
 
 
 @dataclass
-class MFDBContext:
-    """MFDB archival context for a burst-selection request.
+class MMFDBContext:
+    """MMFDB archival context for a burst-selection request.
 
     Attributes
     ----------
     enabled : bool
-        If ``False``, skip MFDB registration for this request.
+        If ``False``, skip MMFDB registration for this request.
     sample_id : str
-        Optional existing MFDB sample identifier linked to registered artifacts.
+        Optional existing MMFDB sample identifier linked to registered artifacts.
     source_artifact_ids : dict
         Mapping from normalized input file path to an existing raw artifact ID.
     register_missing_inputs : bool
         If ``True``, archive input files that do not already have a source
         artifact ID.
     setup_id : str
-        Optional MFDB setup identifier linked to registered operations.
+        Optional MMFDB setup identifier linked to registered operations.
     setup_version : int, optional
         Optional setup version for traceability metadata.
 
@@ -209,8 +209,8 @@ class AnalysisRequest:
         Detector setup label stored in output metadata.
     legacy_parameters : dict
         Additional metadata written to legacy ``Info`` files.
-    mfdb : MFDBContext
-        Optional MFDB archival context.
+    mmfdb : MMFDBContext
+        Optional MMFDB archival context.
 
     """
 
@@ -224,7 +224,7 @@ class AnalysisRequest:
     legacy_output_folder_name: str | None = None
     selected_setup: str | None = None
     legacy_parameters: dict[str, Any] = field(default_factory=dict)
-    mfdb: MFDBContext = field(default_factory=MFDBContext)
+    mmfdb: MMFDBContext = field(default_factory=MMFDBContext)
 
 
 @dataclass
@@ -247,10 +247,10 @@ class AnalysisResult:
         Per-input output paths, keyed first by input file and then by role.
     metadata : dict
         Counts and additional run metadata.
-    mfdb_artifacts : dict
-        MFDB artifact IDs returned by the archival layer.
+    mmfdb_artifacts : dict
+        MMFDB artifact IDs returned by the archival layer.
     warnings : list
-        Non-fatal analysis or MFDB archival warnings.
+        Non-fatal analysis or MMFDB archival warnings.
 
     """
 
@@ -261,7 +261,7 @@ class AnalysisResult:
     output_paths: dict[str, str] = field(default_factory=dict)
     output_paths_by_file: dict[str, dict[str, str]] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
-    mfdb_artifacts: dict[str, Any] = field(default_factory=dict)
+    mmfdb_artifacts: dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:

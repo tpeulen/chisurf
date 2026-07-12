@@ -4,16 +4,16 @@ from typing import Any
 
 from chisurf import logging
 from chisurf.core.plugin.client import InProcessClient
-from chisurf.plugins.core.mfdb_admin.gui.client import MFDBClient
+from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
 
-class ProjectBrowserClient(MFDBClient):
+class ProjectBrowserClient(MMFDBClient):
     """Client for project_browser RPC handlers."""
 
-    def __init__(self, mfdb_client: MFDBClient | None = None, **kwargs: Any):
-        if mfdb_client is not None:
-            self._client = mfdb_client._client
-            self._token = mfdb_client.token
+    def __init__(self, mmfdb_client: MMFDBClient | None = None, **kwargs: Any):
+        if mmfdb_client is not None:
+            self._client = mmfdb_client._client
+            self._token = mmfdb_client.token
         else:
             kwargs.setdefault("inprocess", True)
             super().__init__(**kwargs)
@@ -23,26 +23,26 @@ class ProjectBrowserClient(MFDBClient):
     def _make_inprocess_client(self) -> InProcessClient:
         from chisurf.server.dispatcher import ServiceDispatcher
         from chisurf.server.session import SessionState
-        from mfdb.admin.backend.services import register_services as register_mfdb_services
+        from chisurf.core.mmfdb_services import register_services as register_mmfdb_services
         from chisurf.plugins.core.project_browser.backend.services import register_services as register_project_browser_services
 
         dispatcher = ServiceDispatcher(SessionState())
-        register_mfdb_services(dispatcher)
+        register_mmfdb_services(dispatcher)
         register_project_browser_services(dispatcher)
         return InProcessClient(dispatcher)
 
     def _auto_auth(self) -> None:
-        """Use the active MFDB login token for in-process project-browser RPC calls."""
-        from mfdb.store.database_resolver import resolve_database_path
-        from mfdb.repository import MFDatabase
-        from mfdb.security.credentials import _RUNTIME_SESSION_TOKENS
-        from mfdb.security.auth import _hash_token
+        """Use the active MMFDB login token for in-process project-browser RPC calls."""
+        from mmfdb.store.database_resolver import resolve_database_path
+        from mmfdb.repository import MFDatabase
+        from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
+        from mmfdb.security.auth import _hash_token
         import chisurf.core.settings as cs_settings
 
         try:
-            mfdb_settings = getattr(cs_settings, "cs_settings", {}).get("mfdb", {})
-            server_host = mfdb_settings.get("last_server", "127.0.0.1")
-            server_port = int(mfdb_settings.get("last_port", 8765))
+            mmfdb_settings = getattr(cs_settings, "cs_settings", {}).get("mmfdb", {})
+            server_host = mmfdb_settings.get("last_server", "127.0.0.1")
+            server_port = int(mmfdb_settings.get("last_port", 8765))
             prefix = f"{server_host}:{server_port}:"
             token = None
             for key, value in _RUNTIME_SESSION_TOKENS.items():
@@ -57,7 +57,7 @@ class ProjectBrowserClient(MFDBClient):
                 token_hash = _hash_token(token)
                 row = db.conn.execute(
                     """SELECT u.user_id
-                       FROM mfdb_session AS s
+                       FROM mmfdb_session AS s
                        JOIN flr_sample_users AS u ON u.user_id = s.user_id
                        WHERE s.token_hash = ?""",
                     (token_hash,),
@@ -73,7 +73,7 @@ class ProjectBrowserClient(MFDBClient):
             token = f"inproc_{uuid.uuid4().hex}"
             token_hash = _hash_token(token)
             session_id = f"inproc_{uuid.uuid4().hex[:12]}"
-            requested_user_id = mfdb_settings.get("default_user_id", "user_default")
+            requested_user_id = mmfdb_settings.get("default_user_id", "user_default")
             row = db.conn.execute(
                 "SELECT user_id FROM flr_sample_users WHERE user_id = ? LIMIT 1",
                 (requested_user_id,),
@@ -85,7 +85,7 @@ class ProjectBrowserClient(MFDBClient):
                 ).fetchone()
             user_id = row[0] if row else "user_default"
             db.conn.execute(
-                "INSERT OR IGNORE INTO mfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO mmfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
                 (session_id, user_id, token_hash, "2099-12-31T23:59:59"),
             )
             db.conn.commit()

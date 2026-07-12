@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Educational example of using the MFDB (Multiparameter Fluorescence Database)
+"""Educational example of using the MMFDB (Multiparameter Fluorescence Database)
 and the Burst Selection plugin to register and process single-molecule data.
 
 This script runs completely in-process (no ZMQ sockets, ports, or background servers).
@@ -7,7 +7,7 @@ This script runs completely in-process (no ZMQ sockets, ports, or background ser
 
 from pathlib import Path
 import chisurf
-from chisurf.core.mfdb import FluorescenceDatabase, BurstPipeline
+from chisurf.core.mmfdb import FluorescenceDatabase, BurstPipeline
 
 # 1. Locate the test SPC file
 chisurf_dir = Path(chisurf.__file__).resolve().parent

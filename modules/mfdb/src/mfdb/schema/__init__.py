@@ -1,1 +1,0 @@
-"""MFDB schema subpackage."""

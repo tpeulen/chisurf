@@ -1,7 +1,7 @@
 """Central RPC service for detector / channel setup definitions.
 
 This is the transport-agnostic, Qt-free access layer over the canonical
-detector-setup store (``detector_setups.json`` / MFDB).
+detector-setup store (``detector_setups.json`` / MMFDB).
 
 It serves two purposes:
 
@@ -64,7 +64,7 @@ def list_setups(state: SessionState, file_path: str | None = None) -> ServiceRes
     """
     try:
         data = _load_all(file_path)
-    except Exception as exc:  # pragma: no cover - depends on MFDB/disk
+    except Exception as exc:  # pragma: no cover - depends on MMFDB/disk
         return service_error(
             f"Failed to load detector setups: {exc}",
             error_code=OPERATION_FAILED,
@@ -90,7 +90,7 @@ def get_setup(
             return {"ok": True, "result": dict(active)}
     try:
         data = _load_all(file_path)
-    except Exception as exc:  # pragma: no cover - depends on MFDB/disk
+    except Exception as exc:  # pragma: no cover - depends on MMFDB/disk
         return service_error(
             f"Failed to load detector setups: {exc}",
             error_code=OPERATION_FAILED,
@@ -125,7 +125,7 @@ def save_setup(
 
         payload = {"setups": {name: dict(settings)}, "last_used": name}
         save_detector_setups(payload, file_path=file_path, is_public=is_public)
-    except Exception as exc:  # pragma: no cover - depends on MFDB/disk
+    except Exception as exc:  # pragma: no cover - depends on MMFDB/disk
         return service_error(
             f"Failed to save detector setup {name!r}: {exc}",
             error_code=OPERATION_FAILED,

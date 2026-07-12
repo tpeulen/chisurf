@@ -1,13 +1,13 @@
 """Persist pipeline definitions and runs (PRD-22 Task 3).
 
 A pipeline is a *saveable, shareable document* (the Orange3 ``.ows`` lesson): its
-graph structure is stored in the dictionary-declared ``mfdb_pipeline`` /
-``mfdb_pipeline_node`` / ``mfdb_pipeline_edge`` tables (structured, not a blob — only
+graph structure is stored in the dictionary-declared ``mmfdb_pipeline`` /
+``mmfdb_pipeline_node`` / ``mmfdb_pipeline_edge`` tables (structured, not a blob — only
 the per-node parameter bag is JSON). A *run* groups the recorded operation chain via
-``mfdb_pipeline_run`` / ``mfdb_pipeline_run_operation`` so an execution is queryable
+``mmfdb_pipeline_run`` / ``mmfdb_pipeline_run_operation`` so an execution is queryable
 as a unit.
 
-These are thin free functions over an MFDB handle (``db.conn`` + ``db.transaction``),
+These are thin free functions over an MMFDB handle (``db.conn`` + ``db.transaction``),
 keeping pipeline persistence in the pipeline package rather than the repository.
 """
 
@@ -22,13 +22,13 @@ from chisurf.core.pipeline.runner import PipelineRun
 
 
 def _now() -> str:
-    from chisurf.core.mfdb.repository import _utc_now
+    from mmfdb.schema._sqlutil import _utc_now
 
     return _utc_now()
 
 
 def _default_user() -> str | None:
-    from chisurf.core.mfdb.security.session import configured_default_user_id
+    from mmfdb.security.session import configured_default_user_id
 
     return configured_default_user_id()
 
@@ -57,29 +57,29 @@ def save_pipeline(
     pid = pipeline_id or str(uuid.uuid4())
     now = _now()
     with db.transaction():
-        db.conn.execute("DELETE FROM mfdb_pipeline_node WHERE pipeline_id = ?", (pid,))
-        db.conn.execute("DELETE FROM mfdb_pipeline_edge WHERE pipeline_id = ?", (pid,))
-        db.conn.execute("DELETE FROM mfdb_pipeline WHERE pipeline_id = ?", (pid,))
+        db.conn.execute("DELETE FROM mmfdb_pipeline_node WHERE pipeline_id = ?", (pid,))
+        db.conn.execute("DELETE FROM mmfdb_pipeline_edge WHERE pipeline_id = ?", (pid,))
+        db.conn.execute("DELETE FROM mmfdb_pipeline WHERE pipeline_id = ?", (pid,))
         db.conn.execute(
-            "INSERT INTO mfdb_pipeline (pipeline_id, name, version, description, "
+            "INSERT INTO mmfdb_pipeline (pipeline_id, name, version, description, "
             "created_by_user_id, is_public, created_at, updated_at, deleted_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (pid, pipeline.name, pipeline.version, description or None,
              created_by_user_id, 1 if is_public else 0, now, now, None),
         )
-        node_base = _next_id(db, "mfdb_pipeline_node", "node_row_id")
+        node_base = _next_id(db, "mmfdb_pipeline_node", "node_row_id")
         for i, node in enumerate(pipeline.nodes):
             db.conn.execute(
-                "INSERT INTO mfdb_pipeline_node (node_row_id, pipeline_id, node_name, "
+                "INSERT INTO mmfdb_pipeline_node (node_row_id, pipeline_id, node_name, "
                 "operation_type, parameters_json, created_at, updated_at, deleted_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (node_base + i, pid, node.name, node.operation_type,
                  json.dumps(node.parameters or {}), now, now, None),
             )
-        edge_base = _next_id(db, "mfdb_pipeline_edge", "edge_row_id")
+        edge_base = _next_id(db, "mmfdb_pipeline_edge", "edge_row_id")
         for j, edge in enumerate(pipeline.edges):
             db.conn.execute(
-                "INSERT INTO mfdb_pipeline_edge (edge_row_id, pipeline_id, source_node, "
+                "INSERT INTO mmfdb_pipeline_edge (edge_row_id, pipeline_id, source_node, "
                 "source_port, target_node, target_port, created_at, updated_at, "
                 "deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (edge_base + j, pid, edge.source, edge.source_port, edge.target,
@@ -91,20 +91,20 @@ def save_pipeline(
 def get_pipeline(db: Any, pipeline_id: str) -> Pipeline | None:
     """Reconstruct a stored :class:`Pipeline` by id, or ``None`` if absent."""
     head = db.conn.execute(
-        "SELECT name, version FROM mfdb_pipeline "
+        "SELECT name, version FROM mmfdb_pipeline "
         "WHERE pipeline_id = ? AND deleted_at IS NULL",
         (pipeline_id,),
     ).fetchone()
     if head is None:
         return None
     node_rows = db.conn.execute(
-        "SELECT node_name, operation_type, parameters_json FROM mfdb_pipeline_node "
+        "SELECT node_name, operation_type, parameters_json FROM mmfdb_pipeline_node "
         "WHERE pipeline_id = ? AND deleted_at IS NULL ORDER BY node_row_id",
         (pipeline_id,),
     ).fetchall()
     edge_rows = db.conn.execute(
         "SELECT source_node, source_port, target_node, target_port "
-        "FROM mfdb_pipeline_edge WHERE pipeline_id = ? AND deleted_at IS NULL "
+        "FROM mmfdb_pipeline_edge WHERE pipeline_id = ? AND deleted_at IS NULL "
         "ORDER BY edge_row_id",
         (pipeline_id,),
     ).fetchall()
@@ -132,7 +132,7 @@ def list_pipelines(
         where.append("(is_public = 1 OR created_by_user_id = ?)")
         params.append(owner_id)
     rows = db.conn.execute(
-        f"SELECT * FROM mfdb_pipeline WHERE {' AND '.join(where)} ORDER BY name",
+        f"SELECT * FROM mmfdb_pipeline WHERE {' AND '.join(where)} ORDER BY name",
         params,
     ).fetchall()
     return [dict(r) for r in rows]
@@ -157,16 +157,16 @@ def record_pipeline_run(
     now = _now()
     with db.transaction():
         db.conn.execute(
-            "INSERT INTO mfdb_pipeline_run (pipeline_run_id, pipeline_id, name, status, "
+            "INSERT INTO mmfdb_pipeline_run (pipeline_run_id, pipeline_id, name, status, "
             "created_by_user_id, is_public, created_at, updated_at, deleted_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (run_id, pipeline_id, name or run.pipeline_name, status,
              created_by_user_id, 0, now, now, None),
         )
-        row_base = _next_id(db, "mfdb_pipeline_run_operation", "row_id")
+        row_base = _next_id(db, "mmfdb_pipeline_run_operation", "row_id")
         for ordinal, operation_id in enumerate(run.operation_ids):
             db.conn.execute(
-                "INSERT INTO mfdb_pipeline_run_operation (row_id, pipeline_run_id, "
+                "INSERT INTO mmfdb_pipeline_run_operation (row_id, pipeline_run_id, "
                 "operation_id, ordinal, created_at, updated_at, deleted_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (row_base + ordinal, run_id, operation_id, ordinal, now, now, None),
@@ -178,7 +178,7 @@ def record_pipeline_run(
 def get_pipeline_run(db: Any, pipeline_run_id: str) -> dict[str, Any] | None:
     """Return a run row plus its ordered ``operation_ids``, or ``None``."""
     row = db.conn.execute(
-        "SELECT * FROM mfdb_pipeline_run "
+        "SELECT * FROM mmfdb_pipeline_run "
         "WHERE pipeline_run_id = ? AND deleted_at IS NULL",
         (pipeline_run_id,),
     ).fetchone()
@@ -188,7 +188,7 @@ def get_pipeline_run(db: Any, pipeline_run_id: str) -> dict[str, Any] | None:
     result["operation_ids"] = [
         r[0]
         for r in db.conn.execute(
-            "SELECT operation_id FROM mfdb_pipeline_run_operation "
+            "SELECT operation_id FROM mmfdb_pipeline_run_operation "
             "WHERE pipeline_run_id = ? AND deleted_at IS NULL ORDER BY ordinal",
             (pipeline_run_id,),
         ).fetchall()
@@ -210,10 +210,10 @@ def list_pipeline_runs(
         params.append(pipeline_id)
     rows = db.conn.execute(
         "SELECT r.pipeline_run_id, r.pipeline_id, r.name, r.status, r.created_at, "
-        "(SELECT COUNT(*) FROM mfdb_pipeline_run_operation o "
+        "(SELECT COUNT(*) FROM mmfdb_pipeline_run_operation o "
         " WHERE o.pipeline_run_id = r.pipeline_run_id AND o.deleted_at IS NULL) "
         "AS operation_count "
-        f"FROM mfdb_pipeline_run r WHERE {' AND '.join(where)} "
+        f"FROM mmfdb_pipeline_run r WHERE {' AND '.join(where)} "
         "ORDER BY r.created_at DESC, r.rowid DESC",
         params,
     ).fetchall()

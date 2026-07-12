@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
 import json
+from pathlib import Path
 
 import pytest
 import yaml
 
 from chisurf.plugins.fluorescence_decay.lltf.core.fitter import fit_lifetime
-
+from chisurf.plugins.fluorescence_decay.lltf.core.settings import get_default_settings
 
 HERE = Path(__file__).parent
 EXAMPLE_DIR = HERE / "example"
@@ -18,6 +18,14 @@ CONFIG_FILE = EXAMPLE_DIR / "config.yml"
 
 if not (DECAY_FILE.exists() and IRF_FILE.exists() and CONFIG_FILE.exists()):
     pytest.skip("LLTF example data not available", allow_module_level=True)
+
+
+def test_get_default_settings_loads_bundled_yaml() -> None:
+    """Default LLTF settings load without a setuptools runtime dependency."""
+    settings = get_default_settings()
+
+    assert isinstance(settings, dict)
+    assert settings
 
 
 @pytest.mark.parametrize("n_lifetimes", [1, 2])

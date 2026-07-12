@@ -9,7 +9,7 @@ from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.core.mfdb.repository import MFDatabase
+from mmfdb.repository import MFDatabase
 from chisurf.core.settings import cs_settings
 from chisurf.plugins.core.lightpath_simulator.core.workflow import (
     MFDatabaseAdapter,
@@ -980,7 +980,7 @@ class _DyeTableWidget(QtWidgets.QWidget):
     def __init__(self, probes: list[dict], db_path: str | None = None, parent=None):
         super().__init__(parent)
         self.probes = probes
-        # PRD-23: construction is read-only — the MFDB adapter is opened lazily on
+        # PRD-23: construction is read-only — the MMFDB adapter is opened lazily on
         # first tooltip render (see _ensure_db_adapter), never in __init__.
         self._db_path = db_path
         self._db_adapter: MFDatabaseAdapter | None = None
@@ -989,7 +989,7 @@ class _DyeTableWidget(QtWidgets.QWidget):
         self.populate()
 
     def _ensure_db_adapter(self) -> "MFDatabaseAdapter | None":
-        """Open the MFDB adapter on first use (deferred from ``__init__``)."""
+        """Open the MMFDB adapter on first use (deferred from ``__init__``)."""
         if not self._db_opened:
             self._db_opened = True
             if self._db_path:

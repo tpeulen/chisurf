@@ -5,13 +5,13 @@ title: "PRD-02: Sample Tracking — Deep Sample Description"
 description: Link every dataset and result to a full atomistic, flrCIF-aligned sample description
 status: done
 phase: "foundation"
-resource: modules/mfdb/src/mfdb/
-tags: [prd, mfdb, fret]
+resource: modules/mmfdb/src/mmfdb/
+tags: [prd, mmfdb, fret]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Every dataset and analysis result in MFDB is linked to a sample, where a sample
+Every dataset and analysis result in MMFDB is linked to a sample, where a sample
 is a full atomistic description — the biomolecule and its sequence, labeling
 positions, fluorescent probes and their photophysical properties, FRET pairs,
 and buffer conditions — modeled as a graph across the flr_* tables and
@@ -29,7 +29,7 @@ Vocabulary validation uses the `MmcifDictionary` API from [PRD-02a](prd-02a.md)
 to check field values against the parsed `.dic` files at runtime.
 
 # Goal
-Every dataset and analysis result in MFDB is linked to a **sample** — not just a
+Every dataset and analysis result in MMFDB is linked to a **sample** — not just a
 name, but a full atomistic description of what was measured: the biomolecule,
 its sequence, the labeling positions, the fluorescent probes, their
 photophysical properties, and the buffer conditions. The description must use
@@ -67,7 +67,7 @@ flr_sample_condition, spectra) plus `flr_sample` and `flr_fret_forster_radius`.
 
 **Two sample tables — which is canonical?** `flr_sample` (rich columns, used by
 `export_flr_cif`, `importer.py`, `seed_example.py`, and repository CRUD) is the
-authoritative table. `mfdb_sample` (minimal: display_name, sample_type,
+authoritative table. `mmfdb_sample` (minimal: display_name, sample_type,
 metadata_json) is a lightweight index for quick lookups and display.
 `sample_manager.py` must populate **both** plus the related flr_* tables.
 
@@ -123,12 +123,12 @@ Create all entities (+ `entity_poly_seq` rows), probes (via `find_or_add_probe`,
 warn on unknown dye names), optical properties, spectra, probe positions
 (resolving `entity_index` → `entity_id`, with all flrCIF position fields), the
 `flr_sample` record, `flr_sample_probe` mappings (deriving `fluorophore_type`),
-the `flr_fret_forster_radius` rows, the `mfdb_sample` index, and the entity
+the `flr_fret_forster_radius` rows, the `mmfdb_sample` index, and the entity
 assembly. **API cheat sheet (avoid repeat bugs from PRD v1):** connection is
 `db.conn` (not `db.con`); use `with db._transaction():` (not `db.conn.commit()`);
 `MFDatabase(db_path)` takes no `object_store_root`; edge columns are
 `source_node_id`/`target_node_id`; row access is `row["col"]`/`dict(row)`; use
-`db.add_edge()` for `mfdb_edge` inserts.
+`db.add_edge()` for `mmfdb_edge` inserts.
 
 ## Task 3: Vocabulary validation on sample creation
 `entity_type` → hard `ValueError` on mismatch; probe names → `logging.warning`
@@ -150,7 +150,7 @@ auto-populate `flr.solvent_phase`, `flr.num_of_probes`, `pdbx.entity_type`,
 `chisurf.sample_origin` during `create_sample`; `suggest_pdbx_keys(prefix)` for
 GUI autocomplete.
 
-## Task 6: Seed `mfdb_vocabulary` (`schema.py` `bootstrap_vocabulary`)
+## Task 6: Seed `mmfdb_vocabulary` (`schema.py` `bootstrap_vocabulary`)
 Seed `entity_type`, `fluorophore_type` (donor/acceptor/unspecified),
 `solvent_phase`, and `sample_type` — matching the constants in `models.py`
 (single source of truth).
@@ -188,16 +188,16 @@ photophysics + spectra + SMILES/InChI and no donor/acceptor label;
 `FretPairDefinition`; index validation. Default spectra: bundled JSON,
 auto-populate known dyes, experimental overrides, unknown dyes stay `None`.
 Database: `fluorophore_type` derived from pairs; `compute_forster_radius` from
-spectral overlap; `create_sample` populates all flr_* tables plus `mfdb_sample`;
+spectral overlap; `create_sample` populates all flr_* tables plus `mmfdb_sample`;
 vocabulary validation; `get_sample_full_description`; `validate_sample_for_export`;
-PDBx key-value support; seeded `mfdb_vocabulary`; N-entity/N-probe/N-pair
+PDBx key-value support; seeded `mmfdb_vocabulary`; N-entity/N-probe/N-pair
 `SamplePicker`; `pH=None` stored NULL and `pH=0.0` preserved. Tests: multi-entity,
 homodimer, 3-color, homo-FRET, single-probe, default-spectra, entity-index
 validation, flrCIF round-trip, and all existing tests pass.
 
 # Implementation notes (as built)
 Data was separated from code: vocabularies live in JSON under
-`modules/mfdb/src/mfdb/data/` (`entity_types.json`, `probe_names.json`,
+`modules/mmfdb/src/mmfdb/data/` (`entity_types.json`, `probe_names.json`,
 `buffer_components.json`, `sample_condition_fields.json`,
 `default_fluorophore_spectra.json`, `probe_properties.json`) with a
 `vocabulary_loader.py` module (`get_entity_types`, `get_probe_names`, …,
@@ -213,7 +213,7 @@ classes were added to the package `__init__.py`.
 # Review conclusion
 PRD-02 was hardened across a long, multi-round code review (documented history:
 31 rounds spanning Phase 1 round-trip through the full PRD-02 series). Early
-rounds caught PRD-pseudocode bugs (`db.con` vs `db.conn`, wrong `mfdb_edge`
+rounds caught PRD-pseudocode bugs (`db.con` vs `db.conn`, wrong `mmfdb_edge`
 column names, manual commits, sentinel-value pitfalls) which the implementation
 avoided, then genuine implementation bugs: FRET pairs were initially globally
 scoped by probe IDs (cross-sample leakage and UNIQUE-constraint failures) and
@@ -233,4 +233,4 @@ non-blocking for the data layer.
 # Relationships
 - Depends on [PRD-020](prd-020.md) (ORM boundary) and [PRD-02a](prd-02a.md) (dictionary validation).
 - GUI counterpart / verification gate: [PRD-02b](prd-02b.md); export alignment: [PRD-02c](prd-02c.md).
-- Populates sample tables in the [MFDB (current)](/architecture/mfdb.md) store toward the [MFDB target](/specs/mfdb.md).
+- Populates sample tables in the [MMFDB (current)](/architecture/mmfdb.md) store toward the [MMFDB target](/specs/mmfdb.md).

@@ -1,0 +1,27 @@
+{
+  "services": [
+    {
+      "id": "mmfdb",
+      "entrypoint": "chisurf.core.mmfdb_services:register_services",
+      "surface": "server",
+      "phase": "pre_server_listen",
+      "thread": "background",
+      "methods": [
+        "mmfdb.status",
+        "mmfdb.samples.list",
+        "mmfdb.samples.get",
+        "mmfdb.samples.save",
+        "mmfdb.samples.delete",
+        "mmfdb.samples.search",
+        "mmfdb.users.list",
+        "mmfdb.users.save",
+        "mmfdb.users.delete",
+        "mmfdb.devices.list",
+        "mmfdb.experiments.list",
+        "mmfdb.v1.samples.list",
+        "mmfdb.v1.experiments.list",
+        "mmfdb.v1.graph.traverse"
+      ]
+    }
+  ]
+}

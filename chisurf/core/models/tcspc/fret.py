@@ -32,7 +32,7 @@ def set_forster_radius_from_probes(
     acceptor_name: str,
     db=None,
 ) -> bool:
-    r"""Look up and set *R*\ :sub:`0` from the MFDB fluorophore database.
+    r"""Look up and set *R*\ :sub:`0` from the MMFDB fluorophore database.
 
     Calls :func:`lookup_forster_radius` and, when a value is found, updates
     the ``forster_radius`` :class:`FittingParameter` in ``fret_params``.

@@ -23,8 +23,8 @@ class BurstWorkflowContext:
     raw_files: list[Path] = field(default_factory=list)
     burst_folder: Path | None = None
     bur_files: list[Path] = field(default_factory=list)
-    mfdb_artifacts: dict[str, Any] = field(default_factory=dict)
-    raw_mfdb_artifacts: dict[str, Any] = field(default_factory=dict)
+    mmfdb_artifacts: dict[str, Any] = field(default_factory=dict)
+    raw_mmfdb_artifacts: dict[str, Any] = field(default_factory=dict)
 
     def to_payload(self) -> dict[str, Any]:
         """Return a JSON-compatible workflow context payload."""
@@ -33,8 +33,8 @@ class BurstWorkflowContext:
             "raw_files": [str(path) for path in self.raw_files],
             "burst_folder": str(self.burst_folder) if self.burst_folder else None,
             "bur_files": [str(path) for path in self.bur_files],
-            "mfdb_artifacts": self.mfdb_artifacts,
-            "raw_mfdb_artifacts": self.raw_mfdb_artifacts,
+            "mmfdb_artifacts": self.mmfdb_artifacts,
+            "raw_mmfdb_artifacts": self.raw_mmfdb_artifacts,
         }
 
 
@@ -47,19 +47,19 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         """Create the data-selection panel."""
         super().__init__(parent)
         self._paths: list[Path] = []
-        self._mfdb_imports: dict[str, dict[str, Any]] = {}
-        self._mfdb_selections: dict[str, dict[str, Any]] = {}
-        self._mfdb_client: Any | None = None
+        self._mmfdb_imports: dict[str, dict[str, Any]] = {}
+        self._mmfdb_selections: dict[str, dict[str, Any]] = {}
+        self._mmfdb_client: Any | None = None
 
         layout = QtWidgets.QVBoxLayout(self)
         controls = QtWidgets.QHBoxLayout()
         self.add_files_button = QtWidgets.QPushButton("Import files...", self)
         self.add_folder_button = QtWidgets.QPushButton("Import folder...", self)
-        self.mfdb_button = QtWidgets.QPushButton("Select from MFDB...", self)
+        self.mmfdb_button = QtWidgets.QPushButton("Select from MMFDB...", self)
         self.clear_button = QtWidgets.QPushButton("Clear", self)
         controls.addWidget(self.add_files_button)
         controls.addWidget(self.add_folder_button)
-        controls.addWidget(self.mfdb_button)
+        controls.addWidget(self.mmfdb_button)
         controls.addWidget(self.clear_button)
         controls.addStretch(1)
         layout.addLayout(controls)
@@ -73,18 +73,18 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
 
         self.add_files_button.clicked.connect(self._select_files)
         self.add_folder_button.clicked.connect(self._select_folder)
-        self.mfdb_button.clicked.connect(self._select_mfdb_dataset)
+        self.mmfdb_button.clicked.connect(self._select_mmfdb_dataset)
         self.clear_button.clicked.connect(self.clear)
 
     def paths(self) -> list[Path]:
         """Return selected raw TTTR paths."""
         return list(self._paths)
 
-    def mfdb_payload(self) -> dict[str, Any]:
-        """Return MFDB import and selection metadata."""
+    def mmfdb_payload(self) -> dict[str, Any]:
+        """Return MMFDB import and selection metadata."""
         return {
-            "imports": self._mfdb_imports,
-            "selections": self._mfdb_selections,
+            "imports": self._mmfdb_imports,
+            "selections": self._mmfdb_selections,
         }
 
     def add_paths(self, paths: list[Path]) -> None:
@@ -109,7 +109,7 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
                 self._paths.append(path.resolve())
                 existing.add(path.resolve())
                 self.file_list.addItem(str(path.resolve()))
-                self._import_path_to_mfdb(path.resolve())
+                self._import_path_to_mmfdb(path.resolve())
         self._update_status()
 
         callback = getattr(self.parent(), "_on_data_selection_changed", None)
@@ -119,8 +119,8 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
     def clear(self) -> None:
         """Clear selected data files."""
         self._paths.clear()
-        self._mfdb_imports.clear()
-        self._mfdb_selections.clear()
+        self._mmfdb_imports.clear()
+        self._mmfdb_selections.clear()
         self.file_list.clear()
         self._update_status()
         callback = getattr(self.parent(), "_on_data_selection_changed", None)
@@ -143,12 +143,12 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         if folder:
             self.add_paths([Path(folder)])
 
-    def _select_mfdb_dataset(self) -> None:
-        """Select raw data from MFDB and resolve it to a local path."""
+    def _select_mmfdb_dataset(self) -> None:
+        """Select raw data from MMFDB and resolve it to a local path."""
         try:
-            from chisurf.gui.widgets.mfdb.dataset_browser import MfdbDatasetPickerDialog
+            from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetPickerDialog
 
-            selection = MfdbDatasetPickerDialog.pick_dataset(
+            selection = MmfdbDatasetPickerDialog.pick_dataset(
                 parent=self,
                 kinds=["raw_data", "raw_measurement", "external_reference"],
                 scope="all",
@@ -156,15 +156,15 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
             )
             if selection is None:
                 return
-            local_path = selection.local_path or self._open_mfdb_dataset(selection.artifact_id)
+            local_path = selection.local_path or self._open_mmfdb_dataset(selection.artifact_id)
             if not local_path:
                 QtWidgets.QMessageBox.warning(
                     self,
-                    "MFDB Dataset",
+                    "MMFDB Dataset",
                     f"Could not resolve local path for artifact {selection.artifact_id}.",
                 )
                 return
-            self._mfdb_selections[str(Path(local_path).resolve())] = {
+            self._mmfdb_selections[str(Path(local_path).resolve())] = {
                 "artifact_id": selection.artifact_id,
                 "artifact_kind": selection.artifact_kind,
                 "data_format": selection.data_format,
@@ -173,19 +173,19 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
             }
             self.add_paths([Path(local_path)])
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "MFDB Dataset", f"MFDB selection failed:\n{exc}")
+            QtWidgets.QMessageBox.warning(self, "MMFDB Dataset", f"MMFDB selection failed:\n{exc}")
 
-    def _open_mfdb_dataset(self, artifact_id: str) -> str | None:
-        """Resolve an MFDB dataset artifact to a local path."""
-        result = self._client().call("mfdb.datasets.open", {"artifact_id": artifact_id}) or {}
+    def _open_mmfdb_dataset(self, artifact_id: str) -> str | None:
+        """Resolve an MMFDB dataset artifact to a local path."""
+        result = self._client().call("mmfdb.datasets.open", {"artifact_id": artifact_id}) or {}
         return result.get("local_path") or result.get("path")
 
-    def _import_path_to_mfdb(self, path: Path) -> None:
-        """Import a local file into MFDB object store and raw-data registry."""
+    def _import_path_to_mmfdb(self, path: Path) -> None:
+        """Import a local file into MMFDB object store and raw-data registry."""
         try:
             client = self._client()
             object_result = client.call(
-                "mfdb.objects.put",
+                "mmfdb.objects.put",
                 {
                     "path": str(path),
                     "filename": path.name,
@@ -202,7 +202,7 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
                             "data_type": "TTTR",
                             "storage_mode": "file",
                             "header_metadata": {
-                                "mfdb_object": object_result.get("object", {}),
+                                "mmfdb_object": object_result.get("object", {}),
                                 "source": "burst_analysis.data_selection",
                             },
                         }
@@ -211,23 +211,23 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
                 payload["raw_data_result"] = raw_result
             except Exception as raw_exc:
                 payload["raw_data_error"] = str(raw_exc)
-            self._mfdb_imports[str(path)] = payload
+            self._mmfdb_imports[str(path)] = payload
         except Exception as exc:
-            self._mfdb_imports[str(path)] = {"error": str(exc)}
+            self._mmfdb_imports[str(path)] = {"error": str(exc)}
 
     def _client(self) -> Any:
-        """Return the MFDB RPC client used for import and selection."""
-        if self._mfdb_client is None:
-            from chisurf.plugins.core.mfdb_admin.gui.client import MFDBClient
+        """Return the MMFDB RPC client used for import and selection."""
+        if self._mmfdb_client is None:
+            from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
-            self._mfdb_client = MFDBClient(inprocess=True)
-        return self._mfdb_client
+            self._mmfdb_client = MMFDBClient(inprocess=True)
+        return self._mmfdb_client
 
     def _update_status(self) -> None:
         """Update selection status label."""
-        imported = len([entry for entry in self._mfdb_imports.values() if "error" not in entry])
+        imported = len([entry for entry in self._mmfdb_imports.values() if "error" not in entry])
         self.status_label.setText(
-            f"{len(self._paths)} TTTR file(s) selected; {imported} imported to MFDB."
+            f"{len(self._paths)} TTTR file(s) selected; {imported} imported to MMFDB."
         )
 
 
@@ -519,9 +519,9 @@ class BurstAnalysisTool(NavigationPanelTool):
             selected = paths()
             if selected:
                 self.workflow_context.raw_files = selected
-        mfdb_payload = getattr(panel, "mfdb_payload", None)
-        if callable(mfdb_payload):
-            self.workflow_context.raw_mfdb_artifacts = mfdb_payload()
+        mmfdb_payload = getattr(panel, "mmfdb_payload", None)
+        if callable(mmfdb_payload):
+            self.workflow_context.raw_mmfdb_artifacts = mmfdb_payload()
 
     def _on_data_selection_changed(self) -> None:
         """Propagate changed raw data selection to loaded panels."""
@@ -558,9 +558,9 @@ class BurstAnalysisTool(NavigationPanelTool):
 
         result = getattr(widget, "_last_service_result", None) or getattr(widget, "_last_result", None) or {}
         if isinstance(result, dict):
-            artifacts = result.get("mfdb_artifacts") or {}
+            artifacts = result.get("mmfdb_artifacts") or {}
             if artifacts:
-                self.workflow_context.mfdb_artifacts = dict(artifacts)
+                self.workflow_context.mmfdb_artifacts = dict(artifacts)
 
         folder = self._folder_from_selection_result(result)
         if folder is None:

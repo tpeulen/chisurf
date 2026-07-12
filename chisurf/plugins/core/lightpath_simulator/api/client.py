@@ -23,20 +23,20 @@ class LightPathClient:
 
     @classmethod
     def from_settings(cls, timeout_ms: int = 5000) -> LightPathClient:
-        """Create a ZMQ MFDB client using the current ChiSurf settings."""
+        """Create a ZMQ MMFDB client using the current ChiSurf settings."""
         import chisurf.core.settings as cs_settings
-        from chisurf.core.mfdb.security.credentials import (
+        from mmfdb.security.credentials import (
             load_runtime_session_token,
             load_session_token,
             store_runtime_session_token,
         )
-        from chisurf.plugins.core.mfdb_admin.gui.client import MFDBClient
+        from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
-        mfdb_settings = cs_settings.cs_settings.get("mfdb", {})
-        server_host = mfdb_settings.get("last_server", "127.0.0.1")
-        server_port = int(mfdb_settings.get("last_port", 8765))
-        user_id = mfdb_settings.get("default_user_id", "user_default")
-        client = MFDBClient(
+        mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
+        server_host = mmfdb_settings.get("last_server", "127.0.0.1")
+        server_port = int(mmfdb_settings.get("last_port", 8765))
+        user_id = mmfdb_settings.get("default_user_id", "user_default")
+        client = MMFDBClient(
             host=server_host,
             cmd_port=server_port,
             pub_port=server_port + 1,
@@ -91,7 +91,7 @@ class LightPathClient:
         name: str | None = None,
         db_path: str | None = None,
     ) -> dict[str, Any]:
-        """Persist a light-path simulation in MFDB."""
+        """Persist a light-path simulation in MMFDB."""
         return self._call(METHOD_SAVE, {"graph": graph, "name": name, "db_path": db_path})
 
     def list_saved(self, db_path: str | None = None) -> list[dict[str, Any]]:

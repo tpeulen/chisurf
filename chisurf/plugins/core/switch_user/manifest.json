@@ -2,7 +2,7 @@
   "id": "switch_user",
   "version": "1.0.0",
   "display_name": "Setup:Switch User",
-  "description": "Switch the active MFDB user for this ChiSurf session.",
+  "description": "Switch the active MMFDB user for this ChiSurf session.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Setup"],
   "state_namespace": "switch_user",
