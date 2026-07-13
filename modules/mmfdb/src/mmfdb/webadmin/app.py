@@ -1005,7 +1005,12 @@ class WebAdminApp:
 
         message = ""
         try:
-            if op == "import":
+            if op == "defaults":
+                counts = fluorophore_services.handle_import_default_spectra(auth=auth)
+                message = (f"🧪 Loaded ChiSurf defaults: {counts.get('probes', 0)} new probe(s), "
+                           f"{counts.get('spectra', 0)} spectra, "
+                           f"{counts.get('optical_properties', 0)} optical properties")
+            elif op == "import":
                 counts = fluorophore_services.handle_import_reference_set(
                     mark_verified=False, auth=auth
                 )

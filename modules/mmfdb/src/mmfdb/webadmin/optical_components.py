@@ -362,6 +362,7 @@ def render_toolbar(ct: str, status: str, search: str, sel: list[int], csrf: str)
     return (
         '<div class="toolbar">'
         f'<form method="post" action="/optical-components/action" class="inline">{hidden}'
+        '<button name="op" value="defaults" class="tool" title="Load ChiSurf built-in default fluorophore spectra">🧪 Load defaults</button>'
         '<button name="op" value="import" class="tool" title="Import bundled reference set">📥 Import ref set</button>'
         f'<button name="op" value="approve" class="tool"{"" if sel else " disabled"} '
         'title="Approve checked items">✅ Approve</button>'

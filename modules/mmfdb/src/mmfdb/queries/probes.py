@@ -675,6 +675,119 @@ class ProbeMixin:
         finally:
             source.close()
 
+    def import_default_spectra(self, *, mark_verified: bool = True) -> dict[str, int]:
+        """Seed ChiSurf's built-in default fluorophore set into this database.
+
+        These are the canonical fluorophores ChiSurf ships in
+        ``data/default_fluorophore_spectra.json`` and auto-attaches to dyes in
+        local/embedded mode (Cy3B, ATTO 647N, Alexa Fluor 488, Cy3, Cy5, Trp,
+        2-aminopurine, …). This makes the exact same reference spectra available
+        as first-class probes in a standalone/served database. The import is
+        idempotent: an existing ``chisurf_default`` probe of the same name is
+        reused and its properties/spectra are refreshed in place.
+
+        Parameters
+        ----------
+        mark_verified : bool, default True
+            Stamp the seeded probes as approved / high quality, since they are
+            the curated defaults rather than scraped candidates.
+
+        Returns
+        -------
+        dict
+            Counts of inserted probes and upserted spectra / optical properties.
+        """
+        from mmfdb.models import DEFAULT_FLUOROPHORE_SPECTRA
+
+        now = _utc_now()
+        verification = "approved" if mark_verified else "unverified"
+        quality = "high" if mark_verified else "unknown"
+        inserted_probes = upserted_spectra = upserted_props = 0
+
+        # One explicit transaction: probes without curve data (e.g. Trp) would
+        # otherwise never reach a commit and be rolled back when the connection
+        # closes, so the whole seed is committed atomically here.
+        with self.conn:
+            for name, entry in DEFAULT_FLUOROPHORE_SPECTRA.items():
+                existing = self.dao.list(
+                    "probes",
+                    filters={"chromophore_name": name, "source": "chisurf_default"},
+                    include_deleted=False,
+                    limit=1,
+                )
+                if existing:
+                    probe_id = existing[0]["probe_id"]
+                else:
+                    probe_id = self.dao.insert(
+                        "probes",
+                        {
+                            "chromophore_name": name,
+                            "category": "organic_dye",
+                            "source": "chisurf_default",
+                            "source_ref": "default_fluorophore_spectra.json",
+                            "probe_origin": entry.get("probe_origin") or "extrinsic",
+                            "probe_link_type": entry.get("probe_link_type") or "covalent",
+                            "fluorophore_type": "unspecified",
+                            "reactive_probe_flag": "no",
+                            "verification_status": verification,
+                            "quality": quality,
+                            "is_curated": 1 if mark_verified else 0,
+                            "verified_by": "chisurf_default" if mark_verified else None,
+                            "verified_at": now if mark_verified else None,
+                            "description": "ChiSurf default fluorophore reference spectrum",
+                            "deleted_at": None,
+                        },
+                    )
+                    inserted_probes += 1
+
+                for prop_name, prop_value in (
+                    ("abs_max", entry.get("absorption_wavelength_nm")),
+                    ("em_max", entry.get("emission_wavelength_nm")),
+                    ("qy", entry.get("quantum_yield")),
+                    ("ext_coeff", entry.get("extinction_coefficient")),
+                ):
+                    if prop_value is None:
+                        continue
+                    self.dao.upsert(
+                        "optical_properties",
+                        {
+                            "probe_id": probe_id,
+                            "property_name": prop_name,
+                            "property_value": str(prop_value),
+                            "deleted_at": None,
+                        },
+                        conflict=["probe_id", "property_name"],
+                    )
+                    upserted_props += 1
+
+                for spectrum_type, key in (
+                    ("absorption", "absorption_spectrum"),
+                    ("emission", "emission_spectrum"),
+                ):
+                    spectrum = entry.get(key)
+                    if not spectrum or not spectrum.get("wavelengths_nm"):
+                        continue
+                    self.dao.upsert(
+                        "spectra",
+                        {
+                            "probe_id": probe_id,
+                            "spectrum_type": spectrum_type,
+                            "wavelengths": np.asarray(spectrum["wavelengths_nm"], dtype=np.float64),
+                            "intensity_values": np.asarray(spectrum["intensities"], dtype=np.float64),
+                            "wavelength_unit": "nm",
+                            "intensity_unit": "normalized",
+                            "deleted_at": None,
+                        },
+                        conflict=["probe_id", "spectrum_type"],
+                    )
+                    upserted_spectra += 1
+
+        return {
+            "probes": inserted_probes,
+            "spectra": upserted_spectra,
+            "optical_properties": upserted_props,
+        }
+
     def consolidate_probes(self, aggressive: bool = False) -> dict[str, int]:
         """Merge duplicate probes, then delete the secondary copies.
 

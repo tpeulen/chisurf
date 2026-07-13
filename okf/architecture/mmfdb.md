@@ -189,6 +189,15 @@ triage checker (`admin/backend/triage_checks.py`, wired into `register_services`
 as the default `deterministic_checks`) and the duplicate grouping model
 (`admin/backend/duplicate_grouping.py`).
 
+The repository can also seed ChiSurf's built-in default fluorophore set
+(`ProbeMixin.import_default_spectra`, RPC `fluorophores.import_default_set`, the
+🧪 **Load defaults** toolbar button): the canonical dyes ChiSurf ships in
+`data/default_fluorophore_spectra.json` (Cy3B, ATTO 647N, Alexa Fluor 488, Cy3,
+Cy5, Trp, 2-aminopurine, …) become first-class `chisurf_default`-sourced probes
+with their optical properties and absorption/emission curves. The import is
+idempotent (existing `chisurf_default` probes are refreshed, not duplicated), so
+a standalone/served database can carry the same defaults available in local mode.
+
 # Object store & provenance-aware readers
 
 MMFDB has a content-addressed **object store** (`object_store.py`): blobs are

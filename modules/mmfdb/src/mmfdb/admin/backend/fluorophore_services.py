@@ -180,6 +180,16 @@ def handle_import_reference_set(
     return {"ok": True, **counts}
 
 
+def handle_import_default_spectra(
+    mark_verified: bool = True,
+    auth: dict | None = None,
+) -> dict[str, Any]:
+    """Seed ChiSurf's built-in default fluorophore spectra into the database."""
+    with _db() as db:
+        counts = db.import_default_spectra(mark_verified=mark_verified)
+    return {"ok": True, **counts}
+
+
 def handle_lookup_forster_radius(
     donor_name: str,
     acceptor_name: str,
@@ -459,6 +469,7 @@ def register_services(
     dispatcher.register("fluorophores.reject", _kw(handle_reject_probe))
     dispatcher.register("fluorophores.set_quality", _kw(handle_set_probe_quality))
     dispatcher.register("fluorophores.import_reference_set", _kw(handle_import_reference_set))
+    dispatcher.register("fluorophores.import_default_set", _kw(handle_import_default_spectra))
     dispatcher.register("fluorophores.forster_radius.lookup", _kw(handle_lookup_forster_radius))
     if deterministic_checks is not None:
         dispatcher.register(
