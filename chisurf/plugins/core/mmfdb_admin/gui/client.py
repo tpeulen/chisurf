@@ -2,10 +2,331 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
+import http.client
+import io
+import json
+import urllib.error
+import urllib.parse
+import urllib.request
+from collections.abc import Mapping
+from ipaddress import ip_address
+from pathlib import Path
 from typing import Any
 
 from chisurf import logging
 from chisurf.core.plugin.client import InProcessClient
+
+_DEFAULT_CLIENT_CONFIG: dict[str, Any] = {
+    "mode": "embedded",
+    "username": "admin",
+    "host": "127.0.0.1",
+    "cmd_port": 8765,
+    "pub_port": 8766,
+    "base_url": "http://127.0.0.1:8080",
+    "allow_insecure_http": False,
+    "timeout_ms": 5000,
+}
+_CLIENT_CONFIG_KEYS = frozenset(_DEFAULT_CLIENT_CONFIG)
+
+
+def _validate_remote_base_url(base_url: str, *, allow_insecure_http: bool) -> str:
+    """Validate and normalize a credential-free MMFDB HTTP endpoint."""
+    if not isinstance(allow_insecure_http, bool):
+        raise ValueError("mmfdb.client.allow_insecure_http must be true or false")
+    normalized = base_url.rstrip("/")
+    parsed = urllib.parse.urlsplit(normalized)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("mmfdb.client.base_url must be an absolute HTTP(S) URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("mmfdb.client.base_url must not contain user credentials")
+    if parsed.query or parsed.fragment:
+        raise ValueError("mmfdb.client.base_url must not contain a query or fragment")
+    try:
+        parsed.port
+    except ValueError as exc:
+        raise ValueError("mmfdb.client.base_url contains an invalid port") from exc
+    hostname = parsed.hostname.lower()
+    is_loopback = hostname == "localhost"
+    try:
+        is_loopback = is_loopback or ip_address(hostname).is_loopback
+    except ValueError:
+        pass
+    if parsed.scheme == "http" and not is_loopback and not allow_insecure_http:
+        raise ValueError(
+            "mmfdb.client.base_url must use HTTPS for a non-loopback host; set "
+            "allow_insecure_http only for an isolated development network"
+        )
+    return normalized
+
+
+def client_config(mmfdb_settings: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Normalize ChiSurf's YAML ``mmfdb.client`` settings.
+
+    The nested block is the canonical prerelease contract.  Legacy flat keys
+    are read only as fallbacks so existing user settings continue to connect.
+    Passwords are intentionally not part of this configuration.
+    """
+    settings = dict(mmfdb_settings or {})
+    nested = settings.get("client", {})
+    if nested is not None and not isinstance(nested, Mapping):
+        raise ValueError("mmfdb.client must be a mapping")
+    unknown = set(nested or {}) - _CLIENT_CONFIG_KEYS
+    if unknown:
+        raise ValueError(
+            "Unknown mmfdb.client settings (passwords are never persisted): "
+            + ", ".join(sorted(unknown))
+        )
+
+    configured: dict[str, Any] = {}
+    config_file = settings.get("config_file")
+    if config_file:
+        from mmfdb.config import load_client_config
+
+        loaded_client = load_client_config(str(config_file))
+        configured.update(
+            mode=loaded_client.mode,
+            base_url=loaded_client.base_url,
+            username=loaded_client.username,
+            allow_insecure_http=loaded_client.allow_insecure_http,
+        )
+    configured.update(dict(nested or {}))
+
+    mode = str(configured.get("mode", _DEFAULT_CLIENT_CONFIG["mode"])).lower()
+    if mode not in {"embedded", "remote"}:
+        raise ValueError("mmfdb.client.mode must be 'embedded' or 'remote'")
+
+    config = dict(_DEFAULT_CLIENT_CONFIG)
+    config.update(
+        {
+            "mode": mode,
+            "username": str(
+                configured.get(
+                    "username",
+                    settings.get("default_user_id", _DEFAULT_CLIENT_CONFIG["username"]),
+                )
+            ),
+            "host": str(
+                configured.get(
+                    "host",
+                    settings.get(
+                        "rpc_host",
+                        settings.get("last_server", _DEFAULT_CLIENT_CONFIG["host"]),
+                    ),
+                )
+            ),
+            "cmd_port": int(
+                configured.get(
+                    "cmd_port",
+                    settings.get("last_port", _DEFAULT_CLIENT_CONFIG["cmd_port"]),
+                )
+            ),
+            "pub_port": int(
+                configured.get(
+                    "pub_port",
+                    settings.get("pub_port", _DEFAULT_CLIENT_CONFIG["pub_port"]),
+                )
+            ),
+            "base_url": str(
+                configured.get("base_url", _DEFAULT_CLIENT_CONFIG["base_url"])
+            ).rstrip("/"),
+            "allow_insecure_http": configured.get(
+                "allow_insecure_http",
+                _DEFAULT_CLIENT_CONFIG["allow_insecure_http"],
+            ),
+            "timeout_ms": int(
+                configured.get(
+                    "timeout_ms",
+                    settings.get("fitting_timeout_ms", _DEFAULT_CLIENT_CONFIG["timeout_ms"]),
+                )
+            ),
+        }
+    )
+    if not isinstance(config["allow_insecure_http"], bool):
+        raise ValueError("mmfdb.client.allow_insecure_http must be true or false")
+    if mode == "remote":
+        config["base_url"] = _validate_remote_base_url(
+            config["base_url"],
+            allow_insecure_http=config["allow_insecure_http"],
+        )
+    return config
+
+
+def credential_endpoint(config: Mapping[str, Any]) -> tuple[str, int]:
+    """Return the stable host/port key used by the OS credential store."""
+    if config.get("mode") != "remote":
+        return str(config["host"]), int(config["cmd_port"])
+    parsed = urllib.parse.urlsplit(str(config["base_url"]))
+    if not parsed.hostname:
+        raise ValueError("mmfdb.client.base_url must be an absolute HTTP(S) URL")
+    default_port = 443 if parsed.scheme == "https" else 80
+    return parsed.hostname, int(parsed.port or default_port)
+
+
+class _HttpJsonRpcClient:
+    """Small synchronous JSON-RPC transport for standalone MMFDB."""
+
+    def __init__(
+        self,
+        base_url: str,
+        timeout_ms: int,
+        *,
+        allow_insecure_http: bool = False,
+    ) -> None:
+        normalized = _validate_remote_base_url(
+            base_url,
+            allow_insecure_http=allow_insecure_http,
+        )
+        self._rpc_url = f"{normalized}/rpc"
+        self._base = urllib.parse.urlsplit(normalized)
+        if self._base.scheme not in {"http", "https"} or not self._base.hostname:
+            raise ValueError("MMFDB base URL must be an absolute HTTP(S) URL")
+        self._object_path = f"{self._base.path.rstrip('/')}/objects"
+        self._timeout = timeout_ms / 1000.0
+        self._request_id = 0
+
+    def call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        self._request_id += 1
+        wire_params = dict(params or {})
+        auth = wire_params.pop("auth", None)
+        headers = {"Content-Type": "application/json"}
+        if isinstance(auth, Mapping) and auth.get("token"):
+            headers["Authorization"] = f"Bearer {auth['token']}"
+        payload = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": self._request_id,
+                "method": method,
+                "params": wire_params,
+            }
+        ).encode("utf-8")
+        request = urllib.request.Request(
+            self._rpc_url,
+            data=payload,
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self._timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            try:
+                return json.loads(exc.read().decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return {"ok": False, "error": f"HTTP {exc.code}: {exc.reason}"}
+        except urllib.error.URLError as exc:
+            return {"ok": False, "error": f"MMFDB server unavailable: {exc.reason}"}
+
+    def upload_object(
+        self,
+        stream: Any,
+        *,
+        length: int,
+        filename: str,
+        mime_type: str | None,
+        metadata: dict[str, Any] | None,
+        token: str | None,
+    ) -> dict[str, Any]:
+        """Stream one raw object body to the bounded HTTP object endpoint."""
+        if not token:
+            raise RuntimeError("Login required for MMFDB object upload")
+        from mmfdb.admin.backend.services import MAX_OBJECT_UPLOAD_BYTES
+
+        if length < 0 or length > MAX_OBJECT_UPLOAD_BYTES:
+            raise ValueError("MMFDB object upload exceeds the configured size limit")
+        metadata_header = None
+        if metadata is not None:
+            metadata_header = base64.urlsafe_b64encode(
+                json.dumps(metadata, separators=(",", ":")).encode("utf-8")
+            ).decode("ascii").rstrip("=")
+            if len(metadata_header) > 16 * 1024:
+                raise ValueError("MMFDB object metadata header exceeds 16 KiB")
+        connection = self._connection()
+        try:
+            connection.putrequest("POST", self._object_path)
+            connection.putheader("Content-Length", str(length))
+            connection.putheader("Content-Type", mime_type or "application/octet-stream")
+            connection.putheader("X-MMFDB-Filename", urllib.parse.quote(filename, safe=""))
+            if metadata_header is not None:
+                connection.putheader("X-MMFDB-Metadata", metadata_header)
+            if token:
+                connection.putheader("Authorization", f"Bearer {token}")
+            connection.endheaders()
+            remaining = length
+            while remaining:
+                chunk = stream.read(min(64 * 1024, remaining))
+                if not chunk:
+                    raise RuntimeError("Object source ended before its declared length")
+                connection.send(chunk)
+                remaining -= len(chunk)
+            response = connection.getresponse()
+            payload = response.read(1024 * 1024 + 1)
+            if len(payload) > 1024 * 1024:
+                raise RuntimeError("MMFDB object response exceeded 1 MiB")
+            try:
+                result = json.loads(payload.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise RuntimeError(
+                    f"Invalid MMFDB object response (HTTP {response.status})"
+                ) from exc
+            if response.status >= 400 or not result.get("ok", False):
+                detail = result.get("error") or f"HTTP {response.status}: {response.reason}"
+                raise RuntimeError(str(detail))
+            return result
+        finally:
+            connection.close()
+
+    def download_object(self, object_uuid: str, *, token: str | None) -> bytes:
+        """Download one raw object in bounded chunks."""
+        if not token:
+            raise RuntimeError("Login required for MMFDB object download")
+        from mmfdb.admin.backend.services import MAX_OBJECT_UPLOAD_BYTES
+
+        connection = self._connection()
+        path = f"{self._object_path}/{urllib.parse.quote(object_uuid, safe='')}"
+        try:
+            connection.putrequest("GET", path)
+            if token:
+                connection.putheader("Authorization", f"Bearer {token}")
+            connection.endheaders()
+            response = connection.getresponse()
+            if response.status >= 400:
+                payload = response.read(1024 * 1024)
+                try:
+                    detail = json.loads(payload.decode("utf-8")).get("error")
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    detail = None
+                raise RuntimeError(str(detail or f"HTTP {response.status}: {response.reason}"))
+            declared = response.getheader("Content-Length")
+            if declared is None:
+                raise RuntimeError("MMFDB object download omitted Content-Length")
+            length = int(declared)
+            if length < 0 or length > MAX_OBJECT_UPLOAD_BYTES:
+                raise RuntimeError("MMFDB object download exceeds the 64 MiB limit")
+            target = io.BytesIO()
+            remaining = length
+            while remaining:
+                chunk = response.read(min(64 * 1024, remaining))
+                if not chunk:
+                    raise RuntimeError("MMFDB object download ended early")
+                target.write(chunk)
+                remaining -= len(chunk)
+            return target.getvalue()
+        finally:
+            connection.close()
+
+    def _connection(self) -> http.client.HTTPConnection:
+        connection_type = (
+            http.client.HTTPSConnection
+            if self._base.scheme == "https"
+            else http.client.HTTPConnection
+        )
+        return connection_type(
+            self._base.hostname,
+            port=self._base.port,
+            timeout=self._timeout,
+        )
 
 
 class MMFDBClient:
@@ -15,26 +336,64 @@ class MMFDBClient:
         self,
         client: Any | None = None,
         *,
-        host: str = "127.0.0.1",
-        cmd_port: int = 8765,
-        pub_port: int = 8766,
-        timeout_ms: int = 5000,
+        mode: str | None = None,
+        base_url: str | None = None,
+        host: str | None = None,
+        cmd_port: int | None = None,
+        pub_port: int | None = None,
+        timeout_ms: int | None = None,
+        allow_insecure_http: bool | None = None,
         inprocess: bool = False,
     ):
-        if client is None:
-            client = self._make_inprocess_client() if inprocess else self._make_zmq_client(
-                host=host,
-                cmd_port=cmd_port,
-                pub_port=pub_port,
-                timeout_ms=timeout_ms,
+        try:
+            from chisurf.core.settings import cs_settings
+        except (ImportError, AttributeError):
+            configured = client_config()
+        else:
+            configured = client_config(cs_settings.get("mmfdb", {}))
+
+        self.mode = "embedded" if inprocess else str(mode or configured["mode"]).lower()
+        if self.mode not in {"embedded", "remote"}:
+            raise ValueError("MMFDB client mode must be 'embedded' or 'remote'")
+        effective_allow_insecure = (
+            allow_insecure_http
+            if allow_insecure_http is not None
+            else configured["allow_insecure_http"]
+        )
+        if not isinstance(effective_allow_insecure, bool):
+            raise ValueError("allow_insecure_http must be true or false")
+        self.base_url = str(base_url or configured["base_url"]).rstrip("/")
+        if self.mode == "remote":
+            self.base_url = _validate_remote_base_url(
+                self.base_url,
+                allow_insecure_http=effective_allow_insecure,
             )
+        self.host = str(host or configured["host"])
+        self.cmd_port = int(cmd_port if cmd_port is not None else configured["cmd_port"])
+        self.pub_port = int(pub_port if pub_port is not None else configured["pub_port"])
+        effective_timeout = int(
+            timeout_ms if timeout_ms is not None else configured["timeout_ms"]
+        )
+        if client is None:
+            if inprocess:
+                client = self._make_inprocess_client()
+            elif self.mode == "remote":
+                client = _HttpJsonRpcClient(
+                    self.base_url,
+                    effective_timeout,
+                    allow_insecure_http=effective_allow_insecure,
+                )
+            else:
+                client = self._make_zmq_client(
+                    host=self.host,
+                    cmd_port=self.cmd_port,
+                    pub_port=self.pub_port,
+                    timeout_ms=effective_timeout,
+                )
         self._client = client
         self._token: str | None = None
         # Remember the connection parameters so the login dialog can show/edit
         # the endpoint and reconnect to a different server if needed.
-        self.host = host
-        self.cmd_port = cmd_port
-        self.pub_port = pub_port
         self.inprocess = inprocess
 
     def _make_zmq_client(
@@ -54,13 +413,20 @@ class MMFDBClient:
         )
 
     def _make_inprocess_client(self) -> InProcessClient:
+        from chisurf.core.mmfdb_services import prepare_embedded_mmfdb, register_services
         from chisurf.plugins.core.project_browser.backend.services import (
             register_services as register_project_browser_services,
         )
         from chisurf.server.dispatcher import ServiceDispatcher
         from chisurf.server.session import SessionState
 
-        from chisurf.core.mmfdb_services import register_services
+        try:
+            from chisurf.core.settings import cs_settings
+        except (ImportError, AttributeError):
+            mmfdb_settings = {}
+        else:
+            mmfdb_settings = cs_settings.get("mmfdb", {}) or {}
+        prepare_embedded_mmfdb(mmfdb_settings)
 
         dispatcher = ServiceDispatcher(SessionState())
         register_services(dispatcher)
@@ -263,6 +629,89 @@ class MMFDBClient:
         return self._call(
             "mmfdb.pipelines.runs", {"pipeline_id": pipeline_id}
         ).get("runs", [])
+
+    # -- eLabFTW synchronization -------------------------------------------
+
+    def connect_elabftw(
+        self,
+        base_url: str,
+        api_key: str,
+        *,
+        timeout: float = 15.0,
+        verify_tls: bool = True,
+        allow_insecure_http: bool = False,
+    ) -> dict[str, Any]:
+        """Validate eLabFTW credentials and return an opaque session handle."""
+        return self._call(
+            "mmfdb.elabftw.connect",
+            {
+                "base_url": base_url,
+                # Nested ``token`` is recursively redacted by RPC monitoring.
+                "credentials": {"token": api_key},
+                "timeout": timeout,
+                "verify_tls": verify_tls,
+                "allow_insecure_http": allow_insecure_http,
+            },
+        )
+
+    def disconnect_elabftw(self, connection_id: str) -> None:
+        self._call(
+            "mmfdb.elabftw.disconnect", {"connection_id": connection_id}
+        )
+
+    def list_elabftw_experiments(
+        self,
+        connection_id: str,
+        *,
+        query: str = "",
+        page_size: int = 50,
+        max_items: int = 500,
+    ) -> list[dict[str, Any]]:
+        return self._call(
+            "mmfdb.elabftw.experiments.list",
+            {
+                "connection_id": connection_id,
+                "query": query,
+                "page_size": page_size,
+                "max_items": max_items,
+            },
+        ).get("experiments", [])
+
+    def import_elabftw_experiments(
+        self,
+        connection_id: str,
+        remote_ids: list[int],
+        *,
+        conflict: str = "skip",
+        sample_id: str | None = None,
+    ) -> dict[str, Any]:
+        return self._call(
+            "mmfdb.elabftw.experiments.import",
+            {
+                "connection_id": connection_id,
+                "remote_ids": remote_ids,
+                "conflict": conflict,
+                "sample_id": sample_id,
+            },
+        )
+
+    def export_elabftw_experiment(
+        self,
+        connection_id: str,
+        experiment_id: str,
+        *,
+        mode: str = "create",
+        remote_id: int | None = None,
+    ) -> dict[str, Any]:
+        return self._call(
+            "mmfdb.elabftw.experiments.export",
+            {
+                "connection_id": connection_id,
+                "experiment_id": experiment_id,
+                "mode": mode,
+                "remote_id": remote_id,
+            },
+        )
 
     def get_sample_condition(self, condition_id: str) -> dict[str, Any]:
         return self._call("mmfdb.sample_conditions.get", {"condition_id": condition_id}).get("condition", {})
@@ -806,7 +1255,7 @@ class MMFDBClient:
 
     def logout(self) -> dict[str, Any]:
         """Logout and clear the session token."""
-        result = self._call_raw("mmfdb.security.auth.logout")
+        result = self._call("mmfdb.security.auth.logout")
         self._token = None
         return result
 
@@ -893,12 +1342,13 @@ class MMFDBClient:
         mime_type: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Store a file or base64-encoded bytes in the object store.
+        """Store a local file or base64-encoded bytes in the object store.
 
         Parameters
         ----------
         path : str, optional
-            Server-side file path to store.
+            Client-local file path. Remote mode streams its bytes to MMFDB;
+            embedded mode passes it to the local backend.
         data : str, optional
             Base64-encoded binary data to store.
         filename : str, optional
@@ -913,6 +1363,37 @@ class MMFDBClient:
         dict
             Object reference with uuid, md5, size, deduplicated flag.
         """
+        if self.mode == "remote" and hasattr(self._client, "upload_object"):
+            if not self._token:
+                raise RuntimeError("Login required for MMFDB object upload")
+            if (path is None) == (data is None):
+                raise ValueError("Specify exactly one of path or data")
+            if path is not None:
+                source_path = Path(path)
+                if not source_path.is_file():
+                    raise FileNotFoundError(source_path)
+                with source_path.open("rb") as stream:
+                    return self._client.upload_object(
+                        stream,
+                        length=source_path.stat().st_size,
+                        filename=filename or source_path.name,
+                        mime_type=mime_type,
+                        metadata=metadata,
+                        token=self._token,
+                    )
+            try:
+                raw = base64.b64decode(data or "", validate=True)
+            except (binascii.Error, ValueError) as exc:
+                raise ValueError("data must be valid base64") from exc
+            return self._client.upload_object(
+                io.BytesIO(raw),
+                length=len(raw),
+                filename=filename or "unnamed",
+                mime_type=mime_type,
+                metadata=metadata,
+                token=self._token,
+            )
+
         params: dict[str, Any] = {}
         if path is not None:
             params["path"] = path
@@ -951,6 +1432,13 @@ class MMFDBClient:
         dict
             Object reference with uuid, md5, size, deduplicated flag.
         """
+        if self.mode == "remote" and hasattr(self._client, "upload_object"):
+            return self.put_object(
+                data=data,
+                filename=filename,
+                mime_type=mime_type,
+                metadata=metadata,
+            )
         params: dict[str, Any] = {"data": data, "filename": filename}
         if mime_type is not None:
             params["mime_type"] = mime_type
@@ -973,6 +1461,11 @@ class MMFDBClient:
         dict
             Result with base64-encoded ``data`` field.
         """
+        if self.mode == "remote" and hasattr(self._client, "download_object"):
+            if not self._token:
+                raise RuntimeError("Login required for MMFDB object download")
+            raw = self._client.download_object(object_uuid, token=self._token)
+            return {"ok": True, "data": base64.b64encode(raw).decode("ascii")}
         return self._call("mmfdb.objects.get", {"object_uuid": object_uuid})
 
     def get_object_info(self, object_uuid: str) -> dict[str, Any]:
@@ -1055,6 +1548,14 @@ class MMFDBClient:
 
     def _call_raw(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         result = self._client.call(method, params or {})
+        if result.get("jsonrpc") == "2.0" and "error" in result:
+            error = result["error"]
+            if isinstance(error, Mapping):
+                message = str(error.get("message", error))
+            else:
+                message = str(error)
+            logging.error("MMFDB RPC failed: %s: %s", method, message)
+            raise RuntimeError(message)
         if not result.get("ok", True):
             error = result.get("error", method)
             logging.error("MMFDB RPC failed: %s: %s", method, error)

@@ -10,10 +10,10 @@ from .view_model import IntensityViewModel
 class ImgPixelIntensityTool(ImagingMapTool):
     """Per-pixel intensity imaging tool (creates the standard imaging HDF5)."""
 
-    def __init__(self, parent=None, embedded: bool = False, view_model=None):
+    def __init__(self, parent=None, embedded: bool = False, view_model=None, **kwargs):
         super().__init__(
             view_model or IntensityViewModel(), title="Intensity",
-            parent=parent, embedded=embedded,
+            parent=parent, embedded=embedded, **kwargs,
         )
 
 

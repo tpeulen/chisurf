@@ -19,6 +19,7 @@ from chisurf.core.transform.transformer import (
     list_transformers,
     register_transformer,
 )
+from chisurf.core.transform.mmfdb import require_authenticated_session, session_from_auth
 
 __all__ = [
     "PortSpec",
@@ -31,4 +32,6 @@ __all__ = [
     "get_transformer_for_operation",
     "list_transformers",
     "register_transformer",
+    "require_authenticated_session",
+    "session_from_auth",
 ]

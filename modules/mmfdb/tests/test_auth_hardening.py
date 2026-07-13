@@ -7,6 +7,7 @@ from pathlib import Path
 import mmfdb.config as config
 import mmfdb.security.login as login_mod
 import pytest
+from mmfdb.admin.backend.password_services import hash_password
 from mmfdb.repository import MFDatabase
 from mmfdb.security.auth import MAX_FAILED_ATTEMPTS, AuthError, authenticate_token, is_throttled
 from mmfdb.security.auth_providers import (
@@ -217,9 +218,15 @@ def test_local_admin_can_login_when_ldap_is_default(tmp_path: Path, monkeypatch)
 
     monkeypatch.setattr(login_mod, "resolve_provider", lambda name, *, conn, config=None: _LdapStub())
     with _db(tmp_path) as db:
-        result = login_mod.login(db.conn, user_id="user_default", password="admin")
+        db.conn.execute(
+            "INSERT INTO flr_sample_users (user_id, display_name, is_admin, password_hash) "
+            "VALUES ('breakglass', 'Break Glass', 1, ?)",
+            (hash_password("Break-glass1!"),),
+        )
+        db.conn.commit()
+        result = login_mod.login(db.conn, user_id="breakglass", password="Break-glass1!")
         assert result["ok"]
-        assert authenticate_token(db.conn, result["token"]).user_id == "user_default"
+        assert authenticate_token(db.conn, result["token"]).user_id == "breakglass"
 
 
 def test_external_user_cannot_use_local_fallback(tmp_path: Path, monkeypatch) -> None:

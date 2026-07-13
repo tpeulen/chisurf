@@ -219,13 +219,9 @@ class ExperimentReader(chisurf.core.base.Base):
         chisurf.core.data.ExperimentDataGroup
             Group containing the loaded data with metadata attached.
         """
-        filename = kwargs.get("filename")
-        source_uuids = self._register_sources(filename)
-
+        # Decode first. A corrupt input must not create a source artifact before
+        # the reader knows that it can produce a usable ChiSurf dataset.
         data = self.read(**kwargs)
-
-        derived_uuids = self._register_derived(data)
-        op_id = self._record_read_operation(source_uuids, derived_uuids)
 
         if isinstance(data, chisurf.core.data.ExperimentalData):
             data = chisurf.core.data.ExperimentDataGroup([data])
@@ -243,8 +239,57 @@ class ExperimentReader(chisurf.core.base.Base):
             except Exception:
                 pass
 
+        source_uuids, derived_uuids, op_id = self._register_provenance(
+            filename=kwargs.get("filename"),
+            data=data,
+        )
         self._stamp_data(data, source_uuids, derived_uuids, op_id)
         return data
+
+    def _register_provenance(self, *, filename, data) -> tuple[list[str], list[str], str | None]:
+        """Register one successfully decoded read as an atomic MMFDB unit.
+
+        Source artifacts, serialized outputs, and their operation links either
+        commit together or are all rolled back. Provenance remains optional:
+        archival failure never discards successfully decoded scientific data.
+        """
+        self._source_object_uuids = []
+        self._derived_object_uuids = []
+        self._pending_sample_files = []
+        self._last_operation_id = None
+        if not self.record_provenance or self.db is None:
+            return [], [], None
+
+        transaction = getattr(self.db, "transaction", None)
+        if not callable(transaction):
+            logger.warning(
+                "MMFDB provenance skipped for %s: the injected database does not "
+                "provide transactional registration",
+                type(self).__name__,
+            )
+            return [], [], None
+
+        try:
+            with transaction():
+                source_uuids = self._register_sources(filename)
+                derived_uuids = self._register_derived(data)
+                op_id = self._record_read_operation(source_uuids, derived_uuids)
+        except Exception as exc:
+            self._source_object_uuids = []
+            self._derived_object_uuids = []
+            self._pending_sample_files = []
+            self._last_operation_id = None
+            logger.warning(
+                "MMFDB provenance registration rolled back for %s: %s",
+                type(self).__name__,
+                exc,
+            )
+            return [], [], None
+
+        pending = list(self._pending_sample_files)
+        if pending and self.controller is not None:
+            self._prompt_for_sample_batch(pending)
+        return source_uuids, derived_uuids, op_id
 
     def _ensure_sample_exists(self, sample_id: str) -> None:
         """Create a selected sample in MMFDB if it does not exist yet.
@@ -303,40 +348,35 @@ class ExperimentReader(chisurf.core.base.Base):
         for p in paths:
             if not p.is_file():
                 continue
-            try:
-                result = self.db.put_object(path=str(p), filename=str(p))
-                obj_uuid = result["object_uuid"]
-                content_md5 = result.get("content_md5")
-                self._source_md5s[str(p)] = content_md5 or ""
-                uuids.append(obj_uuid)
-                sample_id = None
-                if content_md5:
-                    sample_id = self.db.lookup_sample_by_md5(content_md5)
-                if sample_id:
-                    self.sample_id = sample_id
-                elif self.sample_id:
-                    sample_id = self.sample_id
-                if sample_id:
-                    self._ensure_sample_exists(sample_id)
-                    self.db.set_object_sample_id(obj_uuid, sample_id)
-                else:
-                    pending.append((str(p), content_md5 or "", obj_uuid))
-                artifact_id = f"src_{obj_uuid[:12]}"
-                self.db.register_artifact(
-                    artifact_id=artifact_id,
-                    artifact_kind=self.artifact_kind_source,
-                    storage_mode="local_file",
-                    file_path=str(p),
-                    object_uuid=obj_uuid,
-                    data_format=p.suffix.lstrip(".") or "unknown",
-                    size_bytes=result["size_bytes"],
-                )
-            except Exception as e:
-                logger.warning("Failed to register source %s: %s", p, e)
+            result = self.db.put_object(path=str(p), filename=str(p))
+            obj_uuid = result["object_uuid"]
+            content_md5 = result.get("content_md5")
+            self._source_md5s[str(p)] = content_md5 or ""
+            uuids.append(obj_uuid)
+            sample_id = None
+            if content_md5:
+                sample_id = self.db.lookup_sample_by_md5(content_md5)
+            if sample_id:
+                self.sample_id = sample_id
+            elif self.sample_id:
+                sample_id = self.sample_id
+            if sample_id:
+                self._ensure_sample_exists(sample_id)
+                self.db.set_object_sample_id(obj_uuid, sample_id)
+            else:
+                pending.append((str(p), content_md5 or "", obj_uuid))
+            artifact_id = f"src_{obj_uuid[:12]}"
+            self.db.register_artifact(
+                artifact_id=artifact_id,
+                artifact_kind=self.artifact_kind_source,
+                storage_mode="local_file",
+                file_path=str(p),
+                object_uuid=obj_uuid,
+                data_format=self._source_data_format(p),
+                size_bytes=result["size_bytes"],
+            )
         self._source_object_uuids = uuids
         self._pending_sample_files = pending
-        if pending and self.controller is not None:
-            self._prompt_for_sample_batch(pending)
         return uuids
 
     def _register_derived(self, data) -> list[str]:
@@ -361,32 +401,29 @@ class ExperimentReader(chisurf.core.base.Base):
         uuids = []
         curves = self._extract_curves(data)
         for curve in curves:
-            try:
-                blob = data_to_json(
-                    curve,
-                    data_type=self.artifact_kind_derived,
-                    created_by=type(self).__name__,
-                    source_object_uuids=self._source_object_uuids,
-                    reader_settings=self._reader_settings_dict(),
-                )
-                result = self.db.put_object(
-                    data=blob,
-                    filename=f"{getattr(curve, 'name', 'derived')}.json",
-                    mime_type=self.derived_mime_type,
-                )
-                obj_uuid = result["object_uuid"]
-                uuids.append(obj_uuid)
-                artifact_id = f"der_{obj_uuid[:12]}"
-                self.db.register_artifact(
-                    artifact_id=artifact_id,
-                    artifact_kind=self.artifact_kind_derived,
-                    storage_mode="embedded_json",
-                    object_uuid=obj_uuid,
-                    data_format=self.derived_data_format,
-                    size_bytes=result["size_bytes"],
-                )
-            except Exception as e:
-                logger.warning("Failed to register derived data: %s", e)
+            blob = data_to_json(
+                curve,
+                data_type=self.artifact_kind_derived,
+                created_by=type(self).__name__,
+                source_object_uuids=self._source_object_uuids,
+                reader_settings=self._reader_settings_dict(),
+            )
+            result = self.db.put_object(
+                data=blob,
+                filename=f"{getattr(curve, 'name', 'derived')}.json",
+                mime_type=self.derived_mime_type,
+            )
+            obj_uuid = result["object_uuid"]
+            uuids.append(obj_uuid)
+            artifact_id = f"der_{obj_uuid[:12]}"
+            self.db.register_artifact(
+                artifact_id=artifact_id,
+                artifact_kind=self.artifact_kind_derived,
+                storage_mode="embedded_json",
+                object_uuid=obj_uuid,
+                data_format=self.derived_data_format,
+                size_bytes=result["size_bytes"],
+            )
         self._derived_object_uuids = uuids
         return uuids
 
@@ -413,27 +450,23 @@ class ExperimentReader(chisurf.core.base.Base):
             return None
 
         op_id = f"op_{uuid.uuid4().hex[:12]}"
-        try:
-            input_artifacts = [
-                {"artifact_id": f"src_{u[:12]}", "role": "source_file"}
-                for u in source_uuids
-            ]
-            output_artifacts = [
-                {"artifact_id": f"der_{u[:12]}", "role": "derived_data"}
-                for u in derived_uuids
-            ]
-            self.db.record_operation_with_artifacts(
-                operation_id=op_id,
-                operation_type=self.operation_type,
-                status="success",
-                input_artifacts=input_artifacts,
-                output_artifacts=output_artifacts,
-                settings=self._reader_settings_dict(),
-                software_module=type(self).__name__,
-            )
-        except Exception as e:
-            logger.warning("Failed to record operation: %s", e)
-            return None
+        input_artifacts = [
+            {"artifact_id": f"src_{u[:12]}", "role": "source_file"}
+            for u in source_uuids
+        ]
+        output_artifacts = [
+            {"artifact_id": f"der_{u[:12]}", "role": "derived_data"}
+            for u in derived_uuids
+        ]
+        self.db.record_operation_with_artifacts(
+            operation_id=op_id,
+            operation_type=self.operation_type,
+            status="succeeded",
+            input_artifacts=input_artifacts,
+            output_artifacts=output_artifacts,
+            settings=self._reader_settings_dict(),
+            software_module=type(self).__name__,
+        )
         self._last_operation_id = op_id
         return op_id
 
@@ -491,6 +524,19 @@ class ExperimentReader(chisurf.core.base.Base):
         if isinstance(filename, (list, tuple)):
             return [pathlib.Path(str(f)) for f in filename]
         return []
+
+    @staticmethod
+    def _source_data_format(path: pathlib.Path) -> str:
+        """Map arbitrary reader suffixes onto the MMFDB format vocabulary."""
+        suffix = path.suffix.lower().lstrip(".")
+        aliases = {"h5": "hdf5", "ht3": "tttr", "dta": "bin", "dsc": "unknown"}
+        value = aliases.get(suffix, suffix or "unknown")
+        try:
+            from mmfdb.models import DATA_FORMATS
+
+            return value if value in DATA_FORMATS else "unknown"
+        except Exception:
+            return value
 
     def _extract_curves(self, data) -> list:
         """Extract individual DataCurves from data."""

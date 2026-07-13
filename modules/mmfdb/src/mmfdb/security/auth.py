@@ -99,16 +99,20 @@ def _dao(conn: sqlite3.Connection):
     """
     from mmfdb.schema.dao import DictionaryDao
 
-    names = tuple(
-        row[0]
-        for row in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    dialect = str(getattr(conn, "dialect", "sqlite"))
+    if dialect == "postgresql":
+        table_query = (
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = current_schema() ORDER BY table_name"
         )
-    )
-    schema = _DAO_SCHEMA_CACHE.get(names)
+    else:
+        table_query = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    names = tuple(row[0] for row in conn.execute(table_query))
+    cache_key = (dialect, *names)
+    schema = _DAO_SCHEMA_CACHE.get(cache_key)
     if schema is None:
         schema = DictionaryDao.from_connection(conn)._schema
-        _DAO_SCHEMA_CACHE[names] = schema
+        _DAO_SCHEMA_CACHE[cache_key] = schema
     return DictionaryDao(conn, schema)
 
 

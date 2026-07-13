@@ -56,3 +56,26 @@ def test_handle_login_sends_string_to_warning(monkeypatch) -> None:
     LoginDialog.handle_login(dialog)
 
     assert warning_calls == [(dialog, "Login Failed", "Invalid credentials")]
+
+
+def test_handle_login_accepts_an_editable_username(monkeypatch) -> None:
+    login_calls = []
+
+    def fake_warning(*_args):
+        return None
+
+    monkeypatch.setattr(QtWidgets.QMessageBox, "warning", fake_warning)
+    dialog = SimpleNamespace(
+        user_combo=SimpleNamespace(
+            currentData=lambda: None,
+            currentText=lambda: "admin",
+        ),
+        password_edit=SimpleNamespace(text=lambda: "admin"),
+        client=SimpleNamespace(
+            login=lambda **params: login_calls.append(params) or {"error": "test stop"}
+        ),
+    )
+
+    LoginDialog.handle_login(dialog)
+
+    assert login_calls == [{"user_id": "admin", "password": "admin"}]

@@ -6,7 +6,8 @@ the ``api/`` and ``core/`` layers, and return JSON-safe results.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from ..api.features import extract_features, fit_gmm
 from ..api.io import load_tttr
@@ -26,8 +27,19 @@ from ..api.selection import analyze_request
 from ..api.serialization import settings_from_dict
 from ..api.stats import summarize_dataframes
 
+if TYPE_CHECKING:
+    from mmfdb.security.base import MMFDBClientBase
+    from mmfdb.security.session import SessionContext
 
-def register_services(dispatcher: Any) -> None:
+
+def register_services(
+    dispatcher: Any,
+    *,
+    mmfdb_db: "MMFDBClientBase | None" = None,
+    mmfdb_db_provider: "Callable[[], MMFDBClientBase | None] | None" = None,
+    mmfdb_session: "SessionContext | None" = None,
+    mmfdb_session_provider: "Callable[[], SessionContext | None] | None" = None,
+) -> None:
     """Register Burst Selection RPC handlers with a ServiceDispatcher.
 
     Parameters
@@ -38,7 +50,19 @@ def register_services(dispatcher: Any) -> None:
     """
     dispatcher.register(
         METHOD_ANALYZE_FILES,
-        lambda params: analyze_files_handler(**params),
+        lambda params: analyze_files_handler(
+            **params,
+            mmfdb_db=(
+                _provided_db(mmfdb_db, mmfdb_db_provider)
+                if (params.get("mmfdb") or {}).get("enabled", False)
+                else mmfdb_db
+            ),
+            mmfdb_session=(
+                _provided_session(mmfdb_session, mmfdb_session_provider)
+                if (params.get("mmfdb") or {}).get("enabled", False)
+                else mmfdb_session
+            ),
+        ),
     )
     dispatcher.register(
         METHOD_INSPECT_BUR,
@@ -81,6 +105,8 @@ def analyze_files_handler(
     selected_setup: str | None = None,
     legacy_parameters: dict[str, Any] | None = None,
     mmfdb: dict[str, Any] | None = None,
+    mmfdb_db: "MMFDBClientBase | None" = None,
+    mmfdb_session: "SessionContext | None" = None,
 ) -> dict[str, Any]:
     """Run Burst Selection analysis over TTTR files.
 
@@ -133,7 +159,10 @@ def analyze_files_handler(
         )
         result = analyze_request(request)
         if request.mmfdb.enabled:
-            registration = BurstMMFDBPipeline().register_run(request, result)
+            registration = BurstMMFDBPipeline(
+                db=mmfdb_db,
+                session=mmfdb_session,
+            ).register_run(request, result)
             result.mmfdb_artifacts = registration_result_to_payload(registration)
             result.warnings.extend(registration.warnings)
         return service_success(result)
@@ -141,6 +170,22 @@ def analyze_files_handler(
         from chisurf.server.services import OPERATION_FAILED, service_error
 
         return service_error(str(exc), error_code=OPERATION_FAILED)
+
+
+def _provided_db(
+    db: "MMFDBClientBase | None",
+    provider: "Callable[[], MMFDBClientBase | None] | None",
+) -> "MMFDBClientBase | None":
+    """Resolve a request-scoped database supplied by the composition root."""
+    return provider() if provider is not None else db
+
+
+def _provided_session(
+    session: "SessionContext | None",
+    provider: "Callable[[], SessionContext | None] | None",
+) -> "SessionContext | None":
+    """Resolve a request-scoped authenticated session."""
+    return provider() if provider is not None else session
 
 
 def contract_handler() -> dict[str, Any]:

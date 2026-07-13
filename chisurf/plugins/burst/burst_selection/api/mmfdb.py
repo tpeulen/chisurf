@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -22,6 +23,7 @@ from .serialization import to_jsonable
 
 if TYPE_CHECKING:
     from mmfdb.security.base import MMFDBClientBase
+    from mmfdb.security.session import SessionContext
 
 logger = logging.getLogger(__name__)
 
@@ -52,17 +54,22 @@ class BurstRegistrationResult:
 class BurstMMFDBPipeline:
     """Register Burst Selection inputs and outputs in MMFDB."""
 
-    def __init__(self, db: MMFDBClientBase | None = None):
+    def __init__(
+        self,
+        db: MMFDBClientBase | None = None,
+        session: "SessionContext | None" = None,
+    ):
         """Create a burst-selection registration pipeline.
 
         Parameters
         ----------
         db : MMFDBClientBase, optional
-            Explicit MMFDB connection. If omitted, the result registry resolves
-            the active/global database.
+            Explicit MMFDB connection. An enabled request without one is
+            reported as a registration warning; no ambient database is used.
 
         """
         self.db = db
+        self.session = session
 
     def _resolve_calibrated_at(self, request: AnalysisRequest) -> str | None:
         """Return the latest calibration timestamp for the resolved setup.
@@ -81,13 +88,11 @@ class BurstMMFDBPipeline:
         setup_id = request.mmfdb.setup_id
         if not setup_id:
             return None
+        if self.db is None:
+            return None
         try:
-            from mmfdb.store.database_resolver import resolve_database_path
-            from mmfdb.repository import MFDatabase
-            db_path = resolve_database_path()
-            with MFDatabase(db_path) as db:
-                dates = db.list_setup_calibration_dates(setup_id)
-                return dates[0] if dates else None
+            dates = self.db.list_setup_calibration_dates(setup_id)
+            return dates[0] if dates else None
         except Exception:
             return None
 
@@ -110,21 +115,19 @@ class BurstMMFDBPipeline:
             A warning message when the setup does not exist, or ``None``.
 
         """
-        from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-            setup_id_for_name,
-            _resolve_active_user_id,
-        )
-
         setup_id = (request.mmfdb.setup_id or "").strip()
         selected_setup = (request.selected_setup or "").strip()
-        user_id = _resolve_active_user_id()
+        # Setup namespaces follow the explicitly authenticated caller.  Never
+        # consult process settings here: a GUI/server may serve multiple users
+        # over the lifetime of one process.
+        user_id = str(getattr(self.session, "user_id", ""))
 
         if not setup_id and selected_setup:
             # Try user-namespaced id first, then fall back to global (shared) id
-            setup_id = setup_id_for_name(selected_setup, user_id=user_id)
+            setup_id = _setup_id_for_name(selected_setup, user_id=user_id)
             if self.db is not None:
                 if self.db.get_setup(setup_id) is None:
-                    global_id = setup_id_for_name(selected_setup, user_id="")
+                    global_id = _setup_id_for_name(selected_setup, user_id="")
                     if self.db.get_setup(global_id) is not None:
                         setup_id = global_id
 
@@ -175,6 +178,18 @@ class BurstMMFDBPipeline:
         """
         registration = BurstRegistrationResult()
         if not request.mmfdb.enabled:
+            return registration
+        if self.db is None:
+            registration.warnings.append(
+                "MMFDB registration requested without an explicit database connection."
+            )
+            return registration
+        try:
+            from chisurf.core.transform.mmfdb import require_authenticated_session
+
+            require_authenticated_session(self.db, self.session)
+        except Exception as exc:
+            registration.warnings.append(f"MMFDB archival refused: {exc}")
             return registration
 
         warning = self._resolve_setup_id(request)
@@ -244,6 +259,7 @@ class BurstMMFDBPipeline:
                 setup_id=request.mmfdb.setup_id,
                 setup_version=request.mmfdb.setup_version,
                 db=self.db,
+                session=self.session,
             )
         except LinkValidationError as exc:
             # A bad sample/parent link is validated before any rows are written,
@@ -284,13 +300,16 @@ class BurstMMFDBPipeline:
         if not bur_path and not rows:
             return
 
-        data: str | pd.DataFrame
+        data: str | bytes
         data_format = ""
         if bur_path:
             data = bur_path
         else:
-            data = pd.DataFrame(rows)
-            data_format = "msgpack"
+            # Use the native, interoperable .bur tabular encoding for in-memory
+            # results too. This keeps API/CLI/GUI output equivalent and avoids
+            # coupling registration to a Python-only dataframe codec.
+            data = pd.DataFrame(rows).to_csv(sep="\t", index=False).encode("utf-8")
+            data_format = "bur"
 
         calibrated_at = self._resolve_calibrated_at(request)
         artifact_id = register_result(
@@ -308,6 +327,7 @@ class BurstMMFDBPipeline:
             setup_id=request.mmfdb.setup_id,
             setup_version=request.mmfdb.setup_version,
             db=self.db,
+            session=self.session,
         )
         if artifact_id:
             registration.burst_table_artifacts[input_path] = artifact_id
@@ -411,6 +431,7 @@ class BurstMMFDBPipeline:
             setup_id=request.mmfdb.setup_id,
             setup_version=request.mmfdb.setup_version,
             db=self.db,
+            session=self.session,
         )
         if artifact_id:
             registration.sidecar_artifacts[role] = artifact_id
@@ -551,6 +572,15 @@ def _normalize_path(path: str | Path) -> str:
     return str(Path(path).expanduser().resolve())
 
 
+def _setup_id_for_name(name: str, *, user_id: str = "") -> str:
+    """Return the stable detector-setup identifier without importing GUI code."""
+    slug = re.sub(r"[^a-z0-9]+", "_", str(name).strip().lower()).strip("_")
+    if user_id:
+        user_slug = re.sub(r"[^a-z0-9]+", "_", str(user_id).strip().lower()).strip("_")
+        return f"tttr_detector_setup:{user_slug}:{slug or 'unnamed'}"
+    return f"tttr_detector_setup:{slug or 'unnamed'}"
+
+
 def _normalize_source_artifact_ids(source_artifact_ids: dict[str, str]) -> dict[str, str]:
     """Normalize caller-provided source artifact path keys.
 
@@ -685,6 +715,7 @@ def register_raw_input_for_sample(
     filetype: str | None,
     selected_setup: str | None,
     setup_id: str = "",
+    session: "SessionContext | None" = None,
 ) -> str:
     """Register a raw input artifact and bind its object content to a sample.
 
@@ -693,20 +724,22 @@ def register_raw_input_for_sample(
     """
     if not db.sample_exists(sample_id):
         return ""
-    artifact_id = register_result(
-        kind="raw_measurement",
-        data=path,
+    from chisurf.core.transform.mmfdb import require_authenticated_session
+
+    require_authenticated_session(db, session)
+    artifact_id = register_raw_measurement(
+        file_path=str(path),
         sample_id=sample_id,
-        operation_type="measurement_import",
-        data_format=raw_file_data_format(path),
         setup_id=setup_id,
         metadata={
             "plugin": "burst_selection",
             "role": "raw_tttr",
             "filetype": filetype,
             "selected_setup": selected_setup,
+            "data_format": raw_file_data_format(path),
         },
         db=db,
+        session=session,
     )
     if not artifact_id:
         return ""
@@ -718,20 +751,11 @@ def register_raw_input_for_sample(
 
 
 def acquire_mmfdb_connection() -> "MMFDBClientBase | None":
-    """Return the active global MMFDB connection, or open the default database.
+    """Open the configured MMFDB for a GUI composition root.
 
-    Connection acquisition is api-layer (not view) logic: prefer the in-process
-    global connection, else open the resolved default DB. Returns ``None`` when no
-    connection can be established.
+    The returned connection must be passed into the service/pipeline explicitly;
+    this helper never consults the result registry's process global.
     """
-    try:
-        from mmfdb.provenance.result_registry import _get_global_db
-
-        db = _get_global_db()
-    except Exception:
-        db = None
-    if db is not None:
-        return db
     try:
         from mmfdb.store.database_resolver import resolve_database_path
         from mmfdb.repository import MFDatabase

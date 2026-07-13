@@ -90,11 +90,17 @@ def cli(ctx: click.Context, version: bool) -> None:
     default=None,
     help="MMFDB SQLite path for --mmfdb. Defaults to the configured database.",
 )
+@click.option(
+    "--token",
+    envvar="MMFDB_TOKEN",
+    default=None,
+    help="Authenticated MMFDB session token (or set MMFDB_TOKEN).",
+)
 @click.option("--sample-id", default=None, help="Existing MMFDB sample ID to link the run to.")
 @click.option(
     "--sample-name",
     default=None,
-    help="Sample name to find-or-create (idempotent) when --sample-id is not given.",
+    help="Existing sample name to resolve when --sample-id is not given.",
 )
 @click.option("--selected-setup", default=None, help="Detector setup label stored in MMFDB metadata.")
 @click.option(
@@ -119,6 +125,7 @@ def analyze(
     detectors_json: str | None,
     use_mmfdb: bool,
     db_path: str | None,
+    token: str | None,
     sample_id: str | None,
     sample_name: str | None,
     selected_setup: str | None,
@@ -153,6 +160,7 @@ def analyze(
             detectors=load_json_file(detectors_json),
             settings=settings,
             db_path=db_path,
+            token=token,
             sample_id=sample_id,
             sample_name=sample_name,
             selected_setup=selected_setup,
@@ -182,6 +190,7 @@ def _analyze_with_mmfdb(
     detectors: dict[str, Any],
     settings: AnalysisSettings,
     db_path: str | None,
+    token: str | None,
     sample_id: str | None,
     sample_name: str | None,
     selected_setup: str | None,
@@ -197,40 +206,51 @@ def _analyze_with_mmfdb(
     from dataclasses import asdict
 
     from mmfdb.repository import MFDatabase
-    from mmfdb.provenance.result_registry import set_global_db
-    from mmfdb.samples.sample_manager import SampleDefinition, create_sample
+    from mmfdb.samples.sample_manager import find_sample_by_name
+    from mmfdb.store.database_resolver import resolve_database_path
 
     from ..backend.services import analyze_files_handler
+    from chisurf.core.transform.mmfdb import session_from_auth
 
-    db = MFDatabase(db_path) if db_path else None
-    if db is not None:
-        set_global_db(db)
+    db = MFDatabase(db_path or resolve_database_path())
+    try:
+        if not token:
+            raise click.UsageError("--mmfdb requires --token or MMFDB_TOKEN.")
+        session = session_from_auth(db, {"token": token})
+        resolved_sample_id = sample_id
+        if not resolved_sample_id:
+            if not sample_name:
+                raise click.UsageError("--mmfdb requires --sample-id or --sample-name.")
+            # Analysis must not silently create an unowned sample as a side
+            # effect. Sample creation belongs to an authenticated sample
+            # management workflow; this command only links an existing sample.
+            resolved_sample_id = find_sample_by_name(db, sample_name)
+            if not resolved_sample_id:
+                raise click.UsageError(
+                    f"No existing MMFDB sample named {sample_name!r}; "
+                    "create it in sample management or pass --sample-id."
+                )
 
-    resolved_sample_id = sample_id
-    if not resolved_sample_id:
-        if not sample_name:
-            raise click.UsageError("--mmfdb requires --sample-id or --sample-name.")
-        if db is None:
-            raise click.UsageError("--mmfdb with --sample-name requires --db (or a configured database).")
-        # create_sample is idempotent by name (find-or-create).
-        resolved_sample_id = create_sample(db, SampleDefinition(name=sample_name))
-
-    legacy = True if legacy_output is None else legacy_output
-    response = analyze_files_handler(
-        files=files,
-        filetype=filetype,
-        windows=windows or {},
-        detectors=detectors or {},
-        settings=asdict(settings),
-        legacy_output=legacy,
-        selected_setup=selected_setup,
-        mmfdb={
-            "enabled": True,
-            "sample_id": resolved_sample_id,
-            "register_missing_inputs": True,
-        },
-    )
-    click.echo(json.dumps(response, indent=2, default=str))
+        legacy = True if legacy_output is None else legacy_output
+        response = analyze_files_handler(
+            files=files,
+            filetype=filetype,
+            windows=windows or {},
+            detectors=detectors or {},
+            settings=asdict(settings),
+            legacy_output=legacy,
+            selected_setup=selected_setup,
+            mmfdb={
+                "enabled": True,
+                "sample_id": resolved_sample_id,
+                "register_missing_inputs": True,
+            },
+            mmfdb_db=db,
+            mmfdb_session=session,
+        )
+        click.echo(json.dumps(response, indent=2, default=str))
+    finally:
+        db.close()
 
 
 @cli.command("contract")

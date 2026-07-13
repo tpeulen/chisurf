@@ -24,7 +24,33 @@ def test_backup_before_migration_copies_existing_database():
 
         assert backup_path is not None
         assert backup_path.exists()
-        assert backup_path.read_bytes() == db_path.read_bytes()
+        backup = sqlite3.connect(backup_path)
+        try:
+            assert backup.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+            assert backup.execute("SELECT version FROM _schema_version").fetchone()[0] == 8
+        finally:
+            backup.close()
+
+
+def test_backup_includes_committed_wal_rows(tmp_path):
+    """Online backup is the only safe copy primitive for a live WAL database."""
+    db_path = tmp_path / "wal.db"
+    writer = sqlite3.connect(db_path)
+    writer.execute("PRAGMA journal_mode=WAL")
+    writer.execute("CREATE TABLE payload (value TEXT)")
+    writer.execute("INSERT INTO payload VALUES ('committed-in-wal')")
+    writer.commit()
+    try:
+        backup_path = database_resolver.backup_database(db_path)
+    finally:
+        writer.close()
+
+    backup = sqlite3.connect(backup_path)
+    try:
+        assert backup.execute("SELECT value FROM payload").fetchone()[0] == "committed-in-wal"
+        assert backup.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    finally:
+        backup.close()
 
 
 def test_copy_source_to_user_path(monkeypatch):

@@ -12,9 +12,13 @@ def test_root_package_has_deliberate_public_api() -> None:
 
     assert mmfdb.__all__ == [
         "MFDatabase",
+        "DeploymentConfig",
         "RuntimeConfig",
+        "apply_deployment_config",
         "configure_runtime",
         "get_runtime_config",
+        "load_client_config",
+        "load_deployment_config",
         "reset_runtime_config",
     ]
 

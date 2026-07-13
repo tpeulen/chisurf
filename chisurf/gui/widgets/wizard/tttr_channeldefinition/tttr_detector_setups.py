@@ -1,4 +1,3 @@
-import json
 import pathlib
 from typing import Any
 
@@ -12,7 +11,7 @@ from chisurf.core.settings.path_utils import get_path
 from .tttr_setup_utils import (
     SetupTypeConfig,
     json_loads,
-    load_setups,
+    load_mmfdb_setups,
     resolve_active_user_id,
     save_setup_row as _save_row,
     save_setups,
@@ -138,15 +137,13 @@ def _setup_row_data(
     return data
 
 
-def _detector_row_to_data(row: dict) -> dict:
+def _detector_row_to_data(row: dict, db: MFDatabase) -> dict:
     """Callback for ``load_mmfdb_setups`` to extract detector data with child
     table priority."""
     full = None
     dcs, pws = None, None
     if row.get("setup_id"):
-        from mmfdb.store.database_resolver import resolve_database_path
-        with MFDatabase(resolve_database_path()) as _db_tmp:
-            full = _db_tmp.get_setup(row["setup_id"])
+        full = db.get_setup(row["setup_id"])
         if full:
             dcs = full.get("detector_channels")
             pws = full.get("pie_windows")
@@ -205,23 +202,24 @@ def _load_json_detector_setups(path: pathlib.Path, file_path=None) -> dict:
 
 
 def load_detector_setups(file_path=None, db_path=None, skip_migration=False, user_id=None):
-    from .tttr_setup_utils import load_setups as _load_setups
-
     path = pathlib.Path(file_path or DETECTOR_SETUPS_FILE)
     if _use_mmfdb(file_path):
         db = _db(db_path) if db_path is not None else _db()
         if db is not None:
-            uid = user_id if user_id is not None else _resolve_active_user_id()
-            if not skip_migration:
-                imported = _migrate_json_setups_to_mmfdb(db, path, user_id=uid)
-                # Only remove legacy file when data was actually imported
-                if imported:
-                    try:
-                        if path.exists():
-                            path.unlink()
-                    except Exception:
-                        pass
-            return _load_mmfdb_detector_setups(db, user_id=uid)
+            try:
+                uid = user_id if user_id is not None else _resolve_active_user_id()
+                if not skip_migration:
+                    imported = _migrate_json_setups_to_mmfdb(db, path, user_id=uid)
+                    # Only remove legacy file when data was actually imported
+                    if imported:
+                        try:
+                            if path.exists():
+                                path.unlink()
+                        except Exception:
+                            pass
+                return _load_mmfdb_detector_setups(db, user_id=uid)
+            finally:
+                db.close()
 
     try:
         import chisurf.core.settings

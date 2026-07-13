@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 from typing import Any
 
@@ -10,7 +11,9 @@ from typing import Any
 def hash_password(password: str) -> str:
     """Hash *password* with a random salt using PBKDF2-SHA256."""
     salt = secrets.token_hex(16)
-    iterations = 100000
+    # PBKDF2 hashes are self-describing, so existing lower-cost hashes remain
+    # verifiable while newly-created credentials use the hardened work factor.
+    iterations = 600000
     dk = hashlib.pbkdf2_hmac(
         "sha256",
         password.encode("utf-8"),
@@ -39,7 +42,7 @@ def verify_password(password: str, password_hash: str) -> bool:
         salt.encode("utf-8"),
         iterations,
     )
-    return dk.hex() == hashed
+    return hmac.compare_digest(dk.hex(), hashed)
 
 
 def evaluate_password(password: str) -> dict[str, Any]:
@@ -122,16 +125,10 @@ def login_handler(user_id: str, password: str = "") -> dict[str, Any]:
                 },
             }
 
-        # No password set — free login (legacy behavior for passwordless users)
+        # A local row without a credential is a disabled account. Passwordless
+        # access is only available through the explicit flag above.
         if not password_hash:
-            return {
-                "authenticated": True,
-                "user": {
-                    "user_id": user_id,
-                    "display_name": display_name,
-                    "is_admin": is_admin_bool,
-                },
-            }
+            return {"authenticated": False, "error": "Incorrect password"}
 
         if verify_password(password, password_hash):
             return {

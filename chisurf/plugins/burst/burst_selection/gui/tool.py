@@ -25,7 +25,6 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition i
     DetectorWizardPage,
 )
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-    _resolve_active_user_id,
     load_detector_setups,
     setup_id_for_name,
 )
@@ -379,6 +378,7 @@ class BurstSelectionTool(ChisurfDockTool):
         show_decay_plot: bool = True,
         show_filter_plot: bool = False,
         show_burst_plot: bool = False,
+        mmfdb_client: Any = None,
         **kwargs: object,
     ) -> None:
         """Initialize the migrated GUI and its API-backed controls."""
@@ -391,9 +391,15 @@ class BurstSelectionTool(ChisurfDockTool):
         self.show_decay_plot = show_decay_plot
         self.show_filter_plot = show_filter_plot
         self.show_burst_plot = show_burst_plot
+        self._mmfdb_client = mmfdb_client
         super().__init__(*args, **kwargs)
         self.setWindowTitle("Burst Selection")
-        self._client = BurstSelectionClient()
+        self._mmfdb_db: MMFDBClientBase | None = None
+        self._mmfdb_session: Any = None
+        self._client = BurstSelectionClient(
+            mmfdb_db_provider=self._db,
+            mmfdb_session_provider=self.acquire_mmfdb_session,
+        )
         self._file_paths: list[Path] = []
         self._last_result: dict[str, Any] | None = None
         self._last_bur_frames: list[pd.DataFrame] = []
@@ -409,7 +415,6 @@ class BurstSelectionTool(ChisurfDockTool):
         self._closed_diagnostic_plots: set[str] = set()
         self._selected_setup_name: str | None = None
         self._selected_filetype: str | None = None
-        self._mmfdb_db: MMFDBClientBase | None = None
         self._fit_gmm_on_update = False
         self.gmm_settings = dict(DEFAULT_GMM_SETTINGS)
         self._building_ui = True
@@ -1465,7 +1470,30 @@ class BurstSelectionTool(ChisurfDockTool):
         self._mmfdb_db = _acquire_mmfdb_connection()
         return self._mmfdb_db
 
-    def _ensure_selected_setup_in_mmfdb(self, db: MMFDBClientBase) -> str:
+    def acquire_mmfdb_session(self) -> Any:
+        """Return a verified session derived from the injected authenticated client."""
+        if self._mmfdb_session is not None:
+            return self._mmfdb_session
+        token = getattr(self._mmfdb_client, "token", None)
+        db = self._db()
+        if db is None:
+            return None
+        try:
+            from chisurf.core.transform.mmfdb import (
+                runtime_session_for_database,
+                session_from_auth,
+            )
+
+            self._mmfdb_session = (
+                session_from_auth(db, {"token": token})
+                if token
+                else runtime_session_for_database(db)
+            )
+        except Exception:
+            return None
+        return self._mmfdb_session
+
+    def _ensure_selected_setup_in_mmfdb(self, db: MMFDBClientBase, session: Any) -> str:
         """Return the selected setup ID, saving the current setup when missing.
 
         Parameters
@@ -1482,7 +1510,7 @@ class BurstSelectionTool(ChisurfDockTool):
         selected_setup = self.wizard.comboBox.currentText()
         if not selected_setup:
             return ""
-        user_id = _resolve_active_user_id()
+        user_id = session.user_id
         setup_id = setup_id_for_name(selected_setup, user_id=user_id)
         if db.get_setup(setup_id) is not None:
             return setup_id
@@ -1535,6 +1563,9 @@ class BurstSelectionTool(ChisurfDockTool):
         db = self._db()
         if db is None:
             return {"enabled": True}
+        session = self.acquire_mmfdb_session()
+        if session is None:
+            raise RuntimeError("MMFDB output requires an authenticated session.")
 
         normalized_paths = [path.resolve() for path in paths if path.is_file()]
         sample_ids = {sample_id for path in normalized_paths if (sample_id := _sample_id_for_raw_path(db, path))}
@@ -1549,7 +1580,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
         source_artifact_ids: dict[str, str] = {}
         selected_setup = self.wizard.comboBox.currentText()
-        setup_id = self._ensure_selected_setup_in_mmfdb(db)
+        setup_id = self._ensure_selected_setup_in_mmfdb(db, session)
         for path in normalized_paths:
             artifact_id = _raw_artifact_id_for_path(db, path)
             if not artifact_id:
@@ -1560,6 +1591,7 @@ class BurstSelectionTool(ChisurfDockTool):
                     filetype=self._selected_filetype,
                     selected_setup=selected_setup,
                     setup_id=setup_id,
+                    session=session,
                 )
             if artifact_id:
                 source_artifact_ids[str(path)] = artifact_id
@@ -2956,7 +2988,14 @@ class BurstSelectionTool(ChisurfDockTool):
         try:
             from chisurf.plugins.ndxplorer.mmfdb_launcher import open_burst_selection_from_mmfdb
 
-            open_burst_selection_from_mmfdb(parent=self)
+            if self._mmfdb_client is None:
+                raise RuntimeError(
+                    "an authenticated MMFDB client was not injected into Burst Selection"
+                )
+            open_burst_selection_from_mmfdb(
+                parent=self,
+                client=self._mmfdb_client,
+            )
         except Exception as exc:
             self._status_bar.showMessage(f"Could not open ndXplorer: {exc}")
 
@@ -3029,6 +3068,10 @@ class BurstSelectionTool(ChisurfDockTool):
         """Save window geometry and dock layout before closing."""
         self._save_window_geometry()
         self._save_dock_layout()
+        if self._mmfdb_db is not None:
+            self._mmfdb_db.close()
+            self._mmfdb_db = None
+            self._mmfdb_session = None
         super().closeEvent(event)
 
     def _save_window_geometry(self) -> None:

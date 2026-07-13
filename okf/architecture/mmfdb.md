@@ -154,6 +154,26 @@ single-table CRUD shape is DAO; a join/traversal/bulk/conditional is raw.
 `mmfdb_group_member`): with no resolvable primary key it returns the last rowid
 rather than raising, so even junctions can be written through the DAO.
 
+# Deployment & connection modes
+
+MMFDB runs two ways. **Embedded** (default): ChiSurf opens the per-user SQLite
+database in-process and registers the admin RPC services on a local dispatcher —
+no server, no socket. **Standalone**: `mmfdb serve` runs a dependency-free WSGI
+HTTP server exposing JSON-RPC at `/rpc`, a browser admin UI at `/login`, a
+bounded streaming object endpoint at `/objects`, and `/healthz`. A Docker image
+(`modules/mmfdb/Dockerfile`) and Compose file (`docker-compose.mmfdb.yml`) run
+this on loopback `:8080` with a persistent data volume and a read-only rootfs.
+The SQL backend is SQLite by default or PostgreSQL when a `MMFDB_DATABASE_URL` /
+`database.url` is configured (runtime-only: no bootstrap/migration on Postgres).
+
+ChiSurf's `MMFDBClient` (in the `mmfdb_admin` plugin) picks a transport from the
+`mmfdb.client.mode` setting: `embedded` (local ZMQ / in-process) or
+`remote` (HTTP JSON-RPC to a standalone `base_url`). Remote URLs must be HTTPS
+unless loopback. The `mmfdb.status` RPC reports the running database's
+`database_dialect`, a redacted `database_location`, and `object_store_backend`;
+the mmfdb-admin **Overview** panel renders the client mode, endpoint, database
+type, and object store so the operator can see which database they are editing.
+
 # Object store & provenance-aware readers
 
 MMFDB has a content-addressed **object store** (`object_store.py`): blobs are

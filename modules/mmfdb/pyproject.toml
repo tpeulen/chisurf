@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,16 +8,20 @@ version = "0.1.0"
 description = "Metadata and provenance database package used by ChiSurf."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "GPL-2.0"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
-    {name = "Thomas-Otavio Peulen", email = "thomas@peulen.xyz"}
+    {name = "Thomas-Otavio Peulen", email = "thomas.peulen@tu-dortmund.de"}
 ]
 dependencies = [
+    "click",
+    "msgpack>=1.1.2",
     "numpy<2.0",
     "PyYAML",
 ]
 
 [project.scripts]
+mmfdb = "mmfdb.cli:cli"
 mmfdb-admin = "mmfdb.admin.cli:cli"
 
 [project.optional-dependencies]
@@ -25,8 +29,15 @@ admin = []
 orm = [
     "sqlalchemy>=2.0",
 ]
+postgres = [
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
+]
 ldap = [
     "ldap3>=2.9",
+]
+s3 = [
+    "boto3>=1.34",
 ]
 
 [tool.pytest.ini_options]
@@ -40,6 +51,7 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["mmfdb*"]
+exclude = ["mfdb*"]
 
 [tool.setuptools.package-data]
 "mmfdb" = [
@@ -47,4 +59,7 @@ include = ["mmfdb*"]
     "data/*.dic",
     "data/*.db",
     "data/*.sh",
+    "webadmin/templates/*.html",
+    "webadmin/static/*.css",
+    "webadmin/static/*.js",
 ]

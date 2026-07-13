@@ -24,8 +24,8 @@ Example
 
 from __future__ import annotations
 
-import sqlite3
-from typing import Any, Iterable, Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from mmfdb.schema.dictionary_schema_map import (
     DictionarySchemaMap,
@@ -50,6 +50,44 @@ class UnknownColumnError(DaoError):
     """Raised when a column is not declared for the target table."""
 
 
+def _introspect_postgresql_schema(
+    conn: Any,
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """Return the current PostgreSQL schema in the DAO's canonical shape."""
+    primary_key_rows = conn.execute(
+        """SELECT kcu.table_name, kcu.column_name, kcu.ordinal_position
+           FROM information_schema.table_constraints AS tc
+           JOIN information_schema.key_column_usage AS kcu
+             ON tc.constraint_name = kcu.constraint_name
+            AND tc.constraint_schema = kcu.constraint_schema
+          WHERE tc.constraint_type = 'PRIMARY KEY'
+            AND tc.table_schema = current_schema()"""
+    ).fetchall()
+    primary_keys = {
+        (row[0], row[1]): int(row[2]) for row in primary_key_rows
+    }
+    rows = conn.execute(
+        """SELECT table_name, column_name, ordinal_position, data_type,
+                  is_nullable, column_default
+             FROM information_schema.columns
+            WHERE table_schema = current_schema()
+            ORDER BY table_name, ordinal_position"""
+    ).fetchall()
+    schema: dict[str, dict[str, dict[str, Any]]] = {}
+    for row in rows:
+        table, column = str(row[0]), str(row[1])
+        pk_position = primary_keys.get((table, column), 0)
+        schema.setdefault(table, {})[column] = {
+            "cid": int(row[2]) - 1,
+            "type": str(row[3]),
+            "notnull": str(row[4]).upper() == "NO",
+            "default": row[5],
+            "primary_key": bool(pk_position),
+            "primary_key_position": pk_position,
+        }
+    return schema
+
+
 class DictionaryDao:
     """Generic, parameterised CRUD over dictionary-declared MMFDB tables.
 
@@ -66,19 +104,23 @@ class DictionaryDao:
 
     def __init__(
         self,
-        conn: sqlite3.Connection,
+        conn: Any,
         schema: Mapping[str, Mapping[str, Mapping[str, Any]]],
     ) -> None:
         self.conn = conn
-        if getattr(conn, "row_factory", None) is None:
+        if hasattr(conn, "row_factory") and getattr(conn, "row_factory", None) is None:
+            import sqlite3
+
             conn.row_factory = sqlite3.Row
         self._schema = schema
 
     # -- constructors ----------------------------------------------------
 
     @classmethod
-    def from_connection(cls, conn: sqlite3.Connection) -> "DictionaryDao":
+    def from_connection(cls, conn: Any) -> "DictionaryDao":
         """Build a DAO by introspecting the live schema of ``conn``."""
+        if getattr(conn, "dialect", "sqlite") == "postgresql":
+            return cls(conn, _introspect_postgresql_schema(conn))
         rows = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
         ).fetchall()
@@ -95,13 +137,14 @@ class DictionaryDao:
                     "notnull": bool(notnull),
                     "default": default,
                     "primary_key": bool(pk),
+                    "primary_key_position": int(pk),
                 }
             schema[name] = columns
         return cls(conn, schema)
 
     @classmethod
     def from_dictionary_map(
-        cls, conn: sqlite3.Connection, schema_map: DictionarySchemaMap
+        cls, conn: Any, schema_map: DictionarySchemaMap
     ) -> "DictionaryDao":
         """Build a DAO from a :class:`DictionarySchemaMap`'s live schema.
 
@@ -112,7 +155,7 @@ class DictionaryDao:
         return cls.from_connection(conn)
 
     @classmethod
-    def from_db_path(cls, conn: sqlite3.Connection, db_path: str) -> "DictionaryDao":
+    def from_db_path(cls, conn: Any, db_path: str) -> "DictionaryDao":
         """Build a DAO whose schema is introspected from ``db_path``."""
         return cls(conn, introspect_sqlite_schema(db_path))
 
@@ -133,14 +176,68 @@ class DictionaryDao:
         Falls back to ``<table>_id`` / ``id`` when no PRAGMA primary key is set.
         """
         self._require_table(table)
+        keys = self.primary_keys(table)
+        if len(keys) > 1:
+            raise DaoError(
+                f"Table {table!r} has a composite primary key {keys!r}; "
+                "use primary_keys() or pass all key values."
+            )
+        if keys:
+            return keys[0]
         cols = self._schema[table]
-        for name, meta in cols.items():
-            if meta.get("primary_key"):
-                return name
         for candidate in (f"{table}_id", "id", "uuid"):
             if candidate in cols:
                 return candidate
         raise DaoError(f"No primary key found for table {table!r}.")
+
+    def primary_keys(self, table: str) -> tuple[str, ...]:
+        """Return every declared primary-key column in SQLite key order."""
+        self._require_table(table)
+        keyed = [
+            (int(meta.get("primary_key_position") or 0), name)
+            for name, meta in self._schema[table].items()
+            if meta.get("primary_key")
+        ]
+        keyed.sort(key=lambda item: (item[0] or 10_000, item[1]))
+        return tuple(name for _, name in keyed)
+
+    def _key_clause(
+        self,
+        table: str,
+        key_value: Any,
+        key_columns: str | Iterable[str] | None,
+    ) -> tuple[list[str], list[Any]]:
+        if key_columns is None:
+            keys = list(self.primary_keys(table))
+            if not keys:
+                keys = [self.primary_key(table)]
+        elif isinstance(key_columns, str):
+            keys = [key_columns]
+        else:
+            keys = list(key_columns)
+        self._require_columns(table, keys)
+        if not keys:
+            raise DaoError(f"No key columns supplied for table {table!r}.")
+
+        if isinstance(key_value, Mapping):
+            missing = [key for key in keys if key not in key_value]
+            if missing:
+                raise DaoError(f"Missing key value(s) for {table!r}: {missing!r}.")
+            values = [key_value[key] for key in keys]
+        elif len(keys) == 1:
+            values = [key_value]
+        else:
+            if isinstance(key_value, (str, bytes)):
+                raise DaoError(f"Composite key for {table!r} requires {len(keys)} values.")
+            try:
+                values = list(key_value)
+            except TypeError as exc:
+                raise DaoError(
+                    f"Composite key for {table!r} requires {len(keys)} values."
+                ) from exc
+            if len(values) != len(keys):
+                raise DaoError(f"Composite key for {table!r} requires {len(keys)} values.")
+        return keys, values
 
     def _require_table(self, table: str) -> None:
         if table not in self._schema:
@@ -270,15 +367,14 @@ class DictionaryDao:
         table: str,
         pk_value: Any,
         *,
-        pk_column: str | None = None,
+        pk_column: str | Iterable[str] | None = None,
         include_deleted: bool = False,
     ) -> dict[str, Any] | None:
         """Return one row by primary key as a dict, or ``None``."""
         self._require_table(table)
-        pk = pk_column or self.primary_key(table)
-        self._require_columns(table, [pk])
-        sql = f"SELECT * FROM {quote_identifier(table)} WHERE {quote_identifier(pk)} = ?"
-        params: list[Any] = [pk_value]
+        keys, params = self._key_clause(table, pk_value, pk_column)
+        predicate = " AND ".join(f"{quote_identifier(key)} = ?" for key in keys)
+        sql = f"SELECT * FROM {quote_identifier(table)} WHERE {predicate}"
         if not include_deleted and self._has(table, SOFT_DELETE_COLUMN):
             sql += f" AND {quote_identifier(SOFT_DELETE_COLUMN)} IS NULL"
         row = self.conn.execute(sql, params).fetchone()
@@ -331,7 +427,7 @@ class DictionaryDao:
         pk_value: Any,
         values: Mapping[str, Any],
         *,
-        pk_column: str | None = None,
+        pk_column: str | Iterable[str] | None = None,
         touch: bool = True,
     ) -> int:
         """Update one row by primary key; return the affected row count.
@@ -343,9 +439,10 @@ class DictionaryDao:
         if not values:
             return 0
         self._require_columns(table, values.keys())
-        pk = pk_column or self.primary_key(table)
-        if pk in values:
-            raise DaoError(f"Cannot update primary key {pk!r} of {table!r}.")
+        keys, key_values = self._key_clause(table, pk_value, pk_column)
+        changed_keys = sorted(set(keys).intersection(values))
+        if changed_keys:
+            raise DaoError(f"Cannot update primary key column(s) {changed_keys!r} of {table!r}.")
 
         set_cols = list(values.keys())
         assignments = [f"{quote_identifier(c)} = ?" for c in set_cols]
@@ -354,9 +451,9 @@ class DictionaryDao:
             assignments.append(f"{quote_identifier(UPDATED_AT_COLUMN)} = CURRENT_TIMESTAMP")
         sql = (
             f"UPDATE {quote_identifier(table)} SET {', '.join(assignments)} "
-            f"WHERE {quote_identifier(pk)} = ?"
+            "WHERE " + " AND ".join(f"{quote_identifier(key)} = ?" for key in keys)
         )
-        params.append(pk_value)
+        params.extend(key_values)
         if self._has(table, SOFT_DELETE_COLUMN):
             sql += f" AND {quote_identifier(SOFT_DELETE_COLUMN)} IS NULL"
         return int(self.conn.execute(sql, params).rowcount)
@@ -366,7 +463,7 @@ class DictionaryDao:
         table: str,
         pk_value: Any,
         *,
-        pk_column: str | None = None,
+        pk_column: str | Iterable[str] | None = None,
         deleted_at: str | None = None,
     ) -> int:
         """Soft-delete one row (set ``deleted_at``); return affected row count.
@@ -377,10 +474,11 @@ class DictionaryDao:
         column.
         """
         self._require_table(table)
-        pk = pk_column or self.primary_key(table)
+        keys, key_values = self._key_clause(table, pk_value, pk_column)
+        predicate = " AND ".join(f"{quote_identifier(key)} = ?" for key in keys)
         if not self._has(table, SOFT_DELETE_COLUMN):
-            sql = f"DELETE FROM {quote_identifier(table)} WHERE {quote_identifier(pk)} = ?"
-            return int(self.conn.execute(sql, [pk_value]).rowcount)
+            sql = f"DELETE FROM {quote_identifier(table)} WHERE {predicate}"
+            return int(self.conn.execute(sql, key_values).rowcount)
         params: list[Any] = []
         if deleted_at is None:
             set_clause = f"{quote_identifier(SOFT_DELETE_COLUMN)} = CURRENT_TIMESTAMP"
@@ -389,8 +487,8 @@ class DictionaryDao:
             params.append(deleted_at)
         sql = (
             f"UPDATE {quote_identifier(table)} SET {set_clause} "
-            f"WHERE {quote_identifier(pk)} = ? "
+            f"WHERE {predicate} "
             f"AND {quote_identifier(SOFT_DELETE_COLUMN)} IS NULL"
         )
-        params.append(pk_value)
+        params.extend(key_values)
         return int(self.conn.execute(sql, params).rowcount)

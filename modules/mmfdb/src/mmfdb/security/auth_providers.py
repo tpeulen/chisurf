@@ -82,10 +82,9 @@ class AuthProvider(Protocol):
 class LocalAuthProvider:
     """Authenticate against ``flr_sample_users.password_hash`` (PBKDF2-SHA256).
 
-    Behaviour is identical to the pre-existing token-minting login path: admin
-    accounts always require a password; ``allow_passwordless_login`` users log in
-    without one; a user with no stored hash logs in only when no password is
-    supplied.
+    Admin accounts always require a password. Passwordless login is available
+    only to accounts explicitly marked ``allow_passwordless_login``; a missing
+    hash by itself is never treated as a credential.
     """
 
     name = "local"
@@ -124,8 +123,7 @@ class LocalAuthProvider:
         elif password_hash:
             ok = verify_password(password, password_hash)
         else:
-            # No stored hash: accept only when no password is supplied.
-            ok = not password
+            ok = False
         if not ok:
             return None
         return AuthIdentity(

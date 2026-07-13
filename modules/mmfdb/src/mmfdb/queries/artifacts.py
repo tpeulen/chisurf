@@ -980,7 +980,7 @@ class ArtifactOpsMixin:
             if acl_owner_user_id is not None:
                 from mmfdb.security.auth import create_default_acl_for_object
                 create_default_acl_for_object(
-                    self.conn, "mmfdb_operation", operation_id,
+                    self.conn, "operation", operation_id,
                     owner_user_id=acl_owner_user_id,
                 )
         return operation_id

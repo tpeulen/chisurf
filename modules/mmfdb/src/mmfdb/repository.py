@@ -36,7 +36,21 @@ from mmfdb.schema._sqlutil import (
     _utc_now,
 )
 from mmfdb.security.base import MMFDBClientBase
-from mmfdb.store.database_resolver import resolve_database_path
+from mmfdb.store.database_resolver import (
+    backup_database_before_migration,
+    resolve_database_path,
+    restore_database_backup,
+)
+from mmfdb.store.sql_backend import (
+    DatabaseCapabilityError,
+    DatabaseTarget,
+    PostgreSQLConnection,
+    connect_postgresql,
+    connection_dialect,
+    parse_database_target,
+    postgres_schema_version,
+    validate_postgresql_schema,
+)
 from mmfdb.store.transactions import transaction as _transaction
 
 if TYPE_CHECKING:
@@ -98,28 +112,69 @@ class MFDatabase(
                 "cas registry number", "casrn"],
     }
 
-    def __init__(self, db_path: str | os.PathLike | None = None, readonly: bool = False, connection: sqlite3.Connection | None = None, enforce_foreign_keys: bool = True):
+    def __init__(
+        self,
+        db_path: str | os.PathLike | None = None,
+        readonly: bool = False,
+        connection: sqlite3.Connection | PostgreSQLConnection | None = None,
+        enforce_foreign_keys: bool = True,
+        *,
+        owns_connection: bool | None = None,
+    ):
         import os as _os
         self._os = _os
-        if db_path is None:
+        if db_path is None and connection is None:
             db_path = resolve_database_path()
-        self.db_path = str(db_path) if db_path == ":memory:" else (_os.path.abspath(str(db_path)) if db_path else None)
+        self.database_target: DatabaseTarget | None = (
+            parse_database_target(db_path) if db_path is not None else None
+        )
+        self.database_url: str | None = None
+        if self.database_target is None:
+            self.db_path = None
+        elif self.database_target.is_sqlite:
+            sqlite_location = self.database_target.location
+            self.db_path = (
+                sqlite_location
+                if sqlite_location == ":memory:"
+                else _os.path.abspath(sqlite_location)
+            )
+            self.database_target = parse_database_target(self.db_path)
+        else:
+            # Preserve the path/URL distinction throughout the repository.
+            # Treating a URL as a path is how backup and relative-file code can
+            # accidentally create local files named ``postgresql:``.
+            self.db_path = None
+            self.database_url = self.database_target.location
         self.readonly = readonly
         self.enforce_foreign_keys = enforce_foreign_keys
-        self._conn: sqlite3.Connection | None = None
+        self._conn: sqlite3.Connection | PostgreSQLConnection | None = None
+        self._owns_connection = connection is None if owns_connection is None else owns_connection
         self.migration_report = None
         if connection is not None:
+            dialect = connection_dialect(connection)
+            if self.database_target is None:
+                if dialect == "sqlite":
+                    self.database_target = parse_database_target(":memory:")
+                else:
+                    raise ValueError(
+                        "Borrowed PostgreSQL connections require their database URL "
+                        "as db_path so schema capabilities are explicit"
+                    )
+            elif self.database_target.dialect != dialect:
+                raise ValueError(
+                    f"Connection dialect {dialect!r} does not match target "
+                    f"{self.database_target.dialect!r}"
+                )
+            if connection.in_transaction:
+                raise ValueError("Cannot attach MFDatabase to a connection with an active transaction")
             self._conn = connection
-            self.readonly = readonly
-            if self.readonly:
-                self._conn.execute("PRAGMA query_only=ON")
+            self._configure_connection()
+            self._initialize_schema()
         elif db_path is not None:
             self.connect()
-            if not self.readonly:
-                self.migration_report = schema.migrate_schema(self.conn)
 
     @property
-    def conn(self) -> sqlite3.Connection:
+    def conn(self) -> sqlite3.Connection | PostgreSQLConnection:
         if self._conn is None:
             raise RuntimeError("Database not connected. Call connect() first.")
         return self._conn
@@ -161,13 +216,41 @@ class MFDatabase(
     def connect(self):
         if self._conn is not None:
             return
+        if self.database_target is None:
+            raise RuntimeError("A detached borrowed connection cannot be reopened")
         self._dao = None
         self._lineage = None
-        if self.readonly and self.db_path != ":memory:":
+        if self.database_target.dialect == "postgresql":
+            self._conn = connect_postgresql(self.database_target, readonly=self.readonly)
+        elif self.db_path is None:
+            raise RuntimeError("SQLite database path is not configured")
+        elif self.readonly and self.db_path != ":memory:":
             uri = Path(str(self.db_path)).resolve().as_uri() + "?mode=ro"
             self._conn = sqlite3.connect(uri, uri=True)
         else:
             self._conn = sqlite3.connect(str(self.db_path))
+        self._owns_connection = True
+        try:
+            self._configure_connection()
+            self._initialize_schema()
+        except Exception:
+            # A failed handshake/schema check must not leak a server pool or a
+            # SQLite file descriptor. Borrowed handles are handled separately
+            # in __init__ and remain caller-owned.
+            if self._conn is not None:
+                self._conn.close()
+                self._conn = None
+            raise
+
+    def _configure_connection(self) -> None:
+        """Apply the selected backend's connection contract."""
+        if self._conn is None:
+            raise RuntimeError("Database not connected")
+        if connection_dialect(self._conn) == "postgresql":
+            # PostgreSQL connections are opened in autocommit mode so reads do
+            # not accidentally create an outer transaction that swallows later
+            # repository commits. Writes still use explicit BEGIN/savepoints.
+            return
         self._conn.row_factory = sqlite3.Row
         if not self.readonly:
             self._conn.execute("PRAGMA journal_mode=WAL")
@@ -179,10 +262,91 @@ class MFDatabase(
         if self.readonly:
             self._conn.execute("PRAGMA query_only=ON")
 
+    def _initialize_schema(self) -> None:
+        """Validate schema identity and migrate only recognized databases."""
+        if self.database_target is None:
+            raise RuntimeError("Database target is not configured")
+        if self.database_target.dialect == "postgresql":
+            current = postgres_schema_version(self.conn)  # type: ignore[arg-type]
+            if current == 0:
+                raise DatabaseCapabilityError(
+                    "PostgreSQL MMFDB connection succeeded, but the current schema "
+                    "is not provisioned. Automatic schema bootstrap is SQLite-only; "
+                    f"provision MMFDB schema version {schema.SCHEMA_VERSION} before use."
+                )
+            if current < schema.SCHEMA_VERSION:
+                raise DatabaseCapabilityError(
+                    f"PostgreSQL MMFDB schema {current} is older than required schema "
+                    f"{schema.SCHEMA_VERSION}. Automatic server migrations are not "
+                    "implemented; migrate it through an explicit deployment step."
+                )
+            if current > schema.SCHEMA_VERSION:
+                raise RuntimeError(
+                    f"MMFDB schema {current} is newer than supported schema "
+                    f"{schema.SCHEMA_VERSION}; upgrade MMFDB before opening it"
+                )
+            validate_postgresql_schema(self.conn)  # type: ignore[arg-type]
+            return
+        current = schema.get_schema_version(self.conn)
+        if current > schema.SCHEMA_VERSION:
+            raise RuntimeError(
+                f"MMFDB schema {current} is newer than supported schema "
+                f"{schema.SCHEMA_VERSION}; upgrade MMFDB before opening it"
+            )
+
+        if current == 0:
+            application_tables = {
+                row[0]
+                for row in self.conn.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                )
+                if row[0] not in {"_schema_version", "mmfdb_schema_version"}
+            }
+            if application_tables:
+                names = ", ".join(sorted(application_tables)[:5])
+                raise RuntimeError(
+                    "Refusing to treat a populated unversioned database as fresh; "
+                    f"import it explicitly (found: {names})"
+                )
+            if self.readonly:
+                raise RuntimeError("Cannot initialize an empty MMFDB in read-only mode")
+
+        if not self.readonly:
+            if 0 < current < schema.SCHEMA_VERSION and self.db_path is None:
+                raise RuntimeError(
+                    "Schema migration requires an owned file-backed database so "
+                    "MMFDB can restore a pre-migration snapshot"
+                )
+            backup_path = None
+            if (
+                0 < current < schema.SCHEMA_VERSION
+                and self.db_path not in (None, ":memory:")
+            ):
+                backup_path = backup_database_before_migration(
+                    Path(self.db_path), schema.SCHEMA_VERSION
+                )
+            try:
+                self.migration_report = schema.migrate_schema(self.conn)
+            except Exception as exc:
+                self.conn.rollback()
+                if backup_path is not None and self.db_path is not None:
+                    self.conn.close()
+                    self._conn = None
+                    restore_database_backup(backup_path, Path(self.db_path))
+                    if hasattr(exc, "add_note"):
+                        exc.add_note(
+                            f"MMFDB restored pre-migration snapshot {backup_path}"
+                        )
+                raise
+
     def close(self):
         if self._conn is not None:
-            self._conn.close()
+            if self._owns_connection:
+                self._conn.close()
             self._conn = None
+            self._dao = None
+            self._lineage = None
 
     def backup_database(self, target_path: str | os.PathLike) -> str:
         """Create a SQLite backup at ``target_path``.
@@ -197,6 +361,12 @@ class MFDatabase(
         str
             Absolute path to the backup database.
         """
+        if self.database_target is None or not self.database_target.capabilities.online_backup:
+            dialect = self.database_target.dialect if self.database_target else "unknown"
+            raise DatabaseCapabilityError(
+                f"MMFDB-managed online backup is not supported for {dialect}; "
+                "use the database server's native backup tooling"
+            )
         target = Path(target_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         dest = sqlite3.connect(str(target))
@@ -214,23 +384,68 @@ class MFDatabase(
         return False
 
     def _transaction(self):
-        """Return a savepoint-backed transaction context for compound writes."""
-        @contextmanager
-        def _wrapper():
-            with _transaction(self.conn):
-                yield self
-        return _wrapper()
+        """Return a savepoint-backed transaction with rollback compensation."""
+        return self._managed_transaction()
 
     def transaction(self):
-        """Transaction context manager for the database connection."""
-        from contextlib import contextmanager
+        """Compose database writes and compensating filesystem operations."""
+        return self._managed_transaction()
 
-        from mmfdb.store.transactions import transaction as _transaction
-        @contextmanager
-        def _wrapper():
+    @contextmanager
+    def _managed_transaction(self):
+        rollback_callbacks = getattr(self, "_rollback_callbacks", None)
+        if rollback_callbacks is None:
+            rollback_callbacks = []
+            self._rollback_callbacks = rollback_callbacks
+        commit_callbacks = getattr(self, "_commit_callbacks", None)
+        if commit_callbacks is None:
+            commit_callbacks = []
+            self._commit_callbacks = commit_callbacks
+        rollback_marker = len(rollback_callbacks)
+        commit_marker = len(commit_callbacks)
+        self._transaction_depth = getattr(self, "_transaction_depth", 0) + 1
+        try:
             with _transaction(self.conn):
                 yield self
-        return _wrapper()
+        except Exception:
+            pending = rollback_callbacks[rollback_marker:]
+            del rollback_callbacks[rollback_marker:]
+            del commit_callbacks[commit_marker:]
+            for callback in reversed(pending):
+                try:
+                    callback()
+                except Exception:
+                    logger.exception("MMFDB rollback compensation failed")
+            raise
+        else:
+            if self._transaction_depth == 1:
+                pending = commit_callbacks[:]
+                commit_callbacks.clear()
+                for callback in pending:
+                    try:
+                        callback()
+                    except Exception:
+                        # The database commit already succeeded. Leave external
+                        # cleanup to reconciliation rather than lying about the
+                        # durable SQL state by raising a transaction failure.
+                        logger.exception("MMFDB post-commit callback failed")
+        finally:
+            self._transaction_depth -= 1
+            if self._transaction_depth == 0:
+                rollback_callbacks.clear()
+                commit_callbacks.clear()
+
+    def _on_rollback(self, callback) -> None:
+        """Register a compensation owned by the active repository transaction."""
+        if getattr(self, "_transaction_depth", 0) <= 0:
+            raise RuntimeError("Rollback compensation requires db.transaction()")
+        self._rollback_callbacks.append(callback)
+
+    def _on_commit(self, callback) -> None:
+        """Register work that may run only after the outer SQL commit succeeds."""
+        if getattr(self, "_transaction_depth", 0) <= 0:
+            raise RuntimeError("Commit callback requires db.transaction()")
+        self._commit_callbacks.append(callback)
 
     def validate_extensible_vocab(self, field_name: str, value: str | None) -> None:
         """Validate that value is active in mmfdb_vocabulary for field_name."""
@@ -270,15 +485,27 @@ class MFDatabase(
     # -- schema / migration --
 
     def create_tables(self):
+        if self.database_target is None or not self.database_target.capabilities.schema_bootstrap:
+            dialect = self.database_target.dialect if self.database_target else "unknown"
+            raise DatabaseCapabilityError(
+                f"Automatic schema bootstrap is not supported for {dialect}"
+            )
         schema.create_tables(self.conn)
 
     def migrate(self):
+        if self.database_target is None or not self.database_target.capabilities.schema_migrations:
+            dialect = self.database_target.dialect if self.database_target else "unknown"
+            raise DatabaseCapabilityError(
+                f"Automatic schema migration is not supported for {dialect}"
+            )
         schema.migrate(self.conn)
 
     def register_migration(self, version, description, applied_by):
         schema.register_migration(self.conn, version, description, applied_by)
 
     def get_schema_version(self):
+        if self.database_target is not None and self.database_target.dialect == "postgresql":
+            return postgres_schema_version(self.conn)  # type: ignore[arg-type]
         return schema.get_schema_version(self.conn)
 
     # -- materialized views --
@@ -421,7 +648,7 @@ class MFDatabase(
     def export_flr_cif(self, path, analysis_id: str | None = None, include_extension: bool = True):
         import io
 
-        import ihm.format
+        from mmfdb.cif_writer import CifWriter
         is_stream = isinstance(path, io.TextIOBase)
 
         if analysis_id is None:
@@ -880,13 +1107,13 @@ class MFDatabase(
                         )
 
         if is_stream:
-            writer = ihm.format.CifWriter(path)
+            writer = CifWriter(path)
             _write_content(writer)
         else:
             path = Path(path)
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("w") as out:
-                writer = ihm.format.CifWriter(out)
+                writer = CifWriter(out)
                 _write_content(writer)
             return path
 
@@ -1187,16 +1414,21 @@ class MFDatabase(
             row = self.dao.get("mmfdb_object", object_uuid, include_deleted=True)
             if row is None:
                 raise KeyError(f"Object not found for artifact: {artifact_id}")
-            blob_path = store.get_path(row["content_md5"])
             original_name = row["original_filename"] or artifact_id
             suffix = Path(original_name).suffix if "." in original_name else ""
             import tempfile
             tmp = tempfile.NamedTemporaryFile(
                 suffix=suffix, delete=False, prefix="chisurf-ds-"
             )
-            tmp.write(blob_path.read_bytes())
             tmp.close()
-            return tmp.name
+            Path(tmp.name).unlink()
+            return str(
+                store.materialize(
+                    row["content_md5"],
+                    Path(tmp.name),
+                    sha256=row.get("content_sha256"),
+                )
+            )
 
         file_path = art.get("file_path")
         if file_path and Path(file_path).exists():

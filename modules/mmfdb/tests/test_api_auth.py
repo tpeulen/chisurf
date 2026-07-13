@@ -8,7 +8,7 @@ import mmfdb.api as api
 import pytest
 from mmfdb.admin.backend.password_services import hash_password
 from mmfdb.repository import MFDatabase
-from mmfdb.security.auth import PermissionDenied
+from mmfdb.security.auth import AuthError, PermissionDenied
 from mmfdb.security.login import login
 
 
@@ -73,31 +73,27 @@ def test_api_accepts_auth_and_stamps_owner_acl(tmp_path: Path, monkeypatch) -> N
     assert "s_alice" in ids_alice
 
 
-def test_api_read_graceful_when_no_acl(tmp_path: Path, monkeypatch) -> None:
+def test_api_legacy_row_without_acl_is_admin_only(tmp_path: Path, monkeypatch) -> None:
     db_path = _setup(tmp_path, monkeypatch)
     _user(db_path, "carol")
     carol = _token(db_path, "carol")
-    # A sample written straight through the repository (no ACL) stays readable to
-    # any authenticated caller — progressive enforcement, no legacy lockout.
+    _user(db_path, "root", password="strong-pass", is_admin=1)
+    admin = _token(db_path, "root", "strong-pass")
+    # Missing authorization metadata never becomes an allow decision. Admins can
+    # still inspect legacy rows to repair their ACLs.
     db = MFDatabase(db_path)
     db.add_sample("s_legacy", description="legacy")
     db.conn.commit()
     db.close()
-    assert api.get_sample("s_legacy", auth=carol)["sample"]["sample_id"] == "s_legacy"
+    with pytest.raises(PermissionDenied):
+        api.get_sample("s_legacy", auth=carol)
+    assert api.get_sample("s_legacy", auth=admin)["sample"]["sample_id"] == "s_legacy"
 
 
-def test_api_unauthenticated_uses_default_user(tmp_path: Path, monkeypatch) -> None:
+def test_api_unauthenticated_write_fails_closed(tmp_path: Path, monkeypatch) -> None:
     db_path = _setup(tmp_path, monkeypatch)
-    # In-process (no auth) still works, attributed to the configured default user.
-    assert api.register_sample("s_inproc", auth=None)["ok"]
-    db = MFDatabase(db_path)
-    try:
-        row = db.conn.execute(
-            "SELECT measured_by_user_id FROM flr_sample WHERE sample_id='s_inproc'"
-        ).fetchone()
-        assert row["measured_by_user_id"] == "user_default"
-    finally:
-        db.close()
+    with pytest.raises(AuthError, match="Authentication required"):
+        api.register_sample("s_inproc", auth=None)
 
 
 def test_api_idor_blocked_for_non_admin(tmp_path: Path, monkeypatch) -> None:
@@ -115,7 +111,8 @@ def test_api_idor_blocked_for_non_admin(tmp_path: Path, monkeypatch) -> None:
 def test_api_admin_may_target_other_user(tmp_path: Path, monkeypatch) -> None:
     db_path = _setup(tmp_path, monkeypatch)
     _user(db_path, "frank")
-    admin = _token(db_path, "user_default", "admin")
+    _user(db_path, "root", password="strong-pass", is_admin=1)
+    admin = _token(db_path, "root", "strong-pass")
     # An admin may read another user's active branch.
     result = api.get_user_active_branch("frank", auth=admin)
     assert "branch" in result

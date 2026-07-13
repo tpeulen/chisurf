@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import mimetypes
 import sqlite3
@@ -70,7 +71,28 @@ def register_measurement_services(
             analyze_files=burst_selection_runner,
         )
     for name, handler in handlers.items():
-        dispatcher.register(name, lambda params, _handler=handler: _handler(**params))
+        accepts_auth = "auth" in inspect.signature(handler).parameters
+
+        def authenticated_handler(
+            params: dict[str, Any],
+            _handler: Callable[..., dict[str, Any]] = handler,
+            _accepts_auth: bool = accepts_auth,
+        ) -> dict[str, Any]:
+            """Apply one fail-closed auth boundary to every legacy service."""
+            from mmfdb.security.auth import (
+                principal_from_rpc_auth,
+                require_authenticated,
+            )
+
+            call_params = dict(params)
+            auth = call_params.pop("auth", None)
+            with MFDatabase(resolve_database_path()) as auth_db:
+                require_authenticated(principal_from_rpc_auth(auth_db.conn, auth))
+            if _accepts_auth:
+                call_params["auth"] = auth
+            return _handler(**call_params)
+
+        dispatcher.register(name, authenticated_handler)
 
 
 def register_raw_data_handler(
@@ -1818,27 +1840,50 @@ def export_provenance_graph_handler(
     seed_node_type: str,
     seed_node_id: str,
     output_path: str | None = None,
+    auth: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Export the provenance subgraph as a JSON-serializable structure."""
     try:
-        with MFDatabase(resolve_database_path()) as db:
-            graph = db.export_provenance_graph(seed_node_type, seed_node_id)
-            if output_path:
-                import json
-                with open(output_path, "w", encoding="utf-8") as f:
-                    if output_path.lower().endswith(".jsonl"):
-                        for node in graph["nodes"]:
-                            f.write(json.dumps({"type": "node", "data": node}) + "\n")
-                        for edge in graph["edges"]:
-                            f.write(json.dumps({"type": "edge", "data": edge}) + "\n")
-                    else:
-                        json.dump(graph, f, indent=2)
+        from mmfdb.api import (
+            _acl_read_or_pass,
+            _can_read_graph_node,
+            _filter_graph_edges,
+        )
+        from mmfdb.security.auth import (
+            principal_from_rpc_auth,
+            require_authenticated,
+        )
 
-            return {
-                "ok": True,
-                "graph": graph,
-                "output_path": output_path,
-            }
+        with MFDatabase(resolve_database_path()) as db:
+            principal = principal_from_rpc_auth(db.conn, auth)
+            require_authenticated(principal)
+            _acl_read_or_pass(db.conn, principal, seed_node_type, seed_node_id)
+            graph = db.export_provenance_graph(seed_node_type, seed_node_id)
+            graph["nodes"] = [
+                node
+                for node in graph.get("nodes", [])
+                if _can_read_graph_node(
+                    db.conn, principal, node["node_type"], node["node_id"]
+                )
+            ]
+            graph["edges"] = _filter_graph_edges(
+                db.conn, principal, graph.get("edges", [])
+            )
+        if output_path:
+            with open(output_path, "w", encoding="utf-8") as f:
+                if output_path.lower().endswith(".jsonl"):
+                    for node in graph["nodes"]:
+                        f.write(json.dumps({"type": "node", "data": node}) + "\n")
+                    for edge in graph["edges"]:
+                        f.write(json.dumps({"type": "edge", "data": edge}) + "\n")
+                else:
+                    json.dump(graph, f, indent=2)
+
+        return {
+            "ok": True,
+            "graph": graph,
+            "output_path": output_path,
+        }
     except Exception as exc:
         return service_error(str(exc), error_code=OPERATION_FAILED, exception=exc)
 

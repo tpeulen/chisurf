@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import typing
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,31 @@ def _ensure_index(conn: typing.Any) -> None:
     )
 
 
+def _begin_write(conn: typing.Any) -> tuple[str | None, bool]:
+    """Start a serialized write without taking ownership of an outer transaction."""
+    if conn.in_transaction:
+        savepoint = f"event_log_{uuid.uuid4().hex}"
+        conn.execute(f"SAVEPOINT {savepoint}")
+        return savepoint, False
+    conn.execute("BEGIN IMMEDIATE")
+    return None, True
+
+
+def _finish_write(conn: typing.Any, savepoint: str | None, owns_transaction: bool) -> None:
+    if owns_transaction:
+        conn.commit()
+    else:
+        conn.execute(f"RELEASE SAVEPOINT {savepoint}")
+
+
+def _rollback_write(conn: typing.Any, savepoint: str | None, owns_transaction: bool) -> None:
+    if owns_transaction:
+        conn.rollback()
+    else:
+        conn.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+        conn.execute(f"RELEASE SAVEPOINT {savepoint}")
+
+
 def append_event(
     event: dict[str, typing.Any],
     *,
@@ -62,6 +88,7 @@ def append_event(
     operation_id: str | None = None,
     history_version: str | None = None,
     db: typing.Any = None,
+    strict: bool = False,
 ) -> bool:
     """Append one history event to ``mmfdb_event_log`` (best-effort, append-only).
 
@@ -75,8 +102,17 @@ def append_event(
     event_id = event.get("event_id")
     if not event_id:
         return False
+    savepoint: str | None = None
+    owns_transaction = False
     try:
+        savepoint, owns_transaction = _begin_write(conn)
         _ensure_index(conn)
+        if conn.execute(
+            "SELECT 1 FROM mmfdb_event_log WHERE event_id = ?",
+            (str(event_id),),
+        ).fetchone():
+            _finish_write(conn, savepoint, owns_transaction)
+            return True
         seq = conn.execute("SELECT COALESCE(MAX(seq), 0) + 1 FROM mmfdb_event_log").fetchone()[0]
         payload = event.get("payload") or {}
         row = {
@@ -96,24 +132,66 @@ def append_event(
             "history_version": history_version,
         }
         placeholders = ", ".join("?" * len(_COLUMNS))
-        # Append-only on the event payload, but allow a later call to *stamp* an
-        # existing row's project_id / operation_id (e.g. at project-archive time,
-        # after the event was first written untagged by the live dual-write).
-        # COALESCE keeps any value already set — scoping is only ever filled in,
-        # never cleared.
         conn.execute(
             f"INSERT INTO mmfdb_event_log ({', '.join(_COLUMNS)}) "
-            f"VALUES ({placeholders}) "
-            "ON CONFLICT(event_id) DO UPDATE SET "
-            "  project_id = COALESCE(excluded.project_id, mmfdb_event_log.project_id), "
-            "  operation_id = COALESCE(excluded.operation_id, mmfdb_event_log.operation_id)",
+            f"VALUES ({placeholders}) ON CONFLICT(event_id) DO NOTHING",
             tuple(row[c] for c in _COLUMNS),
         )
-        conn.commit()
+        _finish_write(conn, savepoint, owns_transaction)
         return True
     except Exception:  # never break the live session on a persistence hiccup
+        if savepoint is not None or owns_transaction:
+            try:
+                _rollback_write(conn, savepoint, owns_transaction)
+            except Exception:
+                logger.debug("append_event rollback failed", exc_info=True)
         logger.debug("append_event failed", exc_info=True)
+        if strict:
+            raise
         return False
+
+
+def scope_events(
+    event_ids: typing.Iterable[str],
+    *,
+    project_id: str,
+    operation_id: str | None = None,
+    db: typing.Any = None,
+    strict: bool = False,
+) -> int:
+    """Attach existing immutable events to a project in one explicit write.
+
+    Event payloads remain append-only.  Scoping is separate because project
+    identity is often not known when an interactive event is first recorded.
+    """
+    conn = _resolve_conn(db)
+    ids = tuple(dict.fromkeys(str(event_id) for event_id in event_ids if event_id))
+    if conn is None or not ids or not project_id:
+        return 0
+    savepoint: str | None = None
+    owns_transaction = False
+    try:
+        savepoint, owns_transaction = _begin_write(conn)
+        placeholders = ", ".join("?" for _ in ids)
+        cursor = conn.execute(
+            "UPDATE mmfdb_event_log SET "
+            "project_id = COALESCE(project_id, ?), "
+            "operation_id = COALESCE(operation_id, ?) "
+            f"WHERE event_id IN ({placeholders})",
+            (project_id, operation_id, *ids),
+        )
+        _finish_write(conn, savepoint, owns_transaction)
+        return int(cursor.rowcount)
+    except Exception:
+        if savepoint is not None or owns_transaction:
+            try:
+                _rollback_write(conn, savepoint, owns_transaction)
+            except Exception:
+                logger.debug("scope_events rollback failed", exc_info=True)
+        logger.debug("scope_events failed", exc_info=True)
+        if strict:
+            raise
+        return 0
 
 
 def read_events(

@@ -24,6 +24,10 @@ def db():
     """Create a temporary MFDatabase for each test."""
     with tempfile.TemporaryDirectory() as tmpdir:
         database = MFDatabase(os.path.join(tmpdir, "test.db"))
+        if not any(user.get("user_id") == "admin" for user in database.get_users()):
+            # The application default is now ``admin``; keep the fixture's
+            # first-admin bootstrap scenarios intact by satisfying only the FK.
+            database.add_user("admin", "Configured test user", is_admin=0)
         try:
             yield database
         finally:
@@ -53,6 +57,7 @@ def patch_db(db):
         )
         mock.return_value = db.db_path
         for target in (
+            "mmfdb.admin.backend.auth_services.resolve_database_path",
             "mmfdb.admin.backend.measurement_services.resolve_database_path",
             "mmfdb.admin.backend.ndxplorer_services.resolve_database_path",
             "mmfdb.admin.backend.fluorophore_services.resolve_database_path",

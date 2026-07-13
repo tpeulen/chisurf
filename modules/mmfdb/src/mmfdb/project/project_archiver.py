@@ -587,17 +587,34 @@ def archive_project_to_mmfdb(
                     exc_info=True,
                 )
 
-    # Operation-history projection: stamp this project's history events with the
-    # project_id so a later restore can read them back. Events recorded live were
-    # written to the durable log untagged; persisting them here (idempotent on
-    # event_id) only fills in project scoping. Source from the payload's
-    # ``extra.history_events`` (set at save time) — the archiver stays decoupled
-    # from cs.history.
-    history_events = (project_payload.get("extra") or {}).get("history_events") or []
-    if history_events:
-        from mmfdb.lifecycle import event_log
-        for _ev in history_events:
-            event_log.append_event(_ev, project_id=project_id, db=db)
+        # Project history is part of the archive, not a best-effort projection.
+        # Keep it in the same outer transaction so state and history cannot
+        # diverge after a partial failure.
+        history_events = (
+            (project_payload.get("extra") or {}).get("history_events") or []
+        )
+        if history_events:
+            from mmfdb.lifecycle import event_log
+
+            event_ids = tuple(
+                dict.fromkeys(
+                    str(event["event_id"])
+                    for event in history_events
+                    if event.get("event_id")
+                )
+            )
+            for event in history_events:
+                if not event_log.append_event(event, db=db, strict=True):
+                    raise RuntimeError("Project history event has no event_id")
+            scoped = event_log.scope_events(
+                event_ids,
+                project_id=project_id,
+                operation_id=version_id,
+                db=db,
+                strict=True,
+            )
+            if scoped != len(event_ids):
+                raise RuntimeError("Project history scoping was incomplete")
 
     # Count actual parameters and edges created for this version
     escaped = version_id.replace("_", "\\_")

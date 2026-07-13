@@ -6,9 +6,9 @@ from chisurf.core.plugin.registry import PluginRegistry
 from chisurf.server.dispatcher import ServiceDispatcher
 from chisurf.server.eventbus import EventBus, InProcessEventBus
 from chisurf.server.jobs import JobManager
-from chisurf.startup.services import AppStartupServiceManager
 from chisurf.server.session import SessionState
 from chisurf.server.transport.zmq import ZmqServer
+from chisurf.startup.services import AppStartupServiceManager
 
 _log = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ class ChiSurfServer:
             Pre-existing session state, or ``None`` to create a fresh one.
 
         """
+        self._prepare_embedded_mmfdb()
         self.state = state or SessionState()
         self.state.flr_database = self._init_flr_database()
         self.job_manager = JobManager()
@@ -109,6 +110,17 @@ class ChiSurfServer:
         self._zmq_server.stop()
 
     # ── internal helpers ──────────────────────────────────────────
+
+    @staticmethod
+    def _prepare_embedded_mmfdb() -> None:
+        """Initialize ChiSurf-owned MMFDB state before services are registered."""
+        from chisurf.core.mmfdb_services import prepare_embedded_mmfdb
+        from chisurf.core.settings import cs_settings
+        from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
+
+        settings = cs_settings.get("mmfdb", {}) or {}
+        if client_config(settings)["mode"] == "embedded":
+            prepare_embedded_mmfdb(settings)
 
     @staticmethod
     def _init_flr_database():

@@ -1,15 +1,22 @@
 from __future__ import annotations
 
 import logging
-import sqlite3
 import uuid
 from contextlib import contextmanager
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
+def _control_statement(conn: Any, sql: str) -> None:
+    """Execute transaction-control SQL without retaining a server cursor."""
+    cursor = conn.execute(sql)
+    if getattr(conn, "dialect", "sqlite") != "sqlite":
+        cursor.close()
+
+
 @contextmanager
-def transaction(conn: sqlite3.Connection):
+def transaction(conn: Any):
     """Context manager ensuring transaction safety and atomicity using SAVEPOINTs.
 
     If any error occurs within the block, the transaction is rolled back to the savepoint.
@@ -17,22 +24,22 @@ def transaction(conn: sqlite3.Connection):
 
     Parameters
     ----------
-    conn : sqlite3.Connection
-        The SQLite database connection.
+    conn : database connection
+        SQLite or MMFDB server connection implementing the repository protocol.
     """
     if conn.in_transaction:
         sp_name = f"sp_{uuid.uuid4().hex}"
-        conn.execute(f"SAVEPOINT {sp_name}")
+        _control_statement(conn, f"SAVEPOINT {sp_name}")
         try:
             yield conn
-            conn.execute(f"RELEASE SAVEPOINT {sp_name}")
+            _control_statement(conn, f"RELEASE SAVEPOINT {sp_name}")
         except Exception as exc:
-            conn.execute(f"ROLLBACK TO SAVEPOINT {sp_name}")
-            conn.execute(f"RELEASE SAVEPOINT {sp_name}")
+            _control_statement(conn, f"ROLLBACK TO SAVEPOINT {sp_name}")
+            _control_statement(conn, f"RELEASE SAVEPOINT {sp_name}")
             logger.error("Database transaction failed and was rolled back: %s", exc)
             raise
     else:
-        conn.execute("BEGIN")
+        _control_statement(conn, "BEGIN")
         try:
             yield conn
             conn.commit()
@@ -40,5 +47,3 @@ def transaction(conn: sqlite3.Connection):
             conn.rollback()
             logger.error("Database transaction failed and was rolled back: %s", exc)
             raise
-
-

@@ -31,6 +31,17 @@ def db(tmp_path) -> MFDatabase:
     database.close()
 
 
+@pytest.fixture
+def session(db):
+    from chisurf.core.transform.mmfdb import session_from_auth
+    from mmfdb.security.auth import create_session
+
+    db.ensure_user("raw-test-user")
+    token = create_session(db.conn, "raw-test-user")["token"]
+    db.conn.commit()
+    return session_from_auth(db, {"token": token})
+
+
 def _raw(tmp_path: Path, payload: bytes = b"\x00\x01\x02\x03") -> Path:
     path = tmp_path / "m.ptu"
     path.write_bytes(payload)
@@ -49,11 +60,16 @@ def test_raw_file_data_format_vocabulary():
     assert raw_file_data_format(Path("x")) == "tttr"
 
 
-def test_register_binds_artifact_to_sample_and_is_discoverable(db, tmp_path):
+def test_register_binds_artifact_to_sample_and_is_discoverable(db, session, tmp_path):
     raw = _raw(tmp_path)
     db.add_sample("s1", description="S", num_of_probes=1)
     artifact_id = register_raw_input_for_sample(
-        db=db, path=raw, sample_id="s1", filetype="ptu", selected_setup=None
+        db=db,
+        path=raw,
+        sample_id="s1",
+        filetype="ptu",
+        selected_setup=None,
+        session=session,
     )
     assert artifact_id
     # content-addressed lookups resolve the same artifact / sample

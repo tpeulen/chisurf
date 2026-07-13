@@ -51,10 +51,32 @@ class _ComputeTask(QtCore.QRunnable):
 class ImagingMapTool(QtWidgets.QWidget):
     """Host widget: action toolbar + file drops + ``AutoForm(view_model)``."""
 
-    def __init__(self, view_model, title: str = "Imaging", parent=None, embedded: bool = False):
+    def __init__(
+        self,
+        view_model,
+        title: str = "Imaging",
+        parent=None,
+        embedded: bool = False,
+        *,
+        mmfdb_db=None,
+        mmfdb_source_artifact_id: str = "",
+        mmfdb_sample_id: str = "",
+        mmfdb_principal=None,
+    ):
         super().__init__(parent)
         self._embedded = bool(embedded)
         self.model = view_model
+        if any((mmfdb_db, mmfdb_source_artifact_id, mmfdb_principal)):
+            if not all((mmfdb_db, mmfdb_source_artifact_id, mmfdb_principal)):
+                raise ValueError(
+                    "MMFDB imaging binding requires db, source artifact, and principal"
+                )
+            self.model.bind_mmfdb(
+                mmfdb_db,
+                source_artifact_id=mmfdb_source_artifact_id,
+                sample_id=mmfdb_sample_id,
+                principal=mmfdb_principal,
+            )
         self.setWindowTitle(title)
         self.setMinimumSize(700, 520)
         self.setAcceptDrops(True)

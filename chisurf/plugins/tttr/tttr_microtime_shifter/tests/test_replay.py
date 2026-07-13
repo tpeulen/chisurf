@@ -31,6 +31,8 @@ from mmfdb.provenance.result_registry import (
 # Importing the plugin module self-registers the replay executor.
 from chisurf.plugins.tttr.tttr_microtime_shifter.api import replay as _replay  # noqa: F401
 from chisurf.plugins.tttr.tttr_microtime_shifter.api.transformer import OPERATION_TYPE
+from chisurf.core.transform.mmfdb import session_from_auth
+from mmfdb.security.auth import create_session
 
 _FIXTURES = (
     "test/data/clsm/Leica_SP5.ptu",
@@ -60,7 +62,12 @@ def chain(tmp_path):
         OPERATION_TYPE, _replay.microtime_shift_replay_executor
     )
     db = MFDatabase(os.path.join(tmp_path, "replay.db"))
-    raw = register_raw_measurement(src, db=db)
+    db.ensure_user("microtime-replay-user")
+    token = create_session(db.conn, "microtime-replay-user")["token"]
+    db.conn.commit()
+    session = session_from_auth(db, {"token": token})
+    db.session_context = session
+    raw = register_raw_measurement(src, db=db, session=session)
     shifted = register_result(
         kind="processed_data",
         data=src,  # any payload; the spec/source is what replay reads
@@ -68,6 +75,7 @@ def chain(tmp_path):
         operation_type=OPERATION_TYPE,
         parameters={"global_shift": 3, "shift": [{"value": 1, "role": "0"}]},
         db=db,
+        session=session,
     )
     try:
         yield db, {"raw": raw, "shifted": shifted}

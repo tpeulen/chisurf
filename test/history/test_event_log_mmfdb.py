@@ -82,6 +82,47 @@ class TestAppendRead(_DBTestCase):
         event_log.append_event(ev, db=self.db)  # second insert ignored
         self.assertEqual(len(event_log.read_events(db=self.db)), 1)
 
+    def test_reinsert_does_not_mutate_append_only_payload(self):
+        ev = {
+            "event_id": "immutable",
+            "action_type": "fit.add",
+            "summary": "original",
+            "payload": {"value": 1},
+            "timestamp": "2026-06-27T00:00:00+00:00",
+        }
+        self.assertTrue(event_log.append_event(ev, db=self.db))
+        changed = dict(ev, summary="changed", payload={"value": 2})
+        self.assertTrue(event_log.append_event(changed, db=self.db))
+        self.assertEqual(event_log.read_events(db=self.db)[0]["summary"], "original")
+        self.assertEqual(event_log.read_events(db=self.db)[0]["payload"], {"value": 1})
+
+    def test_append_does_not_commit_enclosing_transaction(self):
+        ev = {
+            "event_id": "rolled-back",
+            "action_type": "fit.add",
+            "summary": "x",
+            "payload": {},
+            "timestamp": "2026-06-27T00:00:00+00:00",
+        }
+        with self.assertRaises(RuntimeError):
+            with self.db.transaction():
+                self.assertTrue(event_log.append_event(ev, db=self.db))
+                raise RuntimeError("rollback enclosing work")
+        self.assertEqual(event_log.read_events(db=self.db), [])
+
+    def test_project_scoping_is_an_explicit_operation(self):
+        ev = {
+            "event_id": "scoped",
+            "action_type": "fit.add",
+            "summary": "x",
+            "payload": {},
+            "timestamp": "2026-06-27T00:00:00+00:00",
+        }
+        self.assertTrue(event_log.append_event(ev, db=self.db))
+        self.assertEqual(event_log.read_events(project_id="p1", db=self.db), [])
+        self.assertEqual(event_log.scope_events(["scoped"], project_id="p1", db=self.db), 1)
+        self.assertEqual(len(event_log.read_events(project_id="p1", db=self.db)), 1)
+
 
 class TestRecordDualWrite(_DBTestCase):
     def test_record_writes_to_mmfdb_when_db_present(self):

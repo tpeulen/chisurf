@@ -274,6 +274,13 @@ def test_analyze_selected_file_does_not_archive_preview() -> None:
 def test_mmfdb_raw_registration_binds_content_to_sample(tmp_path: Path) -> None:
     """Registering raw input should make future content-MD5 lookups find the sample."""
     db = MFDatabase(tmp_path / "mmfdb.sqlite")
+    from chisurf.core.transform.mmfdb import session_from_auth
+    from mmfdb.security.auth import create_session
+
+    db.ensure_user("gui-test-user")
+    token = create_session(db.conn, "gui-test-user")["token"]
+    db.conn.commit()
+    session = session_from_auth(db, {"token": token})
     sample_id = create_sample(db, SampleDefinition(name="DNA burst sample"))
     raw_paths = _bh_spc130_files()
 
@@ -285,6 +292,7 @@ def test_mmfdb_raw_registration_binds_content_to_sample(tmp_path: Path) -> None:
             sample_id=sample_id,
             filetype="SPC-130",
             selected_setup="Test setup",
+            session=session,
         )
 
         assert artifact_id
@@ -295,6 +303,13 @@ def test_mmfdb_raw_registration_binds_content_to_sample(tmp_path: Path) -> None:
 def test_prepare_mmfdb_context_prompts_when_raw_sample_is_missing(tmp_path: Path, monkeypatch: object) -> None:
     """MMFDB output should open sample registration when raw content has no sample."""
     db = MFDatabase(tmp_path / "mmfdb.sqlite")
+    from chisurf.core.transform.mmfdb import session_from_auth
+    from mmfdb.security.auth import create_session
+
+    db.ensure_user("gui-context-user")
+    token = create_session(db.conn, "gui-context-user")["token"]
+    db.conn.commit()
+    session = session_from_auth(db, {"token": token})
     sample_id = create_sample(db, SampleDefinition(name="Registered sample"))
     raw_paths = _bh_spc130_files()
     prompts: list[str] = []
@@ -325,9 +340,10 @@ def test_prepare_mmfdb_context_prompts_when_raw_sample_is_missing(tmp_path: Path
         return sample_id
 
     monkeypatch.setattr(tool_module, "show_sample_picker_dialog", fake_sample_picker)
-    monkeypatch.setattr(tool_module, "_resolve_active_user_id", lambda: "")
     tool = BurstSelectionTool.__new__(BurstSelectionTool)
     tool._mmfdb_db = db
+    tool._mmfdb_session = session
+    tool._mmfdb_client = None
     tool.mmfdb_output_check = FakeCheck()
     tool._selected_filetype = "SPC-130"
     tool.wizard = FakeWizard()
@@ -341,7 +357,9 @@ def test_prepare_mmfdb_context_prompts_when_raw_sample_is_missing(tmp_path: Path
     assert context["sample_id"] == sample_id
     assert set(context["source_artifact_ids"]) == {str(path.resolve()) for path in raw_paths}
     assert context["register_missing_inputs"] is True
-    assert context["setup_id"] == setup_id_for_name("BH SPC-130 setup")
+    assert context["setup_id"] == setup_id_for_name(
+        "BH SPC-130 setup", user_id=session.user_id
+    )
     assert db.get_setup(context["setup_id"]) is not None
     assert all(_sample_id_for_raw_path(db, raw_path) == sample_id for raw_path in raw_paths)
 

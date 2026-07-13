@@ -116,7 +116,7 @@ def test_analysis_request_payload_roundtrip_normalizes_json_inputs() -> None:
     payload = analysis_request_to_payload(request)
     assert payload["windows"] == {"prompt": [0, 2048]}
     assert payload["settings"]["photon_filter"]["used_filter"] == "burst"
-    assert payload["mmfdb"]["enabled"] is True
+    assert payload["mmfdb"]["enabled"] is False
 
 
 def test_analysis_request_accepts_nested_mmfdb_context() -> None:

@@ -13,8 +13,10 @@ from mmfdb.request_context import (
 )
 from mmfdb.security.auth import (
     PERM_READ,
+    PERM_WRITE,
     AuthError,
     _get_object_acl,
+    can_access,
     create_default_acl_for_object,
     principal_from_rpc_auth,
     require_access,
@@ -38,11 +40,18 @@ def _database(auth: dict[str, Any] | None) -> Iterator[MFDatabase]:
 
 
 def _principal(db: MFDatabase, auth: dict[str, Any] | None) -> Any:
-    """Reuse request authentication, falling back for defensive compatibility."""
+    """Return an authenticated principal for every canonical API operation.
+
+    Direct Python calls and RPC calls intentionally share the same boundary;
+    there is no trusted unauthenticated in-process mode.
+    """
     context = current_api_context()
     if context is not None and context.database is db:
-        return context.principal
-    return principal_from_rpc_auth(db.conn, auth)
+        principal = context.principal
+    else:
+        principal = principal_from_rpc_auth(db.conn, auth)
+    require_authenticated(principal)
+    return principal
 
 
 def invoke_with_context(
@@ -90,39 +99,51 @@ def _check_api_auth(auth: dict[str, Any] | None) -> tuple[str | None, bool]:
 
 
 def _acting_user_id(principal: Any) -> str:
-    """Return the acting user id: the authenticated principal, else the default.
+    """Return the authenticated acting user id, failing closed otherwise."""
+    require_authenticated(principal)
+    return principal.user_id
 
-    Preserves in-process default-user behaviour when a call is unauthenticated,
-    while attributing writes to the real user when a token is present.
-    """
-    if getattr(principal, "user_id", None):
-        return principal.user_id
-    from mmfdb.security.session import configured_default_user_id
 
-    return configured_default_user_id()
+def _attributed_user_id(principal: Any, requested_user_id: str | None) -> str:
+    """Resolve a write attribution without allowing non-admin impersonation."""
+    acting = _acting_user_id(principal)
+    if requested_user_id and requested_user_id != acting:
+        if not principal.is_admin:
+            from mmfdb.security.auth import PermissionDenied
+
+            raise PermissionDenied("Cannot attribute a write to another user")
+        return requested_user_id
+    return acting
+
+
+def _require_existing_write(
+    conn: Any,
+    principal: Any,
+    object_type: str,
+    object_id: str,
+    *,
+    exists: bool,
+) -> None:
+    """Protect updates: an existing row needs write ACL, or an admin for legacy rows."""
+    if not exists:
+        return
+    if _get_object_acl(conn, object_type, object_id):
+        require_access(conn, principal, object_type, object_id, PERM_WRITE)
+    elif not principal.is_admin:
+        from mmfdb.security.auth import PermissionDenied
+
+        raise PermissionDenied()
 
 
 def _acl_read_or_pass(conn: Any, principal: Any, object_type: str, object_id: str) -> None:
-    """Enforce read access **only when an ACL exists** for the object.
-
-    Progressive enforcement: entity kinds that carry ACLs (created on write) are
-    protected; legacy objects without an ACL stay readable to authenticated
-    callers, so this never locks out reads that worked before.
-    """
-    if object_id and _get_object_acl(conn, object_type, object_id):
+    """Require read access; legacy rows without ACLs are admin-only."""
+    if object_id:
         require_access(conn, principal, object_type, object_id, PERM_READ)
 
 
 def _acl_filter_or_pass(conn: Any, principal: Any, object_type: str, rows: list, id_key: str) -> list:
-    """Filter *rows* by read ACL when any carry one; otherwise return them all."""
+    """Filter rows through ACLs; admin bypass covers intentional legacy recovery."""
     if not rows:
-        return rows
-    has_acls = any(
-        _get_object_acl(conn, object_type, (r[id_key] if isinstance(r, dict) else r[id_key]))
-        for r in rows
-        if (r.get(id_key) if isinstance(r, dict) else r[id_key]) is not None
-    )
-    if not has_acls:
         return rows
     from mmfdb.security.auth import filter_readable
 
@@ -133,6 +154,38 @@ def _new_object_acl(conn: Any, object_type: str, object_id: str, owner_user_id: 
     """Create a default owner ACL for a newly written object (best-effort)."""
     if object_id and owner_user_id and not _get_object_acl(conn, object_type, str(object_id)):
         create_default_acl_for_object(conn, object_type, str(object_id), owner_user_id=owner_user_id)
+
+
+def _can_read_graph_node(conn: Any, principal: Any, node_type: str, node_id: str) -> bool:
+    """Return whether a canonical graph node is readable by *principal*.
+
+    Parameters are subordinate to their operation ACL; every other graph node
+    is checked through its own canonical object type.
+    """
+    from mmfdb.provenance.graph import normalize_node_type
+
+    canonical_type = normalize_node_type(node_type)
+    if canonical_type == "parameter":
+        row = conn.execute(
+            "SELECT operation_id FROM mmfdb_analysis_parameter WHERE parameter_uuid = ?",
+            (node_id,),
+        ).fetchone()
+        return bool(row and row[0] and can_access(conn, principal, "operation", row[0], PERM_READ))
+    return can_access(conn, principal, canonical_type, node_id, PERM_READ)
+
+
+def _filter_graph_edges(conn: Any, principal: Any, edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Remove graph edges unless both endpoints are readable."""
+    return [
+        edge
+        for edge in edges
+        if _can_read_graph_node(
+            conn, principal, edge["source_node_type"], edge["source_node_id"]
+        )
+        and _can_read_graph_node(
+            conn, principal, edge["target_node_type"], edge["target_node_id"]
+        )
+    ]
 
 
 def _effective_target_user(principal: Any, requested_user_id: str | None) -> str:
@@ -228,6 +281,14 @@ def register_artifact(
         require_authenticated(principal)
         user_id = principal.user_id
         kind = artifact_kind or artifact_type
+        _require_existing_write(
+            db.conn,
+            principal,
+            "artifact",
+            artifact_id,
+            exists=db.get_artifact(artifact_id) is not None,
+        )
+        _acl_read_or_pass(db.conn, principal, "artifact", artifact_id)
         with db.conn:
             art_id = db.register_artifact(
                 artifact_id=artifact_id,
@@ -377,24 +438,34 @@ def record_operation(
     with _database(auth) as db:
         principal = _principal(db, auth)
         require_authenticated(principal)
-        op_id = db.record_operation(
-            operation_id=operation_id,
-            operation_type=operation_type,
-            experiment_id=experiment_id,
-            setup_id=setup_id,
-            settings=settings,
-            operator_user_id=operator_user_id,
-            software_package=software_package,
-            software_module=software_module,
-            software_version=software_version,
-            runtime_environment=runtime_environment,
-            started_at=started_at,
-            ended_at=ended_at,
-            status=status,
-            error_message=error_message,
-            traceback_summary=traceback_summary,
-            metadata=metadata,
+        _require_existing_write(
+            db.conn,
+            principal,
+            "operation",
+            operation_id,
+            exists=db.get_operation(operation_id) is not None,
         )
+        owner = _attributed_user_id(principal, operator_user_id)
+        with db.conn:
+            op_id = db.record_operation(
+                operation_id=operation_id,
+                operation_type=operation_type,
+                experiment_id=experiment_id,
+                setup_id=setup_id,
+                settings=settings,
+                operator_user_id=owner,
+                software_package=software_package,
+                software_module=software_module,
+                software_version=software_version,
+                runtime_environment=runtime_environment,
+                started_at=started_at,
+                ended_at=ended_at,
+                status=status,
+                error_message=error_message,
+                traceback_summary=traceback_summary,
+                metadata=metadata,
+            )
+            _new_object_acl(db.conn, "operation", str(op_id), owner)
         return {"ok": True, "operation_id": op_id}
 
 
@@ -473,27 +544,52 @@ def record_operation_with_artifacts(
     with _database(auth) as db:
         principal = _principal(db, auth)
         require_authenticated(principal)
-        result = db.record_operation_with_artifacts(
-            operation_id=operation_id,
-            operation_type=operation_type,
-            status=status,
-            experiment_id=experiment_id,
-            setup_id=setup_id,
-            settings=settings,
-            operator_user_id=operator_user_id,
-            software_package=software_package,
-            software_module=software_module,
-            software_version=software_version,
-            runtime_environment=runtime_environment,
-            started_at=started_at,
-            ended_at=ended_at,
-            input_artifacts=input_artifacts,
-            output_artifacts=output_artifacts,
-            parameters=parameters,
-            error_message=error_message,
-            traceback_summary=traceback_summary,
-            metadata=metadata,
+        _require_existing_write(
+            db.conn,
+            principal,
+            "operation",
+            operation_id,
+            exists=db.get_operation(operation_id) is not None,
         )
+        owner = _attributed_user_id(principal, operator_user_id)
+        artifact_payloads = [*(input_artifacts or []), *(output_artifacts or [])]
+        for artifact_payload in artifact_payloads:
+            artifact_id = str(artifact_payload.get("artifact_id") or "")
+            if artifact_id:
+                _require_existing_write(
+                    db.conn,
+                    principal,
+                    "artifact",
+                    artifact_id,
+                    exists=db.get_artifact(artifact_id) is not None,
+                )
+        with db.conn:
+            result = db.record_operation_with_artifacts(
+                operation_id=operation_id,
+                operation_type=operation_type,
+                status=status,
+                experiment_id=experiment_id,
+                setup_id=setup_id,
+                settings=settings,
+                operator_user_id=owner,
+                software_package=software_package,
+                software_module=software_module,
+                software_version=software_version,
+                runtime_environment=runtime_environment,
+                started_at=started_at,
+                ended_at=ended_at,
+                input_artifacts=input_artifacts,
+                output_artifacts=output_artifacts,
+                parameters=parameters,
+                error_message=error_message,
+                traceback_summary=traceback_summary,
+                metadata=metadata,
+            )
+            _new_object_acl(db.conn, "operation", operation_id, owner)
+            for artifact_payload in artifact_payloads:
+                artifact_id = str(artifact_payload.get("artifact_id") or "")
+                if artifact_id:
+                    _new_object_acl(db.conn, "artifact", artifact_id, owner)
         return {"ok": True, **result}
 
 
@@ -530,12 +626,19 @@ def transition_operation_status(
     """
     with _database(auth) as db:
         principal = _principal(db, auth)
+        _require_existing_write(
+            db.conn,
+            principal,
+            "operation",
+            operation_id,
+            exists=db.get_operation(operation_id) is not None,
+        )
         op_id = db.transition_operation_status(
             operation_id=operation_id,
             status=status,
             error_message=error_message,
             traceback_summary=traceback_summary,
-            operator_user_id=operator_user_id or _acting_user_id(principal),
+            operator_user_id=_attributed_user_id(principal, operator_user_id),
         )
         return {"ok": True, "operation_id": op_id}
 
@@ -558,7 +661,14 @@ def register_sample(
     """Register or update a sample in the FLR domain layer."""
     with _database(auth) as db:
         principal = _principal(db, auth)
-        owner = _acting_user_id(principal)
+        owner = _attributed_user_id(principal, measured_by_user_id)
+        _require_existing_write(
+            db.conn,
+            principal,
+            "sample",
+            sample_id,
+            exists=db.get_sample(sample_id) is not None,
+        )
         with db.conn:
             db.add_sample(
                 sample_id=sample_id,
@@ -570,7 +680,7 @@ def register_sample(
                 sample_condition_id=sample_condition_id,
                 entity_assembly_id=entity_assembly_id,
                 project_id=project_id,
-                measured_by_user_id=measured_by_user_id or owner,
+                measured_by_user_id=owner,
                 measured_by_device_id=measured_by_device_id,
                 measured_at=measured_at,
             )
@@ -611,14 +721,21 @@ def register_experiment(
     """Register or update an experiment in the FLR domain layer."""
     with _database(auth) as db:
         principal = _principal(db, auth)
-        owner = _acting_user_id(principal)
+        owner = _attributed_user_id(principal, measured_by_user_id)
+        _require_existing_write(
+            db.conn,
+            principal,
+            "experiment",
+            experiment_id,
+            exists=db.get_experiment(experiment_id) is not None,
+        )
         with db.conn:
             db.add_experiment(
                 experiment_id=experiment_id,
                 type_id=type_id,
                 sample_id=sample_id,
                 project_id=project_id,
-                measured_by_user_id=measured_by_user_id or owner,
+                measured_by_user_id=owner,
                 measured_by_device_id=measured_by_device_id,
                 started_at=started_at,
                 ended_at=ended_at,
@@ -744,8 +861,14 @@ def record_operation_link(
 
     with _database(auth) as db:
         principal = _principal(db, auth)
-        if _get_object_acl(db.conn, "operation", operation_id):
-            require_access(db.conn, principal, "operation", operation_id, PERM_WRITE)
+        _require_existing_write(
+            db.conn,
+            principal,
+            "operation",
+            operation_id,
+            exists=db.get_operation(operation_id) is not None,
+        )
+        _acl_read_or_pass(db.conn, principal, "artifact", artifact_id)
         db.record_operation_link(
             operation_id=operation_id,
             artifact_id=artifact_id,
@@ -794,7 +917,7 @@ def graph_upstream(
             max_depth=max_depth,
             canonical=True,
         )
-        return {"edges": edges}
+        return {"edges": _filter_graph_edges(db.conn, principal, edges)}
 
 
 def graph_downstream(
@@ -833,7 +956,7 @@ def graph_downstream(
             max_depth=max_depth,
             canonical=True,
         )
-        return {"edges": edges}
+        return {"edges": _filter_graph_edges(db.conn, principal, edges)}
 
 
 def export_graph(
@@ -861,6 +984,16 @@ def export_graph(
         principal = _principal(db, auth)
         _acl_read_or_pass(db.conn, principal, seed_node_type, seed_node_id)
         graph = db.export_provenance_graph(seed_node_type, seed_node_id)
+        graph["nodes"] = [
+            node
+            for node in graph.get("nodes", [])
+            if _can_read_graph_node(
+                db.conn, principal, node["node_type"], node["node_id"]
+            )
+        ]
+        graph["edges"] = _filter_graph_edges(
+            db.conn, principal, graph.get("edges", [])
+        )
         return {"graph": graph}
 
 
@@ -902,7 +1035,7 @@ def traverse_canonical_graph(
             direction,
             max_depth,
         )
-        return {"edges": edges}
+        return {"edges": _filter_graph_edges(db.conn, principal, edges)}
 
 
 
@@ -978,8 +1111,14 @@ def record_parameter(
 
     with _database(auth) as db:
         principal = _principal(db, auth)
-        if operation_id and _get_object_acl(db.conn, "operation", operation_id):
-            require_access(db.conn, principal, "operation", operation_id, PERM_WRITE)
+        if operation_id:
+            _require_existing_write(
+                db.conn,
+                principal,
+                "operation",
+                operation_id,
+                exists=db.get_operation(operation_id) is not None,
+            )
         p_uuid = db.record_parameter(
             parameter_uuid=parameter_uuid,
             operation_id=operation_id,
@@ -1018,9 +1157,14 @@ def get_parameter(parameter_uuid: str, auth: dict[str, Any] | None = None) -> di
         RPC result containing parameter dictionary under key 'parameter'.
     """
     with _database(auth) as db:
-        _principal(db, auth)
-        param = db.get_parameter(parameter_uuid)
-        return {"parameter": param}
+        principal = _principal(db, auth)
+        parameter = db.get_parameter(parameter_uuid)
+        parameter_operation_id = parameter["operation_id"] if parameter else None
+        if parameter_operation_id:
+            _acl_read_or_pass(
+                db.conn, principal, "operation", parameter_operation_id
+            )
+        return {"parameter": parameter}
 
 
 def list_parameters(
@@ -1045,11 +1189,26 @@ def list_parameters(
         RPC result containing a list of parameters under key 'parameters'.
     """
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
+        if operation_id:
+            _acl_read_or_pass(db.conn, principal, "operation", operation_id)
         parameters = db.list_parameters(
             operation_id=operation_id,
             parameter_type=parameter_type,
         )
+        if not operation_id:
+            parameters = [
+                parameter
+                for parameter in parameters
+                if parameter.get("operation_id")
+                and can_access(
+                    db.conn,
+                    principal,
+                    "operation",
+                    parameter["operation_id"],
+                    PERM_READ,
+                )
+            ]
         return {"parameters": parameters}
 
 
@@ -1091,7 +1250,14 @@ def save_chinet_session(
     from mmfdb.adapters.chinet import store_chinet_session
 
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
+        _require_existing_write(
+            db.conn,
+            principal,
+            "operation",
+            operation_id,
+            exists=db.get_operation(operation_id) is not None,
+        )
         session = session_from_schema(session_payload)
         result = store_chinet_session(
             db,
@@ -1234,6 +1400,15 @@ def save_setup(
     """
     with _database(auth) as db:
         principal = _principal(db, auth)
+        existing = db.get_setup(setup_id)
+        _require_existing_write(
+            db.conn,
+            principal,
+            "setup",
+            setup_id,
+            exists=existing is not None,
+        )
+        owner = _attributed_user_id(principal, created_by_user_id)
         db.save_setup(
             setup_id=setup_id,
             name=name,
@@ -1248,7 +1423,7 @@ def save_setup(
             timing_resolution=timing_resolution,
             burst_defaults=burst_defaults,
             fcs_calibration=fcs_calibration,
-            created_by_user_id=created_by_user_id or _acting_user_id(principal),
+            created_by_user_id=owner,
             is_public=is_public,
         )
         return {"ok": True}
@@ -1270,7 +1445,8 @@ def get_setup(setup_id: str, auth: dict[str, Any] | None = None) -> dict[str, An
         RPC result containing setup dictionary under key 'setup'.
     """
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
+        _acl_read_or_pass(db.conn, principal, "setup", setup_id)
         setup = db.get_setup(setup_id)
         return {"setup": setup}
 
@@ -1289,9 +1465,13 @@ def list_setups(auth: dict[str, Any] | None = None) -> dict[str, Any]:
         RPC result containing a list of setups under key 'setups'.
     """
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
         setups = db.list_setups()
-        return {"setups": setups}
+        return {
+            "setups": _acl_filter_or_pass(
+                db.conn, principal, "setup", setups, "setup_id"
+            )
+        }
 
 
 def add_setup_calibration(
@@ -1341,6 +1521,8 @@ def add_setup_calibration(
     """
     with _database(auth) as db:
         principal = _principal(db, auth)
+        require_access(db.conn, principal, "setup", setup_id, PERM_WRITE)
+        owner = _attributed_user_id(principal, created_by_user_id)
         snapshot = db.add_setup_calibration(
             setup_id=setup_id,
             channel_name=channel_name,
@@ -1351,7 +1533,7 @@ def add_setup_calibration(
             g_factor_calibration_id=g_factor_calibration_id,
             calibrated_at=calibrated_at,
             method=method,
-            created_by_user_id=created_by_user_id or _acting_user_id(principal),
+            created_by_user_id=owner,
         )
         return {"ok": True, "snapshot": snapshot}
 
@@ -1374,7 +1556,8 @@ def list_setup_calibration_dates(
         RPC result with a list of timestamps under key 'dates'.
     """
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
+        _acl_read_or_pass(db.conn, principal, "setup", setup_id)
         dates = db.list_setup_calibration_dates(setup_id)
         return {"dates": dates}
 
@@ -1401,7 +1584,8 @@ def get_setup_calibration(
         RPC result with list of calibration rows under key 'calibration'.
     """
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
+        _acl_read_or_pass(db.conn, principal, "setup", setup_id)
         calibration = db.get_setup_calibration(setup_id, calibrated_at=calibrated_at)
         return {"calibration": calibration}
 
@@ -1434,7 +1618,11 @@ def list_audit_logs(
         RPC result containing a list of log dicts under key 'logs'.
     """
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
+        if not principal.is_admin:
+            from mmfdb.security.auth import PermissionDenied
+
+            raise PermissionDenied()
         logs = db.get_audit_logs(
             action=action,
             target_type=target_type,
@@ -1456,12 +1644,17 @@ def create_branch(
     """Create a branch pointer in the MMFDB provenance graph."""
     with _database(auth) as db:
         principal = _principal(db, auth)
+        if parent_branch_uuid:
+            _acl_read_or_pass(db.conn, principal, "branch", parent_branch_uuid)
+        if head_operation_id:
+            _acl_read_or_pass(db.conn, principal, "operation", head_operation_id)
+        owner = _attributed_user_id(principal, created_by_user_id)
         uuid_val = db.create_branch(
             branch_uuid=branch_uuid,
             name=name,
             parent_branch_uuid=parent_branch_uuid,
             head_operation_id=head_operation_id,
-            created_by_user_id=created_by_user_id or _acting_user_id(principal),
+            created_by_user_id=owner,
             description=description,
         )
         return {"ok": True, "branch_uuid": uuid_val}
@@ -1502,12 +1695,16 @@ def fork_branch(
     """
     with _database(auth) as db:
         principal = _principal(db, auth)
+        _acl_read_or_pass(db.conn, principal, "branch", source_branch_uuid)
+        if head_operation_id:
+            _acl_read_or_pass(db.conn, principal, "operation", head_operation_id)
+        owner = _attributed_user_id(principal, created_by_user_id)
         uuid_val = db.fork_branch(
             source_branch_uuid=source_branch_uuid,
             name=name,
             branch_uuid=branch_uuid,
             head_operation_id=head_operation_id,
-            created_by_user_id=created_by_user_id or _acting_user_id(principal),
+            created_by_user_id=owner,
             description=description,
         )
         return {"ok": True, "branch_uuid": uuid_val}
@@ -1516,17 +1713,23 @@ def fork_branch(
 def get_branch(branch_uuid_or_name: str, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return one branch by UUID or name."""
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
         branch = db.get_branch(branch_uuid_or_name)
+        if branch:
+            _acl_read_or_pass(db.conn, principal, "branch", branch["branch_uuid"])
         return {"branch": branch}
 
 
 def list_branches(auth: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return all non-deleted branches."""
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
         branches = db.list_branches()
-        return {"branches": branches}
+        return {
+            "branches": _acl_filter_or_pass(
+                db.conn, principal, "branch", branches, "branch_uuid"
+            )
+        }
 
 
 def update_branch_head(
@@ -1534,7 +1737,10 @@ def update_branch_head(
 ) -> dict[str, Any]:
     """Move a branch head to an operation or clear it."""
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
+        require_access(db.conn, principal, "branch", branch_uuid, PERM_WRITE)
+        if head_operation_id:
+            _acl_read_or_pass(db.conn, principal, "operation", head_operation_id)
         db.update_branch_head(branch_uuid, head_operation_id)
         return {"ok": True}
 
@@ -1575,6 +1781,9 @@ def jump_user_to_operation(
     with _database(auth) as db:
         principal = _principal(db, auth)
         target = _effective_target_user(principal, user_id)
+        _acl_read_or_pass(db.conn, principal, "operation", operation_id)
+        if parent_branch_uuid:
+            _acl_read_or_pass(db.conn, principal, "branch", parent_branch_uuid)
         branch = db.jump_user_to_operation(
             user_id=target,
             operation_id=operation_id,
@@ -1589,7 +1798,8 @@ def jump_user_to_operation(
 def delete_branch(branch_uuid: str, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     """Soft-delete a branch when it is not protected or active."""
     with _database(auth) as db:
-        _principal(db, auth)
+        principal = _principal(db, auth)
+        require_access(db.conn, principal, "branch", branch_uuid, PERM_WRITE)
         db.delete_branch(branch_uuid)
         return {"ok": True}
 
@@ -1601,6 +1811,7 @@ def set_user_active_branch(
     with _database(auth) as db:
         principal = _principal(db, auth)
         target = _effective_target_user(principal, user_id)
+        _acl_read_or_pass(db.conn, principal, "branch", branch_uuid)
         db.set_user_active_branch(target, branch_uuid)
         return {"ok": True}
 

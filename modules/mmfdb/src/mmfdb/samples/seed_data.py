@@ -153,13 +153,15 @@ def seed_curated_database(db_path: Optional[str | Path] = None) -> Path:
             )
         _seed_probe_types(db)
         _seed_probes(db)
-        _seed_forster_radii(db)
         _seed_entities(db)
         _seed_conditions_and_assemblies(db)
         _seed_users_and_devices(db)
         _seed_positions(db)
         _seed_samples(db)
         _seed_analyses(db)
+        # Förster radii are sample-scoped scientific records.  Seed them only
+        # after the curated samples and their donor/acceptor mappings exist.
+        _seed_forster_radii(db)
         _seed_experiment_types(db)
         _seed_experiments(db)
     finally:
@@ -450,21 +452,23 @@ def _seed_forster_radii(db: MFDatabase) -> None:
         # Generate a deterministic forster_radius_id
         fr_id = f"seed_{donor_name}_{acceptor_name}".replace(" ", "_").replace(".", "_")
 
-        # Use the first sample that has both probes, or NULL
-        sample_id = None
-        try:
-            sample_row = db.conn.execute(
-                """SELECT sp1.sample_id
-                   FROM flr_sample_probe sp1
-                   JOIN flr_sample_probe sp2 ON sp1.sample_id = sp2.sample_id
-                   WHERE sp1.probe_id = ? AND sp2.probe_id = ?
-                   LIMIT 1""",
-                (int(donor_row["probe_id"]), int(acceptor_row["probe_id"])),
-            ).fetchone()
-            if sample_row:
-                sample_id = sample_row[0]
-        except Exception:
-            pass
+        sample_row = db.conn.execute(
+            """SELECT sp1.sample_id
+               FROM flr_sample_probe sp1
+               JOIN flr_sample_probe sp2 ON sp1.sample_id = sp2.sample_id
+               WHERE sp1.probe_id = ? AND sp2.probe_id = ?
+                 AND sp1.deleted_at IS NULL AND sp2.deleted_at IS NULL
+               ORDER BY sp1.sample_id
+               LIMIT 1""",
+            (int(donor_row["probe_id"]), int(acceptor_row["probe_id"])),
+        ).fetchone()
+        if sample_row is None:
+            # A reference probe pair is not a sample measurement.  Persisting a
+            # NULL/placeholder sample would violate both the FK and the domain
+            # invariant; keep the computable reference implicit until a sample
+            # actually carries both probes.
+            continue
+        sample_id = sample_row[0]
 
         with db.conn:
             # Identity-preserving upsert keyed on the deterministic forster_radius_id

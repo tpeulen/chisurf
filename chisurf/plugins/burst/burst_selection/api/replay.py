@@ -56,7 +56,12 @@ def burst_selection_replay_executor(spec: ComputeSpec, db: Any) -> str:
         ),
     )
     result = analyze_request(request)
-    registration = BurstMMFDBPipeline(db=db).register_run(request, result)
+    # ``recompute`` currently supplies only the database object, so its
+    # composition root must bind the already-authenticated session explicitly.
+    registration = BurstMMFDBPipeline(
+        db=db,
+        session=getattr(db, "session_context", None),
+    ).register_run(request, result)
 
     if not registration.burst_table_artifacts:
         raise RuntimeError(

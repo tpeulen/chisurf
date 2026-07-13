@@ -38,6 +38,12 @@ def microtime_shift_replay_executor(spec: ComputeSpec, db: Any) -> str:
     """
     if not spec.source_artifact_ids:
         raise ValueError("microtime_shift replay needs at least one source artifact")
+    from chisurf.core.transform.mmfdb import require_authenticated_session
+
+    session = require_authenticated_session(
+        db,
+        getattr(db, "session_context", None),
+    )
 
     work_dir = tempfile.mkdtemp(prefix="mmfdb_replay_shift_")
     paths = [
@@ -68,6 +74,7 @@ def microtime_shift_replay_executor(spec: ComputeSpec, db: Any) -> str:
             metadata={"plugin": "microtime_shifter", "replay": True},
             data_format=Path(out_path).suffix.lstrip(".") or "tttr",
             db=db,
+            session=session,
         )
         if new_id:
             new_ids.append(new_id)

@@ -242,6 +242,45 @@ def auth_login(user_id: str, password: str, provider: str | None, as_json: bool)
     click.echo(f"expires_at: {result['expires_at']}")
 
 
+@auth.command("bootstrap-admin")
+@click.option(
+    "--user",
+    "user_id",
+    envvar="MMFDB_BOOTSTRAP_ADMIN_USER",
+    prompt="Administrator user",
+    required=True,
+)
+@click.option(
+    "--password",
+    envvar="MMFDB_BOOTSTRAP_ADMIN_PASSWORD",
+    prompt=True,
+    hide_input=True,
+    confirmation_prompt=True,
+    required=True,
+)
+@click.option("--json", "as_json", is_flag=True, help="Output a machine-readable result.")
+def auth_bootstrap_admin(user_id: str, password: str, as_json: bool) -> None:
+    """Create the first local administrator; refuses established databases."""
+    from mmfdb.security.bootstrap import bootstrap_local_admin
+
+    try:
+        with _open_db() as db:
+            created_user = bootstrap_local_admin(
+                db.conn, user_id=user_id, password=password
+            )
+    except ValueError as exc:
+        if as_json:
+            click.echo(json.dumps({"ok": False, "error": str(exc)}))
+            raise click.Abort() from exc
+        raise click.ClickException(str(exc)) from exc
+
+    result = {"ok": True, "user_id": created_user, "is_admin": True}
+    if as_json:
+        click.echo(json.dumps(result))
+    else:
+        click.echo(f"Created local administrator {created_user!r}")
+
+
 @auth.command("whoami")
 @click.option("--token", required=True, help="Session token to resolve.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")

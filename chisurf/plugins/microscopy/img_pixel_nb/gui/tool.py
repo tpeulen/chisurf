@@ -10,10 +10,10 @@ from .view_model import NBViewModel
 class ImgPixelNBTool(ImagingMapTool):
     """Per-pixel Number & Brightness imaging tool."""
 
-    def __init__(self, parent=None, embedded: bool = False, view_model=None):
+    def __init__(self, parent=None, embedded: bool = False, view_model=None, **kwargs):
         super().__init__(
             view_model or NBViewModel(), title="Number & Brightness",
-            parent=parent, embedded=embedded,
+            parent=parent, embedded=embedded, **kwargs,
         )
 
 

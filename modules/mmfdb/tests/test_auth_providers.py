@@ -52,21 +52,23 @@ def test_user_table_has_provider_columns(tmp_path: Path) -> None:
         assert "idx_users_external" in idx
 
 
-def test_bootstrap_admin_uses_random_salt(tmp_path: Path) -> None:
-    # Two fresh DBs should not share the same admin hash (no fixed salt), yet
-    # 'admin' still verifies against each.
+def test_explicit_bootstrap_admin_uses_random_salt(tmp_path: Path, monkeypatch) -> None:
+    # Two explicitly bootstrapped DBs should not share a password hash.
     from mmfdb.admin.backend.password_services import verify_password
+
+    monkeypatch.setenv("MMFDB_BOOTSTRAP_ADMIN_USER", "site-admin")
+    monkeypatch.setenv("MMFDB_BOOTSTRAP_ADMIN_PASSWORD", "Site-admin1!")
 
     with _db(tmp_path, "a.db") as a, _db(tmp_path, "b.db") as b:
         ha = a.conn.execute(
-            "SELECT password_hash FROM flr_sample_users WHERE user_id='user_default'"
+            "SELECT password_hash FROM flr_sample_users WHERE user_id='site-admin'"
         ).fetchone()[0]
         hb = b.conn.execute(
-            "SELECT password_hash FROM flr_sample_users WHERE user_id='user_default'"
+            "SELECT password_hash FROM flr_sample_users WHERE user_id='site-admin'"
         ).fetchone()[0]
         assert ha != hb
-        assert verify_password("admin", ha)
-        assert verify_password("admin", hb)
+        assert verify_password("Site-admin1!", ha)
+        assert verify_password("Site-admin1!", hb)
 
 
 # ---- LocalAuthProvider ----
@@ -92,8 +94,8 @@ def test_local_provider_password_rules(tmp_path: Path) -> None:
         # passwordless
         assert prov.authenticate(user_id="free", password="") is not None
 
-        # no hash: ok only when no password supplied
-        assert prov.authenticate(user_id="nohash", password="") is not None
+        # A missing hash is never an implicit credential.
+        assert prov.authenticate(user_id="nohash", password="") is None
         assert prov.authenticate(user_id="nohash", password="anything") is None
 
         # admin always needs a password

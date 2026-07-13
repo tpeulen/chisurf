@@ -1633,12 +1633,15 @@ def set_app_style(app: QtWidgets.QApplication):
 
 
 def _mmfdb_rpc_config() -> dict[str, int | str]:
-    """Return MMFDB JSON-RPC connection settings."""
+    """Return ChiSurf's local compute/embedded-MMFDB RPC settings."""
+    from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
+
     mmfdb_cfg = chisurf.core.settings.cs_settings.get("mmfdb", {}) or {}
+    config = client_config(mmfdb_cfg)
     return {
-        "host": str(mmfdb_cfg.get("rpc_host", "127.0.0.1")),
-        "cmd_port": int(mmfdb_cfg.get("cmd_port", 8765)),
-        "pub_port": int(mmfdb_cfg.get("pub_port", 8766)),
+        "host": config["host"],
+        "cmd_port": config["cmd_port"],
+        "pub_port": config["pub_port"],
     }
 
 
@@ -1662,8 +1665,12 @@ def _mmfdb_rpc_is_available(timeout_ms: int = 500) -> bool:
     return _chisurf_rpc_is_available(timeout_ms=timeout_ms)
 
 
-def _ensure_chisurf_rpc_server() -> None:
-    """Start the embedded ChiSurf RPC server when no external server responds."""
+def _ensure_chisurf_rpc_server(*, bootstrap_mmfdb: bool = True) -> None:
+    """Start ChiSurf's local compute RPC server when it is not responding.
+
+    Remote MMFDB mode still needs this server for ChiSurf fitting and pipeline
+    RPC, but must not create or mutate a local MMFDB administrator.
+    """
     if _chisurf_rpc_is_available(timeout_ms=300):
         return
 
@@ -1675,6 +1682,29 @@ def _ensure_chisurf_rpc_server() -> None:
         if _chisurf_rpc_is_available(timeout_ms=1000):
             return
         raise RuntimeError("Embedded ChiSurf RPC server exists but is not responding")
+
+    # Standalone MMFDB stays fail-closed, while ChiSurf's embedded local server
+    # has a known first-run login. Never apply this bootstrap to a responding
+    # external endpoint or a configured server database.
+    if bootstrap_mmfdb:
+        from chisurf.core.mmfdb_services import (
+            DEFAULT_DESKTOP_ADMIN_USER,
+            prepare_embedded_mmfdb,
+        )
+
+        mmfdb_settings = chisurf.core.settings.cs_settings.get("mmfdb", {}) or {}
+        if prepare_embedded_mmfdb(mmfdb_settings):
+            mmfdb_cfg = chisurf.core.settings.cs_settings.setdefault("mmfdb", {})
+            mmfdb_cfg["default_user_id"] = DEFAULT_DESKTOP_ADMIN_USER
+            client_cfg = mmfdb_cfg.setdefault("client", {})
+            client_cfg["username"] = DEFAULT_DESKTOP_ADMIN_USER
+            mmfdb_cfg["autologin"] = False
+            try:
+                from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
+
+                set_mmfdb_login_settings(mmfdb_cfg)
+            except Exception as exc:
+                logging.warning("Could not persist the default MMFDB desktop login: %s", exc)
 
     cfg = _mmfdb_rpc_config()
     from chisurf.server.app import ChiSurfServer
@@ -1785,6 +1815,7 @@ class LoginDialog(QtWidgets.QDialog):
         server_layout.addWidget(self.port_spin, 0)
         
         self.user_combo = QtWidgets.QComboBox()
+        self.user_combo.setEditable(True)
         self.password_edit = QtWidgets.QLineEdit()
         self.password_edit.setEchoMode(QtWidgets.QLineEdit.Password)
         self.save_login_check = QtWidgets.QCheckBox("Save selected user")
@@ -1795,12 +1826,27 @@ class LoginDialog(QtWidgets.QDialog):
         
         # Load settings
         import chisurf.core.settings as cs_settings
+        from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
+
         mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
+        self._mmfdb_client_config = client_config(mmfdb_settings)
+        remote_mode = self._mmfdb_client_config["mode"] == "remote"
         
         # Load server history
-        server_history = mmfdb_settings.get("server_history", ["127.0.0.1"])
-        last_server = mmfdb_settings.get("last_server", "127.0.0.1")
-        last_port = mmfdb_settings.get("last_port", 8765)
+        if remote_mode:
+            last_server = self._mmfdb_client_config["base_url"]
+            server_history = [last_server]
+            last_port = 0
+        else:
+            server_history = mmfdb_settings.get(
+                "server_history", [self._mmfdb_client_config["host"]]
+            )
+            last_server = mmfdb_settings.get(
+                "last_server", self._mmfdb_client_config["host"]
+            )
+            last_port = mmfdb_settings.get(
+                "last_port", self._mmfdb_client_config["cmd_port"]
+            )
         
         # Populate server combo with history, avoiding duplicates
         seen_servers = set()
@@ -1817,21 +1863,21 @@ class LoginDialog(QtWidgets.QDialog):
             self.server_combo.setCurrentText(last_server)
         
         # Set the last connected port
-        self.port_spin.setValue(int(last_port))
+        if remote_mode:
+            self.port_spin.hide()
+        else:
+            self.port_spin.setValue(int(last_port))
         
-        # Load users from server
+        # Authentication must not depend on unauthenticated user enumeration.
+        # Seed an editable username with the configured local identity instead.
         self.users = []
+        default_user = self._mmfdb_client_config["username"]
+        self.user_combo.addItem(default_user, default_user)
         self.load_users_from_server()
-        
-        # Select default user
-        default_user = mmfdb_settings.get("default_user_id", "user_default")
-        idx = self.user_combo.findData(default_user)
-        if idx >= 0:
-            self.user_combo.setCurrentIndex(idx)
         self.save_login_check.setChecked(bool(mmfdb_settings.get("save_login", True)))
         self.auto_login_check.setChecked(bool(mmfdb_settings.get("autologin", False)))
             
-        layout.addRow("Server:", server_layout)
+        layout.addRow("MMFDB URL:" if remote_mode else "Server:", server_layout)
         layout.addRow("Select User:", self.user_combo)
         layout.addRow("Password:", self.password_edit)
         layout.addRow("", self.save_login_check)
@@ -1863,6 +1909,8 @@ class LoginDialog(QtWidgets.QDialog):
             self.password_edit.setEnabled(has_pw)
             if not has_pw:
                 self.password_edit.clear()
+        else:
+            self.password_edit.setEnabled(True)
         
     def on_server_changed(self, text):
         """Called when server address changes - reload users from new server."""
@@ -1873,44 +1921,23 @@ class LoginDialog(QtWidgets.QDialog):
         self.load_users_from_server()
         
     def load_users_from_server(self):
-        """Load users from the currently configured server."""
+        """Configure a client without exposing the server's user directory."""
         from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
-        
-        server_host = self.server_combo.currentText() or "127.0.0.1"
-        port = self.port_spin.value()
-        try:
-            # Create a new client with the current server host and port
-            self.client = MMFDBClient(host=server_host, cmd_port=port, pub_port=port + 1)
-            self.users = self.client.list_users()
-            
-            # Remember current selection before clearing
-            current_user_id = self.user_combo.currentData()
-            
-            # Clear and repopulate user combo
-            self.user_combo.clear()
-            for u in self.users:
-                display = f"{u['display_name']} ({u['user_id']})"
-                if u.get("is_admin"):
-                    display += " [Admin]"
-                self.user_combo.addItem(display, u["user_id"])
-                
-            # Restore selection: try current user first, then default user
-            idx = self.user_combo.findData(current_user_id)
-            if idx < 0:
-                import chisurf.core.settings as cs_settings
-                mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
-                default_user = mmfdb_settings.get("default_user_id", "user_default")
-                idx = self.user_combo.findData(default_user)
-            if idx >= 0:
-                self.user_combo.setCurrentIndex(idx)
-                
-        except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Database Error", f"Failed to connect to server '{server_host}':\n{e}")
-            self.users = []
-            self.user_combo.clear()
+
+        if self._mmfdb_client_config["mode"] == "remote":
+            base_url = self.server_combo.currentText() or self._mmfdb_client_config["base_url"]
+            self.client = MMFDBClient(mode="remote", base_url=base_url)
+        else:
+            server_host = self.server_combo.currentText() or self._mmfdb_client_config["host"]
+            port = self.port_spin.value()
+            self.client = MMFDBClient(
+                mode="embedded", host=server_host, cmd_port=port, pub_port=port + 1
+            )
             
     def handle_login(self):
-        user_id = self.user_combo.currentData()
+        current_text = getattr(self.user_combo, "currentText", None)
+        user_id = current_text().strip() if callable(current_text) else ""
+        user_id = user_id or self.user_combo.currentData()
         password = self.password_edit.text()
         
         try:
@@ -1944,20 +1971,33 @@ class LoginDialog(QtWidgets.QDialog):
                     store_session_token,
                 )
                 from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
+                from chisurf.plugins.core.mmfdb_admin.gui.client import (
+                    client_config,
+                    credential_endpoint,
+                )
 
-                if "mmfdb" not in cs_settings.cs_settings:
-                    cs_settings.cs_settings["mmfdb"] = {}
+                mmfdb_settings = cs_settings.cs_settings.setdefault("mmfdb", {})
+                configured_client = mmfdb_settings.setdefault("client", {})
                 save_login = self.save_login_check.isChecked()
                 autologin = self.auto_login_check.isChecked()
                 if save_login or autologin:
-                    cs_settings.cs_settings["mmfdb"]["default_user_id"] = user_id
-                cs_settings.cs_settings["mmfdb"]["save_login"] = save_login
-                cs_settings.cs_settings["mmfdb"]["autologin"] = autologin
-                # Save server host and update history
-                server_host = self.server_combo.currentText() or "127.0.0.1"
+                    mmfdb_settings["default_user_id"] = user_id
+                    configured_client["username"] = user_id
+                mmfdb_settings["save_login"] = save_login
+                mmfdb_settings["autologin"] = autologin
+                configured_client["mode"] = self._mmfdb_client_config["mode"]
+                server_host = self.server_combo.currentText()
+                if configured_client["mode"] == "remote":
+                    configured_client["base_url"] = (
+                        server_host or self._mmfdb_client_config["base_url"]
+                    ).rstrip("/")
+                else:
+                    configured_client["host"] = server_host or self._mmfdb_client_config["host"]
+                    configured_client["cmd_port"] = self.port_spin.value()
+                    configured_client["pub_port"] = self.port_spin.value() + 1
                 
                 # Update server history
-                server_history = cs_settings.cs_settings.get("mmfdb", {}).get("server_history", [])
+                server_history = mmfdb_settings.get("server_history", [])
                 if server_host not in server_history:
                     server_history.insert(0, server_host)
                     # Keep only last 5 servers
@@ -1968,20 +2008,15 @@ class LoginDialog(QtWidgets.QDialog):
                     server_history.remove(server_host)
                     server_history.insert(0, server_host)
                 
-                cs_settings.cs_settings["mmfdb"]["server_history"] = server_history
-                cs_settings.cs_settings["mmfdb"]["last_server"] = server_host
-                cs_settings.cs_settings["mmfdb"]["last_port"] = self.port_spin.value()
-                
-                if hasattr(cs_settings, "mmfdb"):
-                    if save_login or autologin:
-                        cs_settings.mmfdb["default_user_id"] = user_id
-                    cs_settings.mmfdb["save_login"] = save_login
-                    cs_settings.mmfdb["autologin"] = autologin
-                    cs_settings.mmfdb["server_history"] = server_history
-                    cs_settings.mmfdb["last_server"] = server_host
-                    cs_settings.mmfdb["last_port"] = self.port_spin.value()
+                mmfdb_settings["server_history"] = server_history
+                mmfdb_settings["last_server"] = server_host
+                mmfdb_settings["last_port"] = self.port_spin.value()
 
-                saved = set_mmfdb_login_settings(cs_settings.cs_settings["mmfdb"])
+                credential_host, credential_port = credential_endpoint(
+                    client_config(mmfdb_settings)
+                )
+
+                saved = set_mmfdb_login_settings(mmfdb_settings)
                 if not saved:
                     QtWidgets.QMessageBox.warning(
                         self,
@@ -1991,16 +2026,16 @@ class LoginDialog(QtWidgets.QDialog):
                 token_saved = True
                 if autologin:
                     token_saved = store_session_token(
-                        server_host,
-                        self.port_spin.value(),
+                        credential_host,
+                        credential_port,
                         user_id,
                         res.get("token", ""),
                     )
                 else:
-                    delete_session_token(server_host, self.port_spin.value(), user_id)
+                    delete_session_token(credential_host, credential_port, user_id)
                 store_runtime_session_token(
-                    server_host,
-                    self.port_spin.value(),
+                    credential_host,
+                    credential_port,
                     user_id,
                     res.get("token", ""),
                 )
@@ -2008,7 +2043,7 @@ class LoginDialog(QtWidgets.QDialog):
                     cs_settings.cs_settings["mmfdb"]["autologin"] = False
                     if hasattr(cs_settings, "mmfdb"):
                         cs_settings.mmfdb["autologin"] = False
-                    set_mmfdb_login_settings(cs_settings.cs_settings["mmfdb"])
+                    set_mmfdb_login_settings(mmfdb_settings)
                     QtWidgets.QMessageBox.warning(
                         self,
                         "Autologin Not Saved",
@@ -2073,26 +2108,28 @@ def get_app():
                 store_runtime_session_token,
                 store_session_token,
             )
+            from chisurf.plugins.core.mmfdb_admin.gui.client import (
+                client_config,
+                credential_endpoint,
+            )
             import chisurf.core.settings as cs_settings
 
-            _ensure_chisurf_rpc_server()
+            mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
+            connection = client_config(mmfdb_settings)
+            _ensure_chisurf_rpc_server(
+                bootstrap_mmfdb=connection["mode"] == "embedded"
+            )
 
-            default_user = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
-            autologin = cs_settings.cs_settings.get("mmfdb", {}).get("autologin", False)
-            server_host = cs_settings.cs_settings.get("mmfdb", {}).get("last_server", "127.0.0.1")
-            server_port = cs_settings.cs_settings.get("mmfdb", {}).get("last_port", 8765)
+            default_user = connection["username"]
+            autologin = bool(mmfdb_settings.get("autologin", False))
+            credential_host, credential_port = credential_endpoint(connection)
 
-            client = MMFDBClient(host=server_host, cmd_port=server_port, pub_port=server_port + 1)
-            users = client.list_users()
-            user_data = next((u for u in users if u["user_id"] == default_user), None)
-            is_admin_user = bool(user_data.get("is_admin")) if user_data else False
-
+            client = MMFDBClient()
             trigger_login = True
-            # Admin accounts are never silently auto-logged-in: the LoginDialog is
-            # always shown so a password is re-entered each session. Autologin
-            # (stored token / passwordless) applies to non-admin users only.
-            if autologin and user_data is not None and not is_admin_user:
-                token = load_session_token(server_host, server_port, default_user)
+            # Validate stored credentials directly. User enumeration is an
+            # authenticated admin operation and must not be a login prerequisite.
+            if autologin:
+                token = load_session_token(credential_host, credential_port, default_user)
                 if token:
                     try:
                         client.token = token
@@ -2100,18 +2137,24 @@ def get_app():
                         current_user = result.get("user") or {}
                         trigger_login = current_user.get("user_id") != default_user
                         if not trigger_login:
-                            store_runtime_session_token(server_host, server_port, default_user, token)
+                            store_runtime_session_token(
+                                credential_host, credential_port, default_user, token
+                            )
                     except Exception as exc:
                         logging.info(f"MMFDB stored-token autologin declined for {default_user}: {exc}")
-                        delete_session_token(server_host, server_port, default_user)
+                        delete_session_token(credential_host, credential_port, default_user)
                 if trigger_login:
                     try:
                         result = client.login(user_id=default_user, password="")
                         trigger_login = not (result.get("ok") or result.get("authenticated"))
                         if not trigger_login:
                             token = result.get("token", "")
-                            store_runtime_session_token(server_host, server_port, default_user, token)
-                            store_session_token(server_host, server_port, default_user, token)
+                            store_runtime_session_token(
+                                credential_host, credential_port, default_user, token
+                            )
+                            store_session_token(
+                                credential_host, credential_port, default_user, token
+                            )
                     except Exception as exc:
                         logging.info(f"MMFDB passwordless autologin declined for {default_user}: {exc}")
 

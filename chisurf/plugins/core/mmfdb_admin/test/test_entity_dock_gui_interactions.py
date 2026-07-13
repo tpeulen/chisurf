@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -16,6 +17,8 @@ from .conftest import patch_db
 
 
 _WIDGETS: list = []
+_GUI_ADMIN_USER = "gui_admin"
+_GUI_ADMIN_PASSWORD = "Gui-Admin-Integration-2026!"
 
 
 @pytest.fixture
@@ -32,6 +35,13 @@ def seeded_admin_db(db, tmp_path, monkeypatch):
         lambda: tmp_path / "objects",
     )
     db.add_user("user_default", "Default User")
+    from mmfdb.security.bootstrap import bootstrap_local_admin
+
+    bootstrap_local_admin(
+        db.conn,
+        user_id=_GUI_ADMIN_USER,
+        password=_GUI_ADMIN_PASSWORD,
+    )
     db.add_device("dev_gui", "GUI Detector")
     db.add_sample_condition(
         "cond_gui",
@@ -226,6 +236,8 @@ def _widget_for_db(db):
 
     with patch_db(db):
         client = MMFDBClient(inprocess=True)
+        login = client.login(_GUI_ADMIN_USER, _GUI_ADMIN_PASSWORD)
+        assert login.get("ok") is True
         with mock.patch.object(MMFDBWidget, "_verify_admin_access", lambda s: None), \
              mock.patch.object(MMFDBWidget, "_ensure_authenticated", lambda s: None):
             widget = MMFDBWidget(client=client)
@@ -640,7 +652,7 @@ def test_object_entity_dock_copies_reveals_and_deletes_seeded_object(
         object_id = object_dock.table.item(0, 1).text()
         object_data = _select_row(object_dock, qapp, object_id)
         assert object_data["original_filename"] == "sample_curve.csv"
-        assert object_data["storage_path"]
+        assert object_data.get("storage_path") is None
 
         widget._copy_selected_object_entity_uuid()
         assert QtWidgets.QApplication.clipboard().text() == object_id
@@ -654,7 +666,9 @@ def test_object_entity_dock_copies_reveals_and_deletes_seeded_object(
             widget._reveal_selected_object_entity()
         assert opened_urls
         assert opened_urls[0].isLocalFile()
-        assert opened_urls[0].toLocalFile().endswith(object_data["storage_path"])
+        revealed_path = Path(opened_urls[0].toLocalFile())
+        assert revealed_path.name.endswith("sample_curve.csv")
+        assert revealed_path.read_bytes() == b"time,intensity\n0,10\n"
 
         with mock.patch.object(
             QtWidgets.QMessageBox,

@@ -6,6 +6,7 @@ import pathlib
 from unittest.mock import patch
 
 from mmfdb.repository import MFDatabase
+from mmfdb.security.auth import create_session
 from mmfdb.admin.backend.services import (
     delete_setup_handler,
     get_setup_handler,
@@ -72,32 +73,33 @@ def test_setup_definition_repository_crud_and_linkage(tmp_path: pathlib.Path) ->
 def test_setup_service_handlers(tmp_path: pathlib.Path) -> None:
     """Verify canonical MMFDB Admin setup handlers handle CRUD requests."""
     db_path = tmp_path / "test_setup_services.db"
+    with MFDatabase(db_path) as db:
+        db.ensure_user("setup-owner")
+        auth = {"token": create_session(db.conn, "setup-owner")["token"]}
+        db.conn.commit()
 
-    with (
-        patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path),
-        patch("mmfdb.admin.backend.services._require_auth", return_value=None),
-    ):
+    with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path):
         setup_payload = {
             "setup_id": "setup_1",
             "name": "Validation Setup",
             "laser_wavelengths": "[488]",
         }
-        res = save_setup_handler(setup=setup_payload)
+        res = save_setup_handler(setup=setup_payload, auth=auth)
         saved = res["setup"]
         assert saved["setup_id"] == "setup_1"
         assert saved["name"] == "Validation Setup"
         assert saved["laser_wavelengths"] == [488]
 
-        res = get_setup_handler(setup_id="setup_1")
+        res = get_setup_handler(setup_id="setup_1", auth=auth)
         assert res["setup"]["name"] == "Validation Setup"
 
-        res = list_setups_handler()
+        res = list_setups_handler(auth=auth)
         assert len(res["setups"]) == 1
         assert res["setups"][0]["setup_id"] == "setup_1"
 
-        res = delete_setup_handler(setup_id="setup_1")
+        res = delete_setup_handler(setup_id="setup_1", auth=auth)
         assert res["ok"] is True
         assert res["setup_id"] == "setup_1"
 
-        res = list_setups_handler()
+        res = list_setups_handler(auth=auth)
         assert len(res["setups"]) == 0

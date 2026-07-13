@@ -687,6 +687,21 @@
       "name": "mmfdb.datasets.open"
     },
     {
+      "name": "mmfdb.elabftw.connect"
+    },
+    {
+      "name": "mmfdb.elabftw.disconnect"
+    },
+    {
+      "name": "mmfdb.elabftw.experiments.export"
+    },
+    {
+      "name": "mmfdb.elabftw.experiments.import"
+    },
+    {
+      "name": "mmfdb.elabftw.experiments.list"
+    },
+    {
       "name": "mmfdb.lifecycle.definitions"
     },
     {

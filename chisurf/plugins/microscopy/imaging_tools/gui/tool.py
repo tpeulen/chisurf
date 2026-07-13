@@ -24,6 +24,8 @@ Panels (lazy-loaded via factory functions):
 from __future__ import annotations
 
 import logging
+import hashlib
+from pathlib import Path
 
 from qtpy import QtCore, QtWidgets
 
@@ -274,7 +276,7 @@ class ImagingToolsTool(NavigationPanelTool):
     #: Roles whose (Qt-free) view-models the coordinator owns + pre-computes.
     ANALYSIS_ROLES = ("pixel_intensity", "pixel_nb", "pixel_micro_time", "pixel_phasor")
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, mmfdb_db=None, mmfdb_session=None):
         # Initialise coordination state *before* super().__init__, because the
         # base class loads the first panel (Setup) during construction.
         self._setup_client = DetectorSetupClient()
@@ -289,6 +291,10 @@ class ImagingToolsTool(NavigationPanelTool):
         # HDF5 remembered for the image, so any step (freely navigable) reuses
         # them and enrichment tools target the same file.
         self._pipeline: dict[str, str] = {"source": "", "hdf5": ""}
+        self._mmfdb_db = mmfdb_db or getattr(mmfdb_session, "db", None)
+        self._mmfdb_session = mmfdb_session
+        self._owns_mmfdb_db = False
+        self._mmfdb_source_artifact_id = ""
         super().__init__(
             title="🔬 Image Tools",
             panels=IMAGING_PANELS,
@@ -384,6 +390,7 @@ class ImagingToolsTool(NavigationPanelTool):
             model.apply_setup_settings(self._setup_client.get_current())
             model.apply_calibration(self._calibration)
             model.apply_pipeline_context(dict(self._pipeline))
+            self._bind_model_to_mmfdb(model)
         except Exception:
             logger.debug("configuring model %r failed", role, exc_info=True)
         self._models[role] = model
@@ -436,6 +443,10 @@ class ImagingToolsTool(NavigationPanelTool):
         new_source = bool(source) and str(source) != self._pipeline.get("source")
         if source:
             self._pipeline["source"] = str(source)
+            if new_source:
+                self._mmfdb_source_artifact_id = self._ensure_mmfdb_source(
+                    str(source)
+                )
         if hdf5:
             self._pipeline["hdf5"] = str(hdf5)
         for widget in self._panels_by_role.values():
@@ -443,6 +454,7 @@ class ImagingToolsTool(NavigationPanelTool):
         for model in self._models.values():
             try:
                 model.apply_pipeline_context(dict(self._pipeline))
+                self._bind_model_to_mmfdb(model)
             except Exception:
                 logger.debug("apply_pipeline_context on shared model failed", exc_info=True)
         if new_source:
@@ -552,7 +564,91 @@ class ImagingToolsTool(NavigationPanelTool):
             shutdown_proc_pool()  # release the worker process + its cached TTTR
         except Exception:
             logger.debug("proc pool shutdown on close failed", exc_info=True)
+        if self._owns_mmfdb_db and self._mmfdb_db is not None:
+            self._mmfdb_db.close()
+            self._mmfdb_db = None
+            self._mmfdb_session = None
         super().closeEvent(event)
+
+    def _ensure_mmfdb_context(self) -> bool:
+        """Open and authenticate the coordinator's local MMFDB context lazily."""
+        if self._mmfdb_db is None:
+            try:
+                from mmfdb.repository import MFDatabase
+                from mmfdb.store.database_resolver import resolve_database_path
+
+                self._mmfdb_db = MFDatabase(resolve_database_path())
+                self._owns_mmfdb_db = True
+            except Exception:
+                logger.debug("imaging MMFDB connection unavailable", exc_info=True)
+                return False
+        if self._mmfdb_session is None:
+            from chisurf.core.transform.mmfdb import runtime_session_for_database
+
+            self._mmfdb_session = runtime_session_for_database(self._mmfdb_db)
+        if self._mmfdb_session is None:
+            return False
+        try:
+            from chisurf.core.transform.mmfdb import require_authenticated_session
+
+            require_authenticated_session(self._mmfdb_db, self._mmfdb_session)
+            return True
+        except Exception:
+            logger.warning("imaging MMFDB session is invalid", exc_info=True)
+            return False
+
+    def _ensure_mmfdb_source(self, source: str) -> str:
+        """Reuse a readable raw artifact or register the selected TTTR source."""
+        path = Path(source).expanduser().resolve()
+        if not path.is_file() or not self._ensure_mmfdb_context():
+            return ""
+        db = self._mmfdb_db
+        session = self._mmfdb_session
+        hasher = hashlib.md5(usedforsecurity=False)
+        with path.open("rb") as handle:
+            while chunk := handle.read(1024 * 1024):
+                hasher.update(chunk)
+        digest = hasher.hexdigest()
+        from mmfdb.security.auth import (
+            AuthenticatedPrincipal,
+            can_access,
+            PERM_READ,
+        )
+
+        principal = AuthenticatedPrincipal(session.user_id, session.is_admin)
+        candidates = db.conn.execute(
+            "SELECT artifact_id FROM mmfdb_artifact WHERE deleted_at IS NULL "
+            "AND artifact_kind IN ('raw_data', 'raw_measurement') "
+            "AND (file_path = ? OR checksum = ?) ORDER BY created_at DESC",
+            (str(path), digest),
+        ).fetchall()
+        for row in candidates:
+            if can_access(db.conn, principal, "artifact", row["artifact_id"], PERM_READ):
+                return str(row["artifact_id"])
+
+        from mmfdb.provenance.result_registry import register_raw_measurement
+
+        return register_raw_measurement(
+            str(path),
+            metadata={"source_path": str(path), "integration": "imaging_tools"},
+            db=db,
+            session=session,
+        )
+
+    def _bind_model_to_mmfdb(self, model) -> None:
+        """Bind one per-pixel model to the authenticated source artifact."""
+        if not self._mmfdb_source_artifact_id or not self._ensure_mmfdb_context():
+            return
+        from mmfdb.security.auth import AuthenticatedPrincipal
+
+        principal = AuthenticatedPrincipal(
+            self._mmfdb_session.user_id, self._mmfdb_session.is_admin
+        )
+        model.bind_mmfdb(
+            self._mmfdb_db,
+            source_artifact_id=self._mmfdb_source_artifact_id,
+            principal=principal,
+        )
 
     def flush_pipeline_hdf5(self) -> None:
         """Write steps to the shared HDF5 in pipeline order (Intensity first).

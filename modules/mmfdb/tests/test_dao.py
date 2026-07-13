@@ -7,11 +7,13 @@ Exercises generic parameterised CRUD against a real dictionary-declared table
 from __future__ import annotations
 
 import os
+import sqlite3
 import tempfile
 
 import pytest
 
 from mmfdb.schema.dao import (
+    DaoError,
     DictionaryDao,
     UnknownColumnError,
     UnknownTableError,
@@ -39,6 +41,29 @@ def test_primary_key_and_columns_from_live_schema(db):
     assert dao.primary_key("flr_sample") == "sample_id"
     cols = dao.columns("flr_sample")
     assert {"sample_id", "description"} <= cols
+
+
+def test_composite_primary_keys_address_one_exact_row():
+    """Generic CRUD must never silently use only the first composite key column."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute(
+        "CREATE TABLE pair_value (left_id TEXT, right_id TEXT, value TEXT, "
+        "PRIMARY KEY (left_id, right_id))"
+    )
+    conn.executemany(
+        "INSERT INTO pair_value VALUES (?, ?, ?)",
+        [("same", "one", "first"), ("same", "two", "second")],
+    )
+    dao = DictionaryDao.from_connection(conn)
+
+    assert dao.primary_keys("pair_value") == ("left_id", "right_id")
+    with pytest.raises(DaoError, match="composite"):
+        dao.primary_key("pair_value")
+    assert dao.get("pair_value", ("same", "two"))["value"] == "second"
+    assert dao.update("pair_value", {"left_id": "same", "right_id": "two"}, {"value": "changed"}) == 1
+    assert dao.get("pair_value", ("same", "one"))["value"] == "first"
+    assert dao.soft_delete("pair_value", ("same", "two")) == 1
+    assert dao.get("pair_value", ("same", "one"))["value"] == "first"
 
 
 def test_crud_round_trip_with_soft_delete(db):

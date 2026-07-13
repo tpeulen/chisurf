@@ -219,7 +219,23 @@ mc_settings:
   update_rmsd: false
 mmfdb:
   fitting_timeout_ms: 5000  # max ms to wait for a fit.run RPC response; raise for slow models
-  default_user_id: user_default
+  # Optional path to the same validated mmfdb.yaml used by a standalone server.
+  # Explicit values in client override its client block. Leave client empty to
+  # reuse the deployment hints without ever copying its admin password.
+  config_file: null
+  # Optional keys: mode, username, host, cmd_port, pub_port, base_url,
+  # timeout_ms. Defaults are embedded + admin at 127.0.0.1:8765. Passwords
+  # never belong in this YAML.
+  #
+  # To connect ChiSurf to a standalone MMFDB server (e.g. the Docker Compose
+  # service in docker-compose.mmfdb.yml), switch the client to remote mode:
+  #   client:
+  #     mode: remote
+  #     base_url: http://127.0.0.1:8080
+  # For a non-loopback host the base_url must be https:// (or set
+  # allow_insecure_http: true on an isolated development network).
+  client: {}
+  default_user_id: admin
   save_login: true
   autologin: false
   object_store:

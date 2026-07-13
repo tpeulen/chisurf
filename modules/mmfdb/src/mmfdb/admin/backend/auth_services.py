@@ -136,7 +136,9 @@ def logout_handler(auth: dict[str, Any] | None = None) -> dict[str, Any]:
     if not token:
         return {"ok": True}
     with _get_db() as db:
-        revoke_session_by_token(_get_conn(db), token)
+        conn = _get_conn(db)
+        revoke_session_by_token(conn, token)
+        conn.commit()
     return {"ok": True}
 
 
@@ -247,6 +249,7 @@ def sessions_revoke_handler(
                 raise PermissionDenied()
 
         revoke_session(conn, session_id)
+        conn.commit()
         return {"ok": True}
 
 

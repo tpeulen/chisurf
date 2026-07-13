@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from mmfdb.repository import MFDatabase
-from mmfdb.provenance.result_registry import set_global_db
 from chisurf.plugins.burst.burst_selection.api.contract import (
     METHOD_ANALYZE_FILES,
     METHOD_DESCRIBE_CONTRACT,
@@ -23,6 +22,16 @@ from chisurf.plugins.burst.burst_selection.backend.services import (
     contract_handler,
     list_methods as list_backend_methods,
 )
+
+
+def _authenticated_session(db: MFDatabase):
+    from chisurf.core.transform.mmfdb import session_from_auth
+    from mmfdb.security.auth import create_session
+
+    db.ensure_user("burst-test-user")
+    token = create_session(db.conn, "burst-test-user")["token"]
+    db.conn.commit()
+    return session_from_auth(db, {"token": token})
 
 
 def test_register_burst_selection_services() -> None:
@@ -74,6 +83,38 @@ def test_backend_method_catalogue_includes_contract_method() -> None:
     assert methods["burst_selection.contract.describe"] == "Return the Burst Selection workflow contract."
 
 
+def test_service_registration_does_not_resolve_db_for_non_archival_requests(
+    monkeypatch,
+) -> None:
+    """The injected provider is lazy and scoped to explicitly enabled requests."""
+    class Dispatcher:
+        def __init__(self):
+            self.handlers = {}
+
+        def register(self, name, handler):
+            self.handlers[name] = handler
+
+    calls = []
+    dispatcher = Dispatcher()
+    backend_services.register_services(
+        dispatcher,
+        mmfdb_db_provider=lambda: calls.append("db"),
+        mmfdb_session_provider=lambda: calls.append("session"),
+    )
+    monkeypatch.setattr(
+        backend_services,
+        "analyze_request",
+        lambda request: AnalysisResult(files=request.files),
+    )
+
+    response = dispatcher.handlers[METHOD_ANALYZE_FILES](
+        {"files": ["missing.spc"], "mmfdb": {"enabled": False}}
+    )
+
+    assert response["ok"] is True
+    assert calls == []
+
+
 def test_analyze_files_handler_returns_mmfdb_artifacts(
     monkeypatch,
     tmp_path: Path,
@@ -92,15 +133,17 @@ def test_analyze_files_handler_returns_mmfdb_artifacts(
         )
 
     db = MFDatabase(tmp_path / "test.db")
-    set_global_db(db)
+    session = _authenticated_session(db)
     monkeypatch.setattr(backend_services, "analyze_request", fake_analyze_request)
     try:
         response = backend_services.analyze_files_handler(
             files=[str(input_path)],
             settings={"output_formats": []},
+            mmfdb={"enabled": True},
+            mmfdb_db=db,
+            mmfdb_session=session,
         )
     finally:
-        set_global_db(None)
         db.close()
 
     assert response["ok"] is True
@@ -153,12 +196,15 @@ def test_multi_file_run_registers_single_grouped_directory(
         )
 
     db = MFDatabase(tmp_path / "test.db")
-    set_global_db(db)
+    session = _authenticated_session(db)
     monkeypatch.setattr(backend_services, "analyze_request", fake_analyze_request)
     try:
         response = backend_services.analyze_files_handler(
             files=[str(f) for f in files],
             settings={"output_formats": []},
+            mmfdb={"enabled": True},
+            mmfdb_db=db,
+            mmfdb_session=session,
         )
         assert response["ok"] is True
         rows = db.conn.execute(
@@ -168,7 +214,6 @@ def test_multi_file_run_registers_single_grouped_directory(
         ).fetchall()
         dirs = [dict(r) for r in rows]
     finally:
-        set_global_db(None)
         db.close()
 
     assert len(dirs) == 1, f"expected one grouped directory, got {len(dirs)}"

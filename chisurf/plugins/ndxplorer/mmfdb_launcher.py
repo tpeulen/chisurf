@@ -8,7 +8,7 @@ opener. ``modules/ndxplorer`` stays chisurf-free; this module is the only glue.
 Usable directly (e.g. from the Code Editor) for a manual round-trip test::
 
     from chisurf.plugins.ndxplorer.mmfdb_launcher import open_burst_selection_from_mmfdb
-    open_burst_selection_from_mmfdb()
+    open_burst_selection_from_mmfdb(client=authenticated_mmfdb_client)
 """
 
 from __future__ import annotations
@@ -73,7 +73,12 @@ def open_path_in_ndxplorer(path: str) -> Any:
     return ndx
 
 
-def open_burst_selection_from_mmfdb(parent: Any = None, scope: str = "all") -> Any:
+def open_burst_selection_from_mmfdb(
+    parent: Any = None,
+    scope: str = "all",
+    *,
+    client: Any,
+) -> Any:
     """Pick a registered burst selection from MMFDB and open it in ndXplorer.
 
     Pick (the sample/measurement selection widget) → resolve the artifact to a
@@ -81,9 +86,6 @@ def open_burst_selection_from_mmfdb(parent: Any = None, scope: str = "all") -> A
     nothing was selected / it could not be opened.
     """
     from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetPickerDialog
-    from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
-
-    client = MMFDBClient(inprocess=True)
     sel = MmfdbDatasetPickerDialog.pick_dataset(
         parent=parent,
         kinds=BURST_KINDS,

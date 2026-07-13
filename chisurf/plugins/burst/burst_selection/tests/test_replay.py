@@ -34,6 +34,8 @@ from chisurf.plugins.burst.burst_selection.api.models import (
     PhotonFilterSettings,
 )
 from chisurf.plugins.burst.burst_selection.api.transformer import OPERATION_TYPE
+from chisurf.core.transform.mmfdb import session_from_auth
+from mmfdb.security.auth import create_session
 
 _SPC = (
     Path(__file__).resolve().parent / "data" / "bh_spc132_sm_dna" / "m000.spc"
@@ -66,7 +68,14 @@ def chain(tmp_path):
         OPERATION_TYPE, _replay.burst_selection_replay_executor
     )
     db = MFDatabase(os.path.join(tmp_path, "burst_replay.db"))
-    raw = register_raw_measurement(str(_SPC), db=db)
+    db.ensure_user("burst-replay-user")
+    token = create_session(db.conn, "burst-replay-user")["token"]
+    db.conn.commit()
+    session = session_from_auth(db, {"token": token})
+    # recompute's executor receives the database only; bind the request-scoped
+    # authenticated session at this composition boundary.
+    db.session_context = session
+    raw = register_raw_measurement(str(_SPC), db=db, session=session)
     params = extract_burst_parameters(AnalysisRequest(files=[], settings=_settings()))
     # Metadata-only setup artifact: replay reads the operation/params/source from the
     # compute spec, not the stored payload, so we don't need a full BurstTable here.
@@ -77,6 +86,7 @@ def chain(tmp_path):
         operation_type=OPERATION_TYPE,
         parameters=params,
         db=db,
+        session=session,
     )
     try:
         yield db, {"raw": raw, "burst": burst}, params

@@ -7,8 +7,15 @@ from chisurf.core.experiments.core.reader import ExperimentReader
 
 class GlobalFitSetup(ExperimentReader):
 
+    operation_type = "global_fit"
+    artifact_kind_derived = "fit_result"
+
     def __init__(self, *args, **kwargs):
         """Initialize a global-fit setup reader."""
+        # This reader creates a UI/data-model placeholder; the actual fit path
+        # owns global-fit provenance. Archiving the placeholder would claim a
+        # scientific operation that never ran.
+        kwargs.setdefault("record_provenance", False)
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -51,5 +58,4 @@ class GlobalFitSetup(ExperimentReader):
         s = 'Global-Fit\n'
         s += 'Name: \t%s \n' % self.name
         return s
-
 

@@ -10,9 +10,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from .config import (
+    DeploymentConfig,
     RuntimeConfig,
+    apply_deployment_config,
     configure_runtime,
     get_runtime_config,
+    load_client_config,
+    load_deployment_config,
     reset_runtime_config,
 )
 
@@ -21,9 +25,13 @@ if TYPE_CHECKING:
 
 __all__ = [
     "MFDatabase",
+    "DeploymentConfig",
     "RuntimeConfig",
+    "apply_deployment_config",
     "configure_runtime",
     "get_runtime_config",
+    "load_client_config",
+    "load_deployment_config",
     "reset_runtime_config",
 ]
 

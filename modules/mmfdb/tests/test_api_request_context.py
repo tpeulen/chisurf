@@ -5,12 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 import mmfdb.api as api
 import mmfdb.request_context as request_context
 from mmfdb.admin.backend import services
 from mmfdb.admin.backend.password_services import hash_password
 from mmfdb.repository import MFDatabase
 from mmfdb.security.login import login
+from mmfdb.security.auth import create_default_acl_for_object
+from mmfdb.security.auth import AuthError
 
 
 class _Dispatcher:
@@ -29,6 +33,7 @@ def _database_with_token(path: Path) -> dict[str, str]:
             ("alice", "Alice", 0, hash_password("pw")),
         )
         database.add_sample("sample-1", description="context test")
+        create_default_acl_for_object(database.conn, "sample", "sample-1", "alice")
         database.conn.commit()
         token = login(database.conn, user_id="alice", password="pw")["token"]
     return {"token": token}
@@ -95,3 +100,19 @@ def test_direct_api_call_owns_one_context(tmp_path, monkeypatch) -> None:
     assert len(opened) == 1
     assert len(closed) == 1
     assert len(authenticated) == 1
+
+
+def test_legacy_dispatch_handlers_are_authenticated_without_auth_kwarg(
+    tmp_path, monkeypatch
+) -> None:
+    """The dispatcher secures legacy signatures without injecting unknown kwargs."""
+    path = tmp_path / "legacy-handler.db"
+    auth = _database_with_token(path)
+    monkeypatch.setattr(services, "resolve_database_path", lambda *a, **k: path)
+    dispatcher = _Dispatcher()
+    services.register_services(dispatcher)
+
+    with pytest.raises(AuthError, match="Authentication required"):
+        dispatcher.handlers["mmfdb.probes.list"]({})
+
+    assert dispatcher.handlers["mmfdb.probes.list"]({"auth": auth}) == {"probes": []}

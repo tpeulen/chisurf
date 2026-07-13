@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from mmfdb.schema._sqlutil import _json_dumps, _utc_now
+from mmfdb.security.auth import create_default_acl_for_object
 
 
 class SetupCalibMixin:
@@ -235,6 +236,16 @@ class SetupCalibMixin:
         # Normalize empty-string user_id to None so the FK constraint holds
         _owner = created_by_user_id or None
         with self._transaction():
+            existing = self.conn.execute(
+                "SELECT created_by_user_id, is_public FROM mmfdb_setup WHERE setup_id = ?",
+                (setup_id,),
+            ).fetchone()
+            effective_owner = (existing[0] if existing else None) or _owner
+            effective_public = (
+                int(bool(is_public))
+                if is_public is not None
+                else int(bool(existing[1])) if existing else 0
+            )
             self.conn.execute(
                 """INSERT INTO mmfdb_setup (
                     setup_id, name, version, instrument_id, description,
@@ -266,7 +277,7 @@ class SetupCalibMixin:
                     make_fine=excluded.make_fine,
                     burst_defaults_json=excluded.burst_defaults_json,
                     fcs_calibration_json=excluded.fcs_calibration_json,
-                    created_by_user_id=excluded.created_by_user_id,
+                    created_by_user_id=COALESCE(mmfdb_setup.created_by_user_id, excluded.created_by_user_id),
                     is_public=excluded.is_public,
                     updated_at=excluded.updated_at,
                     deleted_at=excluded.deleted_at""",
@@ -290,13 +301,27 @@ class SetupCalibMixin:
                     1 if make_fine else 0 if make_fine is not None else None,
                     _json_dumps(burst_defaults),
                     _json_dumps(fcs_calibration),
-                    _owner,
-                    1 if is_public is True else 0,
+                    effective_owner,
+                    effective_public,
                     now,
                     now,
                     None,
                 ),
             )
+            if effective_owner:
+                create_default_acl_for_object(
+                    self.conn,
+                    "setup",
+                    setup_id,
+                    owner_user_id=effective_owner,
+                    mode=0o704 if effective_public else 0o700,
+                )
+                if existing and is_public is not None:
+                    self.conn.execute(
+                        "UPDATE mmfdb_object_acl SET mode = ?, updated_at = ? "
+                        "WHERE object_type = 'setup' AND object_id = ? AND deleted_at IS NULL",
+                        (0o704 if effective_public else 0o700, now, setup_id),
+                    )
 
             # Write structured detector channel rows
             if detectors:

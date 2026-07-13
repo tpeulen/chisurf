@@ -15,6 +15,10 @@ class StructureReader(
     ExperimentReader
 ):
 
+    operation_type = "import"
+    artifact_kind_source = "external_file"
+    artifact_kind_derived = "processed_data"
+
     def __init__(
             self,
             compute_internal_coordinates: bool = False,
@@ -78,5 +82,4 @@ class StructureReader(
         )
         data_group.data_reader = self
         return data_group
-
 

@@ -123,7 +123,7 @@ def _mmfdb_context_from_payload(payload: dict[str, Any]) -> MMFDBContext:
         context = raw_context
     elif isinstance(raw_context, dict):
         context = MMFDBContext(
-            enabled=bool(raw_context.get("enabled", True)),
+            enabled=bool(raw_context.get("enabled", False)),
             sample_id=str(raw_context.get("sample_id") or ""),
             source_artifact_ids={
                 str(path): str(artifact_id)
@@ -240,7 +240,7 @@ def contract_descriptor() -> dict[str, Any]:
             "MMFDBContext": {
                 "type": "object",
                 "properties": {
-                    "enabled": {"type": "boolean"},
+                    "enabled": {"type": "boolean", "default": False},
                     "sample_id": {"type": "string"},
                     "source_artifact_ids": {
                         "type": "object",

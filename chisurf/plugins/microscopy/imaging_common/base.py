@@ -62,6 +62,43 @@ class ImagingMapViewModel:
         self._last_signature: tuple | None = None
         #: Memoized per-frame movie stacks: {name: (signature, array)}.
         self._movie_cache: dict[str, tuple] = {}
+        # Explicit MMFDB binding. The view-model never discovers or opens a
+        # database implicitly; the owning host supplies one for its lifetime.
+        self.mmfdb_db = None
+        self.mmfdb_source_artifact_id: str = ""
+        self.mmfdb_sample_id: str = ""
+        self.mmfdb_artifact_id: str = ""
+        self.mmfdb_principal = None
+        self.mmfdb_session = None
+        self._mmfdb_persisted_signature: tuple | None = None
+
+    def bind_mmfdb(
+        self,
+        db,
+        *,
+        source_artifact_id: str,
+        sample_id: str = "",
+        principal,
+    ) -> None:
+        """Bind an explicit MMFDB client and ACL-checked source artifact."""
+        from chisurf.plugins.microscopy.imaging_common.mmfdb import (
+            require_imaging_source_access,
+        )
+
+        require_imaging_source_access(db, source_artifact_id, principal)
+        from mmfdb.security.session import SessionContext
+
+        self.mmfdb_db = db
+        self.mmfdb_source_artifact_id = source_artifact_id
+        self.mmfdb_sample_id = sample_id
+        self.mmfdb_artifact_id = ""
+        self.mmfdb_principal = principal
+        self.mmfdb_session = SessionContext(
+            user_id=principal.user_id,
+            db=db,
+            is_admin=principal.is_admin,
+        )
+        self._mmfdb_persisted_signature = None
 
     def apply_pipeline_context(self, payload: dict) -> None:
         """Adopt the shared pipeline context (current source + imaging HDF5).
@@ -152,6 +189,7 @@ class ImagingMapViewModel:
             return
         try:
             self._write_hdf5(path)
+            self._register_hdf5_snapshot(path)
             self.pipeline_hdf5 = path
             if callable(self.pipeline_sink):
                 self.pipeline_sink(source=self.filename or None, hdf5=path)
@@ -392,6 +430,7 @@ class ImagingMapViewModel:
             return
         try:
             added = self._write_hdf5(path)
+            self._register_hdf5_snapshot(path)
             self.pipeline_hdf5 = path
             if callable(self.pipeline_sink):
                 self.pipeline_sink(source=self.filename or None, hdf5=path)
@@ -405,6 +444,42 @@ class ImagingMapViewModel:
         from chisurf.core.fluorescence.imaging import add_maps_to_hdf5
 
         return add_maps_to_hdf5(path, self._columns)
+
+    def _register_hdf5_snapshot(self, path: str) -> None:
+        """Register the just-written HDF5 when an MMFDB client is bound."""
+        if (
+            self.mmfdb_db is None
+            or not self.mmfdb_source_artifact_id
+            or self.mmfdb_session is None
+        ):
+            return
+        state = self._signature()
+        if state == self._mmfdb_persisted_signature:
+            return
+        first_column = next(iter(self._columns.values()), None)
+        shape = list(np.asarray(first_column).shape) if first_column is not None else []
+        metadata = {
+            "analysis_kind": self.WINDOW_KIND or type(self).__name__,
+            "source_file": str(pathlib.Path(self.filename).resolve()) if self.filename else None,
+            "parameters": self._window_params(),
+            "detectors": self.detectors,
+            "result_columns": list(self._columns),
+            "shape": shape,
+        }
+        from chisurf.plugins.microscopy.imaging_common.mmfdb import (
+            register_imaging_output,
+        )
+
+        self.mmfdb_artifact_id = register_imaging_output(
+            self.mmfdb_db,
+            output_path=path,
+            source_artifact_id=self.mmfdb_source_artifact_id,
+            parent_artifact_id=self.mmfdb_artifact_id or None,
+            sample_id=self.mmfdb_sample_id,
+            metadata=metadata,
+            session=self.mmfdb_session,
+        )
+        self._mmfdb_persisted_signature = state
 
     def to_dataframe(self):
         """Return the per-pixel table as a DataFrame (shared with ndxplorer).

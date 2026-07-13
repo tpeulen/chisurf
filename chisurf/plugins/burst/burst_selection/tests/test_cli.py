@@ -139,6 +139,20 @@ def test_analyze_mmfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
         )
     )
     db_path = tmp_path / "mmfdb.sqlite"
+    auth_db = MFDatabase(db_path)
+    try:
+        from mmfdb.security.auth import create_session
+        from mmfdb.models import SampleDefinition
+        from mmfdb.samples.sample_manager import create_sample
+
+        auth_db.ensure_user("cli-user")
+        token = create_session(auth_db.conn, "cli-user")["token"]
+        sample_id = create_sample(
+            auth_db, SampleDefinition(name="DNA burst sample")
+        )
+        auth_db.conn.commit()
+    finally:
+        auth_db.close()
 
     try:
         result = CliRunner().invoke(
@@ -151,7 +165,8 @@ def test_analyze_mmfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
                 "--min-photons", "20",
                 "--mmfdb",
                 "--db", str(db_path),
-                "--sample-name", "DNA burst sample",
+                "--token", token,
+                "--sample-id", sample_id,
                 "--selected-setup", "BS",
             ],
         )

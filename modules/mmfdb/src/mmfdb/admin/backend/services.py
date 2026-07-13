@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import csv
 import dataclasses
+import inspect
 import json
 import logging
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +20,7 @@ from mmfdb.admin.backend.auth_services import (
 from mmfdb.admin.backend.measurement_services import (
     register_measurement_services,
 )
+from mmfdb.admin.backend.elabftw_services import register_elabftw_services
 from mmfdb.admin.backend.ndxplorer_services import (
     register_ndxplorer_services,
 )
@@ -43,9 +46,14 @@ from mmfdb.samples.sample_manager import (
 )
 from mmfdb.schema.pdbx_metadata import MmcifDictionary
 from mmfdb.security.auth import (
+    PERM_MANAGE,
     PERM_READ,
+    PERM_WRITE,
     AnonymousPrincipal,
     AuthError,
+    PermissionDenied,
+    _get_object_acl,
+    can_access,
     create_default_acl_for_object,
     filter_readable,
     principal_from_rpc_auth,
@@ -102,6 +110,10 @@ VERSIONED_MMFDB_METHODS = {
     "users.jump_to_operation": "jump_user_to_operation",
 }
 
+MAX_OBJECT_UPLOAD_BYTES = int(
+    os.environ.get("MMFDB_MAX_OBJECT_UPLOAD_BYTES", 64 * 1024 * 1024)
+)
+
 def register_services(
     dispatcher_or_context: Any,
     *,
@@ -119,6 +131,7 @@ def register_services(
         burst_selection_runner=burst_selection_runner,
     )
     register_ndxplorer_services(dispatcher)
+    register_elabftw_services(dispatcher)
     # Fluorophore curation (fluorophores.*), migrated from the fluorophore_db plugin.
     from mmfdb.admin.backend.fluorophore_services import (
         register_services as register_fluorophore_services,
@@ -263,7 +276,26 @@ def register_services(
         "datasets.browse": datasets_browse_handler,
         "datasets.open": datasets_open_handler,
     }.items():
-        dispatcher.register(f"mmfdb.{name}", lambda params, _handler=handler: _handler(**params))
+        def _make_authenticated_handler(_handler):
+            accepts_auth = "auth" in inspect.signature(_handler).parameters
+
+            def _authenticated_handler(params):
+                call_params = dict(params)
+                auth = call_params.pop("auth", None)
+                # Protect every legacy method at one fail-closed boundary.
+                # Older handlers receive only parameters they declare.
+                with MFDatabase(resolve_database_path()) as auth_db:
+                    _require_auth(auth, auth_db.conn)
+                if accepts_auth:
+                    call_params["auth"] = auth
+                return _handler(**call_params)
+
+            return _authenticated_handler
+
+        dispatcher.register(
+            f"mmfdb.{name}",
+            _make_authenticated_handler(handler),
+        )
 
     if pipeline_list is not None:
         dispatcher.register(
@@ -378,11 +410,8 @@ def datasets_open_handler(
         ``local_path`` (str) key.
     """
     with MFDatabase(resolve_database_path()) as db:
-        # Allow the in-process/local client (anonymous) when a default user is
-        # configured, consistent with datasets.browse; otherwise require auth.
-        owner_id = _resolve_owner_id(db, auth)
-        if not owner_id:
-            require_authenticated(principal_from_rpc_auth(db.conn, auth))
+        principal = _require_auth(auth, db.conn)
+        require_access(db.conn, principal, "artifact", artifact_id, PERM_READ)
         local_path = db.open_dataset(artifact_id)
         return {"local_path": local_path}
 
@@ -426,10 +455,24 @@ def _validate_fdb_methods_in_manifest(manifest_path: str | Path | None = None) -
 
 
 def status_handler(auth: dict[str, Any] | None = None, **_: Any) -> dict[str, Any]:
+    """Return database identity, backend type, and entity counts.
+
+    The envelope advertises the SQL dialect (``database_dialect``), a
+    password-redacted ``database_location``, and the ``object_store_backend`` so
+    a remote client can display which database and storage a connection uses.
+    """
+    from mmfdb.config import configured_object_store_backend
+
     with MFDatabase(resolve_database_path()) as db:
+        target = db.database_target
         res = {
             "source_database": str(source_database_path()),
             "user_database": str(user_database_path()),
+            "database_dialect": target.dialect if target is not None else "unknown",
+            "database_location": (
+                target.display_location if target is not None else str(resolve_database_path())
+            ),
+            "object_store_backend": configured_object_store_backend(),
             "schema_version": db.get_schema_version(),
             "sample_count": 0,
             "experiment_count": 0,
@@ -491,7 +534,7 @@ def get_sample_handler(sample_id: str, auth: dict[str, Any] | None = None) -> di
 def list_sample_conditions_handler(auth: dict[str, Any] | None = None) -> dict[str, Any]:
     """List sample conditions for the generic EntityDock."""
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        principal = _require_auth(auth, db.conn)
         rows = db.conn.execute(
             "SELECT * FROM flr_sample_condition WHERE deleted_at IS NULL ORDER BY condition_id"
         ).fetchall()
@@ -940,7 +983,7 @@ def save_sample_key_values_handler(
     sample_id: str, key_values: list[dict[str, Any]], auth: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        _authorize_legacy_object_mutation(db, auth, "sample", sample_id)
         db.clear_sample_key_values(sample_id)
         for item in key_values:
             key = str(item.get("key") or "").strip()
@@ -973,7 +1016,9 @@ def _list_users_internal(db: Any = None) -> dict[str, Any]:
 
 
 def list_users_handler(auth: dict[str, Any] | None = None) -> dict[str, Any]:
-    return _list_users_internal(db=None)
+    with MFDatabase(resolve_database_path()) as db:
+        _require_admin(auth, db.conn)
+        return _list_users_internal(db=db)
 
 
 def save_user_handler(user: dict[str, Any], auth: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -986,13 +1031,8 @@ def save_user_handler(user: dict[str, Any], auth: dict[str, Any] | None = None) 
     password = user.get("password")
 
     with MFDatabase(resolve_database_path()) as db:
-        requester = _require_auth(auth, db.conn)
-        requester_is_admin = requester is not None and requester.is_admin
-        requester_id = requester.user_id if requester else None
-
-        # Check if there are any admins in the DB
-        has_admin_res = db.conn.execute("SELECT 1 FROM flr_sample_users WHERE is_admin = 1 LIMIT 1").fetchone()
-        has_admins = (has_admin_res is not None)
+        requester = _require_admin(auth, db.conn)
+        requester_is_admin = True
 
         # User UUID is the stable backend identity. user_id is the mutable
         # human-readable username/login name.
@@ -1014,16 +1054,6 @@ def save_user_handler(user: dict[str, Any], auth: dict[str, Any] | None = None) 
                 raise ValueError(f"Built-in user '{old_user_id}' cannot be renamed")
             if db.conn.execute("SELECT 1 FROM flr_sample_users WHERE user_id = ?", (user_id,)).fetchone():
                 raise ValueError(f"User ID '{user_id}' already exists")
-
-        # Check permissions if admins exist
-        if has_admins:
-            if requester is None:
-                raise ValueError("Unauthorized: authentication required")
-            if not requester_is_admin:
-                if requester_id != old_user_id:
-                    raise ValueError("Unauthorized: Non-admin users can only edit their own profile")
-                if "is_admin" in user and int(user["is_admin"]) == 1 and existing.get("is_admin", 0) != 1:
-                    raise ValueError("Unauthorized: Non-admin users cannot grant admin privileges")
 
         def get_merged(key, default=None):
             if key in user:
@@ -1060,11 +1090,17 @@ def save_user_handler(user: dict[str, Any], auth: dict[str, Any] | None = None) 
         final_is_admin = existing_is_admin
         if "is_admin" in user:
             is_admin_val = int(user["is_admin"])
-            if has_admins:
-                if requester_is_admin:
-                    final_is_admin = is_admin_val
-            else:
+            if requester_is_admin:
                 final_is_admin = is_admin_val
+
+        if existing_is_admin == 1 and final_is_admin != 1:
+            other_admin = db.conn.execute(
+                "SELECT 1 FROM flr_sample_users WHERE is_admin = 1 AND user_id != ? "
+                "AND deleted_at IS NULL LIMIT 1",
+                (old_user_id,),
+            ).fetchone()
+            if other_admin is None:
+                raise ValueError("Cannot remove the last administrator")
 
         # Admin accounts can never use passwordless login (defense-in-depth: the
         # login path also refuses empty-password admin logins).
@@ -1188,17 +1224,26 @@ def _table_has_column(conn: Any, table: str, column: str) -> bool:
 
 
 def delete_user_handler(user_id: str, force: bool = False, requester_id: str = None, auth: dict[str, Any] | None = None) -> dict[str, Any]:
-    if user_id in ("user_default", "guest"):
-        raise ValueError(f"The built-in user ('{user_id}') cannot be deleted.")
-
     import sqlite3
     with MFDatabase(resolve_database_path()) as db:
-        requester = _require_auth(auth, db.conn)
-        requester_is_admin = requester is not None and requester.is_admin
+        _require_admin(auth, db.conn)
+        target = db.conn.execute(
+            "SELECT is_admin FROM flr_sample_users WHERE user_id = ? AND deleted_at IS NULL",
+            (user_id,),
+        ).fetchone()
+        if target is not None and user_id in {"user_default", "guest"}:
+            raise ValueError(f"built-in user '{user_id}' cannot be deleted")
+        if target and target[0] == 1:
+            other_admin = db.conn.execute(
+                "SELECT 1 FROM flr_sample_users WHERE is_admin = 1 AND user_id != ? "
+                "AND deleted_at IS NULL LIMIT 1",
+                (user_id,),
+            ).fetchone()
+            if other_admin is None:
+                raise ValueError("Cannot delete the last administrator")
 
         if force:
-            if not requester_is_admin:
-                raise ValueError("Only administrators can force-delete users with committed measurements.")
+            pass
         else:
             # Check mmfdb_operation
             res = db.conn.execute("SELECT 1 FROM mmfdb_operation WHERE operator_user_id = ? LIMIT 1", (user_id,)).fetchone()
@@ -1221,12 +1266,10 @@ def delete_user_handler(user_id: str, force: bool = False, requester_id: str = N
             ]:
                 try:
                     res = db.conn.execute(f"SELECT 1 FROM {table} WHERE {col} = ? LIMIT 1", (user_id,)).fetchone()
-                    if res:
-                        raise ValueError(f"User '{user_id}' has committed data and cannot be deleted.")
                 except sqlite3.OperationalError:
-                    pass
-                except Exception:
-                    pass
+                    continue
+                if res:
+                    raise ValueError(f"User '{user_id}' has committed data and cannot be deleted.")
 
         db.delete_user(user_id)
         result = _list_users_internal(db)
@@ -1255,7 +1298,9 @@ def save_device_handler(device: dict[str, Any], auth: dict[str, Any] | None = No
     if not device_id:
         raise ValueError("device_id is required")
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        requester, is_new = _authorize_legacy_object_mutation(
+            db, auth, "device", device_id
+        )
         db.add_device(
             device_id,
             str(device.get("name") or device_id),
@@ -1266,12 +1311,17 @@ def save_device_handler(device: dict[str, Any], auth: dict[str, Any] | None = No
             device.get("owner") or None,
             device.get("details") or None,
         )
+        if is_new:
+            create_default_acl_for_object(
+                db.conn, "device", device_id, owner_user_id=requester.user_id
+            )
+            db.conn.commit()
     return get_device_handler(device_id, auth=auth)
 
 
 def delete_device_handler(device_id: str, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        _authorize_legacy_object_mutation(db, auth, "device", device_id)
         db.delete_device(device_id)
     return list_devices_handler(auth=auth)
 
@@ -1348,7 +1398,9 @@ def save_experiment_handler(experiment: dict[str, Any], auth: dict[str, Any] | N
     if not experiment_id:
         raise ValueError("experiment_id is required")
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        requester, is_new = _authorize_legacy_object_mutation(
+            db, auth, "experiment", experiment_id
+        )
         db.add_experiment(
             experiment_id,
             type_id=_int_or_none(experiment.get("type_id")),
@@ -1371,12 +1423,18 @@ def save_experiment_handler(experiment: dict[str, Any], auth: dict[str, Any] | N
                     item.get("value", ""),
                     item.get("details"),
                 )
+        if is_new:
+            create_default_acl_for_object(
+                db.conn, "experiment", experiment_id,
+                owner_user_id=requester.user_id,
+            )
+            db.conn.commit()
     return get_experiment_handler(experiment_id, auth=auth)
 
 
 def delete_experiment_handler(experiment_id: str, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        _authorize_legacy_object_mutation(db, auth, "experiment", experiment_id)
         with db.conn:
             # raw: admin hard delete (dao.soft_delete would only set deleted_at).
             db.conn.execute("DELETE FROM flr_experiment WHERE experiment_id = ?", (experiment_id,))
@@ -1387,7 +1445,7 @@ def save_experiment_key_values_handler(
     experiment_id: str, key_values: list[dict[str, Any]], auth: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        _authorize_legacy_object_mutation(db, auth, "experiment", experiment_id)
         db.clear_experiment_key_values(experiment_id)
         for item in key_values:
             key = str(item.get("key") or "").strip()
@@ -1410,8 +1468,16 @@ def save_experiment_data_handler(data: dict[str, Any], auth: dict[str, Any] | No
         raise ValueError("data_type is required")
     storage_mode = str(data.get("storage_mode") or "link").strip()
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        _authorize_legacy_object_mutation(db, auth, "experiment", experiment_id)
         if data.get("data_id"):
+            current = db.conn.execute(
+                "SELECT experiment_id FROM flr_experiment_data WHERE data_id = ?",
+                (int(data["data_id"]),),
+            ).fetchone()
+            if current is not None and current["experiment_id"] != experiment_id:
+                _authorize_legacy_object_mutation(
+                    db, auth, "experiment", current["experiment_id"]
+                )
             db.update_experiment_data(
                 int(data["data_id"]),
                 experiment_id,
@@ -1450,11 +1516,16 @@ def save_experiment_data_handler(data: dict[str, Any], auth: dict[str, Any] | No
 
 def delete_experiment_data_handler(data_id: int, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
         row = db.conn.execute(
             "SELECT experiment_id FROM flr_experiment_data WHERE data_id = ?", (int(data_id),)
         ).fetchone()
         experiment_id = row["experiment_id"] if row else None
+        if experiment_id is None:
+            _require_auth(auth, db.conn)
+        else:
+            _authorize_legacy_object_mutation(
+                db, auth, "experiment", experiment_id
+            )
         db.delete_experiment_data(int(data_id))
     return {"ok": True, "data_id": int(data_id), "experiment_id": experiment_id}
 
@@ -1653,7 +1724,7 @@ def _project_row_dict(row: Any) -> dict[str, Any]:
 def list_projects_handler(auth: dict[str, Any] | None = None) -> dict[str, Any]:
     """List MMFDB project records for the admin Project EntityDock."""
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        principal = _require_auth(auth, db.conn)
         rows = db.conn.execute(
             """SELECT operation_id, operator_user_id, status, metadata_json,
                       created_at, updated_at
@@ -1661,14 +1732,17 @@ def list_projects_handler(auth: dict[str, Any] | None = None) -> dict[str, Any]:
                WHERE operation_type = 'project' AND deleted_at IS NULL
                ORDER BY created_at DESC"""
         ).fetchall()
-        projects = [_project_row_dict(row) for row in rows]
+        readable = filter_readable(
+            db.conn, principal, "operation", list(rows), id_key="operation_id"
+        )
+        projects = [_project_row_dict(row) for row in readable]
     return {"projects": projects}
 
 
 def get_project_handler(project_id: str, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return one MMFDB project record by project ID or version operation ID."""
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        principal = _require_auth(auth, db.conn)
         rows = db.conn.execute(
             """SELECT operation_id, operator_user_id, status, metadata_json,
                       created_at, updated_at
@@ -1679,6 +1753,9 @@ def get_project_handler(project_id: str, auth: dict[str, Any] | None = None) -> 
         for row in rows:
             project = _project_row_dict(row)
             if project.get("project_id") == project_id or project.get("version_id") == project_id:
+                require_access(
+                    db.conn, principal, "operation", project["version_id"], PERM_READ
+                )
                 return {"project": project}
     return {"project": None}
 
@@ -1686,15 +1763,25 @@ def get_project_handler(project_id: str, auth: dict[str, Any] | None = None) -> 
 def list_branches_handler(auth: dict[str, Any] | None = None) -> dict[str, Any]:
     """List MMFDB branches for the admin Branch EntityDock."""
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
-        return {"branches": db.list_branches()}
+        principal = _require_auth(auth, db.conn)
+        branches = db.list_branches()
+        return {
+            "branches": filter_readable(
+                db.conn, principal, "branch", branches, id_key="branch_uuid"
+            )
+        }
 
 
 def get_branch_handler(branch_uuid: str, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return one branch by UUID or name."""
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
-        return {"branch": db.get_branch(branch_uuid)}
+        principal = _require_auth(auth, db.conn)
+        branch = db.get_branch(branch_uuid)
+        if branch:
+            require_access(
+                db.conn, principal, "branch", branch["branch_uuid"], PERM_READ
+            )
+        return {"branch": branch}
 
 
 def save_branch_handler(branch: dict[str, Any], auth: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -1705,6 +1792,9 @@ def save_branch_handler(branch: dict[str, Any], auth: dict[str, Any] | None = No
         requester = _require_auth(auth, db.conn)
         existing = db.get_branch(branch_uuid) if branch_uuid else db.get_branch(name)
         if existing:
+            require_access(
+                db.conn, requester, "branch", existing["branch_uuid"], PERM_WRITE
+            )
             with db.conn:
                 db.dao.update(
                     "mmfdb_branch",
@@ -1738,7 +1828,8 @@ def save_branch_handler(branch: dict[str, Any], auth: dict[str, Any] | None = No
 def delete_branch_handler(branch_uuid: str, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     """Soft-delete a branch."""
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        principal = _require_auth(auth, db.conn)
+        require_access(db.conn, principal, "branch", branch_uuid, PERM_WRITE)
         db.delete_branch(branch_uuid)
     return {"ok": True, "branch_uuid": branch_uuid}
 
@@ -1750,11 +1841,20 @@ def save_sample_handler(sample: dict[str, Any], auth: dict[str, Any] | None = No
     if _is_structured_sample_payload(sample):
         structured = dict(sample)
         structured["name"] = sample_id
-        create_structured_sample_handler(structured, auth=auth)
-        return get_sample_handler(sample_id, auth=auth)
+        created = create_structured_sample_handler(structured, auth=auth)
+        return get_sample_handler(created["sample_id"], auth=auth)
     with MFDatabase(resolve_database_path()) as db:
-        requester = _require_auth(auth, db.conn)
-        owner_user_id = requester.user_id if requester else "user_default"
+        requester, is_new = _authorize_legacy_object_mutation(
+            db, auth, "sample", sample_id
+        )
+        entity_mutations: dict[str, bool] = {}
+        for entity in sample.get("entities", []):
+            entity_id = str(entity.get("entity_id") or "").strip()
+            if entity_id:
+                _, entity_is_new = _authorize_legacy_object_mutation(
+                    db, auth, "entity", entity_id
+                )
+                entity_mutations[entity_id] = entity_is_new
         with db.conn:
             condition = sample.get("condition") or {}
             condition_id = condition.get("condition_id") or sample.get("sample_condition_id")
@@ -1780,6 +1880,11 @@ def save_sample_handler(sample: dict[str, Any], auth: dict[str, Any] | None = No
                     entity_type=entity.get("type") or entity.get("entity_type") or "polymer",
                     details=entity.get("description") or entity.get("details"),
                 )
+                if entity_mutations[entity_id]:
+                    create_default_acl_for_object(
+                        db.conn, "entity", entity_id,
+                        owner_user_id=requester.user_id,
+                    )
             db.add_sample(
                 sample_id,
                 uuid=sample.get("sample_uuid"),
@@ -1813,15 +1918,17 @@ def save_sample_handler(sample: dict[str, Any], auth: dict[str, Any] | None = No
                     mapping.get("description") or "",
                     _int_or_none(mapping.get("poly_probe_position_id")),
                 )
-            create_default_acl_for_object(
-                db.conn, "sample", sample_id, owner_user_id=owner_user_id,
-            )
+            if is_new:
+                create_default_acl_for_object(
+                    db.conn, "sample", sample_id,
+                    owner_user_id=requester.user_id,
+                )
     return get_sample_handler(sample_id, auth=auth)
 
 
 def delete_sample_handler(sample_id: str, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        _authorize_legacy_object_mutation(db, auth, "sample", sample_id)
         db.delete_sample(sample_id)
     return {"ok": True, "sample_id": sample_id}
 
@@ -1850,14 +1957,53 @@ def create_structured_sample_handler(
     sample_data: dict[str, Any], auth: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     """Create a structured PRD-02 sample through sample_manager."""
+    from mmfdb.samples.sample_manager import _slugify, _unique_sample_id
+
     definition = _sample_definition_from_dict(sample_data)
     with MFDatabase(resolve_database_path()) as db:
         requester = _require_auth(auth, db.conn)
-        owner_user_id = requester.user_id if requester else "user_default"
+        existing = db.conn.execute(
+            "SELECT sample_id FROM flr_sample "
+            "WHERE description = ? AND deleted_at IS NULL",
+            (definition.name.strip(),),
+        ).fetchone()
+        if existing is not None:
+            _authorize_legacy_object_mutation(
+                db, auth, "sample", existing["sample_id"]
+            )
+            sample_id = existing["sample_id"]
+            description = get_sample_full_description(db, sample_id)
+            return {"sample_id": sample_id, "description": description}
+
+        sample_prefix = _slugify(definition.name)
+        prospective_sample_id = (
+            _unique_sample_id(db, sample_prefix) if sample_prefix else None
+        )
+        entity_mutations: dict[str, bool] = {}
+        for index, entity in enumerate(definition.entities):
+            entity_id = _slugify(entity.name) or (
+                f"{prospective_sample_id}_entity_{index}"
+                if prospective_sample_id is not None
+                else ""
+            )
+            if not entity_id:
+                continue
+            _, is_new = _authorize_legacy_object_mutation(
+                db, auth, "entity", entity_id
+            )
+            entity_mutations[entity_id] = is_new
+
         sample_id = create_sample(db, definition)
         create_default_acl_for_object(
-            db.conn, "sample", sample_id, owner_user_id=owner_user_id,
+            db.conn, "sample", sample_id, owner_user_id=requester.user_id,
         )
+        for entity_id, is_new in entity_mutations.items():
+            if is_new:
+                create_default_acl_for_object(
+                    db.conn, "entity", entity_id,
+                    owner_user_id=requester.user_id,
+                )
+        db.conn.commit()
         description = get_sample_full_description(db, sample_id)
     return {"sample_id": sample_id, "description": description}
 
@@ -1912,7 +2058,9 @@ def save_entity_handler(
         raise ValueError("entity_id is required")
     sequence = entity.get("sequence")
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        requester, is_new = _authorize_legacy_object_mutation(
+            db, auth, "entity", entity_id
+        )
         db.add_entity(
             entity_id,
             name=entity.get("common_name") or entity.get("name") or entity_id,
@@ -1920,6 +2068,11 @@ def save_entity_handler(
             entity_type=entity.get("type") or entity.get("entity_type") or "polymer",
             details=entity.get("description") or entity.get("details"),
         )
+        if is_new:
+            create_default_acl_for_object(
+                db.conn, "entity", entity_id, owner_user_id=requester.user_id
+            )
+            db.conn.commit()
         row = db.conn.execute(
             "SELECT * FROM entities WHERE entity_id = ? AND deleted_at IS NULL",
             (entity_id,),
@@ -1933,7 +2086,7 @@ def delete_entity_handler(
 ) -> dict[str, Any]:
     """Soft-delete an entity."""
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        _authorize_legacy_object_mutation(db, auth, "entity", entity_id)
         with db.conn:
             db.dao.soft_delete("entities", entity_id, deleted_at=_utc_now())
     return {"ok": True, "entity_id": entity_id}
@@ -2392,7 +2545,7 @@ def export_sample_handler(
     auth: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        _require_admin(auth, db.conn)
         if analysis_id is None:
             row = db.conn.execute(
                 "SELECT analysis_id FROM flr_fret_analysis "
@@ -2406,21 +2559,31 @@ def export_sample_handler(
         return {"text": db.export_flr_cif_to_text(analysis_id=analysis_id)}
 
 
-def export_table_handler(output_path: str, sample_id: str | None = None) -> dict[str, Any]:
+def export_table_handler(
+    output_path: str,
+    sample_id: str | None = None,
+    auth: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     path = Path(output_path)
     with MFDatabase(resolve_database_path()) as db:
+        _require_admin(auth, db.conn)
         rows = _sample_table_rows(db, sample_id)
     _write_table(path, rows)
     return {"output_path": str(path)}
 
 
-def backup_handler() -> dict[str, Any]:
-    path = backup_database(resolve_database_path())
+def backup_handler(auth: dict[str, Any] | None = None) -> dict[str, Any]:
+    db_path = resolve_database_path()
+    with MFDatabase(db_path) as db:
+        _require_admin(auth, db.conn)
+    path = backup_database(db_path)
     return {"backup_path": str(path)}
 
 
-def reset_from_source_handler() -> dict[str, Any]:
+def reset_from_source_handler(auth: dict[str, Any] | None = None) -> dict[str, Any]:
     user_path = user_database_path()
+    with MFDatabase(user_path) as db:
+        _require_admin(auth, db.conn)
     source_path = source_database_path()
     if not source_path.exists():
         raise FileNotFoundError(source_path)
@@ -2448,13 +2611,17 @@ def _setup_row_for_gui(row: dict[str, Any] | Any) -> dict[str, Any]:
 
 def list_setups_handler(auth: dict[str, Any] | None = None) -> dict[str, Any]:
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
-        return {"setups": [_setup_row_for_gui(row) for row in db.list_setups()]}
+        principal = _require_auth(auth, db.conn)
+        rows = filter_readable(
+            db.conn, principal, "setup", db.list_setups(), id_key="setup_id"
+        )
+        return {"setups": [_setup_row_for_gui(row) for row in rows]}
 
 
 def get_setup_handler(setup_id: str, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        principal = _require_auth(auth, db.conn)
+        require_access(db.conn, principal, "setup", setup_id, PERM_READ)
         setup = db.get_setup(setup_id)
     return {"setup": _setup_row_for_gui(setup) if setup else {}}
 
@@ -2477,6 +2644,9 @@ def save_setup_handler(setup: dict[str, Any], auth: dict[str, Any] | None = None
     detectors = _json_loads_safe(setup.get("detector_channels"))
     with MFDatabase(resolve_database_path()) as db:
         requester = _require_auth(auth, db.conn)
+        existing = db.get_setup(setup_id)
+        if existing:
+            require_access(db.conn, requester, "setup", setup_id, PERM_WRITE)
         db.save_setup(
             setup_id=setup_id,
             name=name,
@@ -2491,14 +2661,31 @@ def save_setup_handler(setup: dict[str, Any], auth: dict[str, Any] | None = None
 
 def delete_setup_handler(setup_id: str, auth: dict[str, Any] | None = None) -> dict[str, Any]:
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        principal = _require_auth(auth, db.conn)
+        require_access(db.conn, principal, "setup", setup_id, PERM_WRITE)
         db.delete_setup(setup_id)
     return {"ok": True, "setup_id": setup_id}
 
 
-def validate_setup_handler(setup_id: str) -> dict[str, Any]:
-    from mmfdb.api import validate_setup as _validate_setup
-    return _validate_setup(setup_id)
+def validate_setup_handler(
+    setup_id: str, auth: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Validate a stored setup without bypassing its read ACL."""
+    with MFDatabase(resolve_database_path()) as db:
+        principal = _require_auth(auth, db.conn)
+        require_access(db.conn, principal, "setup", setup_id, PERM_READ)
+        setup = db.get_setup(setup_id)
+    if not setup:
+        return {"valid": False, "message": "Setup not found"}
+    errors: list[str] = []
+    if not str(setup.get("name") or "").strip():
+        errors.append("name is required")
+    if int(setup.get("version") or 0) < 1:
+        errors.append("version must be positive")
+    return {
+        "valid": not errors,
+        "message": "; ".join(errors) if errors else "Setup is valid",
+    }
 
 
 def _sample_table_rows(
@@ -2781,16 +2968,7 @@ def _int_or_none(value: Any) -> int | None:
 
 
 def _require_auth(auth: dict[str, Any] | None, conn: Any) -> Any:
-    """Require authenticated principal from *auth* dict. Returns the principal.
-
-    If no admin users exist (bootstrap), auth is skipped to allow the first
-    admin account creation. Once at least one admin exists, all writes require
-    an authenticated session.
-    """
-    row = conn.execute("SELECT 1 FROM flr_sample_users WHERE is_admin = 1 LIMIT 1").fetchone()
-    if not row:
-        logging.info("MMFDB auth: allowing bootstrap write because no admin users exist")
-        return None  # Bootstrap: no admin exists yet, allow seed writes
+    """Require an authenticated principal, independent of database contents."""
     principal = principal_from_rpc_auth(conn, auth)
     if not auth or not auth.get("token"):
         logging.warning("MMFDB auth: rejecting write without session token")
@@ -2800,6 +2978,50 @@ def _require_auth(auth: dict[str, Any] | None, conn: Any) -> Any:
     return principal
 
 
+def _require_admin(auth: dict[str, Any] | None, conn: Any) -> Any:
+    """Require an authenticated administrator without existence-based bypasses."""
+    principal = _require_auth(auth, conn)
+    if not principal.is_admin:
+        raise PermissionDenied()
+    return principal
+
+
+_LEGACY_OWNED_OBJECT_TABLES: dict[str, tuple[str, str]] = {
+    "sample": ("flr_sample", "sample_id"),
+    "experiment": ("flr_experiment", "experiment_id"),
+    "device": ("flr_sample_devices", "device_id"),
+    "entity": ("entities", "entity_id"),
+}
+
+
+def _authorize_legacy_object_mutation(
+    db: MFDatabase,
+    auth: dict[str, Any] | None,
+    object_type: str,
+    object_id: str,
+) -> tuple[Any, bool]:
+    """Authorize an owned legacy-object write and report whether it is new.
+
+    Existing identities, including soft-deleted rows, retain their ACL and cannot
+    be claimed by recreating them.  Legacy rows without ACL metadata are writable
+    only by administrators because :func:`require_access` fails closed.
+    """
+    principal = _require_auth(auth, db.conn)
+    try:
+        table, id_column = _LEGACY_OWNED_OBJECT_TABLES[object_type]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported owned object type: {object_type}") from exc
+    exists = db.conn.execute(
+        f"SELECT 1 FROM {table} WHERE {id_column} = ? LIMIT 1",
+        (object_id,),
+    ).fetchone() is not None
+    # A hard-deleted row may still have an ACL reserving its identity.  Honor
+    # that ACL so another user cannot claim the identifier by recreating it.
+    if exists or _get_object_acl(db.conn, object_type, object_id) is not None:
+        require_access(db.conn, principal, object_type, object_id, PERM_WRITE)
+    return principal, not exists
+
+
 def _require_or_acl_access(
     auth: dict[str, Any] | None, conn: Any, object_type: str, object_id: str
 ) -> Any:
@@ -2807,8 +3029,6 @@ def _require_or_acl_access(
 
     Returns the principal (may be anonymous if ACL allows public read).
     """
-    if not conn.execute("SELECT 1 FROM flr_sample_users WHERE is_admin = 1 LIMIT 1").fetchone():
-        return None
     principal = principal_from_rpc_auth(conn, auth)
     row = conn.execute(
         "SELECT 1 FROM mmfdb_object_acl WHERE object_type = ? AND object_id = ? AND deleted_at IS NULL",
@@ -2828,8 +3048,6 @@ def _require_or_acl_filter(
 
     Returns the filtered/checked rows.
     """
-    if not conn.execute("SELECT 1 FROM flr_sample_users WHERE is_admin = 1 LIMIT 1").fetchone():
-        return rows
     principal = principal_from_rpc_auth(conn, auth)
     if not rows:
         return rows
@@ -2860,6 +3078,93 @@ def _bytes_or_none(value: Any) -> bytes | None:
     return bytes(value)
 
 
+def store_object_payload(
+    *,
+    data: bytes | None = None,
+    trusted_path: str | Path | None = None,
+    filename: str | None = None,
+    mime_type: str | None = None,
+    metadata: dict[str, Any] | None = None,
+    auth: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Store bytes or a server-owned staged file under one auth/ACL contract.
+
+    ``trusted_path`` is intentionally not exposed by the JSON-RPC handler. It is
+    reserved for bounded server transports that own the staged file, such as
+    :mod:`mmfdb.webadmin`'s raw upload endpoint.
+    """
+    if (data is None) == (trusted_path is None):
+        raise ValueError("Specify exactly one of data or trusted_path")
+    if data is not None and len(data) > MAX_OBJECT_UPLOAD_BYTES:
+        raise ValueError("object upload exceeds the configured size limit")
+    if trusted_path is not None:
+        staged_path = Path(trusted_path)
+        if not staged_path.is_file():
+            raise ValueError("trusted upload path must be a file")
+        if staged_path.stat().st_size > MAX_OBJECT_UPLOAD_BYTES:
+            raise ValueError("object upload exceeds the configured size limit")
+    with MFDatabase(resolve_database_path()) as db:
+        principal = _require_auth(auth, db.conn)
+        user = db.conn.execute(
+            "SELECT user_uuid FROM flr_sample_users WHERE user_id = ? AND deleted_at IS NULL",
+            (principal.user_id,),
+        ).fetchone()
+        if not user or not user[0]:
+            raise AuthError("Authenticated user has no stable identity")
+        with db.transaction():
+            result = db.put_object(
+                path=trusted_path,
+                data=data,
+                filename=filename,
+                mime_type=mime_type,
+                metadata=metadata,
+                created_by_user_uuid=user[0],
+                owner_user_id=principal.user_id,
+            )
+            object_uuid = str(result["object_uuid"])
+            if not _get_object_acl(db.conn, "object", object_uuid):
+                creator = db.conn.execute(
+                    "SELECT u.user_id FROM mmfdb_object o "
+                    "LEFT JOIN flr_sample_users u ON u.user_uuid = o.created_by_user_uuid "
+                    "WHERE o.object_uuid = ?",
+                    (object_uuid,),
+                ).fetchone()
+                if not creator or not creator[0]:
+                    if not principal.is_admin:
+                        raise PermissionDenied()
+                    owner_user_id = principal.user_id
+                else:
+                    owner_user_id = creator[0]
+                create_default_acl_for_object(
+                    db.conn, "object", object_uuid, owner_user_id=owner_user_id
+                )
+            elif not can_access(db.conn, principal, "object", object_uuid, PERM_READ):
+                existing_entry = db.conn.execute(
+                    "SELECT 1 FROM mmfdb_acl_entry WHERE object_type = 'object' "
+                    "AND object_id = ? AND subject_type = 'user' AND subject_id = ? "
+                    "AND effect = 'allow' AND deleted_at IS NULL",
+                    (object_uuid, principal.user_id),
+                ).fetchone()
+                if not existing_entry:
+                    db.conn.execute(
+                        "INSERT INTO mmfdb_acl_entry "
+                        "(object_type, object_id, subject_type, subject_id, effect, "
+                        "permissions, created_by_user_id) "
+                        "VALUES ('object', ?, 'user', ?, 'allow', ?, ?)",
+                        (
+                            object_uuid,
+                            principal.user_id,
+                            PERM_READ | PERM_WRITE | PERM_MANAGE,
+                            principal.user_id,
+                        ),
+                    )
+            require_access(db.conn, principal, "object", object_uuid, PERM_READ)
+        safe_result = dict(result)
+        safe_result.pop("storage_path", None)
+        safe_result["original_filename"] = filename
+        return {"ok": True, "object": safe_result}
+
+
 def put_object_handler(
     path: str | None = None,
     data: str | None = None,
@@ -2869,12 +3174,12 @@ def put_object_handler(
     auth: dict[str, Any] | None = None,
     **_: Any,
 ) -> dict[str, Any]:
-    """Store a file or bytes in the object store.
+    """Store client-supplied bytes in the object store.
 
     Parameters
     ----------
     path : str, optional
-        Path to the file to store (server reads from disk).
+        Rejected at the RPC boundary; server filesystem paths are never accepted.
     data : str, optional
         Base64-encoded binary data to store.
     filename : str, optional
@@ -2892,25 +3197,29 @@ def put_object_handler(
         Object reference with uuid, md5, size, deduplicated flag.
     """
     import base64
-    principal = None
-    with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
-        principal = principal_from_rpc_auth(db.conn, auth)
+    import binascii
 
-    data_bytes = None
-    if data is not None:
-        data_bytes = base64.b64decode(data)
+    if path is not None:
+        raise ValueError("RPC object uploads cannot use server-side paths; send base64 data")
+    if data is None:
+        raise ValueError("data is required")
+    max_encoded = 4 * ((MAX_OBJECT_UPLOAD_BYTES + 2) // 3)
+    if len(data) > max_encoded:
+        raise ValueError("object upload exceeds the configured size limit")
+    try:
+        data_bytes = base64.b64decode(data, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("data must be valid base64") from exc
+    if len(data_bytes) > MAX_OBJECT_UPLOAD_BYTES:
+        raise ValueError("object upload exceeds the configured size limit")
 
-    with MFDatabase(resolve_database_path()) as db:
-        result = db.put_object(
-            path=path,
-            data=data_bytes,
-            filename=filename,
-            mime_type=mime_type,
-            metadata=metadata,
-            created_by_user_uuid=getattr(principal, "user_id", None),
-        )
-    return {"ok": True, "object": result}
+    return store_object_payload(
+        data=data_bytes,
+        filename=filename,
+        mime_type=mime_type,
+        metadata=metadata,
+        auth=auth,
+    )
 
 
 def put_object_bytes_handler(
@@ -2922,22 +3231,13 @@ def put_object_bytes_handler(
     **_: Any,
 ) -> dict[str, Any]:
     """Store base64-encoded bytes in the object store."""
-    import base64
-    principal = None
-    with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
-        principal = principal_from_rpc_auth(db.conn, auth)
-
-    data_bytes = base64.b64decode(data)
-    with MFDatabase(resolve_database_path()) as db:
-        result = db.put_object(
-            data=data_bytes,
-            filename=filename,
-            mime_type=mime_type,
-            metadata=metadata,
-            created_by_user_uuid=getattr(principal, "user_id", None),
-        )
-    return {"ok": True, "object": result}
+    return put_object_handler(
+        data=data,
+        filename=filename,
+        mime_type=mime_type,
+        metadata=metadata,
+        auth=auth,
+    )
 
 
 def get_object_handler(
@@ -2951,7 +3251,8 @@ def get_object_handler(
     """
     import base64
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        principal = _require_auth(auth, db.conn)
+        require_access(db.conn, principal, "object", object_uuid, PERM_READ)
         data = db.get_object(object_uuid)
     return {"ok": True, "data": base64.b64encode(data).decode("ascii")}
 
@@ -2963,11 +3264,14 @@ def get_object_info_handler(
 ) -> dict[str, Any]:
     """Retrieve object metadata by UUID."""
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        principal = _require_auth(auth, db.conn)
+        require_access(db.conn, principal, "object", object_uuid, PERM_READ)
         info = db.get_object_info(object_uuid)
     if info is None:
         return {"ok": False, "error": "Object not found"}
-    return {"ok": True, "object": _json_row(info)}
+    safe_info = _json_row(info)
+    safe_info.pop("storage_path", None)
+    return {"ok": True, "object": safe_info}
 
 
 def delete_object_handler(
@@ -2977,8 +3281,26 @@ def delete_object_handler(
 ) -> dict[str, Any]:
     """Delete an object or decrement its refcount."""
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
-        result = db.delete_object(object_uuid)
+        principal = _require_auth(auth, db.conn)
+        require_access(db.conn, principal, "object", object_uuid, PERM_MANAGE)
+        owned_reference = db.conn.execute(
+            "SELECT 1 FROM mmfdb_object_reference "
+            "WHERE object_uuid = ? AND user_id = ?",
+            (object_uuid, principal.user_id),
+        ).fetchone()
+        any_reference = db.conn.execute(
+            "SELECT 1 FROM mmfdb_object_reference WHERE object_uuid = ? LIMIT 1",
+            (object_uuid,),
+        ).fetchone()
+        if not owned_reference and any_reference:
+            raise ValueError(
+                "This object is referenced by another user; delete its owning "
+                "artifacts or references instead."
+            )
+        result = db.delete_object(
+            object_uuid,
+            owner_user_id=principal.user_id if owned_reference else None,
+        )
     return {"ok": True, **result}
 
 
@@ -2992,11 +3314,15 @@ def list_objects_handler(
 ) -> dict[str, Any]:
     """List objects with optional filtering."""
     with MFDatabase(resolve_database_path()) as db:
-        _require_auth(auth, db.conn)
+        principal = _require_auth(auth, db.conn)
         objects = db.list_objects(
             filename=filename,
             user_uuid=user_uuid,
             limit=limit,
             offset=offset,
         )
-    return {"ok": True, "objects": [_json_row(o) for o in objects]}
+        rows = [_json_row(o) for o in objects]
+        for row in rows:
+            row.pop("storage_path", None)
+        readable = filter_readable(db.conn, principal, "object", rows, id_key="object_uuid")
+    return {"ok": True, "objects": readable}

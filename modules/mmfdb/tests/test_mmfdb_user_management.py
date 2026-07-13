@@ -6,9 +6,16 @@ from typing import Any
 
 import pytest
 
-from mmfdb.security.auth import create_session
+from mmfdb.security.auth import PermissionDenied, create_session
 from mmfdb.repository import MFDatabase
 from mmfdb.config import configure_runtime, reset_runtime_config
+
+
+@pytest.fixture(autouse=True)
+def _explicit_admin_bootstrap(monkeypatch: pytest.MonkeyPatch) -> None:
+    """User-management tests opt into the explicit production bootstrap path."""
+    monkeypatch.setenv("MMFDB_BOOTSTRAP_ADMIN_USER", "user_default")
+    monkeypatch.setenv("MMFDB_BOOTSTRAP_ADMIN_PASSWORD", "Test-admin1!")
 
 
 def _admin_session(db_path: Path) -> dict[str, Any]:
@@ -47,7 +54,7 @@ def test_mmfdb_default_user_creation_and_fallbacks(tmp_path: Path) -> None:
             users = db.conn.execute("SELECT user_id, display_name FROM flr_sample_users").fetchall()
             user_ids = {row["user_id"]: row["display_name"] for row in users}
             assert "user_default" in user_ids
-            assert user_ids["user_default"] == "Default User"
+            assert user_ids["user_default"] == "user_default"
 
             # 2. Add experiment and sample without specifying measured_by_user_id.
             # They should fall back to user_default.
@@ -91,25 +98,24 @@ def test_delete_user_handler_safety(tmp_path: Path) -> None:
 
     with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path):
         # 1. Initialize DB by listing users (calls FluorescenceDatabase which migrates the DB)
-        res = list_users_handler()
+        auth = _default_auth(db_path)
+        res = list_users_handler(auth=auth)
         user_ids = {u["user_id"] for u in res["users"]}
         assert "user_default" in user_ids
 
-        auth = _default_auth(db_path)
-
         # 2. Try to delete 'user_default' -> should raise ValueError
-        with pytest.raises(ValueError, match="cannot be deleted"):
+        with pytest.raises(ValueError, match="built-in user"):
             delete_user_handler("user_default", auth=auth)
 
         # 3. Create a new user 'unused_user'
         save_user_handler({"user_id": "unused_user", "display_name": "Unused User"}, auth=auth)
-        res = list_users_handler()
+        res = list_users_handler(auth=auth)
         user_ids = {u["user_id"] for u in res["users"]}
         assert "unused_user" in user_ids
 
         # 4. Deleting 'unused_user' should succeed since they haven't committed any data
         delete_user_handler("unused_user", auth=auth)
-        res = list_users_handler()
+        res = list_users_handler(auth=auth)
         user_ids = {u["user_id"] for u in res["users"]}
         assert "unused_user" not in user_ids
 
@@ -125,6 +131,31 @@ def test_delete_user_handler_safety(tmp_path: Path) -> None:
             delete_user_handler("used_user", auth=auth)
 
 
+def test_delete_user_does_not_swallow_audit_reference(tmp_path: Path) -> None:
+    """A legacy/audit reference is a hard deletion guard, not a missing-table error."""
+    from unittest.mock import patch
+
+    from mmfdb.admin.backend.services import delete_user_handler, save_user_handler
+
+    db_path = tmp_path / "user_audit_reference.db"
+    with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path):
+        auth = _default_auth(db_path)
+        save_user_handler(
+            {"user_id": "audited_user", "display_name": "Audited User"},
+            auth=auth,
+        )
+        with MFDatabase(db_path) as db:
+            db.conn.execute(
+                "INSERT INTO mmfdb_audit_log "
+                "(action, target_type, target_id, operator_user_id) "
+                "VALUES ('read', 'sample', 'sample-1', 'audited_user')"
+            )
+            db.conn.commit()
+
+        with pytest.raises(ValueError, match="committed data"):
+            delete_user_handler("audited_user", auth=auth)
+
+
 def test_mmfdb_user_attributes_and_validation(tmp_path: Path) -> None:
     db_path = tmp_path / "user_attr_test.db"
 
@@ -137,7 +168,6 @@ def test_mmfdb_user_attributes_and_validation(tmp_path: Path) -> None:
     with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path):
         # Initialize DB and get auth
         from mmfdb.admin.backend.services import list_users_handler
-        list_users_handler()
         auth = _default_auth(db_path)
 
         # 1. Invalid email should raise ValueError
@@ -193,7 +223,6 @@ def test_mmfdb_user_passwords_and_login(tmp_path: Path) -> None:
         "mmfdb.store.database_resolver.resolve_database_path", return_value=db_path
     ):
         # Initialize DB
-        list_users_handler()
         auth = _default_auth(db_path)
 
         # 1. Create a user without a password
@@ -202,11 +231,10 @@ def test_mmfdb_user_passwords_and_login(tmp_path: Path) -> None:
             "display_name": "No Password User"
         }, auth=auth)
 
-        # Login without password should succeed
+        # A credential-less row is disabled unless passwordless login was
+        # explicitly enabled for it.
         res = login_handler("no_pw_user")
-        assert res["authenticated"] is True
-        assert res["user"]["user_id"] == "no_pw_user"
-        assert res["user"]["is_admin"] is False
+        assert res["authenticated"] is False
 
         # 2. Create a user with a password
         save_user_handler({
@@ -241,9 +269,6 @@ def test_mmfdb_save_user_permissions(tmp_path: Path) -> None:
     with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path):
         # Initialize DB — user_default is now admin
         from mmfdb.admin.backend.services import list_users_handler
-        list_users_handler()
-
-        # Get an admin session as user_default
         admin_auth = _default_auth(db_path)
 
         # 1. user_default is already admin. Create normal_user via admin
@@ -264,7 +289,7 @@ def test_mmfdb_save_user_permissions(tmp_path: Path) -> None:
         normal_session = create_session(normal_db.conn, user_id="normal_user")
         normal_db.conn.commit()
         normal_auth = {"token": normal_session["token"]}
-        with pytest.raises(ValueError, match="Non-admin users can only edit their own profile"):
+        with pytest.raises(PermissionDenied):
             save_user_handler(
                 user={
                     "user_id": "user_default",
@@ -274,7 +299,7 @@ def test_mmfdb_save_user_permissions(tmp_path: Path) -> None:
             )
 
         # 3. Non-admin trying to promote themselves (set is_admin to 1) should raise ValueError
-        with pytest.raises(ValueError, match="Non-admin users cannot grant admin privileges"):
+        with pytest.raises(PermissionDenied):
             save_user_handler(
                 user={
                     "user_id": "normal_user",
@@ -296,7 +321,6 @@ def test_mmfdb_save_user_renames_username_and_references(tmp_path: Path) -> None
     )
 
     with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path):
-        list_users_handler()
         admin_auth = _default_auth(db_path)
 
         created = save_user_handler(
@@ -375,7 +399,6 @@ def test_mmfdb_delete_user_admin_override(tmp_path: Path) -> None:
     with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path):
         # 1. Initialize DB — user_default is already admin
         from mmfdb.admin.backend.services import list_users_handler
-        list_users_handler()
         admin_auth = _default_auth(db_path)
 
         # Create normal user via admin
@@ -400,7 +423,7 @@ def test_mmfdb_delete_user_admin_override(tmp_path: Path) -> None:
         normal_session2 = create_session(normal_db2.conn, user_id="normal_user")
         normal_db2.conn.commit()
         normal_auth = {"token": normal_session2["token"]}
-        with pytest.raises(ValueError, match="Only administrators can force-delete users"):
+        with pytest.raises(PermissionDenied):
             delete_user_handler("normal_user", force=True, auth=normal_auth)
 
         # 5. Admin force-delete should succeed
@@ -465,7 +488,6 @@ def test_admin_password_strength_enforcement(tmp_path: Path) -> None:
         "mmfdb.store.database_resolver.resolve_database_path", return_value=db_path
     ):
         # Initialize DB
-        list_users_handler()
         auth = _default_auth(db_path)
 
         # 1. Normal user with weak password should succeed
@@ -556,7 +578,6 @@ def test_save_user_handler_admin_forces_no_passwordless(tmp_path: Path) -> None:
     with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path), patch(
         "mmfdb.store.database_resolver.resolve_database_path", return_value=db_path
     ):
-        list_users_handler()
         auth = _default_auth(db_path)
 
         # Admin created with the passwordless flag set -> flag is forced off.
@@ -596,7 +617,6 @@ def test_change_password_permissions(tmp_path: Path) -> None:
     ):
         # Initialize DB — user_default is already admin with password "admin"
         from mmfdb.admin.backend.services import list_users_handler
-        list_users_handler()
         admin_auth = _default_auth(db_path)
 
         # Create two normal users via admin
@@ -642,21 +662,17 @@ def test_change_password_permissions(tmp_path: Path) -> None:
         )
 
 
-def test_guest_user_exists(tmp_path: Path) -> None:
-    """Guest user is bootstrapped with allow_passwordless_login=1."""
+def test_guest_user_is_not_implicit(tmp_path: Path) -> None:
+    """Fresh databases never create a passwordless guest identity."""
     db_path = tmp_path / "guest_test.db"
     with MFDatabase(db_path) as db:
         row = db.conn.execute(
             "SELECT user_id, is_admin, allow_passwordless_login, password_hash FROM flr_sample_users WHERE user_id = 'guest'"
         ).fetchone()
-        assert row is not None, "guest user should exist"
-        assert row["is_admin"] == 0
-        assert row["allow_passwordless_login"] == 1
-        assert row["password_hash"] is None
+        assert row is None
 
 
-def test_guest_login_passwordless(tmp_path: Path) -> None:
-    """Guest can log in without a password."""
+def test_implicit_guest_login_is_rejected(tmp_path: Path) -> None:
     db_path = tmp_path / "guest_login.db"
 
     from unittest.mock import patch
@@ -669,9 +685,7 @@ def test_guest_login_passwordless(tmp_path: Path) -> None:
 
     with patch("mmfdb.store.database_resolver.resolve_database_path", return_value=db_path):
         res = login_handler("guest")
-        assert res["authenticated"] is True
-        assert res["user"]["user_id"] == "guest"
-        assert res["user"]["is_admin"] is False
+        assert res["authenticated"] is False
 
 
 def test_allow_passwordless_login_flag(tmp_path: Path) -> None:
@@ -689,7 +703,6 @@ def test_allow_passwordless_login_flag(tmp_path: Path) -> None:
     with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path), patch(
         "mmfdb.store.database_resolver.resolve_database_path", return_value=db_path
     ):
-        list_users_handler()
         auth = _default_auth(db_path)
 
         # Create a user with allow_passwordless_login=1 and a password
@@ -726,7 +739,6 @@ def test_allow_passwordless_login_can_be_disabled(tmp_path: Path) -> None:
     with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path), patch(
         "mmfdb.store.database_resolver.resolve_database_path", return_value=db_path
     ):
-        list_users_handler()
         auth = _default_auth(db_path)
 
         save_user_handler({
@@ -763,7 +775,6 @@ def test_allow_passwordless_login_admin_denied_without_password(tmp_path: Path) 
         "mmfdb.store.database_resolver.resolve_database_path", return_value=db_path
     ):
         from mmfdb.admin.backend.services import list_users_handler
-        list_users_handler()
         auth = _default_auth(db_path)
 
         # Create an admin user; the requested allow_passwordless_login=1 is
@@ -788,8 +799,7 @@ def test_allow_passwordless_login_admin_denied_without_password(tmp_path: Path) 
         assert res["user"]["is_admin"] is True
 
 
-def test_guest_user_cannot_be_deleted(tmp_path: Path) -> None:
-    """Guest user is protected from deletion."""
+def test_guest_user_does_not_exist_for_deletion(tmp_path: Path) -> None:
     db_path = tmp_path / "guest_delete_test.db"
 
     from unittest.mock import patch
@@ -800,11 +810,9 @@ def test_guest_user_cannot_be_deleted(tmp_path: Path) -> None:
 
     with patch("mmfdb.admin.backend.services.resolve_database_path", return_value=db_path):
         from mmfdb.admin.backend.services import list_users_handler
-        list_users_handler()
         auth = _default_auth(db_path)
-
-        with pytest.raises(ValueError, match="built-in user.*guest"):
-            delete_user_handler("guest", auth=auth)
+        result = delete_user_handler("guest", auth=auth)
+        assert all(user["user_id"] != "guest" for user in result["users"])
 
 
 def test_migration_repairs_legacy_schema_marked_without_deleted_at(tmp_path: Path) -> None:
@@ -835,7 +843,7 @@ def test_migration_repairs_legacy_schema_marked_without_deleted_at(tmp_path: Pat
         cols = {row["name"] for row in db.conn.execute("PRAGMA table_info(flr_sample_users)")}
         assert "deleted_at" in cols, sorted(cols)
         users = db.get_users()
-        assert [row["user_id"] for row in users] == ["legacy"]
+        assert {row["user_id"] for row in users} == {"legacy", "user_default"}
         cols = {row["name"] for row in db.conn.execute("PRAGMA table_info(flr_sample_users)")}
         assert "deleted_at" in cols
     finally:

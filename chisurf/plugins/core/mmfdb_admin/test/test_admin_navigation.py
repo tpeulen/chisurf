@@ -68,6 +68,7 @@ def test_panels_flattened_with_separators_and_views(db, qapp):
         assert n in names
     # the spectra/optical component curation view is integrated from the optical_components module
     assert "Spectra" in names
+    assert "eLabFTW" in names
     # nav items carry emoji icons
     assert any((p.get("icon") or "") for p in w.panels if p.get("entity_key"))
 
@@ -104,3 +105,32 @@ def test_entity_dock_uses_autoform(db, qapp):
     dock = w._entity_docks.get("sample")
     assert dock is not None
     assert isinstance(dock._form, EntityForm)
+
+
+def test_overview_shows_connection_mode_and_database_type(db, qapp):
+    """The Overview panel surfaces the client connection mode and DB backend."""
+    w = _make_widget(db)
+    w.client.login("admin", "admin")
+    w.nav_list.setCurrentRow(w._row_by_name["Overview"])
+    w._refresh_overview()
+    text = w.overview_text.toPlainText()
+    # Connection block: mode + endpoint (in-process embedded client here).
+    assert "Mode:" in text
+    assert "embedded" in text
+    # Database type comes from the server status envelope (SQLite in tests).
+    assert "SQLite" in text
+    assert "Object store:" in text
+
+
+def test_connection_labels_reflect_remote_mode(db, qapp):
+    """Label helpers report a remote HTTP endpoint without a live server."""
+    from chisurf.plugins.core.mmfdb_admin.gui.tool import MMFDBWidget
+
+    w = _make_widget(db)
+    # Reuse the real widget but point its label helpers at a remote-style client.
+    w.client.mode = "remote"
+    w.client.inprocess = False
+    w.client.base_url = "http://mmfdb.example.org:8080"
+    assert "remote" in w._connection_mode_label()
+    assert w._connection_endpoint_label() == "http://mmfdb.example.org:8080"
+    assert MMFDBWidget._database_type_label({"database_dialect": "postgresql"}) == "PostgreSQL"

@@ -18,6 +18,7 @@ from .models import ShiftRequest, ShiftResult
 
 if TYPE_CHECKING:
     from mmfdb.security.base import MMFDBClientBase
+    from mmfdb.security.session import SessionContext
 
 logger = logging.getLogger(__name__)
 
@@ -64,36 +65,40 @@ def _file_md5(path: str) -> str:
 
 
 def active_mmfdb_connection() -> "MMFDBClientBase | None":
-    """Return the active/global MMFDB connection, or ``None``.
+    """Open the configured MMFDB for a GUI composition root.
 
-    Connection acquisition is api-layer (not view) logic (PRD-23); the GUI tool
-    reads the ambient connection through this helper instead of importing the
-    result registry directly.
+    This compatibility-named helper never reads the result registry's process
+    global. Computational pipelines receive the returned connection explicitly.
     """
     try:
-        from mmfdb.provenance.result_registry import _get_global_db
+        from mmfdb.repository import MFDatabase
+        from mmfdb.store.database_resolver import resolve_database_path
 
-        return _get_global_db()
-    except Exception:
+        return MFDatabase(resolve_database_path())
+    except Exception as exc:  # pragma: no cover - environment-dependent
+        logger.warning("failed to open MMFDB connection: %s", exc)
         return None
 
 
 class MicrotimeShiftMMFDBPipeline:
     """Register Micro-time Shifter inputs and outputs in MMFDB."""
 
-    def __init__(self, db: MMFDBClientBase | None = None):
+    def __init__(
+        self,
+        db: MMFDBClientBase | None = None,
+        session: "SessionContext | None" = None,
+    ):
         """Create a shift registration pipeline.
 
         Parameters
         ----------
         db : MMFDBClientBase, optional
-            Explicit MMFDB connection. If omitted, the result registry
-            resolves the active/global database.
+            Explicit MMFDB connection. An enabled request without one is
+            reported as a registration warning; no ambient database is used.
 
         """
-        if db is None:
-            db = active_mmfdb_connection()
         self.db = db
+        self.session = session
 
     def _find_raw_artifact_by_md5(self, md5: str) -> str:
         """Look up an existing raw artifact by content hash.
@@ -136,15 +141,25 @@ class MicrotimeShiftMMFDBPipeline:
             Artifact ID and whether it was newly registered.
 
         """
+        normalized_sources = {
+            str(Path(source_path).expanduser().resolve()): str(artifact_id)
+            for source_path, artifact_id in request.mmfdb.source_artifact_ids.items()
+            if artifact_id
+        }
+        provided_id = normalized_sources.get(str(Path(path).expanduser().resolve()))
+        if provided_id:
+            if self.db is not None and self.db.get_artifact(provided_id) is None:
+                return "", False
+            return provided_id, False
+
         md5 = _file_md5(path)
         existing = self._find_raw_artifact_by_md5(md5)
         if existing:
             # Content already registered (dedup): record this user as a
             # co-owner so the dataset appears under their "Mine" scope too.
             try:
-                from mmfdb.provenance.result_registry import _resolve_active_user_id
-                if self.db is not None:
-                    self.db.add_artifact_owner(existing, _resolve_active_user_id())
+                if self.db is not None and self.session is not None:
+                    self.db.add_artifact_owner(existing, self.session.user_id)
             except Exception:
                 pass
             return existing, False
@@ -163,6 +178,7 @@ class MicrotimeShiftMMFDBPipeline:
             setup_id=request.mmfdb.setup_id,
             setup_version=request.mmfdb.setup_version,
             db=self.db,
+            session=self.session,
         )
         return artifact_id, bool(artifact_id)
 
@@ -189,6 +205,18 @@ class MicrotimeShiftMMFDBPipeline:
         registration = ShiftRegistrationResult()
         if not request.mmfdb.enabled:
             return registration
+        if self.db is None:
+            registration.warnings.append(
+                "MMFDB registration requested without an explicit database connection."
+            )
+            return registration
+        try:
+            from chisurf.core.transform.mmfdb import require_authenticated_session
+
+            require_authenticated_session(self.db, self.session)
+        except Exception as exc:
+            registration.warnings.append(f"MMFDB archival refused: {exc}")
+            return registration
 
         for input_file in request.files:
             norm_path = str(Path(input_file).resolve())
@@ -200,11 +228,11 @@ class MicrotimeShiftMMFDBPipeline:
                 continue
             registration.input_artifacts[norm_path] = raw_id
 
-            shifted_path = result.output_paths_by_file.get(norm_path)
+            shifted_path = _value_for_path(result.output_paths_by_file, norm_path)
             if not shifted_path:
                 continue
 
-            applied = result.applied_shifts_by_file.get(norm_path, {})
+            applied = _value_for_path(result.applied_shifts_by_file, norm_path) or {}
             # Operation parameters per the .dic schema for operation_type
             # "microtime_shift": a scalar global_shift and the repeatable,
             # role-indexed shift (one entry per detector channel, role = channel).
@@ -241,6 +269,7 @@ class MicrotimeShiftMMFDBPipeline:
                     setup_id=request.mmfdb.setup_id,
                     setup_version=request.mmfdb.setup_version,
                     db=self.db,
+                    session=self.session,
                 )
                 if artifact_id:
                     registration.output_artifacts[norm_path] = artifact_id
@@ -254,3 +283,12 @@ class MicrotimeShiftMMFDBPipeline:
                 )
 
         return registration
+
+
+def _value_for_path(mapping: dict[str, Any], path: str) -> Any:
+    """Return a path-keyed value after normalizing caller and stored keys."""
+    normalized = str(Path(path).expanduser().resolve())
+    for key, value in mapping.items():
+        if str(Path(key).expanduser().resolve()) == normalized:
+            return value
+    return None

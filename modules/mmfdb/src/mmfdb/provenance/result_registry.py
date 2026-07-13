@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 import uuid
+from contextlib import contextmanager
+from contextvars import ContextVar, Token
 from dataclasses import is_dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -19,7 +21,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_GLOBAL_DB: MMFDBClientBase | None = None
+_CURRENT_DB: ContextVar[MMFDBClientBase | None] = ContextVar(
+    "mmfdb_result_registry_database", default=None
+)
 
 
 class LinkValidationError(ValueError):
@@ -91,9 +95,9 @@ def register_result(
     setup_version : int, optional
         Setup version stored in metadata for traceability.
     db : MMFDBClientBase, optional
-        Explicit database. Hot paths should pass one database or call
-        ``set_global_db`` once; otherwise the registry opens the resolved user
-        database as a fallback.
+        Explicit database. Hot paths should pass one database or bind it with
+        ``database_context`` for the lifetime of one request/workflow. The
+        registry never opens an implicit user database.
     is_public : bool, default=False
         Whether the artifact is visible to all users (public) or only
         the owning user (private).
@@ -121,6 +125,7 @@ def register_result(
     checksum: str | None = None
     mime_type: str | None = None
     effective_metadata = dict(metadata or {})
+    post_commit_registered = False
     if setup_id:
         effective_metadata.setdefault("setup_id", setup_id)
     if setup_version is not None:
@@ -167,6 +172,15 @@ def register_result(
                 created_by_user_id=user_id,
                 is_public=is_public,
             )
+            from mmfdb.security.auth import create_default_acl_for_object
+
+            create_default_acl_for_object(
+                db.conn,
+                "artifact",
+                artifact_id,
+                owner_user_id=user_id,
+                mode=0o704 if is_public else 0o700,
+            )
             # Record the creator in the many-to-many owner set.
             add_owner = getattr(db, "add_artifact_owner", None)
             if user_id and callable(add_owner):
@@ -179,6 +193,8 @@ def register_result(
                 setup_id=setup_id or None,
                 status="succeeded",
                 metadata=effective_metadata or None,
+                operator_user_id=user_id,
+                acl_owner_user_id=user_id,
             )
 
             db.record_operation_link(
@@ -209,6 +225,20 @@ def register_result(
             if parameters:
                 _record_parameters(db, operation_id, parameters)
 
+            on_commit = getattr(db, "_on_commit", None)
+            if callable(on_commit):
+                on_commit(
+                    lambda: _publish_registered_result(
+                        db,
+                        artifact_id=artifact_id,
+                        kind=kind,
+                        operation_type=operation_type or "analysis",
+                        operation_id=operation_id,
+                        sample_id=sample_id,
+                    )
+                )
+                post_commit_registered = True
+
     except (LinkValidationError, OperationParameterError) as exc:
         # A bad link target or a parameter set that violates the operation type's
         # declared schema. Both are checked before the transaction, so nothing was
@@ -224,22 +254,39 @@ def register_result(
         raise
 
     logger.info("Registered result: kind=%s artifact=%s operation=%s", kind, artifact_id, operation_type or "analysis")
-    # Post-commit, best-effort event (PRD-21 Task 3); never breaks registration.
+    if not post_commit_registered:
+        _publish_registered_result(
+            db,
+            artifact_id=artifact_id,
+            kind=kind,
+            operation_type=operation_type or "analysis",
+            operation_id=operation_id,
+            sample_id=sample_id,
+        )
+    return artifact_id
+
+
+def _publish_registered_result(
+    db: MMFDBClientBase,
+    *,
+    artifact_id: str,
+    kind: str,
+    operation_type: str,
+    operation_id: str,
+    sample_id: str,
+) -> None:
+    """Publish registration effects only after the outer transaction commits."""
     from mmfdb.lifecycle.events import EVENT_ARTIFACT_REGISTERED, publish
 
     publish(
         EVENT_ARTIFACT_REGISTERED,
         artifact_id=artifact_id,
         kind=kind,
-        operation_type=operation_type or "analysis",
+        operation_type=operation_type,
         operation_id=operation_id,
         sample_id=sample_id or "",
     )
-    # Post-commit, best-effort lifecycle start (PRD-12): the new artifact enters its
-    # lifecycle at "registered"; a freshly-linked sample gets its initial state too.
-    # Never breaks registration (the registration transaction already committed).
     _start_lifecycle(db, artifact_id=artifact_id, sample_id=sample_id)
-    return artifact_id
 
 
 def _start_lifecycle(
@@ -264,7 +311,7 @@ def _start_lifecycle(
 
 
 def set_global_db(db: MMFDBClientBase | None) -> None:
-    """Set or clear the process-local MMFDB override.
+    """Set or clear the current execution context's MMFDB client.
 
     Parameters
     ----------
@@ -275,10 +322,19 @@ def set_global_db(db: MMFDBClientBase | None) -> None:
     Returns
     -------
     None
-        This function mutates module state only.
+        This function changes only the current execution context.
     """
-    global _GLOBAL_DB
-    _GLOBAL_DB = db
+    _CURRENT_DB.set(db)
+
+
+@contextmanager
+def database_context(db: MMFDBClientBase):
+    """Bind an explicitly owned client for one workflow/request scope."""
+    token: Token[MMFDBClientBase | None] = _CURRENT_DB.set(db)
+    try:
+        yield db
+    finally:
+        _CURRENT_DB.reset(token)
 
 
 def register_operation(
@@ -341,6 +397,7 @@ def register_operation(
     operation_id = str(uuid.uuid4())
     inputs = list(inputs or [])
     outputs = list(outputs or [])
+    post_commit_registered = False
     try:
         with db.transaction():
             db.record_operation(
@@ -376,13 +433,37 @@ def register_operation(
                     )
             if parameters:
                 _record_parameters(db, operation_id, parameters)
+            on_commit = getattr(db, "_on_commit", None)
+            if callable(on_commit):
+                on_commit(
+                    lambda: _publish_registered_operation(
+                        operation_id=operation_id,
+                        operation_type=operation_type,
+                        inputs=inputs,
+                        outputs=outputs,
+                    )
+                )
+                post_commit_registered = True
     except OperationParameterError:
         raise
     except Exception as exc:
         logger.error("register_operation failed (operation_type=%s): %s", operation_type, exc, exc_info=True)
         raise
     logger.info("Registered operation: type=%s op=%s inputs=%d outputs=%d", operation_type, operation_id, len(inputs), len(outputs))
-    # Post-commit, best-effort events (PRD-21 Task 3); never break registration.
+    if not post_commit_registered:
+        _publish_registered_operation(
+            operation_id=operation_id,
+            operation_type=operation_type,
+            inputs=inputs,
+            outputs=outputs,
+        )
+    return operation_id
+
+
+def _publish_registered_operation(
+    *, operation_id: str, operation_type: str, inputs: list[str], outputs: list[str]
+) -> None:
+    """Publish operation effects only after the outer transaction commits."""
     from mmfdb.lifecycle.events import (
         EVENT_ARTIFACT_REGISTERED,
         EVENT_OPERATION_SUCCEEDED,
@@ -405,7 +486,6 @@ def register_operation(
             operation_id=operation_id,
             sample_id="",
         )
-    return operation_id
 
 
 def register_raw_measurement(
@@ -646,43 +726,32 @@ def read_result(db: MMFDBClientBase, artifact_id: str) -> Any:
 
 
 def _get_global_db() -> MMFDBClientBase | None:
-    """Resolve the active MMFDB connection.
+    """Return the client explicitly bound to the current execution context.
 
     Parameters
     ----------
     None
-        Resolution uses module state first, then the configured user database
-        path.
+        Resolution never opens a database implicitly.  Connection ownership
+        belongs to the surrounding request, job, or CLI context.
 
     Returns
     -------
     MMFDBClientBase or None
         Active database, or ``None`` when the environment cannot provide one.
     """
-    if _GLOBAL_DB is not None:
-        return _GLOBAL_DB
-
-    try:
-        from mmfdb.repository import MFDatabase
-        from mmfdb.store.database_resolver import resolve_database_path
-
-        return MFDatabase(resolve_database_path())
-    except Exception as exc:
-        logger.warning("result_registry: could not open MMFDB: %s", exc)
-        return None
+    return _CURRENT_DB.get()
 
 
 def get_active_database() -> MMFDBClientBase | None:
-    """Return the process-global MMFDB client, resolving one if needed.
+    """Return the MMFDB client bound to the current execution context.
 
     Public API for the active-database resolver so callers do not depend on the
-    private ``_get_global_db`` name. Uses the module-level global first, then the
-    configured user database path.
+    private ``_get_global_db`` name. It never opens a configured database.
 
     Returns
     -------
     MMFDBClientBase or None
-        Active database, or ``None`` when the environment cannot provide one.
+        Active database, or ``None`` when the caller did not bind one.
     """
     return _get_global_db()
 

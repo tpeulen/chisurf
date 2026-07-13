@@ -22,11 +22,22 @@ class MicrotimeShifterTool(ChisurfDockTool):
 
     tool_settings_name = "MicrotimeShifterTool"
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(
+        self,
+        *args: object,
+        mmfdb_client: Any = None,
+        **kwargs: object,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.setWindowTitle("Micro-time Shifter")
         self.resize(1000, 500)
-        self._client = MicrotimeShifterClient()
+        self._mmfdb_client = mmfdb_client
+        self._mmfdb_db: Any = None
+        self._mmfdb_session: Any = None
+        self._client = MicrotimeShifterClient(
+            mmfdb_db_provider=self.acquire_mmfdb_connection,
+            mmfdb_session_provider=self.acquire_mmfdb_session,
+        )
 
         # state
         self._file_paths: list[Path] = []
@@ -742,14 +753,40 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self.plot.getPlotItem().vb.autoRange()
 
     def acquire_mmfdb_connection(self) -> Any:
-        """Return the active MMFDB connection (PRD-23 base hook)."""
+        """Return this tool's explicitly owned MMFDB connection."""
+        if self._mmfdb_db is not None:
+            return self._mmfdb_db
         from ..api.mmfdb import active_mmfdb_connection
 
-        return active_mmfdb_connection()
+        self._mmfdb_db = active_mmfdb_connection()
+        return self._mmfdb_db
 
     def _db(self) -> Any:
         """Return the active MMFDB connection if available."""
         return self.acquire_mmfdb_connection()
+
+    def acquire_mmfdb_session(self) -> Any:
+        """Return a verified session derived from the injected authenticated client."""
+        if self._mmfdb_session is not None:
+            return self._mmfdb_session
+        token = getattr(self._mmfdb_client, "token", None)
+        db = self.acquire_mmfdb_connection()
+        if db is None:
+            return None
+        try:
+            from chisurf.core.transform.mmfdb import (
+                runtime_session_for_database,
+                session_from_auth,
+            )
+
+            self._mmfdb_session = (
+                session_from_auth(db, {"token": token})
+                if token
+                else runtime_session_for_database(db)
+            )
+        except Exception:
+            return None
+        return self._mmfdb_session
 
     # ── save ───────────────────────────────────────────────────────
 
@@ -876,6 +913,10 @@ class MicrotimeShifterTool(ChisurfDockTool):
         """Save window geometry and dock layout before closing."""
         self._save_window_geometry()
         self._save_dock_layout()
+        if self._mmfdb_db is not None:
+            self._mmfdb_db.close()
+            self._mmfdb_db = None
+            self._mmfdb_session = None
         super().closeEvent(event)
 
     def _save_window_geometry(self) -> None:

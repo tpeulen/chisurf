@@ -163,6 +163,9 @@ def test_save_dialog_always_processes_all_files(tmp_path: Path) -> None:
     tool = MicrotimeShifterTool()
     tool._db = MagicMock(return_value=None)  # local file mode
     tool._client = MagicMock()
+    # Adding a path normally triggers real TTTR metadata decoding. This test is
+    # about save-scope selection, so isolate it from invalid dummy-file I/O.
+    tool._on_file_path = MagicMock()
 
     # Add paths
     f1 = tmp_path / "test1.ptu"
@@ -189,6 +192,5 @@ def test_save_dialog_always_processes_all_files(tmp_path: Path) -> None:
     assert f2.resolve() in called_args["file_paths"]
 
     tool.close()
-
 
 

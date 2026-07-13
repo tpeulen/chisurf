@@ -11,6 +11,7 @@ import uuid
 from typing import Any
 
 from mmfdb.schema._sqlutil import _exists, _row_to_dict, _utc_now
+from mmfdb.security.auth import create_default_acl_for_object
 
 
 class BranchMixin:
@@ -56,6 +57,13 @@ class BranchMixin:
                     now,
                 ),
             )
+            if created_by_user_id:
+                create_default_acl_for_object(
+                    self.conn,
+                    "branch",
+                    branch_uuid,
+                    owner_user_id=created_by_user_id,
+                )
             self.add_audit_log(
                 action=f"Branch created: {name} ({branch_uuid})",
                 target_type="branch",

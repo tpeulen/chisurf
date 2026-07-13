@@ -14,6 +14,8 @@ from mmfdb.store.payload_models import BurstSelection, FcsCorrelation
 from mmfdb.repository import MFDatabase
 from mmfdb.provenance.result_registry import (
     LinkValidationError,
+    database_context,
+    get_active_database,
     read_result,
     register_calibration,
     register_fit_result,
@@ -450,6 +452,20 @@ def test_set_global_db_override(db):
 
     assert art_id
     assert db.get_artifact(art_id) is not None
+
+
+def test_database_context_restores_outer_binding(db, tmp_path):
+    """Request-scoped binding cannot leak or overwrite a surrounding workflow."""
+    other = MFDatabase(str(tmp_path / "other.db"))
+    set_global_db(db)
+    try:
+        assert get_active_database() is db
+        with database_context(other):
+            assert get_active_database() is other
+        assert get_active_database() is db
+    finally:
+        set_global_db(None)
+        other.close()
 
 
 def test_convenience_wrappers(db, tmp_path):

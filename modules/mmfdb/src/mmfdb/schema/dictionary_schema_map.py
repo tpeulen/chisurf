@@ -233,6 +233,7 @@ def introspect_sqlite_schema(db_path: str | Path) -> dict[str, dict[str, dict[st
                     "notnull": bool(notnull),
                     "default": default,
                     "primary_key": bool(primary_key),
+                    "primary_key_position": int(primary_key),
                 }
             schema[table_name] = columns
     return schema

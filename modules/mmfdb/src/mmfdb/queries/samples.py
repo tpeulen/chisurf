@@ -341,19 +341,25 @@ class SampleMixin:
             Author-provided position name (e.g. "S131C").
 
         """
-        with self.conn:
+        with self._transaction():
             now = _utc_now()
             cursor = self.conn.execute(
                 "INSERT INTO flr_poly_probe_position "
                 "(probe_id, entity_id, residue_number, asym_id, residue_name, description, "
                 "atom_id, mutation_flag, modification_flag, auth_name, "
                 "created_at, updated_at, deleted_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(probe_id, entity_id, asym_id, residue_number) DO UPDATE SET "
+                "residue_name=excluded.residue_name, description=excluded.description, "
+                "atom_id=excluded.atom_id, mutation_flag=excluded.mutation_flag, "
+                "modification_flag=excluded.modification_flag, auth_name=excluded.auth_name, "
+                "updated_at=excluded.updated_at, deleted_at=NULL "
+                "RETURNING id",
                 (probe_id, entity_id, residue_number, asym_id, residue_name, description,
                  atom_id, mutation_flag, modification_flag, auth_name,
                  now, now, None)
             )
-            return cursor.lastrowid
+            return cursor.fetchone()[0]
 
     def add_fret_forster_radius(self, forster_radius_id, sample_id, probe_id_1, probe_id_2,
                                   forster_radius, kappa_squared=None, refractive_index=None,

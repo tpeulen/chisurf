@@ -7,6 +7,8 @@ import sqlite3
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 PACKAGE_ROOT = Path(__file__).parents[1] / "src" / "mmfdb"
 
 
@@ -80,3 +82,111 @@ def test_current_database_open_does_not_reconcile_schema(tmp_path: Path) -> None
         MFDatabase(path).close()
 
     reconcile.assert_not_called()
+
+
+def test_injected_connection_is_borrowed_and_configured() -> None:
+    """Attaching a connection must preserve ownership and repository invariants."""
+    from mmfdb.repository import MFDatabase
+
+    connection = sqlite3.connect(":memory:")
+    with MFDatabase(connection=connection) as database:
+        assert database.conn.row_factory is sqlite3.Row
+        assert database.conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert database.get_schema_version() > 0
+
+    # Leaving the repository context detaches but does not close caller state.
+    assert connection.execute("SELECT 1").fetchone()[0] == 1
+    connection.close()
+
+
+def test_owned_injected_connection_is_closed() -> None:
+    """Explicit ownership remains available for connection factories."""
+    from mmfdb.repository import MFDatabase
+
+    connection = sqlite3.connect(":memory:")
+    with MFDatabase(connection=connection, owns_connection=True):
+        pass
+
+    try:
+        connection.execute("SELECT 1")
+    except sqlite3.ProgrammingError:
+        pass
+    else:
+        raise AssertionError("owned injected connection remained open")
+
+
+def test_future_schema_is_rejected_even_for_readonly_open(tmp_path: Path) -> None:
+    """Older code must never write or read a database with unknown semantics."""
+    from mmfdb.repository import MFDatabase
+    from mmfdb.schema.schema import SCHEMA_VERSION
+
+    path = tmp_path / "future.db"
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE _schema_version (version INTEGER NOT NULL)")
+    connection.execute("INSERT INTO _schema_version VALUES (?)", (SCHEMA_VERSION + 1,))
+    connection.commit()
+    connection.close()
+
+    for readonly in (False, True):
+        try:
+            MFDatabase(path, readonly=readonly)
+        except RuntimeError as error:
+            assert "newer" in str(error).lower()
+        else:
+            raise AssertionError("future schema was accepted")
+
+
+def test_populated_unversioned_database_requires_explicit_import(tmp_path: Path) -> None:
+    """Version zero is fresh only when the file contains no application tables."""
+    from mmfdb.repository import MFDatabase
+
+    path = tmp_path / "unknown.db"
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE scientific_data (value TEXT)")
+    connection.execute("INSERT INTO scientific_data VALUES ('do not discard')")
+    connection.commit()
+    connection.close()
+
+    try:
+        MFDatabase(path)
+    except RuntimeError as error:
+        assert "unversioned" in str(error).lower()
+    else:
+        raise AssertionError("populated unversioned database was treated as fresh")
+
+
+def test_failed_migration_restores_pre_migration_snapshot(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Even a legacy helper commit cannot leave a half-migrated database."""
+    from mmfdb.repository import MFDatabase
+    from mmfdb.schema import schema
+
+    path = tmp_path / "migration-failure.sqlite"
+    with MFDatabase(path) as db:
+        schema.set_schema_version(db.conn, schema.SCHEMA_VERSION - 1)
+        db.conn.commit()
+
+    original = schema.MIGRATIONS[schema.SCHEMA_VERSION]
+
+    def fail_after_commit(conn):
+        conn.execute("CREATE TABLE migration_partial (value TEXT)")
+        conn.execute("INSERT INTO migration_partial VALUES ('partial')")
+        conn.commit()
+        raise RuntimeError("injected migration failure")
+
+    monkeypatch.setitem(schema.MIGRATIONS, schema.SCHEMA_VERSION, fail_after_commit)
+    with pytest.raises(RuntimeError, match="injected migration failure"):
+        MFDatabase(path)
+    monkeypatch.setitem(schema.MIGRATIONS, schema.SCHEMA_VERSION, original)
+
+    connection = sqlite3.connect(path)
+    try:
+        assert schema.get_schema_version(connection) == schema.SCHEMA_VERSION - 1
+        assert connection.execute(
+            "SELECT 1 FROM sqlite_master "
+            "WHERE type='table' AND name='migration_partial'"
+        ).fetchone() is None
+        assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    finally:
+        connection.close()

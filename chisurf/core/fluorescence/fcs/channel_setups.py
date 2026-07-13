@@ -79,7 +79,7 @@ def _save_setup_row(
     )
 
 
-def _fcs_row_to_data(row: dict) -> dict:
+def _fcs_row_to_data(row: dict, db) -> dict:
     """Extract FCS channel setup payload from an MMFDB row, including
     child-table data (``fcs_pairs``) and typed correlator columns."""
     from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import json_loads
@@ -95,12 +95,9 @@ def _fcs_row_to_data(row: dict) -> dict:
         data.pop("setup_data", None)
 
     # Fetch full setup with child tables
-    from mmfdb.store.database_resolver import resolve_database_path
-    from mmfdb.repository import MFDatabase
     sid = row.get("setup_id")
     if sid:
-        with MFDatabase(resolve_database_path()) as _db:
-            full = _db.get_setup(sid)
+        full = db.get_setup(sid)
         if full:
             fcs_pairs = full.get("fcs_pairs") or []
             pairs = []
@@ -168,29 +165,32 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
 
     if _use_mmfdb(str(path) if file_path else None):
         from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
-            get_db, load_mmfdb_setups, resolve_active_user_id,
+            close_owned_db, get_db, load_mmfdb_setups, resolve_active_user_id,
         )
         db = get_db(db_path)
         if db is not None:
-            if user_id is None:
-                user_id = resolve_active_user_id()
-            if not skip_migration:
-                imported = _migrate_json_to_mmfdb(db, path, user_id=user_id)
-                # Only remove the legacy file when we actually imported data
-                # (so users who already have MMFDB setups don't lose a stale
-                # JSON file that may contain additional data).
-                if imported:
-                    try:
-                        if path.exists():
-                            path.unlink()
-                    except Exception:
-                        pass
-            result = load_mmfdb_setups(db, _fcs_config(), user_id, row_to_data=_fcs_row_to_data)
-            return {
-                "version": 1,
-                "setups": result.get("setups", {}),
-                "last_used_setup": result.get("last_used") or None,
-            }
+            try:
+                if user_id is None:
+                    user_id = resolve_active_user_id()
+                if not skip_migration:
+                    imported = _migrate_json_to_mmfdb(db, path, user_id=user_id)
+                    # Only remove the legacy file when we actually imported data.
+                    if imported:
+                        try:
+                            if path.exists():
+                                path.unlink()
+                        except Exception:
+                            pass
+                result = load_mmfdb_setups(
+                    db, _fcs_config(), user_id, row_to_data=_fcs_row_to_data
+                )
+                return {
+                    "version": 1,
+                    "setups": result.get("setups", {}),
+                    "last_used_setup": result.get("last_used") or None,
+                }
+            finally:
+                close_owned_db(db)
 
     # JSON fallback
     if not path.exists():
@@ -220,7 +220,7 @@ def save_fcs_channel_setups(setups_data: Dict[str, Any], file_path: str | pathli
 
     if _use_mmfdb(str(path) if file_path else None):
         from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
-            save_setups as _save_setups, load_setups as _load_setups,
+            save_setups as _save_setups,
         )
         # Convert the setups_data to the format expected by save_setups
         # (which uses "setups" dict and "last_used" key)
@@ -234,7 +234,6 @@ def save_fcs_channel_setups(setups_data: Dict[str, Any], file_path: str | pathli
             replace=False,
             is_public=is_public,
             save_row_fn=_save_setup_row,
-            load_scoped_fn=lambda db, cfg, uid: _load_setups(None, cfg),
         )
 
     # JSON export path: explicit file_path only

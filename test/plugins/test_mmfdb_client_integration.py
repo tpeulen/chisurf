@@ -13,25 +13,39 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mmfdb.provenance.result_registry import register_raw_measurement, set_global_db
+from mmfdb.provenance.result_registry import register_raw_measurement
 
 
-def _register_one_raw(tmp_path: Path) -> str:
+def _register_one_raw(tmp_path: Path) -> tuple[str, str]:
     """Register one raw measurement into the resolved (temp) user database."""
+    from chisurf.core.transform.mmfdb import session_from_auth
+    from mmfdb.repository import MFDatabase
+    from mmfdb.security.auth import create_session
+    from mmfdb.store.database_resolver import resolve_database_path
+
     f = tmp_path / "measurement.ptu"
     f.write_bytes(b"\x00\x01\x02\x03")
-    # db=None -> falls back to resolve_database_path(), the same temp DB the
-    # in-process client's handlers open under the hermetic harness.
-    artifact_id = register_raw_measurement(str(f))
+    # Registration is explicit and authenticated; the in-process client's
+    # handlers resolve this same hermetic test database for the read side.
+    db = MFDatabase(resolve_database_path())
+    db.ensure_user("client-integration-user")
+    token = create_session(db.conn, "client-integration-user")["token"]
+    db.conn.commit()
+    session = session_from_auth(db, {"token": token})
+    try:
+        artifact_id = register_raw_measurement(str(f), db=db, session=session)
+    finally:
+        db.close()
     assert artifact_id
-    return artifact_id
+    return artifact_id, token
 
 
 def test_real_inprocess_client_browse_and_open(tmp_path):
     from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
-    artifact_id = _register_one_raw(tmp_path)
+    artifact_id, token = _register_one_raw(tmp_path)
     client = MMFDBClient(inprocess=True)
+    client.token = token
     try:
         # Public contract: .call must exist and round-trip through the real
         # dispatcher (the bug this guards: .call missing -> AttributeError
@@ -46,7 +60,6 @@ def test_real_inprocess_client_browse_and_open(tmp_path):
         path = opened.get("path") or opened.get("local_path")
         assert path, f"datasets.open returned no path: {opened}"
     finally:
-        set_global_db(None)
         close = getattr(client, "close", None)
         if callable(close):
             close()

@@ -69,7 +69,17 @@ def admin_user(db):
 @pytest.fixture
 def normal_user(db):
     """Create a normal user."""
-    db.add_user("normal_user", display_name="Normal User", is_admin=0)
+    db.add_user(
+        "normal_user",
+        display_name="Normal User",
+        is_admin=0,
+        allow_passwordless_login=1,
+    )
+    db.conn.execute(
+        "INSERT OR IGNORE INTO mmfdb_group_member (group_id, user_id, role) "
+        "VALUES ('users', 'normal_user', 'member')"
+    )
+    db.conn.commit()
     return "normal_user"
 
 
@@ -110,14 +120,14 @@ def test_fresh_schema_bootstraps_groups(tmp_path: Path) -> None:
         assert "public" in group_ids
 
 
-def test_fresh_schema_adds_existing_users_to_groups(tmp_path: Path) -> None:
+def test_fresh_schema_adds_locked_service_identity_to_users_group(tmp_path: Path) -> None:
     path = tmp_path / "fresh_users.db"
     with MFDatabase(path) as db:
         members = db.conn.execute(
             "SELECT user_id FROM mmfdb_group_member WHERE group_id = 'users' AND deleted_at IS NULL"
         ).fetchall()
         member_ids = {r[0] for r in members}
-        assert "user_default" in member_ids
+        assert member_ids == {"user_default"}
 
 
 # ---- Principal tests ----

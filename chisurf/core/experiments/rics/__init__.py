@@ -67,6 +67,9 @@ def _load_tiff_stack(path: str) -> "np.ndarray":
 class RICSReader(ExperimentReader):
 
     name: str = "RICS (TTTR/ICS)"
+    operation_type = "image_analysis"
+    artifact_kind_source = "raw_measurement"
+    artifact_kind_derived = "analysis_result"
 
     def __init__(
             self,

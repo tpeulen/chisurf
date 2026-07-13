@@ -28,7 +28,7 @@ class MMFDBContext:
 
     """
 
-    enabled: bool = True
+    enabled: bool = False
     sample_id: str = ""
     source_artifact_ids: dict[str, str] = field(default_factory=dict)
     register_missing_inputs: bool = True

@@ -25,7 +25,13 @@ class BurstSelectionClient:
     when going through this client.
     """
 
-    def __init__(self, client: Any = None):
+    def __init__(
+        self,
+        client: Any = None,
+        *,
+        mmfdb_db_provider: Any = None,
+        mmfdb_session_provider: Any = None,
+    ):
         """Create a BurstSelection client.
 
         Parameters
@@ -38,7 +44,10 @@ class BurstSelectionClient:
         if client is not None:
             self._client = client
         else:
-            self._client = self._make_local_client()
+            self._client = self._make_local_client(
+                mmfdb_db_provider=mmfdb_db_provider,
+                mmfdb_session_provider=mmfdb_session_provider,
+            )
 
     # ── public API ─────────────────────────────────────────────────
 
@@ -250,7 +259,11 @@ class BurstSelectionClient:
     # ── internals ──────────────────────────────────────────────────
 
     @staticmethod
-    def _make_local_client() -> InProcessClient:
+    def _make_local_client(
+        *,
+        mmfdb_db_provider: Any = None,
+        mmfdb_session_provider: Any = None,
+    ) -> InProcessClient:
         """Create a local in-process client with burst_selection services."""
         from chisurf.server.dispatcher import ServiceDispatcher
         from chisurf.server.session import SessionState
@@ -262,5 +275,9 @@ class BurstSelectionClient:
         from chisurf.plugins.burst.burst_selection.backend.services import (
             register_services,
         )
-        register_services(dispatcher)
+        register_services(
+            dispatcher,
+            mmfdb_db_provider=mmfdb_db_provider,
+            mmfdb_session_provider=mmfdb_session_provider,
+        )
         return InProcessClient(dispatcher)

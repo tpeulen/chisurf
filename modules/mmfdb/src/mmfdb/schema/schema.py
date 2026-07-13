@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
-SCHEMA_VERSION = 42
+SCHEMA_VERSION = 44
 
 # Ordered migration waterfall: target_version → migration function.
 # Each function receives an open sqlite3.Connection and transforms the
@@ -543,6 +543,7 @@ CREATE_TABLES_SQL = [
     """CREATE TABLE IF NOT EXISTS mmfdb_object (
         object_uuid TEXT PRIMARY KEY,
         content_md5 TEXT NOT NULL UNIQUE,
+        content_sha256 TEXT UNIQUE,
         original_filename TEXT,
         size_bytes INTEGER,
         mime_type TEXT,
@@ -551,6 +552,16 @@ CREATE_TABLES_SQL = [
         metadata_json TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         created_by_user_uuid TEXT REFERENCES flr_sample_users(user_uuid)
+    )""",
+    """CREATE TABLE IF NOT EXISTS mmfdb_object_reference (
+        object_uuid TEXT NOT NULL REFERENCES mmfdb_object(object_uuid) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES flr_sample_users(user_id),
+        refcount INTEGER NOT NULL DEFAULT 1 CHECK(refcount > 0),
+        original_filename TEXT,
+        metadata_json TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (object_uuid, user_id)
     )""",
     """CREATE TABLE IF NOT EXISTS mmfdb_artifact (
         artifact_id TEXT PRIMARY KEY,
@@ -824,6 +835,7 @@ _CANONICAL_TABLE_DEFS: dict[str, _TableDef] = {
     "mmfdb_object": _TableDef([
         _Column("object_uuid", "TEXT", pk=True),
         _Column("content_md5", "TEXT", nullable=False, unique=True),
+        _Column("content_sha256", "TEXT", unique=True),
         _Column("original_filename", "TEXT"),
         _Column("size_bytes", "INTEGER"),
         _Column("mime_type", "TEXT"),
@@ -1544,32 +1556,8 @@ def set_schema_version(conn: sqlite3.Connection, version: int):
     conn.execute("INSERT INTO _schema_version (version) VALUES (?)", (version,))
 
 
-def _hash_admin_password() -> str:
-    """Hash the default admin password 'admin' (PBKDF2-SHA256, per-user salt).
-
-    Uses a fresh random salt each call (no hardcoded salt) — the bootstrap only
-    writes it once via ``COALESCE(password_hash, ?)``, and ``verify_password``
-    recovers the salt from the stored hash, so ``"admin"`` still authenticates.
-    """
-    import hashlib
-    import secrets
-    salt = secrets.token_hex(16)
-    iterations = 100000
-    dk = hashlib.pbkdf2_hmac(
-        "sha256", b"admin", salt.encode("utf-8"), iterations,
-    )
-    return f"pbkdf2_sha256${iterations}${salt}${dk.hex()}"
-
-
-def bootstrap_default_user(conn: sqlite3.Connection) -> None:
-    """Bootstrap the default admin and guest users in flr_sample_users.
-
-    Parameters
-    ----------
-    conn : sqlite3.Connection
-        The database connection.
-    """
-    import uuid
+def bootstrap_identity(conn: sqlite3.Connection) -> None:
+    """Create the main branch and, only when requested, a local administrator."""
     main_uuid = "00000000-0000-0000-0000-000000000000"
     with conn:
         row_main = conn.execute("SELECT branch_uuid FROM mmfdb_branch WHERE name = 'main'").fetchone()
@@ -1580,50 +1568,13 @@ def bootstrap_default_user(conn: sqlite3.Connection) -> None:
             )
         else:
             main_uuid = row_main[0]
-
-        row = conn.execute("SELECT user_uuid, active_branch_uuid FROM flr_sample_users WHERE user_id = 'user_default'").fetchone()
-        if not row:
-            user_count = conn.execute("SELECT COUNT(*) FROM flr_sample_users").fetchone()[0]
-            if user_count:
-                conn.execute(
-                    "UPDATE flr_sample_users SET is_admin = 1, password_hash = ? WHERE user_id = 'user_default'",
-                    (_hash_admin_password(),)
-                )
-                return
-            conn.execute(
-                "INSERT INTO flr_sample_users (user_id, user_uuid, display_name, active_branch_uuid, is_admin, password_hash) VALUES ('user_default', ?, 'Default User', ?, 1, ?)",
-                (str(uuid.uuid4()), main_uuid, _hash_admin_password())
-            )
-        elif not row[0] or not row[1]:
-            u_uuid, a_uuid = row
-            if not u_uuid:
-                conn.execute(
-                    "UPDATE flr_sample_users SET user_uuid = ? WHERE user_id = 'user_default'",
-                    (str(uuid.uuid4()),)
-                )
-            if not a_uuid:
-                conn.execute(
-                    "UPDATE flr_sample_users SET active_branch_uuid = ? WHERE user_id = 'user_default'",
-                    (main_uuid,)
-                )
-        conn.execute(
-            "UPDATE flr_sample_users SET is_admin = 1, allow_passwordless_login = 0, password_hash = COALESCE(password_hash, ?) WHERE user_id = 'user_default'",
-            (_hash_admin_password(),)
+        from mmfdb.security.bootstrap import (
+            bootstrap_local_admin_from_env,
+            ensure_locked_service_identity,
         )
 
-        # Create guest user (passwordless, non-admin)
-        guest_row = conn.execute(
-            "SELECT user_uuid FROM flr_sample_users WHERE user_id = 'guest'"
-        ).fetchone()
-        if not guest_row:
-            conn.execute(
-                "INSERT OR IGNORE INTO flr_sample_users (user_id, user_uuid, display_name, active_branch_uuid, is_admin, allow_passwordless_login) VALUES ('guest', ?, 'Guest User', ?, 0, 1)",
-                (str(uuid.uuid4()), main_uuid)
-            )
-        else:
-            conn.execute(
-                "UPDATE flr_sample_users SET allow_passwordless_login = 1 WHERE user_id = 'guest' AND (allow_passwordless_login IS NULL OR allow_passwordless_login != 1)"
-            )
+        ensure_locked_service_identity(conn, main_uuid)
+        bootstrap_local_admin_from_env(conn)
 
 
 def bootstrap_auth_groups(conn: sqlite3.Connection) -> None:
@@ -1965,7 +1916,7 @@ def _migrate_v42_rename_namespace(conn: sqlite3.Connection) -> None:
 def _bootstrap(conn: sqlite3.Connection) -> None:
     """Run all bootstraps (vocabulary, defaults, auth, operation params, lifecycle)."""
     bootstrap_vocabulary(conn)
-    bootstrap_default_user(conn)
+    bootstrap_identity(conn)
     try:
         bootstrap_auth_groups(conn)
     except sqlite3.OperationalError:
@@ -1975,7 +1926,30 @@ def _bootstrap(conn: sqlite3.Connection) -> None:
     from mmfdb.lifecycle.lifecycle import bootstrap_lifecycle_defs
     bootstrap_lifecycle_defs(conn)
     _ensure_user_auth_columns(conn)
+    _backfill_resource_acls(conn)
     _drop_legacy_tables(conn)
+
+
+def _backfill_resource_acls(conn: sqlite3.Connection) -> None:
+    """Protect setup and branch rows created before these resources had ACLs."""
+    conn.execute(
+        """INSERT OR IGNORE INTO mmfdb_object_acl
+             (object_type, object_id, owner_user_id, mode)
+           SELECT 'setup', setup_id,
+                  COALESCE(created_by_user_id, 'user_default'),
+                  CASE WHEN is_public = 1 THEN ? ELSE ? END
+           FROM mmfdb_setup""",
+        (0o704, 0o700),
+    )
+    conn.execute(
+        """INSERT OR IGNORE INTO mmfdb_object_acl
+             (object_type, object_id, owner_user_id, mode)
+           SELECT 'branch', branch_uuid,
+                  COALESCE(created_by_user_id, 'user_default'),
+                  CASE WHEN name = 'main' THEN ? ELSE ? END
+           FROM mmfdb_branch""",
+        (0o704, 0o700),
+    )
 
 
 # Register the migration waterfall.
@@ -1988,6 +1962,43 @@ MIGRATIONS[1] = _migrate_v1_fresh_db
 MIGRATIONS[40] = _migrate_v40_reconcile
 MIGRATIONS[41] = _migrate_v41_reconcile
 MIGRATIONS[42] = _migrate_v42_rename_namespace
+
+
+def _migrate_v43_secure_bootstrap(conn: sqlite3.Connection) -> None:
+    """Remove prerelease built-in credentials and allow explicit bootstrap."""
+    from mmfdb.security.bootstrap import disable_legacy_builtin_credentials
+
+    disable_legacy_builtin_credentials(conn)
+    bootstrap_identity(conn)
+    bootstrap_auth_groups(conn)
+
+
+MIGRATIONS[43] = _migrate_v43_secure_bootstrap
+
+
+def _migrate_v44_resource_acls(conn: sqlite3.Connection) -> None:
+    """Backfill ACLs for setup and branch resources."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS mmfdb_object_reference (
+            object_uuid TEXT NOT NULL REFERENCES mmfdb_object(object_uuid) ON DELETE CASCADE,
+            user_id TEXT NOT NULL REFERENCES flr_sample_users(user_id),
+            refcount INTEGER NOT NULL DEFAULT 1 CHECK(refcount > 0),
+            original_filename TEXT,
+            metadata_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (object_uuid, user_id)
+        )"""
+    )
+    _ensure_column(conn, "mmfdb_object", "content_sha256", "TEXT")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_mmfdb_object_sha256 "
+        "ON mmfdb_object(content_sha256) WHERE content_sha256 IS NOT NULL"
+    )
+    _backfill_resource_acls(conn)
+
+
+MIGRATIONS[44] = _migrate_v44_resource_acls
 
 
 def migrate_schema(conn: sqlite3.Connection) -> MigrationReport | None:
@@ -2011,13 +2022,27 @@ def migrate_schema(conn: sqlite3.Connection) -> MigrationReport | None:
     current = get_schema_version(conn)
     if current >= SCHEMA_VERSION:
         if current > SCHEMA_VERSION:
-            logger.warning(
-                "DB schema v%d > code v%d — downgrade not supported",
-                current, SCHEMA_VERSION,
+            raise RuntimeError(
+                f"MMFDB schema {current} is newer than supported schema "
+                f"{SCHEMA_VERSION}; upgrade MMFDB before opening it"
             )
         return None
 
     if current == 0:
+        application_tables = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+            )
+            if row[0] not in {"_schema_version", "mmfdb_schema_version"}
+        }
+        if application_tables:
+            names = ", ".join(sorted(application_tables)[:5])
+            raise RuntimeError(
+                "Refusing to treat a populated unversioned database as fresh; "
+                f"import it explicitly (found: {names})"
+            )
         # A fresh database is created directly at the current baseline. It must
         # not replay historical reconciliation migrations over brand-new DDL.
         with conn:
@@ -2025,19 +2050,28 @@ def migrate_schema(conn: sqlite3.Connection) -> MigrationReport | None:
             set_schema_version(conn, SCHEMA_VERSION)
         return None
 
-    # MMFDB rebrand: legacy mfdb_* tables must be renamed to the mmfdb_*
-    # namespace before any reconcile-based migration runs, otherwise
-    # CREATE TABLE IF NOT EXISTS would materialise empty mmfdb_* tables and
-    # orphan the legacy data.  Idempotent — a no-op once none remain.
-    _rename_legacy_mfdb_tables(conn)
+    # Some historical migration helpers commit internally. Keep an online
+    # connection snapshot so the public direct migration API still has all-or-
+    # nothing recovery semantics when any later step fails.
+    snapshot = sqlite3.connect(":memory:")
+    conn.backup(snapshot)
+    try:
+        # MMFDB rebrand: legacy mfdb_* tables must be renamed before reconcile.
+        _rename_legacy_mfdb_tables(conn)
 
-    report = MigrationReport(from_version=current, to_version=SCHEMA_VERSION)
-    for version, fn in MIGRATIONS.items():
-        if current < version <= SCHEMA_VERSION:
-            with conn:
-                fn(conn)
-                set_schema_version(conn, version)
-    return report
+        report = MigrationReport(from_version=current, to_version=SCHEMA_VERSION)
+        for version, fn in MIGRATIONS.items():
+            if current < version <= SCHEMA_VERSION:
+                with conn:
+                    fn(conn)
+                    set_schema_version(conn, version)
+        return report
+    except Exception:
+        conn.rollback()
+        snapshot.backup(conn)
+        raise
+    finally:
+        snapshot.close()
 
 
 def _parse_create_table_columns(create_sql: str) -> tuple[str | None, list[tuple[str, str]]]:

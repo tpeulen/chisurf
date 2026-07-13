@@ -7,12 +7,12 @@ JSON).  This module factors out the common logic so neither duplicates it.
 import json
 import pathlib
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
 
-from mmfdb.store.database_resolver import resolve_database_path
-from mmfdb.repository import MFDatabase
 from chisurf.core.settings.file_utils import safe_open_file
+from mmfdb.repository import MFDatabase
+from mmfdb.store.database_resolver import resolve_database_path
 
 
 @dataclass
@@ -56,9 +56,21 @@ def use_mmfdb(file_path: str | None, canonical: pathlib.Path) -> bool:
 def get_db(db_path: str | None = None) -> MFDatabase | None:
     """Open the MMFDB. ``db_path`` overrides the resolved default (test seam)."""
     try:
-        return MFDatabase(db_path or resolve_database_path())
+        db = MFDatabase(db_path or resolve_database_path())
+        db._chisurf_setup_owned = True
+        return db
     except Exception:
         return None
+
+
+def close_owned_db(db: MFDatabase) -> None:
+    """Close only database handles opened by :func:`get_db`.
+
+    Injected handles are borrowed.  This keeps test seams and long-lived GUI
+    repositories usable while ensuring production calls release their handles.
+    """
+    if getattr(db, "_chisurf_setup_owned", False):
+        db.close()
 
 
 def json_loads(value):
@@ -100,7 +112,7 @@ def load_mmfdb_setups(
     db: MFDatabase,
     config: SetupTypeConfig,
     user_id: str | None = None,
-    row_to_data: Callable[[dict], dict] | None = None,
+    row_to_data: Callable[[dict, MFDatabase], dict] | None = None,
 ) -> dict:
     """Load setups from MMFDB, scoped by user and visibility.
 
@@ -113,7 +125,7 @@ def load_mmfdb_setups(
     user_id : str or None
         Active user.  Resolved from settings when ``None``.
     row_to_data : callable or None
-        Optional callback ``(row_dict) -> data_dict`` to extract the
+        Optional callback ``(row_dict, db) -> data_dict`` to extract the
         setup payload from a raw row (which already includes child-table
         keys like ``detector_channels``, ``fcs_pairs``, etc.).
         When ``None``, the raw ``configuration.setup_data`` is returned.
@@ -132,7 +144,7 @@ def load_mmfdb_setups(
         elif not (is_pub or owner == user_id):
             continue
         if row_to_data:
-            setups[row["name"]] = row_to_data(row)
+            setups[row["name"]] = row_to_data(row, db)
         else:
             sd = cfg.get("setup_data", {})
             if isinstance(sd, dict):
@@ -210,39 +222,34 @@ def save_setups(
     """
     if use_mmfdb(file_path, config.canonical_file):
         db = (get_db_fn or get_db)()
-        if db is not None:
-            try:
-                user_id = (resolve_user_fn or resolve_active_user_id)()
-                payloads = (setups_data or {}).get("setups") or {}
-                if replace:
-                    desired = set(payloads)
-                    loader = load_scoped_fn or load_mmfdb_setups
-                    for en in loader(db, config, user_id).get("setups", {}):
-                        if en not in desired:
-                            db.delete_setup(setup_id_for_name(en, user_id, config.id_prefix))
-                for name, data in payloads.items():
-                    if isinstance(data, dict):
-                        sp = data.pop("_is_public", is_public)
-                        if save_row_fn:
-                            save_row_fn(db, name, data, user_id=user_id, is_public=sp)
-                        else:
-                            save_setup_row(db, config, name, data, user_id=user_id, is_public=sp)
-                if isinstance(setups_data, dict) and "last_used" in setups_data:
-                    set_last_used(db, config, str(setups_data.get("last_used") or ""))
-                return True
-            except Exception as e:
-                print(f"Error saving {config.setup_type} setups to MMFDB: {e}")
-
-        # MMFDB unavailable — soft fallback to JSON at canonical path.
-        target = config.canonical_file if file_path is None else pathlib.Path(file_path)
-        print(
-            f"Warning: MMFDB unavailable for {config.description}. "
-            f"Saved to {target} (local JSON, not in database)."
-        )
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with open(target, "w") as f:
-            json.dump(setups_data, f, indent=4)
-        return True
+        if db is None:
+            print(f"Error: MMFDB unavailable for {config.description}; nothing was saved.")
+            return False
+        try:
+            user_id = (resolve_user_fn or resolve_active_user_id)()
+            payloads = (setups_data or {}).get("setups") or {}
+            if replace:
+                desired = set(payloads)
+                loader = load_scoped_fn or load_mmfdb_setups
+                for en in loader(db, config, user_id).get("setups", {}):
+                    if en not in desired:
+                        db.delete_setup(setup_id_for_name(en, user_id, config.id_prefix))
+            for name, data in payloads.items():
+                if isinstance(data, dict):
+                    row_data = dict(data)
+                    sp = row_data.pop("_is_public", is_public)
+                    if save_row_fn:
+                        save_row_fn(db, name, row_data, user_id=user_id, is_public=sp)
+                    else:
+                        save_setup_row(db, config, name, row_data, user_id=user_id, is_public=sp)
+            if isinstance(setups_data, dict) and "last_used" in setups_data:
+                set_last_used(db, config, str(setups_data.get("last_used") or ""))
+            return True
+        except Exception as e:
+            print(f"Error saving {config.setup_type} setups to MMFDB: {e}")
+            return False
+        finally:
+            close_owned_db(db)
 
     save_path = pathlib.Path(file_path)
     try:
@@ -278,7 +285,7 @@ def load_setups(
     file_path: str | None,
     config: SetupTypeConfig,
     file_path_override: pathlib.Path | None = None,
-    row_to_data: Callable[[dict], dict] | None = None,
+    row_to_data: Callable[[dict, MFDatabase], dict] | None = None,
 ) -> dict:
     """Main load entry point — MMFDB first, JSON fallback.
 
@@ -288,7 +295,10 @@ def load_setups(
     if use_mmfdb(file_path, config.canonical_file):
         db = get_db()
         if db is not None:
-            user_id = resolve_active_user_id()
-            migrate_json_to_mmfdb(db, config, path, user_id=user_id)
-            return load_mmfdb_setups(db, config, user_id, row_to_data=row_to_data)
+            try:
+                user_id = resolve_active_user_id()
+                migrate_json_to_mmfdb(db, config, path, user_id=user_id)
+                return load_mmfdb_setups(db, config, user_id, row_to_data=row_to_data)
+            finally:
+                close_owned_db(db)
     return load_json_setups(path, file_path=file_path)

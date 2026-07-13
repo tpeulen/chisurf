@@ -1,39 +1,30 @@
 """Tests for FCS channel setup MMFDB integration (mirrors detector setup tests)."""
 
-import os
 import json
-import pathlib
+import os
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from mmfdb.repository import MFDatabase
 from chisurf.core.fluorescence.fcs.channel_setups import (
-    FCS_CHANNEL_SETUPS_FILE,
-    FCS_SETUP_TYPE,
     _fcs_config,
+    _fcs_row_to_data,
+    _save_setup_row,
+    build_channels_from_setup,
     load_fcs_channel_setups,
     save_fcs_channel_setups,
-    _save_setup_row,
-    _fcs_row_to_data,
-    _use_mmfdb,
-    build_channels_from_setup,
 )
-FCS_CONFIG = _fcs_config()
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
-    SetupTypeConfig,
-    get_db,
-    setup_id_for_name as _sifn_shared,
-    resolve_active_user_id,
     load_mmfdb_setups,
-    set_last_used,
+    setup_id_for_name as _sifn_shared,
 )
+
+FCS_CONFIG = _fcs_config()
 
 
 def _fresh_db(tmp_path: Path) -> MFDatabase:
     db_path = os.path.join(str(tmp_path), "test_fcs.db")
-    with MFDatabase(db_path) as db:
+    with MFDatabase(db_path):
         pass
     return MFDatabase(db_path)
 
@@ -197,7 +188,6 @@ def test_fcs_save_records_owner(tmp_path: Path) -> None:
             (user_id, "00000000-0000-0000-0000-000000000001", user_id),
         )
 
-        import chisurf.core.fluorescence.fcs.channel_setups as fcs_mod
         import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils as utils
 
         orig_active = utils.resolve_active_user_id
@@ -442,6 +432,70 @@ def test_per_pair_correlator_roundtrip(tmp_path: Path) -> None:
         db.close()
 
 
+def test_fcs_load_uses_injected_database_for_child_rows(tmp_path: Path) -> None:
+    """Child-table hydration must not silently reopen the configured database."""
+    (tmp_path / "injected").mkdir()
+    (tmp_path / "configured").mkdir()
+    injected = _fresh_db(tmp_path / "injected")
+    other = _fresh_db(tmp_path / "configured")
+    user_id = "user_alice"
+    try:
+        for db in (injected, other):
+            db.conn.execute(
+                "INSERT OR IGNORE INTO flr_sample_users (user_id, user_uuid, display_name) "
+                "VALUES (?, ?, ?)",
+                (user_id, "00000000-0000-0000-0000-000000000001", user_id),
+            )
+        _save_setup_row(
+            injected,
+            "Scoped",
+            {
+                "pairs": [{
+                    "name": "injected",
+                    "channel_a": "GG",
+                    "channel_b": "RR",
+                    "n_bins": 7,
+                }],
+            },
+            user_id=user_id,
+        )
+        _save_setup_row(
+            other,
+            "Scoped",
+            {
+                "pairs": [{
+                    "name": "configured",
+                    "channel_a": "RR",
+                    "channel_b": "GG",
+                    "n_bins": 99,
+                }],
+            },
+            user_id=user_id,
+        )
+
+        with patch(
+            "mmfdb.store.database_resolver.resolve_database_path",
+            return_value=other.db_path,
+        ):
+            loaded = load_mmfdb_setups(
+                injected,
+                FCS_CONFIG,
+                user_id,
+                row_to_data=_fcs_row_to_data,
+            )
+
+        assert loaded["setups"]["Scoped"]["pairs"] == [{
+            "name": "injected",
+            "channel_a": "GG",
+            "channel_b": "RR",
+            "kind": None,
+            "n_bins": 7,
+        }]
+    finally:
+        injected.close()
+        other.close()
+
+
 def test_per_pair_correlator_stored_in_child_table(tmp_path: Path) -> None:
     """Per-pair correlator values are stored in the mmfdb_setup_fcs_pair
     child-table columns, not only on the parent row."""
@@ -554,7 +608,6 @@ def test_default_fcs_save_uses_mmfdb_no_json(tmp_path: Path) -> None:
 def test_fcs_migration_removes_legacy_file(tmp_path: Path) -> None:
     """After a verified migration, the legacy JSON file is deleted."""
     import chisurf.core.fluorescence.fcs.channel_setups as fcs_mod
-    import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils as utils
 
     # Point the canonical file to our temp directory
     orig_file = fcs_mod.FCS_CHANNEL_SETUPS_FILE

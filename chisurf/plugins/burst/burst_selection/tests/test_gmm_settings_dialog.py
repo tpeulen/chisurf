@@ -35,10 +35,9 @@ def test_gmm_dialog_renders_and_reflects_settings(qapp):
 
     forms = dialog.findChildren(AutoForm)
     assert len(forms) == 1
-    # the simple fields are grouped into a single aligned QFormLayout
-    form_layout = dialog.findChild(QtWidgets.QFormLayout)
-    assert form_layout is not None
-    assert form_layout.rowCount() == len(CUSTOM)
+    # AutoForm groups the simple fields into one compact aligned grid.
+    form_grids = dialog.findChildren(QtWidgets.QGridLayout)
+    assert any(grid.count() == 2 * len(CUSTOM) for grid in form_grids)
 
     # one editor per settings field, reflecting the provided initial values
     combos = dialog.findChildren(QtWidgets.QComboBox)

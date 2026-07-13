@@ -12,6 +12,13 @@ import pathlib
 import sys
 import typing
 
+# A source checkout keeps first-party companion packages below ``modules/``.
+# Bootstrap them before importing any ChiSurf module that may depend on them.
+from ._bundled_packages import bootstrap_bundled_packages as _bootstrap_bundled_packages
+
+_bootstrap_bundled_packages()
+del _bootstrap_bundled_packages
+
 import chisurf.core.info
 
 # --- DISTUTILS SHIM FOR PYTHON 3.12 ---

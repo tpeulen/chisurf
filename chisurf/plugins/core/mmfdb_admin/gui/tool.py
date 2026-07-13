@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import base64
+import tempfile
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -42,6 +45,7 @@ from .lifecycle_view import LifecycleView
 from .calibrations_view import CalibrationsView
 from .reagents_view import ReagentLotsView
 from .pipelines_view import PipelinesView
+from .elabftw_view import ELabFTWView
 from mmfdb.schema.pdbx_metadata import MmcifDictionary
 from mmfdb.schema.dictionary_schema_map import DictionarySchemaMap, build_dictionary_schema_map
 
@@ -399,6 +403,9 @@ class MMFDBWidget(NavigationPanelTool):
         # initialises these, so seed them here.
         self._failures: list[str] = []
         self._refresh_in_progress = False
+        self._object_preview_dir = tempfile.TemporaryDirectory(
+            prefix="chisurf-mmfdb-preview-"
+        )
 
         # Selection state
         self.current_sample_id = None
@@ -529,6 +536,7 @@ class MMFDBWidget(NavigationPanelTool):
             cached_token,
             cached_user,
         )
+        from chisurf.plugins.core.mmfdb_admin.gui.client import credential_endpoint
 
         if getattr(self.client, "token", None):
             self._auth_login_user = getattr(self.client, "_auth_user_id", None)
@@ -537,9 +545,15 @@ class MMFDBWidget(NavigationPanelTool):
         # SSO: reuse a session token cached earlier in this ChiSurf process
         # (e.g. a previous mmfdb-admin login). No password prompt if already
         # authenticated this session.
-        _host = getattr(self.client, "host", "127.0.0.1")
-        _cmd = getattr(self.client, "cmd_port", 8765)
-        _pub = getattr(self.client, "pub_port", 8766)
+        if getattr(self.client, "mode", "embedded") == "remote":
+            _host, _cmd = credential_endpoint(
+                {"mode": "remote", "base_url": self.client.base_url}
+            )
+            _pub = _cmd
+        else:
+            _host = getattr(self.client, "host", "127.0.0.1")
+            _cmd = getattr(self.client, "cmd_port", 8765)
+            _pub = getattr(self.client, "pub_port", 8766)
         token = cached_token(_host, _cmd, _pub)
         if token:
             self.client.token = token
@@ -582,7 +596,11 @@ class MMFDBWidget(NavigationPanelTool):
         for _ in range(3):
             dialog = ConnectionAuthDialog(
                 user=user_id,
-                host=getattr(self.client, "host", "127.0.0.1"),
+                host=(
+                    self.client.base_url
+                    if getattr(self.client, "mode", "embedded") == "remote"
+                    else getattr(self.client, "host", "127.0.0.1")
+                ),
                 cmd_port=getattr(self.client, "cmd_port", 8765),
                 pub_port=getattr(self.client, "pub_port", 8766),
                 parent=self,
@@ -593,12 +611,22 @@ class MMFDBWidget(NavigationPanelTool):
             user_id = values["user"] or user_id
 
             # Reconnect to a different server if the endpoint was changed.
-            if not getattr(self.client, "inprocess", False) and (
+            if getattr(self.client, "mode", "embedded") == "remote":
+                if values["host"] != self.client.base_url:
+                    self.client = MMFDBClient(
+                        mode="remote", base_url=values["host"]
+                    )
+                    _host, _cmd = credential_endpoint(
+                        {"mode": "remote", "base_url": self.client.base_url}
+                    )
+                    _pub = _cmd
+            elif not getattr(self.client, "inprocess", False) and (
                 values["host"] != getattr(self.client, "host", values["host"])
                 or values["cmd_port"] != getattr(self.client, "cmd_port", values["cmd_port"])
                 or values["pub_port"] != getattr(self.client, "pub_port", values["pub_port"])
             ):
                 self.client = MMFDBClient(
+                    mode="embedded",
                     host=values["host"],
                     cmd_port=values["cmd_port"],
                     pub_port=values["pub_port"],
@@ -618,10 +646,7 @@ class MMFDBWidget(NavigationPanelTool):
             if isinstance(result, dict) and result.get("ok"):
                 self._auth_login_user = user_id
                 cache_session(
-                    user_id, getattr(self.client, "token", None),
-                    getattr(self.client, "host", "127.0.0.1"),
-                    getattr(self.client, "cmd_port", 8765),
-                    getattr(self.client, "pub_port", 8766),
+                    user_id, getattr(self.client, "token", None), _host, _cmd, _pub,
                 )
                 return
             QtWidgets.QMessageBox.warning(
@@ -805,7 +830,7 @@ class MMFDBWidget(NavigationPanelTool):
         """Select the row under the cursor and trigger default action."""
         id_item = table.item(row, id_col)
         if id_item is not None:
-            logging.info("Open details: %s %s", item_kind, id_item.text())
+            chisurf.logging.info("Open details: %s %s", item_kind, id_item.text())
 
     def _copy_checked_ids_to_clipboard(self, table: QtWidgets.QTableWidget, id_col: int) -> None:
         """Copy all checked row IDs to clipboard, newline-separated."""
@@ -1441,15 +1466,19 @@ class MMFDBWidget(NavigationPanelTool):
             QtWidgets.QApplication.clipboard().setText(object_uuid)
 
     def _reveal_selected_object_entity(self) -> None:
-        """Reveal the selected object from the visible Objects entity dock."""
+        """Download and reveal an object without exposing server storage paths."""
         data = self._selected_object_entity_data()
-        storage_path = str(data.get("storage_path") or "").strip()
-        if not storage_path:
+        object_uuid = str(data.get("object_uuid") or "").strip()
+        if not object_uuid:
             return
         try:
-            from mmfdb.store.database_resolver import object_store_root
-
-            path = object_store_root() / storage_path
+            response = self.client.get_object(object_uuid)
+            payload = base64.b64decode(response["data"], validate=True)
+            filename = Path(
+                str(data.get("original_filename") or object_uuid)
+            ).name
+            path = Path(self._object_preview_dir.name) / f"{object_uuid}-{filename}"
+            path.write_bytes(payload)
             QtGui.QDesktopServices.openUrl(_qurl_for_location(str(path)))
         except Exception as exc:
             QtWidgets.QMessageBox.warning(self, "Reveal failed", str(exc))
@@ -1814,6 +1843,7 @@ class MMFDBWidget(NavigationPanelTool):
         panels.append({"name": "Administration", "icon": "🛡️", "separator": True})
         _add_group_entities("Administration")
         panels.append({"name": "Import / Export", "icon": "🔄", "factory": lambda p: self.import_export_tab()})
+        panels.append({"name": "eLabFTW", "icon": "📓", "factory": lambda p: ELabFTWView(self.client, p)})
 
         panels.append({"name": "Workflows & QC", "icon": "🧰", "separator": True})
         panels += [
@@ -1950,17 +1980,29 @@ class MMFDBWidget(NavigationPanelTool):
         toolbar.setObjectName("mmfdbPluginToolBar")
 
         import chisurf.core.settings as cs_settings
+        from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
+
         mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
-        last_server = mmfdb_settings.get("last_server", "127.0.0.1")
-        last_port = mmfdb_settings.get("last_port", 8765)
+        self._mmfdb_client_config = client_config(mmfdb_settings)
+        remote_mode = self._mmfdb_client_config["mode"] == "remote"
+        last_server = (
+            self._mmfdb_client_config["base_url"]
+            if remote_mode
+            else self._mmfdb_client_config["host"]
+        )
+        last_port = self._mmfdb_client_config["cmd_port"]
 
         # Endpoint — the host/IP and port are inline so the user can point at a
         # different MMFDB server directly.
         toolbar.addWidget(QtWidgets.QLabel(" 🌐 "))
         self.server_edit = QtWidgets.QLineEdit(last_server)
-        self.server_edit.setPlaceholderText("127.0.0.1")
-        self.server_edit.setFixedWidth(130)
-        self.server_edit.setToolTip("MMFDB server host / IP address")
+        self.server_edit.setPlaceholderText(
+            "http://127.0.0.1:8080" if remote_mode else "127.0.0.1"
+        )
+        self.server_edit.setFixedWidth(230 if remote_mode else 130)
+        self.server_edit.setToolTip(
+            "Standalone MMFDB base URL" if remote_mode else "Embedded MMFDB server host"
+        )
         self.server_edit.returnPressed.connect(self._on_login_clicked)
         toolbar.addWidget(self.server_edit)
         self.port_spin = QtWidgets.QSpinBox()
@@ -1969,6 +2011,7 @@ class MMFDBWidget(NavigationPanelTool):
         self.port_spin.setFixedWidth(64)
         self.port_spin.setToolTip("MMFDB server port")
         toolbar.addWidget(self.port_spin)
+        self.port_spin.setVisible(not remote_mode)
         self.url_edit = QtWidgets.QLineEdit(self.DEFAULT_URL)  # back-compat
 
         # Auth — a single line: user + (optional) password. With an active
@@ -2121,8 +2164,12 @@ class MMFDBWidget(NavigationPanelTool):
         try:
             if transport == "inprocess":
                 self.client = MMFDBClient(inprocess=True)
+            elif getattr(self, "_mmfdb_client_config", {}).get("mode") == "remote":
+                self.client = MMFDBClient(mode="remote", base_url=host)
             else:
-                self.client = MMFDBClient(host=host, cmd_port=port, pub_port=port + 1)
+                self.client = MMFDBClient(
+                    mode="embedded", host=host, cmd_port=port, pub_port=port + 1
+                )
         except Exception as exc:
             QtWidgets.QMessageBox.critical(self, "Connection failed", str(exc))
             self._update_login_actions(logged_in=False, connecting=False)
@@ -2295,11 +2342,45 @@ class MMFDBWidget(NavigationPanelTool):
         self._refresh_overview()
         return widget
 
+    def _connection_mode_label(self) -> str:
+        """Human-readable client connection mode (embedded / remote / in-process)."""
+        if getattr(self.client, "inprocess", False):
+            return "in-process (embedded, no socket)"
+        mode = str(getattr(self.client, "mode", "embedded"))
+        if mode == "remote":
+            return "remote (standalone server, HTTP JSON-RPC)"
+        return "embedded (local server, ZMQ)"
+
+    def _connection_endpoint_label(self) -> str:
+        """Endpoint the client is talking to, formatted per transport."""
+        if getattr(self.client, "inprocess", False):
+            return "in-process dispatcher"
+        if str(getattr(self.client, "mode", "embedded")) == "remote":
+            return str(getattr(self.client, "base_url", "—"))
+        host = getattr(self.client, "host", "127.0.0.1")
+        cmd_port = getattr(self.client, "cmd_port", "—")
+        return f"{host}:{cmd_port}"
+
+    @staticmethod
+    def _database_type_label(status: dict[str, Any]) -> str:
+        """Format the server-reported SQL dialect and (redacted) location."""
+        dialect = str(status.get("database_dialect") or "—")
+        pretty = {"sqlite": "SQLite", "postgresql": "PostgreSQL"}.get(dialect, dialect)
+        location = status.get("database_location")
+        return f"{pretty} — {location}" if location else pretty
+
     def _refresh_overview(self) -> None:
         """Update the overview panel with current database stats."""
         try:
             status = self.client.status() or {}
             parts = [
+                "=== MMFDB Connection ===",
+                "",
+                f"  Mode:          {self._connection_mode_label()}",
+                f"  Endpoint:      {self._connection_endpoint_label()}",
+                f"  Database:      {self._database_type_label(status)}",
+                f"  Object store:  {status.get('object_store_backend', '—')}",
+                "",
                 "=== MMFDB Database Overview ===",
                 "",
                 f"  User DB:       {status.get('user_database', '—')}",
@@ -3748,8 +3829,9 @@ class MMFDBWidget(NavigationPanelTool):
             schema = status.get("schema_version", "?")
             sample_count = status.get("sample_count", "?")
             experiment_count = status.get("experiment_count", "?")
+            mode = "remote" if str(getattr(self.client, "mode", "embedded")) == "remote" else "embedded"
             status_text = (
-                f"User DB: {user_db} | schema {schema} | "
+                f"{mode} | User DB: {user_db} | schema {schema} | "
                 f"samples {sample_count} | experiments {experiment_count}"
             )
             self.status_label.setText(status_text)
@@ -3909,7 +3991,9 @@ class MMFDBWidget(NavigationPanelTool):
             if hasattr(self, "sample_condition_id_field"):
                 self.sample_condition_id_field.setText(condition.get("condition_id", ""))
                 self.sample_ph_spin.setValue(float(condition.get("ph") or 0))
-                self.sample_temperature_spin.setValue(float(temperature or 0))
+                self.sample_temperature_spin.setValue(
+                    float(condition.get("temperature") or 0)
+                )
                 self.sample_ionic_spin.setValue(float(condition.get("ionic_strength") or condition.get("salt_concentration_m") or 0))
                 self.sample_buffer_edit.setText(condition.get("buffer_composition", ""))
                 self.sample_condition_details_edit.setPlainText(condition.get("details", ""))
@@ -4545,10 +4629,11 @@ class MMFDBWidget(NavigationPanelTool):
         """Return the active MMFDB user ID from settings."""
         try:
             import chisurf.core.settings as cs_settings
+            from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
 
-            return cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
+            return client_config(cs_settings.cs_settings.get("mmfdb", {}))["username"]
         except Exception:
-            return "user_default"
+            return "admin"
 
     def load_branch(self) -> None:
         rows = self.branches_table.selectionModel().selectedRows()
@@ -5094,6 +5179,7 @@ class MMFDBWidget(NavigationPanelTool):
             event.ignore()
             return
         self._save_dock_layout()
+        self._object_preview_dir.cleanup()
         super().closeEvent(event)
 
     def _dock_settings(self):
@@ -6309,6 +6395,7 @@ class MMFDBWidget(NavigationPanelTool):
             res = self.client.export_provenance_graph(seed_node_type=seed_type, seed_node_id=seed_id)
             self._display_provenance_graph(_unwrap_provenance_graph_response(res))
         except Exception as e:
+            chisurf.logging.error("Failed to load MMFDB provenance graph", exc_info=True)
             QtWidgets.QMessageBox.critical(self, "Load Failed", f"Failed to load full graph:\n{e}")
 
     def _display_provenance_graph(self, graph: dict) -> None:

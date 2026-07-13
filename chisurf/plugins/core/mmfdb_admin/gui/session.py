@@ -48,13 +48,14 @@ def clear_cached_session() -> None:
 
 
 def active_user_id() -> str:
-    """Return the active MMFDB user id from settings (default ``user_default``)."""
+    """Return the active MMFDB user id from the canonical client settings."""
     try:
         import chisurf.core.settings as cs_settings
+        from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
 
-        return cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
+        return client_config(cs_settings.cs_settings.get("mmfdb", {}))["username"]
     except Exception:
-        return "user_default"
+        return "admin"
 
 
 def local_admin_status(db_path: str, user: str | None = None) -> tuple[bool, bool]:

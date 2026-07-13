@@ -99,7 +99,8 @@ def test_json_rpc_versioned_services(tmp_path: pathlib.Path) -> None:
         from mmfdb.repository import MFDatabase as _MFDatabase
 
         with _MFDatabase(str(db_path)) as _db:
-            auth = {"token": create_session(_db.conn, "user_default")["token"]}
+            _db.add_user("rpc-admin", display_name="RPC Admin", is_admin=1)
+            auth = {"token": create_session(_db.conn, "rpc-admin")["token"]}
             _db.conn.commit()
 
         # 1. Save artifact
@@ -121,34 +122,34 @@ def test_json_rpc_versioned_services(tmp_path: pathlib.Path) -> None:
         assert res_op["operation_id"] == "op1"
 
         # 5. Get operation
-        res_op_get = fdb_api.get_operation("op1")
+        res_op_get = fdb_api.get_operation("op1", auth=auth)
         assert res_op_get["operation"]["operation_id"] == "op1"
 
         # 6. List operations
-        res_op_list = fdb_api.list_operations()
+        res_op_list = fdb_api.list_operations(auth=auth)
         assert len(res_op_list["operations"]) == 1
 
         # 7. Record operation link
-        res_link = fdb_api.record_operation_link("op1", "art1", "output")
+        res_link = fdb_api.record_operation_link("op1", "art1", "output", auth=auth)
         assert res_link["ok"] is True
 
         # 8. Record parameter
-        res_param = fdb_api.record_parameter("param1", "op1", "tau", value=3.2)
+        res_param = fdb_api.record_parameter("param1", "op1", "tau", value=3.2, auth=auth)
         assert res_param["ok"] is True
         assert res_param["parameter_uuid"] == "param1"
 
         # 9. Get parameter
-        res_param_get = fdb_api.get_parameter("param1")
+        res_param_get = fdb_api.get_parameter("param1", auth=auth)
         assert res_param_get["parameter"]["value"] == 3.2
 
         # 10. Save setup
-        res_setup = fdb_api.save_setup("setup1", "My Setup")
+        res_setup = fdb_api.save_setup("setup1", "My Setup", auth=auth)
         assert res_setup["ok"] is True
 
         # 11. Get setup
-        res_setup_get = fdb_api.get_setup("setup1")
+        res_setup_get = fdb_api.get_setup("setup1", auth=auth)
         assert res_setup_get["setup"]["name"] == "My Setup"
 
         # 12. List audit logs
-        res_audit = fdb_api.list_audit_logs()
+        res_audit = fdb_api.list_audit_logs(auth=auth)
         assert len(res_audit["logs"]) > 0

@@ -66,6 +66,9 @@ class DeerReader(ExperimentReader):
     """Reader for 4-pulse DEER time-domain traces."""
 
     name: str = "DEER (BES3T/CSV)"
+    operation_type = "analysis"
+    artifact_kind_source = "raw_measurement"
+    artifact_kind_derived = "analysis_result"
 
     def __init__(
         self,

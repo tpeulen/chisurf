@@ -55,6 +55,7 @@ pygments = "*"
 pyarrow-core = "*"
 boost-histogram = "*"
 sqlalchemy = ">=2.0"
+msgpack = ">=1.1.2"
 
 [pypi-dependencies]
 

@@ -3,9 +3,47 @@
 from __future__ import annotations
 
 import ast
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_source_checkout_bootstraps_vendored_packages():
+    """Importing ChiSurf from a checkout exposes its bundled packages."""
+    expected = [
+        ROOT / "modules" / "mmfdb" / "src",
+        ROOT / "modules" / "chinet",
+    ]
+    script = """
+import pathlib
+import sys
+
+import chisurf
+from mmfdb.repository import MFDatabase
+import chinet
+
+expected = [pathlib.Path(value).resolve() for value in sys.argv[1:]]
+search_path = [pathlib.Path(value).resolve() for value in sys.path if value]
+missing = [str(value) for value in expected if value not in search_path]
+if missing:
+    raise SystemExit(f"missing bundled package paths: {missing}")
+"""
+    env = os.environ.copy()
+    env.pop("PYTHONPATH", None)
+
+    result = subprocess.run(
+        [sys.executable, "-c", script, *(str(path) for path in expected)],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr or result.stdout
 
 
 def test_mmfdb_canonical_import_exports_repository():
@@ -14,6 +52,18 @@ def test_mmfdb_canonical_import_exports_repository():
     from mmfdb.repository import MFDatabase
 
     assert mmfdb.MFDatabase is MFDatabase
+
+
+def test_chisurf_distribution_depends_on_mmfdb_instead_of_owning_its_package():
+    """Installed ChiSurf and standalone MMFDB must have one package owner."""
+    import tomllib
+
+    metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    discovery = metadata["tool"]["setuptools"]["packages"]["find"]
+
+    assert any(item.startswith("mmfdb") for item in metadata["project"]["dependencies"])
+    assert "modules/mmfdb/src" not in discovery["where"]
+    assert "mmfdb*" not in discovery["include"]
 
 
 def test_chisurf_compatibility_facade_is_removed():
