@@ -174,6 +174,21 @@ unless loopback. The `mmfdb.status` RPC reports the running database's
 the mmfdb-admin **Overview** panel renders the client mode, endpoint, database
 type, and object store so the operator can see which database they are editing.
 
+The browser admin UI (`mmfdb/webadmin/`) mirrors the Qt admin dock-for-dock
+against the same backend handlers. Beyond the generic entity tables it ships an
+**Optical components** surface (`webadmin/optical_components.py`, routes
+`/optical-components*`) that is a 1:1 port of the Qt `OpticalComponentDock`:
+component-type tabs (fluorophore / filter / dichroic / detector / light source),
+the curation toolbar (import reference set, approve, reject, AI triage, review
+queue, find duplicates), a searchable status-filtered checkbox table, an overlaid
+spectrum plot rendered as **inline SVG with presentation attributes only** (no
+JS, satisfies the `default-src 'self'` CSP), a read-only detail panel, and a
+duplicate review-and-merge page. Two pure-Python helpers were moved into the
+standalone package so the web UI needs no ChiSurf import: the deterministic
+triage checker (`admin/backend/triage_checks.py`, wired into `register_services`
+as the default `deterministic_checks`) and the duplicate grouping model
+(`admin/backend/duplicate_grouping.py`).
+
 # Object store & provenance-aware readers
 
 MMFDB has a content-addressed **object store** (`object_store.py`): blobs are

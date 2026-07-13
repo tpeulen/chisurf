@@ -23,21 +23,24 @@ from http.cookies import CookieError, SimpleCookie
 from pathlib import Path
 from socketserver import ThreadingMixIn
 from typing import Any
-from urllib.parse import parse_qs, quote, unquote
+from urllib.parse import parse_qs, quote, unquote, urlencode
 from wsgiref.simple_server import WSGIServer, make_server
 
 from mmfdb import api as mmfdb_api
-from mmfdb.admin.backend import services
+from mmfdb.admin.backend import fluorophore_services, services
 from mmfdb.admin.backend.auth_services import (
     login_handler,
     logout_handler,
     me_handler,
     sessions_list_handler,
 )
+from mmfdb.admin.backend.duplicate_grouping import group_duplicates
+from mmfdb.admin.backend.triage_checks import run_deterministic_checks
 from mmfdb.config import configured_object_store_backend
 from mmfdb.repository import MFDatabase
 from mmfdb.security.auth import AuthError, PermissionDenied
 from mmfdb.store.database_resolver import object_store_root, resolve_database_path
+from mmfdb.webadmin import optical_components as oc
 from mmfdb.webadmin.object_transport import authorized_download, store_uploaded_file
 
 LOGGER = logging.getLogger(__name__)
@@ -217,13 +220,25 @@ def _json_default(value: Any) -> Any:
     raise TypeError(f"{type(value).__name__} is not JSON serializable")
 
 
+#: Sidebar glyphs per entity slug (falls back to a bullet for unmapped slugs).
+_ENTITY_NAV_EMOJI = {
+    "samples": "🧪", "entities": "🧬", "probes": "🌈", "experiments": "🔬",
+    "devices": "🖥️", "setups": "⚙️", "projects": "📁", "raw-data": "🗂️",
+    "processing": "🧮", "analysis": "📈", "studies": "📚", "protocols": "📋",
+    "reagents": "⚗️", "calibrations": "🎯", "branches": "🌿", "artifacts": "🧩",
+    "operations": "🔧", "audit": "📝", "sessions": "🔑",
+}
+
+
 class WebAdminApp:
     """WSGI application serving MMFDB RPC and an administrator UI."""
 
     def __init__(self, *, csrf_secret: bytes | None = None) -> None:
         self.csrf_secret = csrf_secret or secrets.token_bytes(32)
         self.dispatcher = ServiceDispatcher()
-        services.register_services(self.dispatcher)
+        services.register_services(
+            self.dispatcher, deterministic_checks=run_deterministic_checks
+        )
         self.base_template = _resource_text("templates", "base.html")
         self.login_template = _resource_text("templates", "login.html")
 
@@ -287,6 +302,12 @@ class WebAdminApp:
             return self._object_admin(environ, method, user, token)
         if path == "/rpc-explorer":
             return self._rpc_explorer(environ, method, user, token)
+        if path == "/optical-components":
+            return self._optical_components(environ, method, user, token)
+        if path == "/optical-components/action":
+            return self._optical_action(environ, method, user, token)
+        if path == "/optical-components/duplicates":
+            return self._optical_duplicates(environ, method, user, token)
         if path.startswith("/entities/"):
             parts = path.removeprefix("/entities/").split("/", 1)
             slug = parts[0]
@@ -885,10 +906,216 @@ class WebAdminApp:
         )
         return self._page("RPC explorer", content, user, token)
 
+    # ------------------------------------------------------------------
+    # Optical-component curation (browser port of the Qt OpticalComponentDock)
+    # ------------------------------------------------------------------
+
+    #: Cap on how many probes are fetched+overlaid in one spectrum plot.
+    _SPECTRA_PLOT_LIMIT = 12
+
+    @staticmethod
+    def _query_params(environ: dict[str, Any]) -> dict[str, list[str]]:
+        return parse_qs(str(environ.get("QUERY_STRING") or ""), keep_blank_values=False)
+
+    @staticmethod
+    def _int_list(values: list[str]) -> list[int]:
+        result: list[int] = []
+        for value in values:
+            for token in str(value).replace(",", " ").split():
+                try:
+                    result.append(int(token))
+                except ValueError:
+                    continue
+        return result
+
+    def _probe_details(self, probe_ids: list[int], auth: dict[str, Any]) -> list[dict[str, Any]]:
+        """Fetch full probe+spectra detail for each id (best-effort, order preserved)."""
+        details: list[dict[str, Any]] = []
+        for pid in probe_ids[: self._SPECTRA_PLOT_LIMIT]:
+            try:
+                details.append(fluorophore_services.handle_get_probe(pid, auth=auth))
+            except (ValueError, KeyError):
+                continue
+        return details
+
+    def _optical_components(self, environ: dict[str, Any], method: str,
+                            user: dict[str, Any], token: str):
+        if method != "GET":
+            return self._error_page(405, "Method not allowed", user=user, token=token)
+        auth = {"token": token}
+        params = self._query_params(environ)
+        component = oc.component_for((params.get("ct") or [None])[0])
+        status = (params.get("status") or ["all"])[0]
+        if status not in oc.STATUS_CHOICES:
+            status = "all"
+        search = (params.get("search") or [""])[0].strip()
+        sel = self._int_list(params.get("sel", []))
+        probe_values = self._int_list(params.get("probe", []))
+        probe = probe_values[0] if probe_values else None
+        message = (params.get("msg") or [""])[0]
+
+        listing = fluorophore_services.handle_list_probes(
+            verification_status=None if status == "all" else status,
+            category=component["categories"],
+            search=search or None,
+            limit=500,
+            auth=auth,
+        )
+        rows = listing.get("probes", [])
+        total = listing.get("total", len(rows))
+
+        detail = None
+        if probe is not None:
+            try:
+                got = fluorophore_services.handle_get_probe(probe, auth=auth)
+                detail = oc.merge_detail(got.get("probe", {}), got.get("optical_properties", []))
+            except (ValueError, KeyError):
+                detail = None
+
+        if sel:
+            spectra_details = self._probe_details(sel, auth)
+        elif probe is not None:
+            spectra_details = self._probe_details([probe], auth)
+        else:
+            spectra_details = []
+
+        content = oc.render_page(
+            component=component, rows=rows, total=total, status=status, search=search,
+            sel=sel, probe=probe, spectra_details=spectra_details, detail=detail,
+            message=message, csrf=self._csrf_token(token),
+        )
+        return self._page(f"{component['label']}", content, user, token)
+
+    def _optical_action(self, environ: dict[str, Any], method: str,
+                        user: dict[str, Any], token: str):
+        if method != "POST":
+            return self._error_page(405, "Method not allowed", user=user, token=token)
+        auth = {"token": token}
+        form = parse_qs(self._read_body(environ).decode("utf-8"), keep_blank_values=True)
+        environ["mmfdb.form"] = {k: v[-1] for k, v in form.items()}
+        try:
+            self._require_csrf(environ, token)
+        except PermissionDenied as exc:
+            return self._error_page(403, str(exc), user=user, token=token)
+        ct = (form.get("ct") or [oc.DEFAULT_COMPONENT_KEY])[0]
+        status = (form.get("status") or ["all"])[0]
+        search = (form.get("search") or [""])[0]
+        sel = self._int_list(form.get("sel", []))
+        op = (form.get("op") or [""])[0]
+
+        message = ""
+        try:
+            if op == "import":
+                counts = fluorophore_services.handle_import_reference_set(
+                    mark_verified=False, auth=auth
+                )
+                message = (f"📥 Imported {counts.get('probes', 0)} probes, "
+                           f"{counts.get('spectra', 0)} spectra, "
+                           f"{counts.get('optical_properties', 0)} optical properties")
+            elif op == "approve":
+                for pid in sel:
+                    fluorophore_services.handle_approve_probe(pid, verified_by=user.get("user_id", "admin"), auth=auth)
+                message = f"✅ Approved {len(sel)} item(s)"
+            elif op == "reject":
+                for pid in sel:
+                    fluorophore_services.handle_reject_probe(pid, verified_by=user.get("user_id", "admin"), auth=auth)
+                message = f"❌ Rejected {len(sel)} item(s)"
+            elif op == "triage":
+                total_issues = 0
+                for pid in sel:
+                    result = fluorophore_services.handle_run_ai_triage(
+                        pid, auth=auth, deterministic_checks=run_deterministic_checks
+                    )
+                    total_issues += len(result.get("issues", []))
+                message = f"🤖 Triaged {len(sel)} item(s); {total_issues} issue(s) flagged, queued for review"
+            else:
+                message = "Unknown action"
+        except (AuthError, PermissionDenied, ValueError) as exc:
+            message = f"⚠️ {exc}"
+
+        query = [("ct", ct)]
+        if status != "all":
+            query.append(("status", status))
+        if search:
+            query.append(("search", search))
+        for pid in sel:
+            query.append(("sel", str(pid)))
+        query.append(("msg", message))
+        return self._redirect("/optical-components?" + urlencode(query))
+
+    def _optical_duplicates(self, environ: dict[str, Any], method: str,
+                            user: dict[str, Any], token: str):
+        auth = {"token": token}
+        if method == "POST":
+            form = parse_qs(self._read_body(environ).decode("utf-8"), keep_blank_values=True)
+            environ["mmfdb.form"] = {k: v[-1] for k, v in form.items()}
+            try:
+                self._require_csrf(environ, token)
+            except PermissionDenied as exc:
+                return self._error_page(403, str(exc), user=user, token=token)
+            ct = (form.get("ct") or [oc.DEFAULT_COMPONENT_KEY])[0]
+            merged, errors = 0, 0
+            for g_idx in self._int_list(form.get("merge", [])):
+                ids = self._int_list(form.get(f"ids_{g_idx}", []))
+                primary = self._int_list(form.get(f"primary_{g_idx}", []))
+                if not primary or not ids:
+                    continue
+                primary_id = primary[0]
+                duplicate_ids = [pid for pid in ids if pid != primary_id]
+                if not duplicate_ids:
+                    continue
+                try:
+                    fluorophore_services.handle_merge_probes(primary_id, duplicate_ids, auth=auth)
+                    merged += 1
+                except (AuthError, PermissionDenied, ValueError):
+                    errors += 1
+            message = f"🔗 Merged {merged} group(s)" + (f", {errors} failed" if errors else "")
+            return self._redirect(
+                "/optical-components/duplicates?" + urlencode([("ct", ct), ("msg", message)])
+            )
+        if method != "GET":
+            return self._error_page(405, "Method not allowed", user=user, token=token)
+
+        params = self._query_params(environ)
+        ct = (params.get("ct") or [oc.DEFAULT_COMPONENT_KEY])[0]
+        component = oc.component_for(ct)
+        message = (params.get("msg") or [""])[0]
+        found = fluorophore_services.handle_find_duplicates(auth=auth)
+        probes = [p for p in found.get("probes", [])
+                  if p.get("category") in component["categories"]]
+        groups = group_duplicates(probes)[:60]
+
+        spectra_by_group: dict[int, list[dict[str, Any]]] = {}
+        for g_idx, group in enumerate(groups):
+            probe_ids = [p["probe_id"] for p in group["probes"]]
+            try:
+                batch = fluorophore_services.handle_get_spectra_batch(probe_ids, auth=auth)
+            except (ValueError, KeyError):
+                continue
+            by_probe: dict[int, dict[str, Any]] = {}
+            for spec in batch.get("spectra", []):
+                pid = spec.get("probe_id")
+                entry = by_probe.setdefault(pid, {"probe": {}, "spectra": []})
+                entry["spectra"].append({
+                    "spectrum_type": spec.get("spectrum_type", ""),
+                    "wavelengths": spec.get("wavelengths", []),
+                    "intensity": spec.get("intensity_values", []),
+                })
+            for probe in group["probes"]:
+                if probe["probe_id"] in by_probe:
+                    by_probe[probe["probe_id"]]["probe"] = probe
+            spectra_by_group[g_idx] = list(by_probe.values())
+
+        content = oc.render_duplicates_page(
+            ct=ct, groups=groups, spectra_by_group=spectra_by_group,
+            message=message, csrf=self._csrf_token(token),
+        )
+        return self._page("Duplicates", content, user, token)
+
     def _page(self, title: str, content: str, user: dict[str, Any], token: str,
               *, status: int = 200):
         nav_entities = "".join(
-            f'<a href="/entities/{slug}">{_escape(page.label)}</a>'
+            f'<a href="/entities/{slug}">{_ENTITY_NAV_EMOJI.get(slug, "•")} {_escape(page.label)}</a>'
             for slug, page in ENTITY_PAGES.items()
         )
         csrf = self._csrf_token(token)
