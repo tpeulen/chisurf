@@ -225,7 +225,8 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
             fit.data,
             fit.model,
             xmin=xmin,
-            xmax=xmax
+            xmax=xmax,
+            noise_model=getattr(fit, "noise_model", "default"),
         )
 
     def __init__(self, fit: chisurf.core.fitting.fit.Fit, model_number: int = 0, **kwargs):

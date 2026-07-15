@@ -39,6 +39,33 @@ and [parameters](/subsystems/parameters.md).
 adding box bounds via an internal↔external parameter transform and a
 cancellable `progress_callback` (`OptimizationCancelled`).
 
+# Noise model / estimator (`noise_model`)
+
+Each `Fit` carries a `noise_model` selector controlling the objective:
+
+- `"default"` — weighted least squares: `wres = (data − model) / data_error`.
+  For photon-counting data whose error column is `sqrt(counts)` this is the
+  Neyman chi², biased low at low counts.
+- `"poisson"` (aliases `mle`, `2istar`) — Poisson maximum likelihood. The
+  residuals become the **signed deviance residuals**
+  `r_i = sign(μ−y)·sqrt(2·(μ − y + y·ln(y/μ)))`
+  (`deviance_residuals` in `fitting/__init__.py`). Because `Σ r_i² = 2I*`
+  (the Baker–Cousins / Maus `2I*` likelihood-ratio statistic), the *same*
+  `leastsqbound` LM engine, `chi2`/`chi2r`, Jacobian covariance, F-test and
+  residual plots all work unchanged — only the per-bin residual definition
+  differs (Laurence & Chromy, *Nat. Methods* 2010). This is the correct
+  estimator for low photon counts (TCSPC, FLIM, burst decays).
+
+The selector is threaded `Fit.noise_model → Model.get_wres →
+calculate_weighted_residuals(..., noise_model=…)`. Default preserves the
+historical WLS behaviour exactly.
+
+The dedicated single-molecule / image MLE path (tttrlib `fit2x`:
+`Fit23`/`Fit24`/`Fit25`) is wrapped by the Qt-free harness
+`chisurf/core/fluorescence/mle/` (`Fit2x`, `Fit2xSettings`, `Fit2xResult`,
+`assemble_jordi`), the single seam consumed by the burst-MLE and image-MLE
+plugins in place of duplicated raw-tttrlib boilerplate.
+
 # Global analysis / parameter linking
 
 - `FittingParameter.link` ties a parameter to another parameter (across fits);

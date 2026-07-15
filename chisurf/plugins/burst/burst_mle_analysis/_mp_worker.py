@@ -52,7 +52,7 @@ def process_one_file_worker(args):
             mt_name, mt_shape, mt_dtype_str,
             det_order, perdet_cfg, shift_int)
     """
-    import tttrlib
+    from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings
 
     (fname, bursts, rc_name, rc_shape, rc_dtype_str,
      mt_name, mt_shape, mt_dtype_str, det_order, perdet_cfg, shift_int) = args
@@ -92,16 +92,19 @@ def process_one_file_worker(args):
         prev_ranges = {}  # det -> (vv_s0,vv_s1,vh_s0,vh_s1)
         for det in det_order:
             cfg = perdet_cfg[det]
-            fitters[det] = tttrlib.Fit23(
-                dt=cfg['dt'],
-                irf=cfg['irf'],
-                background=cfg['bg'],
-                period=cfg['period'],
-                g_factor=cfg['g_factor'],
-                l1=cfg['l1'],
-                l2=cfg['l2'],
-                p2s_twoIstar_flag=cfg['p2s_twoIstar'],
-                soft_bifl_scatter_flag=cfg['BIFL_scatter']
+            fitters[det] = Fit2x(
+                Fit2xSettings(
+                    dt=cfg['dt'],
+                    period=cfg['period'],
+                    irf=cfg['irf'],
+                    background=cfg['bg'],
+                    g_factor=cfg['g_factor'],
+                    l1=cfg['l1'],
+                    l2=cfg['l2'],
+                    p2s_twoIstar=bool(cfg['p2s_twoIstar']),
+                    soft_bifl_scatter=bool(cfg['BIFL_scatter']),
+                ),
+                model=Fit2xModel.FIT23,
             )
             n = int(cfg['half_len'])
             half_len[det] = n
@@ -165,8 +168,8 @@ def process_one_file_worker(args):
                 # remember current ranges
                 prev_ranges[det] = (s0, s1, s0, s1)
 
-                # Fit
-                res = fitters[det](data=d, initial_values=cfg['x0'], fixed=cfg['fixed'])
+                # Fit (maximum likelihood via the shared fit2x harness)
+                res = fitters[det].fit(d, initial_values=cfg['x0'], fixed=cfg['fixed'])
 
                 out.append({
                     'First File': fname,
@@ -174,15 +177,15 @@ def process_one_file_worker(args):
                     'Ng-p-all': cp_sum,
                     'Ng-s-all': cs_sum,
                     f'Number of Photons (fit window) ({color})': cp_sum + cs_sum,
-                    f'2I*  ({color})': res.get('twoIstar', 0.0),
-                    f'Tau ({color})': res['x'][0],
-                    f'gamma ({color})': res['x'][1],
-                    f'r0 ({color})': res['x'][2],
-                    f'rho ({color})': res['x'][3],
+                    f'2I*  ({color})': res.twoIstar,
+                    f'Tau ({color})': res.x[0],
+                    f'gamma ({color})': res.x[1],
+                    f'r0 ({color})': res.x[2],
+                    f'rho ({color})': res.x[3],
                     f'BIFL scatter? ({color})': int(cfg['BIFL_scatter']),
                     f'2I*: P+2S? ({color})': int(cfg['p2s_twoIstar']),
-                    f'r Scatter ({color})': res['x'][6] if len(res['x']) > 6 else float('nan'),
-                    f'r Experimental ({color})': res['x'][7] if len(res['x']) > 7 else float('nan'),
+                    f'r Scatter ({color})': res.r_scatter,
+                    f'r Experimental ({color})': res.r_experimental,
                 })
         return out, len(bursts)
     finally:

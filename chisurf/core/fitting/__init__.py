@@ -6,27 +6,118 @@ import chisurf.core.curve
 import chisurf.logging
 
 
+#: Selectable noise models for the fit objective.  ``"default"`` keeps the
+#: historical behaviour (Gaussian/weighted-least-squares residuals divided by
+#: the data error column, i.e. Neyman chi-square for ``sqrt(counts)`` errors).
+#: ``"poisson"`` switches to the Poisson maximum-likelihood ``2I*`` objective.
+NOISE_MODELS = ("default", "poisson")
+
+#: Aliases accepted for :data:`NOISE_MODELS` on the ``Fit``/model level.
+_NOISE_MODEL_ALIASES = {
+    "": "default",
+    "lsq": "default",
+    "wls": "default",
+    "neyman": "default",
+    "gaussian": "default",
+    "default": "default",
+    "mle": "poisson",
+    "2istar": "poisson",
+    "poisson": "poisson",
+}
+
+
+def normalize_noise_model(noise_model: str) -> str:
+    """Map a user-facing noise-model name onto a canonical :data:`NOISE_MODELS` value."""
+    if noise_model is None:
+        return "default"
+    return _NOISE_MODEL_ALIASES.get(str(noise_model).strip().lower(), "default")
+
+
+def deviance_residuals(
+        data_y: np.ndarray,
+        model_y: np.ndarray,
+) -> np.ndarray:
+    r"""Signed Poisson deviance residuals for a maximum-likelihood fit.
+
+    Returns the per-bin signed square roots of the Baker & Cousins / ``2I*``
+    likelihood-ratio deviance,
+
+    .. math::
+
+        r_i = \\operatorname{sign}(\\mu_i - y_i)\\,
+              \\sqrt{2\\left[\\mu_i - y_i + y_i \\ln(y_i/\\mu_i)\\right]},
+
+    with the convention :math:`y_i \\ln(y_i/\\mu_i) \\to 0` for :math:`y_i = 0`.
+    Because :math:`\\sum_i r_i^2 = 2I^*`, feeding these residuals to the existing
+    least-squares (Levenberg-Marquardt) engine minimises the Poisson maximum-
+    likelihood objective without any change to the optimiser (Laurence & Chromy,
+    *Nat. Methods* 2010).  This is the correct estimator for low photon counts,
+    where the Neyman ``1/sqrt(counts)`` weighting is biased.
+
+    Parameters
+    ----------
+    data_y : numpy.ndarray
+        Measured counts :math:`y_i` (non-negative).
+    model_y : numpy.ndarray
+        Model-predicted expected counts :math:`\\mu_i` (should be positive).
+
+    Returns
+    -------
+    numpy.ndarray
+        Signed deviance residuals of the same length as the inputs.
+    """
+    y = np.asarray(data_y, dtype=np.float64)
+    mu = np.asarray(model_y, dtype=np.float64)
+    # The likelihood is only defined for mu > 0; floor to a tiny positive value
+    # so that ln(mu) stays finite for empty model bins (a positive count against
+    # a vanishing model then correctly incurs a large penalty).
+    tiny = np.finfo(np.float64).tiny
+    mu = np.clip(mu, tiny, None)
+    # y * ln(y / mu), computed as y * (ln y - ln mu) to avoid overflow of the
+    # ratio y/mu when mu is floored to ``tiny``; the y -> 0 limit (0 * -inf) is
+    # handled explicitly by only taking the log where y > 0.
+    pos = y > 0.0
+    log_y = np.zeros_like(y)
+    log_y[pos] = np.log(y[pos])
+    ylog = np.where(pos, y * (log_y - np.log(mu)), 0.0)
+    dev = 2.0 * (mu - y + ylog)
+    # Guard tiny negatives from floating-point cancellation before the sqrt.
+    dev = np.clip(dev, 0.0, None)
+    return np.sign(mu - y) * np.sqrt(dev)
+
+
 def calculate_weighted_residuals(
         data: chisurf.core.data.DataCurve,
         model: chisurf.core.curve.Curve,
         xmin: int,
         xmax: int,
+        noise_model: str = "default",
 ) -> np.ndarray:
-    """Calculates the weighted residuals for a DataCurve and a
-    model curve given the range as provided by xmin and xmax. The
-    weighted residuals are given by (data - model) / weights. Here,
-    the weights are the errors of the data.
+    """Calculate weighted residuals for a data curve and a model curve.
+
+    Residuals are evaluated over the index range ``[xmin, xmax)``.
+    For the ``"default"`` noise model the weighted residuals are
+    ``(data - model) / weights`` where the weights are the data errors
+    (weighted least squares / Neyman chi-square).  For the ``"poisson"``
+    noise model the signed Poisson deviance residuals are returned instead
+    (see :func:`deviance_residuals`), so that the fit minimises the ``2I*``
+    maximum-likelihood objective -- the correct estimator for low counts.
 
     :param data: the experimental data
     :param model: the model
     :param xmin: minimum index
     :param xmax: maximum index
+    :param noise_model: ``"default"`` (weighted least squares) or ``"poisson"``
+        (maximum likelihood); aliases are resolved via
+        :func:`normalize_noise_model`.
     :return: a numpy array containing the weighted residuals
     """
     model_x, model_y = model[xmin:xmax]
     data_sliced = data[xmin:xmax]
     data_x, data_y, _, data_y_error = data_sliced[:4]
     ml = min([len(model_y), len(data_y)])
+    if normalize_noise_model(noise_model) == "poisson":
+        return deviance_residuals(data_y[:ml], model_y[:ml])
     wr = np.array(
         (data_y[:ml] - model_y[:ml]) / data_y_error[:ml],
         dtype=np.float64

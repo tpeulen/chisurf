@@ -440,6 +440,7 @@ class Fit(cs.core.base.Base):
             xmax: int = 0,
             model_kw: typing.Dict = None,
             group: list = None,
+            noise_model: str = "default",
             **kwargs
     ):
         """Create a :class:`Fit` with a given model class and data.
@@ -458,8 +459,14 @@ class Fit(cs.core.base.Base):
         group : list, optional
             Optional list used to collect multiple :class:`Fit` instances
             into a :class:`FitGroup`.
+        noise_model : {"default", "poisson"}, optional
+            Objective/estimator used by the fit. ``"default"`` uses weighted
+            least squares (Neyman chi-square from the data error column);
+            ``"poisson"`` uses the ``2I*`` maximum-likelihood deviance, the
+            correct estimator for low photon counts.
         """
         super().__init__(**kwargs)
+        self.noise_model = cs.core.fitting.normalize_noise_model(noise_model)
         self._model: cs.core.models.Model = None
         self._result_current = 0
         self.results = deque(maxlen=500)

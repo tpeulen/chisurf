@@ -21,6 +21,7 @@ from click_didyoumean import DYMGroup
 import numpy as np
 import pandas as pd
 import tttrlib
+from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings
 from skimage import filters, measure, util, io as skio
 from skimage.segmentation import clear_border, watershed
 from skimage.feature import peak_local_max
@@ -386,22 +387,30 @@ def process_ptu_file(
         jordi_path = jordis_folder / jordi_filename
         write_jordi(jordi_path, data=jordi_vector, delimiter='\t', fmt='%.6f')
 
-        fit = tttrlib.Fit23(
-            dt=DT_EFFECTIVE_ns,
-            irf=irf_full,
-            background=raw_irf,
-            period=excitation_period,
-            g_factor=g_factor,
-            l1=l1,
-            l2=l2,
-            p2s_twoIstar_flag=twoi_star_flag,
-            soft_bifl_scatter_flag=bifl_scatter_flag
+        fit = Fit2x(
+            Fit2xSettings(
+                dt=DT_EFFECTIVE_ns,
+                period=excitation_period,
+                irf=irf_full,
+                background=raw_irf,
+                g_factor=g_factor,
+                l1=l1,
+                l2=l2,
+                p2s_twoIstar=bool(twoi_star_flag),
+                soft_bifl_scatter=bool(bifl_scatter_flag),
+            ),
+            model=Fit2xModel.FIT23,
         )
-        result = fit(data=jordi_vector, initial_values=fit_initial_values, fixed=fit_fixed_flags)
-        tau_fit = result['x'][0]
-        gamma_fit = result['x'][1]
-        rho_fit = result['x'][3]
-        model_curve = fit.model
+        result = fit.fit(
+            jordi_vector,
+            initial_values=fit_initial_values,
+            fixed=fit_fixed_flags,
+            include_model=True,
+        )
+        tau_fit = result.tau
+        gamma_fit = result.gamma
+        rho_fit = result.x[3]
+        model_curve = result.model_curve
 
         plt.figure()
         plt.semilogy(jordi_vector, label='Data')

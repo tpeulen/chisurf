@@ -28,6 +28,7 @@ from pathlib import Path
 import tttrlib
 from typing import Dict
 from chisurf.core.fio import write_jordi
+from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -2163,16 +2164,19 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # Pre-instantiate one fitter per detector (IRF/BG fixed for this run)
         fitters = {}
         for det, st in settings_cache.items():
-            fitters[det] = tttrlib.Fit23(
-                dt=st['dt'],
-                irf=irf_cache[det],
-                background=bg_cache[det],
-                period=st['excitation_period'],
-                g_factor=st['g_factor'],
-                l1=st['l1'],
-                l2=st['l2'],
-                p2s_twoIstar_flag=st['p2s_twoIstar'],
-                soft_bifl_scatter_flag=st['BIFL_scatter']
+            fitters[det] = Fit2x(
+                Fit2xSettings(
+                    dt=st['dt'],
+                    period=st['excitation_period'],
+                    irf=irf_cache[det],
+                    background=bg_cache[det],
+                    g_factor=st['g_factor'],
+                    l1=st['l1'],
+                    l2=st['l2'],
+                    p2s_twoIstar=bool(st['p2s_twoIstar']),
+                    soft_bifl_scatter=bool(st['BIFL_scatter']),
+                ),
+                model=Fit2xModel.FIT23,
             )
 
         # Helper for default records
@@ -2291,9 +2295,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 decay[:cp.size] = cp
                 decay[cp.size:] = cs_hist
 
-                # Fit using pre-made fitter
+                # Fit using pre-made fitter (shared fit2x harness)
                 fitter = fitters[det]
-                res = fitter(data=decay, initial_values=st['initial_x0'], fixed=st['fixed_flags'])
+                res = fitter.fit(decay, initial_values=st['initial_x0'], fixed=st['fixed_flags'])
 
                 color = det.lower()
                 results.append({
@@ -2302,15 +2306,15 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                     'Ng-p-all': int(cp_sum),
                     'Ng-s-all': int(cs_sum),
                     f'Number of Photons (fit window) ({color})': int(cp_sum + cs_sum),
-                    f'2I*  ({color})': res.get('twoIstar', 0.0),
-                    f'Tau ({color})': res['x'][0],
-                    f'gamma ({color})': res['x'][1],
-                    f'r0 ({color})': res['x'][2],
-                    f'rho ({color})': res['x'][3],
+                    f'2I*  ({color})': res.twoIstar,
+                    f'Tau ({color})': res.x[0],
+                    f'gamma ({color})': res.x[1],
+                    f'r0 ({color})': res.x[2],
+                    f'rho ({color})': res.x[3],
                     f'BIFL scatter? ({color})': int(st['BIFL_scatter']),
                     f'2I*: P+2S? ({color})': int(st['p2s_twoIstar']),
-                    f'r Scatter ({color})': res['x'][6] if len(res['x']) > 6 else float('nan'),
-                    f'r Experimental ({color})': res['x'][7] if len(res['x']) > 7 else float('nan'),
+                    f'r Scatter ({color})': res.r_scatter,
+                    f'r Experimental ({color})': res.r_experimental,
                 })
 
         try:
