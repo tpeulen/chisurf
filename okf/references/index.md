@@ -9,3 +9,5 @@
 * [Node/workflow-toolkit lessons](orange3-lessons.md) - Architecture lessons from an established visual node/workflow analysis toolkit, mapped to PRDs.
 * [ELN crosslinking & info-management lessons](eln-crosslinking-lessons.md) - What a mature ELN's auth/linking/tagging/metadata model teaches MMFDB; adopted metadata→edge materialization + resolvable audit labels, deferred a tags layer.
 * [Modelling / ProteinMC roadmap](modelling-roadmap.md) - Durable modelling/simulation roadmap notes salvaged from a personal worklist.
+* [Two-focus FCS (2fFCS) status and gaps](two-focus-fcs.md) - What ChiSurf's absolute-diffusion two-focus FCS models cover today and what a full Dertinger 2fFCS workflow still needs.
+* [FCS catalogue & FLCS filters: PAM port](fcs-pam-port.md) - The PAM-referenced (A/B-verified) FCS fit-model catalogue expansion and FLCS lifetime-filter fixes, with remaining gaps.

@@ -166,18 +166,19 @@
     bt32: 0.1
   description: No description!
 3D Gauss, 1 exp. bunch, 1 stretched exp. bunch:
-  equation: b+1/abs(N)*(a1*(1+x/abs(td1))**(-1)/sqrt(1+1/s**2*x/abs(td1))*(1-abs(ba1)+abs(ba1)*exp(-x/abs(bt1))-abs(ba2)+abs(ba2)*exp(-(x/abs(bt2))**bs2))
+  equation: b+1/abs(N)*a1*(1+x/abs(td1))**(-1)/sqrt(1+1/s**2*x/abs(td1))*(1-abs(ba1)+abs(ba1)*exp(-x/abs(bt1))-abs(ba2)+abs(ba2)*exp(-(x/abs(bt2))**bs2))
   initial:
     N: 1
+    a1: 1
     s: 3.5
-    td: 0.5
+    td1: 0.5
     b: 1
     ba1: 0.05
     ba2: 0.05
     bt1: 0.1
     bt2: 0.1
     bs2: 1
-  description: No description!
+  description: One-component 3D-Gaussian diffusion with one exponential and one stretched-exponential bunching term
 2 comp 3D Gauss, ind. 1 exp. + 1 stretched exp.:
   equation: b+1/abs(N) * (a1 * (1+x/abs(td1))**(-1)*(1+1/s**2*x/abs(td1))**(-0.5)*(1-abs(ba11)+abs(ba11)*exp(-x/abs(bt11))-abs(ba21)+abs(ba21)*exp(-(x/abs(bt21))**bs21))+(1-a1)
     * (1+x/abs(td2))**(-1)*(1+1/s**2*x/abs(td2))**(-0.5)*(1-abs(ba12)+abs(ba12)*exp(-x/abs(bt12))-abs(ba22)+abs(ba22)*exp(-(x/abs(bt22))**bs22)))
@@ -205,7 +206,7 @@ Autocorrelation with biexponential anisotropy term:
   initial:
     b: 1
     N: 1
-    td: 0.5
+    td1: 0.5
     s: 7
     aab: 1
     tab: 4.0e-06
@@ -488,6 +489,7 @@ Simple 2D diffusion & 1x relaxation:
     td2: 100
     a2: 0.5
     td3: 10
+    s: 3.5
     b: 1
     bt1: 0.002
     ba1: 0.05
@@ -502,3 +504,168 @@ Simple 2D diffusion & 1x relaxation:
     abt4: 0.001
     abt5: 1
   description: for crosscorrelation curves
+
+# --- PAM-derived FCS models (ported from junk/PAM/Models/fcs, A/B-verified). x in s. ---
+3D diffusion (D, triplet):
+  equation: y_0+1/sqrt(8)*(1/N)*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2))
+  initial:
+    N: 1
+    D: 373
+    w_r: 0.2
+    w_z: 1
+    tau_T: 1
+    Trip: 0.05
+    y_0: 0
+  description: One-component 3D normal diffusion with a triplet term (PAM FCS_D). Absolute D. x in s, D in um^2/s, w_r/w_z in um, tau_T in us.
+3D diffusion, 2 components (D, triplet):
+  equation: y_0+1/sqrt(8)*(1/(N_1+N_2)**2)*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(N_1*(1/(1+4*D_1*x/w_r**2))*(1/sqrt(1+4*D_1*x/w_z**2))+N_2*(1/(1+4*D_2*x/w_r**2))*(1/sqrt(1+4*D_2*x/w_z**2)))
+  initial:
+    N_1: 1
+    D_1: 373
+    N_2: 1
+    D_2: 10
+    w_r: 0.2
+    w_z: 1
+    tau_T: 1
+    Trip: 0.05
+    y_0: 0
+  description: Two-component 3D diffusion with a global triplet term (PAM FCS_D_2Component). Absolute D.
+3D diffusion, 2 triplet (D):
+  equation: y_0+1/sqrt(8)*(1/N)*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1+Trip_2/(1-Trip_2)*exp(-x/(tau_T2*0.000001)))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2))
+  initial:
+    N: 1
+    D: 373
+    w_r: 0.2
+    w_z: 1
+    tau_T: 1
+    Trip: 0.05
+    tau_T2: 5
+    Trip_2: 0.05
+    y_0: 0
+  description: One-component 3D diffusion with two exponential triplet/blinking terms (PAM FCS_D_2exp).
+3D diffusion (tauD, triplet):
+  equation: y_0+1/sqrt(8)*(1/N)*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1/(1+x/(tau_D*0.000001)))*(1/sqrt(1+(1/p**2)*x/(tau_D*0.000001)))
+  initial:
+    N: 1
+    tau_D: 30
+    p: 5
+    tau_T: 1
+    Trip: 0.05
+    y_0: 0
+  description: 3D diffusion parametrised by the diffusion time tau_D (us) and axial ratio p, with triplet (PAM FCS_TauD).
+3D anomalous diffusion (tauD, triplet):
+  equation: y_0+1/sqrt(8)*(1/N)*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1/(1+(x/(tau_D*0.000001))**alpha))*(1/sqrt(1+(1/p**2)*(x/(tau_D*0.000001))**alpha))
+  initial:
+    N: 1
+    tau_D: 30
+    p: 5
+    alpha: 1
+    tau_T: 1
+    Trip: 0.05
+    y_0: 0
+  description: Anomalous 3D diffusion (anomaly exponent alpha) with triplet (PAM FCS_TauD_anomalous).
+3D diffusion + flow (D, triplet):
+  equation: y_0+1/sqrt(8)*(1/N)*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2))*exp(-((x*v_flow/w_r)**2)/(1+4*D*x/w_r**2))
+  initial:
+    N: 1
+    D: 373
+    w_r: 0.2
+    w_z: 1
+    tau_T: 1
+    Trip: 0.05
+    y_0: 0
+    v_flow: 1
+  description: 3D diffusion plus uniform flow v_flow (um/s) with triplet (PAM FCS_flow).
+3D diffusion + background (D, triplet):
+  equation: y_0+1/sqrt(8)*(1/N)*(1-BG/Counts)**2*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2))
+  initial:
+    Counts: 100
+    BG: 0
+    N: 1
+    D: 373
+    w_r: 0.2
+    w_z: 1
+    tau_T: 1
+    Trip: 0.05
+    y_0: 0
+  description: 3D diffusion with a (1-BG/Counts)^2 background-amplitude correction and triplet (PAM FCS_D_Background). Counts/BG in kHz.
+3D diffusion + afterpulsing (D, triplet):
+  equation: y_0+1/sqrt(8)*(1/N)*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2))+A_ap*exp(-(x/(tau_ap*0.000001))**stretch)
+  initial:
+    N: 1
+    D: 373
+    w_r: 0.2
+    w_z: 1
+    tau_T: 1
+    Trip: 0.05
+    A_ap: 0
+    tau_ap: 0.2
+    stretch: 1
+    y_0: 0
+  description: 3D diffusion plus an additive (stretched-)exponential afterpulsing term (PAM FCS_D_afterpulsing). tau_ap in us.
+3D diffusion + bleaching (tauD):
+  equation: y_0+1/sqrt(8)*(1/N)*(1-AB+AB*exp(-x/(tau_B*0.000001)))*(1/(1+x/(tau_D*0.000001)))*(1/sqrt(1+(1/p**2)*x/(tau_D*0.000001)))
+  initial:
+    N: 1
+    tau_D: 30
+    p: 5
+    tau_B: 1
+    AB: 0.01
+    y_0: 0
+  description: 3D diffusion (tau_D) with an exponential photobleaching amplitude term (PAM FCS_TauD_Bleaching).
+Two-focus 3D diffusion (D, triplet):
+  equation: y_0+1/sqrt(8)*(1/N)*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2))*exp(-diam**2/(w_r**2+4*D*x))
+  initial:
+    N: 1
+    D: 373
+    w_r: 0.2
+    w_z: 1
+    tau_T: 1
+    Trip: 0.05
+    diam: 1
+    y_0: 0
+  description: 'Two-focus FCS (Dertinger 2007, PAM FCS_2Focus_D): the exp(-diam^2/(w_r^2+4Dx)) cross-term (diam = known inter-focus distance, um) yields an ABSOLUTE D. Set diam=0 for the single-focus auto-correlation; fit auto+cross globally sharing D/w_r/w_z.'
+FRET-FCCS, 2-state (D):
+  equation: a*(1/sqrt(8)*(1/N_1)*(1+(k_12*k_21*(E_1-E_2)**2/(k_21*(1-E_1)+k_12*(1-E_2))**2)*exp(-(k_12+k_21)*x))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2)))+b*(1/sqrt(8)*(1/N_2)*(1+(k_12*k_21*(E_1-E_2)**2/(k_21*E_1+k_12*E_2)**2)*exp(-(k_12+k_21)*x))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2)))+c*(1/sqrt(8)*(1/N_3)*(1-(k_12*k_21*(E_1-E_2)**2/((k_21*(1-E_1)+k_12*(1-E_2))*(k_21*E_1+k_12*E_2)))*exp(-(k_12+k_21)*x))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2)))+y_0
+  initial:
+    N_1: 1
+    N_2: 1
+    N_3: 1
+    a: 1
+    k_12: 1000
+    k_21: 1000
+    E_1: 0.2
+    E_2: 0.8
+    D: 50
+    w_r: 0.2
+    w_z: 1
+    b: 1
+    c: 1
+    y_0: 0
+  description: 'FRET-FCCS 2-state kinetics model (PAM FCS_FRETFCCS): donor auto (a), acceptor auto (b) and donor-acceptor cross (c) terms with a shared two-state exchange (k_12,k_21) and FRET efficiencies E_1,E_2. k in 1/s.'
+ns-FCS antibunching + bunching + triplet:
+  equation: offset+(1/N)*(1-A_ab*exp(-abs(x-t_0)/t_ab))*(1+A_cd*exp(-abs(x-t_0)/t_cd))*(1+A_T*exp(-abs(x-t_0)/t_T))
+  initial:
+    N: 1
+    t_0: 0
+    A_ab: 1
+    t_ab: 1
+    A_cd: 1
+    t_cd: 100
+    A_T: 0
+    t_T: 1000
+    offset: 1
+  description: 'ns-FCS: photon antibunching (A_ab dip), conformational bunching (A_cd) and triplet (A_T) about t_0 (PAM nsFCS_ab_cd_triplet). x, t_0, t_* in the same lag unit (ns).'
+Scanning FCS (D, triplet):
+  equation: y_0+1/sqrt(8)*(1/N)*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2))*exp(-diam**2*sin(3.141592653589793*freq*1000*x)**2/(w_r**2+4*D*x))
+  initial:
+    N: 1
+    D: 373
+    w_r: 0.2
+    w_z: 1
+    tau_T: 1
+    Trip: 0.05
+    diam: 1
+    freq: 1
+    y_0: 0
+  description: 'Circular-scanning FCS (PAM FCS_Scanning): periodic sin^2 term with scan diameter diam (um) and frequency freq (kHz).'
