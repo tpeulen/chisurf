@@ -1,0 +1,12 @@
+{
+  "source": "ebFRET simulated-K04-N350 (github.com/ebfret/ebfret-gui)",
+  "n_traces": 350,
+  "n_frames": 39595,
+  "ground_truth_states": 4,
+  "ebfret_session_means": {
+    "K2": [0.30, 0.55],
+    "K3": [0.09, 0.34, 0.55],
+    "K4": [-0.006, 0.330, 0.516, 0.549]
+  },
+  "note": "ebfret_session_means are ebFRET's fitted state means on a background-subtracted 'signal'. This port fits the uncorrected proximity ratio acceptor/(donor+acceptor) in [0,1], so the two well-separated interior states (~0.33 and ~0.516) are the stable cross-tool assertion target; the donor-only level appears near ~0.06-0.09 here instead of ebFRET's ~0."
+}

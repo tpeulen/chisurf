@@ -1,0 +1,30 @@
+{
+  "id": "burst_ebfret",
+  "version": "0.1.0",
+  "display_name": "Spectroscopy:Single-Molecule:ebFRET (binned traces)",
+  "description": "Empirical-Bayes Gaussian hidden Markov model for binned single-molecule FRET time traces (ebFRET/vbFRET-style), with a state-count scan, per-state emission recovery, and Viterbi dwell/transition analysis. Complements the photon-by-photon H2MM plugin for TIRF-style intensity-vs-time data.",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Spectroscopy", "Single-Molecule"],
+  "state_namespace": "burst_ebfret",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": false,
+      "settings_key": "burst_ebfret_window"
+    }
+  },
+  "experimental": true,
+  "experimental_message": "Experimental headless port of ebFRET's per-trace VBEM + empirical-Bayes hyperparameter loop. Validated for state recovery against ebFRET's own simulated-K04-N350 dataset; the single-prior (non-mixture) D=1 path only, and no GUI tool yet.",
+  "entrypoints": {
+    "cli": "ebfret=chisurf.plugins.burst.burst_ebfret.cli.main:cli",
+    "services": "chisurf.plugins.burst.burst_ebfret.backend.services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "burst_ebfret.jobs.compute",
+      "summary": "Fit an empirical-Bayes Gaussian HMM over a set of binned FRET traces.",
+      "long_running": true
+    }
+  ],
+  "menu_hidden": true
+}
