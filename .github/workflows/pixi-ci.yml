@@ -42,6 +42,12 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Checkout mmfdb (sibling for the modules/mmfdb symlink)
+        run: |
+          git clone --depth 1 --branch "${MMFDB_REF:-main}" \
+            "${MMFDB_REPO:-https://github.com/Fluorescence-Tools/mmfdb.git}" \
+            "$GITHUB_WORKSPACE/../mmfdb"
+
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |

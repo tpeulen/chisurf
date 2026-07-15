@@ -48,6 +48,20 @@ if exist modules\imp-tricks\pyproject.toml (
 )
 if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
 
+:: Install mmfdb (metadata/provenance database, standalone repo): use local
+:: checkout if present (dev builds via the modules\mmfdb symlink), otherwise
+:: clone from GitHub (CI builds). chisurf declares mmfdb==0.1.0 as a runtime dep.
+if not defined MMFDB_REPO set MMFDB_REPO=https://github.com/Fluorescence-Tools/mmfdb.git
+if not defined MMFDB_REF set MMFDB_REF=main
+if exist modules\mmfdb\pyproject.toml (
+    %PYTHON% -m pip install .\modules\mmfdb --no-deps --prefix=%PREFIX%
+) else (
+    git clone --depth 1 --branch %MMFDB_REF% %MMFDB_REPO% %TEMP%\mmfdb
+    if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
+    %PYTHON% -m pip install %TEMP%\mmfdb --no-deps --prefix=%PREFIX%
+)
+if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
+
 :: Install latexify-py (PyPI-only, not on conda) + its deps into the package
 %PYTHON% -m pip install latexify-py --prefix=%PREFIX%
 if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%

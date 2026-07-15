@@ -627,6 +627,9 @@
       "name": "fluorophores.get_spectra_batch"
     },
     {
+      "name": "fluorophores.import_default_set"
+    },
+    {
       "name": "fluorophores.import_reference_set"
     },
     {

@@ -83,6 +83,20 @@ else
 fi
 "$PY" -m pip install "$IMP_TRICKS_SRC" --no-deps --no-build-isolation -vv --prefix="$PREFIX"
 
+# 7a) Install mmfdb (metadata/provenance database, standalone repo) — use the
+#     local checkout if present (dev builds via the modules/mmfdb symlink),
+#     otherwise clone it from GitHub (CI builds). chisurf declares mmfdb==0.1.0
+#     as a runtime dependency, so the packaged app must ship it.
+MMFDB_REPO="${MMFDB_REPO:-https://github.com/Fluorescence-Tools/mmfdb.git}"
+MMFDB_REF="${MMFDB_REF:-main}"
+if [[ -e modules/mmfdb/pyproject.toml ]]; then
+  MMFDB_SRC="modules/mmfdb"
+else
+  MMFDB_SRC="$(mktemp -d)/mmfdb"
+  git clone --depth 1 --branch "$MMFDB_REF" "$MMFDB_REPO" "$MMFDB_SRC"
+fi
+"$PY" -m pip install "$MMFDB_SRC" --no-deps --no-build-isolation -vv --prefix="$PREFIX"
+
 # 7b) Install latexify-py (PyPI-only, not on conda) + its deps into the package
 "$PY" -m pip install latexify-py --no-build-isolation -vv --prefix="$PREFIX"
 

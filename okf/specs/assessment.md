@@ -46,6 +46,8 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [DATA-02](#data-02) | S2 | DATA | MMFDB | `SCHEMA_VERSION = 40` is a stamp with no migration waterfall | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-03](#data-03) | S2 | DATA | MMFDB | Core `mmfdb_*` DDL is hand-written and defined twice (must be hand-synced) | ~~REPORTED~~ ✅ FIXED |
 | [DATA-04](#data-04) | S2 | DATA | MMFDB | `add_processing_run` partial-write; MD5 mislabeled as checksum | REPORTED |
+| [DATA-05](#data-05) | S2 | DATA | MMFDB | External-tool runs not first-class in provenance (no `command_line`/`exit_code` cols, no `external_tool` op type, inconsistent op_type validators) | VERIFIED |
+| [DATA-06](#data-06) | S3 | DATA | MMFDB | Deposition is one-way: `archive.zip.export` exists but no importer; bundler reads `file_path` not object store; mmCIF export is FLR-only | VERIFIED |
 | [INC-01](#inc-01) | S2 | INC | Core | Three overlapping instance registries with different lifetimes | REPORTED |
 | [INC-02](#inc-02) | S2 | INC | Core | `@register` renames classes → fragile name-based `isinstance` | REPORTED |
 | [INC-03](#inc-03) | S3 | INC | Server/MMFDB | Legacy flat/`mmfdb.*` aliases coexist with namespaced/`mmfdb.v1.*` | REPORTED |
@@ -54,8 +56,9 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-06](#inc-06) | S2 | INC | Plugins | Two plugin identity conventions coexist; `ndxplorer` has no manifest | ~~REPORTED~~ ✅ FIXED |
 | [INC-07](#inc-07) | S3 | INC | Plugins | `categories` drifts from directory group & `display_name`; demo games mixed in | REPORTED |
 | [INC-08](#inc-08) | S3 | INC | Server | Generic `JobManager` bypassed by the only real long-running jobs | REPORTED |
+| [INC-09](#inc-09) | S3 | INC | MMFDB | MMFDB is packaged standalone but a chisurf-free client is missing; the only RPC client + example facade live in chisurf | VERIFIED |
 
-21 findings (13 FIXED): 1 VERIFIED, 7 REPORTED. 0×S1, 3×S2, 4×S3.
+24 findings (13 FIXED): 4 VERIFIED, 7 REPORTED. 0×S1, 4×S2, 6×S3.
 
 ---
 
@@ -173,6 +176,12 @@ The single largest source of non-uniformity across the codebase (see [core steer
 - Location: `chisurf/core/mmfdb/repository.py:6385` (`add_processing_run`). The documented partial-write path can leave an operation without its artifacts/edges, and an MD5 digest is stored/labeled as a generic "checksum".
 - Fix: wrap the run insertion in a single transaction (see `transactions.py`) and label the digest algorithm explicitly.
 
+### DATA-05
+**S2 · External-tool runs can't be first-class provenance operations.** [mmfdb steering](mmfdb.md#steering-notes). An external CLI/script *can* be recorded via `mmfdb.v1.operations.record_with_artifacts` — tool → `software_package`, version, timestamps, typed parameters, checksummed input/output artifacts, queryable lineage (verified end-to-end in `modules/mmfdb/examples/mmfdb_06_external_tool_provenance.ipynb`, which records both a vanilla-`tttrlib` CLI subprocess and FRETBursts against one raw artifact). But the schema has **no dedicated column for the command line / argv or a numeric exit code** — both must be buried in free-form `settings_json`, so they are unqueryable — **no generic `external_tool`/`cli` value** in the constrained `operation_type` vocabulary (the example reuses `burst_selection`), **no software-vs-human actor** distinction (`operator_user_id` is a human-user FK), and **no container/environment** schema (image + digest). The two record paths also validate `operation_type` inconsistently: `record_operation` uses the extensible DB vocab while `record_operation_with_artifacts` uses the static `.dic` enum (`queries/artifacts.py:885` vs `:1226`) — arguably a bug. → Add `command_line`/`exit_code` columns, an `external_tool` operation type + actor-kind flag, and reconcile the two validators.
+
+### DATA-06
+**S3 · Deposition is export-only (no round-trip importer).** [mmfdb steering](mmfdb.md#steering-notes). `archive.zip.export` (`admin/backend/measurement_services.py:1906`) packs a self-contained deposition ZIP — DB snapshot + `provenance_graph.json` + manifest + native `external_data/` files — and a second instance can adopt the snapshot wholesale (verified round-trip in `modules/mmfdb/examples/mmfdb_07_deposition.ipynb`). But there is **no `archive.zip.import` handler** to merge a deposition into an existing instance or restore its object-store blobs from `external_data/`; the bundler copies native files from `node.file_path` rather than from the content-addressed object store; and mmCIF record export (`repository.export_flr_cif`) is **FLR-domain-only** and not exposed via `api.py`/`cli.py` — there is no general dictionary-driven metadata→mmCIF path. → Add an object-store-aware bundle importer and a general CIF export path.
+
 ## Inconsistencies / legacy overhang (INC)
 
 ### INC-01
@@ -201,6 +210,9 @@ The single largest source of non-uniformity across the codebase (see [core steer
 
 ### INC-08
 **S3 · The generic job manager is bypassed.** [rpc steering](rpc.md#steering-notes). `jobs.JobManager` exists, but the only real long-running work (fit sampling / scan) uses unlocked module-level dicts instead. → Route long-running jobs through `JobManager` so cancellation/status are uniform.
+
+### INC-09
+**S3 · MMFDB is packaged standalone but not yet cleanly separable; a chisurf-free client is missing.** [mmfdb steering](mmfdb.md#steering-notes). MMFDB already lives in its own module with its own `pyproject.toml` (`modules/mmfdb/`), and it *is* usable without chisurf — verified in `modules/mmfdb/examples/mmfdb_08_standalone_no_lockin.ipynb`, which drives `mmfdb` + tttrlib + FRETBursts with `chisurf` never imported. But that standalone path has to talk to the **embedded** repository (`mmfdb.repository.MFDatabase`) directly, because the only network/RPC client (`MMFDBClient`) and the ergonomic example facade (`BurstWorkflow`) both live *inside* chisurf (`chisurf/plugins/core/mmfdb_admin/gui/client.py`, `chisurf/plugins/burst/burst_analysis/api/workflow.py`). The `mmfdb.api` functions also require auth even in-process (see INC-04), so a standalone consumer cannot use the public API without bootstrapping a user. Target: mmfdb ships as its own repository that chisurf depends on (one-way); a Qt-free, chisurf-free `mmfdb` client (HTTP + optional in-process default principal) moves into the mmfdb package so external tools get the same ergonomics the chisurf facade has today.
 
 ---
 

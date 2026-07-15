@@ -1,1 +1,0 @@
-"""MMFDB store subpackage."""

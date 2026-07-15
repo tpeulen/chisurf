@@ -1,1 +1,0 @@
-"""MMFDB lifecycle subpackage."""
