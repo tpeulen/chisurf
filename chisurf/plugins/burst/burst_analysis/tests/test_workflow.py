@@ -20,6 +20,7 @@ def test_burst_workflow_panel_order() -> None:
         "📋 7. Browser",
         "────────",
         "🌙 Background",
+        "✨ IRF & Background",
     ]
     assert BURST_PANELS[7]["separator"] is True
 
