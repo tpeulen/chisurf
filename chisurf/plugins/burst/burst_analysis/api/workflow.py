@@ -540,11 +540,16 @@ class GroundTruth:
         Symmetric state-to-state exchange rate (1/s); ``0`` means static.
     n_states : int
         Number of conformational states simulated.
+    gamma : float
+        Detection/quantum-yield ratio baked into the simulated counts (the
+        red-channel brightness is scaled by ``gamma``); ``1.0`` is the default,
+        symmetric case. Used to validate calibration recovery.
     """
 
     fret: np.ndarray
     exchange_rate: float
     n_states: int
+    gamma: float = 1.0
 
 
 @dataclass
@@ -694,6 +699,7 @@ class BurstWorkflow:
         dt: float = 0.01,
         seed: int = 12345,
         name: str = "simulation",
+        gamma: float = 1.0,
     ) -> Simulation:
         """Simulate a two-colour smFRET dataset and register it in MMFDB.
 
@@ -727,6 +733,11 @@ class BurstWorkflow:
             Random seed.
         name : str
             Base filename for the stored dataset.
+        gamma : float
+            Detection/quantum-yield ratio to bake into the counts (scales the
+            red-channel brightness). ``1.0`` is symmetric; other values make the
+            uncorrected proximity ratio gamma-distorted so calibration recovery
+            can be validated against :attr:`GroundTruth.gamma`.
 
         Returns
         -------
@@ -740,8 +751,11 @@ class BurstWorkflow:
         n_states = len(efficiencies)
         if n_states < 2:
             raise ValueError("simulate needs at least two FRET states")
+        # Red-channel brightness is scaled by gamma to bake a known detection/
+        # quantum-yield ratio into the counts (the uncorrected proximity ratio is
+        # then gamma-distorted and only the calibrated correction recovers E).
         species = [
-            {"D": diffusion, "q": [(1.0 - e) * brightness, e * brightness]}
+            {"D": diffusion, "q": [(1.0 - e) * brightness, gamma * e * brightness]}
             for e in efficiencies
         ]
         # Spontaneous exchange: equal off-diagonal rates, zero diagonal.
@@ -784,6 +798,7 @@ class BurstWorkflow:
             fret=np.asarray(efficiencies),
             exchange_rate=float(exchange_rate),
             n_states=n_states,
+            gamma=float(gamma),
         )
         return Simulation(handle=handle, setup=setup, truth=truth)
 
