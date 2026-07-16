@@ -42,6 +42,11 @@ import chisurf.gui.widgets.wizard
 
 import tttrlib
 
+from chisurf.plugins.microscopy.img_pixel_mle.core import (
+    PixelMleSettings,
+    fit_pixel_lifetimes,
+)
+
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
@@ -1283,173 +1288,80 @@ class LifetimeMleAnalysisWizard(QtWidgets.QMainWindow):
             except Exception:
                 pass
 
-    def process_data(self):
-        # Keep heavy per-pixel path unchanged; users trigger via button.
-        self.load_data_and_compute_decays()
-        all_settings = self.get_settings()
+    def _pixel_mle_settings(self, all_settings: dict) -> "PixelMleSettings":
+        """Build a Qt-free :class:`PixelMleSettings` from the UI settings dict."""
         ch_p = all_settings['ch_p']
         ch_s = all_settings['ch_s']
         if isinstance(ch_p, int):
             ch_p = [ch_p]
         if isinstance(ch_s, int):
             ch_s = [ch_s]
-        binning_factor = all_settings['binning_factor']
-        minimum_n_photons = all_settings['min_photons']
+        start, stop = self.micro_time_range
+        return PixelMleSettings(
+            channels_parallel=ch_p,
+            channels_perpendicular=ch_s,
+            irf=all_settings['irf'],
+            period=all_settings['period'],
+            background=all_settings['background'],
+            binning_factor=all_settings['binning_factor'],
+            micro_time_start=start,
+            micro_time_stop=stop,
+            min_photons=all_settings['min_photons'],
+            stack_frames=all_settings['stack_frames'],
+            tau=all_settings['tau'],
+            gamma=all_settings['gamma'],
+            r0=all_settings['r0'],
+            rho=all_settings['rho'],
+            fix_tau=bool(all_settings['fix_tau']),
+            fix_gamma=bool(all_settings['fix_gamma']),
+            fix_r0=bool(all_settings['fix_r0']),
+            fix_rho=bool(all_settings['fix_rho']),
+            g_factor=all_settings['g_factor'],
+            l1=all_settings['l1'],
+            l2=all_settings['l2'],
+            convolution_stop=-1,
+            p2s_twoIstar=bool(all_settings['p2s_twoIstar']),
+            soft_bifl_scatter=bool(all_settings['BIFL_scatter']),
+        )
+
+    def process_data(self):
+        # Heavy per-pixel path; users trigger via button. The actual computation
+        # lives in the Qt-free core (``core/pixel_mle.py``) so it is shared with
+        # the RPC backend/CLI and headlessly testable; the GUI only drives
+        # progress and result display here.
+        self.load_data_and_compute_decays()
+        all_settings = self.get_settings()
         if not hasattr(self, 'tttr_data_list') or not self.tttr_data_list:
             return
-        irf = all_settings['irf']
-        x0 = np.array([all_settings['tau'], all_settings['gamma'], all_settings['r0'], all_settings['rho']])
-        fixed = np.array([
-            1 if all_settings['fix_tau'] else 0,
-            1 if all_settings['fix_gamma'] else 0,
-            1 if all_settings['fix_r0'] else 0,
-            1 if all_settings['fix_rho'] else 0
-        ])
+        pixel_settings = self._pixel_mle_settings(all_settings)
         self.results_list = []
         self.tau_list = []
         self.rho_list = []
         self.results = []
-        tttr_files = self.tttr_list.get_selected_files()
         total_files = len(self.tttr_data_list)
         progress_dialog = CombinedProgressDialog(self)
         progress_dialog.set_file_progress(1, total_files)
         progress_dialog.show()
         QApplication.processEvents()
         time_start = time.time()
-        start, stop = self.micro_time_range
         for file_idx, tttr_data in enumerate(self.tttr_data_list):
             progress_dialog.set_file_progress(file_idx, total_files)
             QApplication.processEvents()
             self.tttr_data = tttr_data
-            file_results = []
-            self.results_list.append(file_results)
-            self.clsm_p = tttrlib.CLSMImage(self.tttr_data, channels=ch_p, fill=True)
-            self.clsm_s = tttrlib.CLSMImage(self.tttr_data, channels=ch_s, fill=True)
-            if all_settings['stack_frames']:
-                self.clsm_p.stack_frames()
-                self.clsm_s.stack_frames()
-            n_channels = self.tttr_data.header.number_of_micro_time_channels // binning_factor
-            settings = {
-                'dt': self.tttr_data.header.micro_time_resolution * 1e9 * binning_factor,
-                'g_factor': all_settings['g_factor'],
-                'l1': all_settings['l1'],
-                'l2': all_settings['l2'],
-                'convolution_stop': -1,
-                'irf': irf,
-                'period': all_settings['period'],
-                'background': all_settings['background'],
-                'p2s_twoIstar_flag': all_settings['p2s_twoIstar'],
-                'soft_bifl_scatter_flag': all_settings['BIFL_scatter']
-            }
-            fit23 = tttrlib.Fit23(**settings)
-            intensity = self.clsm_p.intensity
-            micro_times = self.tttr_data.micro_times // binning_factor
-            n_channels = self.tttr_data.header.number_of_micro_time_channels // binning_factor
-            tau_array = np.zeros_like(intensity, dtype=np.float32)
-            rho_array = np.zeros_like(intensity, dtype=np.float32)
-            n_frames, n_lines, n_pixel = self.clsm_p.shape
-            progress_dialog.set_frame_progress(0, n_frames)
-            progress_dialog.set_line_progress(0, n_lines)
-            QApplication.processEvents()
-            hist_p_template = np.zeros(stop - start, dtype=np.int64)
-            hist_s_template = np.zeros(stop - start, dtype=np.int64)
-            batch_results = []
-            for i in range(n_frames):
-                progress_dialog.set_frame_progress(i + 1, n_frames)
+
+            def _progress(frame, n_frames, line, n_lines):
+                progress_dialog.set_frame_progress(frame + 1, n_frames)
+                progress_dialog.set_line_progress(line + 1, n_lines)
                 QApplication.processEvents()
-                for j in range(n_lines):
-                    progress_dialog.set_line_progress(j + 1, n_lines)
-                    QApplication.processEvents()
-                    line_data = []
-                    for k in range(n_pixel):
-                        idx_p = self.clsm_p[i][j][k].tttr_indices
-                        idx_s = self.clsm_s[i][j][k].tttr_indices
-                        n_p = len(idx_p)
-                        n_s = len(idx_s)
-                        total_photons = n_p + n_s
-                        line_data.append({
-                            'idx_p': np.array(idx_p, copy=True) if len(idx_p) > 0 else idx_p,
-                            'idx_s': np.array(idx_s, copy=True) if len(idx_s) > 0 else idx_s,
-                            'n_p': n_p,
-                            'n_s': n_s,
-                            'total_photons': total_photons,
-                            'pixel_idx': k,
-                        })
-                    for pixel_data in line_data:
-                        k = pixel_data['pixel_idx']
-                        n_p = pixel_data['n_p']
-                        n_s = pixel_data['n_s']
-                        total_photons = pixel_data['total_photons']
-                        idx_p = pixel_data['idx_p']
-                        idx_s = pixel_data['idx_s']
-                        if total_photons < minimum_n_photons:
-                            # Below the fit threshold: emit only MLE fit columns
-                            # (NaN). Per-pixel intensity/count columns come from the
-                            # Intensity tool, not the MLE, so this stays fit-only.
-                            result_dict = {
-                                'Y pixel': j,
-                                'X pixel': k,
-                                'Pixel Number': j * n_pixel + k,
-                                f'Number of Photons (fit window)': 0,
-                                f'tau': np.nan,
-                                f'gamma': np.nan,
-                                f'r0': np.nan,
-                                f'rho': np.nan,
-                                f'BIFL scatter fit?': 0,
-                                f'2I*: P+2S?': 0,
-                                f'rS': np.nan,
-                                f'rE': np.nan,
-                                f'2I*': np.nan,
-                            }
-                            if n_frames > 1:
-                                result_dict['Z pixel'] = i
-                            batch_results.append(result_dict)
-                            continue
-                        if n_p > 0:
-                            hist_p = np.bincount(micro_times[idx_p], minlength=n_channels)[start:stop] if start < n_channels else hist_p_template.copy()
-                            fit_window_photons_p = np.sum(hist_p)
-                        else:
-                            hist_p = hist_p_template.copy()
-                            fit_window_photons_p = 0
-                        if n_s > 0:
-                            hist_s = np.bincount(micro_times[idx_s], minlength=n_channels)[start:stop] if start < n_channels else hist_s_template.copy()
-                            fit_window_photons_s = np.sum(hist_s)
-                        else:
-                            hist_s = hist_s_template.copy()
-                            fit_window_photons_s = 0
-                        fit_window_photons = fit_window_photons_p + fit_window_photons_s
-                        hist = np.concatenate([hist_p, hist_s])
-                        r = fit23(hist, x0, fixed)
-                        tau_array[i, j, k] = r['x'][0]
-                        rho_array[i, j, k] = r['x'][3]
-                        # MLE-only output: fit parameters + coordinates. Per-pixel
-                        # intensity/count-rate columns are produced by the Intensity
-                        # tool and merged into the shared imaging HDF5.
-                        result_dict = {
-                            'Y pixel': j,
-                            'X pixel': k,
-                            'Pixel Number': j * n_pixel + k,
-                            f'Number of Photons (fit window)': fit_window_photons,
-                            f'tau': r['x'][0],
-                            f'gamma': r['x'][1],
-                            f'r0': r['x'][2],
-                            f'rho': r['x'][3],
-                            f'BIFL scatter fit?': int(all_settings['BIFL_scatter']),
-                            f'2I*: P+2S?': all_settings['p2s_twoIstar'],
-                            f'rS': np.nan,
-                            f'rE': np.nan,
-                            f'2I*': r.get('twoIstar', -1),
-                        }
-                        if n_frames > 1:
-                            result_dict['Z pixel'] = i
-                        batch_results.append(result_dict)
-                    file_results.extend(batch_results)
-                    self.results.extend(batch_results)
-                    batch_results = []
-            self.tau_list.append(tau_array)
-            self.rho_list.append(rho_array)
-            self.tau = tau_array
-            self.rho = rho_array
+
+            result = fit_pixel_lifetimes(tttr_data, pixel_settings, progress=_progress)
+            file_results = result.dataframe.to_dict('records')
+            self.results_list.append(file_results)
+            self.results.extend(file_results)
+            self.tau_list.append(result.tau)
+            self.rho_list.append(result.rho)
+            self.tau = result.tau
+            self.rho = result.rho
             progress_dialog.set_frame_progress(0, 1)
             progress_dialog.set_line_progress(0, 1)
             QApplication.processEvents()

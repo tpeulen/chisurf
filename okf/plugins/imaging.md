@@ -19,8 +19,8 @@ maps, with calibration and PSF-determination steps. The plugins live under
 | `microscopy/img_pixel_intensity` | Imaging:Intensity | Per-pixel intensity map; writes the standard imaging HDF5 (with source back-reference) that later steps enrich. |
 | `microscopy/img_pixel_micro_time` | Imaging:Mean Micro-Time | Per-pixel mean micro-time (arrival-time) maps. |
 | `microscopy/img_pixel_phasor` | Imaging:Phasor-FLIM | Per-pixel phasor (g, s) maps and phasor plot. |
-| `microscopy/img_pixel_mle` | Imaging:Lifetime:Pixel-wise MLE | Pixel-wise maximum-likelihood lifetime fitting. |
-| `microscopy/sm_image_mle` | Imaging:Lifetime:Molecule-wise MLE | Molecule-wise MLE lifetime analysis from PTU imaging data. |
+| `microscopy/img_pixel_mle` | Imaging:Lifetime:Pixel-wise MLE | Pixel-wise maximum-likelihood (2I*) lifetime fitting. Compute lives in the Qt-free `core/pixel_mle.py` (shared by GUI + RPC backend + CLI, headlessly testable) on the shared `fit2x` harness. |
+| `microscopy/sm_image_mle` | Imaging:Lifetime:Molecule-wise MLE | Molecule-wise MLE lifetime analysis from PTU imaging data, via the `fit2x` harness. |
 | `microscopy/img_pixel_nb` | Imaging:Number & Brightness | Per-pixel N and B maps. |
 | `microscopy/img_calibration` | Imaging:IRF & BG | Per-detector IRF and background calibration, shared with phasor and MLE steps (skippable pipeline step). |
 | `microscopy/psf_determination` | Imaging:PSF Determination | 3D Gaussian PSF fitting and bead detection. |

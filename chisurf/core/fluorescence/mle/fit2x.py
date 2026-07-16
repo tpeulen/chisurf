@@ -125,6 +125,9 @@ class Fit2xSettings:
         Polarisation ``G`` factor (detection-efficiency ratio VV/VH).
     l1, l2 : float, optional
         Polarisation mixing corrections of the objective.
+    convolution_stop : int, optional
+        Last micro-time channel included in the IRF convolution.  When omitted
+        the tttrlib default (half the array length) is used.
     p2s_twoIstar : bool, optional
         Optimise ``P + 2S`` instead of ``P`` and ``S`` individually.
     soft_bifl_scatter : bool, optional
@@ -138,6 +141,7 @@ class Fit2xSettings:
     g_factor: float = 1.0
     l1: float = 0.0
     l2: float = 0.0
+    convolution_stop: int | None = None
     p2s_twoIstar: bool = False
     soft_bifl_scatter: bool = False
 
@@ -261,7 +265,7 @@ class Fit2x:
         self.settings = settings
         self.model = Fit2xModel(model)
         cls = getattr(tttrlib, _TTTRLIB_CLASS[self.model])
-        self._fitter = cls(
+        kwargs = dict(
             dt=settings.dt,
             irf=settings.irf,
             background=settings.background,
@@ -272,6 +276,9 @@ class Fit2x:
             p2s_twoIstar_flag=settings.p2s_twoIstar,
             soft_bifl_scatter_flag=settings.soft_bifl_scatter,
         )
+        if settings.convolution_stop is not None:
+            kwargs["convolution_stop"] = int(settings.convolution_stop)
+        self._fitter = cls(**kwargs)
 
     @property
     def n_channels(self) -> int:
