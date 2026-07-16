@@ -52,20 +52,25 @@ class CalibrationParameters(FittingParameterGroup):
     are optimized against the data (they stay *free* — the light-path value is
     only the prior mean).
 
+    Uses the Hellenkamp 2018 nomenclature (α leakage, β excitation-flux ratio,
+    γ detection/QY, δ direct excitation; channels I_DD/I_DA/I_AA).
+
     Attributes (via properties)
     ---------------------------
     gamma : float
-        Detection/quantum-yield ratio ``(gR·QYA)/(gG·QYD)``.
+        Detection/quantum-yield ratio γ = ``(gR·ΦA)/(gG·ΦD)``.
     alpha : float
-        Donor spectral leakage into the acceptor (red) channel.
+        Donor spectral leakage α into the acceptor (I_DA) channel.
+    beta : float
+        Excitation-flux ratio β (enters the stoichiometry).
     delta : float
-        Direct acceptor excitation at the donor-excitation wavelength.
-    bg, br, by : float
-        Background count rates of the green / red / yellow channels.
+        Direct acceptor excitation δ at the donor-excitation wavelength.
+    bg_dd, bg_da, bg_aa : float
+        Background count rates of the I_DD / I_DA / I_AA channels.
     r0 : float
-        Förster radius (Å).
+        Förster radius R0 (Å).
     phi_a, phi_d : float
-        Acceptor / donor fluorescence quantum yields.
+        Acceptor / donor fluorescence quantum yields (ΦA, ΦD).
     """
 
     def __init__(self, name: str = "calibration", **kwargs):
@@ -81,10 +86,11 @@ class CalibrationParameters(FittingParameterGroup):
         super().__init__(name=name, **kwargs)
         self._gamma = FittingParameter(value=1.0, name="gamma", lb=0.05, ub=20.0, bounds_on=True)
         self._alpha = FittingParameter(value=0.0, name="alpha", lb=0.0, ub=1.0, bounds_on=True)
+        self._beta = FittingParameter(value=1.0, name="beta", lb=0.01, ub=100.0, bounds_on=True)
         self._delta = FittingParameter(value=0.0, name="delta", lb=0.0, ub=1.0, bounds_on=True)
-        self._bg = FittingParameter(value=0.0, name="Bg", lb=0.0, ub=1e6, bounds_on=True)
-        self._br = FittingParameter(value=0.0, name="Br", lb=0.0, ub=1e6, bounds_on=True)
-        self._by = FittingParameter(value=0.0, name="By", lb=0.0, ub=1e6, bounds_on=True)
+        self._bg_dd = FittingParameter(value=0.0, name="Bg_DD", lb=0.0, ub=1e6, bounds_on=True)
+        self._bg_da = FittingParameter(value=0.0, name="Bg_DA", lb=0.0, ub=1e6, bounds_on=True)
+        self._bg_aa = FittingParameter(value=0.0, name="Bg_AA", lb=0.0, ub=1e6, bounds_on=True)
         self._r0 = FittingParameter(value=52.0, name="R0", lb=1.0, ub=200.0, bounds_on=True)
         self._phi_a = FittingParameter(value=1.0, name="PhiA", lb=0.0, ub=1.0, bounds_on=True)
         self._phi_d = FittingParameter(value=1.0, name="PhiD", lb=0.0, ub=1.0, bounds_on=True)
@@ -102,7 +108,7 @@ class CalibrationParameters(FittingParameterGroup):
 
     @property
     def alpha(self) -> float:
-        """Donor leakage into the acceptor channel."""
+        """Donor leakage into the acceptor channel (α)."""
         return float(self._alpha.value)
 
     @alpha.setter
@@ -110,8 +116,17 @@ class CalibrationParameters(FittingParameterGroup):
         self._alpha.value = float(v)
 
     @property
+    def beta(self) -> float:
+        """Excitation-flux ratio (β)."""
+        return float(self._beta.value)
+
+    @beta.setter
+    def beta(self, v: float):
+        self._beta.value = float(v)
+
+    @property
     def delta(self) -> float:
-        """Direct acceptor excitation."""
+        """Direct acceptor excitation (δ)."""
         return float(self._delta.value)
 
     @delta.setter
@@ -119,31 +134,31 @@ class CalibrationParameters(FittingParameterGroup):
         self._delta.value = float(v)
 
     @property
-    def bg(self) -> float:
-        """Green-channel background."""
-        return float(self._bg.value)
+    def bg_dd(self) -> float:
+        """Background of the I_DD channel."""
+        return float(self._bg_dd.value)
 
-    @bg.setter
-    def bg(self, v: float):
-        self._bg.value = float(v)
-
-    @property
-    def br(self) -> float:
-        """Red-channel background."""
-        return float(self._br.value)
-
-    @br.setter
-    def br(self, v: float):
-        self._br.value = float(v)
+    @bg_dd.setter
+    def bg_dd(self, v: float):
+        self._bg_dd.value = float(v)
 
     @property
-    def by(self) -> float:
-        """Yellow-channel background."""
-        return float(self._by.value)
+    def bg_da(self) -> float:
+        """Background of the I_DA (FRET) channel."""
+        return float(self._bg_da.value)
 
-    @by.setter
-    def by(self, v: float):
-        self._by.value = float(v)
+    @bg_da.setter
+    def bg_da(self, v: float):
+        self._bg_da.value = float(v)
+
+    @property
+    def bg_aa(self) -> float:
+        """Background of the I_AA channel."""
+        return float(self._bg_aa.value)
+
+    @bg_aa.setter
+    def bg_aa(self, v: float):
+        self._bg_aa.value = float(v)
 
     @property
     def r0(self) -> float:
@@ -175,8 +190,8 @@ class CalibrationParameters(FittingParameterGroup):
     def as_dict(self) -> dict:
         """Return the current factor values as a plain dict."""
         return {
-            "gamma": self.gamma, "alpha": self.alpha, "delta": self.delta,
-            "Bg": self.bg, "Br": self.br, "By": self.by,
+            "gamma": self.gamma, "alpha": self.alpha, "beta": self.beta, "delta": self.delta,
+            "Bg_DD": self.bg_dd, "Bg_DA": self.bg_da, "Bg_AA": self.bg_aa,
             "R0": self.r0, "PhiA": self.phi_a, "PhiD": self.phi_d,
         }
 
