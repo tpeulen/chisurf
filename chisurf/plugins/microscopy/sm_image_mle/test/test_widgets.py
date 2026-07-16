@@ -16,8 +16,8 @@ def test_view_model_is_qt_free_and_binds_settings():
     assert vm.settings.micro_time_range == (5, 200)
     # No results yet → empty accessors.
     assert vm.segmentation_image() is None
-    assert vm.molecule_markers() == []
-    assert vm.molecule_rows() == []
+    assert vm.molecule_entries() == []
+    assert vm.current_molecule_marker() == []
     ok, reason = vm.can_run()
     assert not ok and reason
 

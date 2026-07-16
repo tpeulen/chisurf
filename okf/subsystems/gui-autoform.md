@@ -20,10 +20,14 @@ timestamp: '2026-07-05T00:00:00Z'
 model/UI split, backed by data specs in `chisurf/core/dataspec/`.
 
 Notable section types the framework supports include `image` (3D stacks with
-click-pick / markers / ROI), `waterfall` (RGB time-vs-µtime images),
-`path_list` (drag-drop file/folder lists), and `wizard`/`info`/`embed`.
-Sections take a `description` field mapped to widget tooltips, and manifest
-`rpc_methods` can be rendered as forms via `AutoForm.from_rpc_method`.
+click-pick / markers / on-image text labels / ROI), `image_browser` (a
+navigable entry list — files, molecules, frames — beside that `image` canvas,
+with per-entry star ratings, an editable note, a filter and drag-drop; shared by
+the TTTR image browser and the molecule-wise MLE tool), `waterfall` (RGB
+time-vs-µtime images), `path_list` (drag-drop file/folder lists), and
+`wizard`/`info`/`embed`. Sections take a `description` field mapped to widget
+tooltips, and manifest `rpc_methods` can be rendered as forms via
+`AutoForm.from_rpc_method`.
 
 When touching GUI code, prefer porting hand-built widgets to AutoForm + a
 JSON view scheme.

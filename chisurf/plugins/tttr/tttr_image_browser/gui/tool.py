@@ -52,7 +52,9 @@ class TTTRImageBrowserTool(QMainWindow):
         # When embedded in Image Tools, selecting an image proactively warms the
         # imaging pipeline (background prefill) so later steps are ready.
         try:
-            self._workspace.table.itemSelectionChanged.connect(self._on_image_selected)
+            self._workspace.model.add_observer(
+                lambda event: self._on_image_selected() if event == "select" else None
+            )
         except Exception:
             pass
 
@@ -151,7 +153,7 @@ class TTTRImageBrowserTool(QMainWindow):
         toolbar.addAction(next_action)
 
         chk_subfolders = QCheckBox("Subfolders", self)
-        chk_subfolders.setChecked(self._workspace.chk_subfolders.isChecked())
+        chk_subfolders.setChecked(self._workspace.model.recursive)
         chk_subfolders.setToolTip("Include subfolders when opening a folder")
         chk_subfolders.toggled.connect(self._workspace._on_subfolders_toggled)
         toolbar.addWidget(chk_subfolders)

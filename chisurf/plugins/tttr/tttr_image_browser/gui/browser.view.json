@@ -1,0 +1,33 @@
+{
+  "_comment": "TTTR Image Browser (page 1). AutoForm over ImageBrowserViewModel: a rating-filter choice above the reusable `image_browser` section — a file list (name + size + ★ rating badge), the per-file intensity mosaic as the image canvas with per-tile channel/micro-time labels, an editable annotation note, and a text filter. Ratings and annotations persist to .image_browser_meta.json; drop a folder to open it. Toolbar (Open/Clear/Caches/Export/TIFF/DOCX/Next) lives in the tool shell.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Images",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Files",
+          "n_col": 1,
+          "collapsed": false,
+          "sections": [
+            {"type": "choice", "attr": "rating_filter", "label": "Rating filter",
+             "options_source": "rating_filter_options", "call": "set_rating_filter",
+             "description": "Show only files at/above (or exactly at) a star rating."},
+            {"type": "custom", "key": "image_browser", "target": "current_image", "title": "Browser",
+             "options": {
+               "entries_source": "file_entries", "entry_attr": "current_file",
+               "selected_ids_attr": "selected_files", "select_call": "select_file",
+               "info_source": "info_html", "filter": true,
+               "note_source": "current_note", "note_call": "set_note", "note_placeholder": "Annotation…",
+               "rating_call": "set_rating", "max_rating": 3,
+               "labels_source": "image_labels", "on_drop": "on_drop",
+               "colormap": true, "default_colormap": "magma", "list_width": 320
+             },
+             "description": "Pick a file to preview its detector-window intensity mosaic; rate ★ and annotate. Drop a folder to open it."}
+          ]
+        }
+      ]
+    }
+  ]
+}

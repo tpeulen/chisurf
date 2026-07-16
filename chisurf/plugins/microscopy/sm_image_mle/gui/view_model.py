@@ -32,8 +32,10 @@ class MoleculeMleViewModel:
         self.irf_files: list[str] = []
         self.settings = MoleculeMleSettings()
         self.status_text: str = ""
-        #: Per-file results of the last run (display uses the first).
+        #: Per-file results of the last run.
         self.results: list[MoleculeMleResult] = []
+        #: Flat index of the molecule shown in the browser.
+        self.current_molecule: int = 0
         self._observers: list[Callable[[str], None]] = []
 
     def view_spec(self):
@@ -162,40 +164,74 @@ class MoleculeMleViewModel:
 
     del _scalar
 
-    # ── results accessors (AutoForm image / table / info) ──
-    def _display_result(self) -> MoleculeMleResult | None:
-        return self.results[0] if self.results else None
+    # ── results accessors (AutoForm image_browser) ──
+    def _flat_molecules(self) -> list[tuple[int, int]]:
+        """Flat ``(result_index, dataframe_row)`` list over every molecule."""
+        return [
+            (ri, row)
+            for ri, result in enumerate(self.results)
+            for row in range(len(result.dataframe))
+        ]
+
+    def _current_molecule(self):
+        """Return ``(result, row_record)`` for the selected molecule, or None."""
+        flat = self._flat_molecules()
+        if not flat:
+            return None
+        idx = int(self.current_molecule) if 0 <= self.current_molecule < len(flat) else 0
+        ri, row = flat[idx]
+        result = self.results[ri]
+        return result, result.dataframe.iloc[row].to_dict()
+
+    def molecule_entries(self) -> list[dict]:
+        """Browsable molecule entries (id = flat index; badge = fitted τ)."""
+        entries: list[dict] = []
+        idx = 0
+        for ri, result in enumerate(self.results):
+            file_tag = f"F{ri + 1}·" if len(self.results) > 1 else ""
+            for rec in result.dataframe.to_dict("records"):
+                entries.append({
+                    "id": idx,
+                    "label": f"{file_tag}Mol {int(rec.get('label', idx))}",
+                    "badge": f"τ={float(rec.get('tau', float('nan'))):.2f} ns",
+                })
+                idx += 1
+        return entries
 
     def segmentation_image(self):
-        """2-D total-intensity image of the displayed file (for the image dock)."""
-        result = self._display_result()
-        if result is None:
+        """Total-intensity image of the current molecule's file (for the canvas)."""
+        cur = self._current_molecule()
+        if cur is None:
             return None
-        return np.asarray(result.intensity_image)
+        return np.asarray(cur[0].intensity_image)
 
-    def molecule_markers(self) -> list:
-        """Molecule centroids as ``(z, y, x)`` markers on the segmentation image."""
-        result = self._display_result()
-        if result is None or result.centroids.size == 0:
+    def current_molecule_marker(self) -> list:
+        """Return the selected molecule's centroid as one ``(z, y, x)`` marker."""
+        cur = self._current_molecule()
+        if cur is None:
             return []
-        return [(0, float(r), float(c)) for r, c in result.centroids]
+        rec = cur[1]
+        return [(0, float(rec.get("centroid_row", 0.0)), float(rec.get("centroid_col", 0.0)))]
 
-    def molecule_rows(self) -> list[dict]:
-        """Per-molecule rows (all files) for the results table."""
-        rows: list[dict] = []
-        for result in self.results:
-            for rec in result.dataframe.to_dict("records"):
-                rows.append(
-                    {
-                        "label": int(rec.get("label", 0)),
-                        "tau": round(float(rec.get("tau", float("nan"))), 3),
-                        "gamma": round(float(rec.get("gamma", float("nan"))), 3),
-                        "rho": round(float(rec.get("rho", float("nan"))), 3),
-                        "photons": int(rec.get("n_photons_total", 0)),
-                        "2I*": round(float(rec.get("2I*", float("nan"))), 3),
-                    }
-                )
-        return rows
+    def current_molecule_info(self) -> str:
+        """HTML fit summary for the selected molecule (metadata panel)."""
+        cur = self._current_molecule()
+        if cur is None:
+            return "<i>No molecule selected.</i>"
+        rec = cur[1]
+
+        def g(key, fmt="{:.3f}"):
+            try:
+                return fmt.format(float(rec.get(key, float("nan"))))
+            except (TypeError, ValueError):
+                return "—"
+
+        return (
+            f"<b>Molecule {int(rec.get('label', 0))}</b><br>"
+            f"τ = {g('tau')} ns &nbsp; γ = {g('gamma')}<br>"
+            f"r0 = {g('r0')} &nbsp; ρ = {g('rho')} ns<br>"
+            f"photons = {int(rec.get('n_photons_total', 0))} &nbsp; 2I* = {g('2I*')}"
+        )
 
     def info_html(self) -> str:
         """Status / summary text shown above the results."""

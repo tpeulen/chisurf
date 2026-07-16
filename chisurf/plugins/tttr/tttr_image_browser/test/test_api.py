@@ -1,4 +1,7 @@
-from chisurf.plugins.tttr.tttr_image_browser.api.contract import METHOD_LIST_FILES, contract_descriptor
+from chisurf.plugins.tttr.tttr_image_browser.api.contract import (
+    METHOD_LIST_FILES,
+    contract_descriptor,
+)
 from chisurf.plugins.tttr.tttr_image_browser.api.io import list_files
 from chisurf.plugins.tttr.tttr_image_browser.core.metadata import load_meta, save_meta
 

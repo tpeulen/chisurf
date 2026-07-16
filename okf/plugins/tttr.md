@@ -22,7 +22,7 @@ or [imaging](/plugins/imaging.md) analysis.
 | `ptu_header_edit` | Tools:TTTR:PTU Header Editor | Edits PTU header fields through a declarative view. |
 | `tttr_time_windows` | Tools:Converter:TTTR->Time-Window BIDs | Splits TTTR files into fixed-duration Burst-ID windows. |
 | `trace_browser` | Spectroscopy:Single-Molecule:Trace Browser | Browses folders of PTU/TTTR intensity traces, stores ratings/annotations, previews traces, and exports selections. |
-| `tttr_image_browser` | Imaging:Tools:Image Browser | Previews intensity images for detector-window definitions and exports TIFF images. |
+| `tttr_image_browser` | Imaging:Tools:Image Browser | Browses TTTR files in a folder and previews the per-detector-window intensity mosaic. GUI is the shared `image_browser` AutoForm section over a Qt-free view-model (file list with star ratings + size, mosaic canvas with per-tile labels, editable annotations, rating filter, drag-drop) on the existing Qt-free core + RPC; exports TIFF/DOCX. |
 | `tttr_count_rate_analysis` | Tools:TTTR:Count Rate Analysis | Computes per-channel count rates across many TTTR files. |
 | `tttr_lut_tools` | Tools:TTTR:LUT Tools | Builds micro-time lookup tables and channel-LUT settings. |
 | `microtime_histogram` | Spectroscopy:Fluorescence decay:Histogram-Microtime | Creates and inspects TTTR micro-time histograms. |

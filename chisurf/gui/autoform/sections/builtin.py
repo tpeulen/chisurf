@@ -592,7 +592,7 @@ class ButtonRowWidget(QtWidgets.QWidget):
 
 
 class TableWidget(QtWidgets.QTableWidget):
-    """Read-only record table for a :class:`TableSection`."""
+    """Record table for a :class:`TableSection`, optionally editable."""
 
     AUTOFORM_REFRESH = True
 
@@ -603,7 +603,14 @@ class TableWidget(QtWidgets.QTableWidget):
         self._columns = tuple(dict(c) for c in section.columns)
         self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        if getattr(section, "editable", False):
+            self.setEditTriggers(
+                QtWidgets.QAbstractItemView.DoubleClicked
+                | QtWidgets.QAbstractItemView.EditKeyPressed
+                | QtWidgets.QAbstractItemView.SelectedClicked
+            )
+        else:
+            self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.setAlternatingRowColors(True)
         self.verticalHeader().setVisible(False)
         self.setHorizontalHeaderLabels(
@@ -621,6 +628,7 @@ class TableWidget(QtWidgets.QTableWidget):
             self.setMinimumHeight(int(section.height))
         self.itemSelectionChanged.connect(self._on_selection_changed)
         self.itemDoubleClicked.connect(lambda _item: self._activate_current_row())
+        self.itemChanged.connect(self._on_item_changed)
         self.refresh()
 
     def _rows(self) -> list:
@@ -650,6 +658,7 @@ class TableWidget(QtWidgets.QTableWidget):
 
     def refresh(self):
         """Re-read rows from the model source."""
+        self.blockSignals(True)
         rows = self._rows()
         self.setRowCount(len(rows))
         for r, row in enumerate(rows):
@@ -666,6 +675,16 @@ class TableWidget(QtWidgets.QTableWidget):
                     item.setData(QtCore.Qt.UserRole, row_dict)
                 self.setItem(r, c, item)
         self.resizeRowsToContents()
+        self.blockSignals(False)
+
+    def _on_item_changed(self, item) -> None:
+        if not getattr(self._section, "editable", False):
+            return
+        call = getattr(self._section, "update_call", "")
+        fn = getattr(self._model, call, None) if call else None
+        if callable(fn):
+            key = str(self._columns[item.column()].get("key") or "")
+            fn(item.row(), key, item.text())
 
     def _on_selection_changed(self) -> None:
         attr = getattr(self._section, "selected_attr", "")
@@ -1339,6 +1358,7 @@ class ImageMapWidget(QtWidgets.QWidget):
         select_attr: str | None = None,
         on_pick: str | None = None,
         markers_source: str | None = None,
+        labels_source: str | None = None,
         roi_source: str | None = None,
         **options,
     ):
@@ -1377,9 +1397,11 @@ class ImageMapWidget(QtWidgets.QWidget):
         self._select_attr = select_attr
         self._on_pick = on_pick
         self._markers_source = markers_source
+        self._labels_source = labels_source
         self._roi_source = roi_source
         self._pick_marker = None
         self._marker_items = []
+        self._label_items = []
         self._roi_item = None
         self._ndim = 2
         lay = QtWidgets.QVBoxLayout(self)
@@ -1398,7 +1420,7 @@ class ImageMapWidget(QtWidgets.QWidget):
                 self._setup_brush(pg)
             if self._select_attr or self._on_pick:
                 self._image.getView().scene().sigMouseClicked.connect(self._on_clicked)
-            if self._markers_source or self._roi_source:
+            if self._markers_source or self._roi_source or self._labels_source:
                 self._connect_slice_changed()
         except Exception:  # pragma: no cover - pyqtgraph optional
             lay.addWidget(QtWidgets.QLabel("pyqtgraph not available"))
@@ -1722,6 +1744,30 @@ class ImageMapWidget(QtWidgets.QWidget):
                     view.addItem(marker)
                     self._marker_items.append(marker)
 
+        # free text labels (e.g. mosaic tile names) on the current slice
+        for m in self._label_items:
+            view.removeItem(m)
+        self._label_items = []
+        if self._labels_source:
+            fn = getattr(self._model, self._labels_source, None)
+            labels = fn() if callable(fn) else None
+            for lab in labels or []:
+                if isinstance(lab, dict):
+                    lz, ly, lx = int(lab.get("z", 0)), float(lab["y"]), float(lab["x"])
+                    text = str(lab.get("text", ""))
+                elif len(lab) == 4:
+                    lz, ly, lx, text = int(lab[0]), float(lab[1]), float(lab[2]), str(lab[3])
+                else:
+                    lz, ly, lx, text = 0, float(lab[0]), float(lab[1]), str(lab[2])
+                if lz != z:
+                    continue
+                item = pg.TextItem(text=text, color=(255, 255, 255))
+                item.setAnchor((0, 0))
+                item.setPos(lx, ly)
+                item.setZValue(6)
+                view.addItem(item)
+                self._label_items.append(item)
+
         # selected-point marker (red circle)
         if self._pick_marker is not None:
             view.removeItem(self._pick_marker)
@@ -1814,7 +1860,7 @@ class ImageMapWidget(QtWidgets.QWidget):
                 else np.asarray(sel)
             )
             self._overlay.setImage(sel)
-        if self._markers_source or self._roi_source or self._select_attr:
+        if self._markers_source or self._roi_source or self._select_attr or self._labels_source:
             self._redraw_overlays()
 
 

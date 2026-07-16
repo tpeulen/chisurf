@@ -5,7 +5,9 @@ Usage:
   python -m chisurf.plugins.tttr.tttr_image_browser
 """
 import sys
+
 from qtpy.QtWidgets import QApplication
+
 from chisurf.plugins.tttr.tttr_image_browser.__init__ import TTTRImageBrowser
 
 
