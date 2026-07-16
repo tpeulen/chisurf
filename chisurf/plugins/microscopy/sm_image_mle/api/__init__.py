@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from .models import MoleculeMleSettings, MoleculeMleRequest, MoleculeMleResult
 from .contract import (
-    PLUGIN_ID,
     CONTRACT_VERSION,
     METHOD_ANALYZE,
     METHOD_CONTRACT,
+    PLUGIN_ID,
     contract_descriptor,
-    service_success,
     service_error,
+    service_success,
 )
+from .models import MoleculeMleRequest, MoleculeMleResult, MoleculeMleSettings
 from .molecule_mle import analyze_request
 
 __all__ = [

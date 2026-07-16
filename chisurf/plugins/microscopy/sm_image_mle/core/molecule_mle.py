@@ -1,0 +1,615 @@
+"""Qt-free core for molecule-wise MLE lifetime analysis of TTTR imaging data.
+
+Segments individual molecules from a confocal (CLSM) intensity image, builds a
+polarisation-resolved micro-time histogram ("Jordi" layout) per molecule, and
+fits a single fluorescence lifetime + anisotropy per molecule by Poisson maximum
+likelihood through the shared :class:`chisurf.core.fluorescence.mle.Fit2x`
+harness (tttrlib ``Fit23``, the Maus-2001 ``2I*`` estimator).
+
+This module contains no Qt and no ``click``: it is the single computational core
+shared by the ``sm_image_mle`` GUI, its RPC backend service, and its CLI, and it
+is directly testable headlessly from a TTTR image or a *simulated* CLSM image
+(see :mod:`test.test_molecule_mle_core`).  Unlike the previous monolithic script
+it returns data (a :class:`MoleculeMleResult`) instead of writing plots/TSVs —
+persisting outputs is the caller's job.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+from collections.abc import Callable, Sequence
+from typing import Any
+
+import numpy as np
+import pandas as pd
+
+from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings, assemble_jordi
+
+#: Callback signature ``(index, n_molecules)`` for per-molecule progress.
+ProgressCallback = Callable[[int, int], None]
+
+
+@dataclasses.dataclass
+class MoleculeMleSettings:
+    """Settings for a molecule-wise MLE lifetime fit.
+
+    The detector channels are split even/odd into the parallel (VV) and
+    perpendicular (VH) detection channels of the Jordi layout every ``fit2x``
+    estimator expects (``detector_chs[0::2]`` = parallel, ``detector_chs[1::2]``
+    = perpendicular); a single channel is used for both.
+
+    Parameters
+    ----------
+    detector_chs : sequence of int
+        TTTR routing channels of the imaging detector(s).
+    micro_time_range : tuple of int
+        Fit window ``(start, stop)`` on the *binned* micro-time axis.
+    micro_time_binning : int
+        Integer down-binning applied to the micro-time axis before fitting.
+    irf : numpy.ndarray, optional
+        Instrument-response histogram in Jordi layout, length
+        ``2 * (stop - start)``.  When ``None`` it must be supplied by the file
+        loader (:func:`fit_molecules_from_files`).
+    background : numpy.ndarray, optional
+        Background histogram in Jordi layout (same length as ``irf``).
+    g_factor : float, optional
+        Polarisation ``G`` factor (VV/VH detection-efficiency ratio).
+    normalize_counts : int, optional
+        Jordi normalisation mode (``0`` none, ``1`` average rate, ``2`` per
+        channel to unit area, ``3`` by acquisition time).
+    threshold : float, optional
+        Fraction of the per-channel maximum below which Jordi bins are zeroed
+        (``<= 0`` disables).
+    tau, gamma, r0, rho : float
+        Initial values for the ``Fit23`` parameters ``[tau, gamma, r0, rho]``.
+    fix_tau, fix_gamma, fix_r0, fix_rho : bool
+        Whether each parameter is held fixed during optimisation.
+    l1, l2 : float, optional
+        Polarisation mixing corrections of the objective.
+    p2s_twoIstar : bool, optional
+        Optimise ``P + 2S`` instead of ``P`` and ``S`` individually.
+    soft_bifl_scatter : bool, optional
+        Reduce ``Istar`` by the background contribution ("soft" BIFL scatter).
+    seg_sigma : float, optional
+        Gaussian smoothing sigma for the segmentation.
+    seg_threshold : float, optional
+        Fixed intensity threshold for the segmentation; ``< 0`` uses Otsu.
+    peak_footprint_size : int, optional
+        Side length of the square footprint for peak detection (watershed seeds).
+    min_area : int, optional
+        Molecules smaller than this many pixels are discarded.
+    min_photons : int, optional
+        Molecules with fewer than this many photons in the fit window are not
+        fitted (they yield NaN parameters).
+    """
+
+    detector_chs: Sequence[int] = (0, 1)
+    micro_time_range: tuple[int, int] = (0, 256)
+    micro_time_binning: int = 1
+
+    irf: np.ndarray | None = None
+    background: np.ndarray | None = None
+    g_factor: float = 1.0
+
+    normalize_counts: int = 0
+    threshold: float = -1.0
+
+    tau: float = 2.0
+    gamma: float = 0.0
+    r0: float = 0.38
+    rho: float = 1.0
+    fix_tau: bool = False
+    fix_gamma: bool = False
+    fix_r0: bool = True
+    fix_rho: bool = False
+
+    l1: float = 0.0
+    l2: float = 0.0
+    p2s_twoIstar: bool = True
+    soft_bifl_scatter: bool = False
+
+    seg_sigma: float = 1.0
+    seg_threshold: float = -1.0
+    peak_footprint_size: int = 6
+    min_area: int = 1
+    min_photons: int = 1
+
+    @property
+    def window(self) -> int:
+        """Number of (binned) micro-time channels per detection channel."""
+        return int(self.micro_time_range[1] - self.micro_time_range[0])
+
+    def channel_groups(self) -> tuple[list[int], list[int]]:
+        """Return the ``(parallel, perpendicular)`` channel lists."""
+        chs = list(self.detector_chs)
+        if len(chs) >= 2:
+            return chs[0::2], chs[1::2]
+        return chs, chs
+
+
+@dataclasses.dataclass
+class MoleculeMleResult:
+    """Result of a molecule-wise MLE lifetime analysis.
+
+    Attributes
+    ----------
+    dataframe : pandas.DataFrame
+        One row per segmented molecule with region properties (centroid, area,
+        eccentricity, ...) and fit parameters (``tau``, ``gamma``, ``r0``,
+        ``rho``, ``2I*``, photon counts).
+    intensity_image : numpy.ndarray
+        The 2-D total-intensity image the molecules were segmented from.
+    label_image : numpy.ndarray
+        The integer watershed label image (0 = background).
+    centroids : numpy.ndarray
+        ``(n_molecules, 2)`` array of ``(row, col)`` molecule centroids.
+    jordi_vectors : list of numpy.ndarray
+        Per-molecule Jordi decay histograms (only when ``keep_curves=True``).
+    model_curves : list of numpy.ndarray
+        Per-molecule fitted model histograms (only when ``keep_curves=True``).
+    n_molecules : int
+        Number of molecules fitted (rows in ``dataframe``).
+    """
+
+    dataframe: pd.DataFrame
+    intensity_image: np.ndarray
+    label_image: np.ndarray
+    centroids: np.ndarray
+    jordi_vectors: list[np.ndarray] = dataclasses.field(default_factory=list)
+    model_curves: list[np.ndarray] = dataclasses.field(default_factory=list)
+
+    @property
+    def n_molecules(self) -> int:
+        """Number of segmented and fitted molecules."""
+        return int(len(self.dataframe))
+
+
+# ---------------------------------------------------------------------------
+# Segmentation
+# ---------------------------------------------------------------------------
+def segment_molecules(
+    intensity: np.ndarray,
+    *,
+    seg_sigma: float = 1.0,
+    seg_threshold: float = -1.0,
+    peak_footprint_size: int = 6,
+    min_area: int = 1,
+) -> np.ndarray:
+    """Segment single molecules from a 2-D intensity image by watershed.
+
+    Gaussian-smooths the image, thresholds it (fixed ``seg_threshold`` or Otsu
+    when ``< 0``), clears border objects, and splits touching molecules by a
+    distance-transform watershed seeded on local maxima.
+
+    Parameters
+    ----------
+    intensity : numpy.ndarray
+        2-D total-intensity image.
+    seg_sigma : float, optional
+        Gaussian smoothing sigma.
+    seg_threshold : float, optional
+        Fixed intensity threshold; ``< 0`` uses Otsu.
+    peak_footprint_size : int, optional
+        Side length of the square footprint for the local-maxima seeds.
+    min_area : int, optional
+        Labels smaller than this many pixels are removed.
+
+    Returns
+    -------
+    numpy.ndarray
+        Integer label image (0 = background), same shape as ``intensity``.
+    """
+    from scipy import ndimage as ndi
+    from skimage import filters
+    from skimage.feature import peak_local_max
+    from skimage.segmentation import clear_border, watershed
+
+    smoothed = filters.gaussian(intensity.astype(float), sigma=seg_sigma)
+    if smoothed.max() <= 0:
+        return np.zeros(intensity.shape, dtype=np.int32)
+
+    thresh = seg_threshold if seg_threshold > 0 else filters.threshold_otsu(smoothed)
+    binary = clear_border(smoothed > thresh)
+    if not binary.any():
+        return np.zeros(intensity.shape, dtype=np.int32)
+
+    distance = ndi.distance_transform_edt(binary)
+    footprint = np.ones((peak_footprint_size, peak_footprint_size), dtype=bool)
+    coords = peak_local_max(distance, footprint=footprint, labels=binary)
+    seeds = np.zeros(distance.shape, dtype=bool)
+    seeds[tuple(coords.T)] = True
+    markers, _ = ndi.label(seeds)
+    labels = watershed(-distance, markers, mask=binary)
+
+    if min_area > 1:
+        counts = np.bincount(labels.ravel())
+        for lab, count in enumerate(counts):
+            if lab != 0 and count < min_area:
+                labels[labels == lab] = 0
+    return labels.astype(np.int32)
+
+
+# ---------------------------------------------------------------------------
+# IRF preparation (Qt-free, no plotting)
+# ---------------------------------------------------------------------------
+def _microtime_component(
+    tttr: Any,
+    channels: Sequence[int],
+    micro_time_range: tuple[int, int],
+    binning: int,
+) -> np.ndarray:
+    """Binned micro-time histogram for a channel subset, sliced to the window."""
+    start, stop = micro_time_range
+    raw_start, raw_stop = start * binning, stop * binning
+    mt = tttr.micro_times
+    ch = tttr.routing_channels
+    mask = (mt >= raw_start) & (mt <= raw_stop) & np.isin(ch, list(channels))
+    sub = tttr[np.where(mask)[0]]
+    hist, _ = sub.get_microtime_histogram(binning, minlength=-1)
+    return hist[start:stop].astype(np.float64)
+
+
+def _interpolate_shift(arr: np.ndarray, shift: float) -> np.ndarray:
+    """Shift *arr* by an integer + fractional offset (zeros pad, linear interp)."""
+    result = arr.astype(np.float64).copy()
+    if shift == 0:
+        return result
+    int_shift = int(np.trunc(shift))
+    if int_shift != 0:
+        result = np.roll(result, int_shift)
+        if int_shift > 0:
+            result[:int_shift] = 0.0
+        else:
+            result[int_shift:] = 0.0
+    frac = shift - int_shift
+    if frac != 0:
+        x = np.arange(result.size)
+        result = np.interp(x - frac, x, result, left=0.0, right=0.0)
+    return result
+
+
+def build_irf_jordi(
+    irf_tttr: Any,
+    *,
+    detector_chs: Sequence[int],
+    micro_time_range: tuple[int, int],
+    micro_time_binning: int = 1,
+    shift_sp: float = 0.0,
+    shift_ss: float = 0.0,
+    irf_threshold_fraction: float = 0.08,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Build the parallel/perpendicular IRF Jordi histogram from an IRF TTTR.
+
+    Parameters
+    ----------
+    irf_tttr : tttrlib.TTTR
+        Instrument-response measurement.
+    detector_chs : sequence of int
+        Detector channels (split even/odd into parallel/perpendicular).
+    micro_time_range : tuple of int
+        Fit window on the binned micro-time axis.
+    micro_time_binning : int, optional
+        Micro-time down-binning factor.
+    shift_sp, shift_ss : float, optional
+        Circular shifts applied to the parallel / perpendicular IRF components.
+    irf_threshold_fraction : float, optional
+        IRF bins below this fraction of the IRF maximum are zeroed (denoising).
+
+    Returns
+    -------
+    irf_full : numpy.ndarray
+        Thresholded, area-normalised IRF in Jordi layout (used as the IRF).
+    raw_irf : numpy.ndarray
+        Un-thresholded IRF in Jordi layout (used as the ``fit2x`` background).
+    """
+    chs = list(detector_chs)
+    sp_chs, ss_chs = (chs[0::2], chs[1::2]) if len(chs) >= 2 else (chs, chs)
+
+    sp = _microtime_component(irf_tttr, sp_chs, micro_time_range, micro_time_binning)
+    ss = _microtime_component(irf_tttr, ss_chs, micro_time_range, micro_time_binning)
+    sp = _interpolate_shift(sp, shift_sp)
+    ss = _interpolate_shift(ss, shift_ss)
+    sp = sp / sp.sum() if sp.sum() > 0 else sp
+    ss = ss / ss.sum() if ss.sum() > 0 else ss
+
+    raw_irf = np.hstack([sp, ss])
+    irf_full = raw_irf.copy()
+    if irf_full.max() > 0:
+        irf_full[irf_full < irf_threshold_fraction * irf_full.max()] = 0.0
+        if irf_full.sum() > 0:
+            irf_full = irf_full / irf_full.sum()
+    return irf_full, raw_irf
+
+
+def compute_g_factor(
+    irf_tttr: Any,
+    detector_chs: Sequence[int],
+    micro_time_range: tuple[int, int],
+    micro_time_binning: int = 1,
+    tail_fraction: float = 0.8,
+) -> float:
+    """Estimate the polarisation ``G`` factor from the IRF tail (∑P / ∑S)."""
+    chs = list(detector_chs)
+    sp_chs, ss_chs = ([chs[0]], [chs[1]]) if len(chs) >= 2 else (chs, chs)
+    p = _microtime_component(irf_tttr, sp_chs, micro_time_range, micro_time_binning)
+    s = _microtime_component(irf_tttr, ss_chs, micro_time_range, micro_time_binning)
+    tail = int(np.floor(tail_fraction * len(p)))
+    sum_s = float(s[tail:].sum())
+    return float(p[tail:].sum() / sum_s) if sum_s > 0 else 1.0
+
+
+# ---------------------------------------------------------------------------
+# Per-molecule Jordi + fit
+# ---------------------------------------------------------------------------
+def _molecule_jordi(
+    micro_times: np.ndarray,
+    routing: np.ndarray,
+    indices: np.ndarray,
+    settings: MoleculeMleSettings,
+) -> tuple[np.ndarray, int, int]:
+    """Build one molecule's Jordi histogram from its photon indices.
+
+    Returns ``(jordi, n_parallel, n_perpendicular)``.
+    """
+    start, stop = settings.micro_time_range
+    binning = max(1, int(settings.micro_time_binning))
+    window = stop - start
+    sp_chs, ss_chs = settings.channel_groups()
+
+    mt = micro_times[indices] // binning
+    ch = routing[indices]
+    n_ch = int(mt.max()) + 1 if mt.size else stop
+
+    def hist(sel_chs):
+        sel = np.isin(ch, sel_chs)
+        if not sel.any():
+            return np.zeros(window, dtype=np.float64)
+        h = np.bincount(mt[sel], minlength=max(n_ch, stop))[start:stop]
+        return h.astype(np.float64)
+
+    cp = hist(sp_chs)
+    cs = hist(ss_chs)
+    n_p, n_s = int(cp.sum()), int(cs.sum())
+
+    if settings.threshold > 0:
+        for arr in (cp, cs):
+            if arr.max() > 0:
+                arr[arr < settings.threshold * arr.max()] = 0.0
+
+    if settings.normalize_counts == 1:
+        ct = (cp.sum() + cs.sum()) / 2.0
+        if ct > 0:
+            cp, cs = cp / ct, cs / ct
+    elif settings.normalize_counts == 2:
+        if cp.sum() > 0:
+            cp = cp / cp.sum()
+        if cs.sum() > 0:
+            cs = cs / cs.sum()
+
+    return assemble_jordi(cp, cs), n_p, n_s
+
+
+def _initial_and_fixed(s: MoleculeMleSettings) -> tuple[np.ndarray, np.ndarray]:
+    x0 = np.array([s.tau, s.gamma, s.r0, s.rho], dtype=np.float64)
+    fixed = np.array(
+        [int(s.fix_tau), int(s.fix_gamma), int(s.fix_r0), int(s.fix_rho)],
+        dtype=np.int16,
+    )
+    return x0, fixed
+
+
+def fit_molecules(
+    tttr: Any,
+    settings: MoleculeMleSettings,
+    *,
+    clsm: Any = None,
+    dt: float | None = None,
+    period: float | None = None,
+    progress: ProgressCallback | None = None,
+    keep_curves: bool = False,
+) -> MoleculeMleResult:
+    """Segment molecules from a CLSM TTTR image and MLE-fit each lifetime.
+
+    Parameters
+    ----------
+    tttr : tttrlib.TTTR
+        The confocal (CLSM) photon stream to analyse.
+    settings : MoleculeMleSettings
+        Segmentation, channel, IRF and estimator settings.  ``settings.irf``
+        must be set (see :func:`fit_molecules_from_files` for the file path).
+    clsm : tttrlib.CLSMImage, optional
+        Pre-built confocal image.  When omitted a ``CLSMImage(tttr, channels,
+        fill=True)`` is constructed with auto-detected markers (the normal path
+        for PTU/HT3 imaging files).  Pass an explicitly-constructed image when
+        the markers cannot be auto-detected (e.g. a simulated raster scan).
+    dt : float, optional
+        Width of one (binned) micro-time channel in nanoseconds.  Derived from
+        the TTTR header when omitted.
+    period : float, optional
+        Excitation period (nanoseconds).  Derived from ``dt * window`` when
+        omitted.
+    progress : callable, optional
+        Called as ``progress(index, n_molecules)`` after each molecule.
+    keep_curves : bool, optional
+        Also return the per-molecule Jordi and model histograms.
+
+    Returns
+    -------
+    MoleculeMleResult
+    """
+    import tttrlib
+    from skimage import measure
+
+    if settings.irf is None:
+        raise ValueError("settings.irf must be set (Jordi IRF); use fit_molecules_from_files")
+    irf = np.ascontiguousarray(settings.irf, dtype=np.float64)
+    if irf.size != 2 * settings.window:
+        raise ValueError(
+            f"irf length {irf.size} != 2*window (2*{settings.window}={2 * settings.window})"
+        )
+
+    binning = max(1, int(settings.micro_time_binning))
+    if dt is None:
+        dt = float(tttr.header.micro_time_resolution) * 1e9 * binning
+    if period is None:
+        period = float(dt) * settings.window
+
+    fit2x = Fit2x(
+        Fit2xSettings(
+            dt=float(dt),
+            period=float(period),
+            irf=irf,
+            background=settings.background,
+            g_factor=float(settings.g_factor),
+            l1=float(settings.l1),
+            l2=float(settings.l2),
+            p2s_twoIstar=bool(settings.p2s_twoIstar),
+            soft_bifl_scatter=bool(settings.soft_bifl_scatter),
+        ),
+        model=Fit2xModel.FIT23,
+    )
+    x0, fixed = _initial_and_fixed(settings)
+
+    if clsm is None:
+        clsm = tttrlib.CLSMImage(tttr, channels=list(settings.detector_chs), fill=True)
+    intensity = np.asarray(clsm.intensity).sum(axis=0)
+
+    labels = segment_molecules(
+        intensity,
+        seg_sigma=settings.seg_sigma,
+        seg_threshold=settings.seg_threshold,
+        peak_footprint_size=settings.peak_footprint_size,
+        min_area=settings.min_area,
+    )
+
+    micro_times = tttr.micro_times
+    routing = tttr.routing_channels
+
+    rows: list[dict] = []
+    centroids: list[tuple[float, float]] = []
+    jordis: list[np.ndarray] = []
+    curves: list[np.ndarray] = []
+
+    props = measure.regionprops(labels)
+    n_props = len(props)
+    for i, prop in enumerate(props):
+        idx: list[int] = []
+        for r, c in prop.coords:
+            idx.extend(list(clsm[0][int(r)][int(c)].tttr_indices))
+        indices = np.asarray(idx, dtype=np.int64)
+
+        jordi, n_p, n_s = _molecule_jordi(micro_times, routing, indices, settings)
+        n_total = n_p + n_s
+
+        if n_total < settings.min_photons:
+            if progress is not None:
+                progress(i, n_props)
+            continue
+
+        res = fit2x.fit(jordi, initial_values=x0, fixed=fixed, include_model=keep_curves)
+        cy, cx = prop.centroid
+        perimeter = float(prop.perimeter)
+        area = int(prop.area)
+        circularity = (4 * np.pi * area / perimeter**2) if perimeter > 0 else 0.0
+
+        rows.append(
+            {
+                "label": int(prop.label),
+                "centroid_row": float(cy),
+                "centroid_col": float(cx),
+                "area": area,
+                "perimeter": perimeter,
+                "circularity": circularity,
+                "eccentricity": float(prop.eccentricity),
+                "solidity": float(prop.solidity),
+                "n_photons_total": n_total,
+                "n_photons_parallel": n_p,
+                "n_photons_perpendicular": n_s,
+                "tau": float(res.x[0]),
+                "gamma": float(res.x[1]),
+                "r0": float(res.x[2]),
+                "rho": float(res.x[3]),
+                "r_scatter": res.r_scatter,
+                "r_experimental": res.r_experimental,
+                "2I*": float(res.twoIstar),
+            }
+        )
+        centroids.append((float(cy), float(cx)))
+        if keep_curves:
+            jordis.append(jordi)
+            curves.append(res.model_curve if res.model_curve is not None else np.array([]))
+
+        if progress is not None:
+            progress(i, n_props)
+
+    dataframe = pd.DataFrame(rows)
+    return MoleculeMleResult(
+        dataframe=dataframe,
+        intensity_image=intensity,
+        label_image=labels,
+        centroids=np.asarray(centroids, dtype=float).reshape(-1, 2),
+        jordi_vectors=jordis,
+        model_curves=curves,
+    )
+
+
+def fit_molecules_from_files(
+    ptu_path: str,
+    irf_path: str,
+    settings: MoleculeMleSettings,
+    *,
+    shift_sp: float = 0.0,
+    shift_ss: float = 0.0,
+    irf_threshold_fraction: float = 0.08,
+    progress: ProgressCallback | None = None,
+    keep_curves: bool = False,
+) -> MoleculeMleResult:
+    """Load a CLSM image + IRF from disk and run :func:`fit_molecules`.
+
+    The IRF Jordi histogram, background and ``G`` factor are built from
+    *irf_path* (unless ``settings.irf`` is already provided).
+
+    Parameters
+    ----------
+    ptu_path : str
+        Path to the confocal (CLSM) TTTR image.
+    irf_path : str
+        Path to the IRF TTTR measurement.
+    settings : MoleculeMleSettings
+        Analysis settings (segmentation, channels, estimator).
+    shift_sp, shift_ss : float, optional
+        Circular IRF shifts (parallel / perpendicular).
+    irf_threshold_fraction : float, optional
+        IRF denoising threshold fraction.
+    progress : callable, optional
+        Progress callback forwarded to :func:`fit_molecules`.
+    keep_curves : bool, optional
+        Keep per-molecule curves in the result.
+
+    Returns
+    -------
+    MoleculeMleResult
+    """
+    import tttrlib
+
+    tttr = tttrlib.TTTR(ptu_path)
+    if settings.irf is None:
+        irf_tttr = tttrlib.TTTR(irf_path)
+        irf_full, raw_irf = build_irf_jordi(
+            irf_tttr,
+            detector_chs=settings.detector_chs,
+            micro_time_range=settings.micro_time_range,
+            micro_time_binning=settings.micro_time_binning,
+            shift_sp=shift_sp,
+            shift_ss=shift_ss,
+            irf_threshold_fraction=irf_threshold_fraction,
+        )
+        settings.irf = irf_full
+        settings.background = raw_irf
+        settings.g_factor = compute_g_factor(
+            irf_tttr,
+            settings.detector_chs,
+            settings.micro_time_range,
+            settings.micro_time_binning,
+        )
+    return fit_molecules(tttr, settings, progress=progress, keep_curves=keep_curves)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from typing import Any
 
@@ -9,8 +10,8 @@ from ..api.contract import (
     METHOD_ANALYZE,
     METHOD_CONTRACT,
     contract_descriptor,
-    service_success,
     service_error,
+    service_success,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,10 @@ def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
         from ..api.molecule_mle import analyze_request
 
         settings_dict = params.get("settings") or {}
-        settings = MoleculeMleSettings(**{k: v for k, v in settings_dict.items() if hasattr(MoleculeMleSettings, k)})
+        field_names = {f.name for f in dataclasses.fields(MoleculeMleSettings)}
+        settings = MoleculeMleSettings(
+            **{k: v for k, v in settings_dict.items() if k in field_names}
+        )
         request = MoleculeMleRequest(
             files=params["files"],
             irf_file=params["irf_file"],
@@ -37,12 +41,15 @@ def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
             settings=settings,
         )
         result = analyze_request(request)
-        return service_success({
-            "processed_files": result.processed_files,
-            "output_paths": result.output_paths,
-            "joint_tsv": result.joint_tsv,
-            "warnings": result.warnings,
-        })
+        return service_success(
+            {
+                "processed_files": result.processed_files,
+                "output_paths": result.output_paths,
+                "joint_tsv": result.joint_tsv,
+                "n_molecules": result.n_molecules,
+                "warnings": result.warnings,
+            }
+        )
     except Exception as exc:
         logger.exception("sm_image_mle.analyze.run failed")
         return service_error(exc)

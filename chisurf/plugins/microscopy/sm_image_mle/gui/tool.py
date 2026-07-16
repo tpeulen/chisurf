@@ -1,69 +1,103 @@
-"""New-style GUI entrypoint for the Molecule-wise MLE plugin.
+"""GUI entrypoint for the molecule-wise MLE tool (AutoForm + view.json).
 
-``SmImageMleTool`` subclasses the existing
-:class:`~chisurf.plugins.microscopy.sm_image_mle.MainWindow` to add the shared
-setup adapter used by the Imaging Tools aggregator.  The tool has no embedded
-detector wizard (it uses simple channel / micro-time controls), so ``embedded``
-is accepted for API uniformity but changes nothing on its own; standalone use is
-unaffected.
+``SmImageMleTool`` hosts an :class:`~chisurf.gui.autoform.AutoForm` bound to the
+Qt-free :class:`~...gui.view_model.MoleculeMleViewModel`.  The heavy analysis
+(``view_model.run``) runs on a background thread so the UI never blocks, and the
+segmentation image / molecule table refresh when it finishes.
 
-``apply_setup_settings(payload)`` maps a detector definition (the dict shape
-produced by ``DetectorWizardPage.get_settings()``) onto the tool's detector
-channel line edit and micro-time range spin boxes.
-
-Importing this module requires Qt; it is only loaded lazily via the
-``__getattr__`` hook in the package ``__init__.py``.
+``apply_setup_settings(payload)`` forwards a shared detector definition (from the
+Imaging Tools aggregator) to the view-model; ``embedded`` is accepted for API
+uniformity.
 """
 
 from __future__ import annotations
 
 import logging
 
-# ``MainWindow`` is defined at module level in the package ``__init__`` (not
-# behind the lazy ``__getattr__`` gate), so this import is safe.
-from chisurf.plugins.microscopy.sm_image_mle import MainWindow
+from qtpy import QtCore, QtWidgets
+
+from chisurf.gui.autoform import AutoForm
+
+from .view_model import MoleculeMleViewModel
 
 logger = logging.getLogger(__name__)
 
 
-class SmImageMleTool(MainWindow):
-    """Molecule-wise MLE tool with shared-setup support."""
+class _RunSignals(QtCore.QObject):
+    """Signal emitted when a background analysis run finishes."""
 
-    def __init__(self, parent=None, embedded: bool = False):
+    done = QtCore.Signal()
+
+
+class _RunTask(QtCore.QRunnable):
+    """Run the (slow) molecule-wise analysis off the UI thread."""
+
+    def __init__(self, model: MoleculeMleViewModel, signals: _RunSignals):
+        super().__init__()
+        self._model = model
+        self._signals = signals
+        self.setAutoDelete(True)
+
+    def run(self) -> None:  # noqa: N802 (Qt override)
+        try:
+            self._model.run()
+        except Exception:
+            logger.debug("molecule-MLE run failed", exc_info=True)
+        self._signals.done.emit()
+
+
+class SmImageMleTool(QtWidgets.QWidget):
+    """Molecule-wise MLE tool (AutoForm-hosted)."""
+
+    def __init__(self, parent=None, embedded: bool = False, view_model=None):
         super().__init__(parent)
         self._embedded = bool(embedded)
+        self.model = view_model or MoleculeMleViewModel()
+        self.setWindowTitle("Molecule-wise MLE")
+        self.setMinimumSize(640, 420)
+        self._running = False
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)
+        self.auto_form = AutoForm(self.model)
+        layout.addWidget(self.auto_form)
+        self.model.add_observer(self._on_model_event)
 
     def apply_setup_settings(self, payload: dict) -> None:
-        """Map a shared detector definition onto this tool's controls."""
-        if not payload:
+        """Forward a shared detector definition to the view-model."""
+        self.model.apply_setup_settings(payload)
+        self._refresh()
+
+    def _on_model_event(self, event: str) -> None:
+        # ``start_run`` fires on the UI thread (button click) — launch the worker.
+        # ``progress``/``done`` may fire on the worker thread; touching Qt there is
+        # unsafe, so ignore them (the queued ``_RunSignals.done`` refreshes the UI).
+        if event == "start_run":
+            self._start_run()
             return
-        detectors = payload.get("detectors") or {}
-        channels: list[int] = []
-        micro_range = None
-        for det in detectors.values():
-            if not isinstance(det, dict):
-                continue
-            for ch in det.get("chs", []) or []:
-                if ch not in channels:
-                    channels.append(ch)
-            if micro_range is None:
-                ranges = det.get("mtr") or det.get("microtime_ranges")
-                if ranges:
-                    micro_range = ranges[0]
+        if QtCore.QThread.currentThread() is not self.thread():
+            return
+        self._refresh()
 
-        line_edit = getattr(self, "detector_lineedit", None)
-        if line_edit is not None and channels:
+    def _refresh(self) -> None:
+        for fn in (self.auto_form.sync_fields, self.auto_form.refresh_plots):
             try:
-                line_edit.setText(" ".join(str(ch) for ch in channels))
-            except Exception:  # pragma: no cover - best-effort GUI sync
-                logger.debug("Could not set detector channels", exc_info=True)
+                fn()
+            except Exception:
+                logger.debug("molecule-MLE refresh failed", exc_info=True)
 
-        if micro_range and len(micro_range) == 2:
-            try:
-                self.mtr_start_spin.setValue(int(micro_range[0]))
-                self.mtr_stop_spin.setValue(int(micro_range[1]))
-            except Exception:  # pragma: no cover - best-effort GUI sync
-                logger.debug("Could not set micro-time range", exc_info=True)
+    def _start_run(self) -> None:
+        if self._running:
+            return
+        self._running = True
+        signals = _RunSignals()
+        signals.done.connect(self._on_run_done)
+        self._run_signals = signals  # keep a ref
+        QtCore.QThreadPool.globalInstance().start(_RunTask(self.model, signals))
+
+    def _on_run_done(self) -> None:
+        self._running = False
+        self._refresh()
 
 
 __all__ = ["SmImageMleTool"]

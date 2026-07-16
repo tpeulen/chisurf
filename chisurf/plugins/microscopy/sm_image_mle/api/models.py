@@ -1,50 +1,68 @@
-"""Pure dataclasses for molecule-wise MLE analysis — no Qt, no tttrlib at import time."""
+"""Transport dataclasses for molecule-wise MLE analysis (no Qt).
+
+The analysis settings live in the Qt-free core (:class:`MoleculeMleSettings`
+in :mod:`..core.molecule_mle`); this module re-exports them and adds the
+request/result envelopes used by the CLI and RPC backend.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Tuple
 
+from ..core.molecule_mle import MoleculeMleSettings
 
-@dataclass
-class MoleculeMleSettings:
-    """Parameters controlling the molecule-wise MLE analysis."""
-
-    detector_chs: List[int] = field(default_factory=lambda: [2, 0])
-    micro_time_range: Tuple[int, int] = (0, 256)
-    micro_time_binning: int = 32
-    normalize_counts: int = 0
-    threshold: float = -1.0
-    minlength: int = -1
-    shift_sp: float = 0.0
-    shift_ss: float = 0.0
-    irf_threshold_fraction: float = 0.08
-    fit_initial_values: Tuple[float, float, float, float] = (1.0, 0.0, 0.38, 1.0)
-    fit_fixed_flags: Tuple[int, int, int, int] = (0, 0, 1, 0)
-    l1: float = 0.04
-    l2: float = 0.04
-    twoi_star: bool = True
-    bifl_scatter: bool = False
-    seg_sigma: float = 1.0
-    seg_threshold: float = -1.0
-    peak_footprint_size: int = 6
+__all__ = ["MoleculeMleSettings", "MoleculeMleRequest", "MoleculeMleResult"]
 
 
 @dataclass
 class MoleculeMleRequest:
-    """Encapsulates a full analysis request."""
+    """A full molecule-wise MLE analysis request.
 
-    files: List[str]
+    Parameters
+    ----------
+    files : list of str
+        CLSM TTTR image files to analyse.
+    irf_file : str
+        IRF TTTR measurement (shared by all files).
+    output_dir : str, optional
+        Directory for the merged joint TSV; defaults to the first file's parent.
+    settings : MoleculeMleSettings, optional
+        Analysis settings (segmentation, channels, estimator).
+    shift_sp, shift_ss : float, optional
+        Circular IRF shifts (parallel / perpendicular).
+    irf_threshold_fraction : float, optional
+        IRF denoising threshold fraction.
+    """
+
+    files: list[str]
     irf_file: str
     output_dir: str = ""
     settings: MoleculeMleSettings = field(default_factory=MoleculeMleSettings)
+    shift_sp: float = 0.0
+    shift_ss: float = 0.0
+    irf_threshold_fraction: float = 0.08
 
 
 @dataclass
 class MoleculeMleResult:
-    """Result produced by a molecule-wise MLE analysis run."""
+    """Result of a molecule-wise MLE analysis run.
 
-    processed_files: List[str]
-    output_paths: List[str]
+    Attributes
+    ----------
+    processed_files : list of str
+        Files that produced molecule data.
+    output_paths : list of str
+        Per-file molecule-data TSV paths.
+    joint_tsv : str
+        Path to the merged joint TSV (empty when nothing was produced).
+    n_molecules : int
+        Total number of molecules fitted across all files.
+    warnings : list of str
+        Non-fatal problems encountered per file.
+    """
+
+    processed_files: list[str]
+    output_paths: list[str]
     joint_tsv: str = ""
-    warnings: List[str] = field(default_factory=list)
+    n_molecules: int = 0
+    warnings: list[str] = field(default_factory=list)

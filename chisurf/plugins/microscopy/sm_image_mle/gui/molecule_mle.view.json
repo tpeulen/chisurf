@@ -1,0 +1,80 @@
+{
+  "_comment": "Molecule-wise MLE tool. AutoForm over MoleculeMleViewModel: an Analysis dock (CLSM + IRF file lists, detector/window, segmentation and Fit23 settings, Run button) plus result docks (segmentation image with molecule markers, and a per-molecule fit table). Segments single molecules from the CLSM intensity image and fits each by single-lifetime Poisson MLE (Fit23).",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Molecule-wise MLE",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Analysis",
+          "n_col": 1,
+          "collapsed": false,
+          "sections": [
+            {"type": "info", "source": "info_html", "height": 60},
+            {"type": "custom", "key": "path_list", "target": "sel_files", "title": "CLSM imaging files",
+             "options": {"add_folders": false, "dialog_filter": "TTTR (*.ptu *.ht3 *.spc *.pt3);;All files (*)"},
+             "description": "Confocal (CLSM) TTTR image file(s) to analyse. Drag-drop to add."},
+            {"type": "custom", "key": "path_list", "target": "sel_irf_files", "title": "IRF file",
+             "options": {"add_folders": false, "dialog_filter": "TTTR (*.ptu *.ht3 *.spc *.pt3);;All files (*)"},
+             "description": "IRF TTTR measurement (the first file is used)."},
+            {"type": "value", "attr": "detector_chs_text", "kind": "str", "label": "Detector channels",
+             "description": "Space-separated routing channels; even = parallel (∥), odd = perpendicular (⊥)."},
+            {"type": "value", "attr": "mtr_start", "kind": "int", "label": "Fit start", "minimum": 0, "maximum": 1000000,
+             "description": "Fit-window start on the binned micro-time axis."},
+            {"type": "value", "attr": "mtr_stop", "kind": "int", "label": "Fit stop", "minimum": 1, "maximum": 1000000,
+             "description": "Fit-window stop on the binned micro-time axis."},
+            {"type": "value", "attr": "micro_time_binning", "kind": "int", "label": "Micro-time binning", "minimum": 1, "maximum": 100000,
+             "description": "Integer down-binning of the micro-time axis before fitting."},
+            {"type": "panel", "title": "Segmentation", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "seg_sigma", "kind": "float", "label": "Smoothing σ", "decimals": 2, "minimum": 0.0, "maximum": 100.0,
+               "description": "Gaussian smoothing sigma applied before thresholding."},
+              {"type": "value", "attr": "seg_threshold", "kind": "float", "label": "Threshold", "decimals": 3, "minimum": -1.0, "maximum": 1000000.0,
+               "description": "Fixed intensity threshold; < 0 uses Otsu."},
+              {"type": "value", "attr": "peak_footprint_size", "kind": "int", "label": "Peak footprint", "minimum": 1, "maximum": 100,
+               "description": "Square footprint side for watershed-seed peak detection."},
+              {"type": "value", "attr": "min_area", "kind": "int", "label": "Min area (px)", "minimum": 1, "maximum": 100000,
+               "description": "Molecules smaller than this many pixels are discarded."},
+              {"type": "value", "attr": "min_photons", "kind": "int", "label": "Min photons", "minimum": 1, "maximum": 10000000,
+               "description": "Molecules with fewer photons in the fit window are not fitted."}
+            ]},
+            {"type": "panel", "title": "Fit (Fit23)", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "tau", "kind": "float", "label": "τ (ns)", "decimals": 3, "minimum": 0.0, "maximum": 1000.0,
+               "description": "Initial fluorescence lifetime."},
+              {"type": "toggle", "attr": "fix_tau", "label": "fix τ", "description": "Hold the lifetime fixed."},
+              {"type": "value", "attr": "gamma", "kind": "float", "label": "γ", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
+               "description": "Initial scatter fraction."},
+              {"type": "toggle", "attr": "fix_gamma", "label": "fix γ", "description": "Hold the scatter fraction fixed."},
+              {"type": "value", "attr": "r0", "kind": "float", "label": "r0", "decimals": 3, "minimum": 0.0, "maximum": 0.4,
+               "description": "Fundamental anisotropy."},
+              {"type": "toggle", "attr": "fix_r0", "label": "fix r0", "description": "Hold the fundamental anisotropy fixed."},
+              {"type": "value", "attr": "rho", "kind": "float", "label": "ρ (ns)", "decimals": 3, "minimum": 0.0, "maximum": 1000.0,
+               "description": "Rotational correlation time."},
+              {"type": "toggle", "attr": "fix_rho", "label": "fix ρ", "description": "Hold the rotational correlation time fixed."},
+              {"type": "value", "attr": "l1", "kind": "float", "label": "l1", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
+               "description": "Polarisation mixing correction l1."},
+              {"type": "value", "attr": "l2", "kind": "float", "label": "l2", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
+               "description": "Polarisation mixing correction l2."},
+              {"type": "toggle", "attr": "p2s_twoIstar", "label": "2I* (P+2S)", "description": "Optimise P+2S instead of P and S separately."},
+              {"type": "toggle", "attr": "soft_bifl_scatter", "label": "BIFL scatter", "description": "Reduce Istar by the background contribution."}
+            ]},
+            {"type": "button_row", "buttons": [
+              {"label": "▶ Run", "action": "request_run", "description": "Segment and fit molecules in every selected file; writes molecule_data.tsv + joint_output.tsv."}
+            ]}
+          ]
+        },
+        {"type": "custom", "key": "image", "target": "segmentation_image", "title": "Segmentation",
+         "options": {"colormap": true, "default_colormap": "inferno", "markers_source": "molecule_markers"},
+         "description": "Total-intensity image; green markers show the segmented molecule centroids."},
+        {"type": "table", "title": "Molecules", "source": "molecule_rows", "columns": [
+          {"key": "label", "label": "ID"},
+          {"key": "tau", "label": "τ (ns)"},
+          {"key": "gamma", "label": "γ"},
+          {"key": "rho", "label": "ρ (ns)"},
+          {"key": "photons", "label": "Photons"},
+          {"key": "2I*", "label": "2I*"}
+        ]}
+      ]
+    }
+  ]
+}

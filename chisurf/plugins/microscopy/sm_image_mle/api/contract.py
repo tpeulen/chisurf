@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 PLUGIN_ID = "sm_image_mle"
-CONTRACT_VERSION = "2.0.0"
+CONTRACT_VERSION = "2.1.0"
 
 METHOD_ANALYZE = "sm_image_mle.analyze.run"
 METHOD_CONTRACT = "sm_image_mle.contract.describe"

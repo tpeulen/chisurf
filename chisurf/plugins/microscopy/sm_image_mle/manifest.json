@@ -1,6 +1,6 @@
 {
   "id": "sm_image_mle",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "display_name": "Imaging:Lifetime:Molecule-wise MLE",
   "description": "Molecule-wise MLE lifetime analysis from TTTR imaging data (PTU).",
   "authors": [

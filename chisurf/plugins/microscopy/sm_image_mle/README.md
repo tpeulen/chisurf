@@ -1,71 +1,45 @@
-# Single-Molecule MLE Plugin
+# Molecule-wise MLE
 
-This plugin provides a graphical interface to the PTU processing CLI for analyzing single-molecule fluorescence data. 
-It enables users to process multiple PTU files with customizable parameters and view the results in an integrated 
-browser.
+Segments single molecules from confocal (CLSM) TTTR imaging data and fits a
+single fluorescence lifetime + anisotropy per molecule by Poisson maximum
+likelihood (tttrlib `Fit23`, the Maus-2001 `2I*` estimator).
 
-## Features
+## Architecture
 
-- Drag-and-drop interface for selecting PTU files
-- Configurable processing parameters through a user-friendly GUI
-- Real-time progress tracking and log output
-- Integrated browser for viewing processed molecule images and decay plots
-- Support for batch processing multiple files
-- Customizable segmentation parameters for molecule detection
-- Lifetime fitting with adjustable parameters
+The plugin follows the client-server / Qt-free-core standard:
 
-## Requirements
+- **`core/molecule_mle.py`** — the single Qt-free computational core.
+  `segment_molecules` (watershed segmentation), `build_irf_jordi` /
+  `compute_g_factor` (IRF preparation), and `fit_molecules` /
+  `fit_molecules_from_files` build a per-molecule Jordi histogram and fit it
+  through the shared `chisurf.core.fluorescence.mle.Fit2x` harness. Returns a
+  `MoleculeMleResult` (per-molecule `DataFrame`, label + intensity images,
+  centroids) — no Qt, no plotting, no subprocess.
+- **`api/`** — transport dataclasses (`MoleculeMleSettings`/`Request`/`Result`)
+  and `analyze_request`, which runs the core in-process over a batch of files,
+  writing `<stem>_analysis/molecule_data.tsv` per file and a merged
+  `joint_output.tsv`.
+- **`backend/services.py`** — ZMQ/JSON-RPC service registration
+  (`sm_image_mle.analyze.run`, `sm_image_mle.contract.describe`).
+- **`gui/`** — an AutoForm view (`molecule_mle.view.json`) over the Qt-free
+  `MoleculeMleViewModel`; `SmImageMleTool` hosts it and runs the analysis on a
+  background thread.
+- **`cli/`** — `sm-image-mle analyze | contract | serve`.
 
-- Python packages:
-  - PyQt5
-  - numpy
-  - scipy
-  - matplotlib
-  - tttrlib (for PTU file handling)
+## GUI usage
 
-## Usage
+1. Launch from **Imaging → Molecule-wise MLE**.
+2. Drag CLSM imaging file(s) and an IRF file into the two lists.
+3. Set the detector channels (even = parallel, odd = perpendicular), the
+   micro-time fit window, and the segmentation / Fit23 options.
+4. Press **▶ Run**. The segmentation image (with molecule-centroid markers) and
+   the per-molecule fit table populate when the run finishes; TSVs are written
+   next to each file.
 
-1. Launch the plugin from the ChiSurf menu: Imaging > Single-Molecule MLE
-2. Drag and drop PTU files into the file list
-3. Select an IRF file using the Browse button
-4. Configure processing parameters in the Settings tab
-5. Click Process to start the analysis
-6. View the results in the Browser tab after processing is complete
+## Testing
 
-## Processing Parameters
-
-The plugin provides a comprehensive set of parameters for PTU processing:
-
-### Basic Parameters
-- Detector channels: Specify which detector channels to use
-- Micro-time range: Set the range of micro-time channels to analyze
-- Micro-time binning: Control the binning of micro-time data
-- Normalization options: Choose how to normalize counts
-
-### Fitting Parameters
-- Threshold: Set the threshold for molecule detection
-- Min length: Specify the minimum histogram length
-- Shift parameters: Adjust SP and SS shifts
-- IRF threshold fraction: Control IRF processing
-- Initial values and fixed flags for fitting
-
-### Segmentation Parameters
-- Segmentation σ: Controls Gaussian blur for segmentation
-- Segmentation threshold: Sets the threshold for peak detection
-- Peak footprint size: Defines the minimum size of detected peaks
-
-## Output
-
-The plugin generates several outputs for each processed PTU file:
-- Molecule images showing spatial distribution
-- Decay plots with fitted lifetime curves
-- Combined TSV file with analysis results
-- Log output showing processing details
-
-## License
-
-This plugin is part of the ChiSurf package and is distributed under the same license.
-
-## Author
-
-This plugin was created as part of the ChiSurf project.
+`test/test_molecule_mle_core.py` drives the core end-to-end against a *simulated*
+CLSM image built with tttrlib's photon simulator (`SimEngine`/`SimScanner`):
+immobile fluorophores of known lifetime are raster-scanned, segmented, and
+fitted, and the recovered lifetimes must track the ground truth. It skips
+cleanly when tttrlib (or its simulator) is unavailable.
