@@ -69,19 +69,34 @@ The core weighted-pseudo-inverse filter maths (`calc_ffcs_filters`,
 Verified by `test/fitting/test_fcs_filters.py` (orthogonality relation,
 amplitude recovery, afterpulse removal, conditioning, zero-bin guard).
 
+**Channel-aware filtered correlation (done).** `filtered.py` now has
+`species_filtered_correlation` / `species_weight_streams`: per-photon weights
+from a 2-D `(n_species,n_bins)` matrix, a 3-D `(n_channels,n_species,n_bins)`
+table, or a `{channel: matrix}` map (par/perp / per-detector via
+`correlate.get_weights`), correlating every species auto/cross pair with
+`tttrlib.Correlator`. `FilterResult.to_channel_filters` /
+`FilterResultMFD.to_channel_filters(par,perp)` build the channel table; the
+plugin entrypoint `fcs_correlator/core.py::filtered_correlation_datasets`
+emits dataset dicts and `CorrelatorSettingsModel.set_lifetime_filters` wires it
+into the correlator model. Tests: `test/fitting/test_flcs_correlation.py`,
+`chisurf/plugins/fcs/fcs_correlator/test/test_filtered_core.py`.
+
+**Catalogue additions (done).** Six more PAM FCS correlation models
+(`FCS_TauD_Background`, three `FCS_SCCF_*_TauD_anomalous`, `fullFCS_sum/product`)
+and a new **PCF experiment type** (pair-correlation distribution fits:
+`PCF_LogNormal/LogGaussian/Gamma`) — see the PCF catalogue
+`chisurf/core/models/pcf/`.
+
 ## What is missing (not implemented)
 
-- **Filters not wired into the general correlator.** `fcs_filter_calculator`
-  computes/exports filters; the `fcs_correlator` plugin still weights photons
-  with binary channel/micro-time masks only. Only `flc_2d` consumes filters. The
-  new `photon_filter_weights` helper is the building block; the remaining work is
-  a lifetime-filter weight source in the correlator GUI that runs one
-  `tttrlib.Correlator` per species auto/cross pair.
-- **Channel-aware (par/perp / multi-PIE) weighting.** PAM stacks multiple
-  detection channels onto one micro-time axis and applies separate par/perp
-  filters per photon; ChiSurf's application path uses a single micro-time axis
-  regardless of routing channel. Needs a 2-D `filters[channel, micro_time]`
-  table and a stacked-axis builder.
+- **Correlator GUI file-picker.** The lifetime-filter weight source is wired into
+  the correlator *model* (`set_lifetime_filters` + `correlate_data` branch) and a
+  Qt-free entrypoint; the `correlator.view.json` filter-file/species-pair picker
+  UI is the remaining GUI surface.
+- **Channel-aware (par/perp / multi-PIE) weighting** — *done* (see above via the
+  `{channel: matrix}` / 3-D table). The only unimplemented variant is PAM's
+  stacked single-micro-time-axis layout (multiple PIE windows concatenated onto
+  one axis), which the per-channel table supersedes for most uses.
 - **Automatic scatter/IRF and donor-only pattern species.** PAM can auto-append a
   measured scatter/IRF column and a donor-only column; ChiSurf requires the user
   to add such a pattern manually as a generic species file.

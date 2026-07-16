@@ -669,3 +669,91 @@ Scanning FCS (D, triplet):
     freq: 1
     y_0: 0
   description: 'Circular-scanning FCS (PAM FCS_Scanning): periodic sin^2 term with scan diameter diam (um) and frequency freq (kHz).'
+
+# --- PAM-derived FCS models, batch 2 (SCCF/background/full-FCS; A/B-verified). x in s. ---
+3D diffusion + background (tauD, triplet):
+  equation: y_0+1/sqrt(8)*(1/N)*(1-BG/Counts)**2*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1/(1+x/(tau_D*0.000001)))*(1/sqrt(1+(1/p**2)*x/(tau_D*0.000001)))
+  initial:
+    Counts: 100
+    BG: 0
+    N: 1
+    tau_D: 30
+    p: 5
+    tau_T: 1
+    Trip: 0.05
+    y_0: 0
+  description: 3D diffusion (tau_D us) with a (1-BG/Counts)^2 background-amplitude correction and triplet (PAM FCS_TauD_Background). Counts/BG in kHz; x in s.
+SCCF anomalous diffusion, 1 relaxation:
+  equation: y_0+1/sqrt(8)*(1/N)*(1+(1-2*isCCF)*A*exp(-x/(tau_T*0.000001)))*(1/(1+(x/(tau_D*0.000001))**alpha))*(1/sqrt(1+(1/p**2)*(x/(tau_D*0.000001))**alpha))
+  initial:
+    N: 0.01
+    tau_D: 2500
+    p: 5
+    alpha: 1
+    tau_T: 1
+    A: 1
+    y_0: 0
+    isCCF: 0
+  description: 'Species auto/cross-correlation (SACF/SCCF): anomalous tau_D diffusion with one relaxation term whose sign is set by isCCF (fix isCCF=0 for auto/bunching, isCCF=1 for the anti-correlated cross-correlation dip) (PAM FCS_SCCF_TauD_anomalous). x in s, tau in us.'
+SCCF anomalous diffusion, 2 relaxation:
+  equation: y_0+1/sqrt(8)*(1/N)*(1+(1-2*isCCF)*A_1*exp(-x/(tau_1*0.000001))+(1-2*isCCF)*A_2*exp(-x/(tau_2*0.000001)))*(1/(1+(x/(tau_D*0.000001))**alpha))*(1/sqrt(1+(1/p**2)*(x/(tau_D*0.000001))**alpha))
+  initial:
+    N: 0.01
+    tau_D: 2500
+    p: 5
+    alpha: 1
+    tau_1: 1
+    A_1: 1
+    tau_2: 1
+    A_2: 1
+    y_0: 0
+    isCCF: 0
+  description: SACF/SCCF anomalous tau_D diffusion with two signed relaxation terms (isCCF sign switch) (PAM FCS_SCCF_2exp_TauD_anomalous).
+SCCF anomalous diffusion, 3 relaxation:
+  equation: y_0+1/sqrt(8)*(1/N)*(1+(1-2*isCCF)*A_1*exp(-x/(tau_1*0.000001))+(1-2*isCCF)*A_2*exp(-x/(tau_2*0.000001))+(1-2*isCCF)*A_3*exp(-x/(tau_3*0.000001)))*(1/(1+(x/(tau_D*0.000001))**alpha))*(1/sqrt(1+(1/p**2)*(x/(tau_D*0.000001))**alpha))
+  initial:
+    N: 0.01
+    tau_D: 2500
+    p: 5
+    alpha: 1
+    tau_1: 1
+    A_1: 1
+    tau_2: 100
+    A_2: 1
+    tau_3: 500
+    A_3: 0
+    y_0: 0
+    isCCF: 0
+  description: SACF/SCCF anomalous tau_D diffusion with three signed relaxation terms (isCCF sign switch) (PAM FCS_SCCF_3exp_TauD_anomalous).
+Full FCS (antibunching + 2 summed bunching + triplet):
+  equation: y_0+1/sqrt(8)*(1/N)*(1-A_ab*exp(-x/(tau_AB*0.000000001)))*(1+A_1*exp(-x/(tau_1*0.000000001))+A_2*exp(-x/(tau_2*0.000000001)))*(1+T*exp(-x/(tau_T*0.000000001)))*(1/(1+x/(tau_D*0.000001)))*(1/sqrt(1+(1/p**2)*x/(tau_D*0.000001)))
+  initial:
+    N: 1
+    tau_D: 60
+    p: 5
+    tau_AB: 1
+    A_ab: 1
+    tau_1: 100
+    A_1: 0.1
+    tau_2: 200
+    A_2: 1
+    tau_T: 200
+    T: 1
+    y_0: 0
+  description: 'Full-timescale FCS: photon antibunching dip x (two SUMMED bunching terms) x triplet x 3D diffusion (PAM fullFCS_sum). Kinetic taus in ns, tau_D in us, x in s.'
+Full FCS (antibunching + 3 product bunching):
+  equation: y_0+1/sqrt(8)*(1/N)*(1-A_ab*exp(-x/(tau_AB*0.000000001)))*(1+A_1*exp(-x/(tau_1*0.000000001)))*(1+A_2*exp(-x/(tau_2*0.000000001)))*(1+A_3*exp(-x/(tau_3*0.000000001)))*(1/(1+x/(tau_D*0.000001)))*(1/sqrt(1+(1/p**2)*x/(tau_D*0.000001)))
+  initial:
+    N: 1
+    tau_D: 60
+    p: 5
+    tau_AB: 1
+    A_ab: 1
+    tau_1: 100
+    A_1: 0.1
+    tau_2: 200
+    A_2: 1
+    tau_3: 200
+    A_3: 1
+    y_0: 0
+  description: 'Full-timescale FCS: photon antibunching dip x (three MULTIPLIED bunching terms) x 3D diffusion (PAM fullFCS_product). Kinetic taus in ns, tau_D in us, x in s.'

@@ -124,6 +124,51 @@ def _fcs_scan(x, N, D, w_r, w_z, tau_T, Trip, diam, freq, y_0):
             * np.exp(-diam ** 2 * np.sin(np.pi * freq * 10 ** 3 * x) ** 2 / (w_r ** 2 + 4 * D * x)) + y_0)
 
 
+def _fcs_taud_bg(x, Counts, BG, N, tau_D, p, tau_T, Trip, y_0):
+    return (_G * 1 / N * (1 - BG / Counts) ** 2
+            * (1 + (Trip / (1 - Trip)) * np.exp(-x / tau_T / 1e-6))
+            * (1 / (1 + x / (tau_D * 1e-6)))
+            * (1 / np.sqrt(1 + (1 / p ** 2) * x / (tau_D * 1e-6))) + y_0)
+
+
+def _sccf1(x, N, tau_D, p, alpha, tau_T, A, y_0, isCCF):
+    return (_G * 1 / N * (1 + (1 - 2 * isCCF) * A * np.exp(-x / tau_T / 1e-6))
+            * (1 / (1 + (x / (tau_D * 1e-6)) ** alpha))
+            * (1 / np.sqrt(1 + (1 / p ** 2) * (x / (tau_D * 1e-6)) ** alpha)) + y_0)
+
+
+def _sccf2(x, N, tau_D, p, alpha, tau_1, A_1, tau_2, A_2, y_0, isCCF):
+    return (_G * 1 / N * (1 + (1 - 2 * isCCF) * A_1 * np.exp(-x / tau_1 / 1e-6)
+                          + (1 - 2 * isCCF) * A_2 * np.exp(-x / tau_2 / 1e-6))
+            * (1 / (1 + (x / (tau_D * 1e-6)) ** alpha))
+            * (1 / np.sqrt(1 + (1 / p ** 2) * (x / (tau_D * 1e-6)) ** alpha)) + y_0)
+
+
+def _sccf3(x, N, tau_D, p, alpha, tau_1, A_1, tau_2, A_2, tau_3, A_3, y_0, isCCF):
+    return (_G * 1 / N * (1 + (1 - 2 * isCCF) * A_1 * np.exp(-x / tau_1 / 1e-6)
+                          + (1 - 2 * isCCF) * A_2 * np.exp(-x / tau_2 / 1e-6)
+                          + (1 - 2 * isCCF) * A_3 * np.exp(-x / tau_3 / 1e-6))
+            * (1 / (1 + (x / (tau_D * 1e-6)) ** alpha))
+            * (1 / np.sqrt(1 + (1 / p ** 2) * (x / (tau_D * 1e-6)) ** alpha)) + y_0)
+
+
+def _full_sum(x, N, tau_D, p, tau_AB, A_ab, tau_1, A_1, tau_2, A_2, tau_T, T, y_0):
+    return (_G * 1 / N * (1 - A_ab * np.exp(-x / tau_AB / 1e-9))
+            * (1 + A_1 * np.exp(-x / tau_1 / 1e-9) + A_2 * np.exp(-x / tau_2 / 1e-9))
+            * (1 + T * np.exp(-x / tau_T / 1e-9))
+            * (1 / (1 + x / (tau_D * 1e-6)))
+            * (1 / np.sqrt(1 + (1 / p ** 2) * x / (tau_D * 1e-6))) + y_0)
+
+
+def _full_prod(x, N, tau_D, p, tau_AB, A_ab, tau_1, A_1, tau_2, A_2, tau_3, A_3, y_0):
+    return (_G * 1 / N * (1 - A_ab * np.exp(-x / tau_AB / 1e-9))
+            * (1 + A_1 * np.exp(-x / tau_1 / 1e-9))
+            * (1 + A_2 * np.exp(-x / tau_2 / 1e-9))
+            * (1 + A_3 * np.exp(-x / tau_3 / 1e-9))
+            * (1 / (1 + x / (tau_D * 1e-6)))
+            * (1 / np.sqrt(1 + (1 / p ** 2) * x / (tau_D * 1e-6))) + y_0)
+
+
 # --- map: models.yaml entry name -> (reference fn, {param: (low, high)}) ------
 CASES = {
     "3D diffusion (D, triplet)": (
@@ -166,6 +211,48 @@ CASES = {
     "Scanning FCS (D, triplet)": (
         _fcs_scan, dict(N=(0.2, 5), D=(10, 800), w_r=(0.1, 0.4), w_z=(0.5, 2), tau_T=(0.5, 5),
                         Trip=(0.01, 0.5), diam=(0.2, 1.5), freq=(0.5, 5), y_0=(-0.05, 0.05))),
+    "3D diffusion + background (tauD, triplet)": (
+        _fcs_taud_bg, dict(Counts=(50, 200), BG=(0, 40), N=(0.2, 5), tau_D=(5, 200), p=(2, 10),
+                           tau_T=(0.5, 5), Trip=(0.01, 0.5), y_0=(-0.05, 0.05))),
+    "SCCF anomalous diffusion, 1 relaxation": (
+        _sccf1, dict(N=(0.005, 0.5), tau_D=(500, 5000), p=(2, 10), alpha=(0.6, 1.4),
+                     tau_T=(0.5, 5), A=(0.05, 1.5), y_0=(-0.05, 0.05), isCCF=(0, 1))),
+    "SCCF anomalous diffusion, 2 relaxation": (
+        _sccf2, dict(N=(0.005, 0.5), tau_D=(500, 5000), p=(2, 10), alpha=(0.6, 1.4),
+                     tau_1=(0.5, 5), A_1=(0.05, 1.5), tau_2=(5, 50), A_2=(0.05, 1.5),
+                     y_0=(-0.05, 0.05), isCCF=(0, 1))),
+    "SCCF anomalous diffusion, 3 relaxation": (
+        _sccf3, dict(N=(0.005, 0.5), tau_D=(500, 5000), p=(2, 10), alpha=(0.6, 1.4),
+                     tau_1=(0.5, 5), A_1=(0.05, 1.5), tau_2=(50, 200), A_2=(0.05, 1.5),
+                     tau_3=(200, 800), A_3=(0.0, 0.5), y_0=(-0.05, 0.05), isCCF=(0, 1))),
+    "Full FCS (antibunching + 2 summed bunching + triplet)": (
+        _full_sum, dict(N=(0.2, 5), tau_D=(20, 200), p=(2, 10), tau_AB=(0.5, 5), A_ab=(0.1, 0.9),
+                        tau_1=(20, 200), A_1=(0.01, 0.5), tau_2=(50, 400), A_2=(0.05, 1.5),
+                        tau_T=(50, 500), T=(0.05, 1.5), y_0=(-0.05, 0.05))),
+    "Full FCS (antibunching + 3 product bunching)": (
+        _full_prod, dict(N=(0.2, 5), tau_D=(20, 200), p=(2, 10), tau_AB=(0.5, 5), A_ab=(0.1, 0.9),
+                         tau_1=(20, 200), A_1=(0.01, 0.5), tau_2=(50, 400), A_2=(0.05, 1.5),
+                         tau_3=(50, 400), A_3=(0.05, 1.5), y_0=(-0.05, 0.05))),
+}
+
+# PAM's own default ModelParameter values ("examples from PAM") for the batch-2
+# models, used as concrete A/B assertion points in addition to random draws.
+PAM_DEFAULTS = {
+    "3D diffusion + background (tauD, triplet)":
+        dict(Counts=100, BG=0, N=1, tau_D=30, p=5, tau_T=1, Trip=0.0, y_0=0),
+    "SCCF anomalous diffusion, 1 relaxation":
+        dict(N=0.01, tau_D=2500, p=5, alpha=1, tau_T=1, A=1, y_0=0, isCCF=0),
+    "SCCF anomalous diffusion, 2 relaxation":
+        dict(N=0.01, tau_D=2500, p=5, alpha=1, tau_1=1, A_1=1, tau_2=1, A_2=1, y_0=0, isCCF=0),
+    "SCCF anomalous diffusion, 3 relaxation":
+        dict(N=0.01, tau_D=2500, p=5, alpha=1, tau_1=1, A_1=1, tau_2=100, A_2=1,
+             tau_3=500, A_3=0, y_0=0, isCCF=0),
+    "Full FCS (antibunching + 2 summed bunching + triplet)":
+        dict(N=1, tau_D=60, p=5, tau_AB=1, A_ab=1, tau_1=100, A_1=0.1, tau_2=200, A_2=1,
+             tau_T=200, T=1, y_0=0),
+    "Full FCS (antibunching + 3 product bunching)":
+        dict(N=1, tau_D=60, p=5, tau_AB=1, A_ab=1, tau_1=100, A_1=0.1, tau_2=200, A_2=1,
+             tau_3=200, A_3=1, y_0=0),
 }
 
 
@@ -230,3 +317,21 @@ def test_pam_model_ab_matches_reference(models, name):
         assert np.all(np.isfinite(a)), (name, "reference non-finite")
         assert np.all(np.isfinite(b)), (name, "port non-finite")
         assert np.allclose(a, b, rtol=1e-6, atol=1e-12), name
+
+
+@pytest.mark.parametrize("name", list(PAM_DEFAULTS))
+def test_pam_model_ab_at_pam_defaults(models, name):
+    """The port matches PAM at PAM's own default parameters (the "examples from PAM")."""
+    ref_fn, _ = CASES[name]
+    entry = models[name]
+    x = np.logspace(-8, 0, 250)  # lag times in seconds (ns antibunching -> s diffusion)
+    base = PAM_DEFAULTS[name]
+    # For SCCF models exercise both the auto (isCCF=0) and cross (isCCF=1) sign.
+    variants = [base]
+    if "isCCF" in base:
+        variants.append(dict(base, isCCF=1))
+    for params in variants:
+        a = ref_fn(x=x, **params)
+        b = _parse_and_eval(entry["equation"], params, x)
+        assert np.all(np.isfinite(a)) and np.all(np.isfinite(b)), name
+        assert np.allclose(a, b, rtol=1e-6, atol=1e-12), (name, params.get("isCCF"))
