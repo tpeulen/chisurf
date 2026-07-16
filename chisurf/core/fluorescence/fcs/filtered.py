@@ -1,4 +1,178 @@
+from dataclasses import dataclass, field
+
 import numpy as np
+
+
+@dataclass
+class SpeciesFilteredCorrelation:
+    """Species-resolved lifetime-filtered correlation curves.
+
+    Attributes
+    ----------
+    lag_s : numpy.ndarray
+        Correlation lag times (seconds).
+    auto : dict[int, numpy.ndarray]
+        ``{species_index: G(tau)}`` species auto-correlations.
+    cross : dict[tuple[int, int], numpy.ndarray]
+        ``{(i, j): G(tau)}`` species cross-correlations (``i < j``).
+    labels : list[str]
+        Per-species labels, parallel to the species indices.
+    """
+
+    lag_s: np.ndarray
+    auto: dict
+    cross: dict
+    labels: list = field(default_factory=list)
+
+
+def _normalise_filter_table(filters):
+    """Coerce a filter specification into a channel-aware table or a 2-D matrix.
+
+    Parameters
+    ----------
+    filters : array_like or dict
+        One of: a 2-D ``(n_species, n_bins)`` matrix (channel-agnostic); a 3-D
+        ``(n_channels, n_species, n_bins)`` table; or a mapping
+        ``{routing_channel: (n_species, n_bins)}``.
+
+    Returns
+    -------
+    table : numpy.ndarray
+        3-D ``(n_channels, n_species, n_bins)`` if channel-aware, else the 2-D
+        matrix.
+    channel_aware : bool
+    n_species : int
+    n_bins : int
+    """
+    if isinstance(filters, dict):
+        n_ch = max(filters) + 1
+        n_species, n_bins = np.asarray(next(iter(filters.values()))).shape
+        table = np.zeros((n_ch, n_species, n_bins), dtype=float)
+        for ch, f in filters.items():
+            table[int(ch)] = np.asarray(f, dtype=float)
+        return table, True, n_species, n_bins
+    arr = np.asarray(filters, dtype=float)
+    if arr.ndim == 3:
+        return arr, True, arr.shape[1], arr.shape[2]
+    if arr.ndim == 2:
+        return arr, False, arr.shape[0], arr.shape[1]
+    raise ValueError("filters must be 2-D, 3-D, or a {channel: 2-D} mapping")
+
+
+def species_weight_streams(filters, micro_times, routing_channels=None):
+    """Per-photon weight streams for every species (the correlator input).
+
+    Channel-aware: when ``filters`` carries a per-channel dimension, photon
+    ``i`` is weighted by ``filters[routing_channel[i], species, micro_time[i]]``
+    (mirroring PAM's par/perp filter application); otherwise the single filter
+    set is indexed by micro-time only.
+
+    Parameters
+    ----------
+    filters : array_like or dict
+        See :func:`_normalise_filter_table`.
+    micro_times : array_like
+        Per-photon micro-time (TAC) indices.
+    routing_channels : array_like, optional
+        Per-photon routing channel indices. Required for channel-aware filters.
+
+    Returns
+    -------
+    list of numpy.ndarray
+        One ``(n_photons,)`` float weight stream per species.
+    """
+    table, channel_aware, n_species, n_bins = _normalise_filter_table(filters)
+    micro_idx = np.clip(np.asarray(micro_times), 0, n_bins - 1).astype(np.int64)
+    if not channel_aware:
+        return [np.ascontiguousarray(table[s, micro_idx], dtype=np.float64) for s in range(n_species)]
+
+    if routing_channels is None:
+        raise ValueError("routing_channels is required for channel-aware filters")
+    from .correlate import get_weights
+
+    ch = np.clip(np.asarray(routing_channels), 0, table.shape[0] - 1).astype(np.int64)
+    n_photons = int(micro_idx.size)
+    streams = []
+    for s in range(n_species):
+        w = get_weights(ch, micro_idx, np.ascontiguousarray(table[:, s, :], dtype=np.float64), n_photons)
+        streams.append(np.ascontiguousarray(w, dtype=np.float64))
+    return streams
+
+
+def species_filtered_correlation(
+    macro_times,
+    micro_times,
+    filters,
+    macro_time_resolution_s,
+    *,
+    routing_channels=None,
+    n_bins: int = 8,
+    n_casc: int = 25,
+    labels=None,
+) -> SpeciesFilteredCorrelation:
+    """Species auto-/cross-correlations weighted by lifetime filters.
+
+    Applies the FLCS lifetime filters as per-photon weights and computes every
+    species auto- and cross-correlation with ``tttrlib.Correlator``. This is the
+    channel-aware generalisation of the 2D-FLC application path
+    (``flc_2d.fit.dynamics.filtered_correlation``): with a per-channel filter
+    table each detector's photons get that detector's filter.
+
+    The per-photon channel-aware weighting mirrors ``tttrlib.Correlator``'s
+    native ``set_filter`` (which maps ``{routing_channel: micro_time -> weight}``
+    onto the photons); it is done here via ``set_weights`` so the same code path
+    serves both species auto- and cross-correlations (where the two sides need
+    *different* species filters, which a single ``set_filter`` map cannot express).
+
+    Parameters
+    ----------
+    macro_times : array_like
+        Photon macro-times in clock ticks (ascending).
+    micro_times : array_like
+        Per-photon micro-time (TAC) indices (same length as ``macro_times``).
+    filters : array_like or dict
+        Lifetime filters — 2-D ``(n_species, n_bins)``, 3-D
+        ``(n_channels, n_species, n_bins)``, or ``{channel: 2-D}``.
+    macro_time_resolution_s : float
+        Seconds per macro-time tick (converts the lag axis to seconds).
+    routing_channels : array_like, optional
+        Per-photon routing channel indices (required for channel-aware filters).
+    n_bins, n_casc : int, optional
+        Multi-tau correlator settings.
+    labels : sequence of str, optional
+        Species labels.
+
+    Returns
+    -------
+    SpeciesFilteredCorrelation
+    """
+    import tttrlib
+
+    macro = np.ascontiguousarray(macro_times, dtype=np.uint64)
+    streams = species_weight_streams(filters, micro_times, routing_channels)
+    n_species = len(streams)
+
+    def _corr(wa, wb):
+        c = tttrlib.Correlator()
+        c.n_bins = int(n_bins)
+        c.n_casc = int(n_casc)
+        c.set_macrotimes(macro, macro)
+        c.set_weights(wa, wb)
+        c.run()
+        x = np.asarray(c.get_x_axis(), dtype=float) * macro_time_resolution_s
+        g = np.asarray(c.get_corr_normalized(), dtype=float)
+        return x, g
+
+    lag = None
+    auto: dict = {}
+    cross: dict = {}
+    for i in range(n_species):
+        lag, auto[i] = _corr(streams[i], streams[i])
+    for i in range(n_species):
+        for j in range(i + 1, n_species):
+            _, cross[(i, j)] = _corr(streams[i], streams[j])
+    labels = list(labels) if labels is not None else [f"species_{i}" for i in range(n_species)]
+    return SpeciesFilteredCorrelation(lag_s=lag, auto=auto, cross=cross, labels=labels)
 
 
 def calc_lifetime_filter(

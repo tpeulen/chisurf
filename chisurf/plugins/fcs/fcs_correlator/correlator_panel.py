@@ -98,6 +98,12 @@ class CorrelatorSettingsModel:
         self._fcs_preset_detectors: dict = {}
         self._fcs_preset_corr: dict = {}
 
+        # Optional lifetime-filter (FLCS) weight source: when set, correlation
+        # switches from binary channel/micro-time masks to species auto/cross
+        # correlations weighted by the loaded filters (see set_lifetime_filters).
+        self._lifetime_filters: typing.Any = None
+        self._filter_labels: list[str] | None = None
+
         self._form: typing.Any = None
 
     def view_spec(self):
@@ -124,6 +130,22 @@ class CorrelatorSettingsModel:
             for i, c in enumerate(self._correlations)
         ]
 
+    def set_lifetime_filters(self, filters, labels=None) -> None:
+        """Enable lifetime-filter (FLCS) correlation from a computed filter set.
+
+        Parameters
+        ----------
+        filters : array_like or dict or None
+            Lifetime filters — a 2-D ``(n_species, n_bins)`` matrix, a
+            ``{routing_channel: (n_species, n_bins)}`` channel-aware table (e.g.
+            from ``FilterResultMFD.to_channel_filters``), or ``None`` to return
+            to plain channel/micro-time-mask correlation.
+        labels : sequence of str, optional
+            Species labels used to name the emitted correlation datasets.
+        """
+        self._lifetime_filters = filters
+        self._filter_labels = list(labels) if labels is not None else None
+
     def correlate_data(self, parent_widget: QtWidgets.QWidget | None = None) -> None:
         if self._tttr is None or len(self._tttr) == 0:
             QtWidgets.QMessageBox.warning(
@@ -131,6 +153,12 @@ class CorrelatorSettingsModel:
                 "No Photons Selected",
                 "No photons selected for correlation. Please load data.",
             )
+            return
+
+        if self._lifetime_filters is not None:
+            self._correlate_lifetime_filtered()
+            if self._form is not None:
+                self._form.refresh_plots()
             return
 
         n_chunks = self.n_splits
@@ -177,6 +205,34 @@ class CorrelatorSettingsModel:
     def _split_array(self, tttr, n):
         chunk_size = max(1, len(tttr) // n)
         return [tttr[i * chunk_size : (i + 1) * chunk_size] for i in range(n)]
+
+    def _correlate_lifetime_filtered(self) -> None:
+        """Compute species auto-/cross-correlations weighted by lifetime filters.
+
+        Delegates to the Qt-free entrypoint
+        :func:`chisurf.plugins.fcs.fcs_correlator.core.filtered_correlation_from_tttr`
+        and stores one correlation curve per species pair (species-tagged).
+        """
+        from chisurf.plugins.fcs.fcs_correlator.core import filtered_correlation_from_tttr
+
+        self._correlations.clear()
+        datasets = filtered_correlation_from_tttr(
+            self._tttr,
+            self._lifetime_filters,
+            self.get_correlation_settings(),
+            labels=self._filter_labels,
+        )
+        for d in datasets:
+            self._correlations.append({
+                "x": d["x"],
+                "y": d["y"],
+                "correlation_settings": self.get_correlation_settings(),
+                "chunk": 0,
+                "duration": 0.0,
+                "name": d["name"],
+                "channel_a": {"species": d["species_a"]},
+                "channel_b": {"species": d["species_b"]},
+            })
 
     def _correlate_one(self, tttr, ch1, ch2, settings, idx):
         t = tttr.macro_times

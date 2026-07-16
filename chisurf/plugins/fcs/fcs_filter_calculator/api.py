@@ -67,7 +67,15 @@ class FilterResult:
     def n_bins(self) -> int:
         """Number of TAC bins."""
         return self.filters.shape[1]
-    
+
+    def to_channel_filters(self):
+        """Return the channel-agnostic ``(n_species, n_bins)`` filter matrix.
+
+        A single-detector result applies one filter set to all photons; the
+        2-D matrix is exactly what the correlator's single-axis weighting takes.
+        """
+        return self.filters
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
@@ -136,7 +144,19 @@ class FilterResultMFD:
     @property
     def n_bins(self) -> int:
         return self.filters_par.shape[1]
-    
+
+    def to_channel_filters(self, par_channels, perp_channels) -> dict:
+        """Map parallel/perpendicular routing channels to their filter matrices.
+
+        Returns a ``{routing_channel: (n_species, n_bins)}`` table for the
+        channel-aware correlator: parallel detectors get ``filters_par``,
+        perpendicular detectors get ``filters_perp`` (mirroring PAM's per-photon
+        par/perp filter application).
+        """
+        table = {int(ch): self.filters_par for ch in par_channels}
+        table.update({int(ch): self.filters_perp for ch in perp_channels})
+        return table
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "mode": self.mode.value,
