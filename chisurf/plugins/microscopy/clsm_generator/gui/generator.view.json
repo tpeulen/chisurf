@@ -1,0 +1,55 @@
+{
+  "_comment": "CLSM Generator. AutoForm over ClsmGeneratorViewModel: load an intensity image + one lifetime map per detector (TIFF/numpy), set simulation parameters, and Generate a synthetic CLSM photon image whose per-pixel intensity and lifetime match the inputs. The image_browser shows the input maps and the reconstruction; Save writes the photon stream (.npz / .ptu / .spc / .ht3) plus an intensity TIFF.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "CLSM Generator",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Inputs",
+          "n_col": 1,
+          "collapsed": false,
+          "sections": [
+            {"type": "info", "source": "info_html", "height": 64},
+            {"type": "value", "attr": "sel_intensity", "kind": "file", "label": "Intensity image",
+             "description": "Intensity image (TIFF or .npy/.npz); sets the per-pixel brightness."},
+            {"type": "custom", "key": "path_list", "target": "sel_lifetime_files", "title": "Lifetime map(s)",
+             "options": {"add_folders": false, "dialog_filter": "Maps (*.tif *.tiff *.npy *.npz);;All files (*)"},
+             "description": "One fluorescence-lifetime map (ns) per detector channel, matching the intensity-image shape."},
+            {"type": "panel", "title": "Simulation", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "pixel_size", "kind": "float", "label": "Pixel size (µm)", "decimals": 3, "minimum": 0.001, "maximum": 100.0,
+               "description": "Physical pixel size."},
+              {"type": "value", "attr": "dwell", "kind": "float", "label": "Dwell", "decimals": 4, "minimum": 0.0001, "maximum": 100.0,
+               "description": "Per-pixel dwell time (simulator macro-time units)."},
+              {"type": "value", "attr": "n_micro", "kind": "int", "label": "Micro-time channels", "minimum": 8, "maximum": 65536,
+               "description": "Number of micro-time (TAC) channels."},
+              {"type": "value", "attr": "dt", "kind": "float", "label": "Channel width (ns)", "decimals": 4, "minimum": 0.0001, "maximum": 10.0,
+               "description": "Micro-time channel width; the excitation period is n_micro × dt."},
+              {"type": "value", "attr": "brightness_scale", "kind": "float", "label": "Brightness", "decimals": 1, "minimum": 1.0, "maximum": 1000000.0,
+               "description": "Peak per-pixel brightness (the brightest pixel)."},
+              {"type": "value", "attr": "irf_center", "kind": "float", "label": "IRF centre", "decimals": 2, "minimum": 0.0, "maximum": 100000.0,
+               "description": "Gaussian IRF centre (micro-time channels)."},
+              {"type": "value", "attr": "irf_sigma", "kind": "float", "label": "IRF σ", "decimals": 2, "minimum": 0.1, "maximum": 10000.0,
+               "description": "Gaussian IRF width (micro-time channels)."},
+              {"type": "value", "attr": "n_lifetime_levels", "kind": "int", "label": "τ levels", "minimum": 1, "maximum": 256,
+               "description": "Quantisation levels for the lifetime axis (more = finer, slower)."},
+              {"type": "value", "attr": "n_intensity_levels", "kind": "int", "label": "Intensity levels", "minimum": 1, "maximum": 256,
+               "description": "Quantisation levels for the intensity axis."}
+            ]},
+            {"type": "button_row", "buttons": [
+              {"label": "🧪 Generate", "action": "request_generate", "description": "Simulate the CLSM photon image from the loaded intensity + lifetime maps."},
+              {"label": "💾 Save", "action": "request_save", "description": "Save the generated photon stream (.npz / .ptu / .spc / .ht3) + an intensity TIFF."}
+            ]}
+          ]
+        },
+        {"type": "custom", "key": "image_browser", "target": "current_view_image", "title": "Maps",
+         "options": {
+           "entries_source": "view_entries", "entry_attr": "current_view",
+           "colormap": true, "default_colormap": "inferno", "list_width": 180
+         },
+         "description": "Browse the input intensity image, the input lifetime map(s), and the reconstructed CLSM intensity."}
+      ]
+    }
+  ]
+}

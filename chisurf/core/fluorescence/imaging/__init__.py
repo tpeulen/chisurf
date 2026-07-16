@@ -33,6 +33,8 @@ from .simulate import (
     Molecule,
     SimulatedImage,
     have_simulator,
+    load_image_map,
+    simulate_clsm_from_maps,
     simulate_clsm_molecules,
 )
 
@@ -40,6 +42,8 @@ __all__ = [
     "Molecule",
     "SimulatedImage",
     "have_simulator",
+    "load_image_map",
+    "simulate_clsm_from_maps",
     "simulate_clsm_molecules",
     "build_clsm",
     "build_clsm_windowed",
