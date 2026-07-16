@@ -1,6 +1,6 @@
-"""ALEX (alternating laser excitation) analysis of ISS ``.sm`` files in chisurf.
+"""ALEX (alternating laser excitation) analysis of Shimon Weiss lab ``.sm`` files in chisurf.
 
-Exercises the full chisurf smFRET path on ISS single-molecule ``.sm`` data:
+Exercises the full chisurf smFRET path on Shimon Weiss lab single-molecule ``.sm`` data:
 
 * load the ``.sm`` container (tttrlib ``SM`` record type) through the chisurf
   ALEX plugin core (:func:`chisurf.plugins.tttr.ptu_alex_creator.core.load`);
@@ -43,7 +43,7 @@ from chisurf.plugins.tttr.ptu_alex_creator.core import (  # noqa: E402
     load,
 )
 
-# ISS .sm container/record ids and macro-time clock (12.5 ns).
+# .sm container/record ids and macro-time clock (12.5 ns).
 SM_CONTAINER, SM_RECORD_TYPE = 7, 11
 MACRO_RESOLUTION = 1.25e-8
 TY_FLOAT8 = 536870920  # tttrlib tag type for an 8-byte float
@@ -135,7 +135,7 @@ def _es_per_burst(tttr, bursts, windows):
 
 
 def test_container_info_has_sm():
-    """The ALEX plugin core knows the ISS ``.sm`` container."""
+    """The ALEX plugin core knows the ``.sm`` container."""
     assert CONTAINER_INFO["SM"] == ("sm", SM_RECORD_TYPE, SM_CONTAINER)
 
 
@@ -253,7 +253,7 @@ def test_alex_es_recovers_two_populations():
 
 
 def _reference_sm():
-    """Locate the ISS ``sm/data.sm`` reference file if the data set is present."""
+    """Locate the ``sm/data.sm`` reference file if the data set is present."""
     for root in (
         os.environ.get("TTTRLIB_DATA"),
         os.environ.get("TTTR_DATA"),
@@ -268,7 +268,7 @@ def _reference_sm():
 
 
 def test_real_reference_sm_loads():
-    """The real ISS ``sm/data.sm`` reference file loads through chisurf."""
+    """The ``sm/data.sm`` reference file loads through chisurf."""
     fn = _reference_sm()
     if fn is None:
         pytest.skip("tttr-data sm/data.sm not available")

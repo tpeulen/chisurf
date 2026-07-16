@@ -1,6 +1,6 @@
-"""ALEX (alternating laser excitation) analysis of ISS ``.sm`` files in chisurf.
+"""ALEX (alternating laser excitation) analysis of Shimon Weiss lab ``.sm`` files in chisurf.
 
-Runnable, GUI-free demonstration of the smFRET ALEX pipeline on ISS
+Runnable, GUI-free demonstration of the smFRET ALEX pipeline on Shimon Weiss lab
 single-molecule ``.sm`` data:
 
 1. load the ``.sm`` container through the chisurf ALEX plugin core
@@ -43,7 +43,7 @@ from chisurf.plugins.tttr.ptu_alex_creator.core import (
     load,
 )
 
-# ISS .sm container ids, macro-time clock and ALEX alternation (macro units).
+# .sm container ids, macro-time clock and ALEX alternation (macro units).
 SM_CONTAINER, SM_RECORD_TYPE = 7, 11
 MACRO_RESOLUTION = 1.25e-8
 TY_FLOAT8 = 536870920
@@ -131,7 +131,7 @@ def main():
     sm_path = os.path.join(tempfile.mkdtemp(), "alex_demo.sm")
     simulate_alex_sm(sm_path, populations)
 
-    # 1. Load the ISS .sm file through chisurf and fold the alternation.
+    # 1. Load the .sm file through chisurf and fold the alternation.
     tttr = load(sm_path, "SM")
     print(f"Loaded {len(tttr)} photons from {os.path.basename(sm_path)}")
     apply_alex(tttr, ALEX_PERIOD, 0)
@@ -167,7 +167,7 @@ def main():
     print(f"Corrected E (identity calibration) matches apparent: "
           f"{np.allclose(Ec, E)}")
 
-    # Optional: load the real ISS reference file if present.
+    # Optional: load the real reference file if present.
     data_root = os.environ.get("TTTRLIB_DATA")
     if data_root:
         real = os.path.join(data_root, "sm", "data.sm")
