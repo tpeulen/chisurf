@@ -87,6 +87,171 @@ def alex_histogram(
     return np.bincount(tttr.micro_times, minlength=period)[:period]
 
 
+def _contiguous_runs(mask: np.ndarray) -> list[tuple[int, int]]:
+    """Return ``(start, stop_inclusive)`` runs of ``True`` on a circular array.
+
+    The array is treated as periodic, so a run may wrap past the last index back
+    to index 0 (returned as ``start > stop``).
+    """
+    mask = np.asarray(mask, dtype=bool)
+    n = len(mask)
+    if n == 0 or not mask.any():
+        return []
+    if mask.all():
+        return [(0, n - 1)]
+    # Rotate so index 0 is a False bin; this turns wrap-around runs into normal
+    # ones, then map indices back.
+    offset = int(np.argmin(mask))
+    rolled = np.roll(mask, -offset)
+    runs = []
+    i = 0
+    while i < n:
+        if rolled[i]:
+            j = i
+            while j < n and rolled[j]:
+                j += 1
+            runs.append(((i + offset) % n, (j - 1 + offset) % n))
+            i = j
+        else:
+            i += 1
+    return runs
+
+
+def auto_alex_windows(
+    micro_times,
+    routing_channels,
+    *,
+    donor_channels,
+    acceptor_channels,
+    alex_period: int,
+    n_bins: int = 200,
+    guard: float = 0.06,
+    occupancy: float = 0.35,
+) -> dict:
+    """Detect the green/red ALEX excitation windows from the folded phase.
+
+    Micro-second ALEX encodes the laser alternation in the macro-time; after
+    :func:`apply_alex` the micro-time is the phase within ``alex_period``. The
+    two laser-on periods show up as two occupied plateaus in the phase histogram,
+    separated by the rise/fall gaps where no laser is fully on. This locates the
+    two largest plateaus, trims a ``guard`` fraction off each edge to discard the
+    laser rise/fall transition photons (some photon loss is expected and
+    intended), and labels the donor-brighter window ``"green"`` (donor
+    excitation) and the other ``"red"`` (acceptor excitation).
+
+    Parameters
+    ----------
+    micro_times : array_like
+        Folded ALEX phase per photon (``tttr.micro_times`` after
+        :func:`apply_alex`).
+    routing_channels : array_like
+        Detector routing channel per photon.
+    donor_channels, acceptor_channels : sequence of int
+        Routing channels of the donor ("green") and acceptor ("red") detectors.
+    alex_period : int
+        Alternation period in macro-time units (the folding period).
+    n_bins : int
+        Number of phase bins used to build the occupancy histogram.
+    guard : float
+        Fraction of each detected window width trimmed from *both* edges to skip
+        the laser rise/fall. ``0`` keeps the raw plateau edges.
+    occupancy : float
+        A bin counts as "laser on" when it holds more than ``occupancy`` times
+        the 75th-percentile of the non-empty bins.
+
+    Returns
+    -------
+    dict
+        ``{"green": (lo, hi), "red": (lo, hi), "phase_hist": counts,
+        "phase_edges": edges}`` with window bounds in macro-time units.
+
+    Raises
+    ------
+    ValueError
+        If two laser plateaus cannot be found (e.g. continuous-wave data with a
+        single, fully-occupied period).
+    """
+    phase = np.asarray(micro_times)
+    rc = np.asarray(routing_channels)
+    period = int(alex_period)
+    edges = np.linspace(0, period, n_bins + 1)
+    counts, _ = np.histogram(phase, bins=edges)
+
+    nonzero = counts[counts > 0]
+    if nonzero.size == 0:
+        raise ValueError("no photons to detect ALEX windows from")
+    plateau = np.percentile(nonzero, 75)
+    on = counts > occupancy * plateau
+    runs = _contiguous_runs(on)
+
+    def run_counts(run: tuple[int, int]) -> int:
+        s, e = run
+        if s <= e:
+            return int(counts[s:e + 1].sum())
+        return int(counts[s:].sum() + counts[:e + 1].sum())
+
+    runs = sorted(runs, key=run_counts, reverse=True)
+    if len(runs) < 2:
+        raise ValueError(
+            "could not find two ALEX laser windows in the phase histogram; "
+            "the data may be continuous-wave or the period/binning is wrong"
+        )
+    runs = runs[:2]
+
+    windows = []
+    for s, e in runs:
+        lo = float(edges[s])
+        hi = float(edges[e + 1]) if e + 1 < len(edges) else float(period)
+        width = (hi - lo) if hi > lo else (period - lo + hi)
+        margin = guard * width
+        windows.append((lo + margin, hi - margin))
+
+    def donor_density(win: tuple[float, float]) -> float:
+        lo, hi = win
+        sel = (phase >= lo) & (phase < hi) & np.isin(rc, list(donor_channels))
+        return sel.sum() / max(hi - lo, 1.0)
+
+    windows.sort(key=donor_density, reverse=True)
+    return {
+        "green": windows[0],
+        "red": windows[1],
+        "phase_hist": counts,
+        "phase_edges": edges,
+    }
+
+
+def alex_stream_masks(
+    micro_times,
+    routing_channels,
+    windows: dict,
+    *,
+    donor_channels,
+    acceptor_channels,
+) -> dict:
+    """Boolean per-photon masks for the four ALEX streams.
+
+    ``windows`` is the mapping returned by :func:`auto_alex_windows` (only the
+    ``"green"``/``"red"`` bounds are used). Returns ``{"DD", "DA", "AA", "AD"}``
+    masks for donor-emission/donor-excitation, acceptor-emission/donor-excitation
+    (FRET), acceptor-emission/acceptor-excitation and acceptor-excitation/
+    donor-emission respectively. Photons in the guard bands fall in no mask.
+    """
+    phase = np.asarray(micro_times)
+    rc = np.asarray(routing_channels)
+    g_lo, g_hi = windows["green"]
+    r_lo, r_hi = windows["red"]
+    green = (phase >= g_lo) & (phase < g_hi)
+    red = (phase >= r_lo) & (phase < r_hi)
+    is_donor = np.isin(rc, list(donor_channels))
+    is_acceptor = np.isin(rc, list(acceptor_channels))
+    return {
+        "DD": green & is_donor,
+        "DA": green & is_acceptor,
+        "AA": red & is_acceptor,
+        "AD": red & is_donor,
+    }
+
+
 def _prepare_output_header(tttr: tttrlib.TTTR, output_format: str, input_format: str):
     """Return the header to write *tttr* with, transcoded when the container changes.
 
@@ -196,6 +361,8 @@ __all__ = [
     "load",
     "apply_alex",
     "alex_histogram",
+    "auto_alex_windows",
+    "alex_stream_masks",
     "convert_file",
     "merge_files",
 ]
