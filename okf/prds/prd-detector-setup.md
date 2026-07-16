@@ -96,7 +96,7 @@ These embed the page similarly but have additional wiring or dependent widgets.
 | `chisurf/plugins/burst/burst_mle_analysis/wizard.py` | 1408-1412 | In "Detector Definition" tab; wired to `_init_channels_from_wizard()` |
 | `chisurf/plugins/burst/burst_background/__init__.py` | ~40+ | Embedded, needs state persistence port |
 | `chisurf/plugins/burst/bid_to_analysis/__init__.py` | 598-611 | In "Setup" tab |
-| `chisurf/plugins/microscopy/img_pixel_mle/imgmle.py` | 343-348 | In "Detector Definition" tab with detector combo |
+| `chisurf/plugins/microscopy/img_pixel_mle/gui/view_model.py` | `apply_setup_settings` | Monolith `imgmle.py` retired → AutoForm; detectors adopted via the aggregator hook (even chs ∥, odd chs ⊥), no embedded detector page |
 | `chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/main_window.py` | 61-74 | "Detector Setup" tab; keep `DetectorSelectionWidget` |
 | `chisurf/plugins/fcs/fcs_2d/gui/wizard.py` | 110-121 | Lazy import in tab |
 | `chisurf/plugins/tttr/microtime_histogram/wizard.py` | 489-503 | Already has simple combos; keep combos but replace page in tab |

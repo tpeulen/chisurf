@@ -1,7 +1,6 @@
-"""
-Lifetime MLE Analysis
+"""Pixel-wise lifetime MLE analysis.
 
-This plugin provides a powerful interface for analyzing fluorescence lifetime data 
+This plugin provides a powerful interface for analyzing fluorescence lifetime data
 from imaging experiments using Maximum Likelihood Estimation (MLE).
 
 Features:
@@ -24,29 +23,37 @@ Fluorescence Lifetime Analysis of Single Molecules.
 Analytical Chemistry, 73(9), 2078-2086. https://doi.org/10.1021/ac000877g
 """
 
+from __future__ import annotations
+
+import json as _json
+from pathlib import Path as _Path
+
 name = "Imaging:Lifetime:Pixel-wise lifetime MLE"
 cli_entrypoint = "img-pixel-mle=chisurf.plugins.microscopy.img_pixel_mle.cli:cli"
-
-from pathlib import Path as _Path
-import json as _json
 
 _manifest_path = _Path(__file__).parent / "manifest.json"
 if _manifest_path.exists():
     _manifest = _json.loads(_manifest_path.read_text())
     name = _manifest.get("display_name", name)
 
-from .imgmle import LifetimeMleAnalysisWizard
+
+def __getattr__(attr_name: str):
+    """Lazy Qt gate for the GUI entrypoint (keeps the package import Qt-free)."""
+    if attr_name == "ImgPixelMleTool":
+        from .gui.tool import ImgPixelMleTool as _cls
+
+        globals()["ImgPixelMleTool"] = _cls
+        return _cls
+    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
+
 
 def run():
-    """
-    Run the Lifetime MLE Analysis wizard.
-    """
-    wizard = LifetimeMleAnalysisWizard()
-    wizard.show()
-    return wizard
+    """Run the pixel-wise MLE tool (standalone window)."""
+    from .gui.tool import ImgPixelMleTool
 
-# When the plugin is loaded as a module with __name__ == "plugin",
-# this code will be executed
-if __name__ == "plugin":
-    # Create an instance of the Kappa2Dist class
-    window = run()
+    tool = ImgPixelMleTool()
+    tool.show()
+    return tool
+
+
+__all__ = ["ImgPixelMleTool", "run"]

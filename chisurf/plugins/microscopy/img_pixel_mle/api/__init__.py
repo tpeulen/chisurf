@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from .models import PixelMleSettings, PixelMleRequest, PixelMleResult
 from .contract import (
-    PLUGIN_ID,
     CONTRACT_VERSION,
     METHOD_ANALYZE,
     METHOD_CONTRACT,
+    PLUGIN_ID,
     contract_descriptor,
-    service_success,
     service_error,
+    service_success,
 )
+from .models import PixelMleRequest, PixelMleResult, PixelMleSettings
 
 __all__ = [
     "PixelMleSettings",

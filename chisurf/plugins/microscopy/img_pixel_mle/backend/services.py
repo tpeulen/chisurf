@@ -22,8 +22,8 @@ def register_services(dispatcher: Any) -> None:
     dispatcher.register(METHOD_CONTRACT, _handle_contract)
 
 
-def _build_irf_jordi(irf_file: str, settings: Any) -> Any:
-    """Build a prepared Jordi-format IRF histogram from an IRF TTTR file."""
+def _build_irf_vv_vh(irf_file: str, settings: Any) -> Any:
+    """Build a prepared VV/VH-format IRF histogram from an IRF TTTR file."""
     import numpy as np
     import tttrlib
 
@@ -76,14 +76,16 @@ def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
         )
         logger.info("img_pixel_mle.analyze.run: %d file(s)", len(request.files))
 
-        irf = _build_irf_jordi(request.irf_file, settings)
+        irf = _build_irf_vv_vh(request.irf_file, settings)
         window = int(settings.micro_time_stop) - int(settings.micro_time_start)
         background = None
         if settings.use_bg and window > 0:
-            background = np.concatenate([
-                np.full(window, settings.bg_p / window, dtype=np.float64),
-                np.full(window, settings.bg_s / window, dtype=np.float64),
-            ])
+            background = np.concatenate(
+                [
+                    np.full(window, settings.bg_p / window, dtype=np.float64),
+                    np.full(window, settings.bg_s / window, dtype=np.float64),
+                ]
+            )
 
         processed: list[str] = []
         output_paths: list[str] = []
@@ -93,9 +95,7 @@ def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
             if period_ns is None:
                 header = tttr.header
                 period_ns = (
-                    header.number_of_micro_time_channels
-                    * header.micro_time_resolution
-                    * 1e9
+                    header.number_of_micro_time_channels * header.micro_time_resolution * 1e9
                 )
             core_settings = PixelMleSettings(
                 channels_parallel=settings.detector_chs_p,
@@ -118,6 +118,8 @@ def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
                 convolution_stop=-1,
                 p2s_twoIstar=settings.twoi_star,
                 soft_bifl_scatter=settings.bifl_scatter,
+                engine=settings.engine,
+                n_workers=settings.n_workers,
             )
             result = fit_pixel_lifetimes(tttr, core_settings)
             out_dir = request.output_dir or os.path.dirname(f)
@@ -128,11 +130,13 @@ def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
             processed.append(f)
             output_paths.append(out_path)
 
-        return service_success({
-            "processed_files": processed,
-            "output_paths": output_paths,
-            "warnings": [],
-        })
+        return service_success(
+            {
+                "processed_files": processed,
+                "output_paths": output_paths,
+                "warnings": [],
+            }
+        )
     except Exception as exc:
         logger.exception("img_pixel_mle.analyze.run failed")
         return service_error(exc)

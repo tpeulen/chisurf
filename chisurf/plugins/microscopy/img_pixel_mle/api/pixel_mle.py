@@ -1,19 +1,14 @@
-"""Pure computation helpers extracted from imgmle.py — no Qt at import time.
+"""Pure IRF-preparation helpers for pixel-wise MLE — no Qt at import time.
 
-These functions are thin wrappers around the logic already implemented in
-:class:`~chisurf.plugins.microscopy.img_pixel_mle.imgmle.LifetimeMleAnalysisWizard`.
-They exist so that the CLI and backend services can invoke the analysis without
+These functions prepare the parallel/perpendicular IRF histograms consumed by
+the Qt-free core (:mod:`..core.pixel_mle`).  They are shared by the AutoForm
+view-model, the RPC backend service and the CLI so the analysis runs without
 starting Qt.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import numpy as np
-
-if TYPE_CHECKING:
-    from .models import PixelMleRequest, PixelMleResult
 
 
 def interpolate_shift(arr: np.ndarray, shift: float) -> np.ndarray:

@@ -1,0 +1,85 @@
+{
+  "_comment": "Pixel-wise FLIM MLE tool. AutoForm over PixelMleViewModel: an Analysis dock (CLSM + IRF file lists, parallel/perpendicular channels, fit window, IRF prep, Fit23 initial/fixed parameters, background, engine + worker threads, Run button) plus a result dock showing the fitted lifetime (tau) map. Each pixel is fitted by single-lifetime Poisson MLE (Fit23) through the shared fit2x harness.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Pixel-wise MLE",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Analysis",
+          "n_col": 1,
+          "collapsed": false,
+          "sections": [
+            {"type": "info", "source": "info_html", "height": 70},
+            {"type": "custom", "key": "path_list", "target": "sel_files", "title": "CLSM imaging files",
+             "options": {"add_folders": false, "dialog_filter": "TTTR (*.ptu *.ht3 *.spc *.pt3);;All files (*)"},
+             "description": "Confocal (CLSM) TTTR image file(s) to analyse. Drag-drop to add."},
+            {"type": "custom", "key": "path_list", "target": "sel_irf_files", "title": "IRF file",
+             "options": {"add_folders": false, "dialog_filter": "TTTR (*.ptu *.ht3 *.spc *.pt3);;All files (*)"},
+             "description": "IRF TTTR measurement (the first file is used)."},
+            {"type": "value", "attr": "channels_parallel_text", "kind": "str", "label": "Parallel channels (∥)",
+             "description": "Space-separated routing channels forming the parallel (VV) detection."},
+            {"type": "value", "attr": "channels_perpendicular_text", "kind": "str", "label": "Perpendicular channels (⊥)",
+             "description": "Space-separated routing channels forming the perpendicular (VH) detection."},
+            {"type": "value", "attr": "micro_time_start", "kind": "int", "label": "Fit start", "minimum": 0, "maximum": 1000000,
+             "description": "Fit-window start on the binned micro-time axis."},
+            {"type": "value", "attr": "micro_time_stop", "kind": "int", "label": "Fit stop", "minimum": 1, "maximum": 1000000,
+             "description": "Fit-window stop on the binned micro-time axis."},
+            {"type": "value", "attr": "micro_time_binning", "kind": "int", "label": "Micro-time binning", "minimum": 1, "maximum": 100000,
+             "description": "Integer down-binning of the micro-time axis before fitting."},
+            {"type": "value", "attr": "min_photons", "kind": "int", "label": "Min photons", "minimum": 1, "maximum": 10000000,
+             "description": "Pixels with fewer photons in the fit window are not fitted."},
+            {"type": "panel", "title": "IRF preparation", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "irf_threshold", "kind": "float", "label": "Threshold", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
+               "description": "Fraction of the IRF maximum below which bins are zeroed."},
+              {"type": "value", "attr": "shift_sp", "kind": "float", "label": "Shift ∥", "decimals": 3, "minimum": -1000.0, "maximum": 1000.0,
+               "description": "Parallel-channel sub-bin IRF shift."},
+              {"type": "value", "attr": "shift_ss", "kind": "float", "label": "Shift ⊥", "decimals": 3, "minimum": -1000.0, "maximum": 1000.0,
+               "description": "Perpendicular-channel sub-bin IRF shift."}
+            ]},
+            {"type": "panel", "title": "Fit (Fit23)", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "tau", "kind": "float", "label": "τ (ns)", "decimals": 3, "minimum": 0.0, "maximum": 1000.0,
+               "description": "Initial fluorescence lifetime."},
+              {"type": "toggle", "attr": "fix_tau", "label": "fix τ", "description": "Hold the lifetime fixed."},
+              {"type": "value", "attr": "gamma", "kind": "float", "label": "γ", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
+               "description": "Initial scatter fraction."},
+              {"type": "toggle", "attr": "fix_gamma", "label": "fix γ", "description": "Hold the scatter fraction fixed."},
+              {"type": "value", "attr": "r0", "kind": "float", "label": "r0", "decimals": 3, "minimum": 0.0, "maximum": 0.4,
+               "description": "Fundamental anisotropy."},
+              {"type": "toggle", "attr": "fix_r0", "label": "fix r0", "description": "Hold the fundamental anisotropy fixed."},
+              {"type": "value", "attr": "rho", "kind": "float", "label": "ρ (ns)", "decimals": 3, "minimum": 0.0, "maximum": 1000.0,
+               "description": "Rotational correlation time."},
+              {"type": "toggle", "attr": "fix_rho", "label": "fix ρ", "description": "Hold the rotational correlation time fixed."},
+              {"type": "toggle", "attr": "twoi_star", "label": "2I* (P+2S)", "description": "Optimise P+2S instead of P and S separately."},
+              {"type": "toggle", "attr": "bifl_scatter", "label": "BIFL scatter", "description": "Reduce Istar by the background contribution."}
+            ]},
+            {"type": "panel", "title": "Background", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "toggle", "attr": "use_bg", "label": "Subtract", "description": "Subtract a flat background from the fit window."},
+              {"type": "value", "attr": "bg_p", "kind": "float", "label": "bg ∥", "decimals": 3, "minimum": 0.0, "maximum": 1000000.0,
+               "description": "Parallel background counts spread over the fit window."},
+              {"type": "value", "attr": "bg_s", "kind": "float", "label": "bg ⊥", "decimals": 3, "minimum": 0.0, "maximum": 1000000.0,
+               "description": "Perpendicular background counts spread over the fit window."}
+            ]},
+            {"type": "panel", "title": "Performance", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "choice", "attr": "engine", "label": "Engine", "options": ["auto", "fast", "loop"],
+               "description": "Histogram extraction: fast = vectorised C++, loop = exact bincount, auto = fast with bincount fallback on saturation."},
+              {"type": "value", "attr": "n_workers", "kind": "int", "label": "Threads", "minimum": 0, "maximum": 256,
+               "description": "Fit worker threads. 0 = auto (cpu − 1); 1 = serial."}
+            ]},
+            {"type": "button_row", "buttons": [
+              {"label": "▶ Run", "action": "request_run", "description": "Fit every selected file pixel-by-pixel; writes <stem>_pixel_mle.csv next to each."}
+            ]}
+          ]
+        },
+        {"type": "custom", "key": "image", "target": "tau_map_image", "title": "Lifetime map",
+         "options": {
+           "colormap": true, "default_colormap": "inferno",
+           "channel_source": "result_file_names", "channel_attr": "current_result_name",
+           "channel_call": "select_result", "movie": true
+         },
+         "description": "Fitted single-pixel lifetime (τ) map of the selected file; the in-plot selector switches between analysed files and the z-slider scrubs frames."}
+      ]
+    }
+  ]
+}

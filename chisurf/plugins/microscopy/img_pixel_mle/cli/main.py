@@ -19,10 +19,14 @@ def cli() -> None:
 
 @cli.command()
 @click.argument("files", nargs=-1, required=True, type=click.Path(exists=True))
-@click.option("--irf-file", "-i", required=True, type=click.Path(exists=True), help="Path to IRF PTU file.")
+@click.option(
+    "--irf-file", "-i", required=True, type=click.Path(exists=True), help="Path to IRF PTU file."
+)
 @click.option("--output-dir", "-o", default="", help="Output directory.")
 @click.option("--channels-p", default="0", help="Parallel detector channels (comma-separated).")
-@click.option("--channels-s", default="2", help="Perpendicular detector channels (comma-separated).")
+@click.option(
+    "--channels-s", default="2", help="Perpendicular detector channels (comma-separated)."
+)
 @click.option("--mt-start", default=0, type=int, help="Micro-time start bin.")
 @click.option("--mt-stop", default=256, type=int, help="Micro-time stop bin.")
 @click.option("--mt-binning", default=1, type=int, help="Micro-time binning factor.")
@@ -55,7 +59,7 @@ def analyze(
     json_output: bool,
 ) -> None:
     """Analyze TTTR FILES with pixel-wise MLE (headless)."""
-    from ..api.models import PixelMleRequest, PixelMleSettings
+    from ..api.models import PixelMleSettings
     from ..backend.services import _handle_analyze
 
     det_p = [int(c.strip()) for c in channels_p.split(",")]
@@ -79,12 +83,14 @@ def analyze(
 
     import dataclasses
 
-    result = _handle_analyze({
-        "files": list(files),
-        "irf_file": irf_file,
-        "output_dir": output_dir,
-        "settings": dataclasses.asdict(settings),
-    })
+    result = _handle_analyze(
+        {
+            "files": list(files),
+            "irf_file": irf_file,
+            "output_dir": output_dir,
+            "settings": dataclasses.asdict(settings),
+        }
+    )
 
     if json_output:
         click.echo(json.dumps(result, indent=2))
