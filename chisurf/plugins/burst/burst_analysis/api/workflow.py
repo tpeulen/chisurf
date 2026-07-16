@@ -399,6 +399,70 @@ class H2mm:
 
 
 @dataclass
+class IrfBackground:
+    """Per-detector IRF and background estimated from non-burst photons.
+
+    Returned by :meth:`Bursts.irf_background` and
+    :meth:`BurstWorkflow.estimate_irf_background`. The non-burst photons of a
+    single-molecule measurement (everything the burst search rejects) are the
+    built-in scatter/background: their micro-time histogram gives the IRF and
+    their interphoton-time tail gives the background rate.
+
+    Attributes
+    ----------
+    per_detector : dict of str -> DetectorIrfBackground
+        The full estimate for each detector (IRF array, background rate, counts).
+    setup : Setup
+        Detector setup used.
+    """
+
+    per_detector: dict[str, Any]
+    setup: Setup
+
+    @property
+    def background_khz(self) -> dict[str, float]:
+        """Background count rate (kHz) per detector name."""
+        return {name: d.background_khz for name, d in self.per_detector.items()}
+
+    @property
+    def table(self) -> pd.DataFrame:
+        """One row per detector: background rate and non-burst/burst photon counts."""
+        return pd.DataFrame(
+            [
+                {
+                    "Detector": d.name,
+                    "Background (kHz)": d.background_khz,
+                    "Prompt (ns)": d.prompt_ns,
+                    "Non-burst photons": d.n_background_photons,
+                    "Burst photons": d.n_burst_photons,
+                }
+                for d in self.per_detector.values()
+            ]
+        )
+
+    def irf(self, detector: str | None = None) -> np.ndarray:
+        """Return the scatter-derived IRF (unit sum) for a detector (default first)."""
+        name = detector if detector is not None else self.setup.names()[0]
+        return self.per_detector[name].irf
+
+    def plot(self, ax: Any = None) -> Any:
+        """Draw the scatter-derived IRF of every detector on a shared time axis."""
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=(6, 4))
+        for d in self.per_detector.values():
+            if d.irf.sum() > 0:
+                ax.plot(d.time_ns, d.irf, lw=1.5,
+                        label=f"{d.name} (bg {d.background_khz:.2f} kHz)")
+        ax.set_xlabel("Micro time (ns)")
+        ax.set_ylabel("IRF (normalised)")
+        ax.set_title("Non-burst IRF & background")
+        ax.legend()
+        return ax
+
+
+@dataclass
 class Bursts:
     """A selected set of single-molecule bursts, ready for FRET analysis.
 
@@ -422,6 +486,85 @@ class Bursts:
     table: pd.DataFrame
     setup: Setup
     _tttrs: dict[str, Any] = field(repr=False, default_factory=dict)
+    _search: dict[str, Any] = field(repr=False, default_factory=dict)
+
+    def irf_background(
+        self,
+        *,
+        baseline_quantile: float = 0.2,
+        bg_tail_fraction: float = 0.8,
+    ) -> IrfBackground:
+        """Estimate a per-detector IRF and background from the non-burst photons.
+
+        Reuses the burst-search parameters from :meth:`BurstWorkflow.select_bursts`
+        so the same burst definition that produced these bursts also defines what
+        counts as background here. Every loaded measurement contributes its
+        non-burst photons; the results are pooled per detector.
+
+        Parameters
+        ----------
+        baseline_quantile : float
+            Quantile of the non-burst micro-time histogram taken as the flat
+            dark-count floor before normalising the IRF.
+        bg_tail_fraction : float
+            Tail fraction of the interphoton-time histogram used for the
+            background rate fit.
+        """
+        from chisurf.core.fluorescence.burst.irf_bg import extract_irf_background
+
+        detectors = {
+            d.name: {
+                "chs": list(d.routing_channels),
+                "micro_time_ranges": [list(r) for r in d.microtime_ranges],
+            }
+            for d in self.setup.detectors
+        }
+        search = self._search or {}
+        min_photons = int(search.get("min_photons", 60))
+        photon_window = int(search.get("photon_window", 10))
+        time_window = float(search.get("time_window", 1e-3))
+
+        pooled: dict[str, Any] = {}
+        for tttr in self._tttrs.values():
+            per_det = extract_irf_background(
+                tttr,
+                detectors,
+                min_photons=min_photons,
+                photon_window=photon_window,
+                time_window=time_window,
+                baseline_quantile=baseline_quantile,
+                bg_tail_fraction=bg_tail_fraction,
+            )
+            for name, est in per_det.items():
+                if name not in pooled:
+                    pooled[name] = est
+                else:
+                    prev = pooled[name]
+                    prev.irf_raw = prev.irf_raw + est.irf_raw
+                    prev.n_background_photons += est.n_background_photons
+                    prev.n_burst_photons += est.n_burst_photons
+        # Re-derive the IRF/background from the pooled raw histograms so multiple
+        # files combine into one estimate rather than being taken from the last.
+        if len(self._tttrs) > 1:
+            pooled = self._repool(pooled, baseline_quantile)
+        return IrfBackground(per_detector=pooled, setup=self.setup)
+
+    @staticmethod
+    def _repool(pooled: dict[str, Any], baseline_quantile: float) -> dict[str, Any]:
+        """Recompute IRF and prompt from summed raw histograms (multi-file pooling)."""
+        from chisurf.core.fluorescence.tcspc.irf import detect_rising_edge
+
+        q = float(np.clip(baseline_quantile, 0.0, 1.0))
+        for est in pooled.values():
+            raw = est.irf_raw
+            if raw.sum() > 0:
+                baseline = float(np.quantile(raw, q))
+                irf = np.clip(raw - baseline, 0.0, None)
+                total = irf.sum()
+                est.irf = irf / total if total > 0 else irf
+                est.baseline_per_bin = baseline
+                est.prompt_ns = float(est.time_ns[detect_rising_edge(raw, smooth=5)])
+        return pooled
 
     def __len__(self) -> int:
         """Return the number of bursts."""
@@ -916,6 +1059,63 @@ class BurstWorkflow:
             table=table,
             setup=setup,
             _tttrs=tttrs,
+            _search={
+                "min_photons": min_photons,
+                "photon_window": photon_window,
+                "time_window": time_window,
+                "method": method,
+            },
+        )
+
+    def estimate_irf_background(
+        self,
+        datasets: str | Sequence[str],
+        *,
+        setup: Setup | None = None,
+        min_photons: int = 60,
+        time_window: float = 1e-3,
+        photon_window: int = 10,
+        method: str = "burst",
+        baseline_quantile: float = 0.2,
+        bg_tail_fraction: float = 0.8,
+    ) -> IrfBackground:
+        """Estimate a per-detector IRF and background from a measurement's non-burst photons.
+
+        A one-line convenience that selects bursts and reads the IRF/background
+        off the rejected (non-burst) photons — the scatter and dark counts
+        between molecules. Equivalent to
+        ``wf.select_bursts(datasets, ...).irf_background(...)``.
+
+        Parameters
+        ----------
+        datasets : str or sequence of str
+            Dataset handle(s) from :meth:`register`.
+        setup : Setup, optional
+            Detector setup (defaults to green/red on channels 0,8 / 1,9).
+        min_photons, time_window, photon_window, method
+            Burst-search parameters defining which photons are bursts (and hence
+            which are background); see :meth:`select_bursts`.
+        baseline_quantile : float
+            Dark-count floor quantile subtracted before normalising the IRF.
+        bg_tail_fraction : float
+            Interphoton-time tail fraction used for the background-rate fit.
+
+        Returns
+        -------
+        IrfBackground
+            Per-detector IRF arrays and background rates; call ``.plot()`` or
+            read ``.table`` / ``.background_khz``.
+        """
+        bursts = self.select_bursts(
+            datasets,
+            setup=setup,
+            min_photons=min_photons,
+            time_window=time_window,
+            photon_window=photon_window,
+            method=method,
+        )
+        return bursts.irf_background(
+            baseline_quantile=baseline_quantile, bg_tail_fraction=bg_tail_fraction
         )
 
     # -- lifecycle ------------------------------------------------------

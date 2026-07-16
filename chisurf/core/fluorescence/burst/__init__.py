@@ -44,3 +44,10 @@ from chisurf.core.fluorescence.burst.background import (
     estimate_background_from_bursts,
     estimate_background_from_interphoton_times,
 )
+
+# IRF + background from non-burst photons
+from chisurf.core.fluorescence.burst.irf_bg import (
+    DetectorIrfBackground,
+    non_burst_mask,
+    extract_irf_background,
+)
