@@ -1,0 +1,36 @@
+---
+# Pair-correlation-function (PCF) distribution fits, ported from PAM
+# (junk/PAM/Models/fcs/PCF_*.m), A/B-verified. x is the correlation lag (s);
+# Mode is in ms (hence the x*1000 inside the log).
+PCF Log-Normal:
+  equation: A/sigma/sqrt(2*3.141592653589793)/x*exp(-(log(x/Mode*1000)-sigma**2)**2/(2*sigma**2))
+  initial:
+    A: 1
+    Mode: 20
+    sigma: 1
+  description: >-
+    Log-normal pair-correlation distribution (PAM PCF_LogNormal): a
+    distribution of diffusion/transit times peaked near Mode (ms). Distribution
+    fit over the lag x (s), not a correlation curve. (PAM's y0 parameter is
+    unused in its fit function and is omitted here.)
+PCF Log-Gaussian:
+  equation: A*exp(-(log(x/Mode*1000))**2/(2*sigma**2))+y_0
+  initial:
+    A: 1
+    Mode: 20
+    sigma: 1
+    y_0: 0
+  description: >-
+    Log-Gaussian pair-correlation distribution (PAM PCF_LogGaussian) over the
+    lag x (s), mode Mode (ms).
+PCF Gamma:
+  equation: A*beta**alpha*x**(alpha-1)*exp(-x*beta)
+  initial:
+    A: 1
+    alpha: 2
+    beta: 1
+  description: >-
+    Gamma pair-correlation distribution (PAM PCF_GammaDistribution). The
+    x-independent 1/gamma(alpha) normaliser (the equation parser has no gamma
+    function) is folded into the free amplitude A. Distribution fit over the
+    lag x.

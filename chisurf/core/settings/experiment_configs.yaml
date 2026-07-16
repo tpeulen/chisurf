@@ -9,6 +9,9 @@ experiment_types:
   fcs:
     name: FCS
     hidden: false
+  pcf:
+    name: PCF
+    hidden: false
   rics:
     name: RICS
     hidden: false
@@ -193,6 +196,21 @@ fcs:
     - chisurf.gui.widgets.models.fcs.DyeShapeFCSWidget
     - chisurf.gui.widgets.models.fcs.MaxEntFCSWidget
     - chisurf.gui.widgets.models.fcs.MaxEntRHWidget
+
+pcf:
+  # Pair-correlation-function analysis (distribution-of-transit-times fits).
+  # Reuses the generic 1D-curve CSV reader; models are the PCF distribution
+  # catalogue (chisurf/core/models/pcf/models.yaml) via ParsePCFWidget.
+  readers:
+    - reader_class: chisurf.core.experiments.fcs.FCS
+      reader_params:
+        name: PCF-CSV
+        experiment_reader: csv
+      controller_class: chisurf.gui.widgets.experiments.fcs.FCSController
+      controller_params:
+        file_type: PCF curves (*.csv *.txt *.dat)
+  models:
+    - chisurf.gui.widgets.models.pcf.ParsePCFWidget
 
 rics:
   readers:
