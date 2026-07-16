@@ -663,6 +663,37 @@ class FittingClient:
             return result
         return {"ok": False}
 
+    def set_parameter_prior(
+        self,
+        parameter_name: str,
+        prior: Optional[Dict[str, Any]],
+        fit_uid: Optional[str] = None,
+        fit_index: Optional[int] = None,
+        local_idx: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Set (or clear) a parameter's prior via its serialisable state dict.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of the target parameter.
+        prior : dict or None
+            A prior state dict (e.g. ``{"kind": "normal", "mu": .., "sigma": ..}``)
+            or ``None`` to clear the prior. Callback priors are runtime-only and
+            cannot be transported over RPC.
+        """
+        params: Dict[str, Any] = {"parameter_name": parameter_name, "prior": prior}
+        if fit_uid is not None:
+            params["fit_uid"] = fit_uid
+        if fit_index is not None:
+            params["fit_index"] = fit_index
+        if local_idx is not None:
+            params["local_idx"] = local_idx
+        result = self._try_rpc("parameter.set_prior", params)
+        if result is not None and result.get("ok", False):
+            return result
+        return {"ok": False}
+
     def link_parameters(
         self,
         parameter_name: str,

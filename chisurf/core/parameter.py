@@ -3,6 +3,7 @@ from chisurf import typing
 
 import abc
 import json
+import math
 
 import numpy as np
 import chinet
@@ -233,6 +234,89 @@ class Parameter(chisurf.core.base.Base):
             return bool(v())
         return bool(v)
 
+    @property
+    def prior(self):
+        """Prior probability distribution attached to this parameter.
+
+        A parameter's prior generalises its bounds. The prior specification is
+        stored on the underlying :class:`chinet.Port` (as a JSON-serialisable
+        dict), so it travels with the port through pickling and JSON. When no
+        smooth prior is set but a bound is active, the bound is reported as the
+        equivalent :class:`~chisurf.core.fitting.priors.UniformPrior`, so a hard
+        box constraint and a soft prior are described through a single concept.
+        Returns ``None`` for an unbounded parameter with no prior (an improper
+        flat prior).
+
+        Setting a :class:`UniformPrior` is equivalent to setting the bounds and
+        enabling them. Setting any other prior stores its spec on the port and
+        updates the port's hard bounds to the prior's
+        :meth:`~chisurf.core.fitting.priors.Prior.support` (so a truncated prior
+        also constrains the optimiser). Setting ``None`` clears both the prior
+        and the active bound.
+
+        Returns
+        -------
+        chisurf.core.fitting.priors.Prior or None
+            The effective prior, or ``None``.
+        """
+        from chisurf.core.fitting.priors import prior_from_state, UniformPrior
+        # A live prior object (e.g. a callback prior that cannot be serialised)
+        # takes precedence; otherwise rebuild from the port's persisted spec.
+        # ``getattr`` guards the pickle path, where ``__setstate__`` bypasses
+        # ``__init__`` and the slot may not exist yet.
+        live = getattr(self, "_prior", None)
+        if live is not None:
+            return live
+        spec = getattr(self._port, "prior", None)
+        pr = prior_from_state(spec) if spec else None
+        if pr is not None:
+            return pr
+        if self.bounds_on:
+            lb, ub = self.bounds
+            return UniformPrior(float(lb), float(ub))
+        return None
+
+    @prior.setter
+    def prior(self, value):
+        """Attach, replace or clear this parameter's prior (see :attr:`prior`)."""
+        from chisurf.core.fitting.priors import Prior, UniformPrior, as_prior
+        # Accept a Prior, a state dict, or a bare callable (the most general
+        # prior form) -- callables are wrapped as a CallablePrior by as_prior.
+        if value is not None and not isinstance(value, Prior):
+            value = as_prior(value)
+        if value is None:
+            self._prior = None
+            self._port.prior = None
+            self.bounds_on = False
+            return
+        if not isinstance(value, Prior):
+            raise TypeError("prior must be a Prior, a callable, a state dict, or None")
+        if isinstance(value, UniformPrior):
+            # A box prior *is* a bound: fold it back onto the port so existing
+            # bounds machinery (optimiser transforms, GUI) keeps working.
+            self._prior = None
+            self._port.prior = None
+            self.bounds = (value.lb, value.ub)
+            self.bounds_on = True
+            return
+        # Smooth prior. Keep the live object (needed for callback priors, which
+        # cannot round-trip through JSON) and mirror a serialisable spec onto
+        # the port so distribution priors persist. Mirror the prior's hard
+        # support onto the port bounds so a truncated support also constrains
+        # the optimiser while the residual term supplies the soft pull.
+        self._prior = value
+        spec = value.get_state()
+        # A callback (or a product containing one) is runtime-only: its spec
+        # cannot be reconstructed, so it is not written to the port.
+        from chisurf.core.fitting.priors import prior_from_state
+        self._port.prior = spec if prior_from_state(spec) is not None else None
+        lb, ub = value.support()
+        if math.isfinite(lb) or math.isfinite(ub):
+            self.bounds = (lb, ub)
+            self.bounds_on = True
+        else:
+            self.bounds_on = False
+
 
     @property
     def fixed(self):
@@ -437,6 +521,14 @@ class Parameter(chisurf.core.base.Base):
         if isinstance(link, Parameter):
             self._port.link = link._port
         self.controller = None
+        # Live prior object. Serialisable priors also mirror their spec onto the
+        # chinet Port (so they persist); callback priors live only here. Box
+        # bounds are surfaced as a UniformPrior by the :attr:`prior` property,
+        # so both this slot and the port spec stay empty for pure bounds.
+        self._prior = None
+        prior = kwargs.pop('prior', None)
+        if prior is not None:
+            self.prior = prior
 
     def get_state(self) -> dict:
         """Return a JSON-serializable snapshot of this parameter's state.
@@ -450,17 +542,28 @@ class Parameter(chisurf.core.base.Base):
             lb, ub = self.bounds
         except Exception:
             lb, ub = float("-inf"), float("inf")
+        # An unbounded port reports ``None`` bounds; normalise to +/-inf so the
+        # state stays a pair of plain floats.
+        lb = float("-inf") if lb is None else float(lb)
+        ub = float("inf") if ub is None else float(ub)
         try:
             desc = getattr(self, "description", "")
         except Exception:
             desc = ""
-        return {
+        state = {
             "value": float(self.value),
             "bounds_on": bool(self.bounds_on),
-            "bounds": [float(lb), float(ub)],
+            "bounds": [lb, ub],
             "fixed": bool(self.fixed),
             "description": str(desc),
         }
+        # Serialise a smooth prior when present. Pure box bounds are already
+        # captured by ``bounds``/``bounds_on`` (the UniformPrior case), so only
+        # a non-uniform prior spec (stored on the port) needs an explicit entry.
+        spec = getattr(self._port, "prior", None)
+        if isinstance(spec, dict) and spec:
+            state["prior"] = dict(spec)
+        return state
 
     def set_state(self, state: dict) -> None:
         """Restore parameter state from :meth:`get_state` output.
@@ -488,6 +591,14 @@ class Parameter(chisurf.core.base.Base):
                     self.description = str(state["description"])
                 except Exception:
                     pass
+            # Restore a smooth prior if one was serialised. Assigning through
+            # the ``prior`` setter also re-establishes the port bounds derived
+            # from the prior's support.
+            if "prior" in state:
+                try:
+                    self.prior = state["prior"]
+                except Exception:
+                    self._port.prior = None
         except Exception:
             return
 

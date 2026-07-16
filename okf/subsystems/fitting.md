@@ -60,6 +60,39 @@ The selector is threaded `Fit.noise_model → Model.get_wres →
 calculate_weighted_residuals(..., noise_model=…)`. Default preserves the
 historical WLS behaviour exactly.
 
+# Parameter priors (MAP + Bayesian)
+
+Any free parameter may carry a **prior** (`chisurf/core/fitting/priors.py`),
+generalising the fit from least squares to maximum-a-posteriori (MAP) and
+proper Bayesian sampling. **Bounds are the degenerate uniform prior**: the box
+constraint `lb ≤ θ ≤ ub` is a `UniformPrior` whose `support()` drives the
+optimiser's hard bounds, so a hard bound and a soft prior are one concept
+(`Parameter.prior`, see [parameters](/subsystems/parameters.md)).
+
+- **Least squares → MAP.** `_prior_residuals` (in `fit.py`) appends each free
+  parameter's `prior.residuals(value)` to the data-residual vector when
+  `get_wres(..., include_priors=True)`. For a Gaussian prior this is the
+  Tikhonov/ridge residual `(θ−μ)/σ`; the general case is a signed deviance
+  `sign(θ−mode)·sqrt(−2·Δlnpdf)` — the same reduction used for the Poisson
+  `2I*` residuals, so the LM engine minimises `χ² − 2·ln p(θ)` unchanged.
+  `Fit.run`/`FitGroup.run` pass `include_priors=True`; `get_chi2` stays
+  data-only so reported χ² remains the data misfit.
+- **MCMC.** `lnprior` sums `prior.lnpdf` over the free parameters (falling back
+  to the uniform box prior when none is set); `lnprob = lnprior − 0.5·chi2`.
+- **Families.** `UniformPrior` (bounds), `NormalPrior`, `TruncatedNormalPrior`,
+  `HalfNormalPrior`, `LogNormalPrior`, `ExponentialPrior`, `GammaPrior`,
+  `BetaPrior`, plus `CallablePrior` — the most general form wrapping any
+  `logpdf(x)` callback (runtime-only, not persisted). `as_prior` coerces a
+  Prior / callable / state dict.
+- **Combination / conjugacy.** `Prior.combine` (`*`) merges two priors: closed
+  form for same-family conjugates (`Normal×Normal` precision-weighted,
+  `Gamma×Gamma`, `Beta×Beta`, `Normal×Uniform → TruncatedNormal`) and a generic
+  `ProductPrior` (summed log-densities, concatenated residuals) otherwise.
+
+Distribution priors persist as a JSON spec on the parameter's `chinet.Port`
+(`port.prior`); the GUI edits them through the per-parameter prior selector and
+the `parameter.set_prior` RPC (see [parameters](/subsystems/parameters.md)).
+
 The dedicated single-molecule / image MLE path (tttrlib `fit2x`:
 `Fit23`/`Fit24`/`Fit25`) is wrapped by the Qt-free harness
 `chisurf/core/fluorescence/mle/` (`Fit2x`, `Fit2xSettings`, `Fit2xResult`,

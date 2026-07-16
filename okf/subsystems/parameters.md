@@ -20,10 +20,26 @@ while a callable is the source of truth. `Parameter` supports arithmetic
 |-----------|---------|
 | `value` | current scalar (link/callable/port) |
 | `bounds`, `bounds_on` | `(lb, ub)` tuple + enforcement flag (on the port) |
+| `prior` | prior distribution — bounds are its `UniformPrior` case |
 | `fixed` | frozen during optimization |
 | `link` / `is_linked` | follows another parameter's port |
 | `is_link_master` | UI-only hint: this parameter is a link target |
 | `controller` | attached GUI widget, if any |
+
+# Priors (bounds unified)
+
+`Parameter.prior` is the single concept for both hard bounds and soft prior
+belief. An active bound surfaces as a
+[`UniformPrior`](/subsystems/fitting.md); a smooth prior (Gaussian, log-normal,
+…) stores its serialisable spec on the underlying `chinet.Port` (`port.prior`,
+so it round-trips through the port JSON/pickle) and mirrors its `support()` onto
+the port bounds. A `CallablePrior` (arbitrary `logpdf(x)` callback) is the most
+general form and is kept in memory only (runtime-only, not persisted). The
+getter prefers the live prior object, else rebuilds from the port spec, else
+reports the bound as a uniform prior. Serialisation flows through
+`get_state`/`set_state` (project JSON) and the `parameter.set_prior` RPC. Priors
+feed the fit objective (MAP residuals) and the sampler (`lnprior`); see
+[fitting](/subsystems/fitting.md).
 
 # Links and the dependency graph
 

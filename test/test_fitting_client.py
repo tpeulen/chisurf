@@ -301,6 +301,20 @@ class TestSetParameterBoundsOn:
         assert result["ok"] is True
 
 
+class TestSetParameterPrior:
+    def test_sets_prior(self, fc, mock_client):
+        mock_client.set_response("parameter.set_prior", {"ok": True})
+        result = fc.set_parameter_prior(
+            "tau1", {"kind": "normal", "mu": 2.0, "sigma": 0.5}, fit_index=0
+        )
+        assert result["ok"] is True
+
+    def test_clears_prior(self, fc, mock_client):
+        mock_client.set_response("parameter.set_prior", {"ok": True})
+        result = fc.set_parameter_prior("tau1", None, fit_index=0)
+        assert result["ok"] is True
+
+
 class TestLinkUnlink:
     def test_link_params(self, fc, mock_client):
         mock_client.set_response("parameter.link", {"ok": True})
@@ -595,6 +609,14 @@ class TestParamVerification:
         method, params = _last_call(mock_client)
         assert method == "parameter.set_bounds_on"
         assert params == {"parameter_name": "tau1", "bounds_on": True, "fit_uid": "abc"}
+
+    def test_set_parameter_prior(self, fc, mock_client):
+        mock_client.set_response("parameter.set_prior", {"ok": True})
+        spec = {"kind": "normal", "mu": 2.0, "sigma": 0.5}
+        fc.set_parameter_prior("tau1", spec, fit_uid="abc")
+        method, params = _last_call(mock_client)
+        assert method == "parameter.set_prior"
+        assert params == {"parameter_name": "tau1", "prior": spec, "fit_uid": "abc"}
 
     def test_link_parameters(self, fc, mock_client):
         mock_client.set_response("parameter.link", {"ok": True})

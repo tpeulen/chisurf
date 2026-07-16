@@ -77,6 +77,7 @@
     {"rpc": "parameter.set_fixed", "service": "parameters.set_parameter_fixed"},
     {"rpc": "parameter.set_bounds", "service": "parameters.set_parameter_bounds"},
     {"rpc": "parameter.set_bounds_on", "service": "parameters.set_parameter_bounds_on"},
+    {"rpc": "parameter.set_prior", "service": "parameters.set_parameter_prior"},
     {"rpc": "parameter.link", "service": "parameters.parameter_link"},
     {"rpc": "parameter.unlink", "service": "parameters.parameter_unlink"},
 

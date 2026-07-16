@@ -766,7 +766,7 @@ class Fit(cs.core.base.Base):
             cs.core.math.optimization.leastsqbound(
                 get_wres,
                 self.model.parameter_values,
-                args=(self.model,),
+                args=(self.model, True),
                 bounds=self.model.parameter_bounds,
                 progress_callback=progress_callback,
                 **fitting_options
@@ -815,6 +815,21 @@ class Fit(cs.core.base.Base):
         try:
             p = self.model.parameters_all_dict[name]
             p.bounds_on = bool(on)
+            self.model.finalize()
+        except KeyError:
+            cs.logging.error(f"Parameter '{name}' not found in model.")
+
+    def set_parameter_prior(self, name: str, prior):
+        """Set or clear a parameter's prior and notify dependents.
+
+        ``prior`` may be a :class:`~chisurf.core.fitting.priors.Prior`, a prior
+        state dict, a callable ``logpdf(x)``, or ``None`` to clear it. Bounds are
+        the uniform-prior special case (handled by the ``Parameter.prior``
+        setter).
+        """
+        try:
+            p = self.model.parameters_all_dict[name]
+            p.prior = prior
             self.model.finalize()
         except KeyError:
             cs.logging.error(f"Parameter '{name}' not found in model.")
@@ -1401,7 +1416,7 @@ class FitGroup(Fit):
             cs.core.math.optimization.leastsqbound(
                 func=get_wres,
                 x0=fit._model.parameter_values,
-                args=(fit._model,),
+                args=(fit._model, True),
                 bounds=bounds,
                 progress_callback=progress_callback,
                 **fitting_options
@@ -1880,9 +1895,48 @@ def _apply_fit_mask(
     return wres
 
 
+def _prior_residuals(
+        model: cs.core.models.Model
+) -> np.array:
+    """Return the concatenated prior-residual contributions of a model.
+
+    Each free parameter that carries a prior contributes its
+    :meth:`~chisurf.core.fitting.priors.Prior.residuals` at the parameter's
+    current value. Appending these to the data residuals makes a least-squares
+    (Levenberg-Marquardt) fit minimise the negative log-posterior, i.e. it
+    performs maximum-a-posteriori estimation. Uniform (box) priors contribute
+    nothing here because they are enforced as hard optimiser bounds.
+
+    Parameters
+    ----------
+    model : cs.core.models.Model
+        Model whose free :attr:`parameters` are inspected for priors.
+
+    Returns
+    -------
+    numpy.ndarray
+        A 1-D array of prior residuals (possibly empty).
+    """
+    pieces = []
+    for p in getattr(model, "parameters", []):
+        prior = getattr(p, "prior", None)
+        if prior is None:
+            continue
+        try:
+            r = np.asarray(prior.residuals(float(p.value)), dtype=np.float64).ravel()
+        except Exception:
+            continue
+        if r.size:
+            pieces.append(r)
+    if not pieces:
+        return np.empty(0, dtype=np.float64)
+    return np.concatenate(pieces)
+
+
 def get_wres(
         parameter_values: typing.List[float],
-        model: cs.core.models.Model
+        model: cs.core.models.Model,
+        include_priors: bool = False
 ) -> np.array:
     """Return weighted residuals for a list of model parameters.
 
@@ -1893,12 +1947,24 @@ def get_wres(
         is empty, the model is not updated.
     model : cs.core.models.Model
         Model providing :attr:`weighted_residuals`.
+    include_priors : bool, optional
+        If *True*, append per-parameter prior residuals (see
+        :func:`_prior_residuals`) so the optimiser performs maximum-a-posteriori
+        estimation. Goodness-of-fit reporting (:func:`get_chi2`) leaves this
+        *False* so the reported chi² reflects the data misfit only.
     """
     if len(parameter_values) > 0:
         model.parameter_values = parameter_values
         model.update_model()
     wres = model.weighted_residuals
-    return _apply_fit_mask(model, wres)
+    wres = _apply_fit_mask(model, wres)
+    if include_priors:
+        pr = _prior_residuals(model)
+        if pr.size:
+            wres = np.concatenate(
+                [np.asarray(wres, dtype=np.float64).ravel(), pr]
+            )
+    return wres
 
 
 def get_chi2(
@@ -1963,21 +2029,27 @@ def lnprior(
             typing.Tuple[float, float]
         ] = None
 ) -> float:
-    """Log-prior probability induced by parameter bounds.
+    """Log-prior probability of a set of parameter values.
 
-    The prior is uniform inside the bounds and zero outside. This function
-    returns ``0`` inside the allowed region and ``-inf`` if any parameter
-    violates its bounds.
+    When ``bounds`` is given (or the fit's free parameters carry no priors),
+    the prior is the uniform box prior: ``0`` inside the bounds and ``-inf``
+    for any violated bound -- the historical behaviour. Otherwise the prior is
+    the sum of the per-parameter log densities
+    :meth:`chisurf.core.fitting.priors.Prior.lnpdf` over the free parameters
+    (bounds are the :class:`~chisurf.core.fitting.priors.UniformPrior` special
+    case, so they are included automatically).
 
     Parameters
     ----------
     parameter_values : list of float
-        Parameter values to be tested.
+        Parameter values to be tested, in the order of the fit's free
+        parameters.
     fit : Fit
-        Fit providing default bounds via ``fit.model.parameter_bounds`` if
-        ``bounds`` is *None*.
+        Fit providing the free parameters and their priors. May be *None* only
+        when explicit ``bounds`` are supplied.
     bounds : list of (float, float), optional
-        Explicit bounds to use instead of those from ``fit``.
+        Explicit bounds. When provided, only this uniform box prior is used and
+        ``fit`` is not consulted.
 
     Examples
     --------
@@ -1987,17 +2059,31 @@ def lnprior(
     >>> lnprior([3.0, 0.5], fit=None, bounds=bounds)
     -inf
     """
-    if bounds is None:
-        bounds = fit.model.parameter_bounds
-    for (bound, value) in zip(bounds, parameter_values):
-        lb, ub = bound
-        if lb is not None:
-            if value < lb:
+    if bounds is not None:
+        for (bound, value) in zip(bounds, parameter_values):
+            lb, ub = bound
+            if lb is not None and value < lb:
                 return -np.inf
-        if ub is not None:
-            if value > ub:
+            if ub is not None and value > ub:
                 return -np.inf
-    return 0.0
+        return 0.0
+
+    params = list(getattr(fit.model, "parameters", []))
+    priors = [getattr(p, "prior", None) for p in params]
+    if not any(pr is not None for pr in priors):
+        # No explicit priors: fall back to the uniform box prior from bounds.
+        return lnprior(
+            parameter_values, fit, bounds=fit.model.parameter_bounds
+        )
+
+    lp = 0.0
+    for pr, value in zip(priors, parameter_values):
+        if pr is None:
+            continue
+        lp += pr.lnpdf(float(value))
+        if not np.isfinite(lp):
+            return -np.inf
+    return lp
 
 
 def lnprob(

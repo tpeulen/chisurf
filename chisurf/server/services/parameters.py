@@ -278,6 +278,49 @@ def set_parameter_bounds_on(
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
 
 
+def set_parameter_prior(
+    state: SessionState,
+    parameter_name: str,
+    prior: Optional[dict] = None,
+    fit_index: int = 0,
+    fit_uid: Optional[str] = None,
+    local_idx: Optional[int] = None,
+) -> ServiceResult:
+    """Set or clear a parameter's prior from its serialisable state dict.
+
+    Bounds are the uniform-prior special case, so a ``{"kind": "uniform", ..}``
+    spec is folded onto the parameter bounds by the core ``Parameter.prior``
+    setter; smooth priors (Gaussian, log-normal, ...) are stored on the port and
+    contribute to the maximum-a-posteriori objective. Passing ``None`` clears the
+    prior.
+
+    Parameters
+    ----------
+    state : SessionState
+        Server-side session state.
+    parameter_name : str
+        Parameter name.
+    prior : dict, optional
+        Prior state dict (``{"kind": ..., <params>}``) or ``None`` to clear it.
+    fit_index : int
+        Fit index.
+    fit_uid : str, optional
+        Fit UID.
+    local_idx : int, optional
+        Local fit index when the selected fit is a fit group.
+    """
+    fit, p, error = _resolve_parameter(state, parameter_name, fit_index, fit_uid, local_idx)
+    if error is not None:
+        return error
+    try:
+        p.prior = prior if isinstance(prior, dict) else None
+        if hasattr(fit.model, "finalize"):
+            fit.model.finalize()
+        return {"ok": True}
+    except Exception as e:
+        return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
+
+
 def parameter_link(
     state: SessionState,
     parameter_name: str,

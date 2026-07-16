@@ -173,6 +173,7 @@ METHOD_CATALOGUE = {
             "parameter.set_fixed",
             "parameter.set_bounds",
             "parameter.set_bounds_on",
+            "parameter.set_prior",
             "parameter.link",
             "parameter.unlink",
         ],
@@ -435,6 +436,12 @@ METHOD_SCHEMAS = {
     },
     "parameter.set_bounds_on": {
         "required_params": ["parameter_name", "bounds_on"],
+        "optional_params": ["fit_index", "fit_uid", "local_idx"],
+        "result": "ActionResult",
+        "events": ["parameter.changed"],
+    },
+    "parameter.set_prior": {
+        "required_params": ["parameter_name", "prior"],
         "optional_params": ["fit_index", "fit_uid", "local_idx"],
         "result": "ActionResult",
         "events": ["parameter.changed"],

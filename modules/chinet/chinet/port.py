@@ -101,6 +101,15 @@ class Port(BaseObject):
         self._link = None
         self._node = None
         self._linked_to = []
+
+        # Optional prior specification attached to this port. Stored as a plain
+        # JSON-serialisable dict (``{"kind": ..., <params>}``) or ``None`` so
+        # that it travels with the port through the document/JSON round-trip
+        # without chinet depending on any higher-level prior classes. Bounds are
+        # the uniform (box) prior and remain represented by ``lb``/``ub`` +
+        # ``is_bounded``; this slot carries smooth priors (Gaussian, ...).
+        prior = kwargs.get("prior", None)
+        self._prior = dict(prior) if isinstance(prior, dict) else None
         
         # Determine initial vectorness
         v_np = np.atleast_1d(value)
@@ -199,6 +208,25 @@ class Port(BaseObject):
             self._bounds = [float(v_np[0]), float(v_np[1])]
             if self._is_bounded:
                 self._data = np.clip(self._data, self._bounds[0], self._bounds[1])
+
+    @property
+    def prior(self):
+        """Prior specification attached to the port, or ``None``.
+
+        The value is a plain JSON-serialisable ``dict`` describing a prior
+        distribution (a ``"kind"`` tag plus its parameters). Bounds are handled
+        separately via ``lb``/``ub`` and :attr:`is_bounded` (the uniform-prior
+        case); this attribute carries smooth priors.
+        """
+        return self._prior
+
+    @prior.setter
+    def prior(self, v):
+        """Set or clear the port's prior specification (a dict or ``None``)."""
+        self._prior = dict(v) if isinstance(v, dict) else None
+
+    def get_prior(self): return self._prior
+    def set_prior(self, v): self.prior = v
 
     @property
     def link(self): return self._link
@@ -360,13 +388,15 @@ class Port(BaseObject):
         doc.update({
             "fixed": self._fixed, "is_output": self._is_output, "is_reactive": self._is_reactive,
             "is_bounded": self._is_bounded, "value": val, "bounds": self._bounds,
-            "link": self._link.oid if self._link else None, "value_type": self._value_type
+            "link": self._link.oid if self._link else None, "value_type": self._value_type,
+            "prior": self._prior
         })
 
     def set_document(self, doc):
         super().set_document(doc); self._fixed = doc.get("fixed", self._fixed); self._is_output = doc.get("is_output", self._is_output)
         self._is_reactive = doc.get("is_reactive", self._is_reactive); self._is_bounded = doc.get("is_bounded", self._is_bounded)
         self._value_type = doc.get("value_type", self._value_type); self._bounds = doc.get("bounds", self._bounds)
+        prior = doc.get("prior", self._prior); self._prior = dict(prior) if isinstance(prior, dict) else None
         if "value" in doc:
             v_np = np.atleast_1d(doc["value"]); self._data = v_np.astype(np.float64 if self._value_type in (1, 3) else np.int64)
             self._is_vector = not np.isscalar(doc["value"]) or v_np.size == 0
