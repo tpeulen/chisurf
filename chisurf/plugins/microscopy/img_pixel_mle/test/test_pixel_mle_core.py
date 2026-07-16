@@ -81,6 +81,34 @@ def test_core_fits_flim_image_headlessly():
     assert int((result.tau > 0).sum()) == result.n_pixels_fit
 
 
+def test_fast_and_loop_engines_are_equivalent():
+    # The vectorised (uint8 get_fluorescence_decay) and exact (bincount) paths
+    # must produce identical per-pixel lifetimes.
+    r_loop = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(engine="loop", n_workers=1))
+    r_fast = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(engine="fast", n_workers=1))
+    assert r_loop.n_pixels_fit == r_fast.n_pixels_fit
+    tl = r_loop.dataframe["tau"].to_numpy()
+    tf = r_fast.dataframe["tau"].to_numpy()
+    assert np.allclose(tl, tf, equal_nan=True)
+
+
+def test_multiprocessing_matches_serial():
+    # Parallel (fork) fitting must give bit-identical results to serial.
+    from chisurf.plugins.microscopy.img_pixel_mle.core import pixel_mle as pm
+
+    orig = pm._MIN_PIXELS_FOR_MP
+    pm._MIN_PIXELS_FOR_MP = 100  # force the MP path on the small test image
+    try:
+        r_ser = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(n_workers=1))
+        r_par = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(n_workers=2))
+    finally:
+        pm._MIN_PIXELS_FOR_MP = orig
+    ts = r_ser.dataframe["tau"].to_numpy()
+    tp = r_par.dataframe["tau"].to_numpy()
+    assert r_ser.n_pixels_fit == r_par.n_pixels_fit
+    assert np.allclose(ts, tp, equal_nan=True)
+
+
 def test_min_photons_threshold_controls_fit_count():
     few = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(min_photons=200))
     many = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(min_photons=20))
