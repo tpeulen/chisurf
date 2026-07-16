@@ -212,7 +212,7 @@ best-effort MMFDB).
   succeeds via a JSON fallback but warns that MMFDB was unavailable and the setup is
   not stored / not assigned to a user.
 - **Sidequest C (g-factor calibration provenance).** The reference decay (VV/VH
-  polarization-resolved "Jordi" file) is the calibration evidence and must live in
+  polarization-resolved "VV/VH" file) is the calibration evidence and must live in
   MMFDB. Register it as a queryable artifact (`raw_measurement` / typed
   `tcspc_decay`), archive the computed g-factor via `register_calibration()`
   (`calibration_type="g_factor"`, parented to the reference decay) with scalar

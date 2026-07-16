@@ -103,7 +103,7 @@ custom section accepts a `prior` option the same way. See the
 The dedicated single-molecule / image MLE path (tttrlib `fit2x`:
 `Fit23`/`Fit24`/`Fit25`) is wrapped by the Qt-free harness
 `chisurf/core/fluorescence/mle/` (`Fit2x`, `Fit2xSettings`, `Fit2xResult`,
-`assemble_jordi`), the single seam consumed by the burst-MLE and image-MLE
+`assemble_vv_vh`), the single seam consumed by the burst-MLE and image-MLE
 plugins in place of duplicated raw-tttrlib boilerplate.
 
 # Global analysis / parameter linking

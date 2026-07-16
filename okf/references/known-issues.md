@@ -33,7 +33,7 @@ These are the patterns; each caused more than one bug.
   plugins (microtime histogram, MLE lifetime wizard).
 - **`@property`-backed reader settings silently drop on serialize.**
   `serialize_reader_state()` / `_reader_settings_dict()` iterate
-  `reader.__dict__` and skip `_`-prefixed keys. A `@property` (e.g. `is_jordi`)
+  `reader.__dict__` and skip `_`-prefixed keys. A `@property` (e.g. `is_vv_vh`)
   is not in `__dict__`; only its private backing field is, and that is filtered
   out — so the setting fails to persist across restart with no error. Any new
   `@property` on an `ExperimentReader` needs the serializer to look for the
@@ -92,7 +92,7 @@ Grouped by area; captured June 2026.
 - Save→close→open resolves the active window via `chisurf.cs` after teardown
   removed it → `AttributeError: module 'chisurf' has no attribute 'cs'`.
 - Dataset removal no longer confirms and closes dependent fits.
-- TCSPC "stacked" (`is_jordi`) not persisted across restart (see the
+- TCSPC "stacked" (`is_vv_vh`) not persisted across restart (see the
   `@property` gotcha above).
 - Undo/redo does not destroy stashed dataset/fit UI windows
   (`history_replay.apply_entity_lifecycle`) — stale windows linger.

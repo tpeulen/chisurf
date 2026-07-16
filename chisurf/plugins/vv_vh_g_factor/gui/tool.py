@@ -1,6 +1,6 @@
-"""Main widget for the Jordi G-Factor Calculator plugin.
+"""Main widget for the VV/VH G-Factor Calculator plugin.
 
-This acts as a thin client for the Jordi G-Factor backend.
+This acts as a thin client for the VV/VH G-Factor backend.
 """
 
 from __future__ import annotations
@@ -23,13 +23,13 @@ from qtpy.QtWidgets import (
 from qtpy.QtCore import Qt, QTimer
 import pyqtgraph as pg
 
-# Optional ChiSurf I/O import for Jordi reading
+# Optional ChiSurf I/O import for VV/VH reading
 try:
-    from chisurf.core.fio import read_jordi as _read_jordi
+    from chisurf.core.fio import read_vv_vh as _read_vv_vh
 except Exception:
-    _read_jordi = None
+    _read_vv_vh = None
 
-from .client import JordiGFactorClient
+from .client import VvVhGFactorClient
 from ..core.calculations import (
     shift_interp_on_axis,
     compute_rt,
@@ -97,19 +97,19 @@ class FileDropList(QListWidget):
             super().dropEvent(event)
 
 
-class JordiDecayBatchWindow(QDialog):
+class VvVhDecayBatchWindow(QDialog):
     def __init__(self, settings_snapshot: dict, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Jordi G-Factor Batch Decays")
+        self.setWindowTitle("VV/VH G-Factor Batch Decays")
         self.setWindowModality(Qt.ApplicationModal)
         self.snapshot = dict(settings_snapshot)
         self.results = []
-        self._client = JordiGFactorClient()
+        self._client = VvVhGFactorClient()
         self._init_ui()
 
     def _init_ui(self):
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Drop Jordi files here or use Add..."))
+        layout.addWidget(QLabel("Drop VV/VH files here or use Add..."))
 
         self.file_list = FileDropList()
         layout.addWidget(self.file_list)
@@ -145,8 +145,8 @@ class JordiDecayBatchWindow(QDialog):
 
     def _compute_file_result(self, file_path: str):
         try:
-            if _read_jordi is not None:
-                vv, vh = _read_jordi(file_path, split=True)
+            if _read_vv_vh is not None:
+                vv, vh = _read_vv_vh(file_path, split=True)
             else:
                 vec = np.loadtxt(file_path)
                 half = len(vec) // 2
@@ -222,7 +222,7 @@ class JordiDecayBatchWindow(QDialog):
         self.results = []
 
     def _on_add(self):
-        files, _ = QFileDialog.getOpenFileNames(self, "Add Jordi Files", "", "Data Files (*.dat *.txt *.csv);;All Files (*)")
+        files, _ = QFileDialog.getOpenFileNames(self, "Add VV/VH Files", "", "Data Files (*.dat *.txt *.csv);;All Files (*)")
         if files:
             self.file_list.add_files(files)
 
@@ -261,13 +261,13 @@ class JordiDecayBatchWindow(QDialog):
             QMessageBox.critical(self, "Save CSV", f"Failed to save CSV: {e}")
 
 
-@persist_plugin_state("jordi_g_factor")
-class JordiGFactorCalculator(QWidget):
-    """Main widget for the Jordi G-Factor Calculator plugin client."""
+@persist_plugin_state("vv_vh_g_factor")
+class VvVhGFactorCalculator(QWidget):
+    """Main widget for the VV/VH G-Factor Calculator plugin client."""
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Jordi G-Factor Calculator")
+        self.setWindowTitle("VV/VH G-Factor Calculator")
 
         # Debounce timer: coalesce rapid UI events (region/bg drags, shift
         # spinbox) into a single G-factor calculation instead of one RPC
@@ -278,7 +278,7 @@ class JordiGFactorCalculator(QWidget):
         self._calc_timer.timeout.connect(self.calculate_g_factor)
 
         # Data storage
-        self.jordi_data = None
+        self.vv_vh_data = None
         self.time_axis = None
         self.parallel_data = None
         self.perpendicular_data = None
@@ -310,7 +310,7 @@ class JordiGFactorCalculator(QWidget):
         self.decay_shift = 0.0
 
         # ZMQ Client
-        self._client = JordiGFactorClient()
+        self._client = VvVhGFactorClient()
 
         # Create UI
         self.init_ui()
@@ -318,12 +318,12 @@ class JordiGFactorCalculator(QWidget):
     def init_ui(self):
         uic.loadUi(str(Path(__file__).parents[1] / "wizard.ui"), self)
 
-        self.load_button.clicked.connect(self.load_jordi_file)
+        self.load_button.clicked.connect(self.load_vv_vh_file)
         self.batch_button.clicked.connect(self.open_batch_window)
         self.bg_correction_checkbox.stateChanged.connect(self.on_bg_correction_changed)
         self.flip_checkbox.stateChanged.connect(lambda *_: (self.update_plot(), self._schedule_calculate()))
         self.shift_spinbox.valueChanged.connect(self.on_shift_changed)
-        self.fp_load_button.clicked.connect(self.load_fp_jordi_file)
+        self.fp_load_button.clicked.connect(self.load_fp_vv_vh_file)
         self.fp_rho_spinbox.valueChanged.connect(self.calculate_fp_mixing_estimate)
         self.fp_r0_spinbox.valueChanged.connect(self.calculate_fp_mixing_estimate)
         self.fp_dt_spinbox.valueChanged.connect(self.calculate_fp_mixing_estimate)
@@ -428,10 +428,10 @@ class JordiGFactorCalculator(QWidget):
 
     def open_batch_window(self):
         snap = self._build_batch_snapshot()
-        self._batch_window = JordiDecayBatchWindow(snap, self)
+        self._batch_window = VvVhDecayBatchWindow(snap, self)
         self._batch_window.exec_()
 
-    def load_jordi_file(self, file_path=None):
+    def load_vv_vh_file(self, file_path=None):
         if isinstance(file_path, bool):
             file_path = None
         if file_path is None:
@@ -441,25 +441,25 @@ class JordiGFactorCalculator(QWidget):
             except Exception:
                 start_dir = ""
             file_path, _ = QFileDialog.getOpenFileName(
-                self, "Load Jordi File", start_dir, "Data Files (*.dat);;All Files (*)"
+                self, "Load VV/VH File", start_dir, "Data Files (*.dat);;All Files (*)"
             )
             if not file_path:
                 return
 
         self.file_label.setText(str(file_path))
-        logger.info("JordiGFactorCalculator: loading Jordi file from path %s", file_path)
+        logger.info("VvVhGFactorCalculator: loading VV/VH file from path %s", file_path)
 
         try:
-            vv_data, vh_data = self._load_jordi_channels(file_path)
+            vv_data, vh_data = self._load_vv_vh_channels(file_path)
             vv_data = np.asarray(vv_data, dtype=float)
             vh_data = np.asarray(vh_data, dtype=float)
-            logger.info("JordiGFactorCalculator: loaded %d data points", len(vv_data))
+            logger.info("VvVhGFactorCalculator: loaded %d data points", len(vv_data))
             self.time_axis = np.arange(len(vv_data), dtype=float)
 
             self.parallel_data = DataCurve(x=self.time_axis, y=vv_data, name="Parallel")
             self.perpendicular_data = DataCurve(x=self.time_axis, y=vh_data, name="Perpendicular")
         except Exception as e:
-            logger.error("JordiGFactorCalculator: failed to load Jordi file: %s", e)
+            logger.error("VvVhGFactorCalculator: failed to load VV/VH file: %s", e)
             self.file_label.setText(f"Error loading file: {str(e)}")
             return
 
@@ -487,19 +487,19 @@ class JordiGFactorCalculator(QWidget):
         self.calculate_g_factor()
 
     @staticmethod
-    def _load_jordi_channels(file_path):
-        if _read_jordi is not None:
-            return _read_jordi(file_path, split=True)
+    def _load_vv_vh_channels(file_path):
+        if _read_vv_vh is not None:
+            return _read_vv_vh(file_path, split=True)
         warnings.warn(
-            "Direct Jordi reading via numpy.loadtxt is deprecated. Use chisurf.core.fio.read_jordi instead.",
+            "Direct VV/VH reading via numpy.loadtxt is deprecated. Use chisurf.core.fio.read_vv_vh instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        jordi_data = np.loadtxt(file_path)
-        half_length = len(jordi_data) // 2
-        return jordi_data[:half_length], jordi_data[half_length:]
+        vv_vh_data = np.loadtxt(file_path)
+        half_length = len(vv_vh_data) // 2
+        return vv_vh_data[:half_length], vv_vh_data[half_length:]
 
-    def load_fp_jordi_file(self, file_path=None):
+    def load_fp_vv_vh_file(self, file_path=None):
         self.fp_estimate_available = False
         if isinstance(file_path, bool):
             file_path = None
@@ -510,14 +510,14 @@ class JordiGFactorCalculator(QWidget):
             except Exception:
                 start_dir = ""
             file_path, _ = QFileDialog.getOpenFileName(
-                self, "Load FP Jordi File", start_dir, "Data Files (*.dat);;All Files (*)"
+                self, "Load FP VV/VH File", start_dir, "Data Files (*.dat);;All Files (*)"
             )
             if not file_path:
                 return
 
         self.fp_file_label.setText(str(file_path))
         try:
-            vv_data, vh_data = self._load_jordi_channels(file_path)
+            vv_data, vh_data = self._load_vv_vh_channels(file_path)
             vv_data = np.asarray(vv_data, dtype=float)
             vh_data = np.asarray(vh_data, dtype=float)
             n = min(len(vv_data), len(vh_data))
@@ -576,7 +576,7 @@ class JordiGFactorCalculator(QWidget):
 
         try:
             logger.debug(
-                "JordiGFactorCalculator: invoking RPC client.calculate with region_bounds=%s, shift=%f, use_bg=%s",
+                "VvVhGFactorCalculator: invoking RPC client.calculate with region_bounds=%s, shift=%f, use_bg=%s",
                 self.region_bounds, self.decay_shift, self.use_background_correction
             )
             res = self._client.calculate(
@@ -588,9 +588,9 @@ class JordiGFactorCalculator(QWidget):
                 bg_region_bounds=self.bg_region_bounds,
                 flip=False,
             )
-            logger.info("JordiGFactorCalculator: RPC client.calculate completed successfully. Result: %s", res)
+            logger.info("VvVhGFactorCalculator: RPC client.calculate completed successfully. Result: %s", res)
         except Exception as e:
-            logger.error("JordiGFactorCalculator: RPC calculation failed: %s", e)
+            logger.error("VvVhGFactorCalculator: RPC calculation failed: %s", e)
             QMessageBox.critical(self, "Calculation Error", f"RPC calculation failed: {e}")
             return
 
@@ -643,7 +643,7 @@ class JordiGFactorCalculator(QWidget):
 
     def calculate_fp_mixing_estimate(self):
         if self.fp_parallel_data is None or self.fp_perpendicular_data is None:
-            self._set_fp_outputs(warning_text="Warning: Load FP Jordi data to estimate l1/l2.")
+            self._set_fp_outputs(warning_text="Warning: Load FP VV/VH data to estimate l1/l2.")
             return
         if self.g_factor is None or not np.isfinite(self.g_factor) or float(self.g_factor) <= 0.0:
             self._set_fp_outputs(

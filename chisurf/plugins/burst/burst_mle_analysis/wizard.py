@@ -27,7 +27,7 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition import \
 from pathlib import Path
 import tttrlib
 from typing import Dict
-from chisurf.core.fio import write_jordi
+from chisurf.core.fio import write_vv_vh
 from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings
 
 try:
@@ -420,8 +420,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         return self._fit
 
     @property
-    def save_jordis(self):
-        return self.checkBox_save_jordis.isChecked()
+    def save_vv_vhs(self):
+        return self.checkBox_save_vv_vhs.isChecked()
 
     @property
     def fix_tau(self) -> bool:
@@ -1298,17 +1298,17 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             det_chs = self.channel_definer.detectors[det]["chs"]
 
             if tttr_inputs:
-                jordi = self.make_jordi(
+                vv_vh = self.make_vv_vh(
                     tttr_list=tttr_inputs,
                     detector_chs=det_chs,
                     micro_time_range=self.full_range,
                     micro_time_binning=self.micro_time_binning,
-                    save_files=self.save_jordis,
+                    save_files=self.save_vv_vhs,
                     normalize_counts=normalize,
                     threshold=threshold,
                     apply_vh_shift=False if state_key in ('irf', 'bg') else True
                 )
-                arr = np.sum(jordi, axis=0)
+                arr = np.sum(vv_vh, axis=0)
                 np_dict[det] = arr
 
                 if state_key is not None:
@@ -1736,7 +1736,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         st['micro_time_binning'] = self.micro_time_binning
         self.channel_settings[det] = st
 
-    def get_current_jordis(self):
+    def get_current_vv_vhs(self):
         if self.df_bursts is None:
             cs.logging.info("No burst DataFrame loaded.")
             return
@@ -1792,7 +1792,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         burst_tttr = tttr[indices]
 
         # build the decay histogram over every burst in the file
-        jordis = self.make_jordi(
+        vv_vhs = self.make_vv_vh(
             [burst_tttr],
             chs,
             self.micro_time_range,
@@ -1800,7 +1800,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             normalize_counts=-1
         )
 
-        return jordis
+        return vv_vhs
 
     def pass_photon_threshold(self, data, gui: bool = False):
         # check photon threshold
@@ -1811,11 +1811,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         return r
 
     def update_decay_of_detector(self):
-        jordis = self.get_current_jordis()
+        vv_vhs = self.get_current_vv_vhs()
 
-        if jordis is None:
+        if vv_vhs is None:
             return
-        data = np.sum(jordis, axis=0)
+        data = np.sum(vv_vhs, axis=0)
         self.pass_photon_threshold(data)
         self.decay_of_current_file = data
 
@@ -2513,7 +2513,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         result_df = pd.DataFrame(results)
         self._save_burst_results_fast(result_df)
 
-    def make_jordi(
+    def make_vv_vh(
             self,
             tttr_list: typing.List[tttrlib.TTTR],
             detector_chs: typing.List[int],
@@ -2525,7 +2525,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             minlength: int = -1,
             apply_vh_shift: bool = True
     ) -> typing.List[np.ndarray]:
-        jordis = list()
+        vv_vhs = list()
         # Determine per-channel ranges: fall back to provided micro_time_range for both
         sb_def, eb_def = micro_time_range
         # Try to get detector-specific ranges from the channel_definer
@@ -2604,9 +2604,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                     cs_hist /= acquisition_time
                     cp /= acquisition_time
 
-            # now build the JORDI vector
+            # now build the VV_VH vector
             j = np.hstack([cp, cs_hist])
-            jordis.append(j)
+            vv_vhs.append(j)
 
             # Optional save
             if save_files:
@@ -2614,11 +2614,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 if basename:
                     base = Path(basename).with_suffix('').as_posix()
                 else:
-                    base = f"jordi_{idx}"
+                    base = f"vv_vh_{idx}"
                 out_name = f"{base}_{''.join(map(str, detector_chs))}.dat"
-                write_jordi(j, out_name)
+                write_vv_vh(j, out_name)
 
-        return np.array(jordis)
+        return np.array(vv_vhs)
 
     def filter_tttr(self, tttr, micro_time_range, detector_chs):
         """

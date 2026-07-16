@@ -606,8 +606,8 @@ Used by: `chisurf.experiments.tcspc.TCSPCReader` and various TCSPC models.
   Global G‑factor used for anisotropy corrections in TCSPC experiments when a
   per‑dataset value is not specified.
 
-- **`is_jordi`**  
-  Flag for interpreting certain ASCII decays as Jordi‑style data.
+- **`is_vv_vh`**  
+  Flag for interpreting certain ASCII decays as VV/VH‑style data.
 
 - **`polarization`** / **`polarization_options`**  
   Default polarization mode for anisotropy decays (e.g. `vm` for vertical

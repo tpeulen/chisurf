@@ -134,17 +134,17 @@
 
 ### Added
 
-- **Jordi G-factor plugin now supports slow-dye (FP) anisotropy-mixing calibration in estimate mode**: after fast-dye tail matching for `g`, users can load a separate FP Jordi file to estimate linked `l1/l2` from steady-state anisotropy (`rho` default `16 ns`, lifetime estimated from decay first moment).
-  - Added FP controls/outputs and estimate warnings in `chisurf/plugins/jordi_g_factor/__init__.py` (`load_fp_jordi_file`, `calculate_fp_mixing_estimate`, linked `l1=l2` solve, `dt` input, editable `tau`/target `rS` with manual override toggles, single `l1/l2` estimate output).
-  - Moved Jordi g-factor plugin controls into a Designer-editable UI file `chisurf/plugins/jordi_g_factor/wizard.ui` and simplified linked output display to a single `l1/l2 est` field.
-  - Updated Jordi plotting in `chisurf/plugins/jordi_g_factor/__init__.py`: tail-matched decays (`VV` and `VH*G`) are now overlaid in the main decay plot, and the secondary plot now shows time-resolved anisotropy `r(t)` with uncorrected/corrected traces.
-  - Added direct manual override inputs in `chisurf/plugins/jordi_g_factor/__init__.py` / `chisurf/plugins/jordi_g_factor/wizard.ui`: editable `g` value (accepted on user entry) and editable linked `l1/l2` value (accepted directly on user entry).
+- **VV/VH G-factor plugin now supports slow-dye (FP) anisotropy-mixing calibration in estimate mode**: after fast-dye tail matching for `g`, users can load a separate FP VV/VH file to estimate linked `l1/l2` from steady-state anisotropy (`rho` default `16 ns`, lifetime estimated from decay first moment).
+  - Added FP controls/outputs and estimate warnings in `chisurf/plugins/vv_vh_g_factor/__init__.py` (`load_fp_vv_vh_file`, `calculate_fp_mixing_estimate`, linked `l1=l2` solve, `dt` input, editable `tau`/target `rS` with manual override toggles, single `l1/l2` estimate output).
+  - Moved VV/VH g-factor plugin controls into a Designer-editable UI file `chisurf/plugins/vv_vh_g_factor/wizard.ui` and simplified linked output display to a single `l1/l2 est` field.
+  - Updated VV/VH plotting in `chisurf/plugins/vv_vh_g_factor/__init__.py`: tail-matched decays (`VV` and `VH*G`) are now overlaid in the main decay plot, and the secondary plot now shows time-resolved anisotropy `r(t)` with uncorrected/corrected traces.
+  - Added direct manual override inputs in `chisurf/plugins/vv_vh_g_factor/__init__.py` / `chisurf/plugins/vv_vh_g_factor/wizard.ui`: editable `g` value (accepted on user entry) and editable linked `l1/l2` value (accepted directly on user entry).
   - Clamped anisotropy display range to `[-0.5, 1.5]` in the `r(t)` plot for both fast and slow dye traces.
-  - Switched Jordi plugin entry points to dynamic loading (`importlib`) in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py` and `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition_tttr_io.py`.
+  - Switched VV/VH plugin entry points to dynamic loading (`importlib`) in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py` and `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition_tttr_io.py`.
   - Updated the TCSPC CSV reference button flow in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py` to propagate plugin-derived `l1/l2` only when FP/slow-dye calibration was actually processed (`fp_estimate_available`), in addition to `g` and `vh_shift`.
-  - Updated TCSPC CSV reference launch to initialize Jordi plugin `dt [ns/ch]` from current reader settings (`dt` + optional rebin scaling) in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py`.
-  - Migrated batch decay processing into `chisurf/plugins/jordi_g_factor/__init__.py` (new `Batch...` action): now opens as a modal batch window and applies full corrected anisotropy processing (`g`, `l1`, `l2`, shift, optional background correction) while exporting Jordi-anisotropy-compatible batch outputs (`filename`, `r_inf`, `region_min`, `region_max`, `bg_vv`, `bg_vh`, `g_factor`).
-  - Simplified FP override UX in `chisurf/plugins/jordi_g_factor/__init__.py` / `chisurf/plugins/jordi_g_factor/wizard.ui`: removed manual tau/rS checkboxes; entering values in `tau` or target `rS` now directly enables manual override and supersedes computed values.
+  - Updated TCSPC CSV reference launch to initialize VV/VH plugin `dt [ns/ch]` from current reader settings (`dt` + optional rebin scaling) in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py`.
+  - Migrated batch decay processing into `chisurf/plugins/vv_vh_g_factor/__init__.py` (new `Batch...` action): now opens as a modal batch window and applies full corrected anisotropy processing (`g`, `l1`, `l2`, shift, optional background correction) while exporting VV/VH-anisotropy-compatible batch outputs (`filename`, `r_inf`, `region_min`, `region_max`, `bg_vv`, `bg_vh`, `g_factor`).
+  - Simplified FP override UX in `chisurf/plugins/vv_vh_g_factor/__init__.py` / `chisurf/plugins/vv_vh_g_factor/wizard.ui`: removed manual tau/rS checkboxes; entering values in `tau` or target `rS` now directly enables manual override and supersedes computed values.
 
 ### Deprecated
 
@@ -152,12 +152,12 @@
   - Marked `chisurf/plugins/misc/browser/__init__.py` (`Tools:Miscellaneous:Browser`) as hidden/deprecated (`menu_hidden = True`, `deprecated = True`) so it no longer appears in normal plugin menus.
   - Updated notebook menu launch in `chisurf/gui/__init__.py` (`populate_notebooks` / `add_notebook`) to open notebook URLs via `webbrowser.open_new_tab(...)` instead of routing through the embedded browser plugin.
 
-- **Deprecated plugin**: `chisurf/plugins/jordi_anisotropy/__init__.py` (`Jordi Anisotropy Decay`) is now marked obsolete.
+- **Deprecated plugin**: `chisurf/plugins/vv_vh_anisotropy/__init__.py` (`VV/VH Anisotropy Decay`) is now marked obsolete.
   - Added plugin metadata flags (`menu_hidden = True`, `deprecated = True`) so it no longer appears in normal plugin menus.
-  - Added explicit runtime deprecation warning and in-window notice to direct users to the Jordi G-Factor + reader anisotropy workflow.
-  - Improved `r(t)` computation in `chisurf/plugins/jordi_g_factor/__init__.py` to use separate `l1` and `l2` terms in the anisotropy denominator; corrected traces now use active corrected parameters (`g`, `l1`, `l2`) while raw traces remain uncorrected (`l1=l2=0`).
+  - Added explicit runtime deprecation warning and in-window notice to direct users to the VV/VH G-Factor + reader anisotropy workflow.
+  - Improved `r(t)` computation in `chisurf/plugins/vv_vh_g_factor/__init__.py` to use separate `l1` and `l2` terms in the anisotropy denominator; corrected traces now use active corrected parameters (`g`, `l1`, `l2`) while raw traces remain uncorrected (`l1=l2=0`).
   - Extended detector wizard integration in `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition_tttr_io.py` (`on_calc_g_factor`) to prefill FP `dt` from effective microtime resolution and propagate plugin-provided `l1/l2` estimates to detector setup fields alongside `g_factor`.
-  - Added focused calibration math coverage in `test/test_jordi_g_factor_fp_calibration.py`.
+  - Added focused calibration math coverage in `test/test_vv_vh_g_factor_fp_calibration.py`.
 
 - **Completed Phase 11 - Advanced Undo/Redo Features**: Enhanced the undo/redo system to support complex model operations and improved history navigation UX.
   - Added model actions (`model_add_component`, `model_remove_component`, `model_normalize_amplitudes`, `model_absolute_amplitudes`, `model_change_irf`, `model_unload_irf`, `model_update`, `model_set_correction`, `model_set_linearization`, `model_unload_lintable`, `model_unload_background_curve`, `model_remove_local_fit`, `model_clear_local_fits`, `model_append_global_parameter`, `model_append_fit`) to state-bearing actions for undo/redo navigation in `chisurf/gui/widgets/history_browser.py` (`_is_state_action`).
@@ -301,7 +301,7 @@
 - **Save-fit crash in grouped VV/VH lifetime workflows**: saving grouped fits could trigger an access-violation in `pyqtgraph.TextItem.setHtml(...)` while fit selection changes refreshed line plots.
   - Hardened metrics-overlay updates in `chisurf/plots/lineplot/lineplot.py` (`LinePlot._metrics_text_alive`, `LinePlot.update`) to verify Qt object lifetime (`sip.isdeleted`) before calling `updateTextPos()`/`setHtml()`.
 - **TCSPC CSV `Reference` picker now uses the central last-used-folder flow**: `pushButton_inspect` now opens via the shared `get_filename(...)` helper and honors `chisurf.working_path` consistently.
-  - Updated file selection in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py` (`CsvTCSPCWidget.openJordiGFactorPlugin`) and hardened cancel handling in `chisurf/gui/widgets/general.py` (`get_filename`) so cancel no longer resets `chisurf.working_path`.
+  - Updated file selection in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py` (`CsvTCSPCWidget.openVvVhGFactorPlugin`) and hardened cancel handling in `chisurf/gui/widgets/general.py` (`get_filename`) so cancel no longer resets `chisurf.working_path`.
 - **Anisotropy fit setup now respects TCSPC reader `g_factor/l1/l2` values**: fit creation previously applied only `g_factor`, so `l1/l2` from CSV reader settings were ignored when initializing anisotropy model parameters.
   - Updated fit-calibration resolution/application in `chisurf/macros/core_fit.py` (`_resolve_dataset_anisotropy_calibration`, `_apply_anisotropy_calibration_to_fit`, `add_fit`) to propagate `g_factor`, `l1`, and `l2` from reader/metadata into model kwargs and anisotropy parameters.
 - **TCSPC CSV reader UI now exposes `l1/l2` calibration controls near `rep.rate` and `g-factor`**: users can edit anisotropy leakage factors directly in the reader panel and optionally link `l1`/`l2` with a dedicated checkbox (default off).
@@ -396,17 +396,17 @@
 
 ### Added
 
-- **Jordi G-factor plugin now supports slow-dye (FP) anisotropy-mixing calibration in estimate mode**: after fast-dye tail matching for `g`, users can load a separate FP Jordi file to estimate linked `l1/l2` from steady-state anisotropy (`rho` default `16 ns`, lifetime estimated from decay first moment).
-  - Added FP controls/outputs and estimate warnings in `chisurf/plugins/jordi_g_factor/__init__.py` (`load_fp_jordi_file`, `calculate_fp_mixing_estimate`, linked `l1=l2` solve, `dt` input, editable `tau`/target `rS` with manual override toggles, single `l1/l2` estimate output).
-  - Moved Jordi g-factor plugin controls into a Designer-editable UI file `chisurf/plugins/jordi_g_factor/wizard.ui` and simplified linked output display to a single `l1/l2 est` field.
-  - Updated Jordi plotting in `chisurf/plugins/jordi_g_factor/__init__.py`: tail-matched decays (`VV` and `VH*G`) are now overlaid in the main decay plot, and the secondary plot now shows time-resolved anisotropy `r(t)` with uncorrected/corrected traces.
-  - Added direct manual override inputs in `chisurf/plugins/jordi_g_factor/__init__.py` / `chisurf/plugins/jordi_g_factor/wizard.ui`: editable `g` value (accepted on user entry) and editable linked `l1/l2` value (accepted directly on user entry).
+- **VV/VH G-factor plugin now supports slow-dye (FP) anisotropy-mixing calibration in estimate mode**: after fast-dye tail matching for `g`, users can load a separate FP VV/VH file to estimate linked `l1/l2` from steady-state anisotropy (`rho` default `16 ns`, lifetime estimated from decay first moment).
+  - Added FP controls/outputs and estimate warnings in `chisurf/plugins/vv_vh_g_factor/__init__.py` (`load_fp_vv_vh_file`, `calculate_fp_mixing_estimate`, linked `l1=l2` solve, `dt` input, editable `tau`/target `rS` with manual override toggles, single `l1/l2` estimate output).
+  - Moved VV/VH g-factor plugin controls into a Designer-editable UI file `chisurf/plugins/vv_vh_g_factor/wizard.ui` and simplified linked output display to a single `l1/l2 est` field.
+  - Updated VV/VH plotting in `chisurf/plugins/vv_vh_g_factor/__init__.py`: tail-matched decays (`VV` and `VH*G`) are now overlaid in the main decay plot, and the secondary plot now shows time-resolved anisotropy `r(t)` with uncorrected/corrected traces.
+  - Added direct manual override inputs in `chisurf/plugins/vv_vh_g_factor/__init__.py` / `chisurf/plugins/vv_vh_g_factor/wizard.ui`: editable `g` value (accepted on user entry) and editable linked `l1/l2` value (accepted directly on user entry).
   - Clamped anisotropy display range to `[-0.5, 1.5]` in the `r(t)` plot for both fast and slow dye traces.
-  - Switched Jordi plugin entry points to dynamic loading (`importlib`) in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py` and `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition_tttr_io.py`.
+  - Switched VV/VH plugin entry points to dynamic loading (`importlib`) in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py` and `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition_tttr_io.py`.
   - Updated the TCSPC CSV reference button flow in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py` to propagate plugin-derived `l1/l2` only when FP/slow-dye calibration was actually processed (`fp_estimate_available`), in addition to `g` and `vh_shift`.
-  - Updated TCSPC CSV reference launch to initialize Jordi plugin `dt [ns/ch]` from current reader settings (`dt` + optional rebin scaling) in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py`.
-  - Migrated batch decay processing into `chisurf/plugins/jordi_g_factor/__init__.py` (new `Batch...` action): now opens as a modal batch window and applies full corrected anisotropy processing (`g`, `l1`, `l2`, shift, optional background correction) while exporting Jordi-anisotropy-compatible batch outputs (`filename`, `r_inf`, `region_min`, `region_max`, `bg_vv`, `bg_vh`, `g_factor`).
-  - Simplified FP override UX in `chisurf/plugins/jordi_g_factor/__init__.py` / `chisurf/plugins/jordi_g_factor/wizard.ui`: removed manual tau/rS checkboxes; entering values in `tau` or target `rS` now directly enables manual override and supersedes computed values.
+  - Updated TCSPC CSV reference launch to initialize VV/VH plugin `dt [ns/ch]` from current reader settings (`dt` + optional rebin scaling) in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py`.
+  - Migrated batch decay processing into `chisurf/plugins/vv_vh_g_factor/__init__.py` (new `Batch...` action): now opens as a modal batch window and applies full corrected anisotropy processing (`g`, `l1`, `l2`, shift, optional background correction) while exporting VV/VH-anisotropy-compatible batch outputs (`filename`, `r_inf`, `region_min`, `region_max`, `bg_vv`, `bg_vh`, `g_factor`).
+  - Simplified FP override UX in `chisurf/plugins/vv_vh_g_factor/__init__.py` / `chisurf/plugins/vv_vh_g_factor/wizard.ui`: removed manual tau/rS checkboxes; entering values in `tau` or target `rS` now directly enables manual override and supersedes computed values.
 
 ### Deprecated
 
@@ -414,12 +414,12 @@
   - Marked `chisurf/plugins/misc/browser/__init__.py` (`Tools:Miscellaneous:Browser`) as hidden/deprecated (`menu_hidden = True`, `deprecated = True`) so it no longer appears in normal plugin menus.
   - Updated notebook menu launch in `chisurf/gui/__init__.py` (`populate_notebooks` / `add_notebook`) to open notebook URLs via `webbrowser.open_new_tab(...)` instead of routing through the embedded browser plugin.
 
-- **Deprecated plugin**: `chisurf/plugins/jordi_anisotropy/__init__.py` (`Jordi Anisotropy Decay`) is now marked obsolete.
+- **Deprecated plugin**: `chisurf/plugins/vv_vh_anisotropy/__init__.py` (`VV/VH Anisotropy Decay`) is now marked obsolete.
   - Added plugin metadata flags (`menu_hidden = True`, `deprecated = True`) so it no longer appears in normal plugin menus.
-  - Added explicit runtime deprecation warning and in-window notice to direct users to the Jordi G-Factor + reader anisotropy workflow.
-  - Improved `r(t)` computation in `chisurf/plugins/jordi_g_factor/__init__.py` to use separate `l1` and `l2` terms in the anisotropy denominator; corrected traces now use active corrected parameters (`g`, `l1`, `l2`) while raw traces remain uncorrected (`l1=l2=0`).
+  - Added explicit runtime deprecation warning and in-window notice to direct users to the VV/VH G-Factor + reader anisotropy workflow.
+  - Improved `r(t)` computation in `chisurf/plugins/vv_vh_g_factor/__init__.py` to use separate `l1` and `l2` terms in the anisotropy denominator; corrected traces now use active corrected parameters (`g`, `l1`, `l2`) while raw traces remain uncorrected (`l1=l2=0`).
   - Extended detector wizard integration in `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition_tttr_io.py` (`on_calc_g_factor`) to prefill FP `dt` from effective microtime resolution and propagate plugin-provided `l1/l2` estimates to detector setup fields alongside `g_factor`.
-  - Added focused calibration math coverage in `test/test_jordi_g_factor_fp_calibration.py`.
+  - Added focused calibration math coverage in `test/test_vv_vh_g_factor_fp_calibration.py`.
 
 - **Completed Phase 11 - Advanced Undo/Redo Features**: Enhanced the undo/redo system to support complex model operations and improved history navigation UX.
   - Added model actions (`model_add_component`, `model_remove_component`, `model_normalize_amplitudes`, `model_absolute_amplitudes`, `model_change_irf`, `model_unload_irf`, `model_update`, `model_set_correction`, `model_set_linearization`, `model_unload_lintable`, `model_unload_background_curve`, `model_remove_local_fit`, `model_clear_local_fits`, `model_append_global_parameter`, `model_append_fit`) to state-bearing actions for undo/redo navigation in `chisurf/gui/widgets/history_browser.py` (`_is_state_action`).
@@ -563,7 +563,7 @@
 - **Save-fit crash in grouped VV/VH lifetime workflows**: saving grouped fits could trigger an access-violation in `pyqtgraph.TextItem.setHtml(...)` while fit selection changes refreshed line plots.
   - Hardened metrics-overlay updates in `chisurf/plots/lineplot/lineplot.py` (`LinePlot._metrics_text_alive`, `LinePlot.update`) to verify Qt object lifetime (`sip.isdeleted`) before calling `updateTextPos()`/`setHtml()`.
 - **TCSPC CSV `Reference` picker now uses the central last-used-folder flow**: `pushButton_inspect` now opens via the shared `get_filename(...)` helper and honors `chisurf.working_path` consistently.
-  - Updated file selection in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py` (`CsvTCSPCWidget.openJordiGFactorPlugin`) and hardened cancel handling in `chisurf/gui/widgets/general.py` (`get_filename`) so cancel no longer resets `chisurf.working_path`.
+  - Updated file selection in `chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py` (`CsvTCSPCWidget.openVvVhGFactorPlugin`) and hardened cancel handling in `chisurf/gui/widgets/general.py` (`get_filename`) so cancel no longer resets `chisurf.working_path`.
 - **Anisotropy fit setup now respects TCSPC reader `g_factor/l1/l2` values**: fit creation previously applied only `g_factor`, so `l1/l2` from CSV reader settings were ignored when initializing anisotropy model parameters.
   - Updated fit-calibration resolution/application in `chisurf/macros/core_fit.py` (`_resolve_dataset_anisotropy_calibration`, `_apply_anisotropy_calibration_to_fit`, `add_fit`) to propagate `g_factor`, `l1`, and `l2` from reader/metadata into model kwargs and anisotropy parameters.
 - **TCSPC CSV reader UI now exposes `l1/l2` calibration controls near `rep.rate` and `g-factor`**: users can edit anisotropy leakage factors directly in the reader panel and optionally link `l1`/`l2` with a dedicated checkbox (default off).

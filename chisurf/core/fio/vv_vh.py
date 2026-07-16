@@ -1,7 +1,7 @@
 """
-Utilities for reading and writing Jordi files.
+Utilities for reading and writing VV/VH files.
 
-Jordi files are simple ASCII text files containing numeric data with optional metadata.
+VV/VH files are simple ASCII text files containing numeric data with optional metadata.
 Supports flexible polarization channels (VV, VH, VM) with automatic format detection.
 """
 from __future__ import annotations
@@ -37,7 +37,7 @@ def _parse_footer_metadata(footer_text: str) -> Dict[str, Any]:
     return metadata
 
 
-def _normalize_jordi_array(data: ArrayLike) -> np.ndarray:
+def _normalize_vv_vh_array(data: ArrayLike) -> np.ndarray:
     """
     Normalize input into a 1D numpy array.
     
@@ -48,7 +48,7 @@ def _normalize_jordi_array(data: ArrayLike) -> np.ndarray:
     return arr.reshape(-1)
 
 
-def write_jordi(
+def write_vv_vh(
     filename: Union[str, Path],
     vv: Optional[ArrayLike] = None,
     vh: Optional[ArrayLike] = None,
@@ -65,7 +65,7 @@ def write_jordi(
     footer: Optional[Union[str, Iterable[str]]] = None,
 ) -> Path:
     """
-    Write Jordi data with flexible channel support.
+    Write VV/VH data with flexible channel support.
 
     Parameters
     ----------
@@ -100,7 +100,7 @@ def write_jordi(
     if data is not None:
         if channels:
             raise ValueError("Cannot specify both 'data' and individual channels (vv/vh/vm)")
-        arr = _normalize_jordi_array(data)
+        arr = _normalize_vv_vh_array(data)
         half = len(arr) // 2
         channels = {'VV': arr[:half], 'VH': arr[half:]}
     
@@ -168,7 +168,7 @@ def write_jordi(
 
 
 @overload
-def read_jordi(
+def read_vv_vh(
     filename: Union[str, Path],
     channels: None = None,
     split: bool = False,
@@ -178,7 +178,7 @@ def read_jordi(
     """Overload: return concatenated array when split=False."""
 
 @overload
-def read_jordi(
+def read_vv_vh(
     filename: Union[str, Path],
     channels: Union[str, List[str]],
     split: bool = True,
@@ -187,7 +187,7 @@ def read_jordi(
 ) -> Union[Dict[str, np.ndarray], Tuple[Dict[str, np.ndarray], Dict[str, Any]]]:
     """Overload: return channel dict when split=True."""
 
-def read_jordi(
+def read_vv_vh(
     filename: Union[str, Path],
     channels: Optional[Union[str, List[str]]] = None,
     split: bool = False,
@@ -195,7 +195,7 @@ def read_jordi(
     **kwargs
 ):
     """
-    Read Jordi data with flexible channel support.
+    Read VV/VH data with flexible channel support.
 
     Parameters
     ----------
@@ -221,7 +221,7 @@ def read_jordi(
     path = Path(filename)
     
     # Read file with legacy function
-    arr, footer_text = _read_jordi_legacy(path, return_footer=True, **kwargs)
+    arr, footer_text = _read_vv_vh_legacy(path, return_footer=True, **kwargs)
     
     # Parse metadata from footer
     metadata = _parse_footer_metadata(footer_text)
@@ -282,7 +282,7 @@ def read_jordi(
     return result
 
 
-def _read_jordi_legacy(
+def _read_vv_vh_legacy(
     filename: Union[str, Path],
     split: bool = False,
     dtype=float,
@@ -291,7 +291,7 @@ def _read_jordi_legacy(
     return_footer: bool = False,
 ):
     """
-    Original read_jordi implementation, now for internal use.
+    Original read_vv_vh implementation, now for internal use.
     """
     path = Path(filename)
 
@@ -352,7 +352,7 @@ def _read_jordi_legacy(
         arr = np.array([], dtype=dtype)
 
     # Normalize to 1D array
-    arr = _normalize_jordi_array(arr)
+    arr = _normalize_vv_vh_array(arr)
 
     if return_footer:
         return arr, footer_text

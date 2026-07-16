@@ -78,10 +78,10 @@ def estimate_handler(
 
 
 def load_decay_handler(path: str) -> dict[str, Any]:
-    """Load a Jordi format decay file and return its data."""
+    """Load a VV/VH format decay file and return its data."""
     try:
-        from chisurf.core.fio import read_jordi
-        data, metadata = read_jordi(path, return_metadata=True)
+        from chisurf.core.fio import read_vv_vh
+        data, metadata = read_vv_vh(path, return_metadata=True)
         data = np.asarray(data, dtype=np.float32)
         # First half is VV, second half is VH in legacy format
         if len(data) % 2 == 0:
@@ -126,14 +126,14 @@ def load_dataset_handler() -> dict[str, Any]:
 
 
 def save_irf_handler(path: str, irf_data: list[float], dt: float = 1.0) -> dict[str, Any]:
-    """Save IRF data to a Jordi file."""
+    """Save IRF data to a VV/VH file."""
     try:
-        from chisurf.core.fio import write_jordi
+        from chisurf.core.fio import write_vv_vh
         import os
         if not path.lower().endswith(".dat"):
             path += ".dat"
         irf_array = np.asarray(irf_data, dtype=float).flatten()
-        write_jordi(
+        write_vv_vh(
             path,
             data=np.column_stack((np.arange(len(irf_array)) * dt, irf_array)),
             metadata={"dt": dt},

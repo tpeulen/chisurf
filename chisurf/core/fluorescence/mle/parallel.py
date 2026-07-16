@@ -37,7 +37,7 @@ def fit_matrix_threaded(
     Parameters
     ----------
     data : numpy.ndarray
-        ``(n_items, 2*window)`` matrix of Jordi-format counting histograms.
+        ``(n_items, 2*window)`` matrix of VV/VH-format counting histograms.
     rows : sequence of int
         Row indices to fit (e.g. pixels above a photon threshold).
     settings : Fit2xSettings

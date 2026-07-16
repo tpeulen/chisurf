@@ -1,4 +1,4 @@
-"""Core mathematical functions for Jordi G-Factor calculations."""
+"""Core mathematical functions for VV/VH G-Factor calculations."""
 
 from __future__ import annotations
 
@@ -115,7 +115,7 @@ def calculate_g_factor_core(
     bg_region_bounds: list[float] | tuple[float, float] | None = None,
     flip: bool = False,
 ) -> dict:
-    """Calculate G-factor based on tail matching for Jordi decays.
+    """Calculate G-factor based on tail matching for VV/VH decays.
 
     Parameters
     ----------

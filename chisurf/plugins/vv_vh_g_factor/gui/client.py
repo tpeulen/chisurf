@@ -1,4 +1,4 @@
-"""PluginClient wrapper for Jordi G-Factor.
+"""PluginClient wrapper for VV/VH G-Factor.
 
 GUI code uses this client instead of importing calculations directly.
 """
@@ -15,8 +15,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class JordiGFactorClient:
-    """Client for Jordi G-Factor backend services."""
+class VvVhGFactorClient:
+    """Client for VV/VH G-Factor backend services."""
 
     def __init__(self, client: Any = None):
         if client is not None:
@@ -26,12 +26,12 @@ class JordiGFactorClient:
 
     def put_object(self, path: str) -> dict[str, Any]:
         """Upload a file to the MMFDB object store via ZMQ RPC."""
-        logger.debug("JordiGFactorClient: put_object path=%s", path)
+        logger.debug("VvVhGFactorClient: put_object path=%s", path)
         result = self._client.call("mmfdb.objects.put", {"path": path})
         if isinstance(result, dict) and not result.get("ok", True):
             raise RuntimeError(result.get("error", "Unknown error in mmfdb.objects.put RPC call"))
         res = result.get("result", result)
-        logger.info("JordiGFactorClient: put_object succeeded: %s", res)
+        logger.info("VvVhGFactorClient: put_object succeeded: %s", res)
         return res
 
 
@@ -47,7 +47,7 @@ class JordiGFactorClient:
     ) -> dict[str, Any]:
         """Perform G-factor tail-matching and background subtraction calculation."""
         result = self._client.call(
-            "jordi_g_factor.calculate",
+            "vv_vh_g_factor.calculate",
             {
                 "parallel_data": list(parallel_data),
                 "perpendicular_data": list(perpendicular_data),
@@ -65,7 +65,7 @@ class JordiGFactorClient:
     def perrin_steady_state(self, tau_ns: float, rho_ns: float, r0: float = 0.38) -> float:
         """Calculate steady-state Perrin anisotropy."""
         result = self._client.call(
-            "jordi_g_factor.perrin_steady_state",
+            "vv_vh_g_factor.perrin_steady_state",
             {"tau_ns": tau_ns, "rho_ns": rho_ns, "r0": r0}
         )
         if isinstance(result, dict) and not result.get("ok", True):
@@ -76,7 +76,7 @@ class JordiGFactorClient:
     def solve_linked_l(self, sp: float, ss: float, g_factor: float, r_target: float) -> float:
         """Solve for the linked l1=l2 mixing parameter."""
         result = self._client.call(
-            "jordi_g_factor.solve_linked_l",
+            "vv_vh_g_factor.solve_linked_l",
             {"sp": sp, "ss": ss, "g_factor": g_factor, "r_target": r_target}
         )
         if isinstance(result, dict) and not result.get("ok", True):
@@ -89,10 +89,10 @@ class JordiGFactorClient:
         active_user: str | None = None,
     ) -> dict[str, Any]:
         """Archive a G-factor calculation and reference decay in MMFDB."""
-        logger.debug("JordiGFactorClient: archive_g_factor file_path=%s", file_path)
+        logger.debug("VvVhGFactorClient: archive_g_factor file_path=%s", file_path)
         try:
             result = self._client.call(
-                "jordi_g_factor.archive_g_factor",
+                "vv_vh_g_factor.archive_g_factor",
                 {
                     "file_path": file_path,
                     "parameters": parameters,
@@ -100,11 +100,11 @@ class JordiGFactorClient:
                 }
             )
             if isinstance(result, dict) and not result.get("ok", True):
-                logger.warning("JordiGFactorClient: archive_g_factor failed: %s", result.get("error"))
+                logger.warning("VvVhGFactorClient: archive_g_factor failed: %s", result.get("error"))
                 return {"ok": False, "error": result.get("error"), "calibration_id": ""}
             return result.get("result", result)
         except Exception as e:
-            logger.warning("JordiGFactorClient: archive_g_factor RPC failed: %s", e)
+            logger.warning("VvVhGFactorClient: archive_g_factor RPC failed: %s", e)
             return {"ok": False, "error": str(e), "calibration_id": ""}
 
     @staticmethod
@@ -117,7 +117,7 @@ class JordiGFactorClient:
         dispatcher = ServiceDispatcher(state)
         dispatcher._build_default_registry()
 
-        from chisurf.plugins.jordi_g_factor.backend.services import (
+        from chisurf.plugins.vv_vh_g_factor.backend.services import (
             register_services,
         )
         register_services(dispatcher)

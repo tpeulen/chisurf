@@ -41,11 +41,11 @@ def _microtime_histogram(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return MicrotimeHistogram(parent=parent)
 
 
-def _jordi_g_factor(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    """Create the Jordi G-factor panel."""
-    from chisurf.plugins.jordi_g_factor.gui.tool import JordiGFactorCalculator
+def _vv_vh_g_factor(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the VV/VH G-factor panel."""
+    from chisurf.plugins.vv_vh_g_factor.gui.tool import VvVhGFactorCalculator
 
-    widget = JordiGFactorCalculator()
+    widget = VvVhGFactorCalculator()
     widget.setParent(parent)
     return widget
 
@@ -82,11 +82,11 @@ LIFETIME_PANELS = [
         "role": "microtime_histogram",
     },
     {
-        "name": "5. Jordi G-Factor",
+        "name": "5. VV/VH G-Factor",
         "icon": "⚖️",
-        "description": "Calculate detector G-factors from Jordi decays.",
-        "factory": _jordi_g_factor,
-        "role": "jordi_g_factor",
+        "description": "Calculate detector G-factors from VV/VH decays.",
+        "factory": _vv_vh_g_factor,
+        "role": "vv_vh_g_factor",
     },
 ]
 

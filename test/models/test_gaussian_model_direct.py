@@ -22,7 +22,7 @@ def main():
     dt = 0.0141
     tcspc_experiment = chisurf.core.experiments.core.Experiment(name='TCSPC')
     tcspc_reader = chisurf.core.experiments.tcspc.TCSPCReader(
-        is_jordi=False,
+        is_vv_vh=False,
         skiprows=10,
         dt=dt,
         experiment=tcspc_experiment

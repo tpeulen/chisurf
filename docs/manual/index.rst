@@ -74,7 +74,7 @@ ChiSurf Manual
    Data input and file format <data_input_and_file_format>
    Loading the data: Defining the reading parameter <loading_the_data_defining_the_reading_parameter>
    Two single files <two_single_files>
-   Jordi format <jordi_format>
+   VV/VH format <vv_vh_format>
    Loading the Alexa488 data into the anisotropy plugin <loading_the_alexa488_data_into_the_anisotropy_plugin>
    Step 1: Approximating g-factor with small fluorophore <step_1_approximating_gfactor_with_small_fluorophore>
    Step 2: Joint analysis to determine g-factor, ls and lp <step_2_joint_analysis_to_determine_gfactor_ls_and_lp>

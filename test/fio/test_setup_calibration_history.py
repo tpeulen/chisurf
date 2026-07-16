@@ -194,7 +194,7 @@ def test_add_setup_calibration_appends_snapshots(tmp_path: Path) -> None:
             g_factor=2.0,
             l1=0.03,
             l2=0.04,
-            method="jordi_g_factor",
+            method="vv_vh_g_factor",
         )
         assert snap2["id"] != snap1["id"]
 

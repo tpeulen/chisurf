@@ -12,18 +12,18 @@ _MODULE_PATH = (
     Path(__file__).resolve().parents[3]
     / "chisurf"
     / "plugins"
-    / "jordi_g_factor"
+    / "vv_vh_g_factor"
     / "__init__.py"
 )
 _SPEC = importlib.util.spec_from_file_location(
-    "chisurf_plugins_jordi_g_factor", _MODULE_PATH
+    "chisurf_plugins_vv_vh_g_factor", _MODULE_PATH
 )
 _MOD = importlib.util.module_from_spec(_SPEC)
 assert _SPEC is not None and _SPEC.loader is not None
 sys.modules[_SPEC.name] = _MOD
 _SPEC.loader.exec_module(_MOD)
 
-from chisurf.plugins.jordi_g_factor.core.calculations import (
+from chisurf.plugins.vv_vh_g_factor.core.calculations import (
     solve_linked_l_from_steady_state,
     estimate_lifetime_first_moment,
 )

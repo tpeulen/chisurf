@@ -836,7 +836,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             name="setup.params.set",
             payload={
                 "params": {
-                    "is_jordi": True,
+                    "is_vv_vh": True,
                     "use_header": False,
                     "matrix_columns": [],
                     "g_factor": g_factor,
@@ -878,14 +878,14 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             self.save_cumulative_histogram(save_path)
 
     def open_load_dialog(self):
-        """Open a load dialog to select a saved jordi data file and load it into ChiSurf."""
+        """Open a load dialog to select a saved vv_vh data file and load it into ChiSurf."""
         # Open the load file dialog
         load_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Load Jordi Data", "", "Data Files (*.dat);;All Files (*)"
+            self, "Load VV/VH Data", "", "Data Files (*.dat);;All Files (*)"
         )
 
         if load_path:
-            self.load_jordi_data(load_path)
+            self.load_vv_vh_data(load_path)
 
     def populate_supported_types(self):
         self.comboBox.clear()

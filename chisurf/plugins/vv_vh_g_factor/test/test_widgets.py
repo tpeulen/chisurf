@@ -2,17 +2,17 @@ import pytest
 from qtpy import QtWidgets
 
 
-class TestJordiGFactorCalculator:
+class TestVvVhGFactorCalculator:
     def test_creation(self, qapp, qtbot):
         pytest.importorskip("pyqtgraph")
-        from chisurf.plugins.jordi_g_factor import JordiGFactorCalculator
-        widget = JordiGFactorCalculator()
+        from chisurf.plugins.vv_vh_g_factor import VvVhGFactorCalculator
+        widget = VvVhGFactorCalculator()
         qtbot.addWidget(widget)
         assert widget is not None
 
     def test_window_title(self, qapp, qtbot):
         pytest.importorskip("pyqtgraph")
-        from chisurf.plugins.jordi_g_factor import JordiGFactorCalculator
-        widget = JordiGFactorCalculator()
+        from chisurf.plugins.vv_vh_g_factor import VvVhGFactorCalculator
+        widget = VvVhGFactorCalculator()
         qtbot.addWidget(widget)
-        assert widget.windowTitle() == "Jordi G-Factor Calculator"
+        assert widget.windowTitle() == "VV/VH G-Factor Calculator"

@@ -72,7 +72,7 @@ def _add_ds(filename):
 def test_tcspc_txt():
     _clear()
     _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_jordi=False,
+             skiprows=11, reading_routine='csv', is_vv_vh=False,
              use_header=True, matrix_columns=[], polarization='vm',
              rep_rate=10.0, dt=0.0141)
     before = _count()
@@ -91,7 +91,7 @@ def test_fcs_kristine():
 def test_fcs_kristine_drop_auto_reader_independent_of_current_setup():
     _clear()
     _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_jordi=False,
+             skiprows=11, reading_routine='csv', is_vv_vh=False,
              use_header=True, matrix_columns=[], polarization='vm',
              rep_rate=10.0, dt=0.0141)
     before = _count()
@@ -117,7 +117,7 @@ def test_multiple_files():
     """Drop two files sequentially -> both loaded."""
     _clear()
     _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_jordi=False,
+             skiprows=11, reading_routine='csv', is_vv_vh=False,
              use_header=True, matrix_columns=[], polarization='vm',
              rep_rate=10.0, dt=0.0141)
     before = _count()
@@ -171,7 +171,7 @@ def test_drop_on_label():
     _clear()
     gui = cs.cs
     _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_jordi=False,
+             skiprows=11, reading_routine='csv', is_vv_vh=False,
              use_header=True, matrix_columns=[], polarization='vm',
              rep_rate=10.0, dt=0.0141)
     label = getattr(gui, 'label_filedrop', None)
@@ -188,7 +188,7 @@ def test_drop_on_selector():
     _clear()
     gui = cs.cs
     _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_jordi=False,
+             skiprows=11, reading_routine='csv', is_vv_vh=False,
              use_header=True, matrix_columns=[], polarization='vm',
              rep_rate=10.0, dt=0.0141)
     before = _count()

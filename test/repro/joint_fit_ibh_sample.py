@@ -24,7 +24,7 @@ def main():
     dt = 0.0141  # Time per channel in ns (8 ps per channel based on file names)
     tcspc_experiment = chisurf.core.experiments.core.Experiment(name='TCSPC Joint Fit')
     tcspc_reader = chisurf.core.experiments.tcspc.TCSPCReader(
-        is_jordi=False,
+        is_vv_vh=False,
         skiprows=10,
         dt=dt,
         experiment=tcspc_experiment

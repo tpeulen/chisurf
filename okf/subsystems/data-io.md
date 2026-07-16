@@ -18,7 +18,7 @@ and the fitting models.
 | `fluorescence/tttr.py`, `photons.py`, `burst.py` | single-photon (TTTR) streams |
 | `fluorescence/fcs/*` | correlation curves (Kristine, ALV, ConfoCor3, PyCorrFit, ISS, …) |
 | `fluorescence/tcspc.py`, `sdtfile.py`, `bhfiles.py`, `thdfile.py` | TCSPC decays / B&H |
-| `ascii.py`, `jordi.py`, `zipped.py` | generic text / Jordi curves / gz-bz2 wrappers |
+| `ascii.py`, `vv_vh.py`, `zipped.py` | generic text / stacked VV/VH decays (historically "jordi", see [reference](/references/vv-vh-decay-format.md)) / gz-bz2 wrappers |
 | `structure/coordinates.py`, `density.py` | PDB / density structures |
 | `mmcif/` | mmCIF importer + database resolver (feeds [MMFDB](/architecture/mmfdb.md)) |
 | `staging.py` | slow/network-file staging (below) |

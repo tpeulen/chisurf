@@ -134,7 +134,7 @@ class TCSPCReader(ExperimentReader):
             self,
             dt: typing.Optional[float] = None,
             rep_rate: typing.Optional[float] = None,
-            is_jordi: bool = False,
+            is_vv_vh: bool = False,
             mode: str = 'vm',
             g_factor: typing.Optional[float] = None,
             l1: typing.Optional[float] = None,
@@ -160,10 +160,10 @@ class TCSPCReader(ExperimentReader):
             Time resolution in nanoseconds
         rep_rate : float, optional
             Repetition rate in MHz
-        is_jordi : bool, optional
-            Whether the file is in Jordi format
+        is_vv_vh : bool, optional
+            Whether the file is in VV/VH format
         mode : str, optional
-            Polarization mode. Use 'vv/vh' for stacked VV,VH jordi files
+            Polarization mode. Use 'vv/vh' for stacked VV,VH decay files
         g_factor : float, optional
             G-factor for anisotropy calculations
         l1 : float, optional
@@ -232,10 +232,10 @@ class TCSPCReader(ExperimentReader):
         self.excitation_repetition_rate = rep_rate
         # ``dt_scaled`` mirrors the legacy "dt[ns]" checkbox: when True the
         # per-channel ``dt`` is multiplied by the y-rebin factor at read time.
-        # Setting ``is_jordi`` updates ``use_header``/``dt_scaled`` (see setter),
+        # Setting ``is_vv_vh`` updates ``use_header``/``dt_scaled`` (see setter),
         # so initialise the backing field before the explicit ``use_header``.
-        self.dt_scaled = bool(is_jordi)
-        self._is_jordi = bool(is_jordi)
+        self.dt_scaled = bool(is_vv_vh)
+        self._is_vv_vh = bool(is_vv_vh)
         # Use mode parameter, but allow polarization as alias for backward compatibility
         self.polarization = mode if mode != 'vm' else polarization
         self.g_factor = self._safe_float(g_factor, calibration_defaults['g_factor'])
@@ -260,17 +260,17 @@ class TCSPCReader(ExperimentReader):
 
     # -- declarative editor adapters ---------------------------------------
     @property
-    def is_jordi(self) -> bool:
-        """Whether the file is a stacked VV/VH ("Jordi") file.
+    def is_vv_vh(self) -> bool:
+        """Whether the file is a stacked VV/VH decay file.
 
-        Toggling this mirrors the legacy UI coupling: a Jordi file has no header
+        Toggling this mirrors the legacy UI coupling: a VV/VH file has no header
         row (``use_header = False``) and uses the rebin-scaled ``dt``.
         """
-        return self._is_jordi
+        return self._is_vv_vh
 
-    @is_jordi.setter
-    def is_jordi(self, value) -> None:
-        self._is_jordi = bool(value)
+    @is_vv_vh.setter
+    def is_vv_vh(self, value) -> None:
+        self._is_vv_vh = bool(value)
         self.use_header = not bool(value)
         self.dt_scaled = bool(value)
 
@@ -442,7 +442,7 @@ class TCSPCReader(ExperimentReader):
                 dt=self.effective_dt,
                 matrix_columns=mc,
                 use_header=self.use_header,
-                is_jordi=self.is_jordi,
+                is_vv_vh=self.is_vv_vh,
                 polarization=self.polarization,
                 g_factor=self.g_factor,
                 l1=self.l1,

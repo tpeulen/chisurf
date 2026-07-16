@@ -21,7 +21,7 @@ def test_lifetime_panel_order() -> None:
         "📈 2. MaxEnt MEM",
         "⏱️ 3. Lazy Lifetime Analysis",
         "📊 4. Histogram-Microtime",
-        "⚖️ 5. Jordi G-Factor",
+        "⚖️ 5. VV/VH G-Factor",
     ]
 
 
@@ -66,7 +66,7 @@ def test_lifetime_panel_factories_import_expected_widgets(monkeypatch) -> None:
             "MicrotimeHistogram",
             Widget,
         ),
-        "chisurf.plugins.jordi_g_factor.gui.tool": ("JordiGFactorCalculator", Widget),
+        "chisurf.plugins.vv_vh_g_factor.gui.tool": ("VvVhGFactorCalculator", Widget),
     }
     for module_name, (class_name, widget_class) in modules.items():
         module = types.ModuleType(module_name)
@@ -79,7 +79,7 @@ def test_lifetime_panel_factories_import_expected_widgets(monkeypatch) -> None:
         tool._maxent_mem(parent),
         tool._lazy_lifetime(parent),
         tool._microtime_histogram(parent),
-        tool._jordi_g_factor(parent),
+        tool._vv_vh_g_factor(parent),
     ]
 
     assert all(isinstance(widget, QtWidgets.QWidget) for widget in widgets)
@@ -105,7 +105,7 @@ def test_lifetime_analysis_menu_metadata() -> None:
         root.parent / "maxent_decay" / "manifest.json",
         root.parent / "lltf" / "manifest.json",
         root.parents[1] / "tttr" / "microtime_histogram" / "manifest.json",
-        root.parents[1] / "jordi_g_factor" / "manifest.json",
+        root.parents[1] / "vv_vh_g_factor" / "manifest.json",
     ]
     for manifest_path in hidden_manifests:
         manifest = load_manifest(manifest_path)

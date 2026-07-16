@@ -43,7 +43,7 @@
     },
     {
       "name": "irf_estimator.data.load_decay",
-      "summary": "Load a Jordi format decay file.",
+      "summary": "Load a VV/VH format decay file.",
       "params_schema": "api.contract#/inputs/LoadDecay",
       "result_schema": "api.contract#/outputs/ServiceResult",
       "long_running": false,
@@ -59,7 +59,7 @@
     },
     {
       "name": "irf_estimator.data.save_irf",
-      "summary": "Save estimated IRF to a Jordi file.",
+      "summary": "Save estimated IRF to a VV/VH file.",
       "params_schema": "api.contract#/inputs/SaveIRF",
       "result_schema": "api.contract#/outputs/ServiceResult",
       "long_running": false,

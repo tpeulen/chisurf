@@ -15,32 +15,32 @@ from chisurf.core.fluorescence.mle import (
     Fit2x,
     Fit2xModel,
     Fit2xSettings,
-    assemble_jordi,
+    assemble_vv_vh,
 )
 from chisurf.core.fluorescence.mle.fit2x import HAVE_TTTRLIB, PARAMETER_NAMES
 
 
-def test_assemble_jordi_stacks_channels():
+def test_assemble_vv_vh_stacks_channels():
     p = np.arange(4.0)
     s = np.arange(4.0) + 10.0
-    j = assemble_jordi(p, s)
+    j = assemble_vv_vh(p, s)
     assert j.shape == (8,)
     assert np.allclose(j[:4], p)
     assert np.allclose(j[4:], s)
 
 
-def test_assemble_jordi_length_mismatch_raises():
+def test_assemble_vv_vh_length_mismatch_raises():
     with pytest.raises(ValueError):
-        assemble_jordi(np.zeros(4), np.zeros(5))
+        assemble_vv_vh(np.zeros(4), np.zeros(5))
 
 
 def test_settings_validates_irf_and_defaults_background():
-    irf = assemble_jordi(np.zeros(8), np.zeros(8))
+    irf = assemble_vv_vh(np.zeros(8), np.zeros(8))
     s = Fit2xSettings(dt=0.032, period=32.0, irf=irf)
     assert s.n_channels == 8
     assert s.background.shape == irf.shape
     assert np.all(s.background == 0.0)
-    with pytest.raises(ValueError):  # odd-length (non-Jordi) IRF
+    with pytest.raises(ValueError):  # odd-length (non-VV/VH) IRF
         Fit2xSettings(dt=0.032, period=32.0, irf=np.zeros(7))
 
 
@@ -59,10 +59,10 @@ def _simulate_anisotropy_decay(n, dt, tau, rho, r0, n_photons, seed):
     irf_1 = np.exp(-0.5 * ((np.arange(n) - 5) / 1.0) ** 2)
     par_c = np.convolve(par, irf_1)[:n]
     per_c = np.convolve(per, irf_1)[:n]
-    jordi = assemble_jordi(par_c, per_c)
-    jordi *= n_photons / jordi.sum()
-    data = np.random.default_rng(seed).poisson(jordi).astype(float)
-    irf = assemble_jordi(irf_1 / irf_1.sum(), irf_1 / irf_1.sum())
+    vv_vh = assemble_vv_vh(par_c, per_c)
+    vv_vh *= n_photons / vv_vh.sum()
+    data = np.random.default_rng(seed).poisson(vv_vh).astype(float)
+    irf = assemble_vv_vh(irf_1 / irf_1.sum(), irf_1 / irf_1.sum())
     return data, irf
 
 

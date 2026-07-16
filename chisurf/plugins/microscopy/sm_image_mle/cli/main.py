@@ -30,9 +30,9 @@ def cli() -> None:
     "--micro-time-range", default="0,256", help="Fit window on the binned axis as 'start,stop'."
 )
 @click.option("--micro-time-binning", default=1, type=int, help="Micro-time down-binning factor.")
-@click.option("--normalize-counts", default=0, type=int, help="Jordi normalisation mode (0-3).")
+@click.option("--normalize-counts", default=0, type=int, help="VV/VH normalisation mode (0-3).")
 @click.option(
-    "--threshold", default=-1.0, type=float, help="Jordi threshold fraction (<=0 disables)."
+    "--threshold", default=-1.0, type=float, help="VV/VH threshold fraction (<=0 disables)."
 )
 @click.option("--shift-sp", default=0.0, type=float, help="Parallel IRF shift (channels).")
 @click.option("--shift-ss", default=0.0, type=float, help="Perpendicular IRF shift (channels).")

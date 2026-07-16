@@ -1,7 +1,7 @@
-# Consolidated test file: test_jordi.py
+# Consolidated test file: test_vv_vh.py
 
 
-# --- FROM test_jordi_io_and_anisotropy.py ---
+# --- FROM test_vv_vh_io_and_anisotropy.py ---
 import os
 import tempfile
 import importlib.util
@@ -10,12 +10,12 @@ from pathlib import Path
 import numpy as np
 
 
-def test_jordi_roundtrip_split_channels():
-    module_path = Path(__file__).resolve().parents[2] / "chisurf" / "core" / "fio" / "jordi.py"
-    spec = importlib.util.spec_from_file_location("jordi_local", module_path)
-    jordi = importlib.util.module_from_spec(spec)
+def test_vv_vh_roundtrip_split_channels():
+    module_path = Path(__file__).resolve().parents[2] / "chisurf" / "core" / "fio" / "vv_vh.py"
+    spec = importlib.util.spec_from_file_location("vv_vh_local", module_path)
+    vv_vh = importlib.util.module_from_spec(spec)
     assert spec is not None and spec.loader is not None
-    spec.loader.exec_module(jordi)
+    spec.loader.exec_module(vv_vh)
 
     n_points = 256
     rng = np.random.default_rng(1)
@@ -26,8 +26,8 @@ def test_jordi_roundtrip_split_channels():
         filename = tmp.name
 
     try:
-        jordi.write_jordi(filename, vv=vv, vh=vh, g_factor=1.0, metadata={"test": True})
-        vv_read, vh_read = jordi.read_jordi(filename, split=True)
+        vv_vh.write_vv_vh(filename, vv=vv, vh=vh, g_factor=1.0, metadata={"test": True})
+        vv_read, vh_read = vv_vh.read_vv_vh(filename, split=True)
         assert np.allclose(vv_read, vv)
         assert np.allclose(vh_read, vh)
     finally:
@@ -56,7 +56,7 @@ def test_vv_vh_spectrum_equals_concatenated_components():
     assert np.allclose(vv_vh_flat[: vv_flat.shape[0]], vv_flat)
     assert np.allclose(vv_vh_flat[vv_flat.shape[0] :], vh_flat)
 
-# --- FROM test_jordi_rebin_fix.py ---
+# --- FROM test_vv_vh_rebin_fix.py ---
 import os
 import tempfile
 import importlib.util
@@ -66,11 +66,11 @@ import numpy as np
 
 
 def test_vv_vh_rebin_reshape_groups_are_stable():
-    module_path = Path(__file__).resolve().parents[2] / "chisurf" / "core" / "fio" / "jordi.py"
-    spec = importlib.util.spec_from_file_location("jordi_local", module_path)
-    jordi = importlib.util.module_from_spec(spec)
+    module_path = Path(__file__).resolve().parents[2] / "chisurf" / "core" / "fio" / "vv_vh.py"
+    spec = importlib.util.spec_from_file_location("vv_vh_local", module_path)
+    vv_vh = importlib.util.module_from_spec(spec)
     assert spec is not None and spec.loader is not None
-    spec.loader.exec_module(jordi)
+    spec.loader.exec_module(vv_vh)
 
     n_points = 2048
     x = np.linspace(0.0, 10.0, n_points)
@@ -81,8 +81,8 @@ def test_vv_vh_rebin_reshape_groups_are_stable():
         filename = tmp.name
 
     try:
-        jordi.write_jordi(filename, vv=vv, vh=vh, g_factor=1.0)
-        data, _meta = jordi.read_jordi(filename, split=True, return_metadata=True)
+        vv_vh.write_vv_vh(filename, vv=vv, vh=vh, g_factor=1.0)
+        data, _meta = vv_vh.read_vv_vh(filename, split=True, return_metadata=True)
 
         vv_read = np.asarray(data["VV"])
         vh_read = np.asarray(data["VH"])

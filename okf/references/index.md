@@ -13,3 +13,4 @@
 * [FCS catalogue & FLCS filters: PAM port](fcs-pam-port.md) - The PAM-referenced (A/B-verified) FCS fit-model catalogue expansion and FLCS lifetime-filter fixes, with remaining gaps.
 * [Spectral crosstalk / linear-mixing core](crosstalk.md) - The shared crosstalk-matrix utility (build/apply/invert) behind the light-path calculator, ratiometric/sensitized-emission FRET, phasor unmixing and DDEM.
 * [smFRET calibration: light-path prior → data-optimized posterior](fret-calibration.md) - Calibration factors as fitting parameters whose prior comes from the light-path calculator and whose posterior comes from optimizing against burst E-S data.
+* [VV/VH stacked-decay format (historically "jordi")](vv-vh-decay-format.md) - Descriptive name, layout, and API for the stacked polarization-resolved decay format; records the historic "jordi" name for discoverability.

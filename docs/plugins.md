@@ -9,8 +9,8 @@ Auto-generated documentation for all ChiSurf plugins.
 - Main
   - Tools:ndXplorer
 - Spectroscopy
-  - Fluorescence decay:Jordi Anisotropy Decay
-  - Fluorescence decay:Jordi G-Factor Calculator
+  - Fluorescence decay:VV/VH Anisotropy Decay
+  - Fluorescence decay:VV/VH G-Factor Calculator
   - Single-Molecule:PCH
 - Structure
   - Chimol
@@ -68,17 +68,17 @@ spectroscopic properties.
 
 ## Spectroscopy
 
-### Fluorescence decay:Jordi Anisotropy Decay
+### Fluorescence decay:VV/VH Anisotropy Decay
 
-*Module: `jordi_anisotropy`*
+*Module: `vv_vh_anisotropy`*
 
-Jordi Anisotropy Calculator
+VV/VH Anisotropy Calculator
 
 This plugin provides interactive computation and visualization of fluorescence anisotropy r(t)
-for Jordi files.
+for VV/VH files.
 
 Features
-- Load Jordi ASCII files and split into VV (parallel) and VH (perpendicular) decays
+- Load VV/VH ASCII files and split into VV (parallel) and VH (perpendicular) decays
 - Compute r(t) = (VV − g·VH) / (VV + 2·g·VH)
 - Apply user-specified g-factor, optional constant backgrounds (BG VV, BG VH), and a fractional
   channel shift between VV and VH (VH relative to VV)
@@ -87,24 +87,24 @@ Features
 - Use channel indices (0..N−1) for the x-axis
 - Fix the anisotropy y-range to [0, 0.45] for visual consistency
 - Save outputs via “Save…”:
-  • Shifted decays as a Jordi file (<base>_shifted.dat)
+  • Shifted decays as a VV/VH file (<base>_shifted.dat)
   • Anisotropy decay as text with columns: channel, r(t), r(t)−r∞
   • r∞ metadata CSV including source filename, region bounds, BG VV, BG VH, and g-factor
 - Batch processing with drag-and-drop file list (Batch…) and CSV export of per-file r∞
 
-This widget can run as a ChiSurf plugin (see chisurf.plugins.jordi_anisotropy.__plugin__) or standalone.
+This widget can run as a ChiSurf plugin (see chisurf.plugins.vv_vh_anisotropy.__plugin__) or standalone.
 
 ---
 
-### Fluorescence decay:Jordi G-Factor Calculator
+### Fluorescence decay:VV/VH G-Factor Calculator
 
-*Module: `jordi_g_factor`*
+*Module: `vv_vh_g_factor`*
 
-Jordi G-Factor Calculator
+VV/VH G-Factor Calculator
 
-This standalone plugin calculates the g-factor based on tail matching for Jordi files.
+This standalone plugin calculates the g-factor based on tail matching for VV/VH files.
 It allows users to:
-- Load and display Jordi files
+- Load and display VV/VH files
 - Select a tail matching region using interactive controls
 - Calculate the g-factor based on the selected region
 - Display the g-factor and its standard deviation in copyable text fields

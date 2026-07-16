@@ -1,4 +1,4 @@
-"""ServiceDispatcher-compatible RPC handlers for Jordi G-Factor calculations."""
+"""ServiceDispatcher-compatible RPC handlers for VV/VH G-Factor calculations."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def register_services(dispatcher: Any) -> None:
-    """Register Jordi G-Factor RPC handlers with a ServiceDispatcher.
+    """Register VV/VH G-Factor RPC handlers with a ServiceDispatcher.
 
     Parameters
     ----------
@@ -42,7 +42,7 @@ def register_services(dispatcher: Any) -> None:
         lambda params: solve_linked_l_handler(**params),
     )
     dispatcher.register(
-        "jordi_g_factor.archive_g_factor",
+        "vv_vh_g_factor.archive_g_factor",
         lambda params: archive_g_factor_handler(**params),
     )
 
@@ -50,7 +50,7 @@ def register_services(dispatcher: Any) -> None:
 def list_methods() -> dict[str, str]:
     """Return the RPC method catalogue."""
     return {
-        METHOD_CALCULATE: "Calculate G-factor based on tail matching for Jordi decays.",
+        METHOD_CALCULATE: "Calculate G-factor based on tail matching for VV/VH decays.",
         METHOD_PERRIN_STEADY_STATE: "Perrin steady-state anisotropy for a sphere.",
         METHOD_SOLVE_LINKED_L: "Solve for the linked l1=l2 mixing parameter.",
     }
@@ -158,9 +158,9 @@ def archive_g_factor_handler(
         derived_decays = None
         if os.path.exists(file_path):
             try:
-                from chisurf.core.fio import read_jordi as _read_jordi
-                if _read_jordi is not None:
-                    vv, vh = _read_jordi(file_path, split=True)
+                from chisurf.core.fio import read_vv_vh as _read_vv_vh
+                if _read_vv_vh is not None:
+                    vv, vh = _read_vv_vh(file_path, split=True)
                 else:
                     vec = np.loadtxt(file_path)
                     half = len(vec) // 2
@@ -224,66 +224,71 @@ def archive_g_factor_handler(
         if "micro_time_resolution" in parameters:
             meta["micro_time_resolution"] = parameters["micro_time_resolution"]
 
-        # Register raw measurement
-        ref_decay_id = register_raw_measurement(
-            file_path=file_path,
-            metadata=meta,
-        )
-        if not ref_decay_id:
-            logger.warning("archive_g_factor_handler: register_raw_measurement returned empty ID")
+        # The provenance ``register_*`` helpers resolve their client from the
+        # active execution context; the backend owns the connection, so open the
+        # resolved database once and bind it for the whole registration block.
+        from mmfdb.provenance.result_registry import database_context, register_result
 
-        # Register the derived decays (corrected VV/VH + anisotropy r(t)) as a
-        # processed_data artifact derived from the reference decay.
-        derived_decay_id = ""
-        if derived_decays is not None:
-            from mmfdb.provenance.result_registry import register_result
-            derived_decay_id = register_result(
-                kind="processed_data",
-                data=derived_decays,
-                parent_artifact_id=ref_decay_id or "",
-                operation_type="calibration",
-                metadata={
-                    "derived_from": "jordi_g_factor",
-                    "columns": ["time", "vv_corrected", "vh_corrected", "anisotropy"],
-                    "use_bg": 1 if use_bg else 0,
-                    "decay_shift": decay_shift,
-                    "flip": 1 if flip else 0,
-                },
+        with MFDatabase(db_path) as db, database_context(db):
+            # Register raw measurement
+            ref_decay_id = register_raw_measurement(
+                file_path=file_path,
+                metadata=meta,
             )
-            if not derived_decay_id:
-                logger.warning("archive_g_factor_handler: derived-decay registration returned empty ID")
+            if not ref_decay_id:
+                logger.warning("archive_g_factor_handler: register_raw_measurement returned empty ID")
 
-        # Prep calibration parameters
-        calib_params = {
-            "g_factor": g_val,
-            "g_factor_stddev": parameters.get("g_factor_stddev"),
-            "g_factor_uncorrected": parameters.get("g_factor_uncorrected"),
-            "g_factor_corrected": parameters.get("g_factor_corrected"),
-            "r_inf": r_inf,
-            "region_min": region_min,
-            "region_max": region_max,
-            "decay_shift": decay_shift,
-            "flip": 1 if flip else 0,
-            "use_bg": 1 if use_bg else 0,
-            "bg_vv": parameters.get("bg_vv"),
-            "bg_vh": parameters.get("bg_vh"),
-            "l1": l1,
-            "l2": l2,
-        }
-        # Filter None
-        calib_params = {k: v for k, v in calib_params.items() if v is not None}
+            # Register the derived decays (corrected VV/VH + anisotropy r(t)) as a
+            # processed_data artifact derived from the reference decay.
+            derived_decay_id = ""
+            if derived_decays is not None:
+                derived_decay_id = register_result(
+                    kind="processed_data",
+                    data=derived_decays,
+                    parent_artifact_id=ref_decay_id or "",
+                    operation_type="calibration",
+                    metadata={
+                        "derived_from": "vv_vh_g_factor",
+                        "columns": ["time", "vv_corrected", "vh_corrected", "anisotropy"],
+                        "use_bg": 1 if use_bg else 0,
+                        "decay_shift": decay_shift,
+                        "flip": 1 if flip else 0,
+                    },
+                )
+                if not derived_decay_id:
+                    logger.warning("archive_g_factor_handler: derived-decay registration returned empty ID")
 
-        # Calibration payload
-        payload = dict(calib_params)
+            # Prep calibration parameters
+            calib_params = {
+                "g_factor": g_val,
+                "g_factor_stddev": parameters.get("g_factor_stddev"),
+                "g_factor_uncorrected": parameters.get("g_factor_uncorrected"),
+                "g_factor_corrected": parameters.get("g_factor_corrected"),
+                "r_inf": r_inf,
+                "region_min": region_min,
+                "region_max": region_max,
+                "decay_shift": decay_shift,
+                "flip": 1 if flip else 0,
+                "use_bg": 1 if use_bg else 0,
+                "bg_vv": parameters.get("bg_vv"),
+                "bg_vh": parameters.get("bg_vh"),
+                "l1": l1,
+                "l2": l2,
+            }
+            # Filter None
+            calib_params = {k: v for k, v in calib_params.items() if v is not None}
 
-        calib_id = register_calibration(
-            data=payload,
-            calibration_type="g_factor",
-            parent_artifact_id=ref_decay_id or "",
-            parameters=calib_params,
-            method="jordi_g_factor",
-            notes=f"Calculated G-factor: {g_val:.4f} using tail matching.",
-        )
+            # Calibration payload
+            payload = dict(calib_params)
+
+            calib_id = register_calibration(
+                data=payload,
+                calibration_type="g_factor",
+                parent_artifact_id=ref_decay_id or "",
+                parameters=calib_params,
+                method="vv_vh_g_factor",
+                notes=f"Calculated G-factor: {g_val:.4f} using tail matching.",
+            )
 
         if not calib_id:
             logger.warning("archive_g_factor_handler: register_calibration returned empty ID")

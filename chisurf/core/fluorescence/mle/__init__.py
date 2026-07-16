@@ -14,7 +14,7 @@ from .fit2x import (
     Fit2xModel,
     Fit2xResult,
     Fit2xSettings,
-    assemble_jordi,
+    assemble_vv_vh,
 )
 
 __all__ = [
@@ -24,5 +24,5 @@ __all__ = [
     "Fit2xResult",
     "Fit2xSettings",
     "PARAMETER_NAMES",
-    "assemble_jordi",
+    "assemble_vv_vh",
 ]

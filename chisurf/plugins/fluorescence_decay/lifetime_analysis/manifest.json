@@ -2,7 +2,7 @@
   "id": "lifetime_analysis",
   "version": "1.0.0",
   "display_name": "Spectroscopy:Fluorescence decay:Decay Analysis",
-  "description": "Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, and Jordi G-factor calibration.",
+  "description": "Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, and VV/VH G-factor calibration.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Spectroscopy", "Fluorescence decay"],
   "state_namespace": "lifetime_analysis",

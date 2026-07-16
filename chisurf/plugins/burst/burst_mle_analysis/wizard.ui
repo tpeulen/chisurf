@@ -679,9 +679,9 @@
             </layout>
            </item>
            <item row="0" column="4">
-            <widget class="QCheckBox" name="checkBox_save_jordis">
+            <widget class="QCheckBox" name="checkBox_save_vv_vhs">
              <property name="text">
-              <string>Save Jordis</string>
+              <string>Save VV/VHs</string>
              </property>
             </widget>
            </item>

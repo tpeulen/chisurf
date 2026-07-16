@@ -52,7 +52,7 @@ def _set_exp(exp_name: str, setup_name: str, **kw):
 def test_tcspc_lifetime_fit():
     _clear()
     _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_jordi=False,
+             skiprows=11, reading_routine='csv', is_vv_vh=False,
              use_header=True, matrix_columns=[], polarization='vm',
              rep_rate=10.0, dt=0.0141)
     cs.macros.add_dataset(
@@ -81,7 +81,7 @@ def test_tcspc_each_model(model_name):
     """Create a fit for each registered TCSPC model."""
     _clear()
     _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_jordi=False,
+             skiprows=11, reading_routine='csv', is_vv_vh=False,
              use_header=True, matrix_columns=[], polarization='vm',
              rep_rate=10.0, dt=0.0141)
     cs.macros.add_dataset(

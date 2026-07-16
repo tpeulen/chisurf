@@ -1120,14 +1120,14 @@ class Main(
 
             current_setup = getattr(cs.cs, "current_setup", None)
             reader_name = None
-            is_jordi = False
+            is_vv_vh = False
             try:
                 if current_setup is not None:
                     reader_name = getattr(current_setup, "experiment_reader", None)
-                    is_jordi = bool(getattr(current_setup, "is_jordi", False))
+                    is_vv_vh = bool(getattr(current_setup, "is_vv_vh", False))
             except Exception:
                 reader_name = None
-                is_jordi = False
+                is_vv_vh = False
 
             reader_name_lc = reader_name.strip() if isinstance(reader_name, str) else None
 
@@ -1173,9 +1173,9 @@ class Main(
                     continue
 
                 anchor = None
-                if is_jordi and "jordi_anchor" in rule:
+                if is_vv_vh and "vv_vh_anchor" in rule:
                     try:
-                        anchor = str(rule.get("jordi_anchor", "")).strip() or None
+                        anchor = str(rule.get("vv_vh_anchor", "")).strip() or None
                     except Exception:
                         anchor = None
                 if not anchor:

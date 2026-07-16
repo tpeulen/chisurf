@@ -326,7 +326,7 @@ tcspc:
   fit_count_threshold: 8
   fit_start_fraction: 0.5
   g_factor: 1
-  is_jordi: false
+  is_vv_vh: false
   n0: 2000000
   polarization: vm
   polarization_options:

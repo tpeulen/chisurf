@@ -12,7 +12,7 @@ You typically use this reader when you have:
 
 - Exported decays from vendor software as text / CSV tables.
 - TCSPC matrices (multiple decays in columns or rows) in a single file.
-- Jordi fast‑rotating dye measurements for estimating the anisotropy G‑factor.
+- VV/VH fast‑rotating dye measurements for estimating the anisotropy G‑factor.
 
 When you select the **TCSPC** experiment and the **TXT/CSV** file type, the
 "File parameters" group shows two stacked panels:
@@ -41,14 +41,14 @@ which accepts data in the following forms:
   - The `Matrix columns` setting in the TCSPC panel tells the reader which columns to interpret
     as TCSPC channels.
 
-- **Jordi format (fast‑rotating dye)**
+- **VV/VH format (fast‑rotating dye)**
   - Special case used for anisotropy calibration.
-  - Select **Jordi mode** in the TCSPC panel (`is_jordi`), then load the Jordi file.
-  - The reader uses `chisurf.fio.jordi.read_jordi` and can derive `g_factor` and VV/VH/VM
+  - Select **VV/VH mode** in the TCSPC panel (`is_vv_vh`), then load the VV/VH file.
+  - The reader uses `chisurf.fio.vv_vh.read_vv_vh` and can derive `g_factor` and VV/VH/VM
     channels directly from the file.
 
 Delimiters (comma, semicolon, tab, space) are usually detected automatically when
-**Use header** is enabled in the CSV panel and `is_jordi` is *not* checked.
+**Use header** is enabled in the CSV panel and `is_vv_vh` is *not* checked.
 
 ---
 
@@ -116,28 +116,28 @@ is interpreted as a TCSPC experiment:
 - **G‑factor (`g_factor`)**
   - Anisotropy correction factor used when combining VV and VH channels into VM
     or when computing anisotropy curves.
-  - Often obtained from a Jordi fast‑rotating dye measurement.
+  - Often obtained from a VV/VH fast‑rotating dye measurement.
 
 - **Matrix columns (`matrix_columns`)**
   - Which columns of the numeric matrix correspond to the TCSPC channels.
-  - For non‑Jordi files, the CSV loader reads `usecols=matrix_columns`.
+  - For non‑VV/VH files, the CSV loader reads `usecols=matrix_columns`.
   - Typical examples:
     - `0 1` → time in column 0, intensity in column 1.
     - `0 1 2` → time + two intensity channels, which will be turned into
       multiple decays.
 
-- **Jordi mode (`is_jordi`) and header usage (`use_header`)**
-  - When **Jordi mode** is enabled:
-    - The reader switches to `chisurf.fio.jordi.read_jordi` and ignores
+- **VV/VH mode (`is_vv_vh`) and header usage (`use_header`)**
+  - When **VV/VH mode** is enabled:
+    - The reader switches to `chisurf.fio.vv_vh.read_vv_vh` and ignores
       standard `matrix_columns`.
-    - Available polarization channels (VV, VH, VM) are taken from the Jordi
+    - Available polarization channels (VV, VH, VM) are taken from the VV/VH
       file, and `g_factor` can be read from metadata.
-  - When Jordi is **off**, the reader expects a generic ASCII/CSV file and
+  - When VV/VH is **off**, the reader expects a generic ASCII/CSV file and
     uses `matrix_columns`, `use_header`, and the CSV panel configuration.
 
 - **VH shift (`vh_shift`)** (if present)
   - Integer shift (in bins) applied to the VH channel before combining VV and
-    VH (Jordi mode).
+    VH (VV/VH mode).
   - Positive values shift VH to later times; negative values to earlier times.
   - Useful to compensate for small timing offsets between detection channels.
 
@@ -146,24 +146,24 @@ when parameters change, so subsequent data loads and fits use the same setup.
 
 ---
 
-### Jordi files {#tcspc-jordi}
+### VV/VH files {#tcspc-vv_vh}
 
-Jordi files are a special TCSPC format used primarily for **anisotropy calibration**.
+VV/VH files are a special TCSPC format used primarily for **anisotropy calibration**.
 They typically contain a single column of intensity values which is interpreted as:
 
 - First half of the values → **VV** (parallel) channel
 - Second half of the values → **VH** (perpendicular) channel
 
-In the **TCSPC TXT/CSV** reader, Jordi files are handled by enabling **Jordi mode**
-in the TCSPC panel (`is_jordi`). When this mode is active:
+In the **TCSPC TXT/CSV** reader, VV/VH files are handled by enabling **VV/VH mode**
+in the TCSPC panel (`is_vv_vh`). When this mode is active:
 
-- The reader uses `chisurf.fio.jordi.read_jordi` under the hood.
-- Available polarization channels (VV, VH, VM) are taken directly from the Jordi file.
+- The reader uses `chisurf.fio.vv_vh.read_vv_vh` under the hood.
+- Available polarization channels (VV, VH, VM) are taken directly from the VV/VH file.
 - `g_factor` and related anisotropy parameters can be read from the file metadata
   when present.
 
 For detailed inspection and refinement of the **g‑factor** and **VH shift**, you can
-use the dedicated **Jordi G‑Factor Calculator** plugin, which provides:
+use the dedicated **VV/VH G‑Factor Calculator** plugin, which provides:
 
 - Interactive tail-matching of VV and VH decays.
 - Background correction and visualization of corrected vs. uncorrected decays.
@@ -171,11 +171,11 @@ use the dedicated **Jordi G‑Factor Calculator** plugin, which provides:
 
 The typical workflow is:
 
-1. Acquire or load a Jordi calibration file.
-2. Use the **Jordi G‑Factor Calculator** plugin to determine a robust `g_factor`
+1. Acquire or load a VV/VH calibration file.
+2. Use the **VV/VH G‑Factor Calculator** plugin to determine a robust `g_factor`
    (and optionally a VH shift).
 3. Enter the resulting parameters into the **TCSPC TXT/CSV** panel and enable
-   **Jordi mode** for the corresponding datasets.
+   **VV/VH mode** for the corresponding datasets.
 
 ---
 
@@ -196,9 +196,9 @@ The typical workflow is:
    - Choose **Polarization** mode depending on available channels.
    - Set or confirm the **G‑factor** if you do anisotropy analysis.
 
-4. **(Optional) Jordi calibration**
-   - Enable **Jordi mode** and load a Jordi VV/VH file.
-   - Use the Jordi G‑factor inspector button to refine `g_factor` and `vh_shift`.
+4. **(Optional) VV/VH calibration**
+   - Enable **VV/VH mode** and load a VV/VH VV/VH file.
+   - Use the VV/VH G‑factor inspector button to refine `g_factor` and `vh_shift`.
 
 5. **Load data**
    - Click the **Data** button (or drop files onto the *Drop files here* area).

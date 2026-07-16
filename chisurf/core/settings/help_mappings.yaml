@@ -1,17 +1,17 @@
 help:
   reader_rules:
-    # TCSPC TXT/CSV readers (including Stopped flow), with special Jordi subsection
+    # TCSPC TXT/CSV readers (including Stopped flow), with special VV/VH subsection
     - experiment: "TCSPC"
       setup: "TXT/CSV"
       doc: "docs/TCSPC files.md"
       anchor: "tcspc-txtcsv"
-      jordi_anchor: "tcspc-jordi"
+      vv_vh_anchor: "tcspc-vv_vh"
 
     - experiment: "Stopped flow"
       setup: "TXT/CSV"
       doc: "docs/TCSPC files.md"
       anchor: "tcspc-txtcsv"
-      jordi_anchor: "tcspc-jordi"
+      vv_vh_anchor: "tcspc-vv_vh"
 
     # TCSPC TTTR, Becker-SDT, and Simulator readers
     - experiment: "TCSPC"

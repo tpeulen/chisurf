@@ -1,6 +1,6 @@
-"""Jordi G-Factor Calculator Plugin.
+"""VV/VH G-Factor Calculator Plugin.
 
-Exposes the Jordi G-factor GUI tool and registers backend services.
+Exposes the VV/VH G-factor GUI tool and registers backend services.
 """
 
 from __future__ import annotations
@@ -16,17 +16,17 @@ if _manifest is not None:
     name = _manifest.display_name
     cli_entrypoint = _manifest.entrypoints.cli or ""
 else:
-    name = "Spectroscopy:Fluorescence decay:Jordi G-Factor Calculator"
+    name = "Spectroscopy:Fluorescence decay:VV/VH G-Factor Calculator"
     cli_entrypoint = ""
 
 # Re-export the main widget class
-from .gui.tool import JordiGFactorCalculator
+from .gui.tool import VvVhGFactorCalculator
 
-__all__ = ["JordiGFactorCalculator"]
+__all__ = ["VvVhGFactorCalculator"]
 
 
 if __name__ == "plugin":
-    window = JordiGFactorCalculator()
+    window = VvVhGFactorCalculator()
     if _manifest is not None:
         apply_manifest_statefulness(window, _manifest)
     window.show()

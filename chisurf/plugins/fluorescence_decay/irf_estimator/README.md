@@ -6,11 +6,11 @@ The **IRF Estimator** plugin provides blind instrument response function (IRF) e
 
 ## Features
 
-- **Load Decay Data**: Load fluorescence decay data in Jordi format
+- **Load Decay Data**: Load fluorescence decay data in VV/VH format
 - **Automatic IRF Estimation**: Estimate IRF using blind deconvolution
 - **Interactive Parameters**: Adjust estimation parameters in real-time
 - **Side-by-Side Visualization**: View decay and estimated IRF simultaneously
-- **Save IRF**: Export estimated IRF in Jordi format
+- **Save IRF**: Export estimated IRF in VV/VH format
 - **ChiSurf Integration**: Load estimated IRF directly into ChiSurf for analysis
 
 ## Access in ChiSurf
@@ -23,9 +23,9 @@ The **IRF Estimator** plugin provides blind instrument response function (IRF) e
 ### 1. Load Decay Data
 
 1. Choose how to load data:
-   - **Load Decay (Jordi)**: Select a Jordi format file containing fluorescence decay data.
+   - **Load Decay (VV/VH)**: Select a VV/VH format file containing fluorescence decay data.
    - **Load from Dataset**: Select an already loaded TCSPC dataset from ChiSurf.
-2. The selected decay will be displayed in the main plot (logarithmic scale). For multi-decay Jordi files, all decays are loaded and the plugin can process them to compute an averaged IRF.
+2. The selected decay will be displayed in the main plot (logarithmic scale). For multi-decay VV/VH files, all decays are loaded and the plugin can process them to compute an averaged IRF.
 
 ### 2. Adjust Parameters (Optional)
 
@@ -97,7 +97,7 @@ When "Use Range Selection" is checked:
 
 ### 4. Save or Use IRF
 
-- **Save IRF (Jordi)**: Save the estimated IRF to a Jordi format file
+- **Save IRF (VV/VH)**: Save the estimated IRF to a VV/VH format file
 - **Load IRF to ChiSurf**: Prepare IRF for use in ChiSurf analysis
 
 ## Algorithm
@@ -164,7 +164,7 @@ After estimation, check the single plot for:
 
 ## File Formats
 
-### Jordi Format
+### VV/VH Format
 - Text file with two concatenated channels
 - First half: VV (parallel) channel
 - Second half: VH (perpendicular) channel

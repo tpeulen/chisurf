@@ -1,12 +1,12 @@
-# Jordi G-Factor Calculator
+# VV/VH G-Factor Calculator
 
-A standalone plugin for calculating the g-factor based on tail matching for Jordi files.
+A standalone plugin for calculating the g-factor based on tail matching for VV/VH files.
 
 ## Overview
 
 The g-factor is an important correction factor in fluorescence anisotropy measurements, accounting for the different detection efficiencies of the parallel and perpendicular emission components. This plugin provides a simple interface for:
 
-- Loading and displaying Jordi files
+- Loading and displaying VV/VH files
 - Selecting a tail matching region using interactive controls
 - Calculating the g-factor based on the selected region
 - Displaying the g-factor and its standard deviation in copyable text fields
@@ -28,7 +28,7 @@ This plugin can be used in two ways:
 
 ## File Format
 
-Jordi files are simple text files containing intensity values with the following structure:
+VV/VH files are simple text files containing intensity values with the following structure:
 - The file contains a single column of numbers
 - The first half of the values represent the VV (parallel) channel
 - The second half of the values represent the VH (perpendicular) channel
@@ -40,14 +40,14 @@ The plugin loads these files directly using numpy.loadtxt and automatically spli
 ### As a ChiSurf Plugin
 1. Launch ChiSurf
 2. Go to the "Plugins" menu
-3. Select "Analysis" > "Jordi G-Factor Calculator"
+3. Select "Analysis" > "VV/VH G-Factor Calculator"
 4. Follow the steps below
 
 ### As a Standalone Application
 1. Run the plugin directly: `python __init__.py`
 
 ### Using the Interface
-1. Click "Load Jordi File" to select a Jordi file
+1. Click "Load VV/VH File" to select a VV/VH file
 2. The file will be displayed with parallel (blue) and perpendicular (red) components in the left plot
 3. A blue shaded region will appear, which can be adjusted by dragging the edges
 4. The g-factor and its standard deviation will be calculated based on the selected region

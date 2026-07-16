@@ -1,7 +1,7 @@
 """Pixel-wise FLIM maximum-likelihood lifetime fitting (Qt-free).
 
 Reads a confocal TTTR image (`tttrlib.CLSMImage`), builds a per-pixel
-polarisation-resolved micro-time histogram in the "Jordi" layout, and fits a
+polarisation-resolved micro-time histogram in the "VV/VH" layout, and fits a
 single fluorescence lifetime + anisotropy per pixel by Poisson maximum
 likelihood through the shared :class:`chisurf.core.fluorescence.mle.Fit2x`
 harness (tttrlib `Fit23`, the Maus-2001 ``2I*`` estimator).
@@ -61,7 +61,7 @@ class PixelMleSettings:
         TTTR routing channels forming the parallel (VV) and perpendicular (VH)
         detection channels of the confocal image.
     irf : numpy.ndarray
-        Instrument-response histogram in Jordi layout, length ``2 * window``
+        Instrument-response histogram in VV/VH layout, length ``2 * window``
         where ``window = micro_time_stop - micro_time_start``.
     period : float
         Excitation period of the light source (nanoseconds).
@@ -70,7 +70,7 @@ class PixelMleSettings:
         it is derived from the TTTR header as
         ``micro_time_resolution * 1e9 * binning_factor``.
     background : numpy.ndarray, optional
-        Background histogram in Jordi layout (same length as ``irf``).
+        Background histogram in VV/VH layout (same length as ``irf``).
     binning_factor : int, optional
         Integer down-binning applied to the micro-time axis before fitting.
     micro_time_start, micro_time_stop : int, optional
@@ -184,10 +184,10 @@ def _initial_and_fixed(s: PixelMleSettings) -> tuple[np.ndarray, np.ndarray]:
     return x0, fixed
 
 
-def _extract_jordi_fast(clsm_p, clsm_s, tttr, binning, start, stop):
-    """Per-pixel Jordi histograms via the vectorised ``get_fluorescence_decay``.
+def _extract_vv_vh_fast(clsm_p, clsm_s, tttr, binning, start, stop):
+    """Per-pixel VV/VH histograms via the vectorised ``get_fluorescence_decay``.
 
-    Returns ``(jordi, n_frames, n_lines, n_pixel, saturated)`` where ``jordi``
+    Returns ``(vv_vh, n_frames, n_lines, n_pixel, saturated)`` where ``vv_vh``
     is an ``(n_pixels, 2*window)`` int64 matrix in (frame, line, pixel) order.
     """
     dec_p = np.asarray(
@@ -203,12 +203,12 @@ def _extract_jordi_fast(clsm_p, clsm_s, tttr, binning, start, stop):
     n_frames, n_lines, n_pixel, _ = dec_p.shape
     hp = dec_p.reshape(-1, dec_p.shape[-1])[:, start:stop].astype(np.int64)
     hs = dec_s.reshape(-1, dec_s.shape[-1])[:, start:stop].astype(np.int64)
-    jordi = np.ascontiguousarray(np.concatenate([hp, hs], axis=1))
-    return jordi, n_frames, n_lines, n_pixel, saturated
+    vv_vh = np.ascontiguousarray(np.concatenate([hp, hs], axis=1))
+    return vv_vh, n_frames, n_lines, n_pixel, saturated
 
 
-def _extract_jordi_loop(clsm_p, clsm_s, tttr, binning, start, stop, n_channels):
-    """Exact per-pixel Jordi histograms via ``np.bincount`` (reference path)."""
+def _extract_vv_vh_loop(clsm_p, clsm_s, tttr, binning, start, stop, n_channels):
+    """Exact per-pixel VV/VH histograms via ``np.bincount`` (reference path)."""
     micro = tttr.micro_times // binning
     n_frames, n_lines, n_pixel = clsm_p.shape
     window = stop - start
@@ -228,19 +228,19 @@ def _extract_jordi_loop(clsm_p, clsm_s, tttr, binning, start, stop, n_channels):
                 else:
                     hs = empty
                 rows.append(np.concatenate([hp, hs]))
-    jordi = np.ascontiguousarray(np.asarray(rows, dtype=np.int64))
-    return jordi, n_frames, n_lines, n_pixel
+    vv_vh = np.ascontiguousarray(np.asarray(rows, dtype=np.int64))
+    return vv_vh, n_frames, n_lines, n_pixel
 
 
 # --- per-pixel fitting: threaded batch ---------------------------------------
 
 
-def _fit_rows(jordi, rows, settings, dt, n_workers):
+def _fit_rows(vv_vh, rows, settings, dt, n_workers):
     """Fit the selected pixel rows using the threaded batch fit2x path."""
     x0, fixed = _initial_and_fixed(settings)
     fit_settings = Fit2xSettings(**_fit2x_settings_kwargs(settings, dt))
     return fit_matrix_threaded(
-        jordi, rows, fit_settings, x0, fixed, n_workers, model=Fit2xModel.FIT23
+        vv_vh, rows, fit_settings, x0, fixed, n_workers, model=Fit2xModel.FIT23
     )
 
 
@@ -304,7 +304,7 @@ def fit_pixel_lifetimes(
 
     engine = (settings.engine or "auto").lower()
     if engine in ("auto", "fast"):
-        jordi, n_frames, n_lines, n_pixel, saturated = _extract_jordi_fast(
+        vv_vh, n_frames, n_lines, n_pixel, saturated = _extract_vv_vh_fast(
             clsm_p, clsm_s, tttr, binning, start, stop
         )
         if saturated and engine == "auto":
@@ -313,15 +313,15 @@ def fit_pixel_lifetimes(
                 "extraction; falling back to the exact bincount engine. Increase "
                 "binning or set engine='loop' to silence."
             )
-            jordi, n_frames, n_lines, n_pixel = _extract_jordi_loop(
+            vv_vh, n_frames, n_lines, n_pixel = _extract_vv_vh_loop(
                 clsm_p, clsm_s, tttr, binning, start, stop, n_channels
             )
     else:
-        jordi, n_frames, n_lines, n_pixel = _extract_jordi_loop(
+        vv_vh, n_frames, n_lines, n_pixel = _extract_vv_vh_loop(
             clsm_p, clsm_s, tttr, binning, start, stop, n_channels
         )
 
-    totals = jordi.sum(axis=1)
+    totals = vv_vh.sum(axis=1)
     fit_rows = np.where(totals >= settings.min_photons)[0]
 
     # Run the fits (serial or across processes).
@@ -329,7 +329,7 @@ def fit_pixel_lifetimes(
     if len(fit_rows) < _MIN_ROWS_FOR_THREADS:
         n_workers = 1  # threading overhead not worth it for a handful of pixels
     if len(fit_rows):
-        params = _fit_rows(jordi, fit_rows, settings, dt, n_workers)
+        params = _fit_rows(vv_vh, fit_rows, settings, dt, n_workers)
     else:
         params = np.empty((0, 5), dtype=np.float64)
 

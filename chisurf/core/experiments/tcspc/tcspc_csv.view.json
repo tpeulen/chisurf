@@ -56,7 +56,7 @@
       "sections": [
         {
           "type": "toggle",
-          "attr": "is_jordi",
+          "attr": "is_vv_vh",
           "label": "stacked",
           "description": "Treat the file as stacked VV/VH: the parallel and perpendicular detection channels are stored vertically one after another. Disables the header row and scales dt by the rebin factor."
         },

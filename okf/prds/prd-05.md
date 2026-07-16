@@ -39,7 +39,7 @@ Relevant code:
 - `chisurf/core/models/tcspc/fret.py` — `R0`, `tauD0`, `kappa2`
 - `chisurf/core/models/pda/nusiance.py` — `crosstalk`, `gamma`, `direct_excitation`
 - `chisurf/core/fluorescence/fret/__init__.py` — intensity-based FRET corrections
-- `chisurf/plugins/jordi_g_factor/` — g-factor calculator plugin
+- `chisurf/plugins/vv_vh_g_factor/` — g-factor calculator plugin
 - `chisurf/core/mmfdb/result_registry.py` — the result registry (PRD-03)
 
 # What are calibration parameters
@@ -82,7 +82,7 @@ Fields: `calibration_type` (`g_factor`/`gamma`/`crosstalk`/`direct_excitation`/
 `source_artifact_id`, `sample_id`, `method`, `notes`.
 
 ## Task 2: Register calibrations when computed
-- **g-factor** (`chisurf/plugins/jordi_g_factor/`): after the g-factor is
+- **g-factor** (`chisurf/plugins/vv_vh_g_factor/`): after the g-factor is
   computed and displayed, call `register_calibration(...)` with
   `calibration_type="g_factor"` and `parent_artifact_id=<fast-rotating dye
   measurement>`. Wrap in try/except so the plugin still works without MMFDB.

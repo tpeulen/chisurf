@@ -195,13 +195,13 @@ class AnisotropyViewModel:
     def _pairs(self) -> list[tuple[str, str, str]]:
         """Return ``(key, polarization, path)`` for the four polarised inputs.
 
-        For a Jordi-format setup a single IRF file and a single data file hold
+        For a VV/VH-format setup a single IRF file and a single data file hold
         both polarisations, so each is loaded twice.
         """
         import chisurf as cs
 
         setup = getattr(getattr(cs, "cs", object()), "current_setup", None)
-        if getattr(setup, "is_jordi", False):
+        if getattr(setup, "is_vv_vh", False):
             return [
                 ("irf_vv", "vv", self.irf_vv_path),
                 ("irf_vh", "vh", self.irf_vv_path),

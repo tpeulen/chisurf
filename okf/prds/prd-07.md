@@ -62,7 +62,7 @@ No other changes to the plugin.
 7. **fcs_correlator** (`chisurf/plugins/fcs/fcs_correlator/`) — correlation
    functions. `register_result(kind="correlation_data",
    operation_type="correlation", ...)`.
-8. **jordi_g_factor** (`chisurf/plugins/jordi_g_factor/`) — covered in
+8. **vv_vh_g_factor** (`chisurf/plugins/vv_vh_g_factor/`) — covered in
    [PRD-05](prd-05.md); register g-factor as calibration.
 
 ## Tier 2 plugins

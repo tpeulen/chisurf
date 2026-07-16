@@ -147,13 +147,13 @@ def test_photons(d):
     assert photons.n_tac == d["n_tac"]
     assert photons.shape[0] == d["n_photons"]
 
-# --- TCSPC / Jordi Tests ---
+# --- TCSPC / VV/VH Tests ---
 
 @pytest.mark.parametrize("polarization, expected_ref", [
     ('vv', 'ref_vv'),
     ('vh', 'ref_vh'),
 ])
-def test_read_tcspc_csv_jordi(polarization, expected_ref):
+def test_read_tcspc_csv_vv_vh(polarization, expected_ref):
     filename = './test/data/tcspc/Jordi/H2O_8-0 ps_2048 ch.dat'
     if not os.path.exists(filename):
         pytest.skip("Test data not found")
@@ -167,7 +167,7 @@ def test_read_tcspc_csv_jordi(polarization, expected_ref):
         filename=filename,
         skiprows=0,
         dt=dt,
-        is_jordi=True,
+        is_vv_vh=True,
         polarization=polarization
     )
     # Check a slice for correctness
@@ -177,7 +177,7 @@ def test_read_tcspc_csv_jordi(polarization, expected_ref):
         assert np.allclose(decay_data_curve.y[279:287], ref_vh_slice)
 
 
-def test_read_tcspc_csv_jordi_complex():
+def test_read_tcspc_csv_vv_vh_complex():
     filename = './test/data/tcspc/Jordi/H2O_8-0 ps_2048 ch.dat'
     if not os.path.exists(filename):
         pytest.skip("Test data not found")
@@ -188,7 +188,7 @@ def test_read_tcspc_csv_jordi_complex():
         filename=filename,
         skiprows=0,
         dt=dt,
-        is_jordi=True,
+        is_vv_vh=True,
         polarization='vm',
         g_factor=g_factor
     )

@@ -1,7 +1,7 @@
 """Qt-free core for molecule-wise MLE lifetime analysis of TTTR imaging data.
 
 Segments individual molecules from a confocal (CLSM) intensity image, builds a
-polarisation-resolved micro-time histogram ("Jordi" layout) per molecule, and
+polarisation-resolved micro-time histogram ("VV/VH" layout) per molecule, and
 fits a single fluorescence lifetime + anisotropy per molecule by Poisson maximum
 likelihood through the shared :class:`chisurf.core.fluorescence.mle.Fit2x`
 harness (tttrlib ``Fit23``, the Maus-2001 ``2I*`` estimator).
@@ -23,7 +23,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings, assemble_jordi
+from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings, assemble_vv_vh
 
 #: Callback signature ``(index, n_molecules)`` for per-molecule progress.
 ProgressCallback = Callable[[int, int], None]
@@ -34,7 +34,7 @@ class MoleculeMleSettings:
     """Settings for a molecule-wise MLE lifetime fit.
 
     The detector channels are split even/odd into the parallel (VV) and
-    perpendicular (VH) detection channels of the Jordi layout every ``fit2x``
+    perpendicular (VH) detection channels of the VV/VH layout every ``fit2x``
     estimator expects (``detector_chs[0::2]`` = parallel, ``detector_chs[1::2]``
     = perpendicular); a single channel is used for both.
 
@@ -47,18 +47,18 @@ class MoleculeMleSettings:
     micro_time_binning : int
         Integer down-binning applied to the micro-time axis before fitting.
     irf : numpy.ndarray, optional
-        Instrument-response histogram in Jordi layout, length
+        Instrument-response histogram in VV/VH layout, length
         ``2 * (stop - start)``.  When ``None`` it must be supplied by the file
         loader (:func:`fit_molecules_from_files`).
     background : numpy.ndarray, optional
-        Background histogram in Jordi layout (same length as ``irf``).
+        Background histogram in VV/VH layout (same length as ``irf``).
     g_factor : float, optional
         Polarisation ``G`` factor (VV/VH detection-efficiency ratio).
     normalize_counts : int, optional
-        Jordi normalisation mode (``0`` none, ``1`` average rate, ``2`` per
+        VV/VH normalisation mode (``0`` none, ``1`` average rate, ``2`` per
         channel to unit area, ``3`` by acquisition time).
     threshold : float, optional
-        Fraction of the per-channel maximum below which Jordi bins are zeroed
+        Fraction of the per-channel maximum below which VV/VH bins are zeroed
         (``<= 0`` disables).
     tau, gamma, r0, rho : float
         Initial values for the ``Fit23`` parameters ``[tau, gamma, r0, rho]``.
@@ -143,8 +143,8 @@ class MoleculeMleResult:
         The integer watershed label image (0 = background).
     centroids : numpy.ndarray
         ``(n_molecules, 2)`` array of ``(row, col)`` molecule centroids.
-    jordi_vectors : list of numpy.ndarray
-        Per-molecule Jordi decay histograms (only when ``keep_curves=True``).
+    vv_vh_vectors : list of numpy.ndarray
+        Per-molecule VV/VH decay histograms (only when ``keep_curves=True``).
     model_curves : list of numpy.ndarray
         Per-molecule fitted model histograms (only when ``keep_curves=True``).
     n_molecules : int
@@ -155,7 +155,7 @@ class MoleculeMleResult:
     intensity_image: np.ndarray
     label_image: np.ndarray
     centroids: np.ndarray
-    jordi_vectors: list[np.ndarray] = dataclasses.field(default_factory=list)
+    vv_vh_vectors: list[np.ndarray] = dataclasses.field(default_factory=list)
     model_curves: list[np.ndarray] = dataclasses.field(default_factory=list)
 
     @property
@@ -268,7 +268,7 @@ def _interpolate_shift(arr: np.ndarray, shift: float) -> np.ndarray:
     return result
 
 
-def build_irf_jordi(
+def build_irf_vv_vh(
     irf_tttr: Any,
     *,
     detector_chs: Sequence[int],
@@ -278,7 +278,7 @@ def build_irf_jordi(
     shift_ss: float = 0.0,
     irf_threshold_fraction: float = 0.08,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Build the parallel/perpendicular IRF Jordi histogram from an IRF TTTR.
+    """Build the parallel/perpendicular IRF VV/VH histogram from an IRF TTTR.
 
     Parameters
     ----------
@@ -298,9 +298,9 @@ def build_irf_jordi(
     Returns
     -------
     irf_full : numpy.ndarray
-        Thresholded, area-normalised IRF in Jordi layout (used as the IRF).
+        Thresholded, area-normalised IRF in VV/VH layout (used as the IRF).
     raw_irf : numpy.ndarray
-        Un-thresholded IRF in Jordi layout (used as the ``fit2x`` background).
+        Un-thresholded IRF in VV/VH layout (used as the ``fit2x`` background).
     """
     chs = list(detector_chs)
     sp_chs, ss_chs = (chs[0::2], chs[1::2]) if len(chs) >= 2 else (chs, chs)
@@ -339,17 +339,17 @@ def compute_g_factor(
 
 
 # ---------------------------------------------------------------------------
-# Per-molecule Jordi + fit
+# Per-molecule VV/VH + fit
 # ---------------------------------------------------------------------------
-def _molecule_jordi(
+def _molecule_vv_vh(
     micro_times: np.ndarray,
     routing: np.ndarray,
     indices: np.ndarray,
     settings: MoleculeMleSettings,
 ) -> tuple[np.ndarray, int, int]:
-    """Build one molecule's Jordi histogram from its photon indices.
+    """Build one molecule's VV/VH histogram from its photon indices.
 
-    Returns ``(jordi, n_parallel, n_perpendicular)``.
+    Returns ``(vv_vh, n_parallel, n_perpendicular)``.
     """
     start, stop = settings.micro_time_range
     binning = max(1, int(settings.micro_time_binning))
@@ -386,7 +386,7 @@ def _molecule_jordi(
         if cs.sum() > 0:
             cs = cs / cs.sum()
 
-    return assemble_jordi(cp, cs), n_p, n_s
+    return assemble_vv_vh(cp, cs), n_p, n_s
 
 
 def _initial_and_fixed(s: MoleculeMleSettings) -> tuple[np.ndarray, np.ndarray]:
@@ -431,7 +431,7 @@ def fit_molecules(
     progress : callable, optional
         Called as ``progress(index, n_molecules)`` after each molecule.
     keep_curves : bool, optional
-        Also return the per-molecule Jordi and model histograms.
+        Also return the per-molecule VV/VH and model histograms.
 
     Returns
     -------
@@ -441,7 +441,7 @@ def fit_molecules(
     from skimage import measure
 
     if settings.irf is None:
-        raise ValueError("settings.irf must be set (Jordi IRF); use fit_molecules_from_files")
+        raise ValueError("settings.irf must be set (VV/VH IRF); use fit_molecules_from_files")
     irf = np.ascontiguousarray(settings.irf, dtype=np.float64)
     if irf.size != 2 * settings.window:
         raise ValueError(
@@ -485,28 +485,46 @@ def fit_molecules(
     micro_times = tttr.micro_times
     routing = tttr.routing_channels
 
-    rows: list[dict] = []
-    centroids: list[tuple[float, float]] = []
-    jordis: list[np.ndarray] = []
-    curves: list[np.ndarray] = []
-
     props = measure.regionprops(labels)
     n_props = len(props)
+
+    # Pass 1: build each molecule's VV/VH histogram; drop sub-threshold molecules.
+    kept: list[tuple] = []  # (prop, vv_vh, n_parallel, n_perpendicular)
     for i, prop in enumerate(props):
         idx: list[int] = []
         for r, c in prop.coords:
             idx.extend(list(clsm[0][int(r)][int(c)].tttr_indices))
         indices = np.asarray(idx, dtype=np.int64)
+        vv_vh, n_p, n_s = _molecule_vv_vh(micro_times, routing, indices, settings)
+        if n_p + n_s >= settings.min_photons:
+            kept.append((prop, vv_vh, n_p, n_s))
+        if progress is not None:
+            progress(i, n_props)
 
-        jordi, n_p, n_s = _molecule_jordi(micro_times, routing, indices, settings)
-        n_total = n_p + n_s
+    # Pass 2: fit. When the model curves are not needed, fit the whole batch in one
+    # GIL-released C++ call (``fit_many``); otherwise fit per molecule so each
+    # realised model histogram can be returned for plotting.
+    batch = None
+    if kept and not keep_curves:
+        matrix = np.vstack([k[1] for k in kept])
+        batch = fit2x.fit_many(matrix, initial_values=x0, fixed=fixed)
 
-        if n_total < settings.min_photons:
-            if progress is not None:
-                progress(i, n_props)
-            continue
+    rows: list[dict] = []
+    centroids: list[tuple[float, float]] = []
+    vv_vhs: list[np.ndarray] = []
+    curves: list[np.ndarray] = []
+    for j, (prop, vv_vh, n_p, n_s) in enumerate(kept):
+        if batch is not None:
+            tau, gamma, r0, rho, twoistar = (float(v) for v in batch[j])
+            r_scatter = r_experimental = float("nan")
+            model_curve = None
+        else:
+            res = fit2x.fit(vv_vh, initial_values=x0, fixed=fixed, include_model=keep_curves)
+            tau, gamma, r0, rho = (float(res.x[k]) for k in range(4))
+            twoistar = float(res.twoIstar)
+            r_scatter, r_experimental = res.r_scatter, res.r_experimental
+            model_curve = res.model_curve
 
-        res = fit2x.fit(jordi, initial_values=x0, fixed=fixed, include_model=keep_curves)
         cy, cx = prop.centroid
         perimeter = float(prop.perimeter)
         area = int(prop.area)
@@ -522,25 +540,22 @@ def fit_molecules(
                 "circularity": circularity,
                 "eccentricity": float(prop.eccentricity),
                 "solidity": float(prop.solidity),
-                "n_photons_total": n_total,
+                "n_photons_total": n_p + n_s,
                 "n_photons_parallel": n_p,
                 "n_photons_perpendicular": n_s,
-                "tau": float(res.x[0]),
-                "gamma": float(res.x[1]),
-                "r0": float(res.x[2]),
-                "rho": float(res.x[3]),
-                "r_scatter": res.r_scatter,
-                "r_experimental": res.r_experimental,
-                "2I*": float(res.twoIstar),
+                "tau": tau,
+                "gamma": gamma,
+                "r0": r0,
+                "rho": rho,
+                "r_scatter": r_scatter,
+                "r_experimental": r_experimental,
+                "2I*": twoistar,
             }
         )
         centroids.append((float(cy), float(cx)))
         if keep_curves:
-            jordis.append(jordi)
-            curves.append(res.model_curve if res.model_curve is not None else np.array([]))
-
-        if progress is not None:
-            progress(i, n_props)
+            vv_vhs.append(vv_vh)
+            curves.append(model_curve if model_curve is not None else np.array([]))
 
     dataframe = pd.DataFrame(rows)
     return MoleculeMleResult(
@@ -548,7 +563,7 @@ def fit_molecules(
         intensity_image=intensity,
         label_image=labels,
         centroids=np.asarray(centroids, dtype=float).reshape(-1, 2),
-        jordi_vectors=jordis,
+        vv_vh_vectors=vv_vhs,
         model_curves=curves,
     )
 
@@ -566,7 +581,7 @@ def fit_molecules_from_files(
 ) -> MoleculeMleResult:
     """Load a CLSM image + IRF from disk and run :func:`fit_molecules`.
 
-    The IRF Jordi histogram, background and ``G`` factor are built from
+    The IRF VV/VH histogram, background and ``G`` factor are built from
     *irf_path* (unless ``settings.irf`` is already provided).
 
     Parameters
@@ -595,7 +610,7 @@ def fit_molecules_from_files(
     tttr = tttrlib.TTTR(ptu_path)
     if settings.irf is None:
         irf_tttr = tttrlib.TTTR(irf_path)
-        irf_full, raw_irf = build_irf_jordi(
+        irf_full, raw_irf = build_irf_vv_vh(
             irf_tttr,
             detector_chs=settings.detector_chs,
             micro_time_range=settings.micro_time_range,

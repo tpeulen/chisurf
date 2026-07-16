@@ -7,8 +7,8 @@ import os
 import sqlite3
 import json
 
-from chisurf.plugins.jordi_g_factor.gui.client import JordiGFactorClient
-from chisurf.plugins.jordi_g_factor.backend.services import archive_g_factor_handler
+from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
+from chisurf.plugins.vv_vh_g_factor.backend.services import archive_g_factor_handler
 from mmfdb.repository import MFDatabase
 from mmfdb.schema import schema
 
@@ -34,12 +34,12 @@ def test_archive_g_factor_provenance(tmp_path, monkeypatch):
         lambda: object_root,
     )
     
-    # Create dummy Jordi file (parallel and perpendicular decays)
-    jordi_file = tmp_path / "dummy_jordi.txt"
+    # Create dummy VV/VH file (parallel and perpendicular decays)
+    vv_vh_file = tmp_path / "dummy_vv_vh.txt"
     vv = np.exp(-np.linspace(0, 10, 1000) / 2.0)
     vh = vv / 1.5
     merged = np.concatenate([vv, vh])
-    np.savetxt(jordi_file, merged)
+    np.savetxt(vv_vh_file, merged)
     
     # Run service archival via client
     params = {
@@ -54,9 +54,9 @@ def test_archive_g_factor_provenance(tmp_path, monkeypatch):
         "micro_time_resolution": 0.032,
     }
     
-    client = JordiGFactorClient()
+    client = VvVhGFactorClient()
     res = client.archive_g_factor(
-        file_path=str(jordi_file),
+        file_path=str(vv_vh_file),
         parameters=params,
         active_user="test_user",
     )
@@ -74,7 +74,7 @@ def test_archive_g_factor_provenance(tmp_path, monkeypatch):
         assert artifact is not None
         assert artifact["artifact_kind"] == "raw_measurement"
         meta = json.loads(artifact["metadata_json"])
-        assert meta["filename"] == "dummy_jordi.txt"
+        assert meta["filename"] == "dummy_vv_vh.txt"
         assert meta["micro_time_resolution"] == 0.032
         
         # Check calibration
@@ -133,12 +133,12 @@ def test_archive_g_factor_graceful_failure(tmp_path, monkeypatch):
         lambda: tmp_path / "nonexistent_dir" / "db.sqlite",
     )
     
-    jordi_file = tmp_path / "dummy_jordi.txt"
-    np.savetxt(jordi_file, np.ones(100))
+    vv_vh_file = tmp_path / "dummy_vv_vh.txt"
+    np.savetxt(vv_vh_file, np.ones(100))
     
-    client = JordiGFactorClient()
+    client = VvVhGFactorClient()
     res = client.archive_g_factor(
-        file_path=str(jordi_file),
+        file_path=str(vv_vh_file),
         parameters={"g_factor": 1.5, "region_min": 10, "region_max": 20},
         active_user="test_user",
     )

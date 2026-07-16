@@ -2,15 +2,15 @@ import pytest
 from qtpy import QtWidgets
 
 
-class TestJordiAnisotropyCalculator:
+class TestVvVhAnisotropyCalculator:
     def test_creation(self, qapp, qtbot):
-        from chisurf.plugins.jordi_anisotropy import JordiAnisotropyCalculator
-        widget = JordiAnisotropyCalculator()
+        from chisurf.plugins.vv_vh_anisotropy import VvVhAnisotropyCalculator
+        widget = VvVhAnisotropyCalculator()
         qtbot.addWidget(widget)
         assert widget is not None
 
     def test_window_title(self, qapp, qtbot):
-        from chisurf.plugins.jordi_anisotropy import JordiAnisotropyCalculator
-        widget = JordiAnisotropyCalculator()
+        from chisurf.plugins.vv_vh_anisotropy import VvVhAnisotropyCalculator
+        widget = VvVhAnisotropyCalculator()
         qtbot.addWidget(widget)
-        assert "Jordi" in widget.windowTitle()
+        assert "VV/VH" in widget.windowTitle()

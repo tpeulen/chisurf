@@ -48,7 +48,7 @@ class HelpDialog(QtWidgets.QDialog):
 
             <h3>How it works</h3>
             <ol>
-              <li>Load a Jordi decay file or ChiSurf dataset.</li>
+              <li>Load a VV/VH decay file or ChiSurf dataset.</li>
               <li>Configure filtering, deconvolution, and regularization parameters.</li>
               <li>Click <b>Estimate IRF</b> to recover the IRF and fit parameters.</li>
               <li>Save the estimated IRF or transfer it to ChiSurf for downstream analysis.</li>
@@ -541,7 +541,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
     # ------------------------------------------------------------------
 
     def load_decay_file(self, file_path: str | None = None) -> None:
-        """Load a Jordi format decay file."""
+        """Load a VV/VH format decay file."""
         if file_path is None or isinstance(file_path, bool):
             try:
                 import chisurf as cs
@@ -550,7 +550,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
                 start_dir = ""
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self, "Load Decay File", start_dir,
-                "Jordi Files (*.dat);;All Files (*)",
+                "VV/VH Files (*.dat);;All Files (*)",
             )
             if not file_path:
                 return
@@ -559,8 +559,8 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
         self.data_info_label.setText(str(file_path))
 
         try:
-            from chisurf.core.fio import read_jordi
-            data, metadata = read_jordi(file_path, return_metadata=True)
+            from chisurf.core.fio import read_vv_vh
+            data, metadata = read_vv_vh(file_path, return_metadata=True)
             data = np.asarray(data, dtype=np.float32)
 
             if len(data) % 2 == 0:
@@ -966,7 +966,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
     # ------------------------------------------------------------------
 
     def save_irf(self) -> None:
-        """Save the estimated IRF in Jordi format."""
+        """Save the estimated IRF in VV/VH format."""
         if self.irf_data is None or len(self.irf_data) == 0:
             QtWidgets.QMessageBox.warning(
                 self, "No IRF", "Please estimate an IRF first."
@@ -981,7 +981,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
 
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Save IRF", start_dir,
-            "Jordi Files (*.dat);;All Files (*)",
+            "VV/VH Files (*.dat);;All Files (*)",
         )
         if not file_path:
             return
@@ -989,9 +989,9 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
             file_path += ".dat"
 
         try:
-            from chisurf.core.fio import write_jordi
+            from chisurf.core.fio import write_vv_vh
             irf_data = np.asarray(self.irf_data).flatten()
-            write_jordi(file_path, irf_data, irf_data)
+            write_vv_vh(file_path, irf_data, irf_data)
             if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
                 raise RuntimeError(
                     "Failed to save IRF file or file is empty"
@@ -1024,7 +1024,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
             return
 
         try:
-            from chisurf.core.fio import write_jordi
+            from chisurf.core.fio import write_vv_vh
 
             fd, tmp_path = tempfile.mkstemp(suffix=".dat")
             os.close(fd)
@@ -1033,7 +1033,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
             temp_file = os.path.join(
                 temp_dir, f"temp_{os.urandom(8).hex()}.dat"
             )
-            write_jordi(temp_file, irf_data, irf_data)
+            write_vv_vh(temp_file, irf_data, irf_data)
 
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
@@ -1051,7 +1051,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
                     name="setup.params.set",
                     payload={
                         "params": {
-                            "is_jordi": True,
+                            "is_vv_vh": True,
                             "use_header": False,
                             "matrix_columns": [],
                             "g_factor": 1.0,

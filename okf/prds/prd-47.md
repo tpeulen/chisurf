@@ -88,7 +88,7 @@ ChiSurf reimplements physics that the framework / its staging layer already prov
 | `core/fluorescence/anisotropy/kappa2.py` (`kappasq*`, `kappasq_dwt`, `p_isotropic_orientation_factor`, `s2delta`) | 🟡 MOVE | consolidate with `cgdye` κ² → framework staging `kappa2` |
 | `core/fluorescence/anisotropy/decay.py` (`vm_rt_to_vv_vh`) | 🟡 MOVE | framework staging `anisotropy` |
 | `core/fluorescence/anisotropy/integrals.py` (Perrin anisotropy, G-factor) | 🟡 MOVE | framework staging `anisotropy` |
-| `plugins/jordi_anisotropy`, `jordi_g_factor`, `kappa2_dist` | 🟢 STAY | GUI wrappers over the MOVE targets above |
+| `plugins/vv_vh_anisotropy`, `vv_vh_g_factor`, `kappa2_dist` | 🟢 STAY | GUI wrappers over the MOVE targets above |
 
 ## FCS (largest physics gap in the framework today)
 

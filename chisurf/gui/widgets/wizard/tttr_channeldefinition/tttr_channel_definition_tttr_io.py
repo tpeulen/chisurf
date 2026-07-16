@@ -11,16 +11,16 @@ from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QFileDialog, QMessageBox, QLineEdit
 
 from chisurf.core.fio.fluorescence.bhfiles import BeckerHicklSetReader
-from chisurf.core.fio import write_jordi
+from chisurf.core.fio import write_vv_vh
 from chisurf.gui.widgets.staged_loading import load_with_progress
 from .tttr_detector_setups import load_detector_setups, save_detector_setups
 
 
-def _load_jordi_gfactor_calculator_class():
-    mod = importlib.import_module("chisurf.plugins.jordi_g_factor")
-    cls = getattr(mod, "JordiGFactorCalculator", None)
+def _load_vv_vh_gfactor_calculator_class():
+    mod = importlib.import_module("chisurf.plugins.vv_vh_g_factor")
+    cls = getattr(mod, "VvVhGFactorCalculator", None)
     if cls is None:
-        raise ImportError("JordiGFactorCalculator not found in chisurf.plugins.jordi_g_factor")
+        raise ImportError("VvVhGFactorCalculator not found in chisurf.plugins.vv_vh_g_factor")
     return cls
 
 
@@ -218,9 +218,9 @@ def on_calc_g_factor(page, row=None):
             parallel_hist_trimmed = parallel_hist
             perpendicular_hist_trimmed = perpendicular_hist
 
-        fd, jordi_file = tempfile.mkstemp(suffix='.dat')
-        jordi_data = np.concatenate([parallel_hist_trimmed, perpendicular_hist_trimmed])
-        write_jordi(filename=jordi_file, data=jordi_data)
+        fd, vv_vh_file = tempfile.mkstemp(suffix='.dat')
+        vv_vh_data = np.concatenate([parallel_hist_trimmed, perpendicular_hist_trimmed])
+        write_vv_vh(filename=vv_vh_file, data=vv_vh_data)
 
         # Check for headless calculation option
         gf_widget = page.detectors_form.cellWidget(row, 6)
@@ -254,8 +254,8 @@ def on_calc_g_factor(page, row=None):
             run_headless = (reply == QMessageBox.Yes)
 
         if run_headless:
-            from chisurf.plugins.jordi_g_factor.gui.client import JordiGFactorClient
-            client = JordiGFactorClient()
+            from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
+            client = VvVhGFactorClient()
             try:
                 res = client.calculate(
                     parallel_data=parallel_hist_trimmed.tolist(),
@@ -300,9 +300,9 @@ def on_calc_g_factor(page, row=None):
                             "l2": l2_val,
                             "micro_time_resolution": float(page.effective_micro_time_resolution) if hasattr(page, "effective_micro_time_resolution") else None,
                         }
-                        logger.info("Archiving G-factor reference decay and calibration to MMFDB: %s", jordi_file)
+                        logger.info("Archiving G-factor reference decay and calibration to MMFDB: %s", vv_vh_file)
                         archive_res = client.archive_g_factor(
-                            file_path=jordi_file,
+                            file_path=vv_vh_file,
                             parameters=calib_params,
                             active_user=resolve_active_user_id(),
                         )
@@ -366,8 +366,8 @@ def on_calc_g_factor(page, row=None):
                 QMessageBox.critical(page, "Error", f"Headless calculation failed: {ex}")
             return
 
-        JordiGFactorCalculator = _load_jordi_gfactor_calculator_class()
-        g_factor_calculator = JordiGFactorCalculator()
+        VvVhGFactorCalculator = _load_vv_vh_gfactor_calculator_class()
+        g_factor_calculator = VvVhGFactorCalculator()
         g_factor_calculator.setWindowModality(Qt.ApplicationModal)
 
         try:
@@ -385,7 +385,7 @@ def on_calc_g_factor(page, row=None):
             pass
 
         page.g_factor_calculator = g_factor_calculator
-        page.jordi_file = jordi_file
+        page.vv_vh_file = vv_vh_file
 
         original_close_event = g_factor_calculator.closeEvent
 
@@ -401,16 +401,16 @@ def on_calc_g_factor(page, row=None):
                     g_factor_value = f"{g_factor_calculator.g_factor:.3f}"
                     logger.info("Updating detectors table row %d with g-factor value %s", row, g_factor_value)
 
-                    # Upload the temporary JORDI file to the Object Store & register G-factor calibration!
+                    # Upload the temporary VV_VH file to the Object Store & register G-factor calibration!
                     g_factor_decay_uuid = None
                     g_factor_calibration_id = None
                     try:
-                        from chisurf.plugins.jordi_g_factor.gui.client import JordiGFactorClient
+                        from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
                         from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import resolve_active_user_id
-                        client = JordiGFactorClient()
+                        client = VvVhGFactorClient()
                         
                         # Determine actual file path (the user might have loaded another one in the widget)
-                        file_path = page.jordi_file
+                        file_path = page.vv_vh_file
                         if hasattr(g_factor_calculator, "file_label") and g_factor_calculator.file_label is not None:
                             fl_txt = g_factor_calculator.file_label.text().strip()
                             if fl_txt and not fl_txt.startswith("Error") and not fl_txt.startswith("No file"):
@@ -566,7 +566,7 @@ def on_calc_g_factor(page, row=None):
 
         try:
             effective_dt = page.effective_micro_time_resolution
-            g_factor_calculator.load_jordi_file(jordi_file)
+            g_factor_calculator.load_vv_vh_file(vv_vh_file)
 
             try:
                 gf_widget_new = page.detectors_form.cellWidget(row, 6)
@@ -600,7 +600,7 @@ def on_calc_g_factor(page, row=None):
             QMessageBox.critical(
                 page,
                 "Error",
-                f"Failed to load Jordi file: {str(e)}"
+                f"Failed to load VV/VH file: {str(e)}"
             )
 
     except Exception as e:

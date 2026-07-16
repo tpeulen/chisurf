@@ -1,11 +1,11 @@
 """
-Jordi Anisotropy Calculator
+VV/VH Anisotropy Calculator
 
 This plugin provides interactive computation and visualization of fluorescence anisotropy r(t)
-for Jordi files.
+for VV/VH files.
 
 Features
-- Load Jordi ASCII files and split into VV (parallel) and VH (perpendicular) decays
+- Load VV/VH ASCII files and split into VV (parallel) and VH (perpendicular) decays
 - Compute r(t) = (VV − g·VH) / (VV + 2·g·VH)
 - Apply user-specified g-factor, optional constant backgrounds (BG VV, BG VH), and a fractional
   channel shift between VV and VH (VH relative to VV)
@@ -14,12 +14,12 @@ Features
 - Use channel indices (0..N−1) for the x-axis
 - Fix the anisotropy y-range to [0, 0.45] for visual consistency
 - Save outputs via “Save…”:
-  • Shifted decays as a Jordi file (<base>_shifted.dat)
+  • Shifted decays as a VV/VH file (<base>_shifted.dat)
   • Anisotropy decay as text with columns: channel, r(t), r(t)−r∞
   • r∞ metadata CSV including source filename, region bounds, BG VV, BG VH, and g-factor
 - Batch processing with drag-and-drop file list (Batch…) and CSV export of per-file r∞
 
-This widget can run as a ChiSurf plugin (see chisurf.plugins.jordi_anisotropy.__plugin__) or standalone.
+This widget can run as a ChiSurf plugin (see chisurf.plugins.vv_vh_anisotropy.__plugin__) or standalone.
 """
 
 import numpy as np
@@ -43,38 +43,47 @@ except ImportError:
 
 
 try:
-    from chisurf.core.fio import read_jordi as _read_jordi
+    from chisurf.core.fio import read_vv_vh as _read_vv_vh
 except Exception:
-    _read_jordi = None
+    _read_vv_vh = None
 
-# Optional writer for Jordi files
+# Optional writer for VV/VH files
 try:
-    from chisurf.core.fio.jordi import write_jordi as _write_jordi
+    from chisurf.core.fio.vv_vh import write_vv_vh as _write_vv_vh
 except Exception:
-    _write_jordi = None
+    _write_vv_vh = None
 
 
-name = "Spectroscopy:Fluorescence decay:Jordi Anisotropy Decay"
+name = "Spectroscopy:Fluorescence decay:VV/VH Anisotropy Decay"
 menu_hidden = True
 deprecated = True
 deprecation_message = (
-    "Jordi Anisotropy Decay is deprecated/obsolete. "
-    "Use the Jordi G-Factor plugin and reader-integrated anisotropy workflow instead."
+    "VV/VH Anisotropy Decay is deprecated/obsolete. "
+    "Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead."
 )
 
-# Plugin icon used by the Plugin Manager and window decoration
-try:
-    _plugin_dir = Path(__file__).parent
-    _png = _plugin_dir / "icon.png"
-    _svg = _plugin_dir / "icon.svg"
-    if _png.exists():
-        icon = QIcon(str(_png))
-    elif _svg.exists():
-        icon = QIcon(str(_svg))
-    else:
-        icon = QIcon()
-except Exception:
-    icon = QIcon()
+# Plugin icon used for window decoration. Building a QIcon from an image needs a
+# running QApplication, so defer construction (constructing it at import time
+# crashes headless test collection) and cache the result.
+_ICON_CACHE: dict[str, QIcon] = {}
+
+
+def _plugin_icon() -> QIcon:
+    """Return the plugin window icon, built lazily once a QApplication exists."""
+    if "icon" not in _ICON_CACHE:
+        try:
+            _plugin_dir = Path(__file__).parent
+            _png = _plugin_dir / "icon.png"
+            _svg = _plugin_dir / "icon.svg"
+            if _png.exists():
+                _ICON_CACHE["icon"] = QIcon(str(_png))
+            elif _svg.exists():
+                _ICON_CACHE["icon"] = QIcon(str(_svg))
+            else:
+                _ICON_CACHE["icon"] = QIcon()
+        except Exception:
+            _ICON_CACHE["icon"] = QIcon()
+    return _ICON_CACHE["icon"]
 
 
 class FileDropList(QListWidget):
@@ -119,17 +128,17 @@ class FileDropList(QListWidget):
             super().dropEvent(event)
 
 
-class JordiAnisotropyBatchWindow(QWidget):
+class VvVhAnisotropyBatchWindow(QWidget):
     """
-    Batch processing window for Jordi Anisotropy.
+    Batch processing window for VV/VH Anisotropy.
     Allows dropping multiple files and processes them with the same settings
     snapshot taken from the main window.
     """
     def __init__(self, settings_snapshot: dict, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Jordi Anisotropy Batch Processor")
+        self.setWindowTitle("VV/VH Anisotropy Batch Processor")
         try:
-            self.setWindowIcon(icon)
+            self.setWindowIcon(_plugin_icon())
         except Exception:
             pass
         self.snapshot = settings_snapshot
@@ -141,7 +150,7 @@ class JordiAnisotropyBatchWindow(QWidget):
 
         # File list and controls
         self.file_list = FileDropList()
-        layout.addWidget(QLabel("Drop Jordi files here or use Add…"))
+        layout.addWidget(QLabel("Drop VV/VH files here or use Add…"))
         layout.addWidget(self.file_list)
 
         buttons = QHBoxLayout()
@@ -175,7 +184,7 @@ class JordiAnisotropyBatchWindow(QWidget):
         self.resize(900, 600)
 
     def _on_add(self):
-        files, _ = QFileDialog.getOpenFileNames(self, "Add Jordi Files", "", "Data Files (*.dat *.txt);;All Files (*)")
+        files, _ = QFileDialog.getOpenFileNames(self, "Add VV/VH Files", "", "Data Files (*.dat *.txt);;All Files (*)")
         if files:
             self.file_list.add_files(files)
 
@@ -208,8 +217,8 @@ class JordiAnisotropyBatchWindow(QWidget):
     def _compute_rinf_for_file(self, filepath: str) -> tuple:
         # returns (filename, r_inf, region_min, region_max, bg_vv, bg_vh, g)
         try:
-            if _read_jordi is not None:
-                vv, vh = _read_jordi(filepath, split=True)
+            if _read_vv_vh is not None:
+                vv, vh = _read_vv_vh(filepath, split=True)
             else:
                 vec = np.loadtxt(filepath)
                 half = len(vec) // 2
@@ -292,11 +301,11 @@ class JordiAnisotropyBatchWindow(QWidget):
             QMessageBox.critical(self, "Save CSV", f"Failed to save CSV: {e}")
 
 
-@persist_plugin_state("jordi_anisotropy")
-class JordiAnisotropyCalculator(QWidget):
+@persist_plugin_state("vv_vh_anisotropy")
+class VvVhAnisotropyCalculator(QWidget):
     """
-    Jordi Anisotropy Calculator
-    - Loads a Jordi file (VV, VH)
+    VV/VH Anisotropy Calculator
+    - Loads a VV/VH file (VV, VH)
     - Computes r(t) = (VV - g*VH)/(VV + 2*g*VH)
     - Considers user-specified g-factor, VV/VH background values
     - Supports time shift between VV and VH (VH shifted relative to VV)
@@ -306,10 +315,10 @@ class JordiAnisotropyCalculator(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Jordi Anisotropy Calculator [DEPRECATED]")
+        self.setWindowTitle("VV/VH Anisotropy Calculator [DEPRECATED]")
         warnings.warn(deprecation_message, DeprecationWarning, stacklevel=2)
         try:
-            self.setWindowIcon(icon)
+            self.setWindowIcon(_plugin_icon())
         except Exception:
             pass
 
@@ -336,8 +345,8 @@ class JordiAnisotropyCalculator(QWidget):
         main_layout = QVBoxLayout()
 
         deprecation_label = QLabel(
-            "Deprecated: Jordi Anisotropy Decay is obsolete. "
-            "Prefer Jordi G-Factor + reader anisotropy pipeline."
+            "Deprecated: VV/VH Anisotropy Decay is obsolete. "
+            "Prefer VV/VH G-Factor + reader anisotropy pipeline."
         )
         deprecation_label.setWordWrap(True)
         deprecation_label.setStyleSheet("color: #b45309; font-weight: 600;")
@@ -346,8 +355,8 @@ class JordiAnisotropyCalculator(QWidget):
         controls = QGridLayout()
 
         # File load
-        self.load_button = QPushButton("Load Jordi File")
-        self.load_button.clicked.connect(self.load_jordi_file)
+        self.load_button = QPushButton("Load VV/VH File")
+        self.load_button.clicked.connect(self.load_vv_vh_file)
         self.file_label = QLineEdit("No file loaded")
         self.file_label.setReadOnly(True)
         self.save_button = QPushButton("Save…")
@@ -394,7 +403,7 @@ class JordiAnisotropyCalculator(QWidget):
         controls.addWidget(self.bg_vh_spin, 1, 7)
 
         # Flip VV<->VH
-        self.flip_checkbox = QCheckBox("Flip VV↔VH (data swapped in Jordi)")
+        self.flip_checkbox = QCheckBox("Flip VV↔VH (data swapped in VV/VH)")
         self.flip_checkbox.setChecked(False)
         self.flip_checkbox.stateChanged.connect(self._on_param_changed)
         controls.addWidget(self.flip_checkbox, 2, 0, 1, 2)
@@ -458,13 +467,13 @@ class JordiAnisotropyCalculator(QWidget):
         self.resize(1100, 650)
 
     # --------- Loading and computations ---------
-    def load_jordi_file(self, file_path=None):
+    def load_vv_vh_file(self, file_path=None):
         # PyQt's clicked(bool) passes a boolean when connected directly. Treat booleans as no path.
         if isinstance(file_path, bool):
             file_path = None
         if file_path is None:
             file_path, _ = QFileDialog.getOpenFileName(
-                self, "Load Jordi File", "", "Data Files (*.dat *.txt);;All Files (*)"
+                self, "Load VV/VH File", "", "Data Files (*.dat *.txt);;All Files (*)"
             )
             if not file_path:
                 return
@@ -472,8 +481,8 @@ class JordiAnisotropyCalculator(QWidget):
         self.loaded_file = str(file_path)
 
         try:
-            if _read_jordi is not None:
-                vv, vh = _read_jordi(file_path, split=True)
+            if _read_vv_vh is not None:
+                vv, vh = _read_vv_vh(file_path, split=True)
             else:
                 vec = np.loadtxt(file_path)
                 half = len(vec) // 2
@@ -519,7 +528,7 @@ class JordiAnisotropyCalculator(QWidget):
             'region_min': float(region_min),
             'region_max': float(region_max),
         }
-        self._batch_window = JordiAnisotropyBatchWindow(snapshot, None)
+        self._batch_window = VvVhAnisotropyBatchWindow(snapshot, None)
         self._batch_window.show()
         try:
             self._batch_window.raise_()
@@ -565,9 +574,9 @@ class JordiAnisotropyCalculator(QWidget):
         return vv, vh
 
     def save_outputs(self):
-        """Save shifted decays (as Jordi), anisotropy decay, and r∞ info.
+        """Save shifted decays (as VV/VH), anisotropy decay, and r∞ info.
         Generates three files based on a user-chosen base filename:
-        - <base>_shifted.dat  (Jordi format: [VV, VH_shifted])
+        - <base>_shifted.dat  (VV/VH format: [VV, VH_shifted])
         - <base>_anisotropy.txt (columns: channel, r(t), r(t)-r∞)
         - <base>_rinf.csv (r∞, region_min, region_max)
         """
@@ -597,16 +606,16 @@ class JordiAnisotropyCalculator(QWidget):
         vv_save = np.where(np.isfinite(vv_arr) & (vv_arr > 0), vv_arr, 0.0)
         vh_save = np.where(np.isfinite(vh_shift) & (vh_shift > 0), vh_shift, 0.0)
 
-        # 1) Save shifted decays as Jordi file
-        jordi_out = np.vstack([vv_save, vh_save])  # shape (2, N)
-        jordi_path = stem.parent / f"{stem.name}_shifted.dat"
+        # 1) Save shifted decays as VV/VH file
+        vv_vh_out = np.vstack([vv_save, vh_save])  # shape (2, N)
+        vv_vh_path = stem.parent / f"{stem.name}_shifted.dat"
         try:
-            if _write_jordi is not None:
-                _write_jordi(jordi_out, jordi_path)
+            if _write_vv_vh is not None:
+                _write_vv_vh(vv_vh_out, vv_vh_path)
             else:
                 # Fallback: concatenate and save
                 vec = np.hstack([vv_save, vh_save])
-                np.savetxt(jordi_path.as_posix(), vec)
+                np.savetxt(vv_vh_path.as_posix(), vec)
         except Exception:
             # If writing fails, silently ignore to not crash the GUI
             pass
@@ -750,10 +759,10 @@ if __name__ == '__main__':
     from qtpy.QtWidgets import QApplication
     import sys
     app = QApplication(sys.argv)
-    w = JordiAnisotropyCalculator()
+    w = VvVhAnisotropyCalculator()
     w.show()
     sys.exit(app.exec())
 
 elif __name__ == "plugin":
-    window = JordiAnisotropyCalculator()
+    window = VvVhAnisotropyCalculator()
     window.show()

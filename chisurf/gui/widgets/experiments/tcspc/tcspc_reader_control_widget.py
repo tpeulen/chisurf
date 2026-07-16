@@ -11,21 +11,21 @@ import chisurf.gui.widgets.fio
 from chisurf.core.experiments.core import reader
 
 
-def _load_jordi_gfactor_calculator_class():
-    mod = importlib.import_module("chisurf.plugins.jordi_g_factor")
-    cls = getattr(mod, "JordiGFactorCalculator", None)
+def _load_vv_vh_gfactor_calculator_class():
+    mod = importlib.import_module("chisurf.plugins.vv_vh_g_factor")
+    cls = getattr(mod, "VvVhGFactorCalculator", None)
     if cls is None:
         raise ImportError(
-            "JordiGFactorCalculator not found in chisurf.plugins.jordi_g_factor"
+            "VvVhGFactorCalculator not found in chisurf.plugins.vv_vh_g_factor"
         )
     return cls
 
 
 class _TcspcL1L2Widget(QtWidgets.QWidget):
-    """Polarization-leakage controls (l1/l2 + link) and the Jordi g-factor tool.
+    """Polarization-leakage controls (l1/l2 + link) and the VV/VH g-factor tool.
 
     Bound directly to the reader (``model``). l1/l2/vh_shift are written live; the
-    Jordi inspector additionally sets ``g_factor`` on the model and emits
+    VV/VH inspector additionally sets ``g_factor`` on the model and emits
     ``changed`` so the editor can rebuild and reflect the new values.
     """
 
@@ -70,9 +70,9 @@ class _TcspcL1L2Widget(QtWidgets.QWidget):
         )
         grid.addWidget(self.spin_vh_shift, 1, 1)
 
-        self.btn_jordi = QtWidgets.QPushButton("g-factor")
-        self.btn_jordi.setToolTip("Use a reference dye to adjust shift and g-factor.")
-        grid.addWidget(self.btn_jordi, 1, 3, 1, 2)
+        self.btn_vv_vh = QtWidgets.QPushButton("g-factor")
+        self.btn_vv_vh.setToolTip("Use a reference dye to adjust shift and g-factor.")
+        grid.addWidget(self.btn_vv_vh, 1, 3, 1, 2)
 
         grid.setColumnStretch(1, 1)
         grid.setColumnStretch(3, 1)
@@ -81,7 +81,7 @@ class _TcspcL1L2Widget(QtWidgets.QWidget):
         self.spin_l2.valueChanged.connect(self._on_l2_changed)
         self.check_link.toggled.connect(self._on_link_toggled)
         self.spin_vh_shift.valueChanged.connect(self._on_vh_shift_changed)
-        self.btn_jordi.clicked.connect(self._open_jordi_plugin)
+        self.btn_vv_vh.clicked.connect(self._open_vv_vh_plugin)
 
         self._update_l2_enabled()
 
@@ -132,8 +132,8 @@ class _TcspcL1L2Widget(QtWidgets.QWidget):
         except Exception:
             pass
 
-    def _open_jordi_plugin(self) -> None:
-        """Launch the Jordi g-factor calculator and apply its results to the model."""
+    def _open_vv_vh_plugin(self) -> None:
+        """Launch the VV/VH g-factor calculator and apply its results to the model."""
         try:
             file_path = cs.gui.widgets.get_filename(
                 description="Open stacked VV/VH file (fast rotating dye)",
@@ -143,8 +143,8 @@ class _TcspcL1L2Widget(QtWidgets.QWidget):
                 return
             file_path = str(file_path)
 
-            JordiGFactorCalculator = _load_jordi_gfactor_calculator_class()
-            plugin = JordiGFactorCalculator()
+            VvVhGFactorCalculator = _load_vv_vh_gfactor_calculator_class()
+            plugin = VvVhGFactorCalculator()
 
             # Pre-fill FP dt [ns/ch] from the reader's effective dt.
             try:
@@ -154,7 +154,7 @@ class _TcspcL1L2Widget(QtWidgets.QWidget):
             except Exception:
                 pass
 
-            plugin.load_jordi_file(file_path)
+            plugin.load_vv_vh_file(file_path)
 
             dlg = QtWidgets.QDialog(self)
             dlg.setWindowTitle("G-Factor & Shift Inspector")

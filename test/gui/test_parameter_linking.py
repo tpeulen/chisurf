@@ -41,7 +41,7 @@ def _setup():
     gui._refresh_setup_ui()
     gui.current_setup.skiprows = 11
     gui.current_setup.reading_routine = 'csv'
-    gui.current_setup.is_jordi = False
+    gui.current_setup.is_vv_vh = False
     gui.current_setup.use_header = True
     gui.current_setup.matrix_columns = []
     gui.current_setup.polarization = 'vm'

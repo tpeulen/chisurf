@@ -16,7 +16,7 @@ import numpy as np
 from . zipped import *
 
 import chisurf.core.fio.fluorescence
-from .jordi import write_jordi, read_jordi
+from .vv_vh import write_vv_vh, read_vv_vh
 
 
 def compress_numpy_array(array):

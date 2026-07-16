@@ -1,7 +1,7 @@
 ---
 type: Plugin Group
 title: Sample, Spectra & Curation
-description: Database and calibration-oriented tools for samples, spectra, PCH analysis, Jordi files, and AI/provider settings.
+description: Database and calibration-oriented tools for samples, spectra, PCH analysis, VV/VH files, and AI/provider settings.
 resource: chisurf/plugins/
 tags: [plugins, mmfdb, spectra, pch, calibration]
 timestamp: '2026-07-05T00:00:00Z'
@@ -9,7 +9,7 @@ timestamp: '2026-07-05T00:00:00Z'
 
 This group covers cross-cutting scientific utilities that do not fit cleanly
 into one acquisition modality: sample/provenance databases, optical-component
-spectra, photon-counting histograms, Jordi calibration files, and AI/provider
+spectra, photon-counting histograms, VV/VH calibration files, and AI/provider
 configuration.
 
 | Plugin dir | Display name | What it does |
@@ -17,8 +17,8 @@ configuration.
 | `sample_database` | Legacy:Sample Database | Retired prerelease MMFDB surface; active work belongs in `core/mmfdb_admin` and canonical `mmfdb.*` services. |
 | `spectra_downloader` | Spectra Downloader | Downloads, browses, stages, and pushes fluorophore/filter/dichroic/detector/light-source spectra to MMFDB endpoints. |
 | `pch` | Spectroscopy:Single-Molecule:PCH | Computes photon-counting histograms from TTTR files and fits multi-species brightness/occupancy models. |
-| `jordi_g_factor` | Spectroscopy:Fluorescence decay:Jordi G-Factor Calculator | Calculates detector G-factors from Jordi-format decay files, with CLI and backend services. |
-| `jordi_anisotropy` | Spectroscopy:Fluorescence decay:Jordi Anisotropy Decay | Computes anisotropy decays from Jordi files, including batch processing. |
+| `vv_vh_g_factor` | Spectroscopy:Fluorescence decay:VV/VH G-Factor Calculator | Calculates detector G-factors from VV/VH-format decay files, with CLI and backend services. |
+| `vv_vh_anisotropy` | Spectroscopy:Fluorescence decay:VV/VH Anisotropy Decay | Computes anisotropy decays from VV/VH files, including batch processing. |
 | `ai_settings` | Tools:AI Settings | Configures API providers and backends for AI-assisted features. |
 
 `sample_database` is legacy. ChiSurf is prerelease, so compatibility is not required:

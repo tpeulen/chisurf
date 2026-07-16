@@ -16,8 +16,8 @@ boilerplate.  This module is the single, tested seam around ``fit2x``:
 * :class:`Fit2x` -- a reusable fitter that builds the underlying tttrlib object
   once and fits many decays through :meth:`Fit2x.fit`.
 * :class:`Fit2xResult` -- a typed result with named parameter accessors.
-* :func:`assemble_jordi` -- stack parallel/perpendicular histograms into the
-  "Jordi" layout every ``fit2x`` estimator expects.
+* :func:`assemble_vv_vh` -- stack parallel/perpendicular histograms into the
+  "VV/VH" layout every ``fit2x`` estimator expects.
 
 The module imports tttrlib lazily so that importing ChiSurf without a working
 tttrlib build does not fail; :data:`HAVE_TTTRLIB` reports availability.
@@ -76,8 +76,8 @@ _TTTRLIB_CLASS: dict[Fit2xModel, str] = {
 }
 
 
-def assemble_jordi(parallel: np.ndarray, perpendicular: np.ndarray) -> np.ndarray:
-    """Stack two detection channels into the ``fit2x`` "Jordi" layout.
+def assemble_vv_vh(parallel: np.ndarray, perpendicular: np.ndarray) -> np.ndarray:
+    """Stack two detection channels into the ``fit2x`` "VV/VH" layout.
 
     Every ``fit2x`` estimator expects a single 1-D counting histogram in which
     the parallel (VV) channel is directly followed by the perpendicular (VH)
@@ -117,9 +117,9 @@ class Fit2xSettings:
     period : float
         Excitation period of the light source (nanoseconds).
     irf : numpy.ndarray
-        Instrument-response counting histogram in Jordi layout (length ``2*n``).
+        Instrument-response counting histogram in VV/VH layout (length ``2*n``).
     background : numpy.ndarray, optional
-        Background counting histogram in Jordi layout (length ``2*n``).  If
+        Background counting histogram in VV/VH layout (length ``2*n``).  If
         omitted a zero background of the correct length is used.
     g_factor : float, optional
         Polarisation ``G`` factor (detection-efficiency ratio VV/VH).
@@ -150,7 +150,7 @@ class Fit2xSettings:
         self.irf = np.ascontiguousarray(self.irf, dtype=np.float64)
         if self.irf.ndim != 1 or self.irf.size % 2 != 0:
             raise ValueError(
-                "irf must be a 1-D Jordi histogram of even length (2*n); "
+                "irf must be a 1-D VV/VH histogram of even length (2*n); "
                 f"got shape {self.irf.shape}"
             )
         if self.background is None:
@@ -297,13 +297,13 @@ class Fit2x:
         fixed: Sequence[int] | None = None,
         include_model: bool = False,
     ) -> Fit2xResult:
-        """Fit one Jordi-format decay histogram by maximum likelihood.
+        """Fit one VV/VH-format decay histogram by maximum likelihood.
 
         Parameters
         ----------
         data : numpy.ndarray
-            Experimental counting histogram in Jordi layout (length ``2*n``).
-            Use :func:`assemble_jordi` to build it from two channels.
+            Experimental counting histogram in VV/VH layout (length ``2*n``).
+            Use :func:`assemble_vv_vh` to build it from two channels.
         initial_values : sequence of float
             Initial values of the free parameters, ordered as
             :attr:`parameter_names`.
@@ -363,7 +363,7 @@ class Fit2x:
         Parameters
         ----------
         data : numpy.ndarray
-            ``(n_rows, 2*n_channels)`` matrix of Jordi-format histograms.
+            ``(n_rows, 2*n_channels)`` matrix of VV/VH-format histograms.
         initial_values : sequence of float
             Shared start values ``[tau, gamma, r0, rho]`` for every row.
         fixed : sequence of int, optional

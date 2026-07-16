@@ -1,7 +1,7 @@
 Data input and file format
 """"""""""""""""""""""""""
 
-ChiSurf can read a variety of text files and formats. For time-resolved fluorescence intensities in polarization-resolved experiments, we usually use two different file formats: (ii) two-columns/two files or (ii) single-column/single file ("Jordi-format").
+ChiSurf can read a variety of text files and formats. For time-resolved fluorescence intensities in polarization-resolved experiments, we usually use two different file formats: (ii) two-columns/two files or (ii) single-column/single file ("VV/VH-format").
 
 In the first case, two files are required, one containing the parallel channel and one the perpendicular channel data. Both files contain two columns; the first column is the time in nanoseconds, while the second column contains the actual data (photon counts in this respective time bin).
 
@@ -21,7 +21,7 @@ Please note that in both format no header is used, however, it can be defined to
 .. image:: _images/image_rId111.png
   :align: center
 
-I personally prefer the single-column Jordi-format as it reduces the amount of files in my data export folders by 50%, however, I need of course to remember with which time resolution (here 20 ps) the TCSPC histograms were exported.
+I personally prefer the single-column VV/VH-format as it reduces the amount of files in my data export folders by 50%, however, I need of course to remember with which time resolution (here 20 ps) the TCSPC histograms were exported.
 
 .. image:: _images/image_rId112.png
   :align: center

@@ -2,7 +2,7 @@ import chisurf as cs
 # Test script to update the UI when properties of current_setup are changed
 cs.current_experiment = 'TCSPC'
 cs.current_setup = 'TXT/CSV'
-cs.current_setup.is_jordi = True
+cs.current_setup.is_vv_vh = True
 cs.current_setup.use_header = False
 cs.current_setup.matrix_columns = []
 cs.current_setup.g_factor = 0.950000

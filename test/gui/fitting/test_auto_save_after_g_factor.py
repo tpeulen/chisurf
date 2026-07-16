@@ -13,7 +13,7 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
 )
 
 
-class MockJordiGFactorCalculator:
+class MockVvVhGFactorCalculator:
     def __init__(self):
         self.g_factor = 1.234
 
@@ -23,7 +23,7 @@ class MockJordiGFactorCalculator:
     def show(self):
         pass
 
-    def load_jordi_file(self, *args):
+    def load_vv_vh_file(self, *args):
         pass
 
     def closeEvent(self, event):
@@ -84,9 +84,9 @@ def test_auto_save_after_g_factor(qtbot, monkeypatch, setups_file, initial_data)
 
     monkeypatch.setattr(QMessageBox, "information", mock_information)
 
-    import chisurf.plugins.jordi_g_factor as jordi_mod
+    import chisurf.plugins.vv_vh_g_factor as vv_vh_mod
 
-    monkeypatch.setattr(jordi_mod, "JordiGFactorCalculator", MockJordiGFactorCalculator)
+    monkeypatch.setattr(vv_vh_mod, "VvVhGFactorCalculator", MockVvVhGFactorCalculator)
 
     import tttrlib
 
@@ -115,7 +115,7 @@ def test_auto_save_after_g_factor(qtbot, monkeypatch, setups_file, initial_data)
         "perpendicular_channels": [1],
     }
 
-    mock_calculator = MockJordiGFactorCalculator()
+    mock_calculator = MockVvVhGFactorCalculator()
     page.g_factor_calculator = mock_calculator
 
     def custom_close_event(event):

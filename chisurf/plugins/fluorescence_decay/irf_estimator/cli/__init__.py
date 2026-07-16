@@ -3,14 +3,14 @@ from __future__ import annotations
 import click
 import numpy as np
 
-from chisurf.core.fio import read_jordi, write_jordi
+from chisurf.core.fio import read_vv_vh, write_vv_vh
 
 from ..api.models import IRFEstimationSettings
 from ..core.estimation import estimate_irf
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
-@click.option("--file", "file_path", type=click.Path(exists=True, dir_okay=False), required=True, help="Path to a Jordi decay file.")
+@click.option("--file", "file_path", type=click.Path(exists=True, dir_okay=False), required=True, help="Path to a VV/VH decay file.")
 @click.option("--dt", default=1.0, show_default=True, type=float, help="Time per channel in ns.")
 @click.option("--window-length", default=11, show_default=True, type=int, help="Savitzky-Golay filter window length.")
 @click.option("--polyorder", default=3, show_default=True, type=int, help="Savitzky-Golay polynomial order.")
@@ -26,8 +26,8 @@ def cli(
     regularization: int,
     output: str | None,
 ) -> None:
-    """Estimate an IRF from a Jordi-format fluorescence decay file."""
-    data = read_jordi(file_path)
+    """Estimate an IRF from a VV/VH-format fluorescence decay file."""
+    data = read_vv_vh(file_path)
     data = np.asarray(data, dtype=np.float32)
     intensity = data[: len(data) // 2] if len(data) % 2 == 0 else data
 
@@ -46,7 +46,7 @@ def cli(
     click.echo(f"Offset: {result.offset:.2f}")
 
     if output:
-        write_jordi(output, np.array(result.irf), np.array(result.irf))
+        write_vv_vh(output, np.array(result.irf), np.array(result.irf))
         click.echo(f"IRF saved to: {output}")
 
 

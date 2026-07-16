@@ -1,4 +1,4 @@
-Jordi format
+VV/VH format
 ^^^^^^^^^^^^
 
 If both parallel and perpendicular data is saved within the same file and no time axis is defined, the following settings need to be made:

@@ -9,9 +9,9 @@ likelihood (tttrlib `Fit23`, the Maus-2001 `2I*` estimator).
 The plugin follows the client-server / Qt-free-core standard:
 
 - **`core/molecule_mle.py`** — the single Qt-free computational core.
-  `segment_molecules` (watershed segmentation), `build_irf_jordi` /
+  `segment_molecules` (watershed segmentation), `build_irf_vv_vh` /
   `compute_g_factor` (IRF preparation), and `fit_molecules` /
-  `fit_molecules_from_files` build a per-molecule Jordi histogram and fit it
+  `fit_molecules_from_files` build a per-molecule VV/VH histogram and fit it
   through the shared `chisurf.core.fluorescence.mle.Fit2x` harness. Returns a
   `MoleculeMleResult` (per-molecule `DataFrame`, label + intensity images,
   centroids) — no Qt, no plotting, no subprocess.

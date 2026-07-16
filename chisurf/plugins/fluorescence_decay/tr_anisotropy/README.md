@@ -58,8 +58,8 @@ Spectra are stored under `<user_settings>/plugins/tr_anisotropy/wizard.spk.json`
 default is overwritten). Instrument corrections are stored in
 `<user_settings>/anisotropy_corrections.json`.
 
-## Jordi format
+## VV/VH format
 
-When `cs.current_setup.is_jordi` is set, a single IRF file and a single data file
+When `cs.current_setup.is_vv_vh` is set, a single IRF file and a single data file
 hold both polarisations; the loader reads each twice with the VV/VH polarisation
 set accordingly (put the combined file in the VV fields).

@@ -82,7 +82,7 @@ def read_tcspc_csv(
         dt: float = 1.0,
         matrix_columns: typing.Tuple[int, int] = (0, 1),
         use_header: bool = False,
-        is_jordi: bool = False,
+        is_vv_vh: bool = False,
         polarization: str = "vm",
         g_factor: float = 1.0,
         l1: float = 0.0,
@@ -91,7 +91,7 @@ def read_tcspc_csv(
         *args,
         **kwargs
 ) -> chisurf.core.data.DataCurveGroup:
-    """Read TCSPC data from a CSV or Jordi file.
+    """Read TCSPC data from a CSV or VV/VH file.
 
     Parameters
     ----------
@@ -107,8 +107,8 @@ def read_tcspc_csv(
         Column indices for x and y data.
     use_header : bool
         Whether to use header row.
-    is_jordi : bool
-        If True, read as Jordi format.
+    is_vv_vh : bool
+        If True, read as VV/VH format.
     polarization : str
         Polarization channel ('vm', 'vv', 'vh', 'vv/vh').
     g_factor : float
@@ -126,7 +126,7 @@ def read_tcspc_csv(
     # Load data
     rebin_x, rebin_y = rebin
 
-    if is_jordi:
+    if is_vv_vh:
         infer_delimiter = False
         mc = None
     else:
@@ -148,12 +148,12 @@ def read_tcspc_csv(
 
     calibration_source = 'reader'
 
-    if is_jordi:
-        # Read jordi file with the new format
-        from chisurf.core.fio.jordi import read_jordi
+    if is_vv_vh:
+        # Read vv_vh file with the new format
+        from chisurf.core.fio.vv_vh import read_vv_vh
         
         # Read the data with metadata
-        data, meta = read_jordi(filename, split=True, return_metadata=True)
+        data, meta = read_vv_vh(filename, split=True, return_metadata=True)
         
         # Get available channels
         available_channels = list(data.keys())
@@ -164,13 +164,13 @@ def read_tcspc_csv(
         meta_l2 = _safe_float(meta.get('l2', None), None)
         if meta_g is not None:
             g_factor = meta_g
-            calibration_source = 'jordi_metadata'
+            calibration_source = 'vv_vh_metadata'
         if meta_l1 is not None:
             l1 = meta_l1
-            calibration_source = 'jordi_metadata'
+            calibration_source = 'vv_vh_metadata'
         if meta_l2 is not None:
             l2 = meta_l2
-            calibration_source = 'jordi_metadata'
+            calibration_source = 'vv_vh_metadata'
         
         # Convert data to numpy arrays
         n_data_sets = 1  # Default to 1 dataset
@@ -178,7 +178,7 @@ def read_tcspc_csv(
         # Handle different polarization cases
         if polarization == 'vv':
             if 'VV' not in available_channels:
-                raise ValueError("VV channel not found in the jordi file")
+                raise ValueError("VV channel not found in the vv_vh file")
             y = data['VV']
             if y.ndim == 1:
                 y = y.reshape(1, -1)
@@ -189,7 +189,7 @@ def read_tcspc_csv(
             
         elif polarization == 'vh':
             if 'VH' not in available_channels:
-                raise ValueError("VH channel not found in the jordi file")
+                raise ValueError("VH channel not found in the vv_vh file")
             y = data['VH']
             if y.ndim == 1:
                 y = y.reshape(1, -1)
@@ -344,7 +344,7 @@ def read_tcspc_csv(
     ex = np.zeros(x.shape)  # Initialize ex variable
     
     # Create descriptive names based on polarization type
-    if is_jordi and polarization == 'vv/vh':
+    if is_vv_vh and polarization == 'vv/vh':
         # For VV/VH stacked data, create VV and VH names
         if n_data_sets >= 2:
             base_name = fn
@@ -378,7 +378,7 @@ def read_tcspc_csv(
             )
             data.filename = filename
             data_curves.append(data)
-    elif is_jordi and polarization in ['vv', 'vh', 'vm']:
+    elif is_vv_vh and polarization in ['vv', 'vh', 'vm']:
         # For single polarization data
         pol_name = polarization.upper()
         if n_data_sets > 1:
@@ -410,7 +410,7 @@ def read_tcspc_csv(
             data.filename = filename
             data_curves.append(data)
     else:
-        # Original naming logic for non-jordi or other cases
+        # Original naming logic for non-vv_vh or other cases
         for i, yi in enumerate(y_rebin):
             eyi = ey[i]
             if n_data_sets > 1:
