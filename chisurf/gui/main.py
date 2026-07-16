@@ -386,7 +386,8 @@ class Main(
         self.comboBox_Model.clear()
         ds = self.current_dataset
         if cs.imported_datasets and ds is not None:
-            all_model_names = ds.experiment.get_model_names()
+            experiment = self._experiment_for_dataset(ds)
+            all_model_names = experiment.get_model_names() if experiment is not None else []
             disabled_models = cs.core.settings.cs_settings.get(
                 'plugins', {}
             ).get('disabled_models', [])
@@ -406,11 +407,29 @@ class Main(
         if model_idx >= 0:
             selected_model_name = self.comboBox_Model.currentText()
             ds = self.current_dataset
-            if ds is not None:
-                for model_class in ds.experiment.model_classes:
+            experiment = self._experiment_for_dataset(ds)
+            if experiment is not None:
+                for model_class in experiment.model_classes:
                     if model_class.name == selected_model_name:
                         self._current_model_class = model_class
                         break
+
+    @staticmethod
+    def _experiment_for_dataset(ds):
+        if ds is None:
+            return None
+        experiment = getattr(ds, "experiment", None)
+        try:
+            if experiment is not None and experiment.get_model_names():
+                return experiment
+        except Exception:
+            pass
+        experiment_name = getattr(experiment, "name", None)
+        if experiment_name:
+            registered = cs.experiment.get(experiment_name)
+            if registered is not None:
+                return registered
+        return experiment
 
     def onAddFit(self, *args, data_idx: typing.List[int] = None):
         if data_idx is None:

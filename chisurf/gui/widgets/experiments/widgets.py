@@ -262,10 +262,13 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
     def handleSelectionChange(self, selected, deselected):
         if not selected.indexes():
             # If no items are selected, reselect the last selected item
-            self.setCurrentIndex(self.last_selected_index)
+            if isinstance(self.last_selected_index, QtCore.QModelIndex):
+                self.setCurrentIndex(self.last_selected_index)
+            return
 
         # Update the last selected index
         self.last_selected_index = self.selectedIndexes()[0]
+        self.change_event()
 
     def __init__(
             self,
@@ -318,7 +321,7 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
 
         # Handle selection - select last idx is none is selected (click outside)
         # Connect the itemSelectionChanged signal to a custom slot
-        self.last_selected_index = 0
+        self.last_selected_index = QtCore.QModelIndex()
         self.selectionModel().selectionChanged.connect(self.handleSelectionChange)
 
         self.clicked.connect(self.onCurveChanged)

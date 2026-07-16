@@ -13,6 +13,7 @@ from chisurf.gui import plots
 from chisurf.core.models.model import Model
 from chisurf.core.math.reaction.continuous import ReactionSystem
 from chisurf.gui.widgets.fitting.widgets import FittingParameterWidget
+from chisurf.gui.widgets.models.model_widget import _ModelWidgetMeta
 
 
 class ParseStoppedFlowWidget(ParseModelWidget):
@@ -45,7 +46,7 @@ class ParseStoppedFlowWidget(ParseModelWidget):
         ParseModelWidget.__init__(self, fit, model_file=fn)
 
 
-class ReactionWidget(QtWidgets.QWidget, ReactionSystem, Model):
+class ReactionWidget(QtWidgets.QWidget, ReactionSystem, Model, metaclass=_ModelWidgetMeta):
     """Widget for kinetic reaction system modeling with GUI controls."""
 
     name = "Reaction-System"

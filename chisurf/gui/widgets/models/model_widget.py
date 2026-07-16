@@ -10,7 +10,11 @@ import chisurf.gui.plots
 from chisurf.core.models.model import Model
 
 
-class ModelWidget(Model, QtWidgets.QWidget):
+class _ModelWidgetMeta(type(QtWidgets.QWidget), abc.ABCMeta):
+    """Metaclass compatible with both Qt widgets and abstract models."""
+
+
+class ModelWidget(Model, QtWidgets.QWidget, metaclass=_ModelWidgetMeta):
     """Base class for GUI widgets that host a :class:`Model`.
 
     Subclasses combine the parameter-handling logic from :class:`Model`
@@ -41,13 +45,11 @@ class ModelWidget(Model, QtWidgets.QWidget):
         for p in self.fit.plots:
             p.update(*args, **kwargs)
 
-    @abc.abstractmethod
     def update_widgets(self) -> None:
         for parameter in self.parameters:
             if hasattr(parameter, 'update') and callable(parameter.update):
                 parameter.update()
 
-    @abc.abstractmethod
     def update(self) -> None:
         super().update()
         if QtCore.QThread.currentThread() is not self.thread():

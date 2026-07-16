@@ -530,6 +530,18 @@ class SetupMixin:
             "chisurf.models.global_model.ParameterTransformWidget": (
                 "chisurf.gui.widgets.models.parameter_transform.ParameterTransformWidget"
             ),
+            "chisurf.gui.widgets.models.fcs.ParseFCSWidget": (
+                "chisurf.gui.widgets.models.fcs.parse_fcs_widget.ParseFCSWidget"
+            ),
+            "chisurf.gui.widgets.models.fcs.DyeShapeFCSWidget": (
+                "chisurf.gui.widgets.models.fcs.dye_volume_widget.DyeShapeFCSWidget"
+            ),
+            "chisurf.gui.widgets.models.fcs.MaxEntFCSWidget": (
+                "chisurf.gui.widgets.models.fcs.maxent_widget.MaxEntFCSWidget"
+            ),
+            "chisurf.gui.widgets.models.fcs.MaxEntRHWidget": (
+                "chisurf.gui.widgets.models.fcs.maxent_widget.MaxEntRHWidget"
+            ),
         }.get(class_path, class_path)
         import importlib
         try:

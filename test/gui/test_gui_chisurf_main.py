@@ -34,7 +34,7 @@ def add_fit(
 ):
     # select data_set
     for i in cs.gui.widgets.get_all_items(dataset_selector):
-        if i.text(0) == data_set_name:
+        if i.text(0) == data_set_name or i.text(1) == data_set_name:
             rect = dataset_selector.visualItemRect(i)
             QTest.mouseClick(
                 dataset_selector.viewport(),
@@ -132,6 +132,11 @@ class Tests(unittest.TestCase):
         cs.macros.add_dataset(
             filename=filename_fcs
         )
+        model_names = [
+            gui.comboBox_Model.itemText(i)
+            for i in range(gui.comboBox_Model.count())
+        ]
+        self.assertIn('Parse-Model', model_names)
         model_name = 'Parse-Model'
         data_set_name = 'Kristine_with_error'
         add_fit(
