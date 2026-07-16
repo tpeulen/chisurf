@@ -8,7 +8,12 @@ import pytest
 
 from chisurf.core.data import DataCurve
 from chisurf.core.experiments.core.reader import ExperimentReader
-from mmfdb.models import SampleDefinition
+from mmfdb.models import (
+    EntityDefinition,
+    FretPairDefinition,
+    ProbeDefinition,
+    SampleDefinition,
+)
 from mmfdb.project.project_archiver import archive_project_to_mmfdb
 from mmfdb.repository import MFDatabase
 from mmfdb.samples.sample_manager import (
@@ -39,10 +44,12 @@ def test_create_and_get_sample(db):
     definition = SampleDefinition(
         name="HP3-Cy3B-ATTO647N",
         description="DNA hairpin with Cy3B and ATTO647N",
-        entity_name="DNA hairpin HP3",
-        entity_type="dna",
-        donor_probe_name="Cy3B",
-        acceptor_probe_name="ATTO647N",
+        entities=[EntityDefinition(name="DNA hairpin HP3", entity_type="dna")],
+        probes=[
+            ProbeDefinition(name="Cy3B", entity_index=0, seq_id=5),
+            ProbeDefinition(name="ATTO647N", entity_index=0, seq_id=20),
+        ],
+        fret_pairs=[FretPairDefinition(probe_1_index=0, probe_2_index=1)],
         buffer_description="PBS pH 7.4",
         ph=7.4,
         temperature_k=298.15,
@@ -120,8 +127,6 @@ def test_create_sample_with_optional_none(db):
         ph=None,
         temperature_k=None,
         salt_concentration_m=None,
-        donor_position=None,
-        acceptor_position=None,
     )
     sample_id = create_sample(db, definition)
 
@@ -242,9 +247,11 @@ def test_sample_definition_valid_vocabulary(db):
     """SampleDefinition with valid vocabulary values is accepted."""
     definition = SampleDefinition(
         name="valid_sample",
-        entity_type="protein",
-        donor_probe_name="Cy3B",
-        acceptor_probe_name="ATTO647N",
+        entities=[EntityDefinition(name="prot", entity_type="protein")],
+        probes=[
+            ProbeDefinition(name="Cy3B", entity_index=0, seq_id=1),
+            ProbeDefinition(name="ATTO647N", entity_index=0, seq_id=10),
+        ],
         validate_vocabulary=True,
     )
     # Should not raise
@@ -262,7 +269,7 @@ def test_sample_definition_invalid_entity_type_raises():
     with pytest.raises(ValueError, match="Invalid entity_type"):
         SampleDefinition(
             name="invalid_sample",
-            entity_type=invalid_type,
+            entities=[EntityDefinition(name="e", entity_type=invalid_type)],
             validate_vocabulary=True,
         )
 
@@ -283,7 +290,7 @@ def test_sample_definition_invalid_probe_name_warns(caplog):
     with caplog.at_level(logging.WARNING):
         definition = SampleDefinition(
             name="invalid_sample",
-            donor_probe_name=invalid_probe,
+            probes=[ProbeDefinition(name=invalid_probe, seq_id=1)],
             validate_vocabulary=True,
         )
         assert "not in COMMON_PROBE_NAMES" in caplog.text
@@ -293,9 +300,9 @@ def test_sample_definition_validation_disabled():
     """SampleDefinition with invalid values is accepted when validation is disabled."""
     definition = SampleDefinition(
         name="no_validation",
-        entity_type="invalid_type",
-        donor_probe_name="invalid_probe",
-        validate_vocabulary=False,  # Default is False for backward compatibility
+        entities=[EntityDefinition(name="e", entity_type="invalid_type")],
+        probes=[ProbeDefinition(name="invalid_probe", seq_id=1)],
+        validate_vocabulary=False,
     )
     # Should not raise
     assert definition.name == "no_validation"
@@ -311,8 +318,8 @@ def test_sample_create_request_to_definition():
     request = SampleCreateRequest(
         name="request_sample",
         description="A sample from request",
-        entity_type="dna",
-        donor_probe_name="Cy3B",
+        entities=[EntityDefinition(name="hairpin", entity_type="dna")],
+        probes=[ProbeDefinition(name="Cy3B", entity_index=0, seq_id=1)],
         ph=7.4,
     )
 
@@ -320,8 +327,8 @@ def test_sample_create_request_to_definition():
 
     assert definition.name == "request_sample"
     assert definition.description == "A sample from request"
-    assert definition.entity_type == "dna"
-    assert definition.donor_probe_name == "Cy3B"
+    assert definition.entities[0].entity_type == "dna"
+    assert definition.probes[0].name == "Cy3B"
     assert definition.ph == 7.4
 
 
@@ -332,7 +339,7 @@ def test_sample_create_request_validates_vocabulary():
     with pytest.raises(ValueError, match="Invalid entity_type"):
         SampleCreateRequest(
             name="invalid",
-            entity_type="invalid_type",
+            entities=[EntityDefinition(name="e", entity_type="invalid_type")],
             validate_vocabulary=True,
         )
 

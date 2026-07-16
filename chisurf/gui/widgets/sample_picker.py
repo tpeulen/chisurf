@@ -6,7 +6,9 @@ from qtpy import QtCore, QtWidgets
 from mmfdb.samples.external_refs import diff_sequences, fetch_uniprot
 from mmfdb.models import (
     EntityDefinition,
+    FretPairDefinition,
     MutationDefinition,
+    ProbeDefinition,
     SampleDefinition,
 )
 from mmfdb.samples.sample_manager import create_sample, list_samples
@@ -338,15 +340,23 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
             mutations=self._read_mutations_from_table(),
         )
 
+        donor_name = self.donor_edit.text().strip()
+        acceptor_name = self.acceptor_edit.text().strip()
+        probes = [
+            ProbeDefinition(name=dye_name, entity_index=0)
+            for dye_name in (donor_name, acceptor_name)
+            if dye_name
+        ]
+        fret_pairs = []
+        if donor_name and acceptor_name:
+            fret_pairs.append(FretPairDefinition(probe_1_index=0, probe_2_index=1))
+
         self.definition = SampleDefinition(
             name=name,
             description=self.description_edit.text().strip(),
             entities=[entity],
-            entity_name=self.entity_name_edit.text().strip(),
-            entity_sequence=self.entity_sequence_edit.text().strip(),
-            entity_type=self.entity_type_edit.text().strip(),
-            donor_probe_name=self.donor_edit.text().strip(),
-            acceptor_probe_name=self.acceptor_edit.text().strip(),
+            probes=probes,
+            fret_pairs=fret_pairs,
             buffer_description=self.buffer_edit.text().strip(),
         )
         super().accept()
