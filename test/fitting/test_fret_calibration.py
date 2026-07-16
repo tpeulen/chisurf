@@ -49,8 +49,9 @@ def test_calibration_parameters_defaults():
     """The group builds with the expected free factors and defaults."""
     c = CalibrationParameters()
     d = c.as_dict()
-    assert set(d) == {"gamma", "alpha", "delta", "Bg", "Br", "By", "R0", "PhiA", "PhiD"}
-    assert d["gamma"] == 1.0 and d["alpha"] == 0.0 and d["R0"] == 52.0
+    assert set(d) == {"gamma", "alpha", "beta", "delta", "Bg_DD", "Bg_DA", "Bg_AA",
+                      "R0", "PhiA", "PhiD"}
+    assert d["gamma"] == 1.0 and d["alpha"] == 0.0 and d["beta"] == 1.0 and d["R0"] == 52.0
 
 
 def test_lightpath_correction_factors():

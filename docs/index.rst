@@ -16,6 +16,7 @@ Welcome to chisurf's documentation!
    proxy_rpc_design
    plugins
    H2MM
+   FRET calibration
    user_models
    parameter_registry_tools
    chisurf_settings

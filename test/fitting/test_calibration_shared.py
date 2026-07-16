@@ -51,6 +51,23 @@ def test_linked_parameter_follows_shared_calibration():
         unregister_calibration(fit)
 
 
+def test_calibration_appears_in_api_fit_list():
+    """list_fits() serializes the calibration + its parameters (GUI link source)."""
+    from chisurf.core.api import ChiSurfAPI
+
+    calib = CalibrationParameters()
+    calib.gamma = 1.5
+    fit = register_calibration(calib, name="ApiCalib")
+    try:
+        api = ChiSurfAPI(mode="local")
+        listing = api.list_fits()
+        entry = next(f for f in listing if f.get("name") == "ApiCalib")
+        names = [p.get("name") for p in entry.get("model", {}).get("parameters_all", [])]
+        assert "gamma" in names and "alpha" in names
+    finally:
+        unregister_calibration(fit)
+
+
 def test_unregister_is_idempotent():
     """Unregistering a calibration twice does not raise."""
     calib = CalibrationParameters()

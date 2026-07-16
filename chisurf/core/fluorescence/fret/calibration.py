@@ -33,6 +33,8 @@ from chisurf.core.fitting.priors import NormalPrior, TruncatedNormalPrior
 __all__ = [
     "CalibrationParameters",
     "lightpath_correction_factors",
+    "crosstalk_matrices_from_lightpath",
+    "general_correction_from_lightpath",
     "set_priors_from_lightpath",
     "global_es_correction",
     "refine_calibration",
@@ -41,6 +43,9 @@ __all__ = [
     "unregister_calibration",
     "link_to_calibration",
     "calibration_to_ndx_constants",
+    "leakage_from_donor_only",
+    "direct_excitation_from_acceptor_only",
+    "calibrate_from_samples",
 ]
 
 
@@ -266,6 +271,118 @@ def lightpath_correction_factors(
     return {"gamma": float(gamma), "alpha": float(alpha), "delta": float(delta)}
 
 
+def crosstalk_matrices_from_lightpath(
+    matrices: dict,
+    chromophores: list[str],
+    lasers: list[str],
+    detectors: list[str],
+    *,
+    quantum_yields: dict | None = None,
+    detection_efficiencies: dict | None = None,
+) -> tuple:
+    """Build the ``(excitation, emission)`` matrices for the general correction.
+
+    The scalar Hellenkamp factors are only a two-colour summary; the general
+    correction (:func:`chisurf.core.fluorescence.burst.es.corrected_es_general`)
+    consumes the light-path matrices themselves. This assembles them, ordered, and
+    folds the per-chromophore quantum yields and per-detector detection
+    efficiencies into the **emission** matrix so its diagonal carries the
+    detection/quantum-yield weighting that reduces to ``gamma``.
+
+    Parameters
+    ----------
+    matrices : dict
+        Light-path payload ``{"excitation": {...}, "emission": {...}}`` as returned
+        by ``get_crosstalk_matrices()``.
+    chromophores : list of str
+        Chromophore (dye) labels in order (donor first, then acceptors).
+    lasers : list of str
+        Excitation-laser labels in order (aligned with the chromophores they
+        primarily excite).
+    detectors : list of str
+        Detection-channel labels in order.
+    quantum_yields : dict, optional
+        ``{chromophore: QY}``; missing entries default to ``1.0``.
+    detection_efficiencies : dict, optional
+        ``{detector: g}``; missing entries default to ``1.0``.
+
+    Returns
+    -------
+    excitation : numpy.ndarray
+        ``(len(lasers), len(chromophores))`` excitation crosstalk matrix.
+    emission : numpy.ndarray
+        ``(len(chromophores), len(detectors))`` detected-brightness matrix
+        (spectral overlap × quantum yield × detection efficiency).
+    """
+    import numpy as np
+
+    from chisurf.core.fluorescence.crosstalk import matrix_from_payload
+
+    exc_payload = matrices.get("excitation", {}) if isinstance(matrices, dict) else {}
+    emi_payload = matrices.get("emission", {}) if isinstance(matrices, dict) else {}
+
+    excitation, _, _ = matrix_from_payload(exc_payload, rows=lasers, columns=chromophores)
+    emission, _, _ = matrix_from_payload(emi_payload, rows=chromophores, columns=detectors)
+
+    qy = quantum_yields or {}
+    det = detection_efficiencies or {}
+    qy_vec = np.array([float(qy.get(c, 1.0)) for c in chromophores])
+    det_vec = np.array([float(det.get(d, 1.0)) for d in detectors])
+    # detected brightness = spectral overlap * QY (per chromophore) * g (per detector)
+    emission = emission * qy_vec[:, None] * det_vec[None, :]
+    return excitation, emission
+
+
+def general_correction_from_lightpath(
+    intensity,
+    matrices: dict,
+    chromophores: list[str],
+    lasers: list[str],
+    detectors: list[str],
+    *,
+    quantum_yields: dict | None = None,
+    detection_efficiencies: dict | None = None,
+    background=None,
+    pairs=None,
+    unmix="naive",
+    ridge=0.0,
+) -> dict:
+    """Accurate pairwise FRET from measured intensities and the light-path matrices.
+
+    Convenience wrapper: build the excitation/emission matrices with
+    :func:`crosstalk_matrices_from_lightpath` and run the general correction
+    :func:`chisurf.core.fluorescence.burst.es.corrected_es_general`. This is the
+    general (any number of chromophores, arbitrary inter-channel bleed) counterpart
+    of the scalar :func:`lightpath_correction_factors` + ``corrected_es`` path.
+
+    Parameters
+    ----------
+    intensity : array_like
+        Measured ``I[laser, detector]`` matrix (see ``corrected_es_general``).
+    matrices, chromophores, lasers, detectors, quantum_yields, detection_efficiencies
+        Passed to :func:`crosstalk_matrices_from_lightpath`.
+    background, pairs, unmix, ridge
+        Passed to ``corrected_es_general`` (``unmix="stable"`` selects the
+        non-negative, ill-conditioning-robust un-mixing; ``ridge`` adds Tikhonov
+        damping).
+
+    Returns
+    -------
+    dict
+        ``{(donor, acceptor): {"E", "fc"}}`` per pair.
+    """
+    from chisurf.core.fluorescence.burst.es import corrected_es_general
+
+    excitation, emission = crosstalk_matrices_from_lightpath(
+        matrices, chromophores, lasers, detectors,
+        quantum_yields=quantum_yields, detection_efficiencies=detection_efficiencies,
+    )
+    return corrected_es_general(
+        intensity, excitation, emission, background=background, pairs=pairs,
+        unmix=unmix, ridge=ridge,
+    )
+
+
 def set_priors_from_lightpath(
     calib: CalibrationParameters,
     matrices: dict,
@@ -334,7 +451,7 @@ def set_priors_from_lightpath(
     return factors
 
 
-def global_es_correction(green, red, yellow, labels, *, alpha=0.0, delta=0.0) -> dict:
+def global_es_correction(i_dd, i_da, i_aa, labels, *, alpha=0.0, delta=0.0) -> dict:
     """Recover gamma (and beta) from an E-S population plot (Lee 2005 / Hellenkamp 2018).
 
     After removing donor leakage (``alpha``) and direct acceptor excitation
@@ -345,23 +462,23 @@ def global_es_correction(green, red, yellow, labels, *, alpha=0.0, delta=0.0) ->
 
     Parameters
     ----------
-    green, red, yellow : array_like
-        Per-burst donor / acceptor (donor-excitation) / acceptor
-        (acceptor-excitation) counts.
+    i_dd, i_da, i_aa : array_like
+        Per-burst ``I_DD`` / ``I_DA`` / ``I_AA`` counts (donor|donor,
+        acceptor|donor, acceptor|acceptor excitation).
     labels : array_like
         Population label per burst (>= 2 distinct populations required).
     alpha, delta : float, optional
-        Donor-leakage and direct-excitation coefficients (e.g. from the
+        Donor-leakage (α) and direct-excitation (δ) coefficients (e.g. from the
         light-path prior or donor-only/acceptor-only samples).
 
     Returns
     -------
     dict
-        ``{"gamma", "beta", "Omega", "Sigma"}``.
+        ``{"gamma", "beta", "Omega", "Sigma"}`` (Hellenkamp β = Ω+Σ−1).
     """
-    g = np.asarray(green, dtype=float)
-    r = np.asarray(red, dtype=float)
-    y = np.asarray(yellow, dtype=float)
+    g = np.asarray(i_dd, dtype=float)
+    r = np.asarray(i_da, dtype=float)
+    y = np.asarray(i_aa, dtype=float)
     labels = np.asarray(labels)
 
     f_da = r - alpha * g - delta * y  # leakage + direct-excitation corrected
@@ -385,7 +502,7 @@ def global_es_correction(green, red, yellow, labels, *, alpha=0.0, delta=0.0) ->
             "Omega": float(omega), "Sigma": float(sigma)}
 
 
-def refine_calibration(calib: CalibrationParameters, green, red, yellow, labels,
+def refine_calibration(calib: CalibrationParameters, i_dd, i_da, i_aa, labels,
                        *, data_sigma: float | None = None, n_bootstrap: int = 60,
                        seed: int = 0) -> dict:
     """Prior-regularized (Bayesian) refinement of ``gamma`` against E-S data.
@@ -409,8 +526,8 @@ def refine_calibration(calib: CalibrationParameters, green, red, yellow, labels,
     calib : CalibrationParameters
         Group refined in place; its ``alpha``/``delta`` are used for the leakage/
         direct-excitation correction and its ``gamma`` prior regularizes the fit.
-    green, red, yellow : array_like
-        Per-burst counts.
+    i_dd, i_da, i_aa : array_like
+        Per-burst ``I_DD`` / ``I_DA`` / ``I_AA`` counts.
     labels : array_like
         Population label per burst (>= 2 FRET populations).
     data_sigma : float, optional
@@ -427,13 +544,16 @@ def refine_calibration(calib: CalibrationParameters, green, red, yellow, labels,
     """
     from chisurf.core.fitting.priors import as_prior
 
-    g = np.asarray(green, dtype=float)
-    r = np.asarray(red, dtype=float)
-    y = np.asarray(yellow, dtype=float)
+    g = np.asarray(i_dd, dtype=float)
+    r = np.asarray(i_da, dtype=float)
+    y = np.asarray(i_aa, dtype=float)
     labels = np.asarray(labels)
 
     est = global_es_correction(g, r, y, labels, alpha=calib.alpha, delta=calib.delta)
     gamma_data = est["gamma"]
+    # beta (excitation-flux ratio) is also identified by the E-S fit.
+    if np.isfinite(est["beta"]) and est["beta"] > 0:
+        calib.beta = float(est["beta"])
 
     if data_sigma is None:
         rng = np.random.default_rng(seed)
@@ -601,14 +721,143 @@ def calibration_to_ndx_constants(calibration) -> dict:
     phi_d = float(calib.phi_d)
     gamma = float(calib.gamma)
     gg_gr = (phi_a / phi_d) / gamma if gamma != 0 else 1.0
+    # ndxplorer's constant it calls "beta" is the direct-excitation coefficient
+    # (Hellenkamp delta); its equations have no slot for the excitation-flux ratio.
     return {
         "gG/gR": gg_gr,
         "alpha": float(calib.alpha),
         "beta": float(calib.delta),
-        "Bg": float(calib.bg),
-        "Br": float(calib.br),
-        "By": float(calib.by),
+        "Bg": float(calib.bg_dd),
+        "Br": float(calib.bg_da),
+        "By": float(calib.bg_aa),
         "PhiA": phi_a,
         "PhiD": phi_d,
         "forster_radius": float(calib.r0),
     }
+
+
+def leakage_from_donor_only(i_dd, i_da, *, bg_dd=0.0, bg_da=0.0) -> float:
+    """Estimate donor leakage ``alpha`` from a donor-only reference sample.
+
+    For a donor-only sample the acceptor (``i_da``) channel under donor
+    excitation contains only donor spectral bleed-through, so
+
+        alpha = <i_da - Bg_da> / <i_dd - Bg_dd>
+
+    (Hellenkamp 2018). Averages are taken over the donor-only bursts.
+
+    Parameters
+    ----------
+    i_dd, i_da : array_like
+        Per-burst donor and acceptor counts under donor excitation for the
+        **donor-only** population.
+    bg_dd, bg_da : float, optional
+        Channel backgrounds.
+
+    Returns
+    -------
+    float
+        Donor leakage ``alpha`` (α).
+    """
+    f_dd = np.asarray(i_dd, dtype=float) - bg_dd
+    f_da = np.asarray(i_da, dtype=float) - bg_da
+    denom = float(np.mean(f_dd))
+    return float(np.mean(f_da) / denom) if denom != 0 else 0.0
+
+
+def direct_excitation_from_acceptor_only(i_da, i_aa, i_dd=None, *, alpha=0.0,
+                                         bg_dd=0.0, bg_da=0.0, bg_aa=0.0) -> float:
+    """Estimate direct excitation ``delta`` from an acceptor-only reference sample.
+
+    For an acceptor-only sample the acceptor (``i_da``) channel under donor
+    excitation contains only directly-excited acceptor emission, so
+
+        delta = <i_da - Bg_da - alpha*(i_dd - Bg_dd)> / <i_aa - Bg_aa>
+
+    (Hellenkamp 2018). The optional ``alpha`` term removes any residual leakage.
+
+    Parameters
+    ----------
+    i_da, i_aa : array_like
+        Per-burst acceptor counts under donor and acceptor excitation for the
+        **acceptor-only** population.
+    i_dd : array_like, optional
+        Donor-channel counts (for the residual-leakage correction).
+    alpha : float, optional
+        Donor leakage (from :func:`leakage_from_donor_only`).
+    bg_dd, bg_da, bg_aa : float, optional
+        Channel backgrounds.
+
+    Returns
+    -------
+    float
+        Direct acceptor excitation ``delta`` (δ).
+    """
+    f_da = np.asarray(i_da, dtype=float) - bg_da
+    f_aa = np.asarray(i_aa, dtype=float) - bg_aa
+    if i_dd is not None and alpha:
+        f_da = f_da - alpha * (np.asarray(i_dd, dtype=float) - bg_dd)
+    denom = float(np.mean(f_aa))
+    return float(np.mean(f_da) / denom) if denom != 0 else 0.0
+
+
+def calibrate_from_samples(calib: CalibrationParameters, fret, *, donor_only=None,
+                           acceptor_only=None, refine: bool = True) -> dict:
+    """Full data-driven calibration from FRET + reference samples (Hellenkamp).
+
+    The complete layered procedure:
+
+    1. ``alpha`` from the **donor-only** sample (:func:`leakage_from_donor_only`),
+    2. ``delta`` from the **acceptor-only** sample
+       (:func:`direct_excitation_from_acceptor_only`, using the estimated α),
+    3. ``gamma``/``beta`` from the multi-population FRET E-S fit
+       (:func:`global_es_correction`) and, if ``refine``, the prior-regularized
+       posterior (:func:`refine_calibration`).
+
+    Each provided estimate is written into ``calib``. When a reference sample is
+    omitted the corresponding factor keeps its current value (e.g. the light-path
+    prior mean).
+
+    Parameters
+    ----------
+    calib : CalibrationParameters
+        Calibration refined in place (seed its priors first, e.g. via
+        :func:`set_priors_from_lightpath`).
+    fret : tuple
+        ``(i_dd, i_da, i_aa, labels)`` for the FRET populations (>= 2).
+    donor_only : tuple, optional
+        ``(i_dd, i_da)`` for the donor-only sample.
+    acceptor_only : tuple, optional
+        ``(i_da, i_aa[, i_dd])`` for the acceptor-only sample.
+    refine : bool, optional
+        If True, run the prior-regularized ``gamma`` refinement.
+
+    Returns
+    -------
+    dict
+        The calibration values plus refinement diagnostics.
+    """
+    if donor_only is not None:
+        calib.alpha = leakage_from_donor_only(
+            *donor_only[:2], bg_dd=calib.bg_dd, bg_da=calib.bg_da
+        )
+    if acceptor_only is not None:
+        i_da_ao = acceptor_only[0]
+        i_aa_ao = acceptor_only[1]
+        i_dd_ao = acceptor_only[2] if len(acceptor_only) > 2 else None
+        calib.delta = direct_excitation_from_acceptor_only(
+            i_da_ao, i_aa_ao, i_dd_ao, alpha=calib.alpha,
+            bg_dd=calib.bg_dd, bg_da=calib.bg_da, bg_aa=calib.bg_aa,
+        )
+
+    i_dd, i_da, i_aa, labels = fret
+    if refine:
+        return refine_calibration(calib, i_dd, i_da, i_aa, labels)
+    est = global_es_correction(i_dd, i_da, i_aa, labels, alpha=calib.alpha, delta=calib.delta)
+    if np.isfinite(est["gamma"]):
+        calib.gamma = float(np.clip(est["gamma"], 0.05, 20.0))
+    if np.isfinite(est["beta"]) and est["beta"] > 0:
+        calib.beta = float(est["beta"])
+    out = calib.as_dict()
+    out.update(est)
+    return out
