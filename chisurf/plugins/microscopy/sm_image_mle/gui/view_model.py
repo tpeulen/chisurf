@@ -174,14 +174,14 @@ class MoleculeMleViewModel:
         ]
 
     def _current_molecule(self):
-        """Return ``(result, row_record)`` for the selected molecule, or None."""
+        """Return ``(result, row, row_record)`` for the selected molecule, or None."""
         flat = self._flat_molecules()
         if not flat:
             return None
         idx = int(self.current_molecule) if 0 <= self.current_molecule < len(flat) else 0
         ri, row = flat[idx]
         result = self.results[ri]
-        return result, result.dataframe.iloc[row].to_dict()
+        return result, row, result.dataframe.iloc[row].to_dict()
 
     def molecule_entries(self) -> list[dict]:
         """Browsable molecule entries (id = flat index; badge = fitted τ)."""
@@ -210,15 +210,32 @@ class MoleculeMleViewModel:
         cur = self._current_molecule()
         if cur is None:
             return []
-        rec = cur[1]
+        rec = cur[2]
         return [(0, float(rec.get("centroid_row", 0.0)), float(rec.get("centroid_col", 0.0)))]
+
+    def current_molecule_decay(self) -> list[dict]:
+        """Return data + fitted-model decay series for the selected molecule."""
+        cur = self._current_molecule()
+        if cur is None:
+            return []
+        result, row, _ = cur
+        if row >= len(result.jordi_vectors):
+            return []
+        data = np.asarray(result.jordi_vectors[row], dtype=float)
+        x = np.arange(data.size)
+        series = [{"x": x, "y": data, "name": "Data", "color": "#3b82f6"}]
+        if row < len(result.model_curves):
+            model = np.asarray(result.model_curves[row], dtype=float)
+            if model.size == data.size:
+                series.append({"x": x, "y": model, "name": "Fit", "color": "#ef4444", "style": "dash"})
+        return series
 
     def current_molecule_info(self) -> str:
         """HTML fit summary for the selected molecule (metadata panel)."""
         cur = self._current_molecule()
         if cur is None:
             return "<i>No molecule selected.</i>"
-        rec = cur[1]
+        rec = cur[2]
 
         def g(key, fmt="{:.3f}"):
             try:
@@ -291,7 +308,9 @@ class MoleculeMleViewModel:
             self.status_text = f"Analysing {pathlib.Path(path).name} ({i + 1}/{len(self.files)})…"
             self.notify("progress")
             try:
-                result = fit_molecules_from_files(path, irf, dataclasses.replace(self.settings))
+                result = fit_molecules_from_files(
+                    path, irf, dataclasses.replace(self.settings), keep_curves=True
+                )
             except Exception as exc:  # noqa: BLE001 - surfaced in the status line
                 logger.debug("molecule MLE failed for %s", path, exc_info=True)
                 self.status_text = f"{pathlib.Path(path).name}: {exc}"

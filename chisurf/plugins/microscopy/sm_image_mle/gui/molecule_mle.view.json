@@ -70,7 +70,10 @@
            "markers_source": "current_molecule_marker",
            "colormap": true, "default_colormap": "inferno", "list_width": 200
          },
-         "description": "Browse segmented molecules; the canvas marks the selected molecule and the panel shows its Fit23 result."}
+         "description": "Browse segmented molecules; the canvas marks the selected molecule and the panel shows its Fit23 result."},
+        {"type": "plot", "title": "Decay", "source": "current_molecule_decay",
+         "x_label": "micro-time channel (∥ | ⊥)", "y_label": "photons", "log_y": true,
+         "description": "Jordi decay of the selected molecule with the fitted Fit23 model overlaid (semilog)."}
       ]
     }
   ]

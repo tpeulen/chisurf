@@ -18,6 +18,7 @@ def test_view_model_is_qt_free_and_binds_settings():
     assert vm.segmentation_image() is None
     assert vm.molecule_entries() == []
     assert vm.current_molecule_marker() == []
+    assert vm.current_molecule_decay() == []
     ok, reason = vm.can_run()
     assert not ok and reason
 
