@@ -11,3 +11,4 @@
 * [Modelling / ProteinMC roadmap](modelling-roadmap.md) - Durable modelling/simulation roadmap notes salvaged from a personal worklist.
 * [Two-focus FCS (2fFCS) status and gaps](two-focus-fcs.md) - What ChiSurf's absolute-diffusion two-focus FCS models cover today and what a full Dertinger 2fFCS workflow still needs.
 * [FCS catalogue & FLCS filters: PAM port](fcs-pam-port.md) - The PAM-referenced (A/B-verified) FCS fit-model catalogue expansion and FLCS lifetime-filter fixes, with remaining gaps.
+* [Spectral crosstalk / linear-mixing core](crosstalk.md) - The shared crosstalk-matrix utility (build/apply/invert) behind the light-path calculator, ratiometric/sensitized-emission FRET, phasor unmixing and DDEM.
