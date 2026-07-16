@@ -11,10 +11,11 @@ Two throughput optimisations over the naive per-pixel Python loop:
 * **Vectorised extraction** -- ``CLSMImage.get_fluorescence_decay`` builds the
   whole per-pixel micro-time histogram stack in one C++ call, replacing the
   per-pixel Python ``tttr_indices`` + ``np.bincount`` loop.
-* **Multiprocessing fits** -- the per-pixel ``Fit23`` calls (the dominant cost)
-  are distributed across worker processes over a shared-memory copy of the
-  per-pixel histogram matrix. (Threading does not help: the C++ fit is
-  correct under threads but does not scale in-process; separate processes do.)
+* **Threaded batch fits** -- the per-pixel ``Fit23`` calls (the dominant cost)
+  are run through tttrlib's batch entry point, which fits a whole chunk of
+  pixels in one call with the GIL released, distributed across a thread pool
+  (``fluorescence/mle/parallel.py``). No multiprocessing, so no fork/spawn
+  fragility and safe inside the Qt GUI.
 
 Both are controlled by :class:`PixelMleSettings` (``engine`` and ``n_workers``)
 and default to the fast path.  The module contains no Qt: it is the single
@@ -32,16 +33,16 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings
-from chisurf.core.fluorescence.mle.parallel import fit_matrix_parallel
+from chisurf.core.fluorescence.mle import Fit2xModel, Fit2xSettings
+from chisurf.core.fluorescence.mle.parallel import fit_matrix_threaded
 
 logger = logging.getLogger(__name__)
 
 #: Callback signature ``(frame, n_frames, line, n_lines)`` for progress reporting.
 ProgressCallback = Callable[[int, int, int, int], None]
 
-#: Minimum number of pixels to fit before multiprocessing is worth its overhead.
-_MIN_PIXELS_FOR_MP = 512
+#: Minimum number of pixels to fit before spreading across threads is worthwhile.
+_MIN_ROWS_FOR_THREADS = 512
 
 _RESULT_COLUMNS = (
     "Y pixel", "X pixel", "Pixel Number", "Number of Photons (fit window)",
@@ -231,33 +232,16 @@ def _extract_jordi_loop(clsm_p, clsm_s, tttr, binning, start, stop, n_channels):
     return jordi, n_frames, n_lines, n_pixel
 
 
-# --- per-pixel fitting: serial + multiprocessing -----------------------------
+# --- per-pixel fitting: threaded batch ---------------------------------------
 
 
-def _fit_rows_serial(jordi, rows, settings, dt):
-    fitter = Fit2x(Fit2xSettings(**_fit2x_settings_kwargs(settings, dt)),
-                   model=Fit2xModel.FIT23)
-    x0, fixed = _initial_and_fixed(settings)
-    out = np.empty((len(rows), 5), dtype=np.float64)
-    for m, r in enumerate(rows):
-        res = fitter.fit(jordi[r].astype(np.float64), x0, fixed)
-        out[m] = (res.x[0], res.x[1], res.x[2], res.x[3], res.twoIstar)
-    return out
-
-
-def _fit_rows_parallel(jordi, rows, settings, dt, n_workers):
-    """Fit rows across worker processes; fall back to serial on any failure."""
+def _fit_rows(jordi, rows, settings, dt, n_workers):
+    """Fit the selected pixel rows using the threaded batch fit2x path."""
     x0, fixed = _initial_and_fixed(settings)
     fit_settings = Fit2xSettings(**_fit2x_settings_kwargs(settings, dt))
-    try:
-        return fit_matrix_parallel(
-            jordi, rows, fit_settings, x0, fixed, n_workers, model=Fit2xModel.FIT23
-        )
-    except Exception:
-        logger.exception(
-            "img_pixel_mle: parallel fit failed; falling back to serial fitting"
-        )
-        return _fit_rows_serial(jordi, rows, settings, dt)
+    return fit_matrix_threaded(
+        jordi, rows, fit_settings, x0, fixed, n_workers, model=Fit2xModel.FIT23
+    )
 
 
 def _resolve_workers(n_workers: int | None) -> int:
@@ -342,10 +326,10 @@ def fit_pixel_lifetimes(
 
     # Run the fits (serial or across processes).
     n_workers = _resolve_workers(settings.n_workers)
-    if len(fit_rows) and n_workers > 1 and len(fit_rows) >= _MIN_PIXELS_FOR_MP:
-        params = _fit_rows_parallel(jordi, fit_rows, settings, dt, n_workers)
-    elif len(fit_rows):
-        params = _fit_rows_serial(jordi, fit_rows, settings, dt)
+    if len(fit_rows) < _MIN_ROWS_FOR_THREADS:
+        n_workers = 1  # threading overhead not worth it for a handful of pixels
+    if len(fit_rows):
+        params = _fit_rows(jordi, fit_rows, settings, dt, n_workers)
     else:
         params = np.empty((0, 5), dtype=np.float64)
 

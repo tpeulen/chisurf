@@ -92,17 +92,17 @@ def test_fast_and_loop_engines_are_equivalent():
     assert np.allclose(tl, tf, equal_nan=True)
 
 
-def test_multiprocessing_matches_serial():
-    # Parallel (fork) fitting must give bit-identical results to serial.
+def test_threaded_matches_serial():
+    # Threaded batch fitting must give bit-identical results to single-thread.
     from chisurf.plugins.microscopy.img_pixel_mle.core import pixel_mle as pm
 
-    orig = pm._MIN_PIXELS_FOR_MP
-    pm._MIN_PIXELS_FOR_MP = 100  # force the MP path on the small test image
+    orig = pm._MIN_ROWS_FOR_THREADS
+    pm._MIN_ROWS_FOR_THREADS = 100  # force the multi-thread path on the small image
     try:
         r_ser = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(n_workers=1))
         r_par = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(n_workers=2))
     finally:
-        pm._MIN_PIXELS_FOR_MP = orig
+        pm._MIN_ROWS_FOR_THREADS = orig
     ts = r_ser.dataframe["tau"].to_numpy()
     tp = r_par.dataframe["tau"].to_numpy()
     assert r_ser.n_pixels_fit == r_par.n_pixels_fit

@@ -344,3 +344,59 @@ class Fit2x:
         )
 
     __call__ = fit
+
+    def fit_many(
+        self,
+        data: np.ndarray,
+        initial_values: Sequence[float],
+        fixed: Sequence[int] | None = None,
+    ) -> np.ndarray:
+        """Fit a whole matrix of decays in one GIL-released C++ call.
+
+        Every row of ``data`` is fitted from the same start values, looping in
+        C++ with the Python GIL released for the *whole* batch — so several
+        threads each calling ``fit_many`` on a chunk run in true parallel
+        (unlike per-row :meth:`fit`, whose per-call GIL handoff does not scale).
+
+        Only ``fit23`` supports batch fitting.
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            ``(n_rows, 2*n_channels)`` matrix of Jordi-format histograms.
+        initial_values : sequence of float
+            Shared start values ``[tau, gamma, r0, rho]`` for every row.
+        fixed : sequence of int, optional
+            Per-parameter fix mask applied to every row (default all-free).
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(n_rows, 5)`` array of ``[tau, gamma, r0, rho, 2I*]`` per row.
+
+        Raises
+        ------
+        NotImplementedError
+            If the estimator is not :attr:`Fit2xModel.FIT23`.
+        """
+        if self.model is not Fit2xModel.FIT23:
+            raise NotImplementedError("batch fit_many is only implemented for fit23")
+        data_arr = np.ascontiguousarray(data, dtype=np.float64)
+        if data_arr.ndim != 2:
+            raise ValueError("data must be a 2-D (n_rows, 2*n_channels) matrix")
+        x0 = np.ascontiguousarray(initial_values, dtype=np.float64)
+        if fixed is None:
+            fixed_arr = np.zeros(x0.size, dtype=np.int16)
+        else:
+            fixed_arr = np.ascontiguousarray(fixed, dtype=np.int16)
+        out = np.empty((data_arr.shape[0], 5), dtype=np.float64)
+        tttrlib.DecayFit23.fit_matrix(
+            data_arr,
+            x0,
+            fixed_arr,
+            float(self._fitter._bifl_scatter),
+            float(self._fitter._p_2s_flag),
+            self._fitter._m_param,
+            out,
+        )
+        return out

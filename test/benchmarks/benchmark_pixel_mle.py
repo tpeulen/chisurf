@@ -5,7 +5,7 @@ produce *identical* per-pixel lifetimes:
 
     baseline   engine="loop", n_workers=1   (per-pixel bincount + serial fits)
     +fast      engine="fast", n_workers=1   (vectorised C++ extraction)
-    +parallel  engine="fast", n_workers=N   (vectorised extraction + fork MP)
+    +parallel  engine="fast", n_workers=N   (vectorised extraction + threaded batch)
 
 Run standalone for a printed table::
 
@@ -67,13 +67,13 @@ def run_benchmark(ptu_path=_FLIM_PTU, workers=None):
     if workers is None:
         workers = max(2, (__import__("os").cpu_count() or 4) - 1)
 
-    # Force the MP path to engage on the (small) benchmark image.
-    orig = pm._MIN_PIXELS_FOR_MP
-    pm._MIN_PIXELS_FOR_MP = 50
+    # Force the multi-thread path to engage on the (small) benchmark image.
+    orig = pm._MIN_ROWS_FOR_THREADS
+    pm._MIN_ROWS_FOR_THREADS = 50
     configs = {
         "baseline (loop, serial)": dict(engine="loop", n_workers=1),
         "+fast extraction": dict(engine="fast", n_workers=1),
-        f"+parallel ({workers}w)": dict(engine="fast", n_workers=workers),
+        f"+threaded ({workers}w)": dict(engine="fast", n_workers=workers),
     }
     timings, taus, n_fit = {}, {}, {}
     try:
@@ -90,7 +90,7 @@ def run_benchmark(ptu_path=_FLIM_PTU, workers=None):
             taus[label] = r.dataframe["tau"].to_numpy()
             n_fit[label] = r.n_pixels_fit
     finally:
-        pm._MIN_PIXELS_FOR_MP = orig
+        pm._MIN_ROWS_FOR_THREADS = orig
     return timings, taus, n_fit
 
 
