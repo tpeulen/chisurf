@@ -29,8 +29,18 @@ from .pixel_maps import (
     windows_from_payload,
     write_imaging_hdf5,
 )
+from .simulate import (
+    Molecule,
+    SimulatedImage,
+    have_simulator,
+    simulate_clsm_molecules,
+)
 
 __all__ = [
+    "Molecule",
+    "SimulatedImage",
+    "have_simulator",
+    "simulate_clsm_molecules",
     "build_clsm",
     "build_clsm_windowed",
     "cached_clsm",

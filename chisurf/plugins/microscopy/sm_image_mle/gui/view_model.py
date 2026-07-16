@@ -81,6 +81,33 @@ class MoleculeMleViewModel:
             self.settings.micro_time_range = (int(micro_range[0]), int(micro_range[1]))
         self.notify("setup")
 
+    def apply_pipeline_context(self, payload: dict) -> None:
+        """Adopt the imaging pipeline's source TTTR as the file to analyse."""
+        source = (payload or {}).get("source")
+        if source and str(source) not in self.files:
+            self.files.append(str(source))
+            self.notify("pipeline")
+
+    def apply_calibration(self, calibration: dict) -> None:
+        """Adopt IRF file + convolution window from the shared IRF & BG step.
+
+        Uses the first calibrated detector's IRF file(s) as the tool's IRF and its
+        convolution range as the micro-time fit window, so the calibration carries
+        on instead of being re-entered here.
+        """
+        entry = next((v for v in (calibration or {}).values() if v), None)
+        if not entry:
+            return
+        irf_files = entry.get("irf") or []
+        if isinstance(irf_files, str):
+            irf_files = [irf_files]
+        if irf_files:
+            self.irf_files = [str(f) for f in irf_files]
+        start, stop = int(entry.get("conv_start") or 0), int(entry.get("conv_stop") or 0)
+        if stop > start:
+            self.settings.micro_time_range = (start, stop)
+        self.notify("calibration")
+
     # ── path-list bindings ──
     @property
     def sel_files(self) -> list:
@@ -190,10 +217,13 @@ class MoleculeMleViewModel:
         for ri, result in enumerate(self.results):
             file_tag = f"F{ri + 1}·" if len(self.results) > 1 else ""
             for rec in result.dataframe.to_dict("records"):
+                tau = float(rec.get("tau", float("nan")))
+                # Un-fitted (preview) molecules show their area instead of τ.
+                badge = f"τ={tau:.2f} ns" if np.isfinite(tau) else f"{int(rec.get('area', 0))} px"
                 entries.append({
                     "id": idx,
                     "label": f"{file_tag}Mol {int(rec.get('label', idx))}",
-                    "badge": f"τ={float(rec.get('tau', float('nan'))):.2f} ns",
+                    "badge": badge,
                 })
                 idx += 1
         return entries
@@ -219,9 +249,9 @@ class MoleculeMleViewModel:
         if cur is None:
             return []
         result, row, _ = cur
-        if row >= len(result.jordi_vectors):
+        if row >= len(result.vv_vh_vectors):
             return []
-        data = np.asarray(result.jordi_vectors[row], dtype=float)
+        data = np.asarray(result.vv_vh_vectors[row], dtype=float)
         x = np.arange(data.size)
         series = [{"x": x, "y": data, "name": "Data", "color": "#3b82f6"}]
         if row < len(result.model_curves):
@@ -277,6 +307,38 @@ class MoleculeMleViewModel:
         """
         self.notify("start_run")
 
+    def request_preview(self) -> None:
+        """Button action: ask the host to preview the segmentation on a worker."""
+        self.notify("start_preview")
+
+    def request_export(self) -> None:
+        """Button action: ask the host for a path and export the molecule table."""
+        self.notify("start_export")
+
+    def has_results(self) -> bool:
+        """Return True when there is a molecule table to export."""
+        return any(not r.dataframe.empty for r in self.results)
+
+    def export_results(self, path: str) -> str:
+        """Write the combined per-molecule table (all files) to *path* (TSV/CSV).
+
+        Returns the written path (empty string when there is nothing to export).
+        The separator is inferred from the extension (``.csv`` → comma, else tab).
+        """
+        import pandas as pd
+
+        frames = [r.dataframe for r in self.results if not r.dataframe.empty]
+        if not frames:
+            self.status_text = "No molecules to export."
+            self.notify("done")
+            return ""
+        sep = "," if str(path).lower().endswith(".csv") else "\t"
+        combined = pd.concat(frames, ignore_index=True)
+        combined.to_csv(path, sep=sep, index=False)
+        self.status_text = f"Exported {len(combined)} molecule(s) to {pathlib.Path(path).name}"
+        self.notify("exported")
+        return str(path)
+
     def can_run(self) -> tuple[bool, str]:
         """Return ``(ok, reason)`` describing whether a run is possible."""
         if not self.files:
@@ -284,6 +346,66 @@ class MoleculeMleViewModel:
         if not self.irf_files:
             return False, "No IRF file selected."
         return True, ""
+
+    def preview_segmentation(self) -> None:
+        """Segment the first file's image with the current settings — no fitting.
+
+        Builds an un-fitted, browsable :class:`MoleculeMleResult` (intensity +
+        labels + one row per region) so the segmentation parameters can be tuned
+        against the molecule count before committing to the full MLE fit.
+        BLOCKING — call from a worker thread.
+        """
+        import tttrlib
+        from skimage import measure
+
+        from ..core.molecule_mle import segment_molecules
+
+        if not self.files:
+            self.status_text = "No imaging files selected."
+            self.notify("done")
+            return
+
+        path = self.files[0]
+        try:
+            tttr = tttrlib.TTTR(path)
+            clsm = tttrlib.CLSMImage(tttr, channels=list(self.settings.detector_chs), fill=True)
+            intensity = np.asarray(clsm.intensity).sum(axis=0)
+        except Exception as exc:  # noqa: BLE001 - surfaced in the status line
+            logger.debug("preview: could not read %s", path, exc_info=True)
+            self.status_text = f"{pathlib.Path(path).name}: {exc}"
+            self.notify("done")
+            return
+
+        labels = segment_molecules(
+            intensity,
+            seg_sigma=self.settings.seg_sigma,
+            seg_threshold=self.settings.seg_threshold,
+            peak_footprint_size=self.settings.peak_footprint_size,
+            min_area=self.settings.min_area,
+        )
+        rows, centroids = [], []
+        for prop in measure.regionprops(labels):
+            cy, cx = prop.centroid
+            rows.append({
+                "label": int(prop.label),
+                "centroid_row": float(cy),
+                "centroid_col": float(cx),
+                "area": int(prop.area),
+                "tau": float("nan"),
+            })
+            centroids.append((float(cy), float(cx)))
+
+        import pandas as pd
+
+        self.results = [MoleculeMleResult(
+            dataframe=pd.DataFrame(rows),
+            intensity_image=intensity,
+            label_image=labels,
+            centroids=np.asarray(centroids, dtype=float).reshape(-1, 2),
+        )]
+        self.current_molecule = 0
+        self.status_text = f"Preview: {len(rows)} molecule(s) segmented — press Run to fit."
+        self.notify("done")
 
     def run(self) -> None:
         """Analyse every selected file (BLOCKING — call from a worker thread).
@@ -316,7 +438,7 @@ class MoleculeMleViewModel:
                 self.status_text = f"{pathlib.Path(path).name}: {exc}"
                 continue
             self.results.append(result)
-            frames.append(self._write_tsv(path, result.dataframe))
+            frames.append(self._save_result(path, result))
 
         # Merged joint TSV next to the first file.
         frames = [f for f in frames if f is not None and not f.empty]
@@ -331,13 +453,89 @@ class MoleculeMleViewModel:
         self.notify("done")
 
     @staticmethod
-    def _write_tsv(path: str, dataframe):
-        """Write one file's molecule table next to it; return the labelled frame."""
-        if dataframe is None or dataframe.empty:
-            return dataframe
-        df = dataframe.copy()
+    def _save_result(path: str, result: MoleculeMleResult):
+        """Persist one file's result next to it (TSV + intensity); return the frame.
+
+        Writes ``<stem>_analysis/molecule_data.tsv`` and ``intensity.npy`` so the
+        analysis can be reopened later with :meth:`load_analysis`.
+        """
+        df = result.dataframe
+        if df is None or df.empty:
+            return df
+        df = df.copy()
         df.insert(0, "source_ptu", str(path))
         out_dir = pathlib.Path(path).parent / f"{pathlib.Path(path).stem}_analysis"
         out_dir.mkdir(parents=True, exist_ok=True)
         df.to_csv(out_dir / "molecule_data.tsv", sep="\t", index=False)
+        try:
+            np.save(out_dir / "intensity.npy", np.asarray(result.intensity_image))
+        except Exception:
+            logger.debug("intensity save failed", exc_info=True)
         return df
+
+    # ── re-load a previous analysis from disk ──
+    @property
+    def results_tsv(self) -> str:
+        """Path of the last-loaded molecule_data.tsv (bound to the file picker)."""
+        return getattr(self, "_results_tsv", "")
+
+    @results_tsv.setter
+    def results_tsv(self, value) -> None:
+        self._results_tsv = str(value or "")
+        if self._results_tsv:
+            self.load_analysis(self._results_tsv)
+
+    def load_analysis(self, tsv_path: str) -> None:
+        """Load a saved ``molecule_data.tsv`` (+ sibling ``intensity.npy``).
+
+        Reconstructs a browsable :class:`MoleculeMleResult` from disk (the decay
+        curves are not persisted, so the per-molecule decay plot is empty for a
+        reopened analysis). A ``joint_output.tsv`` with several ``source_ptu``
+        files is split back into one result per file.
+        """
+        import pandas as pd
+
+        p = pathlib.Path(tsv_path)
+        if not p.exists():
+            self.status_text = f"Not found: {p}"
+            self.notify("done")
+            return
+        try:
+            df = pd.read_csv(p, sep="\t")
+        except Exception as exc:  # noqa: BLE001 - surfaced in the status line
+            self.status_text = f"Could not read {p.name}: {exc}"
+            self.notify("done")
+            return
+
+        self.results = []
+        groups = df.groupby("source_ptu") if "source_ptu" in df.columns else [(str(p), df)]
+        for source, sub in groups:
+            sub = sub.reset_index(drop=True)
+            intensity = self._load_intensity(p, source)
+            centroids = sub[["centroid_row", "centroid_col"]].to_numpy(dtype=float) \
+                if {"centroid_row", "centroid_col"}.issubset(sub.columns) \
+                else np.zeros((len(sub), 2))
+            self.results.append(MoleculeMleResult(
+                dataframe=sub,
+                intensity_image=intensity,
+                label_image=np.zeros(intensity.shape, dtype=np.int32),
+                centroids=centroids,
+            ))
+        self.current_molecule = 0
+        n = sum(r.n_molecules for r in self.results)
+        self.status_text = f"Loaded {n} molecule(s) from {p.name}"
+        self.notify("loaded")
+
+    @staticmethod
+    def _load_intensity(tsv_path: pathlib.Path, source: str) -> np.ndarray:
+        """Load the intensity image saved next to a molecule TSV (else a 1x1 blank)."""
+        for candidate in (
+            tsv_path.parent / "intensity.npy",
+            pathlib.Path(str(source)).parent / f"{pathlib.Path(str(source)).stem}_analysis" / "intensity.npy",
+        ):
+            try:
+                if candidate.exists():
+                    return np.asarray(np.load(candidate))
+            except Exception:
+                logger.debug("intensity load failed for %s", candidate, exc_info=True)
+        return np.zeros((1, 1), dtype=float)

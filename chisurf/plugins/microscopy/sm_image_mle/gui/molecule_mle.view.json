@@ -59,8 +59,12 @@
               {"type": "toggle", "attr": "soft_bifl_scatter", "label": "BIFL scatter", "description": "Reduce Istar by the background contribution."}
             ]},
             {"type": "button_row", "buttons": [
-              {"label": "▶ Run", "action": "request_run", "description": "Segment and fit molecules in every selected file; writes molecule_data.tsv + joint_output.tsv."}
-            ]}
+              {"label": "👁 Preview", "action": "request_preview", "description": "Segment the first file with the current settings (no fitting) to tune the molecule count."},
+              {"label": "▶ Run", "action": "request_run", "description": "Segment and fit molecules in every selected file; writes molecule_data.tsv + joint_output.tsv."},
+              {"label": "💾 Export", "action": "request_export", "description": "Export the combined per-molecule table (all files) to a TSV/CSV."}
+            ]},
+            {"type": "value", "attr": "results_tsv", "kind": "file", "label": "Open results",
+             "description": "Reopen a saved molecule_data.tsv (or joint_output.tsv) from a previous analysis to browse its molecules."}
           ]
         },
         {"type": "custom", "key": "image_browser", "target": "segmentation_image", "title": "Molecules",
@@ -73,7 +77,7 @@
          "description": "Browse segmented molecules; the canvas marks the selected molecule and the panel shows its Fit23 result."},
         {"type": "plot", "title": "Decay", "source": "current_molecule_decay",
          "x_label": "micro-time channel (∥ | ⊥)", "y_label": "photons", "log_y": true,
-         "description": "Jordi decay of the selected molecule with the fitted Fit23 model overlaid (semilog)."}
+         "description": "VV/VH decay of the selected molecule with the fitted Fit23 model overlaid (semilog)."}
       ]
     }
   ]

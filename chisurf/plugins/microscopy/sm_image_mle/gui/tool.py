@@ -30,19 +30,19 @@ class _RunSignals(QtCore.QObject):
 
 
 class _RunTask(QtCore.QRunnable):
-    """Run the (slow) molecule-wise analysis off the UI thread."""
+    """Run a (slow) view-model job off the UI thread."""
 
-    def __init__(self, model: MoleculeMleViewModel, signals: _RunSignals):
+    def __init__(self, job, signals: _RunSignals):
         super().__init__()
-        self._model = model
+        self._job = job
         self._signals = signals
         self.setAutoDelete(True)
 
     def run(self) -> None:  # noqa: N802 (Qt override)
         try:
-            self._model.run()
+            self._job()
         except Exception:
-            logger.debug("molecule-MLE run failed", exc_info=True)
+            logger.debug("molecule-MLE job failed", exc_info=True)
         self._signals.done.emit()
 
 
@@ -68,16 +68,44 @@ class SmImageMleTool(QtWidgets.QWidget):
         self.model.apply_setup_settings(payload)
         self._refresh()
 
+    def apply_pipeline_context(self, payload: dict) -> None:
+        """Forward the imaging pipeline's source TTTR to the view-model."""
+        self.model.apply_pipeline_context(payload)
+        self._refresh()
+
+    def apply_calibration(self, calibration: dict) -> None:
+        """Forward the shared IRF/BG calibration to the view-model."""
+        self.model.apply_calibration(calibration)
+        self._refresh()
+
     def _on_model_event(self, event: str) -> None:
         # ``start_run`` fires on the UI thread (button click) — launch the worker.
         # ``progress``/``done`` may fire on the worker thread; touching Qt there is
         # unsafe, so ignore them (the queued ``_RunSignals.done`` refreshes the UI).
         if event == "start_run":
-            self._start_run()
+            self._start_job(self.model.run)
+            return
+        if event == "start_preview":
+            self._start_job(self.model.preview_segmentation)
+            return
+        if event == "start_export":
+            self._export()
             return
         if QtCore.QThread.currentThread() is not self.thread():
             return
         self._refresh()
+
+    def _export(self) -> None:
+        """Prompt for a path and export the molecule table (UI thread)."""
+        if not self.model.has_results():
+            self.model.status_text = "No molecules to export."
+            self._refresh()
+            return
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Export molecule table", "molecules.tsv", "Tables (*.tsv *.csv)"
+        )
+        if path:
+            self.model.export_results(path)
 
     def _refresh(self) -> None:
         for fn in (self.auto_form.sync_fields, self.auto_form.refresh_plots):
@@ -86,14 +114,14 @@ class SmImageMleTool(QtWidgets.QWidget):
             except Exception:
                 logger.debug("molecule-MLE refresh failed", exc_info=True)
 
-    def _start_run(self) -> None:
+    def _start_job(self, job) -> None:
         if self._running:
             return
         self._running = True
         signals = _RunSignals()
         signals.done.connect(self._on_run_done)
         self._run_signals = signals  # keep a ref
-        QtCore.QThreadPool.globalInstance().start(_RunTask(self.model, signals))
+        QtCore.QThreadPool.globalInstance().start(_RunTask(job, signals))
 
     def _on_run_done(self) -> None:
         self._running = False
