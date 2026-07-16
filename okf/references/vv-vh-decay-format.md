@@ -45,3 +45,21 @@ plugin ids, RPC method names, CLI entrypoints, state namespaces, display names,
 tests, and docs). New code must use the descriptive `vv_vh` name; do not
 reintroduce "jordi". Raw sample-data directories under `test/data/tcspc/Jordi*`
 keep their original names as provenance and are intentionally not renamed.
+
+# Diagnosing errors that mention "jordi"
+
+Any error naming a `jordi*` symbol is almost always this rename. Map the old name
+to the new one and, for persisted data, migrate the key or accept the default:
+
+| Old name (error surface) | New name | Where it bites |
+| --- | --- | --- |
+| `read_jordi` / `write_jordi` / `assemble_jordi` (`ImportError`/`AttributeError`) | `read_vv_vh` / `write_vv_vh` / `assemble_vv_vh` | macros, notebooks, external scripts |
+| module `chisurf.core.fio.jordi`; packages `chisurf.plugins.jordi_g_factor` / `jordi_anisotropy` | `…fio.vv_vh`; `…plugins.vv_vh_g_factor` / `vv_vh_anisotropy` | imports |
+| RPC `jordi_g_factor.calculate` etc. ("unknown method") | `vv_vh_g_factor.*` | client/macro calls |
+| CLI `jordi-g-factor` ("command not found") | `vv-vh-g-factor` | shell / gui-scripts |
+| serialized key `"is_jordi"` in saved DataCurve/project JSON | `"is_vv_vh"` | old `.json` projects load with the flag silently defaulted, not applied |
+| plugin `state_namespace` / settings key `jordi_g_factor`; help anchor `tcspc-jordi` | `vv_vh_g_factor`; `tcspc-vv_vh` | previously-saved GUI window state won't restore |
+
+For old serialized state (`"is_jordi"`, `jordi_g_factor` state keys), either rewrite
+the key to its `vv_vh` form or accept that the value falls back to its default —
+the runtime no longer reads the `jordi` key.
