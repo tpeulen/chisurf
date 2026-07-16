@@ -1,0 +1,47 @@
+{
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Species (lifetime + diffusion)",
+      "collapsed": false,
+      "sections": [
+        {"type": "value", "attr": "tau1_ns", "label": "τ₁ (ns)", "kind": "float",
+         "decimals": 3, "minimum": 0.05, "maximum": 50.0, "step": 0.1,
+         "description": "Fluorescence lifetime of species 1."},
+        {"type": "value", "attr": "d1_um2_ms", "label": "D₁ (µm²/ms)", "kind": "float",
+         "decimals": 4, "minimum": 0.001, "maximum": 100.0, "step": 0.1,
+         "description": "Translational diffusion coefficient of species 1. τ_D = w₀²/(4·D)."},
+        {"type": "value", "attr": "tau2_ns", "label": "τ₂ (ns)", "kind": "float",
+         "decimals": 3, "minimum": 0.05, "maximum": 50.0, "step": 0.1,
+         "description": "Fluorescence lifetime of species 2."},
+        {"type": "value", "attr": "d2_um2_ms", "label": "D₂ (µm²/ms)", "kind": "float",
+         "decimals": 4, "minimum": 0.001, "maximum": 100.0, "step": 0.1,
+         "description": "Translational diffusion coefficient of species 2."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Kinetics / statistics",
+      "collapsed": false,
+      "sections": [
+        {"type": "value", "attr": "exchange_rate_ms", "label": "k (1/ms)", "kind": "float",
+         "decimals": 3, "minimum": 0.0, "maximum": 1000.0, "step": 0.5,
+         "description": "Symmetric species interconversion rate (0 = static species). Set the two diffusion coefficients equal to isolate the exchange in the cross-correlation."},
+        {"type": "value", "attr": "n_photons", "label": "Photons", "kind": "int",
+         "minimum": 50000, "maximum": 20000000, "step": 50000,
+         "description": "Photon budget. More photons = cleaner filtered correlations (and a slower simulation)."},
+        {"type": "value", "attr": "seed", "label": "Seed", "kind": "int",
+         "minimum": 0, "maximum": 1000000, "step": 1,
+         "description": "RNG seed (deterministic output)."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Run",
+      "collapsed": false,
+      "sections": [
+        {"type": "custom", "key": "lfcs_sim_controls"}
+      ]
+    }
+  ]
+}

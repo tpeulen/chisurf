@@ -63,6 +63,14 @@ def _make_2dflcs(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return w
 
 
+def _make_lfcs_sim(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    from chisurf.plugins.fcs.fcs_lfcs_sim.gui.tool import LifetimeFcsSimWidget
+
+    w = LifetimeFcsSimWidget()
+    w.setParent(parent)
+    return w
+
+
 def _make_burst_fcs(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     from chisurf.plugins.burst.burst_fcs_correlator.gui.tool import BurstFcsTool
 
@@ -119,6 +127,14 @@ FCS_PANELS = [
         "role": "flc_2d",
         "manifest": "fcs/flc_2d",
         "description": "Two-dimensional fluorescence lifetime correlation spectroscopy.",
+    },
+    {
+        "name": "Lifetime-FCS Sim",
+        "icon": "🧬",
+        "factory": _make_lfcs_sim,
+        "role": "lfcs_sim",
+        "manifest": "fcs/fcs_lfcs_sim",
+        "description": "Simulate diffusing lifetime species (+ interconversion) and recover them by lifetime-filtered correlation.",
     },
     {
         "name": "Burst-wise FCS",
