@@ -71,11 +71,13 @@ the sampler.
 - [x] MAP prior residuals in `get_wres`; `lnprior` sums per-parameter priors.
 - [x] `parameter.set_prior` RPC threaded client→protocol→service, `Fit.set_parameter_prior`.
 - [x] GUI prior selector + advanced modal; headless screenshot-verified.
+- [x] AutoForm/view-spec path: `ParameterGroupSection.priors` (and the
+  `fitting_parameter` custom section's `prior` option) apply declared default
+  priors to parameters when the editor is built.
 - [x] Tests: `test/fitting/test_priors.py`, `test/gui/test_parameter_prior_widget.py`, client + chinet port round-trip.
 
 # Follow-ups
 
-- Expose priors on the AutoForm/view-spec path for models that render there.
 - Optionally register named callbacks so callback priors can persist.
 
 See [fitting](/subsystems/fitting.md) and [parameters](/subsystems/parameters.md).

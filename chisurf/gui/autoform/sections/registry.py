@@ -74,8 +74,22 @@ def resolve_plot_specs(view) -> typing.List[typing.Tuple[type, dict]]:
 
 @register_section("fitting_parameter")
 def _fitting_parameter_section_factory(model, target: str, **opts):
-    """Render a single FittingParameter as a FittingParameterWidget."""
+    """Render a single FittingParameter as a FittingParameterWidget.
+
+    An optional ``prior`` option (a prior-state dict or ``None``) declared in
+    the view spec is applied to the parameter before the widget is built, so a
+    single-parameter section can ship a default prior just like a
+    ``parameter_group`` section's ``priors`` map.
+    """
     from chisurf.gui.widgets.fitting.parameter_widgets import FittingParameterWidget
 
     fp = getattr(model, target)
+    if "prior" in opts:
+        spec = opts.pop("prior")
+        try:
+            from chisurf.core.fitting.priors import as_prior
+            fp.prior = as_prior(spec) if spec is not None else None
+        except Exception:
+            import chisurf.logging
+            chisurf.logging.warning("fitting_parameter: invalid prior spec for %r ignored", target)
     return FittingParameterWidget(fitting_parameter=fp, **opts)

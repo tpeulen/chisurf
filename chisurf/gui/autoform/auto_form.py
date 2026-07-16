@@ -375,6 +375,8 @@ class AutoForm(QtWidgets.QWidget):
         else:
             params = list(getattr(group, "parameters_all", []))
 
+        self._apply_section_priors(getattr(section, "priors", None), params)
+
         grid = self._build_param_grid(params, section.n_col)
         self._param_widgets.extend(self._collect_param_widgets(grid))
 
@@ -385,6 +387,41 @@ class AutoForm(QtWidgets.QWidget):
         box = self._make_fold_box(section, fallback_title=getattr(group, "name", ""))
         box.add_widget(grid)
         return box
+
+    @staticmethod
+    def _apply_section_priors(priors, params):
+        """Apply view-spec-declared priors to the matching parameters.
+
+        ``priors`` maps a parameter name to a prior-state dict (or ``None`` to
+        clear). Applied to the :class:`FittingParameter` objects before their
+        widgets are built, so a model author can ship a default prior in the
+        ``.view.json``. Invalid specs are skipped with a warning; a ``None``
+        spec clears any existing prior.
+        """
+        if not priors:
+            return
+        from chisurf.core.fitting.priors import as_prior
+
+        by_name = {getattr(p, "name", None): p for p in params}
+        for name, spec in dict(priors).items():
+            p = by_name.get(name)
+            if p is None:
+                logging.warning("AutoModelWidget: prior for unknown parameter %r ignored", name)
+                continue
+            if spec is None:
+                prior = None
+            else:
+                try:
+                    prior = as_prior(spec)
+                except Exception:
+                    prior = None
+                if prior is None:
+                    logging.warning("AutoModelWidget: invalid prior spec for %r ignored", name)
+                    continue
+            try:
+                p.prior = prior
+            except Exception as exc:  # pragma: no cover - defensive
+                logging.warning("AutoModelWidget: failed to set prior for %r: %s", name, exc)
 
     def _build_param_grid(self, params, n_col=None):
         """Build a bare ``QWidget`` grid from a pre-filtered parameter list."""

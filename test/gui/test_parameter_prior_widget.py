@@ -102,3 +102,80 @@ def test_prior_editor_dialog_switches_family(qtbot, param):
     assert state["kind"] == "gamma"
     assert state["alpha"] == pytest.approx(3.0)
     assert state["beta"] == pytest.approx(2.0)
+
+
+# --------------------------------------------------------------------------
+# AutoForm / view-spec declaration of priors
+# --------------------------------------------------------------------------
+
+def test_view_spec_loader_round_trips_priors():
+    from chisurf.core.models import view_spec as vs
+
+    view = vs.load_view_spec({
+        "sections": [{
+            "type": "parameter_group",
+            "target": "g",
+            "priors": {"tau1": {"kind": "normal", "mu": 2.0, "sigma": 0.3}},
+        }],
+    })
+    section = view.sections[0]
+    assert isinstance(section, vs.ParameterGroupSection)
+    assert section.priors == {"tau1": {"kind": "normal", "mu": 2.0, "sigma": 0.3}}
+
+
+def test_apply_section_priors_sets_and_clears(qapp, param):
+    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
+
+    # Set a Gaussian prior by name.
+    AutoModelWidget._apply_section_priors(
+        {"p1": {"kind": "normal", "mu": 1.5, "sigma": 0.2}}, [param]
+    )
+    assert isinstance(param.prior, _priors.NormalPrior)
+    assert param.prior.mu == pytest.approx(1.5)
+
+    # A None spec clears it; an unknown name / invalid spec is ignored.
+    AutoModelWidget._apply_section_priors({"p1": None}, [param])
+    assert param.prior is None
+    AutoModelWidget._apply_section_priors({"does_not_exist": {"kind": "normal"}}, [param])
+    AutoModelWidget._apply_section_priors({"p1": {"kind": "bogus"}}, [param])
+    assert param.prior is None
+
+
+class _GroupModel(ModelCurve):
+    """Model whose parameter lives in a nested group, so a ParameterGroupSection
+    can target it by attribute name."""
+
+    name = "GroupModel"
+
+    def __init__(self, fit):
+        from chisurf.core.fitting.parameter import FittingParameterGroup
+        super().__init__(fit)
+        self.rates = FittingParameterGroup(name="rates")
+        self.k = FittingParameter(name="k", value=2.0)
+        self.rates.append(self.k)
+        self.find_parameters()
+
+    def update_model(self, **kwargs):
+        self.y = np.ones_like(self.x) * self.k.value
+
+
+def test_view_spec_prior_applied_when_widget_built(qapp, monkeypatch):
+    """A ParameterGroupSection.priors entry reaches the FittingParameter."""
+    from chisurf.core.models import view_spec as vs
+    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
+
+    data = cs.core.data.DataCurve(x=np.arange(10.0), y=np.arange(10.0))
+    fit = cs.core.fitting.fit.Fit(model_class=_GroupModel, data=data)
+    cs.fits = [fit]
+    model = fit.model
+
+    view = vs.ModelView(sections=(
+        vs.ParameterGroupSection(
+            target="rates",
+            priors={"k": {"kind": "lognormal", "mu": 0.0, "sigma": 0.4}},
+        ),
+    ))
+    monkeypatch.setattr(model, "view_spec", lambda: view)
+
+    AutoModelWidget(model)
+    assert isinstance(model.k.prior, _priors.LogNormalPrior)

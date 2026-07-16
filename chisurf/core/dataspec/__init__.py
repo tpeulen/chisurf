@@ -96,9 +96,12 @@ class ParameterGroupSection(Section):
     """A static grid of the parameters of one :class:`FittingParameterGroup`.
 
     The renderer resolves ``target`` to a parameter group on the model and
-    lays out every parameter using the existing parameter-widget factory. All
+    lays out every parameter using the existing parameter-widget factory. Most
     per-parameter metadata (label, bounds, fixed, units) already lives on the
-    parameters, so no further description is required here.
+    parameters. Priors are the one thing a model author may want to *declare* in
+    the ``.view.json`` (a default Bayesian/MAP prior), so :attr:`priors` maps a
+    parameter name to a prior-state dict applied to that parameter when the
+    section is built.
     """
 
     #: Number of columns in the grid, or ``None`` for the configured default.
@@ -113,6 +116,13 @@ class ParameterGroupSection(Section):
     collapsed: bool = False
     #: Optional condition that folds the section: ``{target, attr, equals}``.
     collapsed_when: typing.Optional[typing.Mapping[str, typing.Any]] = None
+    #: Optional per-parameter priors declared in the view spec, keyed by
+    #: parameter name and valued by a prior-state dict
+    #: (e.g. ``{"tau1": {"kind": "normal", "mu": 2.0, "sigma": 0.3}}``). A
+    #: ``UniformPrior`` spec folds onto the parameter's bounds; ``None`` clears
+    #: any prior. Invalid specs are ignored with a warning. See
+    #: :mod:`chisurf.core.fitting.priors`.
+    priors: typing.Optional[typing.Mapping[str, typing.Any]] = None
 
 
 @dataclasses.dataclass(frozen=True)

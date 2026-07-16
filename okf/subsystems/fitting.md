@@ -91,7 +91,14 @@ optimiser's hard bounds, so a hard bound and a soft prior are one concept
 
 Distribution priors persist as a JSON spec on the parameter's `chinet.Port`
 (`port.prior`); the GUI edits them through the per-parameter prior selector and
-the `parameter.set_prior` RPC (see [parameters](/subsystems/parameters.md)).
+the `parameter.set_prior` RPC (see [parameters](/subsystems/parameters.md)). A
+model author can also **declare default priors in a `.view.json`**: a
+`parameter_group` section's `priors` map (parameter-name → prior-state dict) is
+applied to the `FittingParameter`s when the AutoForm renderer builds the section
+(`ParameterGroupSection.priors` in `chisurf/core/dataspec/`, applied by
+`AutoModelWidget._apply_section_priors`); the single-parameter `fitting_parameter`
+custom section accepts a `prior` option the same way. See the
+[AutoForm subsystem](/subsystems/gui-autoform.md).
 
 The dedicated single-molecule / image MLE path (tttrlib `fit2x`:
 `Fit23`/`Fit24`/`Fit25`) is wrapped by the Qt-free harness
