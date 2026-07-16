@@ -1,0 +1,63 @@
+{
+  "_comment": "Declarative AutoForm layout for the Burst IRF & Background tool: a persistent dock area with the detector channel-definition page, the drop file list, burst-search + baseline parameters and the compute/send-to-MLE actions, the per-detector IRF plot and the results table.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Burst IRF & Background",
+      "persist": "burst_irf_bg",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Channel Definition",
+          "sections": [
+            {"type": "custom", "key": "irf_bg_channels"}
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Files & Parameters",
+          "sections": [
+            {
+              "type": "custom",
+              "key": "path_list",
+              "target": "files",
+              "options": {"title": "TTTR files (drop files or folders)", "add_folders": true}
+            },
+            {"type": "value", "attr": "min_photons", "label": "Min photons/burst", "kind": "int",
+             "minimum": 2, "maximum": 100000, "step": 5,
+             "description": "Burst-search minimum photons. Photons NOT in a burst are treated as background/scatter."},
+            {"type": "value", "attr": "photon_window", "label": "Photon window", "kind": "int",
+             "minimum": 2, "maximum": 10000, "step": 1,
+             "description": "Sliding photon window used by the burst search to estimate the local count rate."},
+            {"type": "value", "attr": "time_window_ms", "label": "Time window (ms)", "kind": "float",
+             "decimals": 3, "minimum": 0.001, "maximum": 1000.0, "step": 0.1,
+             "description": "Burst-search time window (ms)."},
+            {"type": "value", "attr": "baseline_quantile", "label": "Dark-count floor (quantile)", "kind": "float",
+             "decimals": 2, "minimum": 0.0, "maximum": 0.9, "step": 0.05,
+             "description": "Quantile of the non-burst micro-time histogram taken as the flat dark-count floor, subtracted before normalising the IRF."},
+            {"type": "value", "attr": "micro_time_binning", "label": "Micro-time binning", "kind": "int",
+             "minimum": 1, "maximum": 64, "step": 1,
+             "description": "Micro-time coarsening for the MLE IRF/background patterns (match the burst-MLE binning)."},
+            {"type": "custom", "key": "irf_bg_run"}
+          ]
+        },
+        {
+          "type": "plot",
+          "source": "irf_series",
+          "title": "IRF (non-burst scatter)",
+          "x_label": "Micro time (ns)",
+          "y_label": "IRF (normalised)",
+          "legend": true,
+          "description": "Per-detector scatter-derived IRF from the non-burst photons."
+        },
+        {
+          "type": "panel",
+          "title": "Results",
+          "sections": [
+            {"type": "custom", "key": "irf_bg_results"}
+          ]
+        }
+      ]
+    }
+  ]
+}

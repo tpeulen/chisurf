@@ -1,0 +1,14 @@
+{
+  "id": "burst_irf_bg",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Single-Molecule:Burst IRF & Background",
+  "description": "Extract a per-detector IRF and background rate from the non-burst photons of a single-molecule measurement, and feed them to the burst MLE lifetime fit.",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Spectroscopy", "Single-Molecule"],
+  "state_namespace": "burst_irf_bg",
+  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+  "entrypoints": {
+    "gui": "chisurf.plugins.burst.burst_irf_bg.gui.tool:BurstIrfBackgroundTool"
+  },
+  "menu_hidden": true
+}

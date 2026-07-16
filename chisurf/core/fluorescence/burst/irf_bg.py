@@ -42,7 +42,12 @@ from chisurf.core.fluorescence.burst.background import (
 from chisurf.core.fluorescence.burst.burst import burst_filter
 from chisurf.core.fluorescence.tcspc.irf import detect_rising_edge
 
-__all__ = ["DetectorIrfBackground", "non_burst_mask", "extract_irf_background"]
+__all__ = [
+    "DetectorIrfBackground",
+    "non_burst_mask",
+    "extract_irf_background",
+    "extract_mle_irf_background",
+]
 
 
 def _micro_time_channels_per_period(tttr: tttrlib.TTTR) -> int:
@@ -274,5 +279,102 @@ def extract_irf_background(
             n_background_photons=int(det_bg.sum()),
             n_burst_photons=int(det_burst.sum()),
         )
+
+    return results
+
+
+def extract_mle_irf_background(
+    tttr: tttrlib.TTTR,
+    detectors: Mapping[str, Mapping[str, Any]],
+    *,
+    micro_time_binning: int = 1,
+    mask: np.ndarray | None = None,
+    min_photons: int = 60,
+    photon_window: int = 10,
+    time_window: float = 1e-3,
+    baseline_quantile: float = 0.2,
+) -> dict[str, dict[str, np.ndarray]]:
+    """Build MLE-ready IRF and background patterns from the non-burst photons.
+
+    Produces, per detector, the "vv_vh"-stacked ``[parallel, perpendicular]``
+    micro-time patterns the burst-MLE lifetime fit consumes (its ``irf_np`` and
+    ``bg_np`` per detector). The polarization split follows the MLE convention:
+    even-indexed routing channels (``chs[::2]``) are parallel, odd-indexed
+    (``chs[1::2]``) are perpendicular; a single-channel detector uses that channel
+    for both halves. Each half is a micro-time histogram of that detector's
+    **non-burst** photons at ``micro_time_binning`` resolution, so the same
+    non-burst scatter/background that this module reads also serves the fit —
+    no separate scatter or buffer acquisition.
+
+    * The **background** pattern is the raw non-burst histogram (the per-bin
+      counts the fit subtracts: flat dark counts plus the scatter prompt).
+    * The **IRF** pattern is the same histogram with its flat dark-count floor (a
+      low quantile) subtracted, isolating the scatter prompt used for convolution.
+
+    Parameters
+    ----------
+    tttr : tttrlib.TTTR
+        Single-molecule photon stream.
+    detectors : Mapping[str, Mapping[str, Any]]
+        Detector definitions ``{name: {"chs": [...], ...}}`` (as from the shared
+        channel wizard / burst :class:`Setup`).
+    micro_time_binning : int
+        Micro-time coarsening factor (matches the MLE wizard's binning); each
+        vv_vh half has length ``n_micro_channels / micro_time_binning``.
+    mask : numpy.ndarray, optional
+        Precomputed non-burst boolean mask; derived with :func:`non_burst_mask`
+        from the burst-search parameters below when omitted.
+    min_photons, photon_window, time_window
+        Burst-search parameters used only when ``mask`` is not given.
+    baseline_quantile : float
+        Dark-count floor quantile subtracted to form the IRF pattern.
+
+    Returns
+    -------
+    dict[str, dict[str, numpy.ndarray]]
+        ``{detector_name: {"irf": vv_vh_irf, "bg": vv_vh_bg}}``, each array the
+        parallel and perpendicular halves concatenated.
+    """
+    if mask is None:
+        keep = non_burst_mask(
+            tttr,
+            min_photons=min_photons,
+            photon_window=photon_window,
+            time_window=time_window,
+        )
+    else:
+        keep = np.asarray(mask, dtype=bool)
+    keep_idx = np.where(keep)[0]
+    non_burst = tttr[keep_idx] if keep_idx.size else tttr[np.array([], dtype=int)]
+
+    binning = max(1, int(micro_time_binning))
+    q = float(np.clip(baseline_quantile, 0.0, 1.0))
+
+    def _half(channels: list[int]) -> tuple[np.ndarray, np.ndarray]:
+        """Return (irf, bg) micro-time patterns for one polarization sub-channel set."""
+        rout = np.asarray(non_burst.routing_channel)
+        sel = np.isin(rout, channels)
+        sub = non_burst[np.where(sel)[0]]
+        hist = np.asarray(sub.get_microtime_histogram(binning)[0], dtype=np.float64)
+        bg = hist.copy()
+        if hist.sum() > 0:
+            irf = np.clip(hist - float(np.quantile(hist, q)), 0.0, None)
+        else:
+            irf = np.zeros_like(hist)
+        return irf, bg
+
+    results: dict[str, dict[str, np.ndarray]] = {}
+    for name, det in detectors.items():
+        chs = list(det.get("chs", []))
+        if not chs:
+            continue
+        p_chs = chs[::2]
+        s_chs = chs[1::2] if len(chs) > 1 else chs
+        irf_p, bg_p = _half(p_chs)
+        irf_s, bg_s = _half(s_chs)
+        results[name] = {
+            "irf": np.hstack([irf_p, irf_s]),
+            "bg": np.hstack([bg_p, bg_s]),
+        }
 
     return results

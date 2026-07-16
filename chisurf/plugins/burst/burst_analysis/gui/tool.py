@@ -25,6 +25,9 @@ class BurstWorkflowContext:
     bur_files: list[Path] = field(default_factory=list)
     mmfdb_artifacts: dict[str, Any] = field(default_factory=dict)
     raw_mmfdb_artifacts: dict[str, Any] = field(default_factory=dict)
+    #: VV/VH-stacked {detector: {"irf", "bg"}} patterns from the IRF/background
+    #: tool, applied to the MLE panel when it loads.
+    irf_background_patterns: dict[str, Any] = field(default_factory=dict)
 
     def to_payload(self) -> dict[str, Any]:
         """Return a JSON-compatible workflow context payload."""
@@ -313,6 +316,15 @@ def _burst_background(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return widget
 
 
+def _burst_irf_bg(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the IRF & background (non-burst) panel."""
+    from chisurf.plugins.burst.burst_irf_bg.gui.tool import BurstIrfBackgroundTool
+
+    widget = BurstIrfBackgroundTool(parent=parent)
+    _bind(parent, "irf_bg", widget)
+    return widget
+
+
 def _bind(parent: QtWidgets.QWidget, role: str, widget: QtWidgets.QWidget) -> None:
     """Bind a loaded panel to the workflow coordinator when available."""
     binder = getattr(parent, "bind_workflow_panel", None)
@@ -412,6 +424,16 @@ BURST_PANELS = [
         "description": "Estimate background using the selected data and channel setup.",
         "factory": _burst_background,
         "role": "background",
+    },
+    {
+        "name": "IRF & Background",
+        "icon": "✨",
+        "description": (
+            "Extract a per-detector IRF and background from the non-burst photons "
+            "and feed them to the MLE-Lifetime fit."
+        ),
+        "factory": _burst_irf_bg,
+        "role": "irf_bg",
     },
 ]
 
@@ -622,7 +644,7 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_downstream(self) -> None:
         """Apply current workflow context to loaded downstream panels."""
-        for role in ("selection", "bva", "mle", "browser", "background"):
+        for role in ("selection", "bva", "mle", "browser", "background", "irf_bg"):
             widget = self._workflow_panels.get(role)
             if widget is not None:
                 self._apply_context_to_panel(role, widget)
@@ -641,6 +663,8 @@ class BurstAnalysisTool(NavigationPanelTool):
             self._apply_context_to_browser(widget)
         elif role == "background":
             self._apply_context_to_background(widget)
+        elif role == "irf_bg":
+            self._apply_context_to_irf_bg(widget)
 
     def _apply_channels_to_burst_selection(self, widget: QtWidgets.QWidget) -> None:
         """Use step-1 definitions in Burst Selection."""
@@ -715,6 +739,79 @@ class BurstAnalysisTool(NavigationPanelTool):
                 widget.update_burst_files()
             except Exception:
                 pass
+        # Apply any IRF/background patterns captured from the IRF & Background step.
+        if self.workflow_context.irf_background_patterns:
+            self._apply_irf_bg_to_mle_widget(
+                widget, self.workflow_context.irf_background_patterns
+            )
+
+    def _apply_context_to_irf_bg(self, widget: QtWidgets.QWidget) -> None:
+        """Use selected raw files and channel setup in the IRF & Background tool."""
+        model = getattr(widget, "model", None)
+        if model is None:
+            return
+        settings = self.workflow_context.channel_settings
+        page = getattr(model, "detector_wizard_page", None)
+        if settings and page is not None:
+            try:
+                page.load_data_into_tables(settings)
+            except Exception:
+                pass
+        if self.workflow_context.raw_files and not getattr(model, "files", None):
+            try:
+                model.add_files([str(path) for path in self.workflow_context.raw_files])
+            except Exception:
+                pass
+
+    def apply_irf_background_to_mle(self, patterns: dict[str, Any]) -> int:
+        """Feed non-burst IRF/background patterns to the MLE panel (workflow handoff).
+
+        Called by the IRF & Background tool's "Send to MLE" action. The patterns
+        are stored on the workflow context and applied to the MLE panel now (if
+        loaded) and again whenever the MLE panel is (re)bound. Returns the number
+        of detectors applied.
+        """
+        self.workflow_context.irf_background_patterns = dict(patterns or {})
+        mle = self._workflow_panels.get("mle")
+        if mle is not None:
+            return self._apply_irf_bg_to_mle_widget(mle, patterns)
+        return len(patterns or {})
+
+    @staticmethod
+    def _apply_irf_bg_to_mle_widget(mle: QtWidgets.QWidget, patterns: dict[str, Any]) -> int:
+        """Set the MLE wizard's per-detector ``irf_np``/``bg_np`` and refresh its view.
+
+        Writes the arrays directly (not through the file-drop loaders, which would
+        overwrite them from empty widgets) and refreshes the decay/fit display
+        without reloading from files.
+        """
+        import numpy as np
+
+        irf_np = getattr(mle, "irf_np", None)
+        bg_np = getattr(mle, "bg_np", None)
+        if irf_np is None or bg_np is None:
+            return 0
+        count = 0
+        for det, pat in (patterns or {}).items():
+            try:
+                irf_np[det] = np.asarray(pat["irf"], dtype=float)
+                bg_np[det] = np.asarray(pat["bg"], dtype=float)
+                count += 1
+            except Exception:
+                continue
+        # Rebuild the fit with the new IRF/background and refresh the display.
+        try:
+            mle._fit = None
+        except Exception:
+            pass
+        for name in ("update_scatter_count_rate_ui", "update_decay_of_detector", "update_fit"):
+            fn = getattr(mle, name, None)
+            if callable(fn):
+                try:
+                    fn()
+                except Exception:
+                    pass
+        return count
 
     def _apply_context_to_browser(self, widget: QtWidgets.QWidget) -> None:
         """Load upstream burst results in Burst Browser."""
