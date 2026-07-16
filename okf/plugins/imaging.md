@@ -24,6 +24,7 @@ maps, with calibration and PSF-determination steps. The plugins live under
 | `microscopy/img_pixel_nb` | Imaging:Number & Brightness | Per-pixel N and B maps. |
 | `microscopy/img_calibration` | Imaging:IRF & BG | Per-detector IRF and background calibration, shared with phasor and MLE steps (skippable pipeline step). |
 | `microscopy/psf_determination` | Imaging:PSF Determination | 3D Gaussian PSF fitting and bead detection. |
+| `microscopy/clsm_generator` | Imaging:Simulate:CLSM Generator | Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s) (TIFF/numpy) — ground-truth test data for the analysis tools. AutoForm GUI over `core/fluorescence/imaging/simulate.py::simulate_clsm_from_maps` (per-pixel emitters, lifetime×intensity quantised into species per channel); browses input maps + reconstruction in the shared `image_browser` and saves the photon stream (.npz/.ptu/.spc/.ht3) + intensity TIFF. |
 | `microscopy/imaging_tools` | Spectroscopy:Image Tools | Unified toolbox: Image Browser, CLSM Draw, molecule/pixel-wise MLE, PSF Determination. |
 
 These plugins form a pipeline: an HDF5 with a source back-reference is created once
