@@ -26,7 +26,43 @@ models by BIC/ICL as usual; only *how each model is fitted* changes.
 
 from __future__ import annotations
 
+import os
+
 from .h2mm import BurstPhotons, H2mmModel, fit_states
+from .h2mm import viterbi as _viterbi_numba
+
+# Prefer the fast tttrlib C++ backend for the EM engines; fall back to numba.
+# Set CHISURF_H2MM_BACKEND=numba to force the pure-numba engine.
+try:
+    from . import h2mm_tttrlib as _tttrlib_engine
+
+    _HAVE_TTTRLIB = _tttrlib_engine.HAVE_TTTRLIB
+except Exception:  # pragma: no cover - defensive
+    _tttrlib_engine = None
+    _HAVE_TTTRLIB = False
+
+
+def _use_tttrlib() -> bool:
+    """Whether to route EM/Viterbi through the tttrlib C++ backend."""
+    if os.environ.get("CHISURF_H2MM_BACKEND", "").strip().lower() == "numba":
+        return False
+    return _HAVE_TTTRLIB
+
+
+def active_backend() -> str:
+    """Return the H2MM compute backend in use: ``'tttrlib'`` or ``'numba'``."""
+    return "tttrlib" if _use_tttrlib() else "numba"
+
+
+def viterbi(model: H2mmModel, data: BurstPhotons):
+    """Viterbi path + ICL, routed to the active backend (tttrlib or numba)."""
+    if _use_tttrlib():
+        try:
+            return _tttrlib_engine.viterbi(model, data)
+        except Exception:  # pragma: no cover - fall back on any backend issue
+            pass
+    return _viterbi_numba(model, data)
+
 
 ENGINES: tuple[str, ...] = ("em", "em-float32", "surrogate", "surrogate-refine")
 
@@ -92,6 +128,18 @@ def fit_one(
         # No surrogate for this state count → exact EM keeps the scan usable.
         engine = "em"
 
+    single_precision = engine == "em-float32"
+    # Fast path: the tttrlib C++ backend (same algorithm, several-fold faster).
+    if _use_tttrlib():
+        try:
+            return _tttrlib_engine.fit_states(
+                data, n_states, n_restarts=n_restarts, max_iter=max_iter,
+                tol=tol, seed=seed, single_precision=single_precision,
+                on_iter=on_iter,
+            )
+        except Exception:  # pragma: no cover - fall back to numba on any issue
+            pass
+
     return fit_states(
         data,
         n_states,
@@ -99,6 +147,6 @@ def fit_one(
         max_iter=max_iter,
         tol=tol,
         seed=seed,
-        single_precision=(engine == "em-float32"),
+        single_precision=single_precision,
         on_iter=on_iter,
     )

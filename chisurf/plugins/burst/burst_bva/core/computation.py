@@ -85,6 +85,51 @@ def compute_static_bva_line(
     return ratios.mean(axis=0), ratios.std(axis=0)
 
 
+def _compute_bva_tttrlib(
+        df: pd.DataFrame,
+        tttrs: Dict[str, tttrlib.TTTR],
+        donor_channels,
+        donor_micro_time_ranges,
+        acceptor_channels,
+        acceptor_micro_time_ranges,
+        minimum_window_length: float,
+        number_of_photons_per_slice: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Fast path: per-burst proximity-ratio mean/std via the tttrlib C++ BVA
+    (parallel over bursts). Returns arrays aligned to ``df`` row order."""
+    col_ff = df.columns.get_loc("First File")
+    col_fp = df.columns.get_loc("First Photon")
+    col_lp = df.columns.get_loc("Last Photon")
+
+    n = len(df)
+    means = np.full(n, np.nan)
+    stds = np.full(n, np.nan)
+
+    # Group burst rows by their source file, preserving original row indices.
+    per_file: Dict[str, Tuple[List[int], List[int]]] = {}
+    for i, row in enumerate(df.itertuples(index=False, name=None)):
+        ff = row[col_ff]
+        if ff not in tttrs:
+            continue
+        rows_idx, bursts = per_file.setdefault(ff, ([], []))
+        rows_idx.append(i)
+        bursts.append(int(row[col_fp]))
+        bursts.append(int(row[col_lp]))
+
+    to_pairs = lambda rs: [(int(a), int(b)) for a, b in rs]
+    for ff, (rows_idx, bursts) in per_file.items():
+        bva = tttrlib.BVA(tttrs[ff])
+        bva.set_donor(list(donor_channels), to_pairs(donor_micro_time_ranges))
+        bva.set_acceptor(list(acceptor_channels), to_pairs(acceptor_micro_time_ranges))
+        bva.compute(bursts, int(number_of_photons_per_slice), float(minimum_window_length))
+        m = np.asarray(bva.get_proximity_ratio_mean())
+        s = np.asarray(bva.get_proximity_ratio_std())
+        for k, ri in enumerate(rows_idx):
+            means[ri] = m[k]
+            stds[ri] = s[k]
+    return means, stds
+
+
 def compute_bva(
         df: pd.DataFrame,
         tttrs: Dict[str, tttrlib.TTTR],
@@ -96,7 +141,26 @@ def compute_bva(
         number_of_photons_per_slice: int = -1,
         progress_window=None,
 ) -> pd.DataFrame:
-    """Compute BVA: proximity ratio mean and std per burst."""
+    """Compute BVA: proximity ratio mean and std per burst.
+
+    Uses the fast tttrlib C++ ``BVA`` engine (parallel over bursts) when
+    available, falling back to the pure-NumPy implementation otherwise.
+    """
+    if hasattr(tttrlib, "BVA"):
+        try:
+            means, stds = _compute_bva_tttrlib(
+                df, tttrs, donor_channels, donor_micro_time_ranges,
+                acceptor_channels, acceptor_micro_time_ranges,
+                minimum_window_length, number_of_photons_per_slice,
+            )
+            df['Proximity Ratio Mean'] = means
+            df['Proximity Ratio Std'] = stds
+            if progress_window:
+                progress_window.set_value(len(df))
+            return df
+        except Exception as e:  # pragma: no cover - fall back to numpy
+            logging.info(f"compute_bva: tttrlib BVA path failed ({e}); using numpy")
+
     prox_means: List[float] = []
     proxt_stds: List[float] = []
 

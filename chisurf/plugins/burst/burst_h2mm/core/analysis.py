@@ -13,8 +13,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .engines import fit_one
-from .h2mm import BurstPhotons, H2mmModel, viterbi
+from .engines import fit_one, viterbi
+from .h2mm import BurstPhotons, H2mmModel
 
 
 @dataclass
