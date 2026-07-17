@@ -1,20 +1,22 @@
-"""FCS Tools plugin — a meta tool hosting several FCS tools behind an icon rail.
+"""Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.
 
-Bundles the detector/correlation setup wizards, 2D-FLCS, Burst-wise FCS, the
-diffusion/volume calculator, the filter calculator and the FCS merger. Built on
-the reusable ``MetaToolWindow``. The ribbon execs this file with
+Merges the FCS *Correlator* workflow (detector → files → filter → correlate →
+merge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS,
+diffusion/volume calculator, fFCS filter calculator, correlation-channel
+presets) into a single left-navigation tool. Built on the reusable
+``NavigationPanelTool`` shell. The ribbon execs this file with
 ``__name__ == "plugin"``.
 """
 
 from __future__ import annotations
 
-from .tool import FcsToolboxTool
+from .tool import FcsTool, FcsToolboxTool
 
-name = "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS Tools"
+name = "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS"
 
-__all__ = ["FcsToolboxTool", "name"]
+__all__ = ["FcsTool", "FcsToolboxTool", "name"]
 
 
 if __name__ == "plugin":  # pragma: no cover
-    _fcs_toolbox_window = FcsToolboxTool()
-    _fcs_toolbox_window.show()
+    _fcs_window = FcsTool()
+    _fcs_window.show()

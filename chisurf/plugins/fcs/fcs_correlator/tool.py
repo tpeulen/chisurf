@@ -165,14 +165,28 @@ CORRELATOR_PANELS = [
 # ---------------------------------------------------------------------------
 
 class FcsCorrelatorTool(NavigationPanelTool):
-    """FCS Correlator — two-pane navigation tool replacing the QWizard."""
+    """FCS Correlator — two-pane navigation tool replacing the QWizard.
 
-    def __init__(self, parent=None):
+    Subclasses (e.g. the merged FCS tool) may pass a custom ``panels`` list and
+    ``title``; when ``panels`` is ``None`` the standalone correlator workflow
+    (:data:`CORRELATOR_PANELS`) is used. The workflow-context wiring keys off the
+    panel ``role`` values, so extra tool panels with unrelated roles are ignored
+    by the correlator step logic and simply hosted by the shared shell.
+    """
+
+    def __init__(
+        self,
+        parent=None,
+        *,
+        panels: list[dict[str, Any]] | None = None,
+        title: str = "FCS Correlator",
+        initial_role: str = "files",
+    ):
         self.workflow_context = FcsWorkflowContext()
         self._workflow_panels: dict[str, QtWidgets.QWidget] = {}
         super().__init__(
-            title="FCS Correlator",
-            panels=CORRELATOR_PANELS,
+            title=title,
+            panels=CORRELATOR_PANELS if panels is None else panels,
             parent=parent,
             minimum_size=(950, 620),
             initial_size=(1180, 760),
@@ -184,7 +198,7 @@ class FcsCorrelatorTool(NavigationPanelTool):
         # Open on "Files & Steps" by default (the detector step is preconfigured
         # from the last-used setup); the base shell starts on row 0, which also
         # lazily loads the detector panel so its context is available.
-        files_row = self._nav_row_for_role("files")
+        files_row = self._nav_row_for_role(initial_role)
         if files_row >= 0:
             self.nav_list.setCurrentRow(files_row)
 
