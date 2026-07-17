@@ -49,14 +49,6 @@ def _apply_manifest_flags(panels: list[dict]) -> list[dict]:
 # Optional-tool panel factories
 # ---------------------------------------------------------------------------
 
-def _make_correlation_def(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    from chisurf.plugins.fcs.fcs_channel_preset.gui.tool import FCSChannelWidget
-
-    w = FCSChannelWidget()
-    w.setParent(parent)
-    return w
-
-
 def _make_2dflcs(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     from chisurf.plugins.fcs.flc_2d import TwoDFCSPlugin
 
@@ -100,17 +92,10 @@ def _make_filter_calc(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 
 
 #: Optional, independent FCS tools shown below the correlator workflow. The
-#: detector-setup and merger tools are omitted here because the correlator
-#: workflow already owns those steps.
+#: channel-definition, detector-setup and merger tools are omitted here because
+#: the correlator workflow already owns those steps.
 TOOL_PANELS = _apply_manifest_flags(
     [
-        {
-            "name": "Correlation Ch Def",
-            "icon": "🎚️",
-            "factory": _make_correlation_def,
-            "role": "correlation_def",
-            "description": "Define FCS correlation channel presets.",
-        },
         {
             "name": "2D-FLCS",
             "icon": "🟦",

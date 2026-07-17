@@ -16,6 +16,12 @@
               "options": {}
             },
             {
+              "type": "custom",
+              "key": "lifetime_filter_controls",
+              "target": "",
+              "options": {}
+            },
+            {
               "type": "panel",
               "title": "Correlation Channels",
               "collapsed": false,

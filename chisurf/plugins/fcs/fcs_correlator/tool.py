@@ -58,13 +58,12 @@ def _panel_widget(tool: NavigationPanelTool, index: int) -> QtWidgets.QWidget | 
 # Panel factories
 # ---------------------------------------------------------------------------
 
-def _detector_setup(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
-        DetectorWizardPage,
-    )
-    w = DetectorWizardPage(parent=parent)
+def _channel_def(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    from chisurf.plugins.fcs.fcs_channel_preset.gui.tool import FCSChannelWidget
+
+    w = FCSChannelWidget(parent=parent)
     w.setParent(parent)
-    _bind(parent, "detector", w)
+    _bind(parent, "channel_def", w)
     return w
 
 
@@ -123,11 +122,11 @@ def _fcs_merger(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 
 CORRELATOR_PANELS = [
     {
-        "name": "1. Detector Setup",
-        "icon": "\U0001f39b\ufe0f",
-        "description": "Define detector configurations and PIE windows.",
-        "factory": _detector_setup,
-        "role": "detector",
+        "name": "1. Channel Definitions",
+        "icon": "\U0001f39a\ufe0f",
+        "description": "Choose a detector setup and define the FCS correlation channel pairs.",
+        "factory": _channel_def,
+        "role": "channel_def",
     },
     {
         "name": "2. Files & Steps",
@@ -204,8 +203,8 @@ class FcsCorrelatorTool(NavigationPanelTool):
 
     def bind_workflow_panel(self, role: str, widget: QtWidgets.QWidget) -> None:
         self._workflow_panels[role] = widget
-        if role == "detector":
-            self._bind_detector_panel(widget)
+        if role == "channel_def":
+            self._bind_channel_def_panel(widget)
         elif role == "files":
             self._bind_files_panel(widget)
         self._apply_context_to_panel(role, widget)
@@ -244,10 +243,10 @@ class FcsCorrelatorTool(NavigationPanelTool):
         self._set_nav_enabled("filter", use_filter)
         self._set_nav_enabled("merger", use_merger)
 
-    def _bind_detector_panel(self, widget: QtWidgets.QWidget) -> None:
+    def _bind_channel_def_panel(self, widget: QtWidgets.QWidget) -> None:
         try:
             widget.setup_combo.currentIndexChanged.connect(
-                self._on_detector_setup_changed
+                self._on_channel_setup_changed
             )
         except Exception:
             pass
@@ -273,11 +272,20 @@ class FcsCorrelatorTool(NavigationPanelTool):
         return _panel_widget(self, index)
 
     def _refresh_context(self) -> None:
-        detector = self._workflow_panels.get("detector")
-        if detector is not None:
+        chdef = self._workflow_panels.get("channel_def")
+        if chdef is not None:
             try:
-                self.workflow_context.detector_settings = detector.get_settings()
-                self.workflow_context.channel_defs = detector.channels()
+                setup_name, detectors, channel_defs = self._channel_def_context(chdef)
+                # No detector-setup step any more: the container type is
+                # auto-detected per file (``tttr_reading`` left empty), and the
+                # correlation channels / FCS presets come from the channel-def
+                # step's selected setup.
+                self.workflow_context.detector_settings = {
+                    "setup_name": setup_name,
+                    "detectors": detectors,
+                    "tttr_reading": {},
+                }
+                self.workflow_context.channel_defs = channel_defs
             except Exception:
                 pass
         files = self._workflow_panels.get("files")
@@ -494,14 +502,32 @@ class FcsCorrelatorTool(NavigationPanelTool):
             )
             merger_model.load_correlations(folder)
 
-    def _on_detector_setup_changed(self) -> None:
-        files = self._workflow_panels.get("files")
-        if files is not None:
-            try:
-                files.file_list.clear()
-                files._files_or_checks_changed()
-            except Exception:
-                pass
+    @staticmethod
+    def _channel_def_context(
+        widget: QtWidgets.QWidget,
+    ) -> tuple[str, dict, dict]:
+        """Extract (setup_name, detectors, channel_defs) from the channel-def panel.
+
+        ``FCSChannelWidget`` selects a detector setup and builds the same logical
+        channel mapping (``build_channels_from_setup``) that the old detector step
+        exposed via ``channels()``, so the correlator/filter panels get the exact
+        context they expect without a separate detector-setup page.
+        """
+        setup_name = ""
+        try:
+            setup_name = widget.setup_combo.currentText().strip()
+        except Exception:
+            setup_name = ""
+        setups = getattr(widget, "_detector_setups", {}) or {}
+        setup = setups.get(setup_name, {}) if isinstance(setups, dict) else {}
+        detectors = setup.get("detectors", {}) if isinstance(setup, dict) else {}
+        channel_defs = dict(getattr(widget, "_channels_for_setup", {}) or {})
+        return setup_name, (detectors or {}), channel_defs
+
+    def _on_channel_setup_changed(self) -> None:
+        # Re-derive the correlation context from the newly selected setup and
+        # drop any stale filter selection (channels/micro-times are setup-bound).
+        self._refresh_context()
         model = getattr(self, "_filter_model", None)
         if model is not None:
             try:

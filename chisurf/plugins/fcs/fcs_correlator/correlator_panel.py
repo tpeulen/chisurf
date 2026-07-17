@@ -101,10 +101,20 @@ class CorrelatorSettingsModel:
         # Optional lifetime-filter (FLCS) weight source: when set, correlation
         # switches from binary channel/micro-time masks to species auto/cross
         # correlations weighted by the loaded filters (see set_lifetime_filters).
+        # In this mode the A/B selectors pick *species* (filter rows) instead of
+        # detector channels; ``_species_a``/``_species_b`` hold those indices.
         self._lifetime_filters: typing.Any = None
         self._filter_labels: list[str] | None = None
+        self._filter_source: str = ""
+        self._species_a: int = 0
+        self._species_b: int = 0
 
         self._form: typing.Any = None
+
+    @property
+    def filter_mode(self) -> bool:
+        """True when lifetime filters are loaded (species-correlation mode)."""
+        return self._lifetime_filters is not None
 
     def view_spec(self):
         return load_view_spec(_GUI_DIR / "correlator.view.json")
@@ -124,7 +134,7 @@ class CorrelatorSettingsModel:
             {
                 "x": c["x"],
                 "y": c["y"],
-                "name": f"chunk {i}",
+                "name": c.get("name", f"chunk {i}"),
                 "color": pg.intColor(i, hues=max(n, 6)),
             }
             for i, c in enumerate(self._correlations)
@@ -145,6 +155,71 @@ class CorrelatorSettingsModel:
         """
         self._lifetime_filters = filters
         self._filter_labels = list(labels) if labels is not None else None
+        # Reset the species selection to the first (auto-correlation) species.
+        self._species_a = 0
+        self._species_b = 0
+
+    def load_lifetime_filter_file(self, path) -> int:
+        """Load lifetime filters from a file and switch to species mode.
+
+        Supported formats:
+
+        * ``.json`` — an fFCS ``FilterResult`` written by the FCS Filter
+          Calculator (``to_json``); the ``(n_species, n_bins)`` correlation
+          filter matrix (nuisance filters excluded) and species labels are used.
+        * ``.npy`` — a 2-D ``(n_species, n_bins)`` filter matrix.
+        * ``.npz`` — an archive with a ``filters`` array and optional ``labels``.
+
+        Returns
+        -------
+        int
+            The number of species (filter rows) loaded.
+        """
+        p = pathlib.Path(path)
+        suffix = p.suffix.lower()
+        labels: list[str] | None = None
+        if suffix == ".json":
+            from chisurf.plugins.fcs.fcs_filter_calculator.api import FilterResult
+
+            result = FilterResult.from_json(p)
+            filters = np.asarray(result.to_channel_filters(), dtype=float)
+            meta = result.metadata or {}
+            for key in ("species_labels", "labels", "component_labels"):
+                val = meta.get(key)
+                if isinstance(val, (list, tuple)) and len(val) >= filters.shape[0]:
+                    labels = [str(x) for x in val[: filters.shape[0]]]
+                    break
+        elif suffix == ".npz":
+            data = np.load(p, allow_pickle=True)
+            filters = np.asarray(data["filters"], dtype=float)
+            if "labels" in data:
+                labels = [str(x) for x in list(data["labels"])]
+        else:  # .npy or raw array
+            filters = np.asarray(np.load(p), dtype=float)
+        if filters.ndim != 2:
+            raise ValueError(
+                f"Expected a 2-D (n_species, n_bins) filter matrix, got shape {filters.shape}"
+            )
+        if labels is None:
+            labels = [f"Species {k + 1}" for k in range(filters.shape[0])]
+        self.set_lifetime_filters(filters, labels)
+        self._filter_source = p.name
+        return filters.shape[0]
+
+    def clear_lifetime_filter(self) -> None:
+        """Unload lifetime filters and return to detector-channel correlation."""
+        self.set_lifetime_filters(None, None)
+        self._filter_source = ""
+
+    @staticmethod
+    def _subset_species(filters, indices):
+        """Return ``filters`` restricted to the given species (filter rows)."""
+        if isinstance(filters, dict):
+            return {ch: np.asarray(f)[indices] for ch, f in filters.items()}
+        arr = np.asarray(filters, dtype=float)
+        if arr.ndim == 3:  # (n_channels, n_species, n_bins)
+            return arr[:, indices, :]
+        return arr[indices]
 
     def correlate_data(self, parent_widget: QtWidgets.QWidget | None = None) -> None:
         if self._tttr is None or len(self._tttr) == 0:
@@ -207,22 +282,36 @@ class CorrelatorSettingsModel:
         return [tttr[i * chunk_size : (i + 1) * chunk_size] for i in range(n)]
 
     def _correlate_lifetime_filtered(self) -> None:
-        """Compute species auto-/cross-correlations weighted by lifetime filters.
+        """Compute the selected species auto-/cross-correlation from the filters.
 
-        Delegates to the Qt-free entrypoint
-        :func:`chisurf.plugins.fcs.fcs_correlator.core.filtered_correlation_from_tttr`
-        and stores one correlation curve per species pair (species-tagged).
+        In filter mode the A/B selectors pick species (filter rows): equal
+        indices give that species' auto-correlation, distinct indices give the
+        A×B cross-correlation. Delegates to the Qt-free entrypoint
+        :func:`chisurf.plugins.fcs.fcs_correlator.core.filtered_correlation_from_tttr`.
         """
         from chisurf.plugins.fcs.fcs_correlator.core import filtered_correlation_from_tttr
 
         self._correlations.clear()
+        labels = self._filter_labels or []
+        i, j = int(self._species_a), int(self._species_b)
+        if i == j:
+            indices = [i]
+            want_cross = False
+        else:
+            indices = [i, j]
+            want_cross = True
+        sub_filters = self._subset_species(self._lifetime_filters, indices)
+        sub_labels = [labels[k] for k in indices] if len(labels) > max(indices) else None
         datasets = filtered_correlation_from_tttr(
             self._tttr,
-            self._lifetime_filters,
+            sub_filters,
             self.get_correlation_settings(),
-            labels=self._filter_labels,
+            labels=sub_labels,
         )
         for d in datasets:
+            is_cross = d["species_a"] != d["species_b"]
+            if is_cross != want_cross:
+                continue
             self._correlations.append({
                 "x": d["x"],
                 "y": d["y"],
@@ -230,8 +319,8 @@ class CorrelatorSettingsModel:
                 "chunk": 0,
                 "duration": 0.0,
                 "name": d["name"],
-                "channel_a": {"species": d["species_a"]},
-                "channel_b": {"species": d["species_b"]},
+                "channel_a": {"species": i},
+                "channel_b": {"species": j},
             })
 
     def _correlate_one(self, tttr, ch1, ch2, settings, idx):
@@ -448,20 +537,27 @@ class _ChannelComboWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
 
-        lbl_a = QtWidgets.QLabel("A:")
-        layout.addWidget(lbl_a)
+        self.lbl_a = QtWidgets.QLabel("A:")
+        layout.addWidget(self.lbl_a)
         self.combo_a = QtWidgets.QComboBox()
         self.combo_a.currentIndexChanged.connect(lambda i: self._on_combo("a"))
         layout.addWidget(self.combo_a, 1)
 
-        lbl_b = QtWidgets.QLabel("B:")
-        layout.addWidget(lbl_b)
+        self.lbl_b = QtWidgets.QLabel("B:")
+        layout.addWidget(self.lbl_b)
         self.combo_b = QtWidgets.QComboBox()
         self.combo_b.currentIndexChanged.connect(lambda i: self._on_combo("b"))
         layout.addWidget(self.combo_b, 1)
 
     def _on_combo(self, side: str) -> None:
         combo = self.combo_a if side == "a" else self.combo_b
+        # Species-selection mode: the combos index filter rows, not channels.
+        if self._model.filter_mode:
+            idx = combo.currentIndex()
+            if idx < 0:
+                return
+            setattr(self._model, "_species_a" if side == "a" else "_species_b", idx)
+            return
         ch_edit = "channel_a" if side == "a" else "channel_b"
         mt_edit = "microtime_range_a" if side == "a" else "microtime_range_b"
         key = combo.currentText()
@@ -490,6 +586,28 @@ class _ChannelComboWidget(QtWidgets.QWidget):
         setattr(self._model, mt_edit, ";".join(segs))
 
     def refresh(self) -> None:
+        # Species-selection mode: list filter species; A/B index filter rows.
+        if self._model.filter_mode:
+            self.lbl_a.setText("Species A:")
+            self.lbl_b.setText("Species B:")
+            labels = list(self._model._filter_labels or [])
+            for combo, attr in (
+                (self.combo_a, "_species_a"),
+                (self.combo_b, "_species_b"),
+            ):
+                combo.blockSignals(True)
+                combo.clear()
+                combo.addItems(labels)
+                want = int(getattr(self._model, attr, 0))
+                if 0 <= want < combo.count():
+                    combo.setCurrentIndex(want)
+                elif combo.count() > 0:
+                    combo.setCurrentIndex(0)
+                combo.blockSignals(False)
+            return
+
+        self.lbl_a.setText("A:")
+        self.lbl_b.setText("B:")
         keys = list(self._model._channel_defs.keys())
         try:
             keys.sort()
@@ -506,6 +624,93 @@ class _ChannelComboWidget(QtWidgets.QWidget):
             elif combo.count() > 0:
                 combo.setCurrentIndex(0)
             combo.blockSignals(False)
+
+
+@register_section("lifetime_filter_controls")
+class _LifetimeFilterControls(QtWidgets.QWidget):
+    """Load / unload lifetime (FLCS) filters for species-correlation mode."""
+
+    AUTOFORM_REFRESH = True
+
+    def __init__(self, model, target: str = "", **options):
+        super().__init__()
+        self._model = model
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        self.btn_load = QtWidgets.QToolButton()
+        self.btn_load.setText("🧬 Load filters…")
+        self.btn_load.setToolTip(
+            "Load lifetime (FLCS) filters from a Filter-Calculator JSON, or a "
+            ".npy/.npz filter matrix. Correlation then produces species "
+            "auto-/cross-correlations; the A/B selectors pick species."
+        )
+        self.btn_load.clicked.connect(self._on_load)
+        layout.addWidget(self.btn_load)
+
+        self.btn_unload = QtWidgets.QToolButton()
+        self.btn_unload.setText("✖ Unload")
+        self.btn_unload.setToolTip(
+            "Remove the loaded lifetime filters and return to detector-channel "
+            "correlation."
+        )
+        self.btn_unload.clicked.connect(self._on_unload)
+        layout.addWidget(self.btn_unload)
+
+        self._status = QtWidgets.QLabel()
+        layout.addWidget(self._status, 1)
+        self.refresh()
+
+    def _on_load(self) -> None:
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self.window() or self,
+            "Load lifetime filters",
+            "",
+            "Lifetime filters (*.json *.npy *.npz);;All files (*)",
+        )
+        if not path:
+            return
+        try:
+            n = self._model.load_lifetime_filter_file(path)
+        except Exception as exc:  # pragma: no cover - GUI error path
+            QtWidgets.QMessageBox.critical(
+                self.window() or self, "Filter load failed", str(exc)
+            )
+            return
+        self._refresh_panel()
+        self._status.setText(f"{n} species loaded.")
+
+    def _on_unload(self) -> None:
+        self._model.clear_lifetime_filter()
+        self._refresh_panel()
+
+    def _refresh_panel(self) -> None:
+        """Refresh sibling refreshable widgets (the A/B selectors) and plots."""
+        window = self.window() or self
+        for w in window.findChildren(QtWidgets.QWidget):
+            if w is not self and getattr(w, "AUTOFORM_REFRESH", False):
+                try:
+                    w.refresh()
+                except Exception:
+                    pass
+        form = getattr(self._model, "_form", None)
+        if form is not None:
+            try:
+                form.refresh_plots()
+            except Exception:
+                pass
+        self.refresh()
+
+    def refresh(self) -> None:
+        if self._model.filter_mode:
+            src = self._model._filter_source or "filters"
+            n = len(self._model._filter_labels or [])
+            self._status.setText(f"Species mode: {src} ({n} species).")
+            self.btn_unload.setEnabled(True)
+        else:
+            self._status.setText("Detector-channel mode (no filters loaded).")
+            self.btn_unload.setEnabled(False)
 
 
 @register_section("correlate_controls")
