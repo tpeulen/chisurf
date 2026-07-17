@@ -18,12 +18,18 @@ Python is pinned to 3.12.
 # Common commands
 
 ```bash
-pixi run chisurf            # launch the GUI (== python -m chisurf)
-pixi run build-extensions   # build modules/ C++ extensions
+pixi run chisurf            # launch the GUI (builds extensions first, == python -m chisurf)
+pixi run build-extensions   # build modules/ C++ extensions (+ local tttrlib)
 pixi run lint               # ruff check + ruff format --check
 pixi run fmt                # ruff format + ruff check --fix
 pixi run typecheck          # mypy chisurf/
 ```
+
+`build-extensions` also runs `build-tttrlib`, which builds the developer-local
+tttrlib source (the gitignored `modules/tttrlib` symlink) over the conda
+`tttrlib` package so pixi always uses the newest build (needed for e.g. the
+unreleased `SimEngine` photon simulator); it no-ops when that symlink is absent,
+so CI uses the conda package. See [compiled modules](/subsystems/compiled-modules.md).
 
 # Style
 
