@@ -32,6 +32,28 @@ tooltips, and manifest `rpc_methods` can be rendered as forms via
 When touching GUI code, prefer porting hand-built widgets to AutoForm + a
 JSON view scheme.
 
+## UI convention: space-efficient labels + tooltips (general rule)
+
+Screen space is a first-class constraint everywhere in ChiSurf — panels dock
+side by side and controls must stay narrow. Therefore, for **all** UI (AutoForm
+`label`/`description`, and hand-built Qt widgets alike):
+
+- **Labels are terse** — one or two short words, abbreviations welcome (`Ch A`,
+  `µt A`, `Bins`, `Fine`, `Width`, `Skew`, `AP`, `IRF`). Never put a full phrase
+  or a unit-laden sentence in a label.
+- **The full meaning goes in the tooltip** — the complete description, units,
+  and examples. In AutoForm this is the section `description` (mapped to the
+  widget tooltip, [[viewspec-description-tooltip]]); in hand-built widgets call
+  `setToolTip`. App-wide tooltip folding ([`chisurf/gui/tooltip.py`](/workflows/build-and-env.md))
+  keeps long tooltips readable, so descriptions can be as complete as needed.
+- **Prefer vertical stacking over wide side-by-side rows** when horizontal space
+  is tight (AutoForm panel `n_col: 1`); prefer compact controls (short spin-box
+  widths, emoji `QToolButton`s over text buttons). Default to the layout that
+  keeps a panel usable at its *narrowest* docked width.
+
+This is a standing rule: when adding or editing any control, choose the
+space-efficient form by default and move detail into the tooltip.
+
 # Node editor widget
 
 `chisurf/gui/widgets/node_editor/` is a self-contained, dependency-light node
