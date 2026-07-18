@@ -533,21 +533,24 @@ class _ChannelComboWidget(QtWidgets.QWidget):
     def __init__(self, model, target: str = "", **options):
         super().__init__()
         self._model = model
-        layout = QtWidgets.QHBoxLayout(self)
+        # A over B (stacked vertically) to save horizontal space.
+        layout = QtWidgets.QGridLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+        layout.setHorizontalSpacing(4)
+        layout.setVerticalSpacing(2)
 
         self.lbl_a = QtWidgets.QLabel("A:")
-        layout.addWidget(self.lbl_a)
+        layout.addWidget(self.lbl_a, 0, 0)
         self.combo_a = QtWidgets.QComboBox()
         self.combo_a.currentIndexChanged.connect(lambda i: self._on_combo("a"))
-        layout.addWidget(self.combo_a, 1)
+        layout.addWidget(self.combo_a, 0, 1)
 
         self.lbl_b = QtWidgets.QLabel("B:")
-        layout.addWidget(self.lbl_b)
+        layout.addWidget(self.lbl_b, 1, 0)
         self.combo_b = QtWidgets.QComboBox()
         self.combo_b.currentIndexChanged.connect(lambda i: self._on_combo("b"))
-        layout.addWidget(self.combo_b, 1)
+        layout.addWidget(self.combo_b, 1, 1)
+        layout.setColumnStretch(1, 1)
 
     def _on_combo(self, side: str) -> None:
         combo = self.combo_a if side == "a" else self.combo_b

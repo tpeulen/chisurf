@@ -25,6 +25,7 @@
               "type": "panel",
               "title": "Correlation Channels",
               "collapsed": false,
+              "n_col": 1,
               "sections": [
                 {
                   "type": "custom",
