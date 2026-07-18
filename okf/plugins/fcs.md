@@ -36,13 +36,17 @@ The Filter Calculator follows the fluorescence-domain objective of a
 
 Its GUI uses the shared AutoForm record-table binding for editable lifetime spectra, an AutoForm options model for polarization/background controls, and the ChiSurf `DockArea` for rearrangeable source, detector, filter, reconstruction, and residual panels. The default scientific stack places weighted residuals immediately above the reconstruction/decay plot. A compact emoji-led toolbar owns data/component/unmix/project actions through `QToolButton` menus; visible labels stay short while tooltips carry the complete descriptions. Plot colors are identity-stable rather than index-based: common detector names have semantic colors and other detector/component names use a deterministic digest palette, so toggling a channel or component cannot recolor survivors. A replaceable two-component 70/30 example is generated on first open as a reproducible 100,000-photon Poisson observation, so the filter, noisy reconstruction, and weighted-residual workflow is visible before measured data are loaded. Synthetic or fit-derived reference patterns can independently opt into shot noise with an explicit photon budget and seed.
 
-Afterpulsing/dark counts and scattered excitation light are explicit nuisance
-bases: a constant microtime pattern represents the former and the normalized
-IRF represents the latter. They participate in reconstruction, filter
-orthogonalization, and non-negative unmixing, with their fitted counts reported
-separately. With nuisance rejection enabled, the nuisance rows remain visible
-for diagnostics but are deliberately removed from correlation-facing filter
-tables; only molecular species become correlation channels.
+Afterpulsing/dark counts and scattered excitation light are the two explicit
+nuisance bases, toggled by the **AP** (`fit_background`) and **IRF**
+(`scatter_irf`) controls respectively: a constant microtime pattern represents
+the former and the normalized IRF the latter. They participate in
+reconstruction, filter orthogonalization, and non-negative unmixing, with their
+fitted counts reported separately. Nuisance rows always remain visible for
+diagnostics (drawn dotted and tagged "(rejected)" in the lifetime-filters plot)
+but are **always** removed from the correlation-facing filter tables — only
+molecular species become correlation channels. (There is no separate "reject
+nuisance" toggle; rejection is unconditional, since afterpulse/scatter should
+never become correlation channels.)
 
 IRF/scatter calibration is detector-resolved. Each detector may select its own
 measured IRF. When that entry is empty, the calculator reuses the TCSPC

@@ -3,9 +3,10 @@
 Long tooltips otherwise render as a single very wide line that can span the whole
 screen. :func:`wrap_tooltip` folds tooltip text to a configurable width, and
 :func:`install_tooltip_wrapping` applies that folding automatically to *every*
-widget tooltip in the application through an application-level event filter — so
-any ``setToolTip(...)`` call anywhere in ChiSurf is folded on first hover without
-having to change the call site.
+widget tooltip in the application through an application-level event filter that
+displays the folded tooltip itself (``QToolTip.showText``) — so any
+``setToolTip(...)`` call anywhere in ChiSurf is folded without having to change
+the call site.
 
 Configuration lives in the ChiSurf settings YAML under ``gui.tooltip``::
 
@@ -76,21 +77,21 @@ def set_tooltip(widget: QtWidgets.QWidget, text: str, width: int | None = None) 
 
 
 class _TooltipWrapFilter(QtCore.QObject):
-    """Fold a widget's tooltip the first time it is about to be shown.
+    """Show a folded tooltip for every widget that has one.
 
-    On a ``QEvent.ToolTip`` we rewrite the widget's tooltip to its folded form
-    (only for plain, unwrapped, over-width text) and let the event continue, so
-    Qt then shows the now-folded text. The rewrite is idempotent — folded
-    tooltips contain newlines and are skipped on subsequent hovers.
+    On a ``QEvent.ToolTip`` we display the widget's tooltip *ourselves* via
+    :meth:`QToolTip.showText` with the folded text and consume the event, so Qt's
+    default (unfolded, one-wide-line) tooltip never runs. We only intervene when
+    the widget actually has a tooltip; otherwise the event is passed through so
+    Qt can propagate it to a parent (tooltip inheritance).
     """
 
     def eventFilter(self, obj, event):  # noqa: N802 (Qt override)
         if event.type() == QtCore.QEvent.ToolTip and isinstance(obj, QtWidgets.QWidget):
             tip = obj.toolTip()
-            if tip and "\n" not in tip and not tip.startswith("<"):
-                width = tooltip_wrap_width()
-                if len(tip) > width:
-                    obj.setToolTip(wrap_tooltip(tip, width))
+            if tip:
+                QtWidgets.QToolTip.showText(event.globalPos(), wrap_tooltip(tip), obj)
+                return True
         return False
 
 

@@ -38,17 +38,22 @@ def test_wrap_tooltip_leaves_richtext_and_short(qapp):
     assert "\n" not in wrap_tooltip("short tip")
 
 
-def test_global_filter_folds_widget_tooltip(qapp):
+def test_global_filter_shows_and_consumes_tooltip(qapp):
     from qtpy import QtCore, QtGui, QtWidgets
 
-    from chisurf.gui.tooltip import install_tooltip_wrapping
+    from chisurf.gui.tooltip import _TooltipWrapFilter
 
-    install_tooltip_wrapping(qapp)
-    label = QtWidgets.QLabel("x")
-    label.setToolTip(_LONG)
+    filt = _TooltipWrapFilter()
     event = QtGui.QHelpEvent(QtCore.QEvent.ToolTip, QtCore.QPoint(0, 0), QtCore.QPoint(0, 0))
-    qapp.sendEvent(label, event)
-    assert "\n" in label.toolTip()
+
+    # Widget with a tooltip: the filter displays the folded text and consumes.
+    with_tip = QtWidgets.QLabel("x")
+    with_tip.setToolTip(_LONG)
+    assert filt.eventFilter(with_tip, event) is True
+
+    # Widget without a tooltip: pass through so Qt can inherit from a parent.
+    without_tip = QtWidgets.QLabel("y")
+    assert filt.eventFilter(without_tip, event) is False
 
 
 def test_settings_deep_merge_exposes_new_keys():
