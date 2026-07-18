@@ -16,7 +16,6 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 from chisurf.gui.widgets.wizard.tttr_correlator import WizardTTTRCorrelator
 
 from ..core.algorithms import BurstFcsSettings, PairConfig, parse_channel_list
@@ -114,7 +113,6 @@ class BurstFcsTool(QtWidgets.QMainWindow):
 
         self._client = BurstFcsClient()
         self._model = _BurstFcsModel()
-        self._detector_setups: Dict[str, Any] = {}
         self._pair_presets: List[Dict[str, Any]] = []
         self._curves: List[Dict[str, Any]] = []
         # Hidden correlator reused only to resolve FCS presets → channel lists.
@@ -160,11 +158,10 @@ class BurstFcsTool(QtWidgets.QMainWindow):
         lcol.setContentsMargins(6, 6, 6, 6)
         lcol.setSpacing(6)
 
-        setup_row = QtWidgets.QHBoxLayout()
-        setup_row.addWidget(QtWidgets.QLabel("Detector setup:"))
-        self.combo_setup = QtWidgets.QComboBox()
-        setup_row.addWidget(self.combo_setup, 1)
-        lcol.addLayout(setup_row)
+        from chisurf.gui.widgets.setup_selector import SetupSelector
+        self.setup_selector = SetupSelector(show_summary=False)
+        self.setup_selector.setupChanged.connect(self._on_setup_changed)
+        lcol.addWidget(self.setup_selector)
 
         from chisurf.gui.autoform import AutoForm
         self._settings_form = AutoForm(self._model, parent=self)
@@ -209,26 +206,16 @@ class BurstFcsTool(QtWidgets.QMainWindow):
     # Detector setups → FCS channel pairs
     # ------------------------------------------------------------------
     def _populate_detector_setups(self) -> None:
-        try:
-            cfg = load_detector_setups()
-            setups = cfg.get("setups", {}) if isinstance(cfg, dict) else {}
-        except Exception:
-            setups = {}
-        self._detector_setups = setups if isinstance(setups, dict) else {}
-        self.combo_setup.blockSignals(True)
-        self.combo_setup.clear()
-        self.combo_setup.addItem("")
-        for name in sorted(self._detector_setups.keys()):
-            self.combo_setup.addItem(str(name))
-        self.combo_setup.blockSignals(False)
-        self.combo_setup.currentTextChanged.connect(self._on_setup_changed)
+        # The shared SetupSelector owns loading/populating; refreshing it emits
+        # setupChanged, which drives _on_setup_changed to rebuild the pair list.
+        self.setup_selector.refresh()
 
     def _on_setup_changed(self, setup_name: str) -> None:
         self.list_pairs.clear()
         self._pair_presets = []
         if not setup_name:
             return
-        data = (self._detector_setups or {}).get(setup_name)
+        data = self.setup_selector.current_setup_dict()
         if not isinstance(data, dict):
             return
         detectors = data.get("detectors", {}) or {}
