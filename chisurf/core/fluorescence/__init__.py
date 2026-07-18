@@ -1,4 +1,5 @@
 import chisurf.core.fluorescence.general
+import chisurf.core.fluorescence.decay
 import chisurf.core.fluorescence.intensity
 import chisurf.core.fluorescence.anisotropy
 import chisurf.core.fluorescence.fcs
@@ -39,4 +40,3 @@ try:
 except Exception:
     # Final fallback in case settings or axis construction fail
     rda_axis = build_fret_rda_axis(1.0, 130.0, 96, "log")
-
