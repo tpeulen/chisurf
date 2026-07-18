@@ -48,6 +48,35 @@ molecular species become correlation channels. (There is no separate "reject
 nuisance" toggle; rejection is unconditional, since afterpulse/scatter should
 never become correlation channels.)
 
+**Single decay generator.** Synthetic decays everywhere funnel through the one
+canonical generator `chisurf/core/fluorescence/decay.py::synthetic_decay` /
+`synthetic_component_decay` (built on the shared `calculate_fluorescence_decay`
+sum-of-exponentials, the `tcspc/convolve.py` IRF kernels, and
+`sample_decay_shot_noise`). The Filter Calculator's former local
+`api.py::synthetic_decay` (a duplicate exponential+`np.convolve` implementation)
+now re-exports the core function. That generator is also surfaced as a
+full-stack plugin, `chisurf/plugins/fluorescence_decay/synthetic_decay/`
+(**Spectroscopy:Fluorescence Decay:Synthetic Decay Generator**) with API / CLI
+(`synth-decay generate|component`) / RPC (`synthetic_decay.compute[_component]`)
+/ AutoForm GUI (editable lifetime-spectrum table + histogram/IRF/noise options +
+live decay plot). The acquisition `core/experiments/tcspc/simulator.py` keeps the
+lower-level `calculate_fluorescence_decay` (it may use rise terms / zero-lifetime
+components the strict wrapper rejects).
+
+**TODO — auto-optimizing filter sweep (autoresearch).** Filter computation is
+cheap, so a planned feature sweeps the filter-defining inputs (per-species IRF
+width/skew, micro-time gating, nuisance handling, `rcond`/Tikhonov conditioning)
+to **maximize the contrast between species filters** — and hence the
+anti-correlation amplitude/contrast in the resulting species cross-correlation.
+This is marked as an **autoresearch component**: an automated search/optimizer
+(objective = species-filter separability / anti-correlation contrast) that
+proposes and ranks filter settings rather than requiring manual tuning.
+**Reuse candidate:** the 2D-FLCS plugin (`flc_2d`) already performs a lifetime
+**decay unmixing** (MEM/Tikhonov inversion of a 2D fluorescence-decay
+correlation map into lifetime species); that unmixing machinery is a strong
+candidate to drive, or seed, the fFCS filter computation and the sweep's species
+model. See [FCS catalogue & FLCS filters: PAM port](/references/fcs-pam-port.md).
+
 IRF/scatter calibration is detector-resolved. Each detector may select its own
 measured IRF. When that entry is empty, the calculator reuses the TCSPC
 synthetic-IRF machinery and searches the detector decay's prompt position and
