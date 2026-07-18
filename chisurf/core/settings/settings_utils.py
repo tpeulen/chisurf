@@ -9,10 +9,29 @@ from .file_utils import safe_open_file
 from .path_utils import get_path
 
 
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Recursively overlay ``override`` onto ``base`` (override wins on leaves).
+
+    Nested dicts are merged key-by-key; every other value (including lists) is
+    replaced wholesale by ``override``.
+    """
+    merged = dict(base)
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 def get_chisurf_settings(setting_file: pathlib.Path, use_source_folder: bool = False) -> dict:
-    """This function returns the content of a settings file in the user
-    settings path. If the settings file does not exist it is copied from
-    the package folder to the user settings path.
+    """Return the content of a settings file from the user settings path.
+
+    If the user file does not exist it is copied from the package folder. The
+    packaged (source) settings are always deep-merged *underneath* the user file,
+    so keys added in newer releases resolve with their defaults on existing
+    installs while any value the user has set still wins. Pass
+    ``use_source_folder=True`` to read the packaged defaults directly.
 
     :param setting_file: path to settings file
     :param use_source_folder: if true use settings file in source code folder
@@ -20,17 +39,24 @@ def get_chisurf_settings(setting_file: pathlib.Path, use_source_folder: bool = F
     """
     package_path = pathlib.Path(__file__).parent
     original_settings = package_path / setting_file.parts[-1]
+
+    def _read(path: pathlib.Path) -> dict:
+        return safe_open_file(
+            file_path=path,
+            processor=yaml.safe_load,
+            default_value={},
+            error_message=f"Error opening settings file {path}",
+        )
+
     if use_source_folder:
-        setting_file = package_path / setting_file.parts[-1]
-    else:
-        if not setting_file.is_file():
-            shutil.copyfile(original_settings, setting_file)
-    return safe_open_file(
-        file_path=setting_file,
-        processor=yaml.safe_load,
-        default_value={},
-        error_message=f"Error opening settings file {setting_file}"
-    )
+        return _read(original_settings)
+    if not setting_file.is_file():
+        shutil.copyfile(original_settings, setting_file)
+    defaults = _read(original_settings)
+    user = _read(setting_file)
+    if isinstance(defaults, dict) and isinstance(user, dict):
+        return _deep_merge(defaults, user)
+    return user if user else defaults
 
 
 def copy_settings_to_user_folder():

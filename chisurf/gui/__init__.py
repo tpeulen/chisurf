@@ -2059,13 +2059,27 @@ class LoginDialog(QtWidgets.QDialog):
 
 def get_app():
     app = QtWidgets.QApplication(sys.argv)
-    if sys.platform == 'darwin':
-        # Compensate for low-resolution stability mode on macOS ARM64
-        # by setting a readable global application font.
+    # Global application font size is configured in the settings YAML
+    # (gui.application_font_size); on macOS it compensates for the
+    # low-resolution stability mode. 0 keeps the platform default.
+    try:
+        from chisurf.core.settings import cs_settings
+
+        _font_size = int(cs_settings.get("gui", {}).get("application_font_size", 0) or 0)
+    except Exception:
+        _font_size = 0
+    if _font_size > 0 and sys.platform == 'darwin':
         font = app.font()
-        font.setPointSize(13)
+        font.setPointSize(_font_size)
         app.setFont(font)
     set_app_style(app)
+    # Fold long tooltips app-wide (see gui.tooltip settings).
+    try:
+        from chisurf.gui.tooltip import install_tooltip_wrapping
+
+        install_tooltip_wrapping(app)
+    except Exception:
+        pass
     setup_gui(app=app, stage="setup_style")
     app.processEvents()
 

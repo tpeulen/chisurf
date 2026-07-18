@@ -16,22 +16,15 @@ from chisurf import logging
 from .registry import register_plot, register_section
 
 
-def _wrap_tooltip(text: str, width: int = 56) -> str:
+def _wrap_tooltip(text: str, width: int | None = None) -> str:
     """Word-wrap a tooltip so long descriptions break over several lines.
 
-    Existing explicit line breaks are preserved; each paragraph is wrapped to
-    ``width`` characters (Qt renders newlines in plain-text tooltips).
+    Thin delegate to the shared, YAML-configurable
+    :func:`chisurf.gui.tooltip.wrap_tooltip` (``gui.tooltip.wrap_width``).
     """
-    import textwrap
+    from chisurf.gui.tooltip import wrap_tooltip
 
-    text = str(text or "").strip()
-    if not text:
-        return ""
-    lines = []
-    for para in text.splitlines():
-        para = para.strip()
-        lines.append(textwrap.fill(para, width=width) if para else "")
-    return "\n".join(lines)
+    return wrap_tooltip(text, width)
 
 
 # --- plots -----------------------------------------------------------------

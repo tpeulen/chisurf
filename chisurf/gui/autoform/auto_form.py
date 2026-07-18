@@ -255,10 +255,14 @@ class AutoForm(QtWidgets.QWidget):
             widget.setVisible(bool(section.visible))
             # Default path for inline help: a section's ``description`` becomes
             # the widget's tooltip. Field widgets additionally set it on their
-            # editor (Qt tooltips do not propagate to child widgets).
+            # editor (Qt tooltips do not propagate to child widgets). Fold long
+            # descriptions so the label column's tooltip does not render as one
+            # very wide line.
             desc = getattr(section, "description", "")
             if desc:
-                widget.setToolTip(desc)
+                from chisurf.gui.tooltip import wrap_tooltip
+
+                widget.setToolTip(wrap_tooltip(desc))
             if getattr(widget, "is_form_field", False):
                 pending.append(widget)
             else:

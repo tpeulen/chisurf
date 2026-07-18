@@ -50,6 +50,13 @@ gui:
   RubberBandResize: true
   confirm_close_fit: true
   confirm_close_program: true
+  # Global application UI font point size. On macOS this compensates for the
+  # low-resolution stability mode; set 0 to keep the platform default.
+  application_font_size: 13
+  tooltip:
+    # Fold long tooltips app-wide so they don't render as one very wide line.
+    enabled: true
+    wrap_width: 72
   console_init: "%matplotlib inline
 
     %config Completer.use_jedi = False
