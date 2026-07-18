@@ -1,0 +1,31 @@
+{
+  "id": "synthetic_decay",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Fluorescence Decay:Synthetic Decay Generator",
+  "description": "Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI.",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Spectroscopy", "Fluorescence Decay"],
+  "state_namespace": "synthetic_decay",
+  "state_schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {"settings": {"type": "object"}}
+  },
+  "statefulness": {
+    "enabled": true,
+    "window": {"enabled": true, "settings_key": null}
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool:SyntheticDecayTool",
+    "cli": "synth-decay=chisurf.plugins.fluorescence_decay.synthetic_decay.cli.main:cli",
+    "services": "chisurf.plugins.fluorescence_decay.synthetic_decay.backend.services:register_services"
+  },
+  "rpc_methods": [
+    {"name": "synthetic_decay.compute", "summary": "Generate a decay from lifetimes/amplitudes (+ optional IRF, shot noise).", "params_schema": {}, "result_schema": {}, "long_running": false, "cancelable": false},
+    {"name": "synthetic_decay.compute_component", "summary": "Generate a decay from a component definition (lifetime / spectrum / gaussian-lifetime / gaussian-distance).", "params_schema": {}, "result_schema": {}, "long_running": false, "cancelable": false}
+  ],
+  "events": [],
+  "dependencies": {},
+  "menu_hidden": false,
+  "deprecated": false
+}

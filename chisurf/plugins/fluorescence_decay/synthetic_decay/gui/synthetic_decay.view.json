@@ -1,0 +1,69 @@
+{
+  "_comment": "Synthetic decay generator — AutoForm view.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Lifetime spectrum",
+      "sections": [
+        {
+          "type": "table",
+          "source": "spectrum_source",
+          "selected_attr": "selected_row",
+          "editable": true,
+          "update_call": "update_spectrum",
+          "height": 120,
+          "columns": [
+            {"key": "amp", "label": "Amp", "description": "Amplitude (relative weight) of this lifetime component."},
+            {"key": "tau", "label": "τ", "description": "Fluorescence lifetime in nanoseconds."}
+          ]
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {"label": "➕ Add", "action": "add_row", "description": "Add a lifetime component."},
+            {"label": "➖ Remove", "action": "remove_row", "description": "Remove the selected lifetime component."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Histogram",
+      "n_col": 2,
+      "sections": [
+        {"type": "value", "attr": "n_bins", "label": "Bins", "kind": "int", "minimum": 2, "maximum": 65535, "description": "Number of micro-time (TAC) bins in the decay histogram."},
+        {"type": "value", "attr": "bin_width", "label": "Δt", "kind": "float", "minimum": 0.0001, "maximum": 100.0, "decimals": 4, "description": "Micro-time bin width in nanoseconds."},
+        {"type": "value", "attr": "start_bin", "label": "Start", "kind": "int", "minimum": 0, "maximum": 65535, "description": "Bin index where the ideal decay begins (prompt offset)."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "IRF & noise",
+      "n_col": 2,
+      "sections": [
+        {"type": "value", "attr": "irf_path", "kind": "file", "label": "IRF", "description": "Optional instrument response function file (text or .npy) to convolve with the decay. Empty = ideal decay."},
+        {"type": "toggle", "attr": "shot_noise", "label": "Noise", "description": "Poisson-sample a finite-count observation (uses Photons + Seed). Off = normalized ideal pattern."},
+        {"type": "value", "attr": "photon_count", "label": "Photons", "kind": "float", "minimum": 1.0, "maximum": 1000000000.0, "description": "Total photon count for the Poisson observation."},
+        {"type": "value", "attr": "seed", "label": "Seed", "kind": "int", "minimum": 0, "maximum": 2147483647, "description": "Random seed for the shot-noise realization (reproducible)."}
+      ]
+    },
+    {
+      "type": "button_row",
+      "buttons": [
+        {"label": "🧪 Generate", "action": "generate", "description": "Generate the decay and update the plot."},
+        {"label": "💾 Save", "action": "save", "description": "Save the generated decay (CSV / text / .npy / JSON)."}
+      ]
+    },
+    {"type": "info", "source": "status_text", "description": "Generator status."},
+    {
+      "type": "plot",
+      "source": "decay_series",
+      "title": "Synthetic decay",
+      "x_label": "Micro-time (ns)",
+      "y_label": "Counts",
+      "log_y": true,
+      "legend": true,
+      "description": "The generated fluorescence-decay histogram."
+    }
+  ]
+}
