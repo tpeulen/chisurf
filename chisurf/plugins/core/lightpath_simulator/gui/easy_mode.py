@@ -197,6 +197,7 @@ class _SingleProbeTable(QtWidgets.QWidget):
         self.probes = probes
         self._db_path = db_path
         self._filter_key = filter_key
+        self._show_header = show_header
         self._header_text = header_text
         self._setup_ui()
         self.populate()  # Populate table on creation
@@ -206,7 +207,12 @@ class _SingleProbeTable(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
 
-        self.filtered_table = FilteredTableWidget(parent=self)
+        self.filtered_table = FilteredTableWidget(
+            parent=self,
+            show_header=self._show_header,
+        )
+        if self._show_header:
+            self.set_header_text(self._header_text)
         self.filtered_table.set_item_factory(lambda item, key: _SpectraTooltipItem(
             name=item.get("name", ""),
             key=key,
@@ -1403,7 +1409,6 @@ class LightPathEasyWidget(QtWidgets.QWidget):
             sp_type = sp.get("type", "Dichroic")
             tbl = _SingleProbeTable(self.probes, db_path=self._db_path, filter_key="category:dichroic,polarizer", header_text=f"Splitter {i + 1}")
             tbl._splitter_type = sp_type
-            tbl.table.setProperty("_splitter_type", sp_type)
             tbl.set_selected_probe_id(sp.get("probe_id"))
             tbl.changed.connect(self._schedule_recalc)
             sec_optics.add_widget(tbl)
@@ -1420,7 +1425,6 @@ class LightPathEasyWidget(QtWidgets.QWidget):
         for i in range(n_missing):
             tbl = _SingleProbeTable(self.probes, db_path=self._db_path, filter_key="category:dichroic,polarizer", header_text=f"Splitter {splitter_idx}")
             tbl._splitter_type = "Dichroic"
-            tbl.table.setProperty("_splitter_type", "Dichroic")
             tbl.changed.connect(self._schedule_recalc)
             sec_optics.add_widget(tbl)
             self._splitter_tables.append(tbl)
