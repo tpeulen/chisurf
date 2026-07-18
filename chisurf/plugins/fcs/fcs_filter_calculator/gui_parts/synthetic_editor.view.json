@@ -1,0 +1,38 @@
+{
+  "_comment": "Synthetic lifetime spectrum editor rendered by the shared AutoForm infrastructure.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Synthetic decay",
+      "n_col": 2,
+      "collapsible": false,
+      "sections": [
+        {"type": "value", "attr": "name", "kind": "str", "label": "Name"},
+        {"type": "value", "attr": "bin_width", "kind": "float", "label": "TAC bin width (ns)", "minimum": 0.000001, "maximum": 1000.0, "decimals": 6},
+        {"type": "value", "attr": "start_bin", "kind": "int", "label": "Decay start bin", "minimum": 0, "maximum": 1000000},
+        {"type": "value", "attr": "irf_path", "kind": "file", "label": "IRF", "description": "Optional instrument response histogram."},
+        {"type": "toggle", "attr": "shot_noise", "label": "Poisson shot noise", "description": "Sample this reference decay as a finite photon-count histogram."},
+        {"type": "value", "attr": "photon_count", "kind": "int", "label": "Photon count", "minimum": 1, "maximum": 2147483647, "description": "Expected integrated photons used for Poisson sampling."},
+        {"type": "value", "attr": "noise_seed", "kind": "int", "label": "Noise seed", "minimum": 0, "maximum": 2147483647, "description": "Reproducible random seed; change it for another noise realization."},
+        {
+          "type": "table",
+          "title": "Lifetime spectrum",
+          "source": "spectrum_rows",
+          "editable": true,
+          "update_call": "update_spectrum_cell",
+          "height": 210,
+          "columns": [
+            {"key": "amplitude", "label": "Amplitude", "width": 130},
+            {"key": "lifetime", "label": "Lifetime (ns)", "width": 160}
+          ]
+        },
+        {"type": "button_row", "buttons": [
+          {"label": "+", "action": "add_spectrum_row", "description": "Add one lifetime component."},
+          {"label": "−", "action": "remove_spectrum_row", "description": "Remove the last lifetime component."},
+          {"label": "Read from Fit…", "action": "read_from_fit", "description": "Copy the lifetime spectrum and detector-aware decay model from an open ChiSurf fit."}
+        ]},
+        {"type": "info", "source": "fit_status", "height": 48}
+      ]
+    }
+  ]
+}

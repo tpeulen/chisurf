@@ -38,9 +38,14 @@ from .api import (
     compute_filters_from_files,
     compute_filters_mfd,
     compute_filters_mfd_from_files,
+    compute_synthetic_filters,
     load_histogram,
+    synthetic_component_decay,
+    synthetic_decay,
+    unmix_decay,
     FilterResult,
     FilterResultMFD,
+    UnmixResult,
     DetectionMode,
 )
 
@@ -50,15 +55,22 @@ from chisurf.core.plugin import load_manifest as _load_manifest
 
 from .gui.client import FilterCalcClient  # noqa: F401
 from .gui_parts.main_window import FcsFilterCalculatorWidget  # noqa: F401
+from chisurf.core.fluorescence.decay import sample_decay_shot_noise
 
 __all__ = [
     "compute_filters",
     "compute_filters_from_files",
     "compute_filters_mfd",
     "compute_filters_mfd_from_files",
+    "compute_synthetic_filters",
     "load_histogram",
+    "synthetic_component_decay",
+    "synthetic_decay",
+    "sample_decay_shot_noise",
+    "unmix_decay",
     "FilterResult",
     "FilterResultMFD",
+    "UnmixResult",
     "DetectionMode",
     "FcsFilterCalculatorWidget",
     "FilterCalcClient",

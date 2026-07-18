@@ -1,0 +1,8 @@
+{
+  "_comment": "Compact calculation options rendered by AutoForm.",
+  "sections": [
+    {"type": "toggle", "attr": "polarized", "label": "↔ Pol", "call": "polarized_changed", "description": "Stack parallel and perpendicular detector-routing channels for anisotropy-aware filter computation."},
+    {"type": "toggle", "attr": "fit_background", "label": "▤ AP", "call": "background_changed", "description": "Add a constant microtime basis pattern representing afterpulsing and uniform dark-count background."},
+    {"type": "toggle", "attr": "scatter_irf", "label": "⚡ IRF", "call": "nuisance_changed", "description": "Model scattered excitation light (the IRF) as a nuisance component. Each detector's measured IRF file, or its synthetic-IRF Width/Skew, is set per row in the Detectors table below. Afterpulse and scatter/IRF are always absorbed by their filters and excluded from the correlation-facing output."}
+  ]
+}
