@@ -121,7 +121,10 @@ def _compute_bva_tttrlib(
         bva = tttrlib.BVA(tttrs[ff])
         bva.set_donor(list(donor_channels), to_pairs(donor_micro_time_ranges))
         bva.set_acceptor(list(acceptor_channels), to_pairs(acceptor_micro_time_ranges))
-        bva.compute(bursts, int(number_of_photons_per_slice), float(minimum_window_length))
+        # tttrlib BVA.compute expects burst boundaries as an (n, 2) [start, stop]
+        # array; `bursts` is accumulated as a flat [s0, e0, s1, e1, ...] list.
+        burst_pairs = np.asarray(bursts, dtype=np.int64).reshape(-1, 2)
+        bva.compute(burst_pairs, int(number_of_photons_per_slice), float(minimum_window_length))
         m = np.asarray(bva.get_proximity_ratio_mean())
         s = np.asarray(bva.get_proximity_ratio_std())
         for k, ri in enumerate(rows_idx):
