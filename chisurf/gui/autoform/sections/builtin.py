@@ -277,6 +277,24 @@ class _BoundControlMixin:
         target = getattr(self._section, "target", None)
         return getattr(self._model, target, None) if target else None
 
+    def _refresh_host_form(self) -> None:
+        """Walk up to the hosting AutoForm and refresh its dependent widgets.
+
+        Duck-typed (an AutoForm exposes ``sync_fields`` + ``refresh_plots``) to
+        avoid importing AutoForm here. ``refresh_plots`` also re-runs every
+        ``AUTOFORM_REFRESH`` custom widget (rate-matrix, channel tables, …).
+        """
+        widget = self.parentWidget() if hasattr(self, "parentWidget") else None
+        while widget is not None:
+            if hasattr(widget, "sync_fields") and hasattr(widget, "refresh_plots"):
+                try:
+                    widget.sync_fields()
+                    widget.refresh_plots()
+                except Exception:
+                    pass
+                return
+            widget = widget.parentWidget()
+
     def _own_fit_index(self) -> int:
         try:
             fit = getattr(self._model, "fit", None)
@@ -321,6 +339,12 @@ class _BoundControlMixin:
                 fn = getattr(self._model, call, None)
                 if callable(fn):
                     fn(value)
+                # A ``call`` may change state other widgets depend on (e.g. a
+                # species/state count that resizes a rate-matrix or table). Refresh
+                # the hosting form's dependent widgets so this works in any context
+                # (standalone tool or embedded settings page), without the model
+                # needing a reference to the form.
+                self._refresh_host_form()
             # Only nudge the fit machinery when the bound object actually belongs
             # to a fit. Generic AutoForm consumers (settings/tool dialogs) have no
             # ``fit`` and must not trigger a recompute.
