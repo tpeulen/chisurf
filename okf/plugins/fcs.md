@@ -59,9 +59,15 @@ full-stack plugin, `chisurf/plugins/fluorescence_decay/synthetic_decay/`
 (**Spectroscopy:Fluorescence Decay:Synthetic Decay Generator**) with API / CLI
 (`synth-decay generate|component`) / RPC (`synthetic_decay.compute[_component]`)
 / AutoForm GUI (editable lifetime-spectrum table + histogram/IRF/noise options +
-live decay plot). The acquisition `core/experiments/tcspc/simulator.py` keeps the
-lower-level `calculate_fluorescence_decay` (it may use rise terms / zero-lifetime
-components the strict wrapper rejects).
+live decay plot). The **photon-stream simulators build their per-species
+`SimDecay` through the same generator**: the acquisition simulator
+(`plugins/core/acq/.../simulation/core/algorithms.py::build_engine`, from its
+`decay_lifetimes` + optional `irf_fwhm_ns`) and the CLSM imaging simulator
+(`core/fluorescence/imaging/simulate.py::_lifetime_species`) both call
+`synthetic_decay(...)` → `tttrlib.SimDecay.from_pattern`, replacing local
+`np.exp`/`np.convolve` code. The TCSPC-experiment `core/experiments/tcspc/simulator.py`
+keeps the lower-level `calculate_fluorescence_decay` (it may use rise terms /
+zero-lifetime components the strict wrapper rejects).
 
 **TODO — auto-optimizing filter sweep (autoresearch).** Filter computation is
 cheap, so a planned feature sweeps the filter-defining inputs (per-species IRF
