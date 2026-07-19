@@ -24,10 +24,15 @@ click-pick / markers / on-image text labels / ROI), `image_browser` (a
 navigable entry list — files, molecules, frames — beside that `image` canvas,
 with per-entry star ratings, an editable note, a filter and drag-drop; shared by
 the TTTR image browser and the molecule-wise MLE tool), `waterfall` (RGB
-time-vs-µtime images), `path_list` (drag-drop file/folder lists), and
+time-vs-µtime images), `path_list` (drag-drop file/folder lists),
+`rate_matrix` (a reusable editable N×N transition-rate grid that tracks a
+`size_attr` such as the species/state count, with the diagonal fixed at 0 — for
+kinetic interconversion matrices anywhere in ChiSurf), and
 `wizard`/`info`/`embed`. Sections take a `description` field mapped to widget
 tooltips, and manifest `rpc_methods` can be rendered as forms via
-`AutoForm.from_rpc_method`.
+`AutoForm.from_rpc_method`. A `button_row` collapses into a single popup
+`QToolButton` menu when given a `menu` label (emoji labels act as inline action
+icons) — the space-efficient default for tool actions.
 
 When touching GUI code, prefer porting hand-built widgets to AutoForm + a
 JSON view scheme.

@@ -361,14 +361,20 @@ class ButtonRowSection(Section):
     model method called with no arguments on click) and optional ``description``.
     Lets tool toolbars (load / clear / export …) be authored in JSON instead of a
     custom widget.
+
+    When ``menu`` is non-empty the row collapses into a single popup
+    ``QToolButton`` labelled ``menu`` (e.g. ``"🛠 Tools"``); the buttons become its
+    menu actions. Emoji in the labels act as inline icons, keeping toolbars
+    space-efficient.
     """
 
     buttons: typing.Tuple[typing.Mapping[str, str], ...] = ()
+    menu: str = ""
 
 
 @dataclasses.dataclass(frozen=True)
 class TableSection(Section):
-    """A read-only record table driven by a model-provided row source.
+    """A record table driven by a model-provided row source.
 
     This is the generic table primitive for admin/list panels. The view spec
     declares columns as ``{"key": ..., "label": ...}`` mappings; the renderer
@@ -388,6 +394,11 @@ class TableSection(Section):
     selected_attr: str = ""
     #: Minimum table height in pixels.
     height: int = 0
+    #: Allow cell editing.  Changes are sent to ``update_call`` as
+    #: ``(row_index, column_key, value)``.
+    editable: bool = False
+    #: Optional model method receiving ``(row_index, column_key, value)``.
+    update_call: str = ""
 
 
 @dataclasses.dataclass(frozen=True)

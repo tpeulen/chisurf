@@ -559,16 +559,37 @@ class ButtonRowWidget(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
+        if getattr(section, "menu", ""):
+            self._build_menu(section, layout)
+        else:
+            for item in section.buttons:
+                btn = QtWidgets.QToolButton()
+                btn.setText(item.get("label", ""))
+                desc = _wrap_tooltip(item.get("description", ""))
+                if desc:
+                    btn.setToolTip(desc)
+                action = item.get("action", "")
+                btn.clicked.connect(lambda checked=False, a=action: self._call(a))
+                layout.addWidget(btn)
+        layout.addStretch(1)
+
+    def _build_menu(self, section, layout) -> None:
+        """Collapse the buttons into a single popup ``QToolButton`` menu."""
+        tool = QtWidgets.QToolButton()
+        tool.setText(section.menu)
+        tool.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+        tool.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        menu = QtWidgets.QMenu(tool)
+        menu.setToolTipsVisible(True)
         for item in section.buttons:
-            btn = QtWidgets.QToolButton()
-            btn.setText(item.get("label", ""))
+            act = menu.addAction(item.get("label", ""))
             desc = _wrap_tooltip(item.get("description", ""))
             if desc:
-                btn.setToolTip(desc)
+                act.setToolTip(desc)
             action = item.get("action", "")
-            btn.clicked.connect(lambda checked=False, a=action: self._call(a))
-            layout.addWidget(btn)
-        layout.addStretch(1)
+            act.triggered.connect(lambda checked=False, a=action: self._call(a))
+        tool.setMenu(menu)
+        layout.addWidget(tool)
 
     def _call(self, action: str) -> None:
         # Flush an in-progress field edit before running the action. Fields commit

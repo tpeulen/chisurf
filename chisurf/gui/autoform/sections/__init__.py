@@ -15,6 +15,7 @@ from . import (
     image_browser_section,  # noqa: F401  (registers the "image_browser" section)
     path_list_section,  # noqa: F401  (registers the "path_list" section)
     phasor_section,  # noqa: F401  (registers the "phasor" section)
+    rate_matrix_section,  # noqa: F401  (registers the "rate_matrix" section)
     waterfall_section,  # noqa: F401  (registers the "waterfall" section)
 )
 from .registry import (
