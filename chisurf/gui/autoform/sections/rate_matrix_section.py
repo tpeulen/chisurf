@@ -53,18 +53,26 @@ class RateMatrixWidget(QtWidgets.QWidget):
         self._decimals = int(options.get("decimals", 4))
         self._diagonal = bool(options.get("diagonal", False))
         self._unit = str(options.get("unit", ""))
+        self._title = str(options.get("title", ""))
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(2)
-        if self._unit:
-            hint = QtWidgets.QLabel(f"i → j rate ({self._unit})")
-            hint.setStyleSheet("color: palette(mid);")
-            layout.addWidget(hint)
+        layout.setSpacing(1)
+        header_bits = []
+        if self._title:
+            header_bits.append(f"<b>{self._title}</b>")
+        header_bits.append(f"i → j rate ({self._unit})" if self._unit else "i → j rate")
+        hint = QtWidgets.QLabel("  ·  ".join(header_bits))
+        hint.setStyleSheet("color: palette(mid);")
+        layout.addWidget(hint)
         self.table = QtWidgets.QTableWidget(0, 0)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
+        self.table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         layout.addWidget(self.table)
+        # Do not let the grid stretch to fill the panel — keep it tight.
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum)
         self._spins: dict[tuple[int, int], QtWidgets.QDoubleSpinBox] = {}
         self._build()
 
@@ -133,8 +141,9 @@ class RateMatrixWidget(QtWidgets.QWidget):
                 self._spins[(i, j)] = spin
                 self.table.setCellWidget(i, j, spin)
         self.table.resizeColumnsToContents()
-        row_h = 30
-        self.table.setMaximumHeight(self.table.horizontalHeader().height() + row_h * n + 6)
+        row_h = 32
+        header_h = 26
+        self.table.setFixedHeight(header_h + row_h * n + 4)
         self.table.blockSignals(False)
         self._write_back(n)
 
