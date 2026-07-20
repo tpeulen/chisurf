@@ -165,16 +165,36 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating, False)
         # Counter to temporarily suspend auto-hide on focus loss (e.g., while link menu is open)
         self._suspend_auto_hide = 0
+        # The popup is a dense inspector: rows are merged where they read
+        # naturally together (title+link, value+fixed, lower+upper) so it stays
+        # small enough to sit next to the parameter it edits.
+        self.setStyleSheet(
+            "#FittingParameterDetailPopup QLabel,"
+            "#FittingParameterDetailPopup QCheckBox,"
+            "#FittingParameterDetailPopup QRadioButton { font-size: 10pt }"
+        )
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(6, 4, 6, 4)
-        layout.setSpacing(4)
+        layout.setSpacing(2)
 
-        # Header
+        # Header: name, link state and the link actions share one row.
+        header_row = QtWidgets.QHBoxLayout()
+        header_row.setSpacing(4)
         self.lbl_title = QtWidgets.QLabel(f"{controller.fitting_parameter.name}")
         font = self.lbl_title.font()
         font.setBold(True)
         self.lbl_title.setFont(font)
-        layout.addWidget(self.lbl_title)
+        self.lbl_link = QtWidgets.QLabel("")
+        self.lbl_link.setStyleSheet("color: gray; font-size: 9pt")
+        self.btn_change_link = QtWidgets.QToolButton()
+        self.btn_change_link.setText("Link…")
+        self.btn_unlink = QtWidgets.QToolButton()
+        self.btn_unlink.setText("Unlink")
+        header_row.addWidget(self.lbl_title)
+        header_row.addWidget(self.lbl_link, 1)
+        header_row.addWidget(self.btn_change_link)
+        header_row.addWidget(self.btn_unlink)
+        layout.addLayout(header_row)
 
         # Optional human-readable description of the parameter, taken from
         # the underlying Parameter/FittingParameter "description" attribute.
@@ -183,43 +203,30 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.lbl_description.setStyleSheet("color: gray; font-size: 9pt")
         layout.addWidget(self.lbl_description)
 
-        # Link info and actions
-        link_row = QtWidgets.QHBoxLayout()
-        self.lbl_link = QtWidgets.QLabel("")
-        self.btn_change_link = QtWidgets.QToolButton()
-        self.btn_change_link.setText("Link…")
-        self.btn_unlink = QtWidgets.QToolButton()
-        self.btn_unlink.setText("Unlink")
-        link_row.addWidget(self.lbl_link, 1)
-        link_row.addWidget(self.btn_change_link)
-        link_row.addWidget(self.btn_unlink)
-        layout.addLayout(link_row)
-
-        # Value editor
+        # Value editor and the "fixed" flag share one row.
         val_row = QtWidgets.QHBoxLayout()
+        val_row.setSpacing(4)
         val_row.addWidget(QtWidgets.QLabel("Value:"))
         self.sb_value = ScientificDoubleSpinBox(
             dec=True,
             decimals=_controller_decimals(controller, 'widget_value'),
             finite=False,
         )
-        val_row.addWidget(self.sb_value)
+        self.sb_value.setMaximumWidth(140)
+        val_row.addWidget(self.sb_value, 1)
+        self.cb_fixed = QtWidgets.QCheckBox("Fixed")
+        val_row.addWidget(self.cb_fixed)
         layout.addLayout(val_row)
 
-        # Fixed checkbox
-        self.cb_fixed = QtWidgets.QCheckBox("Fixed")
-        layout.addWidget(self.cb_fixed)
-
-        # Prior group. A parameter's prior generalises its bounds: the default
+        # Prior rows. A parameter's prior generalises its bounds: the default
         # "Box" choice is the uniform prior (the usual lower/upper bounds), while
         # the other choices attach a smooth prior that pulls the fit toward a
         # value (maximum-a-posteriori). Advanced per-distribution parameters live
         # behind a modal to keep this popup compact.
-        prior_group = QtWidgets.QGroupBox("Prior")
-        p_layout = QtWidgets.QVBoxLayout(prior_group)
-
         self._prior_btn_group = QtWidgets.QButtonGroup(self)
         radios_row = QtWidgets.QHBoxLayout()
+        radios_row.setSpacing(4)
+        radios_row.addWidget(QtWidgets.QLabel("Prior:"))
         self._prior_radios: typing.Dict[str, QtWidgets.QRadioButton] = {}
         for key, label in (
             ("box", "Box"),
@@ -231,46 +238,47 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
             self._prior_btn_group.addButton(rb)
             self._prior_radios[key] = rb
             radios_row.addWidget(rb)
-        p_layout.addLayout(radios_row)
+        radios_row.addStretch(1)
+        layout.addLayout(radios_row)
 
-        # Box/uniform sub-widgets (shown only when "Box" is selected).
+        # Box/uniform sub-widgets (shown only when "Box" is selected): the
+        # enable flag and both bounds fit on a single row.
         self._bounds_box = QtWidgets.QWidget()
-        b_layout = QtWidgets.QGridLayout(self._bounds_box)
+        b_layout = QtWidgets.QHBoxLayout(self._bounds_box)
         b_layout.setContentsMargins(0, 0, 0, 0)
-        self.cb_bounds_on = QtWidgets.QCheckBox("Enable bounds")
-        b_layout.addWidget(self.cb_bounds_on, 0, 0, 1, 2)
-        b_layout.addWidget(QtWidgets.QLabel("Lower:"), 1, 0)
+        b_layout.setSpacing(4)
+        self.cb_bounds_on = QtWidgets.QCheckBox("Bounds")
+        b_layout.addWidget(self.cb_bounds_on)
         self.sb_lb = ScientificDoubleSpinBox(
             dec=True, decimals=_controller_decimals(controller, 'widget_lower_bound')
         )
-        b_layout.addWidget(self.sb_lb, 1, 1)
-        b_layout.addWidget(QtWidgets.QLabel("Upper:"), 2, 0)
+        self.sb_lb.setToolTip("Lower bound")
         self.sb_ub = ScientificDoubleSpinBox(
             dec=True, decimals=_controller_decimals(controller, 'widget_upper_bound')
         )
-        b_layout.addWidget(self.sb_ub, 2, 1)
-        p_layout.addWidget(self._bounds_box)
+        self.sb_ub.setToolTip("Upper bound")
+        for lbl, sb in (("Low:", self.sb_lb), ("High:", self.sb_ub)):
+            b_layout.addWidget(QtWidgets.QLabel(lbl))
+            sb.setMaximumWidth(110)
+            b_layout.addWidget(sb, 1)
+        layout.addWidget(self._bounds_box)
 
         # Smooth-prior summary + advanced editor button.
         adv_row = QtWidgets.QHBoxLayout()
+        adv_row.setSpacing(4)
         self.lbl_prior_summary = QtWidgets.QLabel("")
         self.lbl_prior_summary.setStyleSheet("color: gray; font-size: 9pt")
         self.lbl_prior_summary.setWordWrap(True)
         self.btn_prior_advanced = QtWidgets.QToolButton()
-        self.btn_prior_advanced.setText("Edit parameters…")
+        self.btn_prior_advanced.setText("Edit…")
+        self.btn_prior_advanced.setToolTip("Edit the prior distribution parameters")
         adv_row.addWidget(self.lbl_prior_summary, 1)
         adv_row.addWidget(self.btn_prior_advanced)
-        p_layout.addLayout(adv_row)
-        layout.addWidget(prior_group)
+        layout.addLayout(adv_row)
 
         #: Guard so programmatic radio updates in ``refresh_from_model`` do not
         #: re-trigger the click handler.
         self._prior_refreshing = False
-
-        # Close hint
-        hint = QtWidgets.QLabel("Click outside to close")
-        hint.setStyleSheet("color: gray; font-size: 9pt")
-        layout.addWidget(hint)
 
         # Connections
         self.btn_change_link.clicked.connect(self._on_change_link)
@@ -586,12 +594,16 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         # Update link label
         if getattr(fp, 'link', None) is not None:
             target_group, target_local = self.controller._locate_parameter(fp.link)
-            self.lbl_link.setText(
+            # Keep the header row narrow: the short form goes on the label, the
+            # full origin of the link into its tooltip.
+            self.lbl_link.setText(f"→ {fp.link.name}")
+            self.lbl_link.setToolTip(
                 f"Linked to: {fp.link.name} ({target_group} / {target_local})"
             )
             self.btn_unlink.setEnabled(True)
         else:
             self.lbl_link.setText("Not linked")
+            self.lbl_link.setToolTip("")
             self.btn_unlink.setEnabled(False)
         # Value
         try:
