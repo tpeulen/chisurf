@@ -109,6 +109,48 @@ class Parameter(chisurf.core.base.Base):
         """Set the lower and upper bounds."""
         self._port.bounds = np.array(b, dtype=np.float64)
 
+    def _stored_bound(self, i: int, default: float) -> float:
+        """Return bound *i* as stored on the port, enforced or not."""
+        b = self._port.bounds
+        if b is not None and b[i] is not None:
+            return float(b[i])
+        stored = getattr(self._port, "_bounds", None)
+        try:
+            return float(stored[i])
+        except (TypeError, IndexError, ValueError):
+            return default
+
+    @property
+    def lb(self) -> float:
+        """Lower bound.
+
+        ``__init__`` has always accepted ``lb``/``ub`` (158 call sites pass them),
+        but there were no matching properties — so ``p.lb = 0.01`` silently
+        created a dead instance attribute and the bound was never applied, while
+        ``p.lb`` raised ``AttributeError``. These accessors close that gap; the
+        bounds themselves live on the underlying :class:`chinet.Port`.
+        """
+        # Port.bounds reports (None, None) while enforcement is OFF even though
+        # the values are stored, which would make lb/ub a lossy round-trip. Read
+        # the stored bound so `p.lb = x; p.lb == x` holds regardless of
+        # bounds_on; whether it is *enforced* is bounds_on's job.
+        return self._stored_bound(0, float("-inf"))
+
+    @lb.setter
+    def lb(self, v: float):
+        """Set the lower bound, leaving the upper bound untouched."""
+        self.bounds = (float(v), self.ub)
+
+    @property
+    def ub(self) -> float:
+        """Upper bound. See :attr:`lb`."""
+        return self._stored_bound(1, float("inf"))
+
+    @ub.setter
+    def ub(self, v: float):
+        """Set the upper bound, leaving the lower bound untouched."""
+        self.bounds = (self.lb, float(v))
+
     @property
     def bounds_on(self):
         """Whether bounds are currently enforced on the parameter."""
