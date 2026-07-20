@@ -68,12 +68,13 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         #: Optional per-detector fit-range overrides {detector: (start, stop)} in TAC
         #: bins; a detector without an entry uses the global draggable region.
         self._detector_fit_ranges: dict[str, tuple[int, int]] = {}
-        #: Persistent auto-fit settings (shown/edited in the Auto-fit dialog).
+        #: Persistent auto-fit settings, mirrored from the Auto-fit dock by
+        #: `_sync_autofit_settings` (which rebuilds this dict wholesale, so every
+        #: key here must have a dock control behind it). Periodic-convolution
+        #: settings deliberately live in the Instrument dock instead and reach the
+        #: fit through `_fit_period_ns`.
         self._auto_fit_settings: dict = {
             "kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0,
-            # Periodic (laser-period) convolution: model the previous-pulse tail
-            # wrapping into the window. period_ns=0 ⇒ use the full micro-time window.
-            "periodic": False, "period_ns": 0.0,
         }
         self._result: FilterResult | None = None
         self._result_anisotropy = None  # For single-detector Anisotropy results
