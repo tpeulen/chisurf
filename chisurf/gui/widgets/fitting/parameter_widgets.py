@@ -45,6 +45,15 @@ _PRIOR_FAMILY_SPECS = [
 ]
 _PRIOR_KIND_TO_SPEC = {kind: (label, params) for (label, kind, params) in _PRIOR_FAMILY_SPECS}
 
+#: Combo entry for the uniform/box prior, i.e. "no smooth prior, just bounds".
+_PRIOR_KIND_BOX = "box"
+
+#: Combo entry standing in for a prior this editor cannot express (callback and
+#: product priors, typically attached from a script). Selecting it is a no-op;
+#: it exists so the combo can *report* such a prior instead of silently showing
+#: an unrelated family.
+_PRIOR_KIND_OTHER = "__other__"
+
 
 def _controller_decimals(controller, editor_name: str, default: int = 6) -> int:
     """Decimals of a controller's editor, falling back when it has none.
@@ -96,9 +105,11 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.lbl_link = QtWidgets.QLabel("")
         self.lbl_link.setStyleSheet("color: gray; font-size: 9pt")
         self.btn_change_link = QtWidgets.QToolButton()
-        self.btn_change_link.setText("Link…")
+        self.btn_change_link.setText("🔗 Link…")
+        self.btn_change_link.setToolTip("Link this parameter to another parameter")
         self.btn_unlink = QtWidgets.QToolButton()
-        self.btn_unlink.setText("Unlink")
+        self.btn_unlink.setText("✂️ Unlink")
+        self.btn_unlink.setToolTip("Detach this parameter from the one it is linked to")
         header_row.addWidget(self.lbl_title)
         header_row.addWidget(self.lbl_link, 1)
         header_row.addWidget(self.btn_change_link)
@@ -127,28 +138,25 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         val_row.addWidget(self.cb_fixed)
         layout.addLayout(val_row)
 
-        # Prior rows. A parameter's prior generalises its bounds: the default
-        # "Box" choice is the uniform prior (the usual lower/upper bounds), while
-        # the other choices attach a smooth prior that pulls the fit toward a
-        # value (maximum-a-posteriori). Advanced per-distribution parameters live
-        # behind a modal to keep this popup compact.
-        self._prior_btn_group = QtWidgets.QButtonGroup(self)
-        radios_row = QtWidgets.QHBoxLayout()
-        radios_row.setSpacing(4)
-        radios_row.addWidget(QtWidgets.QLabel("Prior:"))
-        self._prior_radios: typing.Dict[str, QtWidgets.QRadioButton] = {}
-        for key, label in (
-            ("box", "Box"),
-            ("normal", "Gaussian"),
-            ("lognormal", "Log-normal"),
-            ("custom", "Custom…"),
-        ):
-            rb = QtWidgets.QRadioButton(label)
-            self._prior_btn_group.addButton(rb)
-            self._prior_radios[key] = rb
-            radios_row.addWidget(rb)
-        radios_row.addStretch(1)
-        layout.addLayout(radios_row)
+        # Prior row. A parameter's prior generalises its bounds: the "Box" choice
+        # is the uniform prior (the usual lower/upper bounds), while the other
+        # choices attach a smooth prior that pulls the fit toward a value
+        # (maximum-a-posteriori). One combo selects among all of them — a radio
+        # row covering only the common families alongside a family combo meant
+        # the same state was shown twice.
+        prior_row = QtWidgets.QHBoxLayout()
+        prior_row.setSpacing(4)
+        prior_row.addWidget(QtWidgets.QLabel("Prior:"))
+        self.cb_prior_family = QtWidgets.QComboBox()
+        self.cb_prior_family.addItem("Box (bounds only)", _PRIOR_KIND_BOX)
+        for label, kind, _ in _PRIOR_FAMILY_SPECS:
+            self.cb_prior_family.addItem(label, kind)
+        self.cb_prior_family.setToolTip(
+            "Box keeps the plain lower/upper bounds; the other families attach a "
+            "smooth prior pulling the fit toward a value"
+        )
+        prior_row.addWidget(self.cb_prior_family, 1)
+        layout.addLayout(prior_row)
 
         # Box/uniform sub-widgets (shown only when "Box" is selected): the
         # enable flag and both bounds fit on a single row.
@@ -172,24 +180,14 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
             b_layout.addWidget(sb, 1)
         layout.addWidget(self._bounds_box)
 
-        # Smooth-prior editor, inline. The distribution and its parameters are
-        # edited here rather than behind a second modal: this popup *is* the
-        # parameter editor, and pushing two clicks and another window in front of
-        # "set sigma" made a routine edit feel like an advanced feature.
+        # Smooth-prior parameters, inline. They are edited here rather than
+        # behind a second modal: this popup *is* the parameter editor, and
+        # pushing two clicks and another window in front of "set sigma" made a
+        # routine edit feel like an advanced feature.
         self._prior_box = QtWidgets.QWidget()
         p_layout = QtWidgets.QVBoxLayout(self._prior_box)
         p_layout.setContentsMargins(0, 0, 0, 0)
         p_layout.setSpacing(4)
-
-        fam_row = QtWidgets.QHBoxLayout()
-        fam_row.setSpacing(4)
-        fam_row.addWidget(QtWidgets.QLabel("Distribution:"))
-        self.cb_prior_family = QtWidgets.QComboBox()
-        for label, kind, _ in _PRIOR_FAMILY_SPECS:
-            self.cb_prior_family.addItem(label, kind)
-        self.cb_prior_family.setToolTip("Shape of the prior pulling the fit toward a value")
-        fam_row.addWidget(self.cb_prior_family, 1)
-        p_layout.addLayout(fam_row)
 
         self._prior_form_host = QtWidgets.QWidget()
         self._prior_form = QtWidgets.QFormLayout(self._prior_form_host)
@@ -210,8 +208,8 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
 
         layout.addWidget(self._prior_box)
 
-        #: Guard so programmatic radio updates in ``refresh_from_model`` do not
-        #: re-trigger the click handler.
+        #: Guard so programmatic combo/spin updates in ``refresh_from_model`` do
+        #: not re-trigger the change handlers.
         self._prior_refreshing = False
 
         # Connections
@@ -222,7 +220,6 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.sb_lb.editingFinished.connect(self._on_bounds_changed)
         self.sb_ub.editingFinished.connect(self._on_bounds_changed)
         self.sb_value.editingFinished.connect(self._on_value_changed)
-        self._prior_btn_group.buttonClicked.connect(self._on_prior_radio_clicked)
         self.cb_prior_family.currentIndexChanged.connect(self._on_prior_family_changed)
 
         self.refresh_from_model()
@@ -241,26 +238,51 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         except Exception:
             self._suspend_auto_hide = 0
 
+    def _hide_if_focus_left(self):
+        """Hide unless focus is still somewhere inside the popup.
+
+        The popup receives a ``FocusOut`` whenever one of its own children takes
+        focus — clicking a spin box or a radio button raises one — so hiding on
+        the event itself closed the popup on the very interactions it exists
+        for. The check is deferred to the event loop because the incoming focus
+        widget is only settled once the transition completes.
+        """
+        if getattr(self, '_suspend_auto_hide', 0) > 0 or not self.isVisible():
+            return
+        focused = QtWidgets.QApplication.focusWidget()
+        if focused is not None and (focused is self or self.isAncestorOf(focused)):
+            return
+        self.hide()
+
     def eventFilter(self, obj, event):
-        # Hide the popup when it loses focus or the window deactivates, unless suspended
         if event is not None:
             et = int(event.type())
-            if et == int(QtCore.QEvent.FocusOut) or et == int(QtCore.QEvent.WindowDeactivate):
+            if et == int(QtCore.QEvent.WindowDeactivate):
+                # The whole window lost focus: nothing inside the popup can own
+                # it, so hide immediately.
                 if getattr(self, '_suspend_auto_hide', 0) > 0:
-                    # Do not hide; let event pass through
                     return False
-                # Use hide (not close) as requested
                 self.hide()
                 return True
+            if et == int(QtCore.QEvent.FocusOut):
+                QtCore.QTimer.singleShot(0, self._hide_if_focus_left)
+                return False
         return super().eventFilter(obj, event)
 
     def focusOutEvent(self, event: QtGui.QFocusEvent):
-        # Extra safety: hide on focus out unless suspended
-        try:
-            if getattr(self, '_suspend_auto_hide', 0) == 0:
-                self.hide()
-        finally:
-            event.accept()
+        QtCore.QTimer.singleShot(0, self._hide_if_focus_left)
+        event.accept()
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        """Close on a click outside the popup.
+
+        ``Qt.Popup`` grabs the mouse, so clicks anywhere on screen arrive here;
+        those landing outside the popup's own rectangle dismiss it.
+        """
+        if not self.rect().contains(event.pos()):
+            self.hide()
+            return
+        super().mousePressEvent(event)
 
     def _on_change_link(self):
         menu = self.controller.build_link_menu()
@@ -431,44 +453,19 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.controller.finalize()
         self.refresh_from_model()
 
-    def _default_prior_state(self, kind: str) -> dict:
-        """Return a sensible default prior state seeded from the current value."""
-        import math
-        try:
-            v = float(self.controller.fitting_parameter.value)
-        except Exception:
-            v = 1.0
-        if kind == "normal":
-            sigma = abs(v) * 0.1
-            return {"kind": "normal", "mu": v, "sigma": sigma if sigma > 0 else 1.0}
-        if kind == "lognormal":
-            return {"kind": "lognormal", "mu": math.log(v) if v > 0 else 0.0, "sigma": 0.5}
-        return {"kind": kind}
-
-    def _on_prior_radio_clicked(self, button):
-        """React to a prior-type radio selection (ignored during refresh)."""
-        if self._prior_refreshing:
-            return
-        key = next((k for k, rb in self._prior_radios.items() if rb is button), None)
-        if key is None:
-            return
-        if key == "box":
-            # Box == uniform prior: clear any smooth prior; bounds are edited via
-            # the inline "Enable bounds" + lower/upper widgets.
-            self._apply_prior(None)
-        elif key in ("normal", "lognormal"):
-            self._apply_prior(self._default_prior_state(key))
-        elif key == "custom":
-            # "Custom" just reveals the full family list; the currently selected
-            # family is applied so the editor below has something to show.
-            self._on_prior_family_changed()
-
     def _on_prior_family_changed(self, *args):
         """Apply the family chosen in the combo, seeding its default parameters."""
         if self._prior_refreshing:
             return
         kind = self.cb_prior_family.currentData()
-        if kind is None:
+        if kind is None or kind == _PRIOR_KIND_OTHER:
+            # The "other" entry only reports a script-attached prior; selecting
+            # it must not overwrite that prior with a guess.
+            return
+        if kind == _PRIOR_KIND_BOX:
+            # Box == uniform prior: clear any smooth prior; bounds are edited via
+            # the inline "Bounds" + low/high widgets.
+            self._apply_prior(None)
             return
         self._apply_prior(self._seeded_prior_state(kind))
 
@@ -477,7 +474,7 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         if self._prior_refreshing:
             return
         kind = self.cb_prior_family.currentData()
-        if kind is None:
+        if kind not in _PRIOR_KIND_TO_SPEC:
             return
         state = {"kind": kind}
         for key, sb in self._prior_spins.items():
@@ -485,12 +482,19 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self._apply_prior(state)
 
     def _seeded_prior_state(self, kind: str) -> dict:
-        """Default state for ``kind``, with location parameters at the current value."""
+        """Default state for ``kind``, with location parameters at the current value.
+
+        A width defaults to a tenth of the parameter's magnitude rather than to a
+        flat 1.0: a prior on a rate of 1e-3 and one on a lifetime of 4 ns need
+        very different scales, and an absolute default would pin the first and
+        barely constrain the second.
+        """
         import math
         try:
             seed = float(self.controller.fitting_parameter.value)
         except Exception:
             seed = 1.0
+        scaled_sigma = abs(seed) * 0.1
         _, params = _PRIOR_KIND_TO_SPEC[kind]
         state = {"kind": kind}
         for key, _label, default in params:
@@ -499,6 +503,8 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
                 value = seed
             elif key == "mu" and kind == "lognormal" and seed > 0:
                 value = math.log(seed)
+            elif key == "sigma" and kind != "lognormal" and scaled_sigma > 0:
+                value = scaled_sigma
             state[key] = value
         return state
 
@@ -605,44 +611,20 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self._refresh_prior_selector(fp)
 
     def _refresh_prior_selector(self, fp):
-        """Sync the prior radios, bounds visibility and summary from ``fp.prior``.
+        """Sync the prior combo, bounds visibility and summary from ``fp.prior``.
 
-        Maps the effective prior onto a radio: a Gaussian selects "Gaussian", a
-        log-normal selects "Log-normal", a uniform/absent prior selects "Box"
-        (showing the inline bound editors), and any other family (truncated,
-        half-normal, exponential, gamma, beta, product or callback) selects
-        "Custom".
+        A uniform/absent prior selects "Box" and shows the inline bound editors;
+        any family this editor knows selects its own entry and shows its
+        parameter spin boxes; a prior it cannot express (callback, product)
+        selects the read-only "other" entry and shows a summary instead.
         """
-        from chisurf.core.fitting.priors import (
-            NormalPrior, LogNormalPrior, UniformPrior,
-        )
+        from chisurf.core.fitting.priors import UniformPrior
         try:
             prior = getattr(fp, "prior", None)
         except Exception:
             prior = None
 
-        if isinstance(prior, NormalPrior) and type(prior) is NormalPrior:
-            key, summary = "normal", repr(prior)
-        elif isinstance(prior, LogNormalPrior):
-            key, summary = "lognormal", repr(prior)
-        elif prior is None or isinstance(prior, UniformPrior):
-            key, summary = "box", ""
-        else:
-            key, summary = "custom", repr(prior)
-
-        self._prior_refreshing = True
-        try:
-            rb = self._prior_radios.get(key)
-            if rb is not None:
-                rb.setChecked(True)
-        finally:
-            self._prior_refreshing = False
-
-        is_box = key == "box"
-        self._bounds_box.setVisible(is_box)
-        self._prior_box.setVisible(not is_box)
-        if is_box:
-            return
+        is_box = prior is None or isinstance(prior, UniformPrior)
 
         # Which family is actually attached, and with what parameters.
         state = {}
@@ -653,25 +635,51 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         except Exception:
             state = {}
         kind = state.get("kind")
-
-        # Callback and product priors have no editable parameter list; show what
-        # they are and offer no controls rather than pretending they are editable.
         editable = kind in _PRIOR_KIND_TO_SPEC
+
         self._prior_refreshing = True
         try:
-            self.cb_prior_family.setVisible(editable)
+            self._set_prior_combo_kind(
+                _PRIOR_KIND_BOX if is_box else (kind if editable else _PRIOR_KIND_OTHER),
+                summary="" if (is_box or editable) else repr(prior),
+            )
+            self._bounds_box.setVisible(is_box)
+            self._prior_box.setVisible(not is_box)
+            if is_box:
+                return
             self._prior_form_host.setVisible(editable)
+            self.lbl_prior_summary.setVisible(not editable)
             if editable:
-                idx = self.cb_prior_family.findData(kind)
-                if idx >= 0:
-                    self.cb_prior_family.setCurrentIndex(idx)
                 self._rebuild_prior_form(kind, state)
-                self.lbl_prior_summary.setVisible(False)
             else:
-                self.lbl_prior_summary.setVisible(True)
-                self.lbl_prior_summary.setText(summary)
+                # Callback and product priors have no editable parameter list;
+                # show what they are rather than pretending they are editable.
+                self.lbl_prior_summary.setText(repr(prior))
         finally:
             self._prior_refreshing = False
+
+    def _set_prior_combo_kind(self, kind: str, summary: str = ""):
+        """Select ``kind`` in the family combo, materialising the "other" entry.
+
+        The read-only entry for script-attached priors is added on demand and
+        removed again once a real family is selected, so the dropdown only ever
+        offers it while it applies.
+        """
+        other_idx = self.cb_prior_family.findData(_PRIOR_KIND_OTHER)
+        if kind == _PRIOR_KIND_OTHER:
+            label = f"Other: {summary}" if summary else "Other (not editable here)"
+            if other_idx < 0:
+                self.cb_prior_family.addItem(label, _PRIOR_KIND_OTHER)
+                other_idx = self.cb_prior_family.count() - 1
+            else:
+                self.cb_prior_family.setItemText(other_idx, label)
+            self.cb_prior_family.setCurrentIndex(other_idx)
+            return
+        if other_idx >= 0:
+            self.cb_prior_family.removeItem(other_idx)
+        idx = self.cb_prior_family.findData(kind)
+        if idx >= 0:
+            self.cb_prior_family.setCurrentIndex(idx)
 
 
 

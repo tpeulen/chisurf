@@ -1,15 +1,18 @@
 """Headless GUI tests for the per-parameter prior selector.
 
-Exercises the prior radio selector and the **inline** distribution editor of
-``FittingParameterDetailPopup``. The prior parameters used to live behind a
-second modal (``PriorEditorDialog``, opened from an "Edit..." button); they are
-now edited in the popup itself, so there is no ``exec_()`` to work around. No
-fitting client is installed, so the popup's local echo (``fp.prior = ...``) is
-what these tests observe.
+Exercises the single prior-family combo and the **inline** distribution editor
+of ``FittingParameterDetailPopup``. The family used to be picked by a radio row
+(Box/Gaussian/Log-normal/Custom) that duplicated a second combo listing the full
+family set; one combo now selects among Box and every family. The prior
+parameters likewise used to live behind a modal and are now edited in the popup
+itself, so there is no ``exec_()`` to work around. No fitting client is
+installed, so the popup's local echo (``fp.prior = ...``) is what these tests
+observe.
 """
 
 import numpy as np
 import pytest
+from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.core.data
@@ -51,47 +54,66 @@ def _popup(qtbot, param):
     return popup
 
 
+def _select(popup, kind):
+    """Pick a prior family in the combo the way a user would."""
+    idx = popup.cb_prior_family.findData(kind)
+    assert idx >= 0, f"no combo entry for {kind!r}"
+    popup.cb_prior_family.setCurrentIndex(idx)
+
+
 def test_default_selection_is_box(qtbot, param):
     popup = _popup(qtbot, param)
-    assert popup._prior_radios["box"].isChecked()
-    assert popup._bounds_box.isVisible() or True  # visibility depends on show()
+    assert popup.cb_prior_family.currentData() == "box"
+    assert popup._bounds_box.isVisibleTo(popup)
 
 
-def test_select_gaussian_radio_sets_normal_prior(qtbot, param):
+def test_every_family_is_reachable_from_the_single_combo(qtbot, param):
+    """The combo replaced a radio row that could not reach five of the families."""
     popup = _popup(qtbot, param)
-    popup._prior_radios["normal"].click()
+    offered = {
+        popup.cb_prior_family.itemData(i) for i in range(popup.cb_prior_family.count())
+    }
+    assert offered == {
+        "box", "normal", "truncated_normal", "lognormal",
+        "half_normal", "exponential", "gamma", "beta",
+    }
+
+
+def test_select_gaussian_sets_normal_prior(qtbot, param):
+    popup = _popup(qtbot, param)
+    _select(popup, "normal")
     assert isinstance(param.prior, _priors.NormalPrior)
-    # Seeded from the current value (2.0).
+    # Seeded from the current value (2.0), width scaled to its magnitude.
     assert param.prior.mu == pytest.approx(2.0)
+    assert param.prior.sigma == pytest.approx(0.2)
 
 
-def test_select_lognormal_radio(qtbot, param):
+def test_select_lognormal(qtbot, param):
     popup = _popup(qtbot, param)
-    popup._prior_radios["lognormal"].click()
+    _select(popup, "lognormal")
     assert isinstance(param.prior, _priors.LogNormalPrior)
 
 
 def test_select_box_clears_smooth_prior(qtbot, param):
     popup = _popup(qtbot, param)
-    popup._prior_radios["normal"].click()
+    _select(popup, "normal")
     assert isinstance(param.prior, _priors.NormalPrior)
-    popup._prior_radios["box"].click()
+    _select(popup, "box")
     assert not isinstance(param.prior, _priors.NormalPrior)
 
 
 def test_refresh_reflects_existing_prior(qtbot, param):
     param.prior = _priors.GammaPrior(2.0, 1.0)
     popup = _popup(qtbot, param)
-    # Gamma is not one of the quick radios -> "Custom", and the inline editor
-    # shows the family and its parameters rather than a repr string.
-    assert popup._prior_radios["custom"].isChecked()
+    # The attached family is selected directly; the inline editor shows its
+    # parameters rather than a repr string.
     assert popup.cb_prior_family.currentData() == "gamma"
 
 
 def test_inline_editor_shows_the_prior_parameters(qtbot, param):
     """Selecting Gaussian must expose mu/sigma spin boxes in the popup itself."""
     popup = _popup(qtbot, param)
-    popup._prior_radios["normal"].click()
+    _select(popup, "normal")
 
     assert set(popup._prior_spins) == {"mu", "sigma"}
     assert popup._prior_spins["mu"].value() == pytest.approx(2.0)
@@ -101,7 +123,7 @@ def test_inline_editor_shows_the_prior_parameters(qtbot, param):
 def test_editing_a_prior_parameter_applies_it(qtbot, param):
     """The regression this refactor is for: no OK button, edits apply directly."""
     popup = _popup(qtbot, param)
-    popup._prior_radios["normal"].click()
+    _select(popup, "normal")
 
     popup._prior_spins["sigma"].setValue(0.25)
     popup._prior_spins["sigma"].editingFinished.emit()
@@ -112,10 +134,8 @@ def test_editing_a_prior_parameter_applies_it(qtbot, param):
 
 def test_switching_family_in_the_combo_applies_it(qtbot, param):
     popup = _popup(qtbot, param)
-    popup._prior_radios["normal"].click()
-
-    idx = popup.cb_prior_family.findData("gamma")
-    popup.cb_prior_family.setCurrentIndex(idx)
+    _select(popup, "normal")
+    _select(popup, "gamma")
 
     assert isinstance(param.prior, _priors.GammaPrior)
     assert set(popup._prior_spins) == {"alpha", "beta", "loc"}
@@ -123,8 +143,8 @@ def test_switching_family_in_the_combo_applies_it(qtbot, param):
 
 def test_editor_is_hidden_for_box(qtbot, param):
     popup = _popup(qtbot, param)
-    popup._prior_radios["normal"].click()
-    popup._prior_radios["box"].click()
+    _select(popup, "normal")
+    _select(popup, "box")
     assert not popup._prior_box.isVisibleTo(popup)
     assert popup._bounds_box.isVisibleTo(popup)
 
@@ -144,9 +164,32 @@ def test_uneditable_prior_falls_back_to_a_summary(qtbot, param):
     param.prior = _priors.CallablePrior(lambda v: 0.0)
     popup = _popup(qtbot, param)
 
-    assert popup._prior_radios["custom"].isChecked()
-    assert not popup.cb_prior_family.isVisibleTo(popup)
+    # The combo reports it through a read-only "other" entry instead of showing
+    # an unrelated family, and no parameter form is offered.
+    assert popup.cb_prior_family.currentData() == "__other__"
+    assert not popup._prior_form_host.isVisibleTo(popup)
     assert popup.lbl_prior_summary.isVisibleTo(popup)
+
+
+def test_other_entry_does_not_overwrite_a_script_attached_prior(qtbot, param):
+    """Re-selecting the read-only entry must not replace the prior with a guess."""
+    prior = _priors.CallablePrior(lambda v: 0.0)
+    param.prior = prior
+    popup = _popup(qtbot, param)
+
+    popup._on_prior_family_changed()
+
+    assert param.prior is prior
+
+
+def test_other_entry_is_removed_once_a_real_family_is_picked(qtbot, param):
+    param.prior = _priors.CallablePrior(lambda v: 0.0)
+    popup = _popup(qtbot, param)
+    assert popup.cb_prior_family.findData("__other__") >= 0
+
+    _select(popup, "normal")
+
+    assert popup.cb_prior_family.findData("__other__") < 0
 
 
 # --------------------------------------------------------------------------
@@ -224,3 +267,82 @@ def test_view_spec_prior_applied_when_widget_built(qapp, monkeypatch):
 
     AutoModelWidget(model)
     assert isinstance(model.k.prior, _priors.LogNormalPrior)
+
+
+# --------------------------------------------------------------------------
+# Dismissal: outside click / focus loss only, never an interaction inside
+# --------------------------------------------------------------------------
+
+def test_focus_moving_to_a_child_keeps_the_popup_open(qtbot, param):
+    """The regression this guards: clicking a spin box closed the popup.
+
+    The popup gets a ``FocusOut`` when one of its own children takes focus, so
+    hiding on that event dismissed it on the very interactions it exists for.
+    """
+    popup = _popup(qtbot, param)
+    popup.show()
+    qtbot.waitExposed(popup)
+
+    popup.sb_value.setFocus(QtCore.Qt.MouseFocusReason)
+    popup._hide_if_focus_left()
+
+    assert popup.isVisible()
+
+
+def test_focus_leaving_the_popup_hides_it(qtbot, param):
+    popup = _popup(qtbot, param)
+    popup.show()
+    qtbot.waitExposed(popup)
+
+    # Focus owned by nothing inside the popup. Asserting on the check itself
+    # rather than on a second window taking focus: an offscreen Qt::Popup holds
+    # the keyboard grab, so a real focus hand-off is not reproducible here.
+    popup.sb_value.clearFocus()
+    popup.clearFocus()
+    popup._hide_if_focus_left()
+
+    assert not popup.isVisible()
+
+
+def test_click_inside_does_not_hide_the_popup(qtbot, param):
+    popup = _popup(qtbot, param)
+    popup.show()
+    qtbot.waitExposed(popup)
+
+    inside = popup.rect().center()
+    qtbot.mouseClick(popup, QtCore.Qt.LeftButton, pos=inside)
+
+    assert popup.isVisible()
+
+
+def test_click_outside_hides_the_popup(qtbot, param):
+    """``Qt.Popup`` grabs the mouse, so an outside click arrives at the popup."""
+    popup = _popup(qtbot, param)
+    popup.show()
+    qtbot.waitExposed(popup)
+
+    outside = QtCore.QPoint(popup.width() + 50, popup.height() + 50)
+    qtbot.mouseClick(popup, QtCore.Qt.LeftButton, pos=outside)
+
+    assert not popup.isVisible()
+
+
+def test_auto_hide_is_suspended_while_a_menu_is_open(qtbot, param):
+    """Opening the link menu deactivates the window; the popup must survive."""
+    popup = _popup(qtbot, param)
+    popup.show()
+    qtbot.waitExposed(popup)
+
+    def deactivate():
+        QtWidgets.QApplication.sendEvent(
+            popup, QtCore.QEvent(QtCore.QEvent.WindowDeactivate)
+        )
+
+    popup._begin_suspend_auto_hide()
+    deactivate()
+    assert popup.isVisible(), "the popup closed while its link menu was open"
+
+    # Once the menu is done, the same deactivation does dismiss it.
+    popup._end_suspend_auto_hide()
+    deactivate()
+    assert not popup.isVisible()
