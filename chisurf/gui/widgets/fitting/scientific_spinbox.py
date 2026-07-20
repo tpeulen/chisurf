@@ -169,7 +169,17 @@ class ScientificDoubleSpinBox(QtWidgets.QAbstractSpinBox):
         self._refresh_display()
         if changed:
             self._emit_changed()
-        # editingFinished already emitted by the inner QLineEdit — don't re-emit
+        # The inner QLineEdit's editingFinished is a *different signal object*
+        # from this widget's own, and QAbstractSpinBox does not forward it for a
+        # subclass that manages its own value -- so it has to be re-emitted here.
+        # Without it, typing a value and pressing Enter (or clicking away)
+        # updated the display and emitted sigValueChanged but never reached
+        # consumers listening on editingFinished, which is what every
+        # FittingParameterWidget connects to: the number changed on screen and
+        # the model, the fit and the plots kept the old one. Stepping with the
+        # arrows worked, because stepBy() emits it explicitly -- hence "the plot
+        # updates sometimes".
+        self.editingFinished.emit()
 
     # ------------------------------------------------ QAbstractSpinBox contract
     def stepBy(self, steps: int) -> None:
