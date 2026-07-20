@@ -1919,6 +1919,22 @@ def _prior_residuals(
     """
     pieces = []
     for p in getattr(model, "parameters", []):
+        # A *bounded* parameter reports a UniformPrior, whose residuals() is
+        # empty by construction because the box is enforced as a hard optimiser
+        # bound instead. Constructing that object for every bounded parameter on
+        # every residual evaluation is pure overhead, so skip when there is no
+        # smooth prior to contribute.
+        #
+        # Both stores must be consulted: a distribution prior mirrors a
+        # serialisable spec onto the port, but a *callback* prior is runtime-only
+        # and deliberately leaves ``port.prior`` as None while keeping the live
+        # object on the parameter. Checking only the port silently drops
+        # callback priors from the objective.
+        live = getattr(p, "_prior", None)
+        port = getattr(p, "_port", None)
+        spec = getattr(port, "prior", None) if port is not None else None
+        if live is None and spec is None:
+            continue
         prior = getattr(p, "prior", None)
         if prior is None:
             continue

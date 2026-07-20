@@ -634,7 +634,17 @@ class Convolve(FittingParameterGroup):
             object.__setattr__(self, "_irf_cache", cached)
         base = cached[1]
         shift = float(self.timeshift)
-        return base if shift == 0.0 else base << shift
+        if shift == 0.0:
+            return base
+        # Cache the shifted curve too. The timeshift is only one of the free
+        # parameters, so during a finite-difference Jacobian sweep it is
+        # unchanged for all but one column — most evaluations re-shift the very
+        # same curve by the very same amount.
+        shifted = getattr(self, "_irf_shift_cache", None)
+        if shifted is None or shifted[0] is not base or shifted[1] != shift:
+            shifted = (base, shift, base << shift)
+            object.__setattr__(self, "_irf_shift_cache", shifted)
+        return shifted[2]
 
     @property
     def irf(self) -> chisurf.core.curve.Curve:
