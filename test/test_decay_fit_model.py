@@ -14,7 +14,9 @@ import numpy as np
 import pytest
 
 from chisurf.core.fluorescence.decay_fit_model import (
+    build_fret_fit,
     build_lifetime_fit,
+    fit_fret_model,
     fit_lifetime_model,
 )
 
@@ -267,3 +269,114 @@ def test_rejects_an_unusable_decay():
         build_lifetime_fit(np.ones(64), bin_width=0.0)
     with pytest.raises(ValueError):
         build_lifetime_fit(np.ones(64), bin_width=DT, tau_bounds=(5.0, 1.0))
+
+
+# --------------------------------------------------------------------------
+# FRET: fitted distances rather than lifetimes converted to efficiencies
+# --------------------------------------------------------------------------
+
+R0 = 52.0
+TAU_D0 = 4.0
+
+
+def _simulate_fret(distances=(40.0, 65.0), fractions=(0.6, 0.4), x_donor_only=0.0,
+                   n_photons=2e6, seed=1, n_bins=N_BINS, dt=DT, background=5.0):
+    """Build a donor decay quenched by FRET at known distances, plus its IRF.
+
+    Each state decays with tau_i = tau_D0 * (1 - E_i), the single-distance
+    relation the model must invert.
+    """
+    t = np.arange(n_bins, dtype=float) * dt
+    irf = np.exp(-0.5 * ((t - 1.0) / 0.25) ** 2) * 1e4
+    irf[irf < 1e-3] = 0.0
+
+    pure = np.zeros_like(t)
+    for r, x in zip(distances, fractions):
+        e = 1.0 / (1.0 + (r / R0) ** 6)
+        pure += (1.0 - x_donor_only) * x * np.exp(-t / (TAU_D0 * (1.0 - e)))
+    if x_donor_only > 0:
+        pure += x_donor_only * np.exp(-t / TAU_D0)
+
+    conv = np.convolve(pure, irf / irf.sum())[:n_bins]
+    conv = conv / conv.sum() * n_photons + background
+    y = np.random.default_rng(seed).poisson(conv).astype(float)
+    return y, irf
+
+
+def test_fret_fit_recovers_known_distances():
+    y, irf = _simulate_fret()
+    result = fit_fret_model(y, bin_width=DT, irf=irf, n_states=2,
+                            donor_lifetime=TAU_D0, forster_radius=R0,
+                            sigma=2.0, fit_donor_only=False,
+                            fit_background=True)
+
+    np.testing.assert_allclose(result["distances"], [40.0, 65.0], rtol=0.15)
+    assert result["chi2_reduced"] < 3.0, result["chi2_reduced"]
+
+
+def test_fret_efficiencies_follow_the_fitted_distances():
+    y, irf = _simulate_fret()
+    result = fit_fret_model(y, bin_width=DT, irf=irf, n_states=2,
+                            donor_lifetime=TAU_D0, forster_radius=R0,
+                            sigma=2.0, fit_donor_only=False,
+                            fit_background=True)
+
+    expected = 1.0 / (1.0 + (result["distances"] / R0) ** 6)
+    np.testing.assert_allclose(result["efficiencies"], expected)
+    # The 40 A state is high-FRET, the 65 A state low-FRET.
+    assert result["efficiencies"][0] > 0.75 > result["efficiencies"][1]
+
+
+def test_fret_distances_are_fitting_parameters():
+    """The point of the FRET migration: distances/fractions are linkable."""
+    from chisurf.core.fitting.parameter import FittingParameter
+
+    y, irf = _simulate_fret()
+    fit = build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
+                         donor_lifetime=TAU_D0, forster_radius=R0)
+    g = fit.model.gaussians
+
+    assert len(g._gaussianMeans) == 2
+    assert all(isinstance(p, FittingParameter) for p in g._gaussianMeans)
+    for p in g._gaussianMeans:
+        assert p.bounds_on and p.bounds == (10.0, 120.0)
+
+    follower, target = g._gaussianMeans[1], g._gaussianMeans[0]
+    follower.link = target
+    target.value = 47.5
+    assert follower.value == pytest.approx(47.5)
+
+
+def test_fret_calibration_is_held_fixed():
+    """R0 and tau_D0 are calibration, not data: fitting them is ill-conditioned."""
+    y, irf = _simulate_fret()
+    m = build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
+                       donor_lifetime=TAU_D0, forster_radius=R0).model
+
+    assert m.fret_parameters._forster_radius.fixed
+    assert m.donor._lifetimes[0].fixed
+    assert m.fret_parameters.forster_radius == pytest.approx(R0)
+    assert m.fret_parameters.tauD0 == pytest.approx(TAU_D0)
+
+    freed = build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
+                           donor_lifetime=TAU_D0, forster_radius=R0,
+                           fit_donor_lifetime=True).model
+    assert not freed.donor._lifetimes[0].fixed
+
+
+def test_fret_donor_only_fraction_is_recovered():
+    y, irf = _simulate_fret(x_donor_only=0.25)
+    result = fit_fret_model(y, bin_width=DT, irf=irf, n_states=2,
+                            donor_lifetime=TAU_D0, forster_radius=R0,
+                            sigma=2.0, fit_donor_only=True, x_donor_only=0.1,
+                            fit_background=True)
+
+    assert result["donor_only_fraction"] == pytest.approx(0.25, abs=0.15)
+
+
+def test_fret_rejects_bad_calibration():
+    y, _ = _simulate_fret()
+    with pytest.raises(ValueError):
+        build_fret_fit(y, bin_width=DT, forster_radius=0.0)
+    with pytest.raises(ValueError):
+        build_fret_fit(y, bin_width=DT, distance_bounds=(100.0, 10.0))

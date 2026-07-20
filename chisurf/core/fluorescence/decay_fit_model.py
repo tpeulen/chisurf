@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import numpy as np
 
-__all__ = ["build_lifetime_fit", "fit_lifetime_model"]
+__all__ = ["build_lifetime_fit", "fit_lifetime_model",
+           "build_fret_fit", "fit_fret_model"]
 
 #: Peak counts the IRF is rescaled to. ``Convolve._process_irf`` subtracts
 #: ``lamp_background`` and clips at zero *twice*, so a sum-normalised IRF (peak
@@ -62,6 +63,112 @@ def _use_synthetic_irf(convolve, width: float, skew: float) -> None:
     # asymmetry lives in ik — so a fit may legitimately return a negative width.
     convolve._iw.value = abs(float(width))
     convolve._ik.value = float(skew)
+
+
+def _make_fit(
+    model_class,
+    decay,
+    *,
+    bin_width: float,
+    irf=None,
+    start_bin: int = 0,
+    stop_bin: int | None = None,
+    background: float = 0.0,
+    fit_background: bool = False,
+    fit_scatter: bool = False,
+    fit_irf: bool = False,
+    irf_width: float = 0.2,
+    irf_skew: float = 0.0,
+    period: float | None = None,
+    model_kw: dict | None = None,
+):
+    """Build a ``Fit`` of ``model_class`` over ``decay``, wired to compute.
+
+    Everything here is shared by every TCSPC model: the data curve, the fit
+    window, the convolution settings and the nuisance terms. The caller
+    configures whatever is model-specific (lifetimes, distances) and then calls
+    ``find_parameters()``.
+
+    Each of these settings **fails silently** when wrong, leaving a flat
+    background instead of a decay — see the module docstring.
+    """
+    import chisurf.core.data
+    from chisurf.core.fitting.fit import Fit
+
+    y = np.asarray(decay, dtype=float).ravel()
+    n_bins = y.size
+    if n_bins < 4:
+        raise ValueError(f"decay is too short to fit: {n_bins} bins")
+    dt = float(bin_width)
+    if not dt > 0:
+        raise ValueError(f"bin_width must be positive, got {dt}")
+
+    t = np.arange(n_bins, dtype=float) * dt
+    data = chisurf.core.data.DataCurve(x=t, y=y, ey=np.sqrt(np.maximum(y, 1.0)))
+
+    stop = n_bins - 1 if stop_bin is None else int(stop_bin)
+    stop = int(np.clip(stop, 0, n_bins - 1))
+    start = int(np.clip(int(start_bin), 0, max(0, stop - 1)))
+
+    fit = Fit(model_class=model_class, data=data, xmin=start, xmax=stop,
+              model_kw=dict(model_kw or {}))
+    m = fit.model
+
+    c = m.convolve
+    if irf is not None:
+        irf_y = _as_counts_irf(irf, n_bins)
+        c._irf = chisurf.core.data.DataCurve(x=t, y=irf_y, ey=np.ones_like(irf_y))
+    else:
+        _use_synthetic_irf(c, irf_width, irf_skew)
+    # The IRF is already background-free here; subtracting anything would clip it.
+    c.lamp_background = 0.0
+    c.dt = dt                                  # defaults to 1.0
+    c.start, c.stop = 0.0, n_bins * dt         # TIME units; the default stop=0
+    c._irf_start.value = 0.0                   # disables the convolution outright
+    c._irf_stop.value = n_bins * dt            # (setters wrap in np.array: broken)
+    # `mode="per"` derives its period as 1000/rep_rate ns.
+    if period is not None and float(period) > 0:
+        c.mode = 'per'
+        c.rep_rate = 1000.0 / float(period)
+    else:
+        c.mode = 'exp'
+    c.do_convolution = True
+    c._n0.fixed = True                         # autoscale == self._n0.fixed
+
+    m.generic.background = float(background)
+    m.generic._bg.fixed = not bool(fit_background)
+    m.generic._sc.fixed = not bool(fit_scatter)
+
+    # A measured IRF is data: its shape is input, not a model, so only a
+    # generated prompt has its width/skew fitted. The IRF *timeshift* is left at
+    # ChiSurf's own default (free) in both cases — a measured IRF is recorded
+    # separately from the data and its timing genuinely drifts, so pinning it
+    # here measurably biased the lifetimes.
+    shape_free = bool(fit_irf) and irf is None
+    c._iw.fixed = not shape_free
+    c._ik.fixed = not shape_free
+
+    fit.fit_range = (start, stop)
+    return fit
+
+
+def _configure_lifetimes(group, taus, bounds) -> None:
+    """Seed a :class:`Lifetime` group with ``taus``, in place.
+
+    Configuring the existing components rather than appending avoids leaving the
+    model's default 4 ns component in place beside the requested ones, which
+    would add a duplicate lifetime and a spurious rank deficiency.
+    """
+    lo, hi = float(bounds[0]), float(bounds[1])
+    n = len(taus)
+    while len(group) < n:
+        group.append()
+    for k, tau in enumerate(taus):
+        group._amplitudes[k].value = 1.0 / n
+        p = group._lifetimes[k]
+        p.value = float(tau)
+        p.bounds = (lo, hi)
+        p.bounds_on = True                     # bounds are off by default
 
 
 def build_lifetime_fit(
@@ -128,19 +235,9 @@ def build_lifetime_fit(
     Fit
         A configured fit; call ``fit.run()`` to optimise it.
     """
-    import chisurf.core.data
     import chisurf.core.models.tcspc.lifetime as lifetime_model
-    from chisurf.core.fitting.fit import Fit
 
-    y = np.asarray(decay, dtype=float).ravel()
-    n_bins = y.size
-    if n_bins < 4:
-        raise ValueError(f"decay is too short to fit: {n_bins} bins")
-    dt = float(bin_width)
-    if not dt > 0:
-        raise ValueError(f"bin_width must be positive, got {dt}")
     n = max(1, int(n_components))
-
     lo, hi = (float(tau_bounds[0]), float(tau_bounds[1]))
     if not 0 < lo < hi:
         raise ValueError(f"tau_bounds must satisfy 0 < lower < upper, got {tau_bounds}")
@@ -150,64 +247,19 @@ def build_lifetime_fit(
     else:
         taus = np.clip(np.asarray(initial_lifetimes, dtype=float).ravel()[:n], lo, hi)
 
-    t = np.arange(n_bins, dtype=float) * dt
-    data = chisurf.core.data.DataCurve(x=t, y=y, ey=np.sqrt(np.maximum(y, 1.0)))
-
-    stop = n_bins - 1 if stop_bin is None else int(stop_bin)
-    stop = int(np.clip(stop, 0, n_bins - 1))
-    start = int(np.clip(int(start_bin), 0, max(0, stop - 1)))
-
-    fit = Fit(model_class=lifetime_model.LifetimeModel, data=data,
-              xmin=start, xmax=stop)
+    fit = _make_fit(
+        lifetime_model.LifetimeModel, decay, bin_width=bin_width, irf=irf,
+        start_bin=start_bin, stop_bin=stop_bin, background=background,
+        fit_background=fit_background, fit_scatter=fit_scatter, fit_irf=fit_irf,
+        irf_width=irf_width, irf_skew=irf_skew, period=period,
+    )
     m = fit.model
-
-    c = m.convolve
-    if irf is not None:
-        irf_y = _as_counts_irf(irf, n_bins)
-        c._irf = chisurf.core.data.DataCurve(x=t, y=irf_y, ey=np.ones_like(irf_y))
-    else:
-        _use_synthetic_irf(c, irf_width, irf_skew)
-    # The IRF is already background-free here; subtracting anything would clip it.
-    c.lamp_background = 0.0
-    c.dt = dt                                  # defaults to 1.0
-    c.start, c.stop = 0.0, n_bins * dt         # TIME units; the default stop=0
-    c._irf_start.value = 0.0                   # disables the convolution outright
-    c._irf_stop.value = n_bins * dt            # (setters wrap in np.array: broken)
-    # `mode="per"` derives its period as 1000/rep_rate ns.
-    if period is not None and float(period) > 0:
-        c.mode = 'per'
-        c.rep_rate = 1000.0 / float(period)
-    else:
-        c.mode = 'exp'
-    c.do_convolution = True
-    c._n0.fixed = True                         # autoscale == self._n0.fixed
 
     # The model ships with one component already; configuring in place avoids a
     # duplicate lifetime, which would add a spurious rank deficiency.
-    while len(m.lifetimes) < n:
-        m.lifetimes.append()
-    for k, tau in enumerate(taus):
-        m.lifetimes._amplitudes[k].value = 1.0 / n
-        p = m.lifetimes._lifetimes[k]
-        p.value = float(tau)
-        p.bounds = (lo, hi)
-        p.bounds_on = True                     # bounds are off by default
-
-    m.generic.background = float(background)
-    m.generic._bg.fixed = not bool(fit_background)
-    m.generic._sc.fixed = not bool(fit_scatter)
-
-    # A measured IRF is data: its shape is input, not a model, so only a
-    # generated prompt has its width/skew fitted. The IRF *timeshift* is left at
-    # ChiSurf's own default (free) in both cases — a measured IRF is recorded
-    # separately from the data and its timing genuinely drifts, so pinning it
-    # here measurably biased the lifetimes.
-    shape_free = bool(fit_irf) and irf is None
-    c._iw.fixed = not shape_free
-    c._ik.fixed = not shape_free
+    _configure_lifetimes(m.lifetimes, taus, (lo, hi))
 
     m.find_parameters()
-    fit.fit_range = (start, stop)
     return fit
 
 
@@ -297,6 +349,170 @@ def fit_lifetime_model(
         "irf_width": abs(float(m.convolve._iw.value)),
         "irf_skew": float(m.convolve._ik.value),
         "irf_shift": float(m.convolve._ts.value),
+        "fit": fit,
+        "model": m,
+    }
+
+
+def build_fret_fit(
+    decay,
+    *,
+    bin_width: float,
+    n_states: int = 2,
+    donor_lifetime: float = 4.0,
+    forster_radius: float = 52.0,
+    initial_distances=None,
+    sigma: float = 6.0,
+    distance_bounds: tuple[float, float] = (10.0, 120.0),
+    x_donor_only: float = 0.0,
+    fit_donor_only: bool = True,
+    fit_donor_lifetime: bool = False,
+    irf=None,
+    start_bin: int = 0,
+    stop_bin: int | None = None,
+    background: float = 0.0,
+    fit_background: bool = False,
+    fit_scatter: bool = False,
+    fit_irf: bool = False,
+    irf_width: float = 0.2,
+    irf_skew: float = 0.0,
+    period: float | None = None,
+):
+    """Build a runnable FRET fit: ``n_states`` Gaussian donor-acceptor distances.
+
+    Uses :class:`~chisurf.core.models.tcspc.fret.GaussianModel`, so each state is
+    a Gaussian distance distribution whose **mean, width and species fraction are
+    fitted parameters**, alongside the donor-only fraction ``xDOnly``. That is a
+    genuine FRET fit — the efficiencies come from fitted distances and R₀ — rather
+    than lifetimes converted to efficiencies afterwards.
+
+    Parameters
+    ----------
+    decay : array_like
+        Measured donor decay in the presence of acceptor (counts).
+    n_states : int
+        Number of FRET states.
+    donor_lifetime : float
+        Donor-only lifetime τ_D0 (ns). Held fixed unless ``fit_donor_lifetime``:
+        it is a property of the donor, normally measured separately, and fitting
+        it against a distance distribution is badly conditioned.
+    forster_radius : float
+        Förster radius R₀ (Å); held fixed, as it is calibration, not data.
+    initial_distances : array_like, optional
+        Starting mean distances (Å). Defaults to a spread across
+        ``distance_bounds`` centred on R₀, which keeps the states distinct.
+    sigma : float
+        Starting width of each Gaussian (Å).
+    x_donor_only : float
+        Starting donor-only fraction.
+    fit_donor_only : bool
+        Fit ``xDOnly``. A sample with no donor-only population should pin it,
+        since it trades off against the long-distance states.
+    fit_donor_lifetime : bool
+        Free the donor-only lifetime instead of holding it at ``donor_lifetime``.
+    distance_bounds : tuple of float
+        ``(lower, upper)`` bounds in Å applied to every fitted mean distance.
+    bin_width, irf, start_bin, stop_bin, background, fit_background, fit_scatter, fit_irf, irf_width, irf_skew, period
+        As for :func:`build_lifetime_fit`.
+
+    Returns
+    -------
+    Fit
+        A configured fit; call ``fit.run()`` to optimise it.
+    """
+    import chisurf.core.models.tcspc.fret as fret_model
+
+    n = max(1, int(n_states))
+    r_lo, r_hi = float(distance_bounds[0]), float(distance_bounds[1])
+    if not 0 < r_lo < r_hi:
+        raise ValueError(
+            f"distance_bounds must satisfy 0 < lower < upper, got {distance_bounds}")
+    r0 = float(forster_radius)
+    if not r0 > 0:
+        raise ValueError(f"forster_radius must be positive, got {r0}")
+
+    if initial_distances is None:
+        # Spread around R0, where the efficiency is most sensitive to distance.
+        spread = np.linspace(0.7, 1.3, n) if n > 1 else np.array([1.0])
+        distances = np.clip(r0 * spread, r_lo, r_hi)
+    else:
+        distances = np.clip(
+            np.asarray(initial_distances, dtype=float).ravel()[:n], r_lo, r_hi)
+
+    fit = _make_fit(
+        fret_model.GaussianModel, decay, bin_width=bin_width, irf=irf,
+        start_bin=start_bin, stop_bin=stop_bin, background=background,
+        fit_background=fit_background, fit_scatter=fit_scatter, fit_irf=fit_irf,
+        irf_width=irf_width, irf_skew=irf_skew, period=period,
+    )
+    m = fit.model
+
+    # The donor-only decay. `FRETModel` shares one Lifetime group between
+    # `m.donor` and `m.lifetimes`, so this is the tau_D0 the FRET rates are
+    # measured against.
+    _configure_lifetimes(m.donor, [float(donor_lifetime)], (0.01, 100.0))
+    m.donor._lifetimes[0].fixed = not bool(fit_donor_lifetime)
+
+    fp = m.fret_parameters
+    fp._forster_radius.value = r0
+    fp._tauD0.value = float(donor_lifetime)
+    fp._xDonly.value = float(x_donor_only)
+    fp._xDonly.fixed = not bool(fit_donor_only)
+
+    for k, r in enumerate(distances):
+        m.append(float(r), float(sigma), 1.0 / n)
+        mean = m.gaussians._gaussianMeans[k]
+        mean.bounds = (r_lo, r_hi)
+        mean.bounds_on = True
+
+    m.find_parameters()
+    return fit
+
+
+def fit_fret_model(decay, **kwargs) -> dict:
+    """Fit ``decay`` as ``n_states`` Gaussian FRET distances and report the result.
+
+    Arguments are as for :func:`build_fret_fit`.
+
+    Returns
+    -------
+    dict
+        ``{distances, sigmas, fractions, efficiencies, donor_only_fraction,
+        forster_radius, donor_lifetime, reconstruction, weighted_residuals,
+        chi2_reduced, fit, model}``, sorted by distance. ``efficiencies`` are
+        derived from the fitted distances as ``1/(1+(R/R0)**6)`` — the mean-
+        distance efficiency of each state, not the distribution-averaged one.
+    """
+    fit = build_fret_fit(decay, **kwargs)
+    fit.run()
+    m = fit.model
+
+    distances = np.asarray(m.gaussians.mean, dtype=float)
+    sigmas = np.asarray(m.gaussians.sigma, dtype=float)
+    fractions = np.asarray(m.gaussians.amplitude, dtype=float)
+    order = np.argsort(distances)
+    distances, sigmas, fractions = distances[order], sigmas[order], fractions[order]
+
+    r0 = float(m.fret_parameters.forster_radius)
+    efficiencies = 1.0 / (1.0 + (distances / r0) ** 6)
+
+    wres = np.asarray(m.weighted_residuals, dtype=float)
+    return {
+        "distances": distances,
+        "sigmas": sigmas,
+        "fractions": fractions,
+        "efficiencies": efficiencies,
+        "donor_only_fraction": float(m.fret_parameters.xDOnly),
+        "forster_radius": r0,
+        "donor_lifetime": float(m.fret_parameters.tauD0),
+        # Same IRF reporting as the lifetime fit, so callers can write the fitted
+        # prompt back to a detector regardless of which fit produced it.
+        "irf_width": abs(float(m.convolve._iw.value)),
+        "irf_skew": float(m.convolve._ik.value),
+        "irf_shift": float(m.convolve._ts.value),
+        "reconstruction": np.asarray(m.y, dtype=float),
+        "weighted_residuals": wres,
+        "chi2_reduced": float(np.sum(wres ** 2) / max(1, wres.size)),
         "fit": fit,
         "model": m,
     }

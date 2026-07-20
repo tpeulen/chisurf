@@ -1631,29 +1631,48 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         fwhm0 = (max(dt, float(self.detector_selection.width(primary, "") or 0.2))
                  if primary else 0.2)
         skew0 = float(self.detector_selection.skew(primary, "") or 0.0) if primary else 0.0
+        shared = dict(
+            bin_width=dt, irf=measured, start_bin=fit_lo, stop_bin=stop,
+            fit_irf=fit_irf,
+            irf_width=fwhm0 * FWHM_TO_SIGMA,   # the model parameterises sigma
+            irf_skew=skew0,
+            fit_background=include_background,
+            fit_scatter=include_scatter,
+            period=period,
+        )
         try:
-            result = fit_lifetime_model(
-                total, bin_width=dt, n_components=int(n_components), irf=measured,
-                tau_bounds=(float(settings["tau_min"]), float(settings["tau_max"])),
-                start_bin=fit_lo, stop_bin=stop,
-                fit_irf=fit_irf,
-                irf_width=fwhm0 * FWHM_TO_SIGMA,   # the model parameterises sigma
-                irf_skew=skew0,
-                fit_background=include_background,
-                fit_scatter=include_scatter,
-                period=period,
-            )
+            if kind == "fret":
+                # A real FRET fit: the distances (and hence the efficiencies) are
+                # fitted against R0, rather than lifetimes converted afterwards.
+                from chisurf.core.fluorescence.decay_fit_model import fit_fret_model
+
+                instrument = self._instrument()
+                result = fit_fret_model(
+                    total, n_states=int(n_components),
+                    donor_lifetime=float(settings["tau_max"]),
+                    forster_radius=float(instrument.get("forster_radius") or 52.0),
+                    **shared,
+                )
+                taus = np.asarray([], dtype=float)
+            else:
+                result = fit_lifetime_model(
+                    total, n_components=int(n_components),
+                    tau_bounds=(float(settings["tau_min"]), float(settings["tau_max"])),
+                    **shared,
+                )
+                taus = result["lifetimes"]
         except Exception as error:
             QtWidgets.QMessageBox.critical(self, "Auto-fit Error", str(error))
             return
-
-        taus = result["lifetimes"]
-        # `fit_lifetime_model` reports PRE-EXPONENTIAL amplitudes, whereas the
-        # scipy fitter this replaced reported photon fractions. Everything
-        # downstream (species labels, relative species weights) means fractions,
-        # so convert rather than relabel: f_i = a_i·tau_i / sum(a_j·tau_j).
-        pre_exp = np.asarray(result["amplitudes"], dtype=float)
-        amps = pre_exp * taus
+        if kind == "fret":
+            # The FRET fit reports species fractions directly.
+            amps = np.asarray(result["fractions"], dtype=float)
+        else:
+            # `fit_lifetime_model` reports PRE-EXPONENTIAL amplitudes, whereas the
+            # scipy fitter this replaced reported photon fractions. Everything
+            # downstream (species labels, relative species weights) means
+            # fractions, so convert: f_i = a_i·tau_i / sum(a_j·tau_j).
+            amps = np.asarray(result["amplitudes"], dtype=float) * taus
         scale = float(amps.sum()) or 1.0
         self._auto_fit_result = result
         self._refresh_autofit_parameters(result.get("fit"))
@@ -1689,14 +1708,32 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._suspend_compute = True
         try:
             self.lw_species.clear()
-            self._add_autofit_species(kind, amps, taus, scale, dt, comp_start, n_bins,
-                                      detector_names, apply_irf=True, period=period)
+            if kind == "fret":
+                self._add_fret_autofit_species(
+                    amps, taus, scale, dt, comp_start, n_bins, detector_names,
+                    period=period,
+                    efficiencies=result["efficiencies"],
+                    tau_d0=result["donor_lifetime"],
+                    donor_only_fraction=result["donor_only_fraction"],
+                )
+            else:
+                self._add_autofit_species(kind, amps, taus, scale, dt, comp_start,
+                                          n_bins, detector_names, apply_irf=True,
+                                          period=period)
         finally:
             self._suspend_compute = False
         self._on_data_changed()
-        parts = ", ".join(
-            f"{float(a) / scale:.0%}·{float(t):.2f}ns" for a, t in zip(amps, taus)
-        )
+        if kind == "fret":
+            parts = ", ".join(
+                f"{float(a) / scale:.0%}·E={float(e):.2f}"
+                for a, e in zip(amps, result["efficiencies"])
+            )
+            n_species = len(result["efficiencies"])
+        else:
+            parts = ", ".join(
+                f"{float(a) / scale:.0%}·{float(t):.2f}ns" for a, t in zip(amps, taus)
+            )
+            n_species = len(taus)
         label = "FRET states" if kind == "fret" else "components"
         if fit_irf and fitted_fwhm > 0:
             irf_note = (f", IRF FWHM {fitted_fwhm:.3f} ns / shift {shift:+.3f} ns"
@@ -1711,7 +1748,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if include_background and result.get("background"):
             nuis.append(f"bkg {result['background']:.3g}")
         nuis_note = (" [" + ", ".join(nuis) + "]") if nuis else ""
-        msg = (f"Auto-fit [{fit_lo}–{stop}]: {len(taus)} {label} "
+        msg = (f"Auto-fit [{fit_lo}–{stop}]: {n_species} {label} "
                f"(χ²ᵣ={result['chi2_reduced']:.3g}{irf_note}) — {parts}{nuis_note}.")
         self._update_status(msg)
         if hasattr(self, "lbl_autofit_status"):
@@ -1758,22 +1795,41 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 self.lw_species.add_synthetic_source(source)
 
     def _add_fret_autofit_species(self, amps, taus, scale, dt, start, n_bins,
-                                  detector_names, period=None):
-        """Turn fitted donor lifetimes into FRET species.
+                                  detector_names, period=None, efficiencies=None,
+                                  tau_d0=None, donor_only_fraction=0.0):
+        """Add FRET species from fitted efficiencies, or derive them from lifetimes.
 
-        The longest fitted (green/donor) lifetime is taken as the unquenched donor
-        τ_D0; each fitted lifetime τᵢ becomes a FRET species with transfer
-        efficiency Eᵢ = 1 − τᵢ/τ_D0 (τ_D0 itself → a donor-only species). Each
-        species is expanded to per-detector coupled decays and added — a starting
-        FRET set the user refines in the editor.
+        With ``efficiencies`` (from a real ``FRETModel`` fit) each value is used
+        directly, together with the fitted ``tau_d0`` and, when non-zero, an extra
+        donor-only species carrying ``donor_only_fraction``.
+
+        Without them the efficiencies are *derived*: the longest fitted lifetime is
+        taken as the unquenched donor τ_D0 and each τᵢ becomes Eᵢ = 1 − τᵢ/τ_D0.
+        That is the weaker inference — it assumes the slowest component is
+        unquenched donor — and is kept for callers that only have lifetimes.
+
+        Each species is expanded to per-detector coupled decays and added — a
+        starting FRET set the user refines in the editor.
         """
         from chisurf.core.fluorescence.fret.species_decay import fret_species_detector_patterns
 
-        tau_d0 = float(max(taus)) if len(taus) else 1.0
+        if efficiencies is not None:
+            tau_d0 = float(tau_d0 or 1.0)
+            pairs = [(float(a), float(e)) for a, e in zip(amps, efficiencies)]
+            if float(donor_only_fraction) > 1e-3:
+                # The fitted donor-only population is its own species; its
+                # fraction is a share of the whole sample, so it is expressed on
+                # the same scale as the FRET states.
+                pairs.append((float(donor_only_fraction) * scale, 0.0))
+        else:
+            tau_d0 = float(max(taus)) if len(taus) else 1.0
+            pairs = [(float(a), float(np.clip(1.0 - float(t) / tau_d0, 0.0, 0.999)))
+                     for a, t in zip(amps, taus)]
+
         dets = detector_names or ["green", "red", "yellow"]
-        for amp, tau in zip(amps, taus):
+        for amp, efficiency in pairs:
             frac = float(amp) / scale
-            efficiency = float(np.clip(1.0 - float(tau) / tau_d0, 0.0, 0.999))
+            tau = tau_d0 * (1.0 - efficiency)
             state = "d_only" if efficiency < 1e-3 else "da"
             source = {
                 "type": "synthetic", "model": "fret_species",

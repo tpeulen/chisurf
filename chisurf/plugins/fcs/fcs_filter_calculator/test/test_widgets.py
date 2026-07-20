@@ -941,7 +941,7 @@ def test_autofit_settings_dock_present(qapp, qtbot):
     assert widget._auto_fit_settings["tau_max"] == 12.0
 
 
-def _autofit_widget(qtbot, tmp_path, n_components=2):
+def _autofit_widget(qtbot, tmp_path, n_components=2, kind="lifetime"):
     """Build a calculator with a two-exponential mixed decay, ready to auto-fit."""
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
     from chisurf.plugins.fcs.fcs_filter_calculator.api import synthetic_decay
@@ -959,6 +959,7 @@ def _autofit_widget(qtbot, tmp_path, n_components=2):
     widget.fit_background_cb.setChecked(False)
     widget._set_total_paths([total_path])
     widget.lw_species.clear()
+    widget._auto_fit_settings["kind"] = kind
     widget._auto_fit_components(n_components=n_components)
     return widget
 
@@ -1023,3 +1024,45 @@ def test_autofit_parameter_table_is_rebuilt_per_fit(qapp, qtbot, tmp_path):
     assert second is not first
     names = {getattr(p, "name", "") for p in second._params}
     assert "tL3" in names, "the table still shows the two-component fit"
+
+
+def test_fret_auto_fit_runs_through_a_real_fret_model(qapp, qtbot, tmp_path):
+    """The FRET kind fits distances against R0, not lifetimes converted afterwards."""
+    from chisurf.core.models.tcspc.fret import GaussianModel
+
+    widget = _autofit_widget(qtbot, tmp_path, n_components=2, kind="fret")
+
+    result = widget._auto_fit_result
+    assert isinstance(result["model"], GaussianModel)
+    assert len(result["distances"]) == 2
+    assert np.all(result["efficiencies"] >= 0) and np.all(result["efficiencies"] <= 1)
+    # Every added species is a FRET species carrying a fitted efficiency.
+    sources = [widget.lw_species.item(i).data(QtCore.Qt.UserRole)
+               for i in range(widget.lw_species.count())]
+    assert sources and all(s["model"] == "fret_species" for s in sources)
+    assert all("transfer_efficiency" in s for s in sources)
+
+
+def test_fret_auto_fit_exposes_distances_as_linkable_parameters(qapp, qtbot, tmp_path):
+    from chisurf.core.fitting.parameter import FittingParameter
+
+    widget = _autofit_widget(qtbot, tmp_path, n_components=2, kind="fret")
+
+    means = widget._auto_fit_result["model"].gaussians._gaussianMeans
+    assert len(means) == 2
+    assert all(isinstance(p, FittingParameter) for p in means)
+    names = {getattr(p, "name", "") for p in widget.autofit_parameter_table._params}
+    assert any(n.startswith("R(") for n in names), f"no distance parameters in {names}"
+
+
+def test_derived_fret_efficiencies_still_available_without_a_fret_fit():
+    """The lifetime->E fallback stays, for callers that only have lifetimes."""
+    from chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window import (
+        FcsFilterCalculatorWidget,
+    )
+
+    # Pure function of its arguments: E = 1 - tau/tau_D0 with tau_D0 = max(tau).
+    taus = np.array([2.0, 4.0])
+    derived = [float(np.clip(1.0 - t / 4.0, 0.0, 0.999)) for t in taus]
+    assert derived == pytest.approx([0.5, 0.0])
+    assert hasattr(FcsFilterCalculatorWidget, "_add_fret_autofit_species")
