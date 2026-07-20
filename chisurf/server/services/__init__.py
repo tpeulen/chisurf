@@ -57,7 +57,13 @@ def _resolve_fit(
 ) -> tuple[Any, int]:
     """Look up a fit by index or uid. Returns ``(fit, index)`` or ``(None, -1)``.
 
-    A **non-empty** ``fit_uid`` that matches no fit resolves to ``(None, -1)``
+    A ``fit_uid`` is matched against the top-level fits **and** the members of
+    a :class:`FitGroup`: ``state.fits`` holds groups, whose member fits carry
+    their own distinct uids, and the GUI addresses the member it is showing.  A
+    member resolves to the member itself, paired with the index of the group
+    that holds it.
+
+    A **non-empty** ``fit_uid`` that matches nothing resolves to ``(None, -1)``
     rather than falling back to ``fit_index``: the caller named a specific fit,
     so silently retargeting the operation at another one would apply it to the
     wrong fit.  An empty or absent uid means "unspecified" and uses the index.
@@ -67,6 +73,14 @@ def _resolve_fit(
         for i, f in enumerate(fits):
             if str(getattr(f, "unique_identifier", "")) == fit_uid:
                 return f, i
+        for i, f in enumerate(fits):
+            try:
+                members = getattr(f, "grouped_fits", None) or []
+            except Exception:
+                continue
+            for member in members:
+                if str(getattr(member, "unique_identifier", "")) == fit_uid:
+                    return member, i
         return None, -1
     if fit_index is not None and 0 <= fit_index < len(fits):
         return fits[fit_index], fit_index

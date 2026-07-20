@@ -573,6 +573,46 @@ class TestEdgeCaseBugs:
         assert _resolve_fit(state, fit_index=0, fit_uid="") == (fit_a, 0)
         assert _resolve_fit(state, fit_index=1, fit_uid=None) == (fit_b, 1)
 
+    def test_group_member_uid_resolves_to_the_member(self):
+        """``state.fits`` holds groups; the GUI addresses the member it shows.
+
+        A ``FitGroup``'s members carry their own uids, so matching only the
+        top-level fits made every member lookup miss — which used to be masked
+        by the ``fit_index`` fallback silently returning the group.
+        """
+        from chisurf.server.services import _resolve_fit
+
+        state = SessionState()
+        member = MagicMock()
+        member.unique_identifier = "uid-member"
+        group = MagicMock()
+        group.unique_identifier = "uid-group"
+        group.grouped_fits = [member]
+        state.fits = [group]
+
+        assert _resolve_fit(state, fit_uid="uid-group") == (group, 0)
+        # The member resolves to the member, paired with its group's index.
+        assert _resolve_fit(state, fit_uid="uid-member") == (member, 0)
+        assert _resolve_fit(state, fit_index=0, fit_uid="uid-nobody") == (None, -1)
+
+    def test_resolve_fit_survives_a_fit_without_grouped_fits(self):
+        """A plain fit exposing no members must not break the member scan."""
+        from chisurf.server.services import _resolve_fit
+
+        state = SessionState()
+
+        class _Plain:
+            unique_identifier = "uid-plain"
+
+            @property
+            def grouped_fits(self):
+                raise RuntimeError("no members here")
+
+        plain = _Plain()
+        state.fits = [plain]
+        assert _resolve_fit(state, fit_uid="uid-plain") == (plain, 0)
+        assert _resolve_fit(state, fit_uid="uid-other") == (None, -1)
+
     def test_set_parameter_value_rejects_unknown_fit_uid(self):
         """The service layer surfaces the unknown fit instead of writing elsewhere."""
         from chisurf.server.services.parameters import set_parameter_value
