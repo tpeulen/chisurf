@@ -225,14 +225,29 @@ def convolve_lifetime_spectrum_periodic(
         Channel width in nanoseconds.
     conv_stop : int
         Stopping channel for convolution.
+
+    Notes
+    -----
+    ``stop`` and ``conv_stop`` are clamped to the last valid *index*. Callers
+    pass ``n_points`` (a length), and ``fconv_per_cs`` treats its stop arguments
+    as inclusive indices, so an unclamped call reads and writes one element past
+    the end of the buffers. That corrupts the heap and aborts the process at some
+    later allocation -- far from the real cause, and only on builds that do not
+    clamp internally, which is why it surfaced as a GUI crash on a stock
+    tttrlib while a locally patched one was fine. The numba twin
+    (:func:`convolve_lifetime_spectrum_periodic_nb`) has always clamped; this
+    keeps the two paths in step.
     """
+    last = min(len(irf), len(decay), n_points) - 1
+    if last < 0:
+        return
     tttrlib.fconv_per_cs(
         decay,
         irf,
         lifetime_spectrum,
         period,
-        conv_stop,
-        stop,
+        min(conv_stop, last),
+        min(stop, last),
         dt
     )
 
