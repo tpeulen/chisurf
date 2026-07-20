@@ -37,7 +37,10 @@ swap the `type`; HTML labels keep sub/superscripts, right-click copy/paste; a
 row offers the **same per-parameter actions as the verbose section's row
 widget** — right-click links/unlinks the parameter across fits, clicking its
 name opens the parameter detail popup — via a `FittingParameterProxyController`
-standing in for the absent row widget),
+standing in for the absent row widget, which also becomes each parameter's
+`controller` so `FittingParameter.update()` repaints the row; a proxy's
+`finalize()` is a **display refresh only**, never a fit-update dispatch, since
+the model calls it during a recompute),
 `scalar_table` (the same compact name/value table for **plain** `float`/`int`/
 `bool` model attributes rather than `FittingParameter`s — `{rows:[{attr,label,
 kind}], call}` — for parameter-dense editors like the FRET-species crosstalk /

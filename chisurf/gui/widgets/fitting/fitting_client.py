@@ -139,6 +139,11 @@ class FittingClient:
         """
         if self._in_server_dispatch():
             return None
+        # ``_parameter_context`` yields "" when it cannot locate the parameter's
+        # fit.  Sending that as a uid would be a *named* fit the server cannot
+        # match; drop it so the request stays "unspecified" instead.
+        if not params.get("fit_uid", True):
+            params = {k: v for k, v in params.items() if k != "fit_uid"}
         if not self._rpc_available:
             self._try_bootstrap_transport()
         if not self._rpc_available:

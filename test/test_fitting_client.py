@@ -274,6 +274,26 @@ class TestSetParameterValue:
         result = fc.set_parameter_value("tau1", 4.0, fit_index=0)
         assert result["ok"] is True
 
+    def test_empty_fit_uid_is_not_sent(self, fc, mock_client):
+        """An empty uid means "unspecified" — sending it names a fit that cannot match.
+
+        ``_parameter_context`` returns "" when it cannot locate the parameter's
+        fit; the server rejects a non-empty unknown uid, so the empty string must
+        be dropped rather than forwarded.
+        """
+        mock_client.set_response("parameter.set_value", {"ok": True})
+        fc.set_parameter_value("tau1", 4.0, fit_index=0, fit_uid="")
+        method, params = mock_client._client.calls[-1]
+        assert method == "parameter.set_value"
+        assert "fit_uid" not in params
+        assert params["fit_index"] == 0
+
+    def test_real_fit_uid_is_forwarded(self, fc, mock_client):
+        mock_client.set_response("parameter.set_value", {"ok": True})
+        fc.set_parameter_value("tau1", 4.0, fit_uid="uid-a")
+        _, params = mock_client._client.calls[-1]
+        assert params["fit_uid"] == "uid-a"
+
 
 class TestSetParameterFixed:
     def test_fixes_parameter(self, fc, mock_client):

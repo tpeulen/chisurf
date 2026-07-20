@@ -26,6 +26,16 @@ Qt-free and lives under `chisurf/server/`. In `server` mode the
 
 Run it headlessly with `python -m chisurf.server`.
 
+# Addressing a fit
+
+Service calls address a fit by `fit_uid` (identity) or `fit_index` (position),
+resolved by the single `services._resolve_fit` helper. The rule: a **non-empty
+`fit_uid` that matches no fit is an error**, never a fall back to `fit_index` —
+the caller named a specific fit, so retargeting the operation at another one
+would apply it to the wrong fit. An empty or absent uid means "unspecified" and
+uses the index. Clients must therefore omit a uid they cannot determine rather
+than sending `""`.
+
 # Citations
 
 [1] [ChiSurf architecture doc](/references/architecture-doc.md)

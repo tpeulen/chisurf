@@ -16,6 +16,7 @@ attribute on the section descriptor.
 
 from __future__ import annotations
 
+from functools import partial
 from typing import Callable, List, Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -354,6 +355,16 @@ def _parse_bool(value: typing.Any) -> bool:
         return bool(value)
 
 
+def _release_controllers(owned, *_) -> None:
+    """Clear ``parameter.controller`` back-references owned by a dead table."""
+    for param, ctrl in owned:
+        try:
+            if getattr(param, "controller", None) is ctrl:
+                param.controller = None
+        except Exception:
+            continue
+
+
 # ── table widget ────────────────────────────────────────────────────────
 
 
@@ -471,17 +482,44 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         self._table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._context_menu)
         self._table.clicked.connect(self._on_cell_clicked)
-        #: Per-parameter controllers backing the link menu and detail popup,
-        #: keyed by row.  Created lazily and kept alive as popup parents.
+        #: Per-parameter controllers backing the link menu, the detail popup and
+        #: each parameter's ``controller`` attribute, keyed by row.
         self._controllers: dict[int, typing.Any] = {}
         self._detail_popup = None
+        #: Set while :meth:`sync` repaints, so a programmatic refresh is not
+        #: mistaken for a user edit (see :meth:`_on_data_changed`).
+        self._suppress_change = False
         for seq, slot in (("Ctrl+C", self._copy_selection), ("Ctrl+V", self._paste_selection)):
             sc = QtWidgets.QShortcut(QtGui.QKeySequence(seq), self._table)
             sc.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
             sc.activated.connect(slot)
 
+        self._install_controllers()
         layout.addWidget(self._table)
         self._size_to_content()
+
+    # -- parameter controllers ---------------------------------------------
+    def _install_controllers(self) -> None:
+        """Claim each parameter's ``controller`` so the row repaints on change.
+
+        ``FittingParameter.update()`` and ``FittingParameterGroup.finalize()``
+        drive the display through ``parameter.controller`` — the attribute the
+        per-parameter row widgets set on themselves.  A table-rendered parameter
+        had none, so those calls did nothing (and logged "has no controller to
+        finalize" for every parameter in the group).
+        """
+        owned = []
+        for row in range(self._model.rowCount()):
+            param = self._model.parameters[row]
+            ctrl = self._controller(row)
+            try:
+                param.controller = ctrl
+            except Exception:
+                continue
+            owned.append((param, ctrl))
+        # The parameters outlive this widget, so drop the back-reference when the
+        # table goes away rather than leaving a deleted proxy behind.
+        self.destroyed.connect(partial(_release_controllers, owned))
 
     def _size_to_content(self) -> None:
         """Fix the table height to header + visible rows so it wastes no space."""
@@ -506,15 +544,30 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
             ctrl = FittingParameterProxyController(
                 self._model.parameters[row],
                 parent=self,
-                on_change=self._on_parameter_changed,
+                on_change=partial(self._refresh_row, row),
             )
             self._controllers[row] = ctrl
         return ctrl
 
-    def _on_parameter_changed(self) -> None:
-        """Repaint after an edit made through the popup or the link menu."""
-        self.sync()
-        self._on_data_changed()
+    def _refresh_row(self, row: int) -> None:
+        """Repaint one row from its parameter.
+
+        This is what a proxy's ``finalize()`` does, mirroring the row widget's
+        ``finalize`` — a **display** refresh only.  It must not dispatch the
+        section's ``on_change`` (a fit update): the model calls ``finalize()``
+        *during* a recompute, so notifying from here would feed a recompute back
+        into itself.  Edits that do warrant a recompute go through the popup's
+        ``_trigger_model_update`` or through a cell edit.
+        """
+        if row >= self._model.rowCount():
+            return
+        self._suppress_change = True
+        try:
+            left = self._model.index(row, 0)
+            right = self._model.index(row, self._model.columnCount() - 1)
+            self._model.dataChanged.emit(left, right)
+        finally:
+            self._suppress_change = False
 
     def _on_cell_clicked(self, index: QtCore.QModelIndex) -> None:
         """Open the parameter detail popup when its name is clicked."""
@@ -640,6 +693,11 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
 
     # -- change dispatch ----------------------------------------------------
     def _on_data_changed(self, *_):
+        # Only a user edit dispatches; a programmatic repaint (``sync``, or a
+        # parameter's ``finalize`` during a recompute) must not, or the fit
+        # update it triggers comes straight back as another repaint.
+        if self._suppress_change:
+            return
         cb = self._on_change
         if cb is not None:
             try:
@@ -649,13 +707,21 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
 
     # -- sync ---------------------------------------------------------------
     def sync(self) -> None:
-        """Re-read parameter values into the model and repaint."""
-        top_left = self._model.index(0, 0)
-        bottom_right = self._model.index(
-            self._model.rowCount() - 1,
-            self._model.columnCount() - 1,
-        )
-        self._model.dataChanged.emit(top_left, bottom_right)
+        """Re-read parameter values into the model and repaint.
+
+        A refresh, not an edit — it does not dispatch ``on_change`` (this runs
+        after a fit, and dispatching would request another one).
+        """
+        self._suppress_change = True
+        try:
+            top_left = self._model.index(0, 0)
+            bottom_right = self._model.index(
+                self._model.rowCount() - 1,
+                self._model.columnCount() - 1,
+            )
+            self._model.dataChanged.emit(top_left, bottom_right)
+        finally:
+            self._suppress_change = False
 
     #: :meth:`AutoForm.refresh_plots` calls ``refresh`` on AUTOFORM_REFRESH widgets.
     refresh = sync

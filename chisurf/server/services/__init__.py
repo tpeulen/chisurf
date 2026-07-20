@@ -55,12 +55,19 @@ def _resolve_fit(
     fit_index: Optional[int] = None,
     fit_uid: Optional[str] = None,
 ) -> tuple[Any, int]:
-    """Look up a fit by index or uid. Returns ``(fit, index)`` or ``(None, -1)``."""
+    """Look up a fit by index or uid. Returns ``(fit, index)`` or ``(None, -1)``.
+
+    A **non-empty** ``fit_uid`` that matches no fit resolves to ``(None, -1)``
+    rather than falling back to ``fit_index``: the caller named a specific fit,
+    so silently retargeting the operation at another one would apply it to the
+    wrong fit.  An empty or absent uid means "unspecified" and uses the index.
+    """
     fits = list(state.fits)
-    if fit_uid is not None:
+    if fit_uid:
         for i, f in enumerate(fits):
             if str(getattr(f, "unique_identifier", "")) == fit_uid:
                 return f, i
+        return None, -1
     if fit_index is not None and 0 <= fit_index < len(fits):
         return fits[fit_index], fit_index
     return None, -1

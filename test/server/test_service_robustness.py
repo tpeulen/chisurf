@@ -553,6 +553,42 @@ class TestEdgeCaseBugs:
         result = set_parameter_value(state, "tau", 1.0, fit_index=None)
         assert result.get("ok") is False
 
+    def test_unknown_fit_uid_does_not_fall_back_to_the_index(self):
+        """A named-but-unknown fit must fail, never retarget another fit.
+
+        ``fit_uid`` names a *specific* fit.  Falling back to ``fit_index`` when
+        it does not match would silently apply the write to a different fit.
+        """
+        from chisurf.server.services import _resolve_fit
+
+        state = SessionState()
+        fit_a, fit_b = MagicMock(), MagicMock()
+        fit_a.unique_identifier = "uid-a"
+        fit_b.unique_identifier = "uid-b"
+        state.fits = [fit_a, fit_b]
+
+        assert _resolve_fit(state, fit_index=0, fit_uid="uid-b") == (fit_b, 1)
+        assert _resolve_fit(state, fit_index=0, fit_uid="uid-missing") == (None, -1)
+        # An empty uid means "unspecified" and still uses the index.
+        assert _resolve_fit(state, fit_index=0, fit_uid="") == (fit_a, 0)
+        assert _resolve_fit(state, fit_index=1, fit_uid=None) == (fit_b, 1)
+
+    def test_set_parameter_value_rejects_unknown_fit_uid(self):
+        """The service layer surfaces the unknown fit instead of writing elsewhere."""
+        from chisurf.server.services.parameters import set_parameter_value
+
+        state = SessionState()
+        fit = MagicMock()
+        fit.unique_identifier = "uid-a"
+        param = MagicMock()
+        param.value = 1.0
+        fit.model.parameters_all_dict = {"tau": param}
+        state.fits = [fit]
+
+        result = set_parameter_value(state, "tau", 9.0, fit_index=0, fit_uid="nope")
+        assert result.get("ok") is False
+        assert param.value == 1.0, "value was written to the wrong fit"
+
     # --- dataset_group / dataset_ungroup ---
 
     def test_dataset_group_single_int_crashes(self):

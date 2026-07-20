@@ -7,7 +7,7 @@ parameter name.  Both go through ``FittingParameterProxyController``.
 
 import numpy as np
 import pytest
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.core.data
@@ -82,11 +82,13 @@ def test_click_outside_name_column_opens_nothing(table):
     assert table._detail_popup is None
 
 
-def test_popup_edit_refreshes_the_table(table, qtbot):
-    """An edit in the popup must repaint the row and fire the table's on_change.
+def test_popup_edit_repaints_the_row_without_dispatching(table, qtbot):
+    """A popup edit repaints the row but must not request a fit update.
 
-    No fitting client is installed here, so the edit itself is a no-op; what is
-    asserted is the refresh path the proxy controller wires up.
+    ``finalize()`` is called by the model *during* a recompute, so dispatching
+    ``on_change`` from the repaint path would feed the recompute back into
+    itself.  No fitting client is installed, so the edit itself is a no-op —
+    what is asserted is the refresh wiring.
     """
     rows = []
     calls = []
@@ -98,9 +100,86 @@ def test_popup_edit_refreshes_the_table(table, qtbot):
 
     popup.cb_fixed.setChecked(True)
 
-    assert calls, "the table's on_change callback was not invoked"
-    assert rows, "the table did not repaint after the popup edit"
+    assert rows == [0], "the popup edit did not repaint its own row"
+    assert not calls, "a display refresh must not dispatch a fit update"
     popup.hide()
+
+
+def test_table_claims_each_parameter_controller(table):
+    """Table-rendered parameters get a controller, like row widgets do.
+
+    Without it ``FittingParameter.update()`` is a silent no-op and
+    ``FittingParameterGroup.finalize()`` logs "has no controller to finalize"
+    for every parameter in the group.
+    """
+    for param in table.parameters:
+        assert getattr(param, "controller", None) is not None
+        assert param.controller.fitting_parameter is param
+
+
+def test_group_finalize_is_quiet_for_table_rendered_parameters(params, qtbot, caplog):
+    """The real symptom: ``model.finalize()`` warned once per table parameter."""
+    import logging
+
+    model = cs.fits[0].model
+    with caplog.at_level(logging.WARNING):
+        model.finalize()
+    assert any(
+        "has no controller to finalize" in r.message for r in caplog.records
+    ), "expected the warning before a table claims the parameters"
+
+    caplog.clear()
+    w = ParameterGroupTableWidget([model.p1, model.p2])
+    qtbot.addWidget(w)
+    with caplog.at_level(logging.WARNING):
+        model.finalize()
+    noisy = [r.message for r in caplog.records if "has no controller" in r.message]
+    assert not any("'p1'" in m or "'p2'" in m for m in noisy), noisy
+
+
+def test_parameter_update_repaints_its_row(table):
+    """``parameter.update()`` reaches the table through the controller."""
+    rows = []
+    table.table_model.dataChanged.connect(lambda tl, br: rows.append(tl.row()))
+    table.parameters[1].update()
+    assert rows == [1]
+
+
+def test_parameter_update_does_not_request_a_fit_update(table):
+    """The recompute → finalize → recompute feedback loop stays broken."""
+    calls = []
+    table._on_change = lambda: calls.append(1)
+    table.parameters[0].update()
+    assert not calls
+
+
+def test_sync_does_not_dispatch_on_change(table):
+    """``sync``/``refresh`` runs after a fit — it must not ask for another."""
+    calls = []
+    table._on_change = lambda: calls.append(1)
+    table.sync()
+    assert not calls
+
+
+def test_cell_edit_still_dispatches_on_change(table):
+    """A real user edit must still trigger the fit update."""
+    calls = []
+    table._on_change = lambda: calls.append(1)
+    table.table_model.setData(
+        table.table_model.index(0, COL_VALUE), "4.25", QtCore.Qt.EditRole
+    )
+    assert calls, "a cell edit should dispatch on_change"
+
+
+def test_controllers_released_when_the_table_dies(params, qapp):
+    """A dead table must not leave a deleted proxy on the parameters."""
+    w = ParameterGroupTableWidget(params)
+    assert params[0].controller is not None
+    w.deleteLater()
+    # ``processEvents`` does not run DeferredDelete events — post them explicitly
+    # so the destroyed signal fires deterministically here.
+    qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+    assert getattr(params[0], "controller", None) is None
 
 
 def test_proxy_satisfies_the_popup_controller_contract(params, qapp):
