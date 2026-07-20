@@ -69,17 +69,30 @@ external (constrained) parameters.
 
     return convert_i2e
 
+def _is_unbounded(v) -> bool:
+    """Whether a bound value means "no constraint".
+
+    Callers express an absent bound either as ``None`` or as a non-finite value
+    (``+/-inf``, ``nan``). Only ``None`` used to be recognised, so a parameter
+    declared ``(-inf, inf)`` fell through to the *bounded* branch and was mapped
+    with ``arcsin((x - lower) / (upper - lower) - 1)`` -> ``arcsin(inf/inf - 1)``
+    -> **nan**, silently poisoning the optimiser's internal parameter vector.
+    """
+    return v is None or not np.isfinite(v)
+
+
 def _internal2external_lambda(bound):
     """
 Make a lambda function which converts a single internal (uncontrained)
 parameter to a external (constrained) parameter.
 """
     lower, upper = bound
-    if lower is None and upper is None:  # no constraints
+    lo_free, up_free = _is_unbounded(lower), _is_unbounded(upper)
+    if lo_free and up_free:  # no constraints
         return lambda x: x
-    elif upper is None:  # only lower bound
+    elif up_free:  # only lower bound
         return lambda x: lower - 1. + np.sqrt(x * x + 1.)
-    elif lower is None:  # only upper bound
+    elif lo_free:  # only upper bound
         return lambda x: upper + 1. - np.sqrt(x * x + 1.)
     else:
         return lambda x: lower + ((upper - lower) / 2.) * (np.sin(x) + 1.)
@@ -116,11 +129,12 @@ Make a lambda function which converts an single external (constrained)
 parameter to a internal (unconstrained) parameter.
 """
     lower, upper = bound
-    if lower is None and upper is None:  # no constraints
+    lo_free, up_free = _is_unbounded(lower), _is_unbounded(upper)
+    if lo_free and up_free:  # no constraints
         return lambda x: x
-    elif upper is None:  # only lower bound
+    elif up_free:  # only lower bound
         return lambda x: np.sqrt((x - lower + 1.) ** 2 - 1)
-    elif lower is None:  # only upper bound
+    elif lo_free:  # only upper bound
         return lambda x: np.sqrt((upper - x + 1.) ** 2 - 1)
     else:
         return lambda x: np.arcsin((2. * (x - lower) / (upper - lower)) - 1.)
