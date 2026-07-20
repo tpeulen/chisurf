@@ -803,9 +803,10 @@ class Main(
                 # Set icon using emoji/text fallback
                 try:
                     import importlib as _il
-                    plugin_module = _il.import_module(module_path)
                     from chisurf.plugins.icon_utils import create_plugin_icon_with_fallback
-                    icon = create_plugin_icon_with_fallback(plugin_module, package_dir, size=32)
+                    icon = create_plugin_icon_with_fallback(
+                        lambda: _il.import_module(module_path), package_dir, size=32
+                    )
                     if not icon.isNull():
                         action.setIcon(icon)
                     else:

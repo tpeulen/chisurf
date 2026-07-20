@@ -194,8 +194,10 @@ class PluginCheckTool(QtWidgets.QWidget):
         self.error_text.setVisible(False)
 
         try:
-            from chisurf.plugins import iter_plugins
+            from chisurf.plugins import invalidate_plugin_cache, iter_plugins
 
+            # Explicit user-triggered refresh: re-scan rather than reuse cache.
+            invalidate_plugin_cache()
             plugins = list(iter_plugins())
 
             for plugin_info in plugins:

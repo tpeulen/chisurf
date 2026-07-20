@@ -580,12 +580,18 @@ class PluginMethodsMixin:
                         globals={'__name__': 'plugin'}
                     )
 
-                    # Get icon using enhanced icon system
+                    # Get icon using enhanced icon system. The module is passed
+                    # as a lazy provider: most plugins resolve their icon from
+                    # the manifest or an on-disk icon file, and importing every
+                    # plugin here just to read a module attribute dominated
+                    # ribbon build time (one plugin alone pulled in sklearn).
                     try:
-                        # Try to import the module to access its icon attribute
                         import importlib
-                        plugin_module = importlib.import_module(module_path)
-                        icon = create_plugin_icon_with_fallback(plugin_module, package_dir, size=32)
+                        icon = create_plugin_icon_with_fallback(
+                            lambda: importlib.import_module(module_path),
+                            package_dir,
+                            size=32,
+                        )
                     except Exception as e:
                         # Fallback to traditional icon loading
                         self.logger.debug(f"Enhanced icon system failed for '{plugin_name}': {e}, using fallback")

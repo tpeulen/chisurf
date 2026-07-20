@@ -1,16 +1,39 @@
-import chisurf.core.fluorescence.general
-import chisurf.core.fluorescence.decay
-import chisurf.core.fluorescence.intensity
-import chisurf.core.fluorescence.anisotropy
-import chisurf.core.fluorescence.fcs
-import chisurf.core.fluorescence.fret
-import chisurf.core.fluorescence.tcspc
-import chisurf.core.fluorescence.burst
+import importlib
+from typing import Any
 
 import numpy as np
 
 import chisurf.core.settings
 from chisurf.core.settings.settings_utils import build_fret_rda_axis
+
+#: Sub-packages imported on first attribute access rather than eagerly. Pulling
+#: all of them in unconditionally meant that importing a single reader (e.g.
+#: ``chisurf.core.fluorescence.fcs``) also paid for FRET, TCSPC, burst and the
+#: scipy/pandas stack behind them, which dominated GUI startup time.
+_LAZY_SUBMODULES = (
+    "general",
+    "decay",
+    "intensity",
+    "anisotropy",
+    "fcs",
+    "fret",
+    "tcspc",
+    "burst",
+)
+
+
+def __getattr__(name: str) -> Any:
+    """Import a fluorescence sub-package on first attribute access."""
+    if name in _LAZY_SUBMODULES:
+        module = importlib.import_module(f"{__name__}.{name}")
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    """List module contents including the lazily-imported sub-packages."""
+    return sorted({*globals(), *_LAZY_SUBMODULES})
 
 
 def rebuild_rda_axis_from_settings() -> np.ndarray:

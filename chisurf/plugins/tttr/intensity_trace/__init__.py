@@ -54,7 +54,6 @@ import pyqtgraph as pg
 from pyqtgraph import TextItem, ImageItem, colormap
 
 import tttrlib
-from hmmlearn.hmm import GaussianHMM
 
 # Chisurf imports for detector setup
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
@@ -117,6 +116,10 @@ def save_burst_ids(hmm_states, time_axis, time_window_s, tttr_obj, output_dir=".
 
 
 def compute_bic_curve(data, max_states=10):
+    # Imported lazily: hmmlearn pulls in scikit-learn, which costs ~1s at
+    # import time and is only needed once an HMM is actually fitted.
+    from hmmlearn.hmm import GaussianHMM
+
     bics = []
     n_samples, n_features = data.shape
 
@@ -1552,6 +1555,8 @@ class IntensityTrace(QtWidgets.QWidget):
         return time_axis, padded, labels
 
     def apply_hmm(self, traces, n_components=2):
+        from hmmlearn.hmm import GaussianHMM
+
         logging.info(f"IntensityTrace: Running HMM with {n_components} components on traces shape={getattr(traces, 'shape', None)}")
         model = GaussianHMM(n_components=n_components, covariance_type="full", n_iter=1000)
         model.fit(traces)

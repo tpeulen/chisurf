@@ -5,4 +5,5 @@
 * [Runtime Globals](runtime-globals.md) - Legacy process-local globals in `chisurf/__init__.py` and the migration away from them.
 * [Server](server.md) - The headless, Qt-free ZMQ/JSON-RPC server under `chisurf/server/`.
 * [Plugin System](plugin-system.md) - Manifest-discovered plugins and the plugin infrastructure.
+* [GUI Startup](gui-startup.md) - The staged, JSON-declared startup path and the laziness invariants that keep it fast.
 * [MMFDB Metadata Store](mmfdb.md) - SQLite-backed metadata/provenance store generated from mmCIF dictionaries.

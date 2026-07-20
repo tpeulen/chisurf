@@ -1,4 +1,5 @@
 from __future__ import annotations
+import functools
 import os
 import pathlib
 import typing
@@ -484,17 +485,21 @@ class SetupMixin:
                     reader_params['experiment'] = experiment
                     reader = reader_class(**reader_params)
                     
-                    # Resolve controller if present
+                    # Register the controller lazily: only the reader the user
+                    # actually selects ever gets its widget shown, so building
+                    # every controller here would construct ~18 widgets to
+                    # display one.
                     controller_class_name = reader_cfg.get('controller_class')
-                    controller = None
                     if controller_class_name:
                         controller_class = self._resolve_class(controller_class_name)
                         if controller_class:
-                            controller_params = reader_cfg.get('controller_params', {})
+                            controller_params = dict(reader_cfg.get('controller_params', {}))
                             controller_params['experiment_reader'] = reader
-                            controller = controller_class(**controller_params)
-                    
-                    experiment.add_reader(reader, controller)
+                            reader.set_controller_factory(
+                                functools.partial(controller_class, **controller_params)
+                            )
+
+                    experiment.add_reader(reader)
                 except Exception as e:
                     cs.logging.error(f"Failed to setup reader {reader_cfg.get('reader_class')} in {exp_type}: {e}")
 

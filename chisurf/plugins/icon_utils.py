@@ -1,6 +1,7 @@
 """Enhanced icon utilities for ChiSurf plugins supporting image, emoji, and text icons."""
 import pathlib
 import platform
+import types
 
 from qtpy import QtCore
 from qtpy.QtCore import Qt
@@ -218,8 +219,10 @@ def create_plugin_icon_with_fallback(
 
     Parameters
     ----------
-    module : module
-        Plugin module object
+    module : module or callable
+        Plugin module object, or a zero-argument callable returning it. Passing
+        a callable defers the (potentially very expensive) plugin import until
+        the manifest and on-disk icon lookups have both failed.
     package_dir : str or pathlib.Path
         Plugin package directory
     size : int
@@ -234,6 +237,21 @@ def create_plugin_icon_with_fallback(
         Resolved icon
     """
     package_dir = pathlib.Path(package_dir)
+
+    if callable(module) and not isinstance(module, types.ModuleType):
+        _provider = module
+        _resolved: list = []
+
+        def _get_module():
+            if not _resolved:
+                try:
+                    _resolved.append(_provider())
+                except Exception:
+                    _resolved.append(None)
+            return _resolved[0]
+    else:
+        def _get_module():
+            return module
 
     # 1. Prefer manifest icon metadata when available.
     if manifest is not None and getattr(manifest, "icon", None):
@@ -252,6 +270,7 @@ def create_plugin_icon_with_fallback(
                 pass
 
     # 3. Check for module-level icon attribute
+    module = _get_module()
     if hasattr(module, 'icon'):
         try:
             return resolve_plugin_icon(module.icon, size=size, base_dir=package_dir)

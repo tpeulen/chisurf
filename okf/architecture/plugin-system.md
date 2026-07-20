@@ -25,6 +25,14 @@ The tree ships ~86 plugin manifests, grouped by domain — e.g. `burst/`
 A cookiecutter template for new plugins lives at
 `chisurf/plugins/cookiecutter-chisurf-plugin/`.
 
+# Discovery cost
+
+`iter_plugins()` walks the whole tree and parses every plugin `__init__.py` and
+`manifest.json`, so its result is memoized; mutating the plugin set requires
+`invalidate_plugin_cache()`. Menus are built from manifest metadata and on-disk
+icons **without importing plugin code** — see
+[GUI Startup](/architecture/gui-startup.md) for why both matter.
+
 # AutoForm
 
 GUI plugins increasingly declare their UI as data — a `*.view.json` scheme

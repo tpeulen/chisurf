@@ -556,6 +556,14 @@ def setup_gui(
                 if not text:
                     return False
 
+                # Re-applying an identical stylesheet is not a no-op in Qt: it
+                # rebuilds QStyleSheetStyle and re-polishes the whole widget
+                # tree. During startup the same sheet is applied once before
+                # any widgets exist and again after the main window is built,
+                # which cost ~1s for zero visual change.
+                if text == getattr(cs.core.settings, "style_sheet", None):
+                    return True
+
                 app.setStyleSheet(text)
                 try:
                     cs.core.settings.style_sheet = text
@@ -911,9 +919,8 @@ def setup_gui(
                     from chisurf.plugins.icon_utils import create_plugin_icon_with_fallback
 
                     manifest = load_manifest(package_dir / "manifest.json")
-                    mod = importlib.import_module(module_path or module_name)
                     icon = create_plugin_icon_with_fallback(
-                        mod,
+                        lambda: importlib.import_module(module_path or module_name),
                         package_dir,
                         size=16,
                         manifest=manifest,

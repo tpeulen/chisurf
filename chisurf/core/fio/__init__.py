@@ -10,13 +10,43 @@ In particular three kinds of file-types are handled:
 6. SDT-files containing time-resolved fluorescence decays :py:mod:`chisurf.core.fio.bhfiles`
 
 """
+import importlib
 import lzma
+from typing import Any
+
 import numpy as np
 
 from . zipped import *
 
-import chisurf.core.fio.fluorescence
-from .vv_vh import write_vv_vh, read_vv_vh
+#: Attributes served lazily by :func:`__getattr__`, mapped to the submodule
+#: that defines them. Importing the reader packages eagerly would pull the
+#: whole fluorescence/pandas/scipy stack into every consumer of this package
+#: -- including light ones such as :mod:`chisurf.core.fio.ascii` -- which
+#: dominated GUI startup time.
+_LAZY_SUBMODULES = ("fluorescence", "vv_vh")
+_LAZY_ATTRIBUTES = {
+    "write_vv_vh": "vv_vh",
+    "read_vv_vh": "vv_vh",
+}
+
+
+def __getattr__(name: str) -> Any:
+    """Import reader submodules and their exports on first attribute access."""
+    if name in _LAZY_SUBMODULES:
+        module = importlib.import_module(f"{__name__}.{name}")
+        globals()[name] = module
+        return module
+    if name in _LAZY_ATTRIBUTES:
+        module = importlib.import_module(f"{__name__}.{_LAZY_ATTRIBUTES[name]}")
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    """List module contents including the lazily-imported names."""
+    return sorted({*globals(), *_LAZY_SUBMODULES, *_LAZY_ATTRIBUTES})
 
 
 def compress_numpy_array(array):

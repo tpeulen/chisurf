@@ -26,9 +26,8 @@ def _plugin_icon_from_metadata(package_dir: Path, module_path: str, module_name:
         from chisurf.plugins.icon_utils import create_plugin_icon_with_fallback
 
         manifest = load_manifest(Path(package_dir) / "manifest.json")
-        plugin_module = importlib.import_module(module_path or module_name)
         icon = create_plugin_icon_with_fallback(
-            module=plugin_module,
+            module=lambda: importlib.import_module(module_path or module_name),
             package_dir=package_dir,
             size=16,
             manifest=manifest,

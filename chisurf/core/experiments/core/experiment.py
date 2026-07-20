@@ -107,7 +107,10 @@ class Experiment(chisurf.core.base.Base):
             Associated controller.
         """
         if reader not in self.readers:
-            reader.controller = controller
+            # Assigning None would discard a controller factory registered by
+            # the caller for lazy construction, so only set a real controller.
+            if controller is not None:
+                reader.controller = controller
             self._readers.append(reader)
 
     def add_readers(

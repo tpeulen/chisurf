@@ -70,8 +70,6 @@ class ExperimentReader(chisurf.core.base.Base):
     1
     """
 
-    controller: ExperimentReaderController = None
-
     operation_type: str = "measurement_import"
     artifact_kind_source: str = "raw_data"
     artifact_kind_derived: str = "processed_data"
@@ -104,7 +102,9 @@ class ExperimentReader(chisurf.core.base.Base):
             Sample ID to attach to loaded datasets and provenance metadata.
         """
         super().__init__(*args, **kwargs)
-        self.controller = controller
+        self._controller = controller
+        self._controller_factory = None
+        self._controller_building = False
         self.db = db
         self.object_store = object_store
         self.record_provenance = record_provenance
@@ -118,6 +118,46 @@ class ExperimentReader(chisurf.core.base.Base):
         # set_stage_callbacks / _open_tttr). Left unset in headless use.
         self._stage_progress_cb = None
         self._stage_cancel_cb = None
+
+    @property
+    def controller(self) -> ExperimentReaderController:
+        """The controller widget for this reader, built on first access.
+
+        Startup registers a controller *factory* rather than an instance: the
+        GUI configures many experiments with several readers each, but only the
+        currently selected reader's widget is ever shown, so building them all
+        eagerly wasted most of the work.
+        """
+        if self._controller is None and self._controller_factory is not None:
+            if self._controller_building:
+                # Controllers assign themselves to the reader during __init__;
+                # re-entering here would recurse.
+                return None
+            self._controller_building = True
+            try:
+                self._controller = self._controller_factory()
+            finally:
+                self._controller_building = False
+                self._controller_factory = None
+        return self._controller
+
+    @controller.setter
+    def controller(self, value: ExperimentReaderController) -> None:
+        """Set the controller instance, discarding any pending factory."""
+        self._controller = value
+        if value is not None:
+            self._controller_factory = None
+
+    def set_controller_factory(self, factory) -> None:
+        """Register a zero-argument callable that builds the controller lazily.
+
+        Parameters
+        ----------
+        factory : callable
+            Called at most once, on first access to :attr:`controller`.
+        """
+        self._controller = None
+        self._controller_factory = factory
 
     def set_stage_callbacks(self, progress_cb=None, cancel_cb=None) -> None:
         """Install progress/cancel callbacks used when staging slow files.

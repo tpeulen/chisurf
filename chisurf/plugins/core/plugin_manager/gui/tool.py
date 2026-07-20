@@ -520,6 +520,9 @@ class PluginManagerWidget(QWidget):
 
     def load_plugins(self):
         """Load all available plugins, sorted by custom order or module name, and display them in the list."""
+        # This is the manager's re-scan entry point and runs after plugins are
+        # imported, renamed or deleted, so the discovery cache must be dropped.
+        cs.plugins.invalidate_plugin_cache()
         self.plugin_list.clear()
         self.plugins = {}
 

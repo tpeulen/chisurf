@@ -165,13 +165,20 @@ def _read_manifest_metadata(plugin_dir: pathlib.Path):
     if manifest is None:
         return None
 
-    (
-        _legacy_name,
-        legacy_description,
-        legacy_cli_entrypoint,
-        _legacy_cli_only,
-        _legacy_menu_hidden,
-    ) = _read_plugin_metadata(plugin_dir / "__init__.py")
+    # The legacy ``__init__.py`` AST scan only supplies fallbacks for fields the
+    # manifest may omit. Parsing it unconditionally meant every plugin was read
+    # and compiled twice during discovery, so only do it when actually needed.
+    if manifest.description and manifest.entrypoints.cli:
+        legacy_description = None
+        legacy_cli_entrypoint = None
+    else:
+        (
+            _legacy_name,
+            legacy_description,
+            legacy_cli_entrypoint,
+            _legacy_cli_only,
+            _legacy_menu_hidden,
+        ) = _read_plugin_metadata(plugin_dir / "__init__.py")
     cli_entrypoint = manifest.entrypoints.cli or legacy_cli_entrypoint
 
     return {
@@ -186,7 +193,35 @@ def _read_manifest_metadata(plugin_dir: pathlib.Path):
     }
 
 
+#: Cached result of :func:`_iter_plugins_uncached`. Discovery walks the whole
+#: plugin tree and parses ~200 ``__init__.py``/``manifest.json`` files, and
+#: startup calls it several times (main window, ribbon file/main/plugin
+#: categories). Invalidate via :func:`invalidate_plugin_cache` after installing,
+#: enabling or removing a plugin.
+_PLUGIN_CACHE: list[dict] | None = None
+
+
+def invalidate_plugin_cache() -> None:
+    """Drop the cached plugin discovery result so the tree is re-scanned."""
+    global _PLUGIN_CACHE
+    _PLUGIN_CACHE = None
+
+
 def iter_plugins():
+    """Iterate over discovered plugins, using a process-wide cache.
+
+    Yields
+    ------
+    dict
+        Plugin metadata as produced by :func:`_iter_plugins_uncached`.
+    """
+    global _PLUGIN_CACHE
+    if _PLUGIN_CACHE is None:
+        _PLUGIN_CACHE = list(_iter_plugins_uncached())
+    return iter(_PLUGIN_CACHE)
+
+
+def _iter_plugins_uncached():
     base_prefix = __name__ + "."
     try:
         user_root = user_plugins_dir.resolve()

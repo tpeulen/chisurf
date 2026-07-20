@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 import os
 import re
 import threading
+import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from importlib import resources
@@ -216,6 +218,10 @@ def _resolve_dotted_attribute(obj: Any, dotted_path: str) -> Any:
     return value
 
 
+#: Startup stages slower than this (seconds) are logged at INFO as a slow-stage warning.
+_SLOW_STAGE_SECONDS = 0.25
+
+
 class AppStartupServiceManager:
     """Start app services in a JSON-defined dependency order.
 
@@ -246,6 +252,12 @@ class AppStartupServiceManager:
         self._started_ids: set[str] = set()
         self._specs = tuple(specs) if specs is not None else load_app_startup_services(config_path)
         self._skipped: dict[str, tuple[AppStartupServiceSpec, str]] = {}
+        self._timings: dict[str, float] = {}
+
+    @property
+    def timings(self) -> dict[str, float]:
+        """Wall-clock seconds spent starting each service, keyed by service id."""
+        return dict(self._timings)
 
     @classmethod
     def from_specs(
@@ -546,6 +558,27 @@ class AppStartupServiceManager:
         context: AppStartupContext | None = None,
     ) -> None:
         """Start one app startup service."""
+        _t0 = time.perf_counter()
+        try:
+            self._start_service_inner(spec, context)
+        finally:
+            _dt = time.perf_counter() - _t0
+            self._timings[spec.id] = _dt
+            if _dt >= _SLOW_STAGE_SECONDS:
+                logging.getLogger(__name__).info(
+                    "startup stage %r (%s/%s) took %.2fs", spec.id, spec.surface, spec.phase, _dt
+                )
+            else:
+                logging.getLogger(__name__).debug(
+                    "startup stage %r took %.3fs", spec.id, _dt
+                )
+
+    def _start_service_inner(
+        self,
+        spec: AppStartupServiceSpec,
+        context: AppStartupContext | None = None,
+    ) -> None:
+        """Start one app startup service (untimed implementation)."""
         if context is None:
             context = AppStartupContext(
                 dispatcher=self.dispatcher,
