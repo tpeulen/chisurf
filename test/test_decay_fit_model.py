@@ -164,6 +164,48 @@ def test_the_two_fitters_report_amplitudes_in_different_conventions():
     np.testing.assert_allclose(converted, photon_fractions, atol=0.05)
 
 
+def test_fits_the_generated_irf_when_none_is_measured():
+    """Without a measured IRF the prompt's own shape becomes fitted parameters.
+
+    ``Convolve`` generates a generalized-normal prompt from ``iw``/``ik`` when no
+    IRF curve is stored, so the model reaches the same joint width/skew/shift fit
+    the standalone fitter does — but as ``FittingParameter``s.
+    """
+    y, _ = _simulate()   # true prompt: Gaussian, sigma = 0.25 ns, centred at 1 ns
+    result = fit_lifetime_model(y, bin_width=DT, irf=None, n_components=2,
+                                initial_lifetimes=(8.0, 0.4),
+                                tau_bounds=(0.05, 20.0), fit_background=True,
+                                fit_irf=True, irf_width=0.2, irf_skew=0.0)
+
+    np.testing.assert_allclose(result["lifetimes"], sorted(TRUE_TAUS), rtol=0.05)
+    assert result["irf_width"] == pytest.approx(0.25, rel=0.15)
+    assert abs(result["irf_skew"]) < 0.2, "a symmetric prompt must not fit as skewed"
+
+
+def test_irf_shape_is_free_only_when_requested():
+    y, irf = _simulate()
+
+    fixed = build_lifetime_fit(y, bin_width=DT, irf=None).model.convolve
+    assert fixed._iw.fixed and fixed._ik.fixed
+
+    generated = build_lifetime_fit(y, bin_width=DT, irf=None,
+                                   fit_irf=True).model.convolve
+    assert not (generated._iw.fixed or generated._ik.fixed)
+
+    # A measured IRF is data, not a model: its shape stays fixed.
+    measured = build_lifetime_fit(y, bin_width=DT, irf=irf,
+                                  fit_irf=True).model.convolve
+    assert measured._iw.fixed and measured._ik.fixed
+
+
+def test_the_irf_timeshift_stays_free():
+    """Pinning it biased the lifetimes: a measured IRF's timing genuinely drifts."""
+    y, irf = _simulate()
+    for kw in ({}, dict(irf=irf), dict(irf=irf, fit_irf=True)):
+        c = build_lifetime_fit(y, bin_width=DT, **kw).model.convolve
+        assert not c._ts.fixed, f"timeshift was pinned for {kw}"
+
+
 def test_parameters_are_fitting_parameters_with_bounds():
     y, irf = _simulate()
     result = fit_lifetime_model(y, bin_width=DT, irf=irf, n_components=2,

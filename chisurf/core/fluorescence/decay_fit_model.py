@@ -47,13 +47,21 @@ def _as_counts_irf(irf, n_bins: int) -> np.ndarray:
     return y
 
 
-def _default_irf(n_bins: int, bin_width: float) -> np.ndarray:
-    """Return a narrow synthetic prompt, used when no IRF is supplied."""
-    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
+def _use_synthetic_irf(convolve, width: float, skew: float) -> None:
+    """Switch ``convolve`` to its own generated IRF and seed its shape.
 
-    t = np.arange(n_bins, dtype=float) * float(bin_width)
-    fwhm = max(2.0 * float(bin_width), 1e-6)
-    return _as_counts_irf(synthetic_irf(t, 2.0 * fwhm, fwhm, shape=0.0), n_bins)
+    ``Convolve._process_irf`` builds a generalized-normal prompt from the ``iw``
+    (width) and ``ik`` (skew) parameters whenever no IRF *curve* is stored,
+    locating it at the data's rising edge. Clearing the stored curve therefore
+    turns the IRF shape into fitted parameters rather than fixed input. The
+    backing attribute is name-mangled and its property setter dereferences the
+    value, so it has to be cleared directly.
+    """
+    object.__setattr__(convolve, "_Convolve__irf", None)
+    # Width is magnitude-only — `_process_irf` takes abs(iw), and the sign of the
+    # asymmetry lives in ik — so a fit may legitimately return a negative width.
+    convolve._iw.value = abs(float(width))
+    convolve._ik.value = float(skew)
 
 
 def build_lifetime_fit(
@@ -69,6 +77,9 @@ def build_lifetime_fit(
     background: float = 0.0,
     fit_background: bool = False,
     fit_scatter: bool = False,
+    fit_irf: bool = False,
+    irf_width: float = 0.2,
+    irf_skew: float = 0.0,
     period: float | None = None,
 ):
     """Build a runnable :class:`Fit` over ``decay`` with a ``LifetimeModel``.
@@ -80,8 +91,9 @@ def build_lifetime_fit(
     bin_width : float
         Micro-time bin width in nanoseconds.
     irf : array_like, optional
-        Instrument response. Rescaled to counts internally (see
-        :data:`_IRF_PEAK_COUNTS`); a narrow synthetic prompt is used when omitted.
+        Measured instrument response, rescaled to counts internally (see
+        :data:`_IRF_PEAK_COUNTS`). When omitted the model generates its own
+        prompt from the ``iw``/``ik`` parameters, which ``fit_irf`` can free.
     n_components : int
         Number of exponential components.
     initial_lifetimes : array_like, optional
@@ -99,6 +111,14 @@ def build_lifetime_fit(
     fit_background, fit_scatter : bool
         Free the corresponding nuisance parameter (``generic.bg`` / ``generic.sc``)
         instead of holding it fixed.
+    fit_irf : bool
+        Fit the *shape* of the generated prompt (``iw``/``ik``) alongside the
+        lifetimes. Has no effect when a measured ``irf`` is supplied, whose shape
+        is data rather than a model. The IRF timeshift (``ts``) is free either
+        way, following ChiSurf's default.
+    irf_width, irf_skew : float
+        Seed values for the generated prompt's width (ns) and skew. Ignored when
+        a measured ``irf`` is supplied.
     period : float, optional
         Laser period in ns. When given the convolution is periodic, so the
         previous pulse's tail wraps into the window; otherwise it is aperiodic.
@@ -141,9 +161,12 @@ def build_lifetime_fit(
               xmin=start, xmax=stop)
     m = fit.model
 
-    irf_y = _default_irf(n_bins, dt) if irf is None else _as_counts_irf(irf, n_bins)
     c = m.convolve
-    c._irf = chisurf.core.data.DataCurve(x=t, y=irf_y, ey=np.ones_like(irf_y))
+    if irf is not None:
+        irf_y = _as_counts_irf(irf, n_bins)
+        c._irf = chisurf.core.data.DataCurve(x=t, y=irf_y, ey=np.ones_like(irf_y))
+    else:
+        _use_synthetic_irf(c, irf_width, irf_skew)
     # The IRF is already background-free here; subtracting anything would clip it.
     c.lamp_background = 0.0
     c.dt = dt                                  # defaults to 1.0
@@ -174,6 +197,15 @@ def build_lifetime_fit(
     m.generic._bg.fixed = not bool(fit_background)
     m.generic._sc.fixed = not bool(fit_scatter)
 
+    # A measured IRF is data: its shape is input, not a model, so only a
+    # generated prompt has its width/skew fitted. The IRF *timeshift* is left at
+    # ChiSurf's own default (free) in both cases — a measured IRF is recorded
+    # separately from the data and its timing genuinely drifts, so pinning it
+    # here measurably biased the lifetimes.
+    shape_free = bool(fit_irf) and irf is None
+    c._iw.fixed = not shape_free
+    c._ik.fixed = not shape_free
+
     m.find_parameters()
     fit.fit_range = (start, stop)
     return fit
@@ -192,6 +224,9 @@ def fit_lifetime_model(
     background: float = 0.0,
     fit_background: bool = False,
     fit_scatter: bool = False,
+    fit_irf: bool = False,
+    irf_width: float = 0.2,
+    irf_skew: float = 0.0,
     period: float | None = None,
 ) -> dict:
     """Fit ``decay`` through a real ``LifetimeModel`` and report the result.
@@ -211,14 +246,20 @@ def fit_lifetime_model(
     dict
         ``{lifetimes, amplitudes, lifetime_spectrum, reconstruction,
         weighted_residuals, chi2_reduced, lifetime_errors, amplitude_errors,
-        background, scatter, fit, model}``. ``lifetimes`` and ``amplitudes`` are
-        sorted by lifetime, matching ``fit_lifetime_components``.
+        background, scatter, irf_width, irf_skew, irf_shift, fit, model}``.
+        ``lifetimes`` and ``amplitudes`` are sorted by lifetime, matching
+        ``fit_lifetime_components``.
+
+        ``amplitudes`` are **pre-exponential**, not the photon fractions
+        ``fit_lifetime_components`` reports; convert with
+        ``f_i = a_i*tau_i / sum(a_j*tau_j)``.
     """
     fit = build_lifetime_fit(
         decay, bin_width=bin_width, irf=irf, n_components=n_components,
         initial_lifetimes=initial_lifetimes, tau_bounds=tau_bounds,
         start_bin=start_bin, stop_bin=stop_bin, background=background,
-        fit_background=fit_background, fit_scatter=fit_scatter, period=period,
+        fit_background=fit_background, fit_scatter=fit_scatter,
+        fit_irf=fit_irf, irf_width=irf_width, irf_skew=irf_skew, period=period,
     )
     fit.run()
     m = fit.model
@@ -251,6 +292,11 @@ def fit_lifetime_model(
         "chi2_reduced": float(np.sum(wres ** 2) / max(1, wres.size)),
         "background": float(m.generic.background),
         "scatter": float(m.generic.scatter),
+        # Width is magnitude-only (`_process_irf` takes its absolute value), so
+        # report it as such rather than passing a negative width to callers.
+        "irf_width": abs(float(m.convolve._iw.value)),
+        "irf_skew": float(m.convolve._ik.value),
+        "irf_shift": float(m.convolve._ts.value),
         "fit": fit,
         "model": m,
     }
