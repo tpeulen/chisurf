@@ -220,7 +220,6 @@ def bayesian_information_criterion(
         return k * np.log(n) - 2.0 * np.log(value)
 
 
-@nb.jit(nopython=True)
 def durbin_watson(
         residuals: np.array
 ) -> float:
@@ -244,11 +243,17 @@ def durbin_watson(
     ----------
     Durbin, J. and Watson, G. S. (1950, 1951).
     """
-    n_res = len(residuals)
-    nom = 0.0
-    denomminator = float(np.sum(residuals ** 2))
-    for i in range(1, n_res):
-        nom += (residuals[i] - residuals[i - 1]) ** 2
+    # Deliberately plain NumPy rather than @nb.jit. This is an O(n) statistic
+    # that numpy evaluates in microseconds, but it is read by the plot overlay,
+    # so under numba it JIT-compiled the first time a fit window rendered --
+    # a ~230 ms stall on the GUI thread, and (without cache=True) once per
+    # process. Vectorised here it is the same arithmetic with no compile step.
+    residuals = np.asarray(residuals, dtype=np.float64)
+    if residuals.size < 2:
+        return 0.0
+    d = np.diff(residuals)
+    nom = float(np.dot(d, d))
+    denomminator = float(np.dot(residuals, residuals))
     return nom / max(1.0, denomminator)
 
 
