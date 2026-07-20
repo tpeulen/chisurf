@@ -76,6 +76,7 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         self._irf: Dict[tuple, str] = {}
         self._width: Dict[tuple, float] = {}
         self._skew: Dict[tuple, float] = {}
+        self._width_spins: Dict[tuple, QtWidgets.QDoubleSpinBox] = {}
         self.checkboxes: Dict[str, QtWidgets.QCheckBox] = {}
 
         # Coalesce rapid Width/Skew edits into a single recompute.
@@ -134,6 +135,7 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         prev_checked = {n: cb.isChecked() for n, cb in self.checkboxes.items()}
         self.table.setRowCount(0)
         self.checkboxes.clear()
+        self._width_spins.clear()
         for detector in self._detectors:
             first_row = self.table.rowCount()
             for role in self._roles():
@@ -184,6 +186,7 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         wsb.setKeyboardTracking(False)
         wsb.setToolTip("Synthetic-IRF start FWHM (ns)")
         wsb.valueChanged.connect(lambda v, k=key: self._edit_value(self._width, k, v))
+        self._width_spins[key] = wsb
         self.table.setCellWidget(row, 2, wsb)
         ssb = QtWidgets.QDoubleSpinBox()
         ssb.setRange(-10.0, 10.0)
@@ -280,6 +283,16 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
 
     def width(self, detector: str, role: str = "") -> float:
         return float(self._width.get(self._key(detector, role), 0.2))
+
+    def set_width(self, detector: str, value: float, role: str = "") -> None:
+        """Set a detector's synthetic-IRF FWHM and update its spinbox display."""
+        key = self._key(detector, role)
+        self._width[key] = float(value)
+        spin = self._width_spins.get(key)
+        if spin is not None:
+            spin.blockSignals(True)
+            spin.setValue(float(value))
+            spin.blockSignals(False)
 
     def skew(self, detector: str, role: str = "") -> float:
         return float(self._skew.get(self._key(detector, role), 0.0))
@@ -434,12 +447,18 @@ class SpeciesListWidget(QtWidgets.QListWidget):
         }
         self.add_synthetic_source(source)
 
-    def add_synthetic_source(self, source: dict) -> None:
-        """Add any serializable synthetic component definition."""
-        source = dict(source)
-        source.setdefault("type", "synthetic")
-        name = str(source.get("name", "component"))
+    @staticmethod
+    def _synthetic_summary(source: dict) -> str:
+        """One-line summary describing a synthetic component."""
         model = str(source.get("model", "lifetime"))
+        if model == "fret_species":
+            state = {"d_only": "donor-only", "da": "FRET pair", "a_only": "acceptor-only"}.get(
+                str(source.get("state", "da")), str(source.get("state", "da")))
+            if source.get("fret_mode") == "distance":
+                fret = f"R={float(source.get('distance', 0)):g}Å"
+            else:
+                fret = f"E={float(source.get('transfer_efficiency', 0)):g}"
+            return f"{state}, {fret}"
         if model == "lifetime":
             summary = f"τ={float(source['lifetime']):g} ns"
         elif model == "lifetime_spectrum":
@@ -460,10 +479,13 @@ class SpeciesListWidget(QtWidgets.QListWidget):
             summary += ", fit model" if source.get("source_fit") else ", detector IRF"
         if source.get("shot_noise"):
             summary += f", Poisson {int(source.get('photon_count', 0)):,} photons"
+        return summary
 
-        item = QtWidgets.QListWidgetItem(f"{name}  [synthetic, {summary}]")
-        item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-        item.setCheckState(QtCore.Qt.Checked)
+    def _apply_synthetic_source(self, item: QtWidgets.QListWidgetItem, source: dict) -> None:
+        """Populate ``item``'s label, tooltip and data from a synthetic source."""
+        name = str(source.get("name", "component"))
+        summary = self._synthetic_summary(source)
+        item.setText(f"{name}  [synthetic, {summary}]")
         tooltip = f"Synthetic component: {summary}"
         if source.get("source_fit"):
             tooltip += f"\nSource fit: {source['source_fit']}"
@@ -471,5 +493,21 @@ class SpeciesListWidget(QtWidgets.QListWidget):
             tooltip += f"\nIRF: {source['irf_path']}"
         item.setToolTip(tooltip)
         item.setData(QtCore.Qt.UserRole, source)
+
+    def add_synthetic_source(self, source: dict) -> None:
+        """Add any serializable synthetic component definition."""
+        source = dict(source)
+        source.setdefault("type", "synthetic")
+        item = QtWidgets.QListWidgetItem()
+        item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
+        item.setCheckState(QtCore.Qt.Checked)
+        self._apply_synthetic_source(item, source)
         self.addItem(item)
+        self.filesChanged.emit()
+
+    def replace_synthetic_source(self, item: QtWidgets.QListWidgetItem, source: dict) -> None:
+        """Replace an existing component in place (edit), preserving its check state."""
+        source = dict(source)
+        source.setdefault("type", "synthetic")
+        self._apply_synthetic_source(item, source)
         self.filesChanged.emit()

@@ -25,7 +25,6 @@ def _build_filter_client():
     from ..gui.client import FilterCalcClient
     return FilterCalcClient()
 from .widgets import SpeciesListWidget
-from .synthetic_editor import SyntheticSpectrumViewModel
 from .calculator_options import CalculatorOptionsViewModel
 from .data_loading import load_vector
 
@@ -59,6 +58,15 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._total_paths: List[pathlib.Path] = []
         self._total_vector: np.ndarray | None = None
         self._total_vectors_by_detector: dict[str, np.ndarray] = {}
+        # Micro-time axis taken from the loaded data / setup: the TAC bin width
+        # (ns) captured from the TTTR header, and an optional coarsening factor.
+        self._data_dt_ns: float = 0.0
+        self._micro_time_binning: int = 1
+        self._suspend_compute: bool = False
+        #: Persistent auto-fit settings (shown/edited in the Auto-fit dialog).
+        self._auto_fit_settings: dict = {
+            "kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0,
+        }
         self._result: FilterResult | None = None
         self._result_anisotropy = None  # For single-detector Anisotropy results
         self._result_multi_anisotropy = None  # For multi-detector Anisotropy results (list)
@@ -145,11 +153,46 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         total_vbox = QtWidgets.QVBoxLayout(total_group)
         total_vbox.setContentsMargins(3, 3, 3, 3)
         total_vbox.setSpacing(2)
+        total_row = QtWidgets.QHBoxLayout()
+        total_row.setContentsMargins(0, 0, 0, 0)
+        total_row.setSpacing(4)
         self.le_total = QtWidgets.QLineEdit()
         self.le_total.setReadOnly(True)
-        self.le_total.setPlaceholderText("Drop file here...")
-        self.le_total.setToolTip("Path to the total decay histogram")
-        total_vbox.addWidget(self.le_total)
+        self.le_total.setPlaceholderText("Drop the measured mixed decay here…")
+        self.le_total.setToolTip("The measured mixed (total) decay histogram to unmix.")
+        total_row.addWidget(self.le_total, 1)
+        self.btn_load_total = QtWidgets.QToolButton()
+        self.btn_load_total.setText("📂 Load…")
+        self.btn_load_total.setToolTip("Open a measured mixed decay histogram to replace the built-in example.")
+        self.btn_load_total.clicked.connect(self._add_total_dialog)
+        total_row.addWidget(self.btn_load_total)
+        self.btn_total_from_correlator = QtWidgets.QToolButton()
+        self.btn_total_from_correlator.setText("📡 From correlator")
+        self.btn_total_from_correlator.setToolTip(
+            "Use the TTTR files already loaded in the Correlator (Files & Steps) as "
+            "the mixed decay."
+        )
+        self.btn_total_from_correlator.clicked.connect(self._use_correlator_total)
+        total_row.addWidget(self.btn_total_from_correlator)
+        total_vbox.addLayout(total_row)
+        # Fit / filter range (TAC bins) — kept in sync with the draggable region
+        # on the reconstruction plot.
+        range_row = QtWidgets.QHBoxLayout()
+        range_row.setContentsMargins(0, 0, 0, 0)
+        range_row.setSpacing(4)
+        range_row.addWidget(QtWidgets.QLabel("Fit range:"))
+        self.sb_fit_start = QtWidgets.QSpinBox()
+        self.sb_fit_start.setRange(0, 1_000_000)
+        self.sb_fit_start.setToolTip("First TAC bin of the fit / filter window.")
+        self.sb_fit_stop = QtWidgets.QSpinBox()
+        self.sb_fit_stop.setRange(0, 1_000_000)
+        self.sb_fit_stop.setToolTip("Last TAC bin of the fit / filter window.")
+        range_row.addWidget(self.sb_fit_start)
+        range_row.addWidget(QtWidgets.QLabel("–"))
+        range_row.addWidget(self.sb_fit_stop, 1)
+        total_vbox.addLayout(range_row)
+        self.sb_fit_start.valueChanged.connect(self._on_range_spin_changed)
+        self.sb_fit_stop.valueChanged.connect(self._on_range_spin_changed)
         data_layout.addWidget(total_group)
         sidebar_layout.addWidget(data_group)
 
@@ -161,6 +204,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.lw_species = SpeciesListWidget()
         self.lw_species.filesChanged.connect(self._on_files_changed)  # Files added/removed
         self.lw_species.checkStateChanged.connect(self._on_data_changed)  # Checkboxes toggled
+        self.lw_species.customContextMenuRequested.connect(self._species_context_menu)
+        self.lw_species.itemDoubleClicked.connect(self._edit_component_item)
         species_vbox.addWidget(self.lw_species)
         sidebar_layout.addWidget(species_group)
         self.status_label = QtWidgets.QLabel()
@@ -176,6 +221,20 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.plot_recon.setLabel("left", "Counts")
         self.plot_recon.setLogMode(y=True)
         self.plot_recon.addLegend()
+        # Draggable fit/filter range (TAC bins of the first detector). Auto-fit and
+        # the reconstruction use only this window — set past the prompt to a tail fit.
+        self._fit_region = pg.LinearRegionItem(
+            brush=(90, 150, 255, 55),
+            hoverBrush=(120, 175, 255, 80),
+            pen=pg.mkPen((150, 190, 255), width=2),
+            hoverPen=pg.mkPen((190, 215, 255), width=3),
+            movable=True,
+        )
+        self._fit_region.setZValue(10)  # above the decays so its handles are grabbable
+        self._fit_region_initialized = False
+        self._syncing_range = False
+        self._fit_region.sigRegionChanged.connect(self._on_region_changed)
+        self.plot_recon.addItem(self._fit_region)
         self.plot_residuals = pg.PlotWidget(title="Weighted Residuals")
         self.plot_residuals.setLabel("bottom", "TAC bin")
         self.plot_residuals.setLabel("left", "Residuals (σ)")
@@ -191,35 +250,18 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         )
         self.action_load_total.triggered.connect(self._add_total_dialog)
 
-        add_action = self.toolbar.addAction("➕ Add")
-        add_action.setToolTip(
-            "Add a measured decay pattern, synthetic lifetime spectrum, or spectrum from an open fit."
-        )
-        self.btn_add_component = self.toolbar.widgetForAction(add_action)
-        add_menu = QtWidgets.QMenu(self.btn_add_component)
-        add_menu.setToolTipsVisible(True)
-        self.action_add_species = add_menu.addAction("📈 Measured pattern…")
-        self.action_add_synthetic = add_menu.addAction("🧬 Synthetic / fit…")
-        self.action_add_species.setToolTip(
-            "Load one or more measured component decay histograms from files."
-        )
-        self.action_add_synthetic.setToolTip(
-            "Define a synthetic lifetime spectrum or copy a spectrum and detector model from an open fit."
-        )
-        self.action_add_species.triggered.connect(self._add_species_dialog)
-        self.action_add_synthetic.triggered.connect(self._add_synthetic_dialog)
-        add_action.triggered.connect(self._add_synthetic_dialog)
-        self.btn_add_component.setMenu(add_menu)
-        self.btn_add_component.setPopupMode(QtWidgets.QToolButton.MenuButtonPopup)
-        self.btn_add_species = self.btn_add_component
-        self.btn_add_synthetic = self.btn_add_component
-
-        remove_action = self.toolbar.addAction("➖ Remove")
-        remove_action.setToolTip("Remove the selected component decay patterns.")
-        remove_action.triggered.connect(self._remove_selected_species)
-        self.btn_remove_species = self.toolbar.widgetForAction(remove_action)
+        # Add / Edit / Remove all live on the Components list context menu
+        # (right-click) and double-click-to-edit — not toolbar buttons.
 
         self.toolbar.addSeparator()
+        autofit_action = self.toolbar.addAction("🎯 Auto-fit")
+        autofit_action.setToolTip(
+            "Auto-fit the measured mixed decay to N lifetime components and add them "
+            "as species — a quick starting set of filter components."
+        )
+        autofit_action.triggered.connect(self._auto_fit_components)
+        self.btn_autofit = self.toolbar.widgetForAction(autofit_action)
+
         unmix_action = self.toolbar.addAction("🧩 Unmix")
         unmix_action.setToolTip(
             "Fit non-negative component intensities and compute component filters."
@@ -383,11 +425,34 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         return float(np.nanmax(arr)) if arr.size else 0.0
 
     def _pattern_bin_width_ns(self) -> float:
+        # Prefer the micro-time bin width captured from the loaded data / setup.
+        if getattr(self, "_data_dt_ns", 0.0) > 0.0:
+            return float(self._data_dt_ns)
         for index in range(self.lw_species.count()):
             source = self.lw_species.item(index).data(QtCore.Qt.UserRole)
             if isinstance(source, dict) and source.get("bin_width"):
                 return float(source["bin_width"])
         return 0.05
+
+    def _micro_time_axis(self, header, microtimes: np.ndarray, n_tac: int):
+        """Apply the optional micro-time binning and capture the TAC bin width.
+
+        Reads the micro-time resolution from the TTTR ``header`` (seconds → ns),
+        multiplies it by the coarsening factor, and stores it in ``_data_dt_ns``
+        so the lifetime filters use the same micro-time axis as the data / the
+        correlator. Returns ``(microtimes, n_tac)`` after coarsening.
+        """
+        try:
+            resolution_s = float(getattr(header, "micro_time_resolution", 0.0) or 0.0)
+        except Exception:
+            resolution_s = 0.0
+        b = max(1, int(getattr(self, "_micro_time_binning", 1)))
+        if b > 1:
+            microtimes = microtimes // b
+            n_tac = (int(n_tac) + b - 1) // b
+        if resolution_s > 0.0:
+            self._data_dt_ns = resolution_s * 1.0e9 * b
+        return microtimes, int(n_tac)
 
     def _nuisance_patterns(
         self,
@@ -458,6 +523,11 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._total_paths = paths
         self._total_vector = None
         self._total_vectors_by_detector = {}
+        # Recapture the micro-time bin width from the new data (TTTR headers set
+        # it; text totals leave it 0 so the species/default bin width is used).
+        self._data_dt_ns = 0.0
+        # Re-default the fit/filter range for the new data's micro-time axis.
+        self._fit_region_initialized = False
         if not paths:
             self.le_total.setText("")
             self.le_total.setToolTip("")
@@ -470,6 +540,52 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         # Invalidate cache when total paths change
         self._invalidate_cache()
         self._on_data_changed()
+
+    def _correlator_context(self):
+        """The FCS toolbox's shared workflow context, if this panel is hosted in it."""
+        widget = self.parent()
+        while widget is not None:
+            ctx = getattr(widget, "workflow_context", None)
+            if ctx is not None:
+                return ctx
+            widget = widget.parent()
+        return None
+
+    def _correlator_file_paths(self) -> List[pathlib.Path]:
+        """TTTR files loaded in the sibling Correlator (Files & Steps), if any."""
+        ctx = self._correlator_context()
+        if ctx is None:
+            return []
+        # Prefer the fully-expanded list; fall back to the checked paths.
+        paths = list(getattr(ctx, "expanded_files", []) or []) or \
+            list(getattr(ctx, "file_paths", []) or [])
+        return [pathlib.Path(p) for p in paths]
+
+    def _use_correlator_total(self) -> None:
+        """Set the mixed decay from the Correlator's already-loaded TTTR files."""
+        ctx = self._correlator_context()
+        if ctx is not None:
+            # Adopt the correlator's micro-time binning so the lifetime filters
+            # share its micro-time axis (the resolution comes from the data).
+            self._micro_time_binning = max(1, int(getattr(ctx, "microtime_binning", 1) or 1))
+        paths = [p for p in self._correlator_file_paths() if pathlib.Path(p).is_file()]
+        if not paths:
+            QtWidgets.QMessageBox.information(
+                self, "No correlator data",
+                "No files are loaded in the Correlator (Files & Steps) step yet.",
+            )
+            return
+        self._set_total_paths(paths)
+        self._update_status(f"Mixed decay from correlator ({len(paths)} file(s)).")
+
+    def showEvent(self, event) -> None:  # noqa: N802 (Qt override)
+        super().showEvent(event)
+        # On first show, if the user hasn't loaded a measured total, adopt the
+        # Correlator's already-loaded files as the mixed decay automatically.
+        if not getattr(self, "_correlator_autoload_done", False):
+            self._correlator_autoload_done = True
+            if not self._total_paths and self._correlator_file_paths():
+                self._use_correlator_total()
 
     def _has_total_decay(self) -> bool:
         return bool(self._total_paths) or self._total_vector is not None
@@ -552,44 +668,97 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if paths:
             self.lw_species.add_pattern([pathlib.Path(p) for p in paths])
 
-    def _add_synthetic_dialog(self) -> None:
-        dialog = QtWidgets.QDialog(self)
-        dialog.setWindowTitle("Add Synthetic Decay Component")
-        dialog.resize(620, 520)
-        layout = QtWidgets.QVBoxLayout(dialog)
+    def _choose_fit_spectrum(self, parent):
+        """Prompt for an open ChiSurf fit and return ``(spectrum, label, fit)``."""
+        fits = list(getattr(cs, "fits", []) or [])
+        current = getattr(getattr(cs, "cs", None), "current_fit", None)
+        if current is None:
+            current = getattr(cs, "current_fit", None)
+        if current is not None and all(current is not fit for fit in fits):
+            fits.append(current)
+        if not fits:
+            QtWidgets.QMessageBox.information(parent, "No Fits", "No ChiSurf fits are open.")
+            return None
+        labels = [str(getattr(fit, "name", None) or fit) for fit in fits]
+        default = fits.index(current) if current in fits else 0
+        label, accepted = QtWidgets.QInputDialog.getItem(
+            parent, "Read Lifetime Spectrum", "Fit:", labels, default, False
+        )
+        if not accepted:
+            return None
+        fit = fits[labels.index(label)]
+        model = getattr(getattr(fit, "selected_fit", fit), "model", None)
+        try:
+            spectrum = lifetime_spectrum_from_model(model)
+        except Exception as error:
+            QtWidgets.QMessageBox.warning(parent, "Unsupported Fit", str(error))
+            return None
+        return spectrum, label, fit
 
-        def choose_fit():
-            fits = list(getattr(cs, "fits", []) or [])
-            current = getattr(getattr(cs, "cs", None), "current_fit", None)
-            if current is None:
-                current = getattr(cs, "current_fit", None)
-            if current is not None and all(current is not fit for fit in fits):
-                fits.append(current)
-            if not fits:
-                QtWidgets.QMessageBox.information(dialog, "No Fits", "No ChiSurf fits are open.")
-                return None
-            labels = [str(getattr(fit, "name", None) or fit) for fit in fits]
-            default = fits.index(current) if current in fits else 0
-            label, accepted = QtWidgets.QInputDialog.getItem(
-                dialog, "Read Lifetime Spectrum", "Fit:", labels, default, False
-            )
-            if not accepted:
-                return None
-            fit = fits[labels.index(label)]
-            model = getattr(getattr(fit, "selected_fit", fit), "model", None)
-            try:
-                spectrum = lifetime_spectrum_from_model(model)
-            except Exception as error:
-                QtWidgets.QMessageBox.warning(dialog, "Unsupported Fit", str(error))
-                return None
-            return spectrum, label, fit
-
+    def _build_component_editor(self, kind: str, existing=None):
+        """Build (editor_model, AutoForm) for a component ``kind`` (lifetime/fret)."""
         from chisurf.gui.autoform import AutoForm
 
-        editor_model = SyntheticSpectrumViewModel(read_fit=choose_fit)
-        editor = AutoForm(editor_model, dialog)
+        if kind == "fret":
+            from chisurf.gui.widgets.fret_species_editor import FretSpeciesEditorModel
+
+            editor_model = FretSpeciesEditorModel()
+            editor_model.set_calibration_seed(self._calibration_seed)
+        else:
+            from chisurf.gui.widgets.synthetic_decay_editor import SyntheticDecayEditorModel
+
+            editor_model = SyntheticDecayEditorModel(
+                read_fit=lambda: self._choose_fit_spectrum(self)
+            )
+        if isinstance(existing, dict):
+            editor_model.load_component(existing)
+        editor = AutoForm(editor_model)
         editor_model.set_changed_callback(editor.refresh_plots)
-        layout.addWidget(editor, 1)
+        return editor_model, editor
+
+    def _add_component_dialog(self, edit_item=None) -> None:
+        """One dialog to add/edit a decay component — a **Type** selector switches
+        between a plain lifetime spectrum and a coupled FRET species."""
+        existing = edit_item.data(QtCore.Qt.UserRole) if edit_item is not None else None
+        init_kind = "fret" if isinstance(existing, dict) and existing.get("model") == "fret_species" else "lifetime"
+
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Edit Component" if edit_item is not None else "Add Component")
+        dialog.resize(660, 720)
+        layout = QtWidgets.QVBoxLayout(dialog)
+
+        type_row = QtWidgets.QHBoxLayout()
+        type_row.addWidget(QtWidgets.QLabel("Type:"))
+        combo = QtWidgets.QComboBox()
+        combo.addItem("Lifetime spectrum", "lifetime")
+        combo.addItem("FRET species", "fret")
+        combo.setCurrentIndex(1 if init_kind == "fret" else 0)
+        combo.setEnabled(edit_item is None)  # type is fixed when editing
+        combo.setToolTip("Plain lifetime decay (same in all detectors) or a coupled "
+                         "smFRET species (different green/red/yellow decays).")
+        type_row.addWidget(combo)
+        type_row.addStretch(1)
+        layout.addLayout(type_row)
+
+        container = QtWidgets.QWidget()
+        c_layout = QtWidgets.QVBoxLayout(container)
+        c_layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(container, 1)
+        state: dict = {}
+
+        def build(kind: str):
+            while c_layout.count():
+                w = c_layout.takeAt(0).widget()
+                if w is not None:
+                    w.setParent(None)
+                    w.deleteLater()
+            editor_model, editor = self._build_component_editor(kind, existing)
+            c_layout.addWidget(editor)
+            state["kind"] = kind
+            state["model"] = editor_model
+
+        build(init_kind)
+        combo.currentIndexChanged.connect(lambda: build(combo.currentData()))
 
         buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
@@ -599,7 +768,12 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         layout.addWidget(buttons)
         if dialog.exec_() != QtWidgets.QDialog.Accepted:
             return
+        if state["kind"] == "fret":
+            self._commit_fret_component(state["model"], edit_item, dialog)
+        else:
+            self._commit_synthetic_component(state["model"], edit_item, dialog)
 
+    def _commit_synthetic_component(self, editor_model, edit_item, parent) -> None:
         try:
             spectrum = editor_model.lifetime_spectrum
             irf = pathlib.Path(editor_model.irf_path) if editor_model.irf_path.strip() else None
@@ -609,19 +783,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Invalid Synthetic Decay", str(error))
             return
 
-        source = {
-            "type": "synthetic",
-            "model": "lifetime_spectrum",
-            "name": editor_model.name.strip() or "component",
-            "amplitudes": spectrum[0::2].tolist(),
-            "lifetimes": spectrum[1::2].tolist(),
-            "bin_width": editor_model.bin_width,
-            "start_bin": editor_model.start_bin,
-            "irf_path": str(irf.absolute()) if irf else None,
-            "shot_noise": bool(editor_model.shot_noise),
-            "photon_count": int(editor_model.photon_count),
-            "noise_seed": int(editor_model.noise_seed),
-        }
+        source = editor_model.component()
         if editor_model.selected_fit is not None:
             detector_names = self.detector_selection.get_selected()
             try:
@@ -656,7 +818,58 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             except Exception as error:
                 QtWidgets.QMessageBox.warning(self, "Fit Pattern Error", str(error))
                 return
-        self.lw_species.add_synthetic_source(source)
+        if edit_item is not None:
+            self.lw_species.replace_synthetic_source(edit_item, source)
+        else:
+            self.lw_species.add_synthetic_source(source)
+
+    def _detector_irf(self, detector_name: str, role: str = ""):
+        """Return a detector's IRF (measured file or synthetic Gaussian) for FRET decays."""
+        import numpy as np
+
+        from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
+
+        n_bins = int(self._total_vector.size) if self._total_vector is not None else 256
+        dt = float(self._pattern_bin_width_ns())
+        configured = self.detector_selection.irf_path(detector_name, role)
+        if configured and pathlib.Path(configured).is_file():
+            return load_vector(pathlib.Path(configured))
+        fwhm = float(self.detector_selection.width(detector_name, role) or 0.0)
+        if fwhm <= 0.0:
+            return None
+        time = np.arange(n_bins, dtype=float) * dt
+        return synthetic_irf(time, 2.0 * fwhm, fwhm,
+                             shape=float(self.detector_selection.skew(detector_name, role) or 0.0))
+
+    def _calibration_seed(self) -> dict:
+        """Crosstalk factors seeded from the selected detector setup, if any."""
+        settings = self._detector_settings or {}
+        cal = settings.get("calibration") or settings.get("crosstalk") or {}
+        seed = {}
+        for key in ("alpha", "beta", "gamma", "delta", "forster_radius"):
+            if key in cal:
+                seed[key] = float(cal[key])
+        return seed
+
+    def _commit_fret_component(self, editor_model, edit_item, parent) -> None:
+        from chisurf.core.fluorescence.fret.species_decay import fret_species_detector_patterns
+
+        source = editor_model.component()
+        detector_names = self.detector_selection.get_selected() or ["green", "red", "yellow"]
+        n_bins = int(self._total_vector.size) if self._total_vector is not None else 256
+        try:
+            patterns = fret_species_detector_patterns(
+                source, detector_names, n_bins, irf_for_detector=self._detector_irf,
+            )
+        except Exception as error:
+            QtWidgets.QMessageBox.warning(self, "FRET Species Error", str(error))
+            return
+        source["patterns_by_detector"] = {k: np.asarray(v, dtype=float).tolist()
+                                          for k, v in patterns.items()}
+        if edit_item is not None:
+            self.lw_species.replace_synthetic_source(edit_item, source)
+        else:
+            self.lw_species.add_synthetic_source(source)
 
     @staticmethod
     def _resize_pattern(pattern: np.ndarray, n_bins: int) -> np.ndarray:
@@ -711,6 +924,232 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         paths = [pathlib.Path(path) for path in source]
         pattern = self._load_and_sum_vectors(paths, chs)
         return self._resize_pattern(pattern, n_bins), [str(path.absolute()) for path in paths]
+
+    def _init_fit_region(self, decay) -> None:
+        """Set a sensible default fit range (just past the prompt → near the end)."""
+        if self._fit_region_initialized:
+            return
+        d = np.asarray(decay, dtype=float).ravel()
+        if d.size < 8:
+            return
+        peak = int(np.argmax(d))
+        start = min(peak + max(2, d.size // 100), d.size - 4)
+        stop = d.size - max(1, d.size // 100)
+        self._fit_region_initialized = True
+        self._set_fit_range(start, stop, source="init")
+
+    def _set_fit_range(self, start: int, stop: int, source: str = "") -> None:
+        """Set both the plot region and the spinboxes without signal feedback loops."""
+        if self._syncing_range:
+            return
+        self._syncing_range = True
+        try:
+            if source != "region":
+                self._fit_region.setRegion((float(start), float(stop)))
+            if source != "spin":
+                self.sb_fit_start.setValue(int(start))
+                self.sb_fit_stop.setValue(int(stop))
+        finally:
+            self._syncing_range = False
+
+    def _on_region_changed(self) -> None:
+        lo, hi = self._fit_region.getRegion()
+        self._set_fit_range(int(round(min(lo, hi))), int(round(max(lo, hi))), source="region")
+
+    def _on_range_spin_changed(self) -> None:
+        self._fit_region_initialized = True
+        self._set_fit_range(self.sb_fit_start.value(), self.sb_fit_stop.value(), source="spin")
+
+    def _fit_range(self, n_bins: int) -> tuple[int, int]:
+        """The selected fit/filter range (TAC bins), clamped to ``[0, n_bins]``."""
+        lo, hi = self._fit_region.getRegion()
+        start = max(0, int(round(min(lo, hi))))
+        stop = min(int(n_bins), int(round(max(lo, hi))))
+        if stop - start < 4:
+            return 0, int(n_bins)
+        return start, stop
+
+    def _show_auto_fit_settings_dialog(self) -> bool:
+        """Editable auto-fit settings (type, N, lifetime range). Returns True on OK."""
+        s = self._auto_fit_settings
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Auto-fit settings")
+        form = QtWidgets.QFormLayout(dialog)
+
+        cb_kind = QtWidgets.QComboBox()
+        cb_kind.addItem("Lifetime species", "lifetime")
+        cb_kind.addItem("FRET species", "fret")
+        cb_kind.setCurrentIndex(1 if s["kind"] == "fret" else 0)
+        cb_kind.setToolTip("Fit N lifetime species, or N FRET states (E from the "
+                           "relative donor quenching).")
+        form.addRow("Type:", cb_kind)
+
+        sb_n = QtWidgets.QSpinBox()
+        sb_n.setRange(1, 12)
+        sb_n.setValue(int(s["n_components"]))
+        sb_n.setToolTip("Number of lifetime components / FRET states to resolve.")
+        form.addRow("Components / states:", sb_n)
+
+        sb_tmin = QtWidgets.QDoubleSpinBox()
+        sb_tmin.setRange(0.01, 1000.0)
+        sb_tmin.setDecimals(3)
+        sb_tmin.setValue(float(s["tau_min"]))
+        sb_tmax = QtWidgets.QDoubleSpinBox()
+        sb_tmax.setRange(0.02, 1000.0)
+        sb_tmax.setDecimals(3)
+        sb_tmax.setValue(float(s["tau_max"]))
+        form.addRow("Lifetime min (ns):", sb_tmin)
+        form.addRow("Lifetime max (ns):", sb_tmax)
+
+        start, stop = self._fit_range(
+            int(self._total_vector.size) if self._total_vector is not None else 256
+        )
+        form.addRow(QtWidgets.QLabel(
+            f"Fit range: {start}–{stop} TAC bins (drag the region on the decay plot "
+            "or edit the Fit range spinboxes)."
+        ))
+
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
+        buttons.button(QtWidgets.QDialogButtonBox.Ok).setText("Fit")
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        form.addRow(buttons)
+        if dialog.exec_() != QtWidgets.QDialog.Accepted:
+            return False
+        self._auto_fit_settings = {
+            "kind": cb_kind.currentData(),
+            "n_components": int(sb_n.value()),
+            "tau_min": float(sb_tmin.value()),
+            "tau_max": float(max(sb_tmax.value(), sb_tmin.value() + 0.01)),
+        }
+        return True
+
+    def _auto_fit_components(self, n_components: int | None = None) -> None:
+        """Auto-fit the mixed decay (over the selected fit range) to N lifetime
+        components; add them as species.
+
+        A **tail fit** over the draggable fit range on the reconstruction plot: the
+        window is fitted as a discrete multi-exponential
+        (:func:`chisurf.core.fluorescence.decay_fit.fit_lifetime_components`, no IRF
+        — the range starts past the prompt) and one synthetic species per resolved
+        lifetime is appended, its per-detector pattern aligned to the range start.
+        """
+        from chisurf.core.fluorescence.decay import synthetic_decay
+        from chisurf.core.fluorescence.decay_fit import fit_lifetime_components
+
+        if not self._has_total_decay():
+            QtWidgets.QMessageBox.warning(
+                self, "Missing Total Decay", "Load a mixed total decay first."
+            )
+            return
+        settings = self._auto_fit_settings
+        kind = settings["kind"]
+        if n_components is None:
+            if not self._show_auto_fit_settings_dialog():
+                return
+            settings = self._auto_fit_settings
+            kind = settings["kind"]
+            n_components = int(settings["n_components"])
+
+        chs = self.detector_selection.get_selected() if self.detector_selection.checkboxes else None
+        total = np.asarray(self._total_decay(chs[:1] if chs else None), dtype=float).ravel()
+        dt = self._pattern_bin_width_ns()
+        n_bins = int(total.size)
+        self._init_fit_region(total)
+        start, stop = self._fit_range(n_bins)
+
+        try:
+            result = fit_lifetime_components(
+                total[start:stop], bin_width=dt, n_components=int(n_components), irf=None,
+                tau_bounds=(float(settings["tau_min"]), float(settings["tau_max"])),
+            )
+        except Exception as error:
+            QtWidgets.QMessageBox.critical(self, "Auto-fit Error", str(error))
+            return
+
+        amps = result["amplitudes"]
+        taus = result["lifetimes"]
+        scale = float(amps.sum()) or 1.0
+        detector_names = list(chs or [])
+        # Add all species without recomputing per add; compute once at the end.
+        self._suspend_compute = True
+        try:
+            self._add_autofit_species(kind, amps, taus, scale, dt, start, n_bins, detector_names)
+        finally:
+            self._suspend_compute = False
+        self._on_data_changed()
+        parts = ", ".join(
+            f"{float(a) / scale:.0%}·{float(t):.2f}ns" for a, t in zip(amps, taus)
+        )
+        label = "FRET states" if kind == "fret" else "components"
+        self._update_status(
+            f"Auto-fit [{start}–{stop}]: {len(taus)} {label} "
+            f"(χ²ᵣ={result['chi2_reduced']:.3g}) — {parts}."
+        )
+
+    def _add_autofit_species(self, kind, amps, taus, scale, dt, start, n_bins, detector_names):
+        from chisurf.core.fluorescence.decay import synthetic_decay
+
+        if kind == "fret":
+            self._add_fret_autofit_species(amps, taus, scale, dt, start, n_bins, detector_names)
+        else:
+            for amp, tau in zip(amps, taus):
+                source = {
+                    "type": "synthetic", "model": "lifetime_spectrum",
+                    "name": f"τ={float(tau):.2f} ns",
+                    "amplitudes": [float(amp) / scale], "lifetimes": [float(tau)],
+                    "bin_width": float(dt), "start_bin": int(start), "irf_path": None,
+                }
+                # Align each component's decay to the fit-range start so its tail
+                # lines up with the measured decay (pre-range/prompt is nuisance).
+                patterns = {
+                    name: synthetic_decay(n_bins, [float(tau)], bin_width=float(dt),
+                                          start_bin=int(start), normalize=True).tolist()
+                    for name in detector_names
+                }
+                if patterns:
+                    patterns["__default__"] = patterns[detector_names[0]]
+                    source["patterns_by_detector"] = patterns
+                self.lw_species.add_synthetic_source(source)
+
+    def _add_fret_autofit_species(self, amps, taus, scale, dt, start, n_bins, detector_names):
+        """Turn fitted donor lifetimes into FRET species.
+
+        The longest fitted (green/donor) lifetime is taken as the unquenched donor
+        τ_D0; each fitted lifetime τᵢ becomes a FRET species with transfer
+        efficiency Eᵢ = 1 − τᵢ/τ_D0 (τ_D0 itself → a donor-only species). Each
+        species is expanded to per-detector coupled decays and added — a starting
+        FRET set the user refines in the editor.
+        """
+        from chisurf.core.fluorescence.fret.species_decay import fret_species_detector_patterns
+
+        tau_d0 = float(max(taus)) if len(taus) else 1.0
+        dets = detector_names or ["green", "red", "yellow"]
+        for amp, tau in zip(amps, taus):
+            efficiency = float(np.clip(1.0 - float(tau) / tau_d0, 0.0, 0.999))
+            state = "d_only" if efficiency < 1e-3 else "da"
+            source = {
+                "type": "synthetic", "model": "fret_species",
+                "name": (f"donor-only τ={tau_d0:.2f}" if state == "d_only"
+                         else f"DA E={efficiency:.2f}"),
+                "state": state,
+                "donor_spectrum": [1.0, tau_d0],
+                "acceptor_spectrum": [1.0, 2.0],
+                "fret_mode": "efficiency", "transfer_efficiency": efficiency,
+                "bin_width": float(dt),
+            }
+            try:
+                patterns = fret_species_detector_patterns(
+                    source, dets, n_bins, irf_for_detector=self._detector_irf
+                )
+                source["patterns_by_detector"] = {
+                    k: np.asarray(v, dtype=float).tolist() for k, v in patterns.items()
+                }
+            except Exception as error:
+                cs.logging.warning(f"FRET auto-fit species build failed: {error}")
+            self.lw_species.add_synthetic_source(source)
 
     def _unmix_total(self) -> None:
         if not self._has_total_decay():
@@ -783,6 +1222,53 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         # Removing species files requires cache invalidation
         self._invalidate_cache()
         self._on_data_changed()
+
+    @staticmethod
+    def _editable_model(item) -> str:
+        """Return the editable model kind of a component, or '' if not editable."""
+        source = item.data(QtCore.Qt.UserRole) if item is not None else None
+        if isinstance(source, dict) and source.get("type") == "synthetic":
+            model = source.get("model")
+            if model in ("lifetime_spectrum", "fret_species"):
+                return str(model)
+        return ""
+
+    @classmethod
+    def _is_editable_component(cls, item) -> bool:
+        """A synthetic lifetime-spectrum or FRET-species component can be reopened."""
+        return bool(cls._editable_model(item))
+
+    def _edit_component_item(self, item) -> None:
+        """Reopen the unified component editor for an editable component."""
+        if self._is_editable_component(item):
+            self._add_component_dialog(edit_item=item)
+
+    def _species_context_menu(self, pos) -> None:
+        """Right-click menu on the Components list: add / edit / remove."""
+        item = self.lw_species.itemAt(pos)
+        menu = QtWidgets.QMenu(self.lw_species)
+        act_add = menu.addAction("➕ Add component…")
+        act_add.setToolTip("Add a synthetic decay component (plain lifetime spectrum or FRET species).")
+        act_add.triggered.connect(lambda: self._add_component_dialog())
+        act_add_file = menu.addAction("📈 Add measured pattern…")
+        act_add_file.triggered.connect(self._add_species_dialog)
+        act_edit = menu.addAction("✏️ Edit…")
+        act_edit.setEnabled(self._is_editable_component(item))
+        act_edit.triggered.connect(lambda: self._edit_component_item(item))
+        menu.addSeparator()
+        act_remove = menu.addAction("➖ Remove")
+        act_remove.setEnabled(bool(self.lw_species.selectedItems()) or item is not None)
+
+        def _remove():
+            if item is not None and item not in self.lw_species.selectedItems():
+                self.lw_species.takeItem(self.lw_species.row(item))
+                self._invalidate_cache()
+                self._on_data_changed()
+            else:
+                self._remove_selected_species()
+
+        act_remove.triggered.connect(_remove)
+        menu.exec_(self.lw_species.viewport().mapToGlobal(pos))
 
     def _on_files_changed(self) -> None:
         """Called when species files are added/removed (not just checkbox toggled)."""
@@ -878,6 +1364,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                                reject_nuisance=reject_nuisance)
 
     def _compute_filters(self) -> None:
+        # Bulk operations (auto-fit adding many species) suspend the per-change
+        # recompute and trigger one compute at the end.
+        if getattr(self, "_suspend_compute", False):
+            return
         if not self._has_total_decay() or self.lw_species.count() == 0:
             return
 
@@ -1010,7 +1500,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 
                 microtimes = data.micro_times
                 routing = data.routing_channels
-                
+                # Micro-time axis (bin width + optional binning) from the data.
+                microtimes, n_tac = self._micro_time_axis(header, microtimes, n_tac)
+
                 # Extract histogram for each routing channel
                 unique_routing = np.unique(routing)
                 for rch in unique_routing:
@@ -1018,7 +1510,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     hist = np.zeros(n_tac, dtype=np.float64)
                     np.add.at(hist, microtimes[mask], 1)
                     routing_histograms[int(rch)] = hist
-                
+
             except Exception as e:
                 cs.logging.warning(f"Error loading routing channels from {path.name}: {e}")
         
@@ -1042,7 +1534,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     
                     microtimes = data.micro_times
                     routing = data.routing_channels
-                    
+                    # Micro-time axis (bin width + optional binning) from the data.
+                    microtimes, n_tac = self._micro_time_axis(header, microtimes, n_tac)
+
                     # Extract histograms for each routing channel from burst regions
                     unique_routing = np.unique(routing)
                     for rch in unique_routing:
@@ -1673,6 +2167,17 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             QtWidgets.QMessageBox.critical(self, "Load Error", str(e))
 
     def _update_plots(self) -> None:
+        # Seed the draggable fit/filter range from the first available total decay.
+        for candidate in (
+            getattr(self._result, "total_decay", None) if self._result else None,
+            (self._result_multi_detector[0]["result"].total_decay
+             if self._result_multi_detector else None),
+            self._total_vector,
+        ):
+            if candidate is not None and np.asarray(candidate).size > 8:
+                self._init_fit_region(candidate)
+                break
+
         # Handle multi-anisotropy mode - stack each detector's par/perp horizontally
         if self._result_multi_anisotropy:
             anisotropy_results = self._result_multi_anisotropy

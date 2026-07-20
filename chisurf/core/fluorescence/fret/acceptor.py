@@ -39,8 +39,8 @@ def da_a0_to_ad(
     """
     a0 = np.zeros_like(decay_da)
     for i in range(len(acceptor_lifetime_spectrum) // 2):
-        a = acceptor_lifetime_spectrum[i]
-        tau = acceptor_lifetime_spectrum[i + 1]
+        a = acceptor_lifetime_spectrum[2 * i]
+        tau = acceptor_lifetime_spectrum[2 * i + 1]
         a0 += a * np.exp(-times / tau)
 
     dt = times[1] - times[0]

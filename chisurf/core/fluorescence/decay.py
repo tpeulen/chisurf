@@ -171,6 +171,8 @@ def synthetic_decay(
     bin_width: float = 1.0,
     start_bin: int = 0,
     irf: Any | None = None,
+    period: float | None = None,
+    time_shift: float = 0.0,
     normalize: bool = True,
     photon_count: float | None = None,
     seed: int | None = None,
@@ -189,7 +191,12 @@ def synthetic_decay(
     ``lifetimes`` and ``bin_width`` share a unit (normally ns). Multiple
     lifetimes with ``amplitudes`` give a discrete spectrum. When ``irf`` is
     supplied it is normalized (cropped/zero-padded to the window) and convolved
-    with the ideal decay. ``photon_count`` Poisson-samples a finite observation
+    with the ideal decay. ``time_shift`` applies a (fractional-bin) periodic
+    colour shift to the IRF before convolution. ``period`` (ns) switches to a
+    periodic convolution that models the finite laser repetition period — the
+    unrelaxed decay of earlier pulses wraps into the window via the geometric
+    inter-pulse tail; timing then comes from the IRF position rather than
+    ``start_bin``. ``photon_count`` Poisson-samples a finite observation
     (``seed`` for reproducibility). ``normalize=True`` returns a unit-sum pattern.
     """
     from chisurf.core.fluorescence.general import calculate_fluorescence_decay
@@ -228,10 +235,29 @@ def synthetic_decay(
     decay[time < 0.0] = 0.0
 
     if irf is not None:
-        from chisurf.core.fluorescence.tcspc.convolve import convolve_decay_nb
+        from chisurf.core.fluorescence.tcspc.convolve import (
+            convolve_decay_nb,
+            convolve_lifetime_spectrum_periodic_nb,
+            periodic_shift,
+        )
 
         response = scattered_light_decay_pattern(irf, n)  # normalized, length n
-        decay = convolve_decay_nb(decay, response, 0, n, float(bin_width))
+        if time_shift:
+            # Sub-bin IRF time shift (colour shift), wrapped over the window.
+            response = periodic_shift(response, float(time_shift) / float(bin_width))
+        if period is not None and float(period) > 0.0:
+            # Finite laser repetition period: the decay from earlier pulses has
+            # not fully relaxed and wraps into the window. The periodic kernel
+            # adds the geometric inter-pulse tail (1/(1-exp(-period/tau))). Timing
+            # here comes from the IRF position, not ``start_bin``.
+            convolved = np.zeros(n, dtype=float)
+            convolve_lifetime_spectrum_periodic_nb(
+                convolved, spectrum, response, 0, n, n,
+                float(period), float(bin_width), n,
+            )
+            decay = convolved
+        else:
+            decay = convolve_decay_nb(decay, response, 0, n, float(bin_width))
         decay = np.maximum(np.asarray(decay, dtype=float), 0.0)
 
     if photon_count is not None:
@@ -346,6 +372,7 @@ def synthetic_component_decay(
     else:
         raise ValueError(f"unsupported synthetic component model: {model}")
 
+    period = component.get("period_ns")
     return synthetic_decay(
         n_bins,
         lifetimes,
@@ -353,6 +380,8 @@ def synthetic_component_decay(
         bin_width=bin_width,
         start_bin=start_bin,
         irf=irf,
+        period=(float(period) if period else None),
+        time_shift=float(component.get("time_shift_ns", 0.0)),
         photon_count=(
             float(component["photon_count"])
             if component.get("shot_noise", False) else None

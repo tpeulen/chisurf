@@ -387,6 +387,33 @@ def convolve_decay_nb(
 convolve_decay = convolve_decay_nb
 
 
+def periodic_shift(arr: np.ndarray, shift: float) -> np.ndarray:
+    """Circularly shift a 1-D histogram by ``shift`` channels (wrap-around).
+
+    The micro-time shifter ``(t + shift) mod n``: the shifted-out tail wraps to
+    the front rather than being zero-filled — correct for a periodic IRF / a
+    TCSPC colour shift. The fractional part is linearly interpolated, also
+    circularly. ``shift`` is in channels (bins); convert from ns by dividing by
+    the bin width.
+
+    Parameters
+    ----------
+    arr : numpy-array
+        The histogram to shift (IRF or decay).
+    shift : float
+        Shift in channels; positive delays (moves later in time).
+    """
+    arr = np.asarray(arr, dtype=float)
+    if arr.size == 0 or not shift:
+        return arr.copy()
+    int_shift = int(np.floor(shift))
+    frac = float(shift) - int_shift
+    rolled = np.roll(arr, int_shift)
+    if frac:
+        rolled = (1.0 - frac) * rolled + frac * np.roll(rolled, 1)
+    return rolled
+
+
 def convolve_lifetime_spectrum(
         output_decay: np.array,
         lifetime_spectrum: np.array,

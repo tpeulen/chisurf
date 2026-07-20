@@ -34,7 +34,61 @@ Plugins are discovered via `manifest.json` (`id`, `display_name`, `categories: [
 The Filter Calculator follows the fluorescence-domain objective of a
 [single intensity/decay computation path](/subsystems/fluorescence-domain.md#design-objective-one-intensitydecay-computation-path): measured patterns and spectra imported from existing fits are valid inputs, but detector-resolved decay generation (including IRF, polarization, detector response, and crosstalk) should route through the shared ChiSurf model infrastructure rather than plugin-local formulas.
 
-Its GUI uses the shared AutoForm record-table binding for editable lifetime spectra, an AutoForm options model for the Pol/AP/IRF toggles, and the ChiSurf `DockArea` for rearrangeable source, detector, filter, reconstruction, and residual panels. Detector selection and per-detector IRF live in one **Detectors table** (`DetectorIrfTableWidget`): a row per detector with a select checkbox, the name, editable synthetic-IRF Width (FWHM ns) and Skew, and an IRF column whose `…` button loads a measured IRF file (then becomes `✕` to unload). While a measured IRF is loaded, Width/Skew are disabled and populated with values estimated from that IRF (`irf_width_skew_ns`). When Pol is on, each detector splits into parallel/perpendicular rows with independent IRF settings; the per-detector state persists in projects (`export_state`/`import_state`). The default scientific stack places weighted residuals immediately above the reconstruction/decay plot. A compact emoji-led toolbar owns data/component/unmix/project actions through `QToolButton` menus; visible labels stay short while tooltips carry the complete descriptions. Plot colors are identity-stable rather than index-based: common detector names have semantic colors and other detector/component names use a deterministic digest palette, so toggling a channel or component cannot recolor survivors. A replaceable two-component 70/30 example is generated on first open as a reproducible 100,000-photon Poisson observation, so the filter, noisy reconstruction, and weighted-residual workflow is visible before measured data are loaded. Synthetic or fit-derived reference patterns can independently opt into shot noise with an explicit photon budget and seed.
+Its GUI uses the shared AutoForm record-table binding for editable lifetime spectra, an AutoForm options model for the Pol/AP/IRF toggles, and the ChiSurf `DockArea` for rearrangeable source, detector, filter, reconstruction, and residual panels. Detector selection and per-detector IRF live in one **Detectors table** (`DetectorIrfTableWidget`): a row per detector with a select checkbox, the name, editable synthetic-IRF Width (FWHM ns) and Skew, and an IRF column whose `…` button loads a measured IRF file (then becomes `✕` to unload). While a measured IRF is loaded, Width/Skew are disabled and populated with values estimated from that IRF (`irf_width_skew_ns`). When Pol is on, each detector splits into parallel/perpendicular rows with independent IRF settings; the per-detector state persists in projects (`export_state`/`import_state`). The default scientific stack places weighted residuals immediately above the reconstruction/decay plot. A compact emoji-led toolbar owns data/component/unmix/project actions through `QToolButton` menus; visible labels stay short while tooltips carry the complete descriptions. Plot colors are identity-stable rather than index-based: common detector names have semantic colors and other detector/component names use a deterministic digest palette, so toggling a channel or component cannot recolor survivors. The **Mixed decay** group has an explicit `📂 Load…` button and a `📡 From correlator` button that adopts the TTTR files already loaded in the sibling Correlator (Files & Steps) step as the mixed decay — reading the FCS toolbox's shared `FcsWorkflowContext.expanded_files`/`file_paths`; on first show the Filter Calculator auto-adopts those files when the user hasn't loaded a measured total. The **micro-time axis comes from the loaded data**: the TAC bin width (ns) is read from the TTTR header's `micro_time_resolution` and the channel count from `number_of_micro_time_channels`, with an **optional micro-time binning** factor (`FcsWorkflowContext.microtime_binning`, from the correlator) that coarsens the histogram and widens the bin width identically to the correlator — so the lifetime filters share the correlation's micro-time axis rather than a hardcoded `n_bins`/`bin_width`. A replaceable two-component 70/30 example is generated on first open as a reproducible 100,000-photon Poisson observation, so the filter, noisy reconstruction, and weighted-residual workflow is visible before measured data are loaded. Synthetic or fit-derived reference patterns can independently opt into shot noise with an explicit photon budget and seed.
+
+**Coupled FRET-species components.** A component can be a whole smFRET
+labeling state whose channels carry *different, physically-coupled* decays
+(a species does not share one decay across detectors). The core
+`chisurf/core/fluorescence/fret/species_decay.py::fret_species_patterns` builds,
+for states donor-only / FRET-pair (DA) / acceptor-only: **green** = donor decay
+(FRET-quenched in DA), **red** = the FRET-*sensitized* acceptor (donor-decay-shaped
+rise, via the reused `fret/acceptor.py::da_a0_to_ad` primitive) plus donor leakage
+(α) and directly-excited acceptor (δ), **yellow** = the acceptor's own decay —
+optionally split into ∥/⊥ by a per-chromophore **anisotropy spectrum** `r(t)=Σᵢ bᵢ·e^(−t/ρᵢ)+r∞` (multi-exponential rotation, edited as donor/acceptor `{amplitude, ρ}` tables; a single `r0`/`ρ` remains the fallback).
+The channel **amplitudes** come from the full **excitation**
+(`[laser, chromophore]`) and **emission** (`[chromophore, detector]`) matrices —
+so the relative weights of donor / sensitized / directly-excited emission across
+green/red/yellow are physically consistent, not approximated; the familiar
+Hellenkamp α/β/γ/δ stay the user-facing knobs and induce those matrices
+(`CrosstalkFactors.{excitation,emission}_matrix`). FRET is given either as a
+transfer efficiency E or physically as a **distributed distance** — Gaussian
+components (mean R, σ, fraction) reusing the *same* distance grid and
+`distance_to_fret_rate_constant` as the TCSPC FRET fits — plus R0/κ² and a
+donor-only fraction `x(D-only)`. Decays are generated **ideal (no IRF)**; each
+detector's own IRF (measured or synthetic-from-width/skew) is applied at compute
+time from the Detector settings and **normalized to unit sum** (`normalize_irf`).
+Fractions are **not** inputs — each labeling state is one component and the fFCS
+filters recover the populations. The GUI editor
+(`chisurf/gui/widgets/fret_species_editor.py` + `.view.json`, opened from the
+Components context menu as *🔬 Add FRET species…*, double-click to edit) uses
+AutoForm tables for the donor/acceptor spectra and the distance distribution,
+previews the ideal green/red/yellow (∥/⊥) decays live, and seeds α/β/γ/δ/R0 from
+the selected detector-setup calibration (editable); on accept it expands to a
+`patterns_by_detector` (via `fret_species_detector_patterns`, mapping each
+detector's colour to its channel and applying that detector's IRF) that the
+Filter Calculator consumes exactly like a fit-derived source. *Follow-up:* the
+legacy hand-built TCSPC FRET-fit input widgets (`gui/widgets/models/tcspc/`
+`gaussian.py`, `discrete_distance.py`, …) are not yet AutoForm, so the
+distance-distribution / FRET-parameter *input UI* is not yet shared between the
+fits and this editor (the core physics already is).
+
+**Auto-fit (auto filter).** A `🎯 Auto-fit` toolbar action decomposes the measured
+mixed decay into `N` lifetime components (`QInputDialog` for `N`) and appends one
+synthetic species per component, then auto-computes the filters. It uses the
+general, reusable core `chisurf/core/fluorescence/decay_fit.py` — `fit_lifetime_components`
+(discrete multi-exponential: bounded log-space lifetimes via `scipy.least_squares`,
+non-negative amplitudes by NNLS at each step, Poisson-weighted residuals, built on
+the canonical `synthetic_decay` forward model) and `fit_component_amplitudes`
+(the weighted non-negative unmixing step). When the selected detector has **no
+measured IRF**, a synthetic Gaussian IRF **FWHM is fitted jointly** (`fit_irf`,
+via `synthetic_irf`) and written back to the detector table; each fitted lifetime's
+per-detector pattern is re-convolved with that detector's IRF so the deconvolved
+components reconstruct the measured decay. *In progress:* per the reuse request,
+migrating this auto-fit onto the real ChiSurf TCSPC fit models
+(`LifetimeModel`/`FRETModel`) so it uses `FittingParameter`s that can be
+**cross-linked to existing fits** (the synthetic/FRET editors already offer a
+one-way `📥 Fit…` read of a lifetime spectrum from an open fit) and so FRET-species
+auto-fitting reuses the FRET model directly.
 
 Afterpulsing/dark counts and scattered excitation light are the two explicit
 nuisance bases, toggled by the **AP** (`fit_background`) and **IRF**
@@ -69,6 +123,31 @@ live decay plot). The **photon-stream simulators build their per-species
 keeps the lower-level `calculate_fluorescence_decay` (it may use rise terms /
 zero-lifetime components the strict wrapper rejects).
 
+**One shared decay editor.** The synthetic-decay *editing surface* is also
+unified, not just the generator math. A single reusable AutoForm editor —
+`chisurf/gui/widgets/synthetic_decay_editor.py::SyntheticDecayEditorModel` with
+`synthetic_decay_editor.view.json` — provides the amplitude/lifetime spectrum
+table, IRF (a loaded **experimental** histogram *or* a synthetic **skewed**
+Gaussian — FWHM + skew, via the canonical `tcspc/irf.py::synthetic_irf`
+generalized-normal helper), a periodic **colour shift** (sub-bin IRF time shift),
+optional **periodic convolution** at a laser repetition **period** (the
+`fconv_per` inter-pulse tail), Poisson shot-noise (photons + seed), histogram
+size, a measured-pattern override, "Read from Fit", and a live decay preview.
+The generator `synthetic_decay` gained `period` (periodic convolution) and
+`time_shift` (a wrapped sub-bin IRF shift via the new
+`tcspc/convolve.py::periodic_shift`) parameters; `synthetic_component_decay`
+threads the persisted `period_ns`/`time_shift_ns` so a Filter-Calculator
+reconstruction matches the editor preview. Both the FCS Filter Calculator's *Add Synthetic Decay Component*
+dialog (`fcs_filter_calculator/gui_parts/main_window.py::_add_synthetic_dialog`,
+which reads `editor_model.component()` for the persisted source dict) and the
+acquisition simulator's *Decay settings* modal
+(`plugins/core/acq/.../simulation/setup_dialog.py::DecaySettingsDialog`, which
+wraps the shared editor with a per-species selector) embed this one widget, so
+the two editors can no longer diverge. The Filter Calculator's former
+plugin-local `SyntheticSpectrumViewModel` / `synthetic_editor.view.json` were
+removed. Editable AutoForm tables now refresh the hosting form on cell edit
+(mirroring value/toggle/button sections), so the preview stays live.
+
 **TODO — auto-optimizing filter sweep (autoresearch).** Filter computation is
 cheap, so a planned feature sweeps the filter-defining inputs (per-species IRF
 width/skew, micro-time gating, nuisance handling, `rcond`/Tikhonov conditioning)
@@ -94,6 +173,6 @@ IRF-shaped scatter fraction plus a constant afterpulse fraction.
 
 Correlation curves are fitted against a catalogue of string-equation models in `chisurf/core/models/fcs/models.yaml` (parsed by `ParseFCSModel` / `ParseModel`) — a large family of 3D/2D-Gaussian diffusion and bunching/anti-correlation terms. This catalogue was extended with an **absolute-`D`, physically-parametrised family ported from PAM** (Schrimpf 2018) and A/B-verified against PAM's exact formulas: single- and two-component 3D diffusion with triplet, `tau_D` and anomalous variants, flow, background, afterpulsing, bleaching, **two-focus FCS** (absolute `D` from a known inter-focus distance), FRET-FCCS 2-state kinetics, ns-FCS antibunching, and scanning FCS. Three pre-existing broken catalogue entries (equations referencing parameters absent from their `initial:` block) were also fixed. On the FLCS side, `chisurf/core/fluorescence/fcs/filtered.py` gained pseudo-inverse conditioning (`rcond`/Tikhonov), a condition-number diagnostic, a uniform (afterpulsing) pattern helper, and a per-photon filter-weighting helper, and its legacy `calc_lifetime_filter` divide-by-zero / nonstandard-renormalisation bugs were fixed. A Qt-free lifetime-FCS **simulator** (`chisurf/core/fluorescence/fcs/simulate.py`, `simulate_lifetime_fcs`) closes the FLCS loop: it drives the photon simulator to generate confocal photon streams of several diffusing species with distinct lifetimes and an optional interconversion rate matrix, reconstructs the macro-time axis from the engine window + arrival offset and reads native micro-times (the hardware TAC encoding is bypassed, which would otherwise ill-condition the filters), and feeds `calc_ffcs_filters` + `species_filtered_correlation` so the species separate by diffusion time (static) or reveal exchange in the cross-correlation (dynamic). Worked examples: `examples/lifetime_fcs.py` (chisurf) and `examples/correlation/plot_lifetime_fcs.py` (photon-simulator gallery). Full status, the A/B methodology, and remaining gaps (correlator wiring, channel-aware par/perp weighting, scatter/IRF pattern injection, the non-Gaussian Dertinger MDF, and the not-yet-ported pCF/SCCF/MIA models) are in [FCS catalogue & FLCS filters: PAM port](/references/fcs-pam-port.md) and [Two-focus FCS status and gaps](/references/two-focus-fcs.md).
 
-The **Correlator step wires the FLCS filters into the GUI**: its `4. Correlator` panel has a lifetime-filter load/unload control (`🧬 Load filters… / ✖ Unload`) that reads an fFCS `FilterResult` JSON (from the Filter Calculator; nuisance filters excluded) or a `.npy`/`.npz` filter matrix and calls `CorrelatorSettingsModel.set_lifetime_filters`. While filters are loaded the panel is in *species mode*: the A/B selectors list the filter species instead of detector channels, and pressing *Correlate* computes that species pair's auto-correlation (A = B) or cross-correlation (A ≠ B) via `species_filtered_correlation` restricted to the two chosen filter rows. Unloading returns the panel to detector-channel correlation.
+The **Correlator step wires the FLCS filters into the GUI**: its `4. Correlator` panel has a lifetime-filter load/unload control (`🧬 Load filters… / ✖ Unload`, plus a `🧪 Filter Calc…` button that deep-links to the Filter Calculator tool via `NavigationPanelTool.show_panel_by_role("filter_calc")`) that reads an fFCS `FilterResult` JSON (from the Filter Calculator; nuisance filters excluded) or a `.npy`/`.npz` filter matrix and calls `CorrelatorSettingsModel.set_lifetime_filters`. While filters are loaded the panel is in *species mode*: the A/B selectors list the filter species instead of detector channels, and pressing *Correlate* computes that species pair's auto-correlation (A = B) or cross-correlation (A ≠ B) via `species_filtered_correlation` restricted to the two chosen filter rows. Unloading returns the panel to detector-channel correlation.
 
 See also: [plugin system](/architecture/plugin-system.md), [Plugins target](/specs/plugins.md), [GUI & AutoForm](/subsystems/gui-autoform.md). Per-burst FCS lives in the [burst group](burst.md). Formats interoperate with established FCS/multiparameter-fluorescence suites.

@@ -1,0 +1,164 @@
+{
+  "_comment": "Coupled smFRET labeling-state decay editor (green/red/yellow). Parameters (left dock) + live preview (right dock).",
+  "sections": [
+    {"type": "custom", "key": "help", "options": {
+      "title": "FRET species — help",
+      "text": "# FRET species decay\n\nA labeling state (donor-only, FRET pair, or acceptor-only) produces **coupled, different** decays per detection channel:\n\n- **green** (donor emission, donor excitation) — donor decay, FRET-quenched in a DA pair.\n- **red** (acceptor emission, donor excitation) — the FRET-*sensitized* acceptor (its rise is shaped by the donor decay), plus donor leakage (α) and directly-excited acceptor (δ).\n- **yellow** (acceptor emission, acceptor excitation) — the acceptor's own decay.\n\n## FRET input\nEither a **transfer efficiency E**, or a **distributed distance** (Gaussian components: mean R, σ, fraction) + Förster radius R0 (κ²) — the same distance model as the TCSPC FRET fits. **x(D-only)** is the donor-only fraction within the DA population.\n\n## Crosstalk (α/β/γ/δ)\nHellenkamp factors: α = donor leakage into red, δ = direct acceptor excitation, γ = detection/QY ratio, β = excitation-flux ratio. These drive the full **excitation** and **emission** matrices that set the relative channel amplitudes. **Seed from calibration** fills them from the selected detector setup.\n\n## Anisotropy\nPer-chromophore r(t) = (r0−r∞)·e^(−t/ρ)+r∞. With **Polarized** on, each channel splits into ∥/⊥ (G-factor corrects ⊥ detection).\n\n## IRF & convolution\nThe per-channel IRF comes from its **Detector settings** (normalized to unity). The **Laser period** (periodic convolution) and **colour shift** are per-component.\n\n## Fractions\nEach labeling state is **one component** — the fFCS filters recover the populations, so no fractions are entered here.\n\nThe preview overlays the ideal green/red/yellow decays live."
+    }},
+    {
+      "type": "dock_area",
+      "split": "horizontal",
+      "height": 560,
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Parameters",
+          "sections": [
+            {
+              "type": "panel",
+              "title": "Labeling state",
+              "n_col": 2,
+              "sections": [
+                {"type": "value", "attr": "name", "kind": "str", "label": "Name", "description": "Label for this component."},
+                {"type": "choice", "attr": "state", "label": "State", "call": "field_changed",
+                 "options": ["d_only", "da", "a_only"],
+                 "labels": ["Donor-only (D0/0D)", "FRET pair (DA)", "Acceptor-only (A0/0A)"],
+                 "description": "Which labeling state this component represents."}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Donor decay (D0)",
+              "sections": [
+                {"type": "table", "source": "donor_rows", "editable": true, "update_call": "update_donor_cell",
+                 "columns": [
+                   {"key": "amplitude", "label": "Amplitude", "width": 120, "description": "Relative weight of this donor lifetime."},
+                   {"key": "lifetime", "label": "Lifetime (ns)", "width": 150, "description": "Donor lifetime in the absence of FRET."}
+                 ]},
+                {"type": "button_row", "buttons": [
+                  {"label": "➕", "action": "add_donor_row", "description": "Add a donor lifetime component."},
+                  {"label": "➖", "action": "remove_donor_row", "description": "Remove the last donor lifetime component."}
+                ]}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Acceptor decay (A0)",
+              "sections": [
+                {"type": "table", "source": "acceptor_rows", "editable": true, "update_call": "update_acceptor_cell",
+                 "columns": [
+                   {"key": "amplitude", "label": "Amplitude", "width": 120, "description": "Relative weight of this acceptor lifetime."},
+                   {"key": "lifetime", "label": "Lifetime (ns)", "width": 150, "description": "Acceptor lifetime (own excitation)."}
+                 ]},
+                {"type": "button_row", "buttons": [
+                  {"label": "➕", "action": "add_acceptor_row", "description": "Add an acceptor lifetime component."},
+                  {"label": "➖", "action": "remove_acceptor_row", "description": "Remove the last acceptor lifetime component."}
+                ]}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "FRET",
+              "n_col": 2,
+              "sections": [
+                {"type": "choice", "attr": "fret_mode", "label": "Mode", "call": "field_changed",
+                 "options": ["efficiency", "distance"], "labels": ["Transfer efficiency E", "Distance distribution"],
+                 "description": "Specify FRET by efficiency, or physically by a distributed distance + Förster radius."},
+                {"type": "custom", "key": "scalar_table", "options": {"call": "field_changed", "rows": [
+                  {"attr": "transfer_efficiency", "label": "E", "description": "FRET transfer efficiency (efficiency mode)."},
+                  {"attr": "forster_radius", "label": "R<sub>0</sub> (Å)", "decimals": 2, "description": "Förster radius (distance mode)."},
+                  {"attr": "kappa2", "label": "κ²", "description": "Orientation factor (distance mode); 2/3 for free rotation."},
+                  {"attr": "x_donly", "label": "x(D-only)", "description": "Donor-only fraction within the DA population (no acceptor / no transfer)."}
+                ]}}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Distance distribution (Å)",
+              "sections": [
+                {"type": "table", "source": "distance_rows", "editable": true, "update_call": "update_distance_cell",
+                 "columns": [
+                   {"key": "mean", "label": "Mean R (Å)", "width": 110, "description": "Mean donor-acceptor distance of this Gaussian."},
+                   {"key": "sigma", "label": "σ (Å)", "width": 90, "description": "Width (σ) of this Gaussian distance component."},
+                   {"key": "amplitude", "label": "Fraction", "width": 90, "description": "Relative weight of this distance component."}
+                 ]},
+                {"type": "button_row", "buttons": [
+                  {"label": "➕", "action": "add_distance_row", "description": "Add a Gaussian distance component."},
+                  {"label": "➖", "action": "remove_distance_row", "description": "Remove the last distance component."}
+                ]}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Crosstalk (α/β/γ/δ)",
+              "sections": [
+                {"type": "custom", "key": "scalar_table", "options": {"call": "field_changed", "rows": [
+                  {"attr": "alpha", "label": "α leakage", "description": "Donor bleedthrough into the acceptor (red) channel."},
+                  {"attr": "delta", "label": "δ direct exc.", "description": "Direct acceptor excitation by the donor-excitation laser."},
+                  {"attr": "gamma", "label": "γ detection", "description": "Acceptor/donor detection + quantum-yield ratio."},
+                  {"attr": "beta", "label": "β exc. flux", "description": "Acceptor/donor excitation-flux ratio."}
+                ]}},
+                {"type": "button_row", "buttons": [
+                  {"label": "📥 Seed from calibration", "action": "seed_from_calibration", "description": "Fill α/β/γ/δ and R0 from the selected detector-setup calibration."}
+                ]}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Anisotropy",
+              "collapsible": true,
+              "sections": [
+                {"type": "toggle", "attr": "polarized", "label": "Polarized (∥/⊥)", "call": "field_changed", "description": "Split each channel into parallel/perpendicular using the anisotropy r(t) = Σ bᵢ·exp(-t/ρᵢ) + r∞."},
+                {"type": "custom", "key": "scalar_table", "options": {"call": "field_changed", "rows": [
+                  {"attr": "g_factor", "label": "G-factor", "description": "Perpendicular-channel detection correction."},
+                  {"attr": "r_inf", "label": "r<sub>∞</sub>", "description": "Residual (hindered) anisotropy."}
+                ]}},
+                {"type": "table", "source": "donor_aniso_rows", "editable": true, "update_call": "update_donor_aniso_cell",
+                 "columns": [
+                   {"key": "amplitude", "label": "Donor bᵢ", "width": 100, "description": "Amplitude of this donor anisotropy component."},
+                   {"key": "rho", "label": "ρ (ns)", "width": 100, "description": "Donor rotational correlation time of this component."}
+                 ]},
+                {"type": "button_row", "buttons": [
+                  {"label": "➕", "action": "add_donor_aniso_row", "description": "Add a donor rotational component."},
+                  {"label": "➖", "action": "remove_donor_aniso_row", "description": "Remove the last donor rotational component."}
+                ]},
+                {"type": "table", "source": "acceptor_aniso_rows", "editable": true, "update_call": "update_acceptor_aniso_cell",
+                 "columns": [
+                   {"key": "amplitude", "label": "Acc. bᵢ", "width": 100, "description": "Amplitude of this acceptor anisotropy component (also used for sensitized emission)."},
+                   {"key": "rho", "label": "ρ (ns)", "width": 100, "description": "Acceptor rotational correlation time of this component."}
+                 ]},
+                {"type": "button_row", "buttons": [
+                  {"label": "➕", "action": "add_acceptor_aniso_row", "description": "Add an acceptor rotational component."},
+                  {"label": "➖", "action": "remove_acceptor_aniso_row", "description": "Remove the last acceptor rotational component."}
+                ]}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Histogram & convolution",
+              "sections": [
+                {"type": "custom", "key": "scalar_table", "options": {"call": "field_changed", "rows": [
+                  {"attr": "n_bins", "kind": "int", "label": "Bins", "description": "Micro-time bins."},
+                  {"attr": "bin_width", "kind": "float", "decimals": 6, "label": "Δt (ns)", "description": "Micro-time bin width."},
+                  {"attr": "period_ns", "kind": "float", "decimals": 4, "label": "Laser period (ns)", "description": "Repetition period for periodic convolution (e.g. 12.5 ns at 80 MHz); 0 = aperiodic."},
+                  {"attr": "time_shift_ns", "kind": "float", "decimals": 4, "label": "Colour shift (ns)", "description": "Sub-bin periodic IRF colour shift applied to every channel."}
+                ]}}
+              ],
+              "description": "The per-channel IRF itself comes from the Detector settings; these set the periodic (laser-period) convolution and colour shift."
+            }
+          ]
+        },
+        {
+          "type": "plot",
+          "source": "channel_series",
+          "title": "Coupled channel decays",
+          "x_label": "Micro-time (ns)",
+          "y_label": "Counts",
+          "log_y": true,
+          "legend": true,
+          "description": "Green / red / yellow (and ∥/⊥) decays for this labeling state."
+        }
+      ]
+    }
+  ]
+}

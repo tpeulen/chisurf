@@ -1,0 +1,94 @@
+{
+  "_comment": "Shared synthetic-decay editor (Filter Calculator + acquisition Decay modal). Parameters (left dock) + live preview (right dock).",
+  "sections": [
+    {"type": "custom", "key": "help", "options": {
+      "title": "Synthetic decay — help",
+      "text": "# Synthetic decay editor\n\nBuild a fluorescence decay from an amplitude/lifetime spectrum, or load a measured pattern.\n\n## Lifetime spectrum\nEach row is one exponential component: **Amplitude** (relative weight) and **Lifetime** (ns). Right-click the spectrum table, or use ➕ / ➖, to add or remove components.\n\n- **📂 Pattern…** — use a measured decay histogram (text / .npy) instead of the spectrum.\n- **📥 Fit…** — copy the lifetime spectrum from an open ChiSurf fit.\n\n## IRF\n- **Experimental IRF** — load a measured instrument response (overrides the synthetic Gaussian).\n- **Gaussian FWHM / Skew** — a synthetic (optionally skewed) Gaussian IRF; skew 0 = symmetric.\n- **Colour shift (ns)** — sub-bin periodic time shift of the IRF.\n\n## Convolution\n- **Laser period (ns)** — set for periodic convolution (e.g. 12.5 ns at 80 MHz); this adds the inter-pulse tail from earlier pulses. 0 = aperiodic.\n\n## Shot noise\nEnable **Poisson noise** to sample a finite-count observation from the given **Photons** and **Seed**; otherwise the ideal pattern is normalized to unit sum.\n\nThe preview updates live as you edit."
+    }},
+    {
+      "type": "dock_area",
+      "split": "horizontal",
+      "height": 460,
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Parameters",
+          "sections": [
+            {
+              "type": "panel",
+              "title": "Lifetime spectrum",
+              "sections": [
+                {"type": "value", "attr": "name", "kind": "str", "label": "Name", "description": "Label for this decay component."},
+                {
+                  "type": "table",
+                  "source": "spectrum_rows",
+                  "editable": true,
+                  "update_call": "update_spectrum_cell",
+                  "columns": [
+                    {"key": "amplitude", "label": "Amplitude", "width": 130, "description": "Relative weight (fraction) of this lifetime component."},
+                    {"key": "lifetime", "label": "Lifetime (ns)", "width": 160, "description": "Fluorescence lifetime in nanoseconds."}
+                  ]
+                },
+                {"type": "button_row", "buttons": [
+                  {"label": "➕", "action": "add_spectrum_row", "description": "Add one lifetime component."},
+                  {"label": "➖", "action": "remove_spectrum_row", "description": "Remove the last lifetime component."},
+                  {"label": "📂 Pattern…", "action": "load_pattern", "description": "Use a measured decay histogram instead of the amplitude/lifetime spectrum."},
+                  {"label": "✖ Clear", "action": "clear_pattern", "description": "Drop the loaded pattern and return to the amplitude/lifetime spectrum."},
+                  {"label": "📥 Fit…", "action": "read_from_fit", "description": "Copy the lifetime spectrum from an open ChiSurf fit."}
+                ]}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Histogram",
+              "n_col": 2,
+              "sections": [
+                {"type": "value", "attr": "n_bins", "kind": "int", "label": "Bins", "minimum": 2, "maximum": 65535, "call": "field_changed", "description": "Number of micro-time (TAC) bins."},
+                {"type": "value", "attr": "bin_width", "kind": "float", "label": "Δt (ns)", "minimum": 0.000001, "maximum": 1000.0, "decimals": 6, "call": "field_changed", "description": "Micro-time bin width in nanoseconds."}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "IRF",
+              "n_col": 2,
+              "sections": [
+                {"type": "value", "attr": "irf_path", "kind": "file", "label": "Experimental IRF", "call": "field_changed", "description": "Load a measured instrument response histogram (text / .npy); overrides the synthetic Gaussian below."},
+                {"type": "value", "attr": "irf_fwhm_ns", "kind": "float", "label": "Gaussian FWHM (ns)", "minimum": 0.0, "maximum": 100.0, "decimals": 4, "call": "field_changed", "description": "Synthetic Gaussian IRF width; 0 = ideal (no IRF) unless an experimental IRF is loaded."},
+                {"type": "value", "attr": "irf_skew", "kind": "float", "label": "Skew", "minimum": -10.0, "maximum": 10.0, "decimals": 3, "call": "field_changed", "description": "Skewness of the synthetic IRF (0 = symmetric Gaussian); models the asymmetric detector-response tail."},
+                {"type": "value", "attr": "time_shift_ns", "kind": "float", "label": "Colour shift (ns)", "minimum": -100.0, "maximum": 100.0, "decimals": 4, "call": "field_changed", "description": "Sub-bin periodic time shift of the IRF (TCSPC colour shift); wraps over the window."}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Convolution",
+              "n_col": 2,
+              "sections": [
+                {"type": "value", "attr": "period_ns", "kind": "float", "label": "Laser period (ns)", "minimum": 0.0, "maximum": 10000.0, "decimals": 4, "call": "field_changed", "description": "Repetition period for periodic convolution (e.g. 12.5 ns at 80 MHz); adds the inter-pulse tail from earlier pulses. 0 = aperiodic (linear) convolution."}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Shot noise",
+              "n_col": 2,
+              "sections": [
+                {"type": "toggle", "attr": "shot_noise", "label": "Poisson noise", "call": "field_changed", "description": "Sample a finite-count histogram; off = normalized ideal pattern."},
+                {"type": "value", "attr": "photon_count", "kind": "int", "label": "Photons", "minimum": 1, "maximum": 2147483647, "call": "field_changed", "description": "Expected integrated photons for Poisson sampling."},
+                {"type": "value", "attr": "noise_seed", "kind": "int", "label": "Seed", "minimum": 0, "maximum": 2147483647, "call": "field_changed", "description": "Reproducible random seed; change for another realization."}
+              ]
+            }
+          ]
+        },
+        {
+          "type": "plot",
+          "source": "decay_series",
+          "title": "Decay preview",
+          "x_label": "Micro-time (ns)",
+          "y_label": "Counts",
+          "log_y": true,
+          "legend": false,
+          "description": "Live preview of the current decay."
+        }
+      ]
+    }
+  ]
+}
