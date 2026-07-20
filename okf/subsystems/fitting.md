@@ -129,6 +129,33 @@ plugins in place of duplicated raw-tttrlib boilerplate.
 - `FitGroup.run()` optionally fits each member locally first
   (`global_optimize_local_first`) then runs the joint `leastsqbound`.
 
+# Fitting a bare array through the real models
+
+`chisurf/core/fluorescence/decay_fit_model.py` builds a runnable `Fit` +
+`LifetimeModel` from a plain numpy decay, bin width and IRF
+(`build_lifetime_fit`), and runs it (`fit_lifetime_model`). It exists so callers
+that only hold an array — plugins, the FCS Filter Calculator's auto-fit, scripts
+— get `FittingParameter`s that can be **linked to other fits**, rather than the
+plain floats a standalone optimiser returns. It is Qt-free.
+
+Making a `LifetimeModel` compute from an in-memory array requires several
+settings that **fail silently**, returning a flat background instead of a decay:
+`convolve.stop` is in *time* units and defaults to 0 (no convolution);
+`convolve.dt` defaults to 1.0; the IRF must be in *counts* because
+`_process_irf` subtracts `lamp_background` and clips at zero; `_irf_start`/
+`_irf_stop` must be written on the backing parameters (the public setters wrap
+the value in `np.array` and are broken); autoscaling is enabled by *fixing*
+`n0`; and lifetime bounds are off by default. `build_lifetime_fit` centralises
+all of it.
+
+**Amplitude conventions differ between the two fitters and are not
+interchangeable.** `decay_fit.fit_lifetime_components` builds its design matrix
+from unit-sum decay columns, so its amplitudes are **photon fractions**;
+`Lifetime.amplitudes` are **pre-exponential** amplitudes, the
+`lifetime_spectrum` convention. They relate by `f_i = a_i·τ_i / Σ a_j·τ_j` — for
+a 0.3/0.7 mixture at 1.2/4.0 ns that is 0.11/0.89, so reading one as the other
+makes a real component look negligible.
+
 # Error analysis & sampling
 
 | Method | Entry point | Basis |
