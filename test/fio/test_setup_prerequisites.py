@@ -263,10 +263,6 @@ def test_list_setups_handler_returns_structured_fields(tmp_path: Path) -> None:
             "mmfdb.admin.backend.services.resolve_database_path",
             return_value=db_path,
         ),
-        patch(
-            "mmfdb.admin.backend.services.resolve_database_path",
-            return_value=db_path,
-        ),
         # list_setups_handler / get_setup_handler delegate to mmfdb.api,
         # which binds its own resolve_database_path — patch it too so the read path
         # uses this temp DB and the test never touches the real user database.
@@ -327,10 +323,6 @@ def test_setup_detail_rpc_includes_child_tables(tmp_path: Path) -> None:
     auth = _admin_auth(db_path)
 
     patchers = [
-        patch(
-            "mmfdb.admin.backend.services.resolve_database_path",
-            return_value=db_path,
-        ),
         patch(
             "mmfdb.admin.backend.services.resolve_database_path",
             return_value=db_path,

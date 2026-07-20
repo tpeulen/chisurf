@@ -309,6 +309,14 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
     """Test project.archive and project.restore actions."""
     db_path = tmp_path / "test_actions.db"
 
+    # Import every module that binds ``resolve_database_path`` by value BEFORE the
+    # patch starts. A module first imported while the source is patched copies the
+    # mock into its own namespace, and stopping the patch restores only the source
+    # — the bound copy keeps the mock for the rest of the session, silently
+    # redirecting later tests at this temp database.
+    import mmfdb.admin.backend.services  # noqa: F401
+    import mmfdb.api  # noqa: F401
+
     patcher = patch(
         "mmfdb.admin.backend.measurement_services.resolve_database_path",
         return_value=db_path,
@@ -321,9 +329,15 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
         "mmfdb.store.database_resolver.resolve_database_path",
         return_value=db_path,
     )
+    api_patcher = patch("mmfdb.api.resolve_database_path", return_value=db_path)
+    services_patcher = patch(
+        "mmfdb.admin.backend.services.resolve_database_path", return_value=db_path
+    )
     patcher.start()
     project_browser_patcher.start()
     database_resolver_patcher.start()
+    api_patcher.start()
+    services_patcher.start()
 
     try:
         with MFDatabase(db_path) as db:
@@ -395,9 +409,11 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
             assert called_proj.name == "MyTestActionProject"
 
     finally:
-        patcher.stop()
-        project_browser_patcher.stop()
+        services_patcher.stop()
+        api_patcher.stop()
         database_resolver_patcher.stop()
+        project_browser_patcher.stop()
+        patcher.stop()
 
 
 # ── Project Archiver Tests ──────────────────────────────────────────────
