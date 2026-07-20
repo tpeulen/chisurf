@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-import scipy.stats
 
 import chisurf.core.data
 import chisurf.core.experiments

@@ -5,10 +5,35 @@ from . tcspc import *
 from chisurf import typing
 import chisurf.core.fluorescence.tcspc.convolve
 import chisurf.core.fluorescence.tcspc.corrections
-import chisurf.core.fluorescence.tcspc.irf_estimation
 
 from .tcspc import rescale_w_bg
-from .irf_estimation import IRFEstimator
+
+#: `irf_estimation` is served lazily: it imports ``scipy.signal``, which drags
+#: in ``scipy.stats`` (~0.9 s), and it is reached from
+#: ``chisurf.core.experiments.tcspc`` -- so every TCSPC model paid for blind IRF
+#: estimation, a rare operation used only by the lifetime-analysis GUI tool.
+_LAZY_ATTRIBUTES = {"IRFEstimator": "irf_estimation"}
+_LAZY_SUBMODULES = ("irf_estimation",)
+
+
+def __getattr__(name):
+    """Import the IRF-estimation submodule on first attribute access."""
+    import importlib
+    if name in _LAZY_SUBMODULES:
+        module = importlib.import_module(f"{__name__}.{name}")
+        globals()[name] = module
+        return module
+    if name in _LAZY_ATTRIBUTES:
+        module = importlib.import_module(f"{__name__}.{_LAZY_ATTRIBUTES[name]}")
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    """List module contents including the lazily-imported names."""
+    return sorted({*globals(), *_LAZY_SUBMODULES, *_LAZY_ATTRIBUTES})
 
 
 def counting_noise(

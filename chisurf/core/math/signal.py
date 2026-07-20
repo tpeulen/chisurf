@@ -3,7 +3,6 @@ from chisurf import typing
 
 import numpy as np
 import numba as nb
-import scipy.stats as st
 
 
 window_function_types = ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']
@@ -312,6 +311,10 @@ def gaussian_kernel(
     """
     interval = (2.0 * nsig + 1.) / kernel_size
     x = np.linspace(-nsig - interval / 2., nsig + interval / 2., kernel_size + 1)
+    # Imported here rather than at module scope: scipy.stats costs ~0.9 s and
+    # this is its only use in the module, which is otherwise reached by every
+    # model through chisurf.core.curve.
+    import scipy.stats as st
     kern1d = np.diff(st.norm.cdf(x))
     kernel_raw = np.sqrt(np.outer(kern1d, kern1d))
     kernel = kernel_raw / kernel_raw.sum()

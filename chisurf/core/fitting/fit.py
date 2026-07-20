@@ -9,7 +9,6 @@ import os
 import re
 import numpy as np
 import scipy.linalg
-import scipy.stats
 
 import chisurf.core.settings
 import chisurf.core.base
