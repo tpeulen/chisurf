@@ -148,6 +148,13 @@ the value in `np.array` and are broken); autoscaling is enabled by *fixing*
 `n0`; and lifetime bounds are off by default. `build_lifetime_fit` centralises
 all of it.
 
+`build_fret_fit` / `fit_fret_model` do the same for FRET, driving a
+`GaussianModel`: each state is a Gaussian donor–acceptor distance with fitted
+mean/width/fraction plus the donor-only fraction `xDOnly`, and efficiencies
+follow from the fitted distances and R₀. **R₀ and τ_D0 are held fixed** —
+calibration, not data, and badly conditioned against a distance distribution
+because R₀ and R trade off through the same `(R/R₀)⁶`.
+
 **Amplitude conventions differ between the two fitters and are not
 interchangeable.** `decay_fit.fit_lifetime_components` builds its design matrix
 from unit-sum decay columns, so its amplitudes are **photon fractions**;

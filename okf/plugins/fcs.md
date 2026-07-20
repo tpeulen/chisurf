@@ -138,8 +138,20 @@ fit. Three things the swap had to reconcile:
 
 The table hides convolution/acquisition plumbing (`dt`, `rep`, `start`, `stop`,
 `irf_start`, `irf_stop`, `n0`, …) — the auto-fit configures those, they are not
-results. *Still open:* the FRET path still derives `E` from the fitted lifetimes
-rather than fitting a `FRETModel` directly.
+results.
+
+**The FRET kind fits distances, not converted lifetimes.** Selecting *FRET
+species* runs `fit_fret_model`, which drives a real
+`GaussianModel`: each state is a Gaussian donor–acceptor distance whose **mean,
+width and species fraction are fitted parameters**, alongside the donor-only
+fraction `xDOnly`, and the efficiencies follow from the fitted distances and R₀
+(taken from the Instrument dock). **R₀ and τ_D0 are held fixed** — they are
+calibration rather than data, and fitting them against a distance distribution
+is badly conditioned, since R₀ and R trade off through the same `(R/R₀)⁶`.
+`_add_fret_autofit_species` still supports the older *derived* route
+(`E = 1 − τ/τ_D0`, longest fitted lifetime taken as unquenched donor) for
+callers that only have lifetimes, and now documents which inference it is
+making.
 
 Afterpulsing/dark counts and scattered excitation light are the two explicit
 nuisance bases, toggled by the **AP** (`fit_background`) and **IRF**
