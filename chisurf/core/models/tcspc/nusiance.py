@@ -791,13 +791,23 @@ class Convolve(FittingParameterGroup):
         if decay is None:
             decay = np.zeros(self.data.y.shape)
 
-        # Make sure used IRF is of same size as data-array
-        irf_y = np.resize(irf.y, self.data.y.shape)
-        
-        # Normalize IRF to unity before convolution
-        if np.sum(irf_y) > 0:
-            irf_y = irf_y / np.sum(irf_y)
-        
+        # Resize-to-data plus unit normalisation depends only on the IRF curve
+        # and the data length, and `irf` is itself served from a cache, so the
+        # same array was being rebuilt on every model evaluation: a resize copy,
+        # two full sums and a dividing copy, ~19 us of a ~40 us call. Cache it
+        # against the curve's identity (the cache upstream returns the identical
+        # object while nothing changes) and the target shape.
+        shape = self.data.y.shape
+        cached = getattr(self, "_irf_y_cache", None)
+        if cached is not None and cached[0] is irf and cached[1] == shape:
+            irf_y = cached[2]
+        else:
+            irf_y = np.resize(irf.y, shape)
+            total = irf_y.sum()
+            if total > 0:
+                irf_y = irf_y / total
+            object.__setattr__(self, "_irf_y_cache", (irf, shape, irf_y))
+
         n_points = irf_y.shape[0]
         stop = min(self.stop, n_points)
         start = min(0, self.start)
