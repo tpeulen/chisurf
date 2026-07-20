@@ -9,6 +9,21 @@ from chisurf.gui.plots import plotbase
 color_scheme = chisurf.core.settings.colors
 
 
+def _member_fits(fit):
+    """Return the member fits of *fit* as a list.
+
+    A :class:`~chisurf.core.fitting.fit.FitGroup` iterates over its members, but
+    a plain :class:`~chisurf.core.fitting.fit.Fit` is not iterable -- so
+    constructing this plot with a single Fit raised
+    ``TypeError: 'Fit' object is not iterable``. A lone fit is simply a group of
+    one.
+    """
+    try:
+        return list(fit)
+    except TypeError:
+        return [fit]
+
+
 class ResidualPlot(plotbase.Plot):
 
     name = "Residuals"
@@ -28,7 +43,7 @@ class ResidualPlot(plotbase.Plot):
         except Exception:
             pass
 
-        for i, f in enumerate(fit):
+        for i, f in enumerate(_member_fits(fit)):
             color = chisurf.core.settings.colors[i % len(chisurf.core.settings.colors)]['hex']
             c = pg.PlotCurveItem(pen=pg.mkPen(color, width=lw), name=f.data.name)
             p.addItem(c)
@@ -39,7 +54,7 @@ class ResidualPlot(plotbase.Plot):
     def update(self, *args, **kwargs) -> None:
         super().update(*args, **kwargs)
         # Get parameters from plot-control
-        fits = self.fit
+        fits = _member_fits(self.fit)
         for ci, fi in zip(self.curves, fits):
             w_res = fi.model.weighted_residuals
             x = np.arange(len(w_res))

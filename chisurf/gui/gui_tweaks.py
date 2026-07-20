@@ -195,3 +195,16 @@ def apply_pyqtgraph_autorange_compat(pg) -> None:
         _CsPlotWidget.autoRangeEnabled = _chisurf_pg_autorange_enabled_compat
     except Exception:
         return
+
+
+# Apply at import rather than only from get_win(). pyqtgraph >= 0.14 dropped
+# PlotWidget.autoRangeEnabled (it lives on ViewBox now), and anything that
+# builds a plot WITHOUT going through full GUI startup -- tests, scripts,
+# headless harnesses -- otherwise hits a swallowed AttributeError and silently
+# takes a degraded path. The shim is idempotent (it returns early once the
+# attribute exists), so applying it here and in get_win() is harmless.
+try:  # pragma: no cover - depends on the installed pyqtgraph
+    import pyqtgraph as _pg
+    apply_pyqtgraph_autorange_compat(_pg)
+except Exception:
+    pass
