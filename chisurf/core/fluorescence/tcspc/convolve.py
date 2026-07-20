@@ -167,7 +167,13 @@ def convolve_lifetime_spectrum_periodic_nb(
         exp_curr = exp(-dt/lt_curr)
         fit_curr = 0.
         decay[0] += dt_2 * irf[0] * (exp_curr + 1.) * x_curr
-        for i in range(conv_stop):
+        # Start at 1, not 0. At i == 0 this read irf[i - 1] == irf[-1], which in
+        # Python wraps to the LAST IRF sample rather than being out of range, and
+        # it also added a second contribution to decay[0] on top of the line
+        # above. The non-periodic kernel above already uses range(1, ...), and
+        # tttrlib's C implementation starts at 1; with this fixed the two agree
+        # to 6.5e-08 instead of 1.1e-05.
+        for i in range(1, conv_stop):
             fit_curr = (fit_curr + dt_2 * irf[i - 1]) * exp_curr + dt_2 * irf[i]
             decay[i] += fit_curr * x_curr
 
@@ -176,7 +182,12 @@ def convolve_lifetime_spectrum_periodic_nb(
             decay[i] += fit_curr * x_curr
 
         fit_curr *= exp(-(period_n - stop1) * dt / lt_curr)
-        for i in range(stop):
+        # range(stop + 1): the reference C loop is `for (i = 0; i <= stop; i++)`,
+        # so the final channel carries a tail contribution too. Dropping it left
+        # the periodic tail short by one channel -- invisible for a couple of
+        # lifetimes but 1e-5 relative for a 128-exponential FRET spectrum, where
+        # the tail terms accumulate.
+        for i in range(stop + 1):
             fit_curr *= exp_curr
             decay[i] += fit_curr * x_curr * tail_a
 
