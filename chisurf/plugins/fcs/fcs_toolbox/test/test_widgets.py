@@ -56,3 +56,16 @@ def test_included_plugins_are_menu_hidden():
     ):
         m = importlib.import_module(mod)
         assert getattr(m, "menu_hidden", False) is True, mod
+
+
+def test_show_panel_by_role_navigates_to_filter_calc(qapp, qtbot):
+    from chisurf.plugins.fcs.fcs_toolbox.tool import FcsTool
+
+    w = FcsTool()
+    qtbot.addWidget(w)
+    calc_row = w._nav_row_for_role("filter_calc")
+    assert calc_row >= 0
+    assert w.nav_list.currentRow() != calc_row       # starts elsewhere
+    assert w.show_panel_by_role("filter_calc") is True
+    assert w.nav_list.currentRow() == calc_row       # navigated
+    assert w.show_panel_by_role("does_not_exist") is False

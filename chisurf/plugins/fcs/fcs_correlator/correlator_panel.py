@@ -661,9 +661,28 @@ class _LifetimeFilterControls(QtWidgets.QWidget):
         self.btn_unload.clicked.connect(self._on_unload)
         layout.addWidget(self.btn_unload)
 
+        # Direct link to the Filter Calculator (which computes these filters).
+        self.btn_filter_calc = QtWidgets.QToolButton()
+        self.btn_filter_calc.setText("🧪 Filter Calc…")
+        self.btn_filter_calc.setToolTip(
+            "Open the fFCS Filter Calculator to compute lifetime filters from decay patterns."
+        )
+        self.btn_filter_calc.clicked.connect(self._open_filter_calc)
+        layout.addWidget(self.btn_filter_calc)
+
         self._status = QtWidgets.QLabel()
         layout.addWidget(self._status, 1)
         self.refresh()
+
+    def _open_filter_calc(self) -> None:
+        """Navigate the hosting FCS navigation rail to the Filter Calculator."""
+        widget = self.parent()
+        while widget is not None:
+            show = getattr(widget, "show_panel_by_role", None)
+            if callable(show):
+                show("filter_calc")
+                return
+            widget = widget.parent()
 
     def _on_load(self) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -712,7 +731,9 @@ class _LifetimeFilterControls(QtWidgets.QWidget):
             self._status.setText(f"Species mode: {src} ({n} species).")
             self.btn_unload.setEnabled(True)
         else:
-            self._status.setText("Detector-channel mode (no filters loaded).")
+            # No status text in the default detector-channel mode — the empty
+            # A/B selectors already make the mode obvious.
+            self._status.setText("")
             self.btn_unload.setEnabled(False)
 
 

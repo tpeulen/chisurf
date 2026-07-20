@@ -240,6 +240,18 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         layout.addWidget(label, 1)
         return widget
 
+    def show_panel_by_role(self, role: str) -> bool:
+        """Navigate to the (non-separator) panel with the given ``role``.
+
+        Lets one panel deep-link to another (e.g. the Correlator's lifetime-filter
+        controls jumping to the Filter Calculator). Returns ``True`` if found.
+        """
+        for i, panel in enumerate(self.panels):
+            if not panel.get("separator") and panel.get("role") == role:
+                self.nav_list.setCurrentRow(i)
+                return True
+        return False
+
     def _on_nav_changed(self, index: int) -> None:
         """Load and show the selected panel."""
         if index < 0 or index >= len(self.panels):

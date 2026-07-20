@@ -29,6 +29,10 @@ class FcsWorkflowContext:
     expanded_files: list[str] = field(default_factory=list)
     use_photon_filter: bool = False
     use_fcs_merger: bool = True
+    #: Optional micro-time coarsening factor shared with downstream tools (Filter
+    #: Calculator) so lifetime filters use the same micro-time axis as the
+    #: correlation. The micro-time *resolution* itself comes from the loaded data.
+    microtime_binning: int = 1
 
 
 # ---------------------------------------------------------------------------
