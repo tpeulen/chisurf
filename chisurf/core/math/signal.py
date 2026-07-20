@@ -96,9 +96,14 @@ def shift_array(
     numpy-array
         The shifted array.
     """
-    ts = shift
-    ts_i = int(ts)
-    ts_f = ts - np.floor(ts)
+    ts = float(shift)
+    n = len(v)
+    # floor(), not int(): int() truncates toward zero, so for a negative
+    # fractional shift it disagreed with the floor() used for ts_f -- shift -0.25
+    # produced a *right* shift with wrapped data at index 0, and -1.5 shifted by
+    # -0.5. Integer shifts happened to be correct, which hid it.
+    ts_i = int(np.floor(ts))
+    ts_f = ts - ts_i                       # fractional part, always in [0, 1)
     if ts_f == 0.0:
         # Whole-sample shift: the interpolation weights are exactly 1 and 0, so
         # the second roll and both multiplies are wasted work. Identical result
@@ -108,12 +113,28 @@ def shift_array(
     else:
         ysh = np.roll(v, ts_i) * (1.0 - ts_f) + np.roll(v, ts_i + 1) * ts_f
     if set_outside:
+        # ysh[k] interpolates v[k - ts] between v[k - ts_i] (weight 1 - ts_f) and
+        # v[k - ts_i - 1] (weight ts_f). A channel is *partly* outside when only
+        # one of those two samples is out of range; blanking it completely made
+        # the result discontinuous in `shift`, because an infinitesimal shift
+        # zeroed a whole channel. That fabricated a 1/h finite-difference slope
+        # and pinned the `timeshift` fit parameter at 0. Replace only the
+        # out-of-range sample's *share*, so the result is continuous in `shift`.
         if ts >= 0:
-            b = int(np.ceil(ts))
-            ysh[:b] = outside_value
-        elif ts < 0:
-            b = int(np.floor(ts))
-            ysh[b:] = outside_value
+            edge = min(ts_i, n)
+            ysh[:edge] = outside_value     # both samples out of range
+            if ts_f > 0.0 and edge < n:
+                # v[edge - ts_i - 1] == v[-1] is out of range; v[0] is not.
+                ysh[edge] = v[0] * (1.0 - ts_f) + outside_value * ts_f
+        else:
+            edge = n + ts_i                # first channel with a sample past the end
+            if ts_f > 0.0:
+                if 0 <= edge < n:
+                    # v[edge - ts_i] == v[n] is out of range; v[n - 1] is not.
+                    ysh[edge] = outside_value * (1.0 - ts_f) + v[n - 1] * ts_f
+                ysh[max(edge + 1, 0):] = outside_value
+            else:
+                ysh[max(edge, 0):] = outside_value
     return ysh
 
 

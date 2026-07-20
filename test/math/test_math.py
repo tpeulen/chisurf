@@ -8,13 +8,18 @@ import chisurf.core.math.signal
     ((np.arange(10), 1.5,), np.array([0., 0., 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5])),
     ((np.arange(10), 2.0,), np.array([0., 0., 0., 1., 2., 3., 4., 5., 6., 7.])),
     ((np.arange(10), -1.0,), np.array([1., 2., 3., 4., 5., 6., 7., 8., 9., 0.])),
-    ((np.arange(10), -1.5,), np.array([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 0.0, 0.0])),
+    # Fractional negative shifts were off by a whole sample: ts_i truncated
+    # toward zero while ts_f used floor(), so -1.5 shifted by -0.5. These are
+    # v[k - ts]; the partial boundary channel blends with `outside_value` in
+    # the interpolation ratio instead of being blanked, which is what makes
+    # shift_array continuous in `shift`.
+    ((np.arange(10), -1.5,), np.array([1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 4.5, 0.0])),
     ((np.arange(10), -2.0,), np.array([2., 3., 4., 5., 6., 7., 8., 9., 0., 0.])),
     ((np.arange(10), -2.0, True, 33.), np.array([2., 3., 4., 5., 6., 7., 8., 9., 33., 33.])),
     ((np.arange(10), 2.0, True, 33.), np.array([33., 33., 0., 1., 2., 3., 4., 5., 6., 7.])),
-    ((np.arange(10), -1.5, True, 33.), np.array([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 33.0, 33.0])),
+    ((np.arange(10), -1.5, True, 33.), np.array([1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 21.0, 33.0])),
     ((np.arange(10), -2.0, False, 33.), np.array([2., 3., 4., 5., 6., 7., 8., 9., 0., 1.])),
-    ((np.arange(10), -1.5, False, 33.), np.array([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 4.5])),
+    ((np.arange(10), -1.5, False, 33.), np.array([1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 4.5, 0.5])),
     # Edge cases
     ((np.array([]), 1.0), np.array([])),
     ((np.array([1, 2, 3]), 10.0), np.array([0., 0., 0.])),
