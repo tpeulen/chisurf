@@ -110,7 +110,7 @@ def _decode_project_operation(row: dict[str, Any] | Any) -> dict[str, Any]:
 
 def _get_operation_mode(conn: Any, operation_id: str) -> int | None:
     row = conn.execute(
-        "SELECT mode FROM mmfdb_object_acl WHERE object_type = 'mmfdb_operation' AND object_id = ? AND deleted_at IS NULL",
+        "SELECT mode FROM mmfdb_object_acl WHERE object_type = 'operation' AND object_id = ? AND deleted_at IS NULL",
         (operation_id,),
     ).fetchone()
     if row:
@@ -135,7 +135,7 @@ def _get_project_visibility(conn: Any, operation_id: str) -> str:
     if other_bits & PERM_READ:
         return "public"
     entry_rows = conn.execute(
-        "SELECT entry_id FROM mmfdb_acl_entry WHERE object_type = 'mmfdb_operation' AND object_id = ? AND deleted_at IS NULL LIMIT 1",
+        "SELECT entry_id FROM mmfdb_acl_entry WHERE object_type = 'operation' AND object_id = ? AND deleted_at IS NULL LIMIT 1",
         (operation_id,),
     ).fetchall()
     if entry_rows:
@@ -175,7 +175,7 @@ def list_projects_handler(
 
         if not principal.is_admin:
             projects_raw = filter_readable(
-                conn, principal, "mmfdb_operation",
+                conn, principal, "operation",
                 projects_raw, id_key="operation_id",
             )
             if not show_public:
@@ -327,7 +327,7 @@ def save_project_handler(
         with db.transaction():
             if visibility == "public":
                 import mmfdb.security.auth as authmod
-                authmod.chmod(conn, principal, "mmfdb_operation", version_id, 0o704)
+                authmod.chmod(conn, principal, "operation", version_id, 0o704)
             db.add_audit_log(
                 action="archive",
                 target_type="project",
@@ -437,7 +437,7 @@ def restore_project_handler(
     try:
         principal, conn, db = _require_auth(auth)
         if version_id:
-            require_access(conn, principal, "mmfdb_operation", version_id, PERM_READ)
+            require_access(conn, principal, "operation", version_id, PERM_READ)
             result = _build_restore_payload(db, conn, principal, version_id)
             if not result.get("ok", True):
                 return result
@@ -469,7 +469,7 @@ def restore_project_handler(
             if not isinstance(row0, dict):
                 row0 = dict(row0)
             latest_id = row0.get("operation_id")
-            require_access(conn, principal, "mmfdb_operation", latest_id, PERM_READ)
+            require_access(conn, principal, "operation", latest_id, PERM_READ)
             result = _build_restore_payload(db, conn, principal, latest_id)
             if not result.get("ok", True):
                 return result
@@ -579,7 +579,7 @@ def export_csp_handler(
 ) -> dict[str, Any]:
     try:
         principal, conn, db = _require_auth(auth)
-        require_access(conn, principal, "mmfdb_operation", version_id, PERM_READ)
+        require_access(conn, principal, "operation", version_id, PERM_READ)
         run = db.get_analysis_run_full(version_id)
         if not run:
             return service_error(f"Project version not found: {version_id}", error_code=NOT_FOUND)
@@ -979,14 +979,14 @@ def delete_version_handler(
         principal, conn, db = _require_auth(auth)
         if not version_id:
             return service_error("version_id is required", error_code=INVALID_INPUT)
-        require_access(conn, principal, "mmfdb_operation", version_id, PERM_MANAGE)
+        require_access(conn, principal, "operation", version_id, PERM_MANAGE)
         with db.transaction():
             conn.execute(
                 "UPDATE mmfdb_operation SET deleted_at = ? WHERE operation_id = ?",
                 (_utc_now(), version_id),
             )
             conn.execute(
-                "UPDATE mmfdb_object_acl SET deleted_at = ? WHERE object_type = 'mmfdb_operation' AND object_id = ?",
+                "UPDATE mmfdb_object_acl SET deleted_at = ? WHERE object_type = 'operation' AND object_id = ?",
                 (_utc_now(), version_id),
             )
             db.add_audit_log(
@@ -1034,7 +1034,7 @@ def create_branch_handler(
         if not project_id or not from_version_id or not branch_name:
             return service_error("project_id, from_version_id, and branch_name are required", error_code=INVALID_INPUT)
 
-        require_access(conn, principal, "mmfdb_operation", from_version_id, PERM_READ)
+        require_access(conn, principal, "operation", from_version_id, PERM_READ)
 
         import uuid as _uuid
         branch_uuid = f"br_{_uuid.uuid4().hex[:12]}"
@@ -1272,7 +1272,7 @@ def list_project_artifacts_handler(
         principal, conn, db = _require_auth(auth)
         if not version_id:
             return service_error("version_id is required", error_code=INVALID_INPUT)
-        require_access(conn, principal, "mmfdb_operation", version_id, PERM_READ)
+        require_access(conn, principal, "operation", version_id, PERM_READ)
 
         artifacts_by_id = {}
         for art_row in db.get_operation_artifacts(version_id):
@@ -1342,7 +1342,7 @@ def list_project_parameters_handler(
         principal, conn, db = _require_auth(auth)
         if not version_id:
             return service_error("version_id is required", error_code=INVALID_INPUT)
-        require_access(conn, principal, "mmfdb_operation", version_id, PERM_READ)
+        require_access(conn, principal, "operation", version_id, PERM_READ)
 
         # Find all fit operations that belong to this version
         fit_ops = conn.execute(

@@ -89,12 +89,25 @@ def temp_db_setup(tmp_path):
             processing_id=analysis_id,
         )
         
-    return db_path, raw_id, prod_id, analysis_id
+        # The archive/export handlers are fail-closed (PRD-37): mint a session so
+        # the tests call them as a real authenticated principal. Rows written
+        # straight through the repository carry no ACL, and those are admin-only
+        # by design (``_acl_read_or_pass``) — which matches who exports archives.
+        from mmfdb.security.auth import create_session
+
+        db.ensure_user("archive-user")
+        db.conn.execute(
+            "UPDATE flr_sample_users SET is_admin = 1 WHERE user_id = ?", ("archive-user",)
+        )
+        token = create_session(db.conn, "archive-user")["token"]
+        db.conn.commit()
+
+    return db_path, raw_id, prod_id, analysis_id, token
 
 
 def test_export_provenance_graph(temp_db_setup, tmp_path):
     """Test exporting provenance subgraph to JSON and JSONL formats."""
-    db_path, raw_id, prod_id, analysis_id = temp_db_setup
+    db_path, raw_id, prod_id, analysis_id, token = temp_db_setup
 
     with patch("mmfdb.admin.backend.measurement_services.resolve_database_path", return_value=db_path):
         # Export as standard JSON
@@ -103,6 +116,7 @@ def test_export_provenance_graph(temp_db_setup, tmp_path):
             seed_node_type="analysis_run",
             seed_node_id=analysis_id,
             output_path=str(json_path),
+            auth={"token": token},
         )
         assert res.get("ok") is True
         assert json_path.exists()
@@ -124,6 +138,7 @@ def test_export_provenance_graph(temp_db_setup, tmp_path):
             seed_node_type="analysis_run",
             seed_node_id=analysis_id,
             output_path=str(jsonl_path),
+            auth={"token": token},
         )
         assert res_jsonl.get("ok") is True
         assert jsonl_path.exists()
@@ -137,7 +152,7 @@ def test_export_provenance_graph(temp_db_setup, tmp_path):
 
 def test_database_backup(temp_db_setup, tmp_path):
     """Test safe hot backup of active SQLite database."""
-    db_path, _, _, _ = temp_db_setup
+    db_path, _, _, _, token = temp_db_setup
     backup_path = tmp_path / "backup_snapshot.db"
 
     with patch("mmfdb.admin.backend.measurement_services.resolve_database_path", return_value=db_path):
@@ -154,7 +169,7 @@ def test_database_backup(temp_db_setup, tmp_path):
 
 def test_export_zip_archive_without_data(temp_db_setup, tmp_path):
     """Test exporting ZIP archive packaging manifest, snapshot, and graph only (no large files)."""
-    db_path, _, _, analysis_id = temp_db_setup
+    db_path, _, _, analysis_id, token = temp_db_setup
     zip_path = tmp_path / "archive_metadata.zip"
 
     with patch("mmfdb.admin.backend.measurement_services.resolve_database_path", return_value=db_path):
@@ -180,7 +195,7 @@ def test_export_zip_archive_without_data(temp_db_setup, tmp_path):
 
 def test_export_zip_archive_with_data_and_remapping(temp_db_setup, tmp_path):
     """Test ZIP export bundling actual files and remapping/relocating path prefixes."""
-    db_path, raw_id, prod_id, analysis_id = temp_db_setup
+    db_path, raw_id, prod_id, analysis_id, token = temp_db_setup
     
     import shutil
     original_file_path = pathlib.Path("./test/data/sample_anisotropy.csv").resolve()

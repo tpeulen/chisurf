@@ -10,6 +10,24 @@ from mmfdb.admin.backend.measurement_services import (
 from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
 
+def _authenticated_client(db_path: pathlib.Path, user_id: str = "audit-user") -> MMFDBClient:
+    """Build an in-process client carrying a real session token for *db_path*.
+
+    The measurement services apply one fail-closed auth boundary to every handler,
+    so an anonymous client is rejected by design. Mint a session against the same
+    database the resolver is patched to and hand the client its token.
+    """
+    from mmfdb.security.auth import create_session
+
+    with MFDatabase(db_path) as db:
+        db.ensure_user(user_id)
+        token = create_session(db.conn, user_id)["token"]
+        db.conn.commit()
+    client = MMFDBClient(inprocess=True)
+    client.token = token
+    return client
+
+
 def test_automatic_repository_audit_logging(tmp_path: pathlib.Path) -> None:
     """Verify that core repository operations automatically write audit log entries."""
     db_path = tmp_path / "audit_test.db"
@@ -190,7 +208,7 @@ def test_client_list_audit_logs(tmp_path: pathlib.Path) -> None:
                 checksum="0" * 64,
             )
 
-        client = MMFDBClient(inprocess=True)
+        client = _authenticated_client(db_path)
         logs = client.list_audit_logs()
         assert len(logs) == 1
         assert logs[0]["target_type"] == "raw_data"

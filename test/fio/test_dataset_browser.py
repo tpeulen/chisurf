@@ -410,6 +410,14 @@ def test_open_dataset_returns_local_path_for_object_store(
         created_by_user_id="open_user",
         is_public=False,
     )
+    # register_artifact is the raw table write; the real registration path also
+    # seeds the owner ACL that the fail-closed open handler authorizes against.
+    from mmfdb.security.auth import create_default_acl_for_object
+
+    create_default_acl_for_object(
+        db.conn, "artifact", art_id, owner_user_id="open_user", mode=0o700
+    )
+    db.conn.commit()
     db.close()
 
     result = datasets_open_handler(
@@ -772,16 +780,22 @@ def test_real_mmfdbclient_call_browses_datasets(tmp_path, monkeypatch):
     monkeypatch.setitem(
         chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"}
     )
+    from mmfdb.security.auth import create_session
+
     dbp = str(tmp_path / "client.db")
     db = MFDatabase(dbp)
     f = tmp_path / "m.ptu"
     f.write_bytes(b"data")
     assert rr.register_raw_measurement(file_path=str(f), db=db)
+    token = create_session(db.conn, "tpeulen")["token"]
+    db.conn.commit()
     db.close()
     monkeypatch.setattr(dr, "resolve_database_path", lambda: dbp)
     monkeypatch.setattr(svc, "resolve_database_path", lambda: dbp)
 
     client = MMFDBClient(inprocess=True)
+    # Browsing is fail-closed (PRD-37); the widget authenticates before calling.
+    client.token = token
     assert hasattr(client, "call"), "MMFDBClient must expose a public call()"
     res = client.call(
         "mmfdb.datasets.browse",
@@ -792,13 +806,18 @@ def test_real_mmfdbclient_call_browses_datasets(tmp_path, monkeypatch):
     assert len(res.get("datasets", [])) == 1
 
 
-def test_datasets_open_allows_anonymous_with_default_user(tmp_path, monkeypatch):
-    """Regression: datasets.open must not require an authenticated session when a
-    default user is configured (the in-process GUI client is anonymous). It
-    previously failed with 'Authentication required', breaking the load."""
+def test_datasets_open_rejects_anonymous(tmp_path, monkeypatch):
+    """datasets.open is fail-closed: an anonymous caller is rejected (PRD-37).
+
+    A configured ``default_user_id`` stamps ownership on in-process registration
+    but must never stand in for a verified principal on a read — authorization is
+    default-deny and independent of database contents, so opening a dataset
+    requires a real session token (see ``test_datasets_open_with_session_token``).
+    """
     import chisurf.core.settings
     from mmfdb.provenance import result_registry as rr
     from mmfdb.admin.backend import services as svc
+    from mmfdb.security.auth import AuthError
 
     monkeypatch.setitem(
         chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"}
@@ -811,8 +830,32 @@ def test_datasets_open_allows_anonymous_with_default_user(tmp_path, monkeypatch)
     db.close()
     monkeypatch.setattr(svc, "resolve_database_path", lambda: dbp)
 
-    res = svc.datasets_open_handler(artifact_id=art, auth=None)  # anonymous
-    assert res.get("local_path"), "anonymous open must return a local path"
+    with pytest.raises(AuthError):
+        svc.datasets_open_handler(artifact_id=art, auth=None)
+
+
+def test_datasets_open_with_session_token(tmp_path, monkeypatch):
+    """The owner, authenticated with a real session token, can open the dataset."""
+    import chisurf.core.settings
+    from mmfdb.provenance import result_registry as rr
+    from mmfdb.admin.backend import services as svc
+    from mmfdb.security.auth import create_session
+
+    monkeypatch.setitem(
+        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"}
+    )
+    dbp = str(tmp_path / "open_authed.db")
+    db = MFDatabase(dbp)
+    f = tmp_path / "m.ptu"
+    f.write_bytes(b"payload-bytes")
+    art = rr.register_raw_measurement(file_path=str(f), db=db)
+    token = create_session(db.conn, "tpeulen")["token"]
+    db.conn.commit()
+    db.close()
+    monkeypatch.setattr(svc, "resolve_database_path", lambda: dbp)
+
+    res = svc.datasets_open_handler(artifact_id=art, auth={"token": token})
+    assert res.get("local_path"), "the authenticated owner must get a local path"
 
 
 def test_browse_datasets_joins_sample_name_and_refcount(

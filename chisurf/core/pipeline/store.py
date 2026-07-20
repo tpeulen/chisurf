@@ -33,6 +33,18 @@ def _default_user() -> str | None:
     return configured_default_user_id()
 
 
+def _ensure_user(db: Any, user_id: str | None) -> None:
+    """Seed the owning user row before stamping ownership.
+
+    A configured ``default_user_id`` that was never seeded would otherwise fail the
+    ``created_by_user_id`` foreign key and roll the whole save back — the same guard
+    the result registry applies on its write path.
+    """
+    ensure_user = getattr(db, "ensure_user", None)
+    if user_id and callable(ensure_user):
+        ensure_user(user_id)
+
+
 def _next_id(db: Any, table: str, column: str) -> int:
     """Next free integer PK for ``table.column`` (globally unique, MAX+1)."""
     return db.conn.execute(f"SELECT COALESCE(MAX({column}), 0) FROM {table}").fetchone()[0] + 1
@@ -56,6 +68,7 @@ def save_pipeline(
         created_by_user_id = _default_user()
     pid = pipeline_id or str(uuid.uuid4())
     now = _now()
+    _ensure_user(db, created_by_user_id)
     with db.transaction():
         db.conn.execute("DELETE FROM mmfdb_pipeline_node WHERE pipeline_id = ?", (pid,))
         db.conn.execute("DELETE FROM mmfdb_pipeline_edge WHERE pipeline_id = ?", (pid,))
@@ -155,6 +168,7 @@ def record_pipeline_run(
         created_by_user_id = _default_user()
     run_id = str(uuid.uuid4())
     now = _now()
+    _ensure_user(db, created_by_user_id)
     with db.transaction():
         db.conn.execute(
             "INSERT INTO mmfdb_pipeline_run (pipeline_run_id, pipeline_id, name, status, "
