@@ -33,6 +33,16 @@ try:
 except ImportError:
     persist_plugin_state = lambda n: lambda c: c
 
+#: Convolution/acquisition plumbing hidden from the Auto-fit parameter table.
+#: These are configured by the auto-fit itself (axis, range, IRF placement,
+#: acquisition times), not results the user reads or links, and showing all of
+#: them would bury the handful of lifetimes and amplitudes that matter.
+_AUTOFIT_HIDDEN_PARAMETERS = frozenset({
+    "dt", "rep", "start", "stop", "irf_start", "irf_stop", "lb", "n0",
+    "win-size", "tBg", "tMeas", "tDead", "r0", "g", "l1", "l2",
+})
+
+
 @persist_plugin_state("fcs_filter_calculator")
 class FcsFilterCalculatorWidget(QtWidgets.QWidget):
     """A modular implementation of the Filtered FCS: Lifetime Filter Calculator."""
@@ -76,6 +86,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._auto_fit_settings: dict = {
             "kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0,
         }
+        #: Result of the last auto-fit, including the live `Fit`/`LifetimeModel`
+        #: whose parameters the Auto-fit dock's table exposes for linking.
+        self._auto_fit_result: dict | None = None
         self._result: FilterResult | None = None
         self._result_anisotropy = None  # For single-detector Anisotropy results
         self._result_multi_anisotropy = None  # For multi-detector Anisotropy results (list)
@@ -386,7 +399,59 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.lbl_autofit_status = QtWidgets.QLabel()
         self.lbl_autofit_status.setWordWrap(True)
         form.addRow(self.lbl_autofit_status)
+
+        # The fitted model's parameters, shown once a fit has run. These are real
+        # `FittingParameter`s from a real `LifetimeModel`, so the table's own
+        # context menu offers the standard Link… targets — that is the point of
+        # fitting through the model stack rather than a standalone optimiser.
+        self.autofit_parameters_host = QtWidgets.QWidget()
+        host_layout = QtWidgets.QVBoxLayout(self.autofit_parameters_host)
+        host_layout.setContentsMargins(0, 0, 0, 0)
+        host_layout.setSpacing(0)
+        self.autofit_parameters_host.setVisible(False)
+        form.addRow(self.autofit_parameters_host)
+        self.autofit_parameter_table = None
         return panel
+
+    def _refresh_autofit_parameters(self, fit) -> None:
+        """Show the fitted model's parameters in the Auto-fit dock.
+
+        Rebuilt rather than updated in place: each auto-fit constructs a new
+        ``Fit``, so the previous table's parameters belong to a model that is no
+        longer the one on screen.
+        """
+        host = getattr(self, "autofit_parameters_host", None)
+        if host is None:
+            return
+        layout = host.layout()
+        while layout.count():
+            item = layout.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.setParent(None)
+                w.deleteLater()
+        self.autofit_parameter_table = None
+
+        model = getattr(fit, "model", None)
+        params = []
+        if model is not None:
+            try:
+                params = [p for p in model.parameters_all
+                          if getattr(p, "name", "") not in _AUTOFIT_HIDDEN_PARAMETERS]
+            except Exception as error:
+                cs.logging.warning(f"Auto-fit parameter table unavailable: {error}")
+                params = []
+        if not params:
+            host.setVisible(False)
+            return
+
+        from chisurf.gui.autoform.sections.parameter_table import (
+            ParameterGroupTableWidget,
+        )
+
+        self.autofit_parameter_table = ParameterGroupTableWidget(params=params)
+        layout.addWidget(self.autofit_parameter_table)
+        host.setVisible(True)
 
     def _sync_autofit_settings(self) -> None:
         """Mirror the Auto-fit dock's controls into the settings dict."""
@@ -1525,7 +1590,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         lifetime is appended as one synthetic species, its per-detector pattern
         convolved with that detector's IRF.
         """
-        from chisurf.core.fluorescence.decay_fit import fit_lifetime_components
+        from chisurf.core.fluorescence.decay_fit_model import fit_lifetime_model
+        from chisurf.core.fluorescence.tcspc.irf import FWHM_TO_SIGMA
 
         if not self._has_total_decay():
             QtWidgets.QMessageBox.warning(
@@ -1549,11 +1615,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         primary = (chs[0] if chs else None)
         measured = self._measured_irf_vector(primary)
         fit_irf = measured is None
-        # Respect the user's fit range (the draggable region) as the fit window —
-        # it is placed at/after the prompt, so the rise (scatter) is inside it.
+        # The model masks the fit window itself, so it is handed the FULL decay
+        # (and the full IRF) plus the range — unlike the sliced-window call this
+        # replaced, which made every fitted time relative to the window start.
         fit_lo = int(start)
-        window = total[fit_lo:stop]
-        irf_win = None if measured is None else measured[fit_lo:stop]
 
         # Fit the fraction of scatter (IRF-shaped prompt) and background/afterpulse
         # jointly with the lifetimes, driven by the AP / IRF toggles, so the
@@ -1567,38 +1632,48 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                  if primary else 0.2)
         skew0 = float(self.detector_selection.skew(primary, "") or 0.0) if primary else 0.0
         try:
-            result = fit_lifetime_components(
-                window, bin_width=dt, n_components=int(n_components), irf=irf_win,
+            result = fit_lifetime_model(
+                total, bin_width=dt, n_components=int(n_components), irf=measured,
                 tau_bounds=(float(settings["tau_min"]), float(settings["tau_max"])),
+                start_bin=fit_lo, stop_bin=stop,
                 fit_irf=fit_irf,
-                irf_fwhm0=fwhm0,
-                irf_fwhm_bounds=(dt, max(2.0 * dt, (stop - fit_lo) * dt / 3.0)),
-                # Also optimize the IRF shift (center) and skew, not just the width.
+                irf_width=fwhm0 * FWHM_TO_SIGMA,   # the model parameterises sigma
                 irf_skew=skew0,
-                irf_skew_bounds=(-3.0, 3.0),
-                irf_center_bounds=(0.0, (stop - fit_lo) * dt),
-                include_background=include_background,
-                include_scatter=include_scatter,
+                fit_background=include_background,
+                fit_scatter=include_scatter,
                 period=period,
             )
         except Exception as error:
             QtWidgets.QMessageBox.critical(self, "Auto-fit Error", str(error))
             return
 
-        amps = result["amplitudes"]
         taus = result["lifetimes"]
+        # `fit_lifetime_model` reports PRE-EXPONENTIAL amplitudes, whereas the
+        # scipy fitter this replaced reported photon fractions. Everything
+        # downstream (species labels, relative species weights) means fractions,
+        # so convert rather than relabel: f_i = a_i·tau_i / sum(a_j·tau_j).
+        pre_exp = np.asarray(result["amplitudes"], dtype=float)
+        amps = pre_exp * taus
         scale = float(amps.sum()) or 1.0
+        self._auto_fit_result = result
+        self._refresh_autofit_parameters(result.get("fit"))
         detector_names = list(chs or [])
-        fitted_fwhm = result.get("irf_fwhm")
-        fitted_center = result.get("irf_center")
+        # Write the fitted IRF back to detectors lacking a measured one. The model
+        # parameterises the prompt as a generalized normal with sigma `iw` and
+        # shape `ik`; `synthetic_irf` takes a FWHM and the *same* shape, so the
+        # width converts exactly and the skew transfers unchanged. The shift is
+        # read off the model's own processed IRF (whose peak carries the absolute
+        # position) against `_detector_irf`'s nominal 2·FWHM centre, which avoids
+        # depending on the units of the model's internal timeshift.
+        fitted_fwhm = float(result.get("irf_width") or 0.0) / FWHM_TO_SIGMA
         fitted_skew = result.get("irf_skew")
-        # Write the fitted IRF width / skew / shift back to detectors lacking a
-        # measured IRF. The fitted center is relative to the window start, and the
-        # nominal `_detector_irf` center is 2·FWHM, so the absolute shift is
-        # ``fit_lo·dt + fitted_center − 2·FWHM`` (applied by `_shift_irf`).
-        if fit_irf and fitted_fwhm:
-            shift = (fit_lo * dt + float(fitted_center) - 2.0 * float(fitted_fwhm)
-                     if fitted_center is not None else 0.0)
+        if fit_irf and fitted_fwhm > 0:
+            try:
+                irf_y = np.asarray(result["model"].convolve.irf.y, dtype=float)
+                peak_ns = float(int(np.argmax(irf_y))) * dt
+            except Exception:
+                peak_ns = 2.0 * fitted_fwhm
+            shift = peak_ns - 2.0 * fitted_fwhm
             for det in (detector_names or ([primary] if primary else [])):
                 if self._measured_irf_vector(det) is None:
                     self.detector_selection.set_width(det, float(fitted_fwhm), "")
@@ -1623,19 +1698,18 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             f"{float(a) / scale:.0%}·{float(t):.2f}ns" for a, t in zip(amps, taus)
         )
         label = "FRET states" if kind == "fret" else "components"
-        if fit_irf and fitted_fwhm:
-            shift_ns = (fit_lo * dt + float(fitted_center) - 2.0 * float(fitted_fwhm)
-                        if fitted_center is not None else 0.0)
-            irf_note = (f", IRF FWHM {fitted_fwhm:.3f} ns / shift {shift_ns:+.3f} ns"
+        if fit_irf and fitted_fwhm > 0:
+            irf_note = (f", IRF FWHM {fitted_fwhm:.3f} ns / shift {shift:+.3f} ns"
                         f" / skew {float(fitted_skew or 0.0):+.2f}")
         else:
             irf_note = ""
-        # Report the fitted nuisance fractions (share of total counts).
+        # Report the fitted nuisance terms. The model reports them as absolute
+        # per-bin amplitudes rather than as fractions of the total.
         nuis = []
-        if include_scatter and result.get("scatter_fraction"):
-            nuis.append(f"scatter {result['scatter_fraction']:.1%}")
-        if include_background and result.get("background_fraction"):
-            nuis.append(f"bkg {result['background_fraction']:.1%}")
+        if include_scatter and result.get("scatter"):
+            nuis.append(f"scatter {result['scatter']:.3g}")
+        if include_background and result.get("background"):
+            nuis.append(f"bkg {result['background']:.3g}")
         nuis_note = (" [" + ", ".join(nuis) + "]") if nuis else ""
         msg = (f"Auto-fit [{fit_lo}–{stop}]: {len(taus)} {label} "
                f"(χ²ᵣ={result['chi2_reduced']:.3g}{irf_note}) — {parts}{nuis_note}.")

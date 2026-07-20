@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from qtpy import QtCore, QtWidgets
 
 
@@ -938,3 +939,87 @@ def test_autofit_settings_dock_present(qapp, qtbot):
     assert widget._auto_fit_settings["n_components"] == 3
     assert widget._auto_fit_settings["kind"] == "fret"
     assert widget._auto_fit_settings["tau_max"] == 12.0
+
+
+def _autofit_widget(qtbot, tmp_path, n_components=2):
+    """Build a calculator with a two-exponential mixed decay, ready to auto-fit."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+    from chisurf.plugins.fcs.fcs_filter_calculator.api import synthetic_decay
+
+    fast = synthetic_decay(256, 1.2, bin_width=0.05, normalize=True)
+    slow = synthetic_decay(256, 4.0, bin_width=0.05, normalize=True)
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    total_path = tmp_path / "mix.txt"
+    np.savetxt(total_path, 60000.0 * fast + 40000.0 * slow)
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    widget.detector_selection.refresh([])
+    widget.options_model.scatter_irf = False
+    widget.fit_background_cb.setChecked(False)
+    widget._set_total_paths([total_path])
+    widget.lw_species.clear()
+    widget._auto_fit_components(n_components=n_components)
+    return widget
+
+
+def test_auto_fit_runs_through_a_real_fit_object(qapp, qtbot, tmp_path):
+    """The migration's premise: the auto-fit is now a real ChiSurf fit."""
+    from chisurf.core.fitting.fit import Fit
+    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+
+    widget = _autofit_widget(qtbot, tmp_path)
+
+    result = widget._auto_fit_result
+    assert isinstance(result["fit"], Fit)
+    assert isinstance(result["model"], LifetimeModel)
+
+
+def test_autofit_parameter_table_lists_the_fitted_parameters(qapp, qtbot, tmp_path):
+    from chisurf.core.fitting.parameter import FittingParameter
+
+    widget = _autofit_widget(qtbot, tmp_path)
+
+    assert widget.autofit_parameters_host.isVisibleTo(widget)
+    table = widget.autofit_parameter_table
+    assert table is not None
+    names = {getattr(p, "name", "") for p in table._params}
+    # Two components -> two lifetimes and two amplitudes.
+    assert {"tL1", "tL2", "xL1", "xL2"} <= names
+    assert all(isinstance(p, FittingParameter) for p in table._params)
+
+
+def test_autofit_parameter_table_hides_the_convolution_plumbing(qapp, qtbot, tmp_path):
+    """Axis/range/acquisition parameters are configured by the auto-fit, not read."""
+    widget = _autofit_widget(qtbot, tmp_path)
+
+    names = {getattr(p, "name", "") for p in widget.autofit_parameter_table._params}
+    assert not (names & {"dt", "rep", "start", "stop", "irf_start", "irf_stop", "n0"})
+
+
+def test_autofit_parameters_can_be_linked(qapp, qtbot, tmp_path):
+    """What the model-backed fit buys: results that link to another fit."""
+    widget_a = _autofit_widget(qtbot, tmp_path / "a")
+    widget_b = _autofit_widget(qtbot, tmp_path / "b")
+
+    target = widget_a._auto_fit_result["model"].lifetimes._lifetimes[0]
+    follower = widget_b._auto_fit_result["model"].lifetimes._lifetimes[0]
+    follower.link = target
+
+    assert follower.is_linked
+    target.value = 2.345
+    assert follower.value == pytest.approx(2.345)
+
+
+def test_autofit_parameter_table_is_rebuilt_per_fit(qapp, qtbot, tmp_path):
+    """Each auto-fit builds a new Fit, so a stale table would show a dead model."""
+    widget = _autofit_widget(qtbot, tmp_path, n_components=2)
+    first = widget.autofit_parameter_table
+    assert len(first._params) > 0
+
+    widget._auto_fit_components(n_components=3)
+    second = widget.autofit_parameter_table
+
+    assert second is not first
+    names = {getattr(p, "name", "") for p in second._params}
+    assert "tL3" in names, "the table still shows the two-component fit"

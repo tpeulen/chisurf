@@ -1111,6 +1111,18 @@ class FittingParameterProxyController(ParameterActionsMixin, QtWidgets.QWidget):
             except Exception:
                 pass
 
+    def set_linked(self, is_linked: bool) -> None:
+        """Absorb the link-state notification and repaint the owning view.
+
+        ``Parameter.link``'s setter calls this on the controller. The row widget
+        uses it to retitle its link checkbox and disable the value editor, but a
+        proxy owns no editors — the view draws the parameter itself — so there is
+        nothing to update beyond telling that view to redraw. Without this method
+        the call raised ``AttributeError`` and linking a parameter from any
+        AutoForm parameter table failed outright.
+        """
+        self.finalize()
+
 
 class FittingParameterWidget(ParameterActionsMixin, Controller):
 
