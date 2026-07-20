@@ -8,7 +8,7 @@
       "collapsed": false,
       "sections": [
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "diffusion",
           "collapsible": false
         }
@@ -21,7 +21,7 @@
       "collapsed": true,
       "sections": [
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "imaging",
           "collapsible": false
         }

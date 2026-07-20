@@ -651,6 +651,21 @@ class TableWidget(QtWidgets.QTableWidget):
             self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.setAlternatingRowColors(True)
         self.verticalHeader().setVisible(False)
+        # Central table formatting: the same monospace table font + compact row
+        # heights as the log and parameter tables (chisurf.gui.widgets.general).
+        try:
+            from chisurf.gui.widgets.general import (
+                table_font,
+                table_header_height,
+                table_row_height,
+            )
+
+            self.setFont(table_font())
+            self.horizontalHeader().setFont(table_font())
+            self.verticalHeader().setDefaultSectionSize(table_row_height())
+            self.horizontalHeader().setFixedHeight(table_header_height())
+        except Exception:
+            pass
         self.setHorizontalHeaderLabels(
             [str(c.get("label") or c.get("key") or "") for c in self._columns]
         )
@@ -712,8 +727,26 @@ class TableWidget(QtWidgets.QTableWidget):
                 if c == 0:
                     item.setData(QtCore.Qt.UserRole, row_dict)
                 self.setItem(r, c, item)
-        self.resizeRowsToContents()
         self.blockSignals(False)
+        self._fit_height(len(rows))
+
+    def _fit_height(self, n_rows: int) -> None:
+        """Size the table to its rows so it does not leave a large empty area.
+
+        An explicit ``height`` on the section is treated as a fixed/scroll height;
+        otherwise the table hugs its content (header + rows) and does not expand
+        vertically to fill the panel.
+        """
+        row_h = self.verticalHeader().defaultSectionSize() or 20
+        header_h = self.horizontalHeader().height() or 22
+        explicit = int(getattr(self._section, "height", 0) or 0)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Maximum)
+        if explicit:
+            self.setMinimumHeight(explicit)
+            self.setMaximumHeight(explicit)
+        else:
+            self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.setFixedHeight(header_h + row_h * max(1, n_rows) + 4)
 
     def _on_item_changed(self, item) -> None:
         if not getattr(self._section, "editable", False):
@@ -723,6 +756,23 @@ class TableWidget(QtWidgets.QTableWidget):
         if callable(fn):
             key = str(self._columns[item.column()].get("key") or "")
             fn(item.row(), key, item.text())
+            # An edited cell may drive derived widgets (a preview plot, a status
+            # panel, dependent fields). Refresh the hosting form so those update,
+            # mirroring the value/toggle/button-row behaviour.
+            self._refresh_host_form()
+
+    def _refresh_host_form(self) -> None:
+        """Walk up to the hosting AutoForm and refresh its dependent widgets."""
+        widget = self.parent()
+        while widget is not None:
+            if hasattr(widget, "sync_fields") and hasattr(widget, "refresh_plots"):
+                try:
+                    widget.sync_fields()
+                    widget.refresh_plots()
+                except Exception:
+                    pass
+                return
+            widget = widget.parent()
 
     def _on_selection_changed(self) -> None:
         attr = getattr(self._section, "selected_attr", "")

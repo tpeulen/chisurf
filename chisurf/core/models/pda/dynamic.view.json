@@ -8,7 +8,7 @@
       "collapsed": false,
       "sections": [
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "fret_parameters",
           "collapsible": false
         }
@@ -25,7 +25,7 @@
           "text": "Two exchanging states with Gaussian distances (R, s). x1 = steady-state occupancy of state 1; K_ex = mean transitions per observation window (0 = static two-state, large = fast averaging)."
         },
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "states",
           "collapsible": false
         }
@@ -38,7 +38,7 @@
       "collapsed": true,
       "sections": [
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "nuisance",
           "collapsible": false
         }

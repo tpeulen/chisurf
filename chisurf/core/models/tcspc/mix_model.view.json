@@ -8,14 +8,14 @@
         {"type": "curve_input", "target": "convolve", "label": "IRF", "select_action": "model.change_irf", "unload_action": "model.unload_irf", "index_key": "irf_idx", "name_key": "irf_name", "name_attr": "irf"},
         {"type": "choice", "target": "convolve", "attr": "mode", "label": "Type", "options": ["per", "exp", "full"], "style": "radio"},
         {"type": "toggle", "target": "convolve", "attr": "do_convolution", "label": "Convolve"},
-        {"type": "parameter_group", "target": "convolve", "collapsible": false}
+        {"type": "parameter_group_table", "target": "convolve", "collapsible": false}
       ]
     },
     {
       "type": "panel",
       "title": "Generic",
       "sections": [
-        {"type": "parameter_group", "target": "generic", "collapsible": false}
+        {"type": "parameter_group_table", "target": "generic", "collapsible": false}
       ]
     },
     {
@@ -33,7 +33,7 @@
             {"target": "corrections", "attr": "reverse", "label": "Reverse"}
           ]
         },
-        {"type": "parameter_group", "target": "corrections", "collapsible": false}
+        {"type": "parameter_group_table", "target": "corrections", "collapsible": false}
       ]
     },
     {

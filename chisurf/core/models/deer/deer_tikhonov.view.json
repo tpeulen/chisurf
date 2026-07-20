@@ -18,7 +18,7 @@
           ]
         },
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "regularization",
           "collapsible": false
         }
@@ -31,7 +31,7 @@
       "collapsed": false,
       "sections": [
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "modulation",
           "collapsible": false
         }
@@ -55,7 +55,7 @@
           ]
         },
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "background",
           "collapsible": false
         }
@@ -68,7 +68,7 @@
       "collapsed": true,
       "sections": [
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "grid",
           "collapsible": false
         }

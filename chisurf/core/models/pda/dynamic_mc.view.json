@@ -8,7 +8,7 @@
       "collapsed": false,
       "sections": [
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "fret_parameters",
           "collapsible": false
         }
@@ -25,7 +25,7 @@
           "text": "Three exchanging states with Gaussian distances (R, s) and a 3x3 rate scheme kIJ (state I to J, Hz). Kinetics are sampled by Gillespie Monte-Carlo over N_win observation windows of duration T_win; set unused rates to 0. Free only the rates in your scheme."
         },
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "states",
           "collapsible": false
         }
@@ -38,7 +38,7 @@
       "collapsed": true,
       "sections": [
         {
-          "type": "parameter_group",
+          "type": "parameter_group_table",
           "target": "nuisance",
           "collapsible": false
         }

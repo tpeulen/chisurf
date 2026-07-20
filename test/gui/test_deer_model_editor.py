@@ -88,13 +88,16 @@ def test_deer_model_editor_renders_and_computes(qapp, model_path):
     assert isinstance(editor, AutoModelWidget)
     QtWidgets.QVBoxLayout().addWidget(editor)
 
-    # (b) editor is not a row of empty titled boxes
-    assert len(editor.parameter_widgets) > 1, "parameter groups rendered empty"
+    # (b) editor is not a row of empty titled boxes — parameters render as
+    # per-parameter widgets and/or compact parameter-group tables.
+    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+    table_rows = sum(t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget))
+    assert len(editor.parameter_widgets) + table_rows > 1, "parameter groups rendered empty"
 
-    # (c) every ParameterGroupSection resolves to a group that has parameters
+    # (c) every parameter-group section resolves to a group that has parameters
     spec = model.view_spec()
     for section in spec.flat_sections():
-        if isinstance(section, vs.ParameterGroupSection):
+        if isinstance(section, (vs.ParameterGroupSection, vs.ParameterGroupTableSection)):
             group = getattr(model, section.target)
             if hasattr(group, "find_parameters") and not list(group.parameters_all):
                 group.find_parameters()

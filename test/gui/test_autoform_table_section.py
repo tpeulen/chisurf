@@ -109,3 +109,33 @@ def test_table_refreshes_from_model(qapp):
     model._rows.append({"id": "b"})
     form.refresh_plots()
     assert table.rowCount() == 2
+
+
+def test_editable_table_dispatches_cell_updates(qapp):
+    import chisurf.core.dataspec as ds
+    from chisurf.gui.autoform import AutoForm
+    from chisurf.gui.autoform.sections.builtin import TableWidget
+
+    class Model:
+        rows = [{"amplitude": 1.0, "lifetime": 4.0}]
+
+        def update_cell(self, row, key, value):
+            self.rows[row][key] = float(value)
+
+        def view_spec(self):
+            return ds.ModelView(sections=(ds.TableSection(
+                source="rows",
+                editable=True,
+                update_call="update_cell",
+                columns=(
+                    {"key": "amplitude", "label": "Amplitude"},
+                    {"key": "lifetime", "label": "Lifetime"},
+                ),
+            ),))
+
+    model = Model()
+    form = AutoForm(model)
+    table = form.findChild(TableWidget)
+    assert table.editTriggers() != table.NoEditTriggers
+    table.item(0, 1).setText("3.5")
+    assert model.rows[0]["lifetime"] == 3.5

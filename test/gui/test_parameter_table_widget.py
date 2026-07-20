@@ -368,3 +368,63 @@ def test_autoform_table_non_collapsible_no_box(qapp):
     # have "kinetics" as its title
     titles = [b.title() for b in boxes]
     assert all("kinetics" not in t for t in titles)
+
+
+def test_widget_sizes_to_content_no_scroll(qapp):
+    from qtpy import QtCore
+    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+
+    params = _make_params()
+    widget = ParameterGroupTableWidget(params=params)
+    # No internal vertical scrollbar, and height fits header + the four rows
+    # (no big empty area below the last row).
+    assert widget.table_view.verticalScrollBarPolicy() == QtCore.Qt.ScrollBarAlwaysOff
+    assert widget.table_view.height() < 22 + widget._row_h * len(params) + 12
+
+
+def test_name_column_renders_html_labels(qapp):
+    from qtpy import QtCore
+    from chisurf.gui.autoform.sections.parameter_table import (
+        ParameterGroupTableWidget, _RichTextDelegate, COL_NAME,
+    )
+
+    params = _make_params()
+    params[0].__dict__["label_text"] = "n<sub>0</sub>"
+    widget = ParameterGroupTableWidget(params=params)
+    assert isinstance(widget.table_view.itemDelegateForColumn(COL_NAME), _RichTextDelegate)
+    # the model exposes the HTML label; the delegate renders it as rich text
+    assert widget.table_model.index(0, COL_NAME).data(QtCore.Qt.DisplayRole) == "n<sub>0</sub>"
+
+
+def test_copy_paste_values(qapp):
+    from qtpy import QtCore, QtWidgets
+    from chisurf.gui.autoform.sections.parameter_table import (
+        ParameterGroupTableWidget, COL_VALUE,
+    )
+
+    params = _make_params()
+    widget = ParameterGroupTableWidget(params=params)
+    m = widget.table_model
+    sel = widget.table_view.selectionModel()
+    sel.select(m.index(0, COL_VALUE), QtCore.QItemSelectionModel.Select)
+    widget._copy_selection()
+    assert QtWidgets.QApplication.clipboard().text().strip() != ""
+    # paste a scalar into another parameter's value
+    QtWidgets.QApplication.clipboard().setText("7.25")
+    widget.table_view.clearSelection()
+    sel.select(m.index(2, COL_VALUE), QtCore.QItemSelectionModel.Select)
+    widget._paste_selection()
+    assert params[2].value == 7.25
+
+
+def test_table_font_is_monospace(qapp):
+    from qtpy import QtGui
+    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+
+    widget = ParameterGroupTableWidget(params=_make_params())
+    # Matches the log/console styling: monospace family + Monospace style hint by
+    # default (the actual resolved fixed-pitch depends on the installed fonts).
+    font = widget.table_view.font()
+    fixed_family = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont).family()
+    assert font.styleHint() == QtGui.QFont.Monospace
+    assert font.family() == fixed_family

@@ -125,13 +125,16 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
     assert isinstance(editor, AutoModelWidget)
     QtWidgets.QVBoxLayout().addWidget(editor)  # the exact call that used to raise
 
-    # (b) the editor is not a row of empty titled boxes
-    assert len(editor.parameter_widgets) > 12, "parameter groups rendered empty"
+    # (b) the editor is not a row of empty titled boxes (per-parameter widgets
+    # and/or compact parameter-group tables)
+    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+    table_rows = sum(t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget))
+    assert len(editor.parameter_widgets) + table_rows > 12, "parameter groups rendered empty"
 
-    # (c) every ParameterGroupSection resolves to a group that actually has params
+    # (c) every parameter-group section resolves to a group that actually has params
     spec = model.view_spec()
     for section in spec.flat_sections():
-        if isinstance(section, vs.ParameterGroupSection):
+        if isinstance(section, (vs.ParameterGroupSection, vs.ParameterGroupTableSection)):
             group = getattr(model, section.target)
             if hasattr(group, "find_parameters") and not list(group.parameters_all):
                 group.find_parameters()

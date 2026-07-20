@@ -118,6 +118,7 @@ class AutoForm(QtWidgets.QWidget):
         self.model = model
         self._param_widgets = []
         self._dock_areas = []
+        self._refresh_targets = []
         self._layout = QtWidgets.QVBoxLayout(self)
         self._layout.setAlignment(QtCore.Qt.AlignTop)
         self._layout.setContentsMargins(0, 0, 0, 0)
@@ -134,6 +135,7 @@ class AutoForm(QtWidgets.QWidget):
                 w.setParent(None)
         self._param_widgets = []
         self._dock_areas = []
+        self._refresh_targets = []
 
         view = self.model.view_spec()
         self._emit_sections(view.sections, self._layout.addWidget)
@@ -156,12 +158,16 @@ class AutoForm(QtWidgets.QWidget):
         arrangement). Only widgets exposing a ``sync()`` method are updated.
         """
         for w in self.findChildren(QtWidgets.QWidget):
-            sync = getattr(w, "sync", None)
-            if callable(sync) and getattr(w, "is_form_field", False):
-                try:
-                    sync()
-                except Exception:
-                    pass
+            # Form-field widgets sync via ``sync()``; full-width AUTOFORM_REFRESH
+            # widgets (e.g. the parameter-group table) sync via ``sync``/``refresh``
+            # too, so programmatic model changes reach both.
+            if getattr(w, "is_form_field", False) or getattr(w, "AUTOFORM_REFRESH", False):
+                fn = getattr(w, "sync", None) or getattr(w, "refresh", None)
+                if callable(fn):
+                    try:
+                        fn()
+                    except Exception:
+                        pass
 
     def refresh_plots(self):
         """Re-read and redraw every inline :class:`PlotSection` in the form.
@@ -171,20 +177,26 @@ class AutoForm(QtWidgets.QWidget):
         """
         from .sections.builtin import PlotWidget
 
+        # Combine the live child tree with the tracked plot/refresh targets, so a
+        # plot or table that a dock area reparented/floated (out of findChildren's
+        # reach) still refreshes when the model changes.
+        candidates = list(self.findChildren(PlotWidget))
+        candidates += [w for w in self.findChildren(QtWidgets.QWidget)
+                       if getattr(w, "AUTOFORM_REFRESH", False)]
+        candidates += list(getattr(self, "_refresh_targets", []))
         seen = set()
-        for w in self.findChildren(PlotWidget):
+        for w in candidates:
+            if w is None or id(w) in seen:
+                continue
             seen.add(id(w))
-            try:
-                w.refresh()
-            except Exception:
-                pass
-        # Also refresh custom widgets opting in via the AUTOFORM_REFRESH marker
-        # (e.g. the reusable L-curve view and the 2D map docks).
-        for w in self.findChildren(QtWidgets.QWidget):
-            if id(w) in seen or not getattr(w, "AUTOFORM_REFRESH", False):
+            refresh = getattr(w, "refresh", None)
+            if not callable(refresh):
                 continue
             try:
-                w.refresh()
+                refresh()
+            except RuntimeError:
+                # C++ object deleted (rebuilt) — drop it from the tracked list.
+                continue
             except Exception:
                 pass
 
@@ -310,7 +322,11 @@ class AutoForm(QtWidgets.QWidget):
         if isinstance(section, vs.PlotSection):
             from .sections.builtin import PlotWidget
 
-            return PlotWidget(self.model, section)
+            plot = PlotWidget(self.model, section)
+            # Track it directly so refresh_plots() still reaches it after a dock
+            # reparents/floats it (findChildren would then miss it).
+            self._refresh_targets.append(plot)
+            return plot
         if isinstance(section, vs.DockAreaSection):
             return self._build_dock_area(section)
         if isinstance(section, vs.WizardSection):
@@ -502,6 +518,19 @@ class AutoForm(QtWidgets.QWidget):
 
         area = DockArea()
         self._dock_areas.append(area)
+        # Configure the ChiSurf dock the same way the fit windows / plugin panels
+        # do, so it looks and behaves like every other ChiSurf dock area (styled
+        # draggable tab bars, right-click menu) rather than a plain tab widget with
+        # a "+" new-tab button.
+        for setup in (
+            lambda: area.setNewTabButtonVisible(False),
+            lambda: area.setContextMenuEnabled(True),
+            lambda: area.setContextMenuMode("basic"),
+        ):
+            try:
+                setup()
+            except Exception:
+                pass
         # Let rebuild() give the dock area the spare vertical space instead of a trailing
         # stretch, so its panels fill the height.
         area._autoform_expanding = True
@@ -647,7 +676,12 @@ class AutoForm(QtWidgets.QWidget):
         if factory is None:
             logging.warning(f"AutoModelWidget: no custom section registered for {section.key!r}")
             return None
-        return factory(model=self.model, target=section.target, **dict(section.options))
+        widget = factory(model=self.model, target=section.target, **dict(section.options))
+        # Track AUTOFORM_REFRESH custom widgets (scalar/parameter tables, …) so
+        # refresh_plots() still reaches them after a dock reparents/floats them.
+        if widget is not None and getattr(widget, "AUTOFORM_REFRESH", False):
+            self._refresh_targets.append(widget)
+        return widget
 
     def _build_dynamic_group(self, section: vs.DynamicGroupSection):
         group = self._resolve_group(section.target)

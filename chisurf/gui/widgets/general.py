@@ -186,12 +186,23 @@ class FileList(QtWidgets.QListWidget):
 
 
 def table_font() -> QtGui.QFont:
-    """Return the globally configured table font."""
+    """Return the globally configured table font.
+
+    This is the single source of truth for table typography across ChiSurf
+    (log table, parameter tables, AutoForm record tables). When no
+    ``gui.table.font_family`` is configured it defaults to the system
+    fixed-pitch (monospace) font with a Monospace style hint, so tables match
+    the log/console styling and numeric columns align.
+    """
     gui_settings = cs.core.settings.gui
     table_settings = gui_settings.get("table", {})
     font_family = table_settings.get("font_family")
     font_size = int(table_settings.get("font_size", 10))
-    font = QtGui.QFont(font_family) if font_family else QtGui.QFont()
+    if font_family:
+        font = QtGui.QFont(font_family)
+    else:
+        font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
+        font.setStyleHint(QtGui.QFont.Monospace)
     font.setPointSize(max(1, font_size))
     font.setBold(bool(table_settings.get("font_bold", False)))
     return font

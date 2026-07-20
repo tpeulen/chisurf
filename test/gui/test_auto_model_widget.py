@@ -214,8 +214,11 @@ def test_parameter_group_sections_populate(qapp, lifetime_model):
 
     w = AutoModelWidget(lifetime_model)
     # convolve alone contributes ~11 scalar params; total must exceed the 2
-    # lifetime params that were the only ones rendering before the fix.
-    assert len(w.parameter_widgets) > 12
+    # lifetime params that were the only ones rendering before the fix. Nuisance
+    # groups now render as compact parameter-group tables, so count their rows too.
+    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+    table_rows = sum(t.table_model.rowCount() for t in w.findChildren(ParameterGroupTableWidget))
+    assert len(w.parameter_widgets) + table_rows > 12
 
 
 def test_curve_input_widget_renders_and_dispatches(qapp, lifetime_model, monkeypatch):
