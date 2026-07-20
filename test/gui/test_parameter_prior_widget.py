@@ -304,6 +304,88 @@ def test_focus_leaving_the_popup_hides_it(qtbot, param):
     assert not popup.isVisible()
 
 
+@pytest.mark.parametrize("child", ["sb_value", "cb_fixed", "cb_bounds_on", "cb_prior_family"])
+def test_clicking_a_control_keeps_the_popup_open(qtbot, param, child):
+    """Every interactive control must survive being clicked."""
+    popup = _popup(qtbot, param)
+    popup.show()
+    qtbot.waitExposed(popup)
+    widget = getattr(popup, child)
+
+    qtbot.mouseClick(widget, QtCore.Qt.LeftButton, pos=widget.rect().center())
+    qtbot.wait(20)
+    try:
+        assert popup.isVisible(), f"clicking {child} dismissed the popup"
+    finally:
+        if isinstance(widget, QtWidgets.QComboBox):
+            # Leaving the drop-down window open crashes qtbot's teardown.
+            widget.hidePopup()
+            qtbot.wait(20)
+
+
+def test_prior_dropdown_survives_being_used(qtbot, param):
+    """The drop-down lives in its own window, which deactivates this one.
+
+    ``QWidget.isAncestorOf`` is confined to one window and so reported the
+    drop-down as foreign, dismissing the popup the moment it opened.
+    """
+    popup = _popup(qtbot, param)
+    popup.show()
+    qtbot.waitExposed(popup)
+
+    combo = popup.cb_prior_family
+    qtbot.mouseClick(combo, QtCore.Qt.LeftButton, pos=combo.rect().center())
+    qtbot.wait(20)
+    try:
+        assert popup.isVisible(), "opening the prior drop-down dismissed the popup"
+
+        _select(popup, "truncated_normal")
+        qtbot.wait(20)
+        assert popup.isVisible(), "choosing a family dismissed the popup"
+        assert isinstance(param.prior, _priors.TruncatedNormalPrior)
+    finally:
+        # Leaving the drop-down window open crashes qtbot's teardown.
+        combo.hidePopup()
+        qtbot.wait(20)
+
+
+def test_own_dropdown_does_not_count_as_deactivation(qtbot, param):
+    """Our own drop-down deactivates this window; an unrelated one must not.
+
+    The deactivation path deliberately ignores the focus widget (Qt keeps it
+    pointing into the popup while the app is in the background), so the open
+    child window is the only thing telling the two cases apart.
+    """
+    popup = _popup(qtbot, param)
+    popup.show()
+    qtbot.waitExposed(popup)
+
+    popup.cb_prior_family.showPopup()
+    qtbot.wait(20)
+    assert popup._child_window_is_open()
+    popup._hide_if_window_deactivated()
+    assert popup.isVisible()
+
+    popup.cb_prior_family.hidePopup()
+    qtbot.wait(20)
+    assert not popup._child_window_is_open()
+    popup._hide_if_window_deactivated()
+    assert not popup.isVisible()
+
+
+def test_owns_reaches_across_window_boundaries(qtbot, param):
+    """The ownership test must see widgets parented into child windows."""
+    popup = _popup(qtbot, param)
+    unrelated = QtWidgets.QLineEdit()
+    qtbot.addWidget(unrelated)
+
+    assert popup._owns(popup)
+    assert popup._owns(popup.sb_value)
+    assert popup._owns(popup.cb_prior_family.view())  # separate top-level window
+    assert not popup._owns(None)
+    assert not popup._owns(unrelated)
+
+
 def test_click_inside_does_not_hide_the_popup(qtbot, param):
     popup = _popup(qtbot, param)
     popup.show()
@@ -337,6 +419,7 @@ def test_auto_hide_is_suspended_while_a_menu_is_open(qtbot, param):
         QtWidgets.QApplication.sendEvent(
             popup, QtCore.QEvent(QtCore.QEvent.WindowDeactivate)
         )
+        qtbot.wait(20)  # the dismissal check is deferred to the event loop
 
     popup._begin_suspend_auto_hide()
     deactivate()

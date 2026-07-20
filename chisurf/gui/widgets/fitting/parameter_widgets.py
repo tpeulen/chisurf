@@ -238,32 +238,71 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         except Exception:
             self._suspend_auto_hide = 0
 
-    def _hide_if_focus_left(self):
-        """Hide unless focus is still somewhere inside the popup.
+    def _owns(self, widget) -> bool:
+        """Whether ``widget`` belongs to this popup, across window boundaries.
 
-        The popup receives a ``FocusOut`` whenever one of its own children takes
-        focus — clicking a spin box or a radio button raises one — so hiding on
-        the event itself closed the popup on the very interactions it exists
-        for. The check is deferred to the event loop because the incoming focus
-        widget is only settled once the transition completes.
+        ``QWidget.isAncestorOf`` is confined to a single window, so it reports
+        False for a combo box's drop-down or a menu — those live in their own
+        top-level window even though they are parented to one of our children.
+        Walking ``parentWidget()`` does cross that boundary, which is what makes
+        "is the user still interacting with this popup?" answerable.
         """
+        while widget is not None:
+            if widget is self:
+                return True
+            widget = widget.parentWidget()
+        return False
+
+    def _child_window_is_open(self) -> bool:
+        """Whether one of the popup's own windows — a drop-down, a menu — is up.
+
+        Such a window both takes the focus and deactivates this one, so without
+        this test the popup dismisses itself the moment the prior drop-down is
+        opened.
+        """
+        return any(
+            w is not self and w.isWindow() and w.isVisible() and self._owns(w)
+            for w in QtWidgets.QApplication.topLevelWidgets()
+        )
+
+    def _may_auto_hide(self) -> bool:
+        """Common precondition of both dismissal paths."""
         if getattr(self, '_suspend_auto_hide', 0) > 0 or not self.isVisible():
-            return
-        focused = QtWidgets.QApplication.focusWidget()
-        if focused is not None and (focused is self or self.isAncestorOf(focused)):
-            return
-        self.hide()
+            return False
+        return not self._child_window_is_open()
+
+    def _hide_if_focus_left(self):
+        """Hide unless focus is still on one of the popup's own widgets.
+
+        The popup receives a ``FocusOut`` whenever one of its children takes
+        focus — clicking the value spin box raises one — so hiding on the event
+        itself closed the popup on the very interactions it exists for. The
+        check is deferred to the event loop because the incoming focus widget is
+        only settled once the transition completes.
+        """
+        if self._may_auto_hide() and not self._owns(QtWidgets.QApplication.focusWidget()):
+            self.hide()
+
+    def _hide_if_window_deactivated(self):
+        """Hide when another window took over.
+
+        Deliberately does not consult the focus widget: Qt keeps pointing it at
+        this popup's last-focused child while the application is in the
+        background, so consulting it would keep the popup alive after the user
+        switched away.
+        """
+        if self._may_auto_hide():
+            self.hide()
 
     def eventFilter(self, obj, event):
         if event is not None:
             et = int(event.type())
+            # Both are deferred: opening our own drop-down raises them too, and
+            # only once the transition settles can it be told from an unrelated
+            # window taking over.
             if et == int(QtCore.QEvent.WindowDeactivate):
-                # The whole window lost focus: nothing inside the popup can own
-                # it, so hide immediately.
-                if getattr(self, '_suspend_auto_hide', 0) > 0:
-                    return False
-                self.hide()
-                return True
+                QtCore.QTimer.singleShot(0, self._hide_if_window_deactivated)
+                return False
             if et == int(QtCore.QEvent.FocusOut):
                 QtCore.QTimer.singleShot(0, self._hide_if_focus_left)
                 return False
