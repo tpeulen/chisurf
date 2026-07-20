@@ -258,7 +258,20 @@ optimization:
   global_optimize_local_first: false
   global_threaded_model_update: false
   leastsq:
-    epsfcn: 0
+    # Relative accuracy of the model function, setting the forward-difference
+    # step MINPACK uses for the Jacobian (step = sqrt(epsfcn) * |x|).
+    #
+    # 0 means "use machine epsilon", i.e. a step of ~1.5e-8 relative. That is
+    # far below the noise floor of the decay model -- the convolution is
+    # recursive over ~1024 channels, so its relative accuracy is nearer 1e-6 --
+    # and the resulting Jacobian columns are dominated by rounding noise. In
+    # practice the optimiser then failed to move the lifetimes at all from many
+    # starting points. Over 88 randomised fits (four independent conditions:
+    # three start seeds, a different noise realisation, and a 3-exponential
+    # model), fits reaching chi2r < 1.1 went 60/88 at epsfcn=0 to 83/88 here,
+    # for roughly 10-30% more time. 1e-6 was no worse than any alternative in
+    # any of the four conditions.
+    epsfcn: 1.0e-06
     factor: 100
     ftol: 1.49012e-08
     full_output: true

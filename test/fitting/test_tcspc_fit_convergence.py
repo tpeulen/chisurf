@@ -114,27 +114,25 @@ def test_fit_recovers_known_lifetimes():
     assert _chi2r(m) < 2.0, f"fit did not converge, chi2r={_chi2r(m):.3f}"
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Known, separate defect: a parameter sitting exactly ON a bound has zero "
-        "derivative under the sin/arcsin transform, so the optimiser jumps. "
-        "`scatter` defaults to 0.0 with bounds (0.0, 100.0) -- i.e. exactly at its "
-        "lower bound -- and starting a fit at the optimum drives it 0 -> 7.8, "
-        "taking chi2r 1.55 -> 1765 while every other parameter stays put. "
-        "d/dx[lower + (delta/2)(sin x + 1)] = (delta/2) cos x, which is 0 at "
-        "x = -pi/2, the internal coordinate of the lower bound. The usual remedy "
-        "is to inset starting values slightly inside their bounds. Fixing it is a "
-        "behaviour change to every bounded fit and needs its own validation."
-    ),
-    strict=True,
-)
+# This used to be a strict xfail. A parameter sitting exactly ON a bound has zero
+# derivative under the sin/arcsin transform -- d/dx[lower + (delta/2)(sin x + 1)]
+# = (delta/2) cos x, which is 0 at x = -pi/2, the internal coordinate of the
+# lower bound -- and `scatter` defaults to 0.0 with bounds (0.0, 100.0), i.e.
+# exactly there. Starting a fit at the optimum drove it 0 -> 7.8 and chi2r
+# 1.55 -> 1765 while every other parameter stayed put.
+#
+# Raising the finite-difference step fixed it without any change to the bound
+# handling: with epsfcn = 0 the probe was ~1.5e-8 relative and never left the
+# flat region around the bound, so the derivative really was zero. At 1e-6
+# (a 1e-3 relative step) the probe reaches far enough to see the real slope.
 def test_fit_does_not_destroy_a_good_solution():
     """Starting at the optimum must not make things worse.
 
     This is the regression that caught the infinite-bounds bug: unbounded
     parameters were NaN in the optimiser's internal coordinates, so a fit
-    started at the truth walked away from it. It still fails for the unrelated
-    at-the-bound reason documented above.
+    started at the truth walked away from it. It then kept failing for the
+    unrelated at-the-bound reason described above, which the finite-difference
+    step size resolved.
     """
     fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
     m.update_model()
