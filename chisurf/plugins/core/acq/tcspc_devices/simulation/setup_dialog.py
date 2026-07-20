@@ -5,13 +5,220 @@ from __future__ import annotations
 import functools
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from chisurf.core import dataspec as ds
-from chisurf.gui.autoform import AutoForm
+from chisurf.gui.autoform import AutoForm, register_section
+
+
+@register_section("acq_channels")
+class _ChannelsTable(QtWidgets.QWidget):
+    """Compact per-colour channel table (rows = colours; cols = enable/q/bg).
+
+    Replaces the ~14 flat q/background fields with one small grid: each colour is
+    a row with an enable checkbox and its parallel/perpendicular brightness (q)
+    and background, bound directly to the settings-model attributes.
+    """
+
+    AUTOFORM_REFRESH = True
+    _COLORS = ("green", "red", "yellow")
+    _LABELS = {"green": "Green", "red": "Red", "yellow": "Yellow"}
+
+    def __init__(self, model, target: str = "", **options):
+        super().__init__()
+        self._model = model
+        self._spins: dict[str, QtWidgets.QDoubleSpinBox] = {}
+        self._checks: dict[str, QtWidgets.QCheckBox] = {}
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.table = QtWidgets.QTableWidget(len(self._COLORS), 5)
+        self.table.setHorizontalHeaderLabels(["Ch", "q ∥", "q ⊥", "bg ∥", "bg ⊥"])
+        self.table.horizontalHeaderItem(1).setToolTip("Parallel-channel brightness q (photons/unit).")
+        self.table.horizontalHeaderItem(2).setToolTip("Perpendicular-channel brightness q.")
+        self.table.horizontalHeaderItem(3).setToolTip("Parallel-channel background (photons/macro-time unit).")
+        self.table.horizontalHeaderItem(4).setToolTip("Perpendicular-channel background.")
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
+        hh = self.table.horizontalHeader()
+        hh.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        for c in range(1, 5):
+            hh.setSectionResizeMode(c, QtWidgets.QHeaderView.Stretch)
+        for r, color in enumerate(self._COLORS):
+            cb = QtWidgets.QCheckBox(self._LABELS[color])
+            cb.setChecked(bool(getattr(self._model, f"{color}_enabled", False)))
+            cb.toggled.connect(lambda v, c=color: setattr(self._model, f"{c}_enabled", bool(v)))
+            self._checks[color] = cb
+            self.table.setCellWidget(r, 0, cb)
+            for col, (attr, dec) in enumerate(
+                ((f"q_{color}_p", 4), (f"q_{color}_s", 4),
+                 (f"bg_{color}_p", 6), (f"bg_{color}_s", 6)),
+                start=1,
+            ):
+                sp = QtWidgets.QDoubleSpinBox()
+                sp.setRange(0.0, 1_000_000.0)
+                sp.setDecimals(dec)
+                sp.setValue(float(getattr(self._model, attr, 0.0)))
+                sp.setKeyboardTracking(False)
+                sp.valueChanged.connect(lambda v, a=attr: setattr(self._model, a, float(v)))
+                self._spins[attr] = sp
+                self.table.setCellWidget(r, col, sp)
+        self.table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        row_h = 34
+        header_h = 28
+        self.table.setFixedHeight(header_h + row_h * len(self._COLORS) + 6)
+        layout.addWidget(self.table)
+
+    def refresh(self) -> None:
+        for color, cb in self._checks.items():
+            cb.blockSignals(True)
+            cb.setChecked(bool(getattr(self._model, f"{color}_enabled", False)))
+            cb.blockSignals(False)
+        for attr, sp in self._spins.items():
+            sp.blockSignals(True)
+            sp.setValue(float(getattr(self._model, attr, 0.0)))
+            sp.blockSignals(False)
+
+
+@register_section("acq_species")
+class _SpeciesTable(QtWidgets.QWidget):
+    """Per-species sample table: molecules, diffusion and per-channel brightness.
+
+    Rows are the species (they grow/shrink with the Species count) plus a final
+    Background row; columns are M, D and the ∥/⊥ brightness (q) of each enabled
+    colour. This restores the pre-AutoForm per-species brightness UX, where each
+    species has its own molecules, diffusion and per-detector brightness.
+    """
+
+    AUTOFORM_REFRESH = True
+    is_form_field = False
+    _COLORS = ("green", "red", "yellow")
+    _ABBR = {"green": "G", "red": "R", "yellow": "Y"}
+
+    def __init__(self, model, target: str = "", **options):
+        super().__init__()
+        self._model = model
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(3)
+        erow = QtWidgets.QHBoxLayout()
+        erow.setContentsMargins(0, 0, 0, 0)
+        erow.addWidget(QtWidgets.QLabel("Channels:"))
+        self._checks: dict[str, QtWidgets.QCheckBox] = {}
+        for color in self._COLORS:
+            cb = QtWidgets.QCheckBox(color.capitalize())
+            cb.setChecked(bool(getattr(self._model, f"{color}_enabled", False)))
+            cb.setToolTip(f"Enable the {color} detection channel (parallel + perpendicular).")
+            cb.toggled.connect(lambda v, c=color: self._on_enable(c, v))
+            self._checks[color] = cb
+            erow.addWidget(cb)
+        erow.addStretch(1)
+        layout.addLayout(erow)
+        self.table = QtWidgets.QTableWidget(0, 0)
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
+        layout.addWidget(self.table)
+        self._build()
+
+    # -- helpers -------------------------------------------------------
+    def _n(self) -> int:
+        try:
+            return max(1, int(self._model.n_species))
+        except (TypeError, ValueError):
+            return 1
+
+    def _enabled(self) -> list[str]:
+        return [c for c in self._COLORS if getattr(self._model, f"{c}_enabled", False)] or ["green"]
+
+    def _q_cols(self) -> list[tuple]:
+        cols = []
+        for color in self._enabled():
+            cols.append((color, 0, f"{self._ABBR[color]} ∥"))
+            cols.append((color, 1, f"{self._ABBR[color]} ⊥"))
+        return cols
+
+    def _ensure_len(self) -> None:
+        n = self._n()
+        while len(self._model.species_M) < n:
+            self._model.species_M.append(50.0)
+        while len(self._model.species_D) < n:
+            self._model.species_D.append(3.0)
+        while len(self._model.species_q) < n * 6:
+            self._model.species_q.append(0.0)
+
+    @staticmethod
+    def _store_set(store: list, idx: int, value: float) -> None:
+        while len(store) <= idx:
+            store.append(0.0)
+        store[idx] = float(value)
+
+    def _spin(self, value: float, decimals: int, maximum: float) -> QtWidgets.QDoubleSpinBox:
+        sp = QtWidgets.QDoubleSpinBox()
+        sp.setRange(0.0, maximum)
+        sp.setDecimals(decimals)
+        sp.setKeyboardTracking(False)
+        sp.setMaximumWidth(92)
+        sp.setValue(float(value))
+        return sp
+
+    # -- build / react -------------------------------------------------
+    def _build(self) -> None:
+        self._ensure_len()
+        n = self._n()
+        qcols = self._q_cols()
+        self.table.blockSignals(True)
+        self.table.clear()
+        headers = ["M", "D"] + [lbl for (_, _, lbl) in qcols]
+        self.table.setColumnCount(len(headers))
+        self.table.setHorizontalHeaderLabels(headers)
+        self.table.horizontalHeaderItem(0).setToolTip("Molecules (mean number in the box) for this species.")
+        self.table.horizontalHeaderItem(1).setToolTip("Diffusion coefficient (µm²/ms) for this species.")
+        self.table.setRowCount(n + 1)
+        self.table.setVerticalHeaderLabels([str(i + 1) for i in range(n)] + ["BG"])
+        for r in range(n):
+            m = self._spin(self._model.species_M[r], 4, 1e12)
+            m.valueChanged.connect(lambda v, i=r: self._store_set(self._model.species_M, i, v))
+            self.table.setCellWidget(r, 0, m)
+            d = self._spin(self._model.species_D[r], 4, 1e12)
+            d.valueChanged.connect(lambda v, i=r: self._store_set(self._model.species_D, i, v))
+            self.table.setCellWidget(r, 1, d)
+            for col, (color, pol, _) in enumerate(qcols, start=2):
+                slot = r * 6 + self._COLORS.index(color) * 2 + pol
+                q = self._spin(self._model.species_q[slot] if slot < len(self._model.species_q) else 0.0, 4, 1e6)
+                q.valueChanged.connect(lambda v, i=slot: self._store_set(self._model.species_q, i, v))
+                self.table.setCellWidget(r, col, q)
+        # Background row (per-channel; M/D not applicable).
+        bg = n
+        for col in (0, 1):
+            item = QtWidgets.QTableWidgetItem("—")
+            item.setFlags(QtCore.Qt.ItemIsEnabled)
+            self.table.setItem(bg, col, item)
+        for col, (color, pol, _) in enumerate(qcols, start=2):
+            attr = f"bg_{color}_{'p' if pol == 0 else 's'}"
+            spin = self._spin(getattr(self._model, attr, 0.0), 6, 1e6)
+            spin.valueChanged.connect(lambda v, a=attr: setattr(self._model, a, float(v)))
+            self.table.setCellWidget(bg, col, spin)
+        self.table.resizeColumnsToContents()
+        row_h = 30
+        self.table.setMaximumHeight(self.table.horizontalHeader().height() + row_h * (n + 1) + 8)
+        self.table.blockSignals(False)
+
+    def _on_enable(self, color: str, value: bool) -> None:
+        setattr(self._model, f"{color}_enabled", bool(value))
+        self._build()
+
+    def refresh(self) -> None:
+        n = self._n()
+        qcols = self._q_cols()
+        if self.table.rowCount() != n + 1 or self.table.columnCount() != 2 + len(qcols):
+            self._build()
+        for color, cb in self._checks.items():
+            cb.blockSignals(True)
+            cb.setChecked(bool(getattr(self._model, f"{color}_enabled", False)))
+            cb.blockSignals(False)
 
 
 @functools.lru_cache(maxsize=1)
@@ -125,6 +332,34 @@ def _list_get(values: list[float], index: int, default: float) -> float:
     return float(values[index]) if index < len(values) else float(default)
 
 
+def _sized_matrix(values: Any, n: int) -> list[float]:
+    """Return a flat row-major ``n*n`` matrix, padding/truncating ``values``."""
+    flat = [float(v) for v in (values or [])]
+    out = [0.0] * (n * n)
+    for i in range(min(len(flat), n * n)):
+        out[i] = flat[i]
+    return out
+
+
+def _expand_species_q(params: dict, n_species: int, enabled: tuple[bool, bool, bool]) -> list[float]:
+    """Expand a legacy flat ``q`` (species × enabled-channels) into species×6 slots."""
+    q = _flatten(params.get("q", [50.0, 50.0]))
+    slots: list[int] = []
+    for ci, on in enumerate(enabled):
+        if on:
+            slots += [ci * 2, ci * 2 + 1]
+    if not slots:
+        slots = [0, 1]
+    n_ch = len(slots)
+    out = [0.0] * (n_species * 6)
+    for s in range(n_species):
+        for k, slot in enumerate(slots):
+            idx = s * n_ch + k
+            if idx < len(q):
+                out[s * 6 + slot] = float(q[idx])
+    return out
+
+
 @dataclass
 class SimulationSettingsModel:
     """AutoForm view model for tttrlib photon simulation settings."""
@@ -177,6 +412,28 @@ class SimulationSettingsModel:
     psf_file: str = ""
     psf_r_step: float = 0.05
     psf_z_step: float = 0.05
+    # --- per-species fluorescence decay (edited in the modal Decay dialog) ---
+    #: One lifetime spectrum per species: a list of [amplitude, lifetime_ns] pairs.
+    decay_lifetimes: list = field(default_factory=lambda: [[[1.0, 3.2]]])
+    #: One measured/saved decay-pattern file path per species ("" = use lifetimes).
+    decay_pattern_files: list = field(default_factory=lambda: [""])
+    #: Shared Gaussian IRF FWHM (ns); 0 = no IRF convolution.
+    irf_fwhm_ns: float = 0.0
+    #: Flat row-major N×N radiative / non-radiative species-interconversion rates.
+    k_rad: list = field(default_factory=lambda: [0.0])
+    k_nrad: list = field(default_factory=lambda: [0.0])
+    #: Per-species molecules / diffusion (one entry per species).
+    species_M: list = field(default_factory=lambda: [50.0])
+    species_D: list = field(default_factory=lambda: [3.0])
+    #: Per-species brightness q, flattened species×6 (G∥,G⊥,R∥,R⊥,Y∥,Y⊥ per species).
+    species_q: list = field(default_factory=lambda: [50.0, 50.0, 0.0, 0.0, 0.0, 0.0])
+
+    def species_changed(self, _value=None) -> None:
+        """Re-sync the form so the kinetics matrix tracks the species count."""
+        for name in ("_sync_fields", "_refresh_widgets"):
+            callback = getattr(self, name, None)
+            if callable(callback):
+                callback()
 
     @classmethod
     def from_parameters(cls, params: dict[str, Any] | None):
@@ -259,6 +516,34 @@ class SimulationSettingsModel:
             psf_file=str(params.get("psf_file", "")),
             psf_r_step=float(params.get("psf_r_step", 0.05)),
             psf_z_step=float(params.get("psf_z_step", 0.05)),
+            decay_lifetimes=(
+                [list(s) for s in params["decay_lifetimes"]]
+                if params.get("decay_lifetimes") else [[3.2]]
+            ),
+            decay_pattern_files=(
+                [str(p or "") for p in params["decay_pattern_files"]]
+                if params.get("decay_pattern_files") else [""]
+            ),
+            irf_fwhm_ns=float(params.get("irf_fwhm_ns", 0.0)),
+            k_rad=[float(v) for v in params["k_rad"]] if params.get("k_rad") else [0.0],
+            k_nrad=[float(v) for v in params["k_nrad"]] if params.get("k_nrad") else [0.0],
+            species_M=(
+                [float(v) for v in params["species_M"]] if params.get("species_M")
+                else [_list_get(molecules, s, 50.0)
+                      for s in range(max(1, int(params.get("N_species", 1))))]
+            ),
+            species_D=(
+                [float(v) for v in params["species_D"]] if params.get("species_D")
+                else [_list_get(diffusion, s, 3.0)
+                      for s in range(max(1, int(params.get("N_species", 1))))]
+            ),
+            species_q=(
+                [float(v) for v in params["species_q"]] if params.get("species_q")
+                else _expand_species_q(
+                    params, max(1, int(params.get("N_species", 1))),
+                    (green_enabled, red_enabled, yellow_enabled),
+                )
+            ),
         )
 
     def view_spec(self):
@@ -317,8 +602,8 @@ class SimulationSettingsModel:
                     ),
                 ),
                 ds.PanelSection(
-                    title="Sample",
-                    n_col=2,
+                    title="Sample & brightness",
+                    description="One row per species (grows with Species): molecules M, diffusion D, and per-channel ∥/⊥ brightness q. The last row is per-channel background.",
                     sections=(
                         ds.ValueSection(
                             attr="n_species",
@@ -326,51 +611,29 @@ class SimulationSettingsModel:
                             kind="int",
                             minimum=1,
                             maximum=999,
+                            call="species_changed",
                             description=_help("N_species"),
                         ),
-                        ds.ValueSection(
-                            attr="molecules",
-                            label="Molecules",
-                            kind="float",
-                            minimum=0.0,
-                            maximum=1_000_000.0,
-                            decimals=3,
-                            description=_help("M"),
-                        ),
-                        ds.ValueSection(
-                            attr="diffusion",
-                            label="Diffusion",
-                            kind="float",
-                            minimum=0.0,
-                            maximum=1_000_000.0,
-                            decimals=4,
-                            description=_help("D"),
-                        ),
+                        ds.CustomSection(key="acq_species"),
                     ),
                 ),
                 ds.PanelSection(
-                    title="Channels",
-                    n_col=2,
-                    description="Per-colour detection channels and their P/S (parallel/perpendicular) brightness q and background (photons per macro-time unit). Enable the colours present in the setup.",
+                    title="Kinetics",
+                    collapsed=True,
+                    description="Species-interconversion transition rates (radiative and non-radiative). The N×N grids track the species count.",
                     sections=(
-                        ds.ToggleSection(attr="green_enabled", label="Green",
-                            description="Enable the green (donor) detection channels."),
-                        ds.ToggleSection(attr="red_enabled", label="Red",
-                            description="Enable the red (acceptor) detection channels."),
-                        ds.ToggleSection(attr="yellow_enabled", label="Yellow",
-                            description="Enable the yellow detection channels (3-colour)."),
-                        self._float_field("q_green_p", "Green P", decimals=4),
-                        self._float_field("q_green_s", "Green S", decimals=4),
-                        self._float_field("q_red_p", "Red P", decimals=4),
-                        self._float_field("q_red_s", "Red S", decimals=4),
-                        self._float_field("q_yellow_p", "Yellow P", decimals=4),
-                        self._float_field("q_yellow_s", "Yellow S", decimals=4),
-                        self._float_field("bg_green_p", "BG Green P", decimals=6),
-                        self._float_field("bg_green_s", "BG Green S", decimals=6),
-                        self._float_field("bg_red_p", "BG Red P", decimals=6),
-                        self._float_field("bg_red_s", "BG Red S", decimals=6),
-                        self._float_field("bg_yellow_p", "BG Yellow P", decimals=6),
-                        self._float_field("bg_yellow_s", "BG Yellow S", decimals=6),
+                        ds.CustomSection(
+                            key="rate_matrix", target="k_rad",
+                            options={"size_attr": "n_species", "minimum": 0.0,
+                                     "decimals": 4, "unit": "1/ms",
+                                     "title": "Radiative (k_rad)"},
+                        ),
+                        ds.CustomSection(
+                            key="rate_matrix", target="k_nrad",
+                            options={"size_attr": "n_species", "minimum": 0.0,
+                                     "decimals": 4, "unit": "1/ms",
+                                     "title": "Non-radiative (k_nrad)"},
+                        ),
                     ),
                 ),
                 ds.PanelSection(
@@ -482,10 +745,17 @@ class SimulationSettingsModel:
                     ),
                 ),
                 ds.ButtonRowSection(
+                    menu="🛠 Tools",
                     buttons=(
-                        {"label": "Load JSON", "action": "load_json"},
-                        {"label": "Save JSON", "action": "save_json"},
-                        {"label": "View JSON", "action": "view_json"},
+                        {"label": "🧬 Decay…", "action": "open_decay_dialog",
+                         "description": "Define the per-species fluorescence decay "
+                                        "(lifetimes / IRF) or load an existing decay pattern."},
+                        {"label": "📂 Load JSON", "action": "load_json",
+                         "description": "Load simulation parameters from a JSON file."},
+                        {"label": "💾 Save JSON", "action": "save_json",
+                         "description": "Save the current simulation parameters to a JSON file."},
+                        {"label": "🧾 View JSON", "action": "view_json",
+                         "description": "Show the current simulation parameters as JSON."},
                     )
                 ),
             )
@@ -581,19 +851,55 @@ class SimulationSettingsModel:
         dict
             Parameters consumed by ``SimulationDevice`` and the tttrlib backend.
         """
-        q_one_species, q_bg, ch_conversion = self._enabled_channel_values()
-        n_channels = len(q_one_species)
+        _q_unused, q_bg, ch_conversion = self._enabled_channel_values()
+        n_channels = len(q_bg)
         n_species = max(1, int(self.n_species))
-        q = q_one_species * n_species
+        # Per-species brightness from the 6-slot store (G∥,G⊥,R∥,R⊥,Y∥,Y⊥),
+        # filtered to the enabled channels.
+        enabled_slots: list[int] = []
+        for ci, color in enumerate(("green", "red", "yellow")):
+            if getattr(self, f"{color}_enabled", False):
+                enabled_slots += [ci * 2, ci * 2 + 1]
+        if not enabled_slots:
+            enabled_slots = [0, 1]
+        q = [
+            float(self.species_q[s * 6 + slot]) if s * 6 + slot < len(self.species_q) else 0.0
+            for s in range(n_species)
+            for slot in enabled_slots
+        ]
+        molecules = [
+            float(self.species_M[s]) if s < len(self.species_M) else 50.0
+            for s in range(n_species)
+        ]
+        diffusion = [
+            float(self.species_D[s]) if s < len(self.species_D) else 3.0
+            for s in range(n_species)
+        ]
+        # Size the per-species decay definitions to the species count.
+        lifetimes = list(self.decay_lifetimes or [[[1.0, 3.2]]])
+        pattern_files = list(self.decay_pattern_files or [""])
+        decay_lifetimes = [
+            list(lifetimes[i % len(lifetimes)]) for i in range(n_species)
+        ]
+        decay_pattern_files = [
+            str(pattern_files[i]) if i < len(pattern_files) else ""
+            for i in range(n_species)
+        ]
         return {
+            "decay_lifetimes": decay_lifetimes,
+            "decay_pattern_files": decay_pattern_files,
+            "irf_fwhm_ns": float(self.irf_fwhm_ns),
+            "species_M": molecules,
+            "species_D": diffusion,
+            "species_q": list(self.species_q),
             "N_species": n_species,
-            "M": [float(self.molecules)] * n_species,
-            "D": [float(self.diffusion)] * n_species,
+            "M": molecules,
+            "D": diffusion,
             "N_channels": n_channels,
             "q": q,
             "q_bg": q_bg,
-            "k_rad": [0.0] * (n_species * n_species),
-            "k_nrad": [0.0] * (n_species * n_species),
+            "k_rad": _sized_matrix(self.k_rad, n_species),
+            "k_nrad": _sized_matrix(self.k_nrad, n_species),
             "box_xy": float(self.box_xy),
             "box_z": float(self.box_z),
             "focus_type": 0,
@@ -641,6 +947,14 @@ class SimulationSettingsModel:
         fresh = self.from_parameters(params)
         self.__dict__.update(fresh.__dict__)
 
+    def open_decay_dialog(self) -> None:
+        """Open the modal per-species decay-settings dialog and apply the result."""
+        dialog = DecaySettingsDialog(self)
+        if dialog.exec_():
+            sync = getattr(self, "_sync_fields", None)
+            if callable(sync):
+                sync()
+
     def load_json(self) -> None:
         """Load simulation parameters from a JSON file selected by the user."""
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -679,6 +993,111 @@ class SimulationSettingsModel:
         )
 
 
+class DecaySettingsDialog(QtWidgets.QDialog):
+    """Modal per-species fluorescence-decay editor for the simulator.
+
+    Edit each species' lifetime spectrum (τ table) and a shared Gaussian IRF, or
+    load an existing decay-pattern file; a live preview shows the resulting decay
+    (built through the single canonical ``synthetic_decay`` generator). On OK the
+    per-species ``decay_lifetimes`` / ``decay_pattern_files`` / ``irf_fwhm_ns``
+    are written back to the settings model.
+    """
+
+    def __init__(self, model, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Decay settings")
+        self.setModal(True)
+        self.resize(560, 620)
+        self._model = model
+        n = max(1, int(model.n_species))
+        base_lt = list(model.decay_lifetimes or [[[1.0, 3.2]]])
+        base_pf = list(model.decay_pattern_files or [""])
+
+        def _pairs(spec):
+            out = []
+            for e in (spec or []):
+                if isinstance(e, (list, tuple)) and len(e) >= 2:
+                    out.append([float(e[0]), float(e[1])])
+                else:
+                    out.append([1.0, float(e)])
+            return out or [[1.0, 3.2]]
+
+        # Per-species stores; the shared editor edits one species at a time.
+        self._lifetimes = [_pairs(base_lt[i % len(base_lt)]) for i in range(n)]
+        self._patterns = [str(base_pf[i]) if i < len(base_pf) else "" for i in range(n)]
+        self._fwhm = float(getattr(model, "irf_fwhm_ns", 0.0) or 0.0)
+        self._cur = 0
+
+        from chisurf.gui.autoform import AutoForm
+        from chisurf.gui.widgets.synthetic_decay_editor import SyntheticDecayEditorModel
+
+        # The one shared synthetic-decay editor — identical to the FCS Filter
+        # Calculator's synthetic-component editor, so the two never diverge.
+        self.editor_model = SyntheticDecayEditorModel(
+            n_bins=int(model.n_tac_channels),
+            bin_width=float(model.tac_dt),
+        )
+        self._build_ui(n, AutoForm)
+        self._push_editor(0)
+
+    def _build_ui(self, n: int, AutoForm) -> None:
+        lay = QtWidgets.QVBoxLayout(self)
+        if n > 1:
+            row = QtWidgets.QHBoxLayout()
+            row.addWidget(QtWidgets.QLabel("Species:"))
+            self.combo = QtWidgets.QComboBox()
+            self.combo.addItems([str(i + 1) for i in range(n)])
+            self.combo.currentIndexChanged.connect(self._on_species)
+            row.addWidget(self.combo)
+            row.addStretch(1)
+            lay.addLayout(row)
+
+        self.form = AutoForm(self.editor_model, self)
+        lay.addWidget(self.form, 1)
+
+        bb = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
+        bb.accepted.connect(self._accept)
+        bb.rejected.connect(self.reject)
+        lay.addWidget(bb)
+
+    # -- per-species state -------------------------------------------------
+    def _on_species(self, idx: int) -> None:
+        self._pull_editor(self._cur)
+        self._cur = int(idx)
+        self._push_editor(self._cur)
+
+    def _push_editor(self, idx: int) -> None:
+        """Load species ``idx`` into the shared editor."""
+        self.editor_model.spectrum_rows = [
+            {"amplitude": float(a), "lifetime": float(t)} for a, t in self._lifetimes[idx]
+        ]
+        self.editor_model.pattern_path = self._patterns[idx]
+        self.editor_model.irf_fwhm_ns = self._fwhm
+        self.editor_model.name = f"Species {idx + 1}"
+        self.form.sync_fields()
+        self.form.refresh_plots()
+
+    def _pull_editor(self, idx: int) -> None:
+        """Save the shared editor's current state back into species ``idx``."""
+        rows = self.editor_model.spectrum_rows
+        if rows:
+            self._lifetimes[idx] = [
+                [float(r["amplitude"]), float(r["lifetime"])] for r in rows
+            ]
+        self._patterns[idx] = self.editor_model.pattern_path
+        # The Gaussian IRF FWHM is shared across all species.
+        self._fwhm = float(self.editor_model.irf_fwhm_ns)
+
+    def _accept(self) -> None:
+        self._pull_editor(self._cur)
+        self._model.decay_lifetimes = [list(t) for t in self._lifetimes]
+        self._model.decay_pattern_files = list(self._patterns)
+        self._model.irf_fwhm_ns = float(self._fwhm)
+        self.accept()
+
+
 class EnhancedSimulationSetupDialog(QtWidgets.QDialog):
     """AutoForm-backed setup dialog for tttrlib simulation parameters."""
 
@@ -700,6 +1119,7 @@ class EnhancedSimulationSetupDialog(QtWidgets.QDialog):
         self.model = SimulationSettingsModel.from_parameters(self._device_parameters())
         self.form = AutoForm(self.model)
         self.model._sync_fields = self.form.sync_fields
+        self.model._refresh_widgets = self.form.refresh_plots
         self._build_ui()
 
     def _device_parameters(self) -> dict[str, Any]:

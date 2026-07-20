@@ -202,9 +202,15 @@ def _gaussian_irf(n_micro: int, center: float, sigma: float) -> np.ndarray:
 
 
 def _lifetime_species(tttrlib, tau: float, irf: np.ndarray, dt: float, q):
-    """Build an immobile ``SimSpecies`` with a mono-exponential decay + IRF."""
-    t = np.arange(irf.size) * dt
-    pattern = np.convolve(np.exp(-t / tau), irf)[: irf.size]
+    """Build an immobile ``SimSpecies`` with a mono-exponential decay + IRF.
+
+    The decay pattern comes from the single canonical generator
+    ``chisurf.core.fluorescence.decay.synthetic_decay`` (rather than a local
+    exp/convolve), so all simulators share one decay model.
+    """
+    from chisurf.core.fluorescence.decay import synthetic_decay
+
+    pattern = synthetic_decay(int(irf.size), float(tau), bin_width=float(dt), irf=irf)
     species = tttrlib.SimSpecies()
     species.D = 0.0
     species.q = tttrlib.VectorDouble([float(v) for v in q])

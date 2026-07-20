@@ -79,6 +79,13 @@ class TCSPCSimulatorSetup(TCSPCReader):
             filename = self.sample_name
         name = kwargs.get('name', filename)
         x = np.arange(self.n_tac) * self.dt
+        # The ideal decay is built with the shared low-level primitive
+        # ``calculate_fluorescence_decay`` — the same builder the canonical
+        # ``core.fluorescence.decay.synthetic_decay`` wraps. It is kept here (rather
+        # than the strict high-level wrapper) because an acquisition simulator may
+        # use rise terms (negative amplitudes) and zero-lifetime components, which
+        # the wrapper deliberately rejects. ``counting_noise`` is the fitting-weight
+        # error model, not a shot-noise realization.
         time_axis, y = chisurf.core.fluorescence.general.calculate_fluorescence_decay(
             lifetime_spectrum=self.lifetime_spectrum,
             time_axis=x

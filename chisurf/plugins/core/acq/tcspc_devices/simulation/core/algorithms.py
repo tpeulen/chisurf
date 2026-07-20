@@ -103,6 +103,46 @@ def _sized(values: Any, size: int, default: float = 0.0) -> list[float]:
     return flat[:size]
 
 
+def _gaussian_irf_pattern(n_bins: int, dt: float, fwhm_ns: float, center_ns: float) -> "np.ndarray":
+    """Return an area-normalized Gaussian IRF on the micro-time axis."""
+    sigma_bins = max(1e-6, (float(fwhm_ns) / 2.3548200450309493) / float(dt))
+    center_bin = float(center_ns) / float(dt)
+    bins = np.arange(int(n_bins), dtype=float)
+    irf = np.exp(-0.5 * ((bins - center_bin) / sigma_bins) ** 2)
+    total = irf.sum()
+    return irf / total if total > 0 else irf
+
+
+def _species_decay(tttrlib, spectrum, n_bins: int, dt: float, irf=None, t0: float = 0.0):
+    """Build a ``SimDecay`` for one species via the canonical decay generator.
+
+    ``spectrum`` is the species' lifetime spectrum: a sequence whose elements are
+    either ``[amplitude, lifetime_ns]`` pairs or bare lifetimes (amplitude 1). The
+    micro-time decay is produced by the single ChiSurf generator
+    ``chisurf.core.fluorescence.decay.synthetic_decay`` (amplitudes + lifetimes →
+    optionally IRF-convolved, normalized histogram) and handed to
+    ``SimDecay.from_pattern`` — so the acquisition simulator samples arrival times
+    from the same decay model as the rest of ChiSurf.
+    """
+    from chisurf.core.fluorescence.decay import synthetic_decay
+
+    amps, taus = [], []
+    for entry in (spectrum or []):
+        if isinstance(entry, (list, tuple)) and len(entry) >= 2:
+            amp, tau = float(entry[0]), float(entry[1])
+        else:
+            amp, tau = 1.0, float(entry)
+        if tau > 0.0:
+            amps.append(amp)
+            taus.append(tau)
+    if not taus:
+        return None
+    pattern = synthetic_decay(
+        int(n_bins), taus, amplitudes=amps, bin_width=float(dt), irf=irf, normalize=True
+    )
+    return tttrlib.SimDecay.from_pattern(pattern.tolist(), float(dt), float(t0))
+
+
 def build_engine(params: Dict[str, Any]):
     """Build a configured ``tttrlib.SimEngine`` from plugin parameters.
 
@@ -120,6 +160,34 @@ def build_engine(params: Dict[str, Any]):
 
     ns = int(params.get("N_species", 1))
     nc = int(params.get("N_channels", 2))
+    # Per-species fluorescence decay (lifetimes → micro-time decay). Built with the
+    # canonical generator and an optional shared Gaussian IRF (``irf_fwhm_ns``).
+    n_tac = int(params.get("N_tac_channels", 4096))
+    tac_dt = float(params.get("tac_dt", 0.004069))
+    decay_lifetimes = params.get("decay_lifetimes")
+    decay_pattern_files = params.get("decay_pattern_files")
+    irf_pattern = None
+    irf_fwhm = params.get("irf_fwhm_ns")
+    if irf_fwhm:
+        irf_pattern = _gaussian_irf_pattern(
+            n_tac, tac_dt, float(irf_fwhm),
+            float(params.get("irf_center_ns", 2.0 * float(irf_fwhm))),
+        )
+
+    def _loaded_pattern(index: int):
+        """Load a per-species measured/saved decay pattern file, if configured."""
+        if not isinstance(decay_pattern_files, (list, tuple)) or index >= len(decay_pattern_files):
+            return None
+        path = decay_pattern_files[index]
+        if not path:
+            return None
+        import pathlib
+        p = pathlib.Path(str(path))
+        if not p.is_file():
+            return None
+        arr = np.load(p) if p.suffix.lower() == ".npy" else np.loadtxt(p)
+        arr = np.asarray(arr, dtype=float).ravel()
+        return arr if arr.size and np.any(arr > 0) else None
     q = _sized(params.get("q", [50.0] * (ns * nc)), ns * nc, 0.0)
     D = _sized(params.get("D", [3.0] * ns), ns, 0.0)
     M = _sized(params.get("M", [50.0] * ns), ns, 0.0)
@@ -139,6 +207,15 @@ def build_engine(params: Dict[str, Any]):
         sp.l1 = float(params.get("l1", 0.0))
         sp.l2 = float(params.get("l2", 0.0))
         sp.D_rot = float(params.get("D_rot", 0.0))
+        # Fluorescence decay for this species: a loaded pattern file takes
+        # precedence; otherwise build from decay_lifetimes[i] via the generator.
+        loaded = _loaded_pattern(i)
+        if loaded is not None:
+            sp.decay = tttrlib.SimDecay.from_pattern(loaded.tolist(), tac_dt, 0.0)
+        elif isinstance(decay_lifetimes, (list, tuple)) and i < len(decay_lifetimes):
+            decay = _species_decay(tttrlib, decay_lifetimes[i], n_tac, tac_dt, irf_pattern)
+            if decay is not None:
+                sp.decay = decay
         sample.add_species(sp)
 
     k_rad = _sized(params.get("k_rad", [0.0] * (ns * ns)), ns * ns, 0.0)
