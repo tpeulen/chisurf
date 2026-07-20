@@ -75,9 +75,15 @@ class Lifetime(FittingParameterGroup):
     @property
     def lifetimes(self) -> np.array:
         """Array of lifetime values (always positive)."""
-        vs = np.array([math.sqrt(x.value ** 2) for x in self._lifetimes])
-        for i, v in enumerate(vs):
-            self._lifetimes[i].value = v
+        # Read each parameter once (a property read is not free), take abs()
+        # rather than sqrt(x**2), and write back only where the sign actually
+        # flipped -- this is a *getter*, and lifetimes are positive in the
+        # overwhelmingly common case, so the write-back is normally a no-op.
+        raw = [x.value for x in self._lifetimes]
+        vs = np.array([abs(v) for v in raw])
+        for i, (v, original) in enumerate(zip(vs, raw)):
+            if original != v:
+                self._lifetimes[i].value = v
         return vs
 
     @lifetimes.setter
