@@ -3,7 +3,7 @@ type: PRD
 prd: "60"
 title: "PRD-60: Amortised (Surrogate) Neural Estimator for H2MM"
 description: An optional simulation-based-inference fast path that predicts H2MM parameters in one neural-network forward pass instead of iterating Baum-Welch EM, for large single-molecule FRET datasets.
-status: draft
+status: in-progress
 phase: "unassigned"
 resource: chisurf/plugins/burst/burst_h2mm/core/surrogate.py
 tags: [prd, burst, h2mm, machine-learning, performance]

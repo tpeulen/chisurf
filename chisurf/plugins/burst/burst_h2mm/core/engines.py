@@ -41,6 +41,16 @@ except Exception:  # pragma: no cover - defensive
     _tttrlib_engine = None
     _HAVE_TTTRLIB = False
 
+# The C++ surrogate is used only for surrogates stored in the language-neutral
+# JSON schema; a pickled SurrogateModel stays on the scikit-learn path.
+try:
+    from . import surrogate_tttrlib as _tttrlib_surrogate
+
+    _HAVE_TTTRLIB_SURROGATE = _tttrlib_surrogate.HAVE_TTTRLIB
+except Exception:  # pragma: no cover - defensive
+    _tttrlib_surrogate = None
+    _HAVE_TTTRLIB_SURROGATE = False
+
 
 def _use_tttrlib() -> bool:
     """Whether to route EM/Viterbi through the tttrlib C++ backend."""
@@ -124,6 +134,20 @@ def fit_one(
         sm = (surrogates or {}).get(int(n_states))
         if sm is not None:
             ri = int(refine_iters) if engine == "surrogate-refine" else 0
+            # JSON surrogates run through the C++ estimator; pickled
+            # SurrogateModel objects stay on the scikit-learn path. Both produce
+            # the same numbers — the C++ feature extractor reproduces the numba
+            # one to 1e-12 — so this is purely a speed/dependency choice.
+            if (
+                _use_tttrlib()
+                and _HAVE_TTTRLIB_SURROGATE
+                and _tttrlib_surrogate.is_json_surrogate(sm)
+            ):
+                try:
+                    return _tttrlib_surrogate.estimate_model(
+                        data, n_states, sm, refine_iters=ri, tol=tol)
+                except Exception:  # pragma: no cover - fall back on any issue
+                    pass
             return fit_states(data, n_states, surrogate=sm, refine_iters=ri, tol=tol)
         # No surrogate for this state count → exact EM keeps the scan usable.
         engine = "em"

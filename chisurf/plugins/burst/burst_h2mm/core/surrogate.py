@@ -31,6 +31,7 @@ This module has **no Qt / ChiSurf dependency** and uses only ``numpy`` and
 
 from __future__ import annotations
 
+import json
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
@@ -233,6 +234,51 @@ class SurrogateModel:
         """Pickle the surrogate (net + scalers + metadata) to ``path``."""
         with open(path, "wb") as fh:
             pickle.dump(self, fh)
+
+    def to_json(self) -> dict:
+        """Return this surrogate in the language-neutral ``tttrlib`` JSON schema.
+
+        The pickle written by :meth:`save` is Python-only and unsafe to share;
+        this schema is readable by :class:`tttrlib.H2mmSurrogate`, so a surrogate
+        trained here runs in the C++ engine (and in any other tttrlib binding)
+        with identical numbers.
+
+        Note scikit-learn stores ``coefs_`` as ``(n_in, n_out)`` while tttrlib
+        stores row-major ``(n_out, n_in)``, so every weight matrix is transposed
+        on the way out.
+        """
+        layers = []
+        n_hidden = len(self.net.coefs_) - 1
+        for i, (w, b) in enumerate(zip(self.net.coefs_, self.net.intercepts_)):
+            layers.append({
+                "n_in": int(w.shape[0]),
+                "n_out": int(w.shape[1]),
+                "activation": self.net.activation if i < n_hidden else self.net.out_activation_,
+                "weight": np.ascontiguousarray(np.asarray(w).T).ravel().tolist(),
+                "bias": np.asarray(b, dtype=float).tolist(),
+            })
+        return {
+            "format": "tttrlib.h2mm_surrogate",
+            "version": 1,
+            "features_version": int(self.features_version),
+            "n_states": int(self.n_states),
+            "n_streams": int(self.n_streams),
+            "meta": dict(self.meta),
+            "net": {
+                "format": "tttrlib.neural_net",
+                "version": 1,
+                "x_scaler": {"mean": np.asarray(self.x_scaler.mean_, dtype=float).tolist(),
+                             "scale": np.asarray(self.x_scaler.scale_, dtype=float).tolist()},
+                "y_scaler": {"mean": np.asarray(self.y_scaler.mean_, dtype=float).tolist(),
+                             "scale": np.asarray(self.y_scaler.scale_, dtype=float).tolist()},
+                "layers": layers,
+            },
+        }
+
+    def export_json(self, path: str | Path, indent: int = 2) -> None:
+        """Write this surrogate to ``path`` in the ``tttrlib`` JSON schema."""
+        with open(path, "w") as fh:
+            json.dump(self.to_json(), fh, indent=indent)
 
     @staticmethod
     def load(path: str | Path) -> SurrogateModel:
