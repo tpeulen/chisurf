@@ -1,9 +1,11 @@
 """Headless GUI tests for the per-parameter prior selector.
 
-Exercises the prior radio selector and the advanced modal editor of
-``FittingParameterDetailPopup`` without launching a live display or blocking on
-a modal ``exec_()``. No fitting client is installed, so the popup's local echo
-(``fp.prior = ...``) is what these tests observe.
+Exercises the prior radio selector and the **inline** distribution editor of
+``FittingParameterDetailPopup``. The prior parameters used to live behind a
+second modal (``PriorEditorDialog``, opened from an "Edit..." button); they are
+now edited in the popup itself, so there is no ``exec_()`` to work around. No
+fitting client is installed, so the popup's local echo (``fp.prior = ...``) is
+what these tests observe.
 """
 
 import numpy as np
@@ -18,7 +20,6 @@ from chisurf.core.models.model import ModelCurve
 from chisurf.gui.widgets.fitting.parameter_widgets import (
     FittingParameterWidget,
     FittingParameterDetailPopup,
-    PriorEditorDialog,
 )
 
 
@@ -81,27 +82,71 @@ def test_select_box_clears_smooth_prior(qtbot, param):
 def test_refresh_reflects_existing_prior(qtbot, param):
     param.prior = _priors.GammaPrior(2.0, 1.0)
     popup = _popup(qtbot, param)
-    # Gamma is not one of the quick radios -> "Custom".
+    # Gamma is not one of the quick radios -> "Custom", and the inline editor
+    # shows the family and its parameters rather than a repr string.
     assert popup._prior_radios["custom"].isChecked()
-    assert "Gamma" in popup.lbl_prior_summary.text()
+    assert popup.cb_prior_family.currentData() == "gamma"
 
 
-def test_prior_editor_dialog_returns_state(qtbot, param):
-    dlg = PriorEditorDialog(seed_value=2.0)
-    qtbot.addWidget(dlg)
-    # Default family is Gaussian, mean seeded from the value.
-    state = dlg.prior_state()
-    assert state["kind"] == "normal"
-    assert state["mu"] == pytest.approx(2.0)
+def test_inline_editor_shows_the_prior_parameters(qtbot, param):
+    """Selecting Gaussian must expose mu/sigma spin boxes in the popup itself."""
+    popup = _popup(qtbot, param)
+    popup._prior_radios["normal"].click()
+
+    assert set(popup._prior_spins) == {"mu", "sigma"}
+    assert popup._prior_spins["mu"].value() == pytest.approx(2.0)
+    assert popup.cb_prior_family.currentData() == "normal"
 
 
-def test_prior_editor_dialog_switches_family(qtbot, param):
-    dlg = PriorEditorDialog(seed_value=2.0, prior_state={"kind": "gamma", "alpha": 3.0, "beta": 2.0, "loc": 0.0})
-    qtbot.addWidget(dlg)
-    state = dlg.prior_state()
-    assert state["kind"] == "gamma"
-    assert state["alpha"] == pytest.approx(3.0)
-    assert state["beta"] == pytest.approx(2.0)
+def test_editing_a_prior_parameter_applies_it(qtbot, param):
+    """The regression this refactor is for: no OK button, edits apply directly."""
+    popup = _popup(qtbot, param)
+    popup._prior_radios["normal"].click()
+
+    popup._prior_spins["sigma"].setValue(0.25)
+    popup._prior_spins["sigma"].editingFinished.emit()
+
+    assert isinstance(param.prior, _priors.NormalPrior)
+    assert param.prior.sigma == pytest.approx(0.25)
+
+
+def test_switching_family_in_the_combo_applies_it(qtbot, param):
+    popup = _popup(qtbot, param)
+    popup._prior_radios["normal"].click()
+
+    idx = popup.cb_prior_family.findData("gamma")
+    popup.cb_prior_family.setCurrentIndex(idx)
+
+    assert isinstance(param.prior, _priors.GammaPrior)
+    assert set(popup._prior_spins) == {"alpha", "beta", "loc"}
+
+
+def test_editor_is_hidden_for_box(qtbot, param):
+    popup = _popup(qtbot, param)
+    popup._prior_radios["normal"].click()
+    popup._prior_radios["box"].click()
+    assert not popup._prior_box.isVisibleTo(popup)
+    assert popup._bounds_box.isVisibleTo(popup)
+
+
+def test_existing_prior_populates_the_editor(qtbot, param):
+    """Reopening the popup must show the prior that is actually attached."""
+    param.prior = _priors.GammaPrior(3.0, 2.0)
+    popup = _popup(qtbot, param)
+
+    assert popup.cb_prior_family.currentData() == "gamma"
+    assert popup._prior_spins["alpha"].value() == pytest.approx(3.0)
+    assert popup._prior_spins["beta"].value() == pytest.approx(2.0)
+
+
+def test_uneditable_prior_falls_back_to_a_summary(qtbot, param):
+    """Callable priors have no parameter list; show what it is, offer no controls."""
+    param.prior = _priors.CallablePrior(lambda v: 0.0)
+    popup = _popup(qtbot, param)
+
+    assert popup._prior_radios["custom"].isChecked()
+    assert not popup.cb_prior_family.isVisibleTo(popup)
+    assert popup.lbl_prior_summary.isVisibleTo(popup)
 
 
 # --------------------------------------------------------------------------

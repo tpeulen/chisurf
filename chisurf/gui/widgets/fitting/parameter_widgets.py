@@ -46,97 +46,6 @@ _PRIOR_FAMILY_SPECS = [
 _PRIOR_KIND_TO_SPEC = {kind: (label, params) for (label, kind, params) in _PRIOR_FAMILY_SPECS}
 
 
-class PriorEditorDialog(QtWidgets.QDialog):
-    """Modal editor for the parameters of a smooth prior distribution.
-
-    Presents a distribution selector plus one spin box per parameter of the
-    chosen family. The resulting prior is retrieved as a serialisable state dict
-    via :meth:`prior_state`. Box/uniform bounds and callback priors are handled
-    elsewhere and are intentionally not offered here.
-    """
-
-    def __init__(self, parent=None, prior_state: dict = None, seed_value: float = 1.0):
-        """Build the dialog, seeded from an existing prior state if given.
-
-        Parameters
-        ----------
-        parent : QtWidgets.QWidget, optional
-            Parent widget.
-        prior_state : dict, optional
-            Existing prior state (``{"kind": ..., <params>}``) to preload.
-        seed_value : float, optional
-            Current parameter value, used to seed location-like parameters when
-            no existing state is available.
-        """
-        super().__init__(parent)
-        self.setWindowTitle("Advanced prior settings")
-        self.setModal(True)
-        try:
-            self._seed = float(seed_value)
-        except Exception:
-            self._seed = 1.0
-        self._spins: typing.Dict[str, ScientificDoubleSpinBox] = {}
-
-        layout = QtWidgets.QVBoxLayout(self)
-        frow = QtWidgets.QHBoxLayout()
-        frow.addWidget(QtWidgets.QLabel("Distribution:"))
-        self.cb_family = QtWidgets.QComboBox()
-        for label, kind, _ in _PRIOR_FAMILY_SPECS:
-            self.cb_family.addItem(label, kind)
-        frow.addWidget(self.cb_family, 1)
-        layout.addLayout(frow)
-
-        self._form_host = QtWidgets.QWidget()
-        self._form = QtWidgets.QFormLayout(self._form_host)
-        layout.addWidget(self._form_host)
-
-        self.buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
-        )
-        layout.addWidget(self.buttons)
-        self.buttons.accepted.connect(self.accept)
-        self.buttons.rejected.connect(self.reject)
-
-        self._initial = prior_state if isinstance(prior_state, dict) else None
-        init_kind = (self._initial or {}).get("kind", "normal")
-        idx = self.cb_family.findData(init_kind)
-        self.cb_family.setCurrentIndex(idx if idx >= 0 else 0)
-        self.cb_family.currentIndexChanged.connect(lambda *_: self._rebuild_form())
-        self._rebuild_form()
-
-    def _rebuild_form(self):
-        """Rebuild the parameter spin boxes for the currently selected family."""
-        while self._form.rowCount():
-            self._form.removeRow(0)
-        self._spins = {}
-        kind = self.cb_family.currentData()
-        _, params = _PRIOR_KIND_TO_SPEC[kind]
-        state = self._initial if (self._initial and self._initial.get("kind") == kind) else {}
-        for key, label, default in params:
-            sb = ScientificDoubleSpinBox(dec=True, decimals=6, finite=False)
-            value = state.get(key, default)
-            if not state:
-                # Seed location-like parameters from the current value.
-                if key in ("mu", "loc") and kind != "lognormal":
-                    value = self._seed
-                elif key == "mu" and kind == "lognormal" and self._seed > 0:
-                    import math
-                    value = math.log(self._seed)
-            try:
-                sb.setValue(float(value))
-            except Exception:
-                sb.setValue(float(default))
-            self._spins[key] = sb
-            self._form.addRow(label, sb)
-
-    def prior_state(self) -> dict:
-        """Return the edited prior as a serialisable ``{"kind": ..}`` dict."""
-        state = {"kind": self.cb_family.currentData()}
-        for key, sb in self._spins.items():
-            state[key] = float(sb.value())
-        return state
-
-
 def _controller_decimals(controller, editor_name: str, default: int = 6) -> int:
     """Decimals of a controller's editor, falling back when it has none.
 
@@ -263,18 +172,43 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
             b_layout.addWidget(sb, 1)
         layout.addWidget(self._bounds_box)
 
-        # Smooth-prior summary + advanced editor button.
-        adv_row = QtWidgets.QHBoxLayout()
-        adv_row.setSpacing(4)
+        # Smooth-prior editor, inline. The distribution and its parameters are
+        # edited here rather than behind a second modal: this popup *is* the
+        # parameter editor, and pushing two clicks and another window in front of
+        # "set sigma" made a routine edit feel like an advanced feature.
+        self._prior_box = QtWidgets.QWidget()
+        p_layout = QtWidgets.QVBoxLayout(self._prior_box)
+        p_layout.setContentsMargins(0, 0, 0, 0)
+        p_layout.setSpacing(4)
+
+        fam_row = QtWidgets.QHBoxLayout()
+        fam_row.setSpacing(4)
+        fam_row.addWidget(QtWidgets.QLabel("Distribution:"))
+        self.cb_prior_family = QtWidgets.QComboBox()
+        for label, kind, _ in _PRIOR_FAMILY_SPECS:
+            self.cb_prior_family.addItem(label, kind)
+        self.cb_prior_family.setToolTip("Shape of the prior pulling the fit toward a value")
+        fam_row.addWidget(self.cb_prior_family, 1)
+        p_layout.addLayout(fam_row)
+
+        self._prior_form_host = QtWidgets.QWidget()
+        self._prior_form = QtWidgets.QFormLayout(self._prior_form_host)
+        self._prior_form.setContentsMargins(0, 0, 0, 0)
+        self._prior_form.setSpacing(4)
+        p_layout.addWidget(self._prior_form_host)
+
+        #: One spin box per parameter of the selected family, keyed as in
+        #: :data:`_PRIOR_FAMILY_SPECS`.
+        self._prior_spins: typing.Dict[str, ScientificDoubleSpinBox] = {}
+
+        #: Shown instead of the form for families this editor cannot express
+        #: (callback and product priors), which stay read-only.
         self.lbl_prior_summary = QtWidgets.QLabel("")
         self.lbl_prior_summary.setStyleSheet("color: gray; font-size: 9pt")
         self.lbl_prior_summary.setWordWrap(True)
-        self.btn_prior_advanced = QtWidgets.QToolButton()
-        self.btn_prior_advanced.setText("Edit…")
-        self.btn_prior_advanced.setToolTip("Edit the prior distribution parameters")
-        adv_row.addWidget(self.lbl_prior_summary, 1)
-        adv_row.addWidget(self.btn_prior_advanced)
-        layout.addLayout(adv_row)
+        p_layout.addWidget(self.lbl_prior_summary)
+
+        layout.addWidget(self._prior_box)
 
         #: Guard so programmatic radio updates in ``refresh_from_model`` do not
         #: re-trigger the click handler.
@@ -289,7 +223,7 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.sb_ub.editingFinished.connect(self._on_bounds_changed)
         self.sb_value.editingFinished.connect(self._on_value_changed)
         self._prior_btn_group.buttonClicked.connect(self._on_prior_radio_clicked)
-        self.btn_prior_advanced.clicked.connect(self._on_edit_prior_advanced)
+        self.cb_prior_family.currentIndexChanged.connect(self._on_prior_family_changed)
 
         self.refresh_from_model()
 
@@ -525,36 +459,67 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         elif key in ("normal", "lognormal"):
             self._apply_prior(self._default_prior_state(key))
         elif key == "custom":
-            self._on_edit_prior_advanced()
+            # "Custom" just reveals the full family list; the currently selected
+            # family is applied so the editor below has something to show.
+            self._on_prior_family_changed()
 
-    def _on_edit_prior_advanced(self):
-        """Open the modal editor for the smooth-prior parameters."""
-        fp = self.controller.fitting_parameter
-        current = None
+    def _on_prior_family_changed(self, *args):
+        """Apply the family chosen in the combo, seeding its default parameters."""
+        if self._prior_refreshing:
+            return
+        kind = self.cb_prior_family.currentData()
+        if kind is None:
+            return
+        self._apply_prior(self._seeded_prior_state(kind))
+
+    def _on_prior_param_changed(self):
+        """Apply the prior after one of its parameter spin boxes was edited."""
+        if self._prior_refreshing:
+            return
+        kind = self.cb_prior_family.currentData()
+        if kind is None:
+            return
+        state = {"kind": kind}
+        for key, sb in self._prior_spins.items():
+            state[key] = float(sb.value())
+        self._apply_prior(state)
+
+    def _seeded_prior_state(self, kind: str) -> dict:
+        """Default state for ``kind``, with location parameters at the current value."""
+        import math
         try:
-            pr = getattr(fp, "prior", None)
-            if pr is not None:
-                st = pr.get_state()
-                # Only preload families the modal can edit (not box/callback/product).
-                if isinstance(st, dict) and st.get("kind") in _PRIOR_KIND_TO_SPEC:
-                    current = st
-        except Exception:
-            current = None
-        try:
-            seed = float(fp.value)
+            seed = float(self.controller.fitting_parameter.value)
         except Exception:
             seed = 1.0
-        self._begin_suspend_auto_hide()
-        try:
-            dlg = PriorEditorDialog(self, prior_state=current, seed_value=seed)
-            accepted = dlg.exec_()
-        finally:
-            self._end_suspend_auto_hide()
-        if accepted:
-            self._apply_prior(dlg.prior_state())
-        else:
-            # User cancelled: restore the radio/summary to the actual state.
-            self.refresh_from_model()
+        _, params = _PRIOR_KIND_TO_SPEC[kind]
+        state = {"kind": kind}
+        for key, _label, default in params:
+            value = default
+            if key in ("mu", "loc") and kind != "lognormal":
+                value = seed
+            elif key == "mu" and kind == "lognormal" and seed > 0:
+                value = math.log(seed)
+            state[key] = value
+        return state
+
+    def _rebuild_prior_form(self, kind: str, state: dict):
+        """Rebuild the parameter spin boxes for ``kind``, filled from ``state``."""
+        while self._prior_form.rowCount():
+            self._prior_form.removeRow(0)
+        self._prior_spins = {}
+        spec = _PRIOR_KIND_TO_SPEC.get(kind)
+        if spec is None:
+            return
+        _, params = spec
+        for key, label, default in params:
+            sb = ScientificDoubleSpinBox(dec=True, decimals=6, finite=False)
+            try:
+                sb.setValue(float(state.get(key, default)))
+            except Exception:
+                sb.setValue(float(default))
+            sb.editingFinished.connect(self._on_prior_param_changed)
+            self._prior_spins[key] = sb
+            self._prior_form.addRow(label, sb)
 
     def _on_value_changed(self):
         fp = self.controller.fitting_parameter
@@ -675,18 +640,38 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
 
         is_box = key == "box"
         self._bounds_box.setVisible(is_box)
-        self.lbl_prior_summary.setVisible(not is_box)
-        self.lbl_prior_summary.setText(summary)
-        # The advanced editor applies to editable smooth families only.
-        editable = key in ("normal", "lognormal", "custom")
-        editable_custom = True
-        if key == "custom":
-            try:
-                editable_custom = (prior.get_state() or {}).get("kind") in _PRIOR_KIND_TO_SPEC
-            except Exception:
-                editable_custom = False
-        self.btn_prior_advanced.setVisible(not is_box)
-        self.btn_prior_advanced.setEnabled(editable and editable_custom)
+        self._prior_box.setVisible(not is_box)
+        if is_box:
+            return
+
+        # Which family is actually attached, and with what parameters.
+        state = {}
+        try:
+            st = prior.get_state() if prior is not None else None
+            if isinstance(st, dict):
+                state = st
+        except Exception:
+            state = {}
+        kind = state.get("kind")
+
+        # Callback and product priors have no editable parameter list; show what
+        # they are and offer no controls rather than pretending they are editable.
+        editable = kind in _PRIOR_KIND_TO_SPEC
+        self._prior_refreshing = True
+        try:
+            self.cb_prior_family.setVisible(editable)
+            self._prior_form_host.setVisible(editable)
+            if editable:
+                idx = self.cb_prior_family.findData(kind)
+                if idx >= 0:
+                    self.cb_prior_family.setCurrentIndex(idx)
+                self._rebuild_prior_form(kind, state)
+                self.lbl_prior_summary.setVisible(False)
+            else:
+                self.lbl_prior_summary.setVisible(True)
+                self.lbl_prior_summary.setText(summary)
+        finally:
+            self._prior_refreshing = False
 
 
 
