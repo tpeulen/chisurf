@@ -115,12 +115,31 @@ into the window (removing the residual ramp), and the generated components carry
 tail fit over the region (start past the prompt), aligned to the range start. The
 draggable region item is preserved across every replot (`_clear_recon_plot` re-adds
 it after `PlotWidget.clear()`, which would otherwise wipe it on the first compute).
-*In progress:* per the reuse request,
-migrating this auto-fit onto the real ChiSurf TCSPC fit models
-(`LifetimeModel`/`FRETModel`) so it uses `FittingParameter`s that can be
-**cross-linked to existing fits** (the synthetic/FRET editors already offer a
-one-way `📥 Fit…` read of a lifetime spectrum from an open fit) and so FRET-species
-auto-fitting reuses the FRET model directly.
+**The auto-fit runs through a real ChiSurf `Fit`.** `_auto_fit_components` calls
+`fit_lifetime_model` ([subsystems/fitting.md](/subsystems/fitting.md)), which
+drives an actual `LifetimeModel`, and the Auto-fit dock renders that model's
+parameters in the standard AutoForm parameter table — so the ordinary
+right-click **Link…** menu can tie a fitted lifetime to a parameter of any open
+fit. Three things the swap had to reconcile:
+
+- **Amplitude convention.** `fit_lifetime_model` reports **pre-exponential**
+  amplitudes; the scipy fitter it replaced reported **photon fractions**, which
+  is what the species labels and relative weights mean. The seam converts with
+  `f_i = a_i·τ_i / Σ a_j·τ_j` rather than relabelling one as the other.
+- **Fit window.** The model is handed the *full* decay plus `start_bin`/
+  `stop_bin` and masks the window itself; the previous call sliced the window
+  first, which made every fitted time relative to the window start.
+- **IRF write-back.** The model parameterises the prompt as a generalized normal
+  with σ `iw` and shape `ik`, while `synthetic_irf` takes a FWHM and the *same*
+  shape — so the width converts exactly through `FWHM_TO_SIGMA` and the skew
+  transfers unchanged. The shift is read off the model's own processed IRF peak
+  against the nominal `2·FWHM` centre, avoiding any dependence on the units of
+  the model's internal timeshift.
+
+The table hides convolution/acquisition plumbing (`dt`, `rep`, `start`, `stop`,
+`irf_start`, `irf_stop`, `n0`, …) — the auto-fit configures those, they are not
+results. *Still open:* the FRET path still derives `E` from the fitted lifetimes
+rather than fitting a `FRETModel` directly.
 
 Afterpulsing/dark counts and scattered excitation light are the two explicit
 nuisance bases, toggled by the **AP** (`fit_background`) and **IRF**
