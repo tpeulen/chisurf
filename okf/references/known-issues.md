@@ -87,6 +87,16 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**Qt teardown in test suites**
+- `chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py` aborts with
+  `libc++abi: Pure virtual function called!` when the file is run as one
+  process. Every test passes individually, and the abort is independent of the
+  test that happens to be running when it fires, so it is cross-test teardown
+  (a C++ object outliving its Python wrapper, the usual pyqtgraph/`DockArea`
+  shape) rather than a defect in any one test. Confirmed pre-existing in July
+  2026 by reproducing it with the then-current working changes stashed.
+  Workaround: run the file with `--forked`, or per-test, until fixed.
+
 **Project save / restore**
 - Project round-trip: decay/lifetime models do not save & reload (critical).
 - Save→close→open resolves the active window via `chisurf.cs` after teardown
