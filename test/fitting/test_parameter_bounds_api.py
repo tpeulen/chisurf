@@ -75,3 +75,71 @@ def test_reading_value_is_side_effect_free():
     first = p.value
     for _ in range(5):
         assert p.value == first
+
+
+# ---------------------------------------------------------------------------
+# Port.value setter fast path
+# ---------------------------------------------------------------------------
+#
+# Writing a finite float into a scalar float port takes a fast path that skips
+# atleast_1d, three np.where sanitisation passes, astype and clip (9.57 us ->
+# 0.81 us). These pin the semantics it must preserve.
+
+
+import chinet
+
+
+def _port(**kw):
+    return chinet.Port(value=1.0, name="t", **kw)
+
+
+@pytest.mark.parametrize("v", [3.5, -2.25, 0.0, 1e-300, 1e300])
+def test_finite_float_writes_round_trip(v):
+    p = _port()
+    p.value = v
+    assert p.value == pytest.approx(v)
+
+
+def test_bounds_are_applied_on_the_fast_path():
+    p = _port(lb=0.0, ub=2.0, is_bounded=True)
+    p.value = 99.0
+    assert p.value == pytest.approx(2.0)
+    p.value = -99.0
+    assert p.value == pytest.approx(0.0)
+    p.value = 1.5
+    assert p.value == pytest.approx(1.5)
+
+
+def test_non_finite_still_sanitised():
+    """NaN/+-inf must fall through to the general path, not the fast one."""
+    p = _port()
+    p.value = float("nan")
+    assert p.value == pytest.approx(np.finfo(np.float64).tiny)
+    p.value = float("inf")
+    assert p.value == pytest.approx(np.finfo(np.float64).max)
+    p.value = float("-inf")
+    assert p.value == pytest.approx(np.finfo(np.float64).min)
+
+
+def test_int_and_vector_writes_unaffected():
+    p = _port()
+    p.value = 7
+    assert p.value == pytest.approx(7.0)
+
+    q = _port()
+    q.value = np.array([1.0, 2.0, 3.0])
+    np.testing.assert_allclose(np.asarray(q.value), [1.0, 2.0, 3.0])
+
+
+def test_fixed_port_ignores_writes():
+    p = _port()
+    p.fixed = True
+    p.value = 42.0
+    assert p.value == pytest.approx(1.0)
+
+
+def test_linked_ports_still_propagate():
+    a, b = _port(), _port()
+    b.link = a
+    a.value = 5.0
+    assert b.value == pytest.approx(5.0)

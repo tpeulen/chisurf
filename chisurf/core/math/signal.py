@@ -100,7 +100,14 @@ def shift_array(
     ts = shift
     ts_i = int(ts)
     ts_f = ts - np.floor(ts)
-    ysh = np.roll(v, ts_i) * (1.0 - ts_f) + np.roll(v, ts_i + 1) * ts_f
+    if ts_f == 0.0:
+        # Whole-sample shift: the interpolation weights are exactly 1 and 0, so
+        # the second roll and both multiplies are wasted work. Identical result
+        # for finite input (0.0 * x == 0.0); this is the hot path when a
+        # timeshift parameter sits at an integer value.
+        ysh = np.roll(v, ts_i)
+    else:
+        ysh = np.roll(v, ts_i) * (1.0 - ts_f) + np.roll(v, ts_i + 1) * ts_f
     if set_outside:
         if ts >= 0:
             b = int(np.ceil(ts))

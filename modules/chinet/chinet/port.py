@@ -139,7 +139,26 @@ class Port(BaseObject):
     @value.setter
     def value(self, v):
         if self._fixed: return
-        
+
+        # Fast path: writing a finite Python float into a scalar float port.
+        # This is the overwhelmingly common case in a fit -- the optimiser writes
+        # one float per free parameter per residual evaluation -- and the general
+        # path below costs ~9.5 us for it: np.atleast_1d, three np.where
+        # sanitisation passes (each allocating), a dtype probe, astype and clip.
+        # None of that is needed for a value that is already finite and already
+        # the port's type. Semantics are identical: NaN/inf are excluded here and
+        # fall through to the general path, and bounds are applied the same way.
+        if (type(v) is float and self._value_type == 1 and not self._is_vector
+                and -1.7976931348623157e308 <= v <= 1.7976931348623157e308):
+            if self._is_bounded:
+                lo, hi = self._bounds
+                if v < lo: v = lo
+                elif v > hi: v = hi
+            self._data[0] = v
+            self.update_attached_node()
+            for p in self._linked_to: p.value = self._data
+            return
+
         v_np = np.atleast_1d(v)
         if v_np.dtype.kind in ['f', 'd']:
             v_np = np.where(np.isnan(v_np), np.finfo(np.float64).tiny, v_np)

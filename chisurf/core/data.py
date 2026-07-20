@@ -218,7 +218,11 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
             *args,
             **kwargs
         )
-        if load_filename_on_init:
+        # `filename` is empty for every curve built in-memory (model decays,
+        # shifted IRFs, arithmetic results), and Path('').is_file() is still a
+        # filesystem stat. Curves are constructed inside the fit's hot loop, so
+        # skip the syscall when there is obviously nothing to load.
+        if load_filename_on_init and filename:
             if pathlib.Path(filename).is_file():
                 self.load(filename, **kwargs)
 
