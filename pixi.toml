@@ -15,6 +15,10 @@ docs = ["docs"]
 
 [dependencies]
 python = "3.12.*"
+# The build-extensions tasks run in the default environment and shell out to
+# `python -m pip` (build_tools/build_tttrlib.py, the editable installs), so pip
+# must be present here and not only in the `build` feature.
+pip = ">=26.0.1,<27"
 numpy = "*"
 typing-extensions = ">=4.14"
 pytools = ">=2024.0"
@@ -55,7 +59,9 @@ pygments = "*"
 pyarrow-core = "*"
 boost-histogram = "*"
 sqlalchemy = ">=2.0"
-msgpack = ">=1.1.2"
+# The conda-forge package providing the `msgpack` module is named
+# msgpack-python (`msgpack` does not exist as a conda package).
+msgpack-python = ">=1.1.2"
 
 [pypi-dependencies]
 
