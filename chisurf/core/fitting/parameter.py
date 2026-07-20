@@ -73,6 +73,13 @@ class FittingParameter(chisurf.core.parameter.Parameter):
             **kwargs
         )
         self.fixed = fixed
+        #: Set when the parameter is fully determined by its siblings, so it
+        #: carries no degree of freedom of its own and must be kept out of the
+        #: optimiser. Distinct from ``fixed``: a redundant parameter is still
+        #: *written* (its value follows from the others), it simply is not
+        #: varied. See :meth:`chisurf.core.models.tcspc.lifetime.Lifetime.
+        #: _update_redundant_amplitude`.
+        self.redundant = False
         self._error_estimate = None
         self._chi2s = None
         self._values = None
@@ -229,9 +236,10 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
     def parameters(self) -> typing.List[
         chisurf.core.fitting.parameter.FittingParameter
     ]:
-        """List of *free* fitting parameters (neither fixed nor linked)."""
+        """List of *free* fitting parameters (not fixed, linked or redundant)."""
         return [
-            p for p in self.parameters_all if not (p.fixed or p.is_linked)
+            p for p in self.parameters_all
+            if not (p.fixed or p.is_linked or getattr(p, "redundant", False))
         ]
 
     @property

@@ -893,8 +893,37 @@ class Fit(cs.core.base.Base):
         fit = self
         cov_m, used_parameters = fit.covariance_matrix
         err = np.sqrt(np.diag(cov_m))
+        free = fit.model.parameters
         for p, e in zip(used_parameters, err):
-            fit.model.parameters[p].error_estimate = e
+            free[p].error_estimate = e
+        self._propagate_redundant_error_estimates(cov_m, used_parameters, free)
+
+    def _propagate_redundant_error_estimates(self, cov_m, used_parameters, free):
+        """Give redundant parameters the uncertainty implied by their constraint.
+
+        A redundant amplitude carries no column in the covariance matrix, so it
+        would otherwise keep a stale estimate from an earlier fit -- worse than
+        having none. Amplitudes are normalised to sum to one, so the held-out one
+        is ``1 - sum(siblings)`` and its variance is the sum of that block of the
+        covariance matrix (including the off-diagonal terms, which are large
+        here precisely because the fractions are anti-correlated).
+        """
+        groups = getattr(self.model, "_aggregated_parameters", None) or []
+        index_of = {id(free[p]): k for k, p in enumerate(used_parameters)}
+        for group in groups:
+            amplitudes = getattr(group, "_amplitudes", None)
+            if not amplitudes:
+                continue
+            for a in amplitudes:
+                if not getattr(a, "redundant", False):
+                    continue
+                cols = [index_of[id(s)] for s in amplitudes
+                        if s is not a and id(s) in index_of]
+                if not cols:
+                    a.error_estimate = None
+                    continue
+                block = cov_m[np.ix_(cols, cols)]
+                a.error_estimate = float(np.sqrt(max(block.sum(), 0.0)))
 
     def update(self) -> None:
         """Update the model and notify observers."""

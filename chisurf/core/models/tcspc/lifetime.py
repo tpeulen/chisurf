@@ -169,9 +169,44 @@ class Lifetime(FittingParameterGroup):
         if isinstance(v, Lifetime) or v is None:
             self._link = v
 
+    def _update_redundant_amplitude(self):
+        """Keep exactly one amplitude out of the optimiser when it is redundant.
+
+        The amplitudes are normalised by ``|a| / sum|a|``, so scaling them all by
+        a constant leaves the model bit-identical: n amplitude parameters carry
+        only n-1 degrees of freedom. Handing all n to the optimiser makes the
+        Jacobian's amplitude block rank-deficient — the columns are exact mirror
+        images at equal amplitudes — and while that barely affects the fitted
+        values, it destroys their uncertainties: measured on a two-exponential
+        fit, ``cond(J)`` 5.5e7 with amplitude errors of 4.8 *million* percent,
+        versus ``cond(J)`` 554 and 1.8% once one amplitude is held out. The
+        lifetimes, chi2r and the amplitude *ratio* are unchanged either way.
+
+        The held-out amplitude is marked :attr:`~chisurf.core.fitting.parameter.
+        FittingParameter.redundant` rather than ``fixed``: it must still be
+        written by :meth:`update` (its value follows from the others via the
+        normalisation), and a ``fixed`` parameter ignores writes, which would
+        make the stored values drift apart from the normalised ones.
+
+        Nothing is held out when an amplitude is already fixed or linked -- that
+        one pins the scale, so the rest are identifiable on their own.
+        """
+        amplitudes = getattr(self, "_amplitudes", None)
+        if not amplitudes:
+            return
+        for a in amplitudes:
+            a.redundant = False
+        if not self.normalize_amplitudes:
+            return
+        free = [a for a in amplitudes if not (a.fixed or a.is_linked)]
+        if len(free) == len(amplitudes) and free:
+            # No amplitude pins the scale, so the first free one is redundant.
+            free[0].redundant = True
+
     # TODO: needs docstring
     def update(self):
         """Update the state and emit signals."""
+        self._update_redundant_amplitude()
         amplitudes = self.amplitudes
         for i, a in enumerate(self._amplitudes):
             a.value = amplitudes[i]
@@ -220,6 +255,10 @@ class Lifetime(FittingParameterGroup):
         if getattr(self, "_parameters", None) is not None:
             self.append_parameter(amplitude)
             self.append_parameter(lifetime)
+        # Which amplitude is redundant depends on how many there are, so it has
+        # to be recomputed here as well as in update(): a fit may read
+        # `model.parameters` before the model is ever evaluated.
+        self._update_redundant_amplitude()
 
     # TODO: needs docstring
     def pop(self) -> typing.Tuple[
@@ -231,9 +270,11 @@ class Lifetime(FittingParameterGroup):
         lifetime = self._lifetimes.pop()
         if getattr(self, "_parameters", None) is not None:
             self._parameters = [
-                p for p in self._parameters 
+                p for p in self._parameters
                 if p is not amplitude and p is not lifetime
             ]
+        amplitude.redundant = False   # detached: no longer ours to constrain
+        self._update_redundant_amplitude()
         return amplitude, lifetime
 
     # TODO: needs docstring
