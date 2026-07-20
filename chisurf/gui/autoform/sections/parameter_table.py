@@ -47,6 +47,40 @@ COLUMN_META = [
 COLUMN_IDS = [m[0] for m in COLUMN_META]
 
 
+# ── rich-text (HTML) delegate ───────────────────────────────────────────
+
+
+class _RichTextDelegate(QtWidgets.QStyledItemDelegate):
+    """Render a cell's display text as HTML so parameter labels keep their
+    sub/superscripts (e.g. ``n<sub>0</sub>`` → n₀, ``&tau;<sub>0</sub>`` → τ₀)."""
+
+    def paint(self, painter, option, index):
+        text = index.data(QtCore.Qt.DisplayRole)
+        if not text or "<" not in str(text):
+            return super().paint(painter, option, index)
+        opt = QtWidgets.QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        html = opt.text
+        opt.text = ""
+        style = opt.widget.style() if opt.widget else QtWidgets.QApplication.style()
+        style.drawControl(QtWidgets.QStyle.CE_ItemViewItem, opt, painter, opt.widget)
+
+        doc = QtGui.QTextDocument()
+        doc.setDefaultFont(opt.font)
+        doc.setDocumentMargin(0)
+        doc.setHtml(html)
+        selected = bool(opt.state & QtWidgets.QStyle.State_Selected)
+        role = QtGui.QPalette.HighlightedText if selected else QtGui.QPalette.Text
+        ctx = QtGui.QAbstractTextDocumentLayout.PaintContext()
+        ctx.palette.setColor(QtGui.QPalette.Text, opt.palette.color(role))
+        rect = style.subElementRect(QtWidgets.QStyle.SE_ItemViewItemText, opt, opt.widget)
+        painter.save()
+        painter.translate(rect.left() + 2, rect.top() + max(0, (rect.height() - doc.size().height()) / 2))
+        ctx.clip = QtCore.QRectF(0, 0, rect.width(), rect.height())
+        doc.documentLayout().draw(painter, ctx)
+        painter.restore()
+
+
 # ── boolean checkbox delegate ───────────────────────────────────────────
 
 
@@ -340,6 +374,13 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         the AutoForm context this is wired to trigger a fit recompute.
     """
 
+    #: Re-read parameter values after a fit/compute. The widget is emitted
+    #: full-width (NOT a form field), so it opts into the refresh cycle via
+    #: AUTOFORM_REFRESH; :meth:`AutoForm.sync_fields` also reaches it (it syncs
+    #: AUTOFORM_REFRESH widgets), so displayed values stay current like the
+    #: per-parameter widgets.
+    AUTOFORM_REFRESH = True
+
     def __init__(
         self,
         params: typing.List[FittingParameter],
@@ -363,51 +404,59 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         self._table.setWordWrap(False)
         self._table.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self._table.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
-        self._table.verticalHeader().setDefaultSectionSize(20)
+        from chisurf.gui.widgets.general import table_header_height, table_row_height
+
+        self._row_h = table_row_height()
+        self._header_h = table_header_height()
+        self._table.verticalHeader().setDefaultSectionSize(self._row_h)
+        self._table.verticalHeader().setMinimumSectionSize(self._row_h)
         self._table.verticalHeader().hide()
         self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self._table.setShowGrid(True)
+        # Size the table to its rows — no internal scrollbar, no empty space
+        # below the last row (that wasted the panel's vertical space).
+        self._table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self._table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
-        # Compact font
+        # Font: the single central table font (monospace by default), so this
+        # matches the log/console table and numeric columns line up.
         try:
-            f = self._table.font()
-            f.setPointSize(max(8, f.pointSize() - 1))
-            f.setStyleStrategy(QtGui.QFont.PreferAntialias)
-            self._table.setFont(f)
+            from chisurf.gui.widgets.general import table_font
+
+            font = table_font()
+            font.setStyleStrategy(QtGui.QFont.PreferAntialias)
+            self._table.setFont(font)
+            self._table.horizontalHeader().setFont(font)
         except Exception:
             pass
 
-        # Column widths
+        # Column sizing: the Name column absorbs the spare width; the numeric /
+        # checkbox columns hug their contents so nothing is left stretched wide.
         hh = self._table.horizontalHeader()
-        hh.setStretchLastSection(True)
-        try:
-            hh.setSectionResizeMode(QtWidgets.QHeaderView.Interactive)
-        except Exception:
+        hh.setStretchLastSection(False)
+        hh.setMinimumSectionSize(36)
+
+        def _resize(col, mode):
             try:
-                hh.setResizeMode(QtWidgets.QHeaderView.Interactive)
+                hh.setSectionResizeMode(col, mode)
             except Exception:
-                pass
-        hh.setMinimumSectionSize(40)
-        _default_widths = {
-            COL_NAME: 100,
-            COL_VALUE: 80,
-            COL_FIXED: 55,
-            COL_BOUNDS_LO: 65,
-            COL_BOUNDS_HI: 65,
-            COL_BOUNDS_ON: 60,
-            COL_ERROR: 65,
-        }
-        for col, w in _default_widths.items():
-            try:
-                self._table.setColumnWidth(col, w)
-            except Exception:
-                pass
+                try:
+                    hh.setResizeMode(col, mode)
+                except Exception:
+                    pass
+
+        _resize(COL_NAME, QtWidgets.QHeaderView.Stretch)
+        for col in (COL_VALUE, COL_FIXED, COL_BOUNDS_LO, COL_BOUNDS_HI, COL_BOUNDS_ON, COL_ERROR):
+            _resize(col, QtWidgets.QHeaderView.ResizeToContents)
 
         # Hide columns that are not in the section's whitelist
         self._apply_column_visibility()
 
-        # Boolean toggle delegates on fixed/bounds_on columns
+        # Rich-text (HTML) names keep sub/superscripts; boolean toggle delegates
+        # on the fixed / bounds columns.
+        self._name_delegate = _RichTextDelegate(self._table)
+        self._table.setItemDelegateForColumn(COL_NAME, self._name_delegate)
         self._toggle_delegate = _BooleanToggleDelegate(self._table)
         self._table.setItemDelegateForColumn(COL_FIXED, self._toggle_delegate)
         self._table.setItemDelegateForColumn(COL_BOUNDS_ON, self._toggle_delegate)
@@ -415,7 +464,167 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         # Wire model changes to optional callback
         self._model.dataChanged.connect(self._on_data_changed)
 
+        # Right-click: link/unlink the clicked parameter plus copy / paste of
+        # values (also Ctrl+C / Ctrl+V while the table has focus).  Clicking a
+        # name opens the same detail popup as the per-parameter row widget's
+        # label, so both parameter editors behave identically.
+        self._table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._context_menu)
+        self._table.clicked.connect(self._on_cell_clicked)
+        #: Per-parameter controllers backing the link menu and detail popup,
+        #: keyed by row.  Created lazily and kept alive as popup parents.
+        self._controllers: dict[int, typing.Any] = {}
+        self._detail_popup = None
+        for seq, slot in (("Ctrl+C", self._copy_selection), ("Ctrl+V", self._paste_selection)):
+            sc = QtWidgets.QShortcut(QtGui.QKeySequence(seq), self._table)
+            sc.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
+            sc.activated.connect(slot)
+
         layout.addWidget(self._table)
+        self._size_to_content()
+
+    def _size_to_content(self) -> None:
+        """Fix the table height to header + visible rows so it wastes no space."""
+        header_h = self._table.horizontalHeader().height() or self._header_h
+        n = self._model.rowCount()
+        self._table.setFixedHeight(header_h + self._row_h * max(1, n) + 2)
+
+    # -- per-parameter controller ------------------------------------------
+    def _controller(self, row: int):
+        """Return (creating on first use) the proxy controller for ``row``.
+
+        The controller supplies the link menu and the detail popup that the
+        per-parameter row widgets use, so the table offers the same actions
+        without duplicating their logic.
+        """
+        ctrl = self._controllers.get(row)
+        if ctrl is None:
+            from chisurf.gui.widgets.fitting.parameter_widgets import (
+                FittingParameterProxyController,
+            )
+
+            ctrl = FittingParameterProxyController(
+                self._model.parameters[row],
+                parent=self,
+                on_change=self._on_parameter_changed,
+            )
+            self._controllers[row] = ctrl
+        return ctrl
+
+    def _on_parameter_changed(self) -> None:
+        """Repaint after an edit made through the popup or the link menu."""
+        self.sync()
+        self._on_data_changed()
+
+    def _on_cell_clicked(self, index: QtCore.QModelIndex) -> None:
+        """Open the parameter detail popup when its name is clicked."""
+        if not index.isValid() or index.column() != COL_NAME:
+            return
+        self._open_details_popup(index.row())
+
+    def _open_details_popup(self, row: int) -> None:
+        from chisurf.gui.widgets.fitting.parameter_widgets import (
+            FittingParameterDetailPopup,
+        )
+
+        popup = FittingParameterDetailPopup(self._controller(row))
+        # Position the popup under the clicked name cell.
+        rect = self._table.visualRect(self._model.index(row, COL_NAME))
+        popup.move(self._table.viewport().mapToGlobal(rect.bottomLeft()))
+        popup.refresh_from_model()
+        popup.show()
+        popup.raise_()
+        popup.activateWindow()
+        popup.setFocus(QtCore.Qt.PopupFocusReason)
+        # Hold a reference so the popup is not garbage-collected while shown.
+        self._detail_popup = popup
+
+    # -- link / copy / paste ------------------------------------------------
+    def _context_menu(self, pos) -> None:
+        menu = QtWidgets.QMenu(self._table)
+        index = self._table.indexAt(pos)
+        if index.isValid():
+            self._add_link_actions(menu, index.row())
+        act_copy = menu.addAction("📋 Copy")
+        act_paste = menu.addAction("📥 Paste")
+        act_copy.setShortcut("Ctrl+C")
+        act_paste.setShortcut("Ctrl+V")
+        act_copy.triggered.connect(self._copy_selection)
+        act_paste.triggered.connect(self._paste_selection)
+        act_paste.setEnabled(bool(QtWidgets.QApplication.clipboard().text().strip()))
+        menu.exec_(self._table.viewport().mapToGlobal(pos))
+
+    def _add_link_actions(self, menu: QtWidgets.QMenu, row: int) -> None:
+        """Prepend the link/unlink entries for ``row``'s parameter to ``menu``."""
+        param = self._model.parameters[row]
+        ctrl = self._controller(row)
+        link_menu = ctrl.build_link_menu()
+        link_menu.setTitle(f"🔗 Link {param.name} to")
+        menu.addMenu(link_menu)
+
+        act_unlink = menu.addAction("⛓️‍💥 Unlink")
+        act_unlink.setEnabled(bool(getattr(param, "is_linked", False)))
+        act_unlink.triggered.connect(lambda: self._unlink(row))
+        menu.addSeparator()
+
+    def _unlink(self, row: int) -> None:
+        """Drop the link on ``row``'s parameter via the fitting client."""
+        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+
+        ctrl = self._controller(row)
+        param = self._model.parameters[row]
+        source = ctrl._parameter_context(param)
+        fc = get_fitting_client()
+        if fc is not None:
+            fc.unlink_parameter(
+                parameter_name=str(param.name),
+                fit_uid=source.get("fit_uid"),
+            )
+        ctrl._trace_operation(
+            "parameter_unlink",
+            f"unlink parameter '{param.name}' in fit '{source['fit_group']}' "
+            f"/ local '{source['local_fit']}'",
+            {"parameter_name": str(param.name), **source},
+        )
+        ctrl._update_linked_parameters()
+        ctrl.finalize()
+
+    def _copy_selection(self) -> None:
+        """Copy the selected cells as tab/newline-separated text."""
+        idxs = self._table.selectedIndexes()
+        if not idxs:
+            return
+        rows: dict[int, list[str]] = {}
+        for i in sorted(idxs, key=lambda x: (x.row(), x.column())):
+            rows.setdefault(i.row(), []).append(str(i.data(QtCore.Qt.DisplayRole) or ""))
+        text = "\n".join("\t".join(cells) for cells in rows.values())
+        QtWidgets.QApplication.clipboard().setText(text)
+
+    def _paste_selection(self) -> None:
+        """Paste clipboard values into the selected editable cells.
+
+        A single value fills every selected editable cell; a tab/newline block is
+        placed starting at the top-left selected cell.
+        """
+        text = QtWidgets.QApplication.clipboard().text()
+        idxs = self._table.selectedIndexes()
+        if not text.strip() or not idxs:
+            return
+        grid = [line.split("\t") for line in text.splitlines() if line != ""]
+        editable = QtCore.Qt.ItemIsEditable
+
+        if len(grid) == 1 and len(grid[0]) == 1:
+            value = grid[0][0]
+            for i in idxs:
+                if self._model.flags(i) & editable:
+                    self._model.setData(i, value, QtCore.Qt.EditRole)
+            return
+        anchor = min(idxs, key=lambda x: (x.row(), x.column()))
+        for dr, line in enumerate(grid):
+            for dc, value in enumerate(line):
+                i = self._model.index(anchor.row() + dr, anchor.column() + dc)
+                if i.isValid() and (self._model.flags(i) & editable):
+                    self._model.setData(i, value, QtCore.Qt.EditRole)
 
     # -- column visibility --------------------------------------------------
     def _apply_column_visibility(self):
@@ -447,6 +656,9 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
             self._model.columnCount() - 1,
         )
         self._model.dataChanged.emit(top_left, bottom_right)
+
+    #: :meth:`AutoForm.refresh_plots` calls ``refresh`` on AUTOFORM_REFRESH widgets.
+    refresh = sync
 
     # -- accessors ----------------------------------------------------------
     @property

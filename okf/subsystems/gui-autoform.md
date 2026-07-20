@@ -27,12 +27,48 @@ the TTTR image browser and the molecule-wise MLE tool), `waterfall` (RGB
 time-vs-µtime images), `path_list` (drag-drop file/folder lists),
 `rate_matrix` (a reusable editable N×N transition-rate grid that tracks a
 `size_attr` such as the species/state count, with the diagonal fixed at 0 — for
-kinetic interconversion matrices anywhere in ChiSurf), and
-`wizard`/`info`/`embed`. Sections take a `description` field mapped to widget
+kinetic interconversion matrices anywhere in ChiSurf), `parameter_group_table` (a
+space-saving **table** rendering of a `FittingParameterGroup` — one row per
+`FittingParameter`, `QTableView` with columns `name`/`value`/`fixed`/`bounds_lo`/
+`bounds_hi`/`bounds_on`/`error` and click-to-toggle checkbox delegates, cells
+bound to the live parameter objects; the compact alternative to the verbose
+`parameter_group` section — same `target`/`exclude_source`/`collapsible`, just
+swap the `type`; HTML labels keep sub/superscripts, right-click copy/paste; a
+row offers the **same per-parameter actions as the verbose section's row
+widget** — right-click links/unlinks the parameter across fits, clicking its
+name opens the parameter detail popup — via a `FittingParameterProxyController`
+standing in for the absent row widget),
+`scalar_table` (the same compact name/value table for **plain** `float`/`int`/
+`bool` model attributes rather than `FittingParameter`s — `{rows:[{attr,label,
+kind}], call}` — for parameter-dense editors like the FRET-species crosstalk /
+anisotropy groups), `help` (a `?` modal button), and
+`wizard`/`info`/`embed`. **All tables** (log, `parameter_group_table`,
+`scalar_table`, AutoForm record `table`) share the central
+`chisurf.gui.widgets.general.table_font` — monospace by default (configurable via
+`gui.table`) so tables look like the log/console and numeric columns align. Sections take a `description` field mapped to widget
 tooltips, and manifest `rpc_methods` can be rendered as forms via
 `AutoForm.from_rpc_method`. A `button_row` collapses into a single popup
 `QToolButton` menu when given a `menu` label (emoji labels act as inline action
-icons) — the space-efficient default for tool actions.
+icons) — the space-efficient default for tool actions. Editable `table` sections
+refresh the hosting form on a cell edit (the same walk-up to
+`sync_fields`+`refresh_plots` that value/toggle/button sections use), so a
+table-driven preview or derived field updates live without extra wiring.
+
+**Help behind a `?` modal (general UI rule).** Keep forms uncluttered — short
+labels, detail in tooltips, and *longer* explanations behind a small `?` button
+that opens a modal help popup rather than inline paragraphs. The reusable `help`
+custom section renders that button:
+`{"type":"custom","key":"help","options":{"title":"…","text":"# markdown…"}}`
+(or `"resource":"path.md"`); it opens a modal `QTextBrowser` (Markdown/HTML). Add
+one to any dense view instead of packing instructions into the layout.
+
+A reusable **synthetic-decay editor** (`chisurf/gui/widgets/synthetic_decay_editor.py`,
+`SyntheticDecayEditorModel` + `synthetic_decay_editor.view.json`) packages an
+amplitude/lifetime spectrum table, IRF (file or Gaussian FWHM), Poisson
+shot-noise, a measured-pattern override, "Read from Fit", and a live decay
+preview into one view; the FCS Filter Calculator's synthetic-component dialog and
+the acquisition simulator's Decay modal both embed it so the two never diverge
+(see [plugins/fcs.md](/plugins/fcs.md)).
 
 When touching GUI code, prefer porting hand-built widgets to AutoForm + a
 JSON view scheme.

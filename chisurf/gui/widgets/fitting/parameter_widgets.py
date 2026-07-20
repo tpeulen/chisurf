@@ -137,6 +137,19 @@ class PriorEditorDialog(QtWidgets.QDialog):
         return state
 
 
+def _controller_decimals(controller, editor_name: str, default: int = 6) -> int:
+    """Decimals of a controller's editor, falling back when it has none.
+
+    :class:`FittingParameterProxyController` carries no editors, so the popup
+    uses ``default`` for those controllers.
+    """
+    editor = getattr(controller, editor_name, None)
+    opts = getattr(editor, "opts", None)
+    if isinstance(opts, dict):
+        return opts.get("decimals", default)
+    return default
+
+
 class FittingParameterDetailPopup(QtWidgets.QDialog):
 
     def __init__(self, controller: 'FittingParameterWidget'):
@@ -185,7 +198,11 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         # Value editor
         val_row = QtWidgets.QHBoxLayout()
         val_row.addWidget(QtWidgets.QLabel("Value:"))
-        self.sb_value = ScientificDoubleSpinBox(dec=True, decimals=self.controller.widget_value.opts.get('decimals', 6), finite=False)
+        self.sb_value = ScientificDoubleSpinBox(
+            dec=True,
+            decimals=_controller_decimals(controller, 'widget_value'),
+            finite=False,
+        )
         val_row.addWidget(self.sb_value)
         layout.addLayout(val_row)
 
@@ -223,10 +240,14 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.cb_bounds_on = QtWidgets.QCheckBox("Enable bounds")
         b_layout.addWidget(self.cb_bounds_on, 0, 0, 1, 2)
         b_layout.addWidget(QtWidgets.QLabel("Lower:"), 1, 0)
-        self.sb_lb = ScientificDoubleSpinBox(dec=True, decimals=self.controller.widget_lower_bound.opts.get('decimals', 6))
+        self.sb_lb = ScientificDoubleSpinBox(
+            dec=True, decimals=_controller_decimals(controller, 'widget_lower_bound')
+        )
         b_layout.addWidget(self.sb_lb, 1, 1)
         b_layout.addWidget(QtWidgets.QLabel("Upper:"), 2, 0)
-        self.sb_ub = ScientificDoubleSpinBox(dec=True, decimals=self.controller.widget_upper_bound.opts.get('decimals', 6))
+        self.sb_ub = ScientificDoubleSpinBox(
+            dec=True, decimals=_controller_decimals(controller, 'widget_upper_bound')
+        )
         b_layout.addWidget(self.sb_ub, 2, 1)
         p_layout.addWidget(self._bounds_box)
 
@@ -576,7 +597,7 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         try:
             v = float(fp.value)
         except Exception:
-            v = self.controller.widget_value.value()
+            v = self.sb_value.value()
         self.sb_value.setValue(v)
         # Fixed
         self.cb_fixed.blockSignals(True)
@@ -658,7 +679,17 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
 
 
 
-class FittingParameterWidget(Controller):
+class ParameterActionsMixin:
+    """Parameter-centric actions shared by every parameter editor.
+
+    Provides the fit/local-fit lookup helpers, the provenance trace hook, and
+    the link menu for a single :class:`~chisurf.core.fitting.parameter.FittingParameter`
+    exposed as ``self.fitting_parameter``.  It is mixed into
+    :class:`FittingParameterWidget` (the per-parameter row widget) and into
+    :class:`FittingParameterProxyController`, which lets views without a row
+    widget — such as the AutoForm parameter table — offer the same linking and
+    detail-popup behaviour.
+    """
 
     def _locate_parameter(self, parameter) -> typing.Tuple[str, str]:
         fit_group_label = "?"
@@ -888,7 +919,9 @@ class FittingParameterWidget(Controller):
                     # reflects the follower/linked role. The target parameter
                     # (master) remains visually unchanged (no check mark), so
                     # the user can always use this row's checkbox to unlink.
-                    self.widget_link.setToolTip(tooltip)
+                    link_cb = getattr(self, "widget_link", None)
+                    if link_cb is not None:
+                        link_cb.setToolTip(tooltip)
                     try:
                         self.finalize()
                         # Update the linked parameter to show master's value
@@ -947,6 +980,65 @@ class FittingParameterWidget(Controller):
             self._update_linked_parameters()
 
         return linkcall
+
+    def _update_linked_parameters(self):
+        try:
+            if not self.fitting_parameter.is_linked:
+                master_param = self.fitting_parameter
+                fc = get_fitting_client()
+                if fc is not None:
+                    # Update via RPC - fit.model.finalize will handle linked params
+                    fit_uid = getattr(master_param, "fit_uid", None) or (
+                        self._parameter_context(master_param).get("fit_uid"))
+                    if fit_uid:
+                        fc.model_finalize(fit_uid=fit_uid)
+        except Exception:
+            pass
+
+
+class FittingParameterProxyController(ParameterActionsMixin, QtWidgets.QWidget):
+    """Minimal stand-in for :class:`FittingParameterWidget` around one parameter.
+
+    Views that render parameters themselves (e.g. the AutoForm parameter table)
+    have no per-parameter row widget, yet the link menu and
+    :class:`FittingParameterDetailPopup` are written against a controller.  This
+    proxy supplies exactly that contract — ``fitting_parameter`` plus a
+    :meth:`finalize` that notifies the owning view — without building any of the
+    row's editors.
+
+    Parameters
+    ----------
+    fitting_parameter : chisurf.core.fitting.parameter.FittingParameter
+        The parameter the actions operate on.
+    parent : QtWidgets.QWidget or None
+        Parent widget; also the parent of popups and menus created from here.
+    on_change : callable or None
+        Called with no arguments whenever :meth:`finalize` runs, i.e. after any
+        edit made through the popup or the link menu.
+    """
+
+    def __init__(
+        self,
+        fitting_parameter: chisurf.core.fitting.parameter.FittingParameter,
+        parent: typing.Optional[QtWidgets.QWidget] = None,
+        on_change: typing.Optional[typing.Callable[[], None]] = None,
+    ):
+        super().__init__(parent)
+        self.setVisible(False)
+        self.fitting_parameter = fitting_parameter
+        self._on_change = on_change
+
+    def finalize(self, *args) -> None:
+        """Notify the owning view that the parameter changed."""
+        cb = self._on_change
+        if cb is not None:
+            try:
+                cb()
+            except Exception:
+                pass
+
+
+class FittingParameterWidget(ParameterActionsMixin, Controller):
 
     def contextMenuEvent(self, event: QtGui.QCloseEvent):
 
@@ -1606,20 +1698,6 @@ class FittingParameterWidget(Controller):
 
     def setValue(self, v):
         self.widget_value.setValue(v)
-
-    def _update_linked_parameters(self):
-        try:
-            if not self.fitting_parameter.is_linked:
-                master_param = self.fitting_parameter
-                fc = get_fitting_client()
-                if fc is not None:
-                    # Update via RPC - fit.model.finalize will handle linked params
-                    fit_uid = getattr(master_param, "fit_uid", None) or (
-                        self._parameter_context(master_param).get("fit_uid"))
-                    if fit_uid:
-                        fc.model_finalize(fit_uid=fit_uid)
-        except Exception:
-            pass
 
     def _refresh_group_link_visuals(self):
         """Refresh link-role visuals for same-named parameters in current fit group."""

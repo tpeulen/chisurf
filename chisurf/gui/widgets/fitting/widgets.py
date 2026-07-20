@@ -7,7 +7,9 @@ from .fit_subwindow import FitSubWindow
 from .parameter_widgets import (
     FittingParameterDetailPopup,
     FittingParameterGroupWidget,
+    FittingParameterProxyController,
     FittingParameterWidget,
+    ParameterActionsMixin,
     make_fitting_parameter_group_widget,
     make_fitting_parameter_widget,
 )
@@ -20,8 +22,10 @@ __all__ = [
     'FittingControllerWidget',
     'FitSubWindow',
     'FittingParameterDetailPopup',
+    'FittingParameterProxyController',
     'FittingParameterWidget',
     'FittingParameterGroupWidget',
+    'ParameterActionsMixin',
     'make_fitting_parameter_widget',
     'make_fitting_parameter_group_widget',
 ]
