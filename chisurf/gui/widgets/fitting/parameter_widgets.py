@@ -995,6 +995,36 @@ class ParameterActionsMixin:
         except Exception:
             pass
 
+    def _trigger_model_update(self):
+        """Recompute the owning fit and refresh visible output parameters."""
+        try:
+            fc = get_fitting_client()
+            if fc is not None:
+                fit_uid = self._parameter_context(self.fitting_parameter).get("fit_uid")
+                if fit_uid:
+                    fc.update_fit(fit_uid=fit_uid)
+                    fc.model_finalize(fit_uid=fit_uid)
+            # ``fc.update_fit`` publishes ``fit.updated``, which the main window
+            # turns into a single ``_refresh_fit_display`` (trace redraw) on the
+            # next subscriber poll. Do not redraw here as well — one refresh per
+            # value change is enough.
+            # Fallback (UI-scoped): refresh visible output parameter widgets
+            try:
+                root = self.window()
+                if root is not None:
+                    for w in root.findChildren(QtWidgets.QWidget):
+                        try:
+                            if not bool(getattr(w, "_is_output_param", False)):
+                                continue
+                            if hasattr(w, "finalize"):
+                                w.finalize()
+                        except Exception:
+                            continue
+            except Exception:
+                pass
+        except Exception:
+            pass
+
 
 class FittingParameterProxyController(ParameterActionsMixin, QtWidgets.QWidget):
     """Minimal stand-in for :class:`FittingParameterWidget` around one parameter.
@@ -1755,35 +1785,6 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         self.finalize()
         self._update_linked_parameters()
         self._trigger_model_update()
-
-    def _trigger_model_update(self):
-        try:
-            fc = get_fitting_client()
-            if fc is not None:
-                fit_uid = self._parameter_context(self.fitting_parameter).get("fit_uid")
-                if fit_uid:
-                    fc.update_fit(fit_uid=fit_uid)
-                    fc.model_finalize(fit_uid=fit_uid)
-            # ``fc.update_fit`` publishes ``fit.updated``, which the main window
-            # turns into a single ``_refresh_fit_display`` (trace redraw) on the
-            # next subscriber poll. Do not redraw here as well — one refresh per
-            # value change is enough.
-            # Fallback (UI-scoped): refresh visible output parameter widgets
-            try:
-                root = self.window()
-                if root is not None:
-                    for w in root.findChildren(QtWidgets.QWidget):
-                        try:
-                            if not bool(getattr(w, "_is_output_param", False)):
-                                continue
-                            if hasattr(w, "finalize"):
-                                w.finalize()
-                        except Exception:
-                            continue
-            except Exception:
-                pass
-        except Exception:
-            pass
 
     def _on_main_bounds_on_toggled(self):
         if getattr(self, "_is_output_param", False):

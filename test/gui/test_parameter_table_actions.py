@@ -103,6 +103,48 @@ def test_popup_edit_refreshes_the_table(table, qtbot):
     popup.hide()
 
 
+def test_proxy_satisfies_the_popup_controller_contract(params, qapp):
+    """Every ``self.controller.X`` the popup uses must exist on the proxy.
+
+    The popup is written against ``FittingParameterWidget``; the proxy stands in
+    for it.  Parsing the popup keeps the two in sync as it grows — a new
+    controller call that only the row widget has fails here instead of at
+    runtime (as ``_trigger_model_update`` once did).
+    """
+    import ast
+    import inspect
+
+    from chisurf.gui.widgets.fitting import parameter_widgets as pw
+
+    tree = ast.parse(inspect.getsource(pw))
+    popup = next(
+        c for c in tree.body
+        if isinstance(c, ast.ClassDef) and c.name == "FittingParameterDetailPopup"
+    )
+    used = {
+        n.attr for n in ast.walk(popup)
+        if isinstance(n, ast.Attribute)
+        and isinstance(n.value, ast.Attribute)
+        and n.value.attr == "controller"
+    }
+    assert used, "no controller attributes found — the parse is wrong"
+    ctrl = FittingParameterProxyController(params[0])
+    missing = sorted(a for a in used if not hasattr(ctrl, a))
+    assert not missing, f"proxy controller is missing: {missing}"
+
+
+def test_popup_value_edit_does_not_crash_on_the_proxy(table, qtbot):
+    """Editing the value routes through ``_trigger_model_update`` on the proxy."""
+    table._on_cell_clicked(table.table_model.index(0, COL_NAME))
+    popup = table._detail_popup
+    qtbot.addWidget(popup)
+
+    popup.sb_value.setValue(7.5)
+    popup.sb_value.editingFinished.emit()
+
+    popup.hide()
+
+
 def test_proxy_controller_reports_parameter_context(params, qapp):
     """The proxy exposes the same context dict the row widget's actions use."""
     ctrl = FittingParameterProxyController(params[0])
