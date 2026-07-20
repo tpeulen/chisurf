@@ -16,7 +16,10 @@ def test_fcs_filter_calculator_widget(qapp, qtbot):
     assert widget.options_model.scatter_irf is True
     detector_names = widget.detector_selection.get_selected() or ["default"]
     assert len(widget._total_vectors_by_detector) == len(detector_names)
-    assert set(widget._synthetic_scatter_fits) == set(detector_names)
+    # The scatter/IRF nuisance pattern is taken from each detector's own IRF, so
+    # every detector records the shape it used (no independent coarse re-fit).
+    assert set(widget._irf_by_detector) == set(detector_names)
+    assert not widget._synthetic_scatter_fits
     assert widget._result is not None or widget._result_multi_detector
     assert not hasattr(widget, "tabs")
     assert isinstance(widget.toolbar, QtWidgets.QToolBar)
@@ -38,7 +41,7 @@ def test_preloaded_patterns_are_convolved_per_detector(qapp, qtbot):
         fast_source["patterns_by_detector"]["green"],
         fast_source["patterns_by_detector"]["red"],
     )
-    assert set(widget._synthetic_scatter_fits) >= {"green", "red"}
+    assert set(widget._irf_by_detector) >= {"green", "red"}
 
 
 def test_calculator_uses_chisurf_docks(qapp, qtbot):
@@ -49,7 +52,8 @@ def test_calculator_uses_chisurf_docks(qapp, qtbot):
     widget = FcsFilterCalculatorWidget()
     qtbot.addWidget(widget)
     assert isinstance(widget.dock_area, DockArea)
-    assert len(widget.dock_area._all_widgets) == 5
+    # Sources, Setup, Auto-fit, Instrument, Info, Lifetime filters, residuals, reconstruction.
+    assert len(widget.dock_area._all_widgets) == 8
     assert widget.dock_area._all_widgets.index(
         widget.plot_residuals
     ) < widget.dock_area._all_widgets.index(widget.plot_recon)
@@ -177,10 +181,40 @@ def test_widget_adds_irf_scatter_as_hidden_nuisance_filter(qapp, qtbot, tmp_path
     assert all(result.nuisance_labels[0] == "Afterpulse / constant" for result in results)
     assert all(result.nuisance_labels[1].startswith("Scatter / IRF (") for result in results)
     assert results[0].nuisance_labels[1].endswith(", measured)")
+    # Detectors without a measured IRF use their (synthetic) detector IRF as the
+    # scatter shape, so it stays consistent with the auto-fit / component convolution.
     assert all(
-        result.nuisance_labels[1].endswith(", fitted)") for result in results[1:]
+        result.nuisance_labels[1].endswith(", detector-IRF)") for result in results[1:]
     )
     assert all(result.to_channel_filters().shape[0] == result.n_species for result in results)
+
+
+def test_nuisance_scatter_fit_ignores_zero_emission_species(qapp, qtbot):
+    """A species that emits nothing in a detector must not break the scatter fit.
+
+    In multi-detector FRET mode a species (e.g. a FRET-sensitized acceptor) can
+    have an all-zero per-detector pattern in the donor channel. That degenerate
+    pattern carries no information for the synthetic-scatter unmix basis, so it
+    is dropped rather than raising ``component_decays[i] must ... be non-zero``.
+    """
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    widget.options_model.scatter_irf = True  # synthetic (no measured IRF loaded)
+
+    x = np.arange(256, dtype=float)
+    total = np.exp(-x / 25.0) + 0.01
+    real = np.exp(-x / 40.0) + 0.01
+    zero = np.zeros_like(x)  # a species emitting nothing in this detector
+
+    det0 = (widget.detector_selection.get_selected() or ["green"])[0]
+    patterns, labels = widget._nuisance_patterns(total, [real, zero], det0)
+
+    assert any(lbl.startswith("Scatter / IRF (") for lbl in labels)
+    scatter = patterns[labels.index(next(l for l in labels if l.startswith("Scatter")))]
+    assert scatter.size == total.size
+    assert np.all(np.isfinite(scatter)) and scatter.sum() > 0.0
 
 
 def test_synthetic_dialog_uses_editable_lifetime_spectrum_table(qapp, qtbot, monkeypatch):
@@ -432,6 +466,9 @@ def test_auto_fit_adds_lifetime_components(qapp, qtbot, tmp_path):
     widget = FcsFilterCalculatorWidget()
     qtbot.addWidget(widget)
     widget.detector_selection.refresh([])  # no detector IRF: fit the ideal decay
+    # Pure lifetime fit: the ideal decay carries no scatter/background.
+    widget.options_model.scatter_irf = False
+    widget.fit_background_cb.setChecked(False)
     widget._set_total_paths([total_path])
     widget.lw_species.clear()
     widget._auto_fit_components(n_components=2)
@@ -445,13 +482,14 @@ def test_auto_fit_adds_lifetime_components(qapp, qtbot, tmp_path):
     assert abs(taus[1] - 4.0) < 0.4
 
 
-def test_auto_fit_tail_range_resolves_distinct_components(qapp, qtbot, tmp_path):
+def test_auto_fit_joint_irf_fit_resolves_distinct_components(qapp, qtbot, tmp_path):
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
     from chisurf.plugins.fcs.fcs_filter_calculator.api import synthetic_decay
     from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
 
-    # An IRF-convolved bi-exponential with a real prompt at ~bin 14 — fitting the
-    # whole trace collapses; fitting the *tail range* resolves both lifetimes.
+    # An IRF-convolved bi-exponential with a real prompt at ~bin 14. With no
+    # measured IRF loaded, auto-fit fits the IRF jointly (from the prompt) and
+    # resolves both lifetimes without a tail-only workaround.
     t = np.arange(256) * 0.05
     irf = synthetic_irf(t, center_ns=0.7, fwhm_ns=0.35)
     total = 60000.0 * synthetic_decay(256, 1.2, bin_width=0.05, irf=irf, normalize=True) \
@@ -463,9 +501,9 @@ def test_auto_fit_tail_range_resolves_distinct_components(qapp, qtbot, tmp_path)
     qtbot.addWidget(widget)
     widget.detector_selection.refresh(["green"])
     widget._set_total_paths([total_path])
-    # Tail range: from just past the prompt to the end.
-    widget._fit_region.setRegion((25.0, 255.0))
+    widget._fit_region.setRegion((0.0, 255.0))
     widget._fit_region_initialized = True
+    width_before = widget.detector_selection.width("green", "")
     widget.lw_species.clear()
     widget._auto_fit_components(n_components=2)
 
@@ -474,13 +512,16 @@ def test_auto_fit_tail_range_resolves_distinct_components(qapp, qtbot, tmp_path)
         widget.lw_species.item(i).data(QtCore.Qt.UserRole)["lifetimes"][0]
         for i in range(2)
     )
-    # Two DISTINCT lifetimes recovered (not collapsed to one), and each species is
-    # aligned to the fit-range start.
+    # Two DISTINCT lifetimes recovered (not collapsed to one).
     assert abs(taus[0] - 1.2) < 0.3
     assert abs(taus[1] - 4.0) < 0.6
     assert taus[1] - taus[0] > 1.0
+    # No measured IRF → the IRF width was fitted and written back to the detector,
+    # and components are convolved with it from the prompt (start_bin=0).
+    assert abs(widget.detector_selection.width("green", "") - width_before) > 1e-4
     src = widget.lw_species.item(0).data(QtCore.Qt.UserRole)
-    assert src["start_bin"] == 25
+    assert src["start_bin"] == 0
+    assert "patterns_by_detector" in src
 
 
 def test_fit_region_selector_present(qapp, qtbot):
@@ -494,6 +535,313 @@ def test_fit_region_selector_present(qapp, qtbot):
     widget._fit_region.setRegion((30.0, 200.0))
     widget._fit_region_initialized = True
     assert widget._fit_range(256) == (30, 200)
+
+
+def test_fit_region_survives_replots(qapp, qtbot):
+    """The draggable fit region stays in the plot after every recompute.
+
+    ``PlotWidget.clear()`` on each replot removes all items; the region selector
+    must be re-added (``_clear_recon_plot``) so it does not silently disappear the
+    first time filters are computed or a detector is toggled.
+    """
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    in_plot = lambda: widget._fit_region in widget.plot_recon.getPlotItem().items
+    assert in_plot(), "region missing after the initial example compute"
+    # Toggle a detector → recompute → region must still be present.
+    names = list(widget.detector_selection.checkboxes.keys())
+    widget.detector_selection.checkboxes[names[0]].setChecked(False)
+    qapp.processEvents()
+    assert in_plot(), "region wiped by the detector-toggle recompute"
+
+
+def test_auto_fit_fits_irf_when_no_measured_irf(qapp, qtbot):
+    """Auto-fit fits the synthetic IRF width and writes it back when no IRF loaded."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    names = list(widget.detector_selection.get_selected())
+    # No measured IRF configured → the width must be fitted (and changed) for the
+    # selected detectors.
+    for n in names:
+        assert widget._measured_irf_vector(n) is None
+    before = {n: widget.detector_selection.width(n, "") for n in names}
+    widget._auto_fit_settings = {
+        "kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0,
+    }
+    widget._auto_fit_components(n_components=2)
+    qapp.processEvents()
+    after = {n: widget.detector_selection.width(n, "") for n in names}
+    assert any(abs(after[n] - before[n]) > 1e-4 for n in names), (
+        "IRF width was not fitted / written back"
+    )
+    assert "IRF FWHM" in widget.lbl_autofit_status.text()
+
+
+def test_stacked_mode_computes_global_filters_split_per_detector(qapp, qtbot):
+    """Global (stacked) mode solves one filter set over concatenated detectors and
+    splits it back into per-detector slices; the independent mode is the default."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    dets = list(widget.detector_selection.get_selected())
+    assert len(dets) > 1
+
+    # Default is independent per-detector filters.
+    assert not widget.stacked_mode_cb.isChecked()
+    widget._compute_filters()
+    assert widget._result_multi_detector
+    assert all(dr["result"].metadata.get("filter_mode") != "stacked"
+               for dr in widget._result_multi_detector)
+
+    # Enable stacked/global mode → one global set, split per detector, mode tagged.
+    widget.stacked_mode_cb.setChecked(True)
+    qapp.processEvents()
+    results = widget._result_multi_detector
+    assert results and len(results) == len(dets)
+    for dr in results:
+        r = dr["result"]
+        assert r.metadata.get("filter_mode") == "stacked"
+        assert r.metadata.get("stacked_detectors") == dets
+        assert r.n_bins == widget._result_multi_detector[0]["result"].n_bins
+        assert np.all(np.isfinite(r.filters))
+        assert r.to_channel_filters().shape[0] == r.n_species
+
+
+def test_stacked_mode_uses_fret_interdetector_scaling(qapp, qtbot):
+    """A FRET species with asymmetric per-detector brightness yields different
+    filters in stacked mode than in independent mode (the coupling is used)."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    dets = list(widget.detector_selection.get_selected())
+
+    def green_species_filters():
+        widget._compute_filters()
+        g = next(dr for dr in widget._result_multi_detector if dr["detector"] == dets[0])
+        return np.asarray(g["result"].to_channel_filters(), dtype=float)
+
+    widget.stacked_mode_cb.setChecked(False)
+    indep = green_species_filters()
+    widget.stacked_mode_cb.setChecked(True)
+    stacked = green_species_filters()
+    # Same shape, but the joint (cross-detector) solution differs from the
+    # per-detector-independent one.
+    assert indep.shape == stacked.shape
+    assert not np.allclose(indep, stacked)
+
+
+def test_example_components_cleared_when_data_loaded(qapp, qtbot, tmp_path):
+    """Loading measured data drops the built-in example species but keeps user ones."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    # The panel seeds two example components on first open.
+    assert widget.lw_species.count() == 2
+    # A user-added component must survive the load.
+    widget.lw_species.add_synthetic_source(
+        {"type": "synthetic", "model": "lifetime", "name": "MyComp",
+         "lifetime": 2.5, "bin_width": 0.05}
+    )
+    total = tmp_path / "mix.txt"
+    np.savetxt(total, np.exp(-np.arange(256) / 40.0) + 0.01)
+    widget._set_total_paths([total])
+
+    names = [widget.lw_species.item(i).text() for i in range(widget.lw_species.count())]
+    assert not any("example" in n.lower() for n in names)
+    assert any("MyComp" in n for n in names)
+
+
+def test_auto_fit_on_file_backed_total_with_nondefault_bins(qapp, qtbot, tmp_path):
+    """Auto-fit must not crash on file-backed data whose bin count differs from 256.
+
+    ``_total_vector`` is ``None`` for file-/correlator-backed totals, so the
+    synthetic IRF must be built at the real bin count (`_current_n_bins`); a
+    fitted shift on a 256-bin IRF used against a 2048-bin decay previously pushed
+    the prompt off the end and raised "irf must contain a positive value".
+    """
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+    from chisurf.plugins.fcs.fcs_filter_calculator.api import synthetic_decay
+    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
+
+    t = np.arange(2048) * 0.05
+    irf = synthetic_irf(t, center_ns=0.9, fwhm_ns=0.3, shape=0.3)
+    total = (60000.0 * synthetic_decay(2048, 1.2, bin_width=0.05, irf=irf, normalize=True)
+             + 40000.0 * synthetic_decay(2048, 4.0, bin_width=0.05, irf=irf, normalize=True))
+    p = tmp_path / "mix.txt"
+    np.savetxt(p, total)
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    widget.detector_selection.refresh(["green", "red", "yellow"])
+    widget._set_total_paths([p])
+    assert widget._total_vector is None and widget._current_n_bins() == 2048
+    widget._auto_fit_settings = {
+        "kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0,
+    }
+    widget._auto_fit_components(n_components=2)  # must not raise
+    assert widget.lw_species.count() == 2
+
+
+def test_instrument_dock_autoform_and_period(qapp, qtbot):
+    """The Instrument dock is an AutoForm over α/β/γ/δ/G/l1/l2/R0/period, and the
+    laser period drives the periodic-convolution helper."""
+    from chisurf.gui.autoform import AutoForm
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    assert "Instrument" in widget.dock_area._tab_names.values()
+    assert isinstance(widget.instrument_form, AutoForm)
+    for attr in ("alpha", "beta", "gamma", "delta", "g_factor", "l1", "l2",
+                 "forster_radius", "period_ns", "periodic"):
+        assert hasattr(widget.instrument_model, attr)
+
+    # Periodic convolution: off ⇒ None; on with 0 ⇒ full micro-time window.
+    assert widget._fit_period_ns(256, 0.05) is None
+    widget.instrument_model.periodic = True
+    assert widget._fit_period_ns(256, 0.05) == 256 * 0.05
+    widget.instrument_model.period_ns = 12.5
+    assert widget._fit_period_ns(256, 0.05) == 12.5
+
+    # Setup calibration prepopulates the instrument parameters.
+    widget._detector_settings = {"calibration": {"alpha": 0.02, "gamma": 0.9, "g_factor": 1.15}}
+    widget._prepopulate_instrument_from_setup()
+    assert widget.instrument_model.alpha == 0.02
+    assert widget.instrument_model.gamma == 0.9
+    assert widget.instrument_model.g_factor == 1.15
+
+
+def test_filters_computed_over_fit_range_window(qapp, qtbot):
+    """fFCS filters are solved on the fit-range slice, not the full decay: the
+    reconstruction equals the total outside the range (residual 0) and the filters
+    are zero there, so the excluded pre-prompt/tail bins can't bias the fit."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    widget._detector_fit_ranges[widget.detector_selection.get_selected()[0]] = (40, 200)
+    widget._compute_filters()
+    qapp.processEvents()
+
+    entry = next(e for e in widget._result_multi_detector
+                 if e["detector"] == widget.detector_selection.get_selected()[0])
+    res = entry["result"]
+    f = np.asarray(res.filters)
+    assert np.all(f[:, :40] == 0.0) and np.all(f[:, 200:] == 0.0)
+    # Outside the window the reconstruction tracks the total (residual 0 there).
+    recon = np.asarray(res.reconstruction)
+    total = np.asarray(res.total_decay)
+    assert np.allclose(recon[:40], total[:40]) and np.allclose(recon[200:], total[200:])
+
+
+def test_filters_zeroed_outside_per_detector_fit_range(qapp, qtbot):
+    """Filters are zeroed outside each detector's fit range (global or override)."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    dets = list(widget.detector_selection.get_selected())
+    widget._detector_fit_ranges[dets[0]] = (50, 150)
+    widget._compute_filters()
+    qapp.processEvents()
+
+    entry = next(e for e in widget._result_multi_detector if e["detector"] == dets[0])
+    f = np.asarray(entry["result"].filters)
+    assert np.all(f[:, :50] == 0.0) and np.all(f[:, 150:] == 0.0)
+    assert np.any(f[:, 50:150] != 0.0)
+
+
+def test_fit_range_change_auto_updates_filters_without_refit(qapp, qtbot):
+    """Changing the fit range re-zeros the stored filters (narrow → widen recovers
+    the previously-zeroed columns via the cached un-zeroed filters), no refit."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    dets = list(widget.detector_selection.get_selected())
+
+    def green_filters():
+        e = next(x for x in widget._result_multi_detector if x["detector"] == dets[0])
+        return np.asarray(e["result"].filters)
+
+    widget._fit_region.setRegion((60.0, 180.0))
+    widget._fit_region_initialized = True
+    widget._on_fit_range_committed()
+    f = green_filters()
+    assert np.all(f[:, :60] == 0.0) and np.all(f[:, 180:] == 0.0)
+
+    # Widen: columns that were zeroed must come back (proves cache, not refit-loss).
+    widget._fit_region.setRegion((10.0, 250.0))
+    widget._on_fit_range_committed()
+    f = green_filters()
+    assert np.any(f[:, 10:60] != 0.0)
+    assert np.all(f[:, :10] == 0.0) and np.all(f[:, 250:] == 0.0)
+
+
+def test_info_dock_gathers_state_and_per_detector_range_editable(qapp, qtbot):
+    """The Info dock exists, summarizes state, and its range table drives overrides."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    assert "Info" in widget.dock_area._tab_names.values()
+    assert hasattr(widget, "info_text") and hasattr(widget, "info_range_table")
+    widget._refresh_info()
+    text = widget.info_text.toPlainText()
+    assert "Mixed decay" in text and "Detectors" in text and "Components" in text
+
+    # Editing a Start/Stop cell records a per-detector override.
+    dets = list(widget.detector_selection.get_selected())
+    assert widget.info_range_table.rowCount() == len(dets)
+    widget.info_range_table.item(0, 1).setText("40")
+    widget.info_range_table.item(0, 2).setText("200")
+    assert widget._detector_fit_ranges[dets[0]] == (40, 200)
+
+
+def test_residuals_masked_to_fit_range(qapp, qtbot):
+    """Residuals outside the selected fit range are blanked (NaN → not drawn)."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    widget._fit_region.setRegion((30.0, 200.0))
+    widget._fit_region_initialized = True
+    masked = widget._mask_to_fit_range(np.ones(256, dtype=float))
+    assert np.isnan(masked[:30]).all()
+    assert np.isfinite(masked[30:200]).all()
+    assert np.isnan(masked[200:]).all()
+
+
+def test_detector_irf_shift_moves_prompt_and_persists(qapp, qtbot):
+    """The per-detector IRF time shift moves both synthetic & measured IRFs, and
+    round-trips through the detector table's export/import state."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    ds = widget.detector_selection
+    det = ds.get_selected()[0]
+    ds.set_width(det, 0.2, "")
+    dt = widget._pattern_bin_width_ns()
+
+    peak0 = int(np.argmax(widget._detector_irf(det)))
+    ds.set_shift(det, 0.5, "")  # +0.5 ns → later by 0.5/dt bins
+    peak1 = int(np.argmax(widget._detector_irf(det)))
+    assert peak1 - peak0 == round(0.5 / dt)
+
+    # Shift is part of the persisted detector state.
+    state = ds.export_state()
+    assert "shift" in state
+    ds.set_shift(det, 0.0, "")
+    ds.import_state(state)
+    assert abs(ds.shift(det, "") - 0.5) < 1e-9
 
 
 def test_fit_range_resets_on_new_data_and_spinboxes_sync(qapp, qtbot, tmp_path):
@@ -573,3 +921,20 @@ def test_auto_fit_settings_drive_kind_and_bounds(qapp, qtbot, tmp_path):
     models = {widget.lw_species.item(i).data(QtCore.Qt.UserRole)["model"]
               for i in range(widget.lw_species.count())}
     assert models == {"fret_species"}
+
+
+def test_autofit_settings_dock_present(qapp, qtbot):
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    # Persistent Auto-fit settings dock with type / N / lifetime bounds controls.
+    assert "Auto-fit" in widget.dock_area._tab_names.values()
+    assert widget.cb_autofit_kind.currentData() == "lifetime"
+    # Editing the dock controls updates the persistent settings.
+    widget.sb_autofit_n.setValue(3)
+    widget.cb_autofit_kind.setCurrentIndex(1)
+    widget.sb_autofit_tmax.setValue(12.0)
+    assert widget._auto_fit_settings["n_components"] == 3
+    assert widget._auto_fit_settings["kind"] == "fret"
+    assert widget._auto_fit_settings["tau_max"] == 12.0

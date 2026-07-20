@@ -76,7 +76,10 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         self._irf: Dict[tuple, str] = {}
         self._width: Dict[tuple, float] = {}
         self._skew: Dict[tuple, float] = {}
+        self._shift: Dict[tuple, float] = {}
         self._width_spins: Dict[tuple, QtWidgets.QDoubleSpinBox] = {}
+        self._skew_spins: Dict[tuple, QtWidgets.QDoubleSpinBox] = {}
+        self._shift_spins: Dict[tuple, QtWidgets.QDoubleSpinBox] = {}
         self.checkboxes: Dict[str, QtWidgets.QCheckBox] = {}
 
         # Coalesce rapid Width/Skew edits into a single recompute.
@@ -88,10 +91,15 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(1)
-        self.table = QtWidgets.QTableWidget(0, 5, self)
-        self.table.setHorizontalHeaderLabels(["", "Detector", "Width", "Skew", "IRF"])
+        self.table = QtWidgets.QTableWidget(0, 6, self)
+        self.table.setHorizontalHeaderLabels(
+            ["", "Detector", "Width", "Skew", "Shift", "IRF"]
+        )
         self.table.horizontalHeaderItem(2).setToolTip("Synthetic-IRF start FWHM (ns)")
         self.table.horizontalHeaderItem(3).setToolTip("Synthetic-IRF generalized-Gaussian skew")
+        self.table.horizontalHeaderItem(4).setToolTip(
+            "IRF time shift (ns) — applied to the measured or synthetic IRF"
+        )
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
@@ -100,9 +108,11 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
         header.setSectionResizeMode(2, QtWidgets.QHeaderView.Fixed)
         header.setSectionResizeMode(3, QtWidgets.QHeaderView.Fixed)
-        header.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QtWidgets.QHeaderView.Fixed)
+        header.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)
         header.resizeSection(2, 66)
         header.resizeSection(3, 60)
+        header.resizeSection(4, 60)
         layout.addWidget(self.table)
 
     # ── configuration ────────────────────────────────────────────────
@@ -136,6 +146,8 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         self.table.setRowCount(0)
         self.checkboxes.clear()
         self._width_spins.clear()
+        self._skew_spins.clear()
+        self._shift_spins.clear()
         for detector in self._detectors:
             first_row = self.table.rowCount()
             for role in self._roles():
@@ -196,12 +208,26 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         ssb.setKeyboardTracking(False)
         ssb.setToolTip("Synthetic-IRF generalized-Gaussian skew")
         ssb.valueChanged.connect(lambda v, k=key: self._edit_value(self._skew, k, v))
+        self._skew_spins[key] = ssb
         self.table.setCellWidget(row, 3, ssb)
 
-        # col 4 — IRF load / unload
+        # col 4 — IRF time shift (ns); applies to measured *and* synthetic IRF
+        shsb = QtWidgets.QDoubleSpinBox()
+        shsb.setRange(-100.0, 100.0)
+        shsb.setDecimals(3)
+        shsb.setSingleStep(0.01)
+        shsb.setValue(float(self._shift.get(key, 0.0)))
+        shsb.setMaximumWidth(60)
+        shsb.setKeyboardTracking(False)
+        shsb.setToolTip("IRF time shift (ns) — applied to the measured or synthetic IRF")
+        shsb.valueChanged.connect(lambda v, k=key: self._edit_value(self._shift, k, v))
+        self._shift_spins[key] = shsb
+        self.table.setCellWidget(row, 4, shsb)
+
+        # col 5 — IRF load / unload
         btn = QtWidgets.QToolButton()
         btn.clicked.connect(lambda _=False, k=key: self._on_irf_button(k))
-        self.table.setCellWidget(row, 4, btn)
+        self.table.setCellWidget(row, 5, btn)
 
         self._sync_row(row, key)
 
@@ -235,7 +261,13 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
             ssb.setValue(float(self._skew.get(key, 0.0)))
             ssb.setEnabled(not has_irf)
             ssb.blockSignals(False)
-        btn = self.table.cellWidget(row, 4)
+        shsb = self.table.cellWidget(row, 4)
+        if shsb is not None:
+            # Shift applies to both measured and synthetic IRFs → always enabled.
+            shsb.blockSignals(True)
+            shsb.setValue(float(self._shift.get(key, 0.0)))
+            shsb.blockSignals(False)
+        btn = self.table.cellWidget(row, 5)
         if btn is not None:
             btn.setText("✕" if has_irf else "…")
             btn.setToolTip(
@@ -297,12 +329,37 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
     def skew(self, detector: str, role: str = "") -> float:
         return float(self._skew.get(self._key(detector, role), 0.0))
 
+    def set_skew(self, detector: str, value: float, role: str = "") -> None:
+        """Set a detector's synthetic-IRF skew and update its spinbox display."""
+        key = self._key(detector, role)
+        self._skew[key] = float(value)
+        spin = self._skew_spins.get(key)
+        if spin is not None:
+            spin.blockSignals(True)
+            spin.setValue(float(value))
+            spin.blockSignals(False)
+
+    def shift(self, detector: str, role: str = "") -> float:
+        """Return a detector's IRF time shift (ns); applies to measured & synthetic."""
+        return float(self._shift.get(self._key(detector, role), 0.0))
+
+    def set_shift(self, detector: str, value: float, role: str = "") -> None:
+        """Set a detector's IRF time shift (ns) and update its spinbox display."""
+        key = self._key(detector, role)
+        self._shift[key] = float(value)
+        spin = self._shift_spins.get(key)
+        if spin is not None:
+            spin.blockSignals(True)
+            spin.setValue(float(value))
+            spin.blockSignals(False)
+
     # ── persistence ──────────────────────────────────────────────────
     def export_state(self) -> dict:
         def enc(d):
             return {f"{k[0]}|{k[1]}": v for k, v in d.items()}
 
-        return {"irf": enc(self._irf), "width": enc(self._width), "skew": enc(self._skew)}
+        return {"irf": enc(self._irf), "width": enc(self._width),
+                "skew": enc(self._skew), "shift": enc(self._shift)}
 
     def import_state(self, state: dict) -> None:
         def dec(d):
@@ -317,6 +374,7 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         self._irf = {k: str(v) for k, v in dec(state.get("irf")).items()}
         self._width = {k: float(v) for k, v in dec(state.get("width")).items()}
         self._skew = {k: float(v) for k, v in dec(state.get("skew")).items()}
+        self._shift = {k: float(v) for k, v in dec(state.get("shift")).items()}
         self._rebuild()
 
 class DetectorSelectionWidget(QtWidgets.QGroupBox):

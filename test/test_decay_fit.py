@@ -84,3 +84,68 @@ def test_fits_irf_fwhm():
                                   fit_irf=True, irf_fwhm0=0.2, tau_bounds=(0.5, 6.0))
     assert res["irf_fwhm"] == pytest.approx(true_fwhm, rel=0.2)
     assert np.sort(res["lifetimes"])[0] == pytest.approx(2.5, rel=0.1)
+
+
+def test_periodic_convolution_fits_wraparound_decay():
+    """A periodic (laser-period) decay is only fit well when the fit is periodic too."""
+    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
+
+    period = N * DT
+    t = np.arange(N) * DT
+    irf = synthetic_irf(t, center_ns=0.6, fwhm_ns=0.25)
+    truth = (60_000.0 * synthetic_decay(N, [1.2], bin_width=DT, irf=irf,
+                                        normalize=True, period=period)
+             + 40_000.0 * synthetic_decay(N, [4.0], bin_width=DT, irf=irf,
+                                           normalize=True, period=period))
+    common = dict(bin_width=DT, n_components=2, fit_irf=True, irf_fwhm0=0.2,
+                  tau_bounds=(0.2, 8.0), irf_center_bounds=(0.0, 5.0))
+    aperiodic = fit_lifetime_components(truth, **common)
+    periodic = fit_lifetime_components(truth, period=period, **common)
+    assert periodic["chi2_reduced"] < aperiodic["chi2_reduced"]
+    assert np.sort(periodic["lifetimes"]) == pytest.approx([1.2, 4.0], rel=0.05)
+
+
+def test_fits_scatter_and_background_fractions():
+    """Including scatter + background in the fit recovers their fractions and
+    improves the fit versus lifetimes-only on a decay that carries both."""
+    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
+
+    t = np.arange(N) * DT
+    irf = synthetic_irf(t, center_ns=0.8, fwhm_ns=0.3)
+    life = synthetic_decay(N, [3.0], bin_width=DT, irf=irf, normalize=True)
+    scatter = irf / irf.sum()
+    background = np.ones(N) / N
+    # 60% lifetime, 25% scatter, 15% flat background.
+    truth = 100_000.0 * (0.60 * life + 0.25 * scatter + 0.15 * background)
+
+    bare = fit_lifetime_components(truth, bin_width=DT, n_components=1, fit_irf=True,
+                                   irf_fwhm0=0.2, tau_bounds=(0.5, 6.0))
+    full = fit_lifetime_components(truth, bin_width=DT, n_components=1, fit_irf=True,
+                                   irf_fwhm0=0.2, tau_bounds=(0.5, 6.0),
+                                   include_scatter=True, include_background=True)
+    # The nuisance-aware fit is at least as good and recovers plausible fractions.
+    assert full["chi2_reduced"] <= bare["chi2_reduced"] + 1e-6
+    assert full["scatter_fraction"] > 0.1
+    assert full["background_fraction"] > 0.05
+    assert np.sort(full["lifetimes"])[0] == pytest.approx(3.0, rel=0.25)
+
+
+def test_fits_irf_width_shift_and_skew_jointly():
+    """The joint IRF fit optimizes width, center/shift AND skew — not just width."""
+    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
+
+    t = np.arange(N) * DT
+    true_fwhm, true_center, true_skew = 0.30, 0.90, 0.4
+    irf = synthetic_irf(t, center_ns=true_center, fwhm_ns=true_fwhm, shape=true_skew)
+    truth = (60_000.0 * synthetic_decay(N, [1.2], bin_width=DT, irf=irf, normalize=True)
+             + 40_000.0 * synthetic_decay(N, [4.0], bin_width=DT, irf=irf, normalize=True))
+    # Start away from the truth in every IRF parameter.
+    res = fit_lifetime_components(
+        truth, bin_width=DT, n_components=2, fit_irf=True,
+        irf_fwhm0=0.2, irf_skew=0.0, tau_bounds=(0.2, 8.0),
+        irf_center_bounds=(0.0, 5.0),
+    )
+    assert res["irf_fwhm"] == pytest.approx(true_fwhm, rel=0.15)
+    assert res["irf_center"] == pytest.approx(true_center, abs=0.1)
+    assert res["irf_skew"] == pytest.approx(true_skew, abs=0.15)
+    assert np.sort(res["lifetimes"]) == pytest.approx([1.2, 4.0], rel=0.1)

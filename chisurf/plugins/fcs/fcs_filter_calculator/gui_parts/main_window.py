@@ -63,9 +63,17 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._data_dt_ns: float = 0.0
         self._micro_time_binning: int = 1
         self._suspend_compute: bool = False
+        #: Whether the mixed decay was adopted from the Correlator (re-synced on show).
+        self._total_from_correlator: bool = False
+        #: Optional per-detector fit-range overrides {detector: (start, stop)} in TAC
+        #: bins; a detector without an entry uses the global draggable region.
+        self._detector_fit_ranges: dict[str, tuple[int, int]] = {}
         #: Persistent auto-fit settings (shown/edited in the Auto-fit dialog).
         self._auto_fit_settings: dict = {
             "kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0,
+            # Periodic (laser-period) convolution: model the previous-pulse tail
+            # wrapping into the window. period_ns=0 ⇒ use the full micro-time window.
+            "periodic": False, "period_ns": 0.0,
         }
         self._result: FilterResult | None = None
         self._result_anisotropy = None  # For single-detector Anisotropy results
@@ -75,7 +83,11 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         # IRF / scatter pattern used per detector in the last computation, kept so
         # the reconstruction/decay plot can overlay the instrument response.
         self._irf_by_detector: dict[str, np.ndarray] = {}
-        
+        # Coarse scatter fits, only populated for detectors that have neither a
+        # measured nor a usable synthetic IRF (the fallback branch of
+        # `_nuisance_patterns`).
+        self._synthetic_scatter_fits: dict[str, object] = {}
+
         # Detector Wizard Support
         from .data_loading import HAS_DETECTOR_WIZARD, load_detector_setups
         self._has_detector_wizard = HAS_DETECTOR_WIZARD
@@ -147,6 +159,19 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.detector_selection = DetectorIrfTableWidget()
         self.detector_selection.selectionChanged.connect(self._on_detector_selection_changed)
         data_layout.addWidget(self.detector_selection)
+
+        # Multi-detector filter mode. Unchecked → independent per-detector filters.
+        # Checked → one global filter set over the detectors stacked onto a single
+        # axis, so a species' relative brightness across detectors (fixed by the
+        # FRET model / crosstalk) constrains the unmix.
+        self.stacked_mode_cb = QtWidgets.QCheckBox("Global (stacked) multi-detector filters")
+        self.stacked_mode_cb.setToolTip(
+            "Compute ONE filter set over all selected detectors concatenated onto a\n"
+            "single axis, so the FRET-constrained inter-detector amplitude ratios\n"
+            "enter the unmix. Unchecked computes independent per-detector filters."
+        )
+        self.stacked_mode_cb.toggled.connect(lambda _=False: self._on_data_changed())
+        data_layout.addWidget(self.stacked_mode_cb)
 
         # Total Decay Group
         total_group = QtWidgets.QGroupBox("Mixed decay")
@@ -234,6 +259,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._fit_region_initialized = False
         self._syncing_range = False
         self._fit_region.sigRegionChanged.connect(self._on_region_changed)
+        # Re-apply the range on release: recompute (re-zero filters) + re-mask residuals.
+        self._fit_region.sigRegionChangeFinished.connect(self._on_fit_range_committed)
         self.plot_recon.addItem(self._fit_region)
         self.plot_residuals = pg.PlotWidget(title="Weighted Residuals")
         self.plot_residuals.setLabel("bottom", "TAC bin")
@@ -308,11 +335,276 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.dock_area.split_tab_widget(target, tab, zone)
         return tab
 
+    def _build_autofit_panel(self) -> QtWidgets.QWidget:
+        """A persistent Auto-fit settings dock (type, N, lifetime bounds, Fit)."""
+        s = self._auto_fit_settings
+        panel = QtWidgets.QWidget()
+        form = QtWidgets.QFormLayout(panel)
+        form.setContentsMargins(6, 6, 6, 6)
+        form.setSpacing(4)
+
+        self.cb_autofit_kind = QtWidgets.QComboBox()
+        self.cb_autofit_kind.addItem("Lifetime species", "lifetime")
+        self.cb_autofit_kind.addItem("FRET species", "fret")
+        self.cb_autofit_kind.setCurrentIndex(1 if s["kind"] == "fret" else 0)
+        self.cb_autofit_kind.setToolTip(
+            "Fit N lifetime species, or N FRET states (E from the relative donor quenching)."
+        )
+        form.addRow("Type:", self.cb_autofit_kind)
+
+        self.sb_autofit_n = QtWidgets.QSpinBox()
+        self.sb_autofit_n.setRange(1, 12)
+        self.sb_autofit_n.setValue(int(s["n_components"]))
+        self.sb_autofit_n.setToolTip("Number of lifetime components / FRET states to resolve.")
+        form.addRow("Components / states:", self.sb_autofit_n)
+
+        self.sb_autofit_tmin = QtWidgets.QDoubleSpinBox()
+        self.sb_autofit_tmin.setRange(0.01, 1000.0)
+        self.sb_autofit_tmin.setDecimals(3)
+        self.sb_autofit_tmin.setValue(float(s["tau_min"]))
+        self.sb_autofit_tmax = QtWidgets.QDoubleSpinBox()
+        self.sb_autofit_tmax.setRange(0.02, 1000.0)
+        self.sb_autofit_tmax.setDecimals(3)
+        self.sb_autofit_tmax.setValue(float(s["tau_max"]))
+        form.addRow("Lifetime min (ns):", self.sb_autofit_tmin)
+        form.addRow("Lifetime max (ns):", self.sb_autofit_tmax)
+
+        self.lbl_autofit_range = QtWidgets.QLabel("Fit range: —")
+        self.lbl_autofit_range.setStyleSheet("color: palette(mid);")
+        form.addRow(self.lbl_autofit_range)
+
+        for w in (self.cb_autofit_kind, self.sb_autofit_n,
+                  self.sb_autofit_tmin, self.sb_autofit_tmax):
+            sig = w.currentIndexChanged if isinstance(w, QtWidgets.QComboBox) else w.valueChanged
+            sig.connect(self._sync_autofit_settings)
+
+        self.btn_autofit_run = QtWidgets.QPushButton("🎯 Fit + generate filters")
+        self.btn_autofit_run.setToolTip("Run the auto-fit over the selected range and add the species.")
+        self.btn_autofit_run.clicked.connect(lambda: self._auto_fit_components())
+        form.addRow(self.btn_autofit_run)
+        self.lbl_autofit_status = QtWidgets.QLabel()
+        self.lbl_autofit_status.setWordWrap(True)
+        form.addRow(self.lbl_autofit_status)
+        return panel
+
+    def _sync_autofit_settings(self) -> None:
+        """Mirror the Auto-fit dock's controls into the settings dict."""
+        self._auto_fit_settings = {
+            "kind": self.cb_autofit_kind.currentData(),
+            "n_components": int(self.sb_autofit_n.value()),
+            "tau_min": float(self.sb_autofit_tmin.value()),
+            "tau_max": float(max(self.sb_autofit_tmax.value(), self.sb_autofit_tmin.value() + 0.01)),
+        }
+
+    def _build_instrument_panel(self) -> QtWidgets.QWidget:
+        """AutoForm dock for instrument/calibration parameters, seeded from the setup."""
+        from chisurf.gui.autoform import AutoForm
+
+        from .instrument_options import InstrumentViewModel
+
+        self.instrument_model = InstrumentViewModel(on_change=self._on_instrument_changed)
+        self.instrument_form = AutoForm(self.instrument_model, self)
+        self.instrument_model.set_refresh_callback(self.instrument_form.sync_fields)
+        self._prepopulate_instrument_from_setup()
+        return self.instrument_form
+
+    def _on_instrument_changed(self) -> None:
+        """An instrument parameter changed → recompute (period/crosstalk affect patterns)."""
+        self._on_data_changed()
+
+    def _prepopulate_instrument_from_setup(self) -> None:
+        """Fill the instrument parameters from the selected setup's calibration."""
+        if not hasattr(self, "instrument_model"):
+            return
+        settings = self._detector_settings or {}
+        cal = dict(settings.get("calibration") or settings.get("crosstalk") or {})
+        # Default the laser period to the full micro-time window when the setup
+        # does not specify one.
+        if not cal.get("period_ns"):
+            n_bins = self._current_n_bins() if self._has_total_decay() else 0
+            if n_bins:
+                cal.setdefault("period_ns", n_bins * self._pattern_bin_width_ns())
+        self.instrument_model.update_from(cal)
+
+    def _instrument(self) -> dict:
+        """Current instrument parameters as a plain dict (defaults if not built)."""
+        if hasattr(self, "instrument_model"):
+            return self.instrument_model.to_dict()
+        from .instrument_options import DEFAULTS
+        return dict(DEFAULTS)
+
+    def _fit_period_ns(self, n_bins: int, dt: float) -> float | None:
+        """Laser period (ns) for periodic convolution, or None when disabled.
+
+        Uses the Instrument dock's period; 0 ⇒ the full micro-time window.
+        """
+        instr = self._instrument()
+        if not instr.get("periodic"):
+            return None
+        period = float(instr.get("period_ns", 0.0) or 0.0)
+        return period if period > 0.0 else float(n_bins) * float(dt)
+
+    def _build_info_panel(self) -> QtWidgets.QWidget:
+        """A read-only info panel that gathers all the relevant state + results,
+        plus an editable per-detector fit-range table."""
+        panel = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(panel)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(4)
+
+        layout.addWidget(QtWidgets.QLabel("<b>Per-detector fit range</b> (TAC bins)"))
+        self.info_range_table = QtWidgets.QTableWidget(0, 3)
+        self.info_range_table.setHorizontalHeaderLabels(["Detector", "Start", "Stop"])
+        self.info_range_table.verticalHeader().setVisible(False)
+        self.info_range_table.verticalHeader().setDefaultSectionSize(22)
+        self.info_range_table.horizontalHeader().setStretchLastSection(True)
+        self.info_range_table.setToolTip(
+            "Fit/filter range per detector. Blank ⇒ use the global region. Filters "
+            "outside a detector's range are zeroed."
+        )
+        # Hug the content (header + rows) instead of stretching vertically, so the
+        # Information text below gets the remaining space.
+        self.info_range_table.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
+        self.info_range_table.itemChanged.connect(self._on_info_range_edited)
+        layout.addWidget(self.info_range_table)
+
+        layout.addWidget(QtWidgets.QLabel("<b>Information</b>"))
+        self.info_text = QtWidgets.QTextEdit()
+        self.info_text.setReadOnly(True)
+        self.info_text.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
+        from chisurf.gui.widgets.general import table_font
+        self.info_text.setFont(table_font())
+        layout.addWidget(self.info_text, 1)
+        return panel
+
+    def _on_info_range_edited(self, item) -> None:
+        """Apply an edited per-detector fit range and recompute."""
+        if getattr(self, "_syncing_info", False):
+            return
+        row = item.row()
+        det_item = self.info_range_table.item(row, 0)
+        if det_item is None:
+            return
+        det = det_item.text()
+        n_bins = self._current_n_bins()
+
+        def _cell_int(col, default):
+            it = self.info_range_table.item(row, col)
+            try:
+                return int(float(it.text()))
+            except (TypeError, ValueError):
+                return default
+
+        g_start, g_stop = self._fit_range(n_bins)
+        start = max(0, min(_cell_int(1, g_start), n_bins - 1))
+        stop = max(start + 1, min(_cell_int(2, g_stop), n_bins))
+        self._detector_fit_ranges[det] = (start, stop)
+        # Re-zero to the new per-detector range and replot (no refit needed).
+        self._on_fit_range_committed()
+
+    def _refresh_info(self) -> None:
+        """Rebuild the info panel's per-detector range table and text summary."""
+        if not hasattr(self, "info_text"):
+            return
+        self._syncing_info = True
+        try:
+            n_bins = self._current_n_bins() if self._has_total_decay() else 0
+            dets = self.detector_selection.get_selected() or ["default"]
+            # Per-detector range table.
+            self.info_range_table.setRowCount(len(dets))
+            for r, det in enumerate(dets):
+                start, stop = self._detector_fit_range(det, n_bins or 1)
+                cells = [det, str(int(start)), str(int(stop))]
+                for c, text in enumerate(cells):
+                    it = QtWidgets.QTableWidgetItem(text)
+                    if c == 0:
+                        it.setFlags(QtCore.Qt.ItemIsEnabled)
+                    self.info_range_table.setItem(r, c, it)
+            self._size_range_table()
+            self.info_text.setPlainText(self._gather_info_text())
+        finally:
+            self._syncing_info = False
+
+    def _size_range_table(self) -> None:
+        """Fix the range table's height to its content (header + rows), capped."""
+        t = self.info_range_table
+        height = t.horizontalHeader().height() + 2 * t.frameWidth()
+        for r in range(t.rowCount()):
+            height += t.rowHeight(r)
+        t.setFixedHeight(int(min(max(height, 48), 220)))
+
+    def _gather_info_text(self) -> str:
+        """Assemble a plain-text summary of inputs, settings and last results."""
+        lines: list[str] = []
+        n_bins = self._current_n_bins() if self._has_total_decay() else 0
+        dt = self._pattern_bin_width_ns()
+        # Inputs
+        lines.append("== Mixed decay ==")
+        if self._total_paths:
+            src = "correlator" if self._total_from_correlator else "loaded"
+            lines.append(f"  source: {src}, {len(self._total_paths)} file(s)")
+            for p in self._total_paths[:8]:
+                lines.append(f"    {p.name}")
+        elif self._total_vector is not None:
+            lines.append("  source: example / in-memory")
+        else:
+            lines.append("  (none)")
+        lines.append(f"  bins: {n_bins}   bin width: {dt:.4g} ns"
+                     f"   micro-time binning: ×{self._micro_time_binning}")
+        g0, g1 = self._fit_range(n_bins or 1)
+        lines.append(f"  global fit range: {g0}–{g1} bins")
+        # Detectors
+        lines.append("")
+        lines.append("== Detectors (IRF) ==")
+        for det in (self.detector_selection.get_selected() or ["default"]):
+            has_irf = bool(self.detector_selection.irf_path(det, ""))
+            lines.append(
+                f"  {det}: width {self.detector_selection.width(det, ''):.3f} ns, "
+                f"skew {self.detector_selection.skew(det, ''):+.2f}, "
+                f"shift {self.detector_selection.shift(det, ''):+.3f} ns, "
+                f"IRF {'measured' if has_irf else 'synthetic'}"
+            )
+        # Components
+        lines.append("")
+        lines.append(f"== Components ({self.lw_species.count()}) ==")
+        for i in range(self.lw_species.count()):
+            lines.append(f"  {self.lw_species.item(i).text()}")
+        # Last auto-fit
+        if getattr(self, "lbl_autofit_status", None) and self.lbl_autofit_status.text():
+            lines.append("")
+            lines.append("== Last auto-fit ==")
+            lines.append(f"  {self.lbl_autofit_status.text()}")
+        # Filters
+        results = self._result_multi_detector or ([self._result] if self._result else [])
+        if results:
+            lines.append("")
+            lines.append("== Filters ==")
+            for entry in results:
+                res = entry["result"] if isinstance(entry, dict) else entry
+                det = entry["detector"] if isinstance(entry, dict) else "single"
+                mode = (res.metadata or {}).get("filter_mode", "independent")
+                lines.append(
+                    f"  {det}: {res.n_species} species + {res.nuisance_count} nuisance "
+                    f"({res.n_filters} filters × {res.n_bins} bins) [{mode}]"
+                )
+        return "\n".join(lines)
+
     def _build_docks(self, sources_panel) -> None:
         self.dock_area.addTab(sources_panel, "Decay sources")
         sources_dock = self.dock_area.find_main_tab_widget()
         detector_dock = self._register_split_dock(
             self.setup_tab, "Setup", sources_dock, "bottom"
+        )
+        self._register_split_dock(
+            self._build_autofit_panel(), "Auto-fit", sources_dock, "bottom"
+        )
+        self._register_split_dock(
+            self._build_instrument_panel(), "Instrument", sources_dock, "bottom"
+        )
+        self._register_split_dock(
+            self._build_info_panel(), "Info", sources_dock, "bottom"
         )
         filters_dock = self._register_split_dock(
             self.plot_filters, "Lifetime filters", sources_dock, "right"
@@ -475,22 +767,48 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 irf_path = pathlib.Path(configured_path)
                 if not irf_path.is_file():
                     raise ValueError(f"Scatter IRF for {detector} does not exist: {irf_path}")
-                scatter = scattered_light_decay_pattern(load_vector(irf_path), n_bins)
+                shift = float(self.detector_selection.shift(detector, role) or 0.0)
+                measured = self._shift_irf(
+                    load_vector(irf_path), shift, self._pattern_bin_width_ns()
+                )
+                scatter = scattered_light_decay_pattern(measured, n_bins)
                 source = "measured"
             else:
-                scatter, fit = optimize_synthetic_scatter_pattern(
-                    total,
-                    component_decays or [],
-                    bin_width_ns=self._pattern_bin_width_ns(),
-                    initial_fwhm_ns=self.detector_selection.width(detector, role),
-                    shape=self.detector_selection.skew(detector, role),
-                    include_constant=self.fit_background_cb.isChecked(),
-                )
-                key = f"{detector}:{role}" if role else detector
-                if not hasattr(self, "_synthetic_scatter_fits"):
-                    self._synthetic_scatter_fits = {}
-                self._synthetic_scatter_fits[key] = fit
-                source = "fitted"
+                # Use the detector's synthetic IRF (the width/skew/shift set in the
+                # Detectors table — written back by the auto-fit) as the scatter
+                # shape, so the scatter prompt in the FILTER reconstruction is
+                # CONSISTENT with the auto-fit's IRF and the component convolution.
+                # Otherwise an independent coarse re-fit would misalign the prompt
+                # and leave the tell-tale antisymmetric residual at the rising edge.
+                det_irf = self._detector_irf(detector, role, n_bins=n_bins)
+                if det_irf is not None and np.any(np.asarray(det_irf) > 0.0):
+                    scatter = scattered_light_decay_pattern(det_irf, n_bins)
+                    source = "detector-IRF"
+                else:
+                    # Fallback (no usable synthetic IRF, e.g. width 0): the coarse
+                    # amplitude/position fit against the species basis.
+                    basis = [
+                        np.asarray(d, dtype=float).ravel()
+                        for d in (component_decays or [])
+                    ]
+                    basis = [
+                        d for d in basis
+                        if d.size == total.size
+                        and np.all(np.isfinite(d))
+                        and np.all(d >= 0.0)
+                        and d.sum() > 0.0
+                    ]
+                    scatter, fit = optimize_synthetic_scatter_pattern(
+                        total,
+                        basis,
+                        bin_width_ns=self._pattern_bin_width_ns(),
+                        initial_fwhm_ns=self.detector_selection.width(detector, role),
+                        shape=self.detector_selection.skew(detector, role),
+                        include_constant=self.fit_background_cb.isChecked(),
+                    )
+                    key = f"{detector}:{role}" if role else detector
+                    self._synthetic_scatter_fits[key] = fit
+                    source = "fitted"
             patterns.append(scatter)
             labels.append(f"Scatter / IRF ({detector}, {source})")
             # Remember the IRF/scatter shape so the decay plot can overlay it.
@@ -519,8 +837,11 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             # Default to adding as species
             self.lw_species.add_pattern(paths)
 
-    def _set_total_paths(self, paths: List[pathlib.Path]) -> None:
+    def _set_total_paths(self, paths: List[pathlib.Path], from_correlator: bool = False) -> None:
         self._total_paths = paths
+        # Remember whether the mixed decay came from the Correlator (so a later
+        # visit can re-sync it) or was manually loaded (leave it alone).
+        self._total_from_correlator = bool(from_correlator)
         self._total_vector = None
         self._total_vectors_by_detector = {}
         # Recapture the micro-time bin width from the new data (TTTR headers set
@@ -537,6 +858,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 name += f" (+{len(paths)-1} files)"
             self.le_total.setText(name)
             self.le_total.setToolTip("\n".join([str(p.absolute()) for p in paths]))
+            # Real data replaces the built-in example → drop the eye-candy species.
+            self._clear_example_components()
         # Invalidate cache when total paths change
         self._invalidate_cache()
         self._on_data_changed()
@@ -575,17 +898,29 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 "No files are loaded in the Correlator (Files & Steps) step yet.",
             )
             return
-        self._set_total_paths(paths)
+        self._set_total_paths(paths, from_correlator=True)
         self._update_status(f"Mixed decay from correlator ({len(paths)} file(s)).")
 
     def showEvent(self, event) -> None:  # noqa: N802 (Qt override)
         super().showEvent(event)
-        # On first show, if the user hasn't loaded a measured total, adopt the
-        # Correlator's already-loaded files as the mixed decay automatically.
-        if not getattr(self, "_correlator_autoload_done", False):
-            self._correlator_autoload_done = True
-            if not self._total_paths and self._correlator_file_paths():
-                self._use_correlator_total()
+        # Every time this panel is shown (e.g. navigating here from the Correlator),
+        # re-sync the mixed decay with the Correlator's CURRENT files and refresh
+        # the plots — but only when the total is correlator-sourced (or unset), so a
+        # manually-loaded measured decay is never overwritten.
+        corr = [pathlib.Path(p) for p in self._correlator_file_paths()
+                if pathlib.Path(p).is_file()]
+        first_show = not getattr(self, "_correlator_autoload_done", False)
+        self._correlator_autoload_done = True
+        adopt = getattr(self, "_total_from_correlator", False) or not self._total_paths
+        if corr and adopt:
+            current = [str(p) for p in (self._total_paths or [])]
+            if [str(p) for p in corr] != current:
+                self._use_correlator_total()  # re-loads + recomputes + replots
+            elif not first_show:
+                self._update_plots()
+        elif not first_show:
+            # Manually-loaded total: just make sure the plots reflect current state.
+            self._update_plots()
 
     def _has_total_decay(self) -> bool:
         return bool(self._total_paths) or self._total_vector is not None
@@ -650,15 +985,27 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         )
         self.lw_species.add_synthetic_source({
             "type": "synthetic", "model": "lifetime", "name": "Fast example",
-            "lifetime": 1.2, "bin_width": bin_width,
+            "lifetime": 1.2, "bin_width": bin_width, "example": True,
             "patterns_by_detector": fast_patterns,
         })
         self.lw_species.add_synthetic_source({
             "type": "synthetic", "model": "lifetime", "name": "Slow example",
-            "lifetime": 4.0, "bin_width": bin_width,
+            "lifetime": 4.0, "bin_width": bin_width, "example": True,
             "patterns_by_detector": slow_patterns,
         })
         self._compute_filters()
+
+    def _clear_example_components(self) -> None:
+        """Remove the built-in eye-candy example species (kept only until real data).
+
+        The example mixture seeds two placeholder components so the workflow is
+        visible on an empty panel; once measured data is loaded they are just
+        decoration, so drop them. User-added components are left untouched.
+        """
+        for i in range(self.lw_species.count() - 1, -1, -1):
+            source = self.lw_species.item(i).data(QtCore.Qt.UserRole)
+            if isinstance(source, dict) and source.get("example"):
+                self.lw_species.takeItem(i)
 
     def _add_species_dialog(self) -> None:
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
@@ -823,23 +1170,65 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         else:
             self.lw_species.add_synthetic_source(source)
 
-    def _detector_irf(self, detector_name: str, role: str = ""):
-        """Return a detector's IRF (measured file or synthetic Gaussian) for FRET decays."""
+    def _shift_irf(self, irf, shift_ns: float, dt: float):
+        """Shift an IRF vector by ``shift_ns`` (sub-bin, linear interp, zero edges).
+
+        A positive shift moves the IRF to later times. Applied uniformly to both
+        measured and synthetic IRFs so a detector's timing offset is corrected the
+        same way regardless of how the IRF was obtained.
+        """
+        if irf is None or not shift_ns or dt <= 0.0:
+            return irf
+        v = np.asarray(irf, dtype=float).ravel()
+        idx = np.arange(v.size, dtype=float) - float(shift_ns) / float(dt)
+        return np.interp(idx, np.arange(v.size, dtype=float), v, left=0.0, right=0.0)
+
+    def _current_n_bins(self) -> int:
+        """Bin count of the active total decay (data-derived, not a fixed 256).
+
+        For file-/correlator-backed totals ``_total_vector`` is ``None``, so the
+        length must come from the loaded decay — otherwise a synthetic IRF built at
+        the default 256 bins is far shorter than the real micro-time axis and a
+        fitted shift can push its prompt off the end.
+        """
+        if self._total_vector is not None:
+            return int(self._total_vector.size)
+        try:
+            chs = (self.detector_selection.get_selected() or None
+                   if self.detector_selection.checkboxes else None)
+            return int(np.asarray(self._total_decay(chs)).size)
+        except Exception:
+            return 256
+
+    def _detector_irf(self, detector_name: str, role: str = "", n_bins: int | None = None):
+        """Return a detector's IRF (measured file or synthetic Gaussian) for FRET decays.
+
+        The per-detector time shift from the Detectors table is applied to the
+        returned IRF (measured or synthetic) so the modelled prompt lines up with
+        the measurement. ``n_bins`` defaults to the active total's length.
+        """
         import numpy as np
 
         from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
 
-        n_bins = int(self._total_vector.size) if self._total_vector is not None else 256
+        n = int(n_bins) if n_bins else self._current_n_bins()
         dt = float(self._pattern_bin_width_ns())
+        shift = float(self.detector_selection.shift(detector_name, role) or 0.0)
         configured = self.detector_selection.irf_path(detector_name, role)
         if configured and pathlib.Path(configured).is_file():
-            return load_vector(pathlib.Path(configured))
+            return self._shift_irf(load_vector(pathlib.Path(configured)), shift, dt)
         fwhm = float(self.detector_selection.width(detector_name, role) or 0.0)
         if fwhm <= 0.0:
             return None
-        time = np.arange(n_bins, dtype=float) * dt
-        return synthetic_irf(time, 2.0 * fwhm, fwhm,
-                             shape=float(self.detector_selection.skew(detector_name, role) or 0.0))
+        time = np.arange(n, dtype=float) * dt
+        irf = synthetic_irf(time, 2.0 * fwhm, fwhm,
+                            shape=float(self.detector_selection.skew(detector_name, role) or 0.0))
+        shifted = self._shift_irf(irf, shift, dt)
+        # A large shift/skew can leave the prompt outside the window (all-zero);
+        # fall back to the unshifted IRF so downstream convolution stays valid.
+        if shifted is None or not np.any(np.asarray(shifted) > 0.0):
+            return irf if np.any(irf > 0.0) else None
+        return shifted
 
     def _calibration_seed(self) -> dict:
         """Crosstalk factors seeded from the selected detector setup, if any."""
@@ -856,7 +1245,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
         source = editor_model.component()
         detector_names = self.detector_selection.get_selected() or ["green", "red", "yellow"]
-        n_bins = int(self._total_vector.size) if self._total_vector is not None else 256
+        n_bins = self._current_n_bins()
         try:
             patterns = fret_species_detector_patterns(
                 source, detector_names, n_bins, irf_for_detector=self._detector_irf,
@@ -925,6 +1314,19 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         pattern = self._load_and_sum_vectors(paths, chs)
         return self._resize_pattern(pattern, n_bins), [str(path.absolute()) for path in paths]
 
+    def _clear_recon_plot(self) -> None:
+        """Clear the reconstruction plot but keep the draggable fit-range region.
+
+        ``PlotWidget.clear()`` removes *all* items, including the
+        :class:`~pyqtgraph.LinearRegionItem` selector — so every recompute would
+        otherwise wipe the region and it would never reappear. Re-add it after the
+        clear so the range selector survives replots.
+        """
+        self.plot_recon.clear()
+        region = getattr(self, "_fit_region", None)
+        if region is not None:
+            self.plot_recon.addItem(region)
+
     def _init_fit_region(self, decay) -> None:
         """Set a sensible default fit range (just past the prompt → near the end)."""
         if self._fit_region_initialized:
@@ -949,6 +1351,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             if source != "spin":
                 self.sb_fit_start.setValue(int(start))
                 self.sb_fit_stop.setValue(int(stop))
+            if hasattr(self, "lbl_autofit_range"):
+                self.lbl_autofit_range.setText(f"Fit range: {int(start)}–{int(stop)} TAC bins")
         finally:
             self._syncing_range = False
 
@@ -956,9 +1360,19 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         lo, hi = self._fit_region.getRegion()
         self._set_fit_range(int(round(min(lo, hi))), int(round(max(lo, hi))), source="region")
 
+    def _on_fit_range_committed(self, *_args) -> None:
+        """Region drag / spin edit finished → recompute over the new window.
+
+        The fFCS filters are now computed **over the fit-range slice** (so the
+        reconstruction/residuals are not biased by the excluded pre-prompt and
+        far-tail bins), which means a range change genuinely re-fits.
+        """
+        self._on_data_changed()
+
     def _on_range_spin_changed(self) -> None:
         self._fit_region_initialized = True
         self._set_fit_range(self.sb_fit_start.value(), self.sb_fit_stop.value(), source="spin")
+        self._on_fit_range_committed()
 
     def _fit_range(self, n_bins: int) -> tuple[int, int]:
         """The selected fit/filter range (TAC bins), clamped to ``[0, n_bins]``."""
@@ -969,74 +1383,147 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             return 0, int(n_bins)
         return start, stop
 
-    def _show_auto_fit_settings_dialog(self) -> bool:
-        """Editable auto-fit settings (type, N, lifetime range). Returns True on OK."""
-        s = self._auto_fit_settings
-        dialog = QtWidgets.QDialog(self)
-        dialog.setWindowTitle("Auto-fit settings")
-        form = QtWidgets.QFormLayout(dialog)
+    def _mask_to_fit_range(self, values, detector: str | None = None) -> np.ndarray:
+        """Blank residuals outside the fit range (NaN → not drawn).
 
-        cb_kind = QtWidgets.QComboBox()
-        cb_kind.addItem("Lifetime species", "lifetime")
-        cb_kind.addItem("FRET species", "fret")
-        cb_kind.setCurrentIndex(1 if s["kind"] == "fret" else 0)
-        cb_kind.setToolTip("Fit N lifetime species, or N FRET states (E from the "
-                           "relative donor quenching).")
-        form.addRow("Type:", cb_kind)
+        Residuals are only meaningful inside the fit window, so bins outside
+        ``[start, stop]`` are set to NaN and the residual traces are drawn with
+        ``connect="finite"`` so the excluded region is simply not shown. When a
+        ``detector`` is given its per-detector range override (if any) is used.
+        """
+        v = np.asarray(values, dtype=float).copy()
+        start, stop = self._detector_fit_range(detector, v.size)
+        if start > 0 or stop < v.size:
+            v[:start] = np.nan
+            v[stop:] = np.nan
+        return v
 
-        sb_n = QtWidgets.QSpinBox()
-        sb_n.setRange(1, 12)
-        sb_n.setValue(int(s["n_components"]))
-        sb_n.setToolTip("Number of lifetime components / FRET states to resolve.")
-        form.addRow("Components / states:", sb_n)
+    def _detector_fit_range(self, detector: str | None, n_bins: int) -> tuple[int, int]:
+        """Per-detector fit range (override or the global region), clamped to n_bins."""
+        rng = self._detector_fit_ranges.get(detector) if detector else None
+        start, stop = rng if rng is not None else self._fit_range(n_bins)
+        start = max(0, min(int(start), int(n_bins) - 1))
+        stop = max(start + 1, min(int(stop), int(n_bins)))
+        return start, stop
 
-        sb_tmin = QtWidgets.QDoubleSpinBox()
-        sb_tmin.setRange(0.01, 1000.0)
-        sb_tmin.setDecimals(3)
-        sb_tmin.setValue(float(s["tau_min"]))
-        sb_tmax = QtWidgets.QDoubleSpinBox()
-        sb_tmax.setRange(0.02, 1000.0)
-        sb_tmax.setDecimals(3)
-        sb_tmax.setValue(float(s["tau_max"]))
-        form.addRow("Lifetime min (ns):", sb_tmin)
-        form.addRow("Lifetime max (ns):", sb_tmax)
+    def _zero_filters_outside(self, filters, start: int, stop: int) -> np.ndarray:
+        """Zero every filter column outside ``[start, stop]``.
 
-        start, stop = self._fit_range(
-            int(self._total_vector.size) if self._total_vector is not None else 256
+        Photons outside the fit range carry no fitted model, so their filter
+        weights are set to zero — the filters are only defined where the decay was
+        fitted (requested behaviour: "filters outside the fitting range are zeroed").
+        """
+        f = np.array(filters, dtype=float, copy=True)
+        if f.ndim == 2:
+            f[:, :max(0, int(start))] = 0.0
+            f[:, int(stop):] = 0.0
+        return f
+
+    def _apply_range_to_result(self, result, detector: str | None) -> None:
+        """Zero a result's filters outside that detector's fit range, in place.
+
+        Handles both single/multi/stacked :class:`FilterResult` (``.filters``) and
+        the anisotropy :class:`FilterResultMFD` (``.filters_par``/``.filters_perp``).
+        The *un-zeroed* filters are cached on the result the first time, so a later
+        range change can re-zero (even widen) without a refit.
+        """
+        if result is None:
+            return
+        for attr in ("filters", "filters_par", "filters_perp"):
+            f = getattr(result, attr, None)
+            if f is None:
+                continue
+            cache_attr = f"_{attr}_full"
+            base = getattr(result, cache_attr, None)
+            if base is None:
+                base = np.array(f, dtype=float, copy=True)
+                try:
+                    setattr(result, cache_attr, base)
+                except Exception:
+                    pass
+            n_bins = int(np.asarray(base).shape[1])
+            start, stop = self._detector_fit_range(detector, n_bins)
+            setattr(result, attr, self._zero_filters_outside(base, start, stop))
+
+    def _single_detector(self) -> str | None:
+        """The detector to attribute a single-channel result to (or None → global)."""
+        chs = self.detector_selection.get_selected() if self.detector_selection.checkboxes else None
+        return chs[0] if chs and len(chs) == 1 else None
+
+    def _ranged_filters(self, total_data, species_data, *, detector, total_path,
+                        species_patterns, nuisance_decays, nuisance_labels):
+        """Compute fFCS filters **over the detector's fit range** and embed back.
+
+        The filters/g-matrix are solved on the ``[start, stop]`` slice only, so the
+        reconstruction and residuals are not biased by the excluded pre-prompt and
+        far-tail bins (the cause of a systematic tail offset). The full-length
+        result has the in-range columns filled and zeros/original outside.
+        """
+        total = np.asarray(total_data, dtype=float).ravel()
+        n_bins = int(total.size)
+        start, stop = self._detector_fit_range(detector, n_bins)
+        species = [self._resize_pattern(np.asarray(s, dtype=float), n_bins)
+                   for s in species_data]
+        nuis = [self._resize_pattern(np.asarray(d, dtype=float), n_bins)
+                for d in (nuisance_decays or [])]
+        ranged = compute_filters(
+            total[start:stop],
+            [s[start:stop] for s in species],
+            total_path=total_path,
+            species_patterns=species_patterns,
+            nuisance_decays=[d[start:stop] for d in nuis] or None,
+            nuisance_labels=nuisance_labels,
+            reject_nuisance=True,
         )
-        form.addRow(QtWidgets.QLabel(
-            f"Fit range: {start}–{stop} TAC bins (drag the region on the decay plot "
-            "or edit the Fit range spinboxes)."
-        ))
-
-        buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        n_filt = int(np.asarray(ranged.filters).shape[0])
+        filters = np.zeros((n_filt, n_bins), dtype=float)
+        filters[:, start:stop] = np.asarray(ranged.filters)
+        recon = total.copy()  # outside the window recon == total (residual 0)
+        recon[start:stop] = np.asarray(ranged.reconstruction)
+        wres = np.zeros(n_bins, dtype=float)
+        wres[start:stop] = np.asarray(ranged.weighted_residuals)
+        return FilterResult(
+            filters=filters, reconstruction=recon, weighted_residuals=wres,
+            total_decay=total, species_decays=species,
+            metadata=ranged.metadata, total_path=total_path,
+            species_patterns=species_patterns,
+            nuisance_count=int(ranged.nuisance_count),
+            nuisance_labels=list(ranged.nuisance_labels or []),
         )
-        buttons.button(QtWidgets.QDialogButtonBox.Ok).setText("Fit")
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-        form.addRow(buttons)
-        if dialog.exec_() != QtWidgets.QDialog.Accepted:
-            return False
-        self._auto_fit_settings = {
-            "kind": cb_kind.currentData(),
-            "n_components": int(sb_n.value()),
-            "tau_min": float(sb_tmin.value()),
-            "tau_max": float(max(sb_tmax.value(), sb_tmin.value() + 0.01)),
-        }
-        return True
+
+    def _reapply_fit_ranges(self) -> None:
+        """Re-zero every stored result to the current ranges (from cached filters)."""
+        if self._result is not None:
+            self._apply_range_to_result(self._result, self._single_detector())
+        if self._result_anisotropy is not None:
+            self._apply_range_to_result(self._result_anisotropy, self._single_detector())
+        for entry in (self._result_multi_detector or []):
+            self._apply_range_to_result(entry["result"], entry["detector"])
+        for entry in (self._result_multi_anisotropy or []):
+            self._apply_range_to_result(entry["result"], entry["detector"])
+
+    def _measured_irf_vector(self, detector: str | None, role: str = ""):
+        """Return a detector's *measured* IRF vector, or ``None`` if none is loaded."""
+        if not detector:
+            return None
+        configured = self.detector_selection.irf_path(detector, role)
+        if configured and pathlib.Path(configured).is_file():
+            return np.asarray(load_vector(pathlib.Path(configured)), dtype=float).ravel()
+        return None
 
     def _auto_fit_components(self, n_components: int | None = None) -> None:
-        """Auto-fit the mixed decay (over the selected fit range) to N lifetime
-        components; add them as species.
+        """Auto-fit the mixed decay to N lifetime components and add them as species.
 
-        A **tail fit** over the draggable fit range on the reconstruction plot: the
-        window is fitted as a discrete multi-exponential
-        (:func:`chisurf.core.fluorescence.decay_fit.fit_lifetime_components`, no IRF
-        — the range starts past the prompt) and one synthetic species per resolved
-        lifetime is appended, its per-detector pattern aligned to the range start.
+        The draggable fit region on the reconstruction plot sets the fit window.
+        When the primary detector carries a **measured IRF** it is used directly and
+        a tail fit (range start past the prompt) resolves the lifetimes. When **no
+        IRF is loaded** the synthetic Gaussian IRF is *fitted jointly* — its width is
+        a free parameter — so the fit window is extended down to the prompt
+        (``fit_lo = 0``) to make the IRF identifiable, and the fitted FWHM is written
+        back to every selected detector that lacks a measured IRF. Each resolved
+        lifetime is appended as one synthetic species, its per-detector pattern
+        convolved with that detector's IRF.
         """
-        from chisurf.core.fluorescence.decay import synthetic_decay
         from chisurf.core.fluorescence.decay_fit import fit_lifetime_components
 
         if not self._has_total_decay():
@@ -1044,13 +1531,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 self, "Missing Total Decay", "Load a mixed total decay first."
             )
             return
-        settings = self._auto_fit_settings
+        # Settings come from the persistent Auto-fit dock (no modal popup).
+        settings = dict(self._auto_fit_settings)
         kind = settings["kind"]
         if n_components is None:
-            if not self._show_auto_fit_settings_dialog():
-                return
-            settings = self._auto_fit_settings
-            kind = settings["kind"]
             n_components = int(settings["n_components"])
 
         chs = self.detector_selection.get_selected() if self.detector_selection.checkboxes else None
@@ -1060,10 +1544,41 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._init_fit_region(total)
         start, stop = self._fit_range(n_bins)
 
+        # Fit the IRF jointly when the primary detector has no measured IRF.
+        primary = (chs[0] if chs else None)
+        measured = self._measured_irf_vector(primary)
+        fit_irf = measured is None
+        # Respect the user's fit range (the draggable region) as the fit window —
+        # it is placed at/after the prompt, so the rise (scatter) is inside it.
+        fit_lo = int(start)
+        window = total[fit_lo:stop]
+        irf_win = None if measured is None else measured[fit_lo:stop]
+
+        # Fit the fraction of scatter (IRF-shaped prompt) and background/afterpulse
+        # jointly with the lifetimes, driven by the AP / IRF toggles, so the
+        # lifetimes are not biased by having to absorb the prompt/baseline.
+        include_background = bool(self.fit_background_cb.isChecked())
+        include_scatter = bool(self.options_model.scatter_irf)
+        # Periodic (laser-period) convolution comes from the Instrument dock.
+        period = self._fit_period_ns(n_bins, dt)
+
+        fwhm0 = (max(dt, float(self.detector_selection.width(primary, "") or 0.2))
+                 if primary else 0.2)
+        skew0 = float(self.detector_selection.skew(primary, "") or 0.0) if primary else 0.0
         try:
             result = fit_lifetime_components(
-                total[start:stop], bin_width=dt, n_components=int(n_components), irf=None,
+                window, bin_width=dt, n_components=int(n_components), irf=irf_win,
                 tau_bounds=(float(settings["tau_min"]), float(settings["tau_max"])),
+                fit_irf=fit_irf,
+                irf_fwhm0=fwhm0,
+                irf_fwhm_bounds=(dt, max(2.0 * dt, (stop - fit_lo) * dt / 3.0)),
+                # Also optimize the IRF shift (center) and skew, not just the width.
+                irf_skew=skew0,
+                irf_skew_bounds=(-3.0, 3.0),
+                irf_center_bounds=(0.0, (stop - fit_lo) * dt),
+                include_background=include_background,
+                include_scatter=include_scatter,
+                period=period,
             )
         except Exception as error:
             QtWidgets.QMessageBox.critical(self, "Auto-fit Error", str(error))
@@ -1073,10 +1588,33 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         taus = result["lifetimes"]
         scale = float(amps.sum()) or 1.0
         detector_names = list(chs or [])
-        # Add all species without recomputing per add; compute once at the end.
+        fitted_fwhm = result.get("irf_fwhm")
+        fitted_center = result.get("irf_center")
+        fitted_skew = result.get("irf_skew")
+        # Write the fitted IRF width / skew / shift back to detectors lacking a
+        # measured IRF. The fitted center is relative to the window start, and the
+        # nominal `_detector_irf` center is 2·FWHM, so the absolute shift is
+        # ``fit_lo·dt + fitted_center − 2·FWHM`` (applied by `_shift_irf`).
+        if fit_irf and fitted_fwhm:
+            shift = (fit_lo * dt + float(fitted_center) - 2.0 * float(fitted_fwhm)
+                     if fitted_center is not None else 0.0)
+            for det in (detector_names or ([primary] if primary else [])):
+                if self._measured_irf_vector(det) is None:
+                    self.detector_selection.set_width(det, float(fitted_fwhm), "")
+                    if fitted_skew is not None:
+                        self.detector_selection.set_skew(det, float(fitted_skew), "")
+                    self.detector_selection.set_shift(det, float(shift), "")
+
+        # The IRF (measured or fitted) carries the absolute prompt position, so
+        # components are convolved from t=0 over the full axis in both cases.
+        comp_start = 0
+        # Replace the current components with the freshly-fitted set (clear first),
+        # adding all species without recomputing per add; compute once at the end.
         self._suspend_compute = True
         try:
-            self._add_autofit_species(kind, amps, taus, scale, dt, start, n_bins, detector_names)
+            self.lw_species.clear()
+            self._add_autofit_species(kind, amps, taus, scale, dt, comp_start, n_bins,
+                                      detector_names, apply_irf=True, period=period)
         finally:
             self._suspend_compute = False
         self._on_data_changed()
@@ -1084,37 +1622,68 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             f"{float(a) / scale:.0%}·{float(t):.2f}ns" for a, t in zip(amps, taus)
         )
         label = "FRET states" if kind == "fret" else "components"
-        self._update_status(
-            f"Auto-fit [{start}–{stop}]: {len(taus)} {label} "
-            f"(χ²ᵣ={result['chi2_reduced']:.3g}) — {parts}."
-        )
+        if fit_irf and fitted_fwhm:
+            shift_ns = (fit_lo * dt + float(fitted_center) - 2.0 * float(fitted_fwhm)
+                        if fitted_center is not None else 0.0)
+            irf_note = (f", IRF FWHM {fitted_fwhm:.3f} ns / shift {shift_ns:+.3f} ns"
+                        f" / skew {float(fitted_skew or 0.0):+.2f}")
+        else:
+            irf_note = ""
+        # Report the fitted nuisance fractions (share of total counts).
+        nuis = []
+        if include_scatter and result.get("scatter_fraction"):
+            nuis.append(f"scatter {result['scatter_fraction']:.1%}")
+        if include_background and result.get("background_fraction"):
+            nuis.append(f"bkg {result['background_fraction']:.1%}")
+        nuis_note = (" [" + ", ".join(nuis) + "]") if nuis else ""
+        msg = (f"Auto-fit [{fit_lo}–{stop}]: {len(taus)} {label} "
+               f"(χ²ᵣ={result['chi2_reduced']:.3g}{irf_note}) — {parts}{nuis_note}.")
+        self._update_status(msg)
+        if hasattr(self, "lbl_autofit_status"):
+            self.lbl_autofit_status.setText(msg)
+        # Persist the full breakdown to the log/console so the fitted fractions
+        # (including the scatter/background nuisance) are recorded, not just shown.
+        cs.logging.info(msg)
 
-    def _add_autofit_species(self, kind, amps, taus, scale, dt, start, n_bins, detector_names):
+    def _add_autofit_species(self, kind, amps, taus, scale, dt, start, n_bins,
+                             detector_names, apply_irf: bool = False, period=None):
         from chisurf.core.fluorescence.decay import synthetic_decay
 
         if kind == "fret":
-            self._add_fret_autofit_species(amps, taus, scale, dt, start, n_bins, detector_names)
+            self._add_fret_autofit_species(amps, taus, scale, dt, start, n_bins,
+                                           detector_names, period=period)
         else:
             for amp, tau in zip(amps, taus):
+                frac = float(amp) / scale
                 source = {
                     "type": "synthetic", "model": "lifetime_spectrum",
-                    "name": f"τ={float(tau):.2f} ns",
-                    "amplitudes": [float(amp) / scale], "lifetimes": [float(tau)],
+                    # Fitted fraction is kept in the component name so it stays
+                    # visible in the Components list (not just the transient status).
+                    "name": f"τ={float(tau):.2f} ns ({frac:.0%})",
+                    "amplitudes": [frac], "lifetimes": [float(tau)],
                     "bin_width": float(dt), "start_bin": int(start), "irf_path": None,
+                    "period_ns": float(period) if period else 0.0,
                 }
-                # Align each component's decay to the fit-range start so its tail
-                # lines up with the measured decay (pre-range/prompt is nuisance).
-                patterns = {
-                    name: synthetic_decay(n_bins, [float(tau)], bin_width=float(dt),
-                                          start_bin=int(start), normalize=True).tolist()
-                    for name in detector_names
-                }
+                # When the IRF was fitted, convolve each detector's pattern with that
+                # detector's IRF (the fitted synthetic width, written back above);
+                # otherwise keep the tail alignment (no IRF, start_bin=range start).
+                patterns = {}
+                for name in detector_names:
+                    irf = self._detector_irf(name, n_bins=int(n_bins)) if apply_irf else None
+                    # Guard: only convolve with a usable (positive) IRF.
+                    if irf is not None and not np.any(np.asarray(irf) > 0.0):
+                        irf = None
+                    patterns[name] = synthetic_decay(
+                        n_bins, [float(tau)], bin_width=float(dt), irf=irf,
+                        start_bin=int(start), normalize=True, period=period,
+                    ).tolist()
                 if patterns:
                     patterns["__default__"] = patterns[detector_names[0]]
                     source["patterns_by_detector"] = patterns
                 self.lw_species.add_synthetic_source(source)
 
-    def _add_fret_autofit_species(self, amps, taus, scale, dt, start, n_bins, detector_names):
+    def _add_fret_autofit_species(self, amps, taus, scale, dt, start, n_bins,
+                                  detector_names, period=None):
         """Turn fitted donor lifetimes into FRET species.
 
         The longest fitted (green/donor) lifetime is taken as the unquenched donor
@@ -1128,17 +1697,24 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         tau_d0 = float(max(taus)) if len(taus) else 1.0
         dets = detector_names or ["green", "red", "yellow"]
         for amp, tau in zip(amps, taus):
+            frac = float(amp) / scale
             efficiency = float(np.clip(1.0 - float(tau) / tau_d0, 0.0, 0.999))
             state = "d_only" if efficiency < 1e-3 else "da"
             source = {
                 "type": "synthetic", "model": "fret_species",
-                "name": (f"donor-only τ={tau_d0:.2f}" if state == "d_only"
-                         else f"DA E={efficiency:.2f}"),
+                # Keep the fitted fraction visible in the Components list.
+                "name": (f"donor-only τ={tau_d0:.2f} ({frac:.0%})" if state == "d_only"
+                         else f"DA E={efficiency:.2f} ({frac:.0%})"),
                 "state": state,
                 "donor_spectrum": [1.0, tau_d0],
                 "acceptor_spectrum": [1.0, 2.0],
                 "fret_mode": "efficiency", "transfer_efficiency": efficiency,
                 "bin_width": float(dt),
+                "period_ns": float(period) if period else 0.0,
+                # Seed crosstalk from the Instrument dock (α/β/γ/δ, R0).
+                "crosstalk": {k: self._instrument().get(k)
+                              for k in ("alpha", "beta", "gamma", "delta")},
+                "forster_radius": self._instrument().get("forster_radius"),
             }
             try:
                 patterns = fret_species_detector_patterns(
@@ -1388,7 +1964,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             # Check if multiple detectors are selected (multi-detector stacking mode)
             # Only if NOT in anisotropy mode
             if chs and len(chs) > 1:
-                self._compute_filters_multi_detector(chs)
+                if self.stacked_mode_cb.isChecked():
+                    self._compute_filters_stacked(chs)
+                else:
+                    self._compute_filters_multi_detector(chs)
                 return
             
             # Standard single-channel mode
@@ -1427,9 +2006,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 species_data,
                 chs[0] if chs and len(chs) == 1 else None,
             )
-            self._result = self._compute_filters_rpc(
+            self._result = self._ranged_filters(
                 total_data,
                 species_data,
+                detector=chs[0] if chs and len(chs) == 1 else None,
                 total_path=(
                     [str(p.absolute()) for p in self._total_paths]
                     if self._total_paths else ["synthetic:example-mixture"]
@@ -1437,7 +2017,6 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 species_patterns=species_patterns,
                 nuisance_decays=nuisance_decays,
                 nuisance_labels=nuisance_labels,
-                reject_nuisance=True,
             )
             self._result_anisotropy = None  # Clear Anisotropy result
             self._result_multi_detector = None  # Clear multi-detector result
@@ -1732,6 +2311,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 nuisance_labels=nuisance_labels,
                 reject_nuisance=True,
             )
+            self._apply_range_to_result(self._result_anisotropy, chs[0] if chs else None)
             self._result = None  # Clear single-channel result
             self._result_multi_detector = None  # Clear multi-detector result
             self._result_multi_anisotropy = None  # Clear multi-anisotropy result
@@ -1832,7 +2412,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     nuisance_labels=nuisance_labels,
                     reject_nuisance=True,
                 )
-                
+                self._apply_range_to_result(result, det_name)
                 anisotropy_results.append({
                     'detector': det_name,
                     'result': result
@@ -1898,24 +2478,24 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                             padded[:sd.size] = sd
                             species_data[i] = padded
                 
-                # Compute filters for this detector
+                # Compute filters for this detector over its fit range.
                 nuisance, nuisance_labels = self._nuisance_patterns(
                     total_data, species_data, det_name
                 )
-                result = compute_filters(
+                result = self._ranged_filters(
                     total_data,
                     species_data,
+                    detector=det_name,
                     total_path=[str(p.absolute()) for p in self._total_paths],
                     species_patterns=species_patterns,
                     nuisance_decays=nuisance,
                     nuisance_labels=nuisance_labels,
-                    reject_nuisance=True,
                 )
                 detector_results.append({
                     'detector': det_name,
                     'result': result
                 })
-            
+
             # Store multi-detector results
             self._result_multi_detector = detector_results
             self._result = None  # Clear single-channel result
@@ -1930,6 +2510,110 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             cs.logging.error(f"Multi-detector computation error: {e}\n{traceback.format_exc()}")
             QtWidgets.QMessageBox.critical(self, "Multi-Detector Computation Error", str(e))
             self._update_status(f"Multi-Detector Error: {e}")
+
+    def _compute_filters_stacked(self, chs: List[str]) -> None:
+        """Compute ONE global filter set over the detectors stacked on a single axis.
+
+        Each detector's total decay and per-species patterns are concatenated
+        (``[green | red | yellow]``) into a single long vector, and one filter set
+        is solved jointly. Because the per-detector species patterns keep their
+        joint (FRET-constrained) normalization — a species' relative brightness
+        across detectors — that ratio constrains the unmix, unlike the independent
+        per-detector mode where each detector is normalized on its own.
+
+        The global result is split back into per-detector :class:`FilterResult`
+        slices stored in ``_result_multi_detector`` so the existing multi-detector
+        plotting/export path renders each detector's segment unchanged; each
+        detector's ``to_channel_filters()`` returns its slice of the global filters.
+        """
+        try:
+            # Per-detector totals and species patterns (joint scaling preserved).
+            totals = {det: np.asarray(self._total_decay([det]), dtype=float).ravel()
+                      for det in chs}
+            n_bins = int(min(t.size for t in totals.values()))
+            totals = {det: self._resize_pattern(t, n_bins) for det, t in totals.items()}
+
+            checked = [self.lw_species.item(i) for i in range(self.lw_species.count())
+                       if self.lw_species.item(i).checkState() == QtCore.Qt.Checked]
+            if not checked:
+                return
+            per_det_species: dict[str, list[np.ndarray]] = {det: [] for det in chs}
+            species_patterns = []
+            for item in checked:
+                source = None
+                for det in chs:
+                    pat, source = self._species_item_pattern(item, n_bins, [det])
+                    per_det_species[det].append(self._resize_pattern(pat, n_bins))
+                species_patterns.append(source)
+
+            # Per-detector nuisance, aligned by index (AP / scatter) across detectors.
+            nuis_by_det, labels0 = {}, None
+            for det in chs:
+                nd, nl = self._nuisance_patterns(totals[det], per_det_species[det], det)
+                nuis_by_det[det] = [self._resize_pattern(np.asarray(p, dtype=float), n_bins)
+                                    for p in nd]
+                if labels0 is None:
+                    labels0 = nl
+            n_nuis = min((len(v) for v in nuis_by_det.values()), default=0)
+
+            # Concatenate onto the stacked axis.
+            total_stacked = np.concatenate([totals[det] for det in chs])
+            species_stacked = [
+                np.concatenate([per_det_species[det][k] for det in chs])
+                for k in range(len(checked))
+            ]
+            nuisance_stacked = [
+                np.concatenate([nuis_by_det[det][k] for det in chs])
+                for k in range(n_nuis)
+            ]
+
+            stacked = compute_filters(
+                total_stacked, species_stacked,
+                total_path=[str(p.absolute()) for p in self._total_paths],
+                species_patterns=species_patterns,
+                nuisance_decays=nuisance_stacked or None,
+                nuisance_labels=(labels0[:n_nuis] if labels0 else None),
+                reject_nuisance=True,
+            )
+
+            # Split the global result back into per-detector FilterResult slices.
+            from copy import deepcopy
+            detector_results = []
+            for idx, det in enumerate(chs):
+                seg = slice(idx * n_bins, (idx + 1) * n_bins)
+                meta = deepcopy(stacked.metadata) if stacked.metadata else {}
+                meta["filter_mode"] = "stacked"
+                meta["stacked_detectors"] = list(chs)
+                fr = FilterResult(
+                    filters=np.asarray(stacked.filters)[:, seg].copy(),
+                    reconstruction=np.asarray(stacked.reconstruction)[seg].copy(),
+                    weighted_residuals=np.asarray(stacked.weighted_residuals)[seg].copy(),
+                    total_decay=np.asarray(stacked.total_decay)[seg].copy(),
+                    species_decays=[np.asarray(s)[seg].copy() for s in stacked.species_decays],
+                    metadata=meta,
+                    total_path=stacked.total_path,
+                    species_patterns=species_patterns,
+                    nuisance_count=int(stacked.nuisance_count),
+                    nuisance_labels=list(stacked.nuisance_labels or []),
+                )
+                self._apply_range_to_result(fr, det)
+                detector_results.append({"detector": det, "result": fr})
+
+            self._result_multi_detector = detector_results
+            self._result = None
+            self._result_anisotropy = None
+            self._result_multi_anisotropy = None
+            self._update_plots()
+            self.btn_export.setEnabled(True)
+            self._update_status(
+                f"Global (stacked) filters computed over {', '.join(chs)} "
+                f"({stacked.n_species} species, {n_bins} bins × {len(chs)} detectors)."
+            )
+        except Exception as e:
+            import traceback
+            cs.logging.error(f"Stacked computation error: {e}\n{traceback.format_exc()}")
+            QtWidgets.QMessageBox.critical(self, "Stacked Filter Computation Error", str(e))
+            self._update_status(f"Stacked Filter Error: {e}")
 
     def _build_detector_setup_selector(self, layout) -> None:
         """Compact picker of saved detector setups.
@@ -1955,6 +2639,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             setup = self.setup_selector.current_setup_dict()
         self._detector_settings = setup if isinstance(setup, dict) else None
         self._refresh_detector_checkboxes()
+        # Pre-populate the Instrument dock (α/β/γ/δ, G, l1/l2, R0, period) from it.
+        self._prepopulate_instrument_from_setup()
 
     def _connect_setup_signals(self):
         if not hasattr(self, 'detector_wizard_page') or not self.detector_wizard_page: return
@@ -2019,6 +2705,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 project_data['ui_state'] = {
                     'selected_detectors': self.detector_selection.get_selected(),
                     'anisotropy_mode': self.anisotropy_mode_cb.isChecked(),
+                    'stacked_mode': self.stacked_mode_cb.isChecked(),
                     'afterpulse_filter': self.fit_background_cb.isChecked(),
                     'scatter_filter': self.options_model.scatter_irf,
                     'detector_irf': self.detector_selection.export_state(),
@@ -2046,6 +2733,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     'ui_state': {
                         'selected_detectors': self.detector_selection.get_selected(),
                         'anisotropy_mode': self.anisotropy_mode_cb.isChecked(),
+                        'stacked_mode': self.stacked_mode_cb.isChecked(),
                         'afterpulse_filter': self.fit_background_cb.isChecked(),
                         'scatter_filter': self.options_model.scatter_irf,
                         'detector_irf': self.detector_selection.export_state(),
@@ -2150,6 +2838,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             # Restore anisotropy mode
             anisotropy_mode = ui_state.get('anisotropy_mode', False)
             self.anisotropy_mode_cb.setChecked(anisotropy_mode)
+            self.stacked_mode_cb.setChecked(bool(ui_state.get('stacked_mode', False)))
             self.options_model.fit_background = ui_state.get('afterpulse_filter', True)
             self.options_model.scatter_irf = ui_state.get('scatter_filter', True)
             # Per-detector IRF / width / skew live on the detector table now.
@@ -2167,12 +2856,29 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             QtWidgets.QMessageBox.critical(self, "Load Error", str(e))
 
     def _update_plots(self) -> None:
-        # Seed the draggable fit/filter range from the first available total decay.
+        # Keep the Info dock in sync with every recompute / data change.
+        self._refresh_info()
+        # Seed the draggable fit/filter range from the first available total decay
+        # — including a file-backed total loaded with no species yet (the example
+        # components are cleared on load, so there may be no computed result).
+        def _loaded_total():
+            if self._total_vector is not None:
+                return self._total_vector
+            if self._has_total_decay():
+                try:
+                    return self._total_decay(
+                        self.detector_selection.get_selected() or None
+                        if self.detector_selection.checkboxes else None
+                    )
+                except Exception:
+                    return None
+            return None
+
         for candidate in (
             getattr(self._result, "total_decay", None) if self._result else None,
             (self._result_multi_detector[0]["result"].total_decay
              if self._result_multi_detector else None),
-            self._total_vector,
+            _loaded_total(),
         ):
             if candidate is not None and np.asarray(candidate).size > 8:
                 self._init_fit_region(candidate)
@@ -2207,7 +2913,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 self.plot_filters.plot(x + base_x + offset, np.zeros(res.n_bins), pen=pg.mkPen('w', style=QtCore.Qt.DashLine))
             
             # 2. Reconstruction - stack each detector's par/perp
-            self.plot_recon.clear()
+            self._clear_recon_plot()
             for det_idx, ar in enumerate(anisotropy_results):
                 res = ar['result']
                 det_name = ar['detector']
@@ -2236,10 +2942,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 
                 # Parallel
                 detector_color = self._stable_plot_color(det_name)
-                self.plot_residuals.plot(x + base_x, res.weighted_residuals_par, pen=detector_color,
+                self.plot_residuals.plot(x + base_x, self._mask_to_fit_range(res.weighted_residuals_par, det_name), pen=detector_color, connect="finite",
                                         name=f"{det_name} (||)")
                 # Perpendicular
-                self.plot_residuals.plot(x + base_x + offset, res.weighted_residuals_perp, pen=detector_color,
+                self.plot_residuals.plot(x + base_x + offset, self._mask_to_fit_range(res.weighted_residuals_perp, det_name), pen=detector_color, connect="finite",
                                         name=f"{det_name} (⊥)")
                 # Reference lines
                 for val in [-3, 0, 3]:
@@ -2270,7 +2976,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 self.plot_filters.plot(x, np.zeros(res.n_bins), pen=pg.mkPen('w', style=QtCore.Qt.DashLine))
             
             # 2. Reconstruction - stack each detector horizontally
-            self.plot_recon.clear()
+            self._clear_recon_plot()
             for det_idx, dr in enumerate(detector_results):
                 res = dr['result']
                 det_name = dr['detector']
@@ -2290,7 +2996,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 det_name = dr['detector']
                 x = np.arange(res.n_bins) + (det_idx * offset)
                 
-                self.plot_residuals.plot(x, res.weighted_residuals, pen=self._stable_plot_color(det_name),
+                self.plot_residuals.plot(x, self._mask_to_fit_range(res.weighted_residuals, det_name), pen=self._stable_plot_color(det_name), connect="finite",
                                         name=f"{det_name}")
                 # Reference lines for this detector
                 for val in [-3, 0, 3]:
@@ -2321,7 +3027,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self.plot_filters.plot(x + offset, np.zeros_like(x), pen=pg.mkPen('w', style=QtCore.Qt.DashLine))
 
             # 2. Reconstruction - stack horizontally
-            self.plot_recon.clear()
+            self._clear_recon_plot()
             # Parallel (left)
             self.plot_recon.plot(x, res.total_decay_par, pen='w', name="Total (||)")
             self.plot_recon.plot(x, res.reconstruction_par, pen='r', name="Recon (||)")
@@ -2332,9 +3038,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             # 3. Residuals - stack horizontally
             self.plot_residuals.clear()
             # Parallel (left)
-            self.plot_residuals.plot(x, res.weighted_residuals_par, pen='g', name="Residuals (||)")
+            self.plot_residuals.plot(x, self._mask_to_fit_range(res.weighted_residuals_par), pen='g', connect="finite", name="Residuals (||)")
             # Perpendicular (right)
-            self.plot_residuals.plot(x + offset, res.weighted_residuals_perp, pen='y', name="Residuals (⊥)")
+            self.plot_residuals.plot(x + offset, self._mask_to_fit_range(res.weighted_residuals_perp), pen='y', connect="finite", name="Residuals (⊥)")
             # Reference lines for both channels
             for val in [-3, 0, 3]:
                 pen = pg.mkPen('r' if val != 0 else 'w', style=QtCore.Qt.DashLine)
@@ -2357,7 +3063,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.plot_filters.plot(x, np.zeros_like(x), pen=pg.mkPen('w', style=QtCore.Qt.DashLine))
 
         # 2. Reconstruction
-        self.plot_recon.clear()
+        self._clear_recon_plot()
         self.plot_recon.plot(x, res.total_decay, pen='w', name="Total")
         self.plot_recon.plot(x, res.reconstruction, pen='r', name="Recon", style=QtCore.Qt.DashLine)
         # Overlay the IRF/scatter pattern (single detector → one stored entry).
@@ -2367,7 +3073,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
         # 3. Residuals
         self.plot_residuals.clear()
-        self.plot_residuals.plot(x, res.weighted_residuals, pen='g')
+        self.plot_residuals.plot(x, self._mask_to_fit_range(res.weighted_residuals), pen='g', connect="finite")
         for val in [-3, 0, 3]:
             self.plot_residuals.plot(x, np.full_like(x, val), pen=pg.mkPen('r' if val != 0 else 'w', style=QtCore.Qt.DashLine))
 

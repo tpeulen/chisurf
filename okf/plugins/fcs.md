@@ -34,7 +34,7 @@ Plugins are discovered via `manifest.json` (`id`, `display_name`, `categories: [
 The Filter Calculator follows the fluorescence-domain objective of a
 [single intensity/decay computation path](/subsystems/fluorescence-domain.md#design-objective-one-intensitydecay-computation-path): measured patterns and spectra imported from existing fits are valid inputs, but detector-resolved decay generation (including IRF, polarization, detector response, and crosstalk) should route through the shared ChiSurf model infrastructure rather than plugin-local formulas.
 
-Its GUI uses the shared AutoForm record-table binding for editable lifetime spectra, an AutoForm options model for the Pol/AP/IRF toggles, and the ChiSurf `DockArea` for rearrangeable source, detector, filter, reconstruction, and residual panels. Detector selection and per-detector IRF live in one **Detectors table** (`DetectorIrfTableWidget`): a row per detector with a select checkbox, the name, editable synthetic-IRF Width (FWHM ns) and Skew, and an IRF column whose `…` button loads a measured IRF file (then becomes `✕` to unload). While a measured IRF is loaded, Width/Skew are disabled and populated with values estimated from that IRF (`irf_width_skew_ns`). When Pol is on, each detector splits into parallel/perpendicular rows with independent IRF settings; the per-detector state persists in projects (`export_state`/`import_state`). The default scientific stack places weighted residuals immediately above the reconstruction/decay plot. A compact emoji-led toolbar owns data/component/unmix/project actions through `QToolButton` menus; visible labels stay short while tooltips carry the complete descriptions. Plot colors are identity-stable rather than index-based: common detector names have semantic colors and other detector/component names use a deterministic digest palette, so toggling a channel or component cannot recolor survivors. The **Mixed decay** group has an explicit `📂 Load…` button and a `📡 From correlator` button that adopts the TTTR files already loaded in the sibling Correlator (Files & Steps) step as the mixed decay — reading the FCS toolbox's shared `FcsWorkflowContext.expanded_files`/`file_paths`; on first show the Filter Calculator auto-adopts those files when the user hasn't loaded a measured total. The **micro-time axis comes from the loaded data**: the TAC bin width (ns) is read from the TTTR header's `micro_time_resolution` and the channel count from `number_of_micro_time_channels`, with an **optional micro-time binning** factor (`FcsWorkflowContext.microtime_binning`, from the correlator) that coarsens the histogram and widens the bin width identically to the correlator — so the lifetime filters share the correlation's micro-time axis rather than a hardcoded `n_bins`/`bin_width`. A replaceable two-component 70/30 example is generated on first open as a reproducible 100,000-photon Poisson observation, so the filter, noisy reconstruction, and weighted-residual workflow is visible before measured data are loaded. Synthetic or fit-derived reference patterns can independently opt into shot noise with an explicit photon budget and seed.
+Its GUI uses the shared AutoForm record-table binding for editable lifetime spectra, an AutoForm options model for the Pol/AP/IRF toggles, and the ChiSurf `DockArea` for rearrangeable source, detector, filter, reconstruction, and residual panels. Detector selection and per-detector IRF live in one **Detectors table** (`DetectorIrfTableWidget`): a row per detector with a select checkbox, the name, editable synthetic-IRF Width (FWHM ns) and Skew, a **Shift** column (IRF time shift in ns), and an IRF column whose `…` button loads a measured IRF file (then becomes `✕` to unload). While a measured IRF is loaded, Width/Skew are disabled and populated with values estimated from that IRF (`irf_width_skew_ns`); the **Shift stays editable** and is applied (`_shift_irf`, sub-bin linear interpolation, positive = later) to *both* the measured and the synthetic/computed IRF so a detector's timing offset is corrected the same way regardless of source. When Pol is on, each detector splits into parallel/perpendicular rows with independent IRF settings; the per-detector state (IRF path, Width, Skew, Shift) persists in projects (`export_state`/`import_state`). The default scientific stack places weighted residuals immediately above the reconstruction/decay plot; the residuals are **masked to the selected fit range** (`_mask_to_fit_range` → NaN outside `[start, stop]`, drawn with `connect="finite"`) so only the fitted region is shown. The **fFCS filters are solved over the fit-range window** (`_ranged_filters` slices the total/species/nuisance to `[start, stop]`, runs `calc_ffcs_filters` there, and embeds the result back — filters zero outside, reconstruction == total outside so the residual is 0 there), so the excluded pre-prompt/far-tail bins cannot bias the reconstruction; the synthetic **scatter uses the detector's own IRF** (`_detector_irf`, with the auto-fit's fitted width/skew/shift) so scatter, the component convolution and the auto-fit share one IRF. Filters are therefore zeroed outside the fit range, and the range can be set **per detector** — an editable Detector/Start/Stop table in the **Info dock** overrides the global region (`_detector_fit_ranges`). Because the fFCS filters are computed over the full decay and only zeroed to the range, a **range change re-zeros from a cached copy of the un-zeroed filters and replots without a refit** (`_on_fit_range_committed`), so dragging the region — or editing a spinbox / the per-detector table — updates the filter and residual plots instantly, and narrowing then widening recovers the columns. The **Info dock** (`_build_info_panel`) gathers all state: mixed-decay source/files, bins/bin-width/µ-time binning, global fit range, per-detector IRF (width/skew/shift/measured), the component list, the last auto-fit summary, and per-result filter counts/mode. A compact emoji-led toolbar owns data/component/unmix/project actions through `QToolButton` menus; visible labels stay short while tooltips carry the complete descriptions. Plot colors are identity-stable rather than index-based: common detector names have semantic colors and other detector/component names use a deterministic digest palette, so toggling a channel or component cannot recolor survivors. The **Mixed decay** group has an explicit `📂 Load…` button and a `📡 From correlator` button that adopts the TTTR files already loaded in the sibling Correlator (Files & Steps) step as the mixed decay — reading the FCS toolbox's shared `FcsWorkflowContext.expanded_files`/`file_paths`; on first show the Filter Calculator auto-adopts those files when the user hasn't loaded a measured total. The **micro-time axis comes from the loaded data**: the TAC bin width (ns) is read from the TTTR header's `micro_time_resolution` and the channel count from `number_of_micro_time_channels`, with an **optional micro-time binning** factor (`FcsWorkflowContext.microtime_binning`, from the correlator) that coarsens the histogram and widens the bin width identically to the correlator — so the lifetime filters share the correlation's micro-time axis rather than a hardcoded `n_bins`/`bin_width`. A replaceable two-component 70/30 example is generated on first open as a reproducible 100,000-photon Poisson observation, so the filter, noisy reconstruction, and weighted-residual workflow is visible before measured data are loaded; those seeded components are tagged `example` and are **cleared automatically the moment measured data is loaded** (`_clear_example_components`), while user-added components survive. Synthetic or fit-derived reference patterns can independently opt into shot noise with an explicit photon budget and seed.
 
 **Coupled FRET-species components.** A component can be a whole smFRET
 labeling state whose channels carry *different, physically-coupled* decays
@@ -72,18 +72,50 @@ legacy hand-built TCSPC FRET-fit input widgets (`gui/widgets/models/tcspc/`
 distance-distribution / FRET-parameter *input UI* is not yet shared between the
 fits and this editor (the core physics already is).
 
-**Auto-fit (auto filter).** A `🎯 Auto-fit` toolbar action decomposes the measured
-mixed decay into `N` lifetime components (`QInputDialog` for `N`) and appends one
-synthetic species per component, then auto-computes the filters. It uses the
+**Auto-fit (auto filter).** A persistent **Auto-fit** dock (registered in the
+`DockArea` beside the sources panel, driven by `_build_autofit_panel`) exposes the
+decomposition settings inline rather than through a transient dialog: a **Type**
+selector (Lifetime species / FRET species), a **components / states** count, and
+the **lifetime min/max** bounds, plus a `🎯 Fit + generate filters` button, a live
+**Fit range** label, and a status line echoing the last fit (`χ²ᵣ` and the resolved
+amplitude·lifetime terms). The dock controls mirror into `_auto_fit_settings`
+(`_sync_autofit_settings`), and the `🎯 Auto-fit` toolbar action runs the same fit.
+The fit window is chosen with a draggable `LinearRegionItem` region on the decay
+plot (synced to the **Fit range** spinboxes and the dock's range label); it resets
+when new mixed data is loaded. Auto-fit decomposes the measured mixed decay over
+that window into `N` lifetime components (or `N` FRET states, `E` from the relative
+donor quenching), appends one synthetic species per component, then auto-computes
+the filters. It uses the
 general, reusable core `chisurf/core/fluorescence/decay_fit.py` — `fit_lifetime_components`
 (discrete multi-exponential: bounded log-space lifetimes via `scipy.least_squares`,
 non-negative amplitudes by NNLS at each step, Poisson-weighted residuals, built on
 the canonical `synthetic_decay` forward model) and `fit_component_amplitudes`
-(the weighted non-negative unmixing step). When the selected detector has **no
-measured IRF**, a synthetic Gaussian IRF **FWHM is fitted jointly** (`fit_irf`,
-via `synthetic_irf`) and written back to the detector table; each fitted lifetime's
-per-detector pattern is re-convolved with that detector's IRF so the deconvolved
-components reconstruct the measured decay. *In progress:* per the reuse request,
+(the weighted non-negative unmixing step). When the selected (primary) detector has
+**no measured IRF**, a synthetic Gaussian IRF is **fitted jointly** (`fit_irf`,
+via `synthetic_irf`) — its **width, shift (center) and skew** are all free parameters
+(not just the width) — with the fit window extended down to the prompt (`fit_lo = 0`)
+so the rising edge makes them identifiable; the fitted width/skew/shift are **written
+back to the detector table** (`set_width`/`set_skew`/`set_shift`, the shift being the
+fitted center minus the nominal `2·FWHM`) for every selected detector that lacks a
+measured IRF; each fitted lifetime's per-detector pattern is then convolved with
+that detector's IRF from the prompt (`start_bin = 0`) so the deconvolved components
+reconstruct the measured decay. The auto-fit also **fits the scatter and background
+fractions** jointly with the lifetimes — `include_scatter` (an IRF-shaped column)
+and `include_background` (a constant afterpulse column), driven by the **IRF** and
+**AP** input toggles — so the lifetimes are not biased by having to absorb the
+prompt/baseline; the fitted `scatter_fraction`/`background_fraction` are reported in
+the status line. The **draggable fit region is the fit window** (`fit_lo = start`),
+so the fit honours the user's range rather than always starting at bin 0. An
+**Instrument dock** (AutoForm over `instrument_options.py`) holds the calibration
+constants **α/β/γ/δ, G-factor, l₁/l₂, R₀ and the laser period**, pre-populated from
+the selected setup; enabling its **periodic convolution** threads a `period` through
+`fit_lifetime_components`/`_basis`/`synthetic_decay` so the previous-pulse tail wraps
+into the window (removing the residual ramp), and the generated components carry
+`period_ns` to stay periodic. When a measured IRF *is* loaded the fit is a robust
+tail fit over the region (start past the prompt), aligned to the range start. The
+draggable region item is preserved across every replot (`_clear_recon_plot` re-adds
+it after `PlotWidget.clear()`, which would otherwise wipe it on the first compute).
+*In progress:* per the reuse request,
 migrating this auto-fit onto the real ChiSurf TCSPC fit models
 (`LifetimeModel`/`FRETModel`) so it uses `FittingParameter`s that can be
 **cross-linked to existing fits** (the synthetic/FRET editors already offer a
@@ -101,6 +133,20 @@ but are **always** removed from the correlation-facing filter tables — only
 molecular species become correlation channels. (There is no separate "reject
 nuisance" toggle; rejection is unconditional, since afterpulse/scatter should
 never become correlation channels.)
+
+**Multi-detector filter modes.** With more than one detector selected the filters
+are computed either **independently per detector** (default: each detector's photons
+are isolated and its filters column-normalized on their own) or in a **global
+(stacked)** mode (the *Global (stacked) multi-detector filters* toggle,
+`_compute_filters_stacked`). Stacked mode concatenates every detector's total decay
+and per-species patterns onto a single axis (`[green | red | yellow]`) and solves one
+filter set jointly, then splits it back into per-detector `FilterResult` slices for
+plotting/export. Because the FRET-species per-detector patterns keep their **joint
+normalization** — a species' relative brightness across detectors, fixed by the
+excitation/emission matrices and α/β/γ/δ crosstalk (`fret_species_patterns` normalizes
+across channels, not per channel) — that inter-detector amplitude ratio constrains the
+unmix in stacked mode, whereas the independent mode discards it (per-detector column
+normalization). The mode persists in the project `ui_state`.
 
 **Single decay generator.** Synthetic decays everywhere funnel through the one
 canonical generator `chisurf/core/fluorescence/decay.py::synthetic_decay` /
