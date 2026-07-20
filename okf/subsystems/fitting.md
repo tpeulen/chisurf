@@ -100,6 +100,16 @@ applied to the `FittingParameter`s when the AutoForm renderer builds the section
 custom section accepts a `prior` option the same way. See the
 [AutoForm subsystem](/subsystems/gui-autoform.md).
 
+**Reporting.** `Fit.prior_summary()` lists each parameter's prior and whether it
+is *informative* — a `UniformPrior` only restates the bounds and contributes
+nothing to the objective. `Fit.posterior_summary()` gives each free parameter's
+interval, preferring a chi² scan's (possibly asymmetric) profile crossings over
+the covariance matrix's symmetric `value ± error` Laplace approximation, and
+labels which one a row carries. `Fit.__str__` renders both, so they appear in the
+fit-info panel; the heading says *posterior (MAP)* only when an informative prior
+is attached, since with bounds alone the interval is an ordinary confidence
+interval rather than a credible one.
+
 The dedicated single-molecule / image MLE path (tttrlib `fit2x`:
 `Fit23`/`Fit24`/`Fit25`) is wrapped by the Qt-free harness
 `chisurf/core/fluorescence/mle/` (`Fit2x`, `Fit2xSettings`, `Fit2xResult`,

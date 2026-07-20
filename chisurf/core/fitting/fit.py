@@ -17,6 +17,7 @@ import chisurf.core.curve
 import chisurf.core.experiments
 import chisurf.core.data
 import chisurf.core.fitting.parameter
+import chisurf.core.fitting.priors
 import chisurf.core.fitting.sample
 import chisurf.core.fitting.support_plane
 import chisurf.core.models
@@ -649,7 +650,151 @@ class Fit(cs.core.base.Base):
             if p.is_linked and p.link is not None:
                 s += f"  →{p.link.name}"
             s += "\n"
+        s += self._prior_posterior_report()
         return s
+
+    def _prior_posterior_report(self) -> str:
+        """Render the prior and posterior sections appended to :meth:`__str__`."""
+        lines = []
+
+        priors = self.prior_summary()
+        informative = [e for e in priors if e['informative']]
+        box_only = [e['name'] for e in priors if not e['informative']]
+        lines.append("\n  Priors")
+        for e in informative:
+            lines.append(f"    {e['name']:<12s}  {e['description']}")
+        if box_only:
+            # These only restate the bounds and contribute nothing to the
+            # objective, so they are named rather than listed one per line.
+            lines.append(f"    bounds only (not in objective): {', '.join(box_only)}")
+        if not priors:
+            lines.append("    (none set — flat prior, so the fit is plain least squares)")
+        elif not informative:
+            lines.append("    (no informative prior — the fit is plain least squares)")
+
+        post = self.posterior_summary()
+        # Only an informative prior makes the optimum a posterior mode; with
+        # bounds alone the interval is an ordinary confidence interval.
+        kind = "posterior (MAP)" if informative else "likelihood"
+        lines.append(f"\n  Parameter {kind} intervals")
+        if not post:
+            lines.append("    (no free parameters)")
+        else:
+            lines.append(f"    {'Name':<12s}  {'Value':<11s}  {'Interval':<25s}  Method")
+            for e in post:
+                if e['method'] == 'none':
+                    interval, method = "n/a", "no estimate"
+                else:
+                    interval = f"[{e['low']:.5g}, {e['high']:.5g}]"
+                    method = (
+                        f"chi2 scan, p={e['p_value']:g}" if e['method'] == 'profile'
+                        else f"covariance ±1σ, p≈{e['p_value']:g}"
+                    )
+                lines.append(f"    {e['name']:<12s}  {e['value']:<11.5g}  {interval:<25s}  {method}")
+        return "\n".join(lines) + "\n"
+
+    def prior_summary(self) -> typing.List[typing.Dict[str, typing.Any]]:
+        """Describe the prior attached to each parameter of the model.
+
+        Returns
+        -------
+        list of dict
+            One entry per parameter carrying a prior, with ``name``,
+            ``description`` (a compact ``kind(params)`` string) and
+            ``informative`` — False for a uniform/box prior, which only restates
+            the parameter's bounds and contributes nothing to the objective.
+        """
+        out = []
+        for name in sorted(self.model.parameters_all_dict.keys()):
+            p = self.model.parameters_all_dict[name]
+            if not isinstance(p, cs.core.fitting.parameter.FittingParameter):
+                continue
+            if getattr(p, 'is_output', False):
+                continue
+            try:
+                prior = getattr(p, 'prior', None)
+            except Exception:
+                prior = None
+            if prior is None:
+                continue
+            informative = not isinstance(prior, cs.core.fitting.priors.UniformPrior)
+            out.append({
+                'name': str(p.name),
+                'description': repr(prior),
+                'informative': bool(informative),
+            })
+        return out
+
+    def posterior_summary(
+            self,
+            p_value: float = 0.68
+    ) -> typing.List[typing.Dict[str, typing.Any]]:
+        """Summarise each free parameter's marginal uncertainty about the optimum.
+
+        Two very different estimates are reported under one roof, and the
+        ``method`` key says which one a row carries. ``profile`` intervals come
+        from an actual chi² scan and may be asymmetric; ``laplace`` intervals are
+        the quadratic approximation ``value ± error_estimate`` implied by the
+        covariance matrix. Whether these are *credible* or merely *confidence*
+        intervals depends on the priors in play: with only uniform/box priors the
+        posterior is proportional to the likelihood inside the bounds and the two
+        coincide, which is why :meth:`prior_summary` reports informativeness.
+
+        Parameters
+        ----------
+        p_value : float, optional
+            Coverage requested from a scan-derived interval.
+
+        Returns
+        -------
+        list of dict
+            One entry per free parameter with ``name``, ``value``, ``low``,
+            ``high``, ``method`` and ``p_value``. ``low``/``high`` are NaN when
+            no estimate is available.
+        """
+        out = []
+        for name in sorted(self.model.parameters_all_dict.keys()):
+            p = self.model.parameters_all_dict[name]
+            if not isinstance(p, cs.core.fitting.parameter.FittingParameter):
+                continue
+            if getattr(p, 'is_output', False) or p.fixed:
+                continue
+            try:
+                value = float(p.value)
+            except Exception:
+                continue
+            low = high = float('nan')
+            method = 'none'
+            scan = getattr(p, 'scan_result', None)
+            if isinstance(scan, dict):
+                try:
+                    intervals = cs.core.fitting.support_plane.confidence_intervals_from_scan_result(
+                        scan, p_values=(p_value,)
+                    )
+                except Exception:
+                    intervals = []
+                if intervals:
+                    lo, hi = intervals[0].get('crossings', (None, None))
+                    if lo is not None or hi is not None:
+                        low = float(lo) if lo is not None else float('nan')
+                        high = float(hi) if hi is not None else float('nan')
+                        method = 'profile'
+            if method == 'none':
+                try:
+                    err = float(p.error_estimate)
+                except Exception:
+                    err = float('nan')
+                if np.isfinite(err):
+                    low, high, method = value - err, value + err, 'laplace'
+            out.append({
+                'name': str(p.name),
+                'value': value,
+                'low': low,
+                'high': high,
+                'method': method,
+                'p_value': float(p_value),
+            })
+        return out
 
     def get_curves(
             self,

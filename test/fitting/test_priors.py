@@ -403,3 +403,93 @@ def test_callback_prior_enters_map_objective():
     fit.run()
     fit.run()
     assert fit.model.parameter_dict["a"].value == pytest.approx(2.0, abs=0.05)
+
+
+# --------------------------------------------------------------------------
+# 4. Prior / posterior reporting (the fit summary shown in the Info panel)
+# --------------------------------------------------------------------------
+
+def test_prior_summary_separates_informative_from_bounds():
+    """A bound is a uniform prior, but it contributes nothing to the objective."""
+    fit = _make_linear_fit()
+    a = fit.model.parameter_dict["a"]
+    c = fit.model.parameter_dict["c"]
+    a.prior = _priors.NormalPrior(mu=2.0, sigma=0.5)
+    c.bounds = (0.0, 10.0)
+    c.bounds_on = True
+
+    summary = {e["name"]: e for e in fit.prior_summary()}
+
+    assert summary["a"]["informative"] is True
+    assert "NormalPrior" in summary["a"]["description"]
+    assert summary["c"]["informative"] is False
+
+
+def test_posterior_summary_uses_the_covariance_when_no_scan_exists():
+    fit = _make_linear_fit()
+    fit.run()
+    fit.run()
+
+    rows = {e["name"]: e for e in fit.posterior_summary()}
+    a = rows["a"]
+
+    assert a["method"] == "laplace"
+    assert a["low"] < a["value"] < a["high"]
+    err = fit.model.parameter_dict["a"].error_estimate
+    assert a["high"] - a["low"] == pytest.approx(2.0 * err, rel=1e-6)
+
+
+def test_posterior_summary_skips_fixed_parameters():
+    fit = _make_linear_fit()
+    fit.run()
+    fit.model.parameter_dict["c"].fixed = True
+
+    assert "c" not in {e["name"] for e in fit.posterior_summary()}
+
+
+def test_posterior_summary_prefers_a_scan_over_the_covariance():
+    """A chi2 scan gives a profile interval, which may be asymmetric."""
+    fit = _make_linear_fit()
+    fit.run()
+    fit.run()
+    a = fit.model.parameter_dict["a"]
+    a.scan_result = {
+        "parameter_values": np.linspace(1.0, 1.4, 21),
+        "chi2r": 1.0 + ((np.linspace(1.0, 1.4, 21) - 1.2) / 0.05) ** 2,
+        "chi2r_min": 1.0,
+        "v0": 1.2,
+        "nu": 30,
+        "n_extra_params": 1,
+    }
+
+    row = {e["name"]: e for e in fit.posterior_summary()}["a"]
+
+    assert row["method"] == "profile"
+    assert row["low"] < 1.2 < row["high"]
+
+
+def test_fit_str_reports_priors_and_intervals():
+    fit = _make_linear_fit()
+    fit.model.parameter_dict["a"].prior = _priors.NormalPrior(mu=2.0, sigma=0.5)
+    fit.run()
+    fit.run()
+
+    text = str(fit)
+
+    assert "Priors" in text
+    assert "NormalPrior" in text
+    # An informative prior makes the optimum a posterior mode, not just an MLE.
+    assert "posterior (MAP)" in text
+    assert "covariance" in text
+
+
+def test_fit_str_calls_it_a_likelihood_interval_without_an_informative_prior():
+    """Bounds alone do not make an interval Bayesian; the wording must not claim it."""
+    fit = _make_linear_fit()
+    fit.run()
+    fit.run()
+
+    text = str(fit)
+
+    assert "likelihood" in text
+    assert "posterior (MAP)" not in text
