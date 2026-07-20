@@ -75,7 +75,8 @@ def _build(start, n_channels=N_CHANNELS, dt=DT, n_photons=2e6, seed=0):
         m.lifetimes._amplitudes[k].value = a
         pt = m.lifetimes._lifetimes[k]
         pt.value = tau
-        pt.lb, pt.ub, pt.bounds_on = 0.01, 50.0, True
+        pt.bounds = (0.01, 50.0)
+        pt.bounds_on = True
 
     m.generic.background = BACKGROUND
     m.find_parameters()
@@ -154,3 +155,67 @@ def test_amplitudes_stay_finite():
     raw = np.asarray([p.value for p in m.lifetimes._amplitudes], dtype=float)
     assert np.abs(raw).sum() > 0, f"all amplitudes collapsed to zero: {raw}"
     assert np.all(np.isfinite(m.lifetimes.amplitudes))
+
+
+# ---------------------------------------------------------------------------
+# Performance-related caching must not change results
+# ---------------------------------------------------------------------------
+
+
+def test_processed_irf_is_cached_but_invalidates_on_in_place_edit():
+    """The IRF cache must key on content, not on a summary statistic.
+
+    ``_process_irf`` is memoised because rebuilding it dominated fitting, but a
+    reduction like ``sum()`` is blind to in-place reordering — ``np.roll`` keeps
+    the sum identical — which would silently serve a stale curve.
+    """
+    fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
+    before = np.array(m.convolve.irf.y, copy=True)
+
+    # repeated reads are served from the cache and must be identical
+    np.testing.assert_array_equal(np.asarray(m.convolve.irf.y), before)
+
+    m.convolve._irf.y[:] = np.roll(m.convolve._irf.y, 7)  # sum-preserving
+    after = np.asarray(m.convolve.irf.y)
+    assert not np.array_equal(before, after), "stale IRF served after in-place roll"
+
+
+def test_processed_irf_invalidates_on_background_and_window_changes():
+    fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
+    base = np.array(m.convolve.irf.y, copy=True)
+
+    m.convolve.lamp_background = 5.0
+    assert not np.array_equal(base, np.asarray(m.convolve.irf.y))
+
+    m.convolve.lamp_background = 0.0
+    np.testing.assert_allclose(np.asarray(m.convolve.irf.y), base, rtol=0, atol=1e-12)
+
+    m.convolve._irf_stop.value = 200 * DT   # narrow the window
+    assert not np.array_equal(base, np.asarray(m.convolve.irf.y))
+
+
+def test_timeshift_is_not_cached():
+    """``timeshift`` is a fit parameter, so it must apply after the cache."""
+    fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
+    a = np.array(m.convolve.irf.y, copy=True)
+    m.convolve.timeshift = 5.0
+    b = np.asarray(m.convolve.irf.y)
+    assert not np.array_equal(a, b), "timeshift had no effect — it was cached away"
+
+
+def test_reading_a_parameter_does_not_change_it():
+    """Reading ``Parameter.value`` must be side-effect free.
+
+    It used to write the value back to the port on *every* read, which ran the
+    expensive sanitising setter and invalidated the node graph.
+    """
+    fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
+    p = m.lifetimes._lifetimes[0]
+    first = p.value
+    for _ in range(5):
+        assert p.value == first
+    # a clamped read still writes back, so bounds keep working
+    p.bounds = (1.0, 2.0)
+    p.bounds_on = True
+    p.value = 99.0
+    assert p.value == pytest.approx(2.0)

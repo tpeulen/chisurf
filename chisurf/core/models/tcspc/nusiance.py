@@ -589,9 +589,52 @@ class Convolve(FittingParameterGroup):
         else:
             logging.debug(f'No IRF scaling')
         
-        # Apply timeshift
-        irf = irf << float(self.timeshift)
         return irf
+
+    def _irf_cache_key(self, normalize: bool):
+        """Fingerprint of everything ``_process_irf`` depends on except the timeshift.
+
+        Cheap to compute relative to the ~0.3 ms rebuild it guards: a couple of
+        parameter reads plus one ``sum()`` over the source array.
+        """
+        src = self._irf
+        if isinstance(src, chisurf.core.curve.Curve):
+            y = np.ascontiguousarray(src.y)
+            # Hash the bytes rather than a summary statistic: a reduction like
+            # sum() is blind to in-place reordering (np.roll on the IRF keeps
+            # the sum identical), which would silently serve a stale curve.
+            fingerprint = (y.shape, y.dtype.str, hash(y.tobytes()))
+        else:
+            # synthetic IRF: derived from the data and the width/shape parameters
+            dy = np.ascontiguousarray(self.data.y)
+            fingerprint = (dy.shape, dy.dtype.str, hash(dy.tobytes()),
+                           float(self._iw.value), float(self._ik.value))
+        return (
+            bool(normalize),
+            float(self.lamp_background),
+            int(self.irf_start),
+            int(self.irf_stop),
+            fingerprint,
+        )
+
+    def _processed_irf(self, normalize: bool = True) -> chisurf.core.curve.Curve:
+        """``_process_irf`` plus the timeshift, memoised on its inputs.
+
+        Rebuilding the IRF on every model evaluation dominated fitting: it was
+        **42% of total fit wall time**, constructing 3 ``Curve`` objects and 2
+        ``Curve.__sub__`` copies per call, for a result that is identical unless
+        the source IRF, background, window or width/shape parameters change.
+        The timeshift *is* a fit parameter, so it is applied after the cache —
+        ``__lshift__`` returns a copy, so the cached curve is never mutated.
+        """
+        key = self._irf_cache_key(normalize)
+        cached = getattr(self, "_irf_cache", None)
+        if cached is None or cached[0] != key:
+            cached = (key, self._process_irf(normalize=normalize))
+            object.__setattr__(self, "_irf_cache", cached)
+        base = cached[1]
+        shift = float(self.timeshift)
+        return base if shift == 0.0 else base << shift
 
     @property
     def irf(self) -> chisurf.core.curve.Curve:
@@ -600,7 +643,7 @@ class Convolve(FittingParameterGroup):
         Returns:
             chisurf.core.curve.Curve: The normalized IRF curve.
         """
-        return self._process_irf(normalize=True)
+        return self._processed_irf(normalize=True)
 
     @property
     def unnormalized_irf(self) -> chisurf.core.curve.Curve:
@@ -612,7 +655,7 @@ class Convolve(FittingParameterGroup):
         Returns:
             chisurf.core.curve.Curve: The unnormalized IRF curve.
         """
-        return self._process_irf(normalize=False)
+        return self._processed_irf(normalize=False)
 
     @property
     def _irf(self) -> chisurf.core.curve.Curve:

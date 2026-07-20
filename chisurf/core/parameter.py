@@ -133,7 +133,10 @@ class Parameter(chisurf.core.base.Base):
         """
         # If linked, defer entirely to linked parameter's port value.
         if self.is_linked:
-            return float(np.atleast_1d(self._port.value)[0])
+            pv = self._port.value
+            # Port.value already returns a Python float for scalar ports; only
+            # pay for atleast_1d when it does not.
+            return pv if type(pv) is float else float(np.atleast_1d(pv)[0])
 
         # Compute from callable if available.
         if self._callable:
@@ -141,8 +144,11 @@ class Parameter(chisurf.core.base.Base):
                 v = float(np.atleast_1d(self._callable())[0])
             except Exception:
                 v = float(np.atleast_1d(self._port.value)[0])
+            raw = None  # callable result always differs from the stored value
         else:
-            v = float(np.atleast_1d(self._port.value)[0])
+            pv = self._port.value
+            v = pv if type(pv) is float else float(np.atleast_1d(pv)[0])
+            raw = v
 
         # Apply bounds on read for both callable and non-callable parameters
         # if bounds are enabled. This matches the behaviour expected in the
@@ -157,7 +163,14 @@ class Parameter(chisurf.core.base.Base):
 
         # Write the clamped value back to the port when the parameter is not
         # fixed, so subsequent reads remain consistent.
-        if not self.fixed:
+        #
+        # Only write when the value actually changed. `Port.value`'s setter is
+        # expensive (atleast_1d + three np.where sanitisation passes + astype +
+        # clip) and, worse, calls update_attached_node(), so an unconditional
+        # write made every parameter *read* invalidate the node graph. In a fit
+        # this dominated: reads outnumber writes by orders of magnitude and the
+        # value is unchanged unless a bound actually clamped it.
+        if not self.fixed and v != raw:
             f = self._port.fixed
             self._port.fixed = False
             self._port.value = v
