@@ -31,6 +31,25 @@ tttrlib source (the gitignored `modules/tttrlib` symlink) over the conda
 unreleased `SimEngine` photon simulator); it no-ops when that symlink is absent,
 so CI uses the conda package. See [compiled modules](/subsystems/compiled-modules.md).
 
+# Installer bundles
+
+`build_tools/build_installer.py` assembles a slimmed runtime env under `dist/`
+and wraps it per platform (macOS `.app` + DMG, Linux AppImage, Windows Inno
+Setup). The env is created against a build-time prefix, so the bundle is only
+usable elsewhere if every absolute reference to that prefix is removed before
+wrapping.
+
+`relocate_scripts(bin_dir, build_prefix)` handles the console scripts:
+micromamba and pip write the build prefix into the shebang of `chisurf`,
+`csc` and every `csg_*` entry point, in either the plain form
+(`#!<prefix>/bin/python3.12`) or setuptools' long-shebang form (`#!/bin/sh`
+followed by `'''exec' "<prefix>/bin/python3.12" …`). Both are replaced by an
+interpreter resolved from the script's own directory. It runs for the macOS
+bundle and the AppImage — AppImages mount at a fresh path on every launch, so
+the baked prefix is wrong there too. The `.app` launcher itself invokes
+`Contents/bin/python -m chisurf` and was never affected; the entry points on
+`PATH` were.
+
 # Style
 
 ruff (line length 100, py310 target, NumPy-style docstrings) and mypy.

@@ -343,6 +343,83 @@ def _strip_qt(prefix: Path, sp: Path) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Relocation: make bin/ console scripts independent of the build prefix
+# --------------------------------------------------------------------------- #
+# A plain shebang (``#!/build/prefix/bin/python3.12``) or the setuptools
+# long-shebang form (``#!/bin/sh`` + ``'''exec' "/build/prefix/bin/python3.12"``).
+_PLAIN_SHEBANG = re.compile(rb"^#!\s*(\S+)(.*)$")
+_SH_EXEC_SHEBANG = re.compile(rb"""^'''exec' ("|')(\S+)\1 .*#'''$""")
+
+# Self-locating replacement: the interpreter is a sibling of the script in bin/.
+# Valid sh *and* a Python string literal, so the Python body below is untouched.
+_RELOC_PREAMBLE = (
+    b"#!/bin/sh\n"
+    b"'''exec' \"$(cd -- \"$(dirname -- \"$0\")\" && pwd)/%s\" \"$0\" \"$@\" #'''\n"
+)
+
+
+def relocate_scripts(bin_dir: Path, build_prefix: Path) -> int:
+    """Rewrite build-prefix interpreter paths in ``bin_dir`` to resolve at runtime.
+
+    micromamba and pip bake the absolute build-time prefix into the shebang of
+    every console script they generate. On a CI runner that is
+    ``/Users/runner/work/.../dist/osx/bin/python3.12``, a path that does not
+    exist on any user machine, so ``chisurf``/``csg_*`` inside the shipped
+    bundle die with "bad interpreter". Replacing the absolute interpreter with
+    one derived from the script's own location makes ``bin/`` relocatable.
+
+    Parameters
+    ----------
+    bin_dir : Path
+        The ``bin`` directory inside the assembled bundle.
+    build_prefix : Path
+        Environment prefix the scripts were generated against; only shebangs
+        pointing into it are rewritten.
+
+    Returns
+    -------
+    int
+        Number of scripts rewritten.
+    """
+    marker = str(build_prefix.resolve()).encode()
+    rewritten = 0
+    for script in sorted(bin_dir.iterdir()):
+        if not script.is_file() or script.is_symlink():
+            continue
+        try:
+            raw = script.read_bytes()
+        except OSError:
+            continue
+        if not raw.startswith(b"#!"):
+            continue
+        lines = raw.split(b"\n")
+
+        interp, drop = None, 0
+        m = _PLAIN_SHEBANG.match(lines[0])
+        if m and m.group(1).startswith(marker):
+            interp, drop = Path(m.group(1).decode()).name.encode(), 1
+        elif len(lines) > 1:
+            m = _SH_EXEC_SHEBANG.match(lines[1])
+            if m and m.group(2).startswith(marker):
+                interp, drop = Path(m.group(2).decode()).name.encode(), 2
+        if interp is None:
+            continue
+        if not interp.startswith(b"python"):
+            # The sh-exec wrapper is only valid inside a Python payload.
+            print(f"[reloc] WARNING: {script.name} keeps build-prefix "
+                  f"interpreter {interp.decode()}", flush=True)
+            continue
+
+        body = b"\n".join(lines[drop:])
+        script.write_bytes(_RELOC_PREAMBLE % interp + body)
+        script.chmod(script.stat().st_mode | 0o111)
+        rewritten += 1
+
+    print(f"[reloc] rewrote {rewritten} script shebang(s) in {bin_dir}", flush=True)
+    return rewritten
+
+
+# --------------------------------------------------------------------------- #
 # Platform packagers
 # --------------------------------------------------------------------------- #
 def package_macos(version: str, info: dict) -> Path:
@@ -358,6 +435,7 @@ def package_macos(version: str, info: dict) -> Path:
     (contents / "MacOS").mkdir(parents=True)
     (contents / "Resources").mkdir(parents=True)
     shutil.copytree(prefix / "bin", contents / "bin", symlinks=True)
+    relocate_scripts(contents / "bin", prefix)
     shutil.copytree(prefix / "lib" / f"python{PYVER}", contents / "lib" / f"python{PYVER}", symlinks=True)
     for dylib in (prefix / "lib").glob("*.dylib"):
         shutil.copy2(dylib, contents / "lib" / dylib.name, follow_symlinks=False)
@@ -396,6 +474,9 @@ def package_linux(version: str, info: dict) -> Path:
     try:
         (appdir / "usr").mkdir(parents=True)
         run(["cp", "-a", prefix, appdir / "usr" / "runtime"])
+        # AppImages mount at a fresh /tmp/.mount_* path on every launch, so the
+        # baked build prefix is wrong there too.
+        relocate_scripts(appdir / "usr" / "runtime" / "bin", prefix)
         (appdir / "AppRun").write_text(_LINUX_APPRUN)
         (appdir / "AppRun").chmod(0o755)
         desktop = LINUX_DIR / "chisurf.desktop"
