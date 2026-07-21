@@ -1278,7 +1278,8 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                     n_res = len(res_names)
                 else:
                     n_res = "?"
-                r_g = "?"
+                r_g_val = entry.get("radius_gyration")
+                r_g = "?" if r_g_val is None else f"{r_g_val:.1f}"
                 system_label = "System: coordinates"
 
             lines = [
@@ -1532,18 +1533,19 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 raise
 
         # First try the standard IMP/Structure-based loader for static files.
+        backbone = None
         try:
-            structure, coords = load_structure_payload(
+            structure, backbone = load_structure_payload(
                 path,
                 structure_factory=_ChiSurfStructure,
             )
         except Exception as e:
             primary_exc = e
             structure = None
-            coords = None
+            backbone = None
         else:
-            if coords is not None:
-                coords_arr = np.asarray(coords, dtype=float)
+            if backbone is not None:
+                coords_arr = np.asarray(backbone.coords, dtype=float)
 
         object_id: str
         n_atoms: Any
@@ -1556,10 +1558,17 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             )
             n_atoms = getattr(structure, "n_atoms", "?")
         elif coords_arr is not None:
+            # Pass the parsed backbone through: without residue/chain ids the
+            # trace cannot find segment boundaries and draws one polyline
+            # through every atom in file order.
             object_id = self.viewer.add_coordinates(
                 coords_arr,
                 name=display_name,
                 source_path=source_path,
+                trace_coords=backbone.trace_coords if backbone is not None else None,
+                res_ids=backbone.res_ids if backbone is not None else None,
+                res_names=backbone.res_names if backbone is not None else None,
+                chain_ids=backbone.chain_ids if backbone is not None else None,
             )
             n_atoms = 0 if coords_arr is None else coords_arr.shape[0]
         else:
@@ -1650,6 +1659,15 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
                 n_atoms = int(first.shape[0])
 
+        # Rg is computed here, from the unscaled coordinates, because the viewer
+        # only keeps a centred/scaled copy.
+        radius_gyration = None
+        if structure is None and coords_arr is not None and coords_arr.shape[0] > 0:
+            centroid = coords_arr.mean(axis=0)
+            radius_gyration = float(
+                np.sqrt(((coords_arr - centroid) ** 2).sum(axis=1).mean())
+            )
+
         entry: dict[str, Any] = {
             "name": display_name,
             "path": source_path,
@@ -1657,6 +1675,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             "ss_codes": None,
             "visible": True,
             "n_atoms": n_atoms,
+            "radius_gyration": radius_gyration,
         }
         self._object_store[object_id] = entry
         self._add_object_list_item(object_id, entry)

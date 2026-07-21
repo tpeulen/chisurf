@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional, Sequence, Tuple
 
@@ -47,22 +48,112 @@ def open_structure_files(
     return _fallback_open_files(parent)
 
 
-def _simple_load_pdb_coords(path: str) -> list[Tuple[float, float, float]]:
-    coords: list[Tuple[float, float, float]] = []
-    with open(path, "rt", encoding="utf-8", errors="ignore") as fh:
+@dataclass
+class PdbBackbone:
+    """Coordinates plus the residue metadata recovered from a PDB file.
+
+    This is the payload used when the core ``Structure`` reader is unavailable
+    or fails. Carrying the backbone metadata matters for more than the info
+    panel: without residue and chain ids the viewer cannot find segment
+    boundaries and splines a single polyline through every atom in file order.
+
+    Attributes
+    ----------
+    coords : numpy.ndarray
+        All ``ATOM``/``HETATM`` coordinates, shape ``(N, 3)``.
+    trace_coords : numpy.ndarray or None
+        The CA trace, shape ``(M, 3)``, or ``None`` when the file has no
+        recognisable protein backbone.
+    res_ids, res_names, chain_ids : numpy.ndarray or None
+        Per-CA residue number, residue name and chain id, each of length ``M``.
+    """
+
+    coords: np.ndarray
+    trace_coords: np.ndarray | None = None
+    res_ids: np.ndarray | None = None
+    res_names: np.ndarray | None = None
+    chain_ids: np.ndarray | None = None
+
+
+def _parse_pdb_backbone(path: str) -> PdbBackbone:
+    """Parse coordinates and the CA backbone out of a PDB file.
+
+    Only the first model is read, and alternate locations other than the first
+    are skipped, so that a multi-model or altloc-bearing file does not produce a
+    trace that jumps between conformers.
+
+    Parameters
+    ----------
+    path : str
+        Path to the PDB file.
+
+    Returns
+    -------
+    PdbBackbone
+        Coordinates and, when a protein backbone is present, the CA trace with
+        its residue metadata.
+
+    Raises
+    ------
+    ValueError
+        If the file contains no usable atom coordinates.
+    """
+    coords: list[tuple[float, float, float]] = []
+    trace: list[tuple[float, float, float]] = []
+    res_ids: list[int] = []
+    res_names: list[str] = []
+    chain_ids: list[str] = []
+    seen_residues: set[tuple[str, str]] = set()
+
+    with open(path, encoding="utf-8", errors="ignore") as fh:
         for line in fh:
-            if not (line.startswith("ATOM") or line.startswith("HETATM")):
+            if line.startswith("ENDMDL"):
+                break
+            is_atom = line.startswith("ATOM")
+            if not (is_atom or line.startswith("HETATM")):
                 continue
             try:
-                x = float(line[30:38])
-                y = float(line[38:46])
-                z = float(line[46:54])
+                xyz = (float(line[30:38]), float(line[38:46]), float(line[46:54]))
             except ValueError:
                 continue
-            coords.append((x, y, z))
+            coords.append(xyz)
+
+            # The CA trace drives the cartoon/trace geometry, so it must come
+            # from polymer records only -- ligands and waters are not backbone.
+            if not is_atom:
+                continue
+            altloc = line[16:17]
+            if altloc not in (" ", "", "A"):
+                continue
+            if line[12:16].strip() != "CA":
+                continue
+            chain = line[21:22].strip()
+            res_seq = line[22:27].strip()  # includes the insertion code
+            key = (chain, res_seq)
+            if key in seen_residues:
+                continue
+            seen_residues.add(key)
+            try:
+                res_id = int(line[22:26])
+            except ValueError:
+                continue
+            trace.append(xyz)
+            res_ids.append(res_id)
+            res_names.append(line[17:20].strip())
+            chain_ids.append(chain)
+
     if not coords:
         raise ValueError(f"No atom coordinates found in {path!r}")
-    return coords
+
+    if len(trace) >= 2:
+        return PdbBackbone(
+            coords=np.asarray(coords, dtype=float),
+            trace_coords=np.asarray(trace, dtype=float),
+            res_ids=np.asarray(res_ids, dtype=int),
+            res_names=np.asarray(res_names, dtype=object),
+            chain_ids=np.asarray(chain_ids, dtype=object),
+        )
+    return PdbBackbone(coords=np.asarray(coords, dtype=float))
 
 
 def load_trajectory_frames(path: Path) -> np.ndarray:
@@ -110,12 +201,28 @@ def load_structure_payload(
     path: Path,
     *,
     structure_factory: StructureFactory = None,
-) -> tuple[Optional[object], Optional[np.ndarray]]:
+) -> tuple[object | None, PdbBackbone | None]:
+    """Load ``path`` as a ``Structure``, falling back to a parsed PDB backbone.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        File to load.
+    structure_factory : callable or None
+        Factory building the core ``Structure`` from a path. When it is missing
+        or fails, the file is parsed directly for coordinates and backbone.
+
+    Returns
+    -------
+    tuple
+        ``(structure, None)`` when the core reader succeeded, otherwise
+        ``(None, PdbBackbone)``.
+    """
     structure = None
     if structure_factory is None:
         logger.warning(
-            "No structure factory available for %s; falling back to raw "
-            "coordinates (no residues, sequence or radius of gyration).",
+            "No structure factory available for %s; falling back to the "
+            "built-in PDB parser (no radius of gyration).",
             path,
         )
     else:
@@ -123,8 +230,8 @@ def load_structure_payload(
             structure = structure_factory(str(path))
         except Exception:
             logger.warning(
-                "Structure reader failed for %s; falling back to raw "
-                "coordinates (no residues, sequence or radius of gyration).",
+                "Structure reader failed for %s; falling back to the built-in "
+                "PDB parser (no radius of gyration).",
                 path,
                 exc_info=True,
             )
@@ -148,13 +255,21 @@ def load_structure_payload(
     if structure is not None:
         return structure, None
 
-    coords = np.asarray(_simple_load_pdb_coords(str(path)), dtype=float)
+    backbone = _parse_pdb_backbone(str(path))
+    coords = backbone.coords
     if coords.ndim != 2 or coords.shape[1] != 3 or coords.shape[0] == 0:
         raise ValueError(f"No valid coordinates in {path}")
-    return None, coords
+    if backbone.trace_coords is None:
+        logger.warning(
+            "No protein backbone found in %s; the viewer will show bare "
+            "coordinates without residues or sequence.",
+            path,
+        )
+    return None, backbone
 
 
 __all__ = [
+    "PdbBackbone",
     "open_structure_files",
     "load_structure_payload",
     "load_trajectory_frames",

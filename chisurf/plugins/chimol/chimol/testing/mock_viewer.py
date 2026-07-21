@@ -118,10 +118,23 @@ class MockViewer(_get_qobject_base()):
         self.set_structure(structure)
         return oid
 
-    def add_coordinates(self, coords, *, name: Optional[str] = None, source_path: Optional[str] = None):
+    def add_coordinates(
+        self,
+        coords,
+        *,
+        name: Optional[str] = None,
+        source_path: Optional[str] = None,
+        trace_coords=None,
+        res_ids=None,
+        res_names=None,
+        chain_ids=None,
+    ):
         oid = self._create_object(name=name)
         entry = self._objects[oid]
         entry.state.all_atom_coords = np.asarray(coords, dtype=float)
+        entry.state.residue_ids = res_ids
+        entry.state.residue_names = res_names
+        entry.state.residue_chain_ids = chain_ids
         return oid
 
     def set_frames(self, frames, *, object_id=None):

@@ -79,17 +79,19 @@ constraints above exist so that migration stays cheap.
 # Structure loading (fallback contract)
 
 `io/structure.py:load_structure_payload` tries the core `Structure` reader first
-and falls back to `_simple_load_pdb_coords` — a bare `ATOM`/`HETATM` coordinate
-array. The fallback is **lossy in a way that is visible on screen**: it carries no
-residue ids, residue names or chain ids, so
+and, when that is unavailable or fails, parses the file itself via
+`_parse_pdb_backbone` into a `PdbBackbone` (all `ATOM`/`HETATM` coordinates plus
+the CA trace with its residue numbers, names and chain ids).
 
-- the info panel reports `Residues: ?` and `Radius of gyration: ?`,
-- the Sequence panel reports `(no sequence information)`, and
-- `_update_trace` cannot find segment boundaries and splines **one continuous
-  polyline through every atom in file order**, waters included — the "spaghetti"
-  failure mode.
+**The residue metadata is load-bearing for rendering, not just for the info
+panel.** `_update_trace` and the cartoon builder derive segment boundaries from
+residue/chain ids; when those are `None` they fall back to a single span and
+spline **one continuous polyline through every point in file order**, waters
+included — the "spaghetti" failure mode. hGBP1 (1dg3) is the reference case: with
+metadata it renders as **5 segments**, suppressing 4 spurious CA–CA connections,
+the longest spanning 22.2 Å against a real bond of ~3.8 Å.
 
-Two constraints follow, and both are load-bearing:
+Four constraints follow, all load-bearing:
 
 1. **Never bundle the `Structure` import with GUI imports.** It is pure core
    code; sharing a `try/except` with anything that pulls in Qt means a GUI-side
@@ -97,6 +99,12 @@ Two constraints follow, and both are load-bearing:
 2. **Never swallow a reader failure silently.** Falling back is legitimate;
    falling back without a log line makes the degradation undiagnosable, since the
    symptom (a bad-looking render) does not name its cause.
+3. **Keep the fallback non-lossy.** Anything that reaches `add_coordinates` for a
+   PDB should carry `trace_coords`/`res_ids`/`res_names`/`chain_ids`, so a reader
+   failure costs accuracy, not a broken picture.
+4. **Build the CA trace from `ATOM` records of the first model only**, skipping
+   non-first altlocs. Including `HETATM` puts ligands and waters on the backbone;
+   including further `MODEL`s makes the trace jump between conformers.
 
 # Documentation Work
 

@@ -1093,9 +1093,19 @@ class MolView(QtWidgets.QWidget):
         *,
         name: str | None = None,
         source_path: str | None = None,
+        trace_coords: np.ndarray | None = None,
+        res_ids: np.ndarray | None = None,
+        res_names: np.ndarray | None = None,
+        chain_ids: np.ndarray | None = None,
     ) -> str:
         entry = self._create_object(name=name, source_path=source_path)
-        self.set_coordinates(coords)
+        self.set_coordinates(
+            coords,
+            trace_coords=trace_coords,
+            res_ids=res_ids,
+            res_names=res_names,
+            chain_ids=chain_ids,
+        )
         return entry.object_id
 
     @contextmanager
@@ -1559,13 +1569,29 @@ class MolView(QtWidgets.QWidget):
             "Unsupported structure type for Chimol: " f"{type(structure)!r}"
         )
 
-    def set_coordinates(self, xyz: np.ndarray) -> None:
+    def set_coordinates(
+        self,
+        xyz: np.ndarray,
+        *,
+        trace_coords: np.ndarray | None = None,
+        res_ids: np.ndarray | None = None,
+        res_names: np.ndarray | None = None,
+        chain_ids: np.ndarray | None = None,
+    ) -> None:
         """Set raw coordinates for visualization.
 
         Parameters
         ----------
         xyz:
             Array of shape ``(N, 3)`` with Cartesian coordinates.
+        trace_coords:
+            Optional CA trace of shape ``(M, 3)``. When given it drives the
+            cartoon/trace geometry instead of ``xyz``, mirroring what
+            :meth:`set_structure` does.
+        res_ids, res_names, chain_ids:
+            Optional per-CA residue metadata of length ``M``. Supplying these
+            is what lets the trace break at chain and residue gaps; without
+            them the viewer draws one polyline through every point in ``xyz``.
         """
         arr = np.asarray(xyz, dtype=float)
         if arr.ndim != 2 or arr.shape[1] != 3:
@@ -1583,7 +1609,26 @@ class MolView(QtWidgets.QWidget):
         arr = (arr - center) * scale
 
         self._all_atom_coords = arr
-        self._coords = arr
+
+        trace_arr = None
+        if trace_coords is not None:
+            trace_arr = np.asarray(trace_coords, dtype=float)
+            if trace_arr.ndim != 2 or trace_arr.shape[1] != 3 or trace_arr.shape[0] < 2:
+                trace_arr = None
+
+        if trace_arr is not None:
+            self._coords = (trace_arr - center) * scale
+            self._residue_ids = res_ids
+            self._residue_names = res_names
+            self._residue_oneletter = _three_to_one_array(res_names)
+            self._residue_chain_ids = chain_ids
+        else:
+            self._coords = arr
+            self._residue_ids = None
+            self._residue_names = None
+            self._residue_oneletter = None
+            self._residue_chain_ids = None
+
         self._center = np.zeros(3, dtype=float)
         self._raw_center = np.asarray(center, dtype=float)
         self._radius = float(radius * scale)
