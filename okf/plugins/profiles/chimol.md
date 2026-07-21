@@ -76,6 +76,28 @@ headless rendering/testing straightforward. Future camera state is to be
 extracted into a `CameraState` dataclass. No ImGui backend exists yet; the
 constraints above exist so that migration stays cheap.
 
+# Structure loading (fallback contract)
+
+`io/structure.py:load_structure_payload` tries the core `Structure` reader first
+and falls back to `_simple_load_pdb_coords` — a bare `ATOM`/`HETATM` coordinate
+array. The fallback is **lossy in a way that is visible on screen**: it carries no
+residue ids, residue names or chain ids, so
+
+- the info panel reports `Residues: ?` and `Radius of gyration: ?`,
+- the Sequence panel reports `(no sequence information)`, and
+- `_update_trace` cannot find segment boundaries and splines **one continuous
+  polyline through every atom in file order**, waters included — the "spaghetti"
+  failure mode.
+
+Two constraints follow, and both are load-bearing:
+
+1. **Never bundle the `Structure` import with GUI imports.** It is pure core
+   code; sharing a `try/except` with anything that pulls in Qt means a GUI-side
+   import failure silently disables the reader for *every* file.
+2. **Never swallow a reader failure silently.** Falling back is legitimate;
+   falling back without a log line makes the degradation undiagnosable, since the
+   symptom (a bad-looking render) does not name its cause.
+
 # Documentation Work
 
 - No `README.md` under `chisurf/plugins/chimol/` yet — add one covering the

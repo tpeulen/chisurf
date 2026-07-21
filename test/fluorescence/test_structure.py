@@ -57,7 +57,7 @@ class Tests(unittest.TestCase):
         )
         self.assertAlmostEqual(
             s3.radius_gyration,
-            23.439021926160564
+            16.300839603006693
         )
 
     def test_structure_copy(self):

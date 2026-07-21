@@ -1,6 +1,7 @@
 """Protein structure viewer (Chimol) plugin."""
 
 import json
+import logging
 import shutil
 
 import chisurf as cs
@@ -11,15 +12,29 @@ import numpy as np
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+# These are imported independently on purpose: the structure reader is pure
+# core code, while `open_files` drags in the whole Qt widget stack. Sharing one
+# try/except made any GUI-side import failure silently disable the reader, which
+# degraded every load to a raw coordinate blob (no residues, sequence or Rg).
 try:  # moview can run inside or outside cs
     import chisurf.core.settings as _cs_settings
-    from chisurf.gui.widgets.general import open_files as _cs_open_files
+except Exception:  # pragma: no cover - standalone moview
+    _cs_settings = None
+
+try:
     from chisurf.core.structure import Structure as _ChiSurfStructure
 except Exception:  # pragma: no cover - standalone moview
-    cs = None  # type: ignore[assignment]
-    _cs_settings = None
-    _cs_open_files = None
+    logging.getLogger(__name__).warning(
+        "chisurf.core.structure.Structure is unavailable; Chimol will fall back "
+        "to raw coordinates and cannot show residues, sequence or Rg.",
+        exc_info=True,
+    )
     _ChiSurfStructure = None
+
+try:
+    from chisurf.gui.widgets.general import open_files as _cs_open_files
+except Exception:  # pragma: no cover - standalone moview
+    _cs_open_files = None
 
 from ..config import _DISPLAY_CONFIG
 from ..colors import _SEQ_COLOR_ROLE, _OBJECT_ID_ROLE

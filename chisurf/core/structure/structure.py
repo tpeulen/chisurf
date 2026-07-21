@@ -87,7 +87,7 @@ class Structure(chisurf.core.base.Base):
     Radius of gyration
 
     >>> structure.radius_gyration
-    50.31556120901161
+    39.24072662264825
 
     """
 
@@ -279,10 +279,18 @@ class Structure(chisurf.core.base.Base):
 
     @property
     def radius_gyration(self) -> float:
-        """Radius of gyration of the structure."""
+        """Radius of gyration of the structure.
+
+        Returns
+        -------
+        float
+            The unweighted radius of gyration in Angstrom, defined as the
+            root-mean-square distance of the atoms from their centroid,
+            ``sqrt(mean(|r_i - r_mean|**2))``.
+        """
         coord = self.xyz
-        rM = coord[:, :].mean(axis=0)
-        rG = (np.sqrt((coord - rM) ** 2).sum(axis=1)).mean()
+        rM = coord.mean(axis=0)
+        rG = np.sqrt(((coord - rM) ** 2).sum(axis=1).mean())
         return float(rG)
 
     def append_potential(

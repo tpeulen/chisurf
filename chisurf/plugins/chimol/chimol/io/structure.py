@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Callable, Optional, Sequence, Tuple
 
 import numpy as np
 from qtpy import QtWidgets
+
+logger = logging.getLogger(__name__)
 
 StructureFactory = Optional[Callable[[str], object]]
 FileDialogCallable = Optional[Callable[..., Sequence[str]]]
@@ -109,10 +112,22 @@ def load_structure_payload(
     structure_factory: StructureFactory = None,
 ) -> tuple[Optional[object], Optional[np.ndarray]]:
     structure = None
-    if structure_factory is not None:
+    if structure_factory is None:
+        logger.warning(
+            "No structure factory available for %s; falling back to raw "
+            "coordinates (no residues, sequence or radius of gyration).",
+            path,
+        )
+    else:
         try:
             structure = structure_factory(str(path))
         except Exception:
+            logger.warning(
+                "Structure reader failed for %s; falling back to raw "
+                "coordinates (no residues, sequence or radius of gyration).",
+                path,
+                exc_info=True,
+            )
             structure = None
 
     # Reject empty/invalid structures so that callers can fall back to
@@ -123,6 +138,11 @@ def load_structure_payload(
         except Exception:
             n_atoms = None
         if isinstance(n_atoms, int) and n_atoms <= 0:
+            logger.warning(
+                "Structure reader returned an empty structure for %s; falling "
+                "back to raw coordinates.",
+                path,
+            )
             structure = None
 
     if structure is not None:
