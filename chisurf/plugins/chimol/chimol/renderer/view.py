@@ -1604,11 +1604,24 @@ class MolView(QtWidgets.QWidget):
         self._atom_feature_meta = {}
         self._show_atom_gaussians = False
 
+        # Bonds for the sticks representation are computed from *raw* (unscaled)
+        # coordinates so the distance cutoff is independent of the view scaling,
+        # exactly as in :meth:`set_structure`. Without this a raw-coordinate
+        # object (the PDB fallback) has no bonds and sticks never render.
+        raw_all = arr.copy()
+
         center, radius = _compute_center_radius(arr)
         scale = float(self._scale_factor)
         arr = (arr - center) * scale
 
         self._all_atom_coords = arr
+
+        sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
+        max_bond_len = float(sticks_cfg.get("bond_max_length", 1.9))
+        if np.isfinite(max_bond_len) and max_bond_len > 0.0:
+            self._bond_pairs = _build_bond_pairs(raw_all, max_bond_len)
+        else:
+            self._bond_pairs = None
 
         trace_arr = None
         if trace_coords is not None:
@@ -1640,7 +1653,11 @@ class MolView(QtWidgets.QWidget):
         self._colors_per_residue_override = None
         self._colors_per_atom_override = None
         self._cartoon_mask = None
-        self._ball_mask = None
+        # Per-atom masks sized to all atoms so the sticks/atoms toggles have a
+        # valid baseline to flip on (see set_sticks_visible/set_atoms_visible).
+        n_atoms = arr.shape[0]
+        self._ball_mask = np.zeros(n_atoms, dtype=bool)
+        self._sticks_mask = np.zeros(n_atoms, dtype=bool)
 
     def set_frames(
         self,
@@ -2748,6 +2765,65 @@ class MolView(QtWidgets.QWidget):
 
         return scene_objects
 
+    @staticmethod
+    def _build_balls_mesh(
+        pts: np.ndarray,
+        colors_rgb: np.ndarray,
+        radii: np.ndarray,
+    ) -> SceneObject | None:
+        """Merge per-atom spheres into a single ``atoms_mesh`` scene object.
+
+        Parameters
+        ----------
+        pts : numpy.ndarray
+            Atom centres of shape ``(N, 3)``, already centred and scaled.
+        colors_rgb : numpy.ndarray
+            Per-atom RGB colours of shape ``(N, 3)``.
+        radii : numpy.ndarray
+            Per-atom sphere radii of shape ``(N,)``.
+
+        Returns
+        -------
+        SceneObject or None
+            The merged mesh, or ``None`` when no geometry could be built.
+        """
+        n_atoms = int(pts.shape[0])
+        if n_atoms == 0:
+            return None
+        sphere_mesh = _build_sphere_mesh(radius=1.0)
+        if sphere_mesh is None:
+            return None
+        base_verts = sphere_mesh.get("vertices")
+        base_norms = sphere_mesh.get("normals")
+        base_faces = sphere_mesh.get("faces")
+        if (
+            base_verts is None
+            or base_faces is None
+            or base_norms is None
+            or not base_verts.size
+            or not base_faces.size
+            or not base_norms.size
+        ):
+            return None
+        n_verts = base_verts.shape[0]
+        verts = base_verts[np.newaxis, :, :] * np.asarray(radii, dtype=float)[
+            :, np.newaxis, np.newaxis
+        ]
+        verts += np.asarray(pts, dtype=float)[:, np.newaxis, :]
+        verts = verts.reshape(-1, 3)
+        faces = np.repeat(base_faces[np.newaxis, :, :], n_atoms, axis=0)
+        offsets = np.arange(n_atoms, dtype=base_faces.dtype) * n_verts
+        faces += offsets[:, np.newaxis, np.newaxis]
+        faces = faces.reshape(-1, 3)
+        norms = np.repeat(base_norms[np.newaxis, :, :], n_atoms, axis=0).reshape(-1, 3)
+        rgba = np.ones((n_atoms, 4), dtype=float)
+        rgba[:, :3] = np.clip(np.asarray(colors_rgb, dtype=float)[:, :3], 0.0, 1.0)
+        vcols = np.repeat(rgba[:, np.newaxis, :], n_verts, axis=1).reshape(-1, 4)
+        geom = Geometry(
+            kind="mesh", positions=verts, indices=faces, normals=norms, colors=vcols
+        )
+        return SceneObject(id="atoms_mesh", geometry=geom, render_mode="opaque")
+
     def _update_atoms(
         self,
         coords: np.ndarray,
@@ -2767,6 +2843,35 @@ class MolView(QtWidgets.QWidget):
         balls_ao_strength = float(balls_cfg.get("ao_strength", 0.5))
         balls_max_atoms = int(balls_cfg.get("max_atoms", 8000))
         base_global_radius = max(self._radius * balls_size_scale, balls_min_size)
+
+        # Raw-coordinate objects (the PDB fallback) have no structured ``_atoms``
+        # array, so the per-residue ball path below is skipped and only a sparse
+        # CA sampling of the trace would be drawn. Render every atom straight
+        # from the all-atom coordinates instead, mirroring get_atom_sphere_data.
+        if self._atoms is None and self._all_atom_coords is not None:
+            pts, colors_rgb, radii = self.get_atom_sphere_data()
+            if pts.shape[0] == 0:
+                return scene_objects
+            # Honour an explicit per-atom selection mask when one is present and
+            # matches the atom count; otherwise show the whole molecule.
+            if (
+                self._ball_mask is not None
+                and len(self._ball_mask) == pts.shape[0]
+                and self._ball_mask.any()
+            ):
+                sel = np.asarray(self._ball_mask, dtype=bool)
+                pts = pts[sel]
+                colors_rgb = colors_rgb[sel]
+                radii = radii[sel]
+            if pts.shape[0] and balls_max_atoms > 0 and pts.shape[0] > balls_max_atoms:
+                step = max(1, pts.shape[0] // balls_max_atoms)
+                pts = pts[::step]
+                colors_rgb = colors_rgb[::step]
+                radii = radii[::step]
+            obj = self._build_balls_mesh(pts, colors_rgb, radii)
+            if obj is not None:
+                scene_objects.append(obj)
+            return scene_objects
 
         used_all_atoms_for_balls = False
         if (

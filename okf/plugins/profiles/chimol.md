@@ -106,6 +106,25 @@ Four constraints follow, all load-bearing:
    non-first altlocs. Including `HETATM` puts ligands and waters on the backbone;
    including further `MODEL`s makes the trace jump between conformers.
 
+Because the fallback carries a *separate* CA trace, `set_coordinates` keeps two
+coordinate stores: `_coords` (the trace, driving cartoon/trace) and
+`_all_atom_coords` (every atom, driving atoms/sticks/surface). Two rendering
+paths key off `_all_atom_coords` and must not assume the structured `_atoms`
+array exists:
+
+- **Atoms.** The per-residue ball path in `_update_atoms` requires `_atoms`; the
+  raw-coordinate branch renders every atom straight from `_all_atom_coords`
+  (mirroring `get_atom_sphere_data`). Without it the code falls through to a
+  ~50-point sparse CA sampling of `_coords` — "not all atoms show".
+- **Sticks.** `set_coordinates` computes `_bond_pairs` from the **raw** (unscaled)
+  coordinates, exactly as `set_structure` does. Skipping this leaves
+  `_bond_pairs is None` and `_update_sticks` renders nothing.
+
+The raytracer path (`get_atom_sphere_data`) already read `_all_atom_coords`
+directly, so an offscreen raytrace does **not** catch either gap — regressions
+here must be verified through the interactive `_update_atoms`/`_update_sticks`
+scene builders (see `test_chimol_fallback_render.py`).
+
 # Documentation Work
 
 - No `README.md` under `chisurf/plugins/chimol/` yet — add one covering the
