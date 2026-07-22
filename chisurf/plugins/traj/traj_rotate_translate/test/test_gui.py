@@ -38,3 +38,30 @@ def test_widget_properties_delegate_to_model(qapp, qtbot):
     )
     np.testing.assert_array_equal(widget.translation_vector, np.array([1.0, 2.0, 3.0]))
     assert widget.stride == 5
+
+
+def test_form_renders_with_live_log(qapp, qtbot):
+    pytest.importorskip("mdtraj")
+    from chisurf.plugins.traj.traj_rotate_translate.widget import (
+        RotateTranslateTrajectoryWidget,
+    )
+
+    widget = RotateTranslateTrajectoryWidget()
+    qtbot.addWidget(widget)
+    widget.resize(480, 360)
+    widget.show()
+    qapp.processEvents()
+
+    # The AutoForm built a non-trivial section tree...
+    assert widget.auto_form.findChildren(QtWidgets.QWidget)
+    # ...including the custom picker section's browse/action tool buttons...
+    assert widget.auto_form.findChildren(QtWidgets.QToolButton)
+    # ...and the live log (info section bound to log_html) shows the initial entry.
+    browsers = widget.auto_form.findChildren(QtWidgets.QTextBrowser)
+    assert browsers
+    assert any("Ready" in b.toPlainText() for b in browsers)
+
+    # The whole widget paints headlessly without Qt errors.
+    pixmap = widget.grab()
+    assert not pixmap.isNull()
+    assert pixmap.width() > 0 and pixmap.height() > 0
