@@ -1,0 +1,86 @@
+{
+  "_comment": "Declarative AutoForm layout for the MD-Converter (trajectory converter) tool. An Input panel with the file rows (topology, trajectory, target folder — custom `traj_convert_io` section, browse respects the folder toggle), the folder toggle and the frame range/stride; an Output panel with the base name, extension combo, split toggle and the `▶ Convert` action; a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former convert_structures.ui.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Input",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "traj_convert_io"
+        },
+        {
+          "type": "toggle",
+          "attr": "use_folder",
+          "label": "Input is a folder of PDBs",
+          "description": "When on, every *.pdb file in the chosen folder is processed instead of a single trajectory file."
+        },
+        {
+          "type": "value",
+          "attr": "first_frame",
+          "label": "First frame",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 99999999,
+          "description": "First frame of the processed range."
+        },
+        {
+          "type": "value",
+          "attr": "last_frame",
+          "label": "Last frame",
+          "kind": "int",
+          "minimum": -1,
+          "maximum": 9999999,
+          "description": "Last frame of the processed range (-1 = all frames)."
+        },
+        {
+          "type": "value",
+          "attr": "stride",
+          "label": "Stride",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 99999,
+          "description": "Write only every Nth frame to the output."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Output",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "filename",
+          "label": "Filename",
+          "kind": "str",
+          "placeholder": "output base name",
+          "description": "Output base name; the extension below is appended."
+        },
+        {
+          "type": "choice",
+          "attr": "ending",
+          "label": "Format",
+          "options": [".dcd", ".xtc", ".pdb", ".h5"],
+          "description": "Output file extension / format."
+        },
+        {
+          "type": "toggle",
+          "attr": "split",
+          "label": "Split into one file per frame",
+          "description": "Write each frame to its own {filename}_%08d{ending} file instead of one combined file."
+        },
+        {
+          "type": "custom",
+          "key": "traj_convert_run"
+        },
+        {
+          "type": "info",
+          "source": "log_html",
+          "height": 100
+        }
+      ]
+    }
+  ]
+}
