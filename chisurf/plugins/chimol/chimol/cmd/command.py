@@ -38,8 +38,6 @@ class Cmd(LoaderCommands, SelectionMixin, RenderingMixin, AnimationMixin, RmfMix
         cmds.update(
             {
                 "help": self._cmd_help,
-                "objects": self._cmd_objects,
-                "get_names": self._cmd_get_names,
                 "quit": self._cmd_quit,
                 "exit": self._cmd_quit,
             }
@@ -113,30 +111,6 @@ class Cmd(LoaderCommands, SelectionMixin, RenderingMixin, AnimationMixin, RmfMix
 
     def frame(self, index: int) -> None:
         self._cmd_frame([str(index)])
-
-    def select(self, *tokens: str) -> None:
-        self._cmd_select(list(tokens))
-
-    def set(self, name: str, value: str) -> None:
-        self._cmd_set([name, value])
-
-    def objects(self) -> None:
-        self._cmd_objects([])
-
-    def get_names(self) -> None:
-        self._cmd_get_names([])
-
-    def enable(self, *tokens: str) -> None:
-        self._cmd_enable(list(tokens))
-
-    def disable(self, *tokens: str) -> None:
-        self._cmd_disable(list(tokens))
-
-    def deselect(self) -> None:
-        self._cmd_deselect([])
-
-    def clear(self) -> None:
-        self._cmd_clear([])
 
     def iterate(self, *args: str) -> None:
         self._cmd_iterate(list(args))

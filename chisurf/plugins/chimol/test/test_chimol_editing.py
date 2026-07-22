@@ -259,18 +259,18 @@ def test_chimol_cmd_get_color_index(editing_context):
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
 
-    idx = cmd._cmd_get_color_index(["red"])
+    idx = cmd.get_color_index("red")
     assert idx == 0
     assert errors == []
 
     errors.clear()
-    idx = cmd._cmd_get_color_index(["marine"])
+    idx = cmd.get_color_index("marine")
     assert idx == 0
     assert errors == []
 
     # Unknown color
     errors.clear()
-    idx = cmd._cmd_get_color_index(["totallynotacolor"])
+    idx = cmd.get_color_index("totallynotacolor")
     assert idx is None
     assert len(errors) > 0
 

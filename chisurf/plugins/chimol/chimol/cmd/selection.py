@@ -6,34 +6,29 @@ from shlex import split as shlex_split
 import numpy as np
 
 from .base import BaseCmd
+from .registry import command
+from .selection_types import Selection
 
 
 class SelectionMixin(BaseCmd):
     """Selection handling, object visibility, and simple set/enable toggles."""
 
-    def _mixin_commands(self):
-        return {
-            "select": self._cmd_select,
-            "clear": self._cmd_clear,
-            "set": self._cmd_set,
-            "enable": self._cmd_enable,
-            "disable": self._cmd_disable,
-            "deselect": self._cmd_deselect,
-            "objects": self._cmd_objects,
-            "get_names": self._cmd_get_names,
-        }
-
     # ------------------------------------------------------------------ #
     # Commands
     # ------------------------------------------------------------------ #
-    def _cmd_enable(self, args: list[str]) -> None:
-        self._cmd_enable_disable(args, visible=True)
+    @command("enable")
+    def enable(self, name: str = "all") -> None:
+        """Show an object (PyMOL ``enable [all|name]``)."""
+        self._enable_disable(str(name), visible=True)
 
-    def _cmd_disable(self, args: list[str]) -> None:
-        self._cmd_enable_disable(args, visible=False)
+    @command("disable")
+    def disable(self, name: str = "all") -> None:
+        """Hide an object (PyMOL ``disable [all|name]``)."""
+        self._enable_disable(str(name), visible=False)
 
-    def _cmd_enable_disable(self, args: list[str], *, visible: bool) -> None:
-        if not args:
+    def _enable_disable(self, target: str, *, visible: bool) -> None:
+        target = (target or "").strip()
+        if not target:
             self._emit_error("Usage: enable/disable <all|object_name>")
             return
 
@@ -41,7 +36,6 @@ class SelectionMixin(BaseCmd):
         if viewer is None:
             return
 
-        target = (args[0] or "").strip()
         vis = bool(visible)
 
         if target.lower() in ("all", "*"):
@@ -78,45 +72,33 @@ class SelectionMixin(BaseCmd):
             action = "enable" if vis else "disable"
             self._emit_error(f"Failed to {action} object {target}: {exc}")
 
-    def _cmd_select(self, args: list[str]) -> None:
-        if not args:
-            self._emit_error(
-                "Usage: select [sel_name,] selection_expr | select sel_name"
-            )
-            return
-
+    @command("select")
+    def select(self, name_or_expr: str = "", expr: Selection = "") -> None:
+        """Create or recall a named selection (PyMOL ``select [name,] expr``)."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
-        tokens = list(args)
+        a1 = str(name_or_expr).strip()
+        a2 = str(expr).strip()
+        if not a1 and not a2:
+            self._emit_error(
+                "Usage: select [sel_name,] selection_expr | select sel_name"
+            )
+            return
 
-        # Optional named-selection prefix: "sel1," expr
-        sel_name: str | None = None
-        first = tokens[0]
-        if first.endswith(","):
-            sel_name = first[:-1].strip()
-            tokens = tokens[1:]
-
-        # Recall a previously defined named selection: "select sel1"
-        if sel_name is None and len(tokens) == 1:
-            key = tokens[0].strip().lower()
+        sel_name: str | None
+        if a2:
+            sel_name = a1
+            expr_text = a2
+        else:
+            # Single argument: recall a stored selection, else anonymous expression.
+            key = a1.lower()
             if key in self._named_selections:
                 self._apply_named_selection(key)
                 return
-
-        if not tokens:
-            self._emit_error(
-                "Usage: select [sel_name,] selection_expr | select sel_name"
-            )
-            return
-
-        expr_text = " ".join(tokens).strip()
-        if not expr_text:
-            self._emit_error(
-                "Usage: select [sel_name,] selection_expr | select sel_name"
-            )
-            return
+            sel_name = None
+            expr_text = a1
 
         try:
             obj_id, obj_name, res_indices = self._resolve_selection_to_residue_indices(
@@ -157,15 +139,13 @@ class SelectionMixin(BaseCmd):
                 }
             self._emit_message(f"Selected object {obj_name}")
 
-    def _cmd_set(self, args: list[str]) -> None:
-        if not args or len(args) < 2:
-            self._emit_error("Usage: set <name> <value>")
-            return
-
-        name = (args[0] or "").strip().rstrip(",").lower()
-        value = " ".join(args[1:]).strip().lstrip(",").strip()
+    @command("set")
+    def set(self, name: str, value: str = "") -> None:
+        """Set a display/cartoon setting or representation toggle (PyMOL ``set``)."""
+        name = str(name).strip().rstrip(",").lower()
+        value = str(value).strip()
         if not name or not value:
-            self._emit_error("Usage: set <name> <value>")
+            self._emit_error("Usage: set <name>, <value>")
             return
 
         value_l = value.lower()
@@ -259,7 +239,9 @@ class SelectionMixin(BaseCmd):
             "and metaball properties (metaball.alpha, metaball.shininess, etc.)"
         )
 
-    def _cmd_objects(self, args: list[str]) -> None:
+    @command("objects")
+    def objects(self) -> None:
+        """List loaded objects (PyMOL ``objects``)."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -285,7 +267,9 @@ class SelectionMixin(BaseCmd):
 
         self._emit_message("Objects:\n" + "\n".join(lines))
 
-    def _cmd_get_names(self, args: list[str]) -> None:
+    @command("get_names")
+    def get_names(self) -> None:
+        """Print the list of object names (PyMOL ``get_names``)."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -307,7 +291,9 @@ class SelectionMixin(BaseCmd):
         else:
             self._emit_message("[" + ", ".join(names) + "]")
 
-    def _cmd_deselect(self, args: list[str]) -> None:
+    @command("deselect")
+    def deselect(self) -> None:
+        """Clear the active object's residue selection (PyMOL ``deselect``)."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -328,14 +314,15 @@ class SelectionMixin(BaseCmd):
 
         self._emit_message("Deselected residues on active object")
 
-    def _cmd_clear(self, args: list[str]) -> None:
+    @command("clear")
+    def clear(self) -> None:
         """Clear the current selection and transient selection UI state.
 
         PyMOL uses ``clear`` in interactive contexts to clear current user
         input/selection state. In Chimol this is intentionally non-destructive:
         it does not delete loaded molecules. Use ``delete`` for that.
         """
-        self._cmd_deselect(args)
+        self.deselect()
         self._emit_message("Cleared current selection")
 
     # ------------------------------------------------------------------ #
