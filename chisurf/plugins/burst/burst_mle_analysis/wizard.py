@@ -652,8 +652,45 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         total_ms = self.df_bursts['Duration (ms)'].sum()
         return total_ms / 1000.0
 
+    def _header_time_ns(self):
+        """(dt_ns, period_ns) from the current file's TTTR header, or ``None``.
+
+        The MLE fit needs the micro-time channel width and the excitation period
+        in the *same* unit as the lifetime it reports (nanoseconds). The
+        channel-definition page cannot supply that: its micro-time field is
+        picoseconds (it feeds the g-factor calculator as ``..._ps``) while its
+        macro-time field is nanoseconds, and neither is populated from the file
+        header — so ``Fit23`` was handed ``dt`` and ``period`` that were both
+        defaulted (50) and in mismatched units, which left the reported lifetime
+        in arbitrary units (a decay that visibly falls in ~1 ns was labelled
+        "5 ns"). The header is the single source of truth: the channel width is
+        ``micro_time_resolution`` and one excitation period is the full TAC range
+        ``number_of_micro_time_channels * micro_time_resolution`` (both in
+        seconds), scaled to nanoseconds and to the current binning.
+        """
+        tttr = self._current_tttr()
+        if tttr is None:
+            return None
+        try:
+            h = tttr.header
+            micro_s = float(h.micro_time_resolution)
+            n_chan = float(h.number_of_micro_time_channels)
+        except Exception:
+            return None
+        if not (micro_s > 0.0 and n_chan > 0.0):
+            return None
+        binning = max(1, int(self.micro_time_binning))
+        dt_ns = micro_s * 1e9 * binning
+        # The period is the full TAC range and is independent of binning
+        # (n_binned * dt_binned == n_chan * micro_s).
+        period_ns = n_chan * micro_s * 1e9
+        return dt_ns, period_ns
+
     @property
     def dt_effective(self):
+        header = self._header_time_ns()
+        if header is not None:
+            return header[0]
         return self.channel_definer.effective_micro_time_resolution
 
     @property
@@ -758,6 +795,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
     @property
     def excitation_period(self) -> float:
+        header = self._header_time_ns()
+        if header is not None:
+            return header[1]
         return float(self.channel_definer.excitation_period)
 
     @property
@@ -910,6 +950,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         """
         dets = list(self.channel_definer.detectors.keys())
         cs.logging.info('_init_channels_from_wizard')
+        if not dets:
+            # detectorsChanged fires transiently with an empty set while the
+            # detector table is being (re)loaded; nothing to build yet, and the
+            # code below indexes dets[0].
+            return
         # reset our per-channel state cache and pre-initialize per-detector dicts
         self.channel_settings.clear()
         for d in dets:
@@ -1654,7 +1699,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # Plots column (row 0, col 1, spanning 6 rows).
         self.verticalLayout_plots = Q.QVBoxLayout()
         self.verticalLayout_plots.setSpacing(0)
-        grid3.addLayout(self.verticalLayout_plots, 0, 1, 6, 1)
+        grid3.addLayout(self.verticalLayout_plots, 0, 1, 7, 1)
 
         # Filename / detector / fit-range / min-photons block (grid at 0,0).
         g2 = Q.QGridLayout()
@@ -1720,7 +1765,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g7.addWidget(self.label_8, 3, 0)
         g7.addWidget(self.spinBox_irf_start, 3, 1)
         g7.addWidget(self.spinBox_irf_stop, 3, 2)
-        grid3.addWidget(self.groupBox_2, 1, 0)
+        from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+        _irf_box = CollapsibleBox("IRF (shift · threshold · range)", expanded=False)
+        _irf_box.add_widget(self.groupBox_2)
+        grid3.addWidget(_irf_box, 1, 0)
 
         # Shift + scatter count rate (groupBox_fit_params at 2,0).
         self.groupBox_fit_params = Q.QGroupBox("")
@@ -1738,7 +1786,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g4.addWidget(self.doubleSpinBox_shift, 3, 1)
         g4.addWidget(self.label_24, 5, 0)
         g4.addWidget(self.doubleSpinBox_scatter_Countrate, 5, 1)
-        grid3.addWidget(self.groupBox_fit_params, 2, 0)
+        _shift_box = CollapsibleBox("Shift · scatter count rate", expanded=False)
+        _shift_box.add_widget(self.groupBox_fit_params)
+        grid3.addWidget(_shift_box, 2, 0)
 
         # Model parameters + results (groupBox_model_params at 3,0).
         self.groupBox_model_params = Q.QGroupBox("")
@@ -1809,7 +1859,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g.addWidget(self.checkBox_fix_rho, 9, 3)
         g.addWidget(self.doubleSpinBox_rho_result, 9, 4)
         self.label_3 = Q.QLabel("Score")
-        self.doubleSpinBox_twoIstar_result = self._dsb(decimals=3, maximum=99999.0, readonly=True, nobuttons=True)
+        self.doubleSpinBox_twoIstar_result = self._dsb(
+            decimals=3, minimum=-99999.0, maximum=99999.0, readonly=True, nobuttons=True)
         g.addWidget(self.label_3, 10, 0)
         g.addWidget(self.doubleSpinBox_twoIstar_result, 10, 1)
         self.label_25 = Q.QLabel("rScatter")
@@ -1822,11 +1873,39 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g.addWidget(self.doubleSpinBox_r_scatter_result, 11, 1)
         g.addWidget(self.label_27, 11, 3)
         g.addWidget(self.doubleSpinBox_r_exp_result, 11, 4)
-        grid3.addWidget(self.groupBox_model_params, 3, 0)
+        _params_box = CollapsibleBox("Fit parameters", expanded=True)
+        _params_box.add_widget(self.groupBox_model_params)
+        grid3.addWidget(_params_box, 3, 0)
 
-        # Vertical spacer (row 4) then the Run button (row 5).
+        # IRF/background source: a one-click estimate from non-burst photons, a
+        # jump to the measured IRF & Background step, and a note that a measured
+        # IRF/background gives better lifetimes. Compact single row.
+        self.toolButton_auto_irf = Q.QToolButton()
+        self.toolButton_auto_irf.setText("✨ Auto IRF/BG")
+        self.toolButton_auto_irf.setToolTip(
+            "Estimate the IRF and background from this file's non-burst photons "
+            "and refit. Quick, but a measured IRF/background is more reliable."
+        )
+        self.toolButton_goto_irf = Q.QToolButton()
+        self.toolButton_goto_irf.setText("IRF & Background…")
+        self.toolButton_goto_irf.setToolTip(
+            "Open the IRF & Background step to use a measured IRF/background."
+        )
+        self.label_irf_hint = Q.QLabel("Tip: a measured IRF/background gives better lifetimes.")
+        self.label_irf_hint.setStyleSheet("color: #9ba3af; font-size: 10px;")
+        self.label_irf_hint.setWordWrap(True)
+        _irf_actions = Q.QWidget()
+        _row = Q.QHBoxLayout(_irf_actions)
+        _row.setContentsMargins(0, 0, 0, 0)
+        _row.setSpacing(4)
+        _row.addWidget(self.toolButton_auto_irf)
+        _row.addWidget(self.toolButton_goto_irf)
+        _row.addWidget(self.label_irf_hint, 1)
+        grid3.addWidget(_irf_actions, 4, 0)
+
+        # Vertical spacer then the Run button.
         grid3.addItem(
-            Q.QSpacerItem(20, 40, Q.QSizePolicy.Minimum, Q.QSizePolicy.Expanding), 4, 0
+            Q.QSpacerItem(20, 40, Q.QSizePolicy.Minimum, Q.QSizePolicy.Expanding), 5, 0
         )
         self.pushButton_process_bursts = Q.QPushButton("Run")
         self.pushButton_process_bursts.setSizePolicy(
@@ -1836,7 +1915,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         run_font.setBold(True)
         self.pushButton_process_bursts.setFont(run_font)
         self.pushButton_process_bursts.setStyleSheet("background-color: rgb(49, 208, 24)")
-        grid3.addWidget(self.pushButton_process_bursts, 5, 0)
+        grid3.addWidget(self.pushButton_process_bursts, 6, 0)
 
         self.tabWidget.addTab(self.tab_parameters, "BurstMLE")
 
@@ -1923,9 +2002,20 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.combined_plot.setLabel('left', 'Intensity')
         self.combined_plot.setLogMode(y=True)
         self.combined_plot.setYRange(-1, 5)
+        # A legend so the four overlaid curves (data, model, IRF, background) are
+        # identifiable. Created once and re-populated on each replot: the plot is
+        # cleared every fit, so without an explicit legend.clear() the rows would
+        # accumulate a duplicate set per fit. Each plot() call below passes name=.
+        self.combined_legend = self.combined_plot.addLegend(offset=(10, 10))
 
     def update_variable_fit_parameters(self):
-        cs.logging.info("update initial parameters. BLANK")
+        # A fit parameter changed -> rebuild the fit and re-run so the plot stays
+        # in sync (a stale cached Fit23 would keep the previous IRF/params).
+        self._fit = None
+        self.update_fit()
+
+    def refit(self):
+        self._fit = None
         self.update_fit()
 
     def update_internal_fit_parameters(self):
@@ -1967,6 +2057,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # --- Burst processing & navigation ---
         self.pushButton_process_bursts.clicked.connect(self.process_bursts)
+        self.toolButton_auto_irf.clicked.connect(self.auto_extract_irf_bg)
+        self.toolButton_goto_irf.clicked.connect(self.go_to_irf_bg)
         # Stop button functionality is deprecated in favor of modal progress dialog cancel
         try:
             self.pushButton_stop.hide()
@@ -2009,7 +2101,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             self.checkBox_BIFL_scatter
         )
         for chk in variable_checks:
-            chk.stateChanged.connect(self.update_variable_fit_parameters)
+            # Toggling a fix flag / option changes what is optimised -> re-fit.
+            chk.stateChanged.connect(self.refit)
 
         # --- Other parameter updates ---
         self.spinBox_min_photons.valueChanged.connect(self.update_parameters)
@@ -2057,14 +2150,21 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # No need to initialize comboBox_tttr_file_type as we're using channel_definer.filetype instead
         self.micro_time_range = (0, 4096)
 
+        # Robust "quick lifetime" defaults. tau is the only free parameter by
+        # default: the scatter fraction (gamma) and anisotropy (r0, rho) are not
+        # identifiable from a single-molecule burst decay against an auto-extracted
+        # (scatter-shaped) background — left free they rail (gamma -> 1, rho -> 0)
+        # and drag tau into a wrong likelihood basin. Fixed at physical nominals
+        # they give a stable, sensible lifetime; a user with a *measured* IRF/
+        # background can free them for a full anisotropy/scatter fit.
         self.tau = 4.0
-        self.gamma = 0.0
+        self.gamma = 0.1
         self.r0 = 0.38
-        self.rho = 0.25
+        self.rho = 1.22
         self.fix_tau = False
-        self.fix_gamma = False
+        self.fix_gamma = True
         self.fix_r0 = True
-        self.fix_rho = False
+        self.fix_rho = True
         self.min_photons = 10
         self.irf_threshold_vv = 0.02
         self.irf_threshold_vh = 0.02
@@ -2394,6 +2494,22 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         irf = irf.astype(np.float64, copy=True)
         bg = bg.astype(np.float64, copy=True)
 
+        # Area-normalise the background so gamma is a true 0..1 fraction.
+        #
+        # Fit23's model adds the background as ``bg[i] * gamma``: gamma is the
+        # fraction of the model that is background, which only holds if the
+        # background pattern has unit area. Our background is an extracted photon
+        # histogram summing to tens of thousands of counts, so a raw pattern made
+        # gamma an enormous multiplier — for any gamma > 0 the model amplitude
+        # blew up by ~sum(bg) and the free-gamma fit diverged to gamma≈1. (The
+        # normalisation is done here, not in tttrlib's modelf, because that model
+        # is the cross-language Python/R/Java reference contract; gamma weighting
+        # a caller-normalised background keeps the fit correct without changing
+        # it.) A near-zero-sum background is left as-is.
+        bg_sum = float(bg.sum())
+        if bg_sum > 0.0:
+            bg = bg / bg_sum
+
         # finally, build the fit
         fit = tttrlib.Fit23(
             dt=dt,
@@ -2409,6 +2525,13 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         return fit
 
     def update_fit(self):
+        """Re-optimise the current file's decay and redraw both plots.
+
+        Runs on every relevant parameter change (fix flags, IRF shift/threshold,
+        fixed-parameter values, detector/file) so the plot stays live. Changing a
+        *free* parameter's initial value re-converges to the same optimum by
+        design — fix the parameter to pin it to a chosen value.
+        """
         x0, fixed = self.fit_parameters
         sb, eb = self.micro_time_range
         det = self.current_detector
@@ -2438,7 +2561,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             return
         res = self.fit(data=d, initial_values=x0, fixed=fixed)
         self.plot_fit_result(res)
-        self._set_status("")
+        diverged = self._fit_diverged(res)
+        if diverged is None:
+            self._set_status("")
+        else:
+            self._set_status(f"Fit diverged: {diverged}")
 
     def _fit_blocked_reason(self, det, decay):
         """Human-readable reason the fit cannot run, or None when it can."""
@@ -2450,6 +2577,36 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             return f"no background for detector {det!r}"
         if decay is None or np.asarray(decay).size == 0:
             return "no decay (load bursts / select a file)"
+        return None
+
+    def _fit_diverged(self, fit_result) -> typing.Optional[str]:
+        """Human-readable reason the fit result is non-physical, or ``None``.
+
+        Freeing ``gamma`` (the scattered-light fraction) is legitimate but
+        poorly constrained when the IRF is the auto-extracted, decay-shaped one:
+        the optimiser walks ``gamma`` to its bound (~0.999), where Fit23 returns
+        an invalid quality (2I* < 0) and a model whose amplitude has run away by
+        orders of magnitude. Plotting that raw blows the display up to ~1e6. This
+        flags the case so the caller can warn instead of showing garbage; the
+        parameters are still displayed so the user sees ``gamma`` pinned at its
+        bound.
+        """
+        try:
+            two_istar = float(fit_result.get("twoIstar", 0.0))
+        except Exception:
+            two_istar = 0.0
+        if not np.isfinite(two_istar) or two_istar < 0.0:
+            return "invalid fit quality (2I* < 0) — gamma is unconstrained; " \
+                   "re-fix gamma or use a measured IRF/background"
+        model = np.asarray(getattr(self.fit, "model", []), dtype=float)
+        if model.size and not np.all(np.isfinite(model)):
+            return "model has non-finite values"
+        data = np.asarray(getattr(self.fit, "data", []), dtype=float)
+        s_dat = float(np.nansum(data)) if data.size else 0.0
+        s_mod = float(np.nansum(model)) if model.size else 0.0
+        if s_dat > 0.0 and s_mod > 20.0 * s_dat:
+            return "model amplitude diverged — gamma is unconstrained; " \
+                   "re-fix gamma or use a measured IRF/background"
         return None
 
     def _set_status(self, text: str):
@@ -2475,6 +2632,126 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             return None
         return self.tttrs.get(Path(df.iloc[0]["First File"]).stem)
 
+    def _irf_fwhm_channels(self):
+        """FWHM of the scatter IRF prompt in RAW micro-time channels, or ``None``.
+
+        Measured from the current detector's non-burst photons (the scatter
+        prompt whose width *is* the instrument response). This sets how finely
+        the micro-time axis can be *meaningfully* binned: binning far below the
+        IRF width only spreads the same counts over more empty bins without
+        adding time resolution (see :meth:`_auto_select_binning`).
+        """
+        tttr = self._current_tttr()
+        det = self.current_detector
+        info = getattr(self.channel_definer, 'detectors', {}).get(det, {})
+        chs = info.get('chs', [])
+        if tttr is None or not chs:
+            return None
+        idx = np.asarray(self.get_burst_indices_for_current_file(), dtype=int)
+        if idx.size == 0:
+            return None
+        try:
+            n_full = int(tttr.header.number_of_micro_time_channels)
+        except Exception:
+            return None
+        if n_full <= 0:
+            return None
+        non_burst = np.ones(len(tttr), dtype=bool)
+        non_burst[idx] = False
+        sel = non_burst & np.isin(np.asarray(tttr.routing_channels),
+                                  np.asarray(chs, dtype=int))
+        micro = np.asarray(tttr.micro_times)[sel]
+        micro = micro[(micro >= 0) & (micro < n_full)]
+        if micro.size == 0:
+            return None
+        hist = np.bincount(micro, minlength=n_full)[:n_full].astype(float)
+        pk = hist.max()
+        if pk <= 0:
+            return None
+        above = np.where(hist >= 0.5 * pk)[0]
+        if above.size == 0:
+            return None
+        return int(above[-1] - above[0] + 1)
+
+    def _auto_select_binning(self, target_counts_per_bin: float = 10.0,
+                             irf_oversample: float = 8.0):
+        """Pick a micro-time binning that is neither too fine nor too coarse.
+
+        Two floors set the coarsest-needed binning; the larger wins:
+
+        * **Statistics.** A burst decay is sparse: this file's green burst
+          photons (~8.6k) over the full 2×4096-channel Jordi are ~1 count/bin,
+          and a maximum-likelihood ``Fit23`` on near-empty bins rails ``tau`` to
+          the excitation period (an unphysical "flat" model). Coarsen until the
+          bins hold ~``target_counts_per_bin`` counts.
+        * **IRF resolution.** Binning finer than the IRF resolves nothing — it
+          only adds empty bins. Keep the bin width at or above
+          ``IRF_FWHM / irf_oversample`` channels. This is what makes "too fine"
+          depend on the IRF: a broad IRF forces coarser bins, a sharp one allows
+          finer.
+
+        Returns a value from the binning combo, or ``None`` when the photon count
+        can't be determined (caller keeps the current binning).
+        """
+        tttr = self._current_tttr()
+        det = self.current_detector
+        info = getattr(self.channel_definer, 'detectors', {}).get(det, {})
+        chs = info.get('chs', [])
+        if tttr is None or not chs:
+            return None
+        idx = np.asarray(self.get_burst_indices_for_current_file(), dtype=int)
+        if idx.size == 0:
+            return None
+        rc = np.asarray(tttr.routing_channels)[idx]
+        counts = int(np.isin(rc, np.asarray(chs, dtype=int)).sum())
+        try:
+            n_full = int(tttr.header.number_of_micro_time_channels)
+        except Exception:
+            return None
+        if counts <= 0 or n_full <= 0:
+            return None
+        # Statistics floor: counts/bin = counts * binning / (2 halves * n_full).
+        need_stat = target_counts_per_bin * 2.0 * n_full / counts
+        # IRF-resolution floor: bin width (channels) >= FWHM / oversample.
+        fwhm = self._irf_fwhm_channels()
+        need_irf = (fwhm / irf_oversample) if (fwhm and irf_oversample > 0) else 0.0
+        need = max(need_stat, need_irf)
+        combo = self.channel_definer.micro_binning_combo
+        choices = sorted(int(combo.itemText(i)) for i in range(combo.count()))
+        for c in choices:
+            if c >= need:
+                return c
+        return choices[-1]
+
+    def _auto_select_fit_range(self, lo_frac: float = 0.02):
+        """Set ``micro_time_range`` to the filled region of the current decay.
+
+        Empty pre-prompt bins and the noise tail carry no lifetime information;
+        for a maximum-likelihood fit they are just near-zero bins that add noise
+        and, at a too-fine binning, destabilise it. The window is set from one
+        bin before the rising edge to one bin past the last populated bin (in the
+        current binning's units), spanning both Jordi halves symmetrically.
+        """
+        decay = self.decay_of_current_file
+        if decay is None:
+            return
+        d = np.asarray(decay, dtype=float)
+        nb = d.size // 2
+        if nb < 4:
+            return
+        tot = d[:nb] + d[nb:2 * nb]
+        pk = float(tot.max()) if tot.size else 0.0
+        if pk <= 0.0:
+            return
+        filled = np.where(tot > lo_frac * pk)[0]
+        if filled.size == 0:
+            return
+        onset = int(max(0, int(filled[0]) - 1))
+        last = int(min(nb, int(filled[-1]) + 2))
+        if last - onset < 4:
+            return
+        self.micro_time_range = (onset, last)
+
     def auto_extract_irf_bg(self):
         """One-click IRF/background from this file's NON-burst photons.
 
@@ -2482,6 +2759,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         bursts is estimated from the photons the burst search rejected. It is an
         approximation — a measured experimental IRF and buffer background give
         more reliable lifetimes (see the warning shown next to the button).
+
+        Also auto-selects a micro-time binning that gives well-populated bins, so
+        the fit does not rail on a too-fine (sparse) default — see
+        :meth:`_auto_select_binning`.
         """
         from chisurf.core.fluorescence.burst import extract_mle_irf_background
 
@@ -2493,6 +2774,19 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if idx.size == 0:
             self._set_status("No burst photons found for the selected file")
             return
+
+        # Coarsen the micro-time axis first so the extraction (and the fit) run at
+        # a binning whose bins carry counts. Setting the combo cascades a rebuild;
+        # block it (we rebuild IRF/bg/decay ourselves just below at this binning).
+        pick = self._auto_select_binning()
+        combo = self.channel_definer.micro_binning_combo
+        if pick is not None and str(pick) != combo.currentText():
+            blocked = combo.blockSignals(True)
+            try:
+                combo.setCurrentText(str(pick))
+            finally:
+                combo.blockSignals(blocked)
+            self._update_max_bins_from_tttr()
         in_burst = np.zeros(len(tttr), dtype=bool)
         in_burst[idx] = True
         try:
@@ -2512,12 +2806,24 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 self.irf_np[det] = np.asarray(pat["irf"], dtype=float)
                 self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
                 n += 1
+        # Build the decay once at the new binning, then restrict the fit window to
+        # its filled region and rebuild so the windowed decay is what we fit.
+        self.update_decay_of_detector()
+        start = self.spinBox_micro_time_start.blockSignals(True)
+        stop = self.spinBox_micro_time_stop.blockSignals(True)
+        try:
+            self._auto_select_fit_range()
+        finally:
+            self.spinBox_micro_time_start.blockSignals(start)
+            self.spinBox_micro_time_stop.blockSignals(stop)
         self.update_decay_of_detector()
         self._fit = None
         self.update_fit()
         self._set_status(
             f"Auto IRF/background estimated from non-burst photons for {n} "
-            f"detector(s). For best lifetimes, use a measured IRF/background."
+            f"detector(s) (binning {self.micro_time_binning}, "
+            f"window {self.micro_time_range}). For best lifetimes, use a "
+            f"measured IRF/background."
         )
 
     def go_to_irf_bg(self):
@@ -2563,6 +2869,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # clear both panels
         self.combined_plot.clear()
         self.residual_plot.clear()
+        # The legend survives clear(); empty it so the replotted curves below add
+        # exactly one row each rather than stacking a fresh set every fit.
+        legend = getattr(self, "combined_legend", None)
+        if legend is not None:
+            legend.clear()
         sb, eb = self.micro_time_range
 
         # only plot if we actually loaded IRF *and* BG for this detector
@@ -2584,17 +2895,27 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         model_vh = model_full[n:2*n][vh_sb:vh_eb]
         data_rng = np.hstack([data_vv, data_vh])
         model_rng = np.hstack([model_vv, model_vh])
+        # A diverged fit (gamma pinned at its bound) returns a model whose
+        # amplitude has run away by orders of magnitude; plotted raw it blows the
+        # log view up to ~1e6 and hides the data. Clip the *displayed* model to a
+        # little above the data's own range so the panel stays readable — the fit
+        # parameters shown are untouched, and the status bar says it diverged.
+        diverged = self._fit_diverged(fit_result)
+        model_disp = np.nan_to_num(model_rng, nan=0.0, posinf=0.0, neginf=0.0)
+        if diverged is not None and data_rng.size:
+            cap = float(np.nanmax(data_rng)) * 10.0
+            if cap > 0:
+                model_disp = np.clip(model_disp, 0.0, cap)
         self.combined_plot.plot(data_rng,
                                 pen=None,
                                 symbol='o',
-                                symbolSize=3)
-        self.combined_plot.plot(model_rng, pen='g')
+                                symbolSize=3,
+                                name='Data (VV|VH)')
+        self.combined_plot.plot(model_disp, pen='g', name='Model (fit)')
 
         # Plot IRF & BG within per-channel windows
         irf_full = self.irf.astype(np.float64, copy=True)
         bg_full = self.bg.astype(np.float64, copy=True)
-        # apply background scaling by acquisition time
-        bg_full *= self.total_burst_time_seconds
 
         n = len(irf_full) // 2
         vv_sb, vv_eb, vh_sb, vh_eb = self._get_channel_ranges_bins()
@@ -2604,11 +2925,20 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         irf_rng = np.hstack([irf_full[0:n][vv_sb:vv_eb], irf_full[n:2*n][vh_sb:vh_eb]])
         bg_rng = np.hstack([bg_full[0:n][vv_sb:vv_eb], bg_full[n:2*n][vh_sb:vh_eb]])
 
-        # scale IRF to visible data amplitude for plotting
-        m_irf = np.max(irf_rng) if irf_rng.size else 0.0
-        m_dat = np.max(data_rng) if data_rng.size else 0.0
-        if m_irf > 0 and m_dat > 0:
-            irf_rng = irf_rng / m_irf * m_dat
+        # Scale IRF and background to the data amplitude for display only. Both
+        # keep their SHAPE (the scatter/background is not flat — it has the
+        # scattered-excitation shape); we area-normalise each and match it to the
+        # data's total so it overlays legibly without swamping the decay. Peak
+        # (max) normalisation would be thrown off by a single hot bin. The
+        # background's actual fit weight is the scatter parameter, not this curve.
+        s_dat = float(np.sum(data_rng)) if data_rng.size else 0.0
+
+        def _overlay(arr):
+            s = float(np.sum(arr))
+            return arr / s * s_dat if (s > 0 and s_dat > 0) else arr
+
+        irf_rng = _overlay(irf_rng)
+        bg_rng = _overlay(bg_rng)
 
         self.combined_plot.plot(irf_rng, pen='r', name='IRF')
         self.combined_plot.plot(bg_rng, pen='b', name='Background')

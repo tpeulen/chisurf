@@ -293,6 +293,7 @@ def extract_mle_irf_background(
     photon_window: int = 10,
     time_window: float = 1e-3,
     baseline_quantile: float = 0.2,
+    irf_model: str = "gaussian",
 ) -> dict[str, dict[str, np.ndarray]]:
     """Build MLE-ready IRF and background patterns from the non-burst photons.
 
@@ -307,9 +308,18 @@ def extract_mle_irf_background(
     no separate scatter or buffer acquisition.
 
     * The **background** pattern is the raw non-burst histogram (the per-bin
-      counts the fit subtracts: flat dark counts plus the scatter prompt).
-    * The **IRF** pattern is the same histogram with its flat dark-count floor (a
-      low quantile) subtracted, isolating the scatter prompt used for convolution.
+      counts the fit subtracts: flat dark counts plus the scatter prompt). It
+      keeps its shape — the scattered-excitation background is not flat.
+    * The **IRF** pattern is the scatter prompt used for convolution. By default
+      (``irf_model="gaussian"``) it is a **Gaussian model** centred on the prompt
+      peak with the prompt's measured core FWHM. This matters: the raw non-burst
+      histogram's prompt sits on a *fluorescence tail* (the non-burst periods
+      still hold dim / passing molecules), and convolving the lifetime model with
+      that tail-carrying "IRF" biases the recovered lifetime roughly two-fold
+      short (a genuine ~2.2 ns decay came out ~1.1 ns on real BH smFRET data). A
+      tail-free Gaussian at the same position/width removes the bias while
+      staying data-driven. ``irf_model="raw"`` keeps the older baseline-subtracted
+      histogram (kept for callers that supply a genuinely clean scatter prompt).
 
     Parameters
     ----------
@@ -327,7 +337,11 @@ def extract_mle_irf_background(
     min_photons, photon_window, time_window
         Burst-search parameters used only when ``mask`` is not given.
     baseline_quantile : float
-        Dark-count floor quantile subtracted to form the IRF pattern.
+        Dark-count floor quantile subtracted to find the scatter prompt.
+    irf_model : {"gaussian", "raw"}
+        ``"gaussian"`` (default) models the IRF as a tail-free Gaussian at the
+        prompt's measured peak and core FWHM; ``"raw"`` returns the
+        baseline-subtracted non-burst histogram.
 
     Returns
     -------
@@ -349,6 +363,28 @@ def extract_mle_irf_background(
 
     binning = max(1, int(micro_time_binning))
     q = float(np.clip(baseline_quantile, 0.0, 1.0))
+    gaussian = str(irf_model).lower() == "gaussian"
+
+    def _gaussian_prompt(prompt: np.ndarray) -> np.ndarray:
+        """Tail-free Gaussian at the prompt peak with its core FWHM (half-max)."""
+        pk = int(prompt.argmax())
+        peak_val = float(prompt[pk])
+        if peak_val <= 0.0:
+            return prompt
+        half = 0.5 * peak_val
+        lo = pk
+        while lo > 0 and prompt[lo] >= half:
+            lo -= 1
+        hi = pk
+        while hi < prompt.size - 1 and prompt[hi] >= half:
+            hi += 1
+        fwhm = max(1.0, float(hi - lo))
+        sigma = fwhm / 2.3548
+        x = np.arange(prompt.size, dtype=np.float64)
+        g = np.exp(-0.5 * ((x - pk) / sigma) ** 2)
+        # normalise to the prompt's counts so downstream scaling is unchanged.
+        s = float(g.sum())
+        return g * (float(prompt.sum()) / s) if s > 0 else g
 
     def _half(channels: list[int]) -> tuple[np.ndarray, np.ndarray]:
         """Return (irf, bg) micro-time patterns for one polarization sub-channel set."""
@@ -358,7 +394,8 @@ def extract_mle_irf_background(
         hist = np.asarray(sub.get_microtime_histogram(binning)[0], dtype=np.float64)
         bg = hist.copy()
         if hist.sum() > 0:
-            irf = np.clip(hist - float(np.quantile(hist, q)), 0.0, None)
+            prompt = np.clip(hist - float(np.quantile(hist, q)), 0.0, None)
+            irf = _gaussian_prompt(prompt) if gaussian else prompt
         else:
             irf = np.zeros_like(hist)
         return irf, bg

@@ -10,7 +10,6 @@ Skipped when the BH smFRET DNA test data is not present.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import numpy as np
@@ -26,13 +25,33 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+# BH SPC-132 dual-colour polarization channel map for this dataset: routing
+# channels 0/1 are the green parallel/perpendicular detectors, 8/9 the red. (The
+# burst-analysis handoff no longer carries channel_settings, so the test supplies
+# the detector definition the channel-definition page would.)
+CHANNEL_SETTINGS = {
+    "detectors": {
+        "green": {"chs": [0, 1], "micro_time_ranges": [],
+                  "g_factor": 1.0, "l1": 0.0308, "l2": 0.0368},
+        "red": {"chs": [8, 9], "micro_time_ranges": [],
+                "g_factor": 1.0, "l1": 0.0308, "l2": 0.0368},
+    },
+    "windows": {},
+    "file_type": "SPC-130",
+}
+
+
 @pytest.fixture
 def fitted_wizard(qapp):
-    """A wizard with channels, a burst file, IRF/bg and one fit run for green."""
+    """A wizard with channels, a burst file, IRF/bg and one fit run for green.
+
+    Drives the one-click ``Auto IRF/background`` path (``auto_extract_irf_bg``),
+    which is the foolproof workflow: it auto-selects the micro-time binning and
+    fit window and estimates the IRF/background from the non-burst photons.
+    """
     from qtpy import QtWidgets
 
     import tttrlib  # noqa: F401  (ensures the extension is importable)
-    from chisurf.core.fluorescence.burst import extract_mle_irf_background
     from chisurf.plugins.burst.burst_mle_analysis.wizard import (
         MLELifetimeAnalysisWizard,
     )
@@ -40,32 +59,17 @@ def fitted_wizard(qapp):
     w = MLELifetimeAnalysisWizard()
     QtWidgets.QApplication.processEvents()
 
-    settings = json.loads(HANDOFF.read_text())["channel_settings"]
-    w.channel_definer.load_data_into_tables(settings)
+    w.channel_definer.load_data_into_tables(CHANNEL_SETTINGS)
     w.channel_definer.file_type_combo.setCurrentText("SPC-130")
     w._init_channels_from_wizard()
     w.burst_files_list.add_file(str(BUR))
     w.load_burst_data()
     w.update_burst_files()
+    w.comboBox_window.setCurrentText("green")
     QtWidgets.QApplication.processEvents()
 
-    # Provide IRF/background from the non-burst photons (as the IRF & Background
-    # step / Send-to-MLE would), for every real detector.
-    tttr = next(iter(w.tttrs.values()))
-    idx = np.asarray(w.get_burst_indices_for_current_file(), dtype=int)
-    in_burst = np.zeros(len(tttr), bool)
-    in_burst[idx] = True
-    patterns = extract_mle_irf_background(
-        tttr, w.channel_definer.detectors,
-        micro_time_binning=w.micro_time_binning, mask=~in_burst, min_photons=20,
-    )
-    for det, pat in patterns.items():
-        if det:  # skip any stray empty-name key
-            w.irf_np[det] = np.asarray(pat["irf"], float)
-            w.bg_np[det] = np.asarray(pat["bg"], float)
-
-    w.update_decay_of_detector()
-    w.update_fit()
+    # One-click IRF/background + binning/window auto-selection + fit for green.
+    w.auto_extract_irf_bg()
     QtWidgets.QApplication.processEvents()
     return w
 
@@ -101,6 +105,117 @@ def test_fit_produces_a_plausible_lifetime(fitted_wizard):
     assert 0.1 < tau < 10.0, f"implausible / non-fit tau={tau}"
 
 
+def test_auto_extract_coarsens_the_sparse_default_binning(fitted_wizard):
+    # The bug: at the sparse default binning (1) the ~8.6k burst photons are
+    # ~1 count/bin over the 2x4096 Jordi, and the maximum-likelihood fit rails
+    # tau to the excitation period. Auto-selection must coarsen the axis so the
+    # bins carry counts (and not below the IRF resolution).
+    assert fitted_wizard.micro_time_binning > 1
+
+
+def test_auto_extract_restricts_the_fit_window_to_the_filled_region(fitted_wizard):
+    # The window must exclude the empty pre-prompt bins and the noise tail, i.e.
+    # be genuinely narrower than the whole half.
+    sb, eb = fitted_wizard.micro_time_range
+    n_half = int(np.asarray(fitted_wizard.decay_of_current_file).size) // 2
+    assert 0 <= sb < eb <= n_half
+    assert (eb - sb) < n_half, "window was not restricted to the filled region"
+
+
+def test_auto_extract_gives_a_physical_lifetime_for_every_colour(fitted_wizard):
+    # Both the green (donor) and red (acceptor) decays must recover a physical
+    # single-molecule lifetime through the one-click path — no railing.
+    w = fitted_wizard
+    for det in ("green", "red"):
+        w.comboBox_window.setCurrentText(det)
+        w.auto_extract_irf_bg()
+        tau = w.doubleSpinBox_tau_result.value()
+        assert 0.5 < tau < 5.0, f"{det} tau railed/implausible: {tau}"
+
+
+def _mean_arrival_lifetime(w, det, chs):
+    """Model-free lifetime: mean burst micro-time minus the scatter prompt."""
+    tttr = next(iter(w.tttrs.values()))
+    idx = np.asarray(w.get_burst_indices_for_current_file(), dtype=int)
+    micro = np.asarray(tttr.micro_times)
+    rout = np.asarray(tttr.routing_channels)
+    micro_ns = tttr.header.micro_time_resolution * 1e9
+    in_burst = np.zeros(len(tttr), bool)
+    in_burst[idx] = True
+    par = chs[0]
+    burst = micro[in_burst & (rout == par)] * micro_ns
+    prompt_bin = np.bincount(micro[~in_burst & (rout == par)]).argmax()
+    return float(burst.mean() - prompt_bin * micro_ns)
+
+
+def test_auto_extract_lifetime_matches_model_free_estimate(fitted_wizard):
+    # The regression this guards: an IRF taken straight from the non-burst
+    # histogram carries a fluorescence tail (dim/passing molecules), and
+    # convolving with it biased the fitted lifetime ~2x short (a ~2.2 ns decay
+    # fit as ~1.1 ns). The extraction now models the IRF as a tail-free Gaussian
+    # at the prompt, so the fitted tau must track the model-free mean-arrival-time
+    # lifetime (a robust, IRF-tail-immune reference) to within ~30%.
+    w = fitted_wizard
+    for det, chs in (("green", [0, 1]), ("red", [8, 9])):
+        w.comboBox_window.setCurrentText(det)
+        w.auto_extract_irf_bg()
+        tau = w.doubleSpinBox_tau_result.value()
+        ref = _mean_arrival_lifetime(w, det, chs)
+        assert ref > 0
+        assert abs(tau - ref) / ref < 0.35, (
+            f"{det}: fitted tau={tau:.3f} ns far from model-free {ref:.3f} ns "
+            f"(IRF-tail bias?)"
+        )
+
+
+def test_fit_dt_and_period_come_from_the_file_header():
+    """The lifetime is only meaningful if ``dt`` and ``period`` are correct.
+
+    ``Fit23`` measures ``tau`` in units of ``dt`` and convolves over one
+    ``period``; both must be nanoseconds, matching the reported lifetime. The
+    channel-definition page cannot supply that (its micro-time field is
+    picoseconds and neither field is filled from the header), so the wizard
+    derives both from the TTTR header. Without this the reported lifetime was in
+    arbitrary units — a decay that falls in ~1 ns was labelled "5 ns".
+    """
+    import tttrlib
+
+    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
+        MLELifetimeAnalysisWizard,
+    )
+
+    spc = DATA / "m000.spc"
+    if not spc.exists():
+        pytest.skip("raw SPC file not available")
+    tttr = tttrlib.TTTR(str(spc), "SPC-130")
+
+    # Exercise the real method without building the (Qt-heavy) wizard.
+    class _Stub:
+        def __init__(self, t, binning):
+            self._t = t
+            self.micro_time_binning = binning
+
+        def _current_tttr(self):
+            return self._t
+
+    _Stub._header_time_ns = MLELifetimeAnalysisWizard._header_time_ns
+
+    h = tttr.header
+    expect_dt = h.micro_time_resolution * 1e9          # ns per channel, binning 1
+    expect_period = h.number_of_micro_time_channels * h.micro_time_resolution * 1e9
+
+    for binning in (1, 2, 4):
+        dt_ns, period_ns = _Stub(tttr, binning)._header_time_ns()
+        assert dt_ns == pytest.approx(expect_dt * binning, rel=1e-9)
+        # The period is the full TAC range, independent of binning.
+        assert period_ns == pytest.approx(expect_period, rel=1e-9)
+        n_binned = h.number_of_micro_time_channels // binning
+        assert n_binned * dt_ns == pytest.approx(period_ns, rel=1e-6)
+
+    # These are real nanoseconds, not the 50/50 defaults the page would supply.
+    assert expect_dt < 1.0 and 5.0 < expect_period < 200.0
+
+
 def test_intensity_plot_has_data(fitted_wizard):
     # The Intensity panel must show the decay (and model), not be empty.
     items = fitted_wizard.combined_plot.listDataItems()
@@ -108,6 +223,22 @@ def test_intensity_plot_has_data(fitted_wizard):
     assert any(
         it.getData()[1] is not None and len(it.getData()[1]) > 0 for it in items
     )
+
+
+def test_decay_plot_has_a_labelled_legend(fitted_wizard):
+    # The four overlaid curves (data, model, IRF, background) are only
+    # distinguishable by a legend; without it the colours are unlabelled. The
+    # legend must exist and carry exactly one row per named series, not a fresh
+    # stacked set per fit.
+    legend = getattr(fitted_wizard, "combined_legend", None)
+    assert legend is not None, "decay plot has no legend"
+    labels = {lbl.text for _sample, lbl in legend.items}
+    assert {"Data (VV|VH)", "Model (fit)", "IRF", "Background"} <= labels
+
+    # A second replot must not duplicate the rows.
+    before = len(legend.items)
+    fitted_wizard.refit()
+    assert len(legend.items) == before, "legend rows duplicated on replot"
 
 
 def test_irf_is_not_corrupted_by_detector_switching(fitted_wizard):
@@ -144,3 +275,4 @@ def test_irf_survives_ui_refresh_with_empty_file_widget(fitted_wizard):
     fitted_wizard.update_bg_files()
     assert det in fitted_wizard.irf_np and np.asarray(fitted_wizard.irf_np[det]).size > 0
     assert det in fitted_wizard.bg_np and np.asarray(fitted_wizard.bg_np[det]).size > 0
+
