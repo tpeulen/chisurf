@@ -368,6 +368,9 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         """Open the GUI even if the spectra catalogue cannot be loaded."""
         logger.error("Failed to fetch probe info from backend: %s", message)
         self.probes = []
+        # Build the Easy Mode tab even without probes, so it never silently
+        # disappears when the MMFDB spectra catalogue fails to load.
+        self._build_easy_mode_tab()
         self._setup_default_path()
 
     def _open_easy_mode_dialog(self):
@@ -492,6 +495,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
                     state = json.load(f)
                 self.scene.from_dict(normalize_lightpath_graph(state))
                 self.propagate_graph()
+                self._fit_view()
             except Exception as e:
                 QtWidgets.QMessageBox.critical(self, "Load Failed", f"Could not load graph:\n{e}")
 
@@ -551,6 +555,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         self.scene.clear()
         self.scene.from_dict(normalize_lightpath_graph(load_res["graph"]))
         self.propagate_graph()
+        self._fit_view()
 
     def _setup_toolbar(self) -> None:
         """Create the save/load toolbar on the optical path dock."""
@@ -854,7 +859,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
                     self.scene.clear()
                     self.scene.from_dict(normalize_lightpath_graph(state))
                     self.propagate_graph()
-                    self.view.centerOn(550, 200)
+                    self._fit_view()
                     return
                 except Exception as e:
                     logger.error(f"Failed to load saved graph: {e}")
@@ -895,6 +900,15 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         """Load a graph dict into the node editor and propagate."""
         self.scene.from_dict(normalize_lightpath_graph(graph))
         self.propagate_graph()
+        self._fit_view()
+
+    def _fit_view(self) -> None:
+        """Zoom the node view to fit all items after a new graph is loaded.
+
+        Deferred to the next event-loop tick so the view has a real viewport size
+        (``fitInView`` is a no-op while the widget still has zero size at startup).
+        """
+        QtCore.QTimer.singleShot(0, self.view.fit_all)
 
     def _update_easy_config_in_place(self, cfg: dict) -> None:
         """Update existing graph node configs from Easy Mode without rearranging."""
