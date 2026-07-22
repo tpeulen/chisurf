@@ -1,119 +1,45 @@
 from __future__ import annotations
 
-from typing import List, Optional
 from shlex import split as shlex_split
+
 import numpy as np
 
-from ..analysis.metrics import compute_rmsd, compute_kabsch
+from ..analysis.metrics import compute_kabsch, compute_rmsd
 from .base import BaseCmd
+from .registry import command
 
 
 class MeasurementMixin(BaseCmd):
     """Measurements, frames, and geometric helpers."""
 
-    def _mixin_commands(self):
-        return {
-            "distance": self._cmd_distance,
-            "angle": self._cmd_angle,
-            "dihedral": self._cmd_dihedral,
-            "rms": self._cmd_rms,
-            "rms_cur": self._cmd_rms,  # alias
-            "align": self._cmd_align,
-            "super": self._cmd_super,
-            "frame": self._cmd_frame,
-            "frame_next": self._cmd_frame_next,
-            "frame_prev": self._cmd_frame_prev,
-        }
-
     def _add_measurement(self, viewer, name: str, kind: str, positions: np.ndarray, label: str):
         if not name:
             name = f"{kind}_{len(viewer._measurements)}"
-        
+
         mdata = {
             "kind": kind,
             "positions": positions,
             "label": label,
             "color": [1.0, 1.0, 0.0, 1.0]
         }
-        
+
         cur = dict(viewer._measurements)
         cur[name] = mdata
         viewer._measurements = cur
         viewer._update_view()
 
     # ------------------------------------------------------------------ #
-    # Frames
+    # Frames (per-object trajectory stepping; timeline `frame` lives in
+    # AnimationMixin and wins the command name via MRO)
     # ------------------------------------------------------------------ #
-    def _cmd_frame(self, args: List[str]) -> None:
-        window, viewer = self._require_window_and_viewer()
-        if viewer is None:
-            return
-
-        if not args:
-            self._emit_error("Usage: frame [object] index")
-            return
-
-        tokens = list(args)
-        obj_id: Optional[str] = None
-        obj_name: Optional[str] = None
-
-        if len(tokens) == 1:
-            try:
-                active_id = viewer.get_active_object_id()
-            except Exception:
-                active_id = None
-            if active_id is None:
-                self._emit_error("No active object for frame control")
-                return
-            obj_id = str(active_id)
-            obj_info = self._find_object_by_name(viewer, obj_id)
-            obj_name = str(obj_info.get("name")) if obj_info is not None else obj_id
-            idx_str = tokens[0]
-        else:
-            obj_token = tokens[0]
-            obj_info = self._find_object_by_name(viewer, obj_token)
-            if obj_info is None:
-                self._emit_error(f"Unknown object: {obj_token}")
-                return
-            obj_id = str(obj_info.get("id"))
-            obj_name = str(obj_info.get("name"))
-            idx_str = tokens[1]
-
-        try:
-            frame_no = int(idx_str)
-        except Exception:
-            self._emit_error("Frame index must be an integer")
-            return
-
-        if frame_no <= 0:
-            frame_idx = 0
-        else:
-            frame_idx = frame_no - 1
-
-        try:
-            viewer.set_active_frame(frame_idx, object_id=obj_id)
-        except Exception as exc:
-            self._emit_error(f"Failed to set frame on {obj_name}: {exc}")
-            return
-
-        try:
-            n_frames = viewer.get_frame_count(obj_id)
-        except Exception:
-            n_frames = 0
-
-        if n_frames > 0:
-            if frame_no > n_frames:
-                frame_no = n_frames
-            self._emit_message(
-                f"Frame for {obj_name}: {frame_no}/{n_frames}"
-            )
-        else:
-            self._emit_message(f"Frame for {obj_name}: {frame_no}")
-
-    def _cmd_frame_next(self, args: List[str]) -> None:
+    @command("frame_next")
+    def frame_next(self) -> None:
+        """Step the active object to its next trajectory frame."""
         self._cmd_frame_step(1)
 
-    def _cmd_frame_prev(self, args: List[str]) -> None:
+    @command("frame_prev")
+    def frame_prev(self) -> None:
+        """Step the active object to its previous trajectory frame."""
         self._cmd_frame_step(-1)
 
     def _cmd_frame_step(self, delta: int) -> None:
@@ -158,13 +84,14 @@ class MeasurementMixin(BaseCmd):
     # ------------------------------------------------------------------ #
     # Measurements
     # ------------------------------------------------------------------ #
-    def _cmd_distance(self, args: List[str]) -> None:
-        """Measure distance between two selections (PyMOL-style)."""
-
+    @command("distance", aliases=("dist",))
+    def distance(self, *seles: str) -> None:
+        """Measure distance between two selections (PyMOL ``distance [name,] s1, s2``)."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
+        args = list(seles)
         if not args:
             self._emit_error("Usage: distance sele1, sele2")
             return
@@ -220,15 +147,18 @@ class MeasurementMixin(BaseCmd):
 
         dist_val = f"{dist:.3f}"
         self._emit_message(f"{prefix}{label1} - {label2}: {dist_val}")
-        
+
         positions = np.array([v1, v2])
         self._add_measurement(viewer, meas_name, "distance", positions, dist_val)
 
-    def _cmd_angle(self, args: List[str]) -> None:
+    @command("angle")
+    def angle(self, *seles: str) -> None:
+        """Measure the angle over three selections."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
+        args = list(seles)
         if not args:
             self._emit_error("Usage: angle sele1, sele2, sele3")
             return
@@ -303,15 +233,18 @@ class MeasurementMixin(BaseCmd):
         self._emit_message(
             f"{prefix}{label1} - {label2} - {label3}: {val_str}"
         )
-        
+
         positions = np.array([v1, v2, v3])
         self._add_measurement(viewer, meas_name, "angle", positions, val_str)
 
-    def _cmd_dihedral(self, args: List[str]) -> None:
+    @command("dihedral")
+    def dihedral(self, *seles: str) -> None:
+        """Measure the dihedral over four selections."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
+        args = list(seles)
         if not args:
             self._emit_error("Usage: dihedral sele1, sele2, sele3, sele4")
             return
@@ -403,18 +336,21 @@ class MeasurementMixin(BaseCmd):
         self._emit_message(
             prefix + f"{label1} - {label2} - {label3} - {label4}: {val_str}"
         )
-        
+
         positions = np.array([v1, v2, v3, v4])
         self._add_measurement(viewer, meas_name, "dihedral", positions, val_str)
 
     # ------------------------------------------------------------------ #
     # RMS / Align
     # ------------------------------------------------------------------ #
-    def _cmd_rms(self, args: List[str]) -> None:
+    @command("rms", aliases=("rms_cur",))
+    def rms(self, *seles: str) -> None:
+        """Report the RMSD between two selections (no superposition)."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
+        args = list(seles)
         if not args:
             self._emit_error("Usage: rms mobile_selection, target_selection")
             return
@@ -499,58 +435,47 @@ class MeasurementMixin(BaseCmd):
             )
         self._emit_message(msg)
 
-    def _cmd_align(self, args: List[str]) -> None:
-        """Usage: align mobile_selection, target_selection [, cutoff [, cycles]]"""
-        self._cmd_align_or_super(args, cmd="align")
+    @command("align")
+    def align(
+        self, mobile: str = "", target: str = "", cutoff: float = 2.0, cycles: int = 5
+    ) -> None:
+        """Superpose ``mobile`` onto ``target`` with iterative outlier rejection."""
+        self._align_or_super(mobile, target, cutoff, cycles, cmd="align")
 
-    def _cmd_super(self, args: List[str]) -> None:
-        """Usage: super mobile_selection, target_selection [, cutoff [, cycles]]"""
-        self._cmd_align_or_super(args, cmd="super")
+    @command("super")
+    def super(
+        self, mobile: str = "", target: str = "", cutoff: float = 2.0, cycles: int = 5
+    ) -> None:
+        """Superpose ``mobile`` onto ``target`` (sequence-independent variant)."""
+        self._align_or_super(mobile, target, cutoff, cycles, cmd="super")
 
-    def _cmd_align_or_super(self, args: List[str], cmd: str = "align") -> None:
+    def _align_or_super(
+        self,
+        mobile_expr: str,
+        target_expr: str,
+        cutoff: float = 2.0,
+        cycles: int = 5,
+        *,
+        cmd: str = "align",
+    ) -> None:
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
-        if not args:
-            self._emit_error(f"Usage: {cmd} mobile_selection, target_selection [, cutoff [, cycles]]")
+        if not mobile_expr or not target_expr:
+            self._emit_error(
+                f"Usage: {cmd} mobile_selection, target_selection [, cutoff [, cycles]]"
+            )
             return
 
-        # Parse arguments: mobile, target [, cutoff [, cycles]]
-        joined = " ".join(args).strip()
-        raw_parts = [p.strip() for p in joined.split(",") if p.strip()]
-        
-        if len(raw_parts) < 2:
-            raw_parts = shlex_split(joined)
-            if len(raw_parts) < 2:
-                self._emit_error(f"Usage: {cmd} mobile_selection, target_selection")
-                return
-
-        mobile_expr = raw_parts[0]
-        target_expr = raw_parts[1]
-        
-        # Default values
-        cutoff = 2.0
-        cycles = 5
-        
-        # Parse extra parts as either positional or keyword
-        for i, part in enumerate(raw_parts[2:]):
-             if "=" in part:
-                  key, val = [p.strip() for p in part.split("=", 1)]
-                  if key.lower() == "cutoff":
-                       try: cutoff = float(val)
-                       except ValueError: pass
-                  elif key.lower() == "cycles":
-                       try: cycles = int(val)
-                       except ValueError: pass
-             else:
-                  # Positional fallback
-                  if i == 0: # cutoff
-                       try: cutoff = float(part)
-                       except ValueError: pass
-                  elif i == 1: # cycles
-                       try: cycles = int(part)
-                       except ValueError: pass
+        try:
+            cutoff = float(cutoff)
+        except (TypeError, ValueError):
+            cutoff = 2.0
+        try:
+            cycles = int(cycles)
+        except (TypeError, ValueError):
+            cycles = 5
 
         try:
             mob_obj, mob_name, mob_indices = self._resolve_selection_to_residue_indices(
@@ -566,7 +491,7 @@ class MeasurementMixin(BaseCmd):
         # For super, we might want to match by name if indices differ?
         # For now, let's assume sequence-based matching (by index in the selection)
         # but only if number of residues is compatible.
-        
+
         try:
             mob_coords = viewer.get_residue_positions(
                 mob_indices if mob_indices else None, object_id=mob_obj
@@ -590,7 +515,7 @@ class MeasurementMixin(BaseCmd):
         # Subset to matching count
         m_coords = mob_coords[:count]
         t_coords = tgt_coords[:count]
-        
+
         # Iterative outlier rejection
         current_mask = np.ones(count, dtype=bool)
         final_rmsd = 0.0
@@ -602,16 +527,16 @@ class MeasurementMixin(BaseCmd):
             subset_count = np.sum(current_mask)
             if subset_count < 3:
                 break
-                
+
             m_sub = m_coords[current_mask]
             t_sub = t_coords[current_mask]
-            
+
             try:
                 rot, trans, rmsd = compute_kabsch(m_sub, t_sub)
             except ValueError as exc:
                 self._emit_error(f"Fit failed on cycle {i}: {exc}")
                 return
-            
+
             final_rmsd = rmsd
             final_rot = rot
             final_trans = trans
@@ -622,11 +547,11 @@ class MeasurementMixin(BaseCmd):
                 m_aligned = (m_coords @ rot) + trans
                 dists = np.linalg.norm(m_aligned - t_coords, axis=1)
                 new_mask = dists <= cutoff
-                
+
                 # If no change in mask, we converged
                 if np.array_equal(new_mask, current_mask):
                     break
-                
+
                 # Ensure we have enough points left
                 if np.sum(new_mask) < 3:
                     # Maybe too aggressive? Keep top 50%?
@@ -634,7 +559,7 @@ class MeasurementMixin(BaseCmd):
                     new_mask = np.zeros(count, dtype=bool)
                     half = max(3, count // 2)
                     new_mask[sorted_indices[:half]] = True
-                
+
                 current_mask = new_mask
             else:
                 break
@@ -686,10 +611,9 @@ class MeasurementMixin(BaseCmd):
         viewer,
         obj_id: str,
         obj_name: str,
-        res_indices: Optional[List[int]],
+        res_indices: list[int] | None,
     ) -> np.ndarray:
         """Return per-atom coordinates for the given residue indices."""
-
         try:
             entry = viewer._objects.get(obj_id)  # type: ignore[attr-defined]
         except Exception:

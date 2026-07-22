@@ -1,27 +1,21 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import tempfile
 import urllib.request
-from typing import List
+from pathlib import Path
 
 from .base import BaseCmd
+from .registry import command
 
 
 class LoaderCommands(BaseCmd):
     """Loading and remote fetch commands."""
 
-    def _mixin_commands(self):
-        return {
-            "load": self._cmd_load,
-            "open": self._cmd_load,
-            "fetch": self._cmd_fetch,
-            "fetch_emdb": self._cmd_fetch_emdb,
-            "fetch_ihm": self._cmd_fetch_ihm,
-        }
-
-    def _cmd_load(self, args: List[str]) -> None:
+    @command("load", aliases=("open",))
+    def load(self, *paths: str) -> None:
+        """Load one or more structure files (PyMOL ``load path[, ...]``)."""
+        args = list(paths)
         if not args:
             self._emit_error("Usage: load <path> [more paths...]")
             return
@@ -40,7 +34,10 @@ class LoaderCommands(BaseCmd):
             else:
                 self._emit_message(f"Loaded: {path}")
 
-    def _cmd_fetch(self, args: List[str]) -> None:
+    @command("fetch")
+    def fetch(self, *pdb_ids: str) -> None:
+        """Fetch PDB structures from RCSB (PyMOL ``fetch id[, ...]``)."""
+        args = list(pdb_ids)
         if not args:
             self._emit_error("Usage: fetch <pdb_id> [more ids...]")
             return
@@ -74,7 +71,10 @@ class LoaderCommands(BaseCmd):
             else:
                 self._emit_message(f"Fetched and loaded PDB: {pdb_id}")
 
-    def _cmd_fetch_emdb(self, args: List[str]) -> None:
+    @command("fetch_emdb")
+    def fetch_emdb(self, *emdb_ids: str) -> None:
+        """Fetch EMDB density maps (``fetch_emdb id[, ...]``)."""
+        args = list(emdb_ids)
         if not args:
             self._emit_error("Usage: fetch_emdb <emdb_id> [more ids...]")
             return
@@ -117,7 +117,10 @@ class LoaderCommands(BaseCmd):
             else:
                 self._emit_message(f"Fetched and loaded EMDB map: EMD-{emdb_num}")
 
-    def _cmd_fetch_ihm(self, args: List[str]) -> None:
+    @command("fetch_ihm")
+    def fetch_ihm(self, *entry_ids: str) -> None:
+        """Fetch integrative-model structures (``fetch_ihm id[, ...]``)."""
+        args = list(entry_ids)
         if not args:
             self._emit_error("Usage: fetch_ihm <entry_id> [more ids...]")
             return

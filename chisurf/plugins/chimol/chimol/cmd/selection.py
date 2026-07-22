@@ -470,12 +470,11 @@ class SelectionMixin(BaseCmd):
         expected_count: int,
         cmd: str,
     ) -> tuple[str | None, list[str]]:
-        joined = " ".join(args).strip()
         pattern = ", ".join(f"sele{i + 1}" for i in range(expected_count))
-        if not joined:
+        parts = [str(part).strip() for part in args if part and str(part).strip()]
+        if not parts:
             raise ValueError(f"Usage: {cmd} {pattern}")
 
-        parts = [part.strip() for part in joined.split(",") if part.strip()]
         if len(parts) == expected_count:
             return None, parts
         if len(parts) >= expected_count + 1:

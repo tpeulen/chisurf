@@ -1,33 +1,22 @@
 from __future__ import annotations
 
-from typing import List, Optional
-from shlex import split as shlex_split
-import numpy as np
 from qtpy import QtCore
 
 from .base import BaseCmd
+from .registry import command
+
 
 class AnimationMixin(BaseCmd):
     """Timeline control and keyframe animation commands."""
 
-    def _mixin_commands(self):
-        return {
-            "mset": self._cmd_mset,
-            "mdo": self._cmd_mdo,
-            "mview": self._cmd_mview,
-            "frame": self._cmd_frame,
-            "mplay": self._cmd_mplay,
-            "mpause": self._cmd_mpause,
-            "mstop": self._cmd_mstop,
-            "mclear": self._cmd_mclear,
-        }
-
-    def _cmd_mset(self, args: List[str]) -> None:
-        """Usage: mset specification (e.g. mset 1 x100)"""
+    @command("mset")
+    def mset(self, *tokens: str) -> None:
+        """Set the movie timeline length (e.g. ``mset 1 x100``)."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
+        args = list(tokens)
         if not args:
             self._emit_error("Usage: mset specification")
             return
@@ -40,27 +29,28 @@ class AnimationMixin(BaseCmd):
                 count = int(parts[1].strip())
             else:
                 count = int(spec)
-            
+
             viewer.set_total_frames(count)
             self._emit_message(f"Timeline set to {count} frames.")
         except Exception:
             self._emit_error(f"Invalid mset specification: {spec}")
 
-    def _cmd_frame(self, args: List[str]) -> None:
-        """Usage: frame index (1-based)"""
+    @command("frame")
+    def frame(self, spec: str = "") -> None:
+        """Jump the movie timeline to a 1-based frame (also ``+N``/``-N``/``last``)."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
-        if not args:
+        val = str(spec).strip()
+        if not val:
             self._emit_error("Usage: frame index")
             return
 
         try:
-            val = args[0]
             curr = viewer.get_current_frame()
             total = viewer.get_total_frames()
-            
+
             val_l = val.lower()
             if val_l in {"last", "end"}:
                 viewer.set_current_frame(total - 1)
@@ -75,7 +65,9 @@ class AnimationMixin(BaseCmd):
         except Exception:
             self._emit_error("Frame index must be an integer (e.g., 10, +1, -1).")
 
-    def _cmd_mplay(self, args: List[str]) -> None:
+    @command("mplay")
+    def mplay(self) -> None:
+        """Start movie playback (~30 fps)."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -83,13 +75,15 @@ class AnimationMixin(BaseCmd):
         if viewer._animation_timer is None:
             viewer._animation_timer = QtCore.QTimer(viewer)
             viewer._animation_timer.timeout.connect(self._on_animation_tick)
-        
+
         # Default ~30fps
         viewer._animation_timer.start(33)
         viewer._animation_running = True
         self._emit_message("Playing movie...")
 
-    def _cmd_mpause(self, args: List[str]) -> None:
+    @command("mpause")
+    def mpause(self) -> None:
+        """Pause movie playback."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -99,8 +93,10 @@ class AnimationMixin(BaseCmd):
         viewer._animation_running = False
         self._emit_message("Movie paused.")
 
-    def _cmd_mstop(self, args: List[str]) -> None:
-        self._cmd_mpause(args)
+    @command("mstop")
+    def mstop(self) -> None:
+        """Stop playback and rewind to the first frame."""
+        self.mpause()
         window, viewer = self._require_window_and_viewer()
         if viewer is not None:
             viewer.set_current_frame(0)
@@ -112,19 +108,22 @@ class AnimationMixin(BaseCmd):
 
         curr = viewer.get_current_frame()
         total = viewer.get_total_frames()
-        
+
         next_frame = (curr + 1) % total
         viewer.set_current_frame(next_frame)
 
-    def _cmd_mdo(self, args: List[str]) -> None:
-        """Usage: mdo frame, command"""
+    @command("mdo", mode="raw1")
+    def mdo(self, frame: str = "", command: str = "") -> None:
+        """Attach a command to a movie frame (``mdo frame, command``)."""
         self._emit_error("mdo is not yet implemented (deferred to Phase 5.2)")
 
-    def _cmd_mview(self, args: List[str]) -> None:
-        """Usage: mview action [, target]"""
+    @command("mview")
+    def mview(self, *tokens: str) -> None:
+        """Store/interpolate camera keyframes (``mview action [, target]``)."""
         self._emit_error("mview (keyframes) is not yet implemented (deferred to Phase 5.2)")
 
-    def _cmd_mclear(self, args: List[str]) -> None:
+    @command("mclear")
+    def mclear(self) -> None:
         """Clear all animation data."""
         window, viewer = self._require_window_and_viewer()
         if viewer is not None:

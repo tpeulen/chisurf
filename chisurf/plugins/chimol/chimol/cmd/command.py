@@ -48,69 +48,15 @@ class Cmd(LoaderCommands, SelectionMixin, RenderingMixin, AnimationMixin, RmfMix
     def help(self) -> str:
         return self._cmd_help([])
 
-    def load(self, *paths: str) -> None:
-        self._cmd_load(list(paths))
-
-    def open(self, *paths: str) -> None:
-        self._cmd_load(list(paths))
-
-    def fetch(self, *pdb_ids: str) -> None:
-        self._cmd_fetch(list(pdb_ids))
-
-    def fetch_emdb(self, *emdb_ids: str) -> None:
-        self._cmd_fetch_emdb(list(emdb_ids))
-
-    def fetch_ihm(self, *entry_ids: str) -> None:
-        self._cmd_fetch_ihm(list(entry_ids))
-
     def as_(self, rep: str) -> None:
         # 'as' is a Python keyword, so this thin alias exposes the show_as command.
         self.show_as(rep)
-
-    def distance(self, *tokens: str) -> None:
-        self._cmd_distance(list(tokens))
-
-    def angle(self, *tokens: str) -> None:
-        self._cmd_angle(list(tokens))
-
-    def dihedral(self, *tokens: str) -> None:
-        self._cmd_dihedral(list(tokens))
-
-    def rms(self, *args: str) -> None:
-        self._cmd_rms(list(args))
-
-    def rms_cur(self, *args: str) -> None:
-        self._cmd_rms(list(args))
-
-    def align(self, *args: str) -> None:
-        self._cmd_align(list(args))
-
-    def super(self, *args: str) -> None:
-        self._cmd_super(list(args))
 
     def split_chains(self, prefix: str | None = None) -> None:
         args: list[str] = []
         if prefix:
             args.append(str(prefix))
         self._cmd_split_chains(args)
-
-    def mset(self, *args: str) -> None:
-        self._cmd_mset(list(args))
-
-    def mplay(self, *args: str) -> None:
-        self._cmd_mplay(list(args))
-
-    def mpause(self, *args: str) -> None:
-        self._cmd_mpause(list(args))
-
-    def mstop(self, *args: str) -> None:
-        self._cmd_mstop(list(args))
-
-    def mclear(self, *args: str) -> None:
-        self._cmd_mclear(list(args))
-
-    def frame(self, index: int) -> None:
-        self._cmd_frame([str(index)])
 
     def iterate(self, *args: str) -> None:
         self._cmd_iterate(list(args))
