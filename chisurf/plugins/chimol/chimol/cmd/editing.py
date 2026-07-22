@@ -1,87 +1,45 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
 import numpy as np
-from typing import List, Optional, TYPE_CHECKING
-import copy
-from dataclasses import dataclass, field
 
 from .base import BaseCmd
+from .registry import command
 
 if TYPE_CHECKING:
-    from ..renderer.view import MolView
+    pass
 
 class EditingMixin(BaseCmd):
-    def _mixin_commands(self):
-        return {
-            "iterate": self._cmd_iterate,
-            "alter": self._cmd_alter,
-            "remove": self._cmd_remove,
-            "pseudoatom": self._cmd_pseudoatom,
-        }
-
-    def _cmd_pseudoatom(self, args: List[str]) -> None:
-        """Usage: pseudoatom name [, selection [, label [, pos [, b [, q [, color [, state [, mode [, quiet ]]]]]]]]]"""
-        if not args:
-            self._emit_error("Usage: pseudoatom name, [selection, [label, [pos, ...]]]")
-            return
-
+    @command("pseudoatom")
+    def pseudoatom(
+        self,
+        name: str = "",
+        selection: str = "none",
+        label: str = "",
+        pos: str = "",
+        b: float = 0.0,
+        q: float = 1.0,
+        color: str = "",
+        state: int = 0,
+        mode: str = "",
+        quiet: bool = True,
+    ) -> None:
+        """Create/append a pseudoatom (PyMOL ``pseudoatom name[, selection, ...]``)."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
-        # Improved parsing to handle named arguments and commas in lists
-        joined = " ".join(args)
-        
-        # Split by comma but be careful with brackets (pos=[1,2,3])
-        parts = []
-        current = ""
-        bracket_level = 0
-        for char in joined:
-             if char == '[': bracket_level += 1
-             elif char == ']': bracket_level -= 1
-             elif char == ',' and bracket_level == 0:
-                  parts.append(current.strip())
-                  current = ""
-                  continue
-             current += char
-        parts.append(current.strip())
-        
-        # Dictionary of possible parameters
-        params = {
-            "name": None,
-            "selection": "none",
-            "label": "",
-            "pos": None,
-            "b": 0.0,
-            "q": 1.0,
-            "color": None,
-            "state": 0,
-            "mode": None,
-            "quiet": True
-        }
-        
-        positional_names = ["name", "selection", "label", "pos", "b", "q", "color", "state", "mode", "quiet"]
-        
-        for i, part in enumerate(parts):
-             if "=" in part:
-                  key, val = [p.strip() for p in part.split("=", 1)]
-                  if key in params:
-                       params[key] = val
-             elif i < len(positional_names):
-                  params[positional_names[i]] = part
-
-        name = params["name"]
         if not name:
              self._emit_error("pseudoatom name is required")
              return
-             
-        selection = params["selection"]
-        label = params["label"]
-        pos_val = params["pos"]
-        b_factor = float(params["b"]) if params["b"] is not None else 0.0
-        occupancy = float(params["q"]) if params["q"] is not None else 1.0
 
-        pos: Optional[List[float]] = None
+        pos_val = pos
+        b_factor = float(b) if b is not None else 0.0
+        occupancy = float(q) if q is not None else 1.0
+
+        pos: list[float] | None = None
         if isinstance(pos_val, str):
              if pos_val.startswith("[") and pos_val.endswith("]"):
                   try:
@@ -90,7 +48,7 @@ class EditingMixin(BaseCmd):
                        pos = None
         elif isinstance(pos_val, (list, tuple)) and len(pos_val) == 3:
              pos = [float(x) for x in pos_val]
-        
+
         # If selection center logic
         if not pos and selection.lower() != "none" and selection:
              try:
@@ -108,7 +66,7 @@ class EditingMixin(BaseCmd):
 
         # In ChiMol, we often want to add this to a new object or an existing one.
         # PyMOL adds it to 'name' object. If 'name' exists, it appends an atom.
-        
+
         obj_info = self._find_object_by_name(viewer, name)
         if obj_info is None:
              # Create new object with one atom
@@ -127,7 +85,7 @@ class EditingMixin(BaseCmd):
                  ('b_factor', 'f4'),
                  ('occupancy', 'f4')
              ]
-             
+
              data = np.zeros(1, dtype=atom_dtype)
              data[0]['xyz'] = pos
              data[0]['atom_name'] = b'PS1'
@@ -137,9 +95,9 @@ class EditingMixin(BaseCmd):
              data[0]['element'] = b'Ps'
              data[0]['b_factor'] = b_factor
              data[0]['occupancy'] = occupancy
-             
+
              struct = DummyStructure(atoms=data, xyz=data['xyz'])
-             
+
              # Need to create object via window if possible to get registry/etc.
              if window is not None and hasattr(window, "_load_structure_from_path"):
                   # This is a bit hacky, but MolView doesn't easily create objects from memory via commands yet.
@@ -162,8 +120,8 @@ class EditingMixin(BaseCmd):
                   for f in old_atoms.dtype.names:
                        if f == 'xyz': new_atom[0][f] = pos
                        elif f == 'atom_name': new_atom[0][f] = b'PS1'
-                       elif f == 'res_id': 
-                            if len(old_atoms) > 0: 
+                       elif f == 'res_id':
+                            if len(old_atoms) > 0:
                                  new_atom[0][f] = np.max(old_atoms['res_id']) + 1
                             else:
                                  new_atom[0][f] = 1
@@ -174,39 +132,36 @@ class EditingMixin(BaseCmd):
                             # default to what's in first atom or zero/empty
                             if len(old_atoms) > 0:
                                  new_atom[0][f] = old_atoms[0][f]
-                  
+
                   entry.state.atoms = np.concatenate([old_atoms, new_atom])
                   entry.state.all_atom_coords = entry.state.atoms['xyz'].copy()
-                  
+
                   # Re-run set_structure logic to update trace/masks
                   viewer.set_structure(entry.state)
 
         self._emit_message(f"Created pseudoatom {name} at {pos}")
 
-    def _cmd_iterate(self, args: List[str]) -> None:
-        """Usage: iterate selection, expression"""
-        self._cmd_alter_or_iterate(args, read_only=True)
+    @command("iterate", mode="raw1")
+    def iterate(self, selection: str = "", expression: str = "") -> None:
+        """Evaluate a read-only Python expression per selected atom."""
+        self._alter_or_iterate(selection, expression, read_only=True)
 
-    def _cmd_alter(self, args: List[str]) -> None:
-        """Usage: alter selection, expression"""
-        self._cmd_alter_or_iterate(args, read_only=False)
+    @command("alter", mode="raw1")
+    def alter(self, selection: str = "", expression: str = "") -> None:
+        """Evaluate a Python expression per selected atom, writing changes back."""
+        self._alter_or_iterate(selection, expression, read_only=False)
 
-    def _cmd_alter_or_iterate(self, args: List[str], read_only: bool) -> None:
-        if len(args) < 2:
-            cmd = "iterate" if read_only else "alter"
+    def _alter_or_iterate(
+        self, sele_expr: str, python_expr: str, read_only: bool
+    ) -> None:
+        cmd = "iterate" if read_only else "alter"
+        if not sele_expr or not python_expr:
             self._emit_error(f"Usage: {cmd} selection, expression")
             return
 
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
-
-        joined = " ".join(args)
-        if "," not in joined:
-            self._emit_error("Selection and expression must be separated by a comma")
-            return
-        
-        sele_expr, python_expr = [p.strip() for p in joined.split(",", 1)]
 
         try:
             obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
@@ -237,7 +192,7 @@ class EditingMixin(BaseCmd):
             "b_factor": "b",
             "occupancy": "q",
         }
-        
+
         # Reverse map for alter
         reverse_map = {v: k for k, v in field_map.items()}
 
@@ -245,11 +200,11 @@ class EditingMixin(BaseCmd):
         try:
             # Compiled expression for speed if many atoms
             code = compile(python_expr, "<string>", "exec")
-            
+
             for idx in indices:
                 atom = atoms[idx]
                 namespace = {}
-                
+
                 # Load current values
                 for f, alias in field_map.items():
                     if f in atoms.dtype.names:
@@ -257,14 +212,14 @@ class EditingMixin(BaseCmd):
                         if isinstance(val, (bytes, np.bytes_)):
                              val = val.decode()
                         namespace[alias] = val
-                
+
                 xyz = atom["xyz"]
                 namespace["x"] = float(xyz[0])
                 namespace["y"] = float(xyz[1])
                 namespace["z"] = float(xyz[2])
-                
+
                 exec(code, {}, namespace)
-                
+
                 if not read_only:
                     # Save changed values
                     for alias, f in reverse_map.items():
@@ -277,15 +232,15 @@ class EditingMixin(BaseCmd):
                                     atom[f] = val.encode() if target_dtype.kind == 'S' else val
                             else:
                                 atom[f] = val
-                    
+
                     # Coordinates
                     new_x = namespace.get("x", xyz[0])
                     new_y = namespace.get("y", xyz[1])
                     new_z = namespace.get("z", xyz[2])
                     atom["xyz"] = [new_x, new_y, new_z]
-                
+
                 count += 1
-                
+
         except Exception as exc:
             self._emit_error(f"Error during execution: {exc}")
             return
@@ -297,15 +252,16 @@ class EditingMixin(BaseCmd):
             # We might also need to update all_atom_coords if that was cached separately
             if "xyz" in atoms.dtype.names:
                  entry.state.all_atom_coords = atoms["xyz"].copy()
-            
+
             viewer._update_view()
 
         verb = "Iterated over" if read_only else "Altered"
         self._emit_message(f"{verb} {count} atoms")
 
-    def _cmd_remove(self, args: List[str]) -> None:
-        """Usage: remove selection"""
-        if not args:
+    @command("remove", aliases=("rm",))
+    def remove(self, selection: str = "") -> None:
+        """Delete the atoms matched by ``selection``."""
+        if not selection:
             self._emit_error("Usage: remove selection")
             return
 
@@ -313,7 +269,6 @@ class EditingMixin(BaseCmd):
         if viewer is None:
             return
 
-        selection = " ".join(args)
         try:
             obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
                 viewer, selection
@@ -344,7 +299,7 @@ class EditingMixin(BaseCmd):
         if entry.state.ball_mask is not None:
              if len(entry.state.ball_mask) == len(keep_mask):
                   entry.state.ball_mask = entry.state.ball_mask[keep_mask].copy()
-        
+
         if entry.state.sticks_mask is not None:
              if len(entry.state.sticks_mask) == len(keep_mask):
                   entry.state.sticks_mask = entry.state.sticks_mask[keep_mask].copy()
@@ -353,8 +308,8 @@ class EditingMixin(BaseCmd):
         # For now, just trigger view update.
         # NOTE: Full re-processing might be needed if CA atoms were removed.
         # We might want to call a method like viewer.update_from_atoms(obj_id)
-        
+
         # A hack for now: tell MolView to re-process the atoms
-        viewer.set_structure(entry.state) 
-        
+        viewer.set_structure(entry.state)
+
         self._emit_message(f"Removed {np.sum(atom_mask)} atoms from {obj_name}")

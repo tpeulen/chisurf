@@ -58,15 +58,6 @@ class Cmd(LoaderCommands, SelectionMixin, RenderingMixin, AnimationMixin, RmfMix
             args.append(str(prefix))
         self._cmd_split_chains(args)
 
-    def iterate(self, *args: str) -> None:
-        self._cmd_iterate(list(args))
-
-    def alter(self, *args: str) -> None:
-        self._cmd_alter(list(args))
-
-    def remove(self, *args: str) -> None:
-        self._cmd_remove(list(args))
-
     def quit(self) -> None:
         self._cmd_quit([])
 
