@@ -46,6 +46,21 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
 
     TTTR_EXTENSIONS = {".spc", ".ht3", ".ptu", ".hdf", ".h5", ".hdf5", ".pt3", ".t3r"}
 
+    class _FileListModel:
+        """Adapter the shared ``path_list`` widget binds to.
+
+        ``PathListWidget`` reads/writes ``.paths`` (``list[str]``) and calls
+        ``.update()`` after each change. It is a separate object — not the
+        QWidget — so ``update`` does not shadow ``QWidget.update``.
+        """
+
+        def __init__(self, owner: "BurstDataSelectionWidget") -> None:
+            self._owner = owner
+            self.paths: list[str] = []
+
+        def update(self) -> None:
+            self._owner._on_paths_committed(list(self.paths))
+
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         """Create the data-selection panel."""
         super().__init__(parent)
@@ -53,50 +68,32 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         self._mmfdb_imports: dict[str, dict[str, Any]] = {}
         self._mmfdb_selections: dict[str, dict[str, Any]] = {}
         self._mmfdb_client: Any | None = None
+        self._imported: set[str] = set()
+        self._model = self._FileListModel(self)
 
         layout = QtWidgets.QVBoxLayout(self)
-        controls = QtWidgets.QHBoxLayout()
-        self.add_files_button = QtWidgets.QPushButton("Import files...", self)
-        self.add_folder_button = QtWidgets.QPushButton("Import folder...", self)
-        self.mmfdb_button = QtWidgets.QPushButton("Select from MMFDB...", self)
-        self.clear_button = QtWidgets.QPushButton("Clear", self)
-        controls.addWidget(self.add_files_button)
-        controls.addWidget(self.add_folder_button)
-        controls.addWidget(self.mmfdb_button)
-        controls.addWidget(self.clear_button)
-        controls.addStretch(1)
-        layout.addLayout(controls)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-        # The shared, drop-enabled list widget (same one the AutoForm path_list
-        # section uses) rather than a hand-rolled QListWidget plus panel-level
-        # drag/drop handlers — one drop implementation across the app.
-        from chisurf.gui.widgets.tools import PathDropListWidget
+        # The shared AutoForm ``path_list`` widget: drag-drop + ➕ Files /
+        # 📁 Folder / 🗄 Database (MMFDB) / ➖ Remove / 🗑 Clear, one implementation
+        # across the app, instead of a hand-rolled list and button row.
+        from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 
-        self.file_list = PathDropListWidget(self, path_filter=self._accepts_drop)
-        self.file_list.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.file_list.pathsDropped.connect(
-            lambda paths: self.add_paths([Path(p) for p in paths])
+        self.file_list = PathListWidget(
+            self._model,
+            "paths",
+            extensions=sorted(self.TTTR_EXTENSIONS),
+            add_folders=True,
+            mmfdb=True,
+            mmfdb_kinds=["raw_data", "raw_measurement", "external_reference"],
+            mmfdb_scope="all",
         )
         layout.addWidget(self.file_list, 1)
 
         self.status_label = QtWidgets.QLabel("No TTTR files selected.", self)
         layout.addWidget(self.status_label)
 
-        self.add_files_button.clicked.connect(self._select_files)
-        self.add_folder_button.clicked.connect(self._select_folder)
-        self.mmfdb_button.clicked.connect(self._select_mmfdb_dataset)
-        self.clear_button.clicked.connect(self.clear)
-
-    # -- drag and drop --------------------------------------------------------
-
-    def _accepts_drop(self, local_path: str) -> bool:
-        """Drag filter for the shared list: directories or TTTR files.
-
-        Directories are accepted without inspection (recursing during a drag
-        would stall on a large tree); ``add_paths`` expands them on drop.
-        """
-        path = Path(local_path)
-        return path.is_dir() or path.suffix.lower() in self.TTTR_EXTENSIONS
+    # -- external API kept stable for the workflow ----------------------------
 
     def paths(self) -> list[Path]:
         """Return selected raw TTTR paths."""
@@ -110,97 +107,30 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         }
 
     def add_paths(self, paths: list[Path]) -> None:
-        """Add files or recursively add supported files from folders."""
-        new_paths: list[Path] = []
-        for path in paths:
-            path = Path(path).expanduser()
-            if path.is_dir():
-                new_paths.extend(
-                    sorted(
-                        child.resolve()
-                        for child in path.rglob("*")
-                        if child.is_file() and child.suffix.lower() in self.TTTR_EXTENSIONS
-                    )
-                )
-            elif path.is_file() and path.suffix.lower() in self.TTTR_EXTENSIONS:
-                new_paths.append(path.resolve())
-
-        existing = {path.resolve() for path in self._paths}
-        for path in new_paths:
-            if path.resolve() not in existing:
-                self._paths.append(path.resolve())
-                existing.add(path.resolve())
-                self.file_list.addItem(str(path.resolve()))
-                self._import_path_to_mmfdb(path.resolve())
-        self._update_status()
-
-        callback = getattr(self.parent(), "_on_data_selection_changed", None)
-        if callable(callback):
-            callback()
+        """Add files/folders (folders expanded + de-duplicated by the widget)."""
+        self.file_list.add_paths([str(Path(p)) for p in paths])
 
     def clear(self) -> None:
         """Clear selected data files."""
-        self._paths.clear()
-        self._mmfdb_imports.clear()
-        self._mmfdb_selections.clear()
         self.file_list.clear()
+
+    def _on_paths_committed(self, path_strs: list[str]) -> None:
+        """Sync canonical state after the ``path_list`` widget commits a change.
+
+        Rebuilds ``self._paths`` (``list[Path]``), imports any newly-added local
+        file into MMFDB, refreshes the status label, and notifies the workflow.
+        """
+        self._paths = [Path(p).resolve() for p in path_strs]
+        for path in self._paths:
+            key = str(path)
+            if key not in self._imported:
+                self._imported.add(key)
+                self._import_path_to_mmfdb(path)
         self._update_status()
+
         callback = getattr(self.parent(), "_on_data_selection_changed", None)
         if callable(callback):
             callback()
-
-    def _select_files(self) -> None:
-        """Open a file dialog for TTTR files."""
-        paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-            self,
-            "Select TTTR files",
-            "",
-            "TTTR files (*.spc *.ht3 *.ptu *.hdf *.h5 *.hdf5 *.pt3 *.t3r);;All files (*)",
-        )
-        self.add_paths([Path(path) for path in paths])
-
-    def _select_folder(self) -> None:
-        """Open a folder dialog for TTTR files."""
-        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select TTTR folder")
-        if folder:
-            self.add_paths([Path(folder)])
-
-    def _select_mmfdb_dataset(self) -> None:
-        """Select raw data from MMFDB and resolve it to a local path."""
-        try:
-            from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetPickerDialog
-
-            selection = MmfdbDatasetPickerDialog.pick_dataset(
-                parent=self,
-                kinds=["raw_data", "raw_measurement", "external_reference"],
-                scope="all",
-                client=self._client(),
-            )
-            if selection is None:
-                return
-            local_path = selection.local_path or self._open_mmfdb_dataset(selection.artifact_id)
-            if not local_path:
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "MMFDB Dataset",
-                    f"Could not resolve local path for artifact {selection.artifact_id}.",
-                )
-                return
-            self._mmfdb_selections[str(Path(local_path).resolve())] = {
-                "artifact_id": selection.artifact_id,
-                "artifact_kind": selection.artifact_kind,
-                "data_format": selection.data_format,
-                "label": selection.label,
-                "metadata": selection.metadata,
-            }
-            self.add_paths([Path(local_path)])
-        except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "MMFDB Dataset", f"MMFDB selection failed:\n{exc}")
-
-    def _open_mmfdb_dataset(self, artifact_id: str) -> str | None:
-        """Resolve an MMFDB dataset artifact to a local path."""
-        result = self._client().call("mmfdb.datasets.open", {"artifact_id": artifact_id}) or {}
-        return result.get("local_path") or result.get("path")
 
     def _import_path_to_mmfdb(self, path: Path) -> None:
         """Import a local file into MMFDB object store and raw-data registry."""
@@ -259,17 +189,6 @@ def _data_selection(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the raw data selection panel."""
     widget = BurstDataSelectionWidget(parent=parent)
     _bind(parent, "data", widget)
-    return widget
-
-
-def _channel_selection(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    """Create the shared channel selection panel."""
-    from chisurf.plugins.core.setup_channel_definition.gui.tool import (
-        SetupChannelDefinitionWidget,
-    )
-
-    widget = SetupChannelDefinitionWidget(parent=parent)
-    _bind(parent, "channels", widget)
     return widget
 
 
@@ -509,8 +428,6 @@ class BurstAnalysisTool(NavigationPanelTool):
         self._workflow_panels[role] = widget
         if role == "data":
             self._sync_data_context()
-        elif role == "channels":
-            self._bind_channel_panel(widget)
         elif role == "selection":
             self._bind_selection_panel(widget)
         self._apply_context_to_panel(role, widget)
@@ -547,17 +464,6 @@ class BurstAnalysisTool(NavigationPanelTool):
         item = layout.itemAt(0)
         return item.widget() if item is not None else None
 
-    def _bind_channel_panel(self, widget: QtWidgets.QWidget) -> None:
-        """Connect step-1 channel changes to downstream panels."""
-        page = getattr(widget, "page", None)
-        signal = getattr(page, "detectorsChanged", None)
-        if signal is not None:
-            try:
-                signal.connect(self._on_channel_definitions_changed)
-            except TypeError:
-                pass
-        self._sync_channel_context()
-
     def _bind_selection_panel(self, widget: QtWidgets.QWidget) -> None:
         """Wrap Burst Selection execution so downstream steps see outputs."""
         if getattr(widget, "_burst_analysis_wrapped", False):
@@ -574,11 +480,6 @@ class BurstAnalysisTool(NavigationPanelTool):
 
         widget.analyze_files = wrapped_analyze_files
         widget._burst_analysis_wrapped = True
-
-    def _on_channel_definitions_changed(self) -> None:
-        """Propagate changed channel definitions to loaded downstream panels."""
-        self._sync_channel_context()
-        self._apply_context_to_downstream()
 
     def _refresh_workflow_context(self) -> None:
         """Refresh shared context from loaded upstream widgets."""
@@ -608,24 +509,12 @@ class BurstAnalysisTool(NavigationPanelTool):
     def _sync_channel_context(self) -> None:
         """Capture channel definitions via the shared RPC store.
 
-        The channel definition is published to the central ``detector_setups.*``
-        RPC store, then read back so the workflow context always reflects the
-        canonical (RPC-held) channel definition. There is no longer a standalone
-        Channels step: the definition is taken from the detector setup the Burst
-        Selection step has chosen (a legacy standalone Channels panel, if one is
-        still bound, keeps working).
+        There is no standalone Channels step — the channel definition comes from
+        the detector setup the Burst Selection step has chosen. It is published to
+        the central ``detector_setups.*`` RPC store, then read back so the
+        workflow context always reflects the canonical (RPC-held) definition.
         """
-        settings = None
-        panel = self._workflow_panels.get("channels")
-        page = getattr(panel, "page", None)
-        get_settings = getattr(page, "get_settings", None)
-        if callable(get_settings):
-            try:
-                settings = get_settings()
-            except Exception:
-                settings = None
-        if not settings:
-            settings = self._channel_settings_from_selection()
+        settings = self._channel_settings_from_selection()
         if settings:
             self._setup_client.set_current(settings)
         # Pull the canonical definition back from the RPC store.

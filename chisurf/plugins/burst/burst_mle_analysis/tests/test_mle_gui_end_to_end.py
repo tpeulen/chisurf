@@ -291,6 +291,42 @@ def test_irf_survives_ui_refresh_with_empty_file_widget(fitted_wizard):
     assert det in fitted_wizard.bg_np and np.asarray(fitted_wizard.bg_np[det]).size > 0
 
 
+def test_action_buttons_live_in_the_top_toolbar(qapp):
+    """Run / Auto-optimize / Auto IRF-BG / Optimize / Save live in one toolbar.
+
+    They used to be scattered across the controls column (Run at the bottom, Save
+    next to Min photons, Optimize inside the fit-parameter grid, the one-click
+    actions in their own row). They are now consolidated into a single wrapping
+    action bar at the top of the Burst-MLE page, hosted as a plain widget (not a
+    QMainWindow toolbar) so it shows in the embedded workflow too.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
+        MLELifetimeAnalysisWizard,
+    )
+
+    w = MLELifetimeAnalysisWizard()
+    QtWidgets.QApplication.processEvents()
+
+    bar = w.toolBar_mle
+    hosted = (
+        w.pushButton_process_bursts,
+        w.toolButton_auto_optimize,
+        w.toolButton_auto_irf,
+        w.comboBox_irf_model,
+        w.toolButton_goto_irf,
+        w.toolButton_hyper_opt,
+        w.spinBox_n_h_opt,
+        w.toolButton_save_fit,
+    )
+    for widget in hosted:
+        assert widget.parent() is bar, f"{widget} is not in the toolbar"
+    # The bar is embedded in the page (works in the embedded workflow), not an
+    # addToolBar() top-level toolbar.
+    assert w.isAncestorOf(bar)
+
+
 def test_fit_page_displays_per_detector_g_factor_l1_l2(qapp):
     """The fit page shows each detector's G factor / l1 / l2 (read-only).
 

@@ -20,6 +20,7 @@ import tttrlib  # noqa: E402
 
 from chisurf.core.fluorescence.burst import (  # noqa: E402
     extract_irf_background,
+    extract_mle_irf_background,
     non_burst_mask,
 )
 
@@ -66,6 +67,46 @@ def test_extract_returns_one_estimate_per_detector(tttr):
         assert 0.0 <= det.prompt_ns <= det.time_ns[-1]
         # The non-burst photons are the ones used for the estimate.
         assert det.n_background_photons > det.n_burst_photons
+
+
+def _far_tail_fraction(vv_vh: np.ndarray) -> float:
+    """Fraction of the VV-half IRF mass sitting well past the prompt peak."""
+    n = len(vv_vh) // 2
+    vv = np.asarray(vv_vh[:n], dtype=float)
+    pk = int(vv.argmax())
+    total = float(vv.sum())
+    return float(vv[pk + 15:].sum()) / total if total > 0 else 0.0
+
+
+def test_mle_irf_model_gaussian_fit_suppresses_fluorescent_tail(tttr):
+    """The fitted Gaussian IRF must shed the fluorescent tail the raw prompt has.
+
+    The non-burst prompt rides on a slow fluorescence tail; a Gaussian fitted to
+    it cannot follow that tail, so the fitted-Gaussian IRF carries far less mass
+    past the prompt than the raw experimental one. The switch must produce
+    genuinely different IRFs.
+    """
+    keep = non_burst_mask(tttr, min_photons=20)
+    out = {
+        m: extract_mle_irf_background(
+            tttr, DETECTORS, micro_time_binning=8, mask=keep, irf_model=m
+        )
+        for m in ("gaussian", "skewed", "experimental")
+    }
+    for m, res in out.items():
+        assert set(res) == set(DETECTORS)
+        irf = res["green"]["irf"]
+        assert irf.ndim == 1 and irf.size % 2 == 0
+        assert np.all(np.isfinite(irf)) and irf.min() >= 0.0 and irf.sum() > 0.0
+
+    tails = {m: _far_tail_fraction(out[m]["green"]["irf"]) for m in out}
+    # Fitted Gaussian sheds the tail; experimental keeps it.
+    assert tails["gaussian"] < 0.5 * tails["experimental"]
+    # 'experimental' is an alias for the raw baseline-subtracted prompt.
+    exp = extract_mle_irf_background(
+        tttr, DETECTORS, micro_time_binning=8, mask=keep, irf_model="raw"
+    )
+    np.testing.assert_allclose(exp["green"]["irf"], out["experimental"]["green"]["irf"])
 
 
 def test_precomputed_mask_matches_internal_search(tttr):

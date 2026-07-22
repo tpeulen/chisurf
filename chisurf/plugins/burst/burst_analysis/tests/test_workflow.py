@@ -310,6 +310,7 @@ def test_data_selection_imports_local_files_to_mmfdb(tmp_path: Path) -> None:
     widget = BurstDataSelectionWidget()
     widget._mmfdb_client = Client()
     widget.add_paths([spc])
+    app.processEvents()
 
     assert widget.paths() == [spc.resolve()]
     assert [call[0] for call in calls] == ["mmfdb.objects.put", "raw_data.register"]
@@ -320,23 +321,23 @@ def test_data_selection_imports_local_files_to_mmfdb(tmp_path: Path) -> None:
     app.processEvents()
 
 
-def test_data_selection_resolves_mmfdb_dataset_path() -> None:
-    """MMFDB data selection resolves artifact IDs through mmfdb.datasets.open."""
+def test_data_selection_uses_the_shared_path_list_widget() -> None:
+    """Data Selection hosts the unified AutoForm path_list, not a custom list.
+
+    The bespoke Import files / folder / MMFDB / Clear buttons were replaced by the
+    shared ``PathListWidget`` (drag-drop + ➕ Files / 📁 Folder / 🗄 Database /
+    ➖ Remove / 🗑 Clear); MMFDB dataset resolution now lives in that widget's
+    shared picker, not in a per-panel ``_open_mmfdb_dataset``.
+    """
     from qtpy import QtWidgets
 
+    from chisurf.gui.autoform.sections.path_list_section import PathListWidget
     from chisurf.plugins.burst.burst_analysis.gui.tool import BurstDataSelectionWidget
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    calls: list[tuple[str, dict]] = []
-
-    class Client:
-        def call(self, method, params=None):
-            calls.append((method, params or {}))
-            return {"local_path": "/tmp/from-mmfdb.spc"}
-
     widget = BurstDataSelectionWidget()
-    widget._mmfdb_client = Client()
-    assert widget._open_mmfdb_dataset("artifact-1") == "/tmp/from-mmfdb.spc"
-    assert calls == [("mmfdb.datasets.open", {"artifact_id": "artifact-1"})]
+    assert isinstance(widget.file_list, PathListWidget)
+    assert not hasattr(widget, "_open_mmfdb_dataset")
+    assert not hasattr(widget, "add_files_button")
     widget.close()
     app.processEvents()

@@ -769,6 +769,13 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
     @property
     def fit_parameters(self):
+        # fit23 keeps its authored spin boxes; other models read the
+        # registry-driven editor built for them.
+        if self.fit_model != "fit23" and getattr(self, "_dyn_params", None):
+            names = self._fit_param_names(self.fit_model)
+            x0 = [float(self._dyn_params[n]["spin"].value()) for n in names]
+            fixed = [int(self._dyn_params[n]["fix"].isChecked()) for n in names]
+            return np.array(x0), np.array(fixed)
         tau = self.tau
         gamma = self.gamma
         r0 = self.r0
@@ -1710,12 +1717,30 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         """Burst-MLE page: fit parameters, IRF controls, plots column, Run."""
         Q = QtWidgets
         self.tab_parameters = Q.QWidget()
-        # A horizontal splitter separates the (space-scarce) controls on the left
-        # from the plots on the right, so the user can give whichever side they
-        # are working on more room. The controls live on a left widget; the plots
-        # on a right widget.
-        _page = Q.QHBoxLayout(self.tab_parameters)
+        # The page stacks a full-width action toolbar on top of a horizontal
+        # splitter (controls on the left, plots on the right). The toolbar spans
+        # the WHOLE Burst-MLE panel — not just the narrow controls column — so its
+        # buttons are never clipped/covered inside the embedded workflow dock.
+        _page = Q.QVBoxLayout(self.tab_parameters)
         _page.setContentsMargins(0, 0, 0, 0)
+        _page.setSpacing(2)
+
+        # Action toolbar. Embedded as a plain widget (NOT addToolBar) so it shows
+        # in the embedded workflow panel too; a FlowLayout wraps the buttons onto
+        # another row when the panel is narrow instead of hiding overflow behind a
+        # menu. Populated at the end of this method, once every hosted widget
+        # exists.
+        from chisurf.gui.widgets.dock_area.dock_stacked_tab_bar import FlowLayout
+        self.toolBar_mle = Q.QFrame()
+        self.toolBar_mle.setObjectName("mle_toolbar")
+        self.toolBar_mle.setStyleSheet(
+            "#mle_toolbar { border-bottom: 1px solid palette(mid); }"
+        )
+        self._mle_toolbar_layout = FlowLayout(
+            self.toolBar_mle, margin=2, h_spacing=4, v_spacing=2
+        )
+        _page.addWidget(self.toolBar_mle)
+
         self._mle_splitter = Q.QSplitter(QtCore.Qt.Horizontal)
         _left = Q.QWidget()
         grid3 = Q.QGridLayout(_left)
@@ -1730,7 +1755,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self._mle_splitter.setStretchFactor(0, 0)
         self._mle_splitter.setStretchFactor(1, 1)
         self._mle_splitter.setChildrenCollapsible(False)
-        _page.addWidget(self._mle_splitter)
+        _page.addWidget(self._mle_splitter, 1)
 
         # Filename / detector / fit-range / min-photons block (grid at 0,0).
         g2 = Q.QGridLayout()
@@ -1749,8 +1774,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.label_14.setToolTip("Minimum photons per burst to fit.")
         self.spinBox_min_photons = self._isb(5, 1000, 20)
         self.toolButton_save_fit = Q.QToolButton()
-        self.toolButton_save_fit.setText("to default")
-        self.toolButton_save_fit.setToolTip("Save use parameters as default.")
+        self.toolButton_save_fit.setText("💾 Save")
+        self.toolButton_save_fit.setToolTip("Save the current parameters as the detector default.")
         self.toolButton_save_fit.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Fixed)
         g2.addWidget(self.label_21, 0, 0)
         g2.addWidget(self.lineEdit_current_filename, 0, 1, 1, 2)
@@ -1762,7 +1787,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g2.addWidget(self.spinBox_micro_time_stop, 2, 3)
         g2.addWidget(self.label_14, 3, 0)
         g2.addWidget(self.spinBox_min_photons, 3, 1)
-        g2.addWidget(self.toolButton_save_fit, 3, 3)
+        # toolButton_save_fit lives in the top toolbar (built below), not here.
         grid3.addLayout(g2, 0, 0)
 
         # IRF shift / threshold / range (groupBox_2 at 1,0).
@@ -1870,15 +1895,17 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g.addWidget(self.checkBox_BIFL_scatter, 0, 0)
         g.addWidget(self.checkBox_2IStar, 0, 1)
         g.addWidget(self.checkBox_save_vv_vhs, 0, 4)
-        h4 = Q.QHBoxLayout()
-        h4.setSpacing(0)
+        # Optimize target (hyperparameter optimisation) and its iteration count
+        # live in the top toolbar (built below), not in this grid.
         self.toolButton_hyper_opt = Q.QToolButton()
-        self.toolButton_hyper_opt.setText("Optimize target")
+        self.toolButton_hyper_opt.setText("🎯 Optimize")
+        self.toolButton_hyper_opt.setToolTip(
+            "Optimise the fit hyperparameters (shift / IRF window / binning) over "
+            "the chosen number of iterations, then refit."
+        )
         self.spinBox_n_h_opt = self._isb(20, 999, 50, 5)
         self.spinBox_n_h_opt.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Fixed)
-        h4.addWidget(self.toolButton_hyper_opt)
-        h4.addWidget(self.spinBox_n_h_opt)
-        g.addLayout(h4, 1, 0)
+        self.spinBox_n_h_opt.setToolTip("Number of hyperparameter-optimisation iterations.")
         self.label_5 = Q.QLabel("Initial value")
         self.label_20 = Q.QLabel("F")
         self.label_20.setToolTip("Fix parameter")
@@ -1950,6 +1977,12 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         try:
             from chisurf.core.fluorescence.mle import registry as _fit_reg
             for _name, _spec in _fit_reg.fit_models().items():
+                # This workflow builds the fit from dt/IRF/background (the
+                # ``fit2x`` construction). Only offer estimators whose class
+                # accepts that construction — e.g. fit26 (pattern fractioning)
+                # takes two reference decays, not an IRF, so it is skipped.
+                if not self._is_fit2x_constructible(_name):
+                    continue
                 self.comboBox_fit_model.addItem(_spec.get("label", _name), _name)
                 self.comboBox_fit_model.setItemData(
                     self.comboBox_fit_model.count() - 1,
@@ -1972,9 +2005,22 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         _mrl.addWidget(_mlbl)
         _mrl.addWidget(self.comboBox_fit_model, 1)
 
+        # Registry-driven parameter editor for the non-fit23 models. The fit23
+        # rows above stay authored (they carry the anisotropy extras); for any
+        # other model this box is rebuilt from the tttrlib schema and shown in
+        # their place, so fit23 is never disturbed.
+        self.groupBox_dyn_params = Q.QGroupBox("")
+        self.groupBox_dyn_params.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Minimum)
+        self._dyn_grid = Q.QGridLayout(self.groupBox_dyn_params)
+        self._dyn_grid.setContentsMargins(0, 0, 0, 0)
+        self._dyn_grid.setSpacing(0)
+        self._dyn_params: dict = {}
+        self.groupBox_dyn_params.setVisible(False)
+
         _params_box = CollapsibleBox("Fit parameters", expanded=True)
         _params_box.add_widget(_model_row)
         _params_box.add_widget(self.groupBox_model_params)
+        _params_box.add_widget(self.groupBox_dyn_params)
         grid3.addWidget(_params_box, 3, 0)
 
         # Actions row: a general one-click "make it work" optimiser, a quick
@@ -2014,37 +2060,54 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             "• Experimental: the raw baseline-subtracted non-burst histogram."
         )
         self.toolButton_goto_irf = Q.QToolButton()
-        self.toolButton_goto_irf.setText("IRF & Background…")
+        self.toolButton_goto_irf.setText("📁 IRF/BG…")
         self.toolButton_goto_irf.setToolTip(
             "Open the IRF & Background step to use a measured IRF/background."
         )
+        # The one-click actions (auto_optimize, auto_irf, irf-model combo,
+        # goto_irf) live in the top toolbar (built below). Only the tip stays in
+        # the controls column.
         self.label_irf_hint = Q.QLabel("Tip: a measured IRF/background gives better lifetimes.")
         self.label_irf_hint.setStyleSheet("color: #9ba3af; font-size: 10px;")
         self.label_irf_hint.setWordWrap(True)
-        _irf_actions = Q.QWidget()
-        _row = Q.QHBoxLayout(_irf_actions)
-        _row.setContentsMargins(0, 0, 0, 0)
-        _row.setSpacing(4)
-        _row.addWidget(self.toolButton_auto_optimize)
-        _row.addWidget(self.toolButton_auto_irf)
-        _row.addWidget(self.comboBox_irf_model)
-        _row.addWidget(self.toolButton_goto_irf)
-        _row.addWidget(self.label_irf_hint, 1)
-        grid3.addWidget(_irf_actions, 4, 0)
+        grid3.addWidget(self.label_irf_hint, 4, 0)
 
-        # Vertical spacer then the Run button.
+        # A trailing spacer pushes the controls up (the Run button now lives in
+        # the toolbar, so the column no longer ends on it).
         grid3.addItem(
             Q.QSpacerItem(20, 40, Q.QSizePolicy.Minimum, Q.QSizePolicy.Expanding), 5, 0
         )
-        self.pushButton_process_bursts = Q.QPushButton("Run")
+        self.pushButton_process_bursts = Q.QPushButton("▶ Run")
         self.pushButton_process_bursts.setSizePolicy(
-            Q.QSizePolicy.MinimumExpanding, Q.QSizePolicy.Fixed
+            Q.QSizePolicy.Fixed, Q.QSizePolicy.Fixed
         )
         run_font = self.pushButton_process_bursts.font()
         run_font.setBold(True)
         self.pushButton_process_bursts.setFont(run_font)
         self.pushButton_process_bursts.setStyleSheet("background-color: rgb(49, 208, 24)")
-        grid3.addWidget(self.pushButton_process_bursts, 6, 0)
+
+        # --- Populate the top action toolbar (every hosted widget now exists) ---
+        def _tb_sep():
+            line = Q.QFrame()
+            line.setFrameShape(Q.QFrame.VLine)
+            line.setFrameShadow(Q.QFrame.Sunken)
+            return line
+
+        flow = self._mle_toolbar_layout
+        for widget in (
+            self.pushButton_process_bursts,
+            _tb_sep(),
+            self.toolButton_auto_optimize,
+            self.toolButton_auto_irf,
+            self.comboBox_irf_model,
+            self.toolButton_goto_irf,
+            _tb_sep(),
+            self.toolButton_hyper_opt,
+            self.spinBox_n_h_opt,
+            _tb_sep(),
+            self.toolButton_save_fit,
+        ):
+            flow.addWidget(widget)
 
         self.tabWidget.addTab(self.tab_parameters, "BurstMLE")
 
@@ -2566,13 +2629,25 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             x = res.get('x', res['x'])
         except Exception:
             x = res['x']
+        two = float(res['twoIstar']) if 'twoIstar' in res else None
+
+        # Non-fit23 models write to the registry-driven editor, by schema order.
+        if self.fit_model != "fit23" and getattr(self, "_dyn_params", None):
+            for i, name in enumerate(self._fit_param_names(self.fit_model)):
+                slot = self._dyn_params.get(name)
+                if slot is not None and i < len(x):
+                    slot["result"].setValue(float(x[i]))
+            if two is not None and hasattr(self, "doubleSpinBox_dyn_score"):
+                self.doubleSpinBox_dyn_score.setValue(two)
+            return
+
+        # fit23: the authored rows (tau/gamma/r0/rho + anisotropy extras).
         self.tau_result = float(x[0])
         self.gamma_result = float(x[1])
         self.r0_result = float(x[2])
         self.rho_result = float(x[3])
-        # twoIstar may be absent depending on fit; guard accordingly
-        if 'twoIstar' in res:
-            self.twoIstar_result = float(res['twoIstar'])
+        if two is not None:
+            self.twoIstar_result = two
         if len(x) > 6:
             self.r_scatter_result = float(x[6])
         if len(x) > 7:
@@ -2672,8 +2747,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if bg_sum > 0.0:
             bg = bg / bg_sum
 
-        # finally, build the fit
-        fit = tttrlib.Fit23(
+        # Build the fit for the selected model. The estimator class is taken from
+        # the tttrlib registry entry's ``method`` field (no hardcoded mapping);
+        # all fit2x estimators share the Fit23 constructor + __call__ interface.
+        cls = self._fit_class()
+        fit = cls(
             dt=dt,
             irf=irf,
             background=bg,
@@ -2777,29 +2855,138 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         combo = getattr(self, "comboBox_fit_model", None)
         return (combo.currentData() if combo is not None else None) or "fit23"
 
-    def _on_fit_model_changed(self, _index: int = 0) -> None:
-        """React to a fit-model change.
+    def _is_fit2x_constructible(self, model: str) -> bool:
+        """Whether ``model``'s estimator is built from dt/IRF/background.
 
-        Only ``fit23`` is currently wired through the fit/plot/export path. For
-        any other model, tell the user it is not yet fit here and keep ``fit23``
-        selected so the running fit stays valid, rather than silently mis-fitting.
+        The burst-MLE workflow constructs every fit from the acquisition inputs
+        (``dt``, ``irf``, ``background``, …). Some registry models (e.g. fit26,
+        pattern fractioning) take reference decays instead, so their class does
+        not accept that construction; those are not offered here. Determined from
+        the class the registry names, not a hardcoded list.
         """
-        combo = self.comboBox_fit_model
-        if self.fit_model == "fit23":
-            self._set_status("")
-            return
-        label = combo.currentText()
-        self._set_status(
-            f"{label} is advertised by tttrlib but not yet wired into this fit "
-            f"panel — using fit23 for now."
-        )
-        blocked = combo.blockSignals(True)
         try:
-            idx = combo.findData("fit23")
-            if idx >= 0:
-                combo.setCurrentIndex(idx)
-        finally:
-            combo.blockSignals(blocked)
+            import inspect
+            from chisurf.core import tttrlib_registry as _reg
+            method = _reg.describe(_reg.FIT_MODEL, model).get("method")
+            cls = getattr(tttrlib, method, None) if method else None
+            if cls is None:
+                return False
+            # The fit2x estimators delegate construction to their shared base
+            # (``*args, **kwargs``); a class that instead declares reference-decay
+            # inputs (``pattern_1``/``pattern_2``, e.g. fit26) is not built from
+            # an IRF here.
+            params = inspect.signature(cls.__init__).parameters
+            return "pattern_1" not in params and "pattern_2" not in params
+        except Exception:
+            return False
+
+    def _fit_class(self):
+        """The tttrlib estimator class for the selected model, from the registry.
+
+        The class name comes from the registry entry's ``method`` field, so no
+        model→class table is hardcoded here; falls back to ``Fit23``.
+        """
+        try:
+            from chisurf.core import tttrlib_registry as _reg
+            method = _reg.describe(_reg.FIT_MODEL, self.fit_model).get("method")
+            if method:
+                cls = getattr(tttrlib, method, None)
+                if cls is not None:
+                    return cls
+        except Exception:
+            pass
+        return tttrlib.Fit23
+
+    def _fit_param_names(self, model: str) -> list:
+        """Ordered parameter names for ``model`` from the tttrlib schema.
+
+        Uses the schema ``properties`` order, which the registry guarantees to
+        match the estimator's ``initial_values`` layout (so the vector we build
+        is exactly the length the fit expects — e.g. fit25 includes r0). Falls
+        back to ``required`` then to the fit23 set.
+        """
+        try:
+            from chisurf.core import tttrlib_registry as _reg
+            schema = _reg.describe(_reg.FIT_MODEL, model).get("params_schema") or {}
+            props = schema.get("properties")
+            if props:
+                return list(props.keys())
+            required = schema.get("required")
+            if required:
+                return list(required)
+        except Exception:
+            pass
+        return ["tau", "gamma", "r0", "rho"]
+
+    def _rebuild_dyn_params(self, model: str) -> None:
+        """(Re)build the registry-driven parameter rows for a non-fit23 model."""
+        from chisurf.core import tttrlib_registry as _reg
+
+        # clear
+        while self._dyn_grid.count():
+            item = self._dyn_grid.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.setParent(None)
+                w.deleteLater()
+        self._dyn_params = {}
+
+        schema = {}
+        try:
+            schema = _reg.describe(_reg.FIT_MODEL, model).get("params_schema") or {}
+        except Exception:
+            pass
+        props = schema.get("properties") or {}
+        self._dyn_grid.addWidget(QtWidgets.QLabel("Initial value"), 0, 1)
+        _fh = QtWidgets.QLabel("F"); _fh.setToolTip("Fix parameter")
+        self._dyn_grid.addWidget(_fh, 0, 2)
+        self._dyn_grid.addWidget(QtWidgets.QLabel("Fit"), 0, 3)
+        row = 1
+        for name in self._fit_param_names(model):
+            spec = props.get(name, {})
+            lbl = QtWidgets.QLabel(spec.get("title", name))
+            lbl.setToolTip(spec.get("description", ""))
+            spin = self._dsb(
+                decimals=4,
+                minimum=float(spec.get("minimum", -1e9)),
+                maximum=float(spec.get("maximum", 1e9)),
+                value=float(spec.get("default", 0.0)),
+                adaptive=True,
+            )
+            spin.valueChanged.connect(self.update_variable_fit_parameters)
+            fix = QtWidgets.QCheckBox()
+            fix.setChecked(bool(spec.get("fixed_default", False)))
+            fix.toggled.connect(self.update_variable_fit_parameters)
+            result = self._dsb(decimals=4, readonly=True, nobuttons=True,
+                               minimum=-1e9, maximum=1e9)
+            self._dyn_grid.addWidget(lbl, row, 0)
+            self._dyn_grid.addWidget(spin, row, 1)
+            self._dyn_grid.addWidget(fix, row, 2)
+            self._dyn_grid.addWidget(result, row, 3)
+            self._dyn_params[name] = {"spin": spin, "fix": fix, "result": result}
+            row += 1
+        _sl = QtWidgets.QLabel("Score")
+        self.doubleSpinBox_dyn_score = self._dsb(
+            decimals=3, minimum=-99999.0, maximum=99999.0, readonly=True, nobuttons=True)
+        self._dyn_grid.addWidget(_sl, row, 0)
+        self._dyn_grid.addWidget(self.doubleSpinBox_dyn_score, row, 1)
+
+    def _on_fit_model_changed(self, _index: int = 0) -> None:
+        """Switch the parameter editor and refit for the selected model.
+
+        fit23 uses its authored rows (with the anisotropy extras); every other
+        model uses the registry-driven editor rebuilt from the tttrlib schema.
+        The two panels swap visibility so fit23 is never disturbed.
+        """
+        model = self.fit_model
+        is23 = model == "fit23"
+        self.groupBox_model_params.setVisible(is23)
+        self.groupBox_dyn_params.setVisible(not is23)
+        if not is23:
+            self._rebuild_dyn_params(model)
+        self._fit = None
+        self.update_fit()
+        self._set_status("" if is23 else f"Fitting with {self.comboBox_fit_model.currentText()}.")
 
     def _set_status(self, text: str):
         """Show a short status message where the host offers one; never crash."""
@@ -3569,6 +3756,18 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         if self.df_bursts is None or not self.tttrs:
             QtWidgets.QMessageBox.warning(self, "No Data", "No burst data loaded.")
+            return
+
+        # The batch export (per-burst columns, multiprocessing worker) is wired
+        # for fit23. Other models can be explored interactively (the live fit +
+        # plot are model-generic) but not yet batch-exported.
+        if self.fit_model != "fit23":
+            QtWidgets.QMessageBox.warning(
+                self, "Batch export",
+                f"Batch 'Run' export is currently implemented for fit23 only. "
+                f"'{self.comboBox_fit_model.currentText()}' can be fit and inspected "
+                f"interactively, but not yet exported per burst.",
+            )
             return
 
         # UI
