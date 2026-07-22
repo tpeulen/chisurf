@@ -19,7 +19,10 @@ timestamp: '2026-07-05T00:00:00Z'
 | Local README | Missing |
 
 The manifest describes folder browsing for PTU/TTTR intensity traces, file rating
-and annotation, trace preview, and selected-trace export.
+and annotation, trace preview, and selected-trace export. The preview bin width is
+set through a `QDoubleSpinBox` (`window_ms_spin`) that accepts fractional /
+sub-millisecond values (range `0.001–10000 ms`); the value flows as a float through
+the cache signature, plotting, CSV export, and the RPC/CLI path.
 
 # Architecture Evidence
 

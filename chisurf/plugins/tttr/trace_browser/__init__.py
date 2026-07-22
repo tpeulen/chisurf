@@ -31,7 +31,7 @@ from qtpy.QtWidgets import (
     QSplitter,
     QTextEdit,
     QComboBox,
-    QSpinBox,
+    QDoubleSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QAbstractItemView,
@@ -518,10 +518,13 @@ class TraceBrowser(QWidget):
         ctrl_row.addWidget(self.filter_combo)
 
 
-        self.window_ms_spin = QSpinBox(self.page1)
-        self.window_ms_spin.setRange(1, 10000)
-        self.window_ms_spin.setValue(10)
+        self.window_ms_spin = QDoubleSpinBox(self.page1)
+        self.window_ms_spin.setDecimals(3)
+        self.window_ms_spin.setRange(0.001, 10000.0)
+        self.window_ms_spin.setSingleStep(0.1)
+        self.window_ms_spin.setValue(10.0)
         self.window_ms_spin.setSuffix(" ms bin")
+        self.window_ms_spin.setKeyboardTracking(False)
         self.window_ms_spin.valueChanged.connect(self._on_window_changed)
         ctrl_row.addWidget(self.window_ms_spin)
 
@@ -1418,7 +1421,7 @@ class TraceBrowser(QWidget):
             pass
         return d
 
-    def _trace_signature(self, file_path: pathlib.Path, window_ms: int) -> str:
+    def _trace_signature(self, file_path: pathlib.Path, window_ms: float) -> str:
         try:
             st = file_path.stat()
             size = int(getattr(st, 'st_size', 0))
@@ -1443,7 +1446,7 @@ class TraceBrowser(QWidget):
                 'path': str(file_path.resolve()),
                 'size': size,
                 'mtime': mtime,
-                'win_ms': int(window_ms),
+                'win_ms': float(window_ms),
                 'mode': mode,
             }
             import json as _json
@@ -1453,11 +1456,11 @@ class TraceBrowser(QWidget):
         except Exception:
             return f"fallback_{file_path.name}_{window_ms}_{size}_{mtime}"
 
-    def _trace_cache_file(self, file_path: pathlib.Path, window_ms: int) -> pathlib.Path:
+    def _trace_cache_file(self, file_path: pathlib.Path, window_ms: float) -> pathlib.Path:
         sig = self._trace_signature(file_path, window_ms)
         return self._cache_dir_for(file_path) / f"{file_path.stem}_{sig}.npz"
 
-    def _load_trace_cache(self, file_path: pathlib.Path, window_ms: int):
+    def _load_trace_cache(self, file_path: pathlib.Path, window_ms: float):
         try:
             p = self._trace_cache_file(file_path, window_ms)
             if p.exists():
@@ -1470,14 +1473,14 @@ class TraceBrowser(QWidget):
             pass
         return None
 
-    def _save_trace_cache(self, file_path: pathlib.Path, window_ms: int, time_axis, padded, labels):
+    def _save_trace_cache(self, file_path: pathlib.Path, window_ms: float, time_axis, padded, labels):
         try:
             p = self._trace_cache_file(file_path, window_ms)
             np.savez_compressed(str(p), time_axis=time_axis, padded=padded, labels=np.array(labels, dtype=object))
         except Exception:
             pass
 
-    def _compute_trace_cached(self, file_path: pathlib.Path, window_ms: int):
+    def _compute_trace_cached(self, file_path: pathlib.Path, window_ms: float):
         # Memory cache first
         sig = self._trace_signature(file_path, window_ms)
         key = (file_path, sig)
@@ -1933,7 +1936,7 @@ class TraceBrowser(QWidget):
             return
         out = pathlib.Path(out_dir)
         out.mkdir(parents=True, exist_ok=True)
-        window_ms = int(self.window_ms_spin.value()) if hasattr(self, 'window_ms_spin') else 10
+        window_ms = float(self.window_ms_spin.value()) if hasattr(self, 'window_ms_spin') else 10.0
         try:
             exported_paths = self._client.export_csv(
                 [str(path) for path in paths],
@@ -1976,7 +1979,8 @@ class TraceBrowser(QWidget):
                 safe_labels = [str(l).replace('\n', ' ').replace('\r', ' ').replace(',', ';') for l in labels]
                 header = ['time_s'] + safe_labels
                 # Prepare rows
-                csv_path = out / f"{p.stem}_bin{window_ms}ms.csv"
+                bin_tag = ("%g" % window_ms).replace('.', 'p')
+                csv_path = out / f"{p.stem}_bin{bin_tag}ms.csv"
                 with open(csv_path, 'w', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f)
                     writer.writerow(header)
