@@ -159,6 +159,75 @@ def _rotation_from_z(direction: np.ndarray) -> np.ndarray:
     return rot
 
 
+def _rotations_from_z(directions: np.ndarray) -> np.ndarray:
+    """Batched :func:`_rotation_from_z`: align +Z with each row of ``directions``.
+
+    Parameters
+    ----------
+    directions : numpy.ndarray
+        Array of shape ``(B, 3)``. Rows need not be unit length; zero-length rows
+        yield the identity rotation.
+
+    Returns
+    -------
+    numpy.ndarray
+        Rotation matrices of shape ``(B, 3, 3)`` such that ``R @ [0, 0, 1] ``
+        points along the corresponding (normalised) input direction.
+    """
+    dirs = np.asarray(directions, dtype=float)
+    b = dirs.shape[0]
+    rot = np.broadcast_to(np.eye(3, dtype=float), (b, 3, 3)).copy()
+
+    norms = np.linalg.norm(dirs, axis=1)
+    ok = np.isfinite(norms) & (norms > 1e-8)
+    if not ok.any():
+        return rot
+
+    units = np.zeros_like(dirs)
+    units[ok] = dirs[ok] / norms[ok, None]
+    c = units[:, 2]  # cos(theta) = dot(+Z, unit)
+
+    # Anti-parallel: a 180 deg rotation about X (diag(1, -1, -1)).
+    anti = ok & (c <= -0.9999)
+    flip = np.array([[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]])
+    rot[anti] = flip
+
+    # General case: Rodrigues about axis = cross(+Z, unit) = (-uy, ux, 0).
+    gen = ok & (c < 0.9999) & (c > -0.9999)
+    if gen.any():
+        u = units[gen]
+        cc = c[gen]
+        ax = np.empty((u.shape[0], 3), dtype=float)
+        ax[:, 0] = -u[:, 1]
+        ax[:, 1] = u[:, 0]
+        ax[:, 2] = 0.0
+        sin_theta = np.linalg.norm(ax, axis=1)
+        valid = sin_theta > 1e-8
+        ax[valid] /= sin_theta[valid, None]
+        kx, ky, kz = ax[:, 0], ax[:, 1], ax[:, 2]
+        zero = np.zeros_like(kx)
+        k = np.stack(
+            [
+                np.stack([zero, -kz, ky], axis=1),
+                np.stack([kz, zero, -kx], axis=1),
+                np.stack([-ky, kx, zero], axis=1),
+            ],
+            axis=1,
+        )  # (n, 3, 3)
+        kk = np.matmul(k, k)
+        eye = np.eye(3, dtype=float)
+        r_gen = (
+            eye
+            + sin_theta[:, None, None] * k
+            + (1.0 - cc)[:, None, None] * kk
+        )
+        # Degenerate (sin_theta ~ 0) rows fall back to identity.
+        r_gen[~valid] = eye
+        rot[gen] = r_gen
+
+    return rot
+
+
 def _build_stick_mesh(
     bonds: np.ndarray,
     atom_positions: np.ndarray,
@@ -166,7 +235,12 @@ def _build_stick_mesh(
     radius: float,
     segments_circle: int = 12,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
-    """Build a mesh for cylindrical sticks between bonded atom pairs."""
+    """Build a mesh for cylindrical sticks between bonded atom pairs.
+
+    Fully vectorised over bonds: every cylinder shares the same template, so the
+    per-bond rotation, scaling, colouring and face offsetting are done as batched
+    array operations rather than a Python loop.
+    """
 
     template = _get_cylinder_template(segments_circle)
     if template is None:
@@ -180,6 +254,10 @@ def _build_stick_mesh(
     if bonds_arr.ndim != 2 or bonds_arr.shape[1] != 2:
         return None
 
+    radius_val = float(radius)
+    if not np.isfinite(radius_val) or radius_val <= 0.0:
+        return None
+
     colors_arr: Optional[np.ndarray]
     if atom_colors is not None:
         try:
@@ -191,76 +269,72 @@ def _build_stick_mesh(
     else:
         colors_arr = None
 
+    n_atoms = pts.shape[0]
+    i0 = bonds_arr[:, 0]
+    i1 = bonds_arr[:, 1]
+
+    # Drop out-of-range and self bonds up front, vectorised.
+    valid = (
+        (i0 >= 0) & (i1 >= 0) & (i0 < n_atoms) & (i1 < n_atoms) & (i0 != i1)
+    )
+    i0 = i0[valid]
+    i1 = i1[valid]
+    if i0.size == 0:
+        return None
+
+    starts = pts[i0]
+    vecs = pts[i1] - starts
+    lengths = np.linalg.norm(vecs, axis=1)
+    keep = np.isfinite(lengths) & (lengths > 1e-5)
+    if not keep.any():
+        return None
+    i0 = i0[keep]
+    i1 = i1[keep]
+    starts = starts[keep]
+    vecs = vecs[keep]
+    lengths = lengths[keep]
+
     base_color = np.array([0.8, 0.8, 0.8, 1.0], dtype=float)
     base_vertices = np.asarray(template["vertices"], dtype=float)
     base_normals = np.asarray(template["normals"], dtype=float)
     base_faces = np.asarray(template["faces"], dtype=np.int32)
     base_z = np.asarray(template.get("z", base_vertices[:, 2]), dtype=float)
 
-    verts_list: list[np.ndarray] = []
-    norms_list: list[np.ndarray] = []
-    cols_list: list[np.ndarray] = []
-    faces_list: list[np.ndarray] = []
-    idx_offset = 0
-
-    radius_val = float(radius)
-    if not np.isfinite(radius_val) or radius_val <= 0.0:
-        return None
-
+    n_bonds = starts.shape[0]
     verts_per_cyl = base_vertices.shape[0]
 
-    for pair in bonds_arr:
-        i0 = int(pair[0])
-        i1 = int(pair[1])
-        if (
-            i0 < 0
-            or i1 < 0
-            or i0 >= pts.shape[0]
-            or i1 >= pts.shape[0]
-            or i0 == i1
-        ):
-            continue
+    rots = _rotations_from_z(vecs)  # (B, 3, 3)
 
-        start = pts[i0]
-        end = pts[i1]
-        vec = end - start
-        length = float(np.linalg.norm(vec))
-        if not np.isfinite(length) or length <= 1e-5:
-            continue
+    # Scale the shared template per bond (radius in xy, length in z), then rotate
+    # and translate into world space. local: (B, V, 3), rot^T applied per bond.
+    scale = np.empty((n_bonds, 1, 3), dtype=float)
+    scale[:, 0, 0] = radius_val
+    scale[:, 0, 1] = radius_val
+    scale[:, 0, 2] = lengths
+    verts_local = base_vertices[None, :, :] * scale  # (B, V, 3)
+    verts_world = np.einsum("bvj,bij->bvi", verts_local, rots)
+    verts_world += starts[:, None, :]
+    normals_world = np.einsum("vj,bij->bvi", base_normals, rots)
 
-        rot = _rotation_from_z(vec)
+    # Colour interpolates along the cylinder axis (z in [0, 1]) between endpoints.
+    if colors_arr is not None:
+        c0 = colors_arr[i0]
+        c1 = colors_arr[i1]
+    else:
+        c0 = np.broadcast_to(base_color, (n_bonds, 4))
+        c1 = c0
+    z = base_z[None, :, None]  # (1, V, 1)
+    cols = c0[:, None, :] * (1.0 - z) + c1[:, None, :] * z  # (B, V, 4)
+    cols[:, :, 3] = 1.0
 
-        verts_local = base_vertices.copy()
-        verts_local[:, :2] *= radius_val
-        verts_local[:, 2] *= length
-        verts_world = verts_local @ rot.T + start
-        verts_list.append(verts_world)
+    # Offset the shared face template for each cylinder.
+    offsets = (np.arange(n_bonds, dtype=np.int32) * verts_per_cyl)[:, None, None]
+    faces = (base_faces[None, :, :] + offsets).reshape(-1, 3)
 
-        normals_world = base_normals @ rot.T
-        norms_list.append(normals_world)
-
-        if colors_arr is not None:
-            c0 = colors_arr[i0]
-            c1 = colors_arr[i1]
-        else:
-            c0 = base_color
-            c1 = base_color
-
-        z = base_z.reshape(-1, 1)
-        col = c0 * (1.0 - z) + c1 * z
-        col[:, 3] = 1.0
-        cols_list.append(col)
-
-        faces_list.append(base_faces + idx_offset)
-        idx_offset += verts_per_cyl
-
-    if not verts_list:
-        return None
-
-    positions = np.vstack(verts_list).astype(np.float32, copy=False)
-    normals = np.vstack(norms_list).astype(np.float32, copy=False)
-    colors = np.vstack(cols_list).astype(np.float32, copy=False)
-    faces = np.vstack(faces_list).astype(np.int32, copy=False)
+    positions = verts_world.reshape(-1, 3).astype(np.float32, copy=False)
+    normals = normals_world.reshape(-1, 3).astype(np.float32, copy=False)
+    colors = cols.reshape(-1, 4).astype(np.float32, copy=False)
+    faces = faces.astype(np.int32, copy=False)
 
     return positions, normals, faces, colors
 
@@ -270,6 +344,7 @@ __all__ = [
     "_build_sphere_mesh",
     "_get_cylinder_template",
     "_rotation_from_z",
+    "_rotations_from_z",
     "_build_stick_mesh",
 ]
 

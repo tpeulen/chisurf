@@ -35,6 +35,20 @@ except Exception:  # pragma: no cover - standalone/file-path loading (see tests)
 # Sampler  (unchanged from Chimol original)
 # ---------------------------------------------------------------------------
 
+def _batch_cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Row-wise 3-vector cross product for ``(N, 3)`` arrays.
+
+    ``numpy.cross`` carries heavy per-call ``moveaxis``/axis-normalisation
+    overhead; for the tight cartoon frame loops the explicit component form is
+    an order of magnitude cheaper.
+    """
+    ax, ay, az = a[:, 0], a[:, 1], a[:, 2]
+    bx, by, bz = b[:, 0], b[:, 1], b[:, 2]
+    return np.stack(
+        [ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx], axis=1
+    )
+
+
 def _catmull_rom(
     p0: np.ndarray,
     p1: np.ndarray,
@@ -69,39 +83,53 @@ def _sample_path(
     subdivs = max(int(subdivisions), 1)
     if subdivs <= 1:
         return arr, colors
-    out_pos: list[np.ndarray] = []
-    out_col: Optional[list[np.ndarray]] = None
     col_arr = None
     if colors is not None:
         col_arr = np.asarray(colors, dtype=float)
-        if col_arr.shape[0] == n:
-            out_col = []
-        else:
+        if col_arr.shape[0] != n:
             col_arr = None
-    for i in range(n - 1):
-        p0 = arr[i - 1] if i > 0 else arr[i]
-        p1 = arr[i]
-        p2 = arr[i + 1]
-        p3 = arr[i + 2] if (i + 2) < n else arr[i + 1]
-        if col_arr is not None:
-            c0 = col_arr[i - 1] if i > 0 else col_arr[i]
-            c1 = col_arr[i]
-            c2 = col_arr[i + 1]
-            c3 = col_arr[i + 2] if (i + 2) < n else col_arr[i + 1]
-        for j in range(subdivs):
-            if i > 0 and j == 0:
-                continue
-            t = float(j) / float(subdivs)
-            pos = _catmull_rom(p0, p1, p2, p3, t, tension=tension)
-            out_pos.append(pos)
-            if out_col is not None and col_arr is not None:
-                col = _catmull_rom(c0, c1, c2, c3, t, tension=tension)
-                out_col.append(col)
-    out_pos.append(arr[-1])
-    if out_col is not None and col_arr is not None:
-        out_col.append(col_arr[-1])
-    pos_arr = np.asarray(out_pos, dtype=float)
-    col_out_arr = np.asarray(out_col, dtype=float) if out_col is not None else None
+
+    # Vectorised Catmull-Rom (identical to the per-point loop, incl. the
+    # duplicate-knot skip). For every segment i in [0, n-2] the four control
+    # points are gathered by clamped index shifts, and all t = j/subdivs samples
+    # are evaluated at once via the Hermite basis.
+    seg = np.arange(n - 1)
+    i0 = np.clip(seg - 1, 0, None)          # p0 = arr[i-1] (arr[0] at the start)
+    i1 = seg                                # p1 = arr[i]
+    i2 = seg + 1                            # p2 = arr[i+1]
+    i3 = np.minimum(seg + 2, n - 1)         # p3 = arr[i+2] (clamped at the end)
+
+    tau = float(np.clip(tension, 0.0, 1.0))
+    j = np.arange(subdivs)
+    t = j.astype(float) / float(subdivs)
+    t2 = t * t
+    t3 = t2 * t
+    h00 = (2.0 * t3 - 3.0 * t2 + 1.0)[None, :, None]
+    h10 = (t3 - 2.0 * t2 + t)[None, :, None]
+    h01 = (-2.0 * t3 + 3.0 * t2)[None, :, None]
+    h11 = (t3 - t2)[None, :, None]
+
+    def _hermite(vals: np.ndarray) -> np.ndarray:
+        p0 = vals[i0][:, None, :]
+        p1 = vals[i1][:, None, :]
+        p2 = vals[i2][:, None, :]
+        p3 = vals[i3][:, None, :]
+        m1 = (1.0 - tau) * 0.5 * (p2 - p0)
+        m2 = (1.0 - tau) * 0.5 * (p3 - p1)
+        return h00 * p1 + h10 * m1 + h01 * p2 + h11 * m2  # (n-1, subdivs, C)
+
+    # Skip j == 0 for every segment after the first to drop duplicate knots,
+    # matching the loop; keep row-major (segment outer, sample inner) order.
+    keep = np.ones((n - 1, subdivs), dtype=bool)
+    keep[1:, 0] = False
+
+    pos = _hermite(arr)[keep]
+    pos_arr = np.vstack([pos, arr[-1][None, :]])
+    if col_arr is not None:
+        col = _hermite(col_arr)[keep]
+        col_out_arr = np.vstack([col, col_arr[-1][None, :]])
+    else:
+        col_out_arr = None
     return pos_arr, col_out_arr
 
 
@@ -251,26 +279,30 @@ def _build_frames(
     -------
     frames : (M, 3, 3)  orthonormal basis matrices.
     """
-    m = tangents.shape[0]
+    t = np.asarray(tangents, dtype=float)
+    up_in = np.asarray(up_vectors, dtype=float)
+    m = t.shape[0]
+
+    # side = normalize(cross(tangent, up)); the cross products are independent
+    # per point, so batch them. Only the sign-continuity flip below is truly
+    # sequential, and it is a cheap scalar loop with no vector math.
+    side = _batch_cross(t, up_in)
+    sn = np.linalg.norm(side, axis=1)
+    good = sn > 0.0
+    side[good] /= sn[good, None]
+    for i in np.nonzero(~good)[0]:
+        side[i] = _default_side_from_up(up_in[i])
+
+    for i in range(1, m):
+        if float(np.dot(side[i - 1], side[i])) < 0.0:
+            side[i] = -side[i]
+
+    up = _batch_cross(side, t)  # re-orthogonalise
+
     frames = np.zeros((m, 3, 3), dtype=float)
-    prev_side = None
-    for i in range(m):
-        t = tangents[i]
-        up = up_vectors[i]
-        side = np.cross(t, up)
-        sn = float(np.linalg.norm(side))
-        if sn <= 0.0:
-            side = _default_side_from_up(up)
-        else:
-            side = side / sn
-        if prev_side is not None and float(np.dot(prev_side, side)) < 0.0:
-            side = -side
-        # Re-orthogonalize up
-        up = np.cross(side, t)
-        frames[i, :, 0] = side
-        frames[i, :, 1] = up
-        frames[i, :, 2] = t
-        prev_side = side
+    frames[:, :, 0] = side
+    frames[:, :, 1] = up
+    frames[:, :, 2] = t
     return frames
 
 
@@ -415,37 +447,48 @@ def _extrude_shape(
     if colors is not None and colors.shape[0] >= m:
         cols_arr = np.zeros((total_verts, 4), dtype=float)
 
-    # Transform shape at each path point
-    for i in range(m):
-        base = i * s
-        side = frames[i, :, 0]  # (3,)
-        up = frames[i, :, 1]    # (3,)
-        scale = float(vert_scale[i]) if vert_scale is not None else 1.0
-        # tv[j] = shape_verts[j, 1] * side + shape_verts[j, 2] * up
-        tv = (shape_verts[:, 1:2] * side[None, :] +
-              shape_verts[:, 2:3] * up[None, :]) * scale
-        tn = (shape_norms[:, 1:2] * side[None, :] +
-              shape_norms[:, 2:3] * up[None, :])
-        tn_norm = np.linalg.norm(tn, axis=1, keepdims=True)
-        tn_mask = tn_norm[:, 0] > 1e-10
-        tn[tn_mask] /= tn_norm[tn_mask]
-        verts[base:base + s] = path[i:i+1] + tv
-        norms[base:base + s] = tn
-        if cols_arr is not None and colors is not None and i < colors.shape[0]:
-            cols_arr[base:base + s] = colors[i]
+    # Transform the cross-section at every path point at once. For point i,
+    # ring vertex j is  path[i] + (sv1[j]*side[i] + sv2[j]*up[i]) * scale[i],
+    # which broadcasts over (m, s, 3) without a Python loop.
+    side = frames[:, :, 0]  # (m, 3)
+    up = frames[:, :, 1]    # (m, 3)
+    if vert_scale is not None:
+        scale = np.asarray(vert_scale, dtype=float).reshape(-1)[:m]
+    else:
+        scale = np.ones(m, dtype=float)
+    sv1 = shape_verts[:, 1][None, :, None]  # (1, s, 1)
+    sv2 = shape_verts[:, 2][None, :, None]
+    sn1 = shape_norms[:, 1][None, :, None]
+    sn2 = shape_norms[:, 2][None, :, None]
+    side_b = side[:, None, :]  # (m, 1, 3)
+    up_b = up[:, None, :]
 
-    # Faces  (triangle strips between rings)
+    tv = (sv1 * side_b + sv2 * up_b) * scale[:, None, None]  # (m, s, 3)
+    ring_verts = path[:, None, :] + tv
+    tn = sn1 * side_b + sn2 * up_b
+    tn_norm = np.linalg.norm(tn, axis=2, keepdims=True)
+    np.divide(tn, tn_norm, out=tn, where=tn_norm > 1e-10)
+
+    verts[:m * s] = ring_verts.reshape(-1, 3)
+    norms[:m * s] = tn.reshape(-1, 3)
+    if cols_arr is not None and colors is not None:
+        cols_arr[:m * s] = np.repeat(colors[:m], s, axis=0)
+
+    # Faces (triangle strips between consecutive rings), built by broadcasting the
+    # per-quad index pattern over all (m-1, s) quads. Two triangles per quad, kept
+    # in the original interleaved order so the winding matches the loop version.
+    ii = np.arange(m - 1)[:, None]  # (m-1, 1)
+    jj = np.arange(s)[None, :]      # (1, s)
+    i0 = ii * s
+    i1 = (ii + 1) * s
+    k0 = i0 + jj
+    k1 = i0 + (jj + 1) % s
+    k2 = i1 + jj
+    k3 = i1 + (jj + 1) % s
+    tri1 = np.stack([k0, k2, k1], axis=-1)  # (m-1, s, 3)
+    tri2 = np.stack([k1, k2, k3], axis=-1)
+    strip_faces = np.stack([tri1, tri2], axis=2).reshape(-1, 3)
     face_list: list[list[int]] = []
-    for i in range(m - 1):
-        i0 = i * s
-        i1 = (i + 1) * s
-        for j in range(s):
-            k0 = i0 + j
-            k1 = i0 + (j + 1) % s
-            k2 = i1 + j
-            k3 = i1 + (j + 1) % s
-            face_list.append([k0, k2, k1])
-            face_list.append([k1, k2, k3])
 
     # End caps (triangle fans)
     next_offset = m * s
@@ -480,10 +523,14 @@ def _extrude_shape(
     if cap_last:
         _add_cap(m - 1, reverse=False)
 
-    if not face_list:
+    if strip_faces.shape[0] == 0 and not face_list:
         return None
 
-    faces_arr = np.asarray(face_list, dtype=np.int32)
+    if face_list:
+        cap_faces = np.asarray(face_list, dtype=np.int32)
+        faces_arr = np.concatenate([strip_faces.astype(np.int32), cap_faces], axis=0)
+    else:
+        faces_arr = strip_faces.astype(np.int32)
     return verts, norms, faces_arr, cols_arr
 
 

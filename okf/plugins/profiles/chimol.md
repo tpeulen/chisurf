@@ -76,6 +76,32 @@ headless rendering/testing straightforward. Future camera state is to be
 extracted into a `CameraState` dataclass. No ImGui backend exists yet; the
 constraints above exist so that migration stays cheap.
 
+## Mesh-builder performance
+
+Camera rotation/pan does **not** rebuild the scene — `qtgl.py`'s mouse handlers
+only update azimuth/elevation and call `update()`, re-rendering the cached
+`Scene`. Mesh-build cost is therefore paid on load, representation toggles, and
+each trajectory frame, and lives in the geometry kernels, not the paint loop.
+
+Those kernels were per-element Python loops whose dominant cost was
+`numpy.cross` (its `moveaxis`/axis-normalisation overhead swamps the arithmetic
+when called per point). They are now batched NumPy:
+
+- `primitives._build_stick_mesh` — one `_rotations_from_z` (batched Rodrigues)
+  + einsum over all bonds instead of a per-bond loop (~10×).
+- `cartoon._extrude_shape` — broadcast the cross-section over all path points and
+  the quad-index pattern over all rings (~20×).
+- `cartoon._sample_path` — vectorised Catmull–Rom via the Hermite basis (~100×).
+- `cartoon._build_frames` — batched cross products; only the sign-continuity flip
+  stays a scalar loop (it is genuinely sequential) (~30×).
+
+Net: a full cartoon+atoms+sticks build for a ~18k-atom model dropped ~2.7 s → ~0.4 s.
+`_batch_cross` (explicit component form) replaces `numpy.cross` in the hot paths.
+**When editing these kernels, keep the parity tests in
+`test_geometry_vectorized.py` green** — they pin each vectorised builder against a
+reference loop so a change can't silently alter rendered geometry. Metaball/surface
+(marching-cubes) remain heavy and opt-in; they are the next target if needed.
+
 # Structure loading (fallback contract)
 
 `io/structure.py:load_structure_payload` tries the core `Structure` reader first
