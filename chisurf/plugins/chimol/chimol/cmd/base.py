@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from shlex import split as shlex_split
 from typing import TYPE_CHECKING
 
 from .argparse2 import CommandError, bind_and_call, tokenize
-from .registry import collect_commands
+from .registry import collect_commands, command
 
 if TYPE_CHECKING:
     from ..app.molview_main_window import MolViewPluginWindow
@@ -22,12 +21,9 @@ class BaseCmd:
         self.window = window
         self._message_callback: MessageCallback | None = None
         self._error_callback: MessageCallback | None = None
-        self._commands: dict[str, Callable[[list[str]], object]] = {}
         self._named_selections: dict[str, dict[str, object]] = {}
-        self._install_builtin_commands()
-        # New-style declarative registry (see registry.py / argparse2.py). Built
-        # from @command-decorated methods; commands migrate here from the legacy
-        # ``_commands`` dict one at a time, so both dispatch paths coexist.
+        # Declarative registry built from every @command-decorated method on the
+        # MRO (see registry.py / argparse2.py).
         self._registry = collect_commands(self)
 
     # ------------------------------------------------------------------ #
@@ -42,8 +38,9 @@ class BaseCmd:
     def set_error_callback(self, callback: MessageCallback | None) -> None:
         self._error_callback = callback
 
-    def register(self, name: str, func: Callable[[list[str]], object]) -> None:
-        self._commands[name.lower()] = func
+    def command_names(self) -> list[str]:
+        """Return every registered command name and alias (for completion/help)."""
+        return self._registry.names()
 
     def do(self, line: str) -> None:
         line = (line or "").strip()
@@ -63,43 +60,21 @@ class BaseCmd:
         name = head_rest[0].lower()
         rest = head_rest[1] if len(head_rest) > 1 else ""
 
-        # New-style: signature-bound command (comma/keyword/bracket-aware parsing).
         spec = self._registry.resolve(name)
-        if spec is not None:
-            try:
-                pairs = tokenize(rest, spec.mode)
-                result = bind_and_call(spec.func, pairs)
-            except CommandError as exc:
-                self._emit_error(f"{spec.name}: {exc}")
-                return
-            except Exception as exc:
-                self._emit_error(f"Error in command '{spec.name}': {exc}")
-                return
-            if result is not None:
-                self._emit_message(str(result))
-            return
-
-        # Legacy path: whitespace-tokenized handlers (``_cmd_x(args: List[str])``).
-        try:
-            parts = shlex_split(line)
-        except Exception as exc:
-            self._emit_error(f"Parse error: {exc}")
-            return
-
-        if not parts:
-            return
-
-        handler = self._commands.get(name)
-        if handler is None:
+        if spec is None:
             self._emit_error(
                 f"Command '{name}' is not implemented in Moview/MolView cmd (PyMOL compatibility layer)."
             )
             return
 
         try:
-            result = handler(parts[1:])
+            pairs = tokenize(rest, spec.mode)
+            result = bind_and_call(spec.func, pairs)
+        except CommandError as exc:
+            self._emit_error(f"{spec.name}: {exc}")
+            return
         except Exception as exc:
-            self._emit_error(f"Error in command '{name}': {exc}")
+            self._emit_error(f"Error in command '{spec.name}': {exc}")
             return
 
         if result is not None:
@@ -131,17 +106,6 @@ class BaseCmd:
                     self.do(line)
         except Exception as exc:
             self._emit_error(f"Failed to run script {p!s}: {exc}")
-
-    # ------------------------------------------------------------------ #
-    # Builtins registration
-    # ------------------------------------------------------------------ #
-    def _builtin_commands(self) -> dict[str, Callable[[list[str]], object]]:
-        """Mixins extend this to advertise the commands they handle."""
-        return {}
-
-    def _install_builtin_commands(self) -> None:
-        for name, func in self._builtin_commands().items():
-            self.register(name, func)
 
     # ------------------------------------------------------------------ #
     # Shared helpers
@@ -185,26 +149,24 @@ class BaseCmd:
             callback(text)
 
     # ------------------------------------------------------------------ #
-    # Common command
+    # Common commands
     # ------------------------------------------------------------------ #
-    def _cmd_help(self, args: list[str]) -> str:
+    @command("help", aliases=("?",))
+    def help(self, name: str = "") -> str:
         """Show available commands or detailed help for a specific command."""
-        if not args:
-            names = sorted(self._commands.keys())
-            return "Available commands: " + ", ".join(names)
+        if not name:
+            return "Available commands: " + ", ".join(self._registry.names())
 
-        target = args[0].lower()
-        handler = self._commands.get(target)
-        if handler is None:
-            return f"No help available for unknown command: {target}"
+        spec = self._registry.resolve(name.lower())
+        if spec is None:
+            return f"No help available for unknown command: {name}"
+        if not spec.doc:
+            return f"No detailed help available for '{spec.name}'"
+        return f"Help for '{spec.name}':\n" + "-" * 20 + "\n" + spec.doc
 
-        doc = getattr(handler, "__doc__", None)
-        if not doc:
-            return f"No detailed help available for '{target}'"
-
-        return f"Help for '{target}':\n" + "-" * 20 + "\n" + doc.strip()
-
-    def _cmd_quit(self, args: list[str]) -> None:
+    @command("quit", aliases=("exit",))
+    def quit(self) -> None:
+        """Close the viewer window."""
         window = self.window
         if window is None:
             return

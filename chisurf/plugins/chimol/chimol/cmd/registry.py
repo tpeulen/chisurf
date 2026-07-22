@@ -97,6 +97,10 @@ class Registry:
     specs: dict[str, CommandSpec] = field(default_factory=dict)
     shortcut: Shortcut = field(default_factory=Shortcut)
 
+    def names(self) -> list[str]:
+        """Return every registered command name and alias, sorted."""
+        return sorted(self.specs.keys())
+
     def resolve(self, name: str):
         """Return the CommandSpec for ``name`` (exact, alias or unique prefix)."""
         key = name.lower()

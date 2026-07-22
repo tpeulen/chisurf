@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
-from pathlib import Path
 import os
 import re
+from pathlib import Path
 
-from qtpy import QtCore, QtWidgets, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 
 try:
     from ..cmd import cmd as _cmd
@@ -119,8 +118,8 @@ def _get_completion_pool(cmd_name: str) -> list[str]:
 
 def _get_command_names() -> list[str]:
     """Return sorted list of registered chimol command names."""
-    if _cmd is not None and hasattr(_cmd, "_commands"):
-        return sorted(str(n) for n in _cmd._commands.keys())
+    if _cmd is not None and hasattr(_cmd, "command_names"):
+        return list(_cmd.command_names())
     return []
 
 
@@ -173,7 +172,7 @@ class CommandDock(QtCore.QObject):
         self._completer.setFilterMode(QtCore.Qt.MatchContains)
         self._completer.setWidget(self._input)
         self._completer.activated[str].connect(self._insert_completion)
-        
+
         # Set mono font and grid-like layout for the popup
         popup = self._completer.popup()
         if popup:
@@ -188,7 +187,7 @@ class CommandDock(QtCore.QObject):
             popup.setSpacing(2)
             # Ensure items have a reasonable width
             popup.setGridSize(QtCore.QSize(120, 20))
-            
+
         self._input.textEdited.connect(self._on_text_edited)
 
         # Install event filter on *both* the input and the popup so we
@@ -201,7 +200,7 @@ class CommandDock(QtCore.QObject):
         self._widget = container
 
         self._history: list[str] = []
-        self._history_index: Optional[int] = None
+        self._history_index: int | None = None
         self._history_path, self._history_force_hidden = _resolve_history_path()
         self._load_history()
 

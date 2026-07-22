@@ -17,12 +17,10 @@ Usage::
 
 from __future__ import annotations
 
-import sys
-import os
 import argparse
+import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # History helpers (shared between ptpython and fallback paths)
@@ -44,8 +42,8 @@ def _resolve_history_path() -> Path:
 
 def _make_cmd():
     """Create a headless ``Cmd`` instance backed by a mock viewer."""
-    from ..testing.mock_viewer import MockWindow
     from ..cmd.command import Cmd
+    from ..testing.mock_viewer import MockWindow
 
     win = MockWindow()
     cmd = Cmd(win)
@@ -62,8 +60,9 @@ def _make_cmd():
 
 def _build_chimol_completer(cmd_instance):
     """Return a prompt-toolkit ``Completer`` that knows chimol commands."""
-    from prompt_toolkit.completion import Completer, Completion
     import re
+
+    from prompt_toolkit.completion import Completer, Completion
 
     class ChimolCompleter(Completer):
         _REP_NAMES = [
@@ -89,23 +88,23 @@ def _build_chimol_completer(cmd_instance):
             # Split the line into tokens, respecting spaces and commas
             # We want to find the "active" token being typed
             parts = re.split(r"[\s,]+", text)
-            
+
             # 1. Complete command name (first token)
             if len(parts) <= 1 and not text.endswith((" ", ",")):
                 word = parts[0].lower()
-                for name in sorted(cmd_instance._commands.keys()):
+                for name in cmd_instance.command_names():
                     if name.startswith(word):
                         yield Completion(name, start_position=-len(word), display_meta="cmd")
                 return
 
             # 2. Argument completions
             cmd_name = parts[0].lower()
-            if cmd_name not in cmd_instance._commands:
+            if cmd_name not in cmd_instance.command_names():
                 return
 
             # Determine what pool to use based on command and position
             pool = []
-            
+
             # Current word being typed (if cursor is at the end of a token)
             # or empty string (if cursor is after a separator)
             if text.endswith((" ", ",")):
@@ -116,16 +115,16 @@ def _build_chimol_completer(cmd_instance):
             # Representation completions
             if cmd_name in {"show", "hide", "as"}:
                 pool.extend(self._REP_NAMES)
-            
+
             # Color completions
             if cmd_name in {"color", "bg_color", "bg_colour"}:
                 pool.extend(self._COLOR_NAMES)
-                
+
             # Settings completions
             if cmd_name in {"set", "get"}:
                 pool.extend(self._SETTING_NAMES)
                 pool.extend([
-                    "metaball_alpha", "metaball_shininess", "metaball_threshold", 
+                    "metaball_alpha", "metaball_shininess", "metaball_threshold",
                     "metaball_resolution", "metaball_radius", "metaball_padding"
                 ])
 
@@ -146,11 +145,11 @@ def _build_chimol_completer(cmd_instance):
                 if item.lower() in seen:
                     continue
                 seen.add(item.lower())
-                
+
                 if item.lower().startswith(current_word):
                     yield Completion(
-                        item, 
-                        start_position=-len(current_word), 
+                        item,
+                        start_position=-len(current_word),
                         display_meta="arg"
                     )
 
@@ -196,7 +195,7 @@ def _configure_repl(repl, *, cmd_instance) -> None:
 # Custom input handler: chimol commands vs Python
 # ---------------------------------------------------------------------------
 
-def _make_namespace(cmd_instance) -> Dict[str, Any]:
+def _make_namespace(cmd_instance) -> dict[str, Any]:
     """Build the namespace dict injected into the REPL.
 
     This namespace exposes:
@@ -208,7 +207,7 @@ def _make_namespace(cmd_instance) -> Dict[str, Any]:
     """
     import numpy as _np
 
-    ns: Dict[str, Any] = {
+    ns: dict[str, Any] = {
         "cmd": cmd_instance,
         "do": cmd_instance.do,
         "np": _np,
@@ -249,7 +248,7 @@ _BANNER = """\
 
 def _run_ptpython_repl(cmd_instance) -> None:
     """Launch the ptpython interactive REPL with chimol extensions."""
-    from ptpython.repl import embed, PythonRepl
+    from ptpython.repl import PythonRepl, embed
 
     ns = _make_namespace(cmd_instance)
     history_path = str(_resolve_history_path())
@@ -293,10 +292,10 @@ def _install_chimol_keybinding(repl, cmd_instance) -> None:
     chimol command name and is NOT valid Python, route it through
     ``cmd.do()`` instead.
     """
+    from prompt_toolkit.enums import DEFAULT_BUFFER
+    from prompt_toolkit.filters import HasFocus
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.keys import Keys
-    from prompt_toolkit.filters import HasFocus
-    from prompt_toolkit.enums import DEFAULT_BUFFER
 
     bindings = KeyBindings()
 
@@ -310,7 +309,7 @@ def _install_chimol_keybinding(repl, cmd_instance) -> None:
             return
 
         first_token = text.split()[0].lower()
-        is_chimol_cmd = first_token in cmd_instance._commands
+        is_chimol_cmd = first_token in cmd_instance.command_names()
 
         if is_chimol_cmd:
             # Check whether it is also valid Python
@@ -344,7 +343,8 @@ def _install_chimol_keybinding(repl, cmd_instance) -> None:
 
 def merge_key_bindings_safe(existing, extra):
     """Merge key bindings, handling the fact that ptpython may use
-    ``_MergedKeyBindings`` internally."""
+    ``_MergedKeyBindings`` internally.
+    """
     from prompt_toolkit.key_binding import merge_key_bindings
 
     return merge_key_bindings([existing, extra])
@@ -371,7 +371,7 @@ def _run_fallback_repl(cmd_instance) -> None:
 
             # Try as chimol command first
             first_token = line.split()[0].lower()
-            if first_token in cmd_instance._commands:
+            if first_token in cmd_instance.command_names():
                 cmd_instance.do(line)
                 continue
 
