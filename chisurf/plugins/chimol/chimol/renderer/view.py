@@ -36,6 +36,7 @@ from ..geometry import (
     _generate_surface_mesh_from_points,
     _generate_trace_arrays,
     _get_surface_atom_mask,
+    shade_from_atoms,
 )
 from .base import Renderer
 from .chimol_state import _MolViewObjectEntry, _MolViewObjectState, _StateField
@@ -3789,48 +3790,26 @@ class MolView(QtWidgets.QWidget):
                     atom_colors[i_local] = ov[i_global]
 
         try:
-            from scipy.spatial import cKDTree
-            tree = cKDTree(pts_surface)
-
             max_sigma = float(np.max(sigmas))
             cutoff = max_sigma * 2.5
 
-            k = min(32, n_pts)
-            dists, idx = tree.query(verts, k=k)
-
-            if k == 1:
-                dists = dists[:, np.newaxis]
-                idx = idx[:, np.newaxis]
-
-            valid = dists < cutoff
-            d2 = dists ** 2
-            s2 = sigmas[idx] ** 2
-            weights = np.exp(-d2 / (2.0 * s2))
-            weights = np.where(valid, weights, 0.0)
-
-            w_sum = weights.sum(axis=1, keepdims=True)
-            w_sum = np.where(w_sum > 0, w_sum, 1.0)
-
-            neighbor_colors = atom_colors[idx]
-            mesh_colors = (neighbor_colors * weights[:, :, np.newaxis]).sum(axis=1) / w_sum
-
-            no_neighbors = ~valid.any(axis=1)
+            # Gaussian-weighted colour + gradient normal per vertex via a numba
+            # cell list (no scipy). ``col_sum``/``wsum`` give the weighted colour;
+            # ``grad_sum`` the density gradient; ``nearest`` the closest atom for
+            # vertices with no atom inside the cutoff.
+            col_sum, wsum, grad_sum, nearest = shade_from_atoms(
+                verts, pts_surface, atom_colors, sigmas, cutoff
+            )
+            w_safe = np.where(wsum > 0.0, wsum, 1.0)
+            mesh_colors = col_sum / w_safe[:, np.newaxis]
+            no_neighbors = wsum <= 0.0
             if no_neighbors.any():
-                _, nearest = tree.query(verts[no_neighbors])
-                mesh_colors[no_neighbors] = atom_colors[nearest]
-
-            diff = verts[:, np.newaxis, :] - pts_surface[idx]
-            grad = (diff / s2[:, :, np.newaxis]) * weights[:, :, np.newaxis]
-            grad_sum = grad.sum(axis=1)
+                mesh_colors[no_neighbors] = atom_colors[nearest[no_neighbors]]
 
             mag = np.linalg.norm(grad_sum, axis=1, keepdims=True)
-            mag = np.where(mag > 1e-6, mag, 1.0)
-            new_norms = -grad_sum / mag
-
-            fallback = (mag.squeeze() <= 1e-6)
-            if fallback.any():
-                new_norms[fallback] = norms[fallback]
-
+            good = mag[:, 0] > 1e-6
+            new_norms = norms.copy()
+            new_norms[good] = -grad_sum[good] / mag[good]
             norms = new_norms
 
             if ao_strength > 0:
@@ -3840,13 +3819,7 @@ class MolView(QtWidgets.QWidget):
                     mesh_colors[:, :3] *= darken[:, np.newaxis]
 
         except Exception:
-            try:
-                from scipy.spatial import cKDTree
-                tree = cKDTree(pts_surface)
-                _, nearest = tree.query(verts)
-                mesh_colors = atom_colors[nearest]
-            except Exception:
-                mesh_colors = np.tile(base_color, (verts.shape[0], 1))
+            mesh_colors = np.tile(base_color, (verts.shape[0], 1))
 
         render_mode = "opaque"
         if alpha < 1.0:
@@ -4068,42 +4041,23 @@ class MolView(QtWidgets.QWidget):
             atom_colors = np.tile(base_color, (n_pts, 1))
 
         try:
-            from scipy.spatial import cKDTree
-            tree = cKDTree(pts_surface)
             max_sigma = float(np.max(sigmas))
             cutoff = max_sigma * 2.5
 
-            # Vectorised over all mesh vertices: query the k nearest atoms once
-            # and compute the Gaussian-weighted colour (and analytical normal)
-            # with array ops instead of a per-vertex/per-atom Python loop. This
-            # mirrors the metaball path; the k-nearest set captures all atoms
-            # with non-negligible weight (distant atoms contribute ~0).
-            k = min(32, n_pts)
-            dists, idx = tree.query(verts, k=k)
-            if k == 1:
-                dists = dists[:, np.newaxis]
-                idx = idx[:, np.newaxis]
-
-            valid = dists < cutoff
-            s2 = sigmas[idx] ** 2
-            weights = np.where(valid, np.exp(-(dists ** 2) / (2.0 * s2)), 0.0)
-            w_sum = weights.sum(axis=1, keepdims=True)
-            w_safe = np.where(w_sum > 0.0, w_sum, 1.0)
-
-            neighbor_colors = atom_colors[idx]  # (V, k, 4)
-            mesh_colors = (neighbor_colors * weights[:, :, np.newaxis]).sum(axis=1) / w_safe
-
-            # Vertices with no atom inside the cutoff take the nearest colour.
-            no_nb = ~valid.any(axis=1)
+            # Gaussian-weighted colour + analytical normal per vertex via a numba
+            # cell list (no scipy); atoms beyond the cutoff contribute ~0.
+            col_sum, wsum, grad_sum, nearest = shade_from_atoms(
+                verts, pts_surface, atom_colors, sigmas, cutoff
+            )
+            w_safe = np.where(wsum > 0.0, wsum, 1.0)
+            mesh_colors = col_sum / w_safe[:, np.newaxis]
+            no_nb = wsum <= 0.0
             if no_nb.any():
-                mesh_colors[no_nb] = atom_colors[idx[no_nb, 0]]
+                mesh_colors[no_nb] = atom_colors[nearest[no_nb]]
 
             # Analytical normals from the Gaussian gradient (density methods only).
             method = str(surface_cfg.get("method", "gaussian")).lower()
             if method not in ("sas", "ses"):
-                diff = verts[:, np.newaxis, :] - pts_surface[idx]  # (V, k, 3)
-                grad = (diff / s2[:, :, np.newaxis]) * weights[:, :, np.newaxis]
-                grad_sum = grad.sum(axis=1)
                 mag = np.linalg.norm(grad_sum, axis=1, keepdims=True)
                 good = mag[:, 0] > 1e-6
                 new_norms = norms.copy()
@@ -4117,13 +4071,7 @@ class MolView(QtWidgets.QWidget):
                     mesh_colors[:, :3] *= darken[:, np.newaxis]
 
         except Exception:
-            try:
-                from scipy.spatial import cKDTree
-                tree = cKDTree(pts_surface)
-                _, nearest = tree.query(verts)
-                mesh_colors = atom_colors[nearest]
-            except Exception:
-                mesh_colors[:, :] = base_color
+            mesh_colors[:, :] = base_color
 
         render_mode = "opaque"
         if surface_alpha < 1.0:

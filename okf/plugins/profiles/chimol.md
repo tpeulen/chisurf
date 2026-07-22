@@ -144,8 +144,19 @@ falls back to points only if meshing fails (too few points). `add_point_overlay`
 still exists for genuine point data and now caps/subsamples above
 `overlay.max_points` (default 30k) as a defensive guard.
 
-**Dependency policy — only IMP (plus NumPy/numba), no scipy/scikit-image.** The
-surface stack was migrated off the scientific stack: `_generate_surface_mesh_from_points`
+**Dependency policy — only IMP (plus NumPy/numba), no scipy/scikit-image.**
+ChiMOL has **zero scipy/scikit-image imports**. All neighbour queries that used
+`scipy.spatial.cKDTree` — surface/metaball colouring (Gaussian-weighted colour +
+gradient normal), surface-exposed-atom masking, and distance-based selection
+(`sele_parser`) — go through a shared numba cell-list in `geometry/neighbors.py`
+(`shade_from_atoms`, `count_within_radius`, `within_distance_mask`), each verified
+bit-exact against a brute-force reference. Removing scipy here also made the
+colouring **faster** (metaball ~0.8 s → ~0.4 s, surface ~0.43 s → ~0.16 s): a
+cell-list radius query beats a KD-tree k-nearest for this dense, local pattern.
+The SES surface's distance transform is a numba separable exact EDT
+(`surface._distance_transform_edt`, Felzenszwalb-Huttenlocher), matching
+`scipy.ndimage.distance_transform_edt` exactly. The surface stack was migrated off
+the scientific stack: `_generate_surface_mesh_from_points`
 (the AV/point surface) uses NumPy `_binary_dilate_6` (6-connected, matches scipy's
 default element) and `_gaussian_blur_3d` (separable 1-D convolution, matches
 `scipy.ndimage.gaussian_filter` to ~1e-16) instead of `scipy.ndimage`; and all

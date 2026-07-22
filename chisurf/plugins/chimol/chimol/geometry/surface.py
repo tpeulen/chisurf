@@ -20,18 +20,67 @@ from .marching_cubes import marching_cubes as _marching_cubes
 
 _HAVE_SKIMAGE = True  # retained name: isosurface extraction is always available
 
-# Point-cloud dilation/smoothing for the AV/point surface are NumPy-only (see
-# _binary_dilate_6 / _gaussian_blur_3d); scipy is only reached for the optional
-# SAS/SES distance transform, and only if it happens to be installed.
-try:  # Optional scipy distance transform (SAS/SES method only)
-    from scipy.ndimage import distance_transform_edt  # type: ignore
-    _HAVE_SCIPY_EDT = True
-except ImportError:  # pragma: no cover
-    distance_transform_edt = None  # type: ignore
-    _HAVE_SCIPY_EDT = False
+# The whole surface stack is scipy/scikit-image-free: point-cloud dilation and
+# smoothing are NumPy (_binary_dilate_6 / _gaussian_blur_3d), isosurface
+# extraction is the numba marching cubes, and the SES distance transform is the
+# numba EDT below (_distance_transform_edt).
 
 
 if _HAVE_NUMBA and nb is not None:
+
+    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    def _edt_1d_sq(f: np.ndarray) -> np.ndarray:
+        """1-D squared Euclidean distance transform (Felzenszwalb-Huttenlocher).
+
+        ``f`` holds the parabola heights (0 at seeds, +inf elsewhere on the first
+        pass); returns ``min_p (q-p)^2 + f[p]`` for every ``q``.
+        """
+        n = f.shape[0]
+        d = np.empty(n, dtype=np.float64)
+        v = np.empty(n, dtype=np.int64)
+        z = np.empty(n + 1, dtype=np.float64)
+        big = 1.0e20
+        k = 0
+        v[0] = 0
+        z[0] = -big
+        z[1] = big
+        for q in range(1, n):
+            s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2.0 * q - 2.0 * v[k])
+            while s <= z[k]:
+                k -= 1
+                s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2.0 * q - 2.0 * v[k])
+            k += 1
+            v[k] = q
+            z[k] = s
+            z[k + 1] = big
+        k = 0
+        for q in range(n):
+            while z[k + 1] < q:
+                k += 1
+            dq = q - v[k]
+            d[q] = dq * dq + f[v[k]]
+        return d
+
+    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    def _edt_squared_3d(forbidden: np.ndarray) -> np.ndarray:
+        """Squared EDT: distance to the nearest zero voxel (like scipy's EDT)."""
+        nx, ny, nz = forbidden.shape
+        big = 1.0e20
+        g = np.empty((nx, ny, nz), dtype=np.float64)
+        for i in range(nx):
+            for j in range(ny):
+                for k in range(nz):
+                    g[i, j, k] = 0.0 if forbidden[i, j, k] == 0 else big
+        for j in range(ny):
+            for k in range(nz):
+                g[:, j, k] = _edt_1d_sq(g[:, j, k].copy())
+        for i in range(nx):
+            for k in range(nz):
+                g[i, :, k] = _edt_1d_sq(g[i, :, k].copy())
+        for i in range(nx):
+            for j in range(ny):
+                g[i, j, :] = _edt_1d_sq(g[i, j, :].copy())
+        return g
 
     @nb.jit(nopython=True, nogil=True)  # type: ignore[misc]
     def _accumulate_gaussians_nb(
@@ -392,6 +441,50 @@ def _generate_surface_mesh_from_gaussians(
     )
 
 
+def _edt_1d_sq_np(f: np.ndarray) -> np.ndarray:
+    """NumPy 1-D squared distance transform (fallback when numba is absent)."""
+    n = f.shape[0]
+    d = np.empty(n, dtype=np.float64)
+    v = np.zeros(n, dtype=np.int64)
+    z = np.empty(n + 1, dtype=np.float64)
+    big = 1.0e20
+    k = 0
+    z[0] = -big
+    z[1] = big
+    for q in range(1, n):
+        s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2.0 * q - 2.0 * v[k])
+        while s <= z[k]:
+            k -= 1
+            s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2.0 * q - 2.0 * v[k])
+        k += 1
+        v[k] = q
+        z[k] = s
+        z[k + 1] = big
+    k = 0
+    for q in range(n):
+        while z[k + 1] < q:
+            k += 1
+        dq = q - v[k]
+        d[q] = dq * dq + f[v[k]]
+    return d
+
+
+def _distance_transform_edt(forbidden: np.ndarray) -> np.ndarray:
+    """Euclidean distance (in voxels) to the nearest zero voxel.
+
+    Drop-in for ``scipy.ndimage.distance_transform_edt`` on a binary volume,
+    implemented with a separable exact distance transform (numba, NumPy
+    fallback) so the SES surface needs no scipy.
+    """
+    fb = np.ascontiguousarray(forbidden).astype(np.uint8)
+    if _HAVE_NUMBA and nb is not None:
+        return np.sqrt(_edt_squared_3d(fb))  # type: ignore[name-defined]
+    g = np.where(fb == 0, 0.0, 1.0e20).astype(np.float64)
+    for axis in range(3):
+        g = np.apply_along_axis(_edt_1d_sq_np, axis, g)
+    return np.sqrt(g)
+
+
 def _binary_dilate_6(mask: np.ndarray, iterations: int) -> np.ndarray:
     """6-connected 3-D binary dilation (NumPy-only).
 
@@ -571,8 +664,6 @@ def _generate_surface_mesh_edt(
         return None
 
     method = method.lower()
-    if method == "ses" and not _HAVE_SCIPY_EDT:
-        return None
 
     pts_arr = np.asarray(pts, dtype=float)
     if pts_arr.ndim != 2 or pts_arr.shape[0] == 0:
@@ -616,9 +707,8 @@ def _generate_surface_mesh_edt(
         # For SES: B_forbidden = (D < r_p)
         # 1 inside forbidden region, 0 inside allowed region
         forbidden = (grid < float(probe_radius)).astype(np.uint8)
-        # distance_transform_edt computes distance to nearest 0 (allowed region).
-        # We multiply by spacing to get physical distance.
-        grid_to_mesh = distance_transform_edt(forbidden).astype(np.float32) * float(spacing)
+        # Distance to nearest 0 (allowed region), scaled to physical units.
+        grid_to_mesh = _distance_transform_edt(forbidden).astype(np.float32) * float(spacing)
         level = float(probe_radius)
     else:
         return None
@@ -676,13 +766,10 @@ def _get_surface_atom_mask(
     if arr.shape[0] <= max_neighbors:
         return np.ones(arr.shape[0], dtype=bool)
 
-    try:
-        from scipy.spatial import cKDTree
-        tree = cKDTree(arr)
-        counts = tree.query_ball_point(arr, r=float(radius), return_length=True)
-        return np.asarray(counts, dtype=int) <= int(max_neighbors)
-    except Exception:
-        return np.ones(arr.shape[0], dtype=bool)
+    from .neighbors import count_within_radius
+
+    counts = count_within_radius(arr, float(radius))
+    return np.asarray(counts, dtype=int) <= int(max_neighbors)
 
 
 __all__ = [

@@ -534,16 +534,14 @@ class Evaluator:
              
              target_coords = coords[target_mask]
              
-             # cdist can be memory intensive, use broadcasting or KDTree if available
-             from scipy.spatial import cKDTree
-             tree = cKDTree(coords)
-             
-             res = tree.query_ball_point(target_coords, dist)
-             
-             mask = self._get_none_mask(object_id)
-             for indices in res:
-                  mask[indices] = True
-                  
+             # cell-list "within distance" query (no scipy dependency)
+             from chisurf.plugins.chimol.chimol.geometry.neighbors import (
+                 within_distance_mask,
+             )
+
+             mask = np.asarray(within_distance_mask(coords, target_coords, float(dist)))
+
+
              if op == "within":
                   # within returns intersection, around returns neighborhood minus target
                   pass # Actually within usually filters another set

@@ -10,6 +10,7 @@ from .cartoon import (
 )
 from .trace import _extract_ca_trace
 from .bonds import _build_bond_pairs
+from .neighbors import shade_from_atoms
 from .surface import (
     _generate_surface_mesh_from_gaussians,
     _generate_surface_mesh_from_density,
@@ -34,4 +35,5 @@ __all__ = [
     "_generate_surface_mesh_from_points",
     "_generate_surface_mesh_edt",
     "_get_surface_atom_mask",
+    "shade_from_atoms",
 ]
