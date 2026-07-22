@@ -3660,10 +3660,14 @@ class MolView(QtWidgets.QWidget):
 
         n_all = pts_all.shape[0]
 
+        # Larger sigmas fuse neighbouring atoms into rounder blobs; the factor is
+        # config-tunable so the "blobbiness" can be dialled without touching the
+        # per-atom radii (which the balls/surface representations also use).
+        sigma_factor = float(cfg.get("sigma_factor", 1.5))
         if self._all_atom_radii is not None and self._all_atom_radii.shape[0] == n_all:
-            sigmas_all = np.asarray(self._all_atom_radii, dtype=float) * 1.5
+            sigmas_all = np.asarray(self._all_atom_radii, dtype=float) * sigma_factor
         else:
-            sigmas_all = np.ones(n_all, dtype=float) * 1.5
+            sigmas_all = np.ones(n_all, dtype=float) * sigma_factor
 
         if surface_only and n_all > surface_max_neighbors:
             surf_mask = _get_surface_atom_mask(

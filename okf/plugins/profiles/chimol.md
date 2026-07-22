@@ -151,6 +151,34 @@ the right units and match the structured path. Guard a mesh-density regression b
 asserting the metaball vertex count and that its bounding box spans the atom cloud,
 not just that a mesh exists.
 
+# Display config (`chimol_display.json`) — two defaults, and a legacy shadow
+
+Visual tunables live in `chimol_display.json`, loaded by `config.py:load_display_config`
+into the module-global `_DISPLAY_CONFIG`. **There are two copies of every default and
+they drift:** the shipped package `chimol_display.json` *and* a hardcoded `default = {…}`
+dict inside `load_display_config`. The dict is not just a fallback for a missing file —
+it is shallow-merged over whatever file loads, filling any **section the file omits**. So
+editing only the JSON is not enough; a value the loaded file lacks comes from the dict.
+**Change both, together.**
+
+Worse, the loader prefers, in order: the user copy `~/.chisurf/chimol_display.json`, then
+legacy `molview_display.json` / `protview_display.json` in the same settings dir, and only
+then the package file. A stale legacy `protview_display.json` (as on the author's machine)
+therefore **shadows the shipped package config entirely** and never expires — its sections
+freeze at old values, and any section it omits (e.g. `metaball`) falls through to the code
+`default` dict, *not* the package JSON. Net effect: package-JSON edits can be invisible to
+a real user. When tuning a representation's look, verify through `load_display_config()`
+(what the GUI actually reads), not by reading the package JSON. The load path is a footgun
+worth simplifying — a stale legacy file should not outrank the shipped config.
+
+Metaball look is tuned for a soft, clay-like surface: `iso_value` 0.1 + `sigma_factor` 2.2
+(a config knob replacing a hardcoded ×1.5 sigma multiplier) fuse atoms into rounder blobs;
+`alpha` 1.0 (opaque) lets the baked AO read; `ao_strength` 0.9 / `ao_radius` 7.0 deepen
+crevice shadows; `specular_strength` 0.12 / `shininess` 22 kill the wet-plastic gloss. The
+gloss in the GL shader (`qtgl.py` fragment) comes mostly from a fake-MatCap env reflection +
+sun highlight gated by `specStrength`, so a matte look is driven by dropping specular, not
+shininess alone.
+
 # Documentation Work
 
 - No `README.md` under `chisurf/plugins/chimol/` yet — add one covering the

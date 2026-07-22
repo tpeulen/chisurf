@@ -168,28 +168,32 @@ def _load_display_config() -> dict:
         "metaball": {
             # Density field function: "wyvill" (compact support, faster) or "gaussian"
             "field_function": "wyvill",
-            # Isosurface threshold for marching cubes (lower = larger surface)
-            "iso_value": 0.15,
+            # Isosurface threshold for marching cubes (lower = larger, blobbier surface)
+            "iso_value": 0.1,
+            # Per-atom Gaussian sigma multiplier (higher = rounder, more fused blobs)
+            "sigma_factor": 2.2,
             # Grid resolution in Angstroms (smaller = finer mesh, slower)
             "grid_spacing": 0.6,
             # Extra space around bounding box in Angstroms
             "padding": 5.0,
             # Maximum grid dimension (auto-coarsens spacing if exceeded)
             "max_dim": 128,
-            # Mesh transparency (1.0 = opaque, <1.0 = transparent)
-            "alpha": 0.6,
+            # Mesh transparency (1.0 = opaque, <1.0 = transparent). Opaque reads
+            # the ambient-occlusion shading far more clearly than a glassy blend.
+            "alpha": 1.0,
             # Ambient occlusion strength (0.0 = off, 1.0 = maximum darkening in crevices)
-            "ao_strength": 0.6,
-            # AO search radius in Angstroms (larger = broader shadows)
-            "ao_radius": 4.5,
+            "ao_strength": 0.9,
+            # AO search radius in Angstroms (larger = broader, softer crevice shadows)
+            "ao_radius": 7.0,
             # Material shininess (higher = sharper specular highlights)
-            "shininess": 40.0,
-            # Specular highlight intensity (0.0 = matte, 1.0 = mirror-like)
-            "specular_strength": 0.3,
+            "shininess": 22.0,
+            # Specular highlight intensity (0.0 = matte, 1.0 = mirror-like). Kept low
+            # for a soft, clay-like surface instead of wet plastic.
+            "specular_strength": 0.12,
             # Rim lighting strength (edge glow effect)
-            "rim_strength": 0.3,
+            "rim_strength": 0.2,
             # Rim lighting falloff power (higher = sharper edge)
-            "rim_power": 4.0,
+            "rim_power": 3.0,
             # Use only surface-exposed atoms (faster, cleaner surface)
             "surface_only": True,
             # Neighbor search radius for surface classification (Angstroms)
