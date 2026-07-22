@@ -61,6 +61,56 @@ class SyntheticDecayViewModel:
             self.spectrum_rows.pop(idx)
             self._refresh_fields()
 
+    def load_spectrum(self) -> None:
+        """Load a lifetime spectrum from a CSV/text file into the table.
+
+        Accepts either a flat 1-D interleaved list ``a1, tau1, a2, tau2, …`` or a
+        two-column ``(amplitude, lifetime)`` table (same convention as the TCSPC
+        simulator experiment setup), validated via
+        :func:`chisurf.core.fluorescence.decay.validate_lifetime_spectrum`.
+        """
+        import numpy as np
+        from qtpy import QtWidgets
+
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            None, "Load lifetime spectrum", "",
+            "Data files (*.csv *.txt *.dat);;All files (*)",
+        )
+        if not path:
+            return
+        try:
+            arr = np.asarray(np.loadtxt(path, dtype=float, ndmin=1), dtype=float)
+        except Exception as exc:
+            self.status = f"Load failed: {exc}"
+            self._refresh_fields()
+            return
+        if arr.ndim == 1:
+            values = arr
+        elif arr.ndim == 2 and arr.shape[1] >= 2:
+            a, tau = arr[:, 0].ravel(), arr[:, 1].ravel()
+            n = min(a.size, tau.size)
+            values = np.empty(2 * n, dtype=float)
+            values[0::2], values[1::2] = a[:n], tau[:n]
+        else:
+            self.status = "Load failed: expected an interleaved list or a 2-column table."
+            self._refresh_fields()
+            return
+        try:
+            from chisurf.core.fluorescence.decay import validate_lifetime_spectrum
+
+            values = validate_lifetime_spectrum(values)
+        except Exception as exc:
+            self.status = f"Invalid lifetime spectrum: {exc}"
+            self._refresh_fields()
+            return
+        self.spectrum_rows = [
+            {"amp": float(values[i]), "tau": float(values[i + 1])}
+            for i in range(0, len(values), 2)
+        ]
+        self.selected_row = -1
+        self.status = f"Loaded {len(self.spectrum_rows)} components from {pathlib.Path(path).name}."
+        self._refresh_fields()
+
     # ── compute ──────────────────────────────────────────────────────
     def generate(self) -> None:
         try:

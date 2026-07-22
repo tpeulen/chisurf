@@ -4,6 +4,7 @@ import numpy as np
 
 import chisurf.core.data
 import chisurf.core.fluorescence
+import chisurf.core.fluorescence.decay
 import chisurf.core.fluorescence.tcspc
 
 from chisurf import typing
@@ -79,19 +80,36 @@ class TCSPCSimulatorSetup(TCSPCReader):
             filename = self.sample_name
         name = kwargs.get('name', filename)
         x = np.arange(self.n_tac) * self.dt
-        # The ideal decay is built with the shared low-level primitive
-        # ``calculate_fluorescence_decay`` — the same builder the canonical
-        # ``core.fluorescence.decay.synthetic_decay`` wraps. It is kept here (rather
-        # than the strict high-level wrapper) because an acquisition simulator may
-        # use rise terms (negative amplitudes) and zero-lifetime components, which
-        # the wrapper deliberately rejects. ``counting_noise`` is the fitting-weight
-        # error model, not a shot-noise realization.
-        time_axis, y = chisurf.core.fluorescence.general.calculate_fluorescence_decay(
-            lifetime_spectrum=self.lifetime_spectrum,
-            time_axis=x
-        )
+        # The decay is generated through the canonical generator
+        # ``core.fluorescence.decay.synthetic_decay`` — the same entry point the
+        # interactive Synthetic Decay tool uses — so the exponential/convolution
+        # math is shared, not duplicated. ``allow_rise_terms=True`` keeps this
+        # acquisition simulator's ability to model rise terms (negative
+        # amplitudes) and zero-lifetime components, which the strict default
+        # rejects. ``normalize=False`` returns the raw decay, which is then
+        # amplitude-normalised (÷Σamp) to reproduce the previous builder call's
+        # ``normalize=True`` exactly (by linearity), without mutating the spectrum.
+        # ``counting_noise`` is the fitting-weight error model, not shot noise.
+        spectrum = np.asarray(self.lifetime_spectrum, dtype=np.float64)
+        if spectrum.size >= 2:
+            amps = spectrum[0::2]
+            taus = spectrum[1::2]
+            y = chisurf.core.fluorescence.decay.synthetic_decay(
+                n_bins=int(self.n_tac),
+                lifetimes=taus,
+                amplitudes=amps,
+                bin_width=float(self.dt),
+                start_bin=0,
+                normalize=False,
+                allow_rise_terms=True,
+            )
+            amp_sum = float(np.sum(amps))
+            if amp_sum != 0.0:
+                y = y / amp_sum
+        else:
+            y = np.zeros(self.n_tac, dtype=np.float64)
         data_set = chisurf.core.data.DataCurve(
-            x=time_axis,
+            x=x,
             y=y,
             ey=chisurf.core.fluorescence.tcspc.counting_noise(y),
             setup=self,

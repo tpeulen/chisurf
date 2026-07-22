@@ -93,3 +93,73 @@ def test_rpc_services_register_and_run():
     # error path is reported, not raised
     bad = handlers["synthetic_decay.compute"]({"n_bins": -1, "lifetimes": [2.0]})
     assert bad["ok"] is False and "error" in bad
+
+
+def test_synthetic_decay_allow_rise_terms_matches_low_level_builder():
+    """allow_rise_terms lets the generator reproduce the acquisition-simulator path.
+
+    With a rise term (negative amplitude) and a zero-lifetime component, the
+    canonical generator (normalize=False, ÷Σamp) matches the low-level
+    ``calculate_fluorescence_decay`` (normalize=True) exactly, and the strict
+    default still rejects the negative amplitude.
+    """
+    import numpy as np
+    import pytest
+
+    from chisurf.core.fluorescence.decay import synthetic_decay
+    from chisurf.core.fluorescence.general import calculate_fluorescence_decay
+
+    n, dt = 512, 0.02
+    spectrum = np.array([-0.3, 0.4, 0.2, 0.0, 1.0, 2.5])  # rise term + zero-lifetime
+    amps, taus = spectrum[0::2].copy(), spectrum[1::2].copy()
+
+    y_new = synthetic_decay(n_bins=n, lifetimes=taus, amplitudes=amps, bin_width=dt,
+                            start_bin=0, normalize=False, allow_rise_terms=True)
+    y_new = y_new / amps.sum()
+    _, y_old = calculate_fluorescence_decay(spectrum.copy(), np.arange(n) * dt)
+    assert np.max(np.abs(y_new - y_old)) < 1e-12
+
+    with pytest.raises(ValueError):
+        synthetic_decay(n_bins=n, lifetimes=[2.5], amplitudes=[-0.3], bin_width=dt)
+
+
+def test_tcspc_simulator_reader_uses_canonical_generator():
+    """The TCSPC simulator experiment reader produces the canonical decay."""
+    import numpy as np
+
+    from chisurf.core.experiments.tcspc.simulator import TCSPCSimulatorSetup
+    from chisurf.core.fluorescence.general import calculate_fluorescence_decay
+
+    spectrum = [1.0, 1.2, 0.5, 4.0]
+    # Construct without a spectrum (avoids the GUI controller coupling in __init__),
+    # then set it directly — read() is the code path under test.
+    reader = TCSPCSimulatorSetup(n_tac=1024, dt=0.0141)
+    reader.lifetime_spectrum = np.asarray(spectrum, dtype=np.float64)
+    group = reader.read()
+    y = np.asarray(group[0].y, dtype=float)
+
+    _, y_ref = calculate_fluorescence_decay(np.asarray(spectrum, float), np.arange(1024) * 0.0141)
+    assert np.max(np.abs(y - y_ref)) < 1e-12
+
+
+def test_view_model_load_spectrum(tmp_path):
+    """load_spectrum accepts interleaved and 2-column files and fills the table."""
+    import numpy as np
+    from qtpy import QtWidgets
+
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
+        SyntheticDecayViewModel,
+    )
+
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    inter = tmp_path / "inter.txt"
+    twocol = tmp_path / "twocol.txt"
+    np.savetxt(inter, np.array([0.3, 1.2, 0.7, 4.0]))
+    np.savetxt(twocol, np.array([[0.3, 1.2], [0.7, 4.0]]))
+    expected = [{"amp": 0.3, "tau": 1.2}, {"amp": 0.7, "tau": 4.0}]
+
+    for f in (inter, twocol):
+        vm = SyntheticDecayViewModel()
+        QtWidgets.QFileDialog.getOpenFileName = staticmethod(lambda *a, **k: (str(f), ""))
+        vm.load_spectrum()
+        assert vm.spectrum_rows == expected

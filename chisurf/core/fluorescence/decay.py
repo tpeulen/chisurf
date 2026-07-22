@@ -176,6 +176,7 @@ def synthetic_decay(
     normalize: bool = True,
     photon_count: float | None = None,
     seed: int | None = None,
+    allow_rise_terms: bool = False,
 ) -> np.ndarray:
     """Generate a causal multi-exponential fluorescence-decay histogram.
 
@@ -198,6 +199,13 @@ def synthetic_decay(
     inter-pulse tail; timing then comes from the IRF position rather than
     ``start_bin``. ``photon_count`` Poisson-samples a finite observation
     (``seed`` for reproducibility). ``normalize=True`` returns a unit-sum pattern.
+
+    ``allow_rise_terms=True`` relaxes the spectrum validation to *finite* values
+    only — permitting negative amplitudes (rise terms) and zero/negative lifetime
+    components (the latter skipped by the shared decay builder). This is for an
+    acquisition simulator that models such terms; the strict default (used by the
+    interactive generator) still requires positive lifetimes and non-negative,
+    not-all-zero amplitudes.
     """
     from chisurf.core.fluorescence.general import calculate_fluorescence_decay
 
@@ -210,7 +218,9 @@ def synthetic_decay(
         raise ValueError("start_bin must lie inside the decay histogram")
 
     taus = np.atleast_1d(np.asarray(lifetimes, dtype=float))
-    if taus.ndim != 1 or taus.size == 0 or np.any(~np.isfinite(taus)) or np.any(taus <= 0.0):
+    if taus.ndim != 1 or taus.size == 0 or np.any(~np.isfinite(taus)):
+        raise ValueError("lifetimes must contain finite values")
+    if not allow_rise_terms and np.any(taus <= 0.0):
         raise ValueError("lifetimes must contain positive finite values")
 
     if amplitudes is None:
@@ -221,7 +231,9 @@ def synthetic_decay(
             amps = np.repeat(amps, taus.size)
         if amps.shape != taus.shape:
             raise ValueError("amplitudes must match lifetimes")
-        if np.any(~np.isfinite(amps)) or np.any(amps < 0.0) or not np.any(amps > 0.0):
+        if np.any(~np.isfinite(amps)):
+            raise ValueError("amplitudes must be finite")
+        if not allow_rise_terms and (np.any(amps < 0.0) or not np.any(amps > 0.0)):
             raise ValueError("amplitudes must be finite, non-negative, and not all zero")
 
     time = (np.arange(n, dtype=float) - int(start_bin)) * float(bin_width)

@@ -21,7 +21,8 @@
           "type": "button_row",
           "buttons": [
             {"label": "➕ Add", "action": "add_row", "description": "Add a lifetime component."},
-            {"label": "➖ Remove", "action": "remove_row", "description": "Remove the selected lifetime component."}
+            {"label": "➖ Remove", "action": "remove_row", "description": "Remove the selected lifetime component."},
+            {"label": "📂 Load", "action": "load_spectrum", "description": "Load a lifetime spectrum from a CSV/text file (interleaved a,τ list or 2-column amplitude/lifetime table)."}
           ]
         }
       ]
