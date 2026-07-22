@@ -25,32 +25,61 @@ and a renderer abstraction designed so the controller and scene stay GUI-free.
 # Command surface (`cmd`)
 
 The command layer (`chisurf/plugins/chimol/chimol/cmd/`) mirrors a subset of the
-PyMOL `cmd` API and is grouped by concern: `core`, `command`, `loader`,
-`rendering`, `selection`, `sele_parser`, `measurements`, `editing`, `exporting`,
-`animation`, `lifecycle`, `rmf`. Parity is tracked against PyMOL in tiers; the
-following are implemented:
+PyMOL `cmd` API. It is a **declarative, signature-driven command language**
+modelled on PyMOL's four-piece design (registry → driver → tokenizer → binder),
+adapted to Python introspection:
 
-- **Shell & IO** — `@script` execution, `help`/`load`/`open`/`fetch`,
-  `objects`/`get_names`, error routing.
+- **`registry.py`** — a `@command(name, *, aliases=(), mode=...)` decorator tags
+  a real-signature method; `collect_commands(instance)` walks the MRO and builds a
+  `{name → CommandSpec}` registry plus a `Shortcut` minimal-unique-prefix index
+  (so `zo`→`zoom`).
+- **`argparse2.py`** — the generic `tokenize(arg_str, mode)` (comma/keyword/
+  bracket/quote-aware, with `raw1`/`raw2` verbatim-tail modes for
+  `alter`/`iterate`) and `bind_and_call(func, pairs)` which maps positionals/
+  keywords to the method's `inspect.signature` and coerces each string per the
+  parameter annotation (`int`/`float`/`bool`/`str`/`Selection`, PEP-563 aware).
+- **`base.py:do()`** — the single driver: `@script` execution, then resolve the
+  head token in the registry and tokenize+bind+call. There is **one** dispatch
+  path; the legacy `_cmd_x(args: List[str])` + `_mixin_commands()` pattern and its
+  adapter have been fully removed.
+
+Adding a command is therefore writing one annotated method
+(`def zoom(self, sel: str = "all", buffer: float = 2.0)`); parsing, keyword args
+(`zoom polymer, buffer=5`), coercion, and the callable Python API all come for
+free. Commands are grouped by concern across `command` (aggregator),
+`base`, `loader`, `rendering`, `selection`, `sele_parser`, `measurements`,
+`editing`, `exporting`, `animation`, `lifecycle`. The former `core.py` monolith
+and the never-registered `rmf.py` mixin were deleted.
+
+Implemented tiers:
+
+- **Shell & IO** — `@script` execution, `help`/`load`/`open`/`fetch`/`fetch_emdb`/
+  `fetch_ihm`, `objects`/`get_names`, `quit`/`exit`, error routing.
 - **Camera verbs** — distinct `center` / `orient` / `zoom` / `reset` semantics.
 - **Color** — modes plus `byelement`, `bychain`, `spectrum`, and named colors;
   per-selection RGBA overrides.
 - **Selection grammar** — `sele_parser.py` is a recursive-descent
   tokenizer + AST parser + evaluator supporting `all`/`none`/`resi`/`resn`/
   `name`/`chain`/`elem`/`and`/`or`/`not`/`within`/`around`/`byres`/`expand` and
-  `/object/chain/resi/name` macro syntax; integrated into the selection mixin.
+  `/object/chain/resi/name` macro syntax. **The combined `TOKEN_REGEX` must not
+  carry inline `(?i)` flags** — once joined with `|` they land mid-expression and
+  Python 3.11+ refuses to compile the pattern, which silently broke every
+  selection evaluation (color/select/alter/remove/align on real structures);
+  case-insensitivity lives in a single `re.IGNORECASE` on `re.compile`.
 - **Per-atom representations** — `ball_mask` / `sticks_mask` are per-atom masks,
   so `show sticks, name CA` and `hide spheres, resi 1-20` work at atom
   granularity.
-- **Measurement overlays** — `distance` / `angle` / `dihedral` create persistent
+- **Measurement & analysis** — `distance` / `angle` / `dihedral` create persistent
   3D overlays (dashed lines + floating value labels) via a `SceneObject`
-  `kind="text"` geometry, not console-only strings.
+  `kind="text"` geometry; `rms`/`rms_cur` and `align`/`super` (iterative
+  outlier-rejection Kabsch, with typed `cutoff`/`cycles` keyword args) are present.
+- **Object lifecycle** — `delete`/`reinitialize`/`copy`/`split_chains`, plus
+  `set_name` (rename) and `count_atoms` (selection → atom count).
 
 Known remaining gaps (higher PyMOL tiers): boolean-rich per-object `set`/`get`
 coverage, chemistry-light editing (`bond`/`h_add`), volume/map objects, and the
-movie/animation and analysis (`align`/`super`/`rms`) systems are only partially
-present. Keep unimplemented command names registered so the CLI emits a friendly
-"not yet implemented" message instead of `KeyError`.
+movie keyframe system (`mdo`/`mview` are stubbed). Keep unimplemented command
+names registered so the CLI emits a friendly "not yet implemented" message.
 
 # Renderer abstraction (design contract)
 
