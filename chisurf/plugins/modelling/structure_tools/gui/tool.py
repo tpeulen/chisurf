@@ -114,7 +114,7 @@ def _docking(parent: "StructureToolsTool") -> QtWidgets.QWidget:
 
 
 def _kappa2(parent: "StructureToolsTool") -> QtWidgets.QWidget:
-    from chisurf.plugins.kappa2_dist.gui.tool import Kappa2Dist
+    from chisurf.plugins.calculator.kappa2_dist.gui.tool import Kappa2Dist
     return Kappa2Dist()
 
 

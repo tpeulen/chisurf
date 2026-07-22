@@ -513,7 +513,7 @@ def open_experimental_k2_dialog(
     Slow mode: use full k2 distribution as orientation spectrum.
     """
     try:
-        from chisurf.plugins.kappa2_dist import Kappa2Dist
+        from chisurf.plugins.calculator.kappa2_dist import Kappa2Dist
     except Exception:
         QtWidgets.QMessageBox.critical(
             parent,

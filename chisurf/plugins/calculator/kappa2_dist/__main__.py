@@ -6,15 +6,15 @@ CLI usage
 
 Single computation from JSON parameter file::
 
-    python -m chisurf.plugins.kappa2_dist --params params.json
+    python -m chisurf.plugins.calculator.kappa2_dist --params params.json
 
 Batch computation from a JSON array of parameter sets::
 
-    python -m chisurf.plugins.kappa2_dist --batch batch.json --output results/
+    python -m chisurf.plugins.calculator.kappa2_dist --batch batch.json --output results/
 
 Interactive GUI::
 
-    python -m chisurf.plugins.kappa2_dist
+    python -m chisurf.plugins.calculator.kappa2_dist
 """
 
 from __future__ import annotations

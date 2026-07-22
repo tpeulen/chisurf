@@ -82,6 +82,16 @@ def default_calculators() -> list[CalculatorEntry]:
             widget="chisurf.plugins.calculator.phasor_calculator.gui.tool:PhasorCalculatorTool",
             icon="◐",
         ),
+        CalculatorEntry(
+            id="kappa2_dist",
+            label="κ² distribution",
+            description=(
+                "Orientation-factor distribution p(κ²) for FRET — wobbling-in-cone, "
+                "diffusion-with-traps and isotropic models with apparent-distance error."
+            ),
+            widget="chisurf.plugins.calculator.kappa2_dist.gui.tool:Kappa2Dist",
+            icon="🎯",
+        ),
     ]
 
 

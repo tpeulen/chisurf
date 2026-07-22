@@ -14,10 +14,10 @@ FRET-line calculators from other groups) into one two-panel launcher.
 
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
-| `calculator/hub` | Main:Tools:Calculators | Hub that groups the FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view. |
+| `calculator/hub` | Main:Tools:Calculators | Hub that groups the FRET-line, FRET/homoFRET, FCS, phasor-plot and κ²-distribution calculators and embeds the selected one in a two-panel view. |
 | `calculator/fret_calculator` | Main:Tools:FRET-Calculator | Combined heteroFRET and homoFRET parameter calculator (R₀, E, distances, anisotropy). |
 | `calculator/phasor_calculator` | Main:Tools:Phasor-Calculator | Interactive phasor plot: universal semicircle with reference-lifetime grid, a FRET trajectory and a two-component mixing line; declarative AutoForm view. |
-| `kappa2_dist` | Structure:FRET:Kappa2 Distribution | Compute/visualise the κ² orientation-factor distribution (WIC, DWT, isotropic); shared with the modelling group. |
+| `calculator/kappa2_dist` | Structure:FRET:Kappa2 Distribution | Compute/visualise the κ² orientation-factor distribution (WIC, DWT, isotropic); AutoForm view, also embedded in the hub; shared with the modelling group. |
 
 The hub demonstrates the plugin composition pattern: it discovers sibling calculators
 via their `manifest.json` and embeds each one's panel rather than reimplementing them.

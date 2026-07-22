@@ -1,7 +1,7 @@
 import numpy as np
 import chisurf.core.models
 from chisurf.core.fitting.parameter import FittingParameter
-from chisurf.plugins.kappa2_dist.k2dfun import kappasq, s2delta
+from chisurf.core.fluorescence.anisotropy.kappa2 import kappasq, s2delta
 
 class AnisotropyToKappaModel(chisurf.core.fitting.parameter.FittingParameterGroup):
     """Calculate the orientation factor kappa^2 from anisotropy values.

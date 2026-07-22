@@ -11,7 +11,7 @@ TOPDIR = pathlib.Path(__file__).parent.parent
 
 utils.set_search_paths(TOPDIR)
 
-from chisurf.plugins.kappa2_dist.k2dgui import Kappa2Dist
+from chisurf.plugins.calculator.kappa2_dist.k2dgui import Kappa2Dist
 
 
 app = QApplication(sys.argv)

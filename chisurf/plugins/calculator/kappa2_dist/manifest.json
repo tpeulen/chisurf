@@ -22,9 +22,9 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.kappa2_dist.k2dgui:Kappa2Dist",
-    "cli": "chisurf.plugins.kappa2_dist.__main__:main",
-    "services": "chisurf.plugins.kappa2_dist.backend.services:register_services"
+    "gui": "chisurf.plugins.calculator.kappa2_dist.k2dgui:Kappa2Dist",
+    "cli": "chisurf.plugins.calculator.kappa2_dist.__main__:main",
+    "services": "chisurf.plugins.calculator.kappa2_dist.backend.services:register_services"
   },
   "rpc_methods": [
     {"name": "kappa2_dist.compute"}

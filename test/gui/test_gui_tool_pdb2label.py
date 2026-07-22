@@ -29,7 +29,7 @@ class Tests(unittest.TestCase):
         """
         Create the GUI
         """
-        from chisurf.plugins.kappa2_dist.k2dgui import Kappa2Dist
+        from chisurf.plugins.calculator.kappa2_dist.k2dgui import Kappa2Dist
         self.form = Kappa2Dist()
 
     def test_defaults(self):

@@ -10,8 +10,8 @@ timestamp: '2026-07-05T00:00:00Z'
 The modelling group turns fluorescence observables (FRET efficiencies, anisotropies,
 diffusion coefficients) into and out of molecular structure. Most tools live under
 `chisurf/plugins/modelling/`; two closely related FRET-modelling plugins
-(`fret_line`, `kappa2_dist`) sit at the plugin root but belong to the same domain and
-are re-exposed through the `structure_tools` toolbox.
+(`fret_line` at the plugin root, `calculator/kappa2_dist` under the calculators group)
+belong to the same domain and are re-exposed through the `structure_tools` toolbox.
 
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ are re-exposed through the `structure_tools` toolbox.
 | `modelling/proteinmc` | (no manifest) | Protein Monte-Carlo helpers; a first-class module still lacking a `manifest.json` (see steering note). |
 | `modelling/structure_tools` | Structure:Structure Tools | Unified toolbox aggregating FPS JSON Editor, FRET Docking, Kappa2 Distribution, QuEst, HydroPro and Trajectory Tools into one entry point. |
 | `fret_line` | Spectroscopy:FRET:FRET Line Generator | Compute static, dynamic, WLC and mixture FRET lines for overlay on smFRET 2D histograms in ndxplorer. |
-| `kappa2_dist` | Structure:FRET:Kappa2 Distribution | Compute and visualise the κ² orientation-factor distribution (WIC, DWT, isotropic models). |
+| `calculator/kappa2_dist` | Structure:FRET:Kappa2 Distribution | Compute and visualise the κ² orientation-factor distribution (WIC, DWT, isotropic models); lives under the calculators group and is embedded in the calculators hub. |
 
 Integration follows the standard plugin contract ([plugin system](/architecture/plugin-system.md),
 [Plugins target](/specs/plugins.md)): each plugin is discovered by its `manifest.json`,
