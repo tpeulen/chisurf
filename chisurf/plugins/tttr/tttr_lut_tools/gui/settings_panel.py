@@ -94,63 +94,21 @@ def logify(y_values: np.ndarray) -> np.ndarray:
     return f32(np.log10(np.maximum(y_values, 0) + EPS))
 
 
-class FileListWidget(QtWidgets.QListWidget):
-    """List widget that accepts dropped TTTR file paths."""
+class _FileListModel:
+    """Adapter exposing the TTTR file list to the unified ``PathListWidget``.
 
-    filesChanged = QtCore.Signal()
+    ``PathListWidget`` reads/writes ``files`` (list[str]) and calls ``update()`` on
+    every change; ``on_change`` forwards that to the panel's ``_files_changed`` so
+    the loaded TTTR files stay in sync with the list.
+    """
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        """Create the file list widget."""
-        super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DropOnly)
-        self.setDropIndicatorShown(True)
-        self.setDefaultDropAction(QtCore.Qt.CopyAction)
-        self.setMinimumHeight(60)
-        self.setAlternatingRowColors(True)
+    def __init__(self, on_change=None) -> None:
+        self.files: list[str] = []
+        self._on_change = on_change
 
-    def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
-        """Accept dropped URL lists."""
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def dragMoveEvent(self, event: QtGui.QDragMoveEvent) -> None:
-        """Accept drag moves."""
-        event.acceptProposedAction()
-
-    def dropEvent(self, event: QtGui.QDropEvent) -> None:
-        """Add valid TTTR files from a drop event."""
-        if event.mimeData().hasUrls():
-            paths = []
-            for url in event.mimeData().urls():
-                path = url.toLocalFile()
-                if path and os.path.isfile(path):
-                    ext = os.path.splitext(path)[1].lower()
-                    if ext in VALID_EXTS:
-                        paths.append(path)
-            if paths:
-                self.add_files(paths)
-        event.acceptProposedAction()
-
-    def add_files(self, paths: list[str]) -> None:
-        """Add files to the list without duplicates."""
-        existing = {self.item(index).text() for index in range(self.count())}
-        for path in paths:
-            if path not in existing:
-                self.addItem(path)
-        self.filesChanged.emit()
-
-    def current_paths(self) -> list[str]:
-        """Return all paths currently listed."""
-        return [self.item(index).text() for index in range(self.count())]
-
-    def clear_files(self) -> None:
-        """Clear all file entries."""
-        self.clear()
-        self.filesChanged.emit()
+    def update(self) -> None:
+        if self._on_change is not None:
+            self._on_change()
 
 
 class LUTListWidget(QtWidgets.QListWidget):
@@ -465,17 +423,16 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
 
     def _build_controls(self, panel: QtWidgets.QWidget) -> None:
         """Build the settings control panel."""
-        self.file_list = FileListWidget()
-        self.file_list.setMinimumHeight(45)
-        self.file_list.setMaximumHeight(70)
-        self.file_list.filesChanged.connect(self._files_changed)
+        # Unified AutoForm file/folder list (drag-drop + Files/Folder/Database/
+        # Remove/Clear + MMFDB); replaces the hand-rolled FileListWidget + buttons.
+        from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 
-        self.btn_add_files = QtWidgets.QToolButton()
-        self.btn_add_files.setText("📂 Add")
-        self.btn_clear_files = QtWidgets.QToolButton()
-        self.btn_clear_files.setText("🧹 Clear")
-        self.btn_add_files.clicked.connect(self._add_files_dialog)
-        self.btn_clear_files.clicked.connect(self._clear_files)
+        self._file_model = _FileListModel(on_change=self._files_changed)
+        self.file_list = PathListWidget(
+            self._file_model, "files", extensions=sorted(VALID_EXTS)
+        )
+        self.file_list.setMinimumHeight(45)
+        self.file_list.setMaximumHeight(140)
 
         self.reading_combo = QtWidgets.QComboBox()
         self.reading_combo.addItem("Auto", None)
@@ -550,11 +507,6 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         files_group = QtWidgets.QGroupBox("Files")
         files_layout = QtWidgets.QVBoxLayout(files_group)
         files_layout.addWidget(self.file_list)
-        file_buttons = QtWidgets.QHBoxLayout()
-        file_buttons.addWidget(self.btn_add_files)
-        file_buttons.addWidget(self.btn_clear_files)
-        file_buttons.addStretch(1)
-        files_layout.addLayout(file_buttons)
         main_layout.addWidget(files_group)
 
         io_group = QtWidgets.QGroupBox("Reading / LUTs")
@@ -629,25 +581,9 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         """Apply native log mode to the histogram."""
         self.hist_plot.setLogMode(x=False, y=self.use_native_log_axis)
 
-    def _add_files_dialog(self) -> None:
-        """Open a TTTR file dialog."""
-        files, _ = QtWidgets.QFileDialog.getOpenFileNames(
-            self,
-            "Select TTTR files",
-            "",
-            "TTTR files (*.spc *.ht3 *.ptu *.phu *.photonhdf5);;All files (*)",
-        )
-        if files:
-            self.file_list.add_files(files)
-
-    def _clear_files(self) -> None:
-        """Clear TTTR files."""
-        self.file_list.clear_files()
-        self._unload_all()
-
     def _files_changed(self) -> None:
         """Reload files when the file list changes."""
-        paths = self.file_list.current_paths()
+        paths = self.file_list.paths()
         if not paths:
             self._unload_all()
             return
@@ -958,7 +894,7 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
     def _on_reading_routine_changed(self, index: int) -> None:
         """Reload files when the reading routine changes."""
         self.reading_routine = self.reading_combo.itemData(index)
-        paths = self.file_list.current_paths()
+        paths = self.file_list.paths()
         if paths:
             self._files_changed()
 
