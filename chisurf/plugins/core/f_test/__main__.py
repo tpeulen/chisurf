@@ -1,12 +1,13 @@
 import sys
-from chisurf.gui import QtWidgets
 
-from chisurf.plugins.core.f_test.f_calculator import FTestWidget
+from chisurf.gui import QtWidgets
+from chisurf.plugins.core.f_test.gui.tool import FTestTool
 
 
 def main():
+    """Launch the F-test / χ²-max calculator as a standalone window."""
     app = QtWidgets.QApplication(sys.argv)
-    win = FTestWidget()
+    win = FTestTool()
     win.show()
     sys.exit(app.exec_())
 
