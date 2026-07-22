@@ -1898,7 +1898,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # Optimize target (hyperparameter optimisation) and its iteration count
         # live in the top toolbar (built below), not in this grid.
         self.toolButton_hyper_opt = Q.QToolButton()
-        self.toolButton_hyper_opt.setText("🎯 Optimize")
+        self.toolButton_hyper_opt.setText("🎯 Opt")
         self.toolButton_hyper_opt.setToolTip(
             "Optimise the fit hyperparameters (shift / IRF window / binning) over "
             "the chosen number of iterations, then refit."
@@ -1992,6 +1992,15 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             pass
         if self.comboBox_fit_model.count() == 0:
             self.comboBox_fit_model.addItem("Single lifetime + anisotropy (Fit23)", "fit23")
+        # A multi-exponential *tail* fit (tttrlib DecayFitNExp with tail_start):
+        # fits the decay tail only, no IRF deconvolution — the standard approach
+        # for FRET sensitised-emission decays whose rise is not a simple IRF.
+        self.comboBox_fit_model.addItem("Tail fit (multi-exp)", "tail")
+        self.comboBox_fit_model.setItemData(
+            self.comboBox_fit_model.count() - 1,
+            "Multi-exponential fit of the decay tail only (no IRF deconvolution); "
+            "for FRET sensitised emission.", QtCore.Qt.ToolTipRole,
+        )
         self.comboBox_fit_model.setToolTip(
             "Lifetime fit model (from the tttrlib registry). fit23 fits one "
             "lifetime with anisotropy; other models are selectable as they are wired."
@@ -2028,7 +2037,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # IRF & Background step, and a note that a measured IRF/background gives
         # better lifetimes. Compact single row.
         self.toolButton_auto_optimize = Q.QToolButton()
-        self.toolButton_auto_optimize.setText("⚡ Auto-optimize")
+        self.toolButton_auto_optimize.setText("⚡ Auto")
         self.toolButton_auto_optimize.setToolTip(
             "Auto-select the micro-time binning (count- and IRF-resolution-aware) "
             "and the fit window (the decay's filled region), then refit. Uses the "
@@ -2039,7 +2048,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         _opt_font.setBold(True)
         self.toolButton_auto_optimize.setFont(_opt_font)
         self.toolButton_auto_irf = Q.QToolButton()
-        self.toolButton_auto_irf.setText("✨ Auto IRF/BG")
+        self.toolButton_auto_irf.setText("✨ Auto IRF")
         self.toolButton_auto_irf.setToolTip(
             "Estimate the IRF and background from this file's non-burst photons "
             "and refit. Quick, but a measured IRF/background is more reliable."
@@ -2048,8 +2057,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # extracted prompt (suppresses the fluorescent-background tail) and the
         # raw experimental prompt. Changing it re-runs the auto-extraction.
         self.comboBox_irf_model = Q.QComboBox()
-        self.comboBox_irf_model.addItem("Gaussian (fitted)", "gaussian")
-        self.comboBox_irf_model.addItem("Skewed Gaussian", "skewed")
+        self.comboBox_irf_model.addItem("Gaussian", "gaussian")
+        self.comboBox_irf_model.addItem("Skewed", "skewed")
         self.comboBox_irf_model.addItem("Experimental", "experimental")
         self.comboBox_irf_model.setToolTip(
             "IRF model used by Auto IRF/BG:\n"
@@ -2060,7 +2069,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             "• Experimental: the raw baseline-subtracted non-burst histogram."
         )
         self.toolButton_goto_irf = Q.QToolButton()
-        self.toolButton_goto_irf.setText("📁 IRF/BG…")
+        self.toolButton_goto_irf.setText("📁 IRF step…")
         self.toolButton_goto_irf.setToolTip(
             "Open the IRF & Background step to use a measured IRF/background."
         )
@@ -2078,6 +2087,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             Q.QSpacerItem(20, 40, Q.QSizePolicy.Minimum, Q.QSizePolicy.Expanding), 5, 0
         )
         self.pushButton_process_bursts = Q.QPushButton("▶ Run")
+        self.pushButton_process_bursts.setToolTip(
+            "Process all bursts with the current settings and fit each one."
+        )
         self.pushButton_process_bursts.setSizePolicy(
             Q.QSizePolicy.Fixed, Q.QSizePolicy.Fixed
         )
@@ -2799,7 +2811,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             cs.logging.info("MLE fit skipped: %s", msg)
             self._set_status(f"Cannot fit: {msg}")
             return
-        res = self.fit(data=d, initial_values=x0, fixed=fixed)
+        if self.fit_model == "tail":
+            res = self._run_tail_fit(d, det)
+        else:
+            res = self.fit(data=d, initial_values=x0, fixed=fixed)
         self.plot_fit_result(res)
         diverged = self._fit_diverged(res)
         if diverged is None:
@@ -2811,7 +2826,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         """Human-readable reason the fit cannot run, or None when it can."""
         if not det:
             return "no detector selected"
-        if det not in self.irf_np or np.asarray(self.irf_np.get(det, [])).size == 0:
+        # The tail fit needs no IRF (the prompt is excluded, not deconvolved).
+        if self.fit_model != "tail" and (
+                det not in self.irf_np or np.asarray(self.irf_np.get(det, [])).size == 0):
             return f"no IRF for detector {det!r} (load or send an IRF)"
         if det not in self.bg_np or np.asarray(self.bg_np.get(det, [])).size == 0:
             return f"no background for detector {det!r}"
@@ -2848,6 +2865,61 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             return "model amplitude diverged — gamma is unconstrained; " \
                    "re-fix gamma or use a measured IRF/background"
         return None
+
+    def _run_tail_fit(self, d, det):
+        """Fit the decay *tail* with ``DecayFitNExp`` (no IRF deconvolution).
+
+        The tail fit is a different estimator family from the fit2x models: each
+        exponential is a pure decay from ``tail_start`` and the prompt/rise is
+        excluded, which is the standard treatment for FRET sensitised-emission
+        decays. The recovered lifetimes/amplitudes are read from the
+        registry-driven editor's ``tail_start`` + ``tauN`` rows.
+
+        Returns a result dict shaped like the fit2x path (``x`` in schema order,
+        ``twoIstar`` = negative log-likelihood) and stores a lightweight view on
+        ``self._fit`` so :meth:`plot_fit_result` reads ``.data``/``.model``
+        unchanged.
+        """
+        from types import SimpleNamespace
+
+        names = self._fit_param_names("tail")           # tail_start, tau1, tau2, …
+        p = getattr(self, "_dyn_params", {}) or {}
+        tail_start = int(round(float(p["tail_start"]["spin"].value())))
+        tau_names = [nm for nm in names if nm != "tail_start"]
+        lifetimes = [float(p[nm]["spin"].value()) for nm in tau_names]
+        fixed = [1 if p[nm]["fix"].isChecked() else 0 for nm in tau_names]
+        amps = [1.0 / len(lifetimes)] * len(lifetimes) if lifetimes else []
+
+        d = np.asarray(d, dtype=np.float64)
+        n = len(d) // 2
+        bg_full = np.asarray(self.bg, dtype=np.float64)
+        bg_half = bg_full[:n] if bg_full.size >= n else np.zeros(n, dtype=np.float64)
+        irf_half = np.zeros(n, dtype=np.float64)          # ignored in tail mode
+
+        opts = tttrlib.DecayFitNExpOptions()
+        opts.dt = float(self.dt_effective)
+        opts.period = float(self.excitation_period)
+        opts.tail_start = int(tail_start)
+        opts.include_model = True
+
+        res = tttrlib.DecayFitNExp.fit(
+            list(d),
+            list(irf_half),
+            list(bg_half),
+            [float(x) for x in lifetimes],
+            [float(x) for x in amps],
+            [int(x) for x in fixed],
+            opts,
+        )
+        model = np.asarray(res.model, dtype=float)
+        if model.size != d.size:
+            model = np.zeros_like(d)
+        # Expose the fit through the same interface the fit2x path uses.
+        self._fit = SimpleNamespace(data=d, model=model)
+        recovered = list(res.lifetimes) if getattr(res, "lifetimes", None) else lifetimes
+        # x in schema order: tail_start then the recovered lifetimes.
+        x = [float(tail_start)] + [float(v) for v in recovered]
+        return {"x": x, "twoIstar": float(getattr(res, "negative_log_likelihood", 0.0))}
 
     @property
     def fit_model(self) -> str:
@@ -2897,31 +2969,65 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             pass
         return tttrlib.Fit23
 
-    def _fit_param_names(self, model: str) -> list:
-        """Ordered parameter names for ``model`` from the tttrlib schema.
+    @staticmethod
+    def _tail_schema() -> dict:
+        """Local schema for the multi-exponential tail fit (not a fit2x model).
 
-        Uses the schema ``properties`` order, which the registry guarantees to
-        match the estimator's ``initial_values`` layout (so the vector we build
-        is exactly the length the fit expects — e.g. fit25 includes r0). Falls
-        back to ``required`` then to the fit23 set.
+        The tail fit is ``DecayFitNExp`` with ``tail_start`` — a different fitter
+        family, so its parameters (a tail-start channel + N lifetimes) are
+        described here rather than in tttrlib's fit2x registry.
         """
+        return {
+            "properties": {
+                "tail_start": {
+                    "title": "Tail start (ch.)", "default": 20.0,
+                    "minimum": 0.0, "maximum": 100000.0, "fixed_default": True,
+                    "description": "First channel of the tail; earlier channels "
+                                   "(the rise/prompt) are excluded from the fit.",
+                },
+                "tau1": {
+                    "title": "Lifetime τ1 (ns)", "default": 2.0,
+                    "minimum": 0.01, "maximum": 100.0, "fixed_default": False,
+                    "description": "First tail lifetime.",
+                },
+                "tau2": {
+                    "title": "Lifetime τ2 (ns)", "default": 0.5,
+                    "minimum": 0.01, "maximum": 100.0, "fixed_default": False,
+                    "description": "Second tail lifetime (fix or set equal to τ1 "
+                                   "for a mono-exponential tail).",
+                },
+            },
+            "required": ["tail_start", "tau1", "tau2"],
+        }
+
+    def _model_schema(self, model: str) -> dict:
+        """Parameter schema for ``model`` — tttrlib fit2x registry, or tail."""
+        if model == "tail":
+            return self._tail_schema()
         try:
             from chisurf.core import tttrlib_registry as _reg
-            schema = _reg.describe(_reg.FIT_MODEL, model).get("params_schema") or {}
-            props = schema.get("properties")
-            if props:
-                return list(props.keys())
-            required = schema.get("required")
-            if required:
-                return list(required)
+            return _reg.describe(_reg.FIT_MODEL, model).get("params_schema") or {}
         except Exception:
-            pass
+            return {}
+
+    def _fit_param_names(self, model: str) -> list:
+        """Ordered parameter names for ``model`` from its schema.
+
+        Uses the schema ``properties`` order, which (for fit2x) the registry
+        guarantees to match the estimator's ``initial_values`` layout. Falls back
+        to ``required`` then to the fit23 set.
+        """
+        schema = self._model_schema(model)
+        props = schema.get("properties")
+        if props:
+            return list(props.keys())
+        required = schema.get("required")
+        if required:
+            return list(required)
         return ["tau", "gamma", "r0", "rho"]
 
     def _rebuild_dyn_params(self, model: str) -> None:
-        """(Re)build the registry-driven parameter rows for a non-fit23 model."""
-        from chisurf.core import tttrlib_registry as _reg
-
+        """(Re)build the schema-driven parameter rows for a non-fit23 model."""
         # clear
         while self._dyn_grid.count():
             item = self._dyn_grid.takeAt(0)
@@ -2931,11 +3037,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 w.deleteLater()
         self._dyn_params = {}
 
-        schema = {}
-        try:
-            schema = _reg.describe(_reg.FIT_MODEL, model).get("params_schema") or {}
-        except Exception:
-            pass
+        schema = self._model_schema(model)
         props = schema.get("properties") or {}
         self._dyn_grid.addWidget(QtWidgets.QLabel("Initial value"), 0, 1)
         _fh = QtWidgets.QLabel("F"); _fh.setToolTip("Fix parameter")
@@ -3314,8 +3416,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         sb, eb = self.micro_time_range
 
         # only plot if we actually loaded IRF *and* BG for this detector
+        # (the tail fit needs no IRF, so require only BG there)
         det = self.current_detector
-        if det not in self.irf_np or det not in self.bg_np:
+        if det not in self.bg_np:
+            return
+        if self.fit_model != "tail" and det not in self.irf_np:
             return
 
         # plot data and model in the bottom panel, but only within channel-specific ranges
@@ -3377,7 +3482,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         irf_rng = _overlay(irf_rng)
         bg_rng = _overlay(bg_rng)
 
-        self.combined_plot.plot(irf_rng, pen='r', name='IRF')
+        # The tail fit does not deconvolve the IRF, so an IRF overlay would be
+        # misleading (and may be a synthetic fallback of the wrong length).
+        if self.fit_model != "tail":
+            self.combined_plot.plot(irf_rng, pen='r', name='IRF')
         self.combined_plot.plot(bg_rng, pen='b', name='Background')
 
         # compute & plot weighted residuals

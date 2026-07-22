@@ -182,6 +182,47 @@ def test_auto_extract_lifetime_matches_model_free_estimate(fitted_wizard):
         )
 
 
+def test_tail_fit_recovers_a_plausible_lifetime(fitted_wizard):
+    """The multi-exponential tail fit runs from the wizard and recovers a tau.
+
+    The tail model (``DecayFitNExp`` with ``tail_start``) is a different
+    estimator family from the fit2x models: it fits pure exponentials from a
+    start channel with no IRF deconvolution — the standard treatment for FRET
+    sensitised-emission decays. Selecting it must rebuild the schema-driven
+    editor (a ``tail_start`` channel + lifetime rows), fit, and land a physical
+    lifetime in the result field.
+    """
+    from qtpy import QtWidgets
+
+    w = fitted_wizard
+    w.comboBox_window.setCurrentText("green")
+    QtWidgets.QApplication.processEvents()
+
+    idx = w.comboBox_fit_model.findData("tail")
+    assert idx >= 0, "tail fit not offered in the model combo"
+    w.comboBox_fit_model.setCurrentIndex(idx)
+    QtWidgets.QApplication.processEvents()
+
+    # the schema-driven editor shows the tail-start channel + a lifetime row
+    assert "tail_start" in w._dyn_params
+    assert any(k.startswith("tau") for k in w._dyn_params)
+
+    # place the tail start inside the filled fit window and refit
+    sb, eb = w.micro_time_range
+    w._dyn_params["tail_start"]["spin"].setValue(float(sb + max(1, (eb - sb) // 5)))
+    w.update_fit()
+    QtWidgets.QApplication.processEvents()
+
+    tau = w._dyn_params["tau1"]["result"].value()
+    assert 0.2 < tau < 8.0, f"tail-fit tau railed/implausible: {tau}"
+
+    # the model curve was drawn (no blank Intensity panel)
+    items = w.combined_plot.listDataItems()
+    assert any(
+        (it.getData()[1] is not None and len(it.getData()[1]) > 0) for it in items
+    )
+
+
 def test_fit_dt_and_period_come_from_the_file_header():
     """The lifetime is only meaningful if ``dt`` and ``period`` are correct.
 

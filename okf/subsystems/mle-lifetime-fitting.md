@@ -45,6 +45,44 @@ The plugin-scaffolding layer (`gui/tool.py`, `gui/view_model.py`, `api/`, `cli/`
 of the two imaging tools is still largely duplicated; a shared `AutoFormMleTool`
 / `MleViewModelBase` base is a pending refactor.
 
+# Model selection is registry-driven, not hardcoded
+
+The burst wizard offers **every fit2x model tttrlib advertises** rather than a
+fixed fit23. The model combo is populated from `tttrlib.registry("fit")` (via
+`chisurf.core.tttrlib_registry`, category `FIT_MODEL`); each entry carries a
+`method` (the estimator class name), a `label`, and a `params_schema` (JSON
+Schema whose `properties` order matches the estimator's `initial_values`
+layout). The wizard:
+
+- builds the estimator from the registry's `method` (`_fit_class`, no
+  model→class table), and
+- rebuilds the parameter editor from the schema (`_rebuild_dyn_params` +
+  `_fit_param_names`, which read the schema `properties`), so fit25's `r0` row
+  appears automatically without a code change.
+
+Only models whose constructor takes the acquisition inputs (`dt`, `irf`,
+`background`, …) are offered — `_is_fit2x_constructible` inspects the class
+signature and **skips** reference-decay models like fit26 (`pattern_1`/
+`pattern_2`). fit23 keeps its authored rows (with the anisotropy extras); every
+other model uses the generic schema-driven editor, the two panels swapping
+visibility. Batch **Run** export is still fit23-only (a guard warns for the
+rest); interactive fit + plot are model-generic.
+
+## Tail fit (a different estimator family)
+
+The combo also offers a **Tail fit (multi-exp)** entry that is *not* a fit2x
+model: it routes to `tttrlib.DecayFitNExp` with `DecayFitNExpOptions.tail_start`
+set. Each component is a pure exponential from `tail_start` with **no IRF
+deconvolution** (the prompt/rise is excluded from the likelihood) — the standard
+treatment for FRET sensitised-emission decays whose rise is not a simple
+instrument response. Its parameters (a `tail_start` channel + N `tauN` lifetimes)
+come from a **local** `_tail_schema()` rather than the fit2x registry, but flow
+through the same schema-driven editor. `_run_tail_fit` builds the options from
+the header `dt`/`period`, calls `DecayFitNExp.fit` (IRF ignored, background is the
+detector's), and exposes the result through the fit2x plotting interface
+(`SimpleNamespace(data, model)`), so `plot_fit_result`/`update_fit_ui` are
+unchanged; the IRF overlay and the IRF-required guard are skipped in tail mode.
+
 # Input contract (the three that actually bite)
 
 ## 1. `dt` and `period` are nanoseconds, taken from the file header
