@@ -429,7 +429,7 @@ class PluginManagerWidget(QWidget):
         icon_source_layout.addLayout(icon_path_layout)
 
         icon_button_layout = QHBoxLayout()
-        self.browse_icon_button = QPushButton("📁 Choose Image")
+        self.browse_icon_button = QPushButton("📂 Choose Image")
         self.browse_icon_button.clicked.connect(self.on_choose_icon_image)
         self.browse_icon_button.setEnabled(False)
         icon_button_layout.addWidget(self.browse_icon_button)

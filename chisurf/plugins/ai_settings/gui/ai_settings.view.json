@@ -75,7 +75,7 @@
           "type": "button_row",
           "buttons": [
             {
-              "label": "⬇ Fetch models",
+              "label": "📥 Fetch models",
               "action": "fetch_models",
               "description": "Query the endpoint's /models list and split it into text and image models."
             }
