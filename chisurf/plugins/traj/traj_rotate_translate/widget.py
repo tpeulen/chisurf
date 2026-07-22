@@ -1,192 +1,104 @@
+"""New-style GUI entrypoint for the Rotate/Translate-Trajectory tool.
+
+:class:`RotateTranslateTrajectoryWidget` is a thin :class:`~qtpy.QtWidgets.QWidget`
+wrapping a single :class:`~chisurf.gui.autoform.AutoForm` bound to the Qt-free
+:class:`~.view_model.RotateTranslateViewModel` and laid out from
+``rotate_translate.view.json``: a trajectory picker, a 3x3 rotation-matrix grid, a
+3-field translation row, a save button, the read stride, and a live log. Replaces
+the former ``rotate_translate_traj.ui`` / hand-built grid layout. Mirrors the
+Align-Trajectory tool.
+"""
+
 from __future__ import annotations
-from chisurf import typing
+
+import logging
 
 import numpy as np
-import tables
-from qtpy import QtCore, QtGui, QtWidgets
-import mdtraj
+from qtpy import QtWidgets
 
-import chisurf.core.decorators
-import chisurf.gui.decorators
-import chisurf.gui.widgets
-from chisurf.core.structure import translate, rotate
+from chisurf.gui.autoform import AutoForm
+
+from . import sections  # noqa: F401  (side effect: register the custom section)
+from .view_model import RotateTranslateViewModel
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+except ImportError:  # pragma: no cover - persistence optional
+    persist_plugin_state = lambda n: lambda c: c  # noqa: E731
 
+logger = logging.getLogger(__name__)
 
 
 @persist_plugin_state("traj_rotate_translate")
 class RotateTranslateTrajectoryWidget(QtWidgets.QWidget):
-    # WORKS
+    """Apply a rigid-body rotation and translation to a trajectory and save it."""
 
     @property
-    def stride(self):
-        return int(self.spinBox.value())
+    def stride(self) -> int:
+        """Frame read-stride (delegates to the view-model)."""
+        return int(self.model.stride)
+
+    @stride.setter
+    def stride(self, value: int) -> None:
+        """Set the frame read-stride through the view-model."""
+        self.model.stride = int(value)
 
     @property
-    def rotation_matrix(self):
-        r = np.array(
-            [
-                [float(self.lineEdit_3.text()), float(self.lineEdit_6.text()), float(self.lineEdit_9.text())],
-                [float(self.lineEdit_4.text()), float(self.lineEdit_7.text()), float(self.lineEdit_10.text())],
-                [float(self.lineEdit_5.text()), float(self.lineEdit_8.text()), float(self.lineEdit_11.text())]
-            ],
-            dtype=np.float32
-        )
-        return r
+    def rotation_matrix(self) -> np.ndarray:
+        """The 3x3 rotation matrix (delegates to the view-model)."""
+        return self.model.rotation_matrix
 
     @rotation_matrix.setter
-    def rotation_matrix(self, v):
-        self.lineEdit_3.setText(str(v[0, 0]))
-        self.lineEdit_6.setText(str(v[0, 1]))
-        self.lineEdit_9.setText(str(v[0, 2]))
-
-        self.lineEdit_4.setText(str(v[1, 0]))
-        self.lineEdit_7.setText(str(v[1, 1]))
-        self.lineEdit_10.setText(str(v[1, 2]))
-
-        self.lineEdit_5.setText(str(v[2, 0]))
-        self.lineEdit_8.setText(str(v[2, 1]))
-        self.lineEdit_11.setText(str(v[2, 2]))
+    def rotation_matrix(self, value) -> None:
+        """Set the rotation matrix through the view-model (re-syncs the editors)."""
+        self.model.set_rotation_matrix(value)
 
     @property
-    def translation_vector(self):
-        r = np.array([
-            float(self.lineEdit_12.text()),
-            float(self.lineEdit_13.text()),
-            float(self.lineEdit_14.text())
-        ], dtype=np.float32)
-        return r / 10.0
+    def translation_vector(self) -> np.ndarray:
+        """The raw 3-vector translation as entered (delegates to the view-model).
+
+        Unlike the historic widget, this returns the raw entered values; the
+        ``/10.0`` Angstrom convention is applied only where the vector is consumed
+        in :meth:`~.view_model.RotateTranslateViewModel.save_rotated_translated`.
+        """
+        return self.model.translation_vector
 
     @translation_vector.setter
-    def translation_vector(
-            self,
-            v: typing.Tuple[float, float, float]
-    ):
-        self.lineEdit_12.setText(str(v[0]))
-        self.lineEdit_13.setText(str(v[1]))
-        self.lineEdit_14.setText(str(v[2]))
+    def translation_vector(self, value) -> None:
+        """Set the raw translation vector through the view-model (re-syncs the editors)."""
+        self.model.set_translation_vector(value)
 
     @property
     def trajectory_filename(self) -> str:
-        return str(self.lineEdit.text())
+        """Path of the currently loaded trajectory (delegates to the view-model)."""
+        return self.model.trajectory_filename
 
     @trajectory_filename.setter
-    def trajectory_filename(
-            self,
-            v: str
-    ):
-        self.lineEdit.setText(str(v))
+    def trajectory_filename(self, value: str) -> None:
+        """Set the trajectory path through the view-model (fires observers)."""
+        self.model.set_trajectory(value)
 
-    def _empty_icon(self):
-        pixmap = QtGui.QPixmap(16, 16)
-        pixmap.fill(QtCore.Qt.transparent)
-        return QtGui.QIcon(pixmap)
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(parent)
+        self.setWindowTitle("Rotate and translate trajectories")
+        self.setMinimumWidth(420)
 
-    def _stretch_layout(self) -> None:
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
-        )
-        self.groupBox.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Minimum
-        )
-        self.groupBox_2.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Minimum
-        )
-        for name in (
-            "lineEdit_3", "lineEdit_4", "lineEdit_5", "lineEdit_6",
-            "lineEdit_7", "lineEdit_8", "lineEdit_9", "lineEdit_10",
-            "lineEdit_11", "lineEdit_12", "lineEdit_13", "lineEdit_14",
-        ):
-            widget = getattr(self, name)
-            widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Fixed)
-        self.gridLayout_3.setRowStretch(1, 0)
-        self.gridLayout_3.setColumnStretch(0, 1)
-        self.gridLayout_3.setColumnStretch(4, 0)
-        self.gridLayout.setColumnStretch(0, 1)
-        self.gridLayout.setColumnStretch(1, 1)
-        self.gridLayout.setColumnStretch(2, 1)
-        self.gridLayout_2.setColumnStretch(0, 1)
-        self.pushButton_2.setIcon(self._empty_icon())
-        self.toolButton.setIcon(self._empty_icon())
+        self.model = RotateTranslateViewModel()
 
-    def _append_log(self, message: str) -> None:
-        timestamp = QtCore.QTime.currentTime().toString("HH:mm:ss")
-        self._log.appendPlainText(f"[{timestamp}] {message}")
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        self.auto_form = AutoForm(self.model)
+        layout.addWidget(self.auto_form)
 
-    @chisurf.gui.decorators.init_with_ui(ui_filename="rotate_translate_traj.ui")
-    def __init__(self, **kwargs):
-        self.trajectory = None
-        self.verbose = kwargs.get('verbose', chisurf.core.settings.cs_settings['verbose'])
-        self.actionOpen_trajectory.triggered.connect(self.onOpenTrajectory)
-        self.actionSave_trajectory.triggered.connect(self.onSaveTrajectory)
-        self._stretch_layout()
-        self._log = QtWidgets.QPlainTextEdit(self)
-        self._log.setReadOnly(True)
-        self._log.setPlaceholderText("Log")
-        self._log.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
-        )
-        self.gridLayout_3.addWidget(self._log, 3, 0, 1, 5)
-        self.gridLayout_3.setRowStretch(3, 1)
-        self._append_log("Ready")
+        self.model.add_observer(self._on_model_event)
 
-    def onOpenTrajectory(self, filename=None):
-        print("onOpenTrajectory")
-        #self.trajectory_filename = str(QtGui.QFileDialog.getOpenFileName(None, 'Open H5-Model file', '', 'H5-files (*.h5)'))
-        filename = chisurf.gui.widgets.get_filename('Open H5-Model file', 'H5-files (*.h5)')
-        self.trajectory_filename = filename
-
-    def onSaveTrajectory(self, target_filename=None):
-        if not target_filename:
-            self._append_log("Save cancelled")
-            return
-
+    def _on_model_event(self, event: str) -> None:
         try:
-            self._append_log(f"Saving rotated/translated trajectory: {target_filename}")
-            translation_vector = self.translation_vector
-            rotation_matrix = self.rotation_matrix
-            stride = self.stride
+            self.auto_form.sync_fields()
+            self.auto_form.refresh_plots()
+        except Exception:  # pragma: no cover - defensive
+            logger.warning("RotateTranslate: field sync failed", exc_info=True)
 
-            if self.verbose:
-                print("Stride: %s" % stride)
-                print("\nRotation Matrix")
-                print(rotation_matrix)
-                print("\nTranslation vector")
-                print(translation_vector)
 
-            first_frame = mdtraj.load_frame(self.trajectory_filename, 0)
-            self._append_log(f"Loaded first frame with {first_frame.n_atoms} atoms")
-            traj_new = mdtraj.Trajectory(xyz=np.empty((1, first_frame.n_atoms, 3)), topology=first_frame.topology)
-            traj_new.save(target_filename)
-
-            chunk_size = 1000
-            table = tables.open_file(target_filename, 'a')
-            try:
-                for i, chunk in enumerate(
-                        mdtraj.iterload(
-                            self.trajectory_filename,
-                            chunk=chunk_size,
-                            stride=stride
-                        )
-                ):
-                    xyz = chunk.xyz.copy()
-                    rotate(xyz, rotation_matrix)
-                    translate(xyz, translation_vector)
-                    table.root.xyz.append(xyz)
-                    table.root.time.append(np.arange(i * chunk_size, i * chunk_size + xyz.shape[0], dtype=np.float32))
-                    if (i + 1) % 10 == 0:
-                        self._append_log(f"Processed {i + 1} chunks")
-            finally:
-                table.close()
-            self._append_log("Save complete")
-        except Exception as exc:
-            self._append_log(f"Save failed: {exc}")
-            raise
+__all__ = ["RotateTranslateTrajectoryWidget"]

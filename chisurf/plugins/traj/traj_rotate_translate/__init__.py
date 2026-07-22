@@ -1,30 +1,24 @@
-"""
-Trajectory Rotation and Translation Tool
+"""Trajectory rotation and translation tool.
 
-This plugin provides functionality to apply rigid body transformations
-(rotations and translations) to molecular dynamics trajectories. Features include:
-- Interactive 3D manipulation of structures
-- Precise numerical control of rotation angles and translation vectors
-- Ability to align structures based on selected atoms or residues
-- Support for multiple coordinate reference frames
-- Batch processing of multiple trajectory files
-
-These transformations are essential for preparing structures for analysis,
-comparing different conformations, or setting up new simulations with
-specific molecular orientations.
+Apply rigid-body transformations (a 3x3 rotation matrix and a translation
+vector) to every frame of a molecular-dynamics trajectory and stream the result
+to a new HDF5 trajectory.
 """
 
-import sys
-from chisurf.plugins.traj.traj_rotate_translate.widget import RotateTranslateTrajectoryWidget
+from __future__ import annotations
+
+from chisurf.plugins.traj.traj_rotate_translate.widget import (
+    RotateTranslateTrajectoryWidget,
+)
 
 # Define the plugin name - this will appear in the Plugins menu
 name = "Structure:Trajectory:Rotate/Translate"
+
+__all__ = ["RotateTranslateTrajectoryWidget"]
 
 
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed
 if __name__ == "plugin":
-    # Create an instance of the RotateTranslateTrajectoryWidget class
     window = RotateTranslateTrajectoryWidget()
-    # Show the window
     window.show()
