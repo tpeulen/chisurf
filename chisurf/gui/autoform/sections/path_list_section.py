@@ -58,7 +58,7 @@ class PathListWidget(QtWidgets.QWidget):
     nothing is selected, so a bound preview always shows something.
 
     ``checkable`` (option) gives every entry a tick box (default *checked*), adds
-    ☑ All / ☐ None buttons, exposes :meth:`checked_paths` and emits
+    ☑️ All / ☐ None buttons, exposes :meth:`checked_paths` and emits
     :attr:`checkChanged` — for tools that batch-process a user-selected subset.
     """
 
@@ -69,6 +69,8 @@ class PathListWidget(QtWidgets.QWidget):
     selectionChanged = QtCore.Signal(list)
     #: emitted (checkable mode) with the list of checked path strings when a tick changes.
     checkChanged = QtCore.Signal(list)
+    #: emitted with dropped path strings the ``path_filter`` rejected (for host warnings).
+    rejectedPaths = QtCore.Signal(list)
 
     def __init__(self, model, target: str, **options):
         super().__init__()
@@ -86,6 +88,8 @@ class PathListWidget(QtWidgets.QWidget):
         self._mmfdb_scope = options.get("mmfdb_scope", "all")
         self._select_first = bool(options.get("select_first", False))
         self._checkable = bool(options.get("checkable", False))
+        # When True a drop *replaces* the list (clear + add) instead of appending.
+        self._replace_on_drop = bool(options.get("replace_on_drop", False))
         # Optional host hook: ``folder_expander(pathlib.Path) -> list[str]`` replaces
         # the default recursive extension-filtered scan when a folder is added
         # (e.g. a burst-analysis folder that maps to specific BUR/BST index files).
@@ -106,6 +110,9 @@ class PathListWidget(QtWidgets.QWidget):
         self._list = PathDropListWidget(path_filter=self._accepts)
         self._list.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self._list.pathsDropped.connect(self._on_dropped)
+        self._list.pathsRejected.connect(
+            lambda paths: self.rejectedPaths.emit([str(p) for p in paths])
+        )
         self._list.itemSelectionChanged.connect(self._emit_selection)
         if self._checkable:
             self._list.itemChanged.connect(self._on_item_changed)
@@ -121,17 +128,17 @@ class PathListWidget(QtWidgets.QWidget):
         if self._mmfdb:
             bar.addWidget(
                 _tool_button(
-                    "🗄 Database",
+                    "🗄️ Database",
                     "Select a dataset from the MMFDB database "
                     "(including S3-backed object stores).",
                     self._add_from_mmfdb,
                 )
             )
         if self._checkable:
-            bar.addWidget(_tool_button("☑ All", "Check all entries.", lambda: self._set_all_checked(True)))
+            bar.addWidget(_tool_button("☑️ All", "Check all entries.", lambda: self._set_all_checked(True)))
             bar.addWidget(_tool_button("☐ None", "Uncheck all entries.", lambda: self._set_all_checked(False)))
         bar.addWidget(_tool_button("➖ Remove", "Remove selected entries.", self._remove_selected))
-        bar.addWidget(_tool_button("🗑 Clear", "Clear the list.", self._clear))
+        bar.addWidget(_tool_button("🗑️ Clear", "Clear the list.", self._clear))
         bar.addStretch(1)
         layout.addLayout(bar)
 
@@ -236,7 +243,11 @@ class PathListWidget(QtWidgets.QWidget):
 
     # ── actions ─────────────────────────────────────────────────────────
     def _on_dropped(self, paths: list) -> None:
-        self._add([str(p) for p in paths])
+        strs = [str(p) for p in paths]
+        if self._replace_on_drop:
+            self._commit(self._expand(strs))  # replace the list with the dropped set
+        else:
+            self._add(strs)
 
     def _add_files(self) -> None:
         files, _ = QtWidgets.QFileDialog.getOpenFileNames(

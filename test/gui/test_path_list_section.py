@@ -160,3 +160,37 @@ def test_path_filter_overrides_extension_check(qapp, tmp_path):
     assert w._accepts("/data/run.ptu") is True
     assert w._accepts("/data/run.ptu.gz") is True     # compressed — suffix is .gz
     assert w._accepts("/data/run.txt") is False
+
+
+def test_replace_on_drop(qapp, tmp_path):
+    """replace_on_drop makes a drop replace the list instead of appending."""
+    fs = [tmp_path / f"f{i}.dat" for i in range(3)]
+    for f in fs:
+        f.write_bytes(b"x")
+    model = _Model()
+    w = PathListWidget(model, "files", extensions=[".dat"], replace_on_drop=True)
+    w.add_paths([fs[0]])  # explicit add still appends
+    w._on_dropped([fs[1], fs[2]])  # a drop replaces
+    assert w.paths() == [str(fs[1]), str(fs[2])]
+
+
+def test_rejected_paths_signal(qapp, tmp_path):
+    """A path_filter rejection on drop surfaces via rejectedPaths (for host warnings)."""
+    from chisurf.gui.widgets.tools.chisurf_dock_tool import PathDropListWidget
+
+    good = tmp_path / "a.ptu"
+    good.write_bytes(b"x")
+    bad = tmp_path / "b.spc"
+    bad.write_bytes(b"x")
+    model = _Model()
+    w = PathListWidget(model, "files", path_filter=lambda p: p.endswith(".ptu"))
+    seen: list[list[str]] = []
+    w.rejectedPaths.connect(seen.append)
+
+    # simulate the low-level widget's split of a drop into accepted/rejected
+    inner = w._list
+    assert isinstance(inner, PathDropListWidget)
+    inner.pathsDropped.emit([good])
+    inner.pathsRejected.emit([bad])
+    assert w.paths() == [str(good)]
+    assert seen and seen[-1] == [str(bad)]

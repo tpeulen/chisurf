@@ -52,11 +52,15 @@ class PathDropListWidget(QtWidgets.QListWidget):
 
     Emits :attr:`pathsDropped` with the dropped local paths (existing only).
     Pass ``path_filter`` to accept only matching paths (e.g. supported file
-    extensions); without it, every existing dropped path is accepted. Previously
-    duplicated verbatim in each transformer tool.
+    extensions); without it, every existing dropped path is accepted. Existing
+    paths the filter *rejects* are reported on :attr:`pathsRejected` so a host can
+    warn about them (e.g. files that need a manual type selection) instead of
+    silently discarding them. Previously duplicated verbatim in each transformer tool.
     """
 
     pathsDropped = QtCore.Signal(list)
+    #: existing dropped paths rejected by ``path_filter`` (empty when none).
+    pathsRejected = QtCore.Signal(list)
 
     def __init__(
         self,
@@ -95,12 +99,24 @@ class PathDropListWidget(QtWidgets.QListWidget):
         event.acceptProposedAction()
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
-        """Emit local paths from dropped URLs."""
-        paths = local_paths_from_event(
-            event, require_exists=True, path_filter=self._path_filter
-        )
-        if paths:
-            self.pathsDropped.emit(paths)
+        """Emit accepted local paths, and any filter-rejected ones separately."""
+        accepted: list[Path] = []
+        rejected: list[Path] = []
+        for url in event.mimeData().urls():
+            local = url.toLocalFile()
+            if not local:
+                continue
+            path = Path(local)
+            if not path.exists():
+                continue
+            if self._path_filter is not None and not self._path_filter(local):
+                rejected.append(path)
+            else:
+                accepted.append(path)
+        if accepted:
+            self.pathsDropped.emit(accepted)
+        if rejected:
+            self.pathsRejected.emit(rejected)
         event.acceptProposedAction()
 
     def supportedDropActions(self) -> QtCore.Qt.DropAction:

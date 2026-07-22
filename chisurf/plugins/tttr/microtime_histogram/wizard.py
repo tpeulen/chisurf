@@ -1,6 +1,5 @@
-import typing
 from pathlib import Path
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtWidgets
 import pyqtgraph as pg
 import numpy as np
 
@@ -18,99 +17,22 @@ VERBOSE = False
 
 SPECIAL_FILETYPES = {'.spc'}
 
-class FileListWidget(QtWidgets.QListWidget):
-    def __init__(self, parent=None, file_added_callback=None):
-        super().__init__(parent)
-        self.parent = parent
-        self.setAcceptDrops(True)
-        self.file_added_callback = file_added_callback  # Store callback function
+class _FileListModel:
+    """Adapter exposing a microtime-histogram file list to the unified ``PathListWidget``.
 
-    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
+    Holds the ``files`` (list[str]) the widget binds to and forwards changes to a
+    host callback. The callback is fired only when the list is *non-empty*, so a
+    programmatic ``clear()`` does not re-trigger the load callbacks (matching the
+    old ``QListWidget.clear`` which never fired them) and avoids a clear cascade.
+    """
 
-    def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
+    def __init__(self, on_change=None):
+        self.files: list[str] = []
+        self._on_change = on_change
 
-    def dropEvent(self, event: QtGui.QDropEvent):
-        # Clear the list when new files are dropped
-        self.clear()
-
-        file_type = self.parent.tttr_filetype
-        if event.mimeData().hasUrls():
-            file_paths = []
-            special_files = []
-            first_file_path = None
-
-            for url in event.mimeData().urls():
-                file_path = url.toLocalFile()
-                path_obj = Path(file_path)
-
-                # Handle directories - look for .bur and .bst files if this is the BID list widget
-                if path_obj.is_dir() and hasattr(self.parent, 'listWidget_BID') and self == self.parent.listWidget_BID:
-                    # Search for .bur files in the directory
-                    bur_files = list(path_obj.glob("**/*.bur"))
-                    # Search for .bst files in the directory
-                    bst_files = list(path_obj.glob("**/*.bst"))
-                    
-                    # Combine both file types
-                    burst_files = bur_files + bst_files
-                    
-                    if burst_files:
-                        for burst_file in burst_files:
-                            file_paths.append(str(burst_file))
-                    else:
-                        chisurf.logging.info(f"No .bur or .bst files found in directory: {file_path}")
-                elif path_obj.is_file():
-                    if first_file_path is None:
-                        first_file_path = file_path
-
-                    if file_path.endswith(".bst"):
-                        suffix = path_obj.stem.rsplit('.', 1)[0]
-                    else:
-                        suffix = path_obj.suffix.lower()
-                    if suffix.lower() in SPECIAL_FILETYPES and file_type == "Auto":
-                        special_files.append(file_path)
-                    else:
-                        file_paths.append(file_path)
-
-            # Do not infer file type from the first file
-            # Container type must be set by user
-
-            # Sort files lexically before adding them
-            file_paths.sort()
-            # Add sorted files
-            for file_path in file_paths:
-                self.add_file(file_path)
-            if special_files:
-                QtWidgets.QMessageBox.warning(
-                    self, "File Type Requires Selection",
-                    "The following files require manual file type selection:\n" + "\n".join(special_files)
-                )
-            # Call the callback function after dropping files
-            if self.file_added_callback:
-                self.file_added_callback()
-            event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def add_file(self, file_path: str):
-        item = QtWidgets.QListWidgetItem(file_path, self)
-        item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-        item.setCheckState(QtCore.Qt.Checked)
-        self.addItem(item)
-
-        # Trigger callback if available
-        if self.file_added_callback:
-            self.file_added_callback()
-
-    def get_selected_files(self) -> list[Path]:
-        return [Path(self.item(i).text()) for i in range(self.count()) if self.item(i).checkState() == QtCore.Qt.Checked]
+    def update(self):
+        if self.files and self._on_change is not None:
+            self._on_change()
 
 
 @persist_plugin_state("microtime_histogram")
@@ -476,7 +398,30 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
     @property
     def selected_files(self):
-        return self.listWidget.get_selected_files()
+        return [Path(p) for p in self.listWidget.checked_paths()]
+
+    def _file_type_ok(self, path: str) -> bool:
+        """Accept a dropped file unless it is a .spc that needs a manual type.
+
+        SPC files carry no container header, so with the container type set to
+        "Auto" they cannot be read without a manual selection; reject them here so
+        they surface via ``rejectedPaths`` (warned below) instead of being queued.
+        """
+        return not (path.lower().endswith(".spc") and self.tttr_filetype == "Auto")
+
+    def _warn_needs_type_selection(self, paths) -> None:
+        """Warn that the given dropped files require a manual file-type selection."""
+        QtWidgets.QMessageBox.warning(
+            self, "File Type Requires Selection",
+            "The following files require manual file type selection:\n"
+            + "\n".join(str(p) for p in paths),
+        )
+
+    @staticmethod
+    def _expand_bid_folder(folder: Path) -> list[str]:
+        """Expand a dropped burstwise folder to its .bur and .bst index files."""
+        burst_files = list(folder.glob("**/*.bur")) + list(folder.glob("**/*.bst"))
+        return [str(f) for f in burst_files]
 
     @chisurf.gui.decorators.init_with_ui("tttr/microtime_histogram/wizard.ui", path=chisurf.core.settings.plugin_path)
     def __init__(self, *args, **kwargs):
@@ -521,10 +466,30 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         self.original_histograms = {}
         self.time_resolution = 1.0
 
-        self.listWidget = FileListWidget(parent=self, file_added_callback=self.update_micro_time_resolution)
+        # Unified AutoForm checkable file lists (drag-drop replaces the list;
+        # Files/Folder/Database/All/None/Remove/Clear + MMFDB) replacing the
+        # hand-rolled FileListWidget. The main list rejects .spc when the
+        # container type is "Auto" (warned via rejectedPaths); the BID list
+        # expands dropped burstwise folders to their BUR/BST index files.
+        from chisurf.gui.autoform.sections.path_list_section import PathListWidget
+
+        self._main_file_model = _FileListModel(self.update_micro_time_resolution)
+        self.listWidget = PathListWidget(
+            self._main_file_model, "files",
+            checkable=True, replace_on_drop=True, add_folders=False,
+            path_filter=self._file_type_ok,
+        )
+        self.listWidget.rejectedPaths.connect(self._warn_needs_type_selection)
         self.verticalLayout_3.addWidget(self.listWidget)
 
-        self.listWidget_BID = FileListWidget(parent=self, file_added_callback=self.load_corresponding_tttr_files)
+        self._bid_file_model = _FileListModel(self.load_corresponding_tttr_files)
+        self.listWidget_BID = PathListWidget(
+            self._bid_file_model, "files",
+            checkable=True, replace_on_drop=True, add_folders=True,
+            path_filter=self._file_type_ok,
+            folder_expander=self._expand_bid_folder,
+        )
+        self.listWidget_BID.rejectedPaths.connect(self._warn_needs_type_selection)
         self.verticalLayout_5.addWidget(self.listWidget_BID)
 
         self.plotWidget = pg.PlotWidget()
@@ -671,7 +636,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         folder location once (for the first file) and then use that folder for all subsequent files.
         The folder is stored as a class attribute for use in saving output files.
         """
-        bid_files = self.listWidget_BID.get_selected_files()
+        bid_files = [Path(p) for p in self.listWidget_BID.checked_paths()]
         tttr_files = set()
         local_tttr_folder = None  # Local variable for processing
 
@@ -728,8 +693,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         # Clear existing TTTR list and add found files
         self.listWidget.clear()
-        for tttr_file in sorted(tttr_files):
-            self.listWidget.add_file(tttr_file.as_posix())
+        self.listWidget.add_paths([f.as_posix() for f in sorted(tttr_files)])
 
         self.update_output_filename()
 
@@ -936,8 +900,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             chisurf.logging.warning(f"No .bst files found in {folder_path}")
         
         # Add the files to the widget
-        for bst_file in bst_files:
-            self.listWidget_BID.add_file(str(bst_file))
+        self.listWidget_BID.add_paths([str(f) for f in bst_files])
         
         # Compute the microtime histogram
         self.compute_microtime_histogram()
@@ -996,7 +959,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             output_filename = f"{out}_({p_channels})-({s_channels}).dat"
 
         # Check if BID/BUR files are being used
-        bid_files = self.listWidget_BID.get_selected_files()
+        bid_files = [Path(p) for p in self.listWidget_BID.checked_paths()]
         if len(bid_files) > 0:
             # Use the directory of the first BID/BUR file
             bid_directory = Path(bid_files[0]).parent
@@ -1386,7 +1349,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             chisurf.logging.info(f"Microtime ranges: {micro_time_ranges}")
 
         # Check for the presence of BID/BUR files
-        bid_files = self.listWidget_BID.get_selected_files()
+        bid_files = [Path(p) for p in self.listWidget_BID.checked_paths()]
         if len(bid_files) > 0:
             # Create a dictionary to store bid ranges with more flexible matching
             bid_ranges = {}
@@ -1530,7 +1493,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         if dialog.exec_():
             selected_files = dialog.selectedFiles()
             for file in selected_files:
-                self.listWidget.add_file(file)
+                self.listWidget.add_paths([file])
 
 
 if __name__ == "plugin":
