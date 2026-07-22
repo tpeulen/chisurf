@@ -1,0 +1,51 @@
+{
+  "_comment": "Declarative AutoForm layout for the Join-Trajectories tool. A single panel with the two trajectory pickers + save-joined button (custom section, H5 browse/drag-drop), the join-mode radio pair, the per-trajectory time-reversal toggles and the read chunk size, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former join_traj.ui.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Join trajectories",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "traj_join_io"
+        },
+        {
+          "type": "choice",
+          "attr": "join_mode",
+          "label": "Join mode",
+          "style": "radio",
+          "options": ["time", "atoms"],
+          "labels": ["By time (append frames)", "By atoms (stack)"],
+          "description": "By time joins the trajectories along the frame axis (same topology, frames appended). By atoms stacks the trajectories along the atom axis (same number of frames, topologies merged)."
+        },
+        {
+          "type": "toggle",
+          "attr": "reverse_traj_1",
+          "label": "Reverse trajectory 1",
+          "description": "Reverse each read chunk of trajectory 1 in time before joining."
+        },
+        {
+          "type": "toggle",
+          "attr": "reverse_traj_2",
+          "label": "Reverse trajectory 2",
+          "description": "Reverse each read chunk of trajectory 2 in time before joining."
+        },
+        {
+          "type": "value",
+          "attr": "chunk_size",
+          "label": "Chunk size",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 9999999,
+          "description": "Trajectories are read piecewise to save memory; the chunk size sets the number of frames per read."
+        },
+        {
+          "type": "info",
+          "source": "log_html",
+          "height": 100
+        }
+      ]
+    }
+  ]
+}
