@@ -1,79 +1,78 @@
-import mdtraj as md
-import numpy as np
-import tables
-from chisurf.gui import QtWidgets
+"""New-style GUI entrypoint for the Align-Trajectory tool.
 
-import chisurf.core.decorators
-import chisurf.gui.decorators
-import chisurf.gui.widgets
+:class:`AlignTrajectoryWidget` is a thin :class:`~qtpy.QtWidgets.QWidget`
+wrapping a single :class:`~chisurf.gui.autoform.AutoForm` bound to the Qt-free
+:class:`~.view_model.AlignTrajectoryViewModel` and laid out from
+``align_trajectory.view.json``: a trajectory picker + save button, the
+atom-selection and stride controls, and a live log. Replaces the former
+``align_trajectory.ui`` / hand-built grid layout. Mirrors the Save-Topology tool.
+"""
+
+from __future__ import annotations
+
+import logging
+
+import numpy as np
+from qtpy import QtWidgets
+
+from chisurf.gui.autoform import AutoForm
+
+from . import sections  # noqa: F401  (side effect: register the custom section)
+from .view_model import AlignTrajectoryViewModel
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+except ImportError:  # pragma: no cover - persistence optional
+    persist_plugin_state = lambda n: lambda c: c  # noqa: E731
 
+logger = logging.getLogger(__name__)
 
 
 @persist_plugin_state("traj_align")
 class AlignTrajectoryWidget(QtWidgets.QWidget):
+    """Superpose a trajectory onto its first frame and save it aligned."""
 
     @property
-    def stride(self):
-        return int(self.spinBox.value())
+    def stride(self) -> int:
+        """Frame read-stride (delegates to the view-model)."""
+        return int(self.model.stride)
 
     @property
-    def atom_list(self):
-        txt = str(self.plainTextEdit.toPlainText())
-        atom_list = np.fromstring(txt, dtype=np.int32, sep=",")
-        return atom_list
+    def atom_list(self) -> np.ndarray:
+        """Parsed atom-id array from the atom selection (delegates to the view-model)."""
+        return self.model.atom_indices()
 
     @property
-    def trajectory_filename(self):
-        return str(self.lineEdit.text())
+    def trajectory_filename(self) -> str:
+        """Path of the currently loaded trajectory (delegates to the view-model)."""
+        return self.model.trajectory_filename
 
     @trajectory_filename.setter
-    def trajectory_filename(self, v):
-        self.lineEdit.setText(str(v))
+    def trajectory_filename(self, value: str) -> None:
+        """Set the trajectory path through the view-model (fires observers)."""
+        self.model.set_trajectory(value)
 
-    @chisurf.gui.decorators.init_with_ui(
-        ui_filename="align_trajectory.ui"
-    )
-    def __init__(self, **kwargs):
-        self.trajectory = None
-        self.actionOpen_trajectory.triggered.connect(self.onOpenTrajectory)
-        self.actionSave_aligned_trajectory.triggered.connect(self.onSaveTrajectory)
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(parent)
+        self.setWindowTitle("Align trajectory")
+        self.setMinimumWidth(420)
 
-    def onOpenTrajectory(
-            self,
-            filename: str = None
-    ):
-        #self.trajectory_filename = str(QtGui.QFileDialog.getOpenFileName(None, 'Open H5-Model file', '', 'H5-files (*.h5)'))
-        if filename is None:
-            filename = chisurf.gui.widgets.get_filename(
-                'Open H5-Model file', 'H5-files (*.h5)'
-            )
-        self.trajectory_filename = filename
+        self.model = AlignTrajectoryViewModel()
 
-    def onSaveTrajectory(
-            self,
-            target_filename: str = None
-    ):
-        if target_filename is None:
-            target_filename = str(QtWidgets.QFileDialog.getSaveFileName(None, 'Save H5-Model file', '', 'H5-files (*.h5)'))[0]
-        filename = self.trajectory_filename
-        atom_indices = self.atom_list
-        stride = self.stride
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        self.auto_form = AutoForm(self.model)
+        layout.addWidget(self.auto_form)
 
-        # Make empty trajectory
-        frame_0 = md.load_frame(filename, 0)
-        target_traj = md.Trajectory(xyz=np.empty((0, frame_0.n_atoms, 3)), topology=frame_0.topology)
-        target_traj.save(target_filename)
+        self.model.add_observer(self._on_model_event)
 
-        chunk_size = 1000
-        table = tables.open_file(target_filename, 'a')
-        for i, chunk in enumerate(md.iterload(filename, chunk=chunk_size, stride=stride)):
-            chunk = chunk.superpose(frame_0, frame=0, atom_indices=atom_indices)
-            xyz = chunk.coordinates.copy()
-            table.root.coordinates.append(xyz)
-            table.root.time.append(np.arange(i * chunk_size, i * chunk_size + xyz.shape[0], dtype=np.float32))
-        table.close()
+    def _on_model_event(self, event: str) -> None:
+        try:
+            self.auto_form.sync_fields()
+            self.auto_form.refresh_plots()
+        except Exception:  # pragma: no cover - defensive
+            logger.warning("AlignTrajectory: field sync failed", exc_info=True)
+
+
+__all__ = ["AlignTrajectoryWidget"]

@@ -1,0 +1,38 @@
+{
+  "_comment": "Declarative AutoForm layout for the Align-Trajectory tool. A single panel with the trajectory picker + save-aligned button (custom section, H5 browse/drag-drop), the atom-selection text field and read stride, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former align_trajectory.ui.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Align trajectory",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "traj_align_io"
+        },
+        {
+          "type": "value",
+          "attr": "atom_selection",
+          "label": "Atom selection",
+          "kind": "text",
+          "placeholder": "e.g. 0, 1, 2, 3 (empty = all atoms)",
+          "description": "Comma-separated atom ids used as the reference set for the superposition. Leave empty to align on all atoms."
+        },
+        {
+          "type": "value",
+          "attr": "stride",
+          "label": "Stride",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 999999,
+          "description": "Read every Nth frame of the source trajectory."
+        },
+        {
+          "type": "info",
+          "source": "log_html",
+          "height": 100
+        }
+      ]
+    }
+  ]
+}
