@@ -148,3 +148,15 @@ def test_checkable_mode(qapp, tmp_path):
     assert w.checked_paths() == []
     w._set_all_checked(True)
     assert len(w.checked_paths()) == 4
+
+
+def test_path_filter_overrides_extension_check(qapp, tmp_path):
+    """A path_filter predicate accepts files a plain suffix test would reject (e.g. .ptu.gz)."""
+    model = _Model()
+    w = PathListWidget(
+        model, "files",
+        path_filter=lambda p: p.lower().endswith((".ptu", ".ptu.gz")),
+    )
+    assert w._accepts("/data/run.ptu") is True
+    assert w._accepts("/data/run.ptu.gz") is True     # compressed — suffix is .gz
+    assert w._accepts("/data/run.txt") is False

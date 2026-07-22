@@ -12,7 +12,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 from chisurf import logging
 from chisurf.gui.misc_helpers import persist_plugin_state
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
-from chisurf.gui.widgets.tools import ChisurfDockTool, PathDropListWidget
+from chisurf.gui.widgets.tools import ChisurfDockTool
 
 from ..api.models import TimeWindowResult
 from .client import TimeWindowClient
@@ -54,6 +54,30 @@ def _is_supported_path(path: str) -> bool:
         or lower.endswith(ext + ".bz2")
         for ext in _supported_exts()
     )
+
+
+class _FileListModel:
+    """Adapter exposing the tool's ``_file_paths`` to the unified ``PathListWidget``.
+
+    ``PathListWidget`` reads/writes ``files`` (list[str]) and calls ``update()`` on
+    every change; this bridges that onto the tool's canonical ``_file_paths``
+    (``list[Path]``, the source of truth for batch processing) and forwards
+    changes to ``_on_files_changed`` so the preview combo stays in sync.
+    """
+
+    def __init__(self, tool: TTTRTimeWindowTool) -> None:
+        self._tool = tool
+
+    @property
+    def files(self) -> list[str]:
+        return [str(p) for p in self._tool._file_paths]
+
+    @files.setter
+    def files(self, value: list[str]) -> None:
+        self._tool._file_paths = [Path(p) for p in value]
+
+    def update(self) -> None:
+        self._tool._on_files_changed()
 
 
 class HelpDialog(QtWidgets.QDialog):
@@ -189,16 +213,17 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         hint.setStyleSheet("color: gray; font-style: italic;")
         files_splitter.addWidget(hint)
 
-        self.file_list = PathDropListWidget(
-            self.dock_area, path_filter=_is_supported_path
-        )
-        self.file_list.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
-        )
-        self.file_list.pathsDropped.connect(self._add_paths)
-        self.file_list.setToolTip(
-            "Drag-and-drop TTTR files here. Supported formats: "
-            + ", ".join(sorted(_supported_exts()))
+        # Unified AutoForm file/folder list (drag-drop + Files/Folder/Database/
+        # Remove/Clear + MMFDB); replaces the hand-rolled PathDropListWidget wiring
+        # and the toolbar's separate Add/Database actions.
+        from chisurf.gui.autoform.sections.path_list_section import PathListWidget
+
+        self._file_model = _FileListModel(self)
+        self.file_list = PathListWidget(
+            self._file_model,
+            "files",
+            extensions=sorted(_supported_exts()),
+            path_filter=_is_supported_path,  # also accepts compressed *.ptu.gz
         )
         files_splitter.addWidget(self.file_list)
         files_splitter.setStretchFactor(0, 0)
@@ -354,23 +379,8 @@ class TTTRTimeWindowTool(ChisurfDockTool):
             """
         )
 
-        add_action = QtWidgets.QAction("📂 Add Files", self)
-        add_action.setToolTip(
-            "Open a file dialog to select TTTR files for processing."
-        )
-        add_action.triggered.connect(self._add_files_dialog)
-        toolbar.addAction(add_action)
-
-        db_action = QtWidgets.QAction("🗄 Database", self)
-        db_action.setToolTip(
-            "Select TTTR files from the MMFDB database "
-            "(including S3-backed object stores)."
-        )
-        db_action.triggered.connect(self._add_from_mmfdb)
-        toolbar.addAction(db_action)
-
-        toolbar.addSeparator()
-
+        # File add / database selection are provided by the unified file list's
+        # own ➕ Files / 📁 Folder / 🗄 Database buttons (no duplicate toolbar actions).
         process_action = QtWidgets.QAction("🕐 Process", self)
         process_action.setToolTip(
             "Compute time-window BIDs for all queued TTTR files and "
@@ -433,10 +443,6 @@ class TTTRTimeWindowTool(ChisurfDockTool):
     def _setup_menu(self) -> None:
         """Create menu actions."""
         file_menu = self.menuBar().addMenu("File")
-        add_action = QtWidgets.QAction("Add TTTR files", self)
-        add_action.triggered.connect(self._add_files_dialog)
-        file_menu.addAction(add_action)
-        file_menu.addSeparator()
         exit_action = QtWidgets.QAction("Exit", self)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
@@ -456,60 +462,8 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         if d is not None:
             self.output_edit.setText(str(d))
 
-    def _add_files_dialog(self) -> None:
-        """Open a file dialog and add TTTR files."""
-        exts = sorted(_supported_exts())
-        pattern = " ".join(f"*{e}" for e in exts)
-        paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-            self,
-            "Select TTTR files",
-            "",
-            f"TTTR files ({pattern});;All files (*)",
-        )
-        self._add_paths([Path(p) for p in paths])
-
-    def _add_from_mmfdb(self) -> None:
-        """Add TTTR files chosen from the MMFDB database (shared global session)."""
-        from chisurf.gui.widgets.mmfdb import picker
-
-        client = picker.inprocess_client()
-        if client is None:
-            QtWidgets.QMessageBox.information(
-                self, "MMFDB", "No MMFDB database is available in this session."
-            )
-            return
-        paths = picker.pick_local_paths(parent=self, client=client)
-        if paths:
-            self._add_paths(list(paths))
-
-    def _add_paths(self, paths: list[Path]) -> None:
-        """Add TTTR file paths to the queue."""
-        exts = _supported_exts()
-        for path in paths:
-            if path.is_dir():
-                self._file_paths.extend(
-                    sorted(
-                        child.resolve()
-                        for child in path.iterdir()
-                        if child.is_file() and child.suffix.lower() in exts
-                    )
-                )
-            else:
-                resolved = path.resolve()
-                if resolved not in self._file_paths:
-                    self._file_paths.append(resolved)
-        self._refresh_file_list()
-
-    def _refresh_file_list(self) -> None:
-        """Refresh the visible file list and preview combo."""
-        self.file_list.blockSignals(True)
-        try:
-            self.file_list.clear()
-            for path in self._file_paths:
-                self.file_list.addItem(str(path))
-        finally:
-            self.file_list.blockSignals(False)
-
+    def _on_files_changed(self) -> None:
+        """Rebuild the preview combo when the unified file list changes."""
         self.cmb_file.blockSignals(True)
         current = self.cmb_file.currentData()
         self.cmb_file.clear()
@@ -622,9 +576,8 @@ class TTTRTimeWindowTool(ChisurfDockTool):
 
     def _clear_all(self) -> None:
         """Clear the file list and results."""
-        self._file_paths.clear()
+        self.file_list.clear()  # clears the list + _file_paths (via model) + combo
         self._last_result = None
-        self._refresh_file_list()
         self.preview_plot.clear()
         self.status_log.clear()
         self._status_bar.showMessage("Cleared")

@@ -15,7 +15,8 @@ try:
 except ImportError:
     QtWidgets = None  # type: ignore[assignment]
 
-from chisurf.gui.widgets.tools import ChisurfDockTool, PathDropListWidget
+from chisurf.gui.autoform.sections.path_list_section import PathListWidget
+from chisurf.gui.widgets.tools import ChisurfDockTool
 
 
 _needs_qt = pytest.mark.skipif(QtWidgets is None, reason="Qt bindings not available")
@@ -34,81 +35,44 @@ def test_tool_constructs_and_reuses_base() -> None:
     tool = TTTRTimeWindowTool()
     try:
         assert isinstance(tool, ChisurfDockTool)
-        assert tool.acceptDrops() is True
-        # the file list is the shared, extension-filtering drop widget
-        assert isinstance(tool.file_list, PathDropListWidget)
+        # the file list is the shared, unified AutoForm file/folder list
+        assert isinstance(tool.file_list, PathListWidget)
     finally:
         tool.close()
 
 
 @_needs_qt
 @_needs_offscreen
-def test_drop_hook_routes_to_add_paths(monkeypatch) -> None:
+def test_unified_list_updates_paths_and_preview_combo(tmp_path) -> None:
+    """Adding via the unified list updates _file_paths and the preview combo."""
+    from unittest.mock import MagicMock
+
     from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     tool = TTTRTimeWindowTool()
+    tool._load_preview = MagicMock()  # skip real TTTR decode of dummy files
     try:
-        captured = []
-        monkeypatch.setattr(tool, "_add_paths", lambda paths: captured.append(paths))
-        tool.on_paths_dropped(["x.ptu"])
-        assert captured == [["x.ptu"]]
+        f1 = tmp_path / "a.ptu"
+        f1.write_bytes(b"x")
+        f2 = tmp_path / "b.ht3"
+        f2.write_bytes(b"x")
+        tool.file_list.add_paths([f1, f2])
+        assert len(tool._file_paths) == 2
+        assert tool.cmb_file.count() == 2  # preview combo mirrors the list
+
+        tool._clear_all()
+        assert len(tool._file_paths) == 0
+        assert tool.cmb_file.count() == 0
     finally:
         tool.close()
 
 
 @_needs_qt
 def test_supported_path_filter_accepts_tttr_and_rejects_others() -> None:
-    """The extension predicate now passed to PathDropListWidget."""
+    """The extension predicate passed to PathListWidget as its path_filter."""
     from chisurf.plugins.tttr.tttr_time_windows.gui.tool import _is_supported_path
 
     assert _is_supported_path("/data/run.ptu") is True
     assert _is_supported_path("/data/run.ptu.gz") is True
     assert _is_supported_path("/data/run.txt") is False
-
-
-@_needs_qt
-@_needs_offscreen
-def test_add_from_mmfdb_routes_picked_paths_to_add_paths(monkeypatch, tmp_path) -> None:
-    """The 🗄 Database button commits picked paths through the same _add_paths."""
-    from pathlib import Path
-
-    from chisurf.gui.widgets.mmfdb import picker
-    from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    sample = tmp_path / "from_db.ptu"
-    monkeypatch.setattr(picker, "inprocess_client", lambda: object())
-    monkeypatch.setattr(picker, "pick_local_paths", lambda *a, **k: [sample])
-
-    tool = TTTRTimeWindowTool()
-    try:
-        captured = []
-        monkeypatch.setattr(tool, "_add_paths", lambda paths: captured.append(paths))
-        tool._add_from_mmfdb()
-        assert captured == [[Path(sample)]]
-    finally:
-        tool.close()
-
-
-@_needs_qt
-@_needs_offscreen
-def test_add_from_mmfdb_without_database_is_quiet(monkeypatch) -> None:
-    """No database available -> nothing added, no crash, no blocking modal."""
-    from chisurf.gui.widgets.mmfdb import picker
-    from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    monkeypatch.setattr(picker, "inprocess_client", lambda: None)
-    monkeypatch.setattr(
-        QtWidgets.QMessageBox, "information", staticmethod(lambda *a, **k: None)
-    )
-
-    tool = TTTRTimeWindowTool()
-    try:
-        called = []
-        monkeypatch.setattr(tool, "_add_paths", lambda paths: called.append(paths))
-        tool._add_from_mmfdb()
-        assert called == []
-    finally:
-        tool.close()

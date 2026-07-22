@@ -75,6 +75,10 @@ class PathListWidget(QtWidgets.QWidget):
         self._model = model
         self._target = target
         self._exts = {e.lower() for e in (options.get("extensions") or [])}
+        # Optional host predicate ``path_filter(str) -> bool`` deciding whether a
+        # file is accepted; overrides the extension check (e.g. to accept
+        # compressed ``*.ptu.gz`` that a plain suffix test would miss).
+        self._path_filter = options.get("path_filter")
         self._add_folders = bool(options.get("add_folders", True))
         self._dialog_filter = options.get("dialog_filter") or self._default_filter()
         self._mmfdb = bool(options.get("mmfdb", True))
@@ -138,6 +142,8 @@ class PathListWidget(QtWidgets.QWidget):
         p = pathlib.Path(local_path)
         if p.is_dir():
             return self._add_folders
+        if self._path_filter is not None:
+            return bool(self._path_filter(local_path))
         return not self._exts or p.suffix.lower() in self._exts
 
     def _default_filter(self) -> str:
@@ -157,9 +163,7 @@ class PathListWidget(QtWidgets.QWidget):
                     out.extend(str(x) for x in self._folder_expander(p))
                 else:
                     out.extend(
-                        str(f)
-                        for f in sorted(p.rglob("*"))
-                        if f.is_file() and (not self._exts or f.suffix.lower() in self._exts)
+                        str(f) for f in sorted(p.rglob("*")) if f.is_file() and self._accepts(str(f))
                     )
         return out
 
