@@ -5,7 +5,7 @@ TTTR file tools as embedded panels:
 
 - ALEX Creator        (ptu_alex_creator)
 - Micro-time Shifter  (tttr_microtime_shifter)
-- PTU Header Editor   (ptu_header_edit)
+- TTTR Header Editor  (tttr_header_edit)
 - (separator)
 - Split / Convert     (tttr_splitter)
 

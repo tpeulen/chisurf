@@ -72,7 +72,7 @@ read-only-construction guarantee; no drop list to dedupe):**
 - [ ] `tttr/trace_browser/gui/tool.py`
 - [ ] `tttr/tttr_image_browser/gui/tool.py`
 - [ ] `tttr/tttr_lut_tools/gui/tool.py`
-- [ ] `tttr/ptu_header_edit/wizard.py` (verify base class)
+- [ ] `tttr/tttr_header_edit/gui/tool.py` (verify base class; `wizard.py` retired)
 - [ ] `pch/gui/tool.py`
 - [ ] `calculator/fret_calculator/gui/tool.py`
 - [ ] `fluorescence_decay/irf_estimator/gui/tool.py`

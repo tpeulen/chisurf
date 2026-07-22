@@ -17,10 +17,10 @@ or [imaging](/plugins/imaging.md) analysis.
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
 | `converter` | Tools:Converter | Unified converter hub (shared navigation-panel shell) grouping TTTR Split/Convert, TTTR->Time-Window BIDs, and BID->Analysis; the sub-tools are `menu_hidden` and appear only inside the hub. |
-| `tttr_toolbox` | Tools:TTTR Tools | Unified toolbox for ALEX Creator, Micro-time Shifter, PTU Header Editor, and split/convert workflows. |
+| `tttr_toolbox` | Tools:TTTR Tools | Unified toolbox for ALEX Creator, Micro-time Shifter, TTTR Header Editor, and split/convert workflows. |
 | `ptu_alex_creator` | Tools:Converter:ALEX Creator | Converts macro-time ALEX modulation into micro-time / PIE-style files; supports single, batch, and merged output plus histogram inspection. |
 | `tttr_microtime_shifter` | Tools:TTTR:Microtime Shifter | Applies global and per-channel micro-time shifts to TTTR files with replayable transform metadata. |
-| `ptu_header_edit` | Tools:TTTR:PTU Header Editor | Edits PTU header fields through a declarative view. |
+| `tttr_header_edit` | Tools:TTTR:TTTR Header Editor | Views/edits header tags of any tttrlib-readable container (PTU/HT3/SPC/HDF5, auto-detected) through a declarative view; saves the edited header as PTU (the only container that persists arbitrary tags losslessly), copying the source photon events. |
 | `tttr_time_windows` | Tools:Converter:TTTR->Time-Window BIDs | Splits TTTR files into fixed-duration Burst-ID windows. Embedded in the `converter` hub (`menu_hidden`). |
 | `trace_browser` | Spectroscopy:Single-Molecule:Trace Browser | Browses folders of PTU/TTTR intensity traces, stores ratings/annotations, previews traces, and exports selections. |
 | `tttr_image_browser` | Imaging:Tools:Image Browser | Browses TTTR files in a folder and previews the per-detector-window intensity mosaic. GUI is the shared `image_browser` AutoForm section over a Qt-free view-model (file list with star ratings + size, mosaic canvas with per-tile labels, editable annotations, rating filter, drag-drop) on the existing Qt-free core + RPC; exports TIFF/DOCX. |

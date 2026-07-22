@@ -5,7 +5,7 @@ Each panel embeds one of the existing TTTR tools **unchanged**:
 
     1. ALEX Creator         — AlexPTUCreator
     2. Micro-time Shifter   — MicrotimeShifterTool
-    3. PTU Header Editor    — TagsEditor
+    3. TTTR Header Editor   — TagsEditor
     ───────────────────────  (separator)
     4. Split / Convert      — PTUSplitter
 

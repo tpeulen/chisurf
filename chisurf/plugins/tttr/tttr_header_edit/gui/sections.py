@@ -1,10 +1,12 @@
-"""Custom AutoForm section for the PTU Header Editor.
+"""Custom AutoForm section for the TTTR Header Editor.
 
 The editable tag table (Name / Type / Value / Idx) plus the Open/Add/Remove/Save
-tool-buttons are registered here as the ``header_table`` section; the read-only
-JSON preview is a plain built-in ``value`` (kind ``text``) section in
-``header.view.json``. The widget owns Qt concerns and drives the Qt-free
-:class:`~..view_model.HeaderEditorViewModel`. Imported (registered) by ``gui.tool``.
+tool-buttons and a status line are registered here as the ``header_table``
+section; the read-only JSON preview is a plain built-in ``value`` (kind ``text``)
+section in ``header.view.json``. The widget owns Qt concerns and drives the
+Qt-free :class:`~..view_model.HeaderEditorViewModel`, which reads any
+``tttrlib`` container (PTU/HT3/SPC/HDF5) and saves the edited header as PTU.
+Imported (registered) by ``gui.tool``.
 """
 
 from __future__ import annotations
@@ -31,12 +33,12 @@ def _tool_button(text: str, tooltip: str, slot) -> QtWidgets.QToolButton:
 
 @register_section("header_table")
 def header_table(model, target=None, **options):
-    """AutoForm factory for the PTU header tag table and its action buttons."""
+    """AutoForm factory for the TTTR header tag table and its action buttons."""
     return _HeaderTableSection(model)
 
 
 class _HeaderTableSection(QtWidgets.QWidget):
-    """Editable PTU tag table with Open/Add/Remove/Save tool-buttons + drag-drop."""
+    """Editable TTTR tag table with Open/Add/Remove/Save tool-buttons + drag-drop."""
 
     def __init__(self, model, parent=None):
         super().__init__(parent)
@@ -54,12 +56,27 @@ class _HeaderTableSection(QtWidgets.QWidget):
 
         bar = QtWidgets.QHBoxLayout()
         bar.setContentsMargins(0, 0, 0, 0)
-        bar.addWidget(_tool_button("📂 Open", "Open a PTU file and read its header.", self._open))
+        bar.addWidget(
+            _tool_button(
+                "📂 Open",
+                "Open a TTTR file (PTU / HT3 / SPC / HDF5) and read its header.",
+                self._open,
+            )
+        )
         bar.addWidget(_tool_button("➕ Add", "Add a new header tag.", self._add))
         bar.addWidget(_tool_button("➖ Remove", "Remove the selected tag.", self._remove))
         bar.addStretch(1)
-        bar.addWidget(_tool_button("💾 Save", "Save a modified PTU with these tags.", self._save))
+        bar.addWidget(
+            _tool_button("💾 Save as PTU", "Save the edited header to a new PTU file.", self._save)
+        )
         layout.addLayout(bar)
+
+        self.status = QtWidgets.QLabel(self)
+        self.status.setToolTip(
+            "Reads any tttrlib container; edited headers are always written as PTU."
+        )
+        self.status.setStyleSheet("color: palette(mid);")
+        layout.addWidget(self.status)
 
         self.table = QtWidgets.QTableWidget(self)
         self.table.setColumnCount(4)
@@ -72,6 +89,7 @@ class _HeaderTableSection(QtWidgets.QWidget):
 
         self._model.add_observer(self._on_model_event)
         self._rebuild_table()
+        self._refresh_status()
 
     # ── drag-drop ───────────────────────────────────────────────────────
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
@@ -84,13 +102,17 @@ class _HeaderTableSection(QtWidgets.QWidget):
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
         if urls:
-            self._load_ptu(urls[0].toLocalFile())
+            self._load_file(urls[0].toLocalFile())
             event.acceptProposedAction()
 
     # ── model wiring ────────────────────────────────────────────────────
     def _on_model_event(self, event: str) -> None:
         if event == "loaded":
             self._rebuild_table()
+        self._refresh_status()
+
+    def _refresh_status(self) -> None:
+        self.status.setText(self._model.source_summary)
 
     def _rebuild_table(self) -> None:
         self._syncing = True
@@ -130,15 +152,15 @@ class _HeaderTableSection(QtWidgets.QWidget):
 
     # ── actions ─────────────────────────────────────────────────────────
     def _open(self) -> None:
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Open PTU File", "", "PTU Files (*.ptu);;All Files (*)"
-        )
-        if path:
-            self._load_ptu(path)
+        from .view_model import OPEN_FILTER
 
-    def _load_ptu(self, path: str) -> None:
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open TTTR File", "", OPEN_FILTER)
+        if path:
+            self._load_file(path)
+
+    def _load_file(self, path: str) -> None:
         try:
-            self._model.load_ptu(path)
+            self._model.load_file(path)
         except Exception as exc:  # noqa: BLE001
             QtWidgets.QMessageBox.warning(self, "Error", f"Failed to open file:\n{exc}")
 
@@ -179,13 +201,13 @@ class _HeaderTableSection(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Cannot save", reason)
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save Modified PTU File", "", "PTU Files (*.ptu);;All Files (*)"
+            self, "Save edited header as PTU", "", "PTU Files (*.ptu);;All Files (*)"
         )
         if not path:
             return
         try:
             self._model.save(path)
-            QtWidgets.QMessageBox.information(self, "Success", "Modified PTU file saved.")
+            QtWidgets.QMessageBox.information(self, "Success", "Edited header saved as PTU.")
         except Exception as exc:  # noqa: BLE001
             QtWidgets.QMessageBox.warning(self, "Error", f"Failed to save:\n{exc}")
 

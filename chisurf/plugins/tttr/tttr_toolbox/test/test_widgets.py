@@ -81,7 +81,7 @@ def test_included_plugins_are_menu_hidden():
     for mod in (
         "chisurf.plugins.tttr.ptu_alex_creator",
         "chisurf.plugins.tttr.tttr_microtime_shifter",
-        "chisurf.plugins.tttr.ptu_header_edit",
+        "chisurf.plugins.tttr.tttr_header_edit",
         "chisurf.plugins.tttr.tttr_splitter",
         "chisurf.plugins.tttr.tttr_count_rate_analysis",
         "chisurf.plugins.tttr.audifier",

@@ -18,11 +18,11 @@
       "description": "Apply global and per-channel micro-time shifts to TTTR files."
     },
     {
-      "name": "PTU Header Editor",
+      "name": "TTTR Header Editor",
       "icon": "🏷️",
-      "role": "ptu_header_editor",
-      "entrypoint": "chisurf.plugins.tttr.ptu_header_edit.gui.tool:TagsEditor",
-      "description": "View, edit, add and remove header tags in PicoQuant PTU files."
+      "role": "tttr_header_editor",
+      "entrypoint": "chisurf.plugins.tttr.tttr_header_edit.gui.tool:TagsEditor",
+      "description": "View, edit, add and remove header tags in TTTR files (PTU/HT3/SPC/HDF5); saves as PTU."
     },
     {"separator": true, "role": "separator_split"},
     {

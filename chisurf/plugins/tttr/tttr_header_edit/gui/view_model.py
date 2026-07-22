@@ -1,9 +1,17 @@
-"""Qt-free view-model backing the PTU Header Editor tool.
+"""Qt-free view-model backing the TTTR Header Editor tool.
 
-:class:`HeaderEditorViewModel` holds the parsed PTU header tags, converts values
-by tag type and writes a modified PTU through :mod:`tttrlib`. The editable tag
-table lives in the custom ``header_table`` section; the read-only JSON view binds
-to :attr:`json_text`. Free of Qt so it is unit-testable headlessly.
+:class:`HeaderEditorViewModel` holds the parsed header tags of any
+:mod:`tttrlib`-readable time-tagged file (PicoQuant PTU/HT3, Becker&Hickl SPC,
+PicoQuant/HDF5 …), converts values by tag type and writes the edited header back
+out. Because ``tttrlib`` normalises every container into the same
+``{name, type, value, idx}`` tag list, reading is format-agnostic; only the
+*write* side is container-specific — arbitrary edited tags round-trip losslessly
+only through the PTU container, so saving always produces a PTU file (the photon
+data of the source is copied verbatim).
+
+The editable tag table lives in the custom ``header_table`` section; the
+read-only JSON view binds to :attr:`json_text`. Free of Qt so it is unit-testable
+headlessly.
 """
 
 from __future__ import annotations
@@ -17,6 +25,14 @@ import tttrlib
 logger = logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "header.view.json"
+
+#: File-dialog filter listing the containers :mod:`tttrlib` can auto-detect.
+OPEN_FILTER = (
+    "TTTR files (*.ptu *.ht3 *.spc *.hdf5 *.h5);;"
+    "PicoQuant PTU (*.ptu);;PicoQuant HT3 (*.ht3);;"
+    "Becker&Hickl SPC (*.spc);;Photon-HDF5 (*.hdf5 *.h5);;"
+    "All files (*)"
+)
 
 #: Sample header used when the tool opens without a file.
 SAMPLE_JSON = json.dumps(
@@ -42,7 +58,7 @@ SAMPLE_JSON = json.dumps(
 
 
 class HeaderEditorViewModel:
-    """State + logic for the PTU Header Editor (no Qt)."""
+    """State + logic for the TTTR Header Editor (no Qt)."""
 
     TYPE_MAPPING = {
         0xFFFF0008: "Empty",
@@ -67,10 +83,22 @@ class HeaderEditorViewModel:
 
     def __init__(self) -> None:
         self.opened_path: str | None = None
+        #: Canonical container name of the opened file (e.g. ``"ptu"``/``"ht3"``).
+        self.source_container: str = ""
         self._parsed: dict = {}
         self.json_text: str = ""
         self._observers: list = []
         self.load_json(SAMPLE_JSON)
+
+    # ── source description ─────────────────────────────────────────────
+    @property
+    def source_summary(self) -> str:
+        """Human-readable one-liner describing the loaded file, for the UI."""
+        if not self.opened_path:
+            return "No file loaded — showing a sample header."
+        name = pathlib.Path(self.opened_path).name
+        fmt = self.source_container.upper() or "TTTR"
+        return f"{name}  ·  {fmt}  ·  {len(self.tags)} tags  →  saves as PTU"
 
     # ── observer hook ──────────────────────────────────────────────────
     def add_observer(self, cb) -> None:
@@ -115,11 +143,31 @@ class HeaderEditorViewModel:
         self._refresh_json_text()
         self.notify("loaded")
 
-    def load_ptu(self, path: str) -> None:
-        """Load the header tags from the PTU file at *path*."""
+    def load_file(self, path: str) -> None:
+        """Load the header tags from any :mod:`tttrlib`-readable file at *path*.
+
+        The container type is auto-detected. PTU, HT3, SPC and Photon-HDF5 all
+        expose the same tag list through ``tttrlib``.
+        """
         tttr = tttrlib.TTTR(path)
         self.opened_path = path
+        self.source_container = self._detect_container(path, tttr)
         self.load_json(tttr.header.json)
+
+    #: Backwards-compatible alias for :meth:`load_file`.
+    load_ptu = load_file
+
+    @staticmethod
+    def _detect_container(path: str, tttr) -> str:
+        """Best-effort canonical container name of the opened *tttr* file."""
+        try:
+            ct = tttrlib.inferTTTRContainerTypeFromExtension(pathlib.Path(path).suffix)
+            name = tttrlib.tttrContainerCanonicalExtension(ct)
+            if name:
+                return name
+        except Exception:
+            logger.debug("container detection failed", exc_info=True)
+        return pathlib.Path(path).suffix.lstrip(".").lower()
 
     def set_tags(self, rows: list[dict]) -> None:
         """Replace the tag list (each row: name, type-name str, value-str, idx).
@@ -154,13 +202,19 @@ class HeaderEditorViewModel:
     def can_save(self) -> str | None:
         """Return ``None`` when a save can run, else a human-readable reason."""
         if not self.opened_path:
-            return "Open a PTU file first (the event data is copied from it)."
+            return "Open a TTTR file first (its photon data is copied into the new PTU)."
         return None
 
     def save(self, path: str) -> None:
-        """Write a new PTU at *path* with the original events and edited tags."""
+        """Write a PTU at *path* with the source events and the edited tags.
+
+        Output is always a PTU container: it is the only ``tttrlib`` container
+        that persists arbitrary edited header tags without loss. HT3/SPC writers
+        regenerate a fixed binary header and would drop custom tags, so a header
+        edited from any source format is saved as PTU.
+        """
         if not self.opened_path:
-            raise ValueError("No source PTU file is open.")
+            raise ValueError("No source TTTR file is open.")
         if not path.endswith(".ptu"):
             path += ".ptu"
         src = tttrlib.TTTR(self.opened_path)

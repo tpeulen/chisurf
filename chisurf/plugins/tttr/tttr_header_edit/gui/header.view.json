@@ -1,10 +1,10 @@
 {
-  "_comment": "Declarative AutoForm layout for the PTU Header Editor: a dock area with the editable tag table (custom section) and a collapsible read-only JSON preview.",
+  "_comment": "Declarative AutoForm layout for the TTTR Header Editor: a dock area with the editable tag table (custom section) and a collapsible read-only JSON preview.",
   "sections": [
     {
       "type": "dock_area",
-      "title": "PTU Header Editor",
-      "persist": "ptu_header_edit",
+      "title": "TTTR Header Editor",
+      "persist": "tttr_header_edit",
       "sections": [
         {
           "type": "panel",
@@ -27,7 +27,7 @@
               "kind": "text",
               "read_only": true,
               "expand": true,
-              "description": "Live JSON view of the full PTU header with the edited tags."
+              "description": "Live JSON view of the full TTTR header with the edited tags."
             }
           ]
         }
