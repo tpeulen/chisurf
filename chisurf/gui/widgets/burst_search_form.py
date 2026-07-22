@@ -7,11 +7,18 @@ widget names. Adding an algorithm means editing the .ui file, the relabelling
 code, a settings dataclass and the marshalling code.
 
 This widget takes the other route: tttrlib publishes each burst search's
-parameters as a JSON Schema through ``TTTR.burst_search_algorithms()``, chisurf
-already renders JSON Schema via :class:`~chisurf.core.dataspec.rpc.RpcMethodView`
-and :class:`~chisurf.gui.autoform.AutoForm`, so the form is generated rather than
+parameters as a JSON Schema through its registry, and chisurf already renders
+JSON Schema via :func:`~chisurf.core.tttrlib_registry.entry_form_view_auto` and
+:class:`~chisurf.gui.autoform.AutoForm`, so the form is generated rather than
 authored. Labels, ranges, units, tooltips and defaults all come from tttrlib, and
 a burst search added there appears here on upgrade with no change to this file.
+
+Because it goes through :func:`entry_form_view_auto`, a composite search (the
+``coincident`` search runs whichever search you name inside each detector group)
+renders its delegated parameters as a real nested panel, and a search's
+parameters are split into foldable groups — both driven by the schema, neither
+authored here. This is the single "pick a burst search, edit its parameters"
+widget; embed it wherever that is needed rather than rebuilding the pair.
 
 Usage::
 
@@ -27,7 +34,7 @@ import typing
 
 from qtpy import QtWidgets, QtCore
 
-from chisurf.core.dataspec.rpc import RpcMethodView
+from chisurf.core import tttrlib_registry
 from chisurf.core.fluorescence.burst import tttrlib_search
 from chisurf.gui.autoform import AutoForm
 
@@ -55,9 +62,12 @@ class BurstSearchForm(QtWidgets.QWidget):
     ):
         super().__init__(parent)
         self._algorithms = tttrlib_search.algorithms()
-        self._view: typing.Optional[RpcMethodView] = None
+        self._view = None
         self._form: typing.Optional[AutoForm] = None
         self._initial_values = dict(values or {})
+        # The selector value the current form was built for, so a composite
+        # search whose inner algorithm changed can rebuild only its nested panel.
+        self._selector: typing.Optional[str] = None
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -139,6 +149,29 @@ class BurstSearchForm(QtWidgets.QWidget):
         self._rebuild()
         self.parametersChanged.emit()
 
+    def _on_change(self) -> None:
+        self.parametersChanged.emit()
+        # A composite search (the coincident search runs whichever search you
+        # name inside each detector group) builds its nested panel from the inner
+        # algorithm its selector currently names; changing that selector makes the
+        # panel stale. The rebuild is deferred because this runs from inside a
+        # widget's own signal, and tearing that widget down synchronously is not
+        # safe.
+        view = self._view
+        should = getattr(view, "should_rebuild", None)
+        if should is not None and should(self._selector):
+            QtCore.QTimer.singleShot(0, self._rebuild_nested)
+
+    def _rebuild_nested(self) -> None:
+        # Carry the values already entered across the rebuild, so switching the
+        # inner search does not discard the outer parameters (the detector
+        # grouping above all, which is tedious to retype and cannot be defaulted).
+        view = self._view
+        if view is None or not hasattr(view, "should_rebuild"):
+            return
+        self._initial_values = view.params()
+        self._rebuild()
+
     def _rebuild(self) -> None:
         spec = self._algorithms.get(self.algorithm)
         if spec is None:
@@ -146,12 +179,17 @@ class BurstSearchForm(QtWidgets.QWidget):
         self.label_summary.setText(spec.get("summary", ""))
         self.label_summary.setToolTip(spec.get("description", ""))
 
-        self._view = RpcMethodView(
-            spec,
+        # entry_form_view_auto renders any registry entry: a composite entry gets
+        # its delegated parameters as a nested panel rather than a JSON text box,
+        # and a flat entry's parameters are split into foldable groups. Both
+        # expose the same params()/view_spec() surface AutoForm consumes.
+        self._view = tttrlib_registry.entry_form_view_auto(
+            tttrlib_registry.BURST_SEARCH,
+            self.algorithm,
             values=self._initial_values or None,
-            on_change=self.parametersChanged.emit,
-            title=spec.get("label", self.algorithm),
+            on_change=self._on_change,
         )
+        self._selector = getattr(self._view, "selector_value", None)
         form = AutoForm(self._view)
         while self.container.count():
             item = self.container.takeAt(0)

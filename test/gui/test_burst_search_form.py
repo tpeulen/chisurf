@@ -71,6 +71,32 @@ def test_set_state_rejects_an_unknown_algorithm(qapp):
         form.set_state("not_an_algorithm")
 
 
+def test_composite_search_renders_a_nested_panel(qapp):
+    # The coincident search delegates its per-group parameters to another search;
+    # the widget must render those as a nested panel (via entry_form_view_auto),
+    # not as a raw JSON box, and expose them under "parameters".
+    from chisurf.core import tttrlib_registry
+
+    if "coincident" not in tttrlib_search.algorithms():
+        pytest.skip("this tttrlib has no composite burst search")
+    form = BurstSearchForm(algorithm="coincident")
+    params = form.parameters
+    assert "parameters" in params, "the delegated inner parameters must be present"
+    assert params["parameters"] == tttrlib_registry.defaults(
+        "burst_search", "maxtree"
+    )
+
+
+def test_composite_parameters_are_foldable_not_a_json_box(qapp):
+    from chisurf.core.dataspec.rpc import RpcMethodView  # noqa: F401
+
+    if "coincident" not in tttrlib_search.algorithms():
+        pytest.skip("this tttrlib has no composite burst search")
+    form = BurstSearchForm(algorithm="coincident")
+    panels = form._view.view_spec().sections
+    assert len(panels) >= 2, "expected the entry's own panel plus a nested one"
+
+
 def test_no_registry_disables_the_widget_and_explains(qapp, monkeypatch):
     # An older tttrlib publishes no registry; the widget stays usable-looking but
     # inert, and says why, instead of raising on construction.
