@@ -120,3 +120,34 @@ def test_fallback_scene_builds_with_dots_and_metaballs(_qt_app) -> None:
     view.set_metaballs_visible(True)
     # Must not raise.
     view._update_view()
+
+
+def test_fallback_metaball_surface_spans_the_molecule(_qt_app) -> None:
+    """The metaball isosurface must be a connected envelope, not sub-voxel spikes.
+
+    Density sigmas derive from ``_all_atom_radii`` in the *scaled* coordinate
+    frame. A raw-coordinate object carries no radii, so ``set_coordinates`` seeds
+    a scaled default; without it the sigma is ~``_scale_factor``x too small and
+    marching cubes yields a handful of disconnected specks instead of a surface.
+    """
+    view = MolView()
+    _load_fallback(view)
+    view.set_metaballs_visible(True)
+
+    from chisurf.plugins.chimol.chimol.renderer.view import _DISPLAY_CONFIG as _CFG
+
+    objs = view._update_metaballs(
+        np.asarray(view._coords), _CFG.get("metaball", {}), view._colors_per_ca
+    ) or []
+    assert objs, "metaballs produced no mesh"
+    verts = objs[0].geometry.positions
+
+    # A real envelope has many vertices and spans the atom cloud; the broken
+    # (unscaled-sigma) case collapsed to well under 2000 vertices.
+    assert verts.shape[0] > 20_000, f"metaball mesh too sparse: {verts.shape[0]} verts"
+
+    atom_extent = view._all_atom_coords.max(axis=0) - view._all_atom_coords.min(axis=0)
+    mesh_extent = verts.max(axis=0) - verts.min(axis=0)
+    assert np.all(mesh_extent > 0.5 * atom_extent), (
+        f"metaball mesh does not span the molecule: {mesh_extent} vs {atom_extent}"
+    )

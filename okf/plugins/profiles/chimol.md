@@ -136,6 +136,21 @@ so dots *and* metaballs (and everything else) vanished at once. A full-scene bui
 with the representation enabled, not just the isolated `_update_*` call, is the test
 that catches this class of regression.
 
+**The fallback must seed a scaled `_all_atom_radii`, because the surface and
+metaball density renderers derive their Gaussian sigmas from it in the *scaled*
+coordinate frame.** `_all_atom_coords` is scaled by `_scale_factor` (default 10),
+and `set_structure` scales the real `radius` field to match. A raw-coordinate
+object has no radii, so `_update_metaballs`/`_update_surface` fall back to a
+constant sigma (~1.5–1.8) that is sized for *unscaled* Ångström and therefore
+~`_scale_factor`× too small: the density barely overlaps between atoms and
+marching cubes returns a few disconnected specks (148l metaballs: **888 vertices**)
+instead of a molecular envelope (**131k**). `set_coordinates` now seeds
+`_all_atom_radii = _DEFAULT_ATOM_RADIUS_A (1.5 Å) × scale`, just below the real vdW
+radii the reader assigns (1.5–2.0 Å), so balls, surface and metaballs all render in
+the right units and match the structured path. Guard a mesh-density regression by
+asserting the metaball vertex count and that its bounding box spans the atom cloud,
+not just that a mesh exists.
+
 # Documentation Work
 
 - No `README.md` under `chisurf/plugins/chimol/` yet — add one covering the

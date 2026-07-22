@@ -43,6 +43,13 @@ from .chimol_state import _MolViewObjectEntry, _MolViewObjectState, _StateField
 from .qtgl import QtGLRenderer
 from .scene import Geometry, Scene, SceneObject
 
+# Default per-atom van-der-Waals radius (Angstrom) used for raw-coordinate
+# objects that carry no radii of their own. Sized to sit just below the real
+# vdW radii the structure reader assigns (~1.5-2.0 A) so the fallback's balls
+# and its surface/metaball density sigmas match the structured path once the
+# coordinates are scaled by ``_scale_factor``.
+_DEFAULT_ATOM_RADIUS_A = 1.5
+
 
 def _get_picking_module():
     try:
@@ -1599,7 +1606,6 @@ class MolView(QtWidgets.QWidget):
 
         self._atoms = None
         self._all_atom_res_ids = None
-        self._all_atom_radii = None
         self._atom_features = {}
         self._atom_feature_meta = {}
         self._show_atom_gaussians = False
@@ -1615,6 +1621,25 @@ class MolView(QtWidgets.QWidget):
         arr = (arr - center) * scale
 
         self._all_atom_coords = arr
+
+        # A raw-coordinate object has no per-atom radii, but the surface and
+        # metaball density renderers derive their Gaussian sigmas from
+        # ``_all_atom_radii`` in the *scaled* coordinate frame. Leaving it None
+        # makes them fall back to a constant sigma sized for *unscaled* Angstrom,
+        # which is ~``scale``x too small once the coordinates are scaled -- the
+        # density barely overlaps between atoms and the surface breaks up. Seed a
+        # uniform atomic radius scaled the same way ``set_structure`` scales the
+        # real ``radius`` field so every density path stays in the right units.
+        self._all_atom_radii = np.full(
+            arr.shape[0], _DEFAULT_ATOM_RADIUS_A * scale, dtype=float
+        )
+
+        sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
+        max_bond_len = float(sticks_cfg.get("bond_max_length", 1.9))
+        if np.isfinite(max_bond_len) and max_bond_len > 0.0:
+            self._bond_pairs = _build_bond_pairs(raw_all, max_bond_len)
+        else:
+            self._bond_pairs = None
 
         sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
         max_bond_len = float(sticks_cfg.get("bond_max_length", 1.9))
