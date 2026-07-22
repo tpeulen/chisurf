@@ -35,40 +35,28 @@ _FOV_DEG_DEFAULT = 45.0
 
 def _camera_from_view_state(view: List[float]) -> RayCamera:
     vals = [float(v) for v in view]
-    elevation = vals[10]
-    azimuth = vals[11]
     distance = max(abs(vals[9]), 1.0)
     target = np.array(vals[12:15], dtype=float)
     far_clip = vals[16] if len(vals) > 16 else 200.0
 
-    theta = math.radians(azimuth)
-    phi = math.radians(elevation)
-    sin_t = math.sin(theta)
-    cos_t = math.cos(theta)
-    sin_p = math.sin(phi)
-    cos_p = math.cos(phi)
+    # Slots 0-8 hold the world->camera rotation (PyMOL/trackball). Legacy tuples
+    # store identity there and elevation/azimuth in slots 10/11.
+    rot = np.array(vals[0:9], dtype=float).reshape(3, 3)
+    if np.allclose(rot, np.eye(3), atol=1e-6) and (
+        abs(vals[10]) > 1e-9 or abs(vals[11]) > 1e-9
+    ):
+        el = math.radians(vals[10])
+        az = math.radians(vals[11])
+        ce, se = math.cos(el), math.sin(el)
+        ca, sa = math.cos(az), math.sin(az)
+        rx = np.array([[1.0, 0.0, 0.0], [0.0, ce, -se], [0.0, se, ce]])
+        rz = np.array([[ca, -sa, 0.0], [sa, ca, 0.0], [0.0, 0.0, 1.0]])
+        rot = rx @ rz
 
-    origin = target + np.array(
-        [sin_t * sin_p * distance, cos_t * sin_p * distance, cos_p * distance],
-        dtype=float,
-    )
-
-    forward = target - origin
-    fnorm = np.linalg.norm(forward)
-    if fnorm > 1e-9:
-        forward /= fnorm
-    else:
-        forward = np.array([0.0, 0.0, 1.0], dtype=float)
-
-    right = np.array([cos_t, -sin_t, 0.0], dtype=float)
-    rn = np.linalg.norm(right)
-    if rn > 1e-9:
-        right /= rn
-
-    cam_up = np.array([sin_t * cos_p, cos_t * cos_p, -sin_p], dtype=float)
-    un = np.linalg.norm(cam_up)
-    if un > 1e-9:
-        cam_up /= un
+    # Camera axes in world = rows of the rotation; camera sits along +Z (row 2).
+    cam_up = rot[1]
+    forward = -rot[2]
+    origin = target + distance * rot[2]
 
     return RayCamera(origin=origin, forward=forward, up=cam_up,
                      fov_degrees=_FOV_DEG_DEFAULT, far_clip=far_clip)

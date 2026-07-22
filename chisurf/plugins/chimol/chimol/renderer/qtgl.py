@@ -154,8 +154,10 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._grid_size = 20.0
         self._grid_spacing = 1.0
         self._distance = 30.0
-        self._elevation = 20.0
-        self._azimuth = 45.0
+        # Camera orientation as a 3x3 world->camera rotation matrix (a PyMOL-style
+        # virtual trackball), replacing the old azimuth/elevation turntable so the
+        # view can roll and rotate about an arbitrary screen axis like PyMOL.
+        self._rot = self._make_rot(20.0, 45.0)
         self._target_radius = 10.0
         self._near_clip = 0.1
         self._far_clip = 1000.0
@@ -174,6 +176,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._drag_modifiers = QtCore.Qt.NoModifier
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self._panning = False
+        self._right_dragged = False
         self._pan_offset = np.zeros(3, dtype=float)
 
         camera_cfg = (_DISPLAY_CONFIG.get("camera") or {})
@@ -184,6 +187,66 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
     # ------------------------------------------------------------------
     # Mouse rotation mode
     # ------------------------------------------------------------------
+    @staticmethod
+    def _make_rot(elevation: float, azimuth: float) -> np.ndarray:
+        """Build a world->camera rotation matrix ``Rx(elevation) @ Rz(azimuth)``.
+
+        Matches the previous ``QMatrix4x4.rotate(elevation, X); rotate(azimuth, Z)``
+        turntable so the default view is unchanged.
+        """
+        el = math.radians(float(elevation))
+        az = math.radians(float(azimuth))
+        ce, se = math.cos(el), math.sin(el)
+        ca, sa = math.cos(az), math.sin(az)
+        rx = np.array([[1.0, 0.0, 0.0], [0.0, ce, -se], [0.0, se, ce]])
+        rz = np.array([[ca, -sa, 0.0], [sa, ca, 0.0], [0.0, 0.0, 1.0]])
+        return rx @ rz
+
+    @staticmethod
+    def _trackball_delta(
+        last: tuple[float, float],
+        cur: tuple[float, float],
+        width: float,
+        height: float,
+    ) -> np.ndarray:
+        """PyMOL virtual-trackball delta rotation (camera-space 3x3).
+
+        Projects the previous and current cursor onto a sphere of radius
+        ``0.45*min(W,H)``, takes the rotation carrying one to the other, and damps
+        the roll (z) component — see SceneMouse.cpp. Returned matrix left-multiplies
+        the current world->camera rotation.
+        """
+        scale = 0.45 * min(float(width), float(height))
+        if scale <= 0.0:
+            return np.eye(3)
+        cx, cy = width / 2.0, height / 2.0
+
+        def _sphere(px: float, py: float) -> np.ndarray:
+            # Screen vector from centre; y is flipped (Qt top-left origin).
+            vx = px - cx
+            vy = cy - py
+            r2 = vx * vx + vy * vy
+            vz = math.sqrt(scale * scale - r2) if r2 < scale * scale else 0.0
+            v = np.array([vx, vy, vz], dtype=float)
+            n = np.linalg.norm(v)
+            return v / n if n > 1e-9 else np.array([0.0, 0.0, 1.0])
+
+        n1 = _sphere(*last)
+        n2 = _sphere(*cur)
+        axis = np.cross(n1, n2)
+        s = float(np.linalg.norm(axis))
+        if s <= 1e-9:
+            return np.eye(3)
+        axis /= s
+        angle = 1.3 * 2.0 * math.asin(min(s, 1.0))  # radians; mouse_scale=1.3
+        angle /= 1.0 + abs(axis[2])                  # damp the twist component
+        # PyMOL applies rotate(angle, ax, ay, -az); the screen axis lives in
+        # camera space, so this delta left-multiplies the view rotation.
+        ax, ay, az = axis[0], axis[1], -axis[2]
+        c, sn = math.cos(angle), math.sin(angle)
+        k = np.array([[0.0, -az, ay], [az, 0.0, -ax], [-ay, ax, 0.0]])
+        return np.eye(3) + sn * k + (1.0 - c) * (k @ k)
+
     @staticmethod
     def _rotation_delta_multiplier(mouse_mode: str) -> float:
         """Return the multiplier applied to left-drag rotation deltas.
@@ -337,8 +400,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
     def reset_view(self, distance: float, elevation: float, azimuth: float) -> None:
         self._distance = max(float(distance), 1.0)
-        self._elevation = float(elevation)
-        self._azimuth = float(azimuth)
+        self._rot = self._make_rot(elevation, azimuth)
         self._pan_offset = np.zeros(3, dtype=float)
         self._update_center_opt()
         self.update()
@@ -362,8 +424,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
     def set_orientation(self, elevation: float, azimuth: float) -> None:
         """Set camera elevation and azimuth."""
-        self._elevation = float(elevation)
-        self._azimuth = float(azimuth)
+        self._rot = self._make_rot(elevation, azimuth)
         self.update()
 
     def get_view_state(self) -> list[float]:
@@ -376,11 +437,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             except Exception:
                 center = np.zeros(3, dtype=float)
         target = center + self._pan_offset
+        r = self._rot
+        # Slots 0-8 hold the world->camera rotation matrix (PyMOL's convention);
+        # slots 10-11 (the old elevation/azimuth) are left 0 and only read back for
+        # legacy tuples that predate the trackball.
         return [
-            1.0, 0.0, 0.0,
-            0.0, 1.0, 0.0,
-            0.0, 0.0, 1.0,
-            float(self._distance), float(self._elevation), float(self._azimuth),
+            float(r[0, 0]), float(r[0, 1]), float(r[0, 2]),
+            float(r[1, 0]), float(r[1, 1]), float(r[1, 2]),
+            float(r[2, 0]), float(r[2, 1]), float(r[2, 2]),
+            float(self._distance), 0.0, 0.0,
             float(target[0]), float(target[1]), float(target[2]),
             float(self._near_clip), float(self._far_clip), 45.0,
         ]
@@ -392,8 +457,14 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         if len(vals) != 18:
             raise ValueError("view must contain 18 floats")
         self._distance = max(vals[9], 0.1)
-        self._elevation = vals[10]
-        self._azimuth = vals[11]
+        rot = np.array(vals[0:9], dtype=float).reshape(3, 3)
+        if not np.allclose(rot, np.eye(3), atol=1e-6) or (
+            abs(vals[10]) < 1e-9 and abs(vals[11]) < 1e-9
+        ):
+            self._rot = rot
+        else:
+            # Legacy tuple: identity matrix + elevation/azimuth in slots 10/11.
+            self._rot = self._make_rot(vals[10], vals[11])
         target = np.array(vals[12:15], dtype=float)
         center = np.zeros(3, dtype=float)
         if self._scene is not None:
@@ -811,8 +882,14 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
         view = QtGui.QMatrix4x4()
         view.translate(0.0, 0.0, -self._distance)
-        view.rotate(self._elevation, 1.0, 0.0, 0.0)
-        view.rotate(self._azimuth, 0.0, 0.0, 1.0)
+        r = self._rot
+        rot_qm = QtGui.QMatrix4x4(
+            float(r[0, 0]), float(r[0, 1]), float(r[0, 2]), 0.0,
+            float(r[1, 0]), float(r[1, 1]), float(r[1, 2]), 0.0,
+            float(r[2, 0]), float(r[2, 1]), float(r[2, 2]), 0.0,
+            0.0, 0.0, 0.0, 1.0,
+        )
+        view = view * rot_qm
         center = np.zeros(3, dtype=float)
         if self._scene is not None:
             try:
@@ -831,16 +908,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             except Exception:
                 center = np.zeros(3, dtype=float)
         center = center + self._pan_offset
-        theta = math.radians(self._azimuth)
-        phi = math.radians(self._elevation)
-        sin_theta = math.sin(theta)
-        cos_theta = math.cos(theta)
-        sin_phi = math.sin(phi)
-        cos_phi = math.cos(phi)
-        rel_x = sin_theta * sin_phi * self._distance
-        rel_y = -cos_theta * sin_phi * self._distance
-        rel_z = cos_phi * self._distance
-        return center + np.array([rel_x, rel_y, rel_z], dtype=float)
+        # Camera axes in world are the rows of the world->camera rotation; the
+        # camera sits distance units along its +Z axis (row 2) from the target.
+        return center + self._distance * self._rot[2]
 
     def _prepare_draw_data(self, scene: Optional[Scene]) -> None:
         """Convert Scene objects into CPU-side arrays ready for VBO upload."""
@@ -1086,14 +1156,10 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
     # ------------------------------------------------------------------
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.button() == QtCore.Qt.RightButton:
-            menu = QtWidgets.QMenu(self)
-            reset_act = menu.addAction("Reset view")
-            action = menu.exec_(event.globalPos())
-            if action is reset_act and self._controller is not None:
-                try:
-                    self._controller.reset_view()
-                except Exception:
-                    pass
+            # Defer: a right *drag* dollies (see mouseMoveEvent); a right *click*
+            # opens the context menu on release.
+            self._last_mouse_pos = event.pos()
+            self._right_dragged = False
             event.accept()
             return
 
@@ -1140,13 +1206,29 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             event.accept()
             return
 
-        if event.buttons() & QtCore.Qt.LeftButton and hasattr(self, "_last_mouse_pos"):
+        # Right drag = dolly (PyMOL cButModeTransZ): vertical motion moves the
+        # camera in/out proportional to the current distance. A right *click*
+        # (no drag) still opens the context menu, handled on release.
+        if (event.buttons() & QtCore.Qt.RightButton) and self._last_mouse_pos is not None:
             delta = event.pos() - self._last_mouse_pos
-            # PyMOL mode rotates the object in the camera view so it appears
-            # to follow the cursor (inverse of Chimol's camera-rotation).
-            mult = self._rotation_delta_multiplier(self._mouse_mode)
-            self._azimuth += mult * delta.x() * 0.5
-            self._elevation = (self._elevation + mult * delta.y() * 0.5) % 360.0
+            factor = (delta.y() / 400.0) * max(5.0, self._distance)
+            self._distance = max(0.1, self._distance + factor)
+            self._right_dragged = True
+            self._last_mouse_pos = event.pos()
+            self.update()
+            event.accept()
+            return
+
+        if event.buttons() & QtCore.Qt.LeftButton and self._last_mouse_pos is not None:
+            # PyMOL virtual trackball: rotate about a screen-space axis so the
+            # object follows the cursor and the view can roll.
+            last = (float(self._last_mouse_pos.x()), float(self._last_mouse_pos.y()))
+            cur = (float(event.pos().x()), float(event.pos().y()))
+            delta_rot = self._trackball_delta(last, cur, self.width(), self.height())
+            rot = delta_rot @ self._rot
+            # Re-orthonormalise to prevent numerical drift over many drags.
+            u, _, vt = np.linalg.svd(rot)
+            self._rot = u @ vt
             self._last_mouse_pos = event.pos()
             self.update()
         super().mouseMoveEvent(event)
@@ -1209,40 +1291,31 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self.update()
 
     def _camera_forward_vector(self) -> np.ndarray:
-        az = math.radians(self._azimuth)
-        el = math.radians(self._elevation)
-        forward = np.array(
-            [math.sin(az) * math.cos(el), -math.cos(az) * math.cos(el), math.sin(el)],
-            dtype=float,
-        )
-        norm = float(np.linalg.norm(forward))
-        if norm <= 1e-8:
-            return np.array([0.0, 0.0, -1.0], dtype=float)
-        return forward / norm
+        # Camera looks down its -Z axis; row 2 of the world->camera rotation is
+        # the camera +Z in world, so forward = -row2.
+        return -np.asarray(self._rot[2], dtype=float)
 
     def _camera_right_vector(self) -> np.ndarray:
-        forward = self._camera_forward_vector()
-        world_up = np.array([0.0, 0.0, 1.0], dtype=float)
-        right = np.cross(forward, world_up)
-        norm = float(np.linalg.norm(right))
-        if norm <= 1e-8:
-            world_up = np.array([0.0, 1.0, 0.0], dtype=float)
-            right = np.cross(forward, world_up)
-            norm = float(np.linalg.norm(right))
-            if norm <= 1e-8:
-                return np.array([1.0, 0.0, 0.0], dtype=float)
-        return right / norm
+        return np.asarray(self._rot[0], dtype=float)
 
     def _camera_up_vector(self) -> np.ndarray:
-        right = self._camera_right_vector()
-        forward = self._camera_forward_vector()
-        up = np.cross(right, forward)
-        norm = float(np.linalg.norm(up))
-        if norm <= 1e-8:
-            return np.array([0.0, 1.0, 0.0], dtype=float)
-        return up / norm
+        return np.asarray(self._rot[1], dtype=float)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.button() == QtCore.Qt.RightButton:
+            if not getattr(self, "_right_dragged", False):
+                menu = QtWidgets.QMenu(self)
+                reset_act = menu.addAction("Reset view")
+                action = menu.exec_(event.globalPos())
+                if action is reset_act and self._controller is not None:
+                    try:
+                        self._controller.reset_view()
+                    except Exception:
+                        pass
+            self._right_dragged = False
+            event.accept()
+            return
+
         if (
             event.button() == QtCore.Qt.LeftButton
             and self._drag_selecting
