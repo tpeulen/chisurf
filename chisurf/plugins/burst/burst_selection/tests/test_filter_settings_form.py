@@ -90,6 +90,45 @@ def test_editing_the_generated_form_updates_the_plots(qapp):
         assert form.parameters["L"] == 33
 
 
+def _field_editor(page, attr):
+    """The AutoForm editor widget bound to ``settings.<attr>``, or ``None``."""
+    form = getattr(page, "_filter_settings_form_widget", None)
+    if form is None:
+        return None
+    from qtpy import QtWidgets
+    for w in form.findChildren(QtWidgets.QWidget):
+        section = getattr(w, "_section", None)
+        if getattr(section, "attr", None) == attr and hasattr(w, "editor"):
+            return w.editor
+    return None
+
+
+def test_region_drag_updates_the_dmt_fields(page):
+    """Dragging the delta-macro-time region must move the min/max dMT fields.
+
+    The region writes settings.dt_min/dt_max straight into the model, bypassing
+    the form's own widgets; without a re-read those numbers stayed frozen while
+    the region and the analysis moved.
+    """
+    dt_min_editor = _field_editor(page, "dt_min")
+    dt_max_editor = _field_editor(page, "dt_max")
+    assert dt_min_editor is not None and dt_max_editor is not None
+
+    # Emulate a finished region drag: the plot handler writes new bounds into the
+    # model through the notifying proxy, guarded by _region_is_updating.
+    page._region_is_updating = True
+    try:
+        page._filter_settings_model.settings.dt_min = 0.0123
+        page._filter_settings_model.settings.dt_max = 0.4567
+    finally:
+        page._region_is_updating = False
+
+    assert page.filter_settings.dt_min == pytest.approx(0.0123)
+    assert page.filter_settings.dt_max == pytest.approx(0.4567)
+    assert dt_min_editor.value() == pytest.approx(0.0123, abs=1e-4)
+    assert dt_max_editor.value() == pytest.approx(0.4567, abs=1e-4)
+
+
 def test_all_is_offered_for_detector_and_time_window():
     """'All' must stay selectable: it is how a user asks for every channel."""
     from chisurf.gui.widgets.wizard.tttr_photonfilter.filter_settings_form import (

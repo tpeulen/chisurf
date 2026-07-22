@@ -468,6 +468,13 @@ def install_filter_settings_form(page) -> None:
         # widgets, so this is what makes an edit survive.
         _mirror_to_widgets(page)
         _mirror_region(page)
+        # Re-read the model into the generated form's own controls. An edit that
+        # originates outside the form — dragging the delta-macro-time region,
+        # which writes settings.dt_min/dt_max straight into the model — otherwise
+        # never reaches the "min dMT"/"max dMT" fields, so the numbers stayed
+        # frozen while the region and the analysis moved. sync() blocks signals,
+        # so refreshing the field a user is editing is a harmless no-op.
+        _sync_form_fields(page)
         if notify is not None:
             notify()
         if page._filter_settings_model.mode_changed():
@@ -657,6 +664,24 @@ def adopt_info_panel(page) -> bool:
     right_box.insertWidget(0, info)      # above the search parameters
     info.show()
     return True
+
+
+def _sync_form_fields(page) -> None:
+    """Re-read the model into the generated form's field widgets.
+
+    ``AutoForm`` binds widget -> model on edit, but a change made to the model
+    from elsewhere (the region drag) does not flow back to the widgets on its
+    own. ``sync_fields`` re-reads every field with signals blocked, so the
+    visible controls follow the model without a rebuild and without recursing
+    through ``on_change``.
+    """
+    form = getattr(page, "_filter_settings_form_widget", None)
+    sync = getattr(form, "sync_fields", None)
+    if callable(sync):
+        try:
+            sync()
+        except Exception:
+            pass
 
 
 def _mirror_region(page) -> None:
