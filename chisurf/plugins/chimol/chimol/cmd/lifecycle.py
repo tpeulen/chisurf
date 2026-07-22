@@ -147,6 +147,34 @@ class LifecycleMixin(BaseCmd):
         self._refresh_window_objects(window)
         self._emit_message(f"Copied {source} to {target}")
 
+    @command("set_name")
+    def set_name(self, old_name: str = "", new_name: str = "") -> None:
+        """Rename a loaded object (PyMOL ``set_name old, new``)."""
+        old_name = (old_name or "").strip()
+        new_name = (new_name or "").strip()
+        if not old_name or not new_name:
+            self._emit_error("Usage: set_name old_name, new_name")
+            return
+
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        obj = self._find_object_by_name(viewer, old_name)
+        if obj is None:
+            self._emit_error(f"Unknown object: {old_name}")
+            return
+
+        oid = str(obj.get("id", "")).strip()
+        entry = getattr(viewer, "_objects", {}).get(oid)
+        if entry is None:
+            self._emit_error(f"Unknown object: {old_name}")
+            return
+
+        entry.name = new_name
+        self._refresh_window_objects(window)
+        self._emit_message(f"Renamed {old_name} to {new_name}")
+
     def _copy_object_fallback(self, viewer, source_id: str, target: str):
         entry = getattr(viewer, "_objects", {}).get(source_id)
         if entry is None:

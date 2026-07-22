@@ -325,6 +325,25 @@ class SelectionMixin(BaseCmd):
         self.deselect()
         self._emit_message("Cleared current selection")
 
+    @command("count_atoms")
+    def count_atoms(self, selection: str = "all") -> int:
+        """Report and return the number of atoms matched by ``selection``."""
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return 0
+
+        try:
+            _, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
+                viewer, selection or "all"
+            )
+        except Exception as exc:
+            self._emit_error(str(exc))
+            return 0
+
+        count = int(np.count_nonzero(atom_mask))
+        self._emit_message(f"count_atoms: {count} atoms in ({selection or 'all'})")
+        return count
+
     # ------------------------------------------------------------------ #
     # Helpers used by other command groups
     # ------------------------------------------------------------------ #
