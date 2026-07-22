@@ -455,7 +455,7 @@ def optimize_hyperparameters(
 
     # ---- Progress dialog ----
     total_budget = int(max(1, n_iter))
-    progress = QtWidgets.QProgressDialog("Optimizing hyperparameters...", "Cancel", 0, total_budget, wizard)
+    progress = QtWidgets.QProgressDialog("Optimizing hyperparameters...", "Cancel", 0, total_budget, wizard.window())
     progress.setWindowModality(QtCore.Qt.WindowModal)
     progress.setAutoClose(True)
     progress.show()

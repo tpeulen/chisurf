@@ -120,7 +120,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         groups = res.groupby(['First Stem', 'Detector'], sort=False)
         total_tasks = len(groups)
 
-        progress = QProgressDialog("Saving burst-fit results...", "Cancel", 0, total_tasks, self)
+        progress = QProgressDialog("Saving burst-fit results...", "Cancel", 0, total_tasks, self.window())
         progress.setWindowTitle("Saving burst-fit results")
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setAutoClose(True)
@@ -830,6 +830,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 row = self._find_detector_row(detector)
                 if row >= 0:
                     self.channel_definer.detectors_form.cellWidget(row, 3).setText(str(v))
+                self._set_polarization_display("doubleSpinBox_g_factor", v)
         except (KeyError, AttributeError):
             pass
 
@@ -863,6 +864,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 row = self._find_detector_row(detector)
                 if row >= 0:
                     self.channel_definer.detectors_form.cellWidget(row, 4).setText(str(v))
+                self._set_polarization_display("doubleSpinBox_l1", v)
         except (KeyError, AttributeError):
             pass
 
@@ -896,6 +898,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 row = self._find_detector_row(detector)
                 if row >= 0:
                     self.channel_definer.detectors_form.cellWidget(row, 5).setText(str(v))
+                self._set_polarization_display("doubleSpinBox_l2", v)
         except (KeyError, AttributeError):
             pass
 
@@ -923,10 +926,18 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # timing
         st.setdefault('dt', float(self.dt_effective))
         st.setdefault('excitation_period', float(self.excitation_period))
-        # model parameters
-        st.setdefault('g_factor', float(self.g_factor))
-        st.setdefault('l1', float(self.l1))
-        st.setdefault('l2', float(self.l2))
+        # model parameters — the polarisation corrections belong to THIS detector
+        # (``det``), so seed them from its own definition, not from ``self.g_factor``
+        # (the *current* detector). Seeding from the current detector cached one
+        # detector's g/l1/l2 onto another, and _apply_ui_state then wrote the wrong
+        # values back into channel_definer.detectors on the next switch.
+        try:
+            det_def = self.channel_definer.detectors.get(det, {})
+        except AttributeError:
+            det_def = {}
+        st.setdefault('g_factor', float(det_def.get('g_factor', 1.0)))
+        st.setdefault('l1', float(det_def.get('l1', 0.0)))
+        st.setdefault('l2', float(det_def.get('l2', 0.0)))
         # initial guesses and fixed flags
         x0, fixed = self.fit_parameters
         st.setdefault('initial_x0', np.array(x0))
@@ -1183,11 +1194,13 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.p2s_twoIstar = state['p2s_twoIstar']
         self.BIFL_scatter = state['BIFL_scatter']
 
-        # — “internal” fit parameters —
-        # use the property setters so the UI stays in sync
-        self.g_factor = state['g_factor']
-        self.l1 = state['l1']
-        self.l2 = state['l2']
+        # G factor / l1 / l2 are NOT restored here. They are per-detector
+        # calibration constants owned by the detector definition (channel_definer)
+        # and are read from it live via the g_factor/l1/l2 getters; writing them
+        # back through the setters (which poke the definition's table cells by
+        # row/column) mis-targeted the cells and swapped one detector's l1/l2 onto
+        # another on repeated switches. The fit-page fields display them read-only
+        # (refreshed by _sync_polarization_widgets), so nothing needs restoring.
 
         # — initial‐guess & fixed flags —
         x0 = state['initial_x0']
@@ -1322,6 +1335,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         except Exception as e:
             # Silently ignore errors when loading MLE settings
             pass
+
+        # Show the new detector's polarisation corrections (G factor / l1 / l2).
+        self._sync_polarization_widgets()
 
         # remember where we are now
         self._last_detector = new_detector
@@ -1694,12 +1710,27 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         """Burst-MLE page: fit parameters, IRF controls, plots column, Run."""
         Q = QtWidgets
         self.tab_parameters = Q.QWidget()
-        grid3 = Q.QGridLayout(self.tab_parameters)
+        # A horizontal splitter separates the (space-scarce) controls on the left
+        # from the plots on the right, so the user can give whichever side they
+        # are working on more room. The controls live on a left widget; the plots
+        # on a right widget.
+        _page = Q.QHBoxLayout(self.tab_parameters)
+        _page.setContentsMargins(0, 0, 0, 0)
+        self._mle_splitter = Q.QSplitter(QtCore.Qt.Horizontal)
+        _left = Q.QWidget()
+        grid3 = Q.QGridLayout(_left)
 
-        # Plots column (row 0, col 1, spanning 6 rows).
-        self.verticalLayout_plots = Q.QVBoxLayout()
+        # Plots go on the right side of the splitter.
+        _right = Q.QWidget()
+        self.verticalLayout_plots = Q.QVBoxLayout(_right)
         self.verticalLayout_plots.setSpacing(0)
-        grid3.addLayout(self.verticalLayout_plots, 0, 1, 7, 1)
+        self.verticalLayout_plots.setContentsMargins(0, 0, 0, 0)
+        self._mle_splitter.addWidget(_left)
+        self._mle_splitter.addWidget(_right)
+        self._mle_splitter.setStretchFactor(0, 0)
+        self._mle_splitter.setStretchFactor(1, 1)
+        self._mle_splitter.setChildrenCollapsible(False)
+        _page.addWidget(self._mle_splitter)
 
         # Filename / detector / fit-range / min-photons block (grid at 0,0).
         g2 = Q.QGridLayout()
@@ -1710,10 +1741,12 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.spinBox_current_file_idx = Q.QSpinBox()
         self.label_window = Q.QLabel("Detector:")
         self.comboBox_window = Q.QComboBox()
-        self.label_4 = Q.QLabel("Fit Start/Stop")
+        self.label_4 = Q.QLabel("Range")
+        self.label_4.setToolTip("Fit window: start / stop micro-time channel.")
         self.spinBox_micro_time_start = self._isb(0, 10000, 0)
         self.spinBox_micro_time_stop = self._isb(0, 10000, 4096)
-        self.label_14 = Q.QLabel("Minimum Photons:")
+        self.label_14 = Q.QLabel("Min photons")
+        self.label_14.setToolTip("Minimum photons per burst to fit.")
         self.spinBox_min_photons = self._isb(5, 1000, 20)
         self.toolButton_save_fit = Q.QToolButton()
         self.toolButton_save_fit.setText("to default")
@@ -1776,17 +1809,50 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g4 = Q.QGridLayout(self.groupBox_fit_params)
         g4.setContentsMargins(0, 0, 0, 0)
         g4.setSpacing(0)
-        self.label_28 = Q.QLabel("Shift (VV/VH)")
+        self.label_28 = Q.QLabel("Shift")
+        self.label_28.setToolTip("VV/VH channel shift (perpendicular relative to parallel).")
         self.doubleSpinBox_shift = self._dsb(decimals=0, minimum=-9999.0, maximum=9999.0)
         self.doubleSpinBox_shift.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Fixed)
-        self.label_24 = Q.QLabel("Scatter Countrate [Hz]")
+        self.doubleSpinBox_shift.setToolTip("VV/VH channel shift (perpendicular relative to parallel).")
+        self.label_24 = Q.QLabel("Scatter [Hz]")
+        self.label_24.setToolTip("Scatter count rate (Hz).")
         self.label_24.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
         self.doubleSpinBox_scatter_Countrate = self._dsb(maximum=999999.0, adaptive=True)
         g4.addWidget(self.label_28, 3, 0)
         g4.addWidget(self.doubleSpinBox_shift, 3, 1)
         g4.addWidget(self.label_24, 5, 0)
         g4.addWidget(self.doubleSpinBox_scatter_Countrate, 5, 1)
-        _shift_box = CollapsibleBox("Shift · scatter count rate", expanded=False)
+        # Per-detector polarisation corrections (G factor, l1, l2). They are
+        # calibration constants defined with the detector (the Channels / setup
+        # step) and feed the anisotropy of the fit. The Detector Definition tab is
+        # hidden inside the embedded workflow, so display them here (read-only)
+        # for the current detector; edit them in the detector setup.
+        _pol_tip = ("Polarisation correction for the current detector, defined in "
+                    "the detector setup (Channels step). Read-only here.")
+        self.label_g_factor = Q.QLabel("G")
+        self.label_g_factor.setToolTip("Detector G factor (VV/VH sensitivity ratio). " + _pol_tip)
+        self.label_g_factor.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
+        self.doubleSpinBox_g_factor = self._dsb(
+            decimals=4, minimum=0.0, maximum=100.0, value=1.0, readonly=True, nobuttons=True)
+        self.doubleSpinBox_g_factor.setToolTip(
+            "Detector G factor (VV/VH sensitivity ratio). " + _pol_tip)
+        self.label_l1 = Q.QLabel("l1")
+        self.label_l1.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
+        self.doubleSpinBox_l1 = self._dsb(
+            decimals=4, minimum=-1.0, maximum=1.0, value=0.0, readonly=True, nobuttons=True)
+        self.doubleSpinBox_l1.setToolTip("Mixing factor l1 (parallel leakage). " + _pol_tip)
+        self.label_l2 = Q.QLabel("l2")
+        self.label_l2.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
+        self.doubleSpinBox_l2 = self._dsb(
+            decimals=4, minimum=-1.0, maximum=1.0, value=0.0, readonly=True, nobuttons=True)
+        self.doubleSpinBox_l2.setToolTip("Mixing factor l2 (perpendicular leakage). " + _pol_tip)
+        g4.addWidget(self.label_g_factor, 6, 0)
+        g4.addWidget(self.doubleSpinBox_g_factor, 6, 1)
+        g4.addWidget(self.label_l1, 7, 0)
+        g4.addWidget(self.doubleSpinBox_l1, 7, 1)
+        g4.addWidget(self.label_l2, 8, 0)
+        g4.addWidget(self.doubleSpinBox_l2, 8, 1)
+        _shift_box = CollapsibleBox("Shift · scatter · G/l1/l2", expanded=False)
         _shift_box.add_widget(self.groupBox_fit_params)
         grid3.addWidget(_shift_box, 2, 0)
 
@@ -1823,7 +1889,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g.addWidget(self.label_20, 5, 3)
         g.addWidget(self.label_19, 5, 4)
         # tau / gamma / r0 / rho rows: label, initial value, fix, result
-        self.label_15 = Q.QLabel("Tau (ns):")
+        self.label_15 = Q.QLabel("τ [ns]")
+        self.label_15.setToolTip("Fluorescence lifetime tau (ns).")
         self.label_15.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
         self.doubleSpinBox_tau = self._dsb(decimals=3, maximum=20.0, adaptive=True, value=4.0)
         self.doubleSpinBox_tau.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Fixed)
@@ -1833,7 +1900,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g.addWidget(self.doubleSpinBox_tau, 6, 1)
         g.addWidget(self.checkBox_fix_tau, 6, 3)
         g.addWidget(self.doubleSpinBox_tau_result, 6, 4)
-        self.label_16 = Q.QLabel("Gamma:")
+        self.label_16 = Q.QLabel("γ")
+        self.label_16.setToolTip("Scatter fraction gamma (0..1).")
         self.doubleSpinBox_gamma = self._dsb(decimals=3, maximum=1.0, step=0.01, adaptive=True, value=0.1)
         self.checkBox_fix_gamma = Q.QCheckBox()
         self.doubleSpinBox_gamma_result = self._dsb(decimals=3, maximum=1.0, readonly=True, nobuttons=True)
@@ -1841,7 +1909,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g.addWidget(self.doubleSpinBox_gamma, 7, 1)
         g.addWidget(self.checkBox_fix_gamma, 7, 3)
         g.addWidget(self.doubleSpinBox_gamma_result, 7, 4)
-        self.label_17 = Q.QLabel("r0:")
+        self.label_17 = Q.QLabel("r₀")
+        self.label_17.setToolTip("Fundamental anisotropy r0.")
         self.doubleSpinBox_r0 = self._dsb(decimals=3, maximum=1.0, step=0.01, adaptive=True, value=0.38)
         self.checkBox_fix_r0 = Q.QCheckBox()
         self.checkBox_fix_r0.setChecked(True)
@@ -1850,7 +1919,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g.addWidget(self.doubleSpinBox_r0, 8, 1)
         g.addWidget(self.checkBox_fix_r0, 8, 3)
         g.addWidget(self.doubleSpinBox_r0_result, 8, 4)
-        self.label_18 = Q.QLabel("Rho (ns):")
+        self.label_18 = Q.QLabel("ρ [ns]")
+        self.label_18.setToolTip("Rotational correlation time rho (ns).")
         self.doubleSpinBox_rho = self._dsb(decimals=3, maximum=999.0, adaptive=True, value=1.22)
         self.checkBox_fix_rho = Q.QCheckBox()
         self.doubleSpinBox_rho_result = self._dsb(decimals=3, maximum=20.0, readonly=True, nobuttons=True)
@@ -1873,18 +1943,75 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         g.addWidget(self.doubleSpinBox_r_scatter_result, 11, 1)
         g.addWidget(self.label_27, 11, 3)
         g.addWidget(self.doubleSpinBox_r_exp_result, 11, 4)
+        # Fit-model selector, populated from tttrlib's registry (fit23/24/25/26).
+        # Currently only fit23 (single lifetime + anisotropy) is wired end to end;
+        # the selector makes the model explicit and is the seam for the others.
+        self.comboBox_fit_model = Q.QComboBox()
+        try:
+            from chisurf.core.fluorescence.mle import registry as _fit_reg
+            for _name, _spec in _fit_reg.fit_models().items():
+                self.comboBox_fit_model.addItem(_spec.get("label", _name), _name)
+                self.comboBox_fit_model.setItemData(
+                    self.comboBox_fit_model.count() - 1,
+                    _spec.get("summary", ""), QtCore.Qt.ToolTipRole,
+                )
+        except Exception:
+            pass
+        if self.comboBox_fit_model.count() == 0:
+            self.comboBox_fit_model.addItem("Single lifetime + anisotropy (Fit23)", "fit23")
+        self.comboBox_fit_model.setToolTip(
+            "Lifetime fit model (from the tttrlib registry). fit23 fits one "
+            "lifetime with anisotropy; other models are selectable as they are wired."
+        )
+        _model_row = Q.QWidget()
+        _mrl = Q.QHBoxLayout(_model_row)
+        _mrl.setContentsMargins(0, 0, 0, 0)
+        _mrl.setSpacing(4)
+        _mlbl = Q.QLabel("Model")
+        _mlbl.setToolTip("MLE lifetime fit model.")
+        _mrl.addWidget(_mlbl)
+        _mrl.addWidget(self.comboBox_fit_model, 1)
+
         _params_box = CollapsibleBox("Fit parameters", expanded=True)
+        _params_box.add_widget(_model_row)
         _params_box.add_widget(self.groupBox_model_params)
         grid3.addWidget(_params_box, 3, 0)
 
-        # IRF/background source: a one-click estimate from non-burst photons, a
-        # jump to the measured IRF & Background step, and a note that a measured
-        # IRF/background gives better lifetimes. Compact single row.
+        # Actions row: a general one-click "make it work" optimiser, a quick
+        # IRF/background estimate from non-burst photons, a jump to the measured
+        # IRF & Background step, and a note that a measured IRF/background gives
+        # better lifetimes. Compact single row.
+        self.toolButton_auto_optimize = Q.QToolButton()
+        self.toolButton_auto_optimize.setText("⚡ Auto-optimize")
+        self.toolButton_auto_optimize.setToolTip(
+            "Auto-select the micro-time binning (count- and IRF-resolution-aware) "
+            "and the fit window (the decay's filled region), then refit. Uses the "
+            "current IRF/background; if none was loaded it is estimated from the "
+            "non-burst photons."
+        )
+        _opt_font = self.toolButton_auto_optimize.font()
+        _opt_font.setBold(True)
+        self.toolButton_auto_optimize.setFont(_opt_font)
         self.toolButton_auto_irf = Q.QToolButton()
         self.toolButton_auto_irf.setText("✨ Auto IRF/BG")
         self.toolButton_auto_irf.setToolTip(
             "Estimate the IRF and background from this file's non-burst photons "
             "and refit. Quick, but a measured IRF/background is more reliable."
+        )
+        # IRF model for Auto IRF/BG: flip between a Gaussian fitted to the
+        # extracted prompt (suppresses the fluorescent-background tail) and the
+        # raw experimental prompt. Changing it re-runs the auto-extraction.
+        self.comboBox_irf_model = Q.QComboBox()
+        self.comboBox_irf_model.addItem("Gaussian (fitted)", "gaussian")
+        self.comboBox_irf_model.addItem("Skewed Gaussian", "skewed")
+        self.comboBox_irf_model.addItem("Experimental", "experimental")
+        self.comboBox_irf_model.setToolTip(
+            "IRF model used by Auto IRF/BG:\n"
+            "• Gaussian (fitted): a Gaussian least-squares fit to the extracted "
+            "prompt — the fit cannot follow the slow fluorescent tail, so it "
+            "suppresses that artifact (recommended).\n"
+            "• Skewed Gaussian: a skew-normal fit (asymmetric detector response).\n"
+            "• Experimental: the raw baseline-subtracted non-burst histogram."
         )
         self.toolButton_goto_irf = Q.QToolButton()
         self.toolButton_goto_irf.setText("IRF & Background…")
@@ -1898,7 +2025,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         _row = Q.QHBoxLayout(_irf_actions)
         _row.setContentsMargins(0, 0, 0, 0)
         _row.setSpacing(4)
+        _row.addWidget(self.toolButton_auto_optimize)
         _row.addWidget(self.toolButton_auto_irf)
+        _row.addWidget(self.comboBox_irf_model)
         _row.addWidget(self.toolButton_goto_irf)
         _row.addWidget(self.label_irf_hint, 1)
         grid3.addWidget(_irf_actions, 4, 0)
@@ -2018,8 +2147,35 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self._fit = None
         self.update_fit()
 
+    def _set_polarization_display(self, attr: str, value: float):
+        """Mirror a G factor / l1 / l2 value into its fit-page field (no signals).
+
+        The properties are the single source of truth (they own the detector
+        definition); this keeps the display in step whenever they are written,
+        without re-triggering the field's ``editingFinished`` refit.
+        """
+        widget = getattr(self, attr, None)
+        if widget is None:
+            return
+        blocked = widget.blockSignals(True)
+        widget.setValue(float(value))
+        widget.blockSignals(blocked)
+
+    def _sync_polarization_widgets(self):
+        """Show the current detector's G factor / l1 / l2 in the fit-page fields.
+
+        The values live on the detector definition (the ``g_factor``/``l1``/``l2``
+        properties read them); this mirrors them into the display spin boxes with
+        signals blocked so refreshing on a detector switch does not re-trigger a
+        fit.
+        """
+        self._set_polarization_display("doubleSpinBox_g_factor", self.g_factor)
+        self._set_polarization_display("doubleSpinBox_l1", self.l1)
+        self._set_polarization_display("doubleSpinBox_l2", self.l2)
+
     def update_internal_fit_parameters(self):
         cs.logging.info("update internal fit parameters")
+        self._sync_polarization_widgets()
         # Set fit to none to force recreation of fit
         self._fit = None
         self.update_fit()
@@ -2057,7 +2213,12 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # --- Burst processing & navigation ---
         self.pushButton_process_bursts.clicked.connect(self.process_bursts)
+        self.toolButton_auto_optimize.clicked.connect(self.auto_optimize)
         self.toolButton_auto_irf.clicked.connect(self.auto_extract_irf_bg)
+        # Flipping the IRF model re-extracts so the change is immediate.
+        self.comboBox_irf_model.currentIndexChanged.connect(
+            lambda _=None: self.auto_extract_irf_bg()
+        )
         self.toolButton_goto_irf.clicked.connect(self.go_to_irf_bg)
         # Stop button functionality is deprecated in favor of modal progress dialog cancel
         try:
@@ -2067,6 +2228,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             pass
         self.comboBox_window.currentTextChanged.connect(self._on_channel_changed)
         self.spinBox_current_file_idx.valueChanged.connect(self.update_current_file)
+        self.comboBox_fit_model.currentIndexChanged.connect(self._on_fit_model_changed)
 
         # --- Fit‐parameter controls (internal) ---
 
@@ -2609,6 +2771,36 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                    "re-fix gamma or use a measured IRF/background"
         return None
 
+    @property
+    def fit_model(self) -> str:
+        """The selected tttrlib fit model (``fit23``/``fit24``/…)."""
+        combo = getattr(self, "comboBox_fit_model", None)
+        return (combo.currentData() if combo is not None else None) or "fit23"
+
+    def _on_fit_model_changed(self, _index: int = 0) -> None:
+        """React to a fit-model change.
+
+        Only ``fit23`` is currently wired through the fit/plot/export path. For
+        any other model, tell the user it is not yet fit here and keep ``fit23``
+        selected so the running fit stays valid, rather than silently mis-fitting.
+        """
+        combo = self.comboBox_fit_model
+        if self.fit_model == "fit23":
+            self._set_status("")
+            return
+        label = combo.currentText()
+        self._set_status(
+            f"{label} is advertised by tttrlib but not yet wired into this fit "
+            f"panel — using fit23 for now."
+        )
+        blocked = combo.blockSignals(True)
+        try:
+            idx = combo.findData("fit23")
+            if idx >= 0:
+                combo.setCurrentIndex(idx)
+        finally:
+            combo.blockSignals(blocked)
+
     def _set_status(self, text: str):
         """Show a short status message where the host offers one; never crash."""
         try:
@@ -2752,6 +2944,59 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             return
         self.micro_time_range = (onset, last)
 
+    def auto_optimize(self):
+        """One-click "make it work": auto binning + fit window, then refit.
+
+        The general auto-optimiser. Re-derives the micro-time binning (count- and
+        IRF-resolution-aware, :meth:`_auto_select_binning`) and the fit window
+        (the decay's filled region, :meth:`_auto_select_fit_range`) from the data
+        and refits — keeping whatever IRF/background source is in use:
+
+        * **Auto-extracted IRF** (no IRF files loaded): delegate to
+          :meth:`auto_extract_irf_bg`, which re-estimates the IRF/background at
+          the new binning as well. This is the foolproof path.
+        * **Measured IRF** (files loaded): changing the binning rebuilds the
+          file-sourced IRF/background and the decay via the binning-changed
+          cascade; we then restrict the window and refit, leaving the measured
+          IRF untouched.
+        """
+        tttr = self._current_tttr()
+        if tttr is None:
+            self._set_status("Load bursts first — nothing to optimise")
+            return
+
+        det = self.current_detector
+        fw = self.irf_file_widgets.get(det)
+        has_irf_file = bool(fw and fw.get_selected_files())
+        if not has_irf_file:
+            # No measured IRF for this detector: the extraction path already does
+            # binning + extract-at-binning + window + fit.
+            self.auto_extract_irf_bg()
+            return
+
+        # Measured IRF: coarsen the binning (rebuilds the file-sourced IRF/bg and
+        # the decay through on_micro_time_range_changed), then window + refit.
+        pick = self._auto_select_binning()
+        combo = self.channel_definer.micro_binning_combo
+        if pick is not None and str(pick) != combo.currentText():
+            combo.setCurrentText(str(pick))
+        else:
+            self.update_decay_of_detector()
+        start = self.spinBox_micro_time_start.blockSignals(True)
+        stop = self.spinBox_micro_time_stop.blockSignals(True)
+        try:
+            self._auto_select_fit_range()
+        finally:
+            self.spinBox_micro_time_start.blockSignals(start)
+            self.spinBox_micro_time_stop.blockSignals(stop)
+        self.update_decay_of_detector()
+        self._fit = None
+        self.update_fit()
+        self._set_status(
+            f"Auto-optimised (measured IRF): binning {self.micro_time_binning}, "
+            f"window {self.micro_time_range}."
+        )
+
     def auto_extract_irf_bg(self):
         """One-click IRF/background from this file's NON-burst photons.
 
@@ -2790,12 +3035,17 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         in_burst = np.zeros(len(tttr), dtype=bool)
         in_burst[idx] = True
         try:
+            irf_model = "gaussian"
+            combo = getattr(self, "comboBox_irf_model", None)
+            if combo is not None and combo.currentData():
+                irf_model = str(combo.currentData())
             patterns = extract_mle_irf_background(
                 tttr,
                 self.channel_definer.detectors,
                 micro_time_binning=self.micro_time_binning,
                 mask=~in_burst,
                 min_photons=max(2, int(self.min_photons)),
+                irf_model=irf_model,
             )
         except Exception as exc:  # noqa: BLE001
             self._set_status(f"IRF extraction failed: {exc}")
@@ -3070,7 +3320,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # Progress UI
         total_bursts = len(self.df_bursts)
-        progress = QProgressDialog("Processing bursts...", "Cancel", 0, total_bursts, self)
+        progress = QProgressDialog("Processing bursts...", "Cancel", 0, total_bursts, self.window())
         progress.setWindowTitle("Processing bursts")
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setAutoClose(False)
@@ -3324,7 +3574,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # UI
         self.stop_processing = False
         total_bursts = len(self.df_bursts)
-        progress = QProgressDialog("Processing bursts...", "Cancel", 0, total_bursts, self)
+        progress = QProgressDialog("Processing bursts...", "Cancel", 0, total_bursts, self.window())
         progress.setWindowTitle("Processing bursts")
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setAutoClose(False)

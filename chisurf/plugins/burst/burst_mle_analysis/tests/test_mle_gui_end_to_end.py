@@ -133,6 +133,20 @@ def test_auto_extract_gives_a_physical_lifetime_for_every_colour(fitted_wizard):
         assert 0.5 < tau < 5.0, f"{det} tau railed/implausible: {tau}"
 
 
+def test_auto_optimize_button_sets_binning_window_and_fits(fitted_wizard):
+    # The general one-click optimiser: with no measured IRF it delegates to the
+    # non-burst extraction, so it must leave a coarsened binning, a restricted
+    # window and a physical lifetime — the same guarantees as the IRF path.
+    w = fitted_wizard
+    w.comboBox_window.setCurrentText("green")
+    w.auto_optimize()
+    assert w.micro_time_binning > 1
+    sb, eb = w.micro_time_range
+    n_half = int(np.asarray(w.decay_of_current_file).size) // 2
+    assert 0 <= sb < eb <= n_half and (eb - sb) < n_half
+    assert 0.5 < w.doubleSpinBox_tau_result.value() < 5.0
+
+
 def _mean_arrival_lifetime(w, det, chs):
     """Model-free lifetime: mean burst micro-time minus the scatter prompt."""
     tttr = next(iter(w.tttrs.values()))
@@ -275,4 +289,61 @@ def test_irf_survives_ui_refresh_with_empty_file_widget(fitted_wizard):
     fitted_wizard.update_bg_files()
     assert det in fitted_wizard.irf_np and np.asarray(fitted_wizard.irf_np[det]).size > 0
     assert det in fitted_wizard.bg_np and np.asarray(fitted_wizard.bg_np[det]).size > 0
+
+
+def test_fit_page_displays_per_detector_g_factor_l1_l2(qapp):
+    """The fit page shows each detector's G factor / l1 / l2 (read-only).
+
+    The corrections live on the detector definition; the Detector Definition tab
+    is hidden inside the embedded workflow, so the fit page must surface them.
+    They are read-only (calibration constants, edited in the setup) and, crucially,
+    switching detectors must NOT corrupt the definition: the g/l1/l2 setters used
+    to poke the definition's table cells by row/column and **swapped** one
+    detector's l1/l2 onto another on repeated switches (so the fit silently ran
+    with the wrong polarisation corrections).
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
+        MLELifetimeAnalysisWizard,
+    )
+
+    channels = {
+        "detectors": {
+            "green": {"chs": [0, 1], "micro_time_ranges": [],
+                      "g_factor": 1.15, "l1": 0.0308, "l2": 0.0368},
+            "red": {"chs": [8, 9], "micro_time_ranges": [],
+                    "g_factor": 0.92, "l1": 0.05, "l2": 0.06},
+        },
+        "windows": {}, "file_type": "SPC-130",
+    }
+
+    w = MLELifetimeAnalysisWizard()
+    QtWidgets.QApplication.processEvents()
+    w.channel_definer.load_data_into_tables(channels)
+    w.channel_definer.file_type_combo.setCurrentText("SPC-130")
+    w._init_channels_from_wizard()
+    QtWidgets.QApplication.processEvents()
+
+    # The display fields exist and are read-only.
+    for sb in (w.doubleSpinBox_g_factor, w.doubleSpinBox_l1, w.doubleSpinBox_l2):
+        assert sb.isReadOnly()
+
+    def displayed():
+        return (round(w.doubleSpinBox_g_factor.value(), 4),
+                round(w.doubleSpinBox_l1.value(), 4),
+                round(w.doubleSpinBox_l2.value(), 4))
+
+    # Repeated switches must keep the display correct and the definition intact.
+    for _ in range(3):
+        w.comboBox_window.setCurrentText("green")
+        QtWidgets.QApplication.processEvents()
+        assert displayed() == (1.15, 0.0308, 0.0368)
+        w.comboBox_window.setCurrentText("red")
+        QtWidgets.QApplication.processEvents()
+        assert displayed() == (0.92, 0.05, 0.06)
+
+    dets = w.channel_definer.detectors
+    assert (dets["green"]["l1"], dets["green"]["l2"]) == (0.0308, 0.0368)
+    assert (dets["red"]["l1"], dets["red"]["l2"]) == (0.05, 0.06)
 
