@@ -132,6 +132,18 @@ The real AV-workflow cost was that every AV show/update calls `_update_view`,
 which rebuilds the **whole structure scene** (cartoon/atoms/surface) — so the
 builder speedups above dominate AV-interaction latency, not the AV mesh itself.
 
+**AVs render as a transparent surface envelope, never a transparent point cloud.**
+A dense AV drawn as tens of thousands of transparent sphere sprites is
+fragment-overdraw bound — each sprite runs the full lighting fragment shader and
+they stack many-deep under alpha blending, so rotation crawls. `AVViewer3D.show_av`
+therefore calls `add_surface_overlay` (→ `_generate_surface_mesh_from_points`:
+voxelise → dilate → smooth → marching cubes), producing one **transparent closed
+mesh** — a ~60k-point cloud becomes ~3.6k verts / ~7.2k triangles with minimal
+overdraw, the same volumetric read for a fraction of the GPU cost. The overlay
+falls back to points only if meshing fails (too few points). `add_point_overlay`
+still exists for genuine point data and now caps/subsamples above
+`overlay.max_points` (default 30k) as a defensive guard.
+
 **Spatial-search dependency note:** the AO neighbour count deliberately uses a
 numba cell list, not scipy (`scipy` is *not* a declared dependency) and not IMP
 (which *is*). IMP was evaluated: `IMP.algebra.NearestNeighbor3D.get_in_ball` is an

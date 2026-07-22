@@ -144,6 +144,13 @@ def _load_display_config() -> dict:
             "sphere_lat": 10,
             "sphere_lon": 16,
         },
+        "overlay": {
+            # Cap on rendered points for transparent point-cloud overlays (AV
+            # clouds, dye densities). Overdraw of transparent sprites scales with
+            # this; the cloud is random-subsampled with alpha compensation above
+            # the cap so it stays fast without visibly thinning.
+            "max_points": 30000,
+        },
         "dots": {
             "size_px": 8.0,
             "max_points": 250000,

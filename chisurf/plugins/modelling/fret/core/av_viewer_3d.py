@@ -37,7 +37,15 @@ class AVViewer3D(QtWidgets.QWidget):
             print(f"AVViewer3D: Failed to load structure {pdb_path}: {e}")
 
     def show_av(self, key: str, coords: np.ndarray, color: tuple = (0.0, 1.0, 0.5, 0.5)) -> None:
-        """Display the accessible volume point cloud.
+        """Display the accessible volume as a transparent surface envelope.
+
+        The AV point cloud is meshed into an isosurface (voxelise → dilate →
+        smooth → marching cubes) and rendered as a single transparent mesh.
+        A dense cloud drawn as thousands of transparent sphere sprites is
+        fragment-overdraw bound and slow to rotate; a few-thousand-triangle
+        transparent surface gives the same volumetric read for a fraction of the
+        GPU cost. If meshing fails (too few points) the overlay falls back to a
+        point cloud automatically.
 
         Parameters
         ----------
@@ -46,15 +54,13 @@ class AVViewer3D(QtWidgets.QWidget):
         coords : np.ndarray
             (N, 3) or (N, 4) coordinate array.
         color : tuple, optional
-            RGBA color tuple.
+            RGBA color tuple; the fourth component sets the surface transparency.
         """
-        self.mol_view.add_point_overlay(
+        self.mol_view.add_surface_overlay(
             key,
             coords[:, :3],
             color=color,
-            size_scale=0.015,
-            min_size=1.0,
-            alpha=color[3] if len(color) > 3 else 0.5
+            alpha=color[3] if len(color) > 3 else 0.5,
         )
 
     def show_mean_position(self, key: str, center: np.ndarray, color: tuple = (1.0, 0.8, 0.2, 0.9), label: Optional[str] = None) -> None:

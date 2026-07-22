@@ -494,6 +494,7 @@ class MolView(QtWidgets.QWidget):
         min_size: float = 2.5,
         alpha: float = 0.6,
         transform_to_scene: bool = True,
+        max_points: int | None = None,
     ) -> None:
         """Add or replace a named point-cloud overlay in the 3D view.
 
@@ -519,12 +520,43 @@ class MolView(QtWidgets.QWidget):
         transform_to_scene : bool, optional
             Whether to convert raw molecular coordinates into Chimol scene
             coordinates.
+        max_points : int, optional
+            Cap on the number of rendered points. A dense accessible-volume cloud
+            is thousands of *transparent* sphere sprites, and the cost is fragment
+            overdraw — proportional to the point count — not the CPU build. When
+            the cloud exceeds the cap it is uniformly random-subsampled; the alpha
+            is left untouched so the cloud stays see-through (a thinned cloud reads
+            as slightly lighter, not opaque). Raise the cap for more density.
+            Defaults to the ``overlay.max_points`` config value.
         """
         if self._point_overlays is None:
             self._point_overlays = {}
         scene_scale = self._world_to_scene_scale()
         if transform_to_scene:
             coords = self._transform_world_coords_to_scene(coords)
+
+        coords = np.asarray(coords, dtype=float)
+        color_arr = np.asarray(color, dtype=float)
+        per_point_color = (
+            color_arr.ndim == 2
+            and color_arr.shape[0] == coords.shape[0]
+        )
+
+        if max_points is None:
+            overlay_cfg = _DISPLAY_CONFIG.get("overlay", {})
+            try:
+                max_points = int(overlay_cfg.get("max_points", 30000))
+            except Exception:
+                max_points = 30000
+
+        n = coords.shape[0]
+        if max_points and n > max_points and coords.ndim == 2:
+            rng = np.random.default_rng(0)
+            idx = np.sort(rng.choice(n, int(max_points), replace=False))
+            coords = coords[idx]
+            if per_point_color:
+                color = color_arr[idx]
+
         self._point_overlays[key] = {
             "coords": coords,
             "color": color,
