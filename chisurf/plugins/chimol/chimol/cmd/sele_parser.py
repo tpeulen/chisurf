@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Union, Callable
 from dataclasses import dataclass
 
 import numpy as np
-
 
 # Tokenizer
 
@@ -20,23 +18,27 @@ class Token:
         return f"Token({self.type}, {self.value!r})"
 
 
+# Keyword patterns are matched case-insensitively via the re.IGNORECASE flag on
+# the compiled regex below.  Inline ``(?i)`` flags must NOT be used here: once the
+# per-token patterns are joined with ``|`` the flag lands mid-expression, which
+# Python 3.11+ rejects ("global flags not at the start of the expression").
 TOKEN_TYPES = [
     ("SPACE", r"\s+"),
     ("LPAREN", r"\("),
     ("RPAREN", r"\)"),
-    ("AND", r"(?i)\band\b|&"),
-    ("OR", r"(?i)\bor\b|\|"),
-    ("NOT", r"(?i)\bnot\b|!"),
-    ("WITHIN", r"(?i)\bwithin\b"),
-    ("OF", r"(?i)\bof\b"),
-    ("AROUND", r"(?i)\baround\b"),
-    ("EXPAND", r"(?i)\bexpand\b"),
-    ("BYRES", r"(?i)\bbyres\b"),
-    ("BYMOL", r"(?i)\bbymol\b"),
-    ("BYOBJ", r"(?i)\bbyobj\b"),
-    ("TO", r"(?i)\bto\b"),
-    ("ALL", r"(?i)\ball\b|\*"),
-    ("NONE", r"(?i)\bnone\b"),
+    ("AND", r"\band\b|&"),
+    ("OR", r"\bor\b|\|"),
+    ("NOT", r"\bnot\b|!"),
+    ("WITHIN", r"\bwithin\b"),
+    ("OF", r"\bof\b"),
+    ("AROUND", r"\baround\b"),
+    ("EXPAND", r"\bexpand\b"),
+    ("BYRES", r"\bbyres\b"),
+    ("BYMOL", r"\bbymol\b"),
+    ("BYOBJ", r"\bbyobj\b"),
+    ("TO", r"\bto\b"),
+    ("ALL", r"\ball\b|\*"),
+    ("NONE", r"\bnone\b"),
     ("IDENT", r"[a-zA-Z_][a-zA-Z0-9_]*"),
     ("PLUS", r"\+"),
     ("MINUS", r"-"),
@@ -46,10 +48,13 @@ TOKEN_TYPES = [
     ("SLASH", r"/"),
 ]
 
-TOKEN_REGEX = re.compile("|".join(f"(?P<{name}>{pattern})" for name, pattern in TOKEN_TYPES))
+TOKEN_REGEX = re.compile(
+    "|".join(f"(?P<{name}>{pattern})" for name, pattern in TOKEN_TYPES),
+    re.IGNORECASE,
+)
 
 
-def tokenize(expr: str) -> List[Token]:
+def tokenize(expr: str) -> list[Token]:
     tokens = []
     for match in TOKEN_REGEX.finditer(expr):
         kind = match.lastgroup
@@ -79,7 +84,7 @@ class IdentNode(ASTNode):
 
 @dataclass
 class ValueNode(ASTNode):
-    value: Union[int, float, str]
+    value: int | float | str
 
 @dataclass
 class UnaryOpNode(ASTNode):
@@ -94,7 +99,7 @@ class BinaryOpNode(ASTNode):
 
 @dataclass
 class ListNode(ASTNode):
-    items: List[ASTNode]
+    items: list[ASTNode]
 
 @dataclass
 class RangeNode(ASTNode):
@@ -130,23 +135,23 @@ class ParserError(Exception):
     pass
 
 class Parser:
-    def __init__(self, tokens: List[Token]):
+    def __init__(self, tokens: list[Token]):
         self.tokens = tokens
         self.pos = 0
 
-    def peek(self) -> Optional[Token]:
+    def peek(self) -> Token | None:
         if self.pos < len(self.tokens):
             return self.tokens[self.pos]
         return None
 
-    def advance(self) -> Optional[Token]:
+    def advance(self) -> Token | None:
         if self.pos < len(self.tokens):
             token = self.tokens[self.pos]
             self.pos += 1
             return token
         return None
-        
-    def match(self, *expected_types) -> Optional[Token]:
+
+    def match(self, *expected_types) -> Token | None:
         token = self.peek()
         if token and token.type in expected_types:
             return self.advance()
@@ -211,14 +216,14 @@ class Parser:
 
         if self.match("ALL"):
             return AllNode()
-        
+
         if self.match("NONE"):
             return NoneNode()
 
         if token.type in ("IDENT"):
             ident = self.advance().value
             lower = ident.lower()
-            
+
             # Distance ops
             if lower in ("around", "expand"):
                 val = self.advance()
@@ -227,7 +232,7 @@ class Parser:
                 dist = float(val.value)
                 target = self.parse_primary()
                 return DistanceOpNode(lower, dist, target)
-                
+
             # By ops
             if lower in ("byres", "bymol", "byobj"):
                 target = self.parse_primary()
@@ -237,7 +242,7 @@ class Parser:
             if lower in property_names:
                 values = self.parse_value_list()
                 return PropertyOpNode(lower, values)
-            
+
             if lower == "within":
                 val = self.advance()
                 if val.type not in ("FLOAT", "INT"):
@@ -256,13 +261,13 @@ class Parser:
                     # Need to parse further value list if present but start with this
                     values = None # self.parse_value_list() # TODO
                     return PrefixSelectNode(prefix, ValueNode(value_str))
-            
+
             return IdentNode(ident)
-        
+
         # Macro syntax /obj/chain/res/name
         if self.match("SLASH"):
             return self.parse_macro()
-            
+
         raise ParserError(f"Unexpected token {token}")
 
     def parse_value_list(self) -> ASTNode:
@@ -294,7 +299,7 @@ class Parser:
              elif token.type == "FLOAT":
                   return ValueNode(-float(token.value))
              raise ParserError(f"Expected number after '-' but got {token.type}")
-             
+
         token = self.advance()
         if not token: raise ParserError("Unexpected end of expression")
         if token.type in ("INT", "FLOAT"):
@@ -314,7 +319,7 @@ class Parser:
                 self.advance()
                 part_idx += 1
                 continue
-            
+
             # accumulate until slash
             val = ""
             while True:
@@ -331,14 +336,14 @@ class Evaluator:
     def __init__(self, viewer, default_object_id=None):
         self.viewer = viewer
         self.default_object_id = default_object_id
-        
+
     def evaluate(self, expr: str, object_id=None) -> np.ndarray:
         tokens = tokenize(expr)
         parser = Parser(tokens)
         ast = parser.parse()
         obj_id = object_id or self.default_object_id
         return self.eval_node(ast, obj_id)
-        
+
     def eval_node(self, node: ASTNode, object_id: str) -> np.ndarray:
         if isinstance(node, AllNode):
             return self._get_all_mask(object_id)
@@ -378,7 +383,7 @@ class Evaluator:
              return self._eval_distance(node.op, node.dist, node.target, object_id)
         elif isinstance(node, MacroNode):
              return self._eval_macro(node, object_id)
-             
+
         raise NotImplementedError(f"Evaluation of {type(node)} not implemented")
 
     def _get_all_mask(self, object_id: str) -> np.ndarray:
@@ -396,7 +401,7 @@ class Evaluator:
              return np.zeros(n_atoms, dtype=bool)
         except Exception:
              return np.zeros(0, dtype=bool)
-             
+
     def _get_polymer_mask(self, object_id: str) -> np.ndarray:
         # Heuristic: mostly proteins/nucleic acids
         # For now, return all since we don't have polymer flags parsed
@@ -414,15 +419,15 @@ class Evaluator:
     def _eval_property(self, prop: str, values_node: ASTNode, object_id: str) -> np.ndarray:
         none_mask = self._get_none_mask(object_id)
         if len(none_mask) == 0: return none_mask
-        
+
         try:
             entry = self.viewer._objects.get(object_id)
             state = entry.state
             atoms = getattr(state, "atoms", None)
-            
+
             # Map property name to array/column
             prop = prop.lower()
-            
+
             if prop in ("name", "atom"):
                  if atoms is None: return none_mask
                  arr = np.char.strip(atoms["atom_name"].astype(str)).astype(object)
@@ -469,15 +474,15 @@ class Evaluator:
                            return none_mask
             else:
                  return none_mask
-                 
+
             return self._match_values(arr_lower, values_node)
-            
+
         except Exception:
             return none_mask
-            
+
     def _match_values(self, arr: np.ndarray, values_node: ASTNode) -> np.ndarray:
          mask = np.zeros(arr.shape, dtype=bool)
-         
+
          def _match_single(node: ASTNode):
              if isinstance(node, ValueNode):
                  val = str(node.value).lower()
@@ -527,13 +532,13 @@ class Evaluator:
          target_mask = self.eval_node(target_node, object_id)
          if not np.any(target_mask):
              return self._get_none_mask(object_id)
-             
+
          try:
              entry = self.viewer._objects.get(object_id)
              coords = entry.state.all_atom_coords
-             
+
              target_coords = coords[target_mask]
-             
+
              # cell-list "within distance" query (no scipy dependency)
              from chisurf.plugins.chimol.chimol.geometry.neighbors import (
                  within_distance_mask,
@@ -548,9 +553,9 @@ class Evaluator:
              elif op == "around":
                   mask &= ~target_mask
              # expand includes target
-                  
+
              return mask
-             
+
          except Exception:
              return self._get_none_mask(object_id)
 
