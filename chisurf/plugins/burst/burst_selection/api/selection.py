@@ -41,6 +41,194 @@ def _delta_macro_time_ms(tttr: tttrlib.TTTR) -> np.ndarray:
     return d_t * tttr.header.macro_time_resolution * 1000.0
 
 
+def _delta_macro_time_mask(
+    tttr: tttrlib.TTTR, delta_settings: "DeltaMacroTimeFilterSettings"
+) -> np.ndarray:
+    """Boolean mask of photons whose inter-photon gap is inside ``[dT_min, dT_max]`` (ms).
+
+    A photon-stream pre-filter: photons with a large delta macro time are the
+    sparse, low-rate background between bursts, so keeping only the interval
+    thins the stream to the burst-like photons before the burst search runs.
+    """
+    mask = np.ones(len(tttr), dtype=bool)
+    if not (delta_settings.dT_min_active or delta_settings.dT_max_active):
+        return mask
+    delta_t = _delta_macro_time_ms(tttr)
+    if delta_settings.dT_min_active:
+        mask &= delta_t >= delta_settings.dT_min
+    if delta_settings.dT_max_active:
+        mask &= delta_t <= delta_settings.dT_max
+    return mask
+
+
+def _run_burst_search(
+    tttr: tttrlib.TTTR,
+    settings: PhotonFilterSettings,
+    burst_detection: BurstDetectionSettings | None,
+) -> np.ndarray:
+    """Run the configured burst search on ``tttr`` and return a boolean mask.
+
+    Only the search itself lives here — the channel/micro-time/delta-macro-time
+    pre-filters are applied by :func:`apply_photon_filters`. Factoring it out is
+    what lets the search run on a *reduced* photon stream (the delta-macro-time
+    pre-filter) rather than the whole file.
+    """
+    n = len(tttr)
+    used_filter = BurstFilterMode(settings.used_filter)
+
+    if used_filter == BurstFilterMode.COUNT_RATE:
+        count_rate_settings = settings.count_rate_filter
+        selection = count_rate_filter(
+            tttr=tttr,
+            n_ph_max=count_rate_settings.n_ph_max,
+            time_window=count_rate_settings.time_window,
+            invert=settings.invert_filter or count_rate_settings.invert,
+            make_mask=True,
+        )
+        return np.asarray(selection) >= 0
+
+    if used_filter == BurstFilterMode.BURST:
+        detection = burst_detection or BurstDetectionSettings()
+        detection_window = min(
+            settings.delta_macro_time_filter.dT_max / 1000.0,
+            detection.time_window,
+        )
+        selection = burst_filter(
+            tttr=tttr,
+            min_ph=detection.min_photons,
+            ph_window=detection.photon_window,
+            time_window=detection_window,
+        )
+        return np.asarray(selection, dtype=bool)
+
+    if used_filter == BurstFilterMode.BOCPD:
+        # BOCPD is retired: it never performed well enough to recommend, and
+        # every search it competed with now lives in tttrlib. The mode value
+        # survives so an old project still loads and says what happened
+        # instead of failing somewhere deeper.
+        raise ValueError(
+            "the BOCPD burst search has been removed; choose another filter "
+            "mode (the tttrlib searches supersede it)"
+        )
+
+    if used_filter == BurstFilterMode.KALMAN:
+        # The Kalman detector now lives in tttrlib (burst_search_kalman), so
+        # this mode runs the C++ implementation rather than the numba one that
+        # used to live in chisurf.core.fluorescence.burst.kalman. The settings
+        # and the mode name are unchanged, so saved projects keep working.
+        #
+        # A tttrlib too old to publish the registry falls back to the numba
+        # implementation rather than failing, so an installation where it used
+        # to work keeps working.
+        kalman_settings = settings.kalman_filter
+        min_counts = burst_detection.min_photons if burst_detection else 60
+        if tttrlib_search.is_available():
+            selection = tttrlib_burst_filter(
+                tttr=tttr,
+                algorithm="kalman",
+                parameters=dict(
+                    L=min_counts,
+                    dt=kalman_settings.dt,
+                    q=kalman_settings.q,
+                    r_scale=kalman_settings.r_scale,
+                    z_thresh=kalman_settings.z_thresh,
+                    min_len=kalman_settings.min_len,
+                    merge_gap=kalman_settings.merge_gap,
+                    per_channel=True,
+                ),
+            )
+            return np.asarray(selection, dtype=bool)
+        channel_list = settings.channels
+        if len(channel_list) < 1:
+            channel_list = list(tttr.get_used_routing_channels())
+        time_unit = tttr.header.macro_time_resolution
+        timestamps = tttr.macro_times * time_unit
+        channels = tttr.routing_channels
+        timestamps_list = []
+        for channel in channel_list:
+            channel_timestamps = timestamps[channels == channel]
+            timestamps_list.append(channel_timestamps)
+            if len(channel_timestamps) == 0:
+                return np.zeros(n, dtype=bool)
+        bursts, _, _, _, _ = kalman_mod.kalman_burst_detection_multi(
+            timestamps_list,
+            dt=kalman_settings.dt,
+            q=kalman_settings.q,
+            r_scale=kalman_settings.r_scale,
+            z_thresh=kalman_settings.z_thresh,
+            min_len=kalman_settings.min_len,
+            merge_gap=kalman_settings.merge_gap,
+            min_counts=min_counts,
+        )
+        start_stop = kalman_mod.convert_bursts_to_start_stop(bursts, tttr)
+        if len(start_stop) > 0:
+            return np.asarray(create_array_with_ones(start_stop, n), dtype=bool)
+        return np.zeros(n, dtype=bool)
+
+    if used_filter == BurstFilterMode.CUSUM:
+        cusum_settings = settings.cusum_filter
+        selection = cusum_filter(
+            tttr=tttr,
+            min_ph=cusum_settings.min_photons,
+            background_rate=cusum_settings.background_rate,
+            sb_ratio=cusum_settings.sb_ratio,
+            alpha=cusum_settings.alpha,
+            beta=cusum_settings.beta,
+        )
+        return np.asarray(selection, dtype=bool)
+
+    if used_filter == BurstFilterMode.TTTRLIB:
+        # The algorithm and its parameters come from tttrlib's registry, so this
+        # one branch covers every search tttrlib offers, present and future.
+        if not tttrlib_search.is_available():
+            raise RuntimeError(
+                "the installed tttrlib publishes no burst-search registry, "
+                "so registry-driven searches are unavailable; upgrade tttrlib "
+                "or choose one of the built-in filter modes"
+            )
+        tttrlib_settings = settings.tttrlib_search
+        selection = tttrlib_burst_filter(
+            tttr=tttr,
+            algorithm=tttrlib_settings.algorithm,
+            parameters=tttrlib_settings.parameters,
+        )
+        return np.asarray(selection, dtype=bool)
+
+    raise ValueError(f"Unsupported filter mode: {settings.used_filter}")
+
+
+def _search_on_delta_filtered_stream(
+    tttr: tttrlib.TTTR,
+    delta_mask: np.ndarray,
+    settings: PhotonFilterSettings,
+    burst_detection: BurstDetectionSettings | None,
+) -> np.ndarray:
+    """Run the burst search on the delta-macro-time-filtered stream, in original space.
+
+    The delta-macro-time interval is applied to the *photon stream the search
+    sees*: a reduced ``tttrlib`` object (``get_tttr_by_selection``) built from the
+    photons inside the interval is searched, and the detected photons are mapped
+    back to the full index space. Photons the interval excluded therefore cannot
+    seed or extend a burst, but a burst that spans them still counts them
+    downstream ("exclude from search only") because bursts are found over the
+    original photon indices.
+    """
+    n = len(tttr)
+    keep = np.flatnonzero(delta_mask)
+    if keep.size == n:
+        # Nothing removed — search the whole stream (no copy).
+        return np.asarray(_run_burst_search(tttr, settings, burst_detection), dtype=bool)
+    if keep.size == 0:
+        return np.zeros(n, dtype=bool)
+    reduced = tttr.get_tttr_by_selection(keep.astype(np.int32))
+    sub_selection = np.asarray(
+        _run_burst_search(reduced, settings, burst_detection), dtype=bool
+    )
+    selected = np.zeros(n, dtype=bool)
+    selected[keep[sub_selection]] = True
+    return selected
+
+
 def apply_photon_filters(
     tttr: tttrlib.TTTR,
     settings: PhotonFilterSettings,
@@ -62,8 +250,7 @@ def apply_photon_filters(
     numpy.ndarray
         Boolean selection mask.
     """
-    delta_t = _delta_macro_time_ms(tttr)
-    selected = np.ones_like(delta_t, dtype=bool)
+    selected = np.ones(len(tttr), dtype=bool)
 
     if settings.channels:
         mask = tttrlib.TTTRMask()
@@ -76,144 +263,23 @@ def apply_photon_filters(
         mask.flip()
         selected = np.logical_and(selected, mask.get_mask())
 
-    delta_settings = settings.delta_macro_time_filter
-    if delta_settings.dT_min_active:
-        selected = np.logical_and(selected, delta_t >= delta_settings.dT_min)
-    if delta_settings.dT_max_active:
-        selected = np.logical_and(selected, delta_t <= delta_settings.dT_max)
+    # The delta-macro-time interval is a photon-stream pre-filter, not a mask
+    # AND-ed onto the burst-search result. AND-ing it afterwards was a no-op in
+    # practice — burst photons already have a small inter-photon gap, so the
+    # interval never removed any of them. As a pre-filter it gates which photons
+    # the search *sees* (see _search_on_delta_filtered_stream); with no search it
+    # is the selection itself.
+    delta_mask = _delta_macro_time_mask(tttr, settings.delta_macro_time_filter)
 
     used_filter = BurstFilterMode(settings.used_filter)
 
     if settings.filter_active:
-        if used_filter == BurstFilterMode.COUNT_RATE:
-            count_rate_settings = settings.count_rate_filter
-            selection = count_rate_filter(
-                tttr=tttr,
-                n_ph_max=count_rate_settings.n_ph_max,
-                time_window=count_rate_settings.time_window,
-                invert=settings.invert_filter or count_rate_settings.invert,
-                make_mask=True,
-            )
-            selected = np.logical_and(selected, selection >= 0)
-        elif used_filter == BurstFilterMode.BURST:
-            detection = burst_detection or BurstDetectionSettings()
-            detection_window = min(
-                settings.delta_macro_time_filter.dT_max / 1000.0,
-                detection.time_window,
-            )
-            selection = burst_filter(
-                tttr=tttr,
-                min_ph=detection.min_photons,
-                ph_window=detection.photon_window,
-                time_window=detection_window,
-            )
-            selected = np.logical_and(selected, selection)
-        elif used_filter == BurstFilterMode.BOCPD:
-            # BOCPD is retired: it never performed well enough to recommend, and
-            # every search it competed with now lives in tttrlib. The mode value
-            # survives so an old project still loads and says what happened
-            # instead of failing somewhere deeper.
-            raise ValueError(
-                "the BOCPD burst search has been removed; choose another filter "
-                "mode (the tttrlib searches supersede it)"
-            )
-        elif used_filter == BurstFilterMode.KALMAN:
-            # The Kalman detector now lives in tttrlib (burst_search_kalman), so
-            # this mode runs the C++ implementation rather than the numba one that
-            # used to live in chisurf.core.fluorescence.burst.kalman. The settings
-            # and the mode name are unchanged, so saved projects keep working.
-            #
-            # It differs from the old path in two ways worth knowing: it bins at
-            # exactly `dt` (the histogram-based binning here used an effective
-            # width of tmax/n_bins, slightly narrower), and it derives its state
-            # dimensions from the routing channels present rather than from the
-            # configured channel list.
-            #
-            # A tttrlib too old to publish the registry falls back to the numba
-            # implementation rather than failing. This mode predates the registry,
-            # so an installation where it used to work must keep working; without
-            # the fallback, an out-of-date tttrlib turns a working analysis into a
-            # hard error instead of a quietly older code path.
-            kalman_settings = settings.kalman_filter
-            min_counts = burst_detection.min_photons if burst_detection else 60
-            if tttrlib_search.is_available():
-                selection = tttrlib_burst_filter(
-                    tttr=tttr,
-                    algorithm="kalman",
-                    parameters=dict(
-                        L=min_counts,
-                        dt=kalman_settings.dt,
-                        q=kalman_settings.q,
-                        r_scale=kalman_settings.r_scale,
-                        z_thresh=kalman_settings.z_thresh,
-                        min_len=kalman_settings.min_len,
-                        merge_gap=kalman_settings.merge_gap,
-                        per_channel=True,
-                    ),
-                )
-                selected = np.logical_and(selected, selection)
-            else:
-                channel_list = settings.channels
-                if len(channel_list) < 1:
-                    channel_list = list(tttr.get_used_routing_channels())
-                time_unit = tttr.header.macro_time_resolution
-                timestamps = tttr.macro_times * time_unit
-                channels = tttr.routing_channels
-                timestamps_list = []
-                for channel in channel_list:
-                    channel_timestamps = timestamps[channels == channel]
-                    timestamps_list.append(channel_timestamps)
-                    if len(channel_timestamps) == 0:
-                        return np.zeros_like(selected, dtype=np.uint8)
-                bursts, _, _, _, _ = kalman_mod.kalman_burst_detection_multi(
-                    timestamps_list,
-                    dt=kalman_settings.dt,
-                    q=kalman_settings.q,
-                    r_scale=kalman_settings.r_scale,
-                    z_thresh=kalman_settings.z_thresh,
-                    min_len=kalman_settings.min_len,
-                    merge_gap=kalman_settings.merge_gap,
-                    min_counts=min_counts,
-                )
-                start_stop = kalman_mod.convert_bursts_to_start_stop(bursts, tttr)
-                if len(start_stop) > 0:
-                    selection = create_array_with_ones(start_stop, len(tttr))
-                    selected = np.logical_and(selected, selection)
-                else:
-                    selected = np.zeros_like(selected)
-        elif used_filter == BurstFilterMode.CUSUM:
-            cusum_settings = settings.cusum_filter
-            selection = cusum_filter(
-                tttr=tttr,
-                min_ph=cusum_settings.min_photons,
-                background_rate=cusum_settings.background_rate,
-                sb_ratio=cusum_settings.sb_ratio,
-                alpha=cusum_settings.alpha,
-                beta=cusum_settings.beta,
-            )
-            selected = np.logical_and(selected, selection)
-        elif used_filter == BurstFilterMode.TTTRLIB:
-            # The algorithm and its parameters come from tttrlib's registry, so
-            # this one branch covers every search tttrlib offers, present and
-            # future, instead of one branch per algorithm.
-            # Unlike the modes above, this one has no meaning without the
-            # registry, so it explains the situation instead of surfacing a bare
-            # "unknown registry category" from deeper down.
-            if not tttrlib_search.is_available():
-                raise RuntimeError(
-                    "the installed tttrlib publishes no burst-search registry, "
-                    "so registry-driven searches are unavailable; upgrade tttrlib "
-                    "or choose one of the built-in filter modes"
-                )
-            tttrlib_settings = settings.tttrlib_search
-            selection = tttrlib_burst_filter(
-                tttr=tttr,
-                algorithm=tttrlib_settings.algorithm,
-                parameters=tttrlib_settings.parameters,
-            )
-            selected = np.logical_and(selected, selection)
-        else:
-            raise ValueError(f"Unsupported filter mode: {settings.used_filter}")
+        selection = _search_on_delta_filtered_stream(
+            tttr, delta_mask, settings, burst_detection
+        )
+        selected = np.logical_and(selected, selection)
+    else:
+        selected = np.logical_and(selected, delta_mask)
 
     if settings.invert_filter and used_filter != BurstFilterMode.COUNT_RATE:
         selected = ~selected

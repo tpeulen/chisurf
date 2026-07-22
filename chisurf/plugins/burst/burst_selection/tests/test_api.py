@@ -25,6 +25,7 @@ from chisurf.plugins.burst.burst_selection.api.models import (
     AnalysisSettings,
     BurstDetectionSettings,
     BurstFilterMode,
+    CountRateFilterSettings,
     DeltaMacroTimeFilterSettings,
     GMMSettings,
     MMFDBContext,
@@ -179,6 +180,70 @@ def test_apply_photon_filters_without_filter_uses_tttr_length() -> None:
     selected = apply_photon_filters(tttr, settings.photon_filter)
     assert selected.shape == (len(tttr),)
     assert np.all(selected == 1)
+
+
+def test_delta_macro_time_prefilters_the_burst_search() -> None:
+    """The min/max dMT interval must change burst selection, not be a no-op.
+
+    Regression: the interval used to be AND-ed onto the burst-search result
+    *after* the search, so for real data the burst photons already satisfied it
+    and it had no effect. It is now a photon-stream pre-filter applied (via
+    tttrlib) to the stream the search sees, so widening/narrowing ``dT_max``
+    genuinely moves the selection.
+    """
+    tttr = load_tttr(BH_SPC_FILE)
+
+    def fraction(dt_max: float, active: bool) -> float:
+        settings = PhotonFilterSettings(
+            channels=[],
+            filter_active=True,
+            used_filter=BurstFilterMode.COUNT_RATE,
+            count_rate_filter=CountRateFilterSettings(n_ph_max=5, time_window=0.005),
+            delta_macro_time_filter=DeltaMacroTimeFilterSettings(
+                dT_min=1e-4, dT_max=dt_max, dT_min_active=False, dT_max_active=active
+            ),
+            use_gap_fill=False,
+        )
+        selected = apply_photon_filters(
+            tttr, settings, BurstDetectionSettings(min_photons=20)
+        )
+        return float(selected.mean())
+
+    off = fraction(0.15, active=False)
+    tight = fraction(0.02, active=True)
+    loose = fraction(0.15, active=True)
+
+    # The interval is active -> the selection differs from the unfiltered search,
+    # and a tighter interval selects a different (here smaller) fraction than a
+    # looser one. The point is that the bound *matters*.
+    assert tight != pytest.approx(off, abs=1e-4)
+    assert loose != pytest.approx(off, abs=1e-4)
+    assert tight != pytest.approx(loose, abs=1e-4)
+
+
+def test_delta_macro_time_prefilter_keeps_bursts_in_original_index_space() -> None:
+    """Bursts are found over the original photons, so spans still cover in-burst gaps.
+
+    "Exclude from search only": a photon the interval removes cannot seed/extend a
+    burst, but a detected burst's [start, stop] still spans it, so its selection
+    mask indexes the original stream (length == n photons), not the reduced one.
+    """
+    tttr = load_tttr(BH_SPC_FILE)
+    settings = PhotonFilterSettings(
+        channels=[],
+        filter_active=True,
+        used_filter=BurstFilterMode.COUNT_RATE,
+        count_rate_filter=CountRateFilterSettings(n_ph_max=5, time_window=0.005),
+        delta_macro_time_filter=DeltaMacroTimeFilterSettings(
+            dT_min=1e-4, dT_max=0.05, dT_min_active=False, dT_max_active=True
+        ),
+        use_gap_fill=False,
+    )
+    selected = apply_photon_filters(
+        tttr, settings, BurstDetectionSettings(min_photons=20)
+    )
+    assert selected.shape == (len(tttr),)
+    assert selected.any()
 
 
 def test_analyze_file_writes_bur(tmp_path: Path) -> None:

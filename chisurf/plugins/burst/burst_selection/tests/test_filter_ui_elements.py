@@ -118,16 +118,6 @@ def test_macro_time_bounds_reach_the_public_accessors(page):
     assert page.use_upper is False
 
 
-@pytest.mark.xfail(
-    reason="the macro-time bound behaves inconsistently through the adapter: "
-           "applied to a hand-built PhotonFilterSettings it selects 37.9% of a "
-           "real file for dT<=0.15 ms (which matches the data), but built from "
-           "the wizard it selects ~94% and moves the wrong way as the bound is "
-           "widened. The bound reaches the settings object correctly, so the "
-           "discrepancy is in how the adapter-built settings are applied, not "
-           "in the GUI binding. Unresolved.",
-    strict=False,
-)
 def test_macro_time_bounds_actually_filter_photons(page, photons):
     """The bound must change the selection, not merely be stored."""
     from chisurf.plugins.burst.burst_selection.api.selection import apply_photon_filters
