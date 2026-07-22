@@ -9,12 +9,39 @@ import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
 from chisurf.gui.widgets.tools import ChisurfDockTool
-from chisurf.gui.widgets.tools import PathDropListWidget as DropListWidget
 
 from .client import MicrotimeShifterClient
+
+#: TTTR file extensions the shifter accepts (used by the unified file list).
+_TTTR_EXTENSIONS = [".spc", ".ht3", ".ptu", ".hdf", ".h5"]
+
+
+class _FileListModel:
+    """Adapter exposing the tool's ``_file_paths`` to the unified ``PathListWidget``.
+
+    ``PathListWidget`` reads/writes a model ``list[str]`` attribute and calls
+    ``update()`` on every change; this bridges that contract onto the tool's
+    canonical ``_file_paths`` (``list[Path]``) without giving the ``QWidget`` tool
+    an ``update()`` method (which would collide with ``QWidget.update``).
+    """
+
+    def __init__(self, tool: "MicrotimeShifterTool") -> None:
+        self._tool = tool
+
+    @property
+    def files(self) -> list[str]:
+        return [str(p) for p in self._tool._file_paths]
+
+    @files.setter
+    def files(self, value: list[str]) -> None:
+        self._tool._file_paths = [Path(p) for p in value]
+
+    def update(self) -> None:
+        self._tool._on_files_changed()
 
 
 class MicrotimeShifterTool(ChisurfDockTool):
@@ -153,17 +180,20 @@ class MicrotimeShifterTool(ChisurfDockTool):
         )
         self.files_layout.addWidget(files_header)
 
-        drop_hint = QtWidgets.QLabel("Drop files or folders here")
-        drop_hint.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        drop_hint.setStyleSheet("color: gray; font-style: italic; padding: 4px;")
-        self.files_layout.addWidget(drop_hint)
-
-        self.file_list = DropListWidget(self.files_panel)
-        self.file_list.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.file_list.pathsDropped.connect(self._add_paths)
-        self.file_list.itemSelectionChanged.connect(self._on_file_selected)
-        self.file_list.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.file_list.customContextMenuRequested.connect(self._show_file_list_context_menu)
+        # Unified AutoForm file/folder list (drag-drop + Files/Folder/Database/
+        # Remove/Clear), with built-in MMFDB selection. Replaces the former
+        # hand-rolled QListWidget + custom add/refresh/context-menu/MMFDB code.
+        self._file_model = _FileListModel(self)
+        self.file_list = PathListWidget(
+            self._file_model,
+            "files",
+            extensions=_TTTR_EXTENSIONS,
+            title=None,
+            mmfdb_kinds=["raw_measurement", "processed_data"],
+            mmfdb_scope="mine",
+            select_first=True,
+        )
+        self.file_list.selectionChanged.connect(self._on_file_selection)
         self.files_layout.addWidget(self.file_list, 1)
 
     def _build_docks(self) -> None:
@@ -244,13 +274,8 @@ class MicrotimeShifterTool(ChisurfDockTool):
             }
         """)
 
-        load_action = QtWidgets.QAction("📂 Load...", self)
-        load_action.setObjectName("microtimeShifterLoad")
-        load_action.triggered.connect(self._on_load)
-        tb.addAction(load_action)
-
-        tb.addSeparator()
-
+        # File loading (local + MMFDB) is handled by the unified file list's
+        # ➕ Files / 📁 Folder / 🗄 Database buttons, so no separate Load action.
         self.save_action = QtWidgets.QAction("💾 Save...", self)
         self.save_action.setObjectName("microtimeShifterSave")
         self.save_action.setEnabled(False)
@@ -291,59 +316,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
     def _setup_statusbar(self) -> None:
         self.statusBar().showMessage("Ready")
 
-    # ── file loading ───────────────────────────────────────────────
-
-    def _on_load(self) -> None:
-        """Load TTTR files — from MMFDB if connected, otherwise file dialog."""
-        db = self._db()
-        if db is not None:
-            try:
-                from chisurf.gui.widgets.mmfdb.dataset_browser import (
-                    MmfdbDatasetPickerDialog,
-                )
-                from chisurf.gui.widgets.mmfdb import picker
-
-                # Shared, process-global MMFDB session (one embedded server for
-                # every selector) rather than a fresh client per pick.
-                client = picker.inprocess_client()
-                sel = MmfdbDatasetPickerDialog.pick_dataset(
-                    parent=self,
-                    # Both raw measurements and shifted (processed) TTTR outputs
-                    # are loadable; the format filter keeps it to TTTR files.
-                    kinds=["raw_measurement", "processed_data"],
-                    formats=["spc", "ptu", "ht3", "hdf", "h5"],
-                    scope="mine",
-                    client=client,
-                )
-            except Exception as exc:
-                self.statusBar().showMessage(f"MMFDB picker error: {exc}")
-                return
-
-            if sel is None:
-                return
-
-            try:
-                result = client.call("mmfdb.datasets.open", {"artifact_id": sel.artifact_id})
-                local_path = (result or {}).get("local_path")
-                if not local_path:
-                    self.statusBar().showMessage(
-                        f"Cannot open dataset {sel.artifact_id}: no local path"
-                    )
-                    return
-                self._add_paths([Path(local_path)])
-                self.statusBar().showMessage(
-                    f"Loaded from MMFDB: {sel.artifact_id[:16]}..."
-                )
-                return
-            except Exception as exc:
-                self.statusBar().showMessage(f"MMFDB open error: {exc}")
-                return
-
-        paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-            self, "Open TTTR files", "", "TTTR Files (*.*)"
-        )
-        if paths:
-            self._add_paths([Path(p) for p in paths])
+    # ── file list (unified PathListWidget) ─────────────────────────
 
     def _on_file_path(self, path: str) -> None:
         if not path:
@@ -354,91 +327,22 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self._build_shift_controls()
         self._update_plot()
 
-    def _add_paths(self, paths: list[Path]) -> None:
-        """Add files and folders to the file list."""
-        for path in paths:
-            if path.is_dir():
-                self._file_paths.extend(
-                    sorted(
-                        child.resolve()
-                        for child in path.iterdir()
-                        if child.is_file() and child.suffix.lower() in {".spc", ".ht3", ".ptu", ".hdf", ".h5"}
-                    )
-                )
-            else:
-                self._file_paths.append(path.resolve())
-        # Remove duplicates while preserving order
-        seen = set()
-        self._file_paths = [p for p in self._file_paths if not (p in seen or seen.add(p))]
-        self._refresh_file_list()
+    def _on_files_changed(self) -> None:
+        """React to the unified file list changing (add / remove / clear / DB).
 
-    def _refresh_file_list(self) -> None:
-        """Refresh the files in the QListWidget."""
-        self.file_list.blockSignals(True)
-        self.file_list.clear()
-        for path in self._file_paths:
-            self.file_list.addItem(str(path))
-        self.file_list.blockSignals(False)
-
-        if self._file_paths:
-            # If no active file, or active file not in list, select first
-            if not self._current_path or Path(self._current_path) not in self._file_paths:
-                self.file_list.setCurrentRow(0)
-            else:
-                # Sync row selection to match self._current_path
-                for i in range(self.file_list.count()):
-                    item = self.file_list.item(i)
-                    if item and item.text() == self._current_path:
-                        self.file_list.setCurrentRow(i)
-                        break
-
-    def _on_file_selected(self) -> None:
-        """Handle selection change in the file list."""
-        selected = self.file_list.selectedItems()
-        if not selected:
-            return
-        path = selected[0].text()
-        if path != self._current_path:
-            self._on_file_path(path)
-
-    def _show_file_list_context_menu(self, pos: QtCore.QPoint) -> None:
-        """Show context menu for file list."""
-        menu = QtWidgets.QMenu(self)
-
-        remove_action = QtWidgets.QAction("Remove selected", self)
-        remove_action.triggered.connect(self._remove_selected_files)
-        menu.addAction(remove_action)
-
-        clear_action = QtWidgets.QAction("Clear all", self)
-        clear_action.triggered.connect(self._clear_file_list)
-        menu.addAction(clear_action)
-
-        menu.exec_(self.file_list.mapToGlobal(pos))
-
-    def _remove_selected_files(self) -> None:
-        """Remove selected files from the file list."""
-        selected_items = self.file_list.selectedItems()
-        if not selected_items:
-            return
-        for item in selected_items:
-            path = Path(item.text())
-            if path in self._file_paths:
-                self._file_paths.remove(path)
-        self._refresh_file_list()
+        ``PathListWidget`` already updated ``_file_paths`` (via the model); here we
+        only reset the preview/save state when the list becomes empty.
+        """
         if not self._file_paths:
             self._current_path = None
             self.plot.clear()
             self.save_action.setEnabled(False)
             self._update_status()
 
-    def _clear_file_list(self) -> None:
-        """Clear all files from the file list."""
-        self._file_paths.clear()
-        self._refresh_file_list()
-        self._current_path = None
-        self.plot.clear()
-        self.save_action.setEnabled(False)
-        self._update_status()
+    def _on_file_selection(self, paths: list[str]) -> None:
+        """Preview the first selected file when the list selection changes."""
+        if paths and paths[0] != self._current_path:
+            self._on_file_path(paths[0])
 
     def _load_metadata(self) -> None:
         if not self._current_path:

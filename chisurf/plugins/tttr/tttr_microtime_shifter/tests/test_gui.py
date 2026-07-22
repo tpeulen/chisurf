@@ -77,21 +77,19 @@ def test_tool_file_list_operations(tmp_path: Path) -> None:
     f2 = tmp_path / "test2.ptu"
     f2.write_bytes(b"data2")
 
-    # Add paths
-    tool._add_paths([f1, f2])
+    # Add paths through the unified file list
+    tool.file_list.add_paths([f1, f2])
     assert len(tool._file_paths) == 2
-    assert tool.file_list.count() == 2
-    assert Path(tool.file_list.item(0).text()) == f1.resolve()
+    assert tool.file_list.paths() == [str(f1), str(f2)]
 
-    # Select the second item
-    tool.file_list.setCurrentRow(1)
-    tool._on_file_selected()
-    tool._on_file_path.assert_called_with(str(f2.resolve()))
+    # Selecting the second item previews it (via the selectionChanged signal)
+    tool.file_list.select_index(1)
+    tool._on_file_path.assert_called_with(str(f2))
 
     # Clear the list
-    tool._clear_file_list()
+    tool.file_list.clear()
     assert len(tool._file_paths) == 0
-    assert tool.file_list.count() == 0
+    assert tool.file_list.paths() == []
     tool.close()
 
 
@@ -172,10 +170,10 @@ def test_save_dialog_always_processes_all_files(tmp_path: Path) -> None:
     f1.write_bytes(b"data1")
     f2 = tmp_path / "test2.ptu"
     f2.write_bytes(b"data2")
-    tool._add_paths([f1, f2])
+    tool.file_list.add_paths([f1, f2])
 
     # Select one of the files
-    tool.file_list.setCurrentRow(0)
+    tool.file_list.select_index(0)
 
     # Mock QFileDialog.getExistingDirectory
     QtWidgets.QFileDialog.getExistingDirectory = MagicMock(return_value=str(tmp_path / "out"))
@@ -188,8 +186,8 @@ def test_save_dialog_always_processes_all_files(tmp_path: Path) -> None:
     tool._client.apply.assert_called_once()
     called_args = tool._client.apply.call_args[1]
     assert len(called_args["file_paths"]) == 2
-    assert f1.resolve() in called_args["file_paths"]
-    assert f2.resolve() in called_args["file_paths"]
+    assert f1 in called_args["file_paths"]
+    assert f2 in called_args["file_paths"]
 
     tool.close()
 

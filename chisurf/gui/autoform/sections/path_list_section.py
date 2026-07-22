@@ -49,10 +49,20 @@ def _tool_button(text: str, tooltip: str, slot) -> QtWidgets.QToolButton:
 
 
 class PathListWidget(QtWidgets.QWidget):
-    """Drag-drop file/folder list bound to a model ``list[str]`` attribute."""
+    """Drag-drop file/folder list bound to a model ``list[str]`` attribute.
+
+    Emits :attr:`selectionChanged` (a ``list[str]`` of the selected paths) so a
+    host can preview the highlighted entry — the mechanism that lets hand-built
+    tools (e.g. the micro-time shifter) drop their own file lists and adopt this
+    one. ``select_first`` (option) auto-selects the first row after a refresh when
+    nothing is selected, so a bound preview always shows something.
+    """
 
     #: marker so a hosting dock panel gives this section the spare vertical space.
     _autoform_expanding = True
+
+    #: emitted with the list of currently-selected path strings on any change.
+    selectionChanged = QtCore.Signal(list)
 
     def __init__(self, model, target: str, **options):
         super().__init__()
@@ -64,6 +74,7 @@ class PathListWidget(QtWidgets.QWidget):
         self._mmfdb = bool(options.get("mmfdb", True))
         self._mmfdb_kinds = options.get("mmfdb_kinds")
         self._mmfdb_scope = options.get("mmfdb_scope", "all")
+        self._select_first = bool(options.get("select_first", False))
 
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         layout = QtWidgets.QVBoxLayout(self)
@@ -77,6 +88,7 @@ class PathListWidget(QtWidgets.QWidget):
         self._list = PathDropListWidget(path_filter=self._accepts)
         self._list.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self._list.pathsDropped.connect(self._on_dropped)
+        self._list.itemSelectionChanged.connect(self._emit_selection)
         layout.addWidget(self._list, 1)
 
         bar = QtWidgets.QHBoxLayout()
@@ -156,6 +168,12 @@ class PathListWidget(QtWidgets.QWidget):
         self._list.clear()
         self._list.addItems(paths)
         self._list.blockSignals(False)
+        if self._select_first and paths and not self._list.selectedItems():
+            # setCurrentRow re-enables signals' effect and emits itemSelectionChanged.
+            self._list.setCurrentRow(0)
+
+    def _emit_selection(self) -> None:
+        self.selectionChanged.emit(self.selected_paths())
 
     # ── actions ─────────────────────────────────────────────────────────
     def _on_dropped(self, paths: list) -> None:
@@ -202,7 +220,28 @@ class PathListWidget(QtWidgets.QWidget):
     def _clear(self) -> None:
         self._commit([])
 
-    # exposed for tests
+    # ── public API (for standalone hosts / tests) ───────────────────────
+    def add_paths(self, paths: list) -> None:
+        """Add files/folders (folders expanded, extension-filtered, de-duplicated)."""
+        self._add([str(p) for p in paths])
+
+    def paths(self) -> list[str]:
+        """Return the current ordered list of file paths."""
+        return self._current()
+
+    def clear(self) -> None:
+        """Remove all entries."""
+        self._clear()
+
+    def selected_paths(self) -> list[str]:
+        """Return the paths of the currently-selected entries."""
+        return [it.text() for it in self._list.selectedItems()]
+
+    def select_index(self, index: int) -> None:
+        """Select the row at *index* (no-op if out of range)."""
+        if 0 <= index < self._list.count():
+            self._list.setCurrentRow(index)
+
     def expand(self, paths: list[str]) -> list[str]:
         """Expand *paths* (files + folders) to the accepted file list."""
         return self._expand(paths)
