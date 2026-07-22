@@ -1,8 +1,10 @@
 from __future__ import annotations
-from typing import Optional, Sequence, Dict, Any, List
-import numpy as np
-from pathlib import Path
+
 import copy
+from pathlib import Path
+from typing import Any
+
+import numpy as np
 
 
 def _get_qobject_base():
@@ -50,15 +52,15 @@ class MockViewer(_get_qobject_base()):
     def __init__(self):
         super().__init__()
         self._background_color = "black"
-        self._objects: Dict[str, MockViewer.MockEntry] = {}
-        self._active_object_id: Optional[str] = None
+        self._objects: dict[str, MockViewer.MockEntry] = {}
+        self._active_object_id: str | None = None
         self._total_frames = 1
         self._current_frame = 0
         self._keyframes = {}
         self._animation_running = False
         self._animation_timer = None
         self._color_mode = "single"
-        self._selected_residues: List[int] = []
+        self._selected_residues: list[int] = []
         self._view_state = [
             1.0, 0.0, 0.0,
             0.0, 1.0, 0.0,
@@ -69,7 +71,7 @@ class MockViewer(_get_qobject_base()):
         ]
         self._show_atoms = True
         self._show_cartoon = True
-        self._reps: Dict[str, bool] = {
+        self._reps: dict[str, bool] = {
             "cartoon": True,
             "ca_trace": False,
             "atoms": False,
@@ -113,7 +115,7 @@ class MockViewer(_get_qobject_base()):
                   entry.state.residue_chain_ids = np.array([b"A"] * len(entry.state.residue_ids)) # Mock
         self._update_view()
 
-    def add_structure(self, structure: Any, *, name: Optional[str] = None, source_path: Optional[str] = None):
+    def add_structure(self, structure: Any, *, name: str | None = None, source_path: str | None = None):
         oid = self._create_object(name=name)
         self.set_structure(structure)
         return oid
@@ -122,8 +124,8 @@ class MockViewer(_get_qobject_base()):
         self,
         coords,
         *,
-        name: Optional[str] = None,
-        source_path: Optional[str] = None,
+        name: str | None = None,
+        source_path: str | None = None,
         trace_coords=None,
         res_ids=None,
         res_names=None,
@@ -170,20 +172,20 @@ class MockViewer(_get_qobject_base()):
     def _update_view(self):
         pass
 
-    def list_objects(self) -> List[Dict[str, Any]]:
+    def list_objects(self) -> list[dict[str, Any]]:
         return [
             {"id": oid, "name": entry.name, "visible": entry.visible}
             for oid, entry in self._objects.items()
         ]
 
-    def get_active_object_id(self) -> Optional[str]:
+    def get_active_object_id(self) -> str | None:
         return self._active_object_id
 
     def set_active_object(self, object_id: str):
         if object_id in self._objects:
             self._active_object_id = object_id
 
-    def _create_object(self, name: Optional[str] = None) -> str:
+    def _create_object(self, name: str | None = None) -> str:
         idx = len(self._objects) + 1
         oid = f"obj{idx}"
         oname = name or oid
@@ -203,7 +205,7 @@ class MockViewer(_get_qobject_base()):
             return True
         return False
 
-    def copy_object(self, object_id: str, *, name: Optional[str] = None):
+    def copy_object(self, object_id: str, *, name: str | None = None):
         if object_id not in self._objects:
             return None
         old = self._objects[object_id]
@@ -221,7 +223,7 @@ class MockViewer(_get_qobject_base()):
     def set_color_mode(self, mode: str):
         self._color_mode = str(mode)
 
-    def split_chains(self, *, prefix: Optional[str] = None, object_ids: Optional[List[str]] = None) -> int:
+    def split_chains(self, *, prefix: str | None = None, object_ids: list[str] | None = None) -> int:
         target_ids = object_ids or list(self._objects.keys())
         created = 0
         for oid in target_ids:
@@ -329,21 +331,36 @@ class MockViewer(_get_qobject_base()):
         if not oid or oid not in self._objects:
             return
         state = self._objects[oid].state
+        # Match MolView: row-vector coords are transformed as coords @ R^T + t,
+        # so ``rotation`` applies the rotation matrix R to each point.
         if state.all_atom_coords is not None:
-             state.all_atom_coords = (state.all_atom_coords @ rotation) + translation
+             state.all_atom_coords = (state.all_atom_coords @ rotation.T) + translation
         if state.atoms is not None:
-             state.atoms["xyz"] = (state.atoms["xyz"] @ rotation) + translation
+             state.atoms["xyz"] = (state.atoms["xyz"] @ rotation.T) + translation
+
+    def turn(self, axis, angle):
+        self._nav_calls = getattr(self, "_nav_calls", [])
+        self._nav_calls.append(("turn", str(axis), float(angle)))
+
+    def move(self, axis, dist):
+        self._nav_calls = getattr(self, "_nav_calls", [])
+        self._nav_calls.append(("move", str(axis), float(dist)))
+
+    def clip(self, mode, dist):
+        self._nav_calls = getattr(self, "_nav_calls", [])
+        self._nav_calls.append(("clip", str(mode), float(dist)))
 
 class MockWindow:
     """Minimal window substitute for Cmd."""
-    def __init__(self, viewer: Optional[MockViewer] = None):
+
+    def __init__(self, viewer: MockViewer | None = None):
         self.viewer = viewer or MockViewer()
         self._object_counter = 0
 
     def _refresh_objects_from_viewer(self):
         pass
 
-    def _load_structure_from_path(self, path: Path, name: Optional[str] = None):
+    def _load_structure_from_path(self, path: Path, name: str | None = None):
         self._object_counter += 1
         obj_id = f"obj_{self._object_counter}"
         obj_name = name or path.stem

@@ -427,6 +427,65 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._rot = self._make_rot(elevation, azimuth)
         self.update()
 
+    def turn(self, axis: str, angle_deg: float) -> None:
+        """Rotate the camera about a screen axis (PyMOL ``turn``).
+
+        ``axis`` is ``x``/``y``/``z`` in screen space (x = right, y = up,
+        z = toward the viewer). The delta left-multiplies the view rotation, as
+        for the trackball.
+        """
+        vec = {
+            "x": (1.0, 0.0, 0.0),
+            "y": (0.0, 1.0, 0.0),
+            "z": (0.0, 0.0, 1.0),
+        }.get(str(axis).lower())
+        if vec is None:
+            return
+        a = math.radians(float(angle_deg))
+        kx, ky, kz = vec
+        k = np.array([[0.0, -kz, ky], [kz, 0.0, -kx], [-ky, kx, 0.0]])
+        delta = np.eye(3) + math.sin(a) * k + (1.0 - math.cos(a)) * (k @ k)
+        self._rot = delta @ self._rot
+        self.update()
+
+    def move(self, axis: str, dist: float) -> None:
+        """Translate the camera along a screen axis (PyMOL ``move``).
+
+        x/y pan in the view plane; z dollies (changes the camera distance).
+        """
+        ax = str(axis).lower()
+        d = float(dist)
+        if ax == "x":
+            self._pan_offset = self._pan_offset - d * self._rot[0]
+        elif ax == "y":
+            self._pan_offset = self._pan_offset - d * self._rot[1]
+        elif ax == "z":
+            self._distance = max(0.1, self._distance - d)
+        else:
+            return
+        self._update_center_opt()
+        self.update()
+
+    def adjust_clip(self, mode: str, dist: float) -> None:
+        """Move the near/far clip planes (PyMOL ``clip``)."""
+        m = str(mode).lower()
+        d = float(dist)
+        if m in ("near", "front"):
+            self._near_clip = self._clamp_near_clip(self._near_clip + d)
+        elif m in ("far", "back"):
+            self._far_clip = max(self._far_clip + d, self._near_clip * 10.0)
+        elif m == "slab":
+            mid = 0.5 * (self._near_clip + self._far_clip)
+            half = max(0.5 * abs(d), self._near_clip)
+            self._near_clip = self._clamp_near_clip(mid - half)
+            self._far_clip = max(mid + half, self._near_clip * 10.0)
+        elif m == "move":
+            self._near_clip = self._clamp_near_clip(self._near_clip + d)
+            self._far_clip = max(self._far_clip + d, self._near_clip * 10.0)
+        else:
+            return
+        self.update()
+
     def get_view_state(self) -> list[float]:
         """Return an 18-float view tuple for PyMOL-style round-tripping."""
 

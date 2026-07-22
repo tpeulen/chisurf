@@ -1919,6 +1919,24 @@ class MolView(QtWidgets.QWidget):
         )
         self._renderer.fit_to_radius(radius)
 
+    def turn(self, axis: str, angle: float) -> None:
+        """Rotate the camera about a screen axis (PyMOL ``turn``)."""
+        r = self._renderer
+        if r is not None and hasattr(r, "turn"):
+            r.turn(axis, angle)
+
+    def move(self, axis: str, dist: float) -> None:
+        """Translate the camera along a screen axis (PyMOL ``move``)."""
+        r = self._renderer
+        if r is not None and hasattr(r, "move"):
+            r.move(axis, dist)
+
+    def clip(self, mode: str, dist: float) -> None:
+        """Move the clipping planes (PyMOL ``clip``)."""
+        r = self._renderer
+        if r is not None and hasattr(r, "adjust_clip"):
+            r.adjust_clip(mode, dist)
+
     def get_view_state(self) -> list[float]:
         """Return an 18-float view tuple for PyMOL-style ``get_view``."""
         renderer = self._renderer

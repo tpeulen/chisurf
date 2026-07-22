@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
 import numpy as np
 
+from ..colors import _PYMOL_COLORS
 from .base import BaseCmd
-from ..colors import _PYMOL_COLORS, get_pymol_color
 
 
 class RenderingMixin(BaseCmd):
     """Background, representation toggles, color modes and per-selection coloring."""
 
     # User-defined colors (via set_color command)
-    _user_colors: Dict[str, np.ndarray] = {}
+    _user_colors: dict[str, np.ndarray] = {}
 
     def _mixin_commands(self):
         return {
@@ -24,6 +23,11 @@ class RenderingMixin(BaseCmd):
             "orient": self._cmd_orient,
             "zoom": self._cmd_zoom,
             "reset": self._cmd_reset,
+            "turn": self._cmd_turn,
+            "move": self._cmd_move,
+            "clip": self._cmd_clip,
+            "rotate": self._cmd_rotate,
+            "translate": self._cmd_translate,
             "get_view": self._cmd_get_view,
             "set_view": self._cmd_set_view,
             "color": self._cmd_color,
@@ -36,7 +40,7 @@ class RenderingMixin(BaseCmd):
     # ------------------------------------------------------------------ #
     # Background / rep toggles
     # ------------------------------------------------------------------ #
-    def _cmd_bg_color(self, args: List[str]) -> None:
+    def _cmd_bg_color(self, args: list[str]) -> None:
         if not args:
             self._emit_error("Usage: bg_color <color>")
             return
@@ -49,15 +53,14 @@ class RenderingMixin(BaseCmd):
         except Exception as exc:
             self._emit_error(f"Failed to set background color: {exc}")
 
-    def _cmd_show(self, args: List[str]) -> None:
+    def _cmd_show(self, args: list[str]) -> None:
         self._cmd_toggle_representation(args, visible=True)
 
-    def _cmd_hide(self, args: List[str]) -> None:
+    def _cmd_hide(self, args: list[str]) -> None:
         self._cmd_toggle_representation(args, visible=False)
 
-    def _cmd_as(self, args: List[str]) -> None:
+    def _cmd_as(self, args: list[str]) -> None:
         """Set the primary representation mode (cartoon/lines/sticks/spheres)."""
-
         if not args:
             self._emit_error("Usage: as <cartoon|lines|sticks|spheres>")
             return
@@ -88,7 +91,7 @@ class RenderingMixin(BaseCmd):
 
         self._emit_error(f"Unsupported representation for 'as': {rep}")
 
-    def _cmd_toggle_representation(self, args: List[str], *, visible: bool) -> None:
+    def _cmd_toggle_representation(self, args: list[str], *, visible: bool) -> None:
         if not args:
             self._emit_error("Usage: show/hide <cartoon|trace|atoms|sticks|dots|surface|metaball|plane>[, selection]")
             return
@@ -159,18 +162,18 @@ class RenderingMixin(BaseCmd):
                     )
                     entry = viewer._objects.get(obj_id)
                     field = "ball_mask" if rep_target not in ("sticks", "bonds") else "sticks_mask"
-                    
+
                     cur_mask = getattr(entry.state, field)
                     if cur_mask is None or len(cur_mask) != len(atom_mask):
                          cur_mask = np.zeros(len(atom_mask), dtype=bool)
                     else:
                          cur_mask = cur_mask.copy()
-                    
+
                     if vis:
                         cur_mask |= atom_mask
                     else:
                         cur_mask &= ~atom_mask
-                    
+
                     setattr(entry.state, field, cur_mask)
                     viewer._update_view()
                     return
@@ -204,7 +207,7 @@ class RenderingMixin(BaseCmd):
         except Exception as exc:
             self._emit_error(f"Failed to update representation '{rep_target}': {exc}")
 
-    def _cmd_center(self, args: List[str]) -> None:
+    def _cmd_center(self, args: list[str]) -> None:
         """Center view on selection or all objects."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
@@ -224,7 +227,7 @@ class RenderingMixin(BaseCmd):
         else:
             viewer.center()
 
-    def _cmd_orient(self, args: List[str]) -> None:
+    def _cmd_orient(self, args: list[str]) -> None:
         """Orient view on selection."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
@@ -243,7 +246,7 @@ class RenderingMixin(BaseCmd):
         else:
             viewer.orient()
 
-    def _cmd_zoom(self, args: List[str]) -> None:
+    def _cmd_zoom(self, args: list[str]) -> None:
         """Zoom view to fit selection."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
@@ -276,16 +279,136 @@ class RenderingMixin(BaseCmd):
         else:
             viewer.zoom(buffer=buffer)
 
-    def _cmd_reset(self, args: List[str]) -> None:
+    def _cmd_reset(self, args: list[str]) -> None:
         """Reset view to default orientation and center."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
         viewer.reset_view()
 
-    def _cmd_cartoon(self, args: List[str]) -> None:
-        """Set cartoon display type similar to PyMOL ``cartoon``."""
+    @staticmethod
+    def _split_commas(args: list[str]) -> list[str]:
+        """Split ``a, b, c`` style arguments regardless of token boundaries."""
+        return [p.strip() for p in " ".join(args).split(",") if p.strip() != ""]
 
+    def _cmd_turn(self, args: list[str]) -> None:
+        """Rotate the camera about a screen axis, PyMOL ``turn axis, angle``."""
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None or not hasattr(viewer, "turn"):
+            return
+        parts = self._split_commas(args)
+        if len(parts) < 2:
+            self._emit_error("Usage: turn <x|y|z>, <angle>")
+            return
+        try:
+            viewer.turn(parts[0].lower(), float(parts[1]))
+        except Exception as exc:
+            self._emit_error(f"turn failed: {exc}")
+
+    def _cmd_move(self, args: list[str]) -> None:
+        """Translate the camera along a screen axis, PyMOL ``move axis, dist``."""
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None or not hasattr(viewer, "move"):
+            return
+        parts = self._split_commas(args)
+        if len(parts) < 2:
+            self._emit_error("Usage: move <x|y|z>, <distance>")
+            return
+        try:
+            viewer.move(parts[0].lower(), float(parts[1]))
+        except Exception as exc:
+            self._emit_error(f"move failed: {exc}")
+
+    def _cmd_clip(self, args: list[str]) -> None:
+        """Move the clipping planes, PyMOL ``clip mode, dist``."""
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None or not hasattr(viewer, "clip"):
+            return
+        parts = self._split_commas(args)
+        if len(parts) < 2:
+            self._emit_error("Usage: clip <near|far|slab|move>, <distance>")
+            return
+        try:
+            viewer.clip(parts[0].lower(), float(parts[1]))
+        except Exception as exc:
+            self._emit_error(f"clip failed: {exc}")
+
+    def _cmd_rotate(self, args: list[str]) -> None:
+        """Rotate object coordinates, PyMOL ``rotate axis, angle [, selection]``."""
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None or not hasattr(viewer, "apply_transform_to_object"):
+            return
+        parts = self._split_commas(args)
+        if len(parts) < 2:
+            self._emit_error("Usage: rotate <x|y|z>, <angle> [, selection]")
+            return
+        axis_map = {"x": (1.0, 0.0, 0.0), "y": (0.0, 1.0, 0.0), "z": (0.0, 0.0, 1.0)}
+        axis = axis_map.get(parts[0].lower())
+        if axis is None:
+            self._emit_error("rotate axis must be x, y or z")
+            return
+        try:
+            a = np.radians(float(parts[1]))
+        except ValueError:
+            self._emit_error("rotate angle must be a number")
+            return
+        kx, ky, kz = axis
+        k = np.array([[0.0, -kz, ky], [kz, 0.0, -kx], [-ky, kx, 0.0]])
+        rot = np.eye(3) + np.sin(a) * k + (1.0 - np.cos(a)) * (k @ k)
+        object_id = self._resolve_object_id(viewer, parts[2] if len(parts) > 2 else None)
+        try:
+            viewer.apply_transform_to_object(rot, np.zeros(3), object_id=object_id)
+        except Exception as exc:
+            self._emit_error(f"rotate failed: {exc}")
+
+    def _cmd_translate(self, args: list[str]) -> None:
+        """Translate object coordinates, PyMOL ``translate [x,y,z] [, selection]``."""
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None or not hasattr(viewer, "apply_transform_to_object"):
+            return
+        joined = " ".join(args)
+        vec_part = joined
+        sel_part = None
+        if "]" in joined:
+            vec_part, _, rest = joined.partition("]")
+            sel_part = rest.lstrip(", ").strip() or None
+        nums = [t for t in vec_part.replace("[", "").replace("]", "").replace(",", " ").split() if t]
+        if len(nums) < 3:
+            self._emit_error("Usage: translate [x, y, z] [, selection]")
+            return
+        try:
+            vec = np.array([float(nums[0]), float(nums[1]), float(nums[2])], dtype=float)
+        except ValueError:
+            self._emit_error("translate vector must be three numbers")
+            return
+        object_id = self._resolve_object_id(viewer, sel_part)
+        try:
+            viewer.apply_transform_to_object(np.eye(3), vec, object_id=object_id)
+        except Exception as exc:
+            self._emit_error(f"translate failed: {exc}")
+
+    def _resolve_object_id(self, viewer, selection: str | None):
+        """Resolve a selection/object name to an object id, or the active one."""
+        if selection:
+            try:
+                obj_id, _, _ = self._resolve_selection_to_residue_indices(viewer, selection)  # type: ignore
+                if obj_id:
+                    return obj_id
+            except Exception:
+                pass
+            try:
+                entry = self._find_object_by_name(selection)  # type: ignore
+                if entry is not None:
+                    return getattr(entry, "id", None) or getattr(entry, "object_id", None)
+            except Exception:
+                pass
+        try:
+            return viewer.get_active_object_id()
+        except Exception:
+            return None
+
+    def _cmd_cartoon(self, args: list[str]) -> None:
+        """Set cartoon display type similar to PyMOL ``cartoon``."""
         if not args:
             self._emit_error("Usage: cartoon <automatic|tube|oval|rect|arrow|loop> [, selection]")
             return
@@ -309,9 +432,8 @@ class RenderingMixin(BaseCmd):
             pass
         self._emit_message(f"Cartoon type set to {mode}")
 
-    def _cmd_get_view(self, args: List[str]) -> str:
+    def _cmd_get_view(self, args: list[str]) -> str:
         """Return a copy/pasteable PyMOL-style set_view command."""
-
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
             return ""
@@ -322,9 +444,8 @@ class RenderingMixin(BaseCmd):
             return ""
         return "set_view (" + ", ".join(f"{v:.9g}" for v in vals) + ")"
 
-    def _cmd_set_view(self, args: List[str]) -> None:
+    def _cmd_set_view(self, args: list[str]) -> None:
         """Restore an 18-float view tuple."""
-
         joined = " ".join(args).strip()
         if not joined:
             self._emit_error("Usage: set_view (<18 floats>)")
@@ -350,9 +471,8 @@ class RenderingMixin(BaseCmd):
     # ------------------------------------------------------------------ #
     # Color handling
     # ------------------------------------------------------------------ #
-    def _cmd_color(self, args: List[str]) -> None:
+    def _cmd_color(self, args: list[str]) -> None:
         """Set a simple color mode or per-selection color."""
-
         if not args:
             self._emit_error(
                 "Usage: color <single|by_residue|by_ss|by_sequence>[, selection] "
@@ -464,7 +584,7 @@ class RenderingMixin(BaseCmd):
             except Exception:
                 pass
 
-    def _cmd_spectrum(self, args: List[str]) -> None:
+    def _cmd_spectrum(self, args: list[str]) -> None:
         """Color by a spectrum (rainbow). Alias for 'color spectrum'.
 
         PyMOL syntax: spectrum [expression [, palette [, selection]]]
@@ -472,7 +592,7 @@ class RenderingMixin(BaseCmd):
         """
         self._cmd_color(["spectrum"])
 
-    def _cmd_set_color(self, args: List[str]) -> None:
+    def _cmd_set_color(self, args: list[str]) -> None:
         """Define a named color.
 
         PyMOL syntax: set_color name, [r, g, b] or set_color name, hex
@@ -497,7 +617,7 @@ class RenderingMixin(BaseCmd):
         self._user_colors[key] = rgba
         self._emit_message(f"Defined color '{name_part.strip()}' = {rgba[:3]}")
 
-    def _cmd_get_color_index(self, args: List[str]) -> Optional[int]:
+    def _cmd_get_color_index(self, args: list[str]) -> int | None:
         """Return the internal index for a named color (always 0 for compat)."""
         if not args:
             self._emit_error("Usage: get_color_index <name>")
@@ -536,7 +656,7 @@ class RenderingMixin(BaseCmd):
             "single, by_residue, by_ss, by_sequence, by_element, by_chain, spectrum."
         )
 
-    def _apply_color_mode(self, viewer, mode: str, *, selection: Optional[str]) -> None:
+    def _apply_color_mode(self, viewer, mode: str, *, selection: str | None) -> None:
         # Clear any explicit overrides so the mode is visible.
         clear_overrides = getattr(viewer, "clear_color_overrides", None)
 
@@ -618,7 +738,7 @@ class RenderingMixin(BaseCmd):
                 parts = [p for p in text.replace(",", " ").split() if p]
                 if not parts:
                     break
-                vals: List[float] = []
+                vals: list[float] = []
                 for p in parts:
                     try:
                         v = float(p)
@@ -703,12 +823,12 @@ class RenderingMixin(BaseCmd):
             cur_res = None
         if cur_res is None or cur_res.ndim != 2 or cur_res.shape[0] != n_res:
             cur_res = np.full((n_res, 4), np.nan, dtype=float)
-            
+
         # Find which residue IDs have at least one colored atom
         res_ids_arr = np.asarray(residue_ids)
         atom_res_ids_arr = np.asarray(all_atom_res_ids)
         affected_rid = np.unique(atom_res_ids_arr[atom_mask])
-        
+
         # Map affected global residue IDs to indices
         affected_res_mask = np.isin(res_ids_arr, affected_rid)
         cur_res[affected_res_mask, :] = rgba4
