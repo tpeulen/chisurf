@@ -1,0 +1,49 @@
+{
+  "_comment": "Declarative AutoForm layout for the Remove-Clashed-Frames tool. A single panel with the trajectory picker + save-clash-free button (custom section, H5 browse/drag-drop), the mdtraj atom-selection expression, the read stride and the minimum clash distance, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former remove_clashes.ui.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Remove clashed frames",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "traj_remove_clashes_io"
+        },
+        {
+          "type": "value",
+          "attr": "atom_selection",
+          "label": "Atom selection",
+          "kind": "text",
+          "placeholder": "e.g. name CA and resSeq 1 to 256",
+          "description": "mdtraj atom-selection expression. The listed atoms' pairwise distances are tested; a frame is dropped when any pair is closer than the minimum distance."
+        },
+        {
+          "type": "value",
+          "attr": "stride",
+          "label": "Stride",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 999999,
+          "description": "Read every Nth frame of the source trajectory."
+        },
+        {
+          "type": "value",
+          "attr": "min_distance",
+          "label": "Min distance",
+          "kind": "float",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "step": 0.1,
+          "decimals": 2,
+          "description": "Minimum allowed atom-atom distance (shown in Ångström). Frames with any selected atom pair closer than this (after a /10 conversion to the trajectory length unit) are removed."
+        },
+        {
+          "type": "info",
+          "source": "log_html",
+          "height": 100
+        }
+      ]
+    }
+  ]
+}

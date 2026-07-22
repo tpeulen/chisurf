@@ -29,14 +29,23 @@ Most entries are thin Qt widgets with manifests; `traj_tools` is the
 aggregation shell. Keep reusable structure/trajectory math outside widgets when
 expanding this group so it can be called from scripts, services, and tests.
 
-`traj_save_topology` and `traj_align` have been migrated off their hand-built
-`.ui` files onto the [AutoForm](/subsystems/model-view-spec.md) pattern: a
-Qt-free view-model (`SaveTopologyViewModel` / `AlignTrajectoryViewModel`, holding
-the path, options and a running log, and doing the `mdtraj` work) drives an
-`AutoForm` laid out from a sibling `*.view.json` — a trajectory picker custom
-section (`traj_save_topology_io` / `traj_align_io`) plus built-in field sections
-over a live `info` log. The old `.ui` files are retired. The remaining `traj_*`
-widgets are candidates for the same treatment.
+All six single-tool `traj_*` widgets — `traj_save_topology`, `traj_align`,
+`traj_join`, `traj_rotate_translate`, `traj_convert`, `traj_remove_clashes` —
+have been migrated off their hand-built `.ui` files onto the
+[AutoForm](/subsystems/model-view-spec.md) pattern. Each now pairs a Qt-free
+view-model (holding the paths, options and a running log, and doing all the
+`mdtraj` work) with an `AutoForm` laid out from a sibling `*.view.json`: a
+trajectory-picker custom section (`traj_<name>_io`, with H5/PDB browse,
+drag-drop and the `💾`/`▶` action buttons) plus built-in `value`/`choice`/
+`toggle` field sections over a live `info` log bound to the model's `log_html`.
+The Qt-free view-models are unit-tested headlessly (each ships a `test/` with a
+`test_view_model.py` running the real `mdtraj` compute on synthesized fixtures
+plus a `test_gui.py` for construction/delegation). All `.ui` files are retired.
+The migration also fixed several latent bugs (see `okf/log.md`, 2026-07-22):
+`traj_align`/`traj_rotate_translate` wrote to a non-existent HDF5 node,
+`traj_rotate_translate`'s save dialog was never wired, and `traj_join` carried a
+dead `stride` property. `traj_tools` (the aggregation shell) is the remaining
+multi-tool workspace.
 
 See also [modelling plugins](/plugins/modelling.md), [compiled modules](/subsystems/compiled-modules.md),
 and [plugin system](/architecture/plugin-system.md).

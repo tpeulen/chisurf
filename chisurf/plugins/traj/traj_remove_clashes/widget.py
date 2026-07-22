@@ -1,179 +1,87 @@
+"""New-style GUI entrypoint for the Remove-Clashed-Frames tool.
+
+:class:`RemoveClashedFrames` is a thin :class:`~qtpy.QtWidgets.QWidget` wrapping
+a single :class:`~chisurf.gui.autoform.AutoForm` bound to the Qt-free
+:class:`~.view_model.RemoveClashesViewModel` and laid out from
+``remove_clashes.view.json``: a trajectory picker + save button, the
+atom-selection, stride and minimum-distance controls, and a live log. Replaces
+the former ``remove_clashes.ui`` / hand-built grid layout. Mirrors the
+Align-Trajectory tool.
+"""
+
 from __future__ import annotations
 
-import sys
+import logging
 
-import numba as nb
 from qtpy import QtWidgets
 
-import mdtraj
-import numpy as np
-import tables
+from chisurf.gui.autoform import AutoForm
 
-import chisurf.core.decorators
-import chisurf.gui.decorators
-import chisurf.gui.widgets
+from . import sections  # noqa: F401  (side effect: register the custom section)
+from .view_model import RemoveClashesViewModel
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+except ImportError:  # pragma: no cover - persistence optional
+    persist_plugin_state = lambda n: lambda c: c  # noqa: E731
 
-
-
-@nb.jit(nopython=True)
-def below_min_distance(
-        xyz: np.ndarray,
-        min_distance: float,
-        atom_list: np.ndarray = np.empty(0, dtype=np.int32)
-) -> np.ndarray:
-    """Takes the xyz-coordinates (frame, atom, xyz) of a trajectory as an argument an returns a vector of booleans
-    of length of the number of frames. The bool is False if the frame contains a atomic distance smaller than the
-    min distance.
-
-    :param xyz: numpy array
-        The coordinates (frame fit_index, atom fit_index, coord)
-
-    :param min_distance: float
-        Minimum distance if a distance
-
-    :return: numpy-array
-        If a atom-atom distance within a frame is smaller than min_distance the value within the array is True otherwise
-        it is False.
-
-    """
-
-    n_frames = xyz.shape[0]
-    re = np.zeros(n_frames, dtype=np.uint8)
-
-    atoms = np.arange(xyz.shape[1]) if atom_list.shape[0] == 0 else atom_list
-    n_atoms = atoms.shape[0]
-    min_distance2 = min_distance**2.0
-
-    for i_frame in range(n_frames):
-
-        for i in range(n_atoms):
-            i_atom = atoms[i]
-            x1 = xyz[i_frame, i_atom, 0]
-            y1 = xyz[i_frame, i_atom, 1]
-            z1 = xyz[i_frame, i_atom, 2]
-
-            for j in range(i + 1, n_atoms):
-                j_atom = atoms[j]
-
-                x2 = xyz[i_frame, j_atom, 0]
-                y2 = xyz[i_frame, j_atom, 1]
-                z2 = xyz[i_frame, j_atom, 2]
-
-                dx = (x1-x2)**2
-                dy = (y1-y2)**2
-                dz = (z1-z2)**2
-
-                if dx + dy + dz < min_distance2:
-                    re[i_frame] += 1
-                    break
-
-            if re[i_frame] > 0:
-                break
-    return re
+logger = logging.getLogger(__name__)
 
 
 @persist_plugin_state("traj_remove_clashes")
-class RemoveClashedFrames(
-    QtWidgets.QWidget
-):
+class RemoveClashedFrames(QtWidgets.QWidget):
+    """Drop frames containing steric clashes from a trajectory and save the rest."""
 
     @property
     def stride(self) -> int:
-        return int(self.spinBox.value())
+        """Frame read-stride (delegates to the view-model)."""
+        return int(self.model.stride)
 
     @property
     def atom_list(self) -> str:
-        txt = str(self.plainTextEdit.toPlainText())
-        return txt
-        #atom_list = np.fromstring(txt, dtype=np.int32, sep=",")
-        #return atom_list
-
-    @property
-    def trajectory_filename(self) -> str:
-        return str(self.lineEdit.text())
-
-    @trajectory_filename.setter
-    def trajectory_filename(self, v: str):
-        self.lineEdit.setText(str(v))
+        """Raw mdtraj atom-selection expression (delegates to the view-model)."""
+        return str(self.model.atom_selection)
 
     @property
     def min_distance(self) -> float:
-        return float(self.doubleSpinBox.value()) / 10.0
+        """Consumed clash threshold, i.e. the raw spin value divided by ten.
 
-    def onRemoveClashes(
-            self,
-            target_filename: str = None
-    ):
-        if target_filename is None:
-            target_filename = chisurf.gui.widgets.save_file(
-                'H5-Trajectory file', 'H5-File (*.h5)'
-            )
-        # target_filename = 'clash_dimer.h5'
-        filename = self.trajectory_filename
-        stride = self.stride
-        min_distance = self.min_distance
+        Mirrors the former widget's ``min_distance`` getter (delegates to the
+        view-model's :meth:`~.view_model.RemoveClashesViewModel.min_distance_nm`).
+        """
+        return self.model.min_distance_nm()
 
-        # Make empty trajectory
-        frame_0 = mdtraj.load_frame(filename, 0)
-        target_traj = mdtraj.Trajectory(
-            xyz=np.empty((0, frame_0.n_atoms, 3)), topology=frame_0.topology
-        )
-        #atom_indices = np.array(self.atom_list)
-        atom_selection = self.atom_list
-        atom_list = target_traj.top.select(atom_selection)
-        target_traj.save(target_filename)
+    @property
+    def trajectory_filename(self) -> str:
+        """Path of the currently loaded trajectory (delegates to the view-model)."""
+        return self.model.trajectory_filename
 
-        chunk_size = 1000
-        for i, chunk in enumerate(
-                mdtraj.iterload(
-                    filename,
-                    chunk=chunk_size,
-                    stride=stride
-                )
-        ):
-            xyz = chunk.xyz.copy()
-            frames_below = below_min_distance(
-                xyz=xyz,
-                min_distance=min_distance,
-                atom_list=atom_list
-            )
-            selection = np.where(frames_below < 1)[0]
-            xyz_clash_free = np.take(xyz, selection, axis=0)
-            with tables.open_file(target_filename, 'a') as table:
-                table.root.coordinates.append(xyz_clash_free)
-                times = np.arange(table.root.time.shape[0],
-                                  table.root.time.shape[0] + xyz_clash_free.shape[0], dtype=np.float32)
-                table.root.time.append(times)
+    @trajectory_filename.setter
+    def trajectory_filename(self, value: str) -> None:
+        """Set the trajectory path through the view-model (fires observers)."""
+        self.model.set_trajectory(value)
 
-    def onOpenTrajectory(
-            self,
-            filename: str = None
-    ):
-        if filename is None:
-            filename = chisurf.gui.widgets.get_filename(
-                'Open H5-Model file', 'H5-files (*.h5)'
-            )
-            self.trajectory_filename = filename
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(parent)
+        self.setWindowTitle("Remove clashed frames")
+        self.setMinimumWidth(420)
 
-    @chisurf.gui.decorators.init_with_ui(
-        ui_filename="remove_clashes.ui"
-    )
-    def __init__(
-            self,
-            *args,
-            **kwargs
-    ):
-        self.actionOpen_trajectory.triggered.connect(self.onOpenTrajectory)
-        self.actionSave_clash_free_trajectory.triggered.connect(self.onRemoveClashes)
+        self.model = RemoveClashesViewModel()
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        self.auto_form = AutoForm(self.model)
+        layout.addWidget(self.auto_form)
+
+        self.model.add_observer(self._on_model_event)
+
+    def _on_model_event(self, event: str) -> None:
+        try:
+            self.auto_form.sync_fields()
+            self.auto_form.refresh_plots()
+        except Exception:  # pragma: no cover - defensive
+            logger.warning("RemoveClashedFrames: field sync failed", exc_info=True)
 
 
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    win = RemoveClashedFrames()
-    win.show()
-    sys.exit(app.exec_())
+__all__ = ["RemoveClashedFrames"]
