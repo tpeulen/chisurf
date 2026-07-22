@@ -180,6 +180,33 @@ numba cell list, not scipy (`scipy` is *not* a declared dependency) and not IMP
 every close pair (~10 M on a dense mesh → slower than the O(n²) loop). numba
 already accelerates this file, so the cell list stays dependency-clean and exact.
 
+# PyMOL parity (cartoon + navigation)
+
+The cartoon and mouse navigation are modelled on PyMOL (source under
+`junk/pymol-open-source`, `layer2/RepCartoon.cpp` + `layer1/SceneMouse.cpp`).
+
+**Cartoon ribbon orientation (`geometry/cartoon.py`).** The per-residue ribbon
+"up" is the **peptide-plane normal** `normalize((N−C)×(N−O))` (PyMOL PASS1), not
+the raw `C−O` carbonyl direction — the latter is noisy and spins around the helix
+axis, which is what made helices render as twisted tape. `_refine_orientations`
+then applies PyMOL's three anti-twist passes before spline sampling: **round
+helices** (`up = normalize(axis×tangent)` from a running CA-difference axis, so
+the oval circles a smooth axis), **flat sheets** (4-cycle 3-point box average of
+orientations across a β-strand), and **refine-normals** (force ⊥ tangent + forward
+sign propagation). Cross-section dims already match PyMOL (oval 0.25×1.35, rect
+0.4×1.4, loop r=0.2). Do not revert the orientation to `C−O`.
+
+**Navigation (`renderer/qtgl.py`).** The camera orientation is a **3×3
+world→camera rotation matrix** (a virtual trackball), not a turntable. Left-drag
+= trackball (sphere radius `0.45·min(W,H)`, axis `cross(n_prev,n_cur)`,
+`mouse_scale`=1.3, roll-damped `1/(1+|axis.z|)`, left-multiplied + SVD
+re-orthonormalised); middle-drag = pan; right-drag = dolly (right-click still
+opens the menu). Camera right/up/forward are the rotation rows; the 18-float view
+state stores the matrix in slots 0–8 (legacy elevation/azimuth in 10–11 still
+decode), and `raytracer._camera_from_view_state` reads the same so the GL view and
+the offscreen raytrace stay consistent. `reset_view(distance,elevation,azimuth)`
+keeps its signature (builds the matrix internally).
+
 # Structure loading (fallback contract)
 
 `io/structure.py:load_structure_payload` tries the core `Structure` reader first
