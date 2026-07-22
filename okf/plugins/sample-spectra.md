@@ -15,7 +15,7 @@ configuration.
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
 | `sample_database` | Legacy:Sample Database | Retired prerelease MMFDB surface; active work belongs in `core/mmfdb_admin` and canonical `mmfdb.*` services. |
-| `spectra_downloader` | Spectra Downloader | Downloads, browses, stages, and pushes fluorophore/filter/dichroic/detector/light-source spectra to MMFDB endpoints. |
+| `spectra_downloader` | Spectra Downloader | Downloads, browses, stages, and pushes fluorophore/filter/dichroic/detector/light-source spectra to MMFDB endpoints. Includes `download/dedupe_spectra.py`, a headless curation utility that assesses spectra quality, merges duplicate probes and highlights borderline duplicates with a Bayesian classifier in a staging DB. |
 | `pch` | Spectroscopy:Single-Molecule:PCH | Computes photon-counting histograms from TTTR files and fits multi-species brightness/occupancy models. |
 | `vv_vh_g_factor` | Spectroscopy:Fluorescence decay:VV/VH G-Factor Calculator | Calculates detector G-factors from VV/VH-format decay files, with CLI and backend services. |
 | `vv_vh_anisotropy` | Spectroscopy:Fluorescence decay:VV/VH Anisotropy Decay | Computes anisotropy decays from VV/VH files, including batch processing. |
