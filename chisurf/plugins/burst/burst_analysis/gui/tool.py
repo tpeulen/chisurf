@@ -313,6 +313,24 @@ def _burst_mle(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     if central is None:
         return wizard
     central._mle_wizard = wizard
+    # Tie the wizard's lifetime to the widget that is actually embedded. Its fit
+    # buttons live under ``central`` and are wired to ``wizard`` slots; if the
+    # wizard (a QMainWindow) is left parented to the workflow in a separate
+    # branch, a window/child cleanup can destroy it while ``central`` — and its
+    # buttons — survive, so a later click fires a slot on a deleted C++ object
+    # ("wrapped C/C++ object ... has been deleted"). Re-parenting the wizard onto
+    # ``central`` puts them in one branch with one lifetime: the wizard can never
+    # outlive nor predecease its own content.
+    #
+    # Reparent as a plain, hidden child widget — NOT a window. Kept as a
+    # ``Qt.Window`` it stays a top-level widget that macOS actually shows (an
+    # empty little traffic-light window floating over the panel, whose close
+    # deletes the wizard and re-triggers the crash). ``Qt.Widget`` + ``hide()``
+    # makes it an invisible, laid-out-nowhere child: it never renders, never
+    # grabs clicks (the QMainWindow-as-child swallow only happens when visible),
+    # and is not a window that can be closed.
+    wizard.setParent(central, QtCore.Qt.Widget)
+    wizard.hide()
     return central
 
 
@@ -399,45 +417,28 @@ BURST_PANELS = [
         "role": "data",
     },
     {
-        "name": "2. Channels",
-        "icon": "🔢",
-        "description": "Define detector channels and PIE time windows once.",
-        "factory": _channel_selection,
-        "role": "channels",
-    },
-    {
-        "name": "3. Burst Selection",
+        "name": "2. Burst Selection",
         "icon": "🔎",
-        "description": "Find and filter bursts from TTTR data.",
+        "description": "Define detector channels and find/filter bursts from TTTR data.",
         "factory": _burst_selection,
         "role": "selection",
     },
     {
-        "name": "4. BVA",
+        "name": "3. BVA",
         "icon": "📊",
         "description": "Run burst variance analysis using selected bursts.",
         "factory": _burst_bva,
         "role": "bva",
     },
     {
-        "name": "5. IRF & Background",
-        "icon": "✨",
-        "description": (
-            "Extract a per-detector IRF and background from the non-burst photons "
-            "and feed them to the MLE-Lifetime fit."
-        ),
-        "factory": _burst_irf_bg,
-        "role": "irf_bg",
-    },
-    {
-        "name": "6. MLE-Lifetime",
+        "name": "4. MLE-Lifetime",
         "icon": "🎯",
         "description": "Fit burst lifetimes using selected bursts.",
         "factory": _burst_mle,
         "role": "mle",
     },
     {
-        "name": "7. H2MM",
+        "name": "5. H2MM",
         "icon": "🔀",
         "description": "Resolve sub-burst FRET dynamics with photon-by-photon HMM.",
         "factory": _burst_h2mm,
@@ -451,7 +452,7 @@ BURST_PANELS = [
         ),
     },
     {
-        "name": "8. Browser",
+        "name": "6. Browser",
         "icon": "📋",
         "description": "Inspect the current burst workflow result.",
         "factory": _burst_browser,
@@ -469,6 +470,16 @@ BURST_PANELS = [
         "description": "Estimate background using the selected data and channel setup.",
         "factory": _burst_background,
         "role": "background",
+    },
+    {
+        "name": "IRF & Background",
+        "icon": "✨",
+        "description": (
+            "Extract a per-detector IRF and background from the non-burst photons "
+            "and feed them to the MLE-Lifetime fit."
+        ),
+        "factory": _burst_irf_bg,
+        "role": "irf_bg",
     },
 ]
 
@@ -595,12 +606,16 @@ class BurstAnalysisTool(NavigationPanelTool):
         self._apply_context_to_downstream()
 
     def _sync_channel_context(self) -> None:
-        """Capture channel definitions from step 1 via the shared RPC store.
+        """Capture channel definitions via the shared RPC store.
 
-        The setup panel's definition is published to the central
-        ``detector_setups.*`` RPC store, then read back so the workflow context
-        always reflects the canonical (RPC-held) channel definition.
+        The channel definition is published to the central ``detector_setups.*``
+        RPC store, then read back so the workflow context always reflects the
+        canonical (RPC-held) channel definition. There is no longer a standalone
+        Channels step: the definition is taken from the detector setup the Burst
+        Selection step has chosen (a legacy standalone Channels panel, if one is
+        still bound, keeps working).
         """
+        settings = None
         panel = self._workflow_panels.get("channels")
         page = getattr(panel, "page", None)
         get_settings = getattr(page, "get_settings", None)
@@ -609,12 +624,35 @@ class BurstAnalysisTool(NavigationPanelTool):
                 settings = get_settings()
             except Exception:
                 settings = None
-            if settings:
-                self._setup_client.set_current(settings)
+        if not settings:
+            settings = self._channel_settings_from_selection()
+        if settings:
+            self._setup_client.set_current(settings)
         # Pull the canonical definition back from the RPC store.
         current = self._setup_client.get_current()
         if current:
             self.workflow_context.channel_settings = current
+
+    def _channel_settings_from_selection(self) -> dict | None:
+        """The detector setup the Burst Selection step has selected, if any.
+
+        Burst Selection applies a *saved* detector setup (name → definition), so
+        that saved definition is the channel setup the rest of the workflow uses
+        now that the standalone Channels step is gone.
+        """
+        panel = self._workflow_panels.get("selection")
+        name = getattr(panel, "_selected_setup_name", None)
+        if not name:
+            return None
+        try:
+            from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
+                load_detector_setups,
+            )
+
+            setup = load_detector_setups().get("setups", {}).get(name)
+            return setup or None
+        except Exception:
+            return None
 
     def _sync_selection_context(self, widget: QtWidgets.QWidget) -> None:
         """Capture burst-selection outputs from step 2."""

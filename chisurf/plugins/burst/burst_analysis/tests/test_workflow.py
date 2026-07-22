@@ -29,6 +29,63 @@ def test_mle_panel_embeds_central_widget_not_mainwindow(qapp) -> None:
     assert hasattr(wizard, "burst_files_list")
 
 
+def test_mle_wizard_shares_lifetime_with_embedded_widget(qapp) -> None:
+    """The wizard and its embedded content must live and die as one unit.
+
+    Regression: the wizard (a QMainWindow) used to hang off the workflow in a
+    separate branch from ``central`` (its extracted content, holding every fit
+    button wired to a wizard slot). A window/child cleanup could then destroy the
+    wizard while ``central`` — and its buttons — survived, so a later click fired
+    a slot on a deleted C++ object ("wrapped C/C++ object ... has been deleted").
+    The wizard must therefore be a descendant of the embedded widget, never a
+    stray child of the workflow, and must not render over the panel.
+    """
+    from qtpy import QtWidgets
+
+    try:
+        from qtpy import sip
+    except ImportError:  # pragma: no cover - PySide path
+        import sip
+
+    from chisurf.plugins.burst.burst_analysis.gui import tool as tool_mod
+
+    host = QtWidgets.QWidget()
+    host.show()
+    embedded = tool_mod._burst_mle(host)
+    # Host the embedded widget the way the navigation shell does.
+    layout = QtWidgets.QVBoxLayout(host)
+    layout.addWidget(embedded)
+    QtWidgets.QApplication.processEvents()
+
+    wizard = embedded._mle_wizard
+
+    # The wizard shares the embedded widget's branch (one lifetime)...
+    def _is_descendant(child, ancestor):
+        parent = child.parent()
+        while parent is not None:
+            if parent is ancestor:
+                return True
+            parent = parent.parent()
+        return False
+
+    assert _is_descendant(wizard, embedded), "wizard is not under the embedded widget"
+    assert wizard.parent() is not host, "wizard is a stray child of the workflow"
+    # ...and never renders over the panel (the click-swallow this design avoids)
+    # and is not a top-level window (a Qt.Window reparent left an empty little
+    # traffic-light window floating over the panel, whose close deletes the
+    # wizard and re-triggers the crash).
+    assert not wizard.isVisible()
+    assert not wizard.isWindow(), "wizard is a floating window, not a hidden child"
+    assert wizard not in QtWidgets.QApplication.topLevelWidgets()
+
+    # Deleting the embedded content takes the wizard (and its buttons) with it, so
+    # no live button can outlive the wizard and fire a slot on a dead object.
+    button = wizard.toolButton_hyper_opt
+    sip.delete(embedded)
+    assert sip.isdeleted(wizard), "wizard outlived its embedded content"
+    assert sip.isdeleted(button), "a fit button outlived the wizard"
+
+
 def test_send_to_mle_survives_detector_switch() -> None:
     """IRF/background patterns must persist in the per-detector state cache.
 
@@ -82,21 +139,23 @@ def test_burst_workflow_panel_order() -> None:
     from chisurf.plugins.burst.burst_analysis.gui.tool import BURST_PANELS
 
     labels = [f"{panel.get('icon', '')} {panel['name']}".strip() for panel in BURST_PANELS]
-    # IRF & Background feeds the MLE fit, so it comes before MLE-Lifetime rather
-    # than dangling at the very bottom.
+    # No standalone Channels step (channels come from the Burst Selection setup);
+    # the numbered pipeline is the main flow, with the utility steps (Background,
+    # IRF & Background — auto-button driven) below the separator, unnumbered.
     assert labels == [
         "📂 1. Data Selection",
-        "🔢 2. Channels",
-        "🔎 3. Burst Selection",
-        "📊 4. BVA",
-        "✨ 5. IRF & Background",
-        "🎯 6. MLE-Lifetime",
-        "🔀 7. H2MM",
-        "📋 8. Browser",
+        "🔎 2. Burst Selection",
+        "📊 3. BVA",
+        "🎯 4. MLE-Lifetime",
+        "🔀 5. H2MM",
+        "📋 6. Browser",
         "────────",
         "🌙 Background",
+        "✨ IRF & Background",
     ]
-    assert BURST_PANELS[8]["separator"] is True
+    # The separator sits after the six numbered steps.
+    assert BURST_PANELS[6]["separator"] is True
+    assert "channels" not in {p.get("role") for p in BURST_PANELS}
 
 
 def test_h2mm_panel_is_flagged_experimental() -> None:
