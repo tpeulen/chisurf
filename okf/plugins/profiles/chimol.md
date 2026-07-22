@@ -118,6 +118,20 @@ them — costing ~18 s. AO is now an O(n) numba **cell list** (uniform grid, cel
 radius, exact and bit-identical to the O(n²) reference). Metaball dropped ~5.7 s →
 ~0.8 s. AO is shared by balls/cartoon/surface/metaball, so all benefit.
 
+The **Gaussian surface** (`_build_surface_mesh_scene`) coloured vertices and
+computed analytical normals with a per-vertex/per-atom Python double loop
+(hundreds of thousands of `math.exp`). It now uses the same vectorised fixed-k
+KD-tree approach as the metaball path (query the k=32 nearest atoms once, then
+array-wise weights/colours/gradient-normals) — bit-exact for real structures
+since the k-nearest set captures every atom within the cutoff. Surface build
+~2.1 s → ~0.4 s. Note this is the atom-Gaussian "Surf" path; **accessible-volume
+(AV) overlays render separately** — `add_point_overlay` (transparent point cloud,
+`av_viewer_3d`) or `add_surface_overlay` → `_generate_surface_mesh_from_points`
+(voxel + `scipy.ndimage` + marching cubes, ~9 ms for 60k points, already fast).
+The real AV-workflow cost was that every AV show/update calls `_update_view`,
+which rebuilds the **whole structure scene** (cartoon/atoms/surface) — so the
+builder speedups above dominate AV-interaction latency, not the AV mesh itself.
+
 **Spatial-search dependency note:** the AO neighbour count deliberately uses a
 numba cell list, not scipy (`scipy` is *not* a declared dependency) and not IMP
 (which *is*). IMP was evaluated: `IMP.algebra.NearestNeighbor3D.get_in_ball` is an
