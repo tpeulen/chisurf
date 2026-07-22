@@ -1,10 +1,11 @@
-"""The photon-filter wizard's burst-search combobox is populated from tttrlib.
+"""The wizard drives a host combobox through a single BurstSearchForm.
 
-These exercise the registry-to-widget layer against a minimal stand-in page
-rather than the full wizard, so a failure points at this integration instead of
-at unrelated wizard wiring. They need a Qt binding; where none is installed the
-whole module skips, and the Qt-free half of the same feature is covered by
-``test_tttrlib_search.py``.
+The photon-filter wizard keeps its own "Filter mode" combobox but delegates
+populating it and generating the parameter form to one
+:class:`~chisurf.gui.widgets.burst_search_form.BurstSearchForm`, the same widget
+used standalone. These exercise that external-combobox seam against a minimal
+host, so a failure points here rather than at unrelated wizard wiring. The
+Qt-free half of the feature is covered by ``test_tttrlib_search.py``.
 """
 
 import pytest
@@ -14,114 +15,87 @@ pytest.importorskip("qtpy.QtWidgets", reason="no Qt binding installed")
 from qtpy import QtWidgets  # noqa: E402
 
 from chisurf.core.fluorescence.burst import tttrlib_search  # noqa: E402
-from chisurf.gui.widgets.wizard.tttr_photonfilter import (  # noqa: E402
-    tttr_photon_filter_tttrlib as tttrlib_modes,
-)
+from chisurf.gui.widgets.burst_search_form import BurstSearchForm  # noqa: E402
 
 BUILTIN_MODES = ["Count rate", "Burst", "BOCPD Burst", "Kalman Burst", "CUSUM Burst"]
 
 
-class _Page(QtWidgets.QWidget):
-    """A stand-in for the wizard page: the combobox plus a couple of built-ins."""
-
-    def __init__(self):
-        super().__init__()
-        layout = QtWidgets.QVBoxLayout(self)
-        self.comboBox_burst_filter = QtWidgets.QComboBox()
-        self.comboBox_burst_filter.addItems(BUILTIN_MODES)
-        layout.addWidget(self.comboBox_burst_filter)
-        # Two of the shared widgets the built-in modes reuse.
-        self.spinBox = QtWidgets.QSpinBox()
-        self.doubleSpinBox_5 = QtWidgets.QDoubleSpinBox()
-        layout.addWidget(self.spinBox)
-        layout.addWidget(self.doubleSpinBox_5)
+@pytest.fixture
+def combo(qapp):
+    """A host combobox pre-seeded with the retired built-in modes."""
+    box = QtWidgets.QComboBox()
+    box.addItems(BUILTIN_MODES)
+    return box
 
 
 @pytest.fixture
-def page(qapp):
-    widget = _Page()
-    assert tttrlib_modes.install(widget) is True
-    return widget
+def form(combo):
+    """A BurstSearchForm driving the host combobox, as the wizard builds it."""
+    return BurstSearchForm(combo=combo)
 
 
-def test_combobox_gains_every_tttrlib_algorithm(page):
-    combo = page.comboBox_burst_filter
+def test_host_combobox_is_repopulated_from_the_registry(form, combo):
     labels = [combo.itemText(i) for i in range(combo.count())]
-    # install() replaces the hand-written built-in modes entirely with the
-    # tttrlib registry (single source of truth), so the built-ins are cleared.
+    # Driving the host combobox clears the hand-written built-in modes entirely
+    # (single source of truth), then fills it from tttrlib.
     for mode in BUILTIN_MODES:
         assert mode not in labels, "a built-in mode leaked through"
 
     algorithms = tttrlib_search.algorithms()
-    found = {
-        combo.itemData(i, tttrlib_modes.ALGORITHM_ROLE)
-        for i in range(combo.count())
-    }
+    found = {combo.itemData(i) for i in range(combo.count())}
     assert set(algorithms) <= found
     # The label shown comes from tttrlib, not from this repo.
     for i in range(combo.count()):
-        name = combo.itemData(i, tttrlib_modes.ALGORITHM_ROLE)
-        if name:
-            assert combo.itemText(i) == algorithms[name]["label"]
+        name = combo.itemData(i)
+        assert name and combo.itemText(i) == algorithms[name]["label"]
 
 
-def test_builtin_modes_are_not_registry_backed(page):
-    combo = page.comboBox_burst_filter
-    for mode in BUILTIN_MODES:
-        combo.setCurrentIndex(combo.findText(mode))
-        assert tttrlib_modes.selected_algorithm(page) is None
-        assert tttrlib_modes.apply_visibility(page) is False
+def test_the_host_combobox_becomes_the_forms_selector(form, combo):
+    # The widget does not create a second combobox; it drives the host's.
+    assert form.combo_algorithm is combo
 
 
-def test_selecting_an_algorithm_generates_its_parameters(page):
-    assert tttrlib_modes.select(page, "maxtree") is True
-    assert tttrlib_modes.selected_algorithm(page) == "maxtree"
-    assert tttrlib_modes.apply_visibility(page) is True
-
-    # Built-in parameter widgets step aside for the generated ones.
-    assert not page.spinBox.isVisible()
-    assert not page.doubleSpinBox_5.isVisible()
-
-    assert tttrlib_modes.parameters(page) == tttrlib_search.defaults("maxtree")
+def test_selecting_an_algorithm_generates_its_parameters(form):
+    form.set_state("maxtree")
+    assert form.algorithm == "maxtree"
+    assert form.parameters == tttrlib_search.defaults("maxtree")
 
 
-def test_switching_algorithm_rebuilds_with_that_algorithms_parameters(page):
-    tttrlib_modes.select(page, "maxtree")
-    assert "min_significance" in tttrlib_modes.parameters(page)
+def test_switching_algorithm_rebuilds_with_that_algorithms_parameters(form):
+    form.set_state("maxtree")
+    assert "min_significance" in form.parameters
 
-    tttrlib_modes.select(page, "sliding_window")
-    params = tttrlib_modes.parameters(page)
+    form.set_state("sliding_window")
+    params = form.parameters
     assert set(params) == set(tttrlib_search.defaults("sliding_window"))
     assert "min_significance" not in params
 
 
-def test_restored_values_survive_the_selection(page):
+def test_restored_values_survive_the_selection(form):
     """A saved project's parameters must not be overwritten by the defaults."""
-    tttrlib_modes.select(page, "maxtree", {"L": 77, "min_significance": 6.0})
-    params = tttrlib_modes.parameters(page)
+    form.set_state("maxtree", {"L": 77, "min_significance": 6.0})
+    params = form.parameters
     assert params["L"] == 77
     assert params["min_significance"] == 6.0
 
 
-def test_reapplying_visibility_does_not_discard_edits(page):
-    """apply_visibility runs on every mode change; it must be idempotent."""
-    tttrlib_modes.select(page, "maxtree", {"L": 55})
-    for _ in range(3):
-        tttrlib_modes.apply_visibility(page)
-    assert tttrlib_modes.parameters(page)["L"] == 55
+def test_switching_via_the_combobox_resets_to_that_algorithms_defaults(form, combo):
+    form.set_state("maxtree", {"L": 55})
+    # A user changing the combobox directly rebuilds with fresh defaults.
+    index = combo.findData("sliding_window")
+    combo.setCurrentIndex(index)
+    assert form.algorithm == "sliding_window"
+    assert form.parameters == tttrlib_search.defaults("sliding_window")
 
 
-def test_unknown_algorithm_is_reported_not_raised(page):
-    assert tttrlib_modes.select(page, "not_an_algorithm") is False
+def test_unknown_algorithm_is_rejected(form):
+    with pytest.raises(ValueError, match="unknown burst search"):
+        form.set_state("not_an_algorithm")
 
 
-def test_parameters_before_the_form_exists_fall_back_to_defaults(qapp):
-    """Reading settings before the page is shown still yields a valid set."""
-    widget = _Page()
-    tttrlib_modes.install(widget)
-    combo = widget.comboBox_burst_filter
-    for i in range(combo.count()):
-        if combo.itemData(i, tttrlib_modes.ALGORITHM_ROLE) == "maxtree":
-            combo.setCurrentIndex(i)
-            break
-    assert tttrlib_modes.parameters(widget) == tttrlib_search.defaults("maxtree")
+def test_parameters_track_the_current_combobox_selection(combo):
+    """Reading settings after a plain combobox change yields that search's set."""
+    form = BurstSearchForm(combo=combo)
+    index = combo.findData("maxtree")
+    combo.setCurrentIndex(index)
+    assert form.parameters == tttrlib_search.defaults("maxtree")

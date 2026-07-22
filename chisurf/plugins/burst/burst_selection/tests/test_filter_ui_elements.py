@@ -21,9 +21,6 @@ import tttrlib  # noqa: E402
 from chisurf.gui.widgets.wizard.tttr_photonfilter.filter_settings_form import (  # noqa: E402
     ALL,
 )
-from chisurf.gui.widgets.wizard.tttr_photonfilter import (  # noqa: E402
-    tttr_photon_filter_tttrlib as registry_modes,
-)
 from chisurf.plugins.burst.burst_selection import BurstSelectionTool  # noqa: E402
 from chisurf.core.fluorescence.burst import tttrlib_search  # noqa: E402
 
@@ -74,7 +71,7 @@ def test_mode_selector_offers_only_registry_searches(page):
 
 def test_mode_selector_is_always_reachable(page):
     for name in page._tttrlib_algorithms or {}:
-        registry_modes.select(page, name)
+        page.burst_search_form.set_state(name)
         assert not page.comboBox_burst_filter.isHidden(), name
 
 
@@ -86,7 +83,7 @@ def test_shared_settings_stay_visible_for_every_search(page):
     parameters.
     """
     for name in page._tttrlib_algorithms or {}:
-        registry_modes.select(page, name)
+        page.burst_search_form.set_state(name)
         assert not page._filter_settings_form_widget.isHidden(), name
         titles = [p.title for p in page._filter_settings_model.view_spec().sections]
         assert titles == ["Channel selection", "Macro time interval", "Filter"]
@@ -94,7 +91,7 @@ def test_shared_settings_stay_visible_for_every_search(page):
 
 def test_every_search_reports_the_registry_mode(page):
     for name in page._tttrlib_algorithms or {}:
-        registry_modes.select(page, name)
+        page.burst_search_form.set_state(name)
         assert page.used_filter == "tttrlib"
         assert page.tttrlib_algorithm == name
 
@@ -102,7 +99,7 @@ def test_every_search_reports_the_registry_mode(page):
 def test_selecting_a_registry_search_reports_the_tttrlib_mode(page):
     if not getattr(page, "_tttrlib_algorithms", None):
         pytest.skip("tttrlib publishes no burst-search registry")
-    registry_modes.select(page, "maxtree")
+    page.burst_search_form.set_state("maxtree")
     assert page.used_filter == "tttrlib"
     assert page.tttrlib_algorithm == "maxtree"
 
@@ -330,11 +327,11 @@ def test_every_registry_control_updates_the_plots(qapp, page):
 
     if not getattr(page, "_tttrlib_algorithms", None):
         pytest.skip("tttrlib publishes no burst-search registry")
-    registry_modes.select(page, "maxtree")
+    page.burst_search_form.set_state("maxtree")
 
     calls = []
     page.actionUpdate_Values.triggered.connect(lambda: calls.append(1))
-    controls = _controls(page._tttrlib_container)
+    controls = _controls(page.burst_search_form)
     assert controls, "the registry form has no controls"
     for control in controls:
         before = len(calls)
@@ -389,16 +386,16 @@ def test_a_search_parameter_changes_the_number_of_bursts(qapp, page, photons):
     """
     if not getattr(page, "_tttrlib_algorithms", None):
         pytest.skip("tttrlib publishes no burst-search registry")
-    registry_modes.select(page, "maxtree")
+    page.burst_search_form.set_state("maxtree")
     page._filter_settings_model.settings.invert = False
     qapp.processEvents()
 
     counts = []
     for min_photons in (20, 60, 200):
-        page._tttrlib_view._params_group.L = min_photons
+        page.burst_search_form._view._params_group.L = min_photons
         qapp.processEvents()
         bursts = tttrlib_search.search(
-            photons, "maxtree", page._tttrlib_view.params()
+            photons, "maxtree", page.burst_search_form.parameters
         )
         counts.append(len(bursts))
 

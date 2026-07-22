@@ -49,6 +49,13 @@ class BurstSearchForm(QtWidgets.QWidget):
     values : mapping, optional
         Initial parameter values, overriding the registry defaults.
     parent : QWidget, optional
+    combo : QComboBox, optional
+        An existing combobox to drive instead of creating one. Passing the host's
+        own selector (as the photon-filter wizard does) is what lets this widget
+        be the single burst-search picker while the selector keeps its place in
+        the host's layout; the widget then lays out only the summary and the
+        parameter form. When omitted, the widget builds and shows its own chooser
+        row.
     """
 
     #: Emitted when the algorithm or any of its parameters changes.
@@ -59,6 +66,7 @@ class BurstSearchForm(QtWidgets.QWidget):
         algorithm: typing.Optional[str] = None,
         values: typing.Optional[typing.Mapping[str, typing.Any]] = None,
         parent: typing.Optional[QtWidgets.QWidget] = None,
+        combo: typing.Optional[QtWidgets.QComboBox] = None,
     ):
         super().__init__(parent)
         self._algorithms = tttrlib_search.algorithms()
@@ -72,9 +80,10 @@ class BurstSearchForm(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        chooser = QtWidgets.QHBoxLayout()
-        chooser.addWidget(QtWidgets.QLabel("Algorithm"))
-        self.combo_algorithm = QtWidgets.QComboBox()
+        # Populate the selector — a host-supplied one keeps its place in the host
+        # layout; otherwise build a chooser row inside this widget.
+        self.combo_algorithm = combo if combo is not None else QtWidgets.QComboBox()
+        self.combo_algorithm.clear()
         for name, spec in self._algorithms.items():
             # The name is carried as item data so the visible label can change
             # without breaking stored settings.
@@ -83,8 +92,11 @@ class BurstSearchForm(QtWidgets.QWidget):
             self.combo_algorithm.setItemData(
                 index, spec.get("summary", ""), QtCore.Qt.ToolTipRole
             )
-        chooser.addWidget(self.combo_algorithm, 1)
-        layout.addLayout(chooser)
+        if combo is None:
+            chooser = QtWidgets.QHBoxLayout()
+            chooser.addWidget(QtWidgets.QLabel("Algorithm"))
+            chooser.addWidget(self.combo_algorithm, 1)
+            layout.addLayout(chooser)
 
         self.label_summary = QtWidgets.QLabel()
         self.label_summary.setWordWrap(True)

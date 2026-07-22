@@ -548,41 +548,24 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
     @property
     def used_filter(self):
-        """
-        Returns the currently active filter mode based on comboBox_burst_filter selection:
-        - 'count_rate' if "Count rate" is selected
-        - 'burst' if "Burst" is selected
-        - 'bocpd' if "BOCPD Burst" is selected
-        - 'kalman' if "Kalman Burst" is selected
-        """
-        from chisurf.gui.widgets.wizard.tttr_photonfilter import (
-            tttr_photon_filter_tttrlib as tttrlib_modes,
-        )
-        # Every tttrlib-registry algorithm shares one filter mode; which of them
-        # runs is carried by `tttrlib_algorithm`, so adding an algorithm needs no
-        # new mode here.
-        if tttrlib_modes.selected_algorithm(self) is not None:
-            return 'tttrlib'
+        """Active filter mode.
 
-        # Only registry-driven searches remain, so there is one mode; which
-        # search runs is carried by `tttrlib_algorithm`.
+        Every burst search now comes from tttrlib's registry and shares one
+        mode; which search runs is carried by :attr:`tttrlib_algorithm`.
+        """
         return 'tttrlib'
 
     @property
     def tttrlib_algorithm(self) -> str:
-        """Name of the selected tttrlib burst search ('' for a built-in mode)."""
-        from chisurf.gui.widgets.wizard.tttr_photonfilter import (
-            tttr_photon_filter_tttrlib as tttrlib_modes,
-        )
-        return tttrlib_modes.selected_algorithm(self) or ''
+        """Name of the selected tttrlib burst search."""
+        form = getattr(self, "burst_search_form", None)
+        return form.algorithm if form is not None else ''
 
     @property
     def tttrlib_parameters(self) -> dict:
         """Values of the generated parameter form for the selected search."""
-        from chisurf.gui.widgets.wizard.tttr_photonfilter import (
-            tttr_photon_filter_tttrlib as tttrlib_modes,
-        )
-        return tttrlib_modes.parameters(self)
+        form = getattr(self, "burst_search_form", None)
+        return form.parameters if form is not None else {}
 
     @property
     def selected(self):
@@ -2166,18 +2149,16 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                     elif burst_params["filter_mode"] == "cusum":
                         self.comboBox_burst_filter.setCurrentText("CUSUM Burst")
                     elif burst_params["filter_mode"] == "tttrlib":
-                        from chisurf.gui.widgets.wizard.tttr_photonfilter import (
-                            tttr_photon_filter_tttrlib as tttrlib_modes,
-                        )
                         # A project may name a search this tttrlib does not have;
-                        # fall back rather than restoring a mode that cannot run.
-                        restored = tttrlib_modes.select(
-                            self,
-                            burst_params.get("tttrlib_algorithm", ""),
-                            burst_params.get("tttrlib_parameters", {}),
-                        )
-                        if not restored:
-                            self.comboBox_burst_filter.setCurrentText("Burst")
+                        # keep the default rather than restoring a mode that
+                        # cannot run.
+                        try:
+                            self.burst_search_form.set_state(
+                                burst_params.get("tttrlib_algorithm", ""),
+                                burst_params.get("tttrlib_parameters", {}),
+                            )
+                        except (ValueError, AttributeError):
+                            pass
                     else:
                         # Default to burst mode if unknown
                         self.comboBox_burst_filter.setCurrentText("Burst")
@@ -2429,8 +2410,9 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         g.setContentsMargins(0, 0, 0, 0)
         g.setSpacing(0)
         self.label_burst_filter = Q.QLabel("Filter Mode:")
-        # Filter modes are populated from the tttrlib registry (see
-        # tttr_photon_filter_tttrlib.install); no hard-coded modes here.
+        # Filter modes are populated from the tttrlib registry by the embedded
+        # BurstSearchForm (see tttr_photon_filter_mode.install_filter_mode_visibility);
+        # no hard-coded modes here.
         self.comboBox_burst_filter = Q.QComboBox()
         self.comboBox_burst_filter.setToolTip("Select the burst filter mode")
         self.checkBox = Q.QCheckBox("invert")   # invert (default unchecked)

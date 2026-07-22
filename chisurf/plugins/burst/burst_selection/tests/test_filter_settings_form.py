@@ -71,9 +71,6 @@ def test_editing_the_generated_form_updates_the_plots(qapp):
     ``actionUpdate_Values`` instead, and the tool listens to that.
     """
     from chisurf.plugins.burst.burst_selection import BurstSelectionTool
-    from chisurf.gui.widgets.wizard.tttr_photonfilter import (
-        tttr_photon_filter_tttrlib as registry_modes,
-    )
 
     tool = BurstSelectionTool(parent=None, show_channel_selection=True)
     calls = []
@@ -85,11 +82,12 @@ def test_editing_the_generated_form_updates_the_plots(qapp):
     assert len(calls) > before, "a built-in parameter edit did not reach the plots"
 
     if getattr(tool.wizard, "_tttrlib_algorithms", None):
-        registry_modes.select(tool.wizard, "maxtree")
+        form = tool.wizard.burst_search_form
+        form.set_state("maxtree")
         before = len(calls)
-        tool.wizard._tttrlib_view._params_group.L = 33
+        form._view._params_group.L = 33
         assert len(calls) > before, "a registry parameter edit did not reach the plots"
-        assert tool.wizard._tttrlib_view.params()["L"] == 33
+        assert form.parameters["L"] == 33
 
 
 def test_all_is_offered_for_detector_and_time_window():

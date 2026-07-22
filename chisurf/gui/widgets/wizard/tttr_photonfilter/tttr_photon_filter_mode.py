@@ -1,206 +1,54 @@
-def install_filter_mode_visibility(page, default_filter_mode: str):
-    # Find the layout containing the burst filter combobox
-    import chisurf as cs
-    from chisurf.gui import QtWidgets
-    from chisurf.gui.widgets.wizard.tttr_photonfilter import (
-        tttr_photon_filter_tttrlib as tttrlib_modes,
-    )
-    layout = page.comboBox_burst_filter.parentWidget().layout()
+"""Drive the photon-filter wizard's burst-search selector from tttrlib.
 
-    # Block signals to add CUSUM Burst programmatically
-    page.comboBox_burst_filter.blockSignals(True)
-    if page.comboBox_burst_filter.findText("CUSUM Burst") == -1:
-        page.comboBox_burst_filter.addItem("CUSUM Burst")
-    # BOCPD is retired: it never performed well enough to recommend, and the
-    # searches it competed with now all live in tttrlib. The enum value survives
-    # so an old project still loads; it is simply not offered any more.
-    bocpd_index = page.comboBox_burst_filter.findText("BOCPD Burst")
-    if bocpd_index != -1:
-        page.comboBox_burst_filter.removeItem(bocpd_index)
-    page.comboBox_burst_filter.blockSignals(False)
+Every burst search now comes from tttrlib's registry, so the wizard no longer
+relabels a fixed pool of Designer spinboxes per mode. It embeds one
+:class:`~chisurf.gui.widgets.burst_search_form.BurstSearchForm` — the same widget
+that works standalone — which populates the wizard's existing ``Filter mode``
+combobox and generates the selected search's parameter form. That widget is the
+single "pick a burst search, edit its parameters" implementation; this module
+only wires it into the page.
+"""
 
-    # Burst searches tttrlib advertises are appended from its registry, together
-    # with a generated parameter form, so a new algorithm there shows up here
-    # without any change to this function or to the .ui file. This runs after
-    # every built-in mode has been added, so none of them lands below the
-    # separator that introduces the registry block.
-    tttrlib_modes.install(page)
+from __future__ import annotations
 
-    # Connect the burst filter combobox to the actionUpdate_Values action
-    page.comboBox_burst_filter.currentIndexChanged.connect(page.actionUpdate_Values.trigger)
 
-    # Function to update parameter visibility and tooltips based on selected filter mode
-    def update_parameter_visibility(filter_mode):
-        # A registry-backed algorithm owns the whole parameter area: its widgets
-        # are generated from tttrlib's schema, so none of the built-in controls
-        # below apply.
-        if tttrlib_modes.apply_visibility(page):
-            return
-        # The built-in modes are generated too, from the spec in
-        # filter_settings_form: selecting one rebuilds its parameter panel rather
-        # than relabelling a shared pool of spinboxes. Everything below this point
-        # only still exists for the Designer widgets that have not been converted.
-        builtin = {
-            "Count rate": "count_rate", "Burst": "burst",
-            "Kalman Burst": "kalman", "CUSUM Burst": "cusum",
-        }.get(filter_mode)
-        if builtin is not None:
-            from .filter_settings_form import set_filter_mode
-            set_filter_mode(page, builtin)
-            return
-        is_kalman = filter_mode == "Kalman Burst"
-        is_bocpd = filter_mode == "BOCPD Burst"
-        is_cusum = filter_mode == "CUSUM Burst"
-        is_count_rate_or_burst_or_cusum = filter_mode in ["Count rate", "Burst", "CUSUM Burst"]
+def install_filter_mode_visibility(page, default_filter_mode: str) -> None:
+    """Attach the registry-driven burst-search picker to ``page``.
 
-        # Restore original label text
-        page.label.setText("Min photons")
-        page.label_12.setText("Alpha")
-        page.label_13.setText("Beta")
-        page.label_14.setText("Hazard")
-        page.label_15.setText("Q")
+    Populates ``page.comboBox_burst_filter`` from tttrlib's registry and places
+    the generated parameter form in the right column of the filter-settings
+    splitter, beside the settings shared by every search.
+    """
+    from chisurf.gui.widgets.burst_search_form import BurstSearchForm
 
-        # Set specific settings for CUSUM
-        if is_cusum:
-            page.label_12.setText("BG Rate (cps)")
-            page.label_13.setText("S/B Ratio")
-            page.label_14.setText("Alpha")
-            page.label_15.setText("Beta")
+    # BurstSearchForm drives the wizard's own combobox (kept in its layout row)
+    # and lays out only the summary and the generated parameter form.
+    form = BurstSearchForm(combo=page.comboBox_burst_filter, parent=page)
+    page.burst_search_form = form
+    # Retained for callers and tests that ask which searches are offered.
+    page._tttrlib_algorithms = dict(form._algorithms)
 
-            page.doubleSpinBox_5.setMinimum(0.0)
-            page.doubleSpinBox_5.setMaximum(1000000.0)
-            page.doubleSpinBox_5.setSingleStep(100.0)
-            page.doubleSpinBox_5.setDecimals(1)
-            page.doubleSpinBox_5.setValue(2000.0)
+    right_box = getattr(page, "_filter_settings_right_box", None)
+    if right_box is not None:
+        # Before the trailing stretch, so the panel stays top-aligned.
+        right_box.insertWidget(max(0, right_box.count() - 1), form)
+    else:  # pragma: no cover - the splitter is always built before this runs
+        layout = page.comboBox_burst_filter.parentWidget().layout()
+        if layout is not None:
+            layout.addWidget(form)
 
-            page.doubleSpinBox_6.setMinimum(0.0)
-            page.doubleSpinBox_6.setMaximum(1000.0)
-            page.doubleSpinBox_6.setSingleStep(1.0)
-            page.doubleSpinBox_6.setDecimals(1)
-            page.doubleSpinBox_6.setValue(30.0)
+    # A change of search, or of any parameter, refreshes the plots and the
+    # marshalled settings -- the trigger the per-mode controls used to fire.
+    form.parametersChanged.connect(page.actionUpdate_Values.trigger)
 
-            page.doubleSpinBox_7.setMinimum(0.0001)
-            page.doubleSpinBox_7.setMaximum(1.0)
-            page.doubleSpinBox_7.setSingleStep(0.001)
-            page.doubleSpinBox_7.setDecimals(4)
-            page.doubleSpinBox_7.setValue(0.05)
+    # Kept as a no-op so code and tests that still call it keep working; the
+    # generated form owns the whole parameter area now, so there is nothing
+    # per-mode left to show or hide.
+    page.update_parameter_visibility = lambda *args: None
 
-            page.doubleSpinBox_8.setMinimum(0.0001)
-            page.doubleSpinBox_8.setMaximum(1.0)
-            page.doubleSpinBox_8.setSingleStep(0.001)
-            page.doubleSpinBox_8.setDecimals(4)
-            page.doubleSpinBox_8.setValue(0.05)
-
-            page.spinBox.setToolTip("Minimum number of photons for a burst (L parameter).")
-            page.doubleSpinBox_5.setToolTip("Expected background count rate in counts per second (cps) (m parameter).")
-            page.doubleSpinBox_6.setToolTip("Signal-to-background ratio (T parameter). Set to 0 to auto-estimate.")
-            page.doubleSpinBox_7.setToolTip("False alarm probability (probability of detecting a false changepoint).")
-            page.doubleSpinBox_8.setToolTip("Missed detection probability (probability of failing to detect a true changepoint).")
-
-        elif is_bocpd:
-            page.doubleSpinBox_5.setMinimum(0.01)
-            page.doubleSpinBox_5.setMaximum(100.0)
-            page.doubleSpinBox_5.setSingleStep(0.1)
-            page.doubleSpinBox_5.setDecimals(2)
-            page.doubleSpinBox_5.setValue(1.0)
-
-            page.doubleSpinBox_6.setMinimum(0.01)
-            page.doubleSpinBox_6.setMaximum(100.0)
-            page.doubleSpinBox_6.setSingleStep(0.1)
-            page.doubleSpinBox_6.setDecimals(2)
-            page.doubleSpinBox_6.setValue(0.1)
-
-            page.doubleSpinBox_7.setMinimum(1e-10)
-            page.doubleSpinBox_7.setMaximum(1.0)
-            page.doubleSpinBox_7.setSingleStep(1e-5)
-            page.doubleSpinBox_7.setDecimals(6)
-            page.doubleSpinBox_7.setValue(1e-5)
-
-            page.spinBox.setToolTip("Minimum number of photons for a burst.")
-            page.doubleSpinBox_5.setToolTip("Alpha parameter for Gamma prior in BOCPD (prior count of photons).")
-            page.doubleSpinBox_6.setToolTip("Beta parameter for Gamma prior in BOCPD (prior duration in seconds).")
-            page.doubleSpinBox_7.setToolTip("Hazard rate / probability of a changepoint occurring at any time step.")
-
-        elif is_kalman:
-            page.doubleSpinBox_8.setMinimum(0.0)
-            page.doubleSpinBox_8.setMaximum(100.0)
-            page.doubleSpinBox_8.setSingleStep(0.01)
-            page.doubleSpinBox_8.setDecimals(4)
-            page.doubleSpinBox_8.setValue(0.01)
-
-            page.spinBox.setToolTip("Minimum number of photons for a burst.")
-            page.doubleSpinBox_8.setToolTip("Process noise covariance Q for state transition.")
-            page.doubleSpinBox_9.setToolTip("Measurement noise scaling parameter R.")
-            page.doubleSpinBox_10.setToolTip("Z-score threshold for burst detection.")
-            page.spinBox_9.setToolTip("Minimum burst length in bins.")
-            page.spinBox_7.setToolTip("Maximum gap in bins between bursts to merge them.")
-            
-        elif filter_mode == "Count rate":
-            # Set Tooltips dynamically
-            page.spinBox.setToolTip("Minimum number of photons in the time window to define a burst.")
-            page.spinBox_8.setToolTip("Number of photons to compute a local count rate.")
-            page.doubleSpinBox.setToolTip("Time window size in milliseconds for count rate computation.")
-            
-        elif filter_mode == "Burst":
-            # Set Tooltips dynamically
-            page.spinBox.setToolTip("Minimum number of photons for a burst (L parameter).")
-            page.spinBox_8.setToolTip("Number of consecutive photons for rate calculation (m parameter).")
-            page.doubleSpinBox.setToolTip("Maximum time window in milliseconds for rate calculation (T parameter).")
-
-        # Show/hide Kalman filter parameters (label_15, label_16, label_17, doubleSpinBox_8, doubleSpinBox_9, doubleSpinBox_10)
-        # Note: doubleSpinBox_8 is shared between Kalman (Q) and CUSUM (Beta)
-        page.label_15.setVisible(is_kalman or is_cusum)
-        page.doubleSpinBox_8.setVisible(is_kalman or is_cusum)
-        
-        page.label_16.setVisible(is_kalman)
-        page.doubleSpinBox_9.setVisible(is_kalman)
-        
-        page.label_17.setVisible(is_kalman)
-        page.doubleSpinBox_10.setVisible(is_kalman)
-        
-        page.label_18.setVisible(is_kalman)
-        page.spinBox_9.setVisible(is_kalman)
-
-        # Show/hide BOCPD parameters (label_12, label_13, label_14, doubleSpinBox_5, doubleSpinBox_6, doubleSpinBox_7)
-        # Shared with CUSUM (BG Rate, S/B Ratio, Alpha)
-        page.label_12.setVisible(is_bocpd or is_cusum)
-        page.doubleSpinBox_5.setVisible(is_bocpd or is_cusum)
-        
-        page.label_13.setVisible(is_bocpd or is_cusum)
-        page.doubleSpinBox_6.setVisible(is_bocpd or is_cusum)
-        
-        page.label_14.setVisible(is_bocpd or is_cusum)
-        page.doubleSpinBox_7.setVisible(is_bocpd or is_cusum)
-
-        # Show/hide count rate & burstwise parameters (label, label_11, spinBox, spinBox_8)
-        # label_2 and doubleSpinBox should be shown only for "Count rate"
-        is_count_rate = filter_mode == "Count rate"
-        page.label_2.setVisible(is_count_rate)
-        page.label.setVisible(is_count_rate_or_burst_or_cusum)
-        page.label_11.setVisible(filter_mode in ["Count rate", "Burst"])
-        page.doubleSpinBox.setVisible(is_count_rate)
-        page.spinBox.setVisible(is_count_rate_or_burst_or_cusum)
-        page.spinBox_8.setVisible(filter_mode in ["Count rate", "Burst"])
-
-    # Assign the function to the instance
-    page.update_parameter_visibility = update_parameter_visibility
-
-    # Set up connections to show/hide parameters based on the selected filter mode
-    page.comboBox_burst_filter.currentTextChanged.connect(page.update_parameter_visibility)
-
-    # Initialize parameter visibility based on current selection
-    page.update_parameter_visibility(page.comboBox_burst_filter.currentText())
-
-    # Set the default filter mode
-    if default_filter_mode == 'count_rate':
-        page.comboBox_burst_filter.setCurrentText("Count rate")
-    elif default_filter_mode == 'burst':
-        page.comboBox_burst_filter.setCurrentText("Burst")
-    elif default_filter_mode == 'bocpd':
-        page.comboBox_burst_filter.setCurrentText("BOCPD Burst")
-    elif default_filter_mode == 'kalman':
-        page.comboBox_burst_filter.setCurrentText("Kalman Burst")
-    elif default_filter_mode == 'cusum':
-        page.comboBox_burst_filter.setCurrentText("CUSUM Burst")
-    elif default_filter_mode in page._tttrlib_algorithms:
-        tttrlib_modes.select(page, default_filter_mode)
+    # Restore a saved default search when the project named one.
+    if default_filter_mode in page._tttrlib_algorithms:
+        try:
+            form.set_state(default_filter_mode)
+        except ValueError:
+            pass
