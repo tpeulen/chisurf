@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from shlex import split as shlex_split
-from typing import Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+from .argparse2 import CommandError, bind_and_call, tokenize
+from .registry import collect_commands
 
 if TYPE_CHECKING:
     from ..app.molview_main_window import MolViewPluginWindow
@@ -14,27 +18,31 @@ MessageCallback = Callable[[str], None]
 class BaseCmd:
     """Shared infrastructure for the Moview/Chimol command layer."""
 
-    def __init__(self, window: Optional["MolViewPluginWindow"] = None) -> None:
+    def __init__(self, window: MolViewPluginWindow | None = None) -> None:
         self.window = window
-        self._message_callback: Optional[MessageCallback] = None
-        self._error_callback: Optional[MessageCallback] = None
-        self._commands: Dict[str, Callable[[List[str]], object]] = {}
-        self._named_selections: Dict[str, Dict[str, object]] = {}
+        self._message_callback: MessageCallback | None = None
+        self._error_callback: MessageCallback | None = None
+        self._commands: dict[str, Callable[[list[str]], object]] = {}
+        self._named_selections: dict[str, dict[str, object]] = {}
         self._install_builtin_commands()
+        # New-style declarative registry (see registry.py / argparse2.py). Built
+        # from @command-decorated methods; commands migrate here from the legacy
+        # ``_commands`` dict one at a time, so both dispatch paths coexist.
+        self._registry = collect_commands(self)
 
     # ------------------------------------------------------------------ #
     # Public API and core plumbing
     # ------------------------------------------------------------------ #
-    def set_window(self, window: Optional["MolViewPluginWindow"]) -> None:
+    def set_window(self, window: MolViewPluginWindow | None) -> None:
         self.window = window
 
-    def set_message_callback(self, callback: Optional[MessageCallback]) -> None:
+    def set_message_callback(self, callback: MessageCallback | None) -> None:
         self._message_callback = callback
 
-    def set_error_callback(self, callback: Optional[MessageCallback]) -> None:
+    def set_error_callback(self, callback: MessageCallback | None) -> None:
         self._error_callback = callback
 
-    def register(self, name: str, func: Callable[[List[str]], object]) -> None:
+    def register(self, name: str, func: Callable[[list[str]], object]) -> None:
         self._commands[name.lower()] = func
 
     def do(self, line: str) -> None:
@@ -51,6 +59,27 @@ class BaseCmd:
             self._run_script_file(script_path)
             return
 
+        head_rest = line.split(None, 1)
+        name = head_rest[0].lower()
+        rest = head_rest[1] if len(head_rest) > 1 else ""
+
+        # New-style: signature-bound command (comma/keyword/bracket-aware parsing).
+        spec = self._registry.resolve(name)
+        if spec is not None:
+            try:
+                pairs = tokenize(rest, spec.mode)
+                result = bind_and_call(spec.func, pairs)
+            except CommandError as exc:
+                self._emit_error(f"{spec.name}: {exc}")
+                return
+            except Exception as exc:
+                self._emit_error(f"Error in command '{spec.name}': {exc}")
+                return
+            if result is not None:
+                self._emit_message(str(result))
+            return
+
+        # Legacy path: whitespace-tokenized handlers (``_cmd_x(args: List[str])``).
         try:
             parts = shlex_split(line)
         except Exception as exc:
@@ -60,9 +89,6 @@ class BaseCmd:
         if not parts:
             return
 
-        name = parts[0].lower()
-        args = parts[1:]
-
         handler = self._commands.get(name)
         if handler is None:
             self._emit_error(
@@ -71,7 +97,7 @@ class BaseCmd:
             return
 
         try:
-            result = handler(args)
+            result = handler(parts[1:])
         except Exception as exc:
             self._emit_error(f"Error in command '{name}': {exc}")
             return
@@ -86,7 +112,6 @@ class BaseCmd:
         similar in spirit to PyMOL's '@script.pml' support, but limited to the
         Moview cmd language (no arbitrary Python execution).
         """
-
         try:
             p = Path(path).expanduser()
         except Exception as exc:
@@ -110,7 +135,7 @@ class BaseCmd:
     # ------------------------------------------------------------------ #
     # Builtins registration
     # ------------------------------------------------------------------ #
-    def _builtin_commands(self) -> Dict[str, Callable[[List[str]], object]]:
+    def _builtin_commands(self) -> dict[str, Callable[[list[str]], object]]:
         """Mixins extend this to advertise the commands they handle."""
         return {}
 
@@ -132,7 +157,7 @@ class BaseCmd:
             return window, None
         return window, viewer
 
-    def _find_object_by_name(self, viewer, name: str) -> Optional[dict]:
+    def _find_object_by_name(self, viewer, name: str) -> dict | None:
         target = (name or "").strip().lower()
         if not target:
             return None
@@ -162,7 +187,7 @@ class BaseCmd:
     # ------------------------------------------------------------------ #
     # Common command
     # ------------------------------------------------------------------ #
-    def _cmd_help(self, args: List[str]) -> str:
+    def _cmd_help(self, args: list[str]) -> str:
         """Show available commands or detailed help for a specific command."""
         if not args:
             names = sorted(self._commands.keys())
@@ -179,7 +204,7 @@ class BaseCmd:
 
         return f"Help for '{target}':\n" + "-" * 20 + "\n" + doc.strip()
 
-    def _cmd_quit(self, args: List[str]) -> None:
+    def _cmd_quit(self, args: list[str]) -> None:
         window = self.window
         if window is None:
             return
