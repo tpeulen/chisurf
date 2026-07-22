@@ -34,7 +34,7 @@ from chisurf.gui.widgets.wizard.tttr_correlator import WizardTTTRCorrelator
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 from chisurf.core.settings.path_utils import get_path as _get_settings_path
 from chisurf.core import settings as _cs_settings
-from .file_list import BurstFileListWidget
+from .file_list import make_burst_file_list
 from .helpers import (
     parse_bst_file,
     parse_bur_file,
@@ -233,7 +233,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
         lbl_files = QtWidgets.QLabel("Burst analysis folders or BUR/BID files:", left_widget)
         proc_col.addWidget(lbl_files)
-        self.file_list = BurstFileListWidget(left_widget)
+        self.file_list = make_burst_file_list()
         proc_col.addWidget(self.file_list, 1)
 
         # Right side: integrated burst-wise FCS browser
@@ -1006,7 +1006,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
         # 1) Collect burst analysis folders / BUR + BST files from the file list
         try:
-            all_files = list(self.file_list.checked_files())
+            all_files = list(self.file_list.checked_paths())
         except Exception:
             all_files = []
 

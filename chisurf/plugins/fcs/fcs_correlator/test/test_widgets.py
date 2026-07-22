@@ -117,7 +117,7 @@ def test_files_carry_over_to_correlator(qapp, qtbot):
     qtbot.addWidget(tool)
 
     tool.nav_list.setCurrentRow(1)  # Files & Steps
-    tool._workflow_panels["files"].file_list.add_files([str(_SPC)])
+    tool._workflow_panels["files"].file_list.add_paths([str(_SPC)])
 
     tool.nav_list.setCurrentRow(3)  # Correlator
     model = tool._correlator_model

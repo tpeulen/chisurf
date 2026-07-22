@@ -114,3 +114,37 @@ def test_selection_signal_and_select_first(qapp, tmp_path):
     widget.select_index(1)
     assert widget.selected_paths() == [str(f2)]
     assert seen[-1] == [str(f2)]
+
+
+def test_checkable_mode(qapp, tmp_path):
+    """checkable adds ticks (default checked), preserves state across refresh, All/None work."""
+    from qtpy import QtCore
+
+    fs = [tmp_path / f"f{i}.dat" for i in range(3)]
+    for f in fs:
+        f.write_bytes(b"x")
+    model = _Model()
+    w = PathListWidget(model, "files", extensions=[".dat"], checkable=True)
+
+    seen: list[list[str]] = []
+    w.checkChanged.connect(seen.append)
+
+    w.add_paths(fs)
+    assert w.checked_paths() == [str(f) for f in fs]  # default checked
+
+    # uncheck the middle item
+    w._list.item(1).setCheckState(QtCore.Qt.Unchecked)
+    assert w.checked_paths() == [str(fs[0]), str(fs[2])]
+    assert seen[-1] == [str(fs[0]), str(fs[2])]
+
+    # check state survives a full-list refresh (adding a new file)
+    f4 = tmp_path / "f4.dat"
+    f4.write_bytes(b"x")
+    w.add_paths([f4])
+    assert str(fs[1]) not in w.checked_paths() and str(f4) in w.checked_paths()
+
+    # All / None
+    w._set_all_checked(False)
+    assert w.checked_paths() == []
+    w._set_all_checked(True)
+    assert len(w.checked_paths()) == 4

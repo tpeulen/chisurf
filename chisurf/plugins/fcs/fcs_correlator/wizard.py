@@ -1,109 +1,28 @@
 import pathlib
 from typing import List, Optional
-import typing
 
-from chisurf.gui import QtWidgets, QtGui, QtCore
+from chisurf.gui import QtWidgets
 
 import chisurf as cs
 import chisurf.gui
 import chisurf.gui.widgets.wizard
 
 
-class FileListWidget(QtWidgets.QListWidget):
+class _FileListModel:
+    """Adapter exposing the wizard page's file list to the unified ``PathListWidget``.
+
+    ``PathListWidget`` reads/writes ``files`` (list[str]) and calls ``update()`` on
+    every add/remove/clear; ``on_change`` forwards that to the page so it can
+    re-evaluate step availability and page completeness.
     """
-    Minimal file list widget for tttr files:
-    - Accepts file/folder drops
-    - Maintains a unique, sorted list of paths
-    - Shows per-item checkboxes (default: checked)
-    - Lets user optionally select rows (UI convenience), but processing is based on checkboxes.
-    """
-    def __init__(self, parent=None, file_added_callback=None):
-        super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.file_added_callback = file_added_callback
-        # Allow the file list to grow vertically and fill available space
-        sp = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
-        self.setSizePolicy(sp)
-        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
 
-    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
+    def __init__(self, on_change=None):
+        self.files: list[str] = []
+        self._on_change = on_change
 
-    def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def dropEvent(self, event: QtGui.QDropEvent):
-        if not event.mimeData().hasUrls():
-            event.ignore()
-            return
-        paths = []
-        for url in event.mimeData().urls():
-            p = pathlib.Path(url.toLocalFile())
-            if p.exists():
-                paths.append(str(p))
-        self.add_files(paths)
-        event.acceptProposedAction()
-        if self.file_added_callback:
-            self.file_added_callback()
-
-    def contextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        menu = QtWidgets.QMenu(self)
-        act_check_all = menu.addAction("Check all")
-        act_uncheck_all = menu.addAction("Uncheck all")
-        menu.addSeparator()
-        act_remove = menu.addAction("Remove selected")
-        act_clear = menu.addAction("Clear all")
-        chosen = menu.exec_(event.globalPos())
-        if chosen == act_check_all:
-            for i in range(self.count()):
-                it = self.item(i)
-                it.setCheckState(QtCore.Qt.Checked)
-        elif chosen == act_uncheck_all:
-            for i in range(self.count()):
-                it = self.item(i)
-                it.setCheckState(QtCore.Qt.Unchecked)
-        elif chosen == act_remove:
-            for it in self.selectedItems():
-                self.takeItem(self.row(it))
-        elif chosen == act_clear:
-            self.clear()
-
-    def add_files(self, file_paths: typing.List[str]):
-        if not file_paths:
-            return
-        # Build set of existing
-        existing = {self.item(i).text() for i in range(self.count())}
-        new_items = []
-        for fp in file_paths:
-            if fp not in existing:
-                new_items.append(fp)
-                existing.add(fp)
-        new_items.sort()
-        self.blockSignals(True)
-        for fp in new_items:
-            item = QtWidgets.QListWidgetItem(fp)
-            item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
-            item.setCheckState(QtCore.Qt.Checked)
-            self.addItem(item)
-        self.blockSignals(False)
-
-    def all_files(self) -> typing.List[str]:
-        return [self.item(i).text() for i in range(self.count())]
-
-    def checked_files(self) -> typing.List[str]:
-        files = []
-        for i in range(self.count()):
-            it = self.item(i)
-            if it.checkState() == QtCore.Qt.Checked:
-                files.append(it.text())
-        return files
+    def update(self):
+        if self._on_change is not None:
+            self._on_change()
 
 
 class FileAndStepsPage(QtWidgets.QWizardPage):
@@ -118,7 +37,18 @@ class FileAndStepsPage(QtWidgets.QWizardPage):
         layout = QtWidgets.QVBoxLayout(self)
         form = QtWidgets.QFormLayout()
 
-        self.file_list = FileListWidget(self, file_added_callback=self._files_or_checks_changed)
+        # Unified AutoForm checkable file list (drag-drop + Files/Folder/Database/
+        # All/None/Remove/Clear + MMFDB); replaces the hand-rolled FileListWidget.
+        from chisurf.gui.autoform.sections.path_list_section import PathListWidget
+
+        self._file_model = _FileListModel(on_change=self._files_or_checks_changed)
+        self.file_list = PathListWidget(
+            self._file_model,
+            "files",
+            extensions=[".spc", ".ht3", ".ptu", ".hdf", ".h5", ".bst", ".bur"],
+            checkable=True,
+        )
+        self.file_list.checkChanged.connect(self._files_or_checks_changed)
         form.addRow("Files:", self.file_list)
 
         checks = QtWidgets.QHBoxLayout()
@@ -139,18 +69,14 @@ class FileAndStepsPage(QtWidgets.QWizardPage):
         except Exception:
             pass
 
-        # Connections
+        # Connections (file add/remove/check changes arrive via the model's
+        # on_change callback and the list's checkChanged signal, wired above).
         self.cb_photon_filter.toggled.connect(self._files_or_checks_changed)
         self.cb_fcs_merger.toggled.connect(self._files_or_checks_changed)
-        self.file_list.itemSelectionChanged.connect(self._files_or_checks_changed)
-        try:
-            self.file_list.itemChanged.connect(self._files_or_checks_changed)
-        except Exception:
-            pass
 
     # QWizardPage API
     def isComplete(self) -> bool:
-        return self.file_list.count() > 0
+        return len(self.file_list.paths()) > 0
 
     def nextId(self) -> int:
         wiz = self.wizard()
@@ -205,16 +131,16 @@ class FileAndStepsPage(QtWidgets.QWizardPage):
 
     @property
     def files(self) -> List[str]:
-        return self.file_list.all_files()
+        return self.file_list.paths()
 
     @property
     def selected_files(self) -> List[str]:
         # Backward-compat alias; prefer checked_files
-        return self.file_list.checked_files()
+        return self.file_list.checked_paths()
 
     @property
     def checked_files(self) -> List[str]:
-        return self.file_list.checked_files()
+        return self.file_list.checked_paths()
 
 
 class CorrelatorPage(QtWidgets.QWizardPage):

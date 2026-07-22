@@ -19,7 +19,7 @@ from qtpy import QtCore, QtWidgets
 from chisurf.gui.widgets.wizard.tttr_correlator import WizardTTTRCorrelator
 
 from ..core.algorithms import BurstFcsSettings, PairConfig, parse_channel_list
-from ..file_list import BurstFileListWidget
+from ..file_list import make_burst_file_list
 from .client import BurstFcsClient
 
 _GUI_DIR = pathlib.Path(__file__).parent
@@ -173,7 +173,7 @@ class BurstFcsTool(QtWidgets.QMainWindow):
         lcol.addWidget(self.list_pairs)
 
         lcol.addWidget(QtWidgets.QLabel("Burst folders or BUR/BST files:"))
-        self.file_list = BurstFileListWidget(left)
+        self.file_list = make_burst_file_list()
         lcol.addWidget(self.file_list, 1)
 
         # Right: browser filter + curve list + declarative dock_area plots
@@ -275,7 +275,7 @@ class BurstFcsTool(QtWidgets.QMainWindow):
     def _resolve_files(self) -> List[Dict[str, Any]]:
         """Return [{tttr_path, ranges}] from the checked file-list entries."""
         try:
-            entries = list(self.file_list.checked_files())
+            entries = list(self.file_list.checked_paths())
         except Exception:
             entries = []
         out: List[Dict[str, Any]] = []

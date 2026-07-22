@@ -56,6 +56,10 @@ class PathListWidget(QtWidgets.QWidget):
     tools (e.g. the micro-time shifter) drop their own file lists and adopt this
     one. ``select_first`` (option) auto-selects the first row after a refresh when
     nothing is selected, so a bound preview always shows something.
+
+    ``checkable`` (option) gives every entry a tick box (default *checked*), adds
+    ☑ All / ☐ None buttons, exposes :meth:`checked_paths` and emits
+    :attr:`checkChanged` — for tools that batch-process a user-selected subset.
     """
 
     #: marker so a hosting dock panel gives this section the spare vertical space.
@@ -63,6 +67,8 @@ class PathListWidget(QtWidgets.QWidget):
 
     #: emitted with the list of currently-selected path strings on any change.
     selectionChanged = QtCore.Signal(list)
+    #: emitted (checkable mode) with the list of checked path strings when a tick changes.
+    checkChanged = QtCore.Signal(list)
 
     def __init__(self, model, target: str, **options):
         super().__init__()
@@ -75,6 +81,14 @@ class PathListWidget(QtWidgets.QWidget):
         self._mmfdb_kinds = options.get("mmfdb_kinds")
         self._mmfdb_scope = options.get("mmfdb_scope", "all")
         self._select_first = bool(options.get("select_first", False))
+        self._checkable = bool(options.get("checkable", False))
+        # Optional host hook: ``folder_expander(pathlib.Path) -> list[str]`` replaces
+        # the default recursive extension-filtered scan when a folder is added
+        # (e.g. a burst-analysis folder that maps to specific BUR/BST index files).
+        self._folder_expander = options.get("folder_expander")
+        # In checkable mode entries default to *checked*; only unchecked paths are
+        # tracked, so the check state survives the widget's full-list refreshes.
+        self._unchecked: set[str] = set()
 
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         layout = QtWidgets.QVBoxLayout(self)
@@ -89,6 +103,8 @@ class PathListWidget(QtWidgets.QWidget):
         self._list.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self._list.pathsDropped.connect(self._on_dropped)
         self._list.itemSelectionChanged.connect(self._emit_selection)
+        if self._checkable:
+            self._list.itemChanged.connect(self._on_item_changed)
         layout.addWidget(self._list, 1)
 
         bar = QtWidgets.QHBoxLayout()
@@ -107,6 +123,9 @@ class PathListWidget(QtWidgets.QWidget):
                     self._add_from_mmfdb,
                 )
             )
+        if self._checkable:
+            bar.addWidget(_tool_button("☑ All", "Check all entries.", lambda: self._set_all_checked(True)))
+            bar.addWidget(_tool_button("☐ None", "Uncheck all entries.", lambda: self._set_all_checked(False)))
         bar.addWidget(_tool_button("➖ Remove", "Remove selected entries.", self._remove_selected))
         bar.addWidget(_tool_button("🗑 Clear", "Clear the list.", self._clear))
         bar.addStretch(1)
@@ -134,11 +153,14 @@ class PathListWidget(QtWidgets.QWidget):
             if p.is_file():
                 out.append(str(p))
             elif p.is_dir() and self._add_folders:
-                out.extend(
-                    str(f)
-                    for f in sorted(p.rglob("*"))
-                    if f.is_file() and (not self._exts or f.suffix.lower() in self._exts)
-                )
+                if self._folder_expander is not None:
+                    out.extend(str(x) for x in self._folder_expander(p))
+                else:
+                    out.extend(
+                        str(f)
+                        for f in sorted(p.rglob("*"))
+                        if f.is_file() and (not self._exts or f.suffix.lower() in self._exts)
+                    )
         return out
 
     # ── model binding ───────────────────────────────────────────────────
@@ -151,6 +173,8 @@ class PathListWidget(QtWidgets.QWidget):
         seen: set[str] = set()
         unique = [p for p in paths if not (p in seen or seen.add(p))]
         setattr(self._model, self._target, unique)
+        # forget check state for paths no longer present
+        self._unchecked &= set(unique)
         self._refresh_list(unique)
         try:
             self._model.update()
@@ -166,7 +190,16 @@ class PathListWidget(QtWidgets.QWidget):
     def _refresh_list(self, paths: list[str]) -> None:
         self._list.blockSignals(True)
         self._list.clear()
-        self._list.addItems(paths)
+        if self._checkable:
+            for p in paths:
+                item = QtWidgets.QListWidgetItem(p)
+                item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
+                item.setCheckState(
+                    QtCore.Qt.Unchecked if p in self._unchecked else QtCore.Qt.Checked
+                )
+                self._list.addItem(item)
+        else:
+            self._list.addItems(paths)
         self._list.blockSignals(False)
         if self._select_first and paths and not self._list.selectedItems():
             # setCurrentRow re-enables signals' effect and emits itemSelectionChanged.
@@ -174,6 +207,28 @@ class PathListWidget(QtWidgets.QWidget):
 
     def _emit_selection(self) -> None:
         self.selectionChanged.emit(self.selected_paths())
+
+    # ── checkable mode ──────────────────────────────────────────────────
+    def _on_item_changed(self, item) -> None:
+        """Track an item's tick (default-checked model) and notify."""
+        text = item.text()
+        if item.checkState() == QtCore.Qt.Checked:
+            self._unchecked.discard(text)
+        else:
+            self._unchecked.add(text)
+        self.checkChanged.emit(self.checked_paths())
+
+    def _set_all_checked(self, checked: bool) -> None:
+        if checked:
+            self._unchecked.clear()
+        else:
+            self._unchecked = set(self._current())
+        self._refresh_list(self._current())
+        self.checkChanged.emit(self.checked_paths())
+
+    def checked_paths(self) -> list[str]:
+        """Return the checked paths in order (all paths when not in checkable mode)."""
+        return [p for p in self._current() if p not in self._unchecked]
 
     # ── actions ─────────────────────────────────────────────────────────
     def _on_dropped(self, paths: list) -> None:
