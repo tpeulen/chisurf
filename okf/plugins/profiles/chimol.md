@@ -125,6 +125,17 @@ directly, so an offscreen raytrace does **not** catch either gap — regressions
 here must be verified through the interactive `_update_atoms`/`_update_sticks`
 scene builders (see `test_chimol_fallback_render.py`).
 
+**Every per-atom colouring path must guard on `_all_atom_res_ids is not None`,
+not on `_residue_ids`.** Since the fallback populates `_residue_ids` (per-CA) but
+leaves `_all_atom_res_ids` as `None`, any renderer that gates its atom→residue
+colour mapping on `_residue_ids` and then does `np.asarray(self._all_atom_res_ids)`
+will iterate a 0-d `asarray(None)` and raise. `_update_metaballs`, `_update_surface`
+and the sticks path already guard correctly; `_update_dots` did not, and because it
+runs inside the shared scene builder its `TypeError` aborted the **whole** build —
+so dots *and* metaballs (and everything else) vanished at once. A full-scene build
+with the representation enabled, not just the isolated `_update_*` call, is the test
+that catches this class of regression.
+
 # Documentation Work
 
 - No `README.md` under `chisurf/plugins/chimol/` yet — add one covering the

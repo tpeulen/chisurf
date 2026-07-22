@@ -4108,12 +4108,22 @@ class MolView(QtWidgets.QWidget):
 
         if self._all_atom_coords is not None and self._all_atom_coords.size:
             positions = np.asarray(self._all_atom_coords, dtype=float)
-            atom_res = np.asarray(self._all_atom_res_ids)
             base_col = np.asarray(self._base_color_single, dtype=float)
             colors_local = np.tile(base_col, (positions.shape[0], 1))
 
+            # Per-atom residue colouring needs a per-atom res-id array, which
+            # only the structured loader supplies. The raw-coordinate fallback
+            # has none (its res ids are per-CA), so it keeps the base colour
+            # rather than iterating a 0-d ``asarray(None)``.
+            atom_res = (
+                np.asarray(self._all_atom_res_ids)
+                if self._all_atom_res_ids is not None
+                else None
+            )
+
             if (
-                self._residue_ids is not None
+                atom_res is not None
+                and self._residue_ids is not None
                 and colors_per_ca is not None
                 and len(colors_per_ca) == len(self._residue_ids)
             ):
@@ -4122,7 +4132,8 @@ class MolView(QtWidgets.QWidget):
                     colors_local[i_atom, :] = color_map.get(rid, self._base_color_single)
 
             if (
-                getattr(self, "_colors_per_atom_override", None) is not None
+                atom_res is not None
+                and getattr(self, "_colors_per_atom_override", None) is not None
                 and len(self._colors_per_atom_override) == atom_res.shape[0]
             ):
                 ov = np.asarray(self._colors_per_atom_override, dtype=float)

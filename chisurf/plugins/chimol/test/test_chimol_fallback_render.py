@@ -88,3 +88,35 @@ def test_fallback_computes_bonds_and_renders_sticks(_qt_app) -> None:
     sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
     objs = view._update_sticks(sticks_cfg, view._colors_per_ca) or []
     assert any(o.id == "sticks" for o in objs), "sticks did not render in fallback"
+
+
+def test_fallback_dots_render_every_atom(_qt_app) -> None:
+    """Dots must render all atoms, not crash on a missing per-atom res-id array.
+
+    The fallback populates ``_residue_ids`` (per-CA) but leaves
+    ``_all_atom_res_ids`` as ``None``; the per-residue colour path used to build
+    ``np.asarray(None)`` and iterate a 0-d array.
+    """
+    view = MolView()
+    n_atoms = _load_fallback(view)
+    view.set_dots_visible(True)
+
+    objs = view._update_dots(np.asarray(view._coords), view._colors_per_ca) or []
+    dots = [o for o in objs if o.id == "dots"]
+    assert dots, "the fallback dots representation produced no geometry"
+    assert dots[0].geometry.positions.shape[0] == n_atoms
+
+
+def test_fallback_scene_builds_with_dots_and_metaballs(_qt_app) -> None:
+    """A full scene build must not raise when dots and metaballs are enabled.
+
+    Because ``_update_dots`` runs inside the shared scene builder, its previous
+    crash aborted the whole build, so metaballs (and everything else) silently
+    disappeared even though their own code was correct.
+    """
+    view = MolView()
+    _load_fallback(view)
+    view.set_dots_visible(True)
+    view.set_metaballs_visible(True)
+    # Must not raise.
+    view._update_view()
