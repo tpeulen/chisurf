@@ -697,6 +697,96 @@ def _residue_to_path_index(
 # Public entry point
 # ---------------------------------------------------------------------------
 
+def _refine_orientations(
+    ca: np.ndarray,
+    vo: np.ndarray,
+    ss_codes: Optional[np.ndarray],
+) -> np.ndarray:
+    """PyMOL-style per-residue ribbon-orientation refinement.
+
+    Turns the raw peptide-plane orientations into smooth, untwisted ribbon
+    normals, replicating the three mechanisms that stop PyMOL cartoons from
+    twisting:
+
+    * **Round helices** — a helix residue's orientation is recomputed as
+      ``normalize(axis x tangent)`` where ``axis`` is a running sum of CA
+      differences over a few residues (a smooth local helix axis), so the oval
+      circles the axis smoothly instead of wobbling with each carbonyl.
+    * **Flat sheets** — orientations across a strand are box-averaged
+      (``cartoon_flat_cycles`` = 4, 3-point window) so a whole β-strand shares
+      one consistent up-vector and lies flat.
+    * **Refine normals** — every orientation is forced perpendicular to the
+      tangent and its sign propagated forward (no 180° flips) to kill twist.
+
+    Returns the refined orientation vectors (shape ``(n, 3)``).
+    """
+    n = ca.shape[0]
+    vo = np.array(vo, dtype=float, copy=True)
+    if n < 3:
+        return vo
+
+    # Unit CA differences and head-to-tail tangents.
+    diff = ca[1:] - ca[:-1]
+    dl = np.linalg.norm(diff, axis=1, keepdims=True)
+    unit = diff / np.where(dl > 1e-9, dl, 1.0)
+    tang = np.zeros((n, 3), dtype=float)
+    tang[1:-1] = unit[1:] + unit[:-1]
+    tang[0] = unit[0]
+    tang[-1] = unit[-1]
+    tl = np.linalg.norm(tang, axis=1, keepdims=True)
+    tang = tang / np.where(tl > 1e-9, tl, 1.0)
+
+    ss = None
+    if ss_codes is not None:
+        try:
+            ss = np.array(
+                [str(s).upper()[:1] if s is not None else "" for s in ss_codes]
+            )
+            if ss.shape[0] != n:
+                ss = None
+        except Exception:
+            ss = None
+    is_helix = (ss == "H") if ss is not None else np.zeros(n, dtype=bool)
+    is_sheet = np.isin(ss, ["S", "E"]) if ss is not None else np.zeros(n, dtype=bool)
+
+    # 1. Round helices.
+    for i in np.nonzero(is_helix)[0]:
+        lo = max(int(i) - 2, 0)
+        hi = min(int(i) + 2, n - 1)
+        axis = ca[hi] - ca[lo]
+        an = float(np.linalg.norm(axis))
+        if an <= 1e-6:
+            continue
+        axis /= an
+        c = np.cross(axis, tang[i])
+        cn = float(np.linalg.norm(c))
+        if cn > 1e-6:
+            vo[i] = c / cn
+
+    # 2. Flat sheets: 4 cycles of a 3-point box average within strands.
+    if is_sheet.any():
+        for _ in range(4):
+            acc = vo.copy()
+            for i in range(1, n - 1):
+                if is_sheet[i] and is_sheet[i - 1] and is_sheet[i + 1]:
+                    acc[i] = vo[i - 1] + vo[i] + vo[i + 1]
+            for i in range(1, n - 1):
+                if is_sheet[i] and is_sheet[i - 1] and is_sheet[i + 1]:
+                    ln = float(np.linalg.norm(acc[i]))
+                    if ln > 1e-6:
+                        vo[i] = acc[i] / ln
+
+    # 3. Refine normals: perpendicular to tangent, then propagate sign.
+    dot_t = np.sum(vo * tang, axis=1, keepdims=True)
+    vo = vo - dot_t * tang
+    ln = np.linalg.norm(vo, axis=1, keepdims=True)
+    vo = vo / np.where(ln > 1e-9, ln, 1.0)
+    for i in range(1, n):
+        if float(np.dot(vo[i - 1], vo[i])) < 0.0:
+            vo[i] = -vo[i]
+    return vo
+
+
 def _generate_cartoon_tube_arrays(
     coords: np.ndarray,
     colors: Optional[np.ndarray],
@@ -749,12 +839,14 @@ def _generate_cartoon_tube_arrays(
     if m < 2:
         return None
 
-    # -- Densify up-vectors --
+    # -- Refine per-residue orientations (PyMOL round-helix / flat-sheet /
+    #    anti-twist), then densify along the spline --
     ups_path: Optional[np.ndarray] = None
     if trace_ups is not None:
         try:
             ups_arr = np.asarray(trace_ups, dtype=float)
             if ups_arr.shape[0] == n:
+                ups_arr = _refine_orientations(arr, ups_arr, ss_codes)
                 ups_path, _ = _sample_path(
                     ups_arr, None, subdivisions=subdivisions, tension=tension
                 )
@@ -930,6 +1022,11 @@ def _build_trace_ups(
         atom_chain = None
     n = len(res_ids)
     ups = np.zeros((n, 3), dtype=float)
+    # Per-residue ribbon orientation = the peptide-plane normal, as PyMOL does:
+    # vo = normalize((N - C) x (N - O)) (RepCartoonGeneratePASS1). This is far more
+    # stable than the raw C->O carbonyl direction and is what lets the downstream
+    # round-helix / flat-sheet refinement produce untwisted ribbons. Falls back to
+    # the C->O direction, then +Z, when backbone atoms are missing.
     for i, rid in enumerate(res_ids):
         mask = atom_res_id == rid
         if atom_chain is not None and chain_ids is not None:
@@ -942,40 +1039,30 @@ def _build_trace_ups(
         coords = atom_xyz[mask]
         idx_c = np.where(names == "C")[0]
         idx_o = np.where(names == "O")[0]
-        if idx_c.size and idx_o.size:
+        idx_n = np.where(names == "N")[0]
+        up_vec = None
+        if idx_c.size and idx_o.size and idx_n.size:
             c = coords[idx_c[0]]
             o = coords[idx_o[0]]
-            up_vec = c - o
-        else:
+            nn = coords[idx_n[0]]
+            up_vec = np.cross(nn - c, nn - o)
+            if float(np.linalg.norm(up_vec)) <= 1e-8:
+                up_vec = None
+        if up_vec is None and idx_c.size and idx_o.size:
+            up_vec = coords[idx_c[0]] - coords[idx_o[0]]
+        if up_vec is None:
             up_vec = np.array([0.0, 0.0, 1.0], dtype=float)
         norm = float(np.linalg.norm(up_vec))
         if norm > 0.0:
             up_vec = up_vec / norm
         ups[i] = up_vec
+
+    # Global sign continuity only; the per-SS refinement (round helices, flat
+    # sheets, anti-twist propagation) happens in _refine_orientations once the
+    # secondary structure is known.
     for i in range(1, n):
         if float(np.dot(ups[i - 1], ups[i])) < 0.0:
             ups[i] = -ups[i]
-
-    # PyMOL's exact normal smoothing algorithm (RepCartoonSmoothLoops)
-    # PyMOL defaults: smooth_first=1, smooth_last=1, smooth_cycles=2
-    smooth_first = 1
-    smooth_last = 1
-    smooth_cycles = 2
-    
-    for f in range(smooth_first, smooth_last + 1):
-        for c in range(smooth_cycles):
-            tmp = np.zeros_like(ups)
-            for b in range(f, n - f):
-                t0 = np.zeros(3, dtype=float)
-                for e in range(-f, f + 1):
-                    t0 += ups[b + e]
-                tmp[b] = t0 / (f * 2 + 1)
-            for b in range(f, n - f):
-                ups[b] = tmp[b]
-                norm = float(np.linalg.norm(ups[b]))
-                if norm > 1e-6:
-                    ups[b] /= norm
-
     return ups
 
 
