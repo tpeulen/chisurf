@@ -50,6 +50,21 @@ the baked prefix is wrong there too. The `.app` launcher itself invokes
 `Contents/bin/python -m chisurf` and was never affected; the entry points on
 `PATH` were.
 
+# Installer smoke tests
+
+The `Build and Release` workflow (`.github/workflows/pixi-ci.yml`) launches each
+freshly built installable app on its runner OS and asserts it reaches the main
+window. A headless self-test mode in `chisurf/gui/__init__.py` drives this: when
+`CHISURF_SMOKE_TEST` is truthy, `get_app()` skips the interactive MMFDB login,
+lets the window paint, then (after `CHISURF_SMOKE_DELAY_MS`, default 5000 ms)
+optionally writes the `CHISURF_SMOKE_SENTINEL` file and quits so the process
+exits 0. macOS launches the `.app` bundle with `open -W` and confirms via the
+sentinel (`open` does not propagate the app exit code); Linux runs the AppImage
+under `xvfb-run` and Windows silently installs the Inno Setup `.exe` then runs
+the installed `python.exe -m chisurf` — both also rely on the exit code. Each has
+a watchdog so a hung launch fails the job fast instead of hitting the job
+timeout.
+
 # Style
 
 ruff (line length 100, py310 target, NumPy-style docstrings) and mypy.

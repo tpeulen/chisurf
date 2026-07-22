@@ -2064,6 +2064,46 @@ class LoginDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.critical(self, "Error", f"Login failed: {e}")
 
 
+def _smoke_test_enabled() -> bool:
+    """Return whether the app is running in headless smoke-test mode.
+
+    Enabled by setting ``CHISURF_SMOKE_TEST`` to a truthy value. In this mode
+    :func:`get_app` skips interactive MMFDB authentication and schedules an
+    automatic quit once the main window has painted, so a launched build can be
+    verified to start without any user interaction. Used by the installer
+    smoke tests in the CI build pipeline.
+    """
+    return os.environ.get("CHISURF_SMOKE_TEST", "") not in ("", "0", "false", "False")
+
+
+def _schedule_smoke_exit(app) -> None:
+    """Write an optional startup sentinel and quit the event loop after a delay.
+
+    The delay (``CHISURF_SMOKE_DELAY_MS``, default 5000 ms) lets deferred
+    startup work run inside the event loop so a crash there still fails the
+    test. When ``CHISURF_SMOKE_SENTINEL`` names a path, a marker file is written
+    just before quitting — this is how a launcher that does not propagate the
+    process exit code (macOS ``open``) can confirm the app reached startup.
+    """
+    try:
+        delay_ms = int(os.environ.get("CHISURF_SMOKE_DELAY_MS", "5000") or 5000)
+    except ValueError:
+        delay_ms = 5000
+
+    def _finish():
+        sentinel = os.environ.get("CHISURF_SMOKE_SENTINEL")
+        if sentinel:
+            try:
+                path = pathlib.Path(sentinel)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("ok")
+            except Exception:
+                logging.exception("Could not write smoke-test sentinel")
+        app.quit()
+
+    QtCore.QTimer.singleShot(delay_ms, _finish)
+
+
 def get_app():
     app = QtWidgets.QApplication(sys.argv)
     # Global application font size is configured in the settings YAML
@@ -2192,7 +2232,11 @@ def get_app():
             )
             app.exit(1)
 
-    if not updater_interrupt:
+    if _smoke_test_enabled():
+        # Headless CI self-test: skip interactive auth (which would block on the
+        # login dialog), let the window paint, then quit so the process exits 0.
+        _schedule_smoke_exit(app)
+    elif not updater_interrupt:
         # singleShot(0) lets the window paint before auth runs.
         QtCore.QTimer.singleShot(0, _run_startup_auth)
 

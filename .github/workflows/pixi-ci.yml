@@ -98,6 +98,44 @@ jobs:
           micromamba activate build
           python build_tools/build_installer.py --no-build
 
+      # Launch the freshly built installable app on the runner OS and confirm it
+      # reaches the main window. CHISURF_SMOKE_TEST makes the app skip the
+      # interactive login, paint, write the sentinel, then quit (see
+      # chisurf/gui/__init__.py). macOS launches the .app bundle via `open`
+      # (which does not propagate the exit code, hence the sentinel); Linux and
+      # Windows launch their runtime directly and also rely on the exit code.
+      - name: Smoke-test macOS .app (open)
+        if: runner.os == 'macOS'
+        shell: bash -l {0}
+        run: |
+          set -euo pipefail
+          APP="dist/${APP_NAME:-ChiSurf}.app"
+          test -d "$APP" || { echo "ERROR: $APP not found"; exit 1; }
+          SENTINEL="$PWD/dist/smoke_ok"
+          rm -f "$SENTINEL"
+          export CHISURF_SMOKE_TEST=1 CHISURF_SMOKE_SENTINEL="$SENTINEL" CHISURF_SMOKE_DELAY_MS=5000
+          # Watchdog: kill a hung app so the job fails fast instead of timing out.
+          ( sleep 180; pkill -f "$PWD/dist/.*python" 2>/dev/null || true ) &
+          WD=$!
+          open -W "$APP" || true
+          kill "$WD" 2>/dev/null || true
+          test -f "$SENTINEL" || { echo "ERROR: ChiSurf.app did not reach startup"; exit 1; }
+          echo "macOS .app started OK"
+        env:
+          APP_NAME: ChiSurf
+
+      - name: Smoke-test Linux AppImage
+        if: runner.os == 'Linux'
+        shell: bash -l {0}
+        run: |
+          set -euo pipefail
+          APP=$(ls dist/ChiSurf-*-x86_64.AppImage | head -n1)
+          test -n "$APP" || { echo "ERROR: no AppImage found"; exit 1; }
+          chmod +x "$APP"
+          export CHISURF_SMOKE_TEST=1 CHISURF_SMOKE_DELAY_MS=5000 APPIMAGE_EXTRACT_AND_RUN=1
+          timeout 180 xvfb-run -a "$APP"
+          echo "Linux AppImage started OK"
+
       - name: Upload macOS DMG
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
@@ -113,6 +151,29 @@ jobs:
           name: appimage-linux
           path: dist/ChiSurf-*-x86_64.AppImage
           if-no-files-found: error
+
+      - name: Smoke-test Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = Get-ChildItem dist/ChiSurf-Windows-Setup-*.exe | Select-Object -First 1
+          if (-not $exe) { throw "no Windows installer found" }
+          $dir = Join-Path $env:RUNNER_TEMP "chisurf-install"
+          # Silent per-machine install into a known dir (skips the scope dialog).
+          Start-Process -FilePath $exe.FullName -Wait -ArgumentList `
+            "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=$dir"
+          $py = Join-Path $dir "python.exe"
+          if (-not (Test-Path $py)) { throw "install did not produce $py" }
+          $sentinel = Join-Path $env:RUNNER_TEMP "smoke_ok"
+          Remove-Item $sentinel -ErrorAction SilentlyContinue
+          $env:CHISURF_SMOKE_TEST = "1"
+          $env:CHISURF_SMOKE_SENTINEL = $sentinel
+          $env:CHISURF_SMOKE_DELAY_MS = "5000"
+          $p = Start-Process -FilePath $py -ArgumentList "-m","chisurf" -PassThru -NoNewWindow
+          if (-not $p.WaitForExit(180000)) { $p.Kill(); throw "ChiSurf timed out on startup" }
+          if (-not (Test-Path $sentinel)) { throw "ChiSurf did not reach startup" }
+          Write-Host "Windows install started OK"
 
       - name: Upload Windows installer
         if: runner.os == 'Windows'
