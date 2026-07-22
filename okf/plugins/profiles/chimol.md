@@ -144,6 +144,23 @@ falls back to points only if meshing fails (too few points). `add_point_overlay`
 still exists for genuine point data and now caps/subsamples above
 `overlay.max_points` (default 30k) as a defensive guard.
 
+**Dependency policy — only IMP (plus NumPy/numba), no scipy/scikit-image.** The
+surface stack was migrated off the scientific stack: `_generate_surface_mesh_from_points`
+(the AV/point surface) uses NumPy `_binary_dilate_6` (6-connected, matches scipy's
+default element) and `_gaussian_blur_3d` (separable 1-D convolution, matches
+`scipy.ndimage.gaussian_filter` to ~1e-16) instead of `scipy.ndimage`; and all
+isosurface extraction (AV, metaball, gaussian/EDT surface) uses a self-contained
+numba marching cubes (`geometry/marching_cubes.py` + the canonical
+`_mc_tri_table.py`) instead of `skimage.measure.marching_cubes`. The numba mesher
+welds vertices via a per-grid-edge index, so its output is **bit-identical to
+skimage's** (same vertex/triangle count, same bbox, outward normals, matching
+winding) — a drop-in; it is ~4–9 ms for an AV-sized grid. IMP's own isosurface
+(`IMP.display.IsosurfaceGeometry`, CGAL) was evaluated and rejected: correct but
+~1.7 s for a 60³ grid (CGAL does Delaunay refinement, not fast MC) and its
+`em.get_grid` rejects negative origins. The `marching_cubes` tables are validated
+against the edge table across all 256 cases and on an analytic sphere
+(`test_marching_cubes.py`), with no skimage in the tests.
+
 **Spatial-search dependency note:** the AO neighbour count deliberately uses a
 numba cell list, not scipy (`scipy` is *not* a declared dependency) and not IMP
 (which *is*). IMP was evaluated: `IMP.algebra.NearestNeighbor3D.get_in_ball` is an

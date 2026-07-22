@@ -13,12 +13,12 @@ except Exception:  # pragma: no cover - run-time availability
     nb = None  # type: ignore
     _HAVE_NUMBA = False
 
-try:  # Optional marching cubes implementation
-    from skimage import measure as _sk_measure  # type: ignore
-    _HAVE_SKIMAGE = True
-except Exception:  # pragma: no cover - optional dependency
-    _sk_measure = None  # type: ignore
-    _HAVE_SKIMAGE = False
+# Isosurface extraction is a self-contained numba marching cubes (see
+# marching_cubes.py) so the surface representations depend only on IMP/NumPy/numba
+# -- not scikit-image/scipy.
+from .marching_cubes import marching_cubes as _marching_cubes
+
+_HAVE_SKIMAGE = True  # retained name: isosurface extraction is always available
 
 # Point-cloud dilation/smoothing for the AV/point surface are NumPy-only (see
 # _binary_dilate_6 / _gaussian_blur_3d); scipy is only reached for the optional
@@ -358,13 +358,8 @@ def _generate_surface_mesh_from_density(
     if level <= 0.0:
         return None
 
-    try:
-        verts, faces, norms, _ = _sk_measure.marching_cubes(  # type: ignore[call-arg]
-            grid,
-            level=level,
-            spacing=(spacing, spacing, spacing),
-        )
-    except Exception:
+    verts, faces, norms = _marching_cubes(grid, level, (spacing, spacing, spacing))
+    if verts.shape[0] == 0:
         return None
 
     verts = np.asarray(verts, dtype=np.float32)
@@ -524,13 +519,8 @@ def _generate_surface_mesh_from_points(
     if level >= grid_max:
         level = grid_max * 0.5
 
-    try:
-        verts, faces, norms, _ = _sk_measure.marching_cubes(  # type: ignore[call-arg]
-            grid,
-            level=level,
-            spacing=(spacing, spacing, spacing),
-        )
-    except Exception:
+    verts, faces, norms = _marching_cubes(grid, level, (spacing, spacing, spacing))
+    if verts.shape[0] == 0:
         return None
 
     verts = np.asarray(verts, dtype=np.float32)
@@ -636,13 +626,8 @@ def _generate_surface_mesh_edt(
     if level <= grid_to_mesh.min() or level >= grid_to_mesh.max():
         return None
 
-    try:
-        verts, faces, norms, _ = _sk_measure.marching_cubes(  # type: ignore[call-arg]
-            grid_to_mesh,
-            level=level,
-            spacing=(spacing, spacing, spacing),
-        )
-    except Exception:
+    verts, faces, norms = _marching_cubes(grid_to_mesh, level, (spacing, spacing, spacing))
+    if verts.shape[0] == 0:
         return None
 
     verts = np.asarray(verts, dtype=np.float32)
