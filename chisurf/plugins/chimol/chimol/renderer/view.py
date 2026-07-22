@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import math
 from collections import OrderedDict
 from collections.abc import Sequence
 from contextlib import contextmanager
@@ -4042,51 +4041,41 @@ class MolView(QtWidgets.QWidget):
             max_sigma = float(np.max(sigmas))
             cutoff = max_sigma * 2.5
 
-            indices = tree.query_ball_point(verts, r=cutoff)
+            # Vectorised over all mesh vertices: query the k nearest atoms once
+            # and compute the Gaussian-weighted colour (and analytical normal)
+            # with array ops instead of a per-vertex/per-atom Python loop. This
+            # mirrors the metaball path; the k-nearest set captures all atoms
+            # with non-negligible weight (distant atoms contribute ~0).
+            k = min(32, n_pts)
+            dists, idx = tree.query(verts, k=k)
+            if k == 1:
+                dists = dists[:, np.newaxis]
+                idx = idx[:, np.newaxis]
 
-            for i_v, atom_indices in enumerate(indices):
-                if not atom_indices:
-                    _, nearest = tree.query(verts[i_v])
-                    mesh_colors[i_v] = atom_colors[nearest]
-                    continue
+            valid = dists < cutoff
+            s2 = sigmas[idx] ** 2
+            weights = np.where(valid, np.exp(-(dists ** 2) / (2.0 * s2)), 0.0)
+            w_sum = weights.sum(axis=1, keepdims=True)
+            w_safe = np.where(w_sum > 0.0, w_sum, 1.0)
 
-                v_pos = verts[i_v]
-                w_sum = 0.0
-                c_sum = np.zeros(4, dtype=float)
+            neighbor_colors = atom_colors[idx]  # (V, k, 4)
+            mesh_colors = (neighbor_colors * weights[:, :, np.newaxis]).sum(axis=1) / w_safe
 
-                for i_a in atom_indices:
-                    d2 = np.sum((v_pos - pts_surface[i_a])**2)
-                    s2 = sigmas[i_a]**2
-                    w = math.exp(-d2 / (2.0 * s2))
-                    c_sum += atom_colors[i_a] * w
-                    w_sum += w
+            # Vertices with no atom inside the cutoff take the nearest colour.
+            no_nb = ~valid.any(axis=1)
+            if no_nb.any():
+                mesh_colors[no_nb] = atom_colors[idx[no_nb, 0]]
 
-                if w_sum > 0:
-                    mesh_colors[i_v] = c_sum / w_sum
-                else:
-                    _, nearest = tree.query(v_pos)
-                    mesh_colors[i_v] = atom_colors[nearest]
-
-            # Analytical normals from Gaussian gradient
+            # Analytical normals from the Gaussian gradient (density methods only).
             method = str(surface_cfg.get("method", "gaussian")).lower()
             if method not in ("sas", "ses"):
-                new_norms = np.zeros_like(verts)
-                for i_v, atom_indices in enumerate(indices):
-                    if not atom_indices:
-                        continue
-                    v_pos = verts[i_v]
-                    grad = np.zeros(3, dtype=float)
-                    for i_a in atom_indices:
-                        diff = v_pos - pts_surface[i_a]
-                        d2 = np.sum(diff**2)
-                        s2 = sigmas[i_a]**2
-                        w = math.exp(-d2 / (2.0 * s2))
-                        grad += (diff / s2) * w
-                    mag = np.linalg.norm(grad)
-                    if mag > 1e-6:
-                        new_norms[i_v] = grad / mag
-                    else:
-                        new_norms[i_v] = norms[i_v]
+                diff = verts[:, np.newaxis, :] - pts_surface[idx]  # (V, k, 3)
+                grad = (diff / s2[:, :, np.newaxis]) * weights[:, :, np.newaxis]
+                grad_sum = grad.sum(axis=1)
+                mag = np.linalg.norm(grad_sum, axis=1, keepdims=True)
+                good = mag[:, 0] > 1e-6
+                new_norms = norms.copy()
+                new_norms[good] = grad_sum[good] / mag[good]
                 norms = new_norms
 
             if surface_ao_strength > 0:
