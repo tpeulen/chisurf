@@ -196,7 +196,7 @@ class HelpWidget(QMainWindow):
         toolbar.addSeparator()
 
         # Close
-        close_action = toolbar.addAction("❌  Close")
+        close_action = toolbar.addAction("✕  Close")
         close_action.triggered.connect(self.hide)
 
     # ── document discovery ──────────────────────────────────────────

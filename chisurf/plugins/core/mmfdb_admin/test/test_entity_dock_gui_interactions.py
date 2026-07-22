@@ -802,7 +802,7 @@ def test_data_product_and_analysis_entity_dock_actions_use_seeded_data(
 
         analysis_dock = _entity_dock(widget, qapp, "analysis")
         analysis_buttons = {button.text() for button in analysis_dock.findChildren(QtWidgets.QToolButton)}
-        assert {"📋 Copy ID", "🔎 Details", "🌱 Use as provenance seed"}.issubset(analysis_buttons)
+        assert {"📋 Copy ID", "🔍 Details", "🌱 Use as provenance seed"}.issubset(analysis_buttons)
         _select_row(analysis_dock, qapp, "analysis_gui")
 
         widget._copy_selected_analysis_id()
@@ -837,7 +837,7 @@ def test_raw_and_processed_entity_dock_validate_and_delete_seeded_artifacts(
     with _widget_for_db(seeded_admin_db) as widget:
         raw_dock = _entity_dock(widget, qapp, "raw_data")
         raw_buttons = {button.text() for button in raw_dock.findChildren(QtWidgets.QToolButton)}
-        assert {"✓ Validate", "🗑 Delete"}.issubset(raw_buttons)
+        assert {"✓ Validate", "🗑️ Delete"}.issubset(raw_buttons)
         _select_row(raw_dock, qapp, "raw_gui")
 
         with mock.patch.object(
@@ -869,7 +869,7 @@ def test_raw_and_processed_entity_dock_validate_and_delete_seeded_artifacts(
 
         product_dock = _entity_dock(widget, qapp, "processed_product")
         product_buttons = {button.text() for button in product_dock.findChildren(QtWidgets.QToolButton)}
-        assert {"✓ Validate", "🗑 Delete"}.issubset(product_buttons)
+        assert {"✓ Validate", "🗑️ Delete"}.issubset(product_buttons)
         _select_row(product_dock, qapp, "prod_gui")
 
         with mock.patch.object(

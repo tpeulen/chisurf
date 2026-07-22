@@ -75,7 +75,7 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         # The shared AutoForm ``path_list`` widget: drag-drop + ➕ Files /
-        # 📁 Folder / 🗄 Database (MMFDB) / ➖ Remove / 🗑 Clear, one implementation
+        # 📁 Folder / 🗄️ Database (MMFDB) / ➖ Remove / 🗑️ Clear, one implementation
         # across the app, instead of a hand-rolled list and button row.
         from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 
@@ -337,7 +337,7 @@ BURST_PANELS = [
     },
     {
         "name": "2. Burst Selection",
-        "icon": "🔎",
+        "icon": "🔍",
         "description": "Define detector channels and find/filter bursts from TTTR data.",
         "factory": _burst_selection,
         "role": "selection",

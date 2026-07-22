@@ -454,7 +454,7 @@ class DockToolbarMixin:
             layout.addWidget(new_btn)
 
             del_btn = QtWidgets.QToolButton()
-            del_btn.setText("🗑 Delete")
+            del_btn.setText("🗑️ Delete")
             del_btn.setToolTip("Delete checked rows")
             del_btn.clicked.connect(self._on_delete)
             layout.addWidget(del_btn)

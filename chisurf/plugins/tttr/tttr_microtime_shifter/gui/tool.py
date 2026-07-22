@@ -275,7 +275,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
         """)
 
         # File loading (local + MMFDB) is handled by the unified file list's
-        # ➕ Files / 📁 Folder / 🗄 Database buttons, so no separate Load action.
+        # ➕ Files / 📁 Folder / 🗄️ Database buttons, so no separate Load action.
         self.save_action = QtWidgets.QAction("💾 Save...", self)
         self.save_action.setObjectName("microtimeShifterSave")
         self.save_action.setEnabled(False)
@@ -462,7 +462,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
         else:
             spin.editingFinished.connect(self._make_chan_fn(channel, spin))
 
-        btn = QtWidgets.QPushButton("↻")
+        btn = QtWidgets.QPushButton("🔄")
         btn.setFixedWidth(30)
         if channel is None:
             btn.clicked.connect(self._make_global_reset_fn(spin))

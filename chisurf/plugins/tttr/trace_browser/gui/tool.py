@@ -36,7 +36,7 @@ class TraceBrowserTool(QMainWindow):
     def __init__(self, parent=None):
         """Create the toolbar/dock shell and embed the Trace Browser workspace."""
         super().__init__(parent)
-        self.setWindowTitle("🔎 Trace Browser")
+        self.setWindowTitle("🔍 Trace Browser")
         self._workspace = TraceBrowser(self)
         self.client = TraceBrowserClient()
         self._dock_area = DockArea(self)
@@ -67,12 +67,12 @@ class TraceBrowserTool(QMainWindow):
         actions = [
             ("📂 Open", self._workspace._on_pick_folder, "Pick a folder with TTTR traces"),
             ("🧹 Clear", self._workspace._on_clear, "Clear the file list"),
-            ("♻ Caches", self._workspace._on_clear_caches, "Clear trace caches"),
+            ("♻️ Caches", self._workspace._on_clear_caches, "Clear trace caches"),
             ("📤 Export", self._workspace._on_export, "Export selected traces"),
             ("CSV", self._workspace._on_export_csv, "Export traces as CSV"),
             ("DOCX", self._workspace._on_export_docx, "Export selected traces as DOCX"),
             ("🧠 HMM", self._workspace._on_transfer_to_analysis, "Open in Intensity Trace Analysis"),
-            ("⏱ TW", self._workspace._on_transfer_to_tw, "Open in TTTR Time Window"),
+            ("⏱️ TW", self._workspace._on_transfer_to_tw, "Open in TTTR Time Window"),
             ("📊 NDX", self._workspace._on_open_in_ndxplorer, "Open in NDXplorer"),
         ]
         for text, slot, tooltip in actions:
@@ -109,12 +109,12 @@ class TraceBrowserTool(QMainWindow):
             "and export selected traces. The toolbar replaces the old inline tool buttons:\n\n"
             "• 📂 Open: choose a folder containing TTTR traces\n"
             "• 🧹 Clear: clear the current file list\n"
-            "• ♻ Caches: clear in-memory and on-disk trace caches\n"
+            "• ♻️ Caches: clear in-memory and on-disk trace caches\n"
             "• 📤 Export: copy selected raw trace files\n"
             "• CSV: export binned intensity traces as CSV files\n"
             "• DOCX: export selected traces and annotations as a DOCX report\n"
             "• 🧠 HMM: open the selected trace in Intensity Trace Analysis\n"
-            "• ⏱ TW: open the selected trace in TTTR Time Window\n"
+            "• ⏱️ TW: open the selected trace in TTTR Time Window\n"
             "• 📊 NDX: compute burst analysis from the current time window and open NDXplorer\n\n"
             "The GUI talks to the Trace Browser backend through RPC for file listing, metadata, trace loading, "
             "and CSV export. The command line interface is the same plugin entry point and uses Click:\n\n"

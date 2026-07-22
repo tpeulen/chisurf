@@ -34,7 +34,7 @@ class OverviewPanel(QtWidgets.QWidget):
         self._form = ComponentDetailForm(_VIEW)
         layout.addWidget(self._form)
 
-        refresh = QtWidgets.QPushButton("↻ Refresh")
+        refresh = QtWidgets.QPushButton("🔄 Refresh")
         refresh.clicked.connect(self.refresh)
         row = QtWidgets.QHBoxLayout()
         row.addStretch()

@@ -69,7 +69,7 @@ class SpectraTool(NavigationPanelTool):
             },
             {
                 "name": "Browse",
-                "icon": "🔎",
+                "icon": "🔍",
                 "factory": _make_browser(db),
                 "description": "Browse scraped components — filter, inspect "
                                "metadata, view spectra, push to the MMFDB.",

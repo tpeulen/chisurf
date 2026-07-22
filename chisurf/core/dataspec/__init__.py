@@ -377,7 +377,7 @@ class ButtonRowSection(Section):
     custom widget.
 
     When ``menu`` is non-empty the row collapses into a single popup
-    ``QToolButton`` labelled ``menu`` (e.g. ``"🛠 Tools"``); the buttons become its
+    ``QToolButton`` labelled ``menu`` (e.g. ``"🛠️ Tools"``); the buttons become its
     menu actions. Emoji in the labels act as inline icons, keeping toolbars
     space-efficient.
     """

@@ -144,7 +144,7 @@ def test_burst_workflow_panel_order() -> None:
     # IRF & Background — auto-button driven) below the separator, unnumbered.
     assert labels == [
         "📂 1. Data Selection",
-        "🔎 2. Burst Selection",
+        "🔍 2. Burst Selection",
         "📊 3. BVA",
         "🎯 4. MLE-Lifetime",
         "🔀 5. H2MM",
@@ -159,7 +159,7 @@ def test_burst_workflow_panel_order() -> None:
 
 
 def test_h2mm_panel_is_flagged_experimental() -> None:
-    """The H2MM step carries the experimental flag so the nav shows ⚠ + banner."""
+    """The H2MM step carries the experimental flag so the nav shows ⚠️ + banner."""
     from chisurf.plugins.burst.burst_analysis.gui.tool import BURST_PANELS
 
     h2mm = next(p for p in BURST_PANELS if p.get("role") == "h2mm")
@@ -325,8 +325,8 @@ def test_data_selection_uses_the_shared_path_list_widget() -> None:
     """Data Selection hosts the unified AutoForm path_list, not a custom list.
 
     The bespoke Import files / folder / MMFDB / Clear buttons were replaced by the
-    shared ``PathListWidget`` (drag-drop + ➕ Files / 📁 Folder / 🗄 Database /
-    ➖ Remove / 🗑 Clear); MMFDB dataset resolution now lives in that widget's
+    shared ``PathListWidget`` (drag-drop + ➕ Files / 📁 Folder / 🗄️ Database /
+    ➖ Remove / 🗑️ Clear); MMFDB dataset resolution now lives in that widget's
     shared picker, not in a per-panel ``_open_mmfdb_dataset``.
     """
     from qtpy import QtWidgets

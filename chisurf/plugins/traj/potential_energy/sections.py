@@ -258,7 +258,7 @@ class _RunSection(QtWidgets.QWidget):
         layout.setSpacing(6)
 
         self._btn = QtWidgets.QToolButton()
-        self._btn.setText("⚙ Process")
+        self._btn.setText("⚙️ Process")
         self._btn.setToolTip("Score every frame of the trajectory and write the energies to a CSV.")
         self._btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self._btn.clicked.connect(self._run)

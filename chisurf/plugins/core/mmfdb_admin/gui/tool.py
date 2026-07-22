@@ -261,7 +261,7 @@ class PasswordChangeDialog(QtWidgets.QDialog):
         )
         clear_button.setEnabled(not self.is_admin)
         cancel_button = QtWidgets.QToolButton()
-        cancel_button.setText("❌ Cancel")
+        cancel_button.setText("✕ Cancel")
         cancel_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
         cancel_button.setAutoRaise(True)
         cancel_button.setToolTip("Cancel password change")
@@ -788,14 +788,14 @@ class MMFDBWidget(NavigationPanelTool):
 
         # Check/uncheck actions
         menu.addAction(
-            "☑ Check selected rows",
+            "☑️ Check selected rows",
             lambda: self._set_selected_checks(table, True),
         )
         menu.addAction(
             "☐ Uncheck selected rows",
             lambda: self._set_selected_checks(table, False),
         )
-        menu.addAction("☑ Check all visible", lambda: self._set_all_checks(table, True))
+        menu.addAction("☑️ Check all visible", lambda: self._set_all_checks(table, True))
         menu.addAction("☐ Uncheck all", lambda: self._set_all_checks(table, False))
         menu.addAction("🔁 Invert visible checks", lambda: self._invert_checks(table))
 
@@ -807,7 +807,7 @@ class MMFDBWidget(NavigationPanelTool):
         if delete_one_fn is not None:
             menu.addSeparator()
             menu.addAction(
-                f"🗑 Delete checked {item_kind}s…",
+                f"🗑️ Delete checked {item_kind}s…",
                 lambda: self._confirm_and_delete_checked(
                     table,
                     item_kind=item_kind,
@@ -1029,7 +1029,7 @@ class MMFDBWidget(NavigationPanelTool):
 
         if delete_slot:
             delete_btn = self._text_icon_button(
-                "🗑 Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete selected", delete_slot
+                "🗑️ Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete selected", delete_slot
             )
             buttons_layout.addWidget(delete_btn)
 
@@ -1323,7 +1323,7 @@ class MMFDBWidget(NavigationPanelTool):
             btns.append(reveal_btn)
 
             delete_btn = QtWidgets.QToolButton()
-            delete_btn.setText("🗑 Delete object")
+            delete_btn.setText("🗑️ Delete object")
             delete_btn.setToolTip("Delete the selected object or decrement its refcount")
             delete_btn.clicked.connect(self._delete_selected_object_entity)
             btns.append(delete_btn)
@@ -1354,7 +1354,7 @@ class MMFDBWidget(NavigationPanelTool):
             btns.append(validate_btn)
 
             delete_btn = QtWidgets.QToolButton()
-            delete_btn.setText("🗑 Delete")
+            delete_btn.setText("🗑️ Delete")
             delete_btn.setToolTip("Soft-delete the selected raw-data artifact")
             delete_btn.clicked.connect(self._delete_selected_raw_data)
             btns.append(delete_btn)
@@ -1385,7 +1385,7 @@ class MMFDBWidget(NavigationPanelTool):
             btns.append(validate_btn)
 
             delete_btn = QtWidgets.QToolButton()
-            delete_btn.setText("🗑 Delete")
+            delete_btn.setText("🗑️ Delete")
             delete_btn.setToolTip("Soft-delete the selected processed-data artifact")
             delete_btn.clicked.connect(self._delete_selected_processed_product)
             btns.append(delete_btn)
@@ -1398,7 +1398,7 @@ class MMFDBWidget(NavigationPanelTool):
             btns.append(copy_btn)
 
             detail_btn = QtWidgets.QToolButton()
-            detail_btn.setText("🔎 Details")
+            detail_btn.setText("🔍 Details")
             detail_btn.setToolTip("Show parameters and linked products for the selected analysis run")
             detail_btn.clicked.connect(self._show_selected_analysis_details)
             btns.append(detail_btn)
@@ -1965,7 +1965,7 @@ class MMFDBWidget(NavigationPanelTool):
         file_menu.addAction("💾 &Backup database...", self.backup_database)
         file_menu.addAction("♻️ Reset", self.reset_from_source)
         file_menu.addSeparator()
-        file_menu.addAction("❌ &Close", self.close)
+        file_menu.addAction("✕ &Close", self.close)
 
         settings_menu = self.menuBar().addMenu("&Settings")
         settings_menu.addAction("🗔 &Reset window layout", self.reset_window_layout)
@@ -2403,7 +2403,7 @@ class MMFDBWidget(NavigationPanelTool):
                 for s in samples:
                     sid = s.get("sample_id", "")
                     if not s.get("description"):
-                        warnings_list.append(f"  ⚠ Sample '{sid}' has no description")
+                        warnings_list.append(f"  ⚠️ Sample '{sid}' has no description")
             except Exception as exc:
                 chisurf.logging.warning("Operation failed: %s", exc)
 
@@ -2834,7 +2834,7 @@ class MMFDBWidget(NavigationPanelTool):
         btn_row = QtWidgets.QHBoxLayout()
         new_btn = self._text_icon_button("🧪 New", QtWidgets.QStyle.SP_FileDialogNewFolder, "Create new sample", self.new_sample)
         save_btn = self._text_icon_button("💾 Save", QtWidgets.QStyle.SP_DialogSaveButton, "Save sample", self.save_sample)
-        delete_btn = self._text_icon_button("🗑 Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete sample", self.delete_sample)
+        delete_btn = self._text_icon_button("🗑️ Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete sample", self.delete_sample)
         clear_btn = self._text_icon_button("🧹 Clear", QtWidgets.QStyle.SP_DialogResetButton, "Clear form", self.clear_form)
         full_btn = self._text_icon_button(
             "Full description",
@@ -3430,7 +3430,7 @@ class MMFDBWidget(NavigationPanelTool):
         buttons.setSpacing(2)
         import_button = self._text_icon_button("⬇️ Import file", QtWidgets.QStyle.SP_ArrowDown, "Import file into database", self.import_file)
         export_button = self._text_icon_button("⬆️ Export selected sample", QtWidgets.QStyle.SP_ArrowUp, "Export selected sample to FLR CIF", self.export_selected_sample)
-        preview_button = self._text_icon_button("👁 Preview CIF", QtWidgets.QStyle.SP_FileDialogDetailedView, "Preview flrCIF output in the text area below", self.preview_cif)
+        preview_button = self._text_icon_button("👁️ Preview CIF", QtWidgets.QStyle.SP_FileDialogDetailedView, "Preview flrCIF output in the text area below", self.preview_cif)
         export_table_button = self._text_icon_button("📊 Export table CSV/XLSX", QtWidgets.QStyle.SP_FileIcon, "Export sample table", self.export_table)
         buttons.addWidget(import_button)
         buttons.addWidget(export_button)
@@ -3473,7 +3473,7 @@ class MMFDBWidget(NavigationPanelTool):
             self.add_metadata_row,
         )
         delete_metadata_btn = self._text_icon_button(
-            "🗑 Delete row",
+            "🗑️ Delete row",
             QtWidgets.QStyle.SP_TrashIcon,
             "Delete the selected metadata row",
             self.delete_metadata_row,
@@ -3617,7 +3617,7 @@ class MMFDBWidget(NavigationPanelTool):
         )
         user_buttons.addWidget(self.set_active_branch_button)
         self.jump_branch_button = self._text_icon_button(
-            "⏱ Create Time Branch",
+            "⏱️ Create Time Branch",
             QtWidgets.QStyle.SP_FileDialogNewFolder,
             "Create and activate a branch at the requested operation",
             self.create_time_branch,
@@ -3702,7 +3702,7 @@ class MMFDBWidget(NavigationPanelTool):
 
         add_data_button = self._text_icon_button("➕ Add", QtWidgets.QStyle.SP_FileDialogNewFolder, "Add data row", self.add_experiment_data_row)
         save_data_button = self._text_icon_button("💾 Save data", QtWidgets.QStyle.SP_DialogSaveButton, "Save data", self.save_experiment_data)
-        delete_data_button = self._text_icon_button("🗑 Del data", QtWidgets.QStyle.SP_TrashIcon, "Delete data", self.delete_experiment_data)
+        delete_data_button = self._text_icon_button("🗑️ Del data", QtWidgets.QStyle.SP_TrashIcon, "Delete data", self.delete_experiment_data)
         open_data_button = self._text_icon_button("📂 Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open linked data", self.open_experiment_data)
 
         return self._create_standard_dock_tab(
@@ -3899,7 +3899,7 @@ class MMFDBWidget(NavigationPanelTool):
             short = self._failures[0]
             if len(self._failures) > 1:
                 short = f"{short} (+{len(self._failures) - 1} more)"
-            self.status_label.setText(f"{self.status_label.text()}  ⚠ partial refresh — {short}")
+            self.status_label.setText(f"{self.status_label.text()}  ⚠️ partial refresh — {short}")
 
     def clear_form(self) -> None:
         for widget in (
@@ -5374,7 +5374,7 @@ class MMFDBWidget(NavigationPanelTool):
             self.restore_selected_project,
         )
         delete_button = self._text_icon_button(
-            "🗑 Delete archived version",
+            "🗑️ Delete archived version",
             QtWidgets.QStyle.SP_TrashIcon,
             "Delete the archived project version",
             self.delete_selected_project,
@@ -6047,7 +6047,7 @@ class MMFDBWidget(NavigationPanelTool):
         self.objects_table.itemSelectionChanged.connect(self.load_object)
 
         btn_delete = self._text_icon_button(
-            "🗑 Delete object",
+            "🗑️ Delete object",
             QtWidgets.QStyle.SP_TrashIcon,
             "Delete the selected object (or decrement refcount)",
             self.delete_selected_object,

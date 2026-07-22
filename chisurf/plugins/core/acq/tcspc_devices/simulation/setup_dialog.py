@@ -745,7 +745,7 @@ class SimulationSettingsModel:
                     ),
                 ),
                 ds.ButtonRowSection(
-                    menu="🛠 Tools",
+                    menu="🛠️ Tools",
                     buttons=(
                         {"label": "🧬 Decay…", "action": "open_decay_dialog",
                          "description": "Define the per-species fluorescence decay "

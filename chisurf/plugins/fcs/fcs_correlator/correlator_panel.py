@@ -653,7 +653,7 @@ class _LifetimeFilterControls(QtWidgets.QWidget):
         layout.addWidget(self.btn_load)
 
         self.btn_unload = QtWidgets.QToolButton()
-        self.btn_unload.setText("✖ Unload")
+        self.btn_unload.setText("✕ Unload")
         self.btn_unload.setToolTip(
             "Remove the loaded lifetime filters and return to detector-channel "
             "correlation."

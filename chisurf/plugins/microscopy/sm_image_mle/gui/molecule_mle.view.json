@@ -59,7 +59,7 @@
               {"type": "toggle", "attr": "soft_bifl_scatter", "label": "BIFL scatter", "description": "Reduce Istar by the background contribution."}
             ]},
             {"type": "button_row", "buttons": [
-              {"label": "👁 Preview", "action": "request_preview", "description": "Segment the first file with the current settings (no fitting) to tune the molecule count."},
+              {"label": "👁️ Preview", "action": "request_preview", "description": "Segment the first file with the current settings (no fitting) to tune the molecule count."},
               {"label": "▶ Run", "action": "request_run", "description": "Segment and fit molecules in every selected file; writes molecule_data.tsv + joint_output.tsv."},
               {"label": "💾 Export", "action": "request_export", "description": "Export the combined per-molecule table (all files) to a TSV/CSV."}
             ]},

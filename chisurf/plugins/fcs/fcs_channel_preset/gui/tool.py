@@ -166,7 +166,7 @@ class FCSChannelWidget(QtWidgets.QWidget):
         self.btn_save = QtWidgets.QToolButton(self)
         self.btn_save.setText("💾 Save")
         self.btn_close = QtWidgets.QToolButton(self)
-        self.btn_close.setText("❌ Close")
+        self.btn_close.setText("✕ Close")
         self.btn_save.clicked.connect(self._on_save)
         self.btn_close.clicked.connect(self.close)
         bottom.addWidget(self.btn_save)

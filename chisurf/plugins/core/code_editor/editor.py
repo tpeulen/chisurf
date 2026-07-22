@@ -248,7 +248,7 @@ class CodeEditor(QtWidgets.QWidget):
             "forward":          QtWidgets.QAction(create_emoji_icon("▶", size=20), "Fwd", parent),
             "definition":       QtWidgets.QAction(create_emoji_icon("🔍", size=20), "Def", parent),
             "completion":       QtWidgets.QAction(create_emoji_icon("✨", size=20), "Hint", parent),
-            "settings":         QtWidgets.QAction(create_emoji_icon("⚙", size=20), "Settings", parent),
+            "settings":         QtWidgets.QAction(create_emoji_icon("⚙️", size=20), "Settings", parent),
             "agent":            QtWidgets.QAction(create_emoji_icon("🤖", size=20), "Agent", parent),
             "find":                QtWidgets.QAction(create_emoji_icon("🔍", size=20), "Find", parent),
             "toggle_line_numbers": QtWidgets.QAction("Show Line Numbers", parent),
@@ -318,7 +318,7 @@ class CodeEditor(QtWidgets.QWidget):
     def create_settings_button(self, parent=None):
         """Create a gear button that opens the editor settings dialog."""
         button = QtWidgets.QToolButton(parent)
-        button.setText("⚙")
+        button.setText("⚙️")
         button.setToolTip("Settings")
         button.setPopupMode(QtWidgets.QToolButton.MenuButtonPopup)
         button.setStyleSheet("QToolButton::menu-indicator { image: none; width: 0px; }")
@@ -1444,7 +1444,7 @@ class CodeEditor(QtWidgets.QWidget):
         console = getattr(cs, "console", None)
         if console is None:
             self.outputAppended.emit(
-                "⚠ No IPython console found (cs.console is None).\n"
+                "⚠️ No IPython console found (cs.console is None).\n"
                 "  Start ChiSurf with the console enabled, or switch to Console/Process mode.\n"
             )
             return

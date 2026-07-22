@@ -202,7 +202,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         """Create dock panels."""
         # ⚙️ Settings dock
         settings_panel = self._build_settings_panel(self.dock_area)
-        self.dock_area.addTab(settings_panel, "⚙\ufe0f Settings")
+        self.dock_area.addTab(settings_panel, "⚙️\ufe0f Settings")
 
         # 📁 Files dock
         files_splitter = QtWidgets.QSplitter(
@@ -240,7 +240,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         preview_splitter.addWidget(self.preview_plot)
         preview_splitter.setStretchFactor(0, 0)
         preview_splitter.setStretchFactor(1, 1)
-        self.dock_area.addTab(preview_splitter, "👁\ufe0f Preview")
+        self.dock_area.addTab(preview_splitter, "👁️\ufe0f Preview")
 
         # 📋 Summary dock
         self.dock_area.addTab(self.status_log, "📋 Summary")
@@ -380,7 +380,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         )
 
         # File add / database selection are provided by the unified file list's
-        # own ➕ Files / 📁 Folder / 🗄 Database buttons (no duplicate toolbar actions).
+        # own ➕ Files / 📁 Folder / 🗄️ Database buttons (no duplicate toolbar actions).
         process_action = QtWidgets.QAction("🕐 Process", self)
         process_action.setToolTip(
             "Compute time-window BIDs for all queued TTTR files and "
@@ -391,7 +391,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
 
         toolbar.addSeparator()
 
-        clear_action = QtWidgets.QAction("🗑\ufe0f Clear", self)
+        clear_action = QtWidgets.QAction("🗑️\ufe0f Clear", self)
         clear_action.setToolTip("Clear the file list and processing results.")
         clear_action.triggered.connect(self._clear_all)
         toolbar.addAction(clear_action)
@@ -405,7 +405,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         )
         toolbar.addWidget(spacer)
 
-        help_action = QtWidgets.QAction("ℹ\ufe0f Help", self)
+        help_action = QtWidgets.QAction("ℹ️\ufe0f Help", self)
         help_action.setToolTip(
             "Show a short help page explaining how this tool works."
         )
@@ -415,10 +415,10 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         # Apply object names for stylesheet targeting
         name_map = {
             "📂 Add Files": "twToolbarAdd",
-            "🗄 Database": "twToolbarDatabase",
+            "🗄️ Database": "twToolbarDatabase",
             "🕐 Process": "twToolbarProcess",
-            "🗑\ufe0f Clear": "twToolbarClear",
-            "ℹ\ufe0f Help": "twToolbarHelp",
+            "🗑️\ufe0f Clear": "twToolbarClear",
+            "ℹ️\ufe0f Help": "twToolbarHelp",
         }
         for widget in toolbar.children():
             if isinstance(widget, QtWidgets.QToolButton):

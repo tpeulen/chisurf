@@ -26,5 +26,5 @@ def test_help_widget_toolbar(qapp, qtbot):
     actions = toolbar.actions()
     assert len(actions) >= 5
     labels = [a.text() for a in actions]
-    assert any("Edit" in label or "👁" in label or "✏" in label for label in labels)
+    assert any("Edit" in label or "👁️" in label or "✏️" in label for label in labels)
     assert any("Save" in label or "💾" in label for label in labels)

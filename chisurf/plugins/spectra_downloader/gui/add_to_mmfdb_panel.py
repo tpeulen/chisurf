@@ -71,7 +71,7 @@ class AddToMmfdbPanel(QtWidgets.QWidget):
         layout.addWidget(self._form)
 
         row = QtWidgets.QHBoxLayout()
-        self._check_btn = QtWidgets.QPushButton("↻ Check session")
+        self._check_btn = QtWidgets.QPushButton("🔄 Check session")
         self._check_btn.setToolTip("Re-check whether the current session may add to the MMFDB.")
         self._check_btn.clicked.connect(self._refresh_session)
         row.addWidget(self._check_btn)

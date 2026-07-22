@@ -204,14 +204,14 @@ IMAGING_PANELS: list[dict] = [
     },
     {
         "name": "3. Mean Micro-Time",
-        "icon": "⏱",
+        "icon": "⏱️",
         "description": "Per-pixel mean micro-time (arrival time, ns) per detector window; adds fields to the imaging HDF5.",
         "factory": _pixel_micro_time,
         "role": "pixel_micro_time",
     },
     {
         "name": "4. IRF & BG",
-        "icon": "🎛",
+        "icon": "🎛️",
         "description": "Optional: per-detector IRF file + background (kHz); transferred to Phasor and MLE. Skippable.",
         "factory": _calibration,
         "role": "calibration",

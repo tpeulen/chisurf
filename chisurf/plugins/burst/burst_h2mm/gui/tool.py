@@ -142,7 +142,7 @@ class H2mmTool(QMainWindow):
     def __init__(self, parent=None, *, embedded: bool = False):
         super().__init__(parent)
         self._embedded = embedded
-        self.setWindowTitle("smFRET H2MM Analysis  ⚠ experimental")
+        self.setWindowTitle("smFRET H2MM Analysis  ⚠️ experimental")
         self.data_folder: pathlib.Path | None = None
         self.file_type = "SPC-130"
         self._result = None
@@ -193,7 +193,7 @@ class H2mmTool(QMainWindow):
         self._folder_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.btn_run = _tbtn("▶  Run")
         self.btn_save = _tbtn("\U0001f4be  Save plot")
-        self.btn_help = _tbtn("ℹ  Help")
+        self.btn_help = _tbtn("ℹ️  Help")
 
         self.toolbar.addWidget(self.btn_folder)
         self.toolbar.addWidget(self._folder_field)

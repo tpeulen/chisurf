@@ -131,6 +131,28 @@ highlighting, optional `enforce_acyclic` edge guard). Round-trip and cycle
 behaviour are covered by tests under its `tests/` directory. It is the substrate
 the visual burst-programming canvas builds on (PRD-29).
 
+# Glyph registry
+
+`chisurf/gui/glyphs.py` is the single source of truth for the small pictographic
+"emoticon" icons used in widget labels, actions, menus and `icon` metadata. It
+exposes named canonical constants grouped by concept (`Glyphs.SAVE`,
+`Glyphs.DELETE`, `Glyphs.REFRESH`, `Glyphs.SEARCH`, …) plus a `normalize(text)`
+helper that rewrites the *unambiguous* historical variants to canonical form —
+synonyms (`🔎`→`🔍`, `✎`→`✏️`, `✖`→`✕`) and missing emoji **variation selectors**
+(`⚙`→`⚙️`, `🗑`→`🗑️`, …) so text-default symbols always render as colour emoji.
+`normalize` is idempotent and leaves directional arrows, tree markers and plugin
+brand icons untouched. The module is Qt-free (imports only `re`), so it is
+testable headlessly (`test/test_glyphs.py`).
+
+Genuinely distinct semantics stay distinct: `❌` = error status vs `✕` =
+interactive close/cancel; `🗑️` = destructive delete vs `➖` = remove-a-row;
+`🔄` = refresh vs `🔁` = loop/brand-icon vs `♻️` = reset-to-defaults. These
+collisions are resolved per-site, not by `normalize`. New/edited GUI code should
+reference `Glyphs.*` rather than hardcoding a glyph; JSON view/manifest files use
+the same canonical literals by convention. Rendering emoji/text/color/file icons
+into `QIcon`s is a separate concern handled by `chisurf/plugins/icon_utils.py`
+(see `chisurf/plugins/ICON_SYSTEM.md`).
+
 # Citations
 
 [1] [ChiSurf architecture doc](/references/architecture-doc.md)

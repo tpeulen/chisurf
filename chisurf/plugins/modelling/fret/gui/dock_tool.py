@@ -274,7 +274,7 @@ class FretDockingTool(QtWidgets.QWidget):
             "Add one or more PDB files (one rigid body per file).")
         tb.addAction("➖ Remove PDB", self._remove_pdb).setToolTip(
             "Remove the selected PDB(s) from the list.")
-        tb.addAction("🏷 fps.json", self._pick_fps).setToolTip(
+        tb.addAction("🏷️ fps.json", self._pick_fps).setToolTip(
             "Choose the labelling/distance fps.json (or FPS LPs .txt) file.")
         tb.addAction("📁 Output", self._pick_out).setToolTip("Choose the output directory.")
         tb.addSeparator()

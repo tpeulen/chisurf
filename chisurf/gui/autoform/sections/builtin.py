@@ -969,7 +969,7 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
         if section.kind == "secret":
             self.reveal = QtWidgets.QToolButton()
             self.reveal.setCheckable(True)
-            self.reveal.setText("👁")
+            self.reveal.setText("👁️")
             self.reveal.setToolTip("Show / hide")
             self.reveal.toggled.connect(self._toggle_secret)
             layout.addWidget(self.reveal)
@@ -1996,7 +1996,7 @@ class FitMixerWidget(QtWidgets.QWidget):
         toolbar.addWidget(self.cb, 2)
 
         refresh_btn = QtWidgets.QToolButton()
-        refresh_btn.setText("↻")
+        refresh_btn.setText("🔄")
         refresh_btn.setToolTip("Refresh the list of available lifetime fits.")
         refresh_btn.clicked.connect(self._refresh_fit_list)
         toolbar.addWidget(refresh_btn)

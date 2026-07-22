@@ -935,7 +935,7 @@ updated: 2026-06-09
     def _process_message(self, text: str) -> None:
         """Process the user's message asynchronously without blocking the UI."""
         context = self._get_context() if self._get_context_callback else ""
-        self.status_label.setText("🔎 Retrieving ChiSurf API context...")
+        self.status_label.setText("🔍 Retrieving ChiSurf API context...")
         self.progress_bar.setVisible(True)
         self.send_btn.setEnabled(False)
         self.input.setEnabled(False)

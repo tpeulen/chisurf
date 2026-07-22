@@ -18,6 +18,8 @@ from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 
 def _default_loader(db_path: str | None = None) -> dict:
     """Load the saved detector setups via the canonical wizard loader."""
@@ -37,7 +39,7 @@ class SetupSelector(QtWidgets.QWidget):
         Show a muted one-line summary of the selected setup's detectors below the
         combo (e.g. ``green, red, yellow``).
     show_reload : bool, default True
-        Show the ``↻`` reload button that re-reads the setups from storage.
+        Show the ``🔄`` reload button that re-reads the setups from storage.
     placeholder : str, default ""
         First (empty-name) combo entry, shown when nothing is selected.
     loader : callable, optional
@@ -85,7 +87,7 @@ class SetupSelector(QtWidgets.QWidget):
         self.btn_reload: QtWidgets.QToolButton | None = None
         if show_reload:
             self.btn_reload = QtWidgets.QToolButton()
-            self.btn_reload.setText("↻")
+            self.btn_reload.setText(Glyphs.REFRESH)
             self.btn_reload.setToolTip("Reload the saved detector setups")
             self.btn_reload.clicked.connect(self.refresh)
             row.addWidget(self.btn_reload)

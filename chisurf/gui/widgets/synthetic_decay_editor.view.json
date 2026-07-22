@@ -33,7 +33,7 @@
                   {"label": "➕", "action": "add_spectrum_row", "description": "Add one lifetime component."},
                   {"label": "➖", "action": "remove_spectrum_row", "description": "Remove the last lifetime component."},
                   {"label": "📂 Pattern…", "action": "load_pattern", "description": "Use a measured decay histogram instead of the amplitude/lifetime spectrum."},
-                  {"label": "✖ Clear", "action": "clear_pattern", "description": "Drop the loaded pattern and return to the amplitude/lifetime spectrum."},
+                  {"label": "✕ Clear", "action": "clear_pattern", "description": "Drop the loaded pattern and return to the amplitude/lifetime spectrum."},
                   {"label": "📥 Fit…", "action": "read_from_fit", "description": "Copy the lifetime spectrum from an open ChiSurf fit."}
                 ]}
               ]

@@ -142,7 +142,7 @@ class MetadataDock(QtWidgets.QWidget):
         bar_layout.addWidget(add_btn)
 
         delete_btn = QtWidgets.QToolButton()
-        delete_btn.setText("🗑 Delete row")
+        delete_btn.setText("🗑️ Delete row")
         delete_btn.setToolTip("Delete the selected metadata row")
         delete_btn.clicked.connect(self._editor._on_delete_row)
         bar_layout.addWidget(delete_btn)

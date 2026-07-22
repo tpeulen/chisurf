@@ -2,6 +2,14 @@
 
 This document describes the enhanced icon system for ChiSurf plugins, which supports emojis, text, colors, and traditional image files.
 
+> **Which glyph vs. how to render it.** This file (and `icon_utils.py`) covers
+> *rendering* an icon spec into a `QIcon`. For *which* emoji/glyph to use in a
+> label, action or `icon` field, use the canonical registry
+> `chisurf.gui.glyphs.Glyphs` (e.g. `Glyphs.SAVE`, `Glyphs.DELETE`,
+> `Glyphs.REFRESH`, `Glyphs.SEARCH`). It is the single source of truth that keeps
+> the same concept drawn with the same glyph app-wide; `glyphs.normalize(text)`
+> rewrites legacy variants and completes emoji variation selectors.
+
 ## Overview
 
 The enhanced icon system allows plugins to specify icons using various formats:

@@ -5,7 +5,7 @@
   "description": "Per-pixel mean micro-time (arrival time) maps from TTTR imaging data.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Imaging"],
-  "icon": "⏱",
+  "icon": "⏱️",
   "state_namespace": "img_pixel_micro_time",
   "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
   "entrypoints": {

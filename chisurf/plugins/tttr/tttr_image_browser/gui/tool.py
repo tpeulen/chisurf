@@ -133,7 +133,7 @@ class TTTRImageBrowserTool(QMainWindow):
         actions = [
             ("📂 Open", self._workspace._on_pick_folder, "Pick a folder with TTTR images"),
             ("🧹 Clear", self._workspace._on_clear, "Clear the file list"),
-            ("♻ Caches", self._workspace._on_clear_caches, "Clear image caches"),
+            ("♻️ Caches", self._workspace._on_clear_caches, "Clear image caches"),
             ("📤 Export", self._workspace._on_export, "Export selected image files"),
             ("TIFF", self._workspace._on_save_tiff, "Save intensity images as TIFF stacks"),
             ("DOCX", self._workspace._on_export_docx, "Export selected images as DOCX"),
@@ -183,7 +183,7 @@ class TTTRImageBrowserTool(QMainWindow):
             "detector windows. The toolbar replaces the old inline buttons:\n\n"
             "• 📂 Open: choose a folder containing TTTR images\n"
             "• 🧹 Clear: clear the current file list\n"
-            "• ♻ Caches: clear in-memory and on-disk image caches\n"
+            "• ♻️ Caches: clear in-memory and on-disk image caches\n"
             "• 📤 Export: copy selected raw image files\n"
             "• TIFF: export intensity images as TIFF stacks\n"
             "• DOCX: export selected images and annotations as a DOCX report\n\n"

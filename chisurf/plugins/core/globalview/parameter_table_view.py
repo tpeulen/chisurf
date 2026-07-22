@@ -372,14 +372,14 @@ class ParameterTableView(QtWidgets.QWidget):
         toolbar.setSpacing(1)
 
         self._filter_edit = QtWidgets.QLineEdit()
-        self._filter_edit.setPlaceholderText("🔎 filter: fit:name param:name…")
+        self._filter_edit.setPlaceholderText("🔍 filter: fit:name param:name…")
         self._filter_edit.setClearButtonEnabled(True)
         self._filter_edit.setMaximumWidth(250)
         toolbar.addWidget(self._filter_edit)
 
         self._mode_combo = QtWidgets.QComboBox()
         self._mode_combo.addItems(["☰ all", "🟢 free", "📌 fixed", "🔗 linked"])
-        self._mode_combo.setToolTip("🔎 Show only parameters matching status")
+        self._mode_combo.setToolTip("🔍 Show only parameters matching status")
         toolbar.addWidget(self._mode_combo)
 
         toolbar.addStretch()
@@ -420,8 +420,8 @@ class ParameterTableView(QtWidgets.QWidget):
         toolbar.addWidget(self._btn_refresh)
 
         self._btn_find_uid = QtWidgets.QToolButton()
-        self._btn_find_uid.setText("🔎 Find by UUID…")
-        self._btn_find_uid.setToolTip("🔎 Look up a parameter or fit by its unique identifier")
+        self._btn_find_uid.setText("🔍 Find by UUID…")
+        self._btn_find_uid.setToolTip("🔍 Look up a parameter or fit by its unique identifier")
         toolbar.addWidget(self._btn_find_uid)
 
         layout.addLayout(toolbar)
@@ -771,8 +771,8 @@ class ParameterTableView(QtWidgets.QWidget):
         """Open a dialog to look up an object by UUID and select its row."""
         uid, ok = QtWidgets.QInputDialog.getText(
             self,
-            "🔎 Find by UUID",
-            "🔎 Enter a unique identifier (UUID):",
+            "🔍 Find by UUID",
+            "🔍 Enter a unique identifier (UUID):",
         )
         if not ok or not uid:
             return
@@ -808,7 +808,7 @@ class ParameterTableView(QtWidgets.QWidget):
 # TODO: needs docstring
                 QtWidgets.QMessageBox.information(
                     self,
-                    "🔎 Found but not in table",
+                    "🔍 Found but not in table",
                     f"Parameter '{obj.name}' was found but is not in the current table view.\n"
                     f"Try changing the filter or refreshing.",
                 )

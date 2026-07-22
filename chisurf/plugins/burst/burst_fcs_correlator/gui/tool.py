@@ -183,7 +183,7 @@ class BurstFcsTool(QtWidgets.QMainWindow):
         rcol.setSpacing(6)
 
         self.line_filter = QtWidgets.QLineEdit()
-        self.line_filter.setPlaceholderText("🔎 Filter by file or pair name (e.g. 'GG')")
+        self.line_filter.setPlaceholderText("🔍 Filter by file or pair name (e.g. 'GG')")
         self.line_filter.textChanged.connect(self._refresh_browser_list)
         rcol.addWidget(self.line_filter)
 

@@ -348,7 +348,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         name = str(panel.get("name") or "").strip()
         label = f"{icon} {name}".strip()
         if panel.get("experimental"):
-            label = f"{label}  ⚠"
+            label = f"{label}  ⚠️"
         return label
 
     def _placeholder_widget(self, panel: Mapping[str, Any]) -> QtWidgets.QWidget:
@@ -442,7 +442,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
             f"{panel.get('name', 'This tool')} is EXPERIMENTAL and UNTESTED — "
             "results are not validated"
         )
-        banner = QtWidgets.QLabel(f"⚠  {msg}")
+        banner = QtWidgets.QLabel(f"⚠️  {msg}")
         banner.setAlignment(QtCore.Qt.AlignCenter)
         banner.setWordWrap(True)
         banner.setStyleSheet(
