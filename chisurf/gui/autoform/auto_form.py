@@ -506,7 +506,48 @@ class AutoForm(QtWidgets.QWidget):
     def _build_panel(self, section: vs.PanelSection):
         box = self._make_fold_box(section)
         self._emit_sections(section.sections, box.add_widget, fields_per_row=section.n_col)
+        if getattr(section, "bounds_toggle", False):
+            self._add_bounds_toggle(box)
         return box
+
+    def _add_bounds_toggle(self, box):
+        """Add a header toggle for the bounds columns of the panel's tables.
+
+        Shows/hides the Lo / Hi / Bounds columns of every parameter table in
+        ``box``; the columns start hidden to keep the tables narrow (bounds stay
+        editable in the parameter details popup).
+        """
+        from chisurf.gui.autoform.sections.parameter_table import (
+            PairedParameterTableWidget,
+            ParameterGroupTableWidget,
+        )
+
+        tables = box.findChildren(ParameterGroupTableWidget) + box.findChildren(
+            PairedParameterTableWidget
+        )
+        tables = [t for t in tables if t.has_bounds_columns()]
+        if not tables:
+            return
+
+        btn = QtWidgets.QToolButton()
+        btn.setCheckable(True)
+        btn.setChecked(False)
+        btn.setText("bounds")
+        btn.setToolTip(
+            "Show the Lo / Hi / Bounds columns\n"
+            "(bounds are also editable in the parameter details popup)"
+        )
+        btn.setAutoRaise(True)
+        btn.setFocusPolicy(QtCore.Qt.NoFocus)
+        btn.setStyleSheet("QToolButton { font-size: 10px; padding: 0 4px; }")
+
+        def _apply(checked: bool) -> None:
+            for t in tables:
+                t.set_bounds_visible(checked)
+
+        btn.toggled.connect(_apply)
+        _apply(False)  # start hidden
+        box.add_header_widget(btn)
 
     def _build_dock_area(self, section: vs.DockAreaSection):
         """Render a declarative dock area: each child section becomes a dock tab.
@@ -713,6 +754,53 @@ class AutoForm(QtWidgets.QWidget):
                     logging.warning(f"AutoModelWidget: header {key!r} failed: {exc}")
         outer.addLayout(header)
 
+        def _row_params():
+            if section.rows_source:
+                fn = getattr(group, section.rows_source, None)
+                return list(fn()) if callable(fn) else []
+            return list(getattr(group, "parameters_all", []))
+
+        # ``style: "table"`` renders the components as one paired QTableView (each
+        # ``row_width`` group is a row with its columns side by side) instead of the
+        # standalone spin-box grid. component_title (per-item fold boxes) keeps the
+        # grid path since it is a fundamentally different layout.
+        if getattr(section, "style", "grid") == "table" and not section.component_title:
+            from chisurf.gui.autoform.sections.parameter_table import (
+                PairedParameterTableWidget,
+            )
+
+            table = PairedParameterTableWidget(
+                params=_row_params(),
+                width=max(1, int(section.row_width)),
+                on_change=self._dispatch_fit_update,
+            )
+            self._param_widgets.append(table)
+            outer.addWidget(table)
+
+            def on_add_table():
+                add_fn = getattr(group, section.append_method, None)
+                if callable(add_fn):
+                    add_fn()
+                self._dispatch_fit_update()
+                table.set_params(_row_params())
+
+            def on_del_table():
+                if len(_row_params()) // max(1, section.row_width) > section.min_rows:
+                    del_fn = getattr(group, section.remove_method, None)
+                    if callable(del_fn):
+                        del_fn()
+                        self._dispatch_fit_update()
+                        table.set_params(_row_params())
+
+            add_btn.clicked.connect(on_add_table)
+            del_btn.clicked.connect(on_del_table)
+
+            if not getattr(section, "collapsible", True):
+                return content
+            box = self._make_fold_box(section, fallback_title=getattr(group, "name", ""))
+            box.add_widget(content)
+            return box
+
         # rows host: VBox for per-component fold groups, Grid for flat params
         rows_host = QtWidgets.QWidget()
         if section.component_title:
@@ -722,12 +810,6 @@ class AutoForm(QtWidgets.QWidget):
         rows_layout.setContentsMargins(0, 0, 0, 0)
         rows_layout.setSpacing(0)
         outer.addWidget(rows_host)
-
-        def _row_params():
-            if section.rows_source:
-                fn = getattr(group, section.rows_source, None)
-                return list(fn()) if callable(fn) else []
-            return list(getattr(group, "parameters_all", []))
 
         def render_rows():
             while rows_layout.count():

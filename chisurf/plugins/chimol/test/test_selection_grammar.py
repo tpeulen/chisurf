@@ -86,5 +86,13 @@ class TestSelectionGrammar(unittest.TestCase):
         mask = self.evaluator.evaluate("/obj1/A/1/CA")
         self.assertEqual(np.where(mask)[0].tolist(), [3])
 
+    def test_keywords_case_insensitive(self):
+        # Regression guard: the combined TOKEN_REGEX must compile on Python
+        # 3.11+ (no inline (?i) flags) and keep keywords case-insensitive.
+        types = [t.type for t in tokenize("ALL AND NOT NONE")]
+        self.assertEqual(types, ["ALL", "AND", "NOT", "NONE"])
+        mask = self.evaluator.evaluate("CHAIN A AND NAME CA")
+        self.assertEqual(np.where(mask)[0].tolist(), [1, 3])
+
 if __name__ == "__main__":
     unittest.main()

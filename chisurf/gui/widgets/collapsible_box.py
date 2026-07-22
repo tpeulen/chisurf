@@ -86,9 +86,18 @@ class CollapsibleBox(QtWidgets.QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
+        # The header is a row: the fold button (expanding) plus optional trailing
+        # controls (e.g. a per-table "show bounds" toggle) added via
+        # :meth:`add_header_widget`. Keeping them on the header row costs no extra
+        # vertical space.
+        self._header_row = QtWidgets.QWidget(self)
+        self._header_layout = QtWidgets.QHBoxLayout(self._header_row)
+        self._header_layout.setContentsMargins(0, 0, 0, 0)
+        self._header_layout.setSpacing(0)
+
         # QPushButton (not QToolButton) correctly honours CSS text-align:left.
         # Styled via gui/styles/widgets/collapsible_box.qss (objectName target).
-        self._btn = QtWidgets.QPushButton(self)
+        self._btn = QtWidgets.QPushButton(self._header_row)
         self._btn.setObjectName("CollapsibleBoxHeader")
         self._btn.setCheckable(True)
         self._btn.setChecked(self._expanded)
@@ -97,7 +106,8 @@ class CollapsibleBox(QtWidgets.QWidget):
         )
         self._btn.clicked.connect(self._on_header_clicked)
         self._update_header_text()
-        root.addWidget(self._btn)
+        self._header_layout.addWidget(self._btn)
+        root.addWidget(self._header_row)
 
         self._content = QtWidgets.QWidget(self)
         # Preferred (not Expanding) so the box takes exactly the space it needs;
@@ -109,6 +119,15 @@ class CollapsibleBox(QtWidgets.QWidget):
         self._content_layout.setContentsMargins(2, 2, 2, 2)
         self._content_layout.setSpacing(1)
         root.addWidget(self._content)  # no stretch — parent decides allocation
+
+    def add_header_widget(self, widget: QtWidgets.QWidget) -> None:
+        """Add a small control to the right edge of the header row.
+
+        Used for per-section controls that should not consume a content row —
+        e.g. a checkable "show bounds columns" toggle for the parameter tables.
+        """
+        widget.setParent(self._header_row)
+        self._header_layout.addWidget(widget, 0, QtCore.Qt.AlignVCenter)
 
     def add_widget(self, widget: QtWidgets.QWidget, stretch: int = 0) -> None:
         """Append *widget* to the content area."""

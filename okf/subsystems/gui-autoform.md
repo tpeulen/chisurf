@@ -44,7 +44,27 @@ the model calls it during a recompute),
 `scalar_table` (the same compact name/value table for **plain** `float`/`int`/
 `bool` model attributes rather than `FittingParameter`s — `{rows:[{attr,label,
 kind}], call}` — for parameter-dense editors like the FRET-species crosstalk /
-anisotropy groups), `help` (a `?` modal button), and
+anisotropy groups), `dynamic_group` (a variable-length list of parameter
+components with add/remove controls driven by the model's own
+`append`/`pop` methods; `row_width` parameters form one component. Its default
+`style:"grid"` lays each parameter out as a standalone spin-box row, while
+`style:"table"` renders the components as one **paired** `QTableView` — each
+component is a single row: a `#` index column then the compact
+`value`/`fixed`/`bounds_lo`/`bounds_hi`/`bounds_on`/`error` columns repeated once
+per parameter slot, so an amplitude block sits beside its lifetime block. A
+rich-text header renders the slot's HTML label (`x<sub>l</sub>` → xₗ,
+`&rho;` → ρ) with the per-component index stripped; the paired table reuses the
+`parameter_group_table` cell logic, `FittingParameterProxyController` link/detail
+actions, and copy/paste. The TCSPC Lifetime model's Lifetimes (xₗ/τₗ) and
+Anisotropy rotation (bᵢ/ρᵢ) groups use `style:"table"`. Both table widgets
+(`parameter_group_table` and the paired `dynamic_group` table) can hide the
+**Lo / Hi / Bounds** columns to keep the tables narrow — a `panel` with
+`bounds_toggle:true` puts a small checkable "bounds" button in its fold header
+that shows/hides those columns for *every* table in the panel at once (columns
+start hidden; bounds stay editable in the parameter details popup). The
+`CollapsibleBox` header gained `add_header_widget` to host such per-section
+controls with no extra vertical space),
+`help` (a `?` modal button), and
 `wizard`/`info`/`embed`. **All tables** (log, `parameter_group_table`,
 `scalar_table`, AutoForm record `table`) share the central
 `chisurf.gui.widgets.general.table_font` — monospace by default (configurable via

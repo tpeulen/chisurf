@@ -782,3 +782,37 @@ def test_chimol_split_chains(editing_context):
     assert "obj1_A" in object_names
     assert "obj1_B" in object_names
 
+
+
+def test_chimol_count_atoms(editing_context):
+    """count_atoms resolves a selection and reports the atom count."""
+    viewer, cmd = editing_context
+    messages = []
+    cmd.set_message_callback(messages.append)
+
+    assert cmd.count_atoms("all") == 10
+    assert cmd.count_atoms("resi 0-4") == 5
+    # Command-line form goes through the tokenizer + binder.
+    cmd.do("count_atoms resi 0-2")
+    assert any("3 atoms" in m for m in messages)
+
+
+def test_chimol_set_name(editing_context):
+    """set_name renames a loaded object in place."""
+    viewer, cmd = editing_context
+    original = viewer.list_objects()[0]["name"]
+
+    cmd.do(f"set_name {original}, renamed_obj")
+    names = [obj["name"] for obj in viewer.list_objects()]
+    assert "renamed_obj" in names
+    assert original not in names
+
+
+def test_chimol_set_name_unknown_object_errors(editing_context):
+    """Renaming a missing object surfaces an error, not a crash."""
+    viewer, cmd = editing_context
+    errors = []
+    cmd.set_error_callback(errors.append)
+
+    cmd.do("set_name no_such_object, whatever")
+    assert errors and any("Unknown object" in e for e in errors)

@@ -127,9 +127,41 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
 
     # (b) the editor is not a row of empty titled boxes (per-parameter widgets
     # and/or compact parameter-group tables)
-    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+    from chisurf.gui.autoform.sections.parameter_table import (
+        PairedParameterTableWidget,
+        ParameterGroupTableWidget,
+    )
     table_rows = sum(t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget))
     assert len(editor.parameter_widgets) + table_rows > 12, "parameter groups rendered empty"
+
+    # (b2) the lifetime (x/tau) and rotation (b/rho) components render as paired
+    # tables: one row per component, two parameter slots per row side by side.
+    paired = editor.findChildren(PairedParameterTableWidget)
+    assert paired, "paired component tables did not render"
+    for t in paired:
+        assert t.table_model.width == 2, "paired table expected 2 params per component"
+        # 1 index column + 2 slots x 6 (value/fixed/lo/hi/bounds/error) columns
+        assert t.table_model.columnCount() == 1 + 2 * 6
+    # the lifetime components table starts populated (at least one component row)
+    assert any(t.table_model.rowCount() >= 1 for t in paired), "no paired component rows"
+
+    # (b3) each bounds_toggle panel puts a "bounds" toggle in its header; the
+    # Lo/Hi/Bounds columns start hidden (to save width) and the toggle reveals them.
+    from qtpy import QtWidgets
+    from chisurf.gui.autoform.sections.parameter_table import COL_BOUNDS_ON
+
+    toggles = [b for b in editor.findChildren(QtWidgets.QToolButton) if b.text() == "bounds"]
+    assert toggles, "no 'bounds' toggle rendered in panel headers"
+    gen = next(
+        (t for t in editor.findChildren(ParameterGroupTableWidget) if t.has_bounds_columns()),
+        None,
+    )
+    assert gen is not None, "no bounds-capable parameter table found"
+    assert gen.table_view.isColumnHidden(COL_BOUNDS_ON), "bounds column not hidden by default"
+    gen.set_bounds_visible(True)
+    assert not gen.table_view.isColumnHidden(COL_BOUNDS_ON), "bounds column not shown after toggle"
+    gen.set_bounds_visible(False)
+    assert gen.table_view.isColumnHidden(COL_BOUNDS_ON), "bounds column not re-hidden"
 
     # (c) every parameter-group section resolves to a group that actually has params
     spec = model.view_spec()

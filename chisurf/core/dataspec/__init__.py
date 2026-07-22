@@ -171,6 +171,14 @@ class DynamicGroupSection(Section):
     #: ``collapsible=False`` (the outer box is suppressed; components provide
     #: the per-item fold chrome instead).
     component_title: typing.Optional[str] = None
+    #: Row-rendering style. ``"grid"`` (default) lays each parameter out as a
+    #: standalone spin-box row, ``row_width`` per line. ``"table"`` renders the
+    #: components as a single ``QTableView`` where each ``row_width`` group of
+    #: parameters is one row and its columns repeat side by side (an amplitude
+    #: block then a lifetime block), so paired parameters stay adjacent while
+    #: sharing the compact Value/Fixed/Lo/Hi/Bounds/Error columns of the other
+    #: parameter tables. Ignored when ``component_title`` is set.
+    style: str = "grid"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -231,6 +239,12 @@ class PanelSection(Section):
     #: (value/choice/toggle). ``None`` uses the renderer default; ``1`` gives a
     #: single-column form layout that saves horizontal space in narrow docks.
     n_col: typing.Optional[int] = None
+    #: When ``True``, the panel header carries a small checkable toggle that
+    #: shows/hides the Lo / Hi / Bounds columns of *every* parameter table in the
+    #: panel. The columns start **hidden** (bounds remain editable in the
+    #: parameter details popup) so the tables stay narrow. See
+    #: :class:`ParameterGroupTableSection` and the paired ``dynamic_group`` table.
+    bounds_toggle: bool = False
     #: Ordered child sections rendered inside the panel.
     sections: typing.Tuple[Section, ...] = ()
 

@@ -4,6 +4,7 @@
     {
       "type": "panel",
       "title": "Convolution",
+      "bounds_toggle": true,
       "sections": [
         {"type": "curve_input", "target": "convolve", "label": "IRF", "select_action": "model.change_irf", "unload_action": "model.unload_irf", "index_key": "irf_idx", "name_key": "irf_name", "name_attr": "irf"},
         {"type": "choice", "target": "convolve", "attr": "mode", "label": "Type", "options": ["per", "exp", "full"], "style": "radio"},
@@ -14,6 +15,7 @@
     {
       "type": "panel",
       "title": "Generic",
+      "bounds_toggle": true,
       "sections": [
         {"type": "parameter_group_table", "target": "generic", "collapsible": false}
       ]
@@ -22,6 +24,7 @@
       "type": "panel",
       "title": "Corrections",
       "collapsed": true,
+      "bounds_toggle": true,
       "sections": [
         {"type": "curve_input", "target": "corrections", "label": "Lin. table", "select_action": "model.set_linearization", "unload_action": "model.unload_lintable", "index_key": "idx", "name_key": "lin_name"},
         {"type": "choice", "target": "corrections", "attr": "window_function", "label": "Smoothing", "options_source": "window_function_types"},
@@ -39,12 +42,14 @@
     {
       "type": "panel",
       "title": "Lifetimes",
+      "bounds_toggle": true,
       "sections": [
         {
           "type": "dynamic_group",
           "target": "lifetimes",
           "rows_source": "_lifetime_parameter_rows",
           "row_width": 2,
+          "style": "table",
           "header_keys": ["lifetime_amplitude_options"],
           "collapsible": false
         }
@@ -54,6 +59,7 @@
       "type": "panel",
       "title": "Anisotropy",
       "collapsed_when": {"target": "anisotropy", "attr": "polarization_type", "equals": "vm"},
+      "bounds_toggle": true,
       "sections": [
         {"type": "choice", "target": "anisotropy", "attr": "polarization_type", "label": "Polarization", "options": ["vm", "vv", "vh", "vv/vh"]},
         {"type": "parameter_group_table", "target": "anisotropy", "exclude_source": "_rotation_parameters", "collapsible": false},
@@ -64,6 +70,7 @@
           "remove_method": "remove_rotation",
           "rows_source": "_rotation_parameter_rows",
           "row_width": 2,
+          "style": "table",
           "min_rows": 0,
           "collapsible": false
         }
