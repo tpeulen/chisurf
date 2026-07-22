@@ -22,6 +22,7 @@ from ..api.models import (
     BocpdFilterSettings,
     KalmanFilterSettings,
     CusumFilterSettings,
+    TttrlibSearchSettings,
 )
 from ..api.selection import analyze_file
 
@@ -125,9 +126,18 @@ def photon_filter_settings_from_wizard(wizard_filter: Any) -> PhotonFilterSettin
         beta=float(getattr(wizard_filter, "cusum_beta", 0.05)),
     )
 
+    # The selected tttrlib search and its parameters, both free-form so that a
+    # new algorithm needs no field here.
+    tttrlib_settings = TttrlibSearchSettings(
+        algorithm=str(getattr(wizard_filter, "tttrlib_algorithm", "") or "maxtree"),
+        parameters=dict(getattr(wizard_filter, "tttrlib_parameters", {}) or {}),
+    )
+
     return PhotonFilterSettings(
         channels=list(wizard_filter.channels),
-        microtime_ranges=list(wizard_filter.microtime_ranges),
+        # `microtime_ranges` is None when no window is selected ("All"); an
+        # empty list is what "apply no micro-time mask" looks like downstream.
+        microtime_ranges=list(wizard_filter.microtime_ranges or []),
         filter_active=bool(wizard_filter.settings.get("filter_active", True)),
         used_filter=BurstFilterMode(str(wizard_filter.used_filter)),
         count_rate_filter=CountRateFilterSettings(
@@ -138,6 +148,7 @@ def photon_filter_settings_from_wizard(wizard_filter: Any) -> PhotonFilterSettin
         bocpd_filter=bocpd_settings,
         kalman_filter=kalman_settings,
         cusum_filter=cusum_settings,
+        tttrlib_search=tttrlib_settings,
         delta_macro_time_filter=DeltaMacroTimeFilterSettings(
             dT_min=float(wizard_filter.dT_min),
             dT_max=float(wizard_filter.dT_max),

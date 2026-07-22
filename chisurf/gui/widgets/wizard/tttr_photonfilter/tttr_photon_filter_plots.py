@@ -77,6 +77,19 @@ def create_plots(page, colors):
         page.doubleSpinBox_3.setValue(ub)
         page.doubleSpinBox_2.blockSignals(False)
         page.doubleSpinBox_3.blockSignals(False)
+        # The macro-time bounds now live in the generated form's settings, which
+        # is what the analysis marshals; writing only the old widgets left a
+        # dragged region with no effect on the selection. Going through the
+        # bound object also refreshes the form's own fields and mirrors the
+        # values onward, so the region, the spin boxes and the analysis agree.
+        model = getattr(page, "_filter_settings_model", None)
+        if model is not None:
+            page._region_is_updating = True
+            try:
+                model.settings.dt_min = float(lb)
+                model.settings.dt_max = float(ub)
+            finally:
+                page._region_is_updating = False
         page.update_plots()
         page.update_output_path()
 

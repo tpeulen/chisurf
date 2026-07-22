@@ -18,6 +18,28 @@ import pandas as pd
 import json
 
 import chisurf as cs
+
+from chisurf.gui.autoform import AutoForm
+from chisurf.gui.autoform.sections.registry import register_section
+
+
+@register_section("host_widget")
+def _host_widget_section(model, target=None, **options):
+    """AutoForm custom section that hosts an existing widget owned by the model.
+
+    Lets the AutoForm dock shell reuse the wizard's programmatically built pages
+    as dock panels (``{"attr": "tab_files"}`` → ``model.tab_files``) instead of
+    reimplementing them, so the QTabWidget can be replaced without rewriting the
+    fit UI. Returns ``None`` when the attribute is missing so a stale reference
+    just drops its panel rather than raising.
+    """
+    widget = getattr(model, options.get("attr", ""), None)
+    if widget is not None:
+        # A QTabWidget hides every non-current page; that explicit-hidden flag
+        # survives reparenting, so the hosted page would stay blank inside its
+        # panel. Clear it so the page shows with the panel.
+        widget.setVisible(True)
+    return widget
 import chisurf.gui.decorators
 import chisurf.core.settings
 import chisurf.gui.widgets.wizard
@@ -873,9 +895,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         st.setdefault('p2s_twoIstar', bool(getattr(self, 'p2s_twoIstar', False)))
         st.setdefault('BIFL_scatter', bool(getattr(self, 'BIFL_scatter', False)))
         st.setdefault('min_photons', int(getattr(self, 'min_photons', 0)))
-        # IRF/BG arrays: ensure keys exist even if empty
-        st.setdefault('irf', np.array(self.irf_np.get(det, np.array([]))))
-        st.setdefault('bg', np.array(self.bg_np.get(det, np.array([]))))
+        # IRF/BG arrays are NOT stored here. irf_np[det]/bg_np[det] are the single
+        # source of truth for the raw per-detector patterns (they persist across
+        # detector switches); the .irf/.bg properties apply shift/window/threshold
+        # on read. Round-tripping the *processed* arrays through channel_settings
+        # re-applied that processing every switch and steadily corrupted them.
         self.channel_settings[det] = st
         return st
 
@@ -894,10 +918,18 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             self.bg_np.setdefault(d, np.array([]))
             self._ensure_channel_state(d)
 
-        # refill all of the "window" and IRF/BG dropdowns
+        # Repopulate the detector combobox with signals BLOCKED. Otherwise
+        # clear()/setCurrentIndex fire currentTextChanged("") mid-transition,
+        # which runs _on_channel_changed("") -> _apply_ui_state("") and writes a
+        # spurious empty-named detector into channel_settings/irf_np/bg_np. That
+        # left the real current detector without an IRF, so update_fit bailed
+        # (det not in irf_np) — a stuck fit and blank plots. The real switch is
+        # done once, explicitly, at the end via _on_channel_changed(dets[0]).
+        self.block_widget_signals([self.comboBox_window])
         self.comboBox_window.clear()
         self.comboBox_window.addItems(dets)
         self.comboBox_window.setCurrentIndex(0)
+        self.unblock_widget_signals([self.comboBox_window])
         self._switch_filewidget(self.irf_file_widgets, dets[0])
         self._switch_filewidget(self.bg_file_widgets, dets[0])
 
@@ -905,6 +937,14 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             cb.clear()
             cb.addItems(dets)
             cb.setCurrentIndex(0)
+
+        # Drop any empty-named detector that slipped into the per-detector state
+        # (from an earlier spurious "" channel change), so it can never shadow a
+        # real detector or be fitted.
+        for stale in ("", None):
+            self.channel_settings.pop(stale, None)
+            self.irf_np.pop(stale, None)
+            self.bg_np.pop(stale, None)
 
         # finally, apply settings for the initially selected detector including any saved MLE settings
         if dets:
@@ -918,6 +958,114 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             self.spinBox_current_file_idx.blockSignals(False)
             self.update_current_file(current_idx)
             self.update_bg_files()
+
+    # ── AutoForm dock shell (replaces the QTabWidget) ──────────────────────
+    #: Maps each source tab (by widget attribute) to the foldable panels it
+    #: becomes. A tab may fan out into several panels: the Files tab's three
+    #: group boxes each get their own foldable dock, kept separate from the
+    #: Burst-MLE fit panel, so file selection and fitting fold independently.
+    #: The conversion keeps only tabs still present, so the embedded workflow
+    #: (which drops "Detector Definition") and the standalone wizard both get the
+    #: right panels with no special case.
+    _DOCK_LAYOUT = (
+        ("tab_detector", (("tab_detector", "Detector Definition"),)),
+        ("tab_files", (
+            ("groupBox_burst_files", "Burst Files"),
+            ("groupBox_irf_files", "IRF Files"),
+            ("groupBox_bg_files", "Background Files"),
+        )),
+        ("tab_parameters", (("tab_parameters", "Burst-MLE"),)),
+    )
+
+    def view_spec(self):
+        """AutoForm view: one draggable ChiSurf dock per wizard page.
+
+        Each page (the three file inputs and the Burst-MLE workspace, plus the
+        standalone Detector Definition) becomes its own draggable/floatable dock
+        panel, so file selection and fitting can be torn apart or re-tabbed
+        freely. This is safe now that the workflow embeds the wizard's *central
+        widget* rather than the QMainWindow — the dock area's earlier show-time
+        click-blocking was a QMainWindow-as-child artefact, not the dock itself.
+        """
+        from chisurf.core.dataspec import CustomSection, DockAreaSection, ModelView
+
+        panels = tuple(
+            CustomSection(key="host_widget", title=title, options={"attr": attr})
+            for attr, title in getattr(self, "_dock_pages", ())
+        )
+        return ModelView(
+            sections=(
+                DockAreaSection(title="MLE", sections=panels, persist="burst_mle_dock"),
+            )
+        )
+
+    def _convert_tabs_to_dock_shell(self):
+        """Replace the QTabWidget with an AutoForm dock area of the same pages.
+
+        Deferred (via singleShot) so it runs after the embedded workflow has
+        removed the "Detector Definition" tab: whatever tabs remain become dock
+        panels. The pages are reused as-is (see ``host_widget``), so no fit UI is
+        rewritten — this only swaps the un-clickable tab bar for draggable docks.
+        """
+        tw = getattr(self, "tabWidget", None)
+        if tw is None or getattr(self, "_dock_shell_built", False):
+            return
+        # Each remaining tab fans out into its configured panels (the Files tab
+        # into one foldable per file group box).
+        known = {}
+        for tab_attr, panels in self._DOCK_LAYOUT:
+            tab_widget = getattr(self, tab_attr, None)
+            if tab_widget is not None:
+                known[id(tab_widget)] = panels
+        pages = []
+        for i in range(tw.count()):
+            panels = known.get(id(tw.widget(i)))
+            if not panels:
+                continue
+            for attr, title in panels:
+                if getattr(self, attr, None) is not None:
+                    pages.append((attr, title))
+        if getattr(self, "_embedded", False):
+            # In the burst-analysis workflow the file inputs are supplied upstream
+            # (Data Selection burst files; IRF & Background -> Send to MLE), so the
+            # MLE panel's own file-drop docks are duplicates. Show only the fit.
+            _duplicate = {"tab_files", "groupBox_burst_files",
+                          "groupBox_irf_files", "groupBox_bg_files"}
+            pages = [(attr, title) for attr, title in pages if attr not in _duplicate]
+        if not pages:
+            return
+        self._dock_pages = pages
+        # Let each hosted widget fill its dock (the Burst-MLE workspace holds the
+        # plots). The file group boxes already carry their own title border, so
+        # the foldable header would duplicate it — drop the inner title.
+        file_boxes = {"groupBox_burst_files", "groupBox_irf_files", "groupBox_bg_files"}
+        for attr, _title in pages:
+            page = getattr(self, attr, None)
+            if page is None:
+                continue
+            page.setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+            )
+            if attr in file_boxes and hasattr(page, "setTitle"):
+                page.setTitle("")
+
+        # Building the form reparents the pages into the dock panels, emptying
+        # the tab widget, which is then removed from the layout and replaced by
+        # the form (the dock area fills the space itself — no scroll wrapper).
+        # The dock area's own tab widgets manage per-panel visibility, so we do
+        # NOT force every page visible here — doing so would draw all docks on
+        # top of each other instead of only the selected tab.
+        form = AutoForm(self)
+        parent = tw.parentWidget()
+        layout = parent.layout() if parent is not None else None
+        if layout is not None:
+            index = layout.indexOf(tw)
+            layout.removeWidget(tw)
+            layout.insertWidget(max(0, index), form)
+        tw.hide()
+        tw.setParent(None)
+        self._dock_form = form
+        self._dock_shell_built = True
 
     def _update_max_bins_from_tttr(self):
         try:
@@ -959,8 +1107,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             'g_factor': self.g_factor,
             'l1': self.l1,
             'l2': self.l2,
-            'irf': self.irf,
-            'bg': self.bg,
+            # IRF/BG are not captured — they live in irf_np/bg_np (single source
+            # of truth). Capturing the processed .irf/.bg here and restoring them
+            # as raw re-applied shift/threshold every switch and corrupted them.
             'initial_x0': np.array(x0),
             'fixed_flags': fixed.astype(int),
             'p2s_twoIstar': self.p2s_twoIstar,
@@ -1007,11 +1156,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.fix_gamma = bool(fixed[1])
         self.fix_r0 = bool(fixed[2])
         self.fix_rho = bool(fixed[3])
-
-        # — restore cached IRF/BG arrays so your `.irf` & `.bg` props pick them up —
-        det = self.current_detector
-        self.irf_np[det] = np.array(state['irf'])
-        self.bg_np [det] = np.array(state['bg'])
+        # IRF/BG are NOT restored here — irf_np[det]/bg_np[det] already hold this
+        # detector's raw pattern (see _ensure_channel_state). Writing them back
+        # from a captured, already-processed copy corrupted them each switch.
 
     def _on_channel_changed(self, new_detector):
         old = getattr(self, '_last_detector', None)
@@ -1041,7 +1188,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         state = self.channel_settings.get(new_detector)
         required_keys = (
             'micro_time_start', 'micro_time_stop', 'initial_x0', 'fixed_flags',
-            'g_factor', 'l1', 'l2', 'irf', 'bg'
+            'g_factor', 'l1', 'l2',
         )
         if isinstance(state, dict) and all(k in state for k in required_keys):
             widgets = (
@@ -1291,9 +1438,13 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                         other_fw.blockSignals(False)
 
             if not files:
-                np_dict.pop(det, None)
-                self.combined_plot.clear()
-                return
+                # No dropped files for this detector: preserve any pattern set
+                # programmatically (Send-to-MLE / IRF extraction) in np_dict[det].
+                # Use continue (not return) so remaining detectors are still
+                # processed; only blank the plot for the visible detector.
+                if det == self.current_detector:
+                    self.combined_plot.clear()
+                continue
 
             det_chs = self.channel_definer.detectors[det]["chs"]
 
@@ -1308,13 +1459,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                     threshold=threshold,
                     apply_vh_shift=False if state_key in ('irf', 'bg') else True
                 )
-                arr = np.sum(vv_vh, axis=0)
-                np_dict[det] = arr
-
-                if state_key is not None:
-                    # Ensure nested dict exists before assignment to avoid KeyError
-                    self.channel_settings.setdefault(det, {})
-                    self.channel_settings[det][state_key] = arr
+                # np_dict is irf_np/bg_np — the single source of truth. (We no
+                # longer also stash the array in channel_settings[det][state_key].)
+                np_dict[det] = np.sum(vv_vh, axis=0)
 
         # redraw decay without fitting
         self.update_decay_of_detector()
@@ -1370,11 +1517,332 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             # move to next row in the grid
             self.burst_layout.nextRow()
 
-    @cs.gui.decorators.init_with_ui(
-        "burst/burst_mle_analysis/wizard.ui",
-        path=cs.core.settings.plugin_path
-    )
+    # ── Programmatic UI (replaces the former wizard.ui) ────────────────────
+    @staticmethod
+    def _dsb(decimals=2, minimum=0.0, maximum=99.0, value=0.0, step=None,
+             adaptive=False, readonly=False, nobuttons=False):
+        """Build a QDoubleSpinBox from the property set used across the UI."""
+        sb = QtWidgets.QDoubleSpinBox()
+        sb.setDecimals(decimals)
+        sb.setMinimum(minimum)
+        sb.setMaximum(maximum)
+        if step is not None:
+            sb.setSingleStep(step)
+        if adaptive:
+            sb.setStepType(QtWidgets.QAbstractSpinBox.AdaptiveDecimalStepType)
+        sb.setValue(value)
+        if readonly:
+            sb.setReadOnly(True)
+        if nobuttons:
+            sb.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+        return sb
+
+    @staticmethod
+    def _isb(minimum=0, maximum=99, value=0, step=1):
+        """Build a QSpinBox with the given range/step/value."""
+        sb = QtWidgets.QSpinBox()
+        sb.setMinimum(minimum)
+        sb.setMaximum(maximum)
+        sb.setSingleStep(step)
+        sb.setValue(value)
+        return sb
+
+    @staticmethod
+    def _hspacer():
+        return QtWidgets.QSpacerItem(
+            40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
+
+    def _build_ui(self):
+        """Construct the wizard UI in code (this replaced ``wizard.ui``).
+
+        Builds the same central widget / QTabWidget / ``tab_files`` /
+        ``tab_parameters`` tree, with the identical widget object names the rest
+        of the wizard (~200 references) and the AutoForm dock-shell conversion
+        depend on. The dock shell then fans these pages out into foldable docks.
+        """
+        self.setWindowTitle("MLE Lifetime Analysis")
+        self.centralwidget = QtWidgets.QWidget(self)
+        self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout.setSpacing(0)
+        self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
+        self.verticalLayout.addWidget(self.tabWidget)
+        self.setCentralWidget(self.centralwidget)
+        self._build_files_tab()
+        self._build_parameters_tab()
+        self.tabWidget.setCurrentIndex(0)
+
+    def _build_files_tab(self):
+        """Files page: burst / IRF / background file group boxes."""
+        Q = QtWidgets
+        self.tab_files = Q.QWidget()
+        h = Q.QHBoxLayout(self.tab_files)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(0)
+        self.verticalLayout_3 = Q.QVBoxLayout()  # left spacer column (empty)
+        h.addLayout(self.verticalLayout_3)
+        self.verticalLayout_2 = Q.QVBoxLayout()
+        h.addLayout(self.verticalLayout_2)
+
+        # Burst files
+        self.groupBox_burst_files = Q.QGroupBox("Burst Files")
+        self.groupBox_burst_files.setSizePolicy(Q.QSizePolicy.Expanding, Q.QSizePolicy.Preferred)
+        v7 = Q.QVBoxLayout(self.groupBox_burst_files)
+        v7.setContentsMargins(0, 0, 0, 0)
+        v7.setSpacing(0)
+        hb = Q.QHBoxLayout()
+        self.toolButton_clear_burst = Q.QToolButton()
+        self.toolButton_clear_burst.setText("Clear")
+        hb.addWidget(self.toolButton_clear_burst)
+        hb.addItem(self._hspacer())
+        v7.addLayout(hb)
+        self.verticalLayout_burst_files = Q.QVBoxLayout()
+        v7.addLayout(self.verticalLayout_burst_files)
+        self.verticalLayout_2.addWidget(self.groupBox_burst_files)
+
+        # IRF files
+        self.groupBox_irf_files = Q.QGroupBox("IRF Files")
+        self.groupBox_irf_files.setSizePolicy(Q.QSizePolicy.Expanding, Q.QSizePolicy.Minimum)
+        v8 = Q.QVBoxLayout(self.groupBox_irf_files)
+        v8.setContentsMargins(0, 0, 0, 0)
+        v8.setSpacing(0)
+        hb2 = Q.QHBoxLayout()
+        self.toolButton_clear_irf = Q.QToolButton()
+        self.toolButton_clear_irf.setText("Clear")
+        self.comboBox_irf_select = Q.QComboBox()
+        self.checkBox_irf_one_for_all = Q.QCheckBox("One for all")
+        self.checkBox_irf_one_for_all.setChecked(True)
+        hb2.addWidget(self.toolButton_clear_irf)
+        hb2.addWidget(self.comboBox_irf_select)
+        hb2.addWidget(self.checkBox_irf_one_for_all)
+        hb2.addItem(self._hspacer())
+        v8.addLayout(hb2)
+        self.verticalLayout_irf_files = Q.QVBoxLayout()
+        v8.addLayout(self.verticalLayout_irf_files)
+        self.verticalLayout_2.addWidget(self.groupBox_irf_files)
+
+        # Background files
+        self.groupBox_bg_files = Q.QGroupBox("Background Files")
+        self.groupBox_bg_files.setSizePolicy(Q.QSizePolicy.Preferred, Q.QSizePolicy.Minimum)
+        v9 = Q.QVBoxLayout(self.groupBox_bg_files)
+        v9.setContentsMargins(0, 0, 0, 0)
+        v9.setSpacing(0)
+        hb3 = Q.QHBoxLayout()
+        self.toolButton_clear_bg = Q.QToolButton()
+        self.toolButton_clear_bg.setText("Clear")
+        self.comboBox_background_select = Q.QComboBox()
+        self.checkBox_bg_one_for_all = Q.QCheckBox("One for all")
+        self.checkBox_bg_one_for_all.setChecked(True)
+        hb3.addWidget(self.toolButton_clear_bg)
+        hb3.addWidget(self.comboBox_background_select)
+        hb3.addWidget(self.checkBox_bg_one_for_all)
+        hb3.addItem(self._hspacer())
+        v9.addLayout(hb3)
+        self.verticalLayout_bg_files = Q.QVBoxLayout()
+        v9.addLayout(self.verticalLayout_bg_files)
+        self.verticalLayout_2.addWidget(self.groupBox_bg_files)
+
+        self.tabWidget.addTab(self.tab_files, "Files")
+
+    def _build_parameters_tab(self):
+        """Burst-MLE page: fit parameters, IRF controls, plots column, Run."""
+        Q = QtWidgets
+        self.tab_parameters = Q.QWidget()
+        grid3 = Q.QGridLayout(self.tab_parameters)
+
+        # Plots column (row 0, col 1, spanning 6 rows).
+        self.verticalLayout_plots = Q.QVBoxLayout()
+        self.verticalLayout_plots.setSpacing(0)
+        grid3.addLayout(self.verticalLayout_plots, 0, 1, 6, 1)
+
+        # Filename / detector / fit-range / min-photons block (grid at 0,0).
+        g2 = Q.QGridLayout()
+        g2.setSpacing(0)
+        self.label_21 = Q.QLabel("Filename")
+        self.lineEdit_current_filename = Q.QLineEdit()
+        self.lineEdit_current_filename.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Fixed)
+        self.spinBox_current_file_idx = Q.QSpinBox()
+        self.label_window = Q.QLabel("Detector:")
+        self.comboBox_window = Q.QComboBox()
+        self.label_4 = Q.QLabel("Fit Start/Stop")
+        self.spinBox_micro_time_start = self._isb(0, 10000, 0)
+        self.spinBox_micro_time_stop = self._isb(0, 10000, 4096)
+        self.label_14 = Q.QLabel("Minimum Photons:")
+        self.spinBox_min_photons = self._isb(5, 1000, 20)
+        self.toolButton_save_fit = Q.QToolButton()
+        self.toolButton_save_fit.setText("to default")
+        self.toolButton_save_fit.setToolTip("Save use parameters as default.")
+        self.toolButton_save_fit.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Fixed)
+        g2.addWidget(self.label_21, 0, 0)
+        g2.addWidget(self.lineEdit_current_filename, 0, 1, 1, 2)
+        g2.addWidget(self.spinBox_current_file_idx, 0, 3)
+        g2.addWidget(self.label_window, 1, 0)
+        g2.addWidget(self.comboBox_window, 1, 1, 1, 3)
+        g2.addWidget(self.label_4, 2, 0)
+        g2.addWidget(self.spinBox_micro_time_start, 2, 1, 1, 2)
+        g2.addWidget(self.spinBox_micro_time_stop, 2, 3)
+        g2.addWidget(self.label_14, 3, 0)
+        g2.addWidget(self.spinBox_min_photons, 3, 1)
+        g2.addWidget(self.toolButton_save_fit, 3, 3)
+        grid3.addLayout(g2, 0, 0)
+
+        # IRF shift / threshold / range (groupBox_2 at 1,0).
+        self.groupBox_2 = Q.QGroupBox("")
+        g7 = Q.QGridLayout(self.groupBox_2)
+        g7.setContentsMargins(0, 0, 0, 0)
+        g7.setSpacing(0)
+        self.label_7 = Q.QLabel("IRF")
+        self.label = Q.QLabel("VV")
+        self.label_6 = Q.QLabel("VH")
+        self.label_29 = Q.QLabel("Shift")
+        self.label_29.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
+        self.doubleSpinBox_shift_sp = self._dsb(minimum=-99.0, maximum=99.0, adaptive=True)
+        self.doubleSpinBox_shift_ss = self._dsb(minimum=-99.0, maximum=99.0, adaptive=True)
+        self.label_13 = Q.QLabel("Threshold")
+        self.doubleSpinBox_irf_threshold_vv = self._dsb(
+            decimals=3, maximum=1.0, step=0.02, adaptive=True, value=0.15)
+        self.doubleSpinBox_irf_threshold_vh = self._dsb(
+            decimals=2, maximum=1.0, step=0.02, value=0.15)
+        self.label_8 = Q.QLabel("IRF range")
+        self.spinBox_irf_start = self._isb(-1, 999999, -1)
+        self.spinBox_irf_start.setToolTip("Convolution start")
+        self.spinBox_irf_stop = self._isb(-1, 999999, -1)
+        g7.addWidget(self.label_7, 0, 0)
+        g7.addWidget(self.label, 0, 1)
+        g7.addWidget(self.label_6, 0, 2)
+        g7.addWidget(self.label_29, 1, 0)
+        g7.addWidget(self.doubleSpinBox_shift_sp, 1, 1)
+        g7.addWidget(self.doubleSpinBox_shift_ss, 1, 2)
+        g7.addWidget(self.label_13, 2, 0)
+        g7.addWidget(self.doubleSpinBox_irf_threshold_vv, 2, 1)
+        g7.addWidget(self.doubleSpinBox_irf_threshold_vh, 2, 2)
+        g7.addWidget(self.label_8, 3, 0)
+        g7.addWidget(self.spinBox_irf_start, 3, 1)
+        g7.addWidget(self.spinBox_irf_stop, 3, 2)
+        grid3.addWidget(self.groupBox_2, 1, 0)
+
+        # Shift + scatter count rate (groupBox_fit_params at 2,0).
+        self.groupBox_fit_params = Q.QGroupBox("")
+        self.groupBox_fit_params.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Minimum)
+        g4 = Q.QGridLayout(self.groupBox_fit_params)
+        g4.setContentsMargins(0, 0, 0, 0)
+        g4.setSpacing(0)
+        self.label_28 = Q.QLabel("Shift (VV/VH)")
+        self.doubleSpinBox_shift = self._dsb(decimals=0, minimum=-9999.0, maximum=9999.0)
+        self.doubleSpinBox_shift.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Fixed)
+        self.label_24 = Q.QLabel("Scatter Countrate [Hz]")
+        self.label_24.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
+        self.doubleSpinBox_scatter_Countrate = self._dsb(maximum=999999.0, adaptive=True)
+        g4.addWidget(self.label_28, 3, 0)
+        g4.addWidget(self.doubleSpinBox_shift, 3, 1)
+        g4.addWidget(self.label_24, 5, 0)
+        g4.addWidget(self.doubleSpinBox_scatter_Countrate, 5, 1)
+        grid3.addWidget(self.groupBox_fit_params, 2, 0)
+
+        # Model parameters + results (groupBox_model_params at 3,0).
+        self.groupBox_model_params = Q.QGroupBox("")
+        self.groupBox_model_params.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Minimum)
+        g = Q.QGridLayout(self.groupBox_model_params)
+        g.setContentsMargins(0, 0, 0, 0)
+        g.setSpacing(0)
+        self.checkBox_BIFL_scatter = Q.QCheckBox("BIFL scatter")
+        self.checkBox_BIFL_scatter.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Fixed)
+        self.checkBox_2IStar = Q.QCheckBox("2I*: P+2S")
+        self.checkBox_2IStar.setChecked(True)
+        self.checkBox_save_vv_vhs = Q.QCheckBox("Save VV/VHs")
+        g.addWidget(self.checkBox_BIFL_scatter, 0, 0)
+        g.addWidget(self.checkBox_2IStar, 0, 1)
+        g.addWidget(self.checkBox_save_vv_vhs, 0, 4)
+        h4 = Q.QHBoxLayout()
+        h4.setSpacing(0)
+        self.toolButton_hyper_opt = Q.QToolButton()
+        self.toolButton_hyper_opt.setText("Optimize target")
+        self.spinBox_n_h_opt = self._isb(20, 999, 50, 5)
+        self.spinBox_n_h_opt.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Fixed)
+        h4.addWidget(self.toolButton_hyper_opt)
+        h4.addWidget(self.spinBox_n_h_opt)
+        g.addLayout(h4, 1, 0)
+        self.label_5 = Q.QLabel("Initial value")
+        self.label_20 = Q.QLabel("F")
+        self.label_20.setToolTip("Fix parameter")
+        self.label_20.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
+        self.label_19 = Q.QLabel("Fit")
+        self.label_19.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Preferred)
+        g.addWidget(self.label_5, 5, 1)
+        g.addWidget(self.label_20, 5, 3)
+        g.addWidget(self.label_19, 5, 4)
+        # tau / gamma / r0 / rho rows: label, initial value, fix, result
+        self.label_15 = Q.QLabel("Tau (ns):")
+        self.label_15.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
+        self.doubleSpinBox_tau = self._dsb(decimals=3, maximum=20.0, adaptive=True, value=4.0)
+        self.doubleSpinBox_tau.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Fixed)
+        self.checkBox_fix_tau = Q.QCheckBox()
+        self.doubleSpinBox_tau_result = self._dsb(decimals=3, maximum=20.0, readonly=True, nobuttons=True)
+        g.addWidget(self.label_15, 6, 0)
+        g.addWidget(self.doubleSpinBox_tau, 6, 1)
+        g.addWidget(self.checkBox_fix_tau, 6, 3)
+        g.addWidget(self.doubleSpinBox_tau_result, 6, 4)
+        self.label_16 = Q.QLabel("Gamma:")
+        self.doubleSpinBox_gamma = self._dsb(decimals=3, maximum=1.0, step=0.01, adaptive=True, value=0.1)
+        self.checkBox_fix_gamma = Q.QCheckBox()
+        self.doubleSpinBox_gamma_result = self._dsb(decimals=3, maximum=1.0, readonly=True, nobuttons=True)
+        g.addWidget(self.label_16, 7, 0)
+        g.addWidget(self.doubleSpinBox_gamma, 7, 1)
+        g.addWidget(self.checkBox_fix_gamma, 7, 3)
+        g.addWidget(self.doubleSpinBox_gamma_result, 7, 4)
+        self.label_17 = Q.QLabel("r0:")
+        self.doubleSpinBox_r0 = self._dsb(decimals=3, maximum=1.0, step=0.01, adaptive=True, value=0.38)
+        self.checkBox_fix_r0 = Q.QCheckBox()
+        self.checkBox_fix_r0.setChecked(True)
+        self.doubleSpinBox_r0_result = self._dsb(decimals=3, maximum=1.0, readonly=True, nobuttons=True)
+        g.addWidget(self.label_17, 8, 0)
+        g.addWidget(self.doubleSpinBox_r0, 8, 1)
+        g.addWidget(self.checkBox_fix_r0, 8, 3)
+        g.addWidget(self.doubleSpinBox_r0_result, 8, 4)
+        self.label_18 = Q.QLabel("Rho (ns):")
+        self.doubleSpinBox_rho = self._dsb(decimals=3, maximum=999.0, adaptive=True, value=1.22)
+        self.checkBox_fix_rho = Q.QCheckBox()
+        self.doubleSpinBox_rho_result = self._dsb(decimals=3, maximum=20.0, readonly=True, nobuttons=True)
+        g.addWidget(self.label_18, 9, 0)
+        g.addWidget(self.doubleSpinBox_rho, 9, 1)
+        g.addWidget(self.checkBox_fix_rho, 9, 3)
+        g.addWidget(self.doubleSpinBox_rho_result, 9, 4)
+        self.label_3 = Q.QLabel("Score")
+        self.doubleSpinBox_twoIstar_result = self._dsb(decimals=3, maximum=99999.0, readonly=True, nobuttons=True)
+        g.addWidget(self.label_3, 10, 0)
+        g.addWidget(self.doubleSpinBox_twoIstar_result, 10, 1)
+        self.label_25 = Q.QLabel("rScatter")
+        self.doubleSpinBox_r_scatter_result = self._dsb(
+            decimals=3, minimum=-1.0, maximum=1.0, readonly=True, nobuttons=True)
+        self.label_27 = Q.QLabel("rExp")
+        self.doubleSpinBox_r_exp_result = self._dsb(
+            decimals=3, minimum=-1.0, maximum=1.0, readonly=True, nobuttons=True)
+        g.addWidget(self.label_25, 11, 0)
+        g.addWidget(self.doubleSpinBox_r_scatter_result, 11, 1)
+        g.addWidget(self.label_27, 11, 3)
+        g.addWidget(self.doubleSpinBox_r_exp_result, 11, 4)
+        grid3.addWidget(self.groupBox_model_params, 3, 0)
+
+        # Vertical spacer (row 4) then the Run button (row 5).
+        grid3.addItem(
+            Q.QSpacerItem(20, 40, Q.QSizePolicy.Minimum, Q.QSizePolicy.Expanding), 4, 0
+        )
+        self.pushButton_process_bursts = Q.QPushButton("Run")
+        self.pushButton_process_bursts.setSizePolicy(
+            Q.QSizePolicy.MinimumExpanding, Q.QSizePolicy.Fixed
+        )
+        run_font = self.pushButton_process_bursts.font()
+        run_font.setBold(True)
+        self.pushButton_process_bursts.setFont(run_font)
+        self.pushButton_process_bursts.setStyleSheet("background-color: rgb(49, 208, 24)")
+        grid3.addWidget(self.pushButton_process_bursts, 5, 0)
+
+        self.tabWidget.addTab(self.tab_parameters, "BurstMLE")
+
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._build_ui()
         # Core attributes
         self.df_bursts = None
         self._fit = None
@@ -1567,12 +2035,16 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                       getattr(ctrl, 'currentTextChanged'))
             signal.connect(self.on_irf_parameters_changed)
 
-        # whenever the user finishes (or re-configures) the DetectorWizardPage,
-        # rebuild all the IRF/BG lists and window combobox
-        self.channel_definer.detectorsChanged.connect(self._init_channels_from_wizard)
+        # detectorsChanged -> _init_channels_from_wizard is wired once in
+        # connect_signals(); do NOT connect it again here (a duplicate connection
+        # ran the full reinit twice per detector change).
 
         # --- UI actions ---
         self.tabWidget.currentChanged.connect(self._on_tab_changed)
+        # Replace the tab bar with an AutoForm dock area. Deferred so the embedded
+        # workflow's synchronous "remove Detector Definition tab" runs first and
+        # the dock shell mirrors whatever tabs actually remain.
+        QtCore.QTimer.singleShot(0, self._convert_tabs_to_dock_shell)
         # Start hyperparameter optimization
         try:
             self.toolButton_hyper_opt.clicked.connect(
@@ -1716,7 +2188,14 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             pass
 
     def on_micro_time_range_changed(self, _=None):
-        # When micro-time window or binning changes: recompute decays and update plots/fit
+        # When micro-time window or binning changes: recompute decays AND rebuild
+        # the IRF/background at the new binning. The decay length scales with
+        # micro_time_binning, so without rebuilding the (file-sourced) IRF/bg here
+        # they keep their old length and the fit would run on mismatched arrays.
+        # (IRFs injected via Send-to-MLE have no files to rebuild from; update_fit
+        # detects the length mismatch and reports it rather than fitting garbage.)
+        self.update_irf_files()
+        self.update_bg_files()
         self.update_decay_of_detector()
         self._fit = None
         self.update_fit()
@@ -1935,17 +2414,123 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         det = self.current_detector
         decay = self.decay_of_current_file
 
-        if det not in self.irf_np or det not in self.bg_np:
-            return
-        if decay is None:
+        # Surface why a fit can't run instead of returning silently (which left a
+        # stale/blank plot with no explanation — the classic "nothing happens").
+        reason = self._fit_blocked_reason(det, decay)
+        if reason is not None:
+            cs.logging.info("MLE fit skipped: %s", reason)
+            self._set_status(f"Cannot fit: {reason}")
             return
 
         self._fit = None
 
         # use full-length decay (already zeroed outside window)
         d = decay.astype(np.float64, copy=False)
+        # Guard against a decay whose length no longer matches the IRF (e.g. after
+        # a binning change): the C++ fit is now hardened against this, but skip
+        # rather than fit meaningless mismatched arrays.
+        irf_len = int(np.asarray(self.irf_np.get(det, [])).size)
+        if irf_len and len(d) != irf_len:
+            msg = (f"decay length {len(d)} != IRF length {irf_len} for {det!r} "
+                   f"(rebuild IRF at the current binning)")
+            cs.logging.info("MLE fit skipped: %s", msg)
+            self._set_status(f"Cannot fit: {msg}")
+            return
         res = self.fit(data=d, initial_values=x0, fixed=fixed)
         self.plot_fit_result(res)
+        self._set_status("")
+
+    def _fit_blocked_reason(self, det, decay):
+        """Human-readable reason the fit cannot run, or None when it can."""
+        if not det:
+            return "no detector selected"
+        if det not in self.irf_np or np.asarray(self.irf_np.get(det, [])).size == 0:
+            return f"no IRF for detector {det!r} (load or send an IRF)"
+        if det not in self.bg_np or np.asarray(self.bg_np.get(det, [])).size == 0:
+            return f"no background for detector {det!r}"
+        if decay is None or np.asarray(decay).size == 0:
+            return "no decay (load bursts / select a file)"
+        return None
+
+    def _set_status(self, text: str):
+        """Show a short status message where the host offers one; never crash."""
+        try:
+            bar = self.statusBar() if hasattr(self, "statusBar") else None
+            if bar is not None:
+                bar.showMessage(text)
+        except Exception:
+            pass
+
+    def _current_tttr(self):
+        """The TTTR object backing the currently selected burst file, or None."""
+        if self.df_bursts is None or not self.tttrs:
+            return None
+        df = self.df_bursts
+        curr = Path(self.current_filename).name if self.current_filename else None
+        if "burst_file" in df.columns and curr:
+            sub = df[df["burst_file"] == curr]
+            if not sub.empty:
+                df = sub
+        if "First File" not in df.columns or df.empty:
+            return None
+        return self.tttrs.get(Path(df.iloc[0]["First File"]).stem)
+
+    def auto_extract_irf_bg(self):
+        """One-click IRF/background from this file's NON-burst photons.
+
+        A convenience for a quick lifetime: the scatter/background under the
+        bursts is estimated from the photons the burst search rejected. It is an
+        approximation — a measured experimental IRF and buffer background give
+        more reliable lifetimes (see the warning shown next to the button).
+        """
+        from chisurf.core.fluorescence.burst import extract_mle_irf_background
+
+        tttr = self._current_tttr()
+        if tttr is None:
+            self._set_status("Load bursts first — no data to extract an IRF from")
+            return
+        idx = np.asarray(self.get_burst_indices_for_current_file(), dtype=int)
+        if idx.size == 0:
+            self._set_status("No burst photons found for the selected file")
+            return
+        in_burst = np.zeros(len(tttr), dtype=bool)
+        in_burst[idx] = True
+        try:
+            patterns = extract_mle_irf_background(
+                tttr,
+                self.channel_definer.detectors,
+                micro_time_binning=self.micro_time_binning,
+                mask=~in_burst,
+                min_photons=max(2, int(self.min_photons)),
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._set_status(f"IRF extraction failed: {exc}")
+            return
+        n = 0
+        for det, pat in patterns.items():
+            if det:  # skip any stray empty-name key
+                self.irf_np[det] = np.asarray(pat["irf"], dtype=float)
+                self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
+                n += 1
+        self.update_decay_of_detector()
+        self._fit = None
+        self.update_fit()
+        self._set_status(
+            f"Auto IRF/background estimated from non-burst photons for {n} "
+            f"detector(s). For best lifetimes, use a measured IRF/background."
+        )
+
+    def go_to_irf_bg(self):
+        """Jump to the workflow's 'IRF & Background' step (when embedded)."""
+        host = self.parent()
+        while host is not None and not hasattr(host, "goto_workflow_role"):
+            host = host.parentWidget() if hasattr(host, "parentWidget") else None
+        if host is not None:
+            host.goto_workflow_role("irf_bg")
+        else:
+            self._set_status(
+                "Open the Burst Analysis workflow to use the IRF & Background step"
+            )
 
     def _get_channel_ranges_bins(self):
         """Return per-channel (vv, vh) start/stop in histogram bins for current detector.
@@ -2050,16 +2635,57 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                                 symbol='o',
                                 symbolSize=3)
 
+        # Pin both plots to sane ranges. A background-dominated or diverged fit
+        # can make the model / scaled background span ~1e±27, which explodes
+        # pyqtgraph's log auto-range (the "x1e+27 / 10^-277" axis). Anchor the
+        # Intensity view to the DATA's dynamic range and the residuals to a
+        # symmetric band around the actual spread.
+        self._pin_decay_yrange(data_rng)
+        self._pin_residual_yrange(resid_rng)
+
         self.update_fit_ui(fit_result)
+
+    def _pin_decay_yrange(self, data_rng):
+        """Fix the Intensity (log-y) view to the data's range; disable autorange."""
+        import math
+        d = np.asarray(data_rng, dtype=float)
+        d = d[np.isfinite(d) & (d > 0)]
+        vb = self.combined_plot.getViewBox()
+        try:
+            vb.enableAutoRange(axis=vb.YAxis, enable=False)
+            if d.size:
+                lo = math.log10(max(float(d.min()) * 0.5, 1e-2))
+                hi = math.log10(float(d.max()) * 3.0)
+                if hi <= lo:
+                    hi = lo + 1.0
+                self.combined_plot.setYRange(lo, hi, padding=0.0)
+            else:
+                self.combined_plot.setYRange(-1, 5, padding=0.0)
+        except Exception:
+            pass
+
+    def _pin_residual_yrange(self, resid_rng):
+        """Clamp the residual view to a symmetric band so a bad fit can't run off."""
+        r = np.asarray(resid_rng, dtype=float)
+        r = r[np.isfinite(r)]
+        vb = self.residual_plot.getViewBox()
+        try:
+            vb.enableAutoRange(axis=vb.YAxis, enable=False)
+            span = float(np.nanpercentile(np.abs(r), 99)) if r.size else 5.0
+            span = max(span, 5.0)
+            self.residual_plot.setYRange(-span, span, padding=0.05)
+        except Exception:
+            pass
 
     def _build_irf_bg_cache(self):
         irf_cache = {}
         bg_cache = {}
         for det in self.channel_definer.detectors.keys():
             st = self._ensure_channel_state(det)
-            # Start from stored IRF/BG arrays (unshifted, unwindowed ideally)
-            raw_irf = np.array(st.get('irf', []), dtype=np.float64, copy=True)
-            raw_bg = np.array(st.get('bg', []), dtype=np.float64, copy=True)
+            # Raw IRF/BG come from the single source of truth (irf_np/bg_np), not
+            # channel_settings; this method applies shift/window/threshold below.
+            raw_irf = np.array(self.irf_np.get(det, []), dtype=np.float64, copy=True)
+            raw_bg = np.array(self.bg_np.get(det, []), dtype=np.float64, copy=True)
 
             # Process IRF: 1) global VH shift; 2) sub-bin shifts; 3) IRF range; 4) thresholding
             if raw_irf.size > 0:

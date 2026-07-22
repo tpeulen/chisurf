@@ -66,3 +66,28 @@ def test_residual_plot_member_fits_helper():
     assert _member_fits(_Group(["a", "b"])) == ["a", "b"]
     sentinel = object()
     assert _member_fits(sentinel) == [sentinel]
+
+
+class _PlotModel:
+    """Minimal model exposing the series source a PlotSection reads."""
+
+    def series(self):
+        return [{"x": [0, 1, 2], "y": [1, 2, 3], "name": "s"}]
+
+
+def test_inline_plot_context_menu_on_by_default(app):
+    """A PlotSection keeps pyqtgraph's right-click menu unless it opts out."""
+    from chisurf.core.dataspec import PlotSection
+    from chisurf.gui.autoform.sections.builtin import PlotWidget
+
+    widget = PlotWidget(_PlotModel(), PlotSection(source="series"))
+    assert widget.plot.getPlotItem().getViewBox().menuEnabled() is True
+
+
+def test_inline_plot_context_menu_can_be_disabled(app):
+    """``context_menu: false`` suppresses the per-axis/log/export menu."""
+    from chisurf.core.dataspec import PlotSection
+    from chisurf.gui.autoform.sections.builtin import PlotWidget
+
+    widget = PlotWidget(_PlotModel(), PlotSection(source="series", context_menu=False))
+    assert widget.plot.getPlotItem().getViewBox().menuEnabled() is False

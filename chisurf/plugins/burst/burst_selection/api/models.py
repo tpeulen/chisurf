@@ -16,6 +16,7 @@ class BurstFilterMode(str, Enum):
     BOCPD = "bocpd"
     KALMAN = "kalman"
     CUSUM = "cusum"
+    TTTRLIB = "tttrlib"
 
 
 @dataclass
@@ -71,6 +72,22 @@ class DeltaMacroTimeFilterSettings:
 
 
 @dataclass
+class TttrlibSearchSettings:
+    """Settings for a burst search selected from tttrlib's registry.
+
+    Unlike the other filter settings, the parameters are not fixed fields: the
+    algorithm and its parameters are whatever tttrlib advertises through
+    ``TTTR.burst_search_algorithms()``. Keeping them as a free-form dict is what
+    lets a new tttrlib algorithm work here — and in the generated GUI — without a
+    code change. Anything left out of ``parameters`` takes the algorithm's
+    registry default, so an empty dict is a valid, fully specified request.
+    """
+
+    algorithm: str = "maxtree"
+    parameters: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class PhotonFilterSettings:
     """Photon pre-filter settings used before burst detection."""
 
@@ -82,6 +99,7 @@ class PhotonFilterSettings:
     bocpd_filter: BocpdFilterSettings = field(default_factory=BocpdFilterSettings)
     kalman_filter: KalmanFilterSettings = field(default_factory=KalmanFilterSettings)
     cusum_filter: CusumFilterSettings = field(default_factory=CusumFilterSettings)
+    tttrlib_search: TttrlibSearchSettings = field(default_factory=TttrlibSearchSettings)
     delta_macro_time_filter: DeltaMacroTimeFilterSettings = field(default_factory=DeltaMacroTimeFilterSettings)
     invert_filter: bool = False
     max_gap: int = 4

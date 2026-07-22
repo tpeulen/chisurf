@@ -20,6 +20,16 @@ def test_path_drop_list_widget_constructs(qapp):
     assert widget.supportedDropActions() is not None
 
 
+def test_path_drop_list_widget_enables_drops_on_construction(qapp):
+    # Regression: the widget overrode the drag/drop handlers but never enabled
+    # drops, so Qt discarded every drag before those handlers ran. Both the
+    # widget and its viewport (the child that actually receives OS drag events
+    # in an item view) must accept drops.
+    widget = PathDropListWidget()
+    assert widget.acceptDrops() is True
+    assert widget.viewport().acceptDrops() is True
+
+
 def test_path_drop_list_widget_accepts_optional_filter(qapp):
     # the extension-filtering variant (used by the TTTR time-window tool) constructs
     widget = PathDropListWidget(path_filter=lambda p: p.endswith(".ptu"))

@@ -66,6 +66,14 @@ class PathDropListWidget(QtWidgets.QListWidget):
     ) -> None:
         super().__init__(parent)
         self._path_filter = path_filter
+        # A QListWidget starts with drops disabled, so without this the
+        # overridden drag/drop handlers below are never reached and every drop
+        # is silently rejected. DropOnly keeps the list from also starting
+        # internal item drags; the viewport is what actually receives the OS
+        # drag events an item view forwards to these handlers.
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DropOnly)
+        self.setAcceptDrops(True)
+        self.viewport().setAcceptDrops(True)
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         """Accept URL drops (only when at least one passes the filter)."""

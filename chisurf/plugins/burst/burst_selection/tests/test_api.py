@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from chisurf.core.fio.fluorescence.burst import generate_burst_dataframe
 from chisurf.plugins.burst.burst_selection.api import selection as selection_module
@@ -194,6 +195,27 @@ def test_analyze_file_writes_bur(tmp_path: Path) -> None:
     assert len(make_ui_dataframe(df)) < len(df)
 
 
+def test_legacy_folder_name_reflects_the_filter_mode() -> None:
+    """The legacy output folder is prefixed by the search that produced it.
+
+    A registry-driven search names the folder after the algorithm itself, so a
+    maxtree run and a sliding-window run of the same data do not collide, while
+    the built-in modes keep their historical prefixes.
+    """
+    settings = AnalysisSettings()
+    settings.photon_filter.channels = []
+
+    settings.photon_filter.used_filter = BurstFilterMode.CUSUM
+    assert legacy_output_folder_name(settings).startswith("cusum_")
+
+    settings.photon_filter.used_filter = BurstFilterMode.TTTRLIB
+    settings.photon_filter.tttrlib_search.algorithm = "sliding_window"
+    assert legacy_output_folder_name(settings).startswith("sliding_window_")
+
+    settings.photon_filter.used_filter = BurstFilterMode.BURST
+    assert legacy_output_folder_name(settings).startswith("burstwise_")
+
+
 def test_analyze_request_writes_legacy_burstwise_output(tmp_path: Path) -> None:
     """API legacy-output mode should own the old burstwise folder layout."""
     source = tmp_path / BH_SPC_FILE.name
@@ -291,6 +313,75 @@ def test_summarize_bursts_matches_core_helper() -> None:
         include_interleaved_zeros=True,
     )
     pd.testing.assert_frame_equal(api_df, core_df)
+
+
+def test_burst_dataframe_has_confidence_column() -> None:
+    """Each burst carries a per-burst detection confidence, in sigma.
+
+    tttrlib computes the significance of the burst's photon excess over the
+    local background from the boundaries alone, so the number is comparable
+    across searches. The column is always present (left at 0 on a tttrlib too
+    old to provide it) so the .bur layout does not depend on the tttrlib build.
+    """
+    from chisurf.core.fluorescence.burst import tttrlib_search
+
+    tttr = load_tttr(BH_SPC_FILE)
+    # A real burst search over the trace yields many bursts to score, unlike the
+    # unfiltered whole-trace selection.
+    start_stop = find_bursts(tttrlib_search.tttrlib_burst_filter(tttr, "maxtree"))
+    assert len(start_stop) > 1, "fixture must produce bursts to score"
+
+    df = generate_burst_dataframe(
+        start_stop=start_stop,
+        filename=BH_SPC_FILE,
+        tttr=tttr,
+        windows={},
+        detectors={},
+        include_interleaved_zeros=False,
+    )
+
+    assert "Confidence (sigma)" in df.columns
+    # Position is fixed relative to the other static columns.
+    cols = list(df.columns)
+    assert cols.index("Confidence (sigma)") == cols.index("Count Rate (KHz)") + 1
+
+    confidence = df["Confidence (sigma)"].to_numpy(dtype=float)
+    assert np.isfinite(confidence).all()
+    if hasattr(tttr, "burst_confidence"):
+        # A real detection over background scores above zero for at least one burst.
+        assert (confidence > 0).any()
+
+
+def test_burst_dataframe_confidence_matches_tttrlib_per_burst() -> None:
+    """The column carries tttrlib's own per-burst score, aligned to each burst.
+
+    The scores are indexed by burst position, so each written row must hold the
+    confidence of *its* burst. find_bursts yields only valid bursts (none are
+    skipped), so the whole column equals ``burst_confidence`` computed directly.
+    """
+    from chisurf.core.fluorescence.burst import tttrlib_search
+
+    tttr = load_tttr(BH_SPC_FILE)
+    if not hasattr(tttr, "burst_confidence"):
+        pytest.skip("installed tttrlib does not compute burst confidence")
+
+    start_stop = find_bursts(tttrlib_search.tttrlib_burst_filter(tttr, "maxtree"))
+    assert len(start_stop) >= 2
+
+    df = generate_burst_dataframe(
+        start_stop=start_stop,
+        filename=BH_SPC_FILE,
+        tttr=tttr,
+        windows={},
+        detectors={},
+        include_interleaved_zeros=False,
+    )
+
+    flat = [int(v) for pair in start_stop for v in pair[:2]]
+    expected = np.asarray(tttr.burst_confidence(flat), dtype=float)
+    np.testing.assert_allclose(
+        df["Confidence (sigma)"].to_numpy(dtype=float), expected
+    )
 
 
 def test_make_ui_dataframe_adds_proximity_ratio() -> None:

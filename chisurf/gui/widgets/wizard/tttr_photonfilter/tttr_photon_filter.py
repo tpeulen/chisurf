@@ -27,6 +27,10 @@ from chisurf.core.settings.file_utils import safe_open_file
 from ..tttr_channeldefinition.tttr_detector_setups import save_detector_setups, load_detector_setups
 from .tttr_photon_filter_support import CommaSeparatedIntegersValidator
 from .tttr_photon_filter_mode import install_filter_mode_visibility
+from .filter_settings_form import (
+    install_filter_settings_form,
+    refresh_filter_options,
+)
 from .tttr_photon_filter_file_drop import install_file_drop
 from .tttr_photon_filter_plots import create_plots, place_plots
 from .tttr_photon_filter_connections import setup_connections as _setup_connections
@@ -35,6 +39,24 @@ from chisurf.core.fluorescence.burst.utils import create_array_with_ones
 
 
 colors = chisurf.core.settings.gui['plot']['colors']
+
+#: Help text shown left of the splitter (toggled by the 'help' button). Was the
+#: <string> of the QTextEdit in tttr_photon_filter.ui.
+_FILTER_HELP_HTML = (
+    "<h3>Compute photon stream filters</h3>"
+    "<p>Select the file format matching your TTTR files and drop files onto the "
+    "filename line. The buttons enable/disable plots. The line next to 'Path' "
+    "defines the output path of the filters. The boxes 'Channel selection', "
+    "'Macro time interval', and the filter box define parameters for filters.</p>"
+    "<p><u>Channel selection:</u> channels are integer channel numbers separated "
+    "by commas (e.g. 0,1,3). Micro time ranges are separated by '-'; combine "
+    "multiple ranges with ':' (e.g. 0-300:500-3000).</p>"
+    "<p><u>Macro time interval:</u> minimum / maximum thresholds for the time "
+    "between macro-time events, each enabled by its checkbox. The range can also "
+    "be adjusted by a region selector in the delta-macro-time plot.</p>"
+    "<p><u>Filter:</u> a sliding window over the photon stream. 'Invert' inverts "
+    "the selection.</p>"
+)
 
 
 class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
@@ -92,7 +114,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
     @property
     def photon_number_threshold(self):
-        return self.spinBox.value()
+        return self.filter_settings.min_photons
 
     @property
     def target_path(self) -> pathlib.Path:
@@ -146,15 +168,15 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
     @property
     def use_lower(self) -> bool:
-        return bool(self.checkBox_2.isChecked())
+        return bool(self.filter_settings.dt_min_active)
 
     @property
     def use_upper(self) -> bool:
-        return bool(self.checkBox_3.isChecked())
+        return bool(self.filter_settings.dt_max_active)
 
     @property
     def use_gap_fill(self):
-        return bool(self.checkBox_5.isChecked())
+        return bool(self.filter_settings.use_gap_fill)
 
     @property
     def plot_min(self):
@@ -191,7 +213,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
     def max_gap(self):
         if not self.use_gap_fill:
             return 0
-        return self.spinBox_7.value()
+        return self.filter_settings.merge_gap
 
     @property
     def number_of_burst_bins(self):
@@ -210,14 +232,14 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         The minimum number of photons for burst detection (or any other usage).
         This property gets the current spinBox value.
         """
-        return self.spinBox.value()
+        return self.filter_settings.min_photons
 
     @min_ph.setter
     def min_ph(self, value):
         """
         Sets the spinBox value to the specified integer/float.
         """
-        self.spinBox.setValue(value)
+        self.filter_settings.min_photons = int(value)
 
     @property
     def ph_window(self):
@@ -225,14 +247,14 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         The photon window size for burst detection (or other usage).
         This property gets the current spinBox_8 value.
         """
-        return self.spinBox_8.value()
+        return self.filter_settings.photon_window
 
     @ph_window.setter
     def ph_window(self, value):
         """
         Sets the spinBox_8 value to the specified integer/float.
         """
-        self.spinBox_8.setValue(value)
+        self.filter_settings.photon_window = int(value)
 
     @property
     def bocpd_prior_count(self):
@@ -240,7 +262,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         The prior photon count before data for BOCPD Gamma prior.
         This property gets the current doubleSpinBox_5 value.
         """
-        return self.doubleSpinBox_5.value()
+        return self.filter_settings.background_rate
 
     @bocpd_prior_count.setter
     def bocpd_prior_count(self, value):
@@ -272,7 +294,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         The time window assumed for prior_count for BOCPD Gamma prior.
         This property gets the current doubleSpinBox_6 value.
         """
-        return self.doubleSpinBox_6.value()
+        return self.filter_settings.sb_ratio
 
     @bocpd_prior_duration.setter
     def bocpd_prior_duration(self, value):
@@ -304,7 +326,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         The probability of burst start in any bin for BOCPD.
         This property gets the current doubleSpinBox_7 value.
         """
-        return self.doubleSpinBox_7.value()
+        return self.filter_settings.alpha
 
     @bocpd_changepoint_prob.setter
     def bocpd_changepoint_prob(self, value):
@@ -335,7 +357,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         """The background rate parameter for CUSUM filter.
         Uses doubleSpinBox_5.
         """
-        return self.doubleSpinBox_5.value()
+        return self.filter_settings.background_rate
 
     @cusum_bg_rate.setter
     def cusum_bg_rate(self, value):
@@ -346,7 +368,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         """The signal-to-background ratio parameter for CUSUM filter.
         Uses doubleSpinBox_6.
         """
-        return self.doubleSpinBox_6.value()
+        return self.filter_settings.sb_ratio
 
     @cusum_sb_ratio.setter
     def cusum_sb_ratio(self, value):
@@ -357,7 +379,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         """The false alarm probability parameter for CUSUM filter.
         Uses doubleSpinBox_7.
         """
-        return self.doubleSpinBox_7.value()
+        return self.filter_settings.alpha
 
     @cusum_alpha.setter
     def cusum_alpha(self, value):
@@ -368,7 +390,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         """The missed detection probability parameter for CUSUM filter.
         Uses doubleSpinBox_8.
         """
-        return self.doubleSpinBox_8.value()
+        return self.filter_settings.beta
 
     @cusum_beta.setter
     def cusum_beta(self, value):
@@ -380,7 +402,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         The process noise parameter for Kalman filter.
         This property gets the current doubleSpinBox_8 value.
         """
-        return self.doubleSpinBox_8.value()
+        return self.filter_settings.beta
 
     @kalman_q.setter
     def kalman_q(self, value):
@@ -395,7 +417,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         The measurement noise scaling parameter for Kalman filter.
         This property gets the current doubleSpinBox_9 value.
         """
-        return self.doubleSpinBox_9.value()
+        return self.filter_settings.kalman_r_scale
 
     @kalman_r_scale.setter
     def kalman_r_scale(self, value):
@@ -410,7 +432,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         The threshold for burst detection in Kalman filter.
         This property gets the current doubleSpinBox_10 value.
         """
-        return self.doubleSpinBox_10.value()
+        return self.filter_settings.kalman_z_thresh
 
     @kalman_z_thresh.setter
     def kalman_z_thresh(self, value):
@@ -425,7 +447,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         The minimum burst length in bins for Kalman filter.
         This property gets the current spinBox_9 value.
         """
-        return self.spinBox_9.value()
+        return self.filter_settings.kalman_min_len
 
     @kalman_min_len.setter
     def kalman_min_len(self, value):
@@ -440,7 +462,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         The maximum gap between bursts to merge them in Kalman filter.
         This property gets the current spinBox_7 value.
         """
-        return self.spinBox_7.value()
+        return self.filter_settings.merge_gap
 
     @kalman_merge_gap.setter
     def kalman_merge_gap(self, value):
@@ -515,11 +537,14 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
     @property
     def dT_min(self) -> float:
-        return self._dT_min
+        # Read from the settings object rather than a cached copy: the copy was
+        # only refreshed by the form's change callback, so any other writer left
+        # it stale and the macro-time filter silently used an old bound.
+        return float(self.filter_settings.dt_min)
 
     @property
     def dT_max(self) -> float:
-        return self._dT_max
+        return float(self.filter_settings.dt_max)
 
     @property
     def used_filter(self):
@@ -530,17 +555,34 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         - 'bocpd' if "BOCPD Burst" is selected
         - 'kalman' if "Kalman Burst" is selected
         """
-        current_text = self.comboBox_burst_filter.currentText()
-        if current_text == "Count rate":
-            return 'count_rate'
-        elif current_text == "Burst":
-            return 'burst'
-        elif current_text == "BOCPD Burst":
-            return 'bocpd'
-        elif current_text == "Kalman Burst":
-            return 'kalman'
-        elif current_text == "CUSUM Burst":
-            return 'cusum'
+        from chisurf.gui.widgets.wizard.tttr_photonfilter import (
+            tttr_photon_filter_tttrlib as tttrlib_modes,
+        )
+        # Every tttrlib-registry algorithm shares one filter mode; which of them
+        # runs is carried by `tttrlib_algorithm`, so adding an algorithm needs no
+        # new mode here.
+        if tttrlib_modes.selected_algorithm(self) is not None:
+            return 'tttrlib'
+
+        # Only registry-driven searches remain, so there is one mode; which
+        # search runs is carried by `tttrlib_algorithm`.
+        return 'tttrlib'
+
+    @property
+    def tttrlib_algorithm(self) -> str:
+        """Name of the selected tttrlib burst search ('' for a built-in mode)."""
+        from chisurf.gui.widgets.wizard.tttr_photonfilter import (
+            tttr_photon_filter_tttrlib as tttrlib_modes,
+        )
+        return tttrlib_modes.selected_algorithm(self) or ''
+
+    @property
+    def tttrlib_parameters(self) -> dict:
+        """Values of the generated parameter form for the selected search."""
+        from chisurf.gui.widgets.wizard.tttr_photonfilter import (
+            tttr_photon_filter_tttrlib as tttrlib_modes,
+        )
+        return tttrlib_modes.parameters(self)
 
     @property
     def selected(self):
@@ -635,14 +677,8 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             max_run = 256  # Default max run length
 
             # Run BOCPD burst detection with multiple channels
-            bursts, _, _, _, _ = chisurf.core.fluorescence.burst.bocpd_burst_detection_multi(
-                timestamps_list,
-                dt=self.trace_bin_width / 1000.0,  # bin width from UI trace_bin_width
-                prior_count=prior_count,
-                prior_duration=prior_duration,
-                changepoint_prob=changepoint_prob,
-                max_run=max_run,
-                min_counts=min_counts
+            raise ValueError(
+                "the BOCPD burst search has been removed; choose another filter mode"
             )
 
             # Convert bursts to start-stop indices
@@ -680,28 +716,29 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                     chisurf.logging.log(1, f"No photons found for channel {channel}")
                     return s.astype(dtype=np.uint8)
 
-            # Get Kalman filter parameters
-            q = self.kalman_q
-            r_scale = self.kalman_r_scale
-            z_thresh = self.kalman_z_thresh
-            min_len = self.kalman_min_len
-            merge_gap = self.kalman_merge_gap
-            min_counts = self.min_ph  # Use min_ph as min_counts
-
-            # Run Kalman filter burst detection with multiple channels
-            bursts, _, _, _, _ = chisurf.core.fluorescence.burst.kalman_burst_detection_multi(
-                timestamps_list,
-                dt=self.trace_bin_width / 1000.0,  # bin width from UI trace_bin_width
-                q=q,
-                r_scale=r_scale,
-                z_thresh=z_thresh,
-                min_len=min_len,
-                merge_gap=merge_gap,
-                min_counts=min_counts
-            )
-
-            # Convert bursts to start-stop indices
-            start_stop = chisurf.core.fluorescence.burst.kalman.convert_bursts_to_start_stop(bursts, tttr)
+            # The Kalman detector lives in tttrlib. This page had its own copy of
+            # the call, separate from the one in the burst-selection API, which is
+            # why the numba implementation kept running after that one was ported:
+            # converting a caller does nothing for the callers you did not find.
+            start_stop = np.asarray(
+                tttr.burst_search_kalman(
+                    L=int(self.min_ph),
+                    dt=self.trace_bin_width / 1000.0,
+                    q=float(self.kalman_q),
+                    r_scale=float(self.kalman_r_scale),
+                    z_thresh=float(self.kalman_z_thresh),
+                    min_len=int(self.kalman_min_len),
+                    merge_gap=int(self.kalman_merge_gap),
+                    per_channel=True,
+                ),
+                dtype=np.int64,
+            ).reshape((-1, 2))
+            # tttrlib stop indices are inclusive; create_array_with_ones fills
+            # half-open intervals, so without this the last photon of every burst
+            # is dropped.
+            if start_stop.size:
+                start_stop = start_stop.copy()
+                start_stop[:, 1] += 1
 
             if len(start_stop) == 0:
                 return s.astype(dtype=np.uint8)
@@ -1063,9 +1100,18 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             pass
 
     def _create_burst_info_panel(self):
-        """Build the burst info QGroupBox and insert it next to the Filter groupBox."""
-        self.burst_info_group = QtWidgets.QGroupBox("Info")
-        self._info_form = QtWidgets.QFormLayout(self.burst_info_group)
+        """Build the burst info panel and insert it next to the Filter groupBox.
+
+        Foldable like the filter panels beside it: the counts are worth a glance
+        after a run and are then in the way, and the page competes for vertical
+        space with the plots below.
+        """
+        from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+
+        self.burst_info_group = CollapsibleBox("Info", expanded=True)
+        self._info_body = QtWidgets.QWidget(self.burst_info_group)
+        self.burst_info_group.add_widget(self._info_body)
+        self._info_form = QtWidgets.QFormLayout(self._info_body)
         self._info_form.setContentsMargins(4, 8, 4, 4)
         self._info_form.setSpacing(2)
 
@@ -1213,7 +1259,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                 pass
 
         self.settings['filter_active'] = self.checkBox_4.isChecked()
-        self.settings['count_rate_filter']['n_ph_max'] = int(self.spinBox.value())
+        self.settings['count_rate_filter']['n_ph_max'] = int(self.filter_settings.min_photons)
         self.settings['count_rate_filter']['time_window'] = float(self.doubleSpinBox.value()) * 1e-3
         # Store invert setting at top level for all filter types
         self.settings['invert_filter'] = bool(self.checkBox.isChecked())
@@ -1594,7 +1640,9 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
     def fill_pie_windows(self, k):
         self.windows = k
+        self.comboBox_3.addItem("All")
         self.comboBox_3.addItems(k.keys())
+        self._refresh_filter_options()
 
     def zip_output_folder(self, output_folder, existing_progress=None, add_timestamp=False):
         """
@@ -1717,11 +1765,19 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             if not using_existing_progress:
                 progress.finish("ZIP operation completed")
 
+    def _refresh_filter_options(self):
+        """Let the generated form pick up new detector / time-window choices."""
+        try:
+            refresh_filter_options(self)
+        except Exception:
+            pass   # the form is optional; never block a setup change on it
+
     def fill_detectors(self, k):
         self.detectors = k
         # Add "All" option at the beginning
         self.comboBox_2.addItem("All")
         self.comboBox_2.addItems(k.keys())
+        self._refresh_filter_options()
 
     def update_detectors(self):
         """
@@ -1743,6 +1799,15 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         Sync the comboBox_3 selection to the lineEdit_5 for microtime ranges.
         """
         key = self.comboBox_3.currentText()
+        if key in ("", "All"):
+            # "All" is not a window: it means do not restrict the micro-time at
+            # all. Clearing the field leaves `microtime_ranges` empty, and the
+            # analysis then applies no micro-time mask -- the same way "All"
+            # already worked for detectors. Looking it up in `windows` would
+            # raise a KeyError.
+            self.lineEdit_5.setText("")
+            self.update_parameter()
+            return
         pie_win = self.windows[key]
 
         # Check if pie_win is a list/tuple or a single integer
@@ -1818,13 +1883,13 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             "dT_max": dT_max,
             "use_dT_min": self.checkBox_2.isChecked(),
             "use_dT_max": self.checkBox_3.isChecked(),
-            "photon_threshold": self.spinBox.value(),
+            "photon_threshold": self.filter_settings.min_photons,
             "count_rate_window_ms": self.doubleSpinBox.value(),
             "invert_filter": self.checkBox.isChecked(),
             "filter_mode": self.used_filter,
             "filter_active": self.checkBox_4.isChecked(),
             "use_gap_fill": self.checkBox_5.isChecked(),
-            "max_gap": self.spinBox_7.value(),
+            "max_gap": self.filter_settings.merge_gap,
             "trace_bin_width": self.doubleSpinBox_4.value(),
             "number_of_burst_bins": self.spinBox_6.value(),
             "channels": self.channels,
@@ -1962,6 +2027,9 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
                 # Add detector names
                 self.comboBox_2.addItems(self.detectors.keys())
+                # The generated form reads these choices; this path refills them without
+                # going through fill_detectors, so it must say so too.
+                self._refresh_filter_options()
 
                 # Select the first detector by default (or "All" if no detectors)
                 if self.comboBox_2.count() > 0:
@@ -2001,7 +2069,11 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                 self.comboBox_3.clear()
 
                 # Add window names
+                self.comboBox_3.addItem("All")
                 self.comboBox_3.addItems(self.windows.keys())
+                # The generated form reads these choices; this path refills them without
+                # going through fill_detectors, so it must say so too.
+                self._refresh_filter_options()
 
                 # Select the first window by default
                 if self.comboBox_3.count() > 0:
@@ -2093,6 +2165,19 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                         self.comboBox_burst_filter.setCurrentText("Kalman Burst")
                     elif burst_params["filter_mode"] == "cusum":
                         self.comboBox_burst_filter.setCurrentText("CUSUM Burst")
+                    elif burst_params["filter_mode"] == "tttrlib":
+                        from chisurf.gui.widgets.wizard.tttr_photonfilter import (
+                            tttr_photon_filter_tttrlib as tttrlib_modes,
+                        )
+                        # A project may name a search this tttrlib does not have;
+                        # fall back rather than restoring a mode that cannot run.
+                        restored = tttrlib_modes.select(
+                            self,
+                            burst_params.get("tttrlib_algorithm", ""),
+                            burst_params.get("tttrlib_parameters", {}),
+                        )
+                        if not restored:
+                            self.comboBox_burst_filter.setCurrentText("Burst")
                     else:
                         # Default to burst mode if unknown
                         self.comboBox_burst_filter.setCurrentText("Burst")
@@ -2147,7 +2232,332 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                 # Update the plots
                 self.update_plots()
 
-    @chisurf.gui.decorators.init_with_ui("tttr_photon_filter.ui")
+    # ── Programmatic UI (replaces tttr_photon_filter.ui) ───────────────────
+    # These widgets are the backing store the AutoForm cutover mirrors to by
+    # name (see filter_settings_form._WIDGET_MIRROR); the visible UI is built
+    # separately. So the requirement is that every named widget exists with the
+    # right initial properties, plus the plot container (gridLayout_6) and the
+    # four QActions that drive updates — not a pixel-faithful layout.
+    @staticmethod
+    def _dsb(decimals=2, minimum=0.0, maximum=99.99, value=0.0, step=None,
+             suffix=None, tooltip=None, readonly=False):
+        sb = QtWidgets.QDoubleSpinBox()
+        sb.setDecimals(decimals)
+        sb.setMinimum(minimum)
+        sb.setMaximum(maximum)
+        if step is not None:
+            sb.setSingleStep(step)
+        sb.setValue(value)
+        if suffix:
+            sb.setSuffix(suffix)
+        if tooltip:
+            sb.setToolTip(tooltip)
+        if readonly:
+            sb.setReadOnly(True)
+        return sb
+
+    @staticmethod
+    def _isb(minimum=0, maximum=99, value=0, step=1, tooltip=None):
+        sb = QtWidgets.QSpinBox()
+        sb.setMinimum(minimum)
+        sb.setMaximum(maximum)
+        sb.setSingleStep(step)
+        sb.setValue(value)
+        if tooltip:
+            sb.setToolTip(tooltip)
+        return sb
+
+    @staticmethod
+    def _tool(text, checkable=False, checked=False):
+        b = QtWidgets.QToolButton()
+        b.setText(text)
+        if checkable:
+            b.setCheckable(True)
+            b.setChecked(checked)
+        return b
+
+    @staticmethod
+    def _lineedit(placeholder="", tooltip="", readonly=False):
+        le = QtWidgets.QLineEdit()
+        if placeholder:
+            le.setPlaceholderText(placeholder)
+        if tooltip:
+            le.setToolTip(tooltip)
+        le.setReadOnly(readonly)
+        return le
+
+    def _build_ui(self):
+        Q = QtWidgets
+        self.setWindowTitle("Form")
+        self.verticalLayout_2 = Q.QVBoxLayout(self)
+        self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_2.setSpacing(0)
+        self.splitter = Q.QSplitter(QtCore.Qt.Horizontal)
+        self.verticalLayout_2.addWidget(self.splitter)
+
+        # Help text (left of the splitter; toggled by the 'help' button).
+        self.textEdit = Q.QTextEdit()
+        self.textEdit.setReadOnly(True)
+        self.textEdit.setMinimumWidth(300)
+        self.textEdit.setHtml(_FILTER_HELP_HTML)
+        self.splitter.addWidget(self.textEdit)
+
+        self.widget = Q.QWidget()
+        self.gridLayout_4 = Q.QGridLayout(self.widget)
+        self.gridLayout_4.setContentsMargins(0, 0, 0, 0)
+        self.gridLayout_4.setSpacing(6)
+        self.splitter.addWidget(self.widget)
+
+        self._build_top_row()
+        self._build_channel_group()
+        self._build_macrotime_group()
+        self._build_filter_group()
+        self._build_plot_settings_group()
+        self._build_plot_area()
+
+        self.actionUpdate_Values = QtWidgets.QAction("Update values", self)
+        self.actionUpdateUI = QtWidgets.QAction("Update UI", self)
+        self.actionFile_changed = QtWidgets.QAction("File changed", self)
+        self.actionRegionUpdate = QtWidgets.QAction("RegionUpdate", self)
+        self._wire_ui_actions()
+
+    def _build_top_row(self):
+        Q = QtWidgets
+        g8 = Q.QGridLayout()
+        g8.setSpacing(0)
+        # Output path
+        self.lineEdit_2 = self._lineedit(placeholder="Output path for *.msg.gz files")
+        row = Q.QHBoxLayout()
+        row.setSpacing(0)
+        row.addWidget(self.lineEdit_2)
+        g8.addLayout(row, 1, 0, 1, 10)
+        # Plot/save toggle buttons
+        self.toolButton_2 = self._tool("MCS", checkable=True, checked=True)
+        self.toolButton_5 = self._tool("save")
+        self.toolButton_4 = self._tool("filter", checkable=True, checked=True)
+        self.toolButton = self._tool("help", checkable=True, checked=False)
+        self.toolButton_3 = self._tool("decay", checkable=True, checked=True)
+        self.toolButton_7 = self._tool("Burst", checkable=True, checked=True)
+        self.checkBox_6 = Q.QCheckBox("sl5")
+        self.checkBox_6.setChecked(True)
+        self.checkBox_7 = Q.QCheckBox("bur")
+        self.checkBox_7.setChecked(True)
+        g7 = Q.QGridLayout()
+        g7.setSpacing(0)
+        g7.addWidget(self.toolButton_2, 0, 0)
+        g7.addWidget(self.toolButton_4, 0, 2)
+        g7.addWidget(self.toolButton_5, 0, 3)
+        g7.addWidget(self.checkBox_6, 0, 4)
+        g7.addWidget(self.toolButton_7, 1, 0)
+        g7.addWidget(self.toolButton_3, 1, 2)
+        g7.addWidget(self.toolButton, 1, 3)
+        g7.addWidget(self.checkBox_7, 1, 4)
+        g8.addLayout(g7, 0, 11, 2, 1)
+        # File drop + filetype + clear
+        self.lineEdit = self._lineedit(placeholder="Drop TTTR files (ptu, spc, ht3) files here.")
+        self.comboBox = Q.QComboBox()
+        self.comboBox.addItems(["Auto", "PTU", "SPC-130", "HT3", "SPC-630"])
+        self.toolButton_6 = self._tool("clear")
+        self.spinBox_4 = self._isb(0, 9999, 0)
+        g9 = Q.QGridLayout()
+        g9.setSpacing(0)
+        g9.addWidget(self.lineEdit, 0, 0, 3, 1)
+        g9.addWidget(self.comboBox, 0, 2)
+        g9.addWidget(self.spinBox_4, 1, 2)
+        g9.addWidget(self.toolButton_6, 0, 3, 3, 1)
+        g8.addLayout(g9, 0, 7)
+        self.gridLayout_4.addLayout(g8, 0, 0, 1, 4)
+
+    def _build_channel_group(self):
+        Q = QtWidgets
+        self.groupBox_3 = Q.QGroupBox("Channel selection")
+        g = Q.QGridLayout(self.groupBox_3)
+        g.setContentsMargins(0, 0, 0, 0)
+        g.setSpacing(0)
+        self.comboBox_2 = Q.QComboBox()
+        self.lineEdit_4 = self._lineedit(
+            placeholder="Channel numbers", tooltip='Comma separated integers, e.g., "0,8"')
+        self.comboBox_3 = Q.QComboBox()
+        self.lineEdit_5 = self._lineedit(
+            placeholder="Micro time range",
+            tooltip="Microtime ranges: use start:end or start-end; separate multiple "
+                    "ranges with ';' or ',' (e.g. -1000:0;0:300000).")
+        g.addWidget(self.comboBox_2, 1, 1)
+        g.addWidget(self.lineEdit_4, 2, 1)
+        g.addWidget(self.comboBox_3, 3, 1)
+        g.addWidget(self.lineEdit_5, 4, 1)
+        self.gridLayout_4.addWidget(self.groupBox_3, 1, 0)
+
+    def _build_macrotime_group(self):
+        Q = QtWidgets
+        self.groupBox_2 = Q.QGroupBox("Macro time interval")
+        g = Q.QGridLayout(self.groupBox_2)
+        g.setContentsMargins(0, 0, 0, 0)
+        g.setSpacing(0)
+        self.label_3 = Q.QLabel("min dMT")
+        self.label_7 = Q.QLabel("max dMT")
+        self.label_8 = Q.QLabel("Merge gap")
+        self.doubleSpinBox_2 = self._dsb(decimals=3, minimum=0.001, maximum=999.99,
+                                         value=0.001, step=0.001, suffix=" ms",
+                                         tooltip="Minimum interphoton time")
+        self.doubleSpinBox_3 = self._dsb(decimals=3, minimum=0.001, maximum=999.99,
+                                         value=0.15, suffix=" ms",
+                                         tooltip="Maximum inter photon time")
+        self.checkBox_2 = Q.QCheckBox()          # use-min bound
+        self.checkBox_3 = Q.QCheckBox()          # use-max bound
+        self.checkBox_3.setChecked(True)
+        self.checkBox_5 = Q.QCheckBox()          # merge-gap enable
+        self.checkBox_5.setChecked(True)
+        self.spinBox_7 = self._isb(0, 999, 3, tooltip=(
+            "If two events are separated by less than specified number, events "
+            "inbetween are selected. Used to fill gaps and as Kalman merge gap."))
+        g.addWidget(self.label_3, 0, 0)
+        g.addWidget(self.doubleSpinBox_2, 0, 1)
+        g.addWidget(self.checkBox_2, 0, 2)
+        g.addWidget(self.label_7, 1, 0)
+        g.addWidget(self.doubleSpinBox_3, 1, 1)
+        g.addWidget(self.checkBox_3, 1, 2)
+        g.addWidget(self.label_8, 2, 0)
+        g.addWidget(self.spinBox_7, 2, 1)
+        g.addWidget(self.checkBox_5, 2, 2)
+        self.gridLayout_4.addWidget(self.groupBox_2, 1, 1)
+
+    def _build_filter_group(self):
+        Q = QtWidgets
+        self.groupBox = Q.QGroupBox("Filter")
+        g = Q.QGridLayout(self.groupBox)
+        g.setContentsMargins(0, 0, 0, 0)
+        g.setSpacing(0)
+        self.label_burst_filter = Q.QLabel("Filter Mode:")
+        # Filter modes are populated from the tttrlib registry (see
+        # tttr_photon_filter_tttrlib.install); no hard-coded modes here.
+        self.comboBox_burst_filter = Q.QComboBox()
+        self.comboBox_burst_filter.setToolTip("Select the burst filter mode")
+        self.checkBox = Q.QCheckBox("invert")   # invert (default unchecked)
+        self.checkBox_4 = Q.QCheckBox("enable")
+        self.checkBox_4.setChecked(True)
+        self.label_2 = Q.QLabel("TW")
+        self.doubleSpinBox = self._dsb(decimals=2, minimum=0.05, maximum=500000.0,
+                                       value=1.0, suffix=" ms", tooltip=(
+            "Time window (count-rate window, or burst-search separation time)."))
+        self.label = Q.QLabel("Max/Min #Ph")
+        self.spinBox = self._isb(2, 1000000, 60, tooltip="Maximum number of photon in time window")
+        self.label_11 = Q.QLabel("CR TW #Ph")
+        self.spinBox_8 = self._isb(2, 999, 5, tooltip="Number of photons to compute a count rate")
+        self.label_12 = Q.QLabel("Alpha")
+        self.doubleSpinBox_5 = self._dsb(minimum=0.01, maximum=100.0, value=1.0, step=0.1,
+                                         tooltip="Alpha parameter for Gamma prior in BOCPD")
+        self.label_13 = Q.QLabel("Beta")
+        self.doubleSpinBox_6 = self._dsb(minimum=0.01, maximum=100.0, value=1.0, step=0.1,
+                                         tooltip="Beta parameter for Gamma prior in BOCPD")
+        self.label_14 = Q.QLabel("Hazard")
+        self.doubleSpinBox_7 = self._dsb(decimals=5, minimum=0.00001, maximum=1.0,
+                                         value=0.45, step=0.001,
+                                         tooltip="Hazard rate (probability of change point) in BOCPD")
+        self.label_15 = Q.QLabel("Q")
+        self.doubleSpinBox_8 = self._dsb(minimum=0.01, maximum=100.0, value=20.0, step=1.0,
+                                         tooltip="Process noise parameter for Kalman filter")
+        self.label_16 = Q.QLabel("R Scale")
+        self.doubleSpinBox_9 = self._dsb(minimum=0.01, maximum=100.0, value=1.0, step=0.1,
+                                         tooltip="Measurement noise scaling parameter for Kalman filter")
+        self.label_17 = Q.QLabel("Z Threshold")
+        self.doubleSpinBox_10 = self._dsb(minimum=0.01, maximum=100.0, value=3.0, step=0.1,
+                                          tooltip="Threshold for burst detection in Kalman filter")
+        self.label_18 = Q.QLabel("Min Length")
+        self.spinBox_9 = self._isb(1, 100, 2, tooltip="Minimum burst length in bins for Kalman filter")
+        g.addWidget(self.label_burst_filter, 0, 0)
+        g.addWidget(self.comboBox_burst_filter, 0, 1, 1, 3)
+        g.addWidget(self.checkBox_4, 1, 0)
+        g.addWidget(self.checkBox, 1, 1)
+        g.addWidget(self.label_2, 2, 0)
+        g.addWidget(self.doubleSpinBox, 2, 1)
+        g.addWidget(self.label, 3, 0)
+        g.addWidget(self.spinBox, 3, 1)
+        g.addWidget(self.label_11, 4, 0)
+        g.addWidget(self.spinBox_8, 4, 1)
+        g.addWidget(self.label_12, 5, 0)
+        g.addWidget(self.doubleSpinBox_5, 5, 1)
+        g.addWidget(self.label_13, 6, 0)
+        g.addWidget(self.doubleSpinBox_6, 6, 1)
+        g.addWidget(self.label_14, 7, 0)
+        g.addWidget(self.doubleSpinBox_7, 7, 1)
+        g.addWidget(self.label_15, 8, 0)
+        g.addWidget(self.doubleSpinBox_8, 8, 1)
+        g.addWidget(self.label_16, 9, 0)
+        g.addWidget(self.doubleSpinBox_9, 9, 1)
+        g.addWidget(self.label_17, 10, 0)
+        g.addWidget(self.doubleSpinBox_10, 10, 1)
+        g.addWidget(self.label_18, 11, 0)
+        g.addWidget(self.spinBox_9, 11, 1)
+        self.gridLayout_4.addWidget(self.groupBox, 1, 2)
+
+    def _build_plot_settings_group(self):
+        Q = QtWidgets
+        self.groupBox_4 = Q.QGroupBox("Plot settings")
+        g = Q.QGridLayout(self.groupBox_4)
+        g.setContentsMargins(0, 0, 0, 0)
+        g.setSpacing(0)
+        self.label_5 = Q.QLabel("Range")
+        self.label_4 = Q.QLabel("MCS bin-width")
+        self.label_9 = Q.QLabel("Decay bin")
+        self.label_6 = Q.QLabel("#Burst bins")
+        self.spinBox_2 = self._isb(0, 99999999, 0)
+        self.spinBox_3 = self._isb(0, 9999999, 100000)
+        self.doubleSpinBox_4 = self._dsb(minimum=0.05, maximum=99.99, value=0.25, step=0.1, suffix=" ms")
+        self.spinBox_5 = self._isb(1, 99, 8)
+        self.spinBox_6 = self._isb(3, 999, 51)
+        g.addWidget(self.label_5, 1, 1)
+        g.addWidget(self.spinBox_2, 1, 2)
+        g.addWidget(self.spinBox_3, 1, 3)
+        g.addWidget(self.label_4, 2, 1)
+        g.addWidget(self.doubleSpinBox_4, 2, 2, 1, 2)
+        g.addWidget(self.label_9, 3, 1)
+        g.addWidget(self.spinBox_5, 3, 2, 1, 2)
+        g.addWidget(self.label_6, 4, 1)
+        g.addWidget(self.spinBox_6, 4, 2, 1, 2)
+        self.gridLayout_4.addWidget(self.groupBox_4, 1, 3)
+
+    def _build_plot_area(self):
+        Q = QtWidgets
+        self.widget_2 = Q.QWidget()
+        self.widget_2.setSizePolicy(Q.QSizePolicy.Preferred, Q.QSizePolicy.Expanding)
+        self.verticalLayout = Q.QVBoxLayout(self.widget_2)
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout.setSpacing(0)
+        self.gridLayout_6 = Q.QGridLayout()   # plots are added here at runtime
+        self.gridLayout_6.setSpacing(0)
+        self.verticalLayout.addLayout(self.gridLayout_6)
+        self.gridLayout_4.addWidget(self.widget_2, 3, 0, 1, 4)
+
+    def _wire_ui_actions(self):
+        """Replicate the .ui's signal→action connections (the update mechanism)."""
+        upd = self.actionUpdate_Values.trigger
+        region = self.actionRegionUpdate.trigger
+        # value edits -> recompute
+        for w in (self.spinBox, self.spinBox_2, self.spinBox_3, self.spinBox_5,
+                  self.spinBox_6, self.spinBox_7, self.spinBox_8, self.spinBox_9):
+            w.valueChanged.connect(upd)
+        for w in (self.doubleSpinBox_5, self.doubleSpinBox_6, self.doubleSpinBox_7,
+                  self.doubleSpinBox_8, self.doubleSpinBox_9, self.doubleSpinBox_10,
+                  self.doubleSpinBox_2):
+            w.valueChanged.connect(upd)
+        for w in (self.doubleSpinBox, self.doubleSpinBox_3, self.doubleSpinBox_4):
+            w.editingFinished.connect(upd)
+        for w in (self.checkBox, self.checkBox_2, self.checkBox_3, self.checkBox_4,
+                  self.checkBox_5):
+            w.toggled.connect(upd)
+        self.groupBox.toggled.connect(upd)
+        self.lineEdit_4.returnPressed.connect(upd)
+        self.lineEdit_5.returnPressed.connect(upd)
+        # macro-time region sync
+        self.doubleSpinBox_2.editingFinished.connect(region)
+        self.doubleSpinBox_3.valueChanged.connect(region)
+        # file / UI
+        self.spinBox_4.valueChanged.connect(self.actionUpdateUI.trigger)
+        self.lineEdit.textChanged.connect(self.actionFile_changed.trigger)
+        # help toggle shows/hides the help text (was a .ui connection)
+        self.toolButton.toggled.connect(self.textEdit.setVisible)
+
     def __init__(
             self,
             *args,
@@ -2165,7 +2575,9 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             use_dT_max: bool = True,
             default_photon_threshold: int = 60,
             default_count_rate_window_ms: float = 1.0,
-            invert_filter: bool = True,
+            # A burst search selects the burst photons; inverting it keeps the
+            # background instead, which is almost never what's wanted by default.
+            invert_filter: bool = False,
             default_filter_mode: str = 'burst',
             use_gap_fill: bool = False,
             default_max_gap: int = 3,
@@ -2204,7 +2616,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             Initial threshold for count rate or burst search.
         default_count_rate_window_ms : float, default=1.0
             Initial time window (ms) for count-rate based filtering.
-        invert_filter : bool, default=True
+        invert_filter : bool, default=False
             Whether to invert the filter initially (applies to all filter types).
         default_filter_mode : str, default='burst'
             Which filter mode radio button is selected by default.
@@ -2219,6 +2631,8 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         -------
         None. Initializes the UI and sets default widget states.
         """
+        super().__init__(*args)
+        self._build_ui()   # was: loaded from tttr_photon_filter.ui
         self.setTitle("Photon filter")
         self.windows = windows
         self.detectors = detectors
@@ -2243,6 +2657,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         # Cached resolved output directory for stable access across pages
         self._resolved_output_dir = None
 
+        install_filter_settings_form(self)
         install_filter_mode_visibility(self, default_filter_mode)
         install_file_drop(self)
 
@@ -2264,6 +2679,13 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
         # Build the burst info panel next to the Filter groupBox
         self._create_burst_info_panel()
+        # The Info panel shares the right-hand column with the selected search's
+        # parameters; it is built after the form, so it is adopted here.
+        try:
+            from .filter_settings_form import adopt_info_panel
+            adopt_info_panel(self)
+        except Exception:
+            pass
 
         # Setup all signal-slot connections
         self.setup_connections()

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from qtpy import QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.widgets.navigation import NavigationPanelTool
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.setup_client import (
@@ -67,8 +67,16 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         controls.addStretch(1)
         layout.addLayout(controls)
 
-        self.file_list = QtWidgets.QListWidget(self)
+        # The shared, drop-enabled list widget (same one the AutoForm path_list
+        # section uses) rather than a hand-rolled QListWidget plus panel-level
+        # drag/drop handlers — one drop implementation across the app.
+        from chisurf.gui.widgets.tools import PathDropListWidget
+
+        self.file_list = PathDropListWidget(self, path_filter=self._accepts_drop)
         self.file_list.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.file_list.pathsDropped.connect(
+            lambda paths: self.add_paths([Path(p) for p in paths])
+        )
         layout.addWidget(self.file_list, 1)
 
         self.status_label = QtWidgets.QLabel("No TTTR files selected.", self)
@@ -78,6 +86,17 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         self.add_folder_button.clicked.connect(self._select_folder)
         self.mmfdb_button.clicked.connect(self._select_mmfdb_dataset)
         self.clear_button.clicked.connect(self.clear)
+
+    # -- drag and drop --------------------------------------------------------
+
+    def _accepts_drop(self, local_path: str) -> bool:
+        """Drag filter for the shared list: directories or TTTR files.
+
+        Directories are accepted without inspection (recursing during a drag
+        would stall on a large tree); ``add_paths`` expands them on drop.
+        """
+        path = Path(local_path)
+        return path.is_dir() or path.suffix.lower() in self.TTTR_EXTENSIONS
 
     def paths(self) -> list[Path]:
         """Return selected raw TTTR paths."""
@@ -219,11 +238,13 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
             self._mmfdb_imports[str(path)] = {"error": str(exc)}
 
     def _client(self) -> Any:
-        """Return the MMFDB RPC client used for import and selection."""
+        """Return the shared, process-global MMFDB client for import and selection."""
         if self._mmfdb_client is None:
-            from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
+            # One session shared with every other file selector, not a private
+            # embedded server for this widget.
+            from chisurf.gui.widgets.mmfdb import picker
 
-            self._mmfdb_client = MMFDBClient(inprocess=True)
+            self._mmfdb_client = picker.inprocess_client()
         return self._mmfdb_client
 
     def _update_status(self) -> None:
@@ -256,7 +277,7 @@ def _burst_selection(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the burst selection panel."""
     from chisurf.plugins.burst.burst_selection import BurstSelectionTool
 
-    widget = BurstSelectionTool(parent=parent, show_channel_selection=False)
+    widget = BurstSelectionTool(parent=parent, show_channel_selection=True)
     _bind(parent, "selection", widget)
     return widget
 
@@ -275,10 +296,24 @@ def _burst_mle(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the burst MLE panel."""
     from chisurf.plugins.burst.burst_mle_analysis.wizard import MLELifetimeAnalysisWizard
 
-    widget = MLELifetimeAnalysisWizard(parent=parent)
-    _remove_tab_by_name(widget, "Detector Definition")
-    _bind(parent, "mle", widget)
-    return widget
+    wizard = MLELifetimeAnalysisWizard(parent=parent)
+    _remove_tab_by_name(wizard, "Detector Definition")
+    # Inside the workflow the burst files (Data Selection) and IRF/background
+    # (IRF & Background -> Send to MLE) are provided upstream, so the MLE panel's
+    # own file-drop docks are duplicates — hide them, leaving just the fit.
+    wizard._embedded = True
+    _bind(parent, "mle", wizard)
+    # Embed the plain central QWidget, not the QMainWindow. On native macOS an
+    # embedded QMainWindow (its menu/status bars and native view layer) swallowed
+    # mouse clicks over the panel; hosting just its central content widget avoids
+    # every QMainWindow-as-child quirk. The wizard object stays alive as the
+    # workflow's "mle" panel (it owns all the logic and widget references); the
+    # content carries a back-reference so context application can resolve it.
+    central = wizard.takeCentralWidget()
+    if central is None:
+        return wizard
+    central._mle_wizard = wizard
+    return central
 
 
 def _burst_h2mm(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -385,14 +420,24 @@ BURST_PANELS = [
         "role": "bva",
     },
     {
-        "name": "5. MLE-Lifetime",
+        "name": "5. IRF & Background",
+        "icon": "✨",
+        "description": (
+            "Extract a per-detector IRF and background from the non-burst photons "
+            "and feed them to the MLE-Lifetime fit."
+        ),
+        "factory": _burst_irf_bg,
+        "role": "irf_bg",
+    },
+    {
+        "name": "6. MLE-Lifetime",
         "icon": "🎯",
         "description": "Fit burst lifetimes using selected bursts.",
         "factory": _burst_mle,
         "role": "mle",
     },
     {
-        "name": "6. H2MM",
+        "name": "7. H2MM",
         "icon": "🔀",
         "description": "Resolve sub-burst FRET dynamics with photon-by-photon HMM.",
         "factory": _burst_h2mm,
@@ -406,7 +451,7 @@ BURST_PANELS = [
         ),
     },
     {
-        "name": "7. Browser",
+        "name": "8. Browser",
         "icon": "📋",
         "description": "Inspect the current burst workflow result.",
         "factory": _burst_browser,
@@ -424,16 +469,6 @@ BURST_PANELS = [
         "description": "Estimate background using the selected data and channel setup.",
         "factory": _burst_background,
         "role": "background",
-    },
-    {
-        "name": "IRF & Background",
-        "icon": "✨",
-        "description": (
-            "Extract a per-detector IRF and background from the non-burst photons "
-            "and feed them to the MLE-Lifetime fit."
-        ),
-        "factory": _burst_irf_bg,
-        "role": "irf_bg",
     },
 ]
 
@@ -468,6 +503,15 @@ class BurstAnalysisTool(NavigationPanelTool):
         elif role == "selection":
             self._bind_selection_panel(widget)
         self._apply_context_to_panel(role, widget)
+
+    def goto_workflow_role(self, role: str) -> bool:
+        """Select the workflow step with the given ``role`` (e.g. from a panel's
+        'go to IRF & Background' button)."""
+        for i, panel in enumerate(self.panels):
+            if panel.get("role") == role:
+                self.nav_list.setCurrentRow(i)
+                return True
+        return False
 
     def _on_nav_changed(self, index: int) -> None:
         """Refresh and apply workflow context when the user changes steps."""
@@ -723,6 +767,9 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_mle(self, widget: QtWidgets.QWidget) -> None:
         """Use upstream burst files and channels in MLE Lifetime."""
+        # The embedded panel is the wizard's central widget (see _burst_mle); the
+        # wizard that owns burst_files_list/channel_definer/etc. hangs off it.
+        widget = getattr(widget, "_mle_wizard", widget)
         settings = self.workflow_context.channel_settings
         channel_definer = getattr(widget, "channel_definer", None)
         if settings and channel_definer is not None:
@@ -735,6 +782,15 @@ class BurstAnalysisTool(NavigationPanelTool):
         if self.workflow_context.bur_files and file_list is not None and file_list.count() == 0:
             for path in self.workflow_context.bur_files:
                 file_list.add_file(str(path))
+            # A real drop fires the list's file_added_callback (load_burst_data),
+            # which reads the burst analysis AND enables the IRF/background drop
+            # lists. add_file() bypasses that callback, so prepopulated burst
+            # files must call it explicitly -- otherwise the IRF/BG lists stay
+            # setAcceptDrops(False) and silently reject every drop.
+            try:
+                widget.load_burst_data()
+            except Exception:
+                pass
             try:
                 widget.update_burst_files()
             except Exception:
@@ -779,11 +835,16 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     @staticmethod
     def _apply_irf_bg_to_mle_widget(mle: QtWidgets.QWidget, patterns: dict[str, Any]) -> int:
-        """Set the MLE wizard's per-detector ``irf_np``/``bg_np`` and refresh its view.
+        """Inject non-burst IRF/background patterns into the MLE wizard, per detector.
 
-        Writes the arrays directly (not through the file-drop loaders, which would
-        overwrite them from empty widgets) and refreshes the decay/fit display
-        without reloading from files.
+        The MLE wizard keeps its IRF/background per detector in a state cache,
+        ``channel_settings[det]['irf'|'bg']`` — that cache is what the fit reads
+        (and what ``_apply_ui_state`` restores into ``irf_np``/``bg_np`` on every
+        detector switch). Writing only the transient ``irf_np``/``bg_np`` therefore
+        lasted until the first channel change, then got overwritten with the
+        detector's empty cached arrays — which is why "Send to MLE" appeared to do
+        nothing. Write BOTH: the live arrays for the current view and the state
+        cache so the patterns survive detector switches and reach the fit.
         """
         import numpy as np
 
@@ -791,14 +852,30 @@ class BurstAnalysisTool(NavigationPanelTool):
         bg_np = getattr(mle, "bg_np", None)
         if irf_np is None or bg_np is None:
             return 0
+        channel_settings = getattr(mle, "channel_settings", None)
+        ensure_state = getattr(mle, "_ensure_channel_state", None)
         count = 0
         for det, pat in (patterns or {}).items():
             try:
-                irf_np[det] = np.asarray(pat["irf"], dtype=float)
-                bg_np[det] = np.asarray(pat["bg"], dtype=float)
-                count += 1
+                irf = np.asarray(pat["irf"], dtype=float)
+                bg = np.asarray(pat["bg"], dtype=float)
             except Exception:
                 continue
+            irf_np[det] = irf
+            bg_np[det] = bg
+            # Persist into the per-detector state cache so a later detector
+            # switch (which restores irf_np/bg_np from here) and the fit both
+            # see these arrays rather than empty defaults.
+            if isinstance(channel_settings, dict):
+                if callable(ensure_state):
+                    try:
+                        ensure_state(det)
+                    except Exception:
+                        pass
+                st = channel_settings.setdefault(det, {})
+                st["irf"] = irf
+                st["bg"] = bg
+            count += 1
         # Rebuild the fit with the new IRF/background and refresh the display.
         try:
             mle._fit = None

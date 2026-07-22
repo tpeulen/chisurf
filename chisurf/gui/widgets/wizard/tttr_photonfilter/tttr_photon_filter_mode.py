@@ -2,19 +2,52 @@ def install_filter_mode_visibility(page, default_filter_mode: str):
     # Find the layout containing the burst filter combobox
     import chisurf as cs
     from chisurf.gui import QtWidgets
+    from chisurf.gui.widgets.wizard.tttr_photonfilter import (
+        tttr_photon_filter_tttrlib as tttrlib_modes,
+    )
     layout = page.comboBox_burst_filter.parentWidget().layout()
 
     # Block signals to add CUSUM Burst programmatically
     page.comboBox_burst_filter.blockSignals(True)
     if page.comboBox_burst_filter.findText("CUSUM Burst") == -1:
         page.comboBox_burst_filter.addItem("CUSUM Burst")
+    # BOCPD is retired: it never performed well enough to recommend, and the
+    # searches it competed with now all live in tttrlib. The enum value survives
+    # so an old project still loads; it is simply not offered any more.
+    bocpd_index = page.comboBox_burst_filter.findText("BOCPD Burst")
+    if bocpd_index != -1:
+        page.comboBox_burst_filter.removeItem(bocpd_index)
     page.comboBox_burst_filter.blockSignals(False)
+
+    # Burst searches tttrlib advertises are appended from its registry, together
+    # with a generated parameter form, so a new algorithm there shows up here
+    # without any change to this function or to the .ui file. This runs after
+    # every built-in mode has been added, so none of them lands below the
+    # separator that introduces the registry block.
+    tttrlib_modes.install(page)
 
     # Connect the burst filter combobox to the actionUpdate_Values action
     page.comboBox_burst_filter.currentIndexChanged.connect(page.actionUpdate_Values.trigger)
 
     # Function to update parameter visibility and tooltips based on selected filter mode
     def update_parameter_visibility(filter_mode):
+        # A registry-backed algorithm owns the whole parameter area: its widgets
+        # are generated from tttrlib's schema, so none of the built-in controls
+        # below apply.
+        if tttrlib_modes.apply_visibility(page):
+            return
+        # The built-in modes are generated too, from the spec in
+        # filter_settings_form: selecting one rebuilds its parameter panel rather
+        # than relabelling a shared pool of spinboxes. Everything below this point
+        # only still exists for the Designer widgets that have not been converted.
+        builtin = {
+            "Count rate": "count_rate", "Burst": "burst",
+            "Kalman Burst": "kalman", "CUSUM Burst": "cusum",
+        }.get(filter_mode)
+        if builtin is not None:
+            from .filter_settings_form import set_filter_mode
+            set_filter_mode(page, builtin)
+            return
         is_kalman = filter_mode == "Kalman Burst"
         is_bocpd = filter_mode == "BOCPD Burst"
         is_cusum = filter_mode == "CUSUM Burst"
@@ -169,3 +202,5 @@ def install_filter_mode_visibility(page, default_filter_mode: str):
         page.comboBox_burst_filter.setCurrentText("Kalman Burst")
     elif default_filter_mode == 'cusum':
         page.comboBox_burst_filter.setCurrentText("CUSUM Burst")
+    elif default_filter_mode in page._tttrlib_algorithms:
+        tttrlib_modes.select(page, default_filter_mode)

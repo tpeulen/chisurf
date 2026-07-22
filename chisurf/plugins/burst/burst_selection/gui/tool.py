@@ -582,6 +582,16 @@ class BurstSelectionTool(ChisurfDockTool):
         if region_selector is not None:
             region_selector.sigRegionChangeFinished.connect(self._on_filter_settings_changed)
 
+        # The generated forms have no Designer widgets to connect to: their
+        # controls are created and destroyed on every rebuild, so connecting them
+        # individually would need re-wiring each time. Both forms instead trigger
+        # `actionUpdate_Values` on edit, so listening to that one action keeps the
+        # plots responsive to the built-in *and* the registry-driven parameters,
+        # including searches added to tttrlib later.
+        update_action = getattr(self.wizard, "actionUpdate_Values", None)
+        if update_action is not None:
+            update_action.triggered.connect(self._on_filter_settings_changed)
+
     def _allow_horizontal_expansion(self, widget: QtWidgets.QWidget | None) -> None:
         """Allow a widget to use available horizontal space."""
         if widget is None:
@@ -612,6 +622,66 @@ class BurstSelectionTool(ChisurfDockTool):
                 QtWidgets.QSizePolicy.Policy.Expanding,
                 QtWidgets.QSizePolicy.Policy.Preferred,
             )
+        # The filter groups are no longer wrapped here: the generated form
+        # (filter_settings_form) renders them as foldable PanelSections, and
+        # wrapping the hidden Designer boxes as well would draw a second row of
+        # empty headers over it.
+
+    def _make_filter_groups_collapsible(self) -> None:
+        """Turn the filter-settings group boxes into foldable sections.
+
+        The same treatment the light-path simulator gives its settings: each
+        group becomes a :class:`CollapsibleBox`, so the parts of the panel that
+        are not currently being adjusted can be folded away. This matters here
+        because the page competes for vertical space with the plots below it, and
+        with a registry-driven search selected the parameter form is taller than
+        the built-in modes ever were.
+
+        Each group box is moved inside a collapsible section rather than
+        recreated, so every widget keeps its identity — the wizard addresses them
+        by attribute (``self.wizard.groupBox_2`` and so on) and the tool wires
+        signals to the individual controls, both of which would break if the
+        widgets were rebuilt. The group box itself is made flat and title-less,
+        since the section header now carries the title.
+        """
+        from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+
+        # Channel selection folds away by default: it is set once per setup,
+        # whereas the filter parameters are what a user actually iterates on.
+        specs = (
+            (self.wizard.groupBox_3, "Channel selection", False),
+            (self.wizard.groupBox_2, "Macro time interval", True),
+            (self.wizard.groupBox, "Filter", True),
+        )
+        self._collapsible_filter_groups = {}
+        for box, title, expanded in specs:
+            parent_layout = box.parentWidget().layout() if box.parentWidget() else None
+            if parent_layout is None:
+                continue
+            index = parent_layout.indexOf(box)
+            if index < 0:
+                continue
+            item = parent_layout.itemAt(index)
+            position = None
+            if isinstance(parent_layout, QtWidgets.QGridLayout):
+                position = parent_layout.getItemPosition(index)
+            parent_layout.takeAt(index)
+
+            section = CollapsibleBox(title, expanded=expanded)
+            box.setTitle("")
+            box.setFlat(True)
+            section.add_widget(box)
+            section.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Preferred,
+            )
+            if position is not None:
+                row, column, row_span, column_span = position
+                parent_layout.addWidget(section, row, column, row_span, column_span)
+            else:
+                parent_layout.insertWidget(index, section)
+            self._collapsible_filter_groups[title] = section
+            del item
 
         for widget in (
             self.wizard.comboBox_2,

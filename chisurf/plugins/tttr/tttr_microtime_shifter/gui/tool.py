@@ -301,9 +301,11 @@ class MicrotimeShifterTool(ChisurfDockTool):
                 from chisurf.gui.widgets.mmfdb.dataset_browser import (
                     MmfdbDatasetPickerDialog,
                 )
-                from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
+                from chisurf.gui.widgets.mmfdb import picker
 
-                client = MMFDBClient(inprocess=True)
+                # Shared, process-global MMFDB session (one embedded server for
+                # every selector) rather than a fresh client per pick.
+                client = picker.inprocess_client()
                 sel = MmfdbDatasetPickerDialog.pick_dataset(
                     parent=self,
                     # Both raw measurements and shifted (processed) TTTR outputs

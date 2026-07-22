@@ -437,6 +437,8 @@ class PlotSection(Section):
     log_x: bool = False
     log_y: bool = False
     legend: bool = True
+    #: Right-click context menu (per-axis log/linear, autoscale, export).
+    context_menu: bool = True
 
 
 @dataclasses.dataclass(frozen=True)

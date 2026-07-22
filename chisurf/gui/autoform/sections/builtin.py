@@ -1218,7 +1218,11 @@ class PlotWidget(QtWidgets.QWidget):
             except Exception:
                 pass
         try:
-            self.plot.getPlotItem().getViewBox().setMenuEnabled(False)
+            # Right-click menu (per-axis log/linear toggle, autoscale, export) is
+            # on by default; a section can opt out with "context_menu": false.
+            self.plot.getPlotItem().getViewBox().setMenuEnabled(
+                bool(getattr(section, "context_menu", True))
+            )
         except Exception:
             pass
         layout.addWidget(self.plot)

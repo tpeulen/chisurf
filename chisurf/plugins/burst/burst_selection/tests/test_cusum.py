@@ -53,14 +53,18 @@ def test_cusum_filter_execution() -> None:
     assert len(df) >= 0
 
 
-def test_bocpd_filter_execution() -> None:
-    """Ensure BOCPD mode runs successfully and extracts bursts through the API."""
+def test_bocpd_filter_is_removed() -> None:
+    """BOCPD was retired (the tttrlib searches supersede it): selecting it errors.
+
+    It never performed well enough to recommend, so the API now rejects the mode
+    with a clear message instead of running it.
+    """
     if not BH_SPC_FILE.exists():
         pytest.skip("Test data not available")
 
     settings = AnalysisSettings()
     settings.photon_filter = PhotonFilterSettings(
-        channels=[0, 1],  # BOCPD multi-channel needs valid channels
+        channels=[0, 1],
         filter_active=True,
         used_filter=BurstFilterMode.BOCPD,
         bocpd_filter=BocpdFilterSettings(
@@ -71,16 +75,11 @@ def test_bocpd_filter_execution() -> None:
         ),
     )
     settings.burst_detection = BurstDetectionSettings(
-        min_photons=15,
-        photon_window=10,
-        time_window=0.001,
+        min_photons=15, photon_window=10, time_window=0.001,
     )
 
-    result = analyze_file(BH_SPC_FILE, settings=settings)
-    assert result is not None
-    assert str(BH_SPC_FILE.resolve()) in result.dataframes
-    df = result.dataframes[str(BH_SPC_FILE.resolve())]
-    assert len(df) >= 0
+    with pytest.raises(ValueError, match="BOCPD"):
+        analyze_file(BH_SPC_FILE, settings=settings)
 
 
 def test_kalman_filter_execution() -> None:

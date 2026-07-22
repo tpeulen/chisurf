@@ -350,7 +350,8 @@ def generate_burst_dataframe(
     # build column list
     static_cols = [
         "First Photon", "Last Photon", "Duration (ms)", "Mean Macro Time (ms)",
-        "Number of Photons", "Count Rate (KHz)", "First File", "Last File",
+        "Number of Photons", "Count Rate (KHz)", "Confidence (sigma)",
+        "First File", "Last File",
     ]
     det_cols = []
     for d in detectors:
@@ -365,6 +366,25 @@ def generate_burst_dataframe(
             win_cols.append(f"S {w} {d} (kHz) | {r0}-{r1}")
     # extra blank column
     cols = static_cols + det_cols + win_cols + [""]
+
+    # Per-burst confidence: the significance of the burst's photon excess over
+    # the background measured around it, in sigma. tttrlib computes it from the
+    # burst boundaries rather than inside a particular search, so the number
+    # means the same thing whichever search produced these bursts, and bursts
+    # from different searches stay comparable. Written into the .bur so a
+    # marginal detection can be told from an unambiguous one downstream (e.g. in
+    # ndxplorer) instead of filtering on photon count, which is not the same
+    # thing. Older tttrlib builds do not provide it; the column is then left at 0
+    # rather than dropped, so the file layout does not depend on the tttrlib
+    # version.
+    confidence = None
+    _confidence_of = getattr(tttr, "burst_confidence", None)
+    if _confidence_of is not None and len(start_stop):
+        try:
+            _flat = [int(v) for pair in start_stop for v in pair[:2]]
+            confidence = np.asarray(_confidence_of(_flat), dtype=float)
+        except Exception:
+            confidence = None
 
     # map col→index for fast assignment
     idx = {c:i for i,c in enumerate(cols)}
@@ -401,7 +421,7 @@ def generate_burst_dataframe(
     if has_bursts and include_interleaved_zeros:
         out.append(zero_row.copy())
 
-    for start, stop in start_stop:
+    for burst_index, (start, stop) in enumerate(start_stop):
         if stop <= start or stop>=n_ph or start<0:
             continue
 
@@ -420,6 +440,10 @@ def generate_burst_dataframe(
         row[idx["Mean Macro Time (ms)"]]  = meanm
         row[idx["Number of Photons"]]     = npix
         row[idx["Count Rate (KHz)"]]      = crate
+        # Indexed by position in start_stop, not by output row: skipped bursts
+        # never reach here, so the two would otherwise drift apart.
+        if confidence is not None and burst_index < confidence.size:
+            row[idx["Confidence (sigma)"]] = confidence[burst_index]
         row[idx["First File"]]            = file_name_only
         row[idx["Last File"]]             = file_name_only
 

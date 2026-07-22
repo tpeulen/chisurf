@@ -361,6 +361,14 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         add_action.triggered.connect(self._add_files_dialog)
         toolbar.addAction(add_action)
 
+        db_action = QtWidgets.QAction("🗄 Database", self)
+        db_action.setToolTip(
+            "Select TTTR files from the MMFDB database "
+            "(including S3-backed object stores)."
+        )
+        db_action.triggered.connect(self._add_from_mmfdb)
+        toolbar.addAction(db_action)
+
         toolbar.addSeparator()
 
         process_action = QtWidgets.QAction("🕐 Process", self)
@@ -397,6 +405,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         # Apply object names for stylesheet targeting
         name_map = {
             "📂 Add Files": "twToolbarAdd",
+            "🗄 Database": "twToolbarDatabase",
             "🕐 Process": "twToolbarProcess",
             "🗑\ufe0f Clear": "twToolbarClear",
             "ℹ\ufe0f Help": "twToolbarHelp",
@@ -458,6 +467,20 @@ class TTTRTimeWindowTool(ChisurfDockTool):
             f"TTTR files ({pattern});;All files (*)",
         )
         self._add_paths([Path(p) for p in paths])
+
+    def _add_from_mmfdb(self) -> None:
+        """Add TTTR files chosen from the MMFDB database (shared global session)."""
+        from chisurf.gui.widgets.mmfdb import picker
+
+        client = picker.inprocess_client()
+        if client is None:
+            QtWidgets.QMessageBox.information(
+                self, "MMFDB", "No MMFDB database is available in this session."
+            )
+            return
+        paths = picker.pick_local_paths(parent=self, client=client)
+        if paths:
+            self._add_paths(list(paths))
 
     def _add_paths(self, paths: list[Path]) -> None:
         """Add TTTR file paths to the queue."""

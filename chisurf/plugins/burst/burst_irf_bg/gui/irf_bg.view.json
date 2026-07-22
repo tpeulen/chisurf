@@ -48,7 +48,8 @@
           "x_label": "Micro time (ns)",
           "y_label": "IRF (normalised)",
           "legend": true,
-          "description": "Per-detector scatter-derived IRF from the non-burst photons."
+          "log_y": true,
+          "description": "Per-detector scatter-derived IRF from the non-burst photons (log y)."
         },
         {
           "type": "panel",
