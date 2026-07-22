@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional
 from shlex import split as shlex_split
 
 import numpy as np
@@ -27,13 +26,13 @@ class SelectionMixin(BaseCmd):
     # ------------------------------------------------------------------ #
     # Commands
     # ------------------------------------------------------------------ #
-    def _cmd_enable(self, args: List[str]) -> None:
+    def _cmd_enable(self, args: list[str]) -> None:
         self._cmd_enable_disable(args, visible=True)
 
-    def _cmd_disable(self, args: List[str]) -> None:
+    def _cmd_disable(self, args: list[str]) -> None:
         self._cmd_enable_disable(args, visible=False)
 
-    def _cmd_enable_disable(self, args: List[str], *, visible: bool) -> None:
+    def _cmd_enable_disable(self, args: list[str], *, visible: bool) -> None:
         if not args:
             self._emit_error("Usage: enable/disable <all|object_name>")
             return
@@ -79,7 +78,7 @@ class SelectionMixin(BaseCmd):
             action = "enable" if vis else "disable"
             self._emit_error(f"Failed to {action} object {target}: {exc}")
 
-    def _cmd_select(self, args: List[str]) -> None:
+    def _cmd_select(self, args: list[str]) -> None:
         if not args:
             self._emit_error(
                 "Usage: select [sel_name,] selection_expr | select sel_name"
@@ -93,7 +92,7 @@ class SelectionMixin(BaseCmd):
         tokens = list(args)
 
         # Optional named-selection prefix: "sel1," expr
-        sel_name: Optional[str] = None
+        sel_name: str | None = None
         first = tokens[0]
         if first.endswith(","):
             sel_name = first[:-1].strip()
@@ -158,7 +157,7 @@ class SelectionMixin(BaseCmd):
                 }
             self._emit_message(f"Selected object {obj_name}")
 
-    def _cmd_set(self, args: List[str]) -> None:
+    def _cmd_set(self, args: list[str]) -> None:
         if not args or len(args) < 2:
             self._emit_error("Usage: set <name> <value>")
             return
@@ -180,11 +179,11 @@ class SelectionMixin(BaseCmd):
         }
 
         if name in ("bg_color", "bg_colour"):
-            self._cmd_bg_color([value])
+            self.bg_color(value)
             return
 
         if name in ("color_mode", "color"):
-            self._cmd_color([value])
+            self.color(value)
             return
 
         if name in (
@@ -205,9 +204,9 @@ class SelectionMixin(BaseCmd):
                 return
             vis = bool_map[value_l]
             if vis:
-                self._cmd_show([name])
+                self.show(name)
             else:
-                self._cmd_hide([name])
+                self.hide(name)
             return
 
         cartoon_setting_map = {
@@ -238,13 +237,13 @@ class SelectionMixin(BaseCmd):
                 pass
             self._emit_message(f"{name} set to {value}")
             return
-        
+
         if name.startswith("metaball.") or name.startswith("metaball_"):
             prop = name.replace("metaball_", "").replace("metaball.", "")
             window, viewer = self._require_window_and_viewer()
             if viewer is None:
                 return
-            
+
             from ..config import _DISPLAY_CONFIG
             mcfg = _DISPLAY_CONFIG.setdefault("metaball", {})
             try:
@@ -260,7 +259,7 @@ class SelectionMixin(BaseCmd):
             "and metaball properties (metaball.alpha, metaball.shininess, etc.)"
         )
 
-    def _cmd_objects(self, args: List[str]) -> None:
+    def _cmd_objects(self, args: list[str]) -> None:
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -275,7 +274,7 @@ class SelectionMixin(BaseCmd):
             self._emit_message("No objects loaded.")
             return
 
-        lines: List[str] = []
+        lines: list[str] = []
         for idx, obj in enumerate(objects, start=1):
             oid = obj.get("id", "?")
             name = obj.get("name", oid)
@@ -286,7 +285,7 @@ class SelectionMixin(BaseCmd):
 
         self._emit_message("Objects:\n" + "\n".join(lines))
 
-    def _cmd_get_names(self, args: List[str]) -> None:
+    def _cmd_get_names(self, args: list[str]) -> None:
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -308,7 +307,7 @@ class SelectionMixin(BaseCmd):
         else:
             self._emit_message("[" + ", ".join(names) + "]")
 
-    def _cmd_deselect(self, args: List[str]) -> None:
+    def _cmd_deselect(self, args: list[str]) -> None:
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -329,14 +328,13 @@ class SelectionMixin(BaseCmd):
 
         self._emit_message("Deselected residues on active object")
 
-    def _cmd_clear(self, args: List[str]) -> None:
+    def _cmd_clear(self, args: list[str]) -> None:
         """Clear the current selection and transient selection UI state.
 
         PyMOL uses ``clear`` in interactive contexts to clear current user
         input/selection state. In Chimol this is intentionally non-destructive:
         it does not delete loaded molecules. Use ``delete`` for that.
         """
-
         self._cmd_deselect(args)
         self._emit_message("Cleared current selection")
 
@@ -401,16 +399,15 @@ class SelectionMixin(BaseCmd):
         self,
         expr: str,
         *,
-        residue_numbers: Optional[np.ndarray] = None,
-    ) -> Optional[List[int]]:
+        residue_numbers: np.ndarray | None = None,
+    ) -> list[int] | None:
         """Parse a simple residue expression into 0-based indices."""
-
         text = (expr or "").strip()
         if not text:
             return None
 
         # Helper to map a single residue number to indices
-        def _map_single(num: int) -> List[int]:
+        def _map_single(num: int) -> list[int]:
             if residue_numbers is not None:
                 try:
                     arr = np.asarray(residue_numbers)
@@ -418,7 +415,7 @@ class SelectionMixin(BaseCmd):
                     return []
                 if arr.ndim != 1 or arr.size == 0:
                     return []
-                idx_list: List[int] = []
+                idx_list: list[int] = []
                 for i, v in enumerate(arr):
                     try:
                         rv = int(v)
@@ -459,7 +456,7 @@ class SelectionMixin(BaseCmd):
                     return None
                 if arr.ndim != 1 or arr.size == 0:
                     return None
-                idx_list: List[int] = []
+                idx_list: list[int] = []
                 for i, v in enumerate(arr):
                     try:
                         rv = int(v)
@@ -471,7 +468,7 @@ class SelectionMixin(BaseCmd):
             # Fallback to 1-based sequence indices
             if end <= 0:
                 return None
-            out: List[int] = []
+            out: list[int] = []
             for i in range(start, end + 1):
                 if i > 0:
                     out.append(i - 1)
@@ -481,11 +478,11 @@ class SelectionMixin(BaseCmd):
 
     def _parse_measurement_selections(
         self,
-        args: List[str],
+        args: list[str],
         *,
         expected_count: int,
         cmd: str,
-    ) -> tuple[Optional[str], List[str]]:
+    ) -> tuple[str | None, list[str]]:
         joined = " ".join(args).strip()
         pattern = ", ".join(f"sele{i + 1}" for i in range(expected_count))
         if not joined:
@@ -553,7 +550,7 @@ class SelectionMixin(BaseCmd):
         self,
         viewer,
         expr: str,
-    ) -> tuple[str, str, List[int]]:
+    ) -> tuple[str, str, list[int]]:
         text = (expr or "").strip()
         if not text:
             raise ValueError("Empty selection")
@@ -604,23 +601,23 @@ class SelectionMixin(BaseCmd):
             state = getattr(entry, "state", None)
             all_atom_res_ids = getattr(state, "all_atom_res_ids", None)
             residue_ids = getattr(state, "residue_ids", None)
-            
+
             if all_atom_res_ids is None or residue_ids is None:
                 raise ValueError(f"Object {obj_name} missing data for residue conversion")
-                
+
             res_ids_arr = np.asarray(residue_ids)
             atom_res_ids_arr = np.asarray(all_atom_res_ids)
-            
+
             # Find which globally unique residue IDs have at least one selected atom
             selected_res_ids = np.unique(atom_res_ids_arr[atom_mask])
-            
+
             # Map selected global residue IDs back to their 0-based index in the 'residue_ids' array
             # We assume res_ids_arr contains ALL the unique global residue IDs in order.
-            
+
             # Using np.isin and np.where
             mask = np.isin(res_ids_arr, selected_res_ids)
             res_indices = np.where(mask)[0].tolist()
-            
+
         except Exception as exc:
             raise ValueError(f"Failed to extract residue indices: {exc}")
 
@@ -630,7 +627,7 @@ class SelectionMixin(BaseCmd):
         self,
         viewer,
         expr: str,
-    ) -> tuple[str, str, int, Optional[str], np.ndarray]:
+    ) -> tuple[str, str, int, str | None, np.ndarray]:
         text = (expr or "").strip()
         if not text:
             raise ValueError("Empty selection")
@@ -690,9 +687,9 @@ class SelectionMixin(BaseCmd):
 
             # Get first index where mask is True
             first_idx = np.where(atom_mask)[0][0]
-            
+
             coord = all_coords[first_idx]
-            
+
             # Map back to residue index
             res_idx = -1
             if all_res_ids is not None and residue_ids is not None:
@@ -700,7 +697,7 @@ class SelectionMixin(BaseCmd):
                 res_indices = np.where(residue_ids == rid)[0]
                 if len(res_indices) > 0:
                     res_idx = int(res_indices[0])
-            
+
             atom_name = None
             if atoms is not None:
                  atom_name = str(atoms["atom_name"][first_idx]).strip()

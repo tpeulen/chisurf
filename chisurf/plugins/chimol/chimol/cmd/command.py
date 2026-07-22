@@ -1,26 +1,26 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Type
+from collections.abc import Callable
 
-from .base import BaseCmd
-from .loader import LoaderCommands
-from .selection import SelectionMixin
-from .rendering import RenderingMixin
-from .measurements import MeasurementMixin
-from .editing import EditingMixin
 from .animation import AnimationMixin
-from .rmf import RmfMixin
-from .lifecycle import LifecycleMixin
+from .base import BaseCmd
+from .editing import EditingMixin
 from .exporting import ExportMixin
+from .lifecycle import LifecycleMixin
+from .loader import LoaderCommands
+from .measurements import MeasurementMixin
+from .rendering import RenderingMixin
+from .rmf import RmfMixin
+from .selection import SelectionMixin
 
-MixinType = Type[BaseCmd]
+MixinType = type[BaseCmd]
 
 
 class Cmd(LoaderCommands, SelectionMixin, RenderingMixin, AnimationMixin, RmfMixin, MeasurementMixin, EditingMixin, LifecycleMixin, ExportMixin, BaseCmd):
     """Thin aggregator that wires together all command mixins."""
 
-    def _builtin_commands(self) -> Dict[str, Callable[[List[str]], object]]:
-        cmds: Dict[str, Callable[[List[str]], object]] = {}
+    def _builtin_commands(self) -> dict[str, Callable[[list[str]], object]]:
+        cmds: dict[str, Callable[[list[str]], object]] = {}
         for mixin in (
             LoaderCommands,
             SelectionMixin,
@@ -65,47 +65,9 @@ class Cmd(LoaderCommands, SelectionMixin, RenderingMixin, AnimationMixin, RmfMix
     def fetch_ihm(self, *entry_ids: str) -> None:
         self._cmd_fetch_ihm(list(entry_ids))
 
-    def bg_color(self, color: str) -> None:
-        self._cmd_bg_color([color])
-
-    def show(self, rep: str) -> None:
-        self._cmd_show([rep])
-
-    def hide(self, rep: str) -> None:
-        self._cmd_hide([rep])
-
     def as_(self, rep: str) -> None:
-        self._cmd_as([rep])
-
-    def center(self) -> None:
-        self._cmd_center([])
-
-    def orient(self) -> None:
-        self._cmd_orient([])
-
-    def zoom(self) -> None:
-        self._cmd_zoom([])
-
-    def reset(self) -> None:
-        self._cmd_reset([])
-
-    def get_view(self):
-        return self._cmd_get_view([])
-
-    def set_view(self, view) -> None:
-        if isinstance(view, str):
-            self._cmd_set_view([view])
-        else:
-            self._cmd_set_view([", ".join(str(v) for v in view)])
-
-    def color(self, mode: str) -> None:
-        self._cmd_color([mode])
-
-    def spectrum(self, *args: str) -> None:
-        self._cmd_spectrum(list(args))
-
-    def cartoon(self, *args: str) -> None:
-        self._cmd_cartoon(list(args))
+        # 'as' is a Python keyword, so this thin alias exposes the show_as command.
+        self.show_as(rep)
 
     def distance(self, *tokens: str) -> None:
         self._cmd_distance(list(tokens))

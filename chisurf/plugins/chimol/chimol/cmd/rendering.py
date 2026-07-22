@@ -14,59 +14,39 @@ class RenderingMixin(BaseCmd):
     # User-defined colors (via set_color command)
     _user_colors: dict[str, np.ndarray] = {}
 
-    def _mixin_commands(self):
-        return {
-            "bg_color": self._cmd_bg_color,
-            "bg_colour": self._cmd_bg_color,
-            "show": self._cmd_show,
-            "hide": self._cmd_hide,
-            "as": self._cmd_as,
-            "center": self._cmd_center,
-            "orient": self._cmd_orient,
-            "zoom": self._cmd_zoom,
-            "reset": self._cmd_reset,
-            "get_view": self._cmd_get_view,
-            "set_view": self._cmd_set_view,
-            "color": self._cmd_color,
-            "spectrum": self._cmd_spectrum,
-            "cartoon": self._cmd_cartoon,
-            "set_color": self._cmd_set_color,
-            "get_color_index": self._cmd_get_color_index,
-        }
-
     # ------------------------------------------------------------------ #
     # Background / rep toggles
     # ------------------------------------------------------------------ #
-    def _cmd_bg_color(self, args: list[str]) -> None:
-        if not args:
-            self._emit_error("Usage: bg_color <color>")
-            return
+    @command("bg_color", aliases=("bg_colour",))
+    def bg_color(self, color: str) -> None:
+        """Set the background color (PyMOL ``bg_color <color>``)."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
         try:
-            rgba = self._parse_color_spec(" ".join(args))
+            rgba = self._parse_color_spec(str(color))
             viewer.set_background_color(rgba)
         except Exception as exc:
             self._emit_error(f"Failed to set background color: {exc}")
 
-    def _cmd_show(self, args: list[str]) -> None:
-        self._cmd_toggle_representation(args, visible=True)
+    @command("show")
+    def show(self, rep: str, sel: Selection = "") -> None:
+        """Show a representation (PyMOL ``show rep [, selection]``)."""
+        self._toggle_representation(str(rep), str(sel), visible=True)
 
-    def _cmd_hide(self, args: list[str]) -> None:
-        self._cmd_toggle_representation(args, visible=False)
+    @command("hide")
+    def hide(self, rep: str, sel: Selection = "") -> None:
+        """Hide a representation (PyMOL ``hide rep [, selection]``)."""
+        self._toggle_representation(str(rep), str(sel), visible=False)
 
-    def _cmd_as(self, args: list[str]) -> None:
+    @command("as", aliases=("show_as",))
+    def show_as(self, rep: str) -> None:
         """Set the primary representation mode (cartoon/lines/sticks/spheres)."""
-        if not args:
-            self._emit_error("Usage: as <cartoon|lines|sticks|spheres>")
-            return
-
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
-        rep = (args[0] or "").strip().lower()
+        rep = str(rep).strip().lower()
         if rep in ("cartoon", "ribbon"):
             try:
                 viewer.set_representation("cartoon")
@@ -88,8 +68,9 @@ class RenderingMixin(BaseCmd):
 
         self._emit_error(f"Unsupported representation for 'as': {rep}")
 
-    def _cmd_toggle_representation(self, args: list[str], *, visible: bool) -> None:
-        if not args:
+    def _toggle_representation(self, rep: str, sel: str, *, visible: bool) -> None:
+        rep_target = (rep or "").strip().lower()
+        if not rep_target:
             self._emit_error("Usage: show/hide <cartoon|trace|atoms|sticks|dots|surface|metaball|plane>[, selection]")
             return
 
@@ -97,19 +78,7 @@ class RenderingMixin(BaseCmd):
         if viewer is None:
             return
 
-        joined = " ".join(args).strip()
-        rep_target = ""
-        selection = None
-
-        if "," in joined:
-             parts = [p.strip() for p in joined.split(",", 1)]
-             rep_target = parts[0].lower()
-             selection = parts[1]
-        else:
-             rep_target = (args[0] or "").lower()
-             if len(args) > 1:
-                  selection = " ".join(args[1:])
-
+        selection = (sel or "").strip() or None
         vis = bool(visible)
 
         if rep_target in ("all", "*"):
@@ -204,13 +173,14 @@ class RenderingMixin(BaseCmd):
         except Exception as exc:
             self._emit_error(f"Failed to update representation '{rep_target}': {exc}")
 
-    def _cmd_center(self, args: list[str]) -> None:
+    @command("center")
+    def center(self, sel: Selection = "") -> None:
         """Center view on selection or all objects."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
-        selection = " ".join(args).strip() or None
+        selection = str(sel).strip() or None
         if selection:
             try:
                 # Note: this helper is available when mixed into Cmd
@@ -224,13 +194,14 @@ class RenderingMixin(BaseCmd):
         else:
             viewer.center()
 
-    def _cmd_orient(self, args: list[str]) -> None:
+    @command("orient")
+    def orient(self, sel: Selection = "") -> None:
         """Orient view on selection."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
-        selection = " ".join(args).strip() or None
+        selection = str(sel).strip() or None
         if selection:
             try:
                 obj_id, _, res_indices = self._resolve_selection_to_residue_indices(viewer, selection) # type: ignore
@@ -243,40 +214,28 @@ class RenderingMixin(BaseCmd):
         else:
             viewer.orient()
 
-    def _cmd_zoom(self, args: list[str]) -> None:
-        """Zoom view to fit selection."""
+    @command("zoom")
+    def zoom(self, sel: Selection = "", buffer: float = 2.0) -> None:
+        """Zoom view to fit selection (PyMOL ``zoom [selection [, buffer]]``)."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
-        # zoom [selection], [buffer]
-        joined = " ".join(args)
-        buffer = 2.0
-        selection = None
-
-        if "," in joined:
-            parts = [p.strip() for p in joined.split(",", 1)]
-            selection = parts[0] or None
-            try:
-                buffer = float(parts[1])
-            except (ValueError, IndexError):
-                pass
-        else:
-            selection = joined.strip() or None
-
+        selection = str(sel).strip() or None
         if selection:
             try:
-                obj_id, _, res_indices = self._resolve_selection_to_residue_indices(viewer, selection) # type: ignore
+                obj_id, _, res_indices = self._resolve_selection_to_residue_indices(viewer, selection)  # type: ignore
                 if obj_id:
-                    viewer.zoom(res_indices, buffer=buffer, object_id=obj_id)
+                    viewer.zoom(res_indices, buffer=float(buffer), object_id=obj_id)
                 else:
                     self._emit_error(f"Selection '{selection}' did not resolve.")
             except Exception as exc:
                 self._emit_error(f"Failed to zoom: {exc}")
         else:
-            viewer.zoom(buffer=buffer)
+            viewer.zoom(buffer=float(buffer))
 
-    def _cmd_reset(self, args: list[str]) -> None:
+    @command("reset")
+    def reset(self) -> None:
         """Reset view to default orientation and center."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
@@ -382,12 +341,10 @@ class RenderingMixin(BaseCmd):
         except Exception:
             return None
 
-    def _cmd_cartoon(self, args: list[str]) -> None:
+    @command("cartoon")
+    def cartoon(self, mode: str, sel: Selection = "") -> None:
         """Set cartoon display type similar to PyMOL ``cartoon``."""
-        if not args:
-            self._emit_error("Usage: cartoon <automatic|tube|oval|rect|arrow|loop> [, selection]")
-            return
-        mode = (args[0].rstrip(",") or "").strip().lower()
+        mode = str(mode).strip().lower()
         from ..config import _DISPLAY_CONFIG
         cfg = _DISPLAY_CONFIG.setdefault("cartoon", {})
         if mode in ("automatic", "auto", "default", "oval", "rect", "rectangle", "arrow", "loop"):
@@ -407,7 +364,8 @@ class RenderingMixin(BaseCmd):
             pass
         self._emit_message(f"Cartoon type set to {mode}")
 
-    def _cmd_get_view(self, args: list[str]) -> str:
+    @command("get_view")
+    def get_view(self) -> str:
         """Return a copy/pasteable PyMOL-style set_view command."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
@@ -419,9 +377,16 @@ class RenderingMixin(BaseCmd):
             return ""
         return "set_view (" + ", ".join(f"{v:.9g}" for v in vals) + ")"
 
-    def _cmd_set_view(self, args: list[str]) -> None:
-        """Restore an 18-float view tuple."""
-        joined = " ".join(args).strip()
+    @command("set_view")
+    def set_view(self, view: str = "") -> None:
+        """Restore an 18-float view tuple (PyMOL ``set_view (...)``).
+
+        Accepts the parenthesised string form from the command line, or a
+        list/tuple of 18 numbers from the Python API.
+        """
+        if isinstance(view, (list, tuple)):
+            view = ", ".join(str(v) for v in view)
+        joined = str(view).strip()
         if not joined:
             self._emit_error("Usage: set_view (<18 floats>)")
             return
@@ -446,9 +411,19 @@ class RenderingMixin(BaseCmd):
     # ------------------------------------------------------------------ #
     # Color handling
     # ------------------------------------------------------------------ #
-    def _cmd_color(self, args: list[str]) -> None:
-        """Set a simple color mode or per-selection color."""
-        if not args:
+    def _update_sequence_view_safe(self, window) -> None:
+        try:
+            if window is not None:
+                window._update_sequence_view()
+        except Exception:
+            pass
+
+    @command("color")
+    def color(self, spec: str = "", sel: Selection = "") -> None:
+        """Set a color mode or per-selection color (PyMOL ``color``)."""
+        spec = str(spec).strip()
+        selection = str(sel).strip()
+        if not spec:
             self._emit_error(
                 "Usage: color <single|by_residue|by_ss|by_sequence>[, selection] "
                 "or color <color>, selection"
@@ -459,84 +434,52 @@ class RenderingMixin(BaseCmd):
         if viewer is None:
             return
 
-        joined = " ".join(args).strip()
-
-        # Comma-separated form: either mode + selection or color + selection.
-        if "," in joined:
-            parts = [part.strip() for part in joined.split(",", 1)]
-            if len(parts) != 2 or not parts[0] or not parts[1]:
-                self._emit_error(
-                    "Usage: color <mode>, selection or color <color>, selection"
-                )
-                return
-            left, right = parts
-
-            raw_left = left.lower()
-
-            # Legacy/Mode form: color <mode>, selection
+        # With a selection: either mode+selection or color+selection.
+        if selection:
             try:
-                mode = self._normalize_color_mode(raw_left)
+                mode = self._normalize_color_mode(spec.lower())
             except ValueError:
                 mode = None
-
             if mode is not None:
                 try:
-                    self._apply_color_mode(viewer, mode, selection=right)
+                    self._apply_color_mode(viewer, mode, selection=selection)
                 except ValueError as exc:
                     self._emit_error(str(exc))
                 else:
-                    try:
-                        if window is not None:
-                            window._update_sequence_view()
-                    except Exception:
-                        pass
+                    self._update_sequence_view_safe(window)
                 return
-
-            # PyMOL-style coloring: color <color>, selection
-            color_spec_first = left
-            sele_expr_first = right
 
             rgba = None
             sele_expr = None
             try:
-                rgba = self._parse_color_spec(color_spec_first)
-                sele_expr = sele_expr_first
+                rgba = self._parse_color_spec(spec)
+                sele_expr = selection
             except ValueError:
                 # Fallback for the user's original order: color selection, color
                 try:
-                    rgba = self._parse_color_spec(sele_expr_first)
-                    sele_expr = color_spec_first
+                    rgba = self._parse_color_spec(selection)
+                    sele_expr = spec
                 except ValueError:
                     self._emit_error(
                         "Usage: color <single|by_residue|by_ss|by_sequence>[, selection] "
                         "or color <color>, selection"
                     )
                     return
-
-            if rgba is None or sele_expr is None:
-                self._emit_error("Could not parse color/selection for color command")
-                return
-
             try:
                 self._apply_color_to_selection(viewer, sele_expr, rgba)
             except ValueError as exc:
                 self._emit_error(str(exc))
             else:
-                try:
-                    if window is not None:
-                        window._update_sequence_view()
-                except Exception:
-                    pass
+                self._update_sequence_view_safe(window)
             return
 
-        # No comma: treat as simple color-mode toggle or uniform color on active object.
-        raw = (args[0] or "").strip().lower()
+        # No selection: mode toggle or uniform color on the active object.
+        raw = spec.lower()
         try:
             mode = self._normalize_color_mode(raw)
         except ValueError:
-            # Not a mode name; try parsing as a color spec for uniform coloring.
             try:
-                rgba = self._parse_color_spec(raw)
+                self._parse_color_spec(raw)
             except ValueError:
                 self._emit_error(
                     f"Unrecognized color '{raw}'. Use a color name, #hex, "
@@ -544,8 +487,7 @@ class RenderingMixin(BaseCmd):
                     "by_element, by_chain, spectrum."
                 )
                 return
-            # Apply uniform color to all residues via the comma form internally.
-            self._cmd_color([raw + ", all"])
+            self.color(raw, "all")  # uniform color to all
             return
 
         try:
@@ -553,33 +495,18 @@ class RenderingMixin(BaseCmd):
         except ValueError as exc:
             self._emit_error(str(exc))
         else:
-            try:
-                if window is not None:
-                    window._update_sequence_view()
-            except Exception:
-                pass
+            self._update_sequence_view_safe(window)
 
-    def _cmd_spectrum(self, args: list[str]) -> None:
-        """Color by a spectrum (rainbow). Alias for 'color spectrum'.
+    @command("spectrum")
+    def spectrum(self, expression: str = "", palette: str = "", sel: Selection = "") -> None:
+        """Color by a spectrum (rainbow). PyMOL ``spectrum`` (mode part only)."""
+        self.color("spectrum")
 
-        PyMOL syntax: spectrum [expression [, palette [, selection]]]
-        Chimol currently supports the global color mode part.
-        """
-        self._cmd_color(["spectrum"])
-
-    def _cmd_set_color(self, args: list[str]) -> None:
-        """Define a named color.
-
-        PyMOL syntax: set_color name, [r, g, b] or set_color name, hex
-        """
-        if not args:
-            self._emit_error("Usage: set_color <name>, <r,g,b> or <#hex>")
-            return
-        joined = " ".join(args).strip()
-        if "," not in joined:
-            self._emit_error("Usage: set_color <name>, <r,g,b> or <#hex>")
-            return
-        name_part, color_part = [p.strip() for p in joined.split(",", 1)]
+    @command("set_color", mode="raw1")
+    def set_color(self, name: str, color: str) -> None:
+        """Define a named color (PyMOL ``set_color name, [r,g,b] | #hex``)."""
+        name_part = str(name).strip()
+        color_part = str(color).strip()
         if not name_part or not color_part:
             self._emit_error("Usage: set_color <name>, <r,g,b> or <#hex>")
             return
@@ -588,16 +515,13 @@ class RenderingMixin(BaseCmd):
         except (ValueError, KeyError) as exc:
             self._emit_error(f"Cannot parse color value: {exc}")
             return
-        key = name_part.strip().lower()
-        self._user_colors[key] = rgba
-        self._emit_message(f"Defined color '{name_part.strip()}' = {rgba[:3]}")
+        self._user_colors[name_part.lower()] = rgba
+        self._emit_message(f"Defined color '{name_part}' = {rgba[:3]}")
 
-    def _cmd_get_color_index(self, args: list[str]) -> int | None:
+    @command("get_color_index")
+    def get_color_index(self, name: str) -> int | None:
         """Return the internal index for a named color (always 0 for compat)."""
-        if not args:
-            self._emit_error("Usage: get_color_index <name>")
-            return None
-        name = args[0].strip().lower()
+        name = str(name).strip().lower()
         if name in _PYMOL_COLORS or name in self._user_colors:
             # PyMOL returns -1 for unknown colors; Chimol returns 0 for known.
             self._emit_message(f"Color index for '{name}': 0")
