@@ -58,6 +58,10 @@ except Exception:
 # Plugin name in menu
 name = "Tools:Converter:BID→Analysis"
 
+# Aggregated into the Converter hub (tttr/converter); hidden as a top-level
+# menu entry but still importable and standalone-launchable.
+menu_hidden = True
+
 # Optional icon exposed for the plugin manager/UI
 icon = None
 try:

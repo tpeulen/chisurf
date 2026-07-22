@@ -3,11 +3,134 @@
 from __future__ import annotations
 
 import importlib
+import json
+import pathlib
 import traceback
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from qtpy import QtCore, QtWidgets
+
+
+def embed_mainwindow(mw: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Return an embeddable plain-``QWidget`` view of a ``QMainWindow`` tool.
+
+    If ``mw`` is not a ``QMainWindow`` it is returned unchanged. Otherwise its
+    central widget is reparented into a container, prefixed by a button row that
+    mirrors the window's toolbar actions (or, if it has none, its top-level menu
+    actions). A reference to the original window is kept on the container so its
+    Python object (and any signal connections) stays alive.
+
+    Reparenting a ``QMainWindow`` into a stacked panel area is a fragile Qt
+    pattern — on macOS a nested main window's tab bars stop receiving mouse
+    clicks — so aggregator tools flatten sub-tools with this helper instead.
+    """
+    if not isinstance(mw, QtWidgets.QMainWindow):
+        return mw
+
+    container = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(container)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(4)
+
+    # Re-expose actions: prefer the window's OWN toolbars (not toolbars that
+    # belong to nested panels inside the central widget), fall back to the menu.
+    actions: list[QtWidgets.QAction] = []
+    for tb in mw.findChildren(QtWidgets.QToolBar):
+        if tb.parent() is mw:
+            actions.extend(tb.actions())
+    if not actions:
+        mbar = mw.menuBar()
+        if mbar is not None:
+            for menu_action in mbar.actions():
+                menu = menu_action.menu()
+                if menu is not None:
+                    actions.extend(menu.actions())
+    seen: set[int] = set()
+    button_row = QtWidgets.QHBoxLayout()
+    button_row.setContentsMargins(6, 4, 6, 0)
+    n_buttons = 0
+    for act in actions:
+        if act is None or act.isSeparator() or not act.text().strip():
+            continue
+        if id(act) in seen:
+            continue
+        seen.add(id(act))
+        btn = QtWidgets.QToolButton()
+        btn.setDefaultAction(act)
+        btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        button_row.addWidget(btn)
+        n_buttons += 1
+    if n_buttons:
+        button_row.addStretch(1)
+        layout.addLayout(button_row)
+
+    central = mw.centralWidget()
+    if central is not None:
+        central.setParent(container)
+        layout.addWidget(central, 1)
+
+    # Keep the originating window alive (owns the model/signals).
+    container._embedded_mainwindow = mw  # type: ignore[attr-defined]
+    return container
+
+
+def _resolve_entrypoint(entrypoint: str):
+    """Import ``"pkg.module:Attr"`` and return the referenced attribute."""
+    module_name, _, attr = entrypoint.partition(":")
+    module = importlib.import_module(module_name)
+    return getattr(module, attr)
+
+
+def _make_panel_factory(entrypoint: str, embed: bool):
+    """Build a lazy panel factory from an entrypoint string + embed flag."""
+
+    def factory(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+        widget = _resolve_entrypoint(entrypoint)()
+        return embed_mainwindow(widget) if embed else widget
+
+    return factory
+
+
+def load_panels_json(path: str | pathlib.Path) -> tuple[dict, list[dict]]:
+    """Load a data-driven ``panels.json`` spec into NavigationPanelTool panels.
+
+    The spec is a dict with a ``title`` and a ``panels`` list; each entry names
+    a tool by its GUI entrypoint (``"module:Class"``) plus ``name`` / ``icon`` /
+    ``description`` / ``role``. Set ``"embed": true`` for ``QMainWindow`` tools
+    that must be flattened via :func:`embed_mainwindow`; ``{"separator": true}``
+    inserts a group separator. Panels import lazily inside their factories.
+
+    Returns
+    -------
+    tuple[dict, list[dict]]
+        The raw spec dict and the translated panel definitions.
+    """
+    spec = json.loads(pathlib.Path(path).read_text())
+    panels: list[dict] = []
+    for entry in spec.get("panels", []):
+        if entry.get("separator"):
+            panels.append(
+                {
+                    "name": "────────",
+                    "icon": "",
+                    "separator": True,
+                    "role": entry.get("role", "separator"),
+                }
+            )
+            continue
+        panels.append(
+            {
+                "name": entry["name"],
+                "icon": entry.get("icon", ""),
+                "description": entry.get("description", ""),
+                "role": entry["role"],
+                "factory": _make_panel_factory(
+                    entry["entrypoint"], bool(entry.get("embed", False))
+                ),
+            }
+        )
+    return spec, panels
 
 
 class NavigationPanelTool(QtWidgets.QMainWindow):

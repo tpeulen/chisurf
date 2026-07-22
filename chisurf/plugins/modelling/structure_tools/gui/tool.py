@@ -21,80 +21,16 @@ from __future__ import annotations
 
 import logging
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 
-from chisurf.gui.widgets.navigation import NavigationPanelTool
+from chisurf.gui.widgets.navigation import NavigationPanelTool, embed_mainwindow
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Embedding helper
-# ---------------------------------------------------------------------------
-# Several sub-tools are full ``QMainWindow``s (their own toolbar/menu + a custom
-# ``DockArea`` central widget). Reparenting a QMainWindow into the aggregator's
-# stacked area is a fragile Qt pattern — on macOS the nested QMainWindow's
-# DockArea tab bar stops receiving mouse clicks. To avoid this we lift the
-# tool's *central widget* into a plain container and re-expose its toolbar/menu
-# actions as a button row, so no nested QMainWindow remains.
-
-def _embed_mainwindow(mw: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    """Return an embeddable plain-``QWidget`` view of a ``QMainWindow`` tool.
-
-    If ``mw`` is not a ``QMainWindow`` it is returned unchanged. Otherwise its
-    central widget is reparented into a container, prefixed by a button row that
-    mirrors the window's toolbar actions (or, if it has none, its top-level menu
-    actions). A reference to the original window is kept on the container so its
-    Python object (and any signal connections) stays alive.
-    """
-    if not isinstance(mw, QtWidgets.QMainWindow):
-        return mw
-
-    container = QtWidgets.QWidget()
-    layout = QtWidgets.QVBoxLayout(container)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(4)
-
-    # Re-expose actions: prefer the window's OWN toolbars (not toolbars that
-    # belong to nested panels inside the central widget), fall back to the menu.
-    actions: list[QtWidgets.QAction] = []
-    for tb in mw.findChildren(QtWidgets.QToolBar):
-        if tb.parent() is mw:
-            actions.extend(tb.actions())
-    if not actions:
-        mbar = mw.menuBar()
-        if mbar is not None:
-            for menu_action in mbar.actions():
-                menu = menu_action.menu()
-                if menu is not None:
-                    actions.extend(menu.actions())
-    seen: set[int] = set()
-    button_row = QtWidgets.QHBoxLayout()
-    button_row.setContentsMargins(6, 4, 6, 0)
-    n_buttons = 0
-    for act in actions:
-        if act is None or act.isSeparator() or not act.text().strip():
-            continue
-        if id(act) in seen:
-            continue
-        seen.add(id(act))
-        btn = QtWidgets.QToolButton()
-        btn.setDefaultAction(act)
-        btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
-        button_row.addWidget(btn)
-        n_buttons += 1
-    if n_buttons:
-        button_row.addStretch(1)
-        layout.addLayout(button_row)
-
-    central = mw.centralWidget()
-    if central is not None:
-        central.setParent(container)
-        layout.addWidget(central, 1)
-
-    # Keep the originating window alive (owns the model/signals).
-    container._embedded_mainwindow = mw  # type: ignore[attr-defined]
-    return container
+# ``QMainWindow`` sub-tools are flattened with the shared ``embed_mainwindow``
+# helper (see chisurf.gui.widgets.navigation) so no nested QMainWindow remains.
+_embed_mainwindow = embed_mainwindow
 
 
 # ---------------------------------------------------------------------------
@@ -103,33 +39,40 @@ def _embed_mainwindow(mw: QtWidgets.QWidget) -> QtWidgets.QWidget:
 # DockArea tabs remain clickable when embedded (see helper above).
 # ---------------------------------------------------------------------------
 
-def _fps_json_editor(parent: "StructureToolsTool") -> QtWidgets.QWidget:
+
+def _fps_json_editor(parent: StructureToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.modelling.fps_json_editor.gui.tool import FpsJsonEditorTool
+
     return _embed_mainwindow(FpsJsonEditorTool())
 
 
-def _docking(parent: "StructureToolsTool") -> QtWidgets.QWidget:
+def _docking(parent: StructureToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.modelling.fret.gui.dock_tool import FretDockingTool
+
     return FretDockingTool()
 
 
-def _kappa2(parent: "StructureToolsTool") -> QtWidgets.QWidget:
+def _kappa2(parent: StructureToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.calculator.kappa2_dist.gui.tool import Kappa2Dist
+
     return Kappa2Dist()
 
 
-def _quest(parent: "StructureToolsTool") -> QtWidgets.QWidget:
+def _quest(parent: StructureToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.quenching_estimator import QuEstWindow
+
     return _embed_mainwindow(QuEstWindow())
 
 
-def _hydropro(parent: "StructureToolsTool") -> QtWidgets.QWidget:
+def _hydropro(parent: StructureToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.modelling.hydropro.gui.tool import HydroProTool
+
     return _embed_mainwindow(HydroProTool())
 
 
-def _traj_tools(parent: "StructureToolsTool") -> QtWidgets.QWidget:
+def _traj_tools(parent: StructureToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.traj.traj_tools.gui.tool import TrajectoryToolsTool
+
     return TrajectoryToolsTool()
 
 

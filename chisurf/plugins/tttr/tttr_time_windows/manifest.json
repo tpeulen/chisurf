@@ -24,6 +24,7 @@
       "settings_key": null
     }
   },
+  "menu_hidden": true,
   "entrypoints": {
     "gui": "chisurf.plugins.tttr.tttr_time_windows.gui.tool:TTTRTimeWindowTool",
     "cli": "tttr-time-windows=chisurf.plugins.tttr.tttr_time_windows.cli:cli",
