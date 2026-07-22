@@ -71,7 +71,9 @@ def test_fallback_renders_every_atom(_qt_app) -> None:
     meshes = [o for o in objs if o.id == "atoms_mesh"]
     assert meshes, "the fallback atoms representation produced no mesh"
 
-    verts_per_atom = _build_sphere_mesh(radius=1.0)["vertices"].shape[0]
+    # The balls glyph uses the coarse, config-driven sphere resolution.
+    lat, lon = view._balls_sphere_segments()
+    verts_per_atom = _build_sphere_mesh(1.0, lat, lon)["vertices"].shape[0]
     drawn = meshes[0].geometry.positions.shape[0] // verts_per_atom
     assert drawn == n_atoms, f"drew {drawn} atoms, expected {n_atoms}"
 

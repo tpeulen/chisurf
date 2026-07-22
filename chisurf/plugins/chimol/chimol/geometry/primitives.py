@@ -61,17 +61,25 @@ def _get_sphere_template(segments_lat: int = 16, segments_lon: int = 32) -> dict
     return template
 
 
-def _build_sphere_mesh(radius: float) -> Optional[dict[str, np.ndarray]]:
+def _build_sphere_mesh(
+    radius: float,
+    segments_lat: int = 16,
+    segments_lon: int = 32,
+) -> Optional[dict[str, np.ndarray]]:
     """Return a procedural sphere approximation with normals.
 
-    Uses a cached unit-sphere template scaled to *radius*.
+    Uses a cached unit-sphere template scaled to *radius*. ``segments_lat`` /
+    ``segments_lon`` control the tessellation; the default (16 x 32 = 512
+    vertices) is smooth for a single large sphere, but atom-ball glyphs — drawn
+    thousands at a time and small on screen — should request a much coarser
+    sphere so the merged mesh stays light for both the CPU build and the GPU.
     """
 
     r = float(radius)
     if not np.isfinite(r) or r <= 0.0:
         return None
 
-    template = _get_sphere_template()
+    template = _get_sphere_template(int(segments_lat), int(segments_lon))
     verts = template["vertices"] * r
     norms = template["normals"].copy()  # unit normals stay the same
     faces = template["faces"]

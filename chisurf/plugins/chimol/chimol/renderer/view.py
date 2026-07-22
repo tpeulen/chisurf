@@ -2791,6 +2791,19 @@ class MolView(QtWidgets.QWidget):
         return scene_objects
 
     @staticmethod
+    def _balls_sphere_segments() -> tuple[int, int]:
+        """Return the (lat, lon) tessellation for atom-ball glyphs.
+
+        Atom balls are drawn thousands at a time and small on screen, so they use
+        a much coarser sphere than the 16x32 default; the resolution is
+        config-tunable via the ``balls`` section.
+        """
+        balls_cfg = _DISPLAY_CONFIG.get("balls", {})
+        lat = int(balls_cfg.get("sphere_lat", 10))
+        lon = int(balls_cfg.get("sphere_lon", 16))
+        return max(3, lat), max(3, lon)
+
+    @staticmethod
     def _build_balls_mesh(
         pts: np.ndarray,
         colors_rgb: np.ndarray,
@@ -2815,7 +2828,8 @@ class MolView(QtWidgets.QWidget):
         n_atoms = int(pts.shape[0])
         if n_atoms == 0:
             return None
-        sphere_mesh = _build_sphere_mesh(radius=1.0)
+        lat, lon = MolView._balls_sphere_segments()
+        sphere_mesh = _build_sphere_mesh(1.0, lat, lon)
         if sphere_mesh is None:
             return None
         base_verts = sphere_mesh.get("vertices")
@@ -2836,14 +2850,19 @@ class MolView(QtWidgets.QWidget):
         ]
         verts += np.asarray(pts, dtype=float)[:, np.newaxis, :]
         verts = verts.reshape(-1, 3)
-        faces = np.repeat(base_faces[np.newaxis, :, :], n_atoms, axis=0)
-        offsets = np.arange(n_atoms, dtype=base_faces.dtype) * n_verts
-        faces += offsets[:, np.newaxis, np.newaxis]
-        faces = faces.reshape(-1, 3)
-        norms = np.repeat(base_norms[np.newaxis, :, :], n_atoms, axis=0).reshape(-1, 3)
+        # Broadcasting avoids the intermediate copies that np.repeat allocates.
+        offsets = (np.arange(n_atoms, dtype=base_faces.dtype) * n_verts)[
+            :, np.newaxis, np.newaxis
+        ]
+        faces = (base_faces[np.newaxis, :, :] + offsets).reshape(-1, 3)
+        norms = np.broadcast_to(
+            base_norms[np.newaxis, :, :], (n_atoms, n_verts, 3)
+        ).reshape(-1, 3)
         rgba = np.ones((n_atoms, 4), dtype=float)
         rgba[:, :3] = np.clip(np.asarray(colors_rgb, dtype=float)[:, :3], 0.0, 1.0)
-        vcols = np.repeat(rgba[:, np.newaxis, :], n_verts, axis=1).reshape(-1, 4)
+        vcols = np.broadcast_to(
+            rgba[:, np.newaxis, :], (n_atoms, n_verts, 4)
+        ).reshape(-1, 4)
         geom = Geometry(
             kind="mesh", positions=verts, indices=faces, normals=norms, colors=vcols
         )
@@ -3047,7 +3066,8 @@ class MolView(QtWidgets.QWidget):
                     # single merged mesh. This is much faster than
                     # creating one GLMeshItem per atom while still
                     # providing proper shaded spheres, similar to pyball.
-                    sphere_mesh = _build_sphere_mesh(radius=1.0)
+                    _lat, _lon = self._balls_sphere_segments()
+                    sphere_mesh = _build_sphere_mesh(1.0, _lat, _lon)
                     if sphere_mesh is not None and pts.shape[0] > 0:
                         base_verts = sphere_mesh.get("vertices")
                         base_norms = sphere_mesh.get("normals")

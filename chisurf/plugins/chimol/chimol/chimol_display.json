@@ -74,7 +74,9 @@
     "ao_radius": 4.0,
     "ao_max_neighbors": 24,
     "ao_strength": 0.5,
-    "max_atoms": 8000
+    "max_atoms": 8000,
+    "sphere_lat": 10,
+    "sphere_lon": 16
   },
   "dots": {
     "size_px": 8.0,

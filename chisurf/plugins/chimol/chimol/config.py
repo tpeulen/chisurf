@@ -138,6 +138,11 @@ def _load_display_config() -> dict:
             "ao_max_neighbors": 24,
             "ao_strength": 0.5,
             "max_atoms": 8000,
+            # Sphere tessellation for atom-ball glyphs. Thousands of small balls
+            # do not need the 16x32 default sphere; a coarse sphere keeps the
+            # merged mesh light for both the CPU build and the GPU.
+            "sphere_lat": 10,
+            "sphere_lon": 16,
         },
         "dots": {
             "size_px": 8.0,

@@ -101,6 +101,16 @@ Net: a full cartoon+atoms+sticks build for a ~18k-atom model dropped ~2.7 s → 
 `test_geometry_vectorized.py` green** — they pin each vectorised builder against a
 reference loop so a change can't silently alter rendered geometry.
 
+The **atoms (balls)** representation merges one sphere mesh per atom. The sphere
+was a 16×32 UV sphere — **512 vertices / 960 faces per atom**, i.e. ~9 M vertices
+for an 18k-atom model — which is far more tessellation than small on-screen balls
+need and inflates both the CPU merge and every GPU frame. It now uses a coarse,
+config-tunable sphere (`balls.sphere_lat`/`sphere_lon`, default 10×16 = 160
+verts) via `MolView._balls_sphere_segments()`, and the merge uses broadcasting
+instead of `np.repeat`. Atom build dropped ~180 ms → ~40 ms and the per-frame
+triangle count fell ~3×. `_build_sphere_mesh(radius, lat, lon)` is now
+parameterised; the gaussian/selection glyph sites keep the smooth default.
+
 The **metaball/surface** representations were dominated not by marching cubes
 (~0.2 s) but by **ambient occlusion** (`geometry/ambient.py`), whose default path
 was a numba **O(n²)** double loop over the *mesh vertices* — tens of thousands of
