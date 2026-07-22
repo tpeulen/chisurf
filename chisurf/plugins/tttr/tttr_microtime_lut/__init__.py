@@ -284,10 +284,34 @@ def save_lut(path, table):
         raise click.UsageError(f"Unknown output extension '{ext}'. Use .txt / .csv / .npy / .npz.")
 
 
+class _FileListModel:
+    """Adapter exposing the tool's ``files`` list to the unified ``PathListWidget``.
+
+    ``PathListWidget`` reads/writes ``files`` (list[str]) and calls ``update()`` on
+    every change; that forwards to ``_on_files_changed`` which loads the micro-times
+    and refreshes the plots (or resets when the list is emptied).
+    """
+
+    def __init__(self, tool):
+        self._tool = tool
+
+    @property
+    def files(self):
+        return list(getattr(self._tool, "files", []) or [])
+
+    @files.setter
+    def files(self, value):
+        self._tool.files = list(value)
+
+    def update(self):
+        self._tool._on_files_changed()
+
+
 @persist_plugin_state("tttr_microtime_lut")
 class TACLinearizationWidget(QtW.QMainWindow):
     def __init__(self):
         super().__init__()
+        self.files = []
         self.setWindowTitle("TAC Linearization – Select Linear Region (Felekyan et al.)")
         self.resize(1200, 800)
 
@@ -443,20 +467,20 @@ class TACLinearizationWidget(QtW.QMainWindow):
         files_group = QtW.QGroupBox("Files")
         files_layout = QtW.QVBoxLayout(files_group)
 
-        self.files_list = QtW.QListWidget()
-        self.files_list.setSelectionMode(QtW.QAbstractItemView.ExtendedSelection)
-        self.files_list.setAcceptDrops(True)
-        self.files_list.installEventFilter(self)
+        # Unified AutoForm file/folder list (drag-drop replaces the list + a
+        # Files/Folder/Database/Remove/Clear button bar + MMFDB); replaces the
+        # hand-rolled QListWidget + eventFilter + Load/Clear buttons. Dropping or
+        # adding files loads their micro-times (see _on_files_changed).
+        from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 
-        btn_load = QtW.QPushButton("Load TTTR Files...")
-        btn_load.clicked.connect(self._load_files)
-
-        btn_clear = QtW.QPushButton("Clear list")
-        btn_clear.clicked.connect(self._clear_files)
-
+        self._file_model = _FileListModel(self)
+        self.files_list = PathListWidget(
+            self._file_model, "files",
+            extensions=[".spc", ".ht3", ".ptu", ".t3r", ".t2r"],
+            replace_on_drop=True,
+        )
+        self.files_list.setMinimumHeight(80)
         files_layout.addWidget(self.files_list)
-        files_layout.addWidget(btn_load)
-        files_layout.addWidget(btn_clear)
 
         # Parameters section
         params_group = QtW.QGroupBox("Parameters")
@@ -583,22 +607,19 @@ class TACLinearizationWidget(QtW.QMainWindow):
 
         self._brush_active = False
 
-    def _load_files(self):
-        """Load TTTR files."""
-        dialog = QtW.QFileDialog(self, "Load TTTR Files")
-        dialog.setFileMode(QtW.QFileDialog.ExistingFiles)
-        dialog.setNameFilter("TTTR files (*.spc *.ht3 *.ptu *.t3r *.t2r);;All files (*.*)")
+    def _on_files_changed(self):
+        """Load micro-times for the current file list, or reset when it is empty.
 
-        if dialog.exec():
-            files = dialog.selectedFiles()
-            self._process_files(files)
+        Driven by the unified file list's model ``update()`` on every add / drop /
+        remove / clear; a drop *replaces* the list (``replace_on_drop``).
+        """
+        if not self.files:
+            self._reset_state()
+            return
+        self._process_files(list(self.files))
 
-    def _clear_files(self):
-        """Clear all files and reset the interface."""
-        # Clear file list
-        self.files_list.clear()
-        self.files = []
-
+    def _reset_state(self):
+        """Reset data, controls and plots to the empty state."""
         # Reset data
         self.counts = None
         self.micro = None
@@ -644,12 +665,8 @@ class TACLinearizationWidget(QtW.QMainWindow):
         self.plt_raw.addItem(self.thresh_line)
 
     def _process_files(self, files):
-        """Process loaded files."""
+        """Load micro-times and refresh plots for *files* (the file list owns display)."""
         try:
-            self.files = files
-            self.files_list.clear()
-            self.files_list.addItems([os.path.basename(f) for f in files])
-
             self.micro = load_microtimes(files)
             self.n_bins = infer_n_bins(self.micro, None)
             self.counts = histogram_micro(self.micro, self.n_bins)
@@ -1000,29 +1017,6 @@ class TACLinearizationWidget(QtW.QMainWindow):
 
     def _on_mouse_moved(self, pos):
         pass  # Brush functionality can be implemented if needed
-
-    def eventFilter(self, obj, event):
-        """Handle drag and drop for file list."""
-        if obj is self.files_list:
-            if event.type() == QtC.QEvent.DragEnter:
-                if event.mimeData().hasUrls():
-                    event.acceptProposedAction()
-                    return True
-            elif event.type() == QtC.QEvent.Drop:
-                if event.mimeData().hasUrls():
-                    paths = []
-                    for url in event.mimeData().urls():
-                        try:
-                            p = str(url.toLocalFile())
-                            if p:
-                                paths.append(p)
-                        except:
-                            pass
-                    if paths:
-                        self._process_files(paths)
-                    event.acceptProposedAction()
-                    return True
-        return super().eventFilter(obj, event)
 
 
 # When the plugin is loaded as a module with __name__ == "plugin",
