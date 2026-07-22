@@ -4,6 +4,8 @@ import numpy as np
 
 from ..colors import _PYMOL_COLORS
 from .base import BaseCmd
+from .registry import command
+from .selection_types import Selection
 
 
 class RenderingMixin(BaseCmd):
@@ -23,11 +25,6 @@ class RenderingMixin(BaseCmd):
             "orient": self._cmd_orient,
             "zoom": self._cmd_zoom,
             "reset": self._cmd_reset,
-            "turn": self._cmd_turn,
-            "move": self._cmd_move,
-            "clip": self._cmd_clip,
-            "rotate": self._cmd_rotate,
-            "translate": self._cmd_translate,
             "get_view": self._cmd_get_view,
             "set_view": self._cmd_set_view,
             "color": self._cmd_color,
@@ -286,93 +283,71 @@ class RenderingMixin(BaseCmd):
             return
         viewer.reset_view()
 
-    @staticmethod
-    def _split_commas(args: list[str]) -> list[str]:
-        """Split ``a, b, c`` style arguments regardless of token boundaries."""
-        return [p.strip() for p in " ".join(args).split(",") if p.strip() != ""]
-
-    def _cmd_turn(self, args: list[str]) -> None:
-        """Rotate the camera about a screen axis, PyMOL ``turn axis, angle``."""
+    @command("turn")
+    def turn(self, axis: str, angle: float) -> None:
+        """Rotate the camera about a screen axis (PyMOL ``turn axis, angle``)."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None or not hasattr(viewer, "turn"):
             return
-        parts = self._split_commas(args)
-        if len(parts) < 2:
-            self._emit_error("Usage: turn <x|y|z>, <angle>")
-            return
         try:
-            viewer.turn(parts[0].lower(), float(parts[1]))
+            viewer.turn(str(axis).lower(), float(angle))
         except Exception as exc:
             self._emit_error(f"turn failed: {exc}")
 
-    def _cmd_move(self, args: list[str]) -> None:
-        """Translate the camera along a screen axis, PyMOL ``move axis, dist``."""
+    @command("move")
+    def move(self, axis: str, dist: float) -> None:
+        """Translate the camera along a screen axis (PyMOL ``move axis, dist``)."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None or not hasattr(viewer, "move"):
             return
-        parts = self._split_commas(args)
-        if len(parts) < 2:
-            self._emit_error("Usage: move <x|y|z>, <distance>")
-            return
         try:
-            viewer.move(parts[0].lower(), float(parts[1]))
+            viewer.move(str(axis).lower(), float(dist))
         except Exception as exc:
             self._emit_error(f"move failed: {exc}")
 
-    def _cmd_clip(self, args: list[str]) -> None:
-        """Move the clipping planes, PyMOL ``clip mode, dist``."""
+    @command("clip")
+    def clip(self, mode: str, dist: float) -> None:
+        """Move the clipping planes (PyMOL ``clip mode, dist``)."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None or not hasattr(viewer, "clip"):
             return
-        parts = self._split_commas(args)
-        if len(parts) < 2:
-            self._emit_error("Usage: clip <near|far|slab|move>, <distance>")
-            return
         try:
-            viewer.clip(parts[0].lower(), float(parts[1]))
+            viewer.clip(str(mode).lower(), float(dist))
         except Exception as exc:
             self._emit_error(f"clip failed: {exc}")
 
-    def _cmd_rotate(self, args: list[str]) -> None:
-        """Rotate object coordinates, PyMOL ``rotate axis, angle [, selection]``."""
+    @command("rotate")
+    def rotate(self, axis: str, angle: float, sel: Selection = "") -> None:
+        """Rotate object coordinates (PyMOL ``rotate axis, angle [, selection]``)."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None or not hasattr(viewer, "apply_transform_to_object"):
             return
-        parts = self._split_commas(args)
-        if len(parts) < 2:
-            self._emit_error("Usage: rotate <x|y|z>, <angle> [, selection]")
-            return
         axis_map = {"x": (1.0, 0.0, 0.0), "y": (0.0, 1.0, 0.0), "z": (0.0, 0.0, 1.0)}
-        axis = axis_map.get(parts[0].lower())
-        if axis is None:
+        ax = axis_map.get(str(axis).lower())
+        if ax is None:
             self._emit_error("rotate axis must be x, y or z")
             return
-        try:
-            a = np.radians(float(parts[1]))
-        except ValueError:
-            self._emit_error("rotate angle must be a number")
-            return
-        kx, ky, kz = axis
+        a = np.radians(float(angle))
+        kx, ky, kz = ax
         k = np.array([[0.0, -kz, ky], [kz, 0.0, -kx], [-ky, kx, 0.0]])
         rot = np.eye(3) + np.sin(a) * k + (1.0 - np.cos(a)) * (k @ k)
-        object_id = self._resolve_object_id(viewer, parts[2] if len(parts) > 2 else None)
+        object_id = self._resolve_object_id(viewer, str(sel) or None)
         try:
             viewer.apply_transform_to_object(rot, np.zeros(3), object_id=object_id)
         except Exception as exc:
             self._emit_error(f"rotate failed: {exc}")
 
-    def _cmd_translate(self, args: list[str]) -> None:
-        """Translate object coordinates, PyMOL ``translate [x,y,z] [, selection]``."""
+    @command("translate")
+    def translate(self, vector: str, sel: Selection = "") -> None:
+        """Translate object coordinates (PyMOL ``translate [x,y,z] [, selection]``)."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None or not hasattr(viewer, "apply_transform_to_object"):
             return
-        joined = " ".join(args)
-        vec_part = joined
-        sel_part = None
-        if "]" in joined:
-            vec_part, _, rest = joined.partition("]")
-            sel_part = rest.lstrip(", ").strip() or None
-        nums = [t for t in vec_part.replace("[", "").replace("]", "").replace(",", " ").split() if t]
+        nums = [
+            t
+            for t in str(vector).replace("[", "").replace("]", "").replace(",", " ").split()
+            if t
+        ]
         if len(nums) < 3:
             self._emit_error("Usage: translate [x, y, z] [, selection]")
             return
@@ -381,7 +356,7 @@ class RenderingMixin(BaseCmd):
         except ValueError:
             self._emit_error("translate vector must be three numbers")
             return
-        object_id = self._resolve_object_id(viewer, sel_part)
+        object_id = self._resolve_object_id(viewer, str(sel) or None)
         try:
             viewer.apply_transform_to_object(np.eye(3), vec, object_id=object_id)
         except Exception as exc:

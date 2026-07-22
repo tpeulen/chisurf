@@ -28,7 +28,7 @@ def _cmd_with_object():
 def test_viewing_commands_registered():
     cmd = Cmd(MockWindow(MockViewer()))
     for name in ("turn", "move", "clip", "rotate", "translate"):
-        assert name in cmd._commands
+        assert cmd._registry.resolve(name) is not None
 
 
 def test_rotate_applies_pymol_rotation():
