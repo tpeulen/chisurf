@@ -22,6 +22,11 @@ if _HAVE_NUMBA and nb is not None:
         radius: float,
         max_neighbors: int,
     ) -> np.ndarray:
+        """Brute-force O(n^2) reference occlusion count (exact).
+
+        Retained as the correctness reference and as a fallback; production uses
+        the O(n) cell-list variant below.
+        """
         n = pts.shape[0]
         occ = np.zeros(n, dtype=np.float64)
         r2 = radius * radius
@@ -51,6 +56,103 @@ if _HAVE_NUMBA and nb is not None:
 
         return occ
 
+    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    def _estimate_ambient_occlusion_grid_nb(
+        pts: np.ndarray,
+        radius: float,
+        max_neighbors: int,
+    ) -> np.ndarray:
+        """O(n) occlusion count via a uniform cell list (cell size = radius).
+
+        Exact — every point within ``radius`` falls in the query point's cell or
+        one of the 26 adjacent cells — but linear in the number of points for the
+        near-uniform density of a marching-cubes surface, versus the O(n^2)
+        double loop that dominated metaball/surface builds. Bit-identical to
+        :func:`_estimate_ambient_occlusion_nb`.
+        """
+        n = pts.shape[0]
+        occ = np.zeros(n, dtype=np.float64)
+        r2 = radius * radius
+        if n <= 1 or r2 <= 0.0 or max_neighbors <= 0:
+            return occ
+
+        minx = miny = minz = 1.0e30
+        maxx = maxy = maxz = -1.0e30
+        for i in range(n):
+            x = pts[i, 0]
+            y = pts[i, 1]
+            z = pts[i, 2]
+            if x < minx:
+                minx = x
+            if x > maxx:
+                maxx = x
+            if y < miny:
+                miny = y
+            if y > maxy:
+                maxy = y
+            if z < minz:
+                minz = z
+            if z > maxz:
+                maxz = z
+
+        inv = 1.0 / radius
+        nx = int((maxx - minx) * inv) + 1
+        ny = int((maxy - miny) * inv) + 1
+        nz = int((maxz - minz) * inv) + 1
+        ncells = nx * ny * nz
+
+        # Linked-list buckets: head[cell] -> point, nxt[point] -> next point.
+        head = np.full(ncells, -1, dtype=np.int64)
+        nxt = np.empty(n, dtype=np.int64)
+        cix = np.empty(n, dtype=np.int64)
+        ciy = np.empty(n, dtype=np.int64)
+        ciz = np.empty(n, dtype=np.int64)
+        for i in range(n):
+            ix = int((pts[i, 0] - minx) * inv)
+            iy = int((pts[i, 1] - miny) * inv)
+            iz = int((pts[i, 2] - minz) * inv)
+            cix[i] = ix
+            ciy[i] = iy
+            ciz[i] = iz
+            c = (ix * ny + iy) * nz + iz
+            nxt[i] = head[c]
+            head[c] = i
+
+        for i in range(n):
+            ix = cix[i]
+            iy = ciy[i]
+            iz = ciz[i]
+            x0 = pts[i, 0]
+            y0 = pts[i, 1]
+            z0 = pts[i, 2]
+            count = 0
+            for dx in range(-1, 2):
+                jx = ix + dx
+                if jx < 0 or jx >= nx:
+                    continue
+                for dy in range(-1, 2):
+                    jy = iy + dy
+                    if jy < 0 or jy >= ny:
+                        continue
+                    for dz in range(-1, 2):
+                        jz = iz + dz
+                        if jz < 0 or jz >= nz:
+                            continue
+                        j = head[(jx * ny + jy) * nz + jz]
+                        while j != -1:
+                            if j != i:
+                                ddx = pts[j, 0] - x0
+                                ddy = pts[j, 1] - y0
+                                ddz = pts[j, 2] - z0
+                                if ddx * ddx + ddy * ddy + ddz * ddz < r2:
+                                    count += 1
+                            j = nxt[j]
+            if count > max_neighbors:
+                count = max_neighbors
+            occ[i] = float(count) / float(max_neighbors)
+
+        return occ
+
 
 def _estimate_ambient_occlusion(
     points: np.ndarray,
@@ -69,10 +171,21 @@ def _estimate_ambient_occlusion(
     if not np.isfinite(r) or r <= 0.0:
         return None
 
+    # Preferred: the O(n) numba cell list. This replaces a former numba O(n^2)
+    # double loop that was the single dominant cost of the metaball/surface
+    # representations on the tens of thousands of vertices a marching-cubes
+    # surface produces. (IMP's ``NearestNeighbor3D.get_in_ball`` was evaluated
+    # and rejected: it silently drops interior neighbours -- an approximate
+    # search -- and ``GridClosePairsFinder`` materialises every close pair, which
+    # blows up on dense meshes. scipy is deliberately not used: it is not a
+    # dependency here.) The pure-NumPy grid hash below is the numba-free
+    # fallback.
     if _HAVE_NUMBA and nb is not None:
         try:
-            occ_nb = _estimate_ambient_occlusion_nb(pts, r, int(max_neighbors))  # type: ignore[name-defined]
-            return np.clip(occ_nb, 0.0, 1.0)
+            occ_grid = _estimate_ambient_occlusion_grid_nb(  # type: ignore[name-defined]
+                pts, r, int(max_neighbors)
+            )
+            return np.clip(occ_grid, 0.0, 1.0)
         except Exception:
             pass
 

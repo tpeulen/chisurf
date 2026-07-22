@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from chisurf.plugins.chimol.chimol.geometry import ambient
 from chisurf.plugins.chimol.chimol.geometry.cartoon import (
     _build_frames,
     _catmull_rom,
@@ -258,3 +259,30 @@ def test_build_frames_parity():
         ups = rng.standard_normal((m, 3))
         ups[3] = tang[3] * 2.0  # parallel up -> zero cross -> default-side branch
         assert np.allclose(_ref_frames(tang, ups), _build_frames(tang, ups), atol=1e-9)
+
+
+def test_ambient_occlusion_cell_list_matches_brute_force():
+    """The O(n) cell-list AO must be bit-identical to the O(n^2) reference.
+
+    The public estimator dispatches to the cell list (or the pure-NumPy grid
+    fallback); the numba double loop is the exact reference. They must agree
+    across sparse and dense point clouds and different radius/cap settings.
+    """
+    if not ambient._HAVE_NUMBA:
+        import pytest
+
+        pytest.skip("numba unavailable; cell-list path not exercised")
+    rng = np.random.default_rng(5)
+    for n, r, mn in [(500, 4.0, 32), (1500, 6.0, 24), (400, 3.0, 16), (3000, 5.0, 32)]:
+        pts = rng.standard_normal((n, 3)) * 15.0
+        got = ambient._estimate_ambient_occlusion(pts, r, mn)
+        ref = np.clip(ambient._estimate_ambient_occlusion_nb(pts, r, mn), 0.0, 1.0)
+        assert got is not None
+        assert np.array_equal(got, ref), f"AO mismatch n={n} r={r}: {np.abs(got - ref).max()}"
+
+
+def test_ambient_occlusion_edge_cases():
+    assert ambient._estimate_ambient_occlusion(np.zeros((0, 3)), 4.0, 32) is None
+    assert ambient._estimate_ambient_occlusion(np.zeros((1, 3)), 4.0, 32).shape == (1,)
+    # non-positive radius is rejected
+    assert ambient._estimate_ambient_occlusion(np.zeros((5, 3)), 0.0, 32) is None

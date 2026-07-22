@@ -99,8 +99,22 @@ Net: a full cartoon+atoms+sticks build for a ~18k-atom model dropped ~2.7 s → 
 `_batch_cross` (explicit component form) replaces `numpy.cross` in the hot paths.
 **When editing these kernels, keep the parity tests in
 `test_geometry_vectorized.py` green** — they pin each vectorised builder against a
-reference loop so a change can't silently alter rendered geometry. Metaball/surface
-(marching-cubes) remain heavy and opt-in; they are the next target if needed.
+reference loop so a change can't silently alter rendered geometry.
+
+The **metaball/surface** representations were dominated not by marching cubes
+(~0.2 s) but by **ambient occlusion** (`geometry/ambient.py`), whose default path
+was a numba **O(n²)** double loop over the *mesh vertices* — tens of thousands of
+them — costing ~18 s. AO is now an O(n) numba **cell list** (uniform grid, cell =
+radius, exact and bit-identical to the O(n²) reference). Metaball dropped ~5.7 s →
+~0.8 s. AO is shared by balls/cartoon/surface/metaball, so all benefit.
+
+**Spatial-search dependency note:** the AO neighbour count deliberately uses a
+numba cell list, not scipy (`scipy` is *not* a declared dependency) and not IMP
+(which *is*). IMP was evaluated: `IMP.algebra.NearestNeighbor3D.get_in_ball` is an
+**approximate** search — it silently drops interior neighbours even at
+`epsilon=0`, so it undercounts — and `IMP.core.GridClosePairsFinder` materialises
+every close pair (~10 M on a dense mesh → slower than the O(n²) loop). numba
+already accelerates this file, so the cell list stays dependency-clean and exact.
 
 # Structure loading (fallback contract)
 
