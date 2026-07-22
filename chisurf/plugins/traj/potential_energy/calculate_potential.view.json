@@ -1,0 +1,44 @@
+{
+  "_comment": "Declarative AutoForm layout for the Potential-Energy calculator. A single panel with the trajectory picker + potential-type combo + dynamic parameter editor + weight + Add button (custom `potential_energy_setup` section), the read stride, a table of the added potentials (double-click a row to remove it), the Process button + progress bar (custom `potential_energy_run` section) and a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former calculate_potential.ui.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Potential energy",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "potential_energy_setup"
+        },
+        {
+          "type": "value",
+          "attr": "stride",
+          "label": "Stride",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 9999,
+          "description": "Only every Nth frame is scored; also seeds the emitted frame numbers."
+        },
+        {
+          "type": "table",
+          "source": "added_potentials",
+          "activated_call": "remove_potential_activated",
+          "height": 120,
+          "columns": [
+            {"key": "name", "label": "Potential", "description": "Potential type."},
+            {"key": "weight", "label": "Weight", "description": "Scaling factor applied to this potential."}
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "potential_energy_run"
+        },
+        {
+          "type": "info",
+          "source": "log_html",
+          "height": 100
+        }
+      ]
+    }
+  ]
+}

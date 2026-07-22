@@ -6,6 +6,7 @@ from .widget import PotentialEnergyWidget
 
 
 def main():
+    """Launch the Potential-Energy calculator as a standalone Qt application."""
     app = QApplication(sys.argv)
     win = PotentialEnergyWidget()
     win.show()

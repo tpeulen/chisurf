@@ -1,189 +1,95 @@
+"""New-style GUI entrypoint for the Potential-Energy calculator.
+
+:class:`PotentialEnergyWidget` is a thin :class:`~qtpy.QtWidgets.QWidget`
+wrapping a single :class:`~chisurf.gui.autoform.AutoForm` bound to the Qt-free
+:class:`~.view_model.PotentialEnergyViewModel` and laid out from
+``calculate_potential.view.json``: the trajectory picker + potential editor +
+Add button, the read stride, a table of the configured potentials, the Process
+button and a live log. Replaces the former ``calculate_potential.ui`` /
+hand-built grid layout. Mirrors the Align-Trajectory tool.
+"""
+
 from __future__ import annotations
 
-import sys
+import logging
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 
-import mdtraj
+from chisurf.gui.autoform import AutoForm
 
-import chisurf.core.fio as io
-import chisurf.gui.decorators
-import chisurf.gui.widgets
-import chisurf.core.decorators
-import chisurf.core.structure.potential
-import chisurf.core.structure.trajectory
-import chisurf.gui.widgets.structure
+from . import sections  # noqa: F401  (side effect: register the custom sections)
+from .view_model import PotentialEnergyViewModel
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+except ImportError:  # pragma: no cover - persistence optional
+    persist_plugin_state = lambda n: lambda c: c  # noqa: E731
 
+logger = logging.getLogger(__name__)
 
 
 @persist_plugin_state("potential_energy")
 class PotentialEnergyWidget(QtWidgets.QWidget):
+    """Calculate potential-energy components across the frames of a trajectory."""
 
     name = "Potential-Energy calculator"
 
-    @chisurf.gui.decorators.init_with_ui(
-        ui_filename="calculate_potential.ui"
-    )
-    def __init__(
-            self,
-            verbose: bool = False,
-            structure: chisurf.core.structure.Structure = None
-    ):
-        self._trajectory_file = ''
-        self.potential_weight = 1.0
-        self.energies = list()
+    def __init__(self, parent=None, verbose: bool = False, structure=None, **kwargs):
+        super().__init__(parent)
+        self.setWindowTitle("Potential energy calculator")
+        self.setMinimumWidth(420)
 
-        self.verbose = verbose
-        self.structure = structure
-        self.universe = chisurf.core.structure.Universe()
+        self.model = PotentialEnergyViewModel()
+        if structure is not None:
+            self.model.structure = structure
 
-        self.actionOpen_trajectory.triggered.connect(self.onLoadTrajectory)
-        self.actionProcess_trajectory.triggered.connect(self.onProcessTrajectory)
-        self.actionAdd_potential.triggered.connect(self.onAddPotential)
-        self.tableWidget.cellDoubleClicked [int, int].connect(self.onRemovePotential)
-        self.actionCurrent_potential_changed.triggered.connect(self.onSelectedPotentialChanged)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        self.auto_form = AutoForm(self.model)
+        layout.addWidget(self.auto_form)
 
-        self.comboBox_2.addItems(
-            list(chisurf.gui.widgets.structure.potentialDict)
-        )
-        self._stretch_potential_layout()
+        self.model.add_observer(self._on_model_event)
 
-    def _stretch_potential_layout(self) -> None:
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
-        )
-        self.groupBox_3.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Expanding
-        )
-        self.groupBox_8.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Fixed
-        )
-        self.groupBox_8.setMaximumHeight(160)
-        self.tableWidget.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Expanding
-        )
-        self.tableWidget.setMinimumHeight(120)
-        self.verticalLayout_4.setStretch(0, 0)
-        self.verticalLayout_2.setStretch(0, 0)
-        self.gridLayout.setRowStretch(1, 1)
-        self.gridLayout_3.setRowStretch(2, 0)
-        self.gridLayout_3.setRowStretch(4, 1)
-        self.gridLayout_3.setColumnStretch(0, 1)
-        self.gridLayout_3.setColumnStretch(3, 1)
+    def _on_model_event(self, event: str) -> None:
+        try:
+            self.auto_form.sync_fields()
+            self.auto_form.refresh_plots()
+        except Exception:  # pragma: no cover - defensive
+            logger.warning("PotentialEnergy: field sync failed", exc_info=True)
+
+    # ── public properties (delegate to the view-model) ──────────────────
+    @property
+    def stride(self) -> int:
+        """Frame read-stride (delegates to the view-model)."""
+        return int(self.model.stride)
 
     @property
     def potential_number(self) -> int:
-        return int(self.comboBox_2.currentIndex())
+        """Index of the currently selected potential type (delegates to the view-model)."""
+        return int(self.model.selected_potential_index)
 
     @property
     def potential_name(self) -> str:
-        return list(
-            chisurf.gui.widgets.structure.potentialDict
-        )[self.potential_number]
-
-    def onProcessTrajectory(self):
-        print("onProcessTrajectory")
-        energy_file = chisurf.gui.widgets.save_file(
-            description='Save energies',
-            file_type='CSV-name file (*.txt)'
-        )
-
-        s = 'FrameNbr\t'
-        for p in self.universe.potentials:
-            s += '%s\t' % p.name
-        s += '\n'
-        io.zipped.open_maybe_zipped(
-            filename=energy_file,
-            mode='w'
-        ).write(s)
-
-        self.structure = chisurf.core.structure.TrajectoryFile(
-            mdtraj.load_frame(
-                self.trajectory_file, 0
-            )
-        )[0]
-        i = 0
-        for chunk in mdtraj.iterload(self.trajectory_file):
-            for frame in chunk:
-                self.structure.xyz = frame.xyz * 10.0
-                self.structure.update_dist()
-                s = '%i\t' % (i * self.stride + 1)
-                for e in self.universe.getEnergies(self.structure):
-                    s += '%.3f\t' % e
-                print(s)
-                s += '\n'
-                i += 1
-                open(energy_file, 'a').write(s)
-
-    def onSelectedPotentialChanged(self) -> None:
-        layout = self.verticalLayout_2
-        chisurf.gui.widgets.hide_items_in_layout(layout)
-        self.potential = chisurf.gui.widgets.structure.potentialDict[self.potential_name](
-            structure=self.structure,
-            parent=self
-        )
-
-        layout.addWidget(self.potential)
-        self.potential.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Fixed
-        )
-        self.potential.setMaximumHeight(160)
-
-    def onAddPotential(self) -> None:
-        print("onAddPotential")
-        self.universe.addPotential(self.potential, self.potential_weight)
-        # update table
-        table = self.tableWidget
-        rc = table.rowCount()
-        table.insertRow(rc)
-        tmp = QtWidgets.QTableWidgetItem(str(self.potential_name))
-        tmp.setFlags(QtCore.Qt.ItemIsEnabled)
-        table.setItem(rc, 0, tmp)
-        tmp = QtWidgets.QTableWidgetItem(str(self.potential_weight))
-        tmp.setFlags(QtCore.Qt.ItemIsEnabled)
-        table.setItem(rc, 1, tmp)
-        table.resizeRowsToContents()
-
-    def onRemovePotential(self) -> None:
-        print("onRemovePotential")
-        table = self.tableWidget
-        rc = table.rowCount()
-        idx = int(table.currentIndex().row())
-        if rc >= 0:
-            if idx < 0:
-                idx = 0
-            table.removeRow(idx)
-            self.universe.removePotential(idx)
-
-    @property
-    def stride(self) -> int:
-        return int(self.spinBox.value())
-
-    def onLoadTrajectory(self) -> None:
-        filename = chisurf.gui.widgets.get_filename(
-            'Open Trajectory-File',
-            'H5-Trajectory-Files (*.h5)'
-        )
-        self.trajectory_file = filename
-        self.lineEdit.setText(self.trajectory_file)
+        """Name of the currently selected potential type (delegates to the view-model)."""
+        names = self.model.potential_names()
+        index = int(self.model.selected_potential_index)
+        return names[index] if 0 <= index < len(names) else ""
 
     @property
     def energy(self) -> float:
-        return self.universe.getEnergy(self.structure)
+        """Total (scaled) energy of the configured potentials (delegates to the view-model)."""
+        return self.model.energy()
+
+    @property
+    def trajectory_file(self) -> str:
+        """Path of the currently loaded trajectory (delegates to the view-model)."""
+        return self.model.trajectory_file
+
+    @trajectory_file.setter
+    def trajectory_file(self, value: str) -> None:
+        """Set the trajectory path through the view-model (fires observers)."""
+        self.model.set_trajectory(value)
 
 
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    win = PotentialEnergyWidget()
-    win.show()
-    sys.exit(app.exec_())
+__all__ = ["PotentialEnergyWidget"]
