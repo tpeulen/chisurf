@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
-from typing import Callable, List, Optional
 import tempfile
 import time
+from collections.abc import Callable
+from datetime import datetime
+from pathlib import Path
 
 import numpy as np
-
 from qtpy import QtCore, QtWidgets
 
 from .base import BaseCmd
+from .registry import command
 
 
 class RayRenderThread(QtCore.QThread):
@@ -26,7 +26,7 @@ class RayRenderThread(QtCore.QThread):
     def __init__(
         self,
         render_func: Callable[[], np.ndarray],
-        parent: Optional[QtCore.QObject] = None,
+        parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._render_func = render_func
@@ -42,28 +42,25 @@ class RayRenderThread(QtCore.QThread):
 class ExportMixin(BaseCmd):
     """Image and data export commands."""
 
-    def _mixin_commands(self):
-        return {
-            "png": self._cmd_png,
-            "ray": self._cmd_ray,
-        }
-
-    def _cmd_png(self, args: List[str]) -> None:
+    @command("png")
+    def png(
+        self,
+        filename: str = "",
+        width: int = 0,
+        height: int = 0,
+        dpi: int = 0,
+        ray: bool = False,
+    ) -> None:
         """Save the current live OpenGL viewport as a PNG file."""
-
-        joined = " ".join(args).strip()
-        if not joined:
+        if not filename:
             self._emit_error("Usage: png filename [, width [, height [, dpi [, ray]]]]")
             return
 
-        parts = [part.strip() for part in joined.split(",") if part.strip()]
-        filename = parts[0]
-        width = self._parse_optional_int(parts, 1)
-        height = self._parse_optional_int(parts, 2)
-        ray = self._parse_optional_bool(parts, 4)
+        width = int(width) if width and int(width) > 0 else None
+        height = int(height) if height and int(height) > 0 else None
 
         if ray:
-            self._cmd_ray([str(width or 0), str(height or 0)])
+            self.ray(str(width or 0), str(height or 0))
 
         path = Path(filename).expanduser()
         if path.suffix.lower() != ".png":
@@ -86,23 +83,26 @@ class ExportMixin(BaseCmd):
         else:
             self._emit_error(f"Failed to write PNG {path}")
 
-    def _cmd_ray(self, args: List[str]) -> None:
+    @command("ray")
+    def ray(self, *tokens: str) -> None:
         """Ray-trace the current scene.
 
         PyMOL syntax: ray [width, [height]] or ray filename, width, height
         Default output: chimol_ray_YYYYMMDD_HHMMSS.png
         """
-
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
+        args = list(tokens)
         default_w, default_h = 800, 600
         width = default_w
         height = default_h
 
-        joined = " ".join(args).strip()
-        output_path: Optional[str] = None
+        # Rejoin with commas so the filename-vs-size detection below keeps the
+        # structure the central tokenizer already split on.
+        joined = ", ".join(args).strip()
+        output_path: str | None = None
 
         if joined:
             if "," in joined:
@@ -192,8 +192,13 @@ class ExportMixin(BaseCmd):
             self._emit_message("ray: no atom spheres visible; nothing to trace")
             return
 
-        from ..renderer.raytracer import Sphere, RayCamera, _camera_from_view_state, render_scene, trace
         from ..config import _DISPLAY_CONFIG
+        from ..renderer.raytracer import (
+            Sphere,
+            _camera_from_view_state,
+            render_scene,
+            trace,
+        )
 
         camera = _camera_from_view_state(view)
 
@@ -364,7 +369,7 @@ class ExportMixin(BaseCmd):
         width: int,
         height: int,
         viewer: object,
-        window: Optional[object],
+        window: object | None,
     ) -> None:
         """Run *render_func* in a background thread and show a progress dialog.
 
@@ -478,7 +483,7 @@ class ExportMixin(BaseCmd):
         width: int,
         height: int,
         viewer: object,
-        window: Optional[object],
+        window: object | None,
     ) -> None:
         """Save the ray-traced image, show the overlay and emit a message."""
         try:
@@ -521,7 +526,7 @@ class ExportMixin(BaseCmd):
         width: int,
         height: int,
         viewer: object,
-        window: Optional[object],
+        window: object | None,
         dialog: QtWidgets.QProgressDialog,
         timer: QtCore.QTimer,
         thread: RayRenderThread,
@@ -570,8 +575,8 @@ class ExportMixin(BaseCmd):
         viewer,
         path: Path,
         *,
-        width: Optional[int],
-        height: Optional[int],
+        width: int | None,
+        height: int | None,
     ) -> bool:
         renderer = getattr(viewer, "_renderer", None)
         if renderer is None:
@@ -589,7 +594,7 @@ class ExportMixin(BaseCmd):
         parent.mkdir(parents=True, exist_ok=True)
         return bool(image.save(str(path), "PNG"))
 
-    def _parse_optional_int(self, parts: List[str], index: int) -> Optional[int]:
+    def _parse_optional_int(self, parts: list[str], index: int) -> int | None:
         if index >= len(parts):
             return None
         text = parts[index].strip()
@@ -604,7 +609,7 @@ class ExportMixin(BaseCmd):
             return None
         return value if value > 0 else None
 
-    def _parse_optional_bool(self, parts: List[str], index: int) -> bool:
+    def _parse_optional_bool(self, parts: list[str], index: int) -> bool:
         if index >= len(parts):
             return False
         text = parts[index].strip().lower()

@@ -52,30 +52,9 @@ class Cmd(LoaderCommands, SelectionMixin, RenderingMixin, AnimationMixin, RmfMix
         # 'as' is a Python keyword, so this thin alias exposes the show_as command.
         self.show_as(rep)
 
-    def split_chains(self, prefix: str | None = None) -> None:
-        args: list[str] = []
-        if prefix:
-            args.append(str(prefix))
-        self._cmd_split_chains(args)
-
     def quit(self) -> None:
         self._cmd_quit([])
 
     def exit(self) -> None:
         self._cmd_quit([])
 
-    def delete(self, *tokens: str) -> None:
-        """Delete objects by id or name (PyMOL-style delete)."""
-        self._cmd_delete(list(tokens))
-
-    def reinitialize(self, *tokens: str) -> None:
-        self._cmd_reinitialize(list(tokens))
-
-    def copy(self, target: str, source: str) -> None:
-        self._cmd_copy([target, source])
-
-    def png(self, filename: str, *args: str) -> None:
-        self._cmd_png([filename, *args])
-
-    def ray(self, *args: str) -> None:
-        self._cmd_ray(list(args))

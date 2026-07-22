@@ -1,29 +1,18 @@
 from __future__ import annotations
 
 import copy
-from typing import List, Optional
 
 from .base import BaseCmd
+from .registry import command
 
 
 class LifecycleMixin(BaseCmd):
     """Object and session lifecycle commands."""
 
-    def _mixin_commands(self):
-        """Return lifecycle command handlers."""
-
-        return {
-            "delete": self._cmd_delete,
-            "reinitialize": self._cmd_reinitialize,
-            "reinit": self._cmd_reinitialize,
-            "copy": self._cmd_copy,
-            "split_chains": self._cmd_split_chains,
-        }
-
-    def _cmd_delete(self, args: List[str]) -> None:
+    @command("delete", aliases=("del",))
+    def delete(self, *targets_in: str) -> None:
         """Delete objects by id/name, or delete all loaded objects."""
-
-        if not args:
+        if not targets_in:
             self._emit_error("Usage: delete <object_name|id|all> [more ...]")
             return
 
@@ -31,7 +20,7 @@ class LifecycleMixin(BaseCmd):
         if viewer is None:
             return
 
-        targets = [(token or "").strip() for token in args if (token or "").strip()]
+        targets = [(token or "").strip() for token in targets_in if (token or "").strip()]
         if not targets:
             self._emit_error("Usage: delete <object_name|id|all> [more ...]")
             return
@@ -93,14 +82,14 @@ class LifecycleMixin(BaseCmd):
         if failed:
             self._emit_error("Not found or failed: " + ", ".join(failed))
 
-    def _cmd_reinitialize(self, args: List[str]) -> None:
+    @command("reinitialize", aliases=("reinit",))
+    def reinitialize(self, what: str = "everything") -> None:
         """Reset Chimol state similar to PyMOL ``reinitialize``."""
-
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
-        what = (args[0] if args else "everything").strip().lower()
+        what = (what or "everything").strip().lower()
         if what not in ("everything", "settings", "store_defaults", "original_settings", "purge_defaults"):
             self._emit_error("Usage: reinitialize [everything|settings]")
             return
@@ -120,15 +109,11 @@ class LifecycleMixin(BaseCmd):
         self._refresh_window_objects(window)
         self._emit_message(f"Reinitialized {what}")
 
-    def _cmd_copy(self, args: List[str]) -> None:
+    @command("copy")
+    def copy(self, target: str = "", source: str = "") -> None:
         """Create a new object by copying an existing object."""
-
-        joined = " ".join(args).strip()
-        if not joined or "," not in joined:
-            self._emit_error("Usage: copy target, source")
-            return
-
-        target, source = [part.strip() for part in joined.split(",", 1)]
+        target = (target or "").strip()
+        source = (source or "").strip()
         if not target or not source:
             self._emit_error("Usage: copy target, source")
             return
@@ -222,7 +207,9 @@ class LifecycleMixin(BaseCmd):
         except Exception:
             pass
 
-    def _cmd_split_chains(self, args: List[str]) -> None:
+    @command("split_chains")
+    def split_chains(self, prefix: str = "") -> None:
+        """Split the active object into one object per chain."""
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -235,9 +222,7 @@ class LifecycleMixin(BaseCmd):
             self._emit_error("No active object for split_chains")
             return
 
-        prefix: Optional[str] = None
-        if args:
-            prefix = args[0] or None
+        prefix = (prefix or "").strip() or None
 
         try:
             viewer.split_chains(prefix=prefix, object_ids=[active_id])
