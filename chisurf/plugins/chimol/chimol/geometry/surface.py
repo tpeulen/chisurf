@@ -20,17 +20,14 @@ except Exception:  # pragma: no cover - optional dependency
     _sk_measure = None  # type: ignore
     _HAVE_SKIMAGE = False
 
-try:  # Optional scipy distance transform
-    from scipy.ndimage import (  # type: ignore
-        binary_dilation,
-        distance_transform_edt,
-        gaussian_filter,
-    )
+# Point-cloud dilation/smoothing for the AV/point surface are NumPy-only (see
+# _binary_dilate_6 / _gaussian_blur_3d); scipy is only reached for the optional
+# SAS/SES distance transform, and only if it happens to be installed.
+try:  # Optional scipy distance transform (SAS/SES method only)
+    from scipy.ndimage import distance_transform_edt  # type: ignore
     _HAVE_SCIPY_EDT = True
 except ImportError:  # pragma: no cover
-    binary_dilation = None  # type: ignore
     distance_transform_edt = None  # type: ignore
-    gaussian_filter = None  # type: ignore
     _HAVE_SCIPY_EDT = False
 
 
@@ -400,6 +397,55 @@ def _generate_surface_mesh_from_gaussians(
     )
 
 
+def _binary_dilate_6(mask: np.ndarray, iterations: int) -> np.ndarray:
+    """6-connected 3-D binary dilation (NumPy-only).
+
+    Matches ``scipy.ndimage.binary_dilation`` with its default (face-connected)
+    structuring element, but without the scipy dependency: each pass ORs the mask
+    with its ±1 shift along every axis.
+    """
+    out = np.ascontiguousarray(mask, dtype=bool)
+    for _ in range(max(int(iterations), 0)):
+        d = out.copy()
+        d[1:, :, :] |= out[:-1, :, :]
+        d[:-1, :, :] |= out[1:, :, :]
+        d[:, 1:, :] |= out[:, :-1, :]
+        d[:, :-1, :] |= out[:, 1:, :]
+        d[:, :, 1:] |= out[:, :, :-1]
+        d[:, :, :-1] |= out[:, :, 1:]
+        out = d
+    return out
+
+
+def _gaussian_blur_3d(grid: np.ndarray, sigma: float) -> np.ndarray:
+    """Separable 3-D Gaussian blur (NumPy-only).
+
+    Replaces ``scipy.ndimage.gaussian_filter`` for the point-cloud surface: a
+    normalised 1-D Gaussian is convolved along each axis in turn (reflect
+    padding), which is exact and cheap for the small sigmas used here.
+    """
+    sigma = float(sigma)
+    if sigma <= 0.0:
+        return grid
+    radius = max(1, int(math.ceil(3.0 * sigma)))
+    x = np.arange(-radius, radius + 1, dtype=np.float64)
+    kernel = np.exp(-(x * x) / (2.0 * sigma * sigma))
+    kernel /= kernel.sum()
+    out = np.asarray(grid, dtype=np.float64)
+    for axis in range(out.ndim):
+        pad_width = [(0, 0)] * out.ndim
+        pad_width[axis] = (radius, radius)
+        padded = np.pad(out, pad_width, mode="reflect")
+        acc = np.zeros_like(out)
+        n = out.shape[axis]
+        for i, w in enumerate(kernel):
+            sl = [slice(None)] * out.ndim
+            sl[axis] = slice(i, i + n)
+            acc += w * padded[tuple(sl)]
+        out = acc
+    return out
+
+
 def _generate_surface_mesh_from_points(
     pts: np.ndarray,
     *,
@@ -465,14 +511,11 @@ def _generate_surface_mesh_from_points(
         indices[:, axis] = np.clip(indices[:, axis], 0, shape[axis] - 1)
     grid[indices[:, 0], indices[:, 1], indices[:, 2]] = 1.0
 
-    if binary_dilation is not None and dilation_iterations > 0:
-        grid = binary_dilation(
-            grid > 0.0,
-            iterations=int(dilation_iterations),
-        ).astype(np.float32)
+    if dilation_iterations > 0:
+        grid = _binary_dilate_6(grid > 0.0, int(dilation_iterations)).astype(np.float32)
 
-    if gaussian_filter is not None and smoothing_sigma > 0.0:
-        grid = gaussian_filter(grid, sigma=float(smoothing_sigma)).astype(np.float32)
+    if smoothing_sigma > 0.0:
+        grid = _gaussian_blur_3d(grid, float(smoothing_sigma)).astype(np.float32)
 
     level = 0.5
     grid_max = float(grid.max())
