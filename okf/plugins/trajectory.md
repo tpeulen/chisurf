@@ -29,5 +29,12 @@ Most entries are thin Qt widgets with manifests; `traj_tools` is the
 aggregation shell. Keep reusable structure/trajectory math outside widgets when
 expanding this group so it can be called from scripts, services, and tests.
 
+`traj_save_topology` is the first of the group migrated off a hand-built `.ui`
+onto the [AutoForm](/subsystems/model-view-spec.md) pattern: a Qt-free
+`SaveTopologyViewModel` (path + log + `save_topology`) drives an `AutoForm` laid
+out from `save_topology.view.json` (a trajectory picker custom section over a
+live `info` log). The old `save_topology.ui` is retired. The remaining `traj_*`
+widgets are candidates for the same treatment.
+
 See also [modelling plugins](/plugins/modelling.md), [compiled modules](/subsystems/compiled-modules.md),
 and [plugin system](/architecture/plugin-system.md).

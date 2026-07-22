@@ -1,0 +1,20 @@
+{
+  "_comment": "Declarative AutoForm layout for the Save-Topology tool. A single panel with the trajectory picker + save-topology button (custom section, H5 browse/drag-drop) above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former save_topology.ui.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Save topology",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "traj_save_topology_io"
+        },
+        {
+          "type": "info",
+          "source": "log_html",
+          "height": 120
+        }
+      ]
+    }
+  ]
+}

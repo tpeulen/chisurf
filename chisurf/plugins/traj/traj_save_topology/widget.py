@@ -1,84 +1,67 @@
-import mdtraj as md
-from qtpy import QtCore, QtGui, QtWidgets
+"""New-style GUI entrypoint for the Save-Topology tool.
 
-import chisurf.core.decorators
-import chisurf.gui.decorators
-import chisurf.gui.widgets
+:class:`SaveTopology` is a thin :class:`~qtpy.QtWidgets.QWidget` wrapping a single
+:class:`~chisurf.gui.autoform.AutoForm` bound to the Qt-free
+:class:`~.view_model.SaveTopologyViewModel` and laid out from
+``save_topology.view.json``: a trajectory picker + save button above a live log.
+Replaces the former ``save_topology.ui`` / hand-built grid layout. Mirrors the
+TTTR Split / Convert tool.
+"""
+
+from __future__ import annotations
+
+import logging
+
+from qtpy import QtWidgets
+
+from chisurf.gui.autoform import AutoForm
+
+from . import sections  # noqa: F401  (side effect: register the custom section)
+from .view_model import SaveTopologyViewModel
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+except ImportError:  # pragma: no cover - persistence optional
+    persist_plugin_state = lambda n: lambda c: c  # noqa: E731
 
+logger = logging.getLogger(__name__)
 
 
 @persist_plugin_state("traj_save_topology")
 class SaveTopology(QtWidgets.QWidget):
+    """Save the first-frame topology of a trajectory to a structure file."""
 
     @property
-    def trajectory_filename(self):
-        return str(self.lineEdit.text())
+    def trajectory_filename(self) -> str:
+        """Path of the currently loaded trajectory (delegates to the view-model)."""
+        return self.model.trajectory_filename
 
     @trajectory_filename.setter
-    def trajectory_filename(self, v):
-        self.lineEdit.setText(str(v))
+    def trajectory_filename(self, value: str) -> None:
+        """Set the trajectory path through the view-model (fires observers)."""
+        self.model.set_trajectory(value)
 
-    @chisurf.gui.decorators.init_with_ui(ui_filename="save_topology.ui")
-    def __init__(
-            self,
-            *args,
-            **kwargs
-    ):
-        self.actionOpen_trajectory.triggered.connect(self.onOpenTrajectory)
-        self.actionSave_clash_free_trajectory.triggered.connect(self.onSaveTopology)
-        self._setup_layout()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Save topology")
+        self.setMinimumWidth(420)
 
-    def _empty_icon(self):
-        pixmap = QtGui.QPixmap(16, 16)
-        pixmap.fill(QtCore.Qt.transparent)
-        return QtGui.QIcon(pixmap)
+        self.model = SaveTopologyViewModel()
 
-    def _setup_layout(self) -> None:
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
-        )
-        self.setMaximumSize(16777215, 16777215)
-        self._log = QtWidgets.QPlainTextEdit(self)
-        self._log.setReadOnly(True)
-        self._log.setPlaceholderText("Log")
-        self._log.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
-        )
-        self.gridLayout.addWidget(self._log, 3, 0, 1, 3)
-        self.gridLayout.setRowStretch(3, 1)
-        self.pushButton.setIcon(self._empty_icon())
-        self.toolButton.setIcon(self._empty_icon())
-        self._append_log("Ready")
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        self.auto_form = AutoForm(self.model)
+        layout.addWidget(self.auto_form)
 
-    def _append_log(self, message: str) -> None:
-        timestamp = QtCore.QTime.currentTime().toString("HH:mm:ss")
-        self._log.appendPlainText(f"[{timestamp}] {message}")
+        self.model.add_observer(self._on_model_event)
 
-    def onSaveTopology(self):
-        target_filename = str(QtWidgets.QFileDialog.getSaveFileName(None, 'Save PDB-file', '', 'PDB-files (*.pdb)'))[0]
-        if not target_filename:
-            self._append_log("Save cancelled")
-            return
-        filename = self.trajectory_filename
+    def _on_model_event(self, event: str) -> None:
         try:
-            self._append_log(f"Loading first frame: {filename}")
-            frame_0 = md.load_frame(filename, 0)
-            self._append_log(f"Saving topology to: {target_filename}")
-            frame_0.save(target_filename)
-            self._append_log("Topology saved")
-        except Exception as exc:
-            self._append_log(f"Save failed: {exc}")
-            raise
+            self.auto_form.sync_fields()
+            self.auto_form.refresh_plots()
+        except Exception:  # pragma: no cover - defensive
+            logger.warning("SaveTopology: field sync failed", exc_info=True)
 
-    def onOpenTrajectory(self, filename=None):
-        if filename is None:
-            #self.trajectory_filename = str(QtGui.QFileDialog.getOpenFileName(None, 'Open H5-Model file', '', 'H5-files (*.h5)'))
-            filename = chisurf.gui.widgets.get_filename('Open H5-Model file', 'H5-files (*.h5)')
-            self.trajectory_filename = filename
+
+__all__ = ["SaveTopology"]
