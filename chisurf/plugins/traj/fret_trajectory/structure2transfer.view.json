@@ -1,0 +1,97 @@
+{
+  "_comment": "Declarative AutoForm layout for the Structure-to-Transfer (Trajectory->FRET) tool. A trajectory picker + read stride (Reference panel), the donor/acceptor dipole atom-pair selectors hosting four PDBSelector widgets (Dipole atoms panel), the dye parameters (R0, tau0, dipole averaging, frame time-step) and the Process button with a live log. Replaces the former structure2transfer.ui.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Reference",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "fret_traj_io"
+        },
+        {
+          "type": "value",
+          "attr": "stride",
+          "label": "Stride",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 99999,
+          "description": "Read every Nth frame of the source trajectory."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Dipole atoms",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "fret_atom_pairs"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Parameters",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "forster_radius",
+          "label": "R0 [Ang]",
+          "kind": "float",
+          "decimals": 1,
+          "minimum": 0.0,
+          "maximum": 9999.0,
+          "description": "Foerster radius of the donor-acceptor dye pair, in Angstrom."
+        },
+        {
+          "type": "value",
+          "attr": "tau0",
+          "label": "tau0 [ns]",
+          "kind": "float",
+          "decimals": 2,
+          "step": 0.1,
+          "minimum": 0.0,
+          "maximum": 1000.0,
+          "description": "Fluorescence lifetime of the donor in the absence of FRET, in nanoseconds."
+        },
+        {
+          "type": "value",
+          "attr": "t_step",
+          "label": "t-step [ns]",
+          "kind": "float",
+          "decimals": 3,
+          "step": 0.1,
+          "minimum": 0.0,
+          "maximum": 100000.0,
+          "description": "Time between successive trajectory frames, in nanoseconds."
+        },
+        {
+          "type": "toggle",
+          "attr": "dipoles",
+          "label": "Dipole (kappa2)",
+          "description": "If enabled, uses two atoms per fluorophore and computes the orientation factor kappa2; otherwise only the first atom of each dye defines the distance."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Process",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "fret_run"
+        },
+        {
+          "type": "info",
+          "source": "log_html",
+          "height": 110
+        }
+      ]
+    }
+  ]
+}

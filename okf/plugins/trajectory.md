@@ -29,23 +29,32 @@ Most entries are thin Qt widgets with manifests; `traj_tools` is the
 aggregation shell. Keep reusable structure/trajectory math outside widgets when
 expanding this group so it can be called from scripts, services, and tests.
 
-All six single-tool `traj_*` widgets — `traj_save_topology`, `traj_align`,
-`traj_join`, `traj_rotate_translate`, `traj_convert`, `traj_remove_clashes` —
-have been migrated off their hand-built `.ui` files onto the
-[AutoForm](/subsystems/model-view-spec.md) pattern. Each now pairs a Qt-free
-view-model (holding the paths, options and a running log, and doing all the
-`mdtraj` work) with an `AutoForm` laid out from a sibling `*.view.json`: a
-trajectory-picker custom section (`traj_<name>_io`, with H5/PDB browse,
-drag-drop and the `💾`/`▶` action buttons) plus built-in `value`/`choice`/
-`toggle` field sections over a live `info` log bound to the model's `log_html`.
-The Qt-free view-models are unit-tested headlessly (each ships a `test/` with a
-`test_view_model.py` running the real `mdtraj` compute on synthesized fixtures
-plus a `test_gui.py` for construction/delegation). All `.ui` files are retired.
-The migration also fixed several latent bugs (see `okf/log.md`, 2026-07-22):
-`traj_align`/`traj_rotate_translate` wrote to a non-existent HDF5 node,
-`traj_rotate_translate`'s save dialog was never wired, and `traj_join` carried a
-dead `stride` property. `traj_tools` (the aggregation shell) is the remaining
-multi-tool workspace.
+All eight single-tool `traj_*` widgets — `traj_save_topology`, `traj_align`,
+`traj_join`, `traj_rotate_translate`, `traj_convert`, `traj_remove_clashes`,
+`potential_energy` and `fret_trajectory` — have been migrated off their
+hand-built `.ui` files onto the [AutoForm](/subsystems/model-view-spec.md)
+pattern. Each now pairs a Qt-free view-model (holding the paths, options and a
+running log, and doing all the `mdtraj`/compute work) with an `AutoForm` laid out
+from a sibling `*.view.json`: a picker custom section (`<name>_io`, with H5/PDB
+browse, drag-drop and the `💾`/`▶` action buttons) plus built-in `value`/
+`choice`/`toggle`/`table` field sections over a live `info` log bound to the
+model's `log_html`. Irreducibly-dynamic Qt (the `potential_energy` per-potential
+parameter editor + potentials table, the `fret_trajectory` four `PDBSelector`
+donor/acceptor pickers) lives in bespoke `@register_section` custom widgets that
+drive the Qt-free model.
+
+The view-models are unit-tested headlessly (each ships a `test/` with a
+`test_view_model.py` running the real compute on realistic fixtures, plus a
+`test_gui.py` with a construction/delegation test, a rendering test, and — for
+`potential_energy`/`fret_trajectory` — a qtbot **GUI-interaction functional
+test** that drives the actual widgets and asserts a computed result). All `.ui`
+files are retired. The migration also fixed several latent bugs (see
+`okf/log.md`, 2026-07-22): `traj_align`/`traj_rotate_translate` wrote to a
+non-existent HDF5 node, `traj_rotate_translate`'s save dialog was never wired,
+`traj_join` carried a dead `stride` property, and `fret_trajectory` both accessed
+an un-imported `kappa2` submodule and reset its atom selection mid-compute on a
+form refresh. `traj_tools` (the aggregation shell) is the remaining multi-tool
+workspace.
 
 See also [modelling plugins](/plugins/modelling.md), [compiled modules](/subsystems/compiled-modules.md),
 and [plugin system](/architecture/plugin-system.md).

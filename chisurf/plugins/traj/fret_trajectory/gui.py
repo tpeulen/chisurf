@@ -1,236 +1,127 @@
+"""New-style GUI entrypoint for the Structure-to-Transfer (Trajectory→FRET) tool.
+
+:class:`Structure2Transfer` is a thin :class:`~qtpy.QtWidgets.QWidget` wrapping a
+single :class:`~chisurf.gui.autoform.AutoForm` bound to the Qt-free
+:class:`~.view_model.FretTrajectoryViewModel` and laid out from
+``structure2transfer.view.json``: the trajectory picker + read stride, the
+donor/acceptor dipole atom-pair selectors (four
+:class:`~chisurf.gui.widgets.pdb.PDBSelector` widgets), the dye parameters (R0,
+tau0, dipole averaging, frame time-step) and the Process button with a live log.
+Replaces the former ``structure2transfer.ui`` / hand-built grid layout. Mirrors
+the Align-Trajectory tool.
+"""
+
 from __future__ import annotations
 
-import tempfile
+import logging
 
-import mdtraj as md
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtWidgets
 
-import chisurf.core.decorators
-import chisurf.gui.decorators
-from chisurf.core.fio.structure import coordinates
-import chisurf.gui.widgets
-from .traj2fret import CalculateTransfer
-from chisurf.gui.widgets.pdb import PDBSelector
+from chisurf.gui.autoform import AutoForm
+
+from . import sections  # noqa: F401  (side effect: register the custom sections)
+from .view_model import FretTrajectoryViewModel
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+except ImportError:  # pragma: no cover - persistence optional
+    persist_plugin_state = lambda n: lambda c: c  # noqa: E731
 
+logger = logging.getLogger(__name__)
 
 
 @persist_plugin_state("fret_trajectory")
-class Structure2Transfer(
-    QtWidgets.QWidget,
-    CalculateTransfer
-):
+class Structure2Transfer(QtWidgets.QWidget):
+    """Calculate FRET observables from a molecular-dynamics trajectory."""
 
     name = "Structure2Transfer"
 
-    @chisurf.gui.decorators.init_with_ui(ui_filename="structure2transfer.ui")
-    def __init__(
-            self,
-            verbose: bool = True,
-            *args,
-            **kwargs
-    ):
-        self._trajectory_file = ''
-        self.filenames = list()
-        self._settings = {
-            't_step': 1.0
-        }
+    def __init__(self, parent=None, verbose: bool = False, **kwargs):
+        super().__init__(parent)
+        self.setWindowTitle("Structure2Transfer")
+        self.setMinimumWidth(460)
 
-        self.verbose = verbose
-        self.d1 = PDBSelector()
-        self.d2 = PDBSelector(show_labels=False)
+        self.model = FretTrajectoryViewModel(verbose=verbose)
 
-        self.a1 = PDBSelector()
-        self.a2 = PDBSelector(show_labels=False)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        self.auto_form = AutoForm(self.model)
+        layout.addWidget(self.auto_form)
 
-        self.horizontalLayout_2.addWidget(self.d1)
-        self.horizontalLayout_3.addWidget(self.a1)
-        self.horizontalLayout_2.addWidget(self.d2)
-        self.horizontalLayout_3.addWidget(self.a2)
+        self.model.add_observer(self._on_model_event)
 
-        self.actionOpen_trajectory.triggered.connect(self.onLoadTrajectory)
-        self.actionProcess_trajectory.triggered.connect(self.calc)
-        self._setup_layout()
-        self.hide()
-
-    def _empty_icon(self):
-        pixmap = QtGui.QPixmap(16, 16)
-        pixmap.fill(QtCore.Qt.transparent)
-        return QtGui.QIcon(pixmap)
-
-    def _setup_layout(self) -> None:
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
-        )
-        self.setMaximumSize(16777215, 16777215)
-        self.groupBox.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
-        )
-        self.groupBox_2.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
-        )
-        self.groupBox_3.setSizePolicy(
-            QtWidgets.QSizePolicy.MinimumExpanding,
-            QtWidgets.QSizePolicy.Preferred
-        )
-        self.groupBox_5.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Preferred
-        )
-        self._progress = QtWidgets.QProgressBar(self)
-        self._progress.setRange(0, 0)
-        self._progress.setValue(0)
-        self._progress.setVisible(False)
-        self._log = QtWidgets.QPlainTextEdit(self)
-        self._log.setReadOnly(True)
-        self._log.setPlaceholderText("Log")
-        self._log.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
-        )
-        self.gridLayout_5.addWidget(self._progress, 3, 0, 1, 2)
-        self.gridLayout_5.addWidget(self._log, 4, 0, 1, 2)
-        self.gridLayout_5.setRowStretch(4, 1)
-        self.pushButton_2.setIcon(self._empty_icon())
-        self.toolButton_2.setIcon(self._empty_icon())
-        self._append_log("Ready")
-
-    def _append_log(self, message: str) -> None:
-        timestamp = QtCore.QTime.currentTime().toString("HH:mm:ss")
-        self._log.appendPlainText(f"[{timestamp}] {message}")
-
-    def calc(self, *args, **kwargs):
-        output_file = chisurf.gui.widgets.save_file(description='Output-file', file_type='All files (*.csv)')
-        if not output_file:
-            self._append_log("Process cancelled")
-            return
-        filenames = self.filenames or ([self.trajectory_file] if self.trajectory_file else [])
-        if not filenames:
-            self._append_log("No trajectory selected")
-            return
-
-        self._progress.setVisible(True)
-        self._progress.setRange(0, 0)
+    def _on_model_event(self, event: str) -> None:
         try:
-            for index, filename in enumerate(filenames, start=1):
-                self._append_log(f"Processing {index}/{len(filenames)}: {filename}")
-                CalculateTransfer.calc(self, verbose=False,
-                                       output_file=output_file if len(filenames) == 1 else f"{output_file}.{index}.csv",
-                                       trajectory_file=filename)
-                self._append_log(f"Finished {filename}")
-        except Exception as exc:
-            self._append_log(f"Processing failed: {exc}")
-            raise
-        finally:
-            self._progress.setVisible(False)
-            self._progress.setRange(0, 100)
-            self._progress.setValue(100)
+            self.auto_form.sync_fields()
+            self.auto_form.refresh_plots()
+        except Exception:  # pragma: no cover - defensive
+            logger.warning("Structure2Transfer: field sync failed", exc_info=True)
 
+    # ── public API (delegates to the view-model) ────────────────────────
     @property
-    def stride(self):
-        return int(self.spinBox.value())
-
-    @stride.setter
-    def stride(self, v):
-        self.spinBox.setValue(v)
-
-    @property
-    def donor(self):
-        return self.d1.atom_number, self.d2.atom_number
-
-    @property
-    def acceptor(self):
-        return self.a1.atom_number, self.a2.atom_number
-
-    @property
-    def forster_radius(self):
-        return float(self.doubleSpinBox.value())
-
-    @forster_radius.setter
-    def forster_radius(self, v):
-        self.doubleSpinBox.setValue(float(v))
-
-    @property
-    def tau0(self):
-        return self.doubleSpinBox_2.value()
-
-    @tau0.setter
-    def tau0(self, v):
-        self.doubleSpinBox_2.setValue(float(v))
-
-    @property
-    def dipoles(self):
-        return self.checkBox.isChecked()
-
-    @dipoles.setter
-    def dipoles(self, v):
-        self.checkBox.setChecked(bool(v))
-
-    @property
-    def pdb(self):
-        if self._pdb is None:
-            raise ValueError("No pdb file set yet.")
-        return self._pdb
-
-    @pdb.setter
-    def pdb(self, v):
-        if isinstance(v, str):
-            v = coordinates.read(v, verbose=self.verbose)
-        self._pdb = v
-
-    @property
-    def trajectory_file(self):
-        return str(self.lineEdit_3.text())
+    def trajectory_file(self) -> str:
+        """Path of the currently loaded trajectory (delegates to the view-model)."""
+        return self.model.trajectory_file
 
     @trajectory_file.setter
-    def trajectory_file(self, v):
-        self.lineEdit_3.setText(str(v))
+    def trajectory_file(self, value: str) -> None:
+        self.model.trajectory_file = value
 
     @property
-    def topology_file(self):
-        return str(self.lineEdit.text())
+    def donor(self) -> tuple:
+        """Donor dipole atom-index pair (delegates to the view-model)."""
+        return self.model.donor
 
-    @topology_file.setter
-    def topology_file(self, value):
-        self.pdb = str(value)
+    @property
+    def acceptor(self) -> tuple:
+        """Acceptor dipole atom-index pair (delegates to the view-model)."""
+        return self.model.acceptor
 
-    def onLoadTrajectory(self):
-        #self.trajectory_file = str(QtGui.QFileDialog.getOpenFileName(self, 'Open Trajectory-File', '.h5', 'H5-Trajectory-Files (*.h5)'))
-        filenames = chisurf.gui.widgets.open_files('Open Trajectory-File', 'H5-Trajectory-Files (*.h5)')
-        if not filenames:
-            return
-        self.filenames = filenames
-        self.trajectory_file = filenames[0]
-        self._append_log(f"Loaded {len(filenames)} trajectory file(s)")
+    @property
+    def t_step(self) -> float:
+        """Trajectory frame time-step in ns (delegates to the view-model)."""
+        return self.model.t_step
 
-        frame0 = md.load_frame(self.trajectory_file, 0)
+    @t_step.setter
+    def t_step(self, value: float) -> None:
+        self.model.t_step = value
 
-        _, tmp = tempfile.mkstemp(
-            suffix=".pdb"
-        )
-        frame0.save(tmp)
+    @property
+    def stride(self) -> int:
+        """Frame read-stride (delegates to the view-model)."""
+        return self.model.stride
 
-        self.topology_file = tmp
+    @stride.setter
+    def stride(self, value: int) -> None:
+        self.model.stride = value
 
-        self.d1.atoms = self.pdb
-        self.d2.atoms = self.pdb
+    @property
+    def forster_radius(self) -> float:
+        """Förster radius R0 (delegates to the view-model)."""
+        return self.model.forster_radius
 
-        self.a1.atoms = self.pdb
-        self.a2.atoms = self.pdb
+    @forster_radius.setter
+    def forster_radius(self, value: float) -> None:
+        self.model.forster_radius = value
+
+    @property
+    def tau0(self) -> float:
+        """Donor fluorescence lifetime tau0 (delegates to the view-model)."""
+        return self.model.tau0
+
+    @tau0.setter
+    def tau0(self, value: float) -> None:
+        self.model.tau0 = value
+
+    @property
+    def dipoles(self) -> bool:
+        """Dipole (kappa2) averaging flag (delegates to the view-model)."""
+        return self.model.dipoles
+
+    @dipoles.setter
+    def dipoles(self, value: bool) -> None:
+        self.model.dipoles = value
 
 
-if __name__ == "__main__":
-    import sys
-
-    app = QtWidgets.QApplication(sys.argv)
-    w = Structure2Transfer()
-
-    w.show()
-    sys.exit(app.exec_())
+__all__ = ["Structure2Transfer"]

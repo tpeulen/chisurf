@@ -6,7 +6,8 @@ import numba as nb
 import numpy as np
 
 import chisurf.core.fluorescence
-import chisurf.core.fio as io
+import chisurf.core.fluorescence.anisotropy.kappa2  # noqa: F401  (not auto-imported by the package)
+import chisurf.core.fluorescence.general  # noqa: F401
 
 
 def convert_chain_id_to_numbers(chain_id):
@@ -125,6 +126,7 @@ class CalculateTransfer(object):
             verbose: bool = True,
             kappa2: float = 0.66666667,
             forster_radius: float = 52.0,
+            t_step: float = 1.0,
             **kwargs
     ):
         """
@@ -145,6 +147,7 @@ class CalculateTransfer(object):
         self._dipoles = dipoles
         self._tau0 = tau0
         self._stride = stride
+        self._t_step = t_step
         self.verbose = verbose
         self._kappa2 = kappa2
         self.__forster_radius = forster_radius
@@ -213,6 +216,15 @@ class CalculateTransfer(object):
         return self.__distances
 
     @property
+    def t_step(self) -> float:
+        """Time between successive trajectory frames in nanoseconds."""
+        return self._t_step
+
+    @t_step.setter
+    def t_step(self, v: float):
+        self._t_step = float(v)
+
+    @property
     def tau0(self) -> float:
         return self._tau0
 
@@ -235,7 +247,32 @@ class CalculateTransfer(object):
             stride: int = None,
             chunk: int = 1000,
             **kwargs
-    ):
+    ) -> np.ndarray:
+        """Compute the FRET observables along a trajectory and write them to a file.
+
+        For every frame the donor-acceptor distance ``RDA``, the orientation
+        factor ``kappa`` (and ``kappa2``) and the FRET-rate constant are computed
+        and streamed as a tab-separated table to *output_file*. The stacked result
+        is also returned so callers (e.g. tests) can inspect it without re-reading
+        the file.
+
+        Parameters
+        ----------
+        output_file : str
+            Destination CSV file (one row per processed frame).
+        trajectory_file : str, optional
+            Trajectory to process; defaults to :attr:`trajectory_file`.
+        stride : int, optional
+            Read every ``stride``-th frame; defaults to :attr:`stride`.
+        chunk : int
+            Number of frames loaded per iteration (keeps memory bounded).
+
+        Returns
+        -------
+        np.ndarray
+            Array of shape ``(n_frames, 6)`` with columns
+            ``[frame, time[ns], RDA[Ang], kappa, kappa2, FRETrate[1/ns]]``.
+        """
         verbose = kwargs.get('verbose', self.verbose)
         if trajectory_file is None:
             trajectory_file = self.trajectory_file
@@ -244,17 +281,13 @@ class CalculateTransfer(object):
 
         donor = self.donor
         acceptor = self.acceptor
-        time_step = self._settings['t_step'] * stride
+        time_step = self.t_step * stride
         dipoles = kwargs.get('dipoles', self.dipoles)
-
-        #traj = kwargs.get('traj', None)
-        #if traj is None:
-        #    md.load(trajectory_file, stride=stride)
 
         if verbose:
             print("Trajectory: %s" % trajectory_file)
-            print("Donor-Dipole atoms: %s, %s" % donor)
-            print("Acceptor-Dipole atoms: %s, %s" % acceptor)
+            print("Donor-Dipole atoms: %s, %s" % tuple(donor))
+            print("Acceptor-Dipole atoms: %s, %s" % tuple(acceptor))
             print("Stride: %s" % stride)
             print("time_step: %s" % time_step)
             print("Calculate kappa: %s" % dipoles)
@@ -262,56 +295,57 @@ class CalculateTransfer(object):
             print("Output file: %s" % output_file)
             print("-------------------------")
 
-        # Write header
-        io.zipped.open_maybe_zipped(
-            filename=output_file,
-            mode='w'
-        ).write(b'Frame\ttime[ns]\tRDA[Ang]\tkappa\tkappa2\tFRETrate[1/ns]\n')
+        # Write header (text mode, consistent with the appended rows below)
+        with open(output_file, 'w') as f_handle:
+            f_handle.write('Frame\ttime[ns]\tRDA[Ang]\tkappa\tkappa2\tFRETrate[1/ns]\n')
         n = 0
-        try:
-            for chunk in md.iterload(trajectory_file, stride=self.stride, chunk=chunk):
-                if dipoles:
-                    ds, ks = chisurf.core.fluorescence.anisotropy.kappa2.calculate_kappa_distance(
-                        chunk.xyz,
-                        self.donor[0],
-                        self.donor[1],
-                        self.acceptor[0],
-                        self.acceptor[1]
-                    )
-                else:
-                    ks = np.zeros(chunk.n_frames, dtype=np.float32)
-                    d1 = chunk.xyz[:, self.donor[0], :]
-                    a1 = chunk.xyz[:, self.acceptor[0], :]
-                    ds = np.sqrt(np.sum((a1 - d1)**2, axis=1))
-                i = np.arange(0, ds.shape[0]) + n
-                time = i * time_step
-                n += ds.shape[0]
+        results = []
+        for chunk_traj in md.iterload(trajectory_file, stride=stride, chunk=chunk):
+            if dipoles:
+                ds, ks = chisurf.core.fluorescence.anisotropy.kappa2.calculate_kappa_distance(
+                    chunk_traj.xyz,
+                    donor[0],
+                    donor[1],
+                    acceptor[0],
+                    acceptor[1]
+                )
+            else:
+                ks = np.zeros(chunk_traj.n_frames, dtype=np.float32)
+                d1 = chunk_traj.xyz[:, donor[0], :]
+                a1 = chunk_traj.xyz[:, acceptor[0], :]
+                ds = np.sqrt(np.sum((a1 - d1) ** 2, axis=1))
+            i = np.arange(0, ds.shape[0]) + n
+            time = i * time_step
+            n += ds.shape[0]
 
-                with open(output_file, 'a') as f_handle:
-                    r = np.array(
-                        [
-                            i * stride,  # frame number
-                            time,  # time
-                            ds * 10.0,  # RDA-distance in Angstrom
-                            ks,  # kappa
-                            ks ** 2,  # kappa2
-                            chisurf.core.fluorescence.general.distance_to_fret_rate_constant(
-                                ds * 10.0,
-                                self.forster_radius,
-                                self.tau0,
-                                ks ** 2
-                            )
-                        ]  # FRET-rate constant
-                    ).T
-                    np.savetxt(f_handle,
-                               r,
-                               delimiter='\t',
-                               fmt=['%d', '%.3f', '%.2f', '%.4e', '%.4e', '%.4e']
+            r = np.array(
+                [
+                    i * stride,  # frame number
+                    time,  # time
+                    ds * 10.0,  # RDA-distance in Angstrom
+                    ks,  # kappa
+                    ks ** 2,  # kappa2
+                    chisurf.core.fluorescence.general.distance_to_fret_rate_constant(
+                        ds * 10.0,
+                        self.forster_radius,
+                        self.tau0,
+                        ks ** 2
                     )
-        except:
-            print("Probably some problems in HDF-file")
+                ]  # FRET-rate constant
+            ).T
+            with open(output_file, 'a') as f_handle:
+                np.savetxt(
+                    f_handle,
+                    r,
+                    delimiter='\t',
+                    fmt=['%d', '%.3f', '%.2f', '%.4e', '%.4e', '%.4e']
+                )
+            results.append(r)
         if verbose:
             print("\nFinished!")
+        if results:
+            return np.concatenate(results, axis=0)
+        return np.empty((0, 6), dtype=np.float64)
 
 
 if __name__ == "__main__":
