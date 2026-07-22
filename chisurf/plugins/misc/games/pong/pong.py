@@ -11,7 +11,7 @@ except ImportError:
     persist_plugin_state = lambda n: lambda c: c
 
 try:
-    from chisurf.plugins.misc.pong_game.sound import SoundManager
+    from chisurf.plugins.misc.games.pong.sound import SoundManager
 except ImportError:
     class SoundManager:
         def __init__(self): self._muted = True
@@ -390,8 +390,8 @@ class PongBoard(QFrame):
 
 @persist_plugin_state("pong")
 class Pong(QMainWindow):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.initUI()
 
     def initUI(self):
@@ -401,7 +401,6 @@ class Pong(QMainWindow):
         self.statusBar().showMessage('↑ ↓ to move | P pause | R restart | M 1p/2p | N sound')
         self.setFixedSize(WindowWidth, WindowHeight)
         self.setWindowTitle('Pong vs CPU')
-        self.show()
 
     def closeEvent(self, event):
         self.board.timer.stop()
@@ -412,4 +411,5 @@ class Pong(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     pong = Pong()
+    pong.show()
     sys.exit(app.exec())

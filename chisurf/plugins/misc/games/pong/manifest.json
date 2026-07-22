@@ -1,12 +1,12 @@
 {
-  "id": "breakout_game",
+  "id": "pong",
   "version": "2.0.0",
-  "display_name": "Tools:Miscellaneous:Breakout",
-  "description": "Classic Breakout game with progressive difficulty, multiple brick types, mouse/keyboard control, and particle effects.",
+  "display_name": "Tools:Miscellaneous:Games:Pong",
+  "description": "Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Tools", "Miscellaneous"],
   "icon": "icon.png",
-  "state_namespace": "breakout_game",
+  "state_namespace": "pong_game",
   "statefulness": {
     "enabled": true,
     "window": {
@@ -20,13 +20,13 @@
     "properties": {}
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.misc.breakout_game.breakout:Breakout",
+    "gui": "chisurf.plugins.misc.games.pong.pong:Pong",
     "cli": null,
     "services": null
   },
   "rpc_methods": [],
   "events": [],
   "dependencies": {},
-  "menu_hidden": false,
+  "menu_hidden": true,
   "deprecated": false
 }

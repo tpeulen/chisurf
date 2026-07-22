@@ -1,6 +1,6 @@
-"""Tetris Game Plugin
+"""Pong Game Plugin
 
-Classic single-player Tetris game with line clearing and next-piece preview.
+Classic Pong game with CPU opponent, score tracking, and particle effects.
 """
 
 from __future__ import annotations
@@ -11,17 +11,17 @@ from pathlib import Path
 from qtpy.QtWidgets import QApplication
 
 from chisurf.core.plugin import load_manifest
-from chisurf.plugins.misc.tetris_game.tetris import Tetris
+from chisurf.plugins.misc.games.pong.pong import Pong
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
-name = _manifest.display_name if _manifest is not None else "Tools:Miscellaneous:Tetris"
+name = _manifest.display_name if _manifest is not None else "Tools:Miscellaneous:Games:Pong"
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    game = Tetris()
+    game = Pong()
     game.show()
     sys.exit(app.exec())
 
 if __name__ == "plugin":
-    game = Tetris()
+    game = Pong()
     game.show()

@@ -10,7 +10,7 @@ except ImportError:
     persist_plugin_state = lambda n: lambda c: c
 
 try:
-    from chisurf.plugins.misc.tetris_game.sound import SoundManager
+    from chisurf.plugins.misc.games.tetris.sound import SoundManager
 except ImportError:
     class SoundManager:
         def __init__(self): self._muted = True
@@ -267,8 +267,8 @@ class Board(QFrame):
 
 @persist_plugin_state("tetris")
 class Tetris(QMainWindow):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.initUI()
 
     def initUI(self):
@@ -278,7 +278,6 @@ class Tetris(QMainWindow):
             'P pause | R restart | M sound')
         self.setFixedSize(BoardWidth * 20, BoardHeight * 20)
         self.setWindowTitle('Tetris')
-        self.show()
 
     def closeEvent(self, event):
         self.board.timer.stop()
@@ -288,4 +287,5 @@ class Tetris(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     tetris = Tetris()
+    tetris.show()
     sys.exit(app.exec())

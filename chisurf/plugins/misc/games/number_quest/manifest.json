@@ -1,0 +1,14 @@
+{
+  "id": "number_quest",
+  "version": "1.0.0",
+  "display_name": "Tools:Miscellaneous:Games:Number Quest",
+  "description": "A small number-guessing game contained in the Games hub.",
+  "authors": ["ChiSurf contributors"],
+  "categories": ["Tools", "Miscellaneous"],
+  "entrypoints": {
+    "gui": "chisurf.plugins.misc.games.number_quest.gui.tool:NumberQuestWidget"
+  },
+  "dependencies": {},
+  "menu_hidden": true,
+  "deprecated": false
+}

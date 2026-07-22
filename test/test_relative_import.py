@@ -2,8 +2,11 @@ import sys
 import pathlib
 import os
 
-# Path to the pong_game plugin's __init__.py file
-plugin_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chisurf", "plugins", "pong_game")
+# Path to the pong plugin's __init__.py file
+plugin_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "chisurf", "plugins", "misc", "games", "pong",
+)
 init_file = os.path.join(plugin_dir, "__init__.py")
 print(f"Testing relative import with file: {init_file}")
 
@@ -45,7 +48,7 @@ try:
             # Create a modified version of the code that just imports the module
             import_test_code = """
 try:
-    from .pong_game import PongGameWidget
+    from .pong import Pong
     print("Relative import successful!")
 except ImportError as e:
     print(f"Relative import failed: {e}")

@@ -11,7 +11,7 @@ except ImportError:
     persist_plugin_state = lambda n: lambda c: c
 
 try:
-    from chisurf.plugins.misc.breakout_game.sound import SoundManager
+    from chisurf.plugins.misc.games.breakout.sound import SoundManager
 except ImportError:
     class SoundManager:
         def __init__(self): self._muted = True
@@ -394,8 +394,8 @@ class BreakoutBoard(QFrame):
 
 @persist_plugin_state("breakout")
 class Breakout(QMainWindow):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.initUI()
 
     def initUI(self):
@@ -406,7 +406,6 @@ class Breakout(QMainWindow):
             '← → mouse | SPACE launch | P pause | R restart | M sound')
         self.setFixedSize(W, H)
         self.setWindowTitle('Breakout')
-        self.show()
 
     def closeEvent(self, event):
         self.board.timer.stop()
@@ -417,4 +416,5 @@ class Breakout(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     game = Breakout()
+    game.show()
     sys.exit(app.exec())

@@ -7,8 +7,8 @@ from chisurf.gui.main import Main
 # Create a Main instance
 main = Main()
 
-# Path to the pong_game plugin's __init__.py file
-plugin_path = pathlib.Path(cs.plugins.__file__).parent / "pong_game" / "__init__.py"
+# Path to the pong plugin's __init__.py file
+plugin_path = pathlib.Path(cs.plugins.__file__).parent / "misc" / "games" / "pong" / "__init__.py"
 print(f"Testing macro execution with file: {plugin_path}")
 
 try:
