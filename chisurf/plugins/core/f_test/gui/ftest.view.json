@@ -1,0 +1,46 @@
+{
+  "_comment": "F-test calculator. AutoForm over _FTestModel: an F-test panel comparing two nested models (confidence <-> chi2 threshold) and a chi2-max panel giving the upper chi2 limit of a single fit at a confidence level. Values load from open fits via the tool's 'From fit' toolbar button.",
+  "sections": [
+    {"type": "custom", "key": "help",
+     "options": {"title": "F-test & χ²-max — help",
+       "text": "**F-test (compare two nested models).**\nGiven the reduced χ² and degrees of freedom of a simpler model (χ²₁, n₁) and a more complex one (χ²₂, n₂), the confidence follows from the F-distribution `conf = F.cdf(χ²₂/χ²₁, n₁, n₂)`. Editing the confidence instead solves for the χ²₂ threshold `χ²₂ = χ²₁·(n₂/n₁)·F.isf(1−conf, n₁, n₂)`.\n\n**χ²-max (upper limit from one fit).**\nThe largest reduced χ² still compatible with the minimum χ² of a fit at the chosen confidence: `χ²max = χ²min·(1 + p/ν·F.isf(1−conf, p, ν))` with p parameters and ν degrees of freedom.\n\nUse **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight from any open fit."}},
+    {"type": "panel", "title": "F-test — compare two nested models", "collapsed": false,
+     "description": "Confidence that the more complex model is justified over the simpler one.",
+     "sections": [
+       {"type": "value", "attr": "chi2_1", "label": "χ²(1)", "kind": "float",
+        "decimals": 4, "minimum": 0.0, "maximum": 1000000.0, "step": 0.001,
+        "description": "Reduced χ² of the first (simpler) model."},
+       {"type": "value", "attr": "n1", "label": "n₁", "kind": "int",
+        "minimum": 1, "maximum": 1000000, "step": 1,
+        "description": "Degrees of freedom of the first model."},
+       {"type": "value", "attr": "chi2_2", "label": "χ²(2)", "kind": "float",
+        "decimals": 4, "minimum": 0.0, "maximum": 1000000.0, "step": 0.001,
+        "description": "Reduced χ² of the second (more complex) model; recomputed when the confidence changes."},
+       {"type": "value", "attr": "n2", "label": "n₂", "kind": "int",
+        "minimum": 1, "maximum": 1000000, "step": 1,
+        "description": "Degrees of freedom added by the second model."},
+       {"type": "value", "attr": "conf_level", "label": "confidence", "kind": "float",
+        "decimals": 5, "minimum": 0.0, "maximum": 1.0, "step": 0.001,
+        "description": "F-test confidence level; recomputed from the χ² ratio, or drives the χ²(2) threshold when edited."}
+     ]},
+    {"type": "panel", "title": "χ²-max — upper limit from one fit", "collapsed": false,
+     "description": "Largest reduced χ² still compatible with a fit's χ² minimum at the chosen confidence.",
+     "sections": [
+       {"type": "value", "attr": "chi2_min", "label": "χ² min", "kind": "float",
+        "decimals": 5, "minimum": 0.0, "maximum": 10000.0, "step": 0.01,
+        "description": "Reduced χ² (minimum) of the fit."},
+       {"type": "value", "attr": "npars", "label": "params", "kind": "int",
+        "minimum": 0, "maximum": 1000000, "step": 1,
+        "description": "Number of free parameters of the model."},
+       {"type": "value", "attr": "dof", "label": "ν (dof)", "kind": "int",
+        "minimum": 0, "maximum": 1000000, "step": 1,
+        "description": "Degrees of freedom (observations minus parameters)."},
+       {"type": "value", "attr": "conf_level_2", "label": "confidence", "kind": "float",
+        "decimals": 5, "minimum": 0.0, "maximum": 1.0, "step": 0.01,
+        "description": "Confidence level for the χ² upper limit."},
+       {"type": "value", "attr": "chi2_max", "label": "χ² max", "kind": "float",
+        "decimals": 5, "read_only": true,
+        "description": "Resulting χ² upper limit at the chosen confidence level."}
+     ]}
+  ]
+}
