@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 from qtpy import uic
 from qtpy.QtWidgets import (
     QApplication, QWidget, QFileDialog, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QListWidget, QListWidgetItem, QAbstractItemView,
+    QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QDialog
 )
 from qtpy.QtCore import Qt, QTimer
@@ -59,42 +59,16 @@ class DataCurve:
         self.name = name
 
 
-class FileDropList(QListWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+class _FileListModel:
+    """Adapter exposing the batch file list to the unified ``PathListWidget``."""
 
-    def add_files(self, paths):
-        existing = {self.item(i).text() for i in range(self.count())}
-        for p in paths:
-            if p and p not in existing:
-                self.addItem(QListWidgetItem(p))
-                existing.add(p)
+    def __init__(self, on_change=None):
+        self.files: list[str] = []
+        self._on_change = on_change
 
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-        else:
-            super().dragEnterEvent(event)
-
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-        else:
-            super().dragMoveEvent(event)
-
-    def dropEvent(self, event):
-        if event.mimeData().hasUrls():
-            paths = []
-            for url in event.mimeData().urls():
-                local = url.toLocalFile()
-                if local:
-                    paths.append(local)
-            self.add_files(paths)
-            event.acceptProposedAction()
-        else:
-            super().dropEvent(event)
+    def update(self):
+        if self._on_change is not None:
+            self._on_change()
 
 
 class VvVhDecayBatchWindow(QDialog):
@@ -109,25 +83,25 @@ class VvVhDecayBatchWindow(QDialog):
 
     def _init_ui(self):
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Drop VV/VH files here or use Add..."))
 
-        self.file_list = FileDropList()
+        # Unified AutoForm file/folder list (drag-drop + Files/Folder/Database/
+        # Remove/Clear + MMFDB); replaces the hand-rolled FileDropList + buttons.
+        from chisurf.gui.autoform.sections.path_list_section import PathListWidget
+
+        self._file_model = _FileListModel(on_change=self._on_files_changed)
+        self.file_list = PathListWidget(
+            self._file_model,
+            "files",
+            extensions=[".dat", ".txt", ".csv"],
+            title="VV/VH files",
+        )
         layout.addWidget(self.file_list)
 
         buttons = QHBoxLayout()
-        self.add_btn = QPushButton("Add...")
-        self.add_btn.clicked.connect(self._on_add)
-        self.remove_btn = QPushButton("Remove")
-        self.remove_btn.clicked.connect(self._on_remove)
-        self.clear_btn = QPushButton("Clear")
-        self.clear_btn.clicked.connect(self._on_clear)
         self.run_btn = QPushButton("Run Batch")
         self.run_btn.clicked.connect(self._on_run)
         self.save_btn = QPushButton("Save CSV...")
         self.save_btn.clicked.connect(self._on_save)
-        buttons.addWidget(self.add_btn)
-        buttons.addWidget(self.remove_btn)
-        buttons.addWidget(self.clear_btn)
         buttons.addStretch(1)
         buttons.addWidget(self.run_btn)
         buttons.addWidget(self.save_btn)
@@ -221,21 +195,13 @@ class VvVhDecayBatchWindow(QDialog):
         self.table.setRowCount(0)
         self.results = []
 
-    def _on_add(self):
-        files, _ = QFileDialog.getOpenFileNames(self, "Add VV/VH Files", "", "Data Files (*.dat *.txt *.csv);;All Files (*)")
-        if files:
-            self.file_list.add_files(files)
-
-    def _on_remove(self):
-        for item in self.file_list.selectedItems():
-            self.file_list.takeItem(self.file_list.row(item))
-
-    def _on_clear(self):
-        self.file_list.clear()
-        self._clear_results()
+    def _on_files_changed(self):
+        """Clear stale results when the unified file list becomes empty."""
+        if not self.file_list.paths():
+            self._clear_results()
 
     def _on_run(self):
-        paths = [self.file_list.item(i).text() for i in range(self.file_list.count())]
+        paths = self.file_list.paths()
         if not paths:
             QMessageBox.information(self, "Batch", "No files to process.")
             return
