@@ -97,9 +97,15 @@ class ImageBrowserWidget(QtWidgets.QWidget):
 
     #: marker so :meth:`AutoForm.refresh_plots` re-reads this widget.
     AUTOFORM_REFRESH = True
+    #: marker so AutoForm's panel builder gives this widget the spare vertical space
+    #: instead of appending a trailing stretch that pins it to its size hint.
+    _autoform_expanding = True
 
     def __init__(self, model, target: str | None = None, **options):
         super().__init__()
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         self._model = model
         self._target = target or options.get("target")
         self._entries_source = options.get("entries_source")
