@@ -23,6 +23,34 @@ def test_view_model_is_qt_free_and_binds_settings():
     assert not ok and reason
 
 
+def test_apply_setup_settings_carries_polarisation_corrections():
+    # Regression: g_factor/l1/l2 from the shared detector setup used to be
+    # dropped, and g_factor was later overwritten by the IRF-tail estimate.
+    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import MoleculeMleViewModel
+
+    vm = MoleculeMleViewModel()
+    vm.apply_setup_settings(
+        {
+            "detectors": {
+                "green": {
+                    "chs": [0, 1],
+                    "mtr": [(5, 200)],
+                    "g_factor": 1.2,
+                    "l1": 0.03,
+                    "l2": 0.05,
+                }
+            }
+        }
+    )
+    assert vm.settings.detector_chs == [0, 1]
+    assert vm.settings.micro_time_range == (5, 200)
+    assert vm.settings.g_factor == pytest.approx(1.2)
+    assert vm.settings.l1 == pytest.approx(0.03)
+    assert vm.settings.l2 == pytest.approx(0.05)
+    # The setup value is authoritative: the IRF-tail auto-estimate is disabled.
+    assert vm.settings.auto_g_factor is False
+
+
 def test_view_spec_loads():
     from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import MoleculeMleViewModel
 

@@ -16,6 +16,12 @@ class PixelMleSettings:
     micro_time_stop: int = 256
     micro_time_binning: int = 1
 
+    # Polarisation corrections (from the shared detector setup / calibration).
+    # Without these the fit silently runs at g=1, l1=l2=0.
+    g_factor: float = 1.0
+    l1: float = 0.0
+    l2: float = 0.0
+
     # IRF preparation
     irf_threshold: float = 0.02
     irf_threshold_vv: float | None = None

@@ -17,6 +17,8 @@ from collections.abc import Callable
 
 import numpy as np
 
+from chisurf.plugins.microscopy.mle_common.base import MleObserverMixin, scalar
+
 from ..core.molecule_mle import MoleculeMleResult, MoleculeMleSettings
 
 logger = logging.getLogger(__name__)
@@ -24,7 +26,7 @@ logger = logging.getLogger(__name__)
 _VIEW_JSON = pathlib.Path(__file__).parent / "molecule_mle.view.json"
 
 
-class MoleculeMleViewModel:
+class MoleculeMleViewModel(MleObserverMixin):
     """State + logic for the molecule-wise MLE tool (no Qt)."""
 
     def __init__(self) -> None:
@@ -45,40 +47,33 @@ class MoleculeMleViewModel:
         return load_view_spec(_VIEW_JSON)
 
     # ── observer hook ──
-    def add_observer(self, cb: Callable[[str], None]) -> None:
-        """Register *cb*, called with an event name on every change."""
-        self._observers.append(cb)
-
-    def notify(self, event: str = "changed") -> None:
-        """Notify observers that state changed."""
-        for cb in list(self._observers):
-            try:
-                cb(event)
-            except Exception:
-                logger.debug("molecule-MLE observer failed", exc_info=True)
 
     # ── shared-setup hook (Imaging Tools aggregator) ──
     def apply_setup_settings(self, payload: dict) -> None:
-        """Adopt detector channels / micro-time range from a shared definition."""
+        """Adopt detector channels, micro-time range and polarisation corrections.
+
+        Channels, fit window **and** the G-factor / l1 / l2 mixing corrections
+        come from the shared detector definition; previously the corrections
+        were dropped here and the fit silently ran at ``g=1, l1=l2=0``.
+        """
+        from chisurf.core.fluorescence.mle import parse_detector_setup
+
+        setup = parse_detector_setup(payload)
         if not payload:
             return
-        detectors = payload.get("detectors") or {}
-        channels: list[int] = []
-        micro_range = None
-        for det in detectors.values():
-            if not isinstance(det, dict):
-                continue
-            for ch in det.get("chs", []) or []:
-                if ch not in channels:
-                    channels.append(ch)
-            if micro_range is None:
-                ranges = det.get("mtr") or det.get("microtime_ranges")
-                if ranges:
-                    micro_range = ranges[0]
-        if channels:
-            self.settings.detector_chs = channels
-        if micro_range and len(micro_range) == 2:
-            self.settings.micro_time_range = (int(micro_range[0]), int(micro_range[1]))
+        if setup.channels:
+            self.settings.detector_chs = setup.channels
+        if setup.micro_range is not None:
+            self.settings.micro_time_range = setup.micro_range
+        if setup.g_factor is not None:
+            self.settings.g_factor = setup.g_factor
+            # The setup value is authoritative; do not overwrite it with the
+            # IRF-tail estimate during the fit.
+            self.settings.auto_g_factor = False
+        if setup.l1 is not None:
+            self.settings.l1 = setup.l1
+        if setup.l2 is not None:
+            self.settings.l2 = setup.l2
         self.notify("setup")
 
     def apply_pipeline_context(self, payload: dict) -> None:
@@ -158,38 +153,24 @@ class MoleculeMleViewModel:
     def mtr_stop(self, value) -> None:
         self.settings.micro_time_range = (self.settings.micro_time_range[0], int(value))
 
-    def _scalar(name, cast, doc):  # noqa: N805 - descriptor factory
-        """Build a property proxying ``self.settings.<name>``."""
-
-        def getter(self):
-            return cast(getattr(self.settings, name))
-
-        def setter(self, value):
-            setattr(self.settings, name, cast(value))
-
-        getter.__doc__ = doc
-        return property(getter, setter)
-
-    micro_time_binning = _scalar("micro_time_binning", int, "Micro-time down-binning factor.")
-    seg_sigma = _scalar("seg_sigma", float, "Segmentation Gaussian sigma.")
-    seg_threshold = _scalar("seg_threshold", float, "Segmentation threshold (<0 = Otsu).")
-    peak_footprint_size = _scalar("peak_footprint_size", int, "Peak-detection footprint size.")
-    min_photons = _scalar("min_photons", int, "Minimum photons per molecule to fit.")
-    min_area = _scalar("min_area", int, "Minimum molecule area (pixels).")
-    tau = _scalar("tau", float, "Initial lifetime (ns).")
-    gamma = _scalar("gamma", float, "Initial scatter fraction.")
-    r0 = _scalar("r0", float, "Initial fundamental anisotropy.")
-    rho = _scalar("rho", float, "Initial rotational correlation time (ns).")
-    fix_tau = _scalar("fix_tau", bool, "Fix the lifetime.")
-    fix_gamma = _scalar("fix_gamma", bool, "Fix the scatter fraction.")
-    fix_r0 = _scalar("fix_r0", bool, "Fix the fundamental anisotropy.")
-    fix_rho = _scalar("fix_rho", bool, "Fix the rotational correlation time.")
-    l1 = _scalar("l1", float, "Polarisation mixing correction l1.")
-    l2 = _scalar("l2", float, "Polarisation mixing correction l2.")
-    p2s_twoIstar = _scalar("p2s_twoIstar", bool, "Optimise P+2S (2I*).")
-    soft_bifl_scatter = _scalar("soft_bifl_scatter", bool, "Soft BIFL scatter.")
-
-    del _scalar
+    micro_time_binning = scalar("micro_time_binning", int, "Micro-time down-binning factor.")
+    seg_sigma = scalar("seg_sigma", float, "Segmentation Gaussian sigma.")
+    seg_threshold = scalar("seg_threshold", float, "Segmentation threshold (<0 = Otsu).")
+    peak_footprint_size = scalar("peak_footprint_size", int, "Peak-detection footprint size.")
+    min_photons = scalar("min_photons", int, "Minimum photons per molecule to fit.")
+    min_area = scalar("min_area", int, "Minimum molecule area (pixels).")
+    tau = scalar("tau", float, "Initial lifetime (ns).")
+    gamma = scalar("gamma", float, "Initial scatter fraction.")
+    r0 = scalar("r0", float, "Initial fundamental anisotropy.")
+    rho = scalar("rho", float, "Initial rotational correlation time (ns).")
+    fix_tau = scalar("fix_tau", bool, "Fix the lifetime.")
+    fix_gamma = scalar("fix_gamma", bool, "Fix the scatter fraction.")
+    fix_r0 = scalar("fix_r0", bool, "Fix the fundamental anisotropy.")
+    fix_rho = scalar("fix_rho", bool, "Fix the rotational correlation time.")
+    l1 = scalar("l1", float, "Polarisation mixing correction l1.")
+    l2 = scalar("l2", float, "Polarisation mixing correction l2.")
+    p2s_twoIstar = scalar("p2s_twoIstar", bool, "Optimise P+2S (2I*).")
+    soft_bifl_scatter = scalar("soft_bifl_scatter", bool, "Soft BIFL scatter.")
 
     # ── results accessors (AutoForm image_browser) ──
     def _flat_molecules(self) -> list[tuple[int, int]]:

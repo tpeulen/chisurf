@@ -23,7 +23,13 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings, assemble_vv_vh
+from chisurf.core.fluorescence.mle import (
+    Fit2x,
+    Fit2xModel,
+    Fit2xSettings,
+    assemble_vv_vh,
+    interpolate_shift,
+)
 
 #: Callback signature ``(index, n_molecules)`` for per-molecule progress.
 ProgressCallback = Callable[[int, int], None]
@@ -90,6 +96,10 @@ class MoleculeMleSettings:
     irf: np.ndarray | None = None
     background: np.ndarray | None = None
     g_factor: float = 1.0
+    #: When True (the default) and no IRF is supplied, the G-factor is estimated
+    #: from the IRF tail. Set False to keep a G-factor supplied from the shared
+    #: detector setup / calibration instead of overwriting it.
+    auto_g_factor: bool = True
 
     normalize_counts: int = 0
     threshold: float = -1.0
@@ -249,23 +259,6 @@ def _microtime_component(
     return hist[start:stop].astype(np.float64)
 
 
-def _interpolate_shift(arr: np.ndarray, shift: float) -> np.ndarray:
-    """Shift *arr* by an integer + fractional offset (zeros pad, linear interp)."""
-    result = arr.astype(np.float64).copy()
-    if shift == 0:
-        return result
-    int_shift = int(np.trunc(shift))
-    if int_shift != 0:
-        result = np.roll(result, int_shift)
-        if int_shift > 0:
-            result[:int_shift] = 0.0
-        else:
-            result[int_shift:] = 0.0
-    frac = shift - int_shift
-    if frac != 0:
-        x = np.arange(result.size)
-        result = np.interp(x - frac, x, result, left=0.0, right=0.0)
-    return result
 
 
 def build_irf_vv_vh(
@@ -307,8 +300,8 @@ def build_irf_vv_vh(
 
     sp = _microtime_component(irf_tttr, sp_chs, micro_time_range, micro_time_binning)
     ss = _microtime_component(irf_tttr, ss_chs, micro_time_range, micro_time_binning)
-    sp = _interpolate_shift(sp, shift_sp)
-    ss = _interpolate_shift(ss, shift_ss)
+    sp = interpolate_shift(sp, shift_sp)
+    ss = interpolate_shift(ss, shift_ss)
     sp = sp / sp.sum() if sp.sum() > 0 else sp
     ss = ss / ss.sum() if ss.sum() > 0 else ss
 
@@ -621,10 +614,13 @@ def fit_molecules_from_files(
         )
         settings.irf = irf_full
         settings.background = raw_irf
-        settings.g_factor = compute_g_factor(
-            irf_tttr,
-            settings.detector_chs,
-            settings.micro_time_range,
-            settings.micro_time_binning,
-        )
+        # Estimate the G-factor from the IRF tail only when the caller has not
+        # supplied one from the shared detector setup / anisotropy calibration.
+        if settings.auto_g_factor:
+            settings.g_factor = compute_g_factor(
+                irf_tttr,
+                settings.detector_chs,
+                settings.micro_time_range,
+                settings.micro_time_binning,
+            )
     return fit_molecules(tttr, settings, progress=progress, keep_curves=keep_curves)

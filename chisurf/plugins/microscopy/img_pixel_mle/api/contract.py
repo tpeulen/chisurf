@@ -4,27 +4,31 @@ from __future__ import annotations
 
 from typing import Any
 
+from chisurf.plugins.microscopy.mle_common.contract import (
+    build_contract_descriptor,
+    service_error,
+    service_success,
+)
+
 PLUGIN_ID = "img_pixel_mle"
 CONTRACT_VERSION = "2.0.0"
 
-METHOD_ANALYZE = "img_pixel_mle.analyze.run"
-METHOD_CONTRACT = "img_pixel_mle.contract.describe"
+METHOD_ANALYZE = f"{PLUGIN_ID}.analyze.run"
+METHOD_CONTRACT = f"{PLUGIN_ID}.contract.describe"
+
+__all__ = [
+    "PLUGIN_ID",
+    "CONTRACT_VERSION",
+    "METHOD_ANALYZE",
+    "METHOD_CONTRACT",
+    "contract_descriptor",
+    "service_success",
+    "service_error",
+]
 
 
 def contract_descriptor() -> dict[str, Any]:
     """Return a dict describing the plugin RPC contract."""
-    return {
-        "plugin_id": PLUGIN_ID,
-        "version": CONTRACT_VERSION,
-        "methods": [METHOD_ANALYZE, METHOD_CONTRACT],
-    }
-
-
-def service_success(result: Any) -> dict[str, Any]:
-    """Wrap a result in a standard success envelope."""
-    return {"ok": True, "result": result}
-
-
-def service_error(msg: Any) -> dict[str, Any]:
-    """Wrap an error message in a standard error envelope."""
-    return {"ok": False, "error": str(msg)}
+    return build_contract_descriptor(
+        PLUGIN_ID, CONTRACT_VERSION, [METHOD_ANALYZE, METHOD_CONTRACT]
+    )

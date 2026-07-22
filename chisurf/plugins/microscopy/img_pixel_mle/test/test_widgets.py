@@ -67,6 +67,33 @@ def test_apply_calibration_carries_irf_and_window():
     assert vm.settings.micro_time_stop == 300
 
 
+def test_apply_setup_settings_carries_polarisation_corrections():
+    # Regression: g_factor/l1/l2 from the shared detector setup used to be
+    # dropped, so the fit silently ran at g=1, l1=l2=0.
+    from chisurf.plugins.microscopy.img_pixel_mle.gui.view_model import PixelMleViewModel
+
+    vm = PixelMleViewModel()
+    vm.apply_setup_settings(
+        {
+            "detectors": {
+                "green": {
+                    "chs": [0, 1],
+                    "mtr": [(5, 200)],
+                    "g_factor": 1.2,
+                    "l1": 0.03,
+                    "l2": 0.05,
+                }
+            }
+        }
+    )
+    assert vm.settings.detector_chs_p == [0]
+    assert vm.settings.detector_chs_s == [1]
+    assert vm.settings.micro_time_start == 5 and vm.settings.micro_time_stop == 200
+    assert vm.settings.g_factor == pytest.approx(1.2)
+    assert vm.settings.l1 == pytest.approx(0.03)
+    assert vm.settings.l2 == pytest.approx(0.05)
+
+
 def test_view_spec_loads():
     from chisurf.plugins.microscopy.img_pixel_mle.gui.view_model import PixelMleViewModel
 

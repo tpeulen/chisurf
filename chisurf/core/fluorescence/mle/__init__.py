@@ -16,6 +16,8 @@ from .fit2x import (
     Fit2xSettings,
     assemble_vv_vh,
 )
+from .irf import interpolate_shift
+from .setup import DetectorSetup, parse_detector_setup
 
 __all__ = [
     "HAVE_TTTRLIB",
@@ -25,4 +27,7 @@ __all__ = [
     "Fit2xSettings",
     "PARAMETER_NAMES",
     "assemble_vv_vh",
+    "DetectorSetup",
+    "parse_detector_setup",
+    "interpolate_shift",
 ]

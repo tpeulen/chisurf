@@ -75,6 +75,18 @@ _TTTRLIB_CLASS: dict[Fit2xModel, str] = {
     Fit2xModel.FIT25: "Fit25",
 }
 
+#: Full packed start-vector layout for the batch ``DecayFitNN.fit_matrix`` of the
+#: non-fit23 estimators. ``fit23`` keeps its own ``fit_matrix`` signature (the
+#: BIFL/P+2S flags are separate arguments there); the others take the flags
+#: inside the parameter vector, so ``fit_many`` packs them here.
+#: value = (x_width, n_free_params, bifl_flag_index, {extra_input_index: default})
+_BATCH_LAYOUT: dict[Fit2xModel, tuple[int, int, int, dict[int, float]]] = {
+    # x = [tau1, gamma, tau2, A2, offset, bifl, r_scat, r_exp]
+    Fit2xModel.FIT24: (8, 5, 5, {}),
+    # x = [tau1, tau2, tau3, tau4, gamma, r0, bifl, r_scat, r_exp]
+    Fit2xModel.FIT25: (9, 5, 6, {5: 0.38}),
+}
+
 
 def assemble_vv_vh(parallel: np.ndarray, perpendicular: np.ndarray) -> np.ndarray:
     """Stack two detection channels into the ``fit2x`` "VV/VH" layout.
@@ -161,6 +173,21 @@ class Fit2xSettings:
                 raise ValueError(
                     f"background length must match irf: {self.background.shape} vs {self.irf.shape}"
                 )
+            # Area-normalise the background so gamma is a true 0..1 fraction.
+            #
+            # The fit2x models add the background as ``bg[i] * gamma`` — gamma is
+            # the *fraction* of the model that is background, which only holds if
+            # the background pattern has unit area. Callers hand us extracted
+            # photon histograms summing to thousands of counts; a raw pattern
+            # makes gamma an enormous multiplier, so any gamma > 0 blows the model
+            # amplitude up by ~sum(bg) and a free-gamma fit diverges to gamma≈1.
+            # Normalising here fixes every consumer of this facade at once (the
+            # burst batch run and the pixel-/molecule-wise imaging fits); the
+            # tttrlib model is left untouched because it is the cross-language
+            # reference contract. See okf/subsystems/fluorescence-domain.md.
+            bg_sum = float(self.background.sum())
+            if bg_sum > 0.0:
+                self.background = self.background / bg_sum
 
     @property
     def n_channels(self) -> int:
@@ -358,45 +385,73 @@ class Fit2x:
         threads each calling ``fit_many`` on a chunk run in true parallel
         (unlike per-row :meth:`fit`, whose per-call GIL handoff does not scale).
 
-        Only ``fit23`` supports batch fitting.
+        Supported for ``fit23``, ``fit24`` and ``fit25`` (every estimator that
+        exposes a native ``fit_matrix`` batch kernel).
 
         Parameters
         ----------
         data : numpy.ndarray
             ``(n_rows, 2*n_channels)`` matrix of VV/VH-format histograms.
         initial_values : sequence of float
-            Shared start values ``[tau, gamma, r0, rho]`` for every row.
+            Shared start values for every row — the free parameters named in
+            :data:`PARAMETER_NAMES` for this estimator (``[tau, gamma, r0, rho]``
+            for fit23; ``[tau1, gamma, tau2, A2, offset]`` for fit24;
+            ``[tau1, tau2, tau3, tau4, gamma]`` for fit25).
         fixed : sequence of int, optional
             Per-parameter fix mask applied to every row (default all-free).
 
         Returns
         -------
         numpy.ndarray
-            ``(n_rows, 5)`` array of ``[tau, gamma, r0, rho, 2I*]`` per row.
+            ``(n_rows, n_free + 1)`` array of the fitted free parameters followed
+            by the ``2I*`` fit quality per row.
 
         Raises
         ------
         NotImplementedError
-            If the estimator is not :attr:`Fit2xModel.FIT23`.
+            If the estimator has no native batch kernel.
         """
-        if self.model is not Fit2xModel.FIT23:
-            raise NotImplementedError("batch fit_many is only implemented for fit23")
         data_arr = np.ascontiguousarray(data, dtype=np.float64)
         if data_arr.ndim != 2:
             raise ValueError("data must be a 2-D (n_rows, 2*n_channels) matrix")
-        x0 = np.ascontiguousarray(initial_values, dtype=np.float64)
-        if fixed is None:
-            fixed_arr = np.zeros(x0.size, dtype=np.int16)
-        else:
-            fixed_arr = np.ascontiguousarray(fixed, dtype=np.int16)
-        out = np.empty((data_arr.shape[0], 5), dtype=np.float64)
-        tttrlib.DecayFit23.fit_matrix(
-            data_arr,
-            x0,
-            fixed_arr,
-            float(self._fitter._bifl_scatter),
-            float(self._fitter._p_2s_flag),
-            self._fitter._m_param,
-            out,
+        x0_free = np.ascontiguousarray(initial_values, dtype=np.float64)
+
+        # fit23 keeps its dedicated fit_matrix (BIFL/P+2S flags are separate
+        # arguments, and it has the tau-only fast path).
+        if self.model is Fit2xModel.FIT23:
+            fixed_arr = (
+                np.zeros(x0_free.size, dtype=np.int16)
+                if fixed is None
+                else np.ascontiguousarray(fixed, dtype=np.int16)
+            )
+            out = np.empty((data_arr.shape[0], 5), dtype=np.float64)
+            tttrlib.DecayFit23.fit_matrix(
+                data_arr, x0_free, fixed_arr,
+                float(self._fitter._bifl_scatter),
+                float(self._fitter._p_2s_flag),
+                self._fitter._m_param, out,
+            )
+            return out
+
+        layout = _BATCH_LAYOUT.get(self.model)
+        if layout is None:
+            raise NotImplementedError(
+                f"batch fit_many has no native kernel for {self.model.value}"
+            )
+        x_width, n_free, bifl_index, extras = layout
+        # Pack the shared start vector: free params, estimator-specific input
+        # slots (e.g. fit25's r0), then the BIFL-scatter flag the fitter carries.
+        x0 = np.zeros(x_width, dtype=np.float64)
+        x0[:n_free] = x0_free[:n_free]
+        for index, value in extras.items():
+            x0[index] = value
+        x0[bifl_index] = float(self._fitter._bifl_scatter)
+        fixed_arr = (
+            np.zeros(n_free, dtype=np.int16)
+            if fixed is None
+            else np.ascontiguousarray(fixed, dtype=np.int16)
         )
+        out = np.empty((data_arr.shape[0], n_free + 1), dtype=np.float64)
+        decay_cls = getattr(tttrlib, "Decay" + _TTTRLIB_CLASS[self.model])
+        decay_cls.fit_matrix(data_arr, x0, fixed_arr, self._fitter._m_param, out)
         return out

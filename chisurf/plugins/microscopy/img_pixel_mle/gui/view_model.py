@@ -22,6 +22,8 @@ from collections.abc import Callable
 
 import numpy as np
 
+from chisurf.plugins.microscopy.mle_common.base import MleObserverMixin, scalar
+
 from ..api.models import PixelMleSettings as ApiSettings
 
 logger = logging.getLogger(__name__)
@@ -29,7 +31,7 @@ logger = logging.getLogger(__name__)
 _VIEW_JSON = pathlib.Path(__file__).parent / "pixel_mle.view.json"
 
 
-class PixelMleViewModel:
+class PixelMleViewModel(MleObserverMixin):
     """State + logic for the pixel-wise MLE tool (no Qt)."""
 
     def __init__(self) -> None:
@@ -51,51 +53,33 @@ class PixelMleViewModel:
 
         return load_view_spec(_VIEW_JSON)
 
-    # ── observer hook ──
-    def add_observer(self, cb: Callable[[str], None]) -> None:
-        """Register *cb*, called with an event name on every change."""
-        self._observers.append(cb)
-
-    def notify(self, event: str = "changed") -> None:
-        """Notify observers that state changed."""
-        for cb in list(self._observers):
-            try:
-                cb(event)
-            except Exception:
-                logger.debug("pixel-MLE observer failed", exc_info=True)
-
     # ── shared-setup hook (Imaging Tools aggregator) ──
     def apply_setup_settings(self, payload: dict) -> None:
-        """Adopt detector channels / micro-time range from a shared definition.
+        """Adopt detector channels, micro-time range and polarisation corrections.
 
         Even routing channels are taken as parallel (∥), odd channels as
-        perpendicular (⊥); the first detector's micro-time range (if any) sets the
-        fit window.
+        perpendicular (⊥); the first detector's micro-time range sets the fit
+        window, and its G-factor / l1 / l2 mixing corrections are carried into
+        the fit (previously dropped, so the fit silently ran at g=1, l1=l2=0).
         """
+        from chisurf.core.fluorescence.mle import parse_detector_setup
+
+        setup = parse_detector_setup(payload)
         if not payload:
             return
-        detectors = payload.get("detectors") or {}
-        parallel: list[int] = []
-        perpendicular: list[int] = []
-        micro_range = None
-        for det in detectors.values():
-            if not isinstance(det, dict):
-                continue
-            for ch in det.get("chs", []) or []:
-                bucket = parallel if int(ch) % 2 == 0 else perpendicular
-                if ch not in bucket:
-                    bucket.append(int(ch))
-            if micro_range is None:
-                ranges = det.get("mtr") or det.get("microtime_ranges")
-                if ranges:
-                    micro_range = ranges[0]
-        if parallel:
-            self.settings.detector_chs_p = parallel
-        if perpendicular:
-            self.settings.detector_chs_s = perpendicular
-        if micro_range and len(micro_range) == 2:
-            self.settings.micro_time_start = int(micro_range[0])
-            self.settings.micro_time_stop = int(micro_range[1])
+        if setup.channels_parallel:
+            self.settings.detector_chs_p = setup.channels_parallel
+        if setup.channels_perpendicular:
+            self.settings.detector_chs_s = setup.channels_perpendicular
+        if setup.micro_range is not None:
+            self.settings.micro_time_start = setup.micro_range[0]
+            self.settings.micro_time_stop = setup.micro_range[1]
+        if setup.g_factor is not None:
+            self.settings.g_factor = setup.g_factor
+        if setup.l1 is not None:
+            self.settings.l1 = setup.l1
+        if setup.l2 is not None:
+            self.settings.l2 = setup.l2
         self.notify("setup")
 
     def apply_pipeline_context(self, payload: dict) -> None:
@@ -183,46 +167,32 @@ class PixelMleViewModel:
         self.settings.detector_chs_s = self._parse_channels(value)
 
     # ── scalar settings bindings (AutoForm value/choice/toggle sections) ──
-    def _scalar(name, cast, doc):  # noqa: N805 - descriptor factory
-        """Build a property proxying ``self.settings.<name>``."""
-
-        def getter(self):
-            return cast(getattr(self.settings, name))
-
-        def setter(self, value):
-            setattr(self.settings, name, cast(value))
-
-        getter.__doc__ = doc
-        return property(getter, setter)
-
-    micro_time_start = _scalar(
+    micro_time_start = scalar(
         "micro_time_start", int, "Fit-window start (binned micro-time channel)."
     )
-    micro_time_stop = _scalar(
+    micro_time_stop = scalar(
         "micro_time_stop", int, "Fit-window stop (binned micro-time channel)."
     )
-    micro_time_binning = _scalar("micro_time_binning", int, "Micro-time down-binning factor.")
-    irf_threshold = _scalar(
+    micro_time_binning = scalar("micro_time_binning", int, "Micro-time down-binning factor.")
+    irf_threshold = scalar(
         "irf_threshold", float, "IRF threshold fraction (bins below are zeroed)."
     )
-    shift_sp = _scalar("shift_sp", float, "Parallel IRF sub-bin shift.")
-    shift_ss = _scalar("shift_ss", float, "Perpendicular IRF sub-bin shift.")
-    min_photons = _scalar("min_photons", int, "Minimum photons per pixel to fit.")
-    tau = _scalar("tau", float, "Initial lifetime (ns).")
-    gamma = _scalar("gamma", float, "Initial scatter fraction.")
-    r0 = _scalar("r0", float, "Initial fundamental anisotropy.")
-    rho = _scalar("rho", float, "Initial rotational correlation time (ns).")
-    fix_tau = _scalar("fix_tau", bool, "Fix the lifetime.")
-    fix_gamma = _scalar("fix_gamma", bool, "Fix the scatter fraction.")
-    fix_r0 = _scalar("fix_r0", bool, "Fix the fundamental anisotropy.")
-    fix_rho = _scalar("fix_rho", bool, "Fix the rotational correlation time.")
-    twoi_star = _scalar("twoi_star", bool, "Optimise P+2S (2I*).")
-    bifl_scatter = _scalar("bifl_scatter", bool, "Soft BIFL scatter correction.")
-    use_bg = _scalar("use_bg", bool, "Subtract a flat background.")
-    bg_p = _scalar("bg_p", float, "Parallel background counts (fit window).")
-    bg_s = _scalar("bg_s", float, "Perpendicular background counts (fit window).")
-
-    del _scalar
+    shift_sp = scalar("shift_sp", float, "Parallel IRF sub-bin shift.")
+    shift_ss = scalar("shift_ss", float, "Perpendicular IRF sub-bin shift.")
+    min_photons = scalar("min_photons", int, "Minimum photons per pixel to fit.")
+    tau = scalar("tau", float, "Initial lifetime (ns).")
+    gamma = scalar("gamma", float, "Initial scatter fraction.")
+    r0 = scalar("r0", float, "Initial fundamental anisotropy.")
+    rho = scalar("rho", float, "Initial rotational correlation time (ns).")
+    fix_tau = scalar("fix_tau", bool, "Fix the lifetime.")
+    fix_gamma = scalar("fix_gamma", bool, "Fix the scatter fraction.")
+    fix_r0 = scalar("fix_r0", bool, "Fix the fundamental anisotropy.")
+    fix_rho = scalar("fix_rho", bool, "Fix the rotational correlation time.")
+    twoi_star = scalar("twoi_star", bool, "Optimise P+2S (2I*).")
+    bifl_scatter = scalar("bifl_scatter", bool, "Soft BIFL scatter correction.")
+    use_bg = scalar("use_bg", bool, "Subtract a flat background.")
+    bg_p = scalar("bg_p", float, "Parallel background counts (fit window).")
+    bg_s = scalar("bg_s", float, "Perpendicular background counts (fit window).")
 
     @property
     def engine(self) -> str:
@@ -364,6 +334,9 @@ class PixelMleViewModel:
                     binning_factor=s.micro_time_binning,
                     micro_time_start=s.micro_time_start,
                     micro_time_stop=s.micro_time_stop,
+                    g_factor=s.g_factor,
+                    l1=s.l1,
+                    l2=s.l2,
                     min_photons=s.min_photons,
                     tau=s.tau,
                     gamma=s.gamma,

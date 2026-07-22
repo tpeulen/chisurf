@@ -10,39 +10,8 @@ from __future__ import annotations
 
 import numpy as np
 
-
-def interpolate_shift(arr: np.ndarray, shift: float) -> np.ndarray:
-    """Shift a 1-D array by *shift* bins, supporting fractional shifts.
-
-    Parameters
-    ----------
-    arr:
-        1-D input array (e.g. an IRF histogram).
-    shift:
-        Number of bins to shift.  The integer part is applied with
-        :func:`numpy.roll`; the fractional part is handled by linear
-        interpolation.
-
-    Returns
-    -------
-    numpy.ndarray
-        Shifted array with the same dtype as the input.
-    """
-    result = arr.astype(np.float64).copy()
-    if shift == 0:
-        return result
-    int_shift = int(np.trunc(shift))
-    if int_shift != 0:
-        result = np.roll(result, int_shift)
-        if int_shift > 0:
-            result[:int_shift] = 0.0
-        else:
-            result[int_shift:] = 0.0
-    frac_shift = shift - int_shift
-    if frac_shift != 0:
-        x = np.arange(result.size)
-        result = np.interp(x - frac_shift, x, result, left=0.0, right=0.0)
-    return result
+# The sub-bin IRF shift is shared with the burst and molecule-wise MLE tools.
+from chisurf.core.fluorescence.mle.irf import interpolate_shift
 
 
 def prepare_irf(

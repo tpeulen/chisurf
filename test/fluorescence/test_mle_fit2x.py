@@ -44,6 +44,53 @@ def test_settings_validates_irf_and_defaults_background():
         Fit2xSettings(dt=0.032, period=32.0, irf=np.zeros(7))
 
 
+def test_parse_detector_setup_extracts_channels_range_and_corrections():
+    from chisurf.core.fluorescence.mle import parse_detector_setup
+
+    payload = {
+        "detectors": {
+            "green": {
+                "chs": [0, 1],
+                "mtr": [(10, 4000)],
+                "g_factor": 1.15,
+                "l1": 0.02,
+                "l2": 0.04,
+            }
+        }
+    }
+    setup = parse_detector_setup(payload)
+    assert setup.channels == [0, 1]
+    assert setup.channels_parallel == [0]        # even = parallel
+    assert setup.channels_perpendicular == [1]   # odd = perpendicular
+    assert setup.micro_range == (10, 4000)
+    assert setup.g_factor == pytest.approx(1.15)
+    assert setup.l1 == pytest.approx(0.02)
+    assert setup.l2 == pytest.approx(0.04)
+
+    # Corrections absent -> None, so a caller keeps its own default instead of 0.
+    bare = parse_detector_setup({"detectors": {"g": {"chs": [0, 2]}}})
+    assert bare.g_factor is None and bare.l1 is None and bare.l2 is None
+    assert bare.channels_parallel == [0, 2]
+    assert parse_detector_setup(None).channels == []
+
+
+def test_settings_area_normalises_the_background():
+    # gamma is the background *fraction*, so the model needs a unit-area
+    # background. A raw photon histogram (sum >> 1) otherwise makes gamma an
+    # enormous multiplier and a free-gamma fit diverges to gamma≈1. The facade
+    # normalises so every consumer (burst batch + imaging pixel/molecule fits)
+    # is protected in one place.
+    irf = assemble_vv_vh(np.zeros(8), np.zeros(8))
+    raw_bg = assemble_vv_vh(np.arange(1.0, 9.0), np.arange(1.0, 9.0))  # sums to 72
+    s = Fit2xSettings(dt=0.032, period=32.0, irf=irf, background=raw_bg)
+    assert s.background.sum() == pytest.approx(1.0)
+    # shape preserved, relative pattern preserved
+    np.testing.assert_allclose(s.background, raw_bg / raw_bg.sum())
+    # an already-normalised background is left effectively unchanged
+    s2 = Fit2xSettings(dt=0.032, period=32.0, irf=irf, background=raw_bg / raw_bg.sum())
+    assert s2.background.sum() == pytest.approx(1.0)
+
+
 def test_parameter_name_tables():
     assert PARAMETER_NAMES[Fit2xModel.FIT23] == ("tau", "gamma", "r0", "rho")
     assert PARAMETER_NAMES[Fit2xModel.FIT24][0] == "tau1"
@@ -90,6 +137,36 @@ def test_fit23_recovers_lifetime():
     d = res.as_dict()
     assert set(d) == {"tau", "gamma", "r0", "rho"}
     assert np.isfinite(res.r_scatter)
+
+
+@pytest.mark.skipif(not HAVE_TTTRLIB, reason="tttrlib not available")
+def test_fit_many_is_general_and_matches_scalar_fits():
+    # fit_many now has a native batch kernel for fit23/24/25 (was fit23-only).
+    # The batch result must match fitting each row on its own.
+    n, dt = 128, 0.032
+    data, irf = _simulate_anisotropy_decay(
+        n, dt, tau=3.0, rho=1.2, r0=0.38, n_photons=25000, seed=7
+    )
+    rows = np.vstack([data, data, data])  # 3 identical rows → identical fits
+    settings = Fit2xSettings(dt=dt, period=32.0, irf=irf, g_factor=1.0)
+
+    # fit23: shape (n_rows, 4 params + 2I*)
+    f23 = Fit2x(settings, model=Fit2xModel.FIT23)
+    b23 = f23.fit_many(rows, [2.0, 0.0, 0.38, 1.0], fixed=[0, 1, 1, 0])
+    assert b23.shape == (3, 5)
+    scalar = f23.fit(data, initial_values=[2.0, 0.0, 0.38, 1.0], fixed=[0, 1, 1, 0])
+    assert b23[0, 0] == pytest.approx(scalar.tau, rel=1e-6)
+    assert np.allclose(b23[0], b23[1]) and np.allclose(b23[0], b23[2])
+
+    # fit24: previously raised NotImplementedError; now runs the native batch
+    # kernel and returns 5 params + 2I*. (Convergence quality depends on the
+    # data being bi-exponential; here we only pin that the batch path works and
+    # is row-consistent — parity with the scalar fit is covered in tttrlib.)
+    f24 = Fit2x(settings, model=Fit2xModel.FIT24)
+    b24 = f24.fit_many(rows, [1.0, 0.0, 3.0, 0.5, 0.0], fixed=[0, 1, 0, 0, 1])
+    assert b24.shape == (3, 6)
+    assert np.allclose(b24[0], b24[1], equal_nan=True)
+    assert np.allclose(b24[0], b24[2], equal_nan=True)
 
 
 @pytest.mark.skipif(not HAVE_TTTRLIB, reason="tttrlib not available")

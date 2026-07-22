@@ -34,6 +34,10 @@ import tttrlib
 BURST_SEARCH = "burst_search"
 #: The registry category holding readable/writable TTTR file containers.
 FILE_CONTAINER = "file_container"
+#: The registry category holding the MLE lifetime fit models (fit23/24/25/26).
+FIT_MODEL = "fit"
+#: The registry category holding the shared Fit2x construction inputs.
+FIT_SETUP = "fit_setup"
 
 
 def registry() -> typing.Dict[str, typing.Dict[str, typing.Any]]:
