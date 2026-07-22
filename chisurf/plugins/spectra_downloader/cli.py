@@ -72,7 +72,7 @@ def run_all(db, only, keep_temp, no_consolidate, threed_max_pages):
     contention; the final stage merges every per-source DB into one canonical
     ``spectra.db`` and de-duplicates across sources.
     """
-    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import DEFAULT_DATABASE_PATH
+    from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH
     from chisurf.plugins.spectra_downloader.download.merge import merge_all
 
     target = db or str(DEFAULT_DATABASE_PATH)
@@ -129,7 +129,7 @@ def run_all(db, only, keep_temp, no_consolidate, threed_max_pages):
 @click.option("--no-consolidate", is_flag=True, help="Skip de-duplication after merge.")
 def merge_cmd(db, sources, no_consolidate):
     """Merge already-scraped per-source DBs into the target spectra.db."""
-    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import DEFAULT_DATABASE_PATH
+    from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH
     from chisurf.plugins.spectra_downloader.download.merge import merge_all
 
     target = db or str(DEFAULT_DATABASE_PATH)
@@ -142,7 +142,7 @@ def merge_cmd(db, sources, no_consolidate):
 @click.option("--db", default=None, help="Path to the SQLite database.")
 def consolidate(db):
     """Consolidate duplicate probes and merge their spectra/properties."""
-    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import DEFAULT_DATABASE_PATH, FluorophoreDatabase
+    from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH, FluorophoreDatabase
     db_path = db or str(DEFAULT_DATABASE_PATH)
     click.echo(f"Consolidating database at {db_path}...")
     with FluorophoreDatabase(db_path) as fdb:
@@ -171,7 +171,7 @@ def push(staging, mmfdb, replace, mark_verified, backup):
 
     from mmfdb.store.database_resolver import resolve_database_path
     from mmfdb.repository import MFDatabase
-    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import DEFAULT_DATABASE_PATH
+    from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH
 
     staging = staging or str(DEFAULT_DATABASE_PATH)
     target = mmfdb or str(resolve_database_path())

@@ -29,7 +29,7 @@ through ``register_component`` so all sources populate the DB identically.
 
 from __future__ import annotations
 
-from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
+from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
     DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )

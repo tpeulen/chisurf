@@ -318,7 +318,7 @@ def main() -> None:
     """Launch the browser on the bundled staging spectra.db."""
     import sys
 
-    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
+    from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
         DEFAULT_DATABASE_PATH,
         FluorophoreDatabase,
     )

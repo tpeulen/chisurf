@@ -25,7 +25,7 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import (
+from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
     DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )
