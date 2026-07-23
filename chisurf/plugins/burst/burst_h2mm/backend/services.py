@@ -144,6 +144,7 @@ def run_analysis(
     result = _result_from_analysis(ana, settings)
     bundle = H2mmAnalysisBundle(analysis=ana, data=data, settings=settings)
     bundle.meta = meta
+    bundle.micro_time_ns = _micro_resolution(tttrs) * 1e9
     return result, bundle
 
 
@@ -180,7 +181,13 @@ def write_result_tables(
     if meta is None or not getattr(bundle.settings, "write_photons", True):
         return
     ana = bundle.analysis
-    tables = build_tables(bundle.data, meta, ana.path, ana.fret, ana.base_time_s)
+    micro_ns = getattr(bundle, "micro_time_ns", None)
+    tables = build_tables(
+        bundle.data, meta, ana.path, ana.fret, ana.base_time_s,
+        donor_streams=getattr(ana, "donor_streams", (0,)),
+        acceptor_streams=getattr(ana, "acceptor_streams", (1,)),
+        micro_time_ns=(micro_ns if micro_ns else None),
+    )
     try:
         result.output_paths["photons_hdf5"] = write_hdf5(tables.photons, out_dir / "h2mm_photons.h5")
     except Exception:  # pragma: no cover - pytables optional; CSV is the fallback
@@ -396,6 +403,24 @@ def _macro_resolution(tttrs) -> float:
             except Exception:
                 continue
     return 1.0
+
+
+def _micro_resolution(tttrs) -> float:
+    """Return the micro-time (TCSPC) resolution (seconds) from the first TTTR header.
+
+    Used to report the per-burst donor lifetime column (``Tau (green)``) in ns for
+    the ndxplorer FRET-line plot. Falls back to ``0.0`` (→ NaN lifetimes) when the
+    header carries no micro-time resolution.
+    """
+    for tttr in tttrs.values():
+        try:
+            return float(tttr.header.tag("MeasDesc_Resolution")["value"])
+        except Exception:
+            try:
+                return float(tttr.header.micro_time_resolution)
+            except Exception:
+                continue
+    return 0.0
 
 
 def _settings_from_workflow(

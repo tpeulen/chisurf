@@ -23,6 +23,10 @@ reference `H2MM_C` library by P. D. Harris.
   E after), the **BIC/ICL model-selection** curve, per-state **dwell-time
   distributions**, per-state **fluorescence-decay** (nanotime) histograms, and an
   interactive per-burst **Viterbi state-path** viewer.
+- Writes ndxplorer-openable per-photon and per-burst tables. The per-burst table
+  carries MFD-named columns (`Tau (green)`, `FRET efficiency`, `Proximity ratio`,
+  `Dominant State`, `Number of Transitions`) so it opens straight onto ndX's
+  static/dynamic **FRET-line** plot (E vs donor lifetime).
 
 ## Architecture (client–server standard)
 

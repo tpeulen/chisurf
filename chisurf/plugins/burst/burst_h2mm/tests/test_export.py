@@ -79,13 +79,20 @@ def test_build_tables_schema_and_lengths():
     path, _ = h2mm.viterbi(fit, data)
     fret = np.array([0.15, 0.80])
 
-    tables = X.build_tables(data, meta, path, fret, base_time_s=1e-6)
+    tables = X.build_tables(data, meta, path, fret, base_time_s=1e-6, micro_time_ns=0.032)
     ph, bu = tables.photons, tables.bursts
 
     assert len(ph) == data.n_photons
     assert len(bu) == data.n_bursts
     for col in ("Mean Macro Time (s)", "Micro Time", "Channel", "Stream", "State", "Burst"):
         assert col in ph.columns
+    # ndX FRET-line plot columns (its default X/Y axes + presets key on these names).
+    for col in ("Tau (green)", "Proximity ratio", "FRET efficiency"):
+        assert col in bu.columns
+    # Measured proximity ratio is a finite fraction; donor lifetime is finite (ns).
+    pr = bu["Proximity ratio"].to_numpy()
+    assert np.all((pr[np.isfinite(pr)] >= 0) & (pr[np.isfinite(pr)] <= 1))
+    assert np.isfinite(bu["Tau (green)"].to_numpy()).any()
     # Every column ndX imports must be numeric (else it drops them).
     assert all(np.issubdtype(dt, np.number) for dt in ph.dtypes)
     assert all(np.issubdtype(dt, np.number) for dt in bu.dtypes)
@@ -109,3 +116,31 @@ def test_ndx_hdf5_and_csv_roundtrip(tmp_path):
     back_csv = pd.read_csv(csv)
     assert "Number of Photons" in back_csv.columns
     assert len(back_csv) == data.n_bursts
+
+
+def test_write_result_tables_emits_ndx_fret_line_columns(tmp_path):
+    """The services table writer wires role groups + micro resolution into ndX columns."""
+    from chisurf.plugins.burst.burst_h2mm.api.models import H2mmSettings
+    from chisurf.plugins.burst.burst_h2mm.backend.services import (
+        H2mmAnalysisBundle,
+        _result_from_analysis,
+        write_result_tables,
+    )
+    from chisurf.plugins.burst.burst_h2mm.core.analysis import analyze
+
+    data, meta = _dataset_via_tttrlib()
+    ana = analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=150)
+    settings = H2mmSettings()
+    result = _result_from_analysis(ana, settings)
+    bundle = H2mmAnalysisBundle(ana, data, settings)
+    bundle.meta = meta
+    bundle.micro_time_ns = 0.032  # ns/channel
+
+    write_result_tables(result, bundle, tmp_path)
+    csv = result.output_paths.get("bursts_csv")
+    assert csv is not None
+    df = pd.read_csv(csv)
+    for col in ("Tau (green)", "Proximity ratio", "FRET efficiency",
+                "Mean Macro Time (s)", "Dominant State"):
+        assert col in df.columns
+    assert np.isfinite(df["Tau (green)"].to_numpy()).any()

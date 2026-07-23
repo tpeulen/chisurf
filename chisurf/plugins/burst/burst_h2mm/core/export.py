@@ -42,8 +42,18 @@ def build_tables(
     path: np.ndarray,
     fret: np.ndarray,
     base_time_s: float,
+    *,
+    donor_streams=(0,),
+    acceptor_streams=(1,),
+    micro_time_ns: float | None = None,
 ) -> H2mmTables:
     """Assemble the per-photon and per-burst ndX tables.
+
+    The per-burst table uses the MFD column names ndxplorer recognises so it opens
+    directly onto ndX's static/dynamic **FRET-line** plot (E vs donor lifetime):
+    ``Tau (green)`` (donor lifetime, its default X axis), ``Proximity ratio`` (its
+    default Y axis) and ``FRET efficiency`` — plus the H2MM ``Dominant State`` /
+    ``Number of Transitions`` for colouring and dynamics.
 
     Parameters
     ----------
@@ -54,9 +64,16 @@ def build_tables(
     path : numpy.ndarray
         Per-photon Viterbi state (length ``N``, from :func:`~.h2mm.viterbi`).
     fret : numpy.ndarray
-        Per-state apparent FRET efficiency (for the burst-level mean-E column).
+        Per-state apparent FRET efficiency (for the model ``Mean FRET E`` column).
     base_time_s : float
         Seconds per base time unit (macro-time → seconds).
+    donor_streams, acceptor_streams : sequence of int
+        Stream indices of the donor / acceptor role (several each with nanotime
+        divisors); used for the measured per-burst E and donor lifetime.
+    micro_time_ns : float, optional
+        Nanoseconds per micro-time channel. When given, ``Tau (green)`` is the
+        per-burst mean donor micro time in ns (an IRF-uncorrected lifetime proxy);
+        otherwise that column is ``NaN``.
 
     Returns
     -------
@@ -82,6 +99,10 @@ def build_tables(
     offsets = data.burst_offsets
     n_bursts = data.n_bursts
     n_states = int(fret.shape[0])
+    streams_all = np.asarray(data.streams)
+    micro_all = np.asarray(meta.micro_time, dtype=np.float64)
+    donor_streams = np.atleast_1d(np.asarray(donor_streams, dtype=int))
+    acceptor_streams = np.atleast_1d(np.asarray(acceptor_streams, dtype=int))
     rows = []
     fret_arr = np.asarray(fret, dtype=np.float64)
     for b in range(n_bursts):
@@ -93,16 +114,29 @@ def build_tables(
         n_trans = int(np.count_nonzero(np.diff(seg)))
         mean_e = float((occ * fret_arr).sum() / occ.sum()) if occ.sum() > 0 else np.nan
         t0 = float(meta.macro_time[s]) * base_time_s
-        rows.append((b, e - s, t0, dominant, n_trans, mean_e))
+
+        strm = streams_all[s:e]
+        donor_mask = np.isin(strm, donor_streams)
+        d = int(np.count_nonzero(donor_mask))
+        a = int(np.count_nonzero(np.isin(strm, acceptor_streams)))
+        pr = a / (d + a) if (d + a) > 0 else np.nan
+        if micro_time_ns is not None and d > 0:
+            tau_green = float(micro_all[s:e][donor_mask].mean()) * float(micro_time_ns)
+        else:
+            tau_green = np.nan
+        rows.append((b, e - s, t0, tau_green, pr, pr, dominant, n_trans, mean_e))
     bursts = pd.DataFrame(
         rows,
         columns=[
             "Burst",
             "Number of Photons",     # ndX auto-uses this as a histogram weight
             "Mean Macro Time (s)",
+            "Tau (green)",           # ndX FRET-line default X axis (donor lifetime, ns)
+            "FRET efficiency",       # measured apparent E (uncorrected)
+            "Proximity ratio",       # ndX FRET-line default Y axis (= apparent E here)
             "Dominant State",
             "Number of Transitions",
-            "Mean FRET E",
+            "Mean FRET E",           # model-derived per-state mean (Viterbi-weighted)
         ],
     )
     return H2mmTables(photons=photons, bursts=bursts)
