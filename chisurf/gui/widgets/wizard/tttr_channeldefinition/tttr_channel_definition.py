@@ -29,11 +29,14 @@ from qtpy.QtWidgets import (
     QComboBox,
     QDialog,
     QFileDialog,
+    QHBoxLayout,
     QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSpinBox,
+    QTableWidget,
     QTableWidgetItem,
     QToolButton,
     QVBoxLayout,
@@ -359,6 +362,14 @@ class DetectorWizardPage(QWizardPage):
         try:
             self._setup_microtime_preview()
         except Exception:  # pragma: no cover - preview must never break the wizard
+            pass
+
+        # Reorganize the TTTR-reading / PIE / Detectors sections into collapsible
+        # boxes and add the new LUT-handling box. Best-effort — the editor must
+        # still work if the restructuring fails.
+        try:
+            self._reorganize_into_foldable_boxes()
+        except Exception:  # pragma: no cover - cosmetic restructuring
             pass
 
         # Load available setups
@@ -883,6 +894,16 @@ class DetectorWizardPage(QWizardPage):
             }
         except Exception:
             self._channel_lut_sources = {}
+        # Sync the LUT-handling box widgets with the freshly loaded setup.
+        cb = getattr(self, "_apply_lut_checkbox", None)
+        if cb is not None:
+            cb.blockSignals(True)
+            cb.setChecked(bool(self._apply_lut))
+            cb.blockSignals(False)
+        try:
+            self._refresh_lut_box()
+        except Exception:
+            pass
 
         # re-enable
         self.windows_form.blockSignals(False)
@@ -1041,6 +1062,281 @@ class DetectorWizardPage(QWizardPage):
         except Exception:
             pass
         return ", ".join(r)
+
+    # ------------------------------------------------------------------
+    # Foldable-box reorganization + LUT-handling box
+    # ------------------------------------------------------------------
+    def _reorganize_into_foldable_boxes(self):
+        """Wrap TTTR-reading / PIE / Detectors in CollapsibleBoxes + add LUT box.
+
+        The ``.ui`` lays the three sections out as sub-layouts of the page's
+        top-level ``gridLayout``. Rather than rewrite the ``.ui`` we detach each
+        sub-layout and re-host it inside a :class:`CollapsibleBox`, preserving all
+        the ``qtpy_loadUi`` widget wiring, and insert a new LUT-handling box.
+        """
+        from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+
+        grid = self.gridLayout
+        # Detach everything (without deleting) so we can re-add in a known order.
+        taken = []
+        while grid.count():
+            taken.append(grid.takeAt(0))
+        managed = {
+            id(self.setup_layout),
+            id(self.tttr_layout),
+            id(self.gridLayout_2),
+            id(self.gridLayout_3),
+            id(self.controls),
+        }
+
+        def _wrap(sublayout, title, *, expanded=True):
+            container = QWidget()
+            container.setLayout(sublayout)
+            box = CollapsibleBox(title, expanded=expanded)
+            box.add_widget(container)
+            return box
+
+        self._box_reading = _wrap(self.tttr_layout, "TTTR Reading routine", expanded=True)
+        self._box_windows = _wrap(self.gridLayout_2, "PIE Windows", expanded=False)
+        self._box_detectors = _wrap(self.gridLayout_3, "Detectors", expanded=True)
+        self._box_lut = self._build_lut_box()
+
+        ncol = max(1, grid.columnCount())
+        grid.addLayout(self.setup_layout, 0, 0, 1, ncol)
+        grid.addWidget(self._box_reading, 1, 0, 1, ncol)
+        grid.addWidget(self._box_windows, 2, 0, 1, ncol)
+        grid.addWidget(self._box_detectors, 3, 0, 1, ncol)
+        grid.addWidget(self._box_lut, 4, 0, 1, ncol)
+        grid.addLayout(self.controls, 5, 0, 1, ncol)
+
+        # Re-add any other stray items (e.g. a help label placed directly in the
+        # grid) below, skipping the managed layouts we already re-hosted/added.
+        row = 6
+        for item in taken:
+            lay = item.layout()
+            if lay is not None and id(lay) in managed:
+                continue
+            wdg = item.widget()
+            if wdg is not None:
+                grid.addWidget(wdg, row, 0, 1, ncol)
+                row += 1
+            elif lay is not None:
+                grid.addLayout(lay, row, 0, 1, ncol)
+                row += 1
+
+        # Refresh the detectors table -> LUT rows link once tables are populated.
+        try:
+            self.detectorsChanged.connect(self._refresh_lut_box)
+        except Exception:
+            pass
+
+    def _build_lut_box(self):
+        """Build the LUT-handling collapsible box (master gate + per-channel rows)."""
+        from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+
+        box = CollapsibleBox("LUT handling (TAC linearization)", expanded=False)
+
+        # Master apply gate.
+        self._apply_lut_checkbox = QCheckBox("Apply TAC linearization (LUT) when reading")
+        self._apply_lut_checkbox.setToolTip(
+            "When checked, each routing channel's assigned LUT linearizes the raw "
+            "micro-times at read time (needed for e.g. SPC-130). If a used channel "
+            "has no LUT, opens the LUT calculator to compute one."
+        )
+        self._apply_lut_checkbox.setChecked(bool(getattr(self, "_apply_lut", False)))
+        self._apply_lut_checkbox.toggled.connect(self._on_apply_lut_toggled)
+        box.add_widget(self._apply_lut_checkbox)
+
+        # Per-routing-channel table: Channel | LUT | Shift.
+        self._lut_table = QTableWidget(0, 3)
+        self._lut_table.setHorizontalHeaderLabels(["Channel", "LUT", "Shift"])
+        self._lut_table.verticalHeader().setVisible(False)
+        self._lut_table.setMaximumHeight(160)
+        try:
+            from qtpy.QtWidgets import QHeaderView
+
+            h = self._lut_table.horizontalHeader()
+            h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+            h.setSectionResizeMode(1, QHeaderView.Stretch)
+            h.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        except Exception:
+            pass
+        box.add_widget(self._lut_table)
+
+        # Action buttons.
+        btn_row = QWidget()
+        hb = QHBoxLayout(btn_row)
+        hb.setContentsMargins(0, 0, 0, 0)
+        assign_btn = QPushButton(f"{Glyphs.IMPORT} Assign LUT…")
+        assign_btn.setToolTip("Assign a LUT file (.npy/.npz/.txt) to the selected channel")
+        assign_btn.clicked.connect(self._on_assign_lut_file)
+        configure_btn = QPushButton("Configure LUTs…")
+        configure_btn.setToolTip("Open the LUT Tools (compute / assign / settings.tttr.json)")
+        configure_btn.clicked.connect(self._on_open_lut_tools)
+        hb.addWidget(assign_btn)
+        hb.addWidget(configure_btn)
+        hb.addStretch(1)
+        box.add_widget(btn_row)
+
+        self._refresh_lut_box()
+        return box
+
+    def _used_routing_channels(self):
+        """Union of routing channels across all detectors (sorted)."""
+        chans = set()
+        try:
+            for r in range(self.detectors_form.rowCount()):
+                w = self.detectors_form.cellWidget(r, 1)
+                if not w:
+                    continue
+                for p in str(w.text()).replace(";", ",").split(","):
+                    p = p.strip()
+                    if p:
+                        try:
+                            chans.add(int(p))
+                        except ValueError:
+                            pass
+        except Exception:
+            pass
+        # Include any channel that already has a LUT/shift assigned.
+        chans.update(int(k) for k in getattr(self, "_channel_luts", {}))
+        chans.update(int(k) for k in getattr(self, "_channel_shifts", {}))
+        return sorted(chans)
+
+    def _refresh_lut_box(self):
+        """Repopulate the per-channel LUT rows from the current detectors."""
+        table = getattr(self, "_lut_table", None)
+        if table is None:
+            return
+        from chisurf.gui.widgets.wizard.tttr_channeldefinition.lut_thumbnail import (
+            render_lut_tooltip,
+        )
+
+        chans = self._used_routing_channels()
+        table.blockSignals(True)
+        table.setRowCount(len(chans))
+        for row, ch in enumerate(chans):
+            item_ch = QTableWidgetItem(str(ch))
+            item_ch.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            item_ch.setData(Qt.UserRole, int(ch))
+            table.setItem(row, 0, item_ch)
+
+            lut = getattr(self, "_channel_luts", {}).get(ch)
+            src = getattr(self, "_channel_lut_sources", {}).get(ch)
+            label = (src or "assigned") if lut is not None else "— none —"
+            item_lut = QTableWidgetItem(label)
+            item_lut.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            if lut is not None:
+                try:
+                    item_lut.setToolTip(f'<img src="{render_lut_tooltip(lut)}">')
+                except Exception:
+                    item_lut.setToolTip("LUT assigned")
+            else:
+                item_lut.setToolTip("No LUT — default (raw) reading")
+            table.setItem(row, 1, item_lut)
+
+            shift_spin = QSpinBox()
+            shift_spin.setRange(-100000, 100000)
+            shift_spin.setValue(int(getattr(self, "_channel_shifts", {}).get(ch, 0)))
+            shift_spin.valueChanged.connect(
+                lambda v, c=int(ch): self._channel_shifts.__setitem__(c, int(v))
+            )
+            table.setCellWidget(row, 2, shift_spin)
+        table.blockSignals(False)
+
+    def _on_apply_lut_toggled(self, checked: bool):
+        """Master gate toggled: store it; if on with missing LUTs, offer to compute."""
+        self._apply_lut = bool(checked)
+        if not checked:
+            return
+        have = getattr(self, "_channel_luts", {})
+        missing = [c for c in self._used_routing_channels() if c not in have]
+        if missing:
+            resp = QMessageBox.question(
+                self,
+                "Missing LUTs",
+                "Channels without a LUT will be read raw: "
+                f"{', '.join(str(m) for m in missing)}.\n\n"
+                "Open the LUT calculator to compute one now?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if resp == QMessageBox.Yes:
+                self._on_open_lut_tools()
+
+    def _on_assign_lut_file(self):
+        """Assign a LUT file to the currently selected channel row."""
+        table = getattr(self, "_lut_table", None)
+        if table is None:
+            return
+        row = table.currentRow()
+        if row < 0:
+            QMessageBox.information(self, "Assign LUT", "Select a channel row first.")
+            return
+        ch = int(table.item(row, 0).data(Qt.UserRole))
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select LUT file", "", "LUT files (*.npy *.npz *.txt *.csv)"
+        )
+        if not path:
+            return
+        try:
+            from chisurf.plugins.tttr.tttr_lut_tools.gui.settings_panel import load_lut_file
+
+            arr = np.asarray(load_lut_file(path), dtype=float).ravel()
+        except Exception as exc:  # pragma: no cover - IO/plugin errors
+            QMessageBox.warning(self, "Assign LUT", f"Could not load LUT:\n{exc}")
+            return
+        if arr.size:
+            self._channel_luts[ch] = arr
+            self._channel_lut_sources[ch] = pathlib.Path(path).name
+            self._refresh_lut_box()
+
+    def _on_open_lut_tools(self):
+        """Jump to the existing LUT Tools panel (compute + assign + settings.tttr.json)."""
+        try:
+            from chisurf.plugins.tttr.tttr_lut_tools.gui.tool import TTRLutToolsWidget
+        except Exception as exc:  # pragma: no cover - plugin missing
+            QMessageBox.information(
+                self,
+                "LUT Tools",
+                f"The TTTR LUT Tools plugin is not available:\n{exc}",
+            )
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("TTTR LUT Tools")
+        dlg.resize(900, 640)
+        v = QVBoxLayout(dlg)
+        v.setContentsMargins(4, 4, 4, 4)
+        try:
+            panel = TTRLutToolsWidget()
+        except Exception as exc:  # pragma: no cover
+            QMessageBox.information(self, "LUT Tools", f"Could not open LUT Tools:\n{exc}")
+            return
+        v.addWidget(panel)
+        dlg.exec_()
+        # Best-effort: pull assigned LUTs/shifts back from the settings panel.
+        self._pull_luts_from_panel(panel)
+        self._refresh_lut_box()
+
+    def _pull_luts_from_panel(self, panel):
+        """Best-effort import of ``channel_luts``/``channel_shifts`` from a LUT panel."""
+        settings_panel = getattr(panel, "settings_panel", None) or panel
+        luts = getattr(settings_panel, "channel_luts", None)
+        shifts = getattr(settings_panel, "channel_shifts", None)
+        if isinstance(luts, dict) and luts:
+            for k, v in luts.items():
+                try:
+                    arr = np.asarray(v, dtype=float).ravel()
+                    if arr.size:
+                        self._channel_luts[int(k)] = arr
+                        self._channel_lut_sources.setdefault(int(k), "LUT Tools")
+                except Exception:
+                    continue
+        if isinstance(shifts, dict) and shifts:
+            for k, v in shifts.items():
+                try:
+                    self._channel_shifts[int(k)] = int(v)
+                except Exception:
+                    continue
 
     def get_settings(self):
         # windows
