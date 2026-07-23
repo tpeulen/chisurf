@@ -4,8 +4,8 @@
     {
       "type": "custom", "key": "help",
       "options": {
-        "title": "① Compute Microtime LUT — help",
-        "text": "Build a TAC-linearization LUT from a **uniform-illumination** (uncorrelated-light / scatter) measurement — light that *should* give a flat TAC histogram. Load the file(s), drag the orange region over the flat **linear plateau** (or press Auto-detect), then use **→ Use in ② Assign** to hand the LUT to the next stage. Real TAC hardware (e.g. SPC-130) has differential non-linearity; the LUT remaps raw micro-times onto an equal-width axis."
+        "title": "① Compute LUT — help",
+        "text": "This is the main tool. Build a TAC-linearization LUT from a **uniform-illumination** (uncorrelated-light / scatter) measurement — light that *should* give a flat TAC histogram. Real TAC hardware (e.g. SPC-130) has differential non-linearity, **per routing channel**, so you make one LUT per channel.\n\n**Steps:** load the file(s) → pick a **Routing channel** → drag the orange region over the flat **linear plateau** (or Auto-detect) → **➡ Add to Detector setup** → repeat for each channel → close.\n\nSaving a LUT file or a settings.tttr.json (tab ②) is optional — only for sharing a correction between machines."
       }
     },
     {
@@ -15,6 +15,11 @@
         "extensions": [".spc", ".ht3", ".ptu", ".t3r", ".t2r", ".phu", ".photonhdf5"],
         "add_folders": true
       }
+    },
+    {
+      "type": "choice", "attr": "channel", "label": "Routing channel",
+      "options_source": "channels_options",
+      "description": "Compute the LUT for THIS routing channel — TAC differential non-linearity is per channel, so each channel gets its own LUT."
     },
     {"type": "custom", "key": "lut_compute_plot"},
     {"type": "custom", "key": "lut_info_label"},

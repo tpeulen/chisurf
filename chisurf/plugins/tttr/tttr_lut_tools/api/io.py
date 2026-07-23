@@ -36,7 +36,9 @@ def expand_globs(patterns: list[str]) -> list[str]:
     return unique
 
 
-def load_microtimes(file_list: list[str], routine: str | None = None) -> np.ndarray:
+def load_microtimes(
+    file_list: list[str], routine: str | None = None, channel: int | None = None
+) -> np.ndarray:
     """Load and concatenate micro-time arrays from TTTR files via tttrlib.
 
     Parameters
@@ -45,6 +47,11 @@ def load_microtimes(file_list: list[str], routine: str | None = None) -> np.ndar
         TTTR file paths.
     routine : str or None
         Optional tttrlib container/reading-routine (e.g. ``"SPC-130"``).
+    channel : int or None
+        Restrict to this routing channel. ``None`` pools every channel (only
+        appropriate when a single TAC serves all channels). Because TAC
+        differential non-linearity is *per routing channel*, LUTs should be
+        computed per channel — pass one.
 
     Returns
     -------
@@ -61,6 +68,8 @@ def load_microtimes(file_list: list[str], routine: str | None = None) -> np.ndar
     parts: list[np.ndarray] = []
     for filename in file_list:
         tttr = tttrlib.TTTR(filename) if not routine else tttrlib.TTTR(filename, routine)
+        if channel is not None:
+            tttr = tttr.get_tttr_by_channel([int(channel)])
         microtimes = tttr.micro_times
         if microtimes is None or len(microtimes) == 0:
             continue
@@ -68,6 +77,40 @@ def load_microtimes(file_list: list[str], routine: str | None = None) -> np.ndar
     if not parts:
         raise RuntimeError("No microtimes found in any input file.")
     return np.concatenate(parts)
+
+
+def load_micro_and_routing(
+    file_list: list[str], routine: str | None = None
+) -> tuple[np.ndarray, np.ndarray]:
+    """Load concatenated ``(micro_times, routing_channels)`` from TTTR files.
+
+    Lets a caller histogram any routing channel in memory (mask by channel)
+    without re-reading the files.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(micro_times, routing_channels)`` concatenated across files.
+
+    Raises
+    ------
+    RuntimeError
+        If no events are found in any input file.
+    """
+    import tttrlib
+
+    micro_parts: list[np.ndarray] = []
+    route_parts: list[np.ndarray] = []
+    for filename in file_list:
+        tttr = tttrlib.TTTR(filename) if not routine else tttrlib.TTTR(filename, routine)
+        micro = tttr.micro_times
+        if micro is None or len(micro) == 0:
+            continue
+        micro_parts.append(np.asarray(micro))
+        route_parts.append(np.asarray(tttr.routing_channels))
+    if not micro_parts:
+        raise RuntimeError("No events found in any input file.")
+    return np.concatenate(micro_parts), np.concatenate(route_parts)
 
 
 def load_lut_file(path: str) -> np.ndarray:

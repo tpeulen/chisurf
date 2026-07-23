@@ -1,9 +1,19 @@
 # TTTR LUT Tools
 
-Compute and assign **TAC-linearization LUTs** for TTTR data. The tool has two
-stages, run in order:
+Compute **TAC-linearization LUTs** for TTTR data and add them to your detector
+setup. The two tabs are **not** equal partners:
 
-## ① Compute Microtime LUT — *make* a LUT
+| Tab | What it is | When you use it |
+|-----|------------|-----------------|
+| **① Compute LUT** | The main tool. Makes a LUT **per routing channel** and adds it to your Detector setup. | Always. |
+| **② settings.tttr.json** | Optional file interchange — save/load the correction as a portable file, or hand-assign LUT *files* to channels. | Only to share a correction, or import one you already have. |
+
+**Normal workflow:** open this from the Detector setup's *Configure LUTs…*
+button → in **① Compute LUT** pick a routing channel, mark the flat region →
+**➡ Add to Detector setup** → repeat per channel → close the window. That's it —
+you never need tab ②, and saving a file is optional.
+
+## ① Compute LUT — *make* a per-channel LUT
 
 Build a linearization table from a **uniform-illumination** (uncorrelated-light /
 scatter) measurement. Real TCSPC/TAC hardware has *differential non-linearity*
@@ -11,34 +21,29 @@ scatter) measurement. Real TCSPC/TAC hardware has *differential non-linearity*
 histogram — which *should* be flat — is not. The Felekyan et al. (Rev. Sci.
 Instrum. 2005) construction turns that histogram into a cumulative table
 (`NTAC_fract`) that remaps every photon's raw micro-time onto a corrected,
-equal-width axis.
+equal-width axis. **DNL is per routing channel**, so you compute one LUT per
+channel — pick the channel in the selector.
 
-Workflow: load the flat-light TTTR file(s) → the app builds the TAC histogram →
-drag the orange region to mark the flat **linear plateau** (or use auto-detect) →
-adjust NTAC / Noffset → **Save LUT** as `.npy` / `.npz` / `.txt` / `.csv`, or hand
-it straight to stage ② with **"→ Use in Assign"**.
+Workflow: load the flat-light TTTR file(s) → pick a **Routing channel** → drag
+the orange region to mark the flat **linear plateau** (or auto-detect) → adjust
+NTAC / Noffset → **➡ Add to Detector setup**. Optionally **Save LUT file…**.
 
-## ② Create LUT Settings — *apply* LUTs to channels
+## ② settings.tttr.json — *optional* file interchange
 
-Assign the computed LUT(s) to **routing channels**, set an optional per-channel
-micro-time **shift**, preview corrected-vs-raw histograms, and export the portable
-`settings.tttr.json`.
-
-Workflow: add your measurement TTTR file(s) → the app detects the used channels →
-load / receive a LUT → select a channel → **Assign** → optionally set a shift →
-**Save JSON**.
+Only needed to share a correction between setups/machines, or to import a LUT you
+already have as a file. It lets you assign LUT *files* to channels, set an
+optional per-channel micro-time **shift**, and **Save**/**Load** the portable
+`settings.tttr.json`. The normal ①-based workflow does not require this tab.
 
 ## How the LUT reaches a detector setup
 
 The channel-definition editor's **LUT handling** box has a **"Configure LUTs…"**
-button that opens this tool. When you close it, the editor pulls the assigned
-`channel_luts` / `channel_shifts` from stage ② into the setup. From then on, any
-reader that selects that setup (with **Apply TAC linearization** ticked)
-linearizes photons automatically at read time — the correction is applied through
-the single `staging.open_tttr` seam, so previews here and production reads match.
-
-`settings.tttr.json` remains an interchange format: you can **Save**/**Load** it to
-share a correction between setups or machines.
+button that opens this tool. **➡ Add to Detector setup** assigns each per-channel
+LUT; when you close the window the editor pulls those `channel_luts` /
+`channel_shifts` into the setup. From then on, any reader that selects that setup
+(with **Apply TAC linearization** ticked) linearizes photons automatically at read
+time through the single `staging.open_tttr` seam, so previews here and production
+reads match.
 
 ## Output format (`settings.tttr.json`)
 

@@ -39,15 +39,19 @@ def cli() -> None:
 @click.option("--linear-stop", default=None, type=int, help="Linear-region stop (auto if unset).")
 @click.option("--ntac", "ntac_required", default=0, type=int, help="Target NTAC bins (0 = same).")
 @click.option("--noffset", default=0, type=int, help="Offset subtracted from corrected indices.")
-def compute_cmd(files, out, routine, n_bins, linear_start, linear_stop, ntac_required, noffset):
+@click.option("--channel", default=None, type=int,
+              help="Routing channel to compute the LUT for (per-channel; recommended).")
+def compute_cmd(files, out, routine, n_bins, linear_start, linear_stop, ntac_required,
+                noffset, channel):
     """Compute a linearization LUT from uniform-illumination FILES."""
     tbl = compute.compute_lut_from_files(
         list(files), routine=routine, n_bins=n_bins or None,
         linear_start=linear_start, linear_stop=linear_stop,
-        ntac_required=ntac_required or None, noffset=noffset,
+        ntac_required=ntac_required or None, noffset=noffset, channel=channel,
     )
     path = io.save_lut(out, tbl)
-    click.echo(f"linear region [{tbl['linear_start']}, {tbl['linear_stop']}) -> {path}")
+    ch = f"ch{channel} " if channel is not None else ""
+    click.echo(f"{ch}linear region [{tbl['linear_start']}, {tbl['linear_stop']}) -> {path}")
 
 
 @cli.command()

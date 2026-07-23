@@ -552,11 +552,13 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         main_layout.addWidget(json_group)
         main_layout.addStretch(1)
 
-    def receive_computed_lut(self, name: str, ntac_fract) -> None:
+    def receive_computed_lut(self, name: str, ntac_fract, channel: int | None = None) -> None:
         """Register an in-memory LUT (from stage ① Compute) for assignment.
 
         The ①→② bridge: instead of Save-LUT-then-Load-LUT, a LUT computed in the
-        Compute panel is handed straight here and selected, ready to Assign.
+        Compute panel is handed straight here and selected, ready to Assign. When
+        *channel* is given (the channel the LUT was computed for) it is also
+        assigned to that routing channel directly, since LUTs are per channel.
 
         Parameters
         ----------
@@ -564,6 +566,8 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
             Display name for the LUT list entry.
         ntac_fract : array-like
             The cumulative ``NTAC_fract`` array.
+        channel : int or None
+            Routing channel to auto-assign the LUT to (per-channel LUT).
         """
         lut_array = np.asarray(ntac_fract, dtype=float).ravel()
         self.loaded_luts[name] = lut_array
@@ -576,6 +580,9 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
                 break
         self.btn_assign_lut_selected.setEnabled(True)
         self.btn_assign_lut_all.setEnabled(True)
+        if channel is not None:
+            # Per-channel LUT: assign directly to the channel it was computed for.
+            self.channel_luts[int(channel)] = lut_array
 
     def _handle_lut_drop(self, path: str) -> None:
         """Handle a dropped LUT file."""

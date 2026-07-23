@@ -49,13 +49,24 @@ class LutComputeViewModel:
         self.threshold = 0.2
 
         # ── loaded data / result state ──────────────────────────────────
+        #: Routing channel (as a string, AutoForm choice-bound) to build the LUT
+        #: for. TAC DNL is per channel, so a LUT is always computed per channel.
+        self.channel = ""
+        self.available_channels: list[int] = []
         self.files: list[str] = []
         self._loaded_files: list[str] = []
-        self.micro: np.ndarray | None = None
+        self._selected_channel: str | None = None
+        self._micro_all: np.ndarray | None = None  # all channels, all files
+        self._route_all: np.ndarray | None = None
+        self.micro: np.ndarray | None = None  # selected channel only
         self.counts: np.ndarray | None = None
         self.n_bins: int | None = None
         self.current_table: dict | None = None
         self._observers: list[Callable[[str], None]] = []
+
+    def channels_options(self) -> list[str]:
+        """Routing-channel choices for the AutoForm ``channel`` selector."""
+        return [str(c) for c in self.available_channels]
 
     # ── observer hook ──────────────────────────────────────────────────
     def add_observer(self, cb: Callable[[str], None]) -> None:
@@ -73,8 +84,9 @@ class LutComputeViewModel:
     def update(self) -> None:
         """AutoForm hook after a bound field changes.
 
-        The ``path_list`` file section and every parameter field route here. If
-        the file list changed we (re)load the data; otherwise we just recompute.
+        The ``path_list`` file section, the ``channel`` selector and every
+        parameter field route here. A changed file list (re)loads the data; a
+        changed channel re-histograms that channel; otherwise we just recompute.
         """
         if list(self.files) != self._loaded_files:
             if self.files:
@@ -82,16 +94,35 @@ class LutComputeViewModel:
             else:
                 self.clear()
             return
+        if self.channel != self._selected_channel:
+            self._select_channel()
+            self.notify("plot")
+            return
         self.compute()
         self.notify("plot")
 
     # ── file loading ────────────────────────────────────────────────────
     def _reload(self) -> None:
-        """Load the current ``files``, build the histogram, seed the region."""
+        """Load the current ``files`` (all channels), then select a channel."""
         paths = [str(p) for p in self.files]
-        self.micro = _io.load_microtimes(paths)
+        self._micro_all, self._route_all = _io.load_micro_and_routing(paths)
         self._loaded_files = list(paths)
-        self.n_bins = _lut.infer_n_bins(self.micro, None)
+        self.n_bins = _lut.infer_n_bins(self._micro_all, None)
+        self.available_channels = sorted({int(c) for c in np.unique(self._route_all)})
+        if str(self.channel) not in {str(c) for c in self.available_channels}:
+            self.channel = str(self.available_channels[0]) if self.available_channels else ""
+        self._select_channel()
+        self.notify("loaded")
+
+    def _select_channel(self) -> None:
+        """Histogram the currently selected routing channel + seed the region."""
+        self._selected_channel = self.channel
+        if self._micro_all is None or not self.channel:
+            self.micro = self.counts = None
+            self.current_table = None
+            return
+        ch = int(self.channel)
+        self.micro = self._micro_all[self._route_all == ch]
         self.counts = _lut.histogram_micro(self.micro, self.n_bins)
         try:
             self.linear_start, self.linear_stop = _lut.autodetect_linear_region(self.counts)
@@ -99,7 +130,6 @@ class LutComputeViewModel:
             self.linear_start, self.linear_stop = self._fallback_region()
         self.ntac_required = int(self.n_bins)
         self.compute()
-        self.notify("loaded")
 
     def load_files(self, paths: list[str]) -> None:
         """Load TTTR files (programmatic entry point)."""
@@ -110,8 +140,11 @@ class LutComputeViewModel:
         """Reset all loaded data and the current LUT."""
         self.files = []
         self._loaded_files = []
-        self.micro = None
-        self.counts = None
+        self._selected_channel = None
+        self.available_channels = []
+        self.channel = ""
+        self._micro_all = self._route_all = None
+        self.micro = self.counts = None
         self.n_bins = None
         self.current_table = None
         self.notify("loaded")
@@ -186,8 +219,9 @@ class LutComputeViewModel:
         """One-line summary of the current LUT for the status label."""
         t = self.current_table
         if not t:
-            return "No LUT — load a uniform-illumination file and pick the linear region."
-        return (f"Range [{t['linear_start']}, {t['linear_stop']}) | "
+            return "No LUT — load a uniform-illumination file and pick a channel + region."
+        ch = f"ch {self.channel} | " if self.channel != "" else ""
+        return (f"{ch}Range [{t['linear_start']}, {t['linear_stop']}) | "
                 f"width={t['linear_stop'] - t['linear_start']} | "
                 f"f={t['f']:.6f} | n_mean={t['n_mean']:.2f}")
 

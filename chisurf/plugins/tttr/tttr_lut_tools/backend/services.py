@@ -31,13 +31,16 @@ def _autodetect_handler(counts: list[float], noffset: int = 0, **_: Any) -> dict
 
 def _compute_handler(files: list[str], routine: str | None = None, n_bins: int = 0,
                      linear_start: int | None = None, linear_stop: int | None = None,
-                     ntac_required: int = 0, noffset: int = 0, **_: Any) -> dict:
+                     ntac_required: int = 0, noffset: int = 0,
+                     channel: int | None = None, **_: Any) -> dict:
     tbl = compute.compute_lut_from_files(
         list(files), routine=routine or None, n_bins=int(n_bins) or None,
         linear_start=linear_start, linear_stop=linear_stop,
         ntac_required=int(ntac_required) or None, noffset=int(noffset),
+        channel=None if channel is None else int(channel),
     )
     return service_success({
+        "channel": None if channel is None else int(channel),
         "NTAC_fract": np.asarray(tbl["NTAC_fract"]).tolist(),
         "linear_start": tbl["linear_start"], "linear_stop": tbl["linear_stop"],
         "ntac_required": tbl["ntac_required"], "n_bins": tbl["n_bins"],

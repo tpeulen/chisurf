@@ -152,12 +152,19 @@ class _ComputeActions(QtWidgets.QWidget):
             b.clicked.connect(slot)
             return b
 
-        row.addWidget(_btn("🎯 Auto-detect", "Auto-detect the flat linear plateau.",
+        row.addWidget(_btn("🎯 Auto-detect region", "Auto-detect the flat linear plateau.",
                            model.autodetect))
-        row.addWidget(_btn("💾 Save LUT…", "Save the computed LUT.", self._save))
-        row.addWidget(_btn("📤 Export corrected…", "Export corrected micro-times.",
-                           self._export))
         row.addStretch(1)
+        hint = QtWidgets.QLabel("Optional:")
+        hint.setStyleSheet("color: #9ba3af; font-size: 10px;")
+        row.addWidget(hint)
+        row.addWidget(_btn("💾 Save LUT file…",
+                           "Optional: save this channel's LUT to a file. Not needed — "
+                           "use ‘➡ Add to Detector setup’ for the normal workflow.",
+                           self._save))
+        row.addWidget(_btn("📤 Export corrected…",
+                           "Optional: export the corrected micro-times of all photons.",
+                           self._export))
 
     def _save(self):
         if self._model.current_table is None:

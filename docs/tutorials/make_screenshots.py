@@ -54,11 +54,6 @@ def main():
     tool.dock_area.setCurrentWidget(tool.tac_panel)
     _grab(tool, "lut_tools_workspace.png")
 
-    # ② Assign / Export — the same tool after bridging the computed LUT in.
-    tool._bridge_compute_to_assign()
-    tool.dock_area.setCurrentWidget(tool.settings_panel)
-    _grab(tool, "lut_tools_assign.png")
-
     # Channel-definition editor with the LUT-handling box.
     from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition import (
         DetectorWizardPage,

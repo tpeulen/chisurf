@@ -15,11 +15,10 @@ from .tac_lut_panel import TACLinearizationPanel
 
 _README = pathlib.Path(__file__).parents[1] / "README.md"
 
-#: One-line explanation shown in the header so the two stages are never a mystery.
+#: One-line explanation shown in the header so the flow is never a mystery.
 _FLOW_TEXT = (
-    "①  Compute a LUT from a uniform-illumination measurement   →   "
-    "②  Assign it to channels & export   →   "
-    "Configure LUTs… in the Detector setup applies it at read time"
+    "①  Compute LUT — per routing channel — then  ➡ Add to Detector setup.       "
+    "②  is optional: it only saves / loads a settings.tttr.json file."
 )
 
 
@@ -68,16 +67,18 @@ class TTRLutToolsWidget(QtWidgets.QMainWindow):
         spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         header.addWidget(spacer)
         self.bridge_btn = QtWidgets.QToolButton()
-        self.bridge_btn.setText("→ Use in ② Assign")
+        self.bridge_btn.setText("➡ Add to Detector setup")
         self.bridge_btn.setToolTip(
-            "Hand the LUT just computed in ① straight to ② Assign & Export — no "
-            "need to Save then Load a file."
+            "Assign the per-channel LUT just computed in ① to its routing channel in "
+            "your Detector setup. This is the normal way to use a LUT — applied when "
+            "you close this window. Saving a .npy LUT / settings.tttr.json is optional."
         )
+        self.bridge_btn.setStyleSheet("font-weight: bold;")
         self.bridge_btn.clicked.connect(self._bridge_compute_to_assign)
         header.addWidget(self.bridge_btn)
         help_btn = QtWidgets.QToolButton()
         help_btn.setText("?")
-        help_btn.setToolTip("What is the difference between the two tabs? (help)")
+        help_btn.setToolTip("What do the two tabs do? (help)")
         help_btn.clicked.connect(self._show_help)
         header.addWidget(help_btn)
         self.addToolBar(QtCore.Qt.TopToolBarArea, header)
@@ -91,16 +92,19 @@ class TTRLutToolsWidget(QtWidgets.QMainWindow):
         self.tac_panel = TACLinearizationPanel()
         self.settings_panel = TTTRSettingsPanel()
         self.tac_panel.setToolTip(
-            "Stage ①: MAKE a LUT from a flat / uniform-illumination measurement."
+            "MAKE a per-routing-channel LUT from a flat / uniform-illumination "
+            "measurement, then ‘➡ Add to Detector setup’. This is the main tool."
         )
         self.settings_panel.setToolTip(
-            "Stage ②: ASSIGN computed LUTs to routing channels and export settings.tttr.json."
+            "OPTIONAL: save/load a portable settings.tttr.json file, or assign LUT "
+            "files to channels by hand. Not needed for the normal workflow."
         )
         self.dock_area.addTab(self.tac_panel, "① Compute LUT")
-        self.dock_area.addTab(self.settings_panel, "② Assign / Export")
+        self.dock_area.addTab(self.settings_panel, "② settings.tttr.json (optional)")
 
         self.statusBar().showMessage(
-            "① Compute a LUT from flat light, then ‘→ Use in ② Assign’ to assign it to channels."
+            "① Compute a LUT per routing channel, then ‘➡ Add to Detector setup’. "
+            "Saving a file is optional."
         )
         self.dock_area.layoutChanged.connect(self.save_dock_layout_state)
         self.restore_dock_layout_state()
@@ -110,25 +114,35 @@ class TTRLutToolsWidget(QtWidgets.QMainWindow):
         _HelpDialog(self).exec_()
 
     def _bridge_compute_to_assign(self) -> None:
-        """Hand the LUT computed in ① to ② Assign (the in-memory bridge)."""
+        """Add the per-channel LUT computed in ① to the Detector setup (default).
+
+        Assigns it to its routing channel in the (optional) settings panel, which
+        the channel-definition editor pulls into the setup when this window
+        closes. Saving a LUT file is a separate, optional action.
+        """
         table = getattr(self.tac_panel, "current_table", None)
         if not table or table.get("NTAC_fract") is None:
             QtWidgets.QMessageBox.information(
                 self, "No LUT yet",
                 "Compute a LUT in ‘① Compute LUT’ first (load a uniform-illumination "
-                "file and pick the linear region).",
+                "file, pick a routing channel and the linear region).",
             )
             return
-        name = f"computed_{table.get('linear_start', 0)}_{table.get('linear_stop', 0)}"
-        self.settings_panel.receive_computed_lut(name, table["NTAC_fract"])
-        # Switch focus to the Assign tab.
-        try:
+        ch = getattr(self.tac_panel.model, "channel", "")
+        ch_int = int(ch) if str(ch) != "" else None
+        name = (f"ch{ch}_lut" if ch_int is not None
+                else f"computed_{table.get('linear_start', 0)}_{table.get('linear_stop', 0)}")
+        self.settings_panel.receive_computed_lut(name, table["NTAC_fract"], channel=ch_int)
+        if ch_int is not None:
+            self.statusBar().showMessage(
+                f"Channel {ch} LUT added to the Detector setup — "
+                "compute the next channel, or close this window to apply."
+            )
+        else:
             self.dock_area.setCurrentWidget(self.settings_panel)
-        except Exception:
-            pass
-        self.statusBar().showMessage(
-            f"LUT ‘{name}’ sent to ② Assign — select a channel and click Assign."
-        )
+            self.statusBar().showMessage(
+                f"LUT ‘{name}’ staged — pick a routing channel in ② and Assign."
+            )
 
     def _lut_tools_settings(self) -> QtCore.QSettings:
         """Return QSettings for the LUT tools dock layout."""

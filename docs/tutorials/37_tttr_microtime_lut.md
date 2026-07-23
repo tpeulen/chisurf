@@ -10,35 +10,27 @@ then apply automatically at read time.
 
 ## 1. Usage
 
-### ① Compute a LUT
-
-Open **Tools ▸ TTTR ▸ LUT Tools**. The header spells out the whole flow, and the
-`?` button opens the full help. Work left-to-right through the two tabs.
-
-On **① Compute LUT**, load one or more TTTR files of a **uniform-illumination**
-(uncorrelated-light / scatter) measurement — light that *should* produce a flat
-TAC histogram. Drag the orange region to mark the flat **linear plateau** (or let
-it auto-detect), then press **→ Use in ② Assign** to hand the computed LUT
-straight to the next stage (no need to save and reload a file).
-
-![① Compute LUT — the raw TAC histogram with the draggable linear region and the corrected preview below](figures/lut_tools_workspace.png)
-
-### ② Assign it to channels
-
-![② Assign / Export — the computed LUT bridged in, ready to assign to a channel](figures/lut_tools_assign.png)
-
-On **② Assign / Export**, add your measurement files (the used routing channels
-are detected automatically), select a channel, and click **Assign**. Optionally
-set a per-channel micro-time **shift**. **Save JSON** writes a portable
-`settings.tttr.json` you can reuse on another setup or machine.
-
-### Apply it in a detector setup
+### Compute a LUT per channel and add it to the setup
 
 In the **Channel Definition** editor, the **LUT handling** box has a
-**Configure LUTs…** button that opens the tool above; on close it pulls the
-assigned `channel_luts` into the setup. Tick **Apply TAC linearization (LUT) when
-reading** and the correction is applied to every read of that setup — the LUT
-plot is shown on hover.
+**Configure LUTs…** button that opens **LUT Tools**. The **① Compute LUT** tab is
+the tool you use; tab ② (settings.tttr.json) is optional file interchange.
+
+Load one or more TTTR files of a **uniform-illumination** (uncorrelated-light /
+scatter) measurement — light that *should* produce a flat TAC histogram. Because
+TAC differential non-linearity is **per routing channel**, pick a **Routing
+channel**, drag the orange region to mark the flat **linear plateau** (or
+auto-detect), then press the bold **➡ Add to Detector setup**. Repeat for each
+channel and close the window — that's the whole workflow. Saving a LUT file is
+optional.
+
+![① Compute LUT — per-channel: routing-channel selector, draggable linear region on the raw TAC histogram, corrected preview below](figures/lut_tools_workspace.png)
+
+### It lands in the detector setup
+
+Back in the editor, the **LUT handling** box now lists the per-channel LUT you
+added. Tick **Apply TAC linearization (LUT) when reading** and the correction is
+applied to every read of that setup — hover a LUT to see its plot.
 
 ![The LUT-handling box in the channel-definition editor](figures/lut_channel_box.png)
 

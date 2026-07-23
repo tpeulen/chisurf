@@ -48,6 +48,10 @@ COMPUTE_PARAMS = {
             "type": "string",
             "description": "tttrlib reading routine (e.g. SPC-130); blank = auto-detect.",
         },
+        "channel": {
+            "type": "integer",
+            "description": "Routing channel to compute the LUT for (per-channel; recommended).",
+        },
         "n_bins": {
             "type": "integer",
             "description": "TAC histogram bin count; 0 = infer from the data.",

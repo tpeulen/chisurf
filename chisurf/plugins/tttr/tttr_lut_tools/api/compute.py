@@ -54,6 +54,7 @@ def compute_lut_from_files(
     linear_stop: int | None = None,
     ntac_required: int | None = None,
     noffset: int = 0,
+    channel: int | None = None,
 ) -> dict:
     """Compute a LUT directly from raw TTTR files (load → histogram → build).
 
@@ -71,13 +72,16 @@ def compute_lut_from_files(
         Target NTAC bin count.
     noffset : int
         Offset subtracted from corrected indices.
+    channel : int or None
+        Routing channel to compute the LUT for (per-channel LUTs are the
+        physically correct unit). ``None`` pools all channels.
 
     Returns
     -------
     dict
         The LUT table (``NTAC_fract`` + metadata).
     """
-    micro = io.load_microtimes(files, routine=routine)
+    micro = io.load_microtimes(files, routine=routine, channel=channel)
     nb = lut.infer_n_bins(micro, n_bins)
     counts = lut.histogram_micro(micro, nb)
     return compute_lut_from_counts(counts, linear_start, linear_stop, ntac_required, noffset)
