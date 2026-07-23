@@ -156,6 +156,96 @@ def build_tables(
     return H2mmTables(photons=photons, bursts=bursts)
 
 
+def build_dwell_table(
+    data: BurstPhotons,
+    meta: PhotonMeta,
+    dwells,
+    base_time_s: float,
+    *,
+    stream_groups=None,
+    micro_time_ns: float | None = None,
+) -> object:
+    """Assemble a **per-dwell** ndX table (one row per Viterbi dwell).
+
+    A dwell is a maximal same-state run within a burst — the natural unit for
+    dwell-level filtering in ndxplorer (min photons, drop burst-edge dwells,
+    select by state/duration). Each row carries the dwell's state, photon count,
+    duration, measured E / S, per-colour ``Mean Microtime (<name>)`` (so a per-dwell
+    FRET-line plot lands cleanly on the static line, each dwell being a single
+    state), an ``Is Edge`` flag (1 if the dwell touches its burst's first or last
+    photon) and ``Mean Macro Time (s)`` for the time axis.
+
+    Parameters
+    ----------
+    data : BurstPhotons
+        Engine-layout photon data (burst offsets + per-photon streams).
+    meta : PhotonMeta
+        Per-photon macro/micro arrays aligned with ``data``.
+    dwells : sequence of Dwell
+        The analysis dwell records (``H2mmAnalysis.dwells``).
+    base_time_s : float
+        Seconds per base time unit.
+    stream_groups : sequence of (str, sequence of int), optional
+        Named base-stream roles (see :func:`build_tables`).
+    micro_time_ns : float, optional
+        Nanoseconds per micro-time channel for the ``Mean Microtime`` columns.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per dwell.
+    """
+    import pandas as pd
+
+    if stream_groups is None:
+        stream_groups = [("green", (0,))]
+        if int(data.n_streams) > 1:
+            stream_groups.append(("red", (1,)))
+    groups = [(str(name), np.atleast_1d(np.asarray(idx, dtype=int)))
+              for name, idx in stream_groups]
+
+    offsets = np.asarray(data.burst_offsets)
+    macro = np.asarray(meta.macro_time, dtype=np.float64)
+    micro = np.asarray(meta.micro_time, dtype=np.float64)
+    streams_all = np.asarray(data.streams)
+
+    cols: dict[str, list] = {
+        "Dwell": [], "Burst": [], "State": [], "Number of Photons": [],
+        "Dwell Time (ms)": [], "Mean Macro Time (s)": [],
+    }
+    for name, _ in groups:
+        cols[f"Mean Microtime ({name})"] = []
+    cols["FRET efficiency"] = []
+    cols["Proximity ratio"] = []
+    cols["Stoichiometry"] = []
+    cols["Is Edge"] = []
+
+    for k, d in enumerate(dwells):
+        s0, s1 = int(d.start), int(d.stop)
+        burst_start = int(offsets[d.burst])
+        burst_end = int(offsets[d.burst + 1])
+        cols["Dwell"].append(k)
+        cols["Burst"].append(int(d.burst))
+        cols["State"].append(int(d.state))
+        cols["Number of Photons"].append(int(d.n_photons))
+        cols["Dwell Time (ms)"].append(float(d.dur) * base_time_s * 1e3)
+        cols["Mean Macro Time (s)"].append(
+            float(macro[s0:s1].mean()) * base_time_s if s1 > s0 else np.nan)
+        for name, idx in groups:
+            mask = np.isin(streams_all[s0:s1], idx)
+            if micro_time_ns is not None and mask.any():
+                cols[f"Mean Microtime ({name})"].append(
+                    float(micro[s0:s1][mask].mean()) * float(micro_time_ns))
+            else:
+                cols[f"Mean Microtime ({name})"].append(np.nan)
+        cols["FRET efficiency"].append(float(d.e))
+        cols["Proximity ratio"].append(float(d.e))
+        cols["Stoichiometry"].append(float(d.s))
+        cols["Is Edge"].append(int(s0 == burst_start or s1 == burst_end))
+
+    return pd.DataFrame(cols)
+
+
 def write_hdf5(df, path: str | pathlib.Path, key: str = NDX_HDF5_KEY) -> str:
     """Write a table to an ndX-openable HDF5 file (``key='results'``)."""
     path = pathlib.Path(path)

@@ -122,6 +122,29 @@ def test_ndx_hdf5_and_csv_roundtrip(tmp_path):
     assert len(back_csv) == data.n_bursts
 
 
+def test_build_dwell_table_per_dwell_rows_and_edge_flag():
+    """The per-dwell table has one row per dwell with an edge flag ndX can filter on."""
+    from chisurf.plugins.burst.burst_h2mm.core.analysis import analyze
+
+    data, meta = _dataset_via_tttrlib()
+    ana = analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=200)
+    dwells = X.build_dwell_table(
+        data, meta, ana.dwells, ana.base_time_s,
+        stream_groups=[("green", (0,)), ("red", (1,))], micro_time_ns=0.032,
+    )
+    # One row per analysis dwell.
+    assert len(dwells) == len(ana.dwells)
+    for col in ("Dwell", "Burst", "State", "Number of Photons", "Dwell Time (ms)",
+                "Mean Microtime (green)", "FRET efficiency", "Is Edge"):
+        assert col in dwells.columns
+    # Edge flag is 0/1 and every burst has at least one edge dwell (its first/last).
+    assert set(np.unique(dwells["Is Edge"])) <= {0, 1}
+    assert dwells["Is Edge"].sum() >= data.n_bursts
+    # States are valid and photon counts positive.
+    assert set(np.unique(dwells["State"])) <= {0, 1}
+    assert (dwells["Number of Photons"].to_numpy() > 0).all()
+
+
 def test_write_result_tables_emits_ndx_fret_line_columns(tmp_path):
     """The services table writer wires role groups + micro resolution into ndX columns."""
     from chisurf.plugins.burst.burst_h2mm.api.models import H2mmSettings
@@ -148,3 +171,11 @@ def test_write_result_tables_emits_ndx_fret_line_columns(tmp_path):
                 "Mean Macro Time (s)", "Dominant State"):
         assert col in df.columns
     assert np.isfinite(df["Mean Microtime (green)"].to_numpy()).any()
+
+    # A per-dwell table is also written for dwell-level filtering in ndX.
+    dwells_csv = result.output_paths.get("dwells_csv")
+    assert dwells_csv is not None
+    ddf = pd.read_csv(dwells_csv)
+    for col in ("State", "Number of Photons", "Dwell Time (ms)", "Is Edge",
+                "Mean Microtime (green)"):
+        assert col in ddf.columns

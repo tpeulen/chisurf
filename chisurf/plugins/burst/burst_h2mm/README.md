@@ -23,11 +23,15 @@ reference `H2MM_C` library by P. D. Harris.
   E after), the **BIC/ICL model-selection** curve, per-state **dwell-time
   distributions**, per-state **fluorescence-decay** (nanotime) histograms, and an
   interactive per-burst **Viterbi state-path** viewer.
-- Writes ndxplorer-openable per-photon and per-burst tables. The per-burst table
-  carries a per-colour `Mean Microtime (<name>)` (mean TCSPC micro time in ns — an
-  IRF-uncorrected donor-lifetime proxy), `FRET efficiency` / `Proximity ratio`,
-  and `Dominant State` / `Number of Transitions`, so it opens straight onto ndX's
-  static/dynamic **FRET-line** plot (E vs donor micro time).
+- Writes ndxplorer-openable per-photon, per-burst **and per-dwell** tables. The
+  per-burst table carries a per-colour `Mean Microtime (<name>)` (mean TCSPC micro
+  time in ns — an IRF-uncorrected donor-lifetime proxy), `FRET efficiency` /
+  `Proximity ratio`, and `Dominant State` / `Number of Transitions`, so it opens
+  straight onto ndX's static/dynamic **FRET-line** plot. The per-dwell table
+  (`h2mm_dwells.csv`, one row per Viterbi dwell: `State`, `Number of Photons`,
+  `Dwell Time (ms)`, measured E/S, `Mean Microtime (<name>)`, `Is Edge`) is the
+  unit **dwell filtering** happens on downstream in ndX (min photons, drop
+  burst-edge dwells, select by state/duration).
 
 ## Architecture (client–server standard)
 

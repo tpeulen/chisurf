@@ -167,7 +167,7 @@ def write_result_tables(
 
     Records every written path in ``result.output_paths``.
     """
-    from ..core.export import build_tables, write_csv, write_hdf5
+    from ..core.export import build_dwell_table, build_tables, write_csv, write_hdf5
 
     out_dir = pathlib.Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -207,6 +207,15 @@ def write_result_tables(
     except Exception:  # pragma: no cover - pytables optional; CSV is the fallback
         result.output_paths["photons_csv"] = write_csv(tables.photons, out_dir / "h2mm_photons.csv")
     result.output_paths["bursts_csv"] = write_csv(tables.bursts, out_dir / "h2mm_bursts.csv")
+
+    # Per-dwell table (one row per Viterbi dwell) — the unit ndxplorer filters on
+    # (min photons, drop burst-edge dwells, select by state/duration).
+    dwells_df = build_dwell_table(
+        bundle.data, meta, ana.dwells, ana.base_time_s,
+        stream_groups=stream_groups,
+        micro_time_ns=(micro_ns if micro_ns else None),
+    )
+    result.output_paths["dwells_csv"] = write_csv(dwells_df, out_dir / "h2mm_dwells.csv")
 
 
 def _result_from_analysis(ana, settings: H2mmSettings) -> H2mmResult:
