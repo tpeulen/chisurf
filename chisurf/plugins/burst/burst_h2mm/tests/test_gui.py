@@ -232,4 +232,6 @@ def test_h2mm_gui_alex_es_and_nanotime(qapp):
     assert len(w._p_fret.items) > 0
     assert len(w._p_nano.listDataItems()) >= 1
     assert len(w._p_path.items) > 0
+    # E–τ FRET-lifetime panel drew per-state points + the static-FRET line.
+    assert len(w._p_etau.items) > 0
     w.close()

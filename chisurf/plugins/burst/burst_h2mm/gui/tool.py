@@ -356,12 +356,16 @@ class H2mmTool(QMainWindow):
         self._p_dwell = self.plot_widget.addPlot(row=1, col=1, title="Dwell-time distributions")
         self._p_dwell.setLabels(bottom="Dwell time (ms)", left="Counts")
         self._dwell_legend = self._p_dwell.addLegend(offset=(-5, 5))
-        # Row 2 — per-state fluorescence decay + burst state path.
+        # Row 2 — per-state fluorescence decay + E–τ FRET-lifetime plot.
         self._p_nano = self.plot_widget.addPlot(row=2, col=0, title="Per-state fluorescence decay")
         self._p_nano.setLabels(bottom="Micro time (channel)", left="Counts")
         self._p_nano.setLogMode(y=True)
         self._nano_legend = self._p_nano.addLegend(offset=(-5, 5))
-        self._p_path = self.plot_widget.addPlot(row=2, col=1, title="Burst state path")
+        self._p_etau = self.plot_widget.addPlot(row=2, col=1, title="E–τ FRET-lifetime")
+        self._p_etau.setLabels(bottom="Apparent FRET E", left="Mean donor nanotime (channel)")
+        self._p_etau.setXRange(0, 1)
+        # Row 3 — burst state path, full width (it is a time series).
+        self._p_path = self.plot_widget.addPlot(row=3, col=0, colspan=2, title="Burst state path")
         self._p_path.setLabels(bottom="Time in burst (ms)", left="FRET E")
         self._p_path.setYRange(-0.05, 1.05)
         v.addWidget(self.plot_widget, 1)
@@ -611,6 +615,7 @@ class H2mmTool(QMainWindow):
         self._plot_model_selection(self._result)
         self._plot_dwell_times(ana)
         self._plot_nanotime(ana)
+        self._plot_etau(ana)
         self._rebuild_nav_bursts(ana)
 
     def _plot_dwell_fret(self, ana):
@@ -734,6 +739,43 @@ class H2mmTool(QMainWindow):
             keep = counts > 0
             p.plot(centers[keep], counts[keep], pen=pg.mkPen(self._state_color(i), width=2),
                    name=f"S{i}")
+
+    def _plot_etau(self, ana):
+        """Row 2, right: E–τ FRET-lifetime plot (per-state donor nanotime vs E).
+
+        Each state is a point at ``(E, mean donor nanotime)``; the dashed line is
+        the static-FRET reference ``τ = τ0·(1 − E)`` with ``τ0`` taken from the
+        lowest-E state (the donor-only proxy). States on the line are static;
+        those pulled off it are dynamically averaged. Needs per-photon micro times
+        (``bundle.meta``); the panel is left empty when they are absent.
+        """
+        from ..core.analysis import state_mean_nanotime
+
+        p = self._p_etau
+        p.clear()
+        meta = getattr(self._bundle, "meta", None)
+        fret = np.asarray(ana.fret, dtype=np.float64)
+        path = np.asarray(ana.path, dtype=np.int64)
+        if meta is None or getattr(meta, "micro_time", None) is None:
+            return
+        micro = np.asarray(meta.micro_time)
+        if micro.shape[0] != path.shape[0] or micro.size == 0:
+            return
+        tau = state_mean_nanotime(path, micro, self._bundle.data.streams, int(fret.shape[0]),
+                                  donor_stream=0)
+        good = np.isfinite(fret) & np.isfinite(tau)
+        if not good.any():
+            return
+        # τ0 = donor nanotime of the lowest-E (most donor-like) state.
+        tau0 = float(tau[good][np.argmin(fret[good])])
+        if tau0 > 0:
+            xs = np.array([0.0, 1.0])
+            p.plot(xs, tau0 * (1.0 - xs), pen=pg.mkPen("#999999", width=1, style=Qt.DashLine))
+        for i in range(int(fret.shape[0])):
+            if not (np.isfinite(fret[i]) and np.isfinite(tau[i])):
+                continue
+            p.addItem(pg.ScatterPlotItem([fret[i]], [tau[i]], size=13, symbol="o",
+                                         pen=pg.mkPen("k"), brush=pg.mkBrush(self._state_color(i))))
 
     # ── burst state-path viewer ──────────────────────────────────────
 

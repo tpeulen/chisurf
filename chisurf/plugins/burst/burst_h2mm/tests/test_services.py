@@ -135,6 +135,23 @@ def test_analyze_stoichiometry_with_alex_stream():
     assert s_vals.size > 0
 
 
+def test_state_mean_nanotime_per_state_donor_lifetime():
+    """state_mean_nanotime averages donor micro-times per state, ignoring acceptor."""
+    from chisurf.plugins.burst.burst_h2mm.core.analysis import state_mean_nanotime
+
+    #            state:  0   0   0   1   1   1
+    path = np.array([0, 0, 0, 1, 1, 1])
+    streams = np.array([0, 0, 1, 0, 0, 1])  # last of each state is acceptor
+    micro = np.array([100, 200, 9999, 400, 600, 9999])  # 9999 = acceptor, must be ignored
+    tau = state_mean_nanotime(path, micro, streams, n_states=2, donor_stream=0)
+    assert np.isclose(tau[0], 150.0)  # (100+200)/2
+    assert np.isclose(tau[1], 500.0)  # (400+600)/2
+    # A state with no donor photons yields NaN.
+    tau2 = state_mean_nanotime(np.array([0, 0]), np.array([1, 2]), np.array([1, 1]),
+                               n_states=1, donor_stream=0)
+    assert np.isnan(tau2[0])
+
+
 def test_stream_microtime_gating():
     macro = np.array([0, 1, 2, 3])
     chan = np.array([0, 0, 1, 1])

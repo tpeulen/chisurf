@@ -170,6 +170,50 @@ def state_stoichiometry(
     return s
 
 
+def state_mean_nanotime(
+    path: np.ndarray,
+    micro_time: np.ndarray,
+    streams: np.ndarray,
+    n_states: int,
+    donor_stream: int = 0,
+) -> np.ndarray:
+    """Mean donor micro-time (nanotime) per Viterbi state.
+
+    The donor fluorescence lifetime shortens as FRET rises, so the per-state mean
+    donor nanotime is the observable behind the burstH2MM **E–τ** (FRET-lifetime)
+    plot: static states fall on the line ``τ/τ0 = 1 − E`` while dynamic averaging
+    pulls a state off it.
+
+    Parameters
+    ----------
+    path : numpy.ndarray
+        Per-photon Viterbi state (length ``N``).
+    micro_time : numpy.ndarray
+        Per-photon TCSPC micro time (length ``N``, same order as ``path``).
+    streams : numpy.ndarray
+        Per-photon stream index (length ``N``).
+    n_states : int
+        Number of states.
+    donor_stream : int
+        Stream index of the donor-emission channel.
+
+    Returns
+    -------
+    numpy.ndarray
+        Mean donor micro-time per state, shape ``(n_states,)`` (``nan`` where a
+        state has no donor photons).
+    """
+    path = np.asarray(path)
+    micro_time = np.asarray(micro_time, dtype=np.float64)
+    streams = np.asarray(streams)
+    out = np.full(n_states, np.nan, dtype=np.float64)
+    for s in range(n_states):
+        m = (path == s) & (streams == donor_stream)
+        if m.any():
+            out[s] = float(micro_time[m].mean())
+    return out
+
+
 def scan_states(
     data: BurstPhotons,
     state_counts: Sequence[int],
