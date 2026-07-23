@@ -131,6 +131,24 @@ def test_assigning_a_lut_auto_enables_apply(qapp, tmp_path):
     assert page.get_settings()["apply_lut"] is True
 
 
+@pytest.mark.skipif(not _SPC.is_file(), reason="sample SPC not available")
+def test_shift_dialog_loads_lut_corrected_and_round_trips(qapp):
+    """The visual shift adjuster opens LUT-corrected and returns per-channel shifts."""
+    from chisurf.gui.widgets.wizard.tttr_channeldefinition.shift_dialog import (
+        MicrotimeShiftDialog,
+    )
+
+    ntac = np.linspace(0, 4096, 4096)
+    dlg = MicrotimeShiftDialog(
+        str(_SPC), routine="SPC-130",
+        channel_luts={0: ntac, 1: ntac}, channel_shifts={0: 5}, apply_lut=True,
+    )
+    assert len(dlg._hists) > 1  # per-channel histograms
+    assert dlg._spins[0].value() == 5  # seeded from current shifts
+    dlg._spins[1].setValue(10)
+    assert dlg.shifts() == {0: 5, 1: 10}
+
+
 def test_toggle_apply_lut_updates_state(qapp, lut_setup):
     page = _page(lut_setup)
     page._apply_lut_checkbox.setChecked(False)

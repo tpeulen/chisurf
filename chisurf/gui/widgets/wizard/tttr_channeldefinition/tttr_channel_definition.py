@@ -1173,8 +1173,15 @@ class DetectorWizardPage(QWizardPage):
         configure_btn = QPushButton("Configure LUTs…")
         configure_btn.setToolTip("Open the LUT Tools (compute / assign / settings.tttr.json)")
         configure_btn.clicked.connect(self._on_open_lut_tools)
+        shifts_btn = QPushButton("Adjust shifts…")
+        shifts_btn.setToolTip(
+            "Visually align per-channel micro-time shifts on the (LUT-corrected) "
+            "calibration decay — read a calibration file first."
+        )
+        shifts_btn.clicked.connect(self._on_open_shift_tool)
         hb.addWidget(assign_btn)
         hb.addWidget(configure_btn)
+        hb.addWidget(shifts_btn)
         hb.addStretch(1)
         box.add_widget(btn_row)
 
@@ -1343,6 +1350,33 @@ class DetectorWizardPage(QWizardPage):
         self._pull_luts_from_panel(panel)
         self._refresh_lut_box()
         self._refresh_preview_lut()
+
+    def _on_open_shift_tool(self):
+        """Open the visual per-channel micro-time shift adjuster (LUT-aware)."""
+        path = getattr(self, "_microtime_decay_file_path", None)
+        if not path or not pathlib.Path(str(path)).is_file():
+            QMessageBox.information(
+                self, "Adjust shifts",
+                "Read a calibration TTTR file first ('Read from file…' in TTTR "
+                "Reading routine) so the per-channel decays can be shown.",
+            )
+            return
+        try:
+            from .shift_dialog import MicrotimeShiftDialog
+        except Exception as exc:  # pragma: no cover
+            QMessageBox.information(self, "Adjust shifts", f"Unavailable:\n{exc}")
+            return
+        routine = self.file_type_combo.currentText().strip()
+        routine = None if routine in ("", "Auto") else routine
+        dlg = MicrotimeShiftDialog(
+            str(path), routine=routine,
+            channel_luts=self._channel_luts, channel_shifts=self._channel_shifts,
+            apply_lut=bool(self._apply_lut), parent=self,
+        )
+        if dlg.exec_() == QDialog.Accepted:
+            self._channel_shifts = dict(dlg.shifts())
+            self._refresh_lut_box()
+            self._refresh_preview_lut()
 
     def _enable_apply_lut(self):
         """Turn the master LUT gate ON (ticks the checkbox) once a LUT exists.
