@@ -41,8 +41,11 @@ from chisurf.core.fluorescence.burst.cusum import cusum_filter
 
 # Background estimation module
 from chisurf.core.fluorescence.burst.background import (
+    BackgroundDiagnostics,
+    background_diagnostics_from_bursts,
     estimate_background_from_bursts,
     estimate_background_from_interphoton_times,
+    interphoton_time_diagnostics,
 )
 
 # IRF + background from non-burst photons

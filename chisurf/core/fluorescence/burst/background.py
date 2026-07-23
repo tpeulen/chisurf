@@ -9,7 +9,8 @@ The main public entry point is :func:`estimate_background_from_bursts`,
 which is also re-exported via :mod:`chisurf.core.fluorescence.burst`.
 """
 
-from typing import Any, Dict, Mapping
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Mapping
 
 import numpy as np
 import tttrlib
@@ -21,6 +22,123 @@ except Exception as exc:  # pragma: no cover - defensive guard
         "chisurf.core.fluorescence.burst.background requires SciPy. "
         "Please ensure that the 'scipy' package is installed."
     ) from exc
+
+
+@dataclass
+class BackgroundDiagnostics:
+    """Inter-photon-time histogram and exponential tail fit for one detector.
+
+    Everything a diagnostic plot needs: the histogram, the fitted background
+    model, the tail region used, and the resulting rate.  See
+    :func:`interphoton_time_diagnostics`.
+
+    Attributes
+    ----------
+    centers : numpy.ndarray
+        Inter-photon-time histogram bin centres (ms).
+    counts : numpy.ndarray
+        Histogram counts per bin.
+    tail_mask : numpy.ndarray
+        Boolean mask of the bins used for the tail fit.
+    model : numpy.ndarray
+        Fitted background model ``A·exp(-rate·centers)`` over every bin (counts).
+    rate_khz : float
+        Estimated background rate (kHz == 1/ms).
+    amplitude : float
+        Fitted pre-exponential amplitude ``A``.
+    """
+
+    centers: np.ndarray = field(default_factory=lambda: np.empty(0))
+    counts: np.ndarray = field(default_factory=lambda: np.empty(0))
+    tail_mask: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=bool))
+    model: np.ndarray = field(default_factory=lambda: np.empty(0))
+    rate_khz: float = 0.0
+    amplitude: float = 0.0
+
+
+def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts):
+    """Poisson-MLE exponential fit of the inter-photon-time tail.
+
+    Returns ``(amplitude, rate, tail_mask, success)``; ``rate`` falls back to the
+    inverse mean tail interval if the optimiser fails.  Shared by
+    :func:`estimate_background_from_interphoton_times` and
+    :func:`interphoton_time_diagnostics` so both give identical rates.
+    """
+    tail_threshold = tail_fraction * float(centers.max())
+    valid = (centers > tail_threshold) & (counts >= min_counts)
+    if not np.any(valid):
+        return 0.0, 0.0, valid, False
+
+    xdata = centers[valid]
+    ydata = counts[valid].astype(np.float64)
+
+    def neg_log_likelihood(params: np.ndarray) -> float:
+        A, lam = params
+        if A <= 0.0 or lam <= 0.0:
+            return np.inf
+        model = A * np.exp(-lam * xdata)
+        eps = 1e-12
+        model_safe = model + eps
+        ratio = ydata / model_safe
+        term = ydata * np.log(np.maximum(ratio, eps)) - ydata + model_safe
+        return float(np.sum(term))
+
+    A0 = float(counts[0]) if counts[0] > 0 else float(ydata.max())
+    lam0 = 3.0 / max_dt
+    result = minimize(
+        neg_log_likelihood,
+        np.array([A0, lam0], dtype=float),
+        method="L-BFGS-B",
+        bounds=((0.0, None), (0.0, None)),
+    )
+    if not result.success:
+        mean_dt = float(np.mean(xdata))
+        lam = 1.0 / mean_dt if mean_dt > 0.0 else 0.0
+        return A0, max(lam, 0.0), valid, False
+    A, lam = float(result.x[0]), float(result.x[1])
+    return A, max(lam, 0.0), valid, True
+
+
+def _histogram_interphoton(dt_ms, binsize_ms):
+    """Return ``(centers, counts, max_dt)`` of the inter-photon-time histogram."""
+    dt_ms = np.asarray(dt_ms, dtype=np.float64)
+    dt_ms = dt_ms[dt_ms > 0.0]
+    if dt_ms.size == 0:
+        return None
+    max_dt = float(dt_ms.max())
+    if max_dt <= 0.0:
+        return None
+    edges = np.arange(0.0, max_dt + binsize_ms, binsize_ms, dtype=np.float64)
+    if edges.size < 2:
+        return None
+    counts, edges = np.histogram(dt_ms, bins=edges)
+    centers = 0.5 * (edges[:-1] + edges[1:])
+    if centers.size == 0:
+        return None
+    return centers, counts, max_dt
+
+
+def interphoton_time_diagnostics(
+    dt_ms: np.ndarray,
+    *,
+    binsize_ms: float = 0.1,
+    tail_fraction: float = 0.2,
+    min_counts: int = 1,
+) -> BackgroundDiagnostics:
+    """Inter-photon-time histogram + tail fit for plotting (same rate as the estimator).
+
+    Parameters mirror :func:`estimate_background_from_interphoton_times`.
+    """
+    hist = _histogram_interphoton(dt_ms, binsize_ms)
+    if hist is None:
+        return BackgroundDiagnostics()
+    centers, counts, max_dt = hist
+    A, lam, tail_mask, _ = _fit_exponential_tail(
+        centers, counts, max_dt, tail_fraction, min_counts)
+    model = A * np.exp(-lam * centers) if A > 0 and lam > 0 else np.zeros_like(centers)
+    return BackgroundDiagnostics(
+        centers=centers, counts=counts, tail_mask=tail_mask,
+        model=model, rate_khz=lam, amplitude=A)
 
 
 def estimate_background_from_interphoton_times(
@@ -55,88 +173,13 @@ def estimate_background_from_interphoton_times(
         Estimated background count rate in **kHz**. Returns 0.0 if the
         estimate cannot be obtained (e.g. too few photons).
     """
-    dt_ms = np.asarray(dt_ms, dtype=np.float64)
-    # Remove non-positive intervals
-    dt_ms = dt_ms[dt_ms > 0.0]
-    if dt_ms.size == 0:
+    hist = _histogram_interphoton(dt_ms, binsize_ms)
+    if hist is None:
         return 0.0
-
-    max_dt = float(dt_ms.max())
-    if max_dt <= 0.0:
-        return 0.0
-
-    # Histogram similar to MATLAB's hist(MT, 0:.1:max(MT))
-    edges = np.arange(0.0, max_dt + binsize_ms, binsize_ms, dtype=np.float64)
-    if edges.size < 2:
-        return 0.0
-
-    counts, edges = np.histogram(dt_ms, bins=edges)
-    centers = 0.5 * (edges[:-1] + edges[1:])
-
-    if centers.size == 0:
-        return 0.0
-
-    # Tail selection
-    tail_threshold = tail_fraction * float(centers.max())
-    valid = (centers > tail_threshold) & (counts >= min_counts)
-    if not np.any(valid):
-        return 0.0
-
-    xdata = centers[valid]
-    ydata = counts[valid].astype(np.float64)
-
-    # Negative log-likelihood for Poisson counts y ~ Poisson(model),
-    # model = A * exp(-lambda * x).
-    def neg_log_likelihood(params: np.ndarray) -> float:
-        """Negative log-likelihood for Poisson counts with exponential model.
-
-        Parameters
-        ----------
-        params : np.ndarray
-            Parameter vector (A, lam) where model = A * exp(-lam * x).
-
-        Returns
-        -------
-        float
-            Negative log-likelihood value.
-        """
-        A, lam = params
-        if A <= 0.0 or lam <= 0.0:
-            return np.inf
-        model = A * np.exp(-lam * xdata)
-        # Avoid log(0) and division by zero
-        eps = 1e-12
-        model_safe = model + eps
-        ratio = ydata / model_safe
-        # Expression mirrors the MATLAB implementation
-        term = ydata * np.log(np.maximum(ratio, eps)) - ydata + model_safe
-        return float(np.sum(term))
-
-    # Initial guess from first bin height and overall time span
-    A0 = float(counts[0]) if counts[0] > 0 else float(ydata.max())
-    lam0 = 3.0 / max_dt  # cf. x0 = [hMT(1), 3/max(dt)] in MATLAB
-    x0 = np.array([A0, lam0], dtype=float)
-
-    result = minimize(
-        neg_log_likelihood,
-        x0,
-        method="L-BFGS-B",
-        bounds=((0.0, None), (0.0, None)),
-    )
-
-    if not result.success:
-        # Fallback: estimate from mean of tail interphoton times
-        mean_dt = float(np.mean(xdata))
-        if mean_dt <= 0.0:
-            return 0.0
-        lam = 1.0 / mean_dt
-    else:
-        lam = float(result.x[1])
-
-    # lambda has units 1/ms. Treat this as kHz (1/ms == kHz).
-    if lam < 0.0:
-        lam = 0.0
-    return lam
+    centers, counts, max_dt = hist
+    # lambda has units 1/ms, treated as kHz (1/ms == kHz).
+    _, lam, _, _ = _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts)
+    return float(lam)
 
 
 def estimate_background_from_bursts(
@@ -226,3 +269,49 @@ def estimate_background_from_bursts(
         results[det_name] = float(bg_khz)
 
     return results
+
+
+def _detector_interphoton_times(tttr, det_info, dt_scale):
+    """Return the inter-photon times (ms) of one detector's photon stream."""
+    rout = np.asarray(tttr.routing_channel)
+    micro = np.asarray(tttr.micro_times)
+    macro = np.asarray(tttr.macro_times, dtype=np.int64)
+    chs = np.asarray(det_info.get("chs", []), dtype=int)
+    if chs.size == 0:
+        return np.empty(0)
+    mask = np.isin(rout, chs)
+    mt_ranges = det_info.get("micro_time_ranges", []) or []
+    if mt_ranges:
+        mt_mask = np.zeros_like(mask, dtype=bool)
+        for start, stop in mt_ranges:
+            mt_mask |= (micro >= int(start)) & (micro < int(stop))
+        mask &= mt_mask
+    times = macro[mask]
+    if times.size < 2:
+        return np.empty(0)
+    return np.diff(times.astype(np.float64)) * dt_scale
+
+
+def background_diagnostics_from_bursts(
+    tttr: tttrlib.TTTR,
+    detectors: Mapping[str, Mapping[str, Any]],
+    *,
+    binsize_ms: float = 0.1,
+    tail_fraction: float = 0.8,
+    min_counts: int = 1,
+) -> Dict[str, BackgroundDiagnostics]:
+    """Per-detector inter-photon-time histogram + tail fit for diagnostic plots.
+
+    The plotting companion of :func:`estimate_background_from_bursts`: returns a
+    :class:`BackgroundDiagnostics` per detector (identical rate), carrying the
+    histogram, the fitted model and the tail region.
+    """
+    header = tttr.header
+    dt_scale = float(getattr(header, "macro_time_resolution", 1.0)) * 1000.0
+    out: Dict[str, BackgroundDiagnostics] = {}
+    for det_name, det_info in detectors.items():
+        dt_ms = _detector_interphoton_times(tttr, det_info, dt_scale)
+        out[det_name] = interphoton_time_diagnostics(
+            dt_ms, binsize_ms=binsize_ms, tail_fraction=tail_fraction,
+            min_counts=min_counts)
+    return out
