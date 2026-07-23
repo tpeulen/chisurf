@@ -1,0 +1,43 @@
+{
+  "_comment": "Declarative AutoForm layout for the ① Compute LUT panel. The interactive raw/after TAC plots (draggable linear region + offset/threshold lines) are the custom 'lut_compute_plot' section driving the Qt-free LutComputeViewModel; parameters are declarative value/toggle sections with tooltips.",
+  "sections": [
+    {
+      "type": "custom", "key": "help",
+      "options": {
+        "title": "① Compute Microtime LUT — help",
+        "text": "Build a TAC-linearization LUT from a **uniform-illumination** (uncorrelated-light / scatter) measurement — light that *should* give a flat TAC histogram. Load the file(s), drag the orange region over the flat **linear plateau** (or press Auto-detect), then use **→ Use in ② Assign** to hand the LUT to the next stage. Real TAC hardware (e.g. SPC-130) has differential non-linearity; the LUT remaps raw micro-times onto an equal-width axis."
+      }
+    },
+    {
+      "type": "custom", "key": "path_list", "target": "files",
+      "options": {
+        "title": "Uniform-illumination TTTR file(s)",
+        "extensions": [".spc", ".ht3", ".ptu", ".t3r", ".t2r", ".phu", ".photonhdf5"],
+        "add_folders": true
+      }
+    },
+    {"type": "custom", "key": "lut_compute_plot"},
+    {"type": "custom", "key": "lut_info_label"},
+    {
+      "type": "panel", "title": "Parameters", "n_col": 2, "collapsed": false,
+      "sections": [
+        {"type": "value", "attr": "linear_start", "label": "linear_start", "kind": "int", "minimum": 0, "maximum": 1000000, "call": "update", "description": "First bin of the flat linear region (or drag the orange region)."},
+        {"type": "value", "attr": "linear_stop", "label": "linear_stop", "kind": "int", "minimum": 1, "maximum": 1000000, "call": "update", "description": "First bin after the flat linear region."},
+        {"type": "value", "attr": "ntac_required", "label": "ntac_required", "kind": "int", "minimum": 2, "maximum": 1000000, "call": "update", "description": "Target number of corrected NTAC bins (defaults to the input bin count)."},
+        {"type": "value", "attr": "noffset", "label": "Noffset", "kind": "int", "minimum": 0, "maximum": 1000000, "call": "update", "description": "Offset subtracted from corrected NTAC indices (or drag the red line)."},
+        {"type": "value", "attr": "preview_photons", "label": "preview photons", "kind": "int", "minimum": 1000, "maximum": 100000000, "call": "update", "description": "How many photons to use for the corrected-preview histogram."},
+        {"type": "toggle", "attr": "normalize", "label": "Normalize by region mean", "call": "update", "description": "Divide the displayed histogram by the region mean (display only)."}
+      ]
+    },
+    {
+      "type": "panel", "title": "Advanced", "n_col": 2, "collapsed": true,
+      "sections": [
+        {"type": "value", "attr": "seed", "label": "RNG seed", "kind": "int", "minimum": 0, "maximum": 2147483647, "call": "update", "description": "Seed for the stochastic rebinning (reproducible previews)."},
+        {"type": "value", "attr": "threshold", "label": "Low-count threshold", "kind": "float", "minimum": 0.0, "maximum": 1000000000.0, "decimals": 6, "call": "update", "description": "Bins at or below this count are zeroed before building the LUT (or drag the green line)."},
+        {"type": "toggle", "attr": "mitigate_wrap", "label": "Mitigate wrap spike (floor + ε)", "call": "update", "description": "Use floor rounding + a small ε to avoid a spike at the wrap boundary."},
+        {"type": "value", "attr": "eps", "label": "ε (wrap)", "kind": "float", "minimum": 0.0, "maximum": 0.01, "decimals": 9, "call": "update", "description": "Epsilon used when 'Mitigate wrap spike' is on."}
+      ]
+    },
+    {"type": "custom", "key": "lut_compute_actions"}
+  ]
+}

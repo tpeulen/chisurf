@@ -41,17 +41,23 @@ def main():
     """Generate all TTTR-LUT tutorial screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
 
-    # ① / ② LUT Tools workspace, with a computed LUT bridged into Assign.
+    # ① Compute LUT — the AutoForm panel with a real flat-light file loaded, so
+    # the interactive raw/after plots + draggable region are shown.
     from chisurf.plugins.tttr.tttr_lut_tools.gui.tool import TTRLutToolsWidget
 
+    spc = pathlib.Path("test/data/tttr/BH/132/BH_SPC132.spc")
     tool = TTRLutToolsWidget()
-    tool.resize(1120, 720)
-    tool.tac_panel.current_table = {
-        "NTAC_fract": np.linspace(0, 4096, 4096),
-        "linear_start": 100, "linear_stop": 4000,
-    }
-    tool._bridge_compute_to_assign()
+    tool.resize(1120, 760)
+    if spc.is_file():
+        tool.tac_panel.model.load_files([str(spc)])
+        QApplication.instance().processEvents()
+    tool.dock_area.setCurrentWidget(tool.tac_panel)
     _grab(tool, "lut_tools_workspace.png")
+
+    # ② Assign / Export — the same tool after bridging the computed LUT in.
+    tool._bridge_compute_to_assign()
+    tool.dock_area.setCurrentWidget(tool.settings_panel)
+    _grab(tool, "lut_tools_assign.png")
 
     # Channel-definition editor with the LUT-handling box.
     from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition import (

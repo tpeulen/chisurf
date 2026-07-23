@@ -41,3 +41,33 @@ def test_help_dialog_builds_from_readme(qapp):
 
     d = _HelpDialog()
     assert d.windowTitle().startswith("TTTR LUT Tools")
+
+
+def test_compute_panel_is_autoform(qapp):
+    from chisurf.plugins.tttr.tttr_lut_tools.gui.tac_lut_panel import TACLinearizationPanel
+
+    panel = TACLinearizationPanel()
+    assert hasattr(panel, "auto_form")
+    assert hasattr(panel, "model")
+
+
+def test_compute_viewmodel_load_and_region():
+    import pathlib
+
+    from chisurf.plugins.tttr.tttr_lut_tools.gui.view_model import LutComputeViewModel
+
+    spc = (pathlib.Path(__file__).resolve().parents[5]
+           / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc")
+    if not spc.is_file():
+        import pytest
+
+        pytest.skip("sample SPC not available")
+    vm = LutComputeViewModel()
+    vm.load_files([str(spc)])
+    assert vm.n_bins and vm.n_bins > 0
+    assert vm.linear_start < vm.linear_stop
+    assert vm.current_table is not None
+    # a parameter change recomputes without error
+    vm.ntac_required = 2048
+    vm.update()
+    assert vm.current_table["ntac_required"] == 2048

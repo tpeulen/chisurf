@@ -21,9 +21,11 @@ TAC histogram. Drag the orange region to mark the flat **linear plateau** (or le
 it auto-detect), then press **→ Use in ② Assign** to hand the computed LUT
 straight to the next stage (no need to save and reload a file).
 
+![① Compute LUT — the raw TAC histogram with the draggable linear region and the corrected preview below](figures/lut_tools_workspace.png)
+
 ### ② Assign it to channels
 
-![The LUT Tools workspace — ① Compute and ② Assign, with a computed LUT bridged in](figures/lut_tools_workspace.png)
+![② Assign / Export — the computed LUT bridged in, ready to assign to a channel](figures/lut_tools_assign.png)
 
 On **② Assign / Export**, add your measurement files (the used routing channels
 are detected automatically), select a channel, and click **Assign**. Optionally
