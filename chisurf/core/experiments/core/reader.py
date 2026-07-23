@@ -171,18 +171,34 @@ class ExperimentReader(chisurf.core.base.Base):
         self._stage_progress_cb = progress_cb
         self._stage_cancel_cb = cancel_cb
 
-    def _open_tttr(self, path, routine=None):
+    def _open_tttr(self, path, routine=None, *, channel_luts=None,
+                   channel_shifts=None, apply_lut=None):
         """Build a ``tttrlib.TTTR``, staging the file locally first if slow.
 
         Drop-in replacement for ``tttrlib.TTTR(path[, routine])`` used by the
         concrete TTTR readers so that loading from slow/network storage does
         not block on a single opaque read and can report progress.
+
+        When the reader is bound to a channel-definition setup, the setup's
+        per-routing-channel LUTs/shifts flow through here (falling back to the
+        reader's own ``channel_luts``/``channel_shifts``/``apply_lut`` attributes
+        when the arguments are not given) so reading is LUT-aware.
         """
         from chisurf.core.fio import staging
+
+        if channel_luts is None:
+            channel_luts = getattr(self, "channel_luts", None)
+        if channel_shifts is None:
+            channel_shifts = getattr(self, "channel_shifts", None)
+        if apply_lut is None:
+            apply_lut = bool(getattr(self, "apply_lut", False))
 
         return staging.open_tttr(
             path,
             routine,
+            channel_luts=channel_luts,
+            channel_shifts=channel_shifts,
+            apply_lut=apply_lut,
             progress_cb=getattr(self, "_stage_progress_cb", None),
             cancel_cb=getattr(self, "_stage_cancel_cb", None),
         )

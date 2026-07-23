@@ -87,72 +87,13 @@ def _load_tttr(path: str, filetype: str | None = None) -> tttrlib.TTTR:
     return tt
 
 
-def _compute_effective_shifts(
-    global_shift: int,
-    channel_shifts: dict[int, int],
-    routing_channels: np.ndarray,
-    n_mt: int,
-) -> dict[int, int]:
-    """Compute the effective per-channel shift modulo *n_mt*.
-
-    Parameters
-    ----------
-    global_shift : int
-        Global shift applied to all channels.
-    channel_shifts : dict
-        Per-channel shifts.
-    routing_channels : numpy.ndarray
-        Array of routing channel values.
-    n_mt : int
-        Number of micro-time channels.
-
-    Returns
-    -------
-    dict
-        Mapping from routing channel to effective shift value.
-
-    """
-    used = sorted(set(int(c) for c in routing_channels))
-    effective: dict[int, int] = {}
-    for ch in used:
-        per_ch = channel_shifts.get(ch, 0)
-        effective[ch] = (global_shift + per_ch) % n_mt
-    return effective
-
-
-def _apply_shifts(
-    tt: tttrlib.TTTR,
-    global_shift: int,
-    channel_shifts: dict[int, int],
-) -> dict[int, int]:
-    """Apply micro-time shifts to a TTTR object in place.
-
-    Parameters
-    ----------
-    tt : tttrlib.TTTR
-        TTTR object to shift.
-    global_shift : int
-        Global shift applied to all channels.
-    channel_shifts : dict
-        Per-channel shifts.
-
-    Returns
-    -------
-    dict
-        Mapping from routing channel to the effective shift applied.
-
-    """
-    n_mt = tt.header.get_effective_number_of_micro_time_channels()
-    routing = tt.routing_channels
-    used = sorted(set(int(c) for c in routing))
-    effective: dict[int, int] = {}
-    for ch in used:
-        per_ch = channel_shifts.get(ch, 0)
-        tot = (global_shift + per_ch) % n_mt
-        if tot != 0:
-            tt.shift_micro_time_by_channel(int(ch), int(tot))
-        effective[int(ch)] = int(tot)
-    return effective
+# The pure shift logic now lives in the core module so that both this plugin and
+# the core reading seam (chisurf.core.fio.staging.open_tttr) share one code path.
+# Re-exported here under the historic private names for backward compatibility.
+from chisurf.core.fio.tttr_shift import (  # noqa: E402
+    apply_shifts as _apply_shifts,
+    compute_effective_shifts as _compute_effective_shifts,
+)
 
 
 def shift_file(

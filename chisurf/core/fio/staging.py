@@ -295,10 +295,23 @@ def staged_source(
             shutil.rmtree(local.parent, ignore_errors=True)
 
 
+#: Default RNG seed for LUT dithering. tttrlib's ``apply_luts_and_shifts``
+#: distributes fractional micro-time bins stochastically (Felekyan dithering,
+#: which avoids the binning artifacts of deterministic rounding). Seed ``-1``
+#: (and ``0``) mean "random" -> non-reproducible reads; any *positive* fixed
+#: seed makes dithering reproducible, so reading the same file twice yields the
+#: same decay. We default to a fixed positive seed for reproducibility.
+LUT_DITHER_SEED = 42
+
+
 def open_tttr(
     src,
     routine=None,
     *,
+    channel_luts: dict | None = None,
+    channel_shifts: dict | None = None,
+    apply_lut: bool = False,
+    lut_seed: int = LUT_DITHER_SEED,
     progress_cb: ProgressCallback | None = None,
     cancel_cb: CancelCallback | None = None,
     **stage_kwargs,
@@ -310,6 +323,12 @@ def open_tttr(
     deleted once parsing finishes -- ``tttrlib`` has the events in memory by
     then, so the on-disk copy is no longer needed.
 
+    When a channel definition (setup) is associated with the read, this is also
+    the single seam that applies **per-routing-channel TAC linearization LUTs**
+    and **photon-level micro-time shifts**, so every reader that passes a setup's
+    correction becomes LUT-aware. With no LUT/shift (the default) the returned
+    object is identical to a plain ``tttrlib.TTTR(...)`` open.
+
     Parameters
     ----------
     src : str or pathlib.Path
@@ -317,6 +336,19 @@ def open_tttr(
     routine : str or int, optional
         ``tttrlib`` container/reading-routine argument. ``None``/empty means
         auto-detect from the filename (which staging preserves).
+    channel_luts : dict, optional
+        Mapping ``{routing_channel: NTAC_fract}`` of cumulative TAC-linearization
+        LUTs (see :mod:`chisurf.plugins.tttr.tttr_lut_tools.core.tac_lut`). Only
+        applied when *apply_lut* is true.
+    channel_shifts : dict, optional
+        Mapping ``{routing_channel: int}`` of photon-level micro-time shifts
+        (wrapping, applied after any LUT). Independent of *apply_lut*.
+    apply_lut : bool
+        Master gate for LUT linearization. When false, *channel_luts* is ignored
+        (raw micro-times); *channel_shifts* is still applied if given.
+    lut_seed : int
+        RNG seed for the LUT dithering (see :data:`LUT_DITHER_SEED`). A positive
+        value makes reads reproducible; ``-1``/``0`` request random dithering.
     progress_cb, cancel_cb
         Forwarded to :func:`stage_path_if_slow`.
     **stage_kwargs
@@ -326,5 +358,23 @@ def open_tttr(
 
     with staged_source(src, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs) as local:
         if routine is None or routine == "":
-            return tttrlib.TTTR(str(local))
-        return tttrlib.TTTR(str(local), routine)
+            tttr = tttrlib.TTTR(str(local))
+        else:
+            tttr = tttrlib.TTTR(str(local), routine)
+
+    # Apply per-routing-channel TAC linearization (LUT), gated by apply_lut, then
+    # the wrapping photon-level shift. Order matters: linearize the TAC axis first
+    # so the subsequent shift moves photons in uniform (corrected) bins.
+    if apply_lut and channel_luts:
+        import numpy as np
+
+        luts = {int(k): np.asarray(v, dtype=np.float64) for k, v in channel_luts.items()}
+        if luts:
+            tttr.apply_channel_luts(luts, {})
+            # Fixed positive seed + dithering: reproducible and artifact-free.
+            tttr.apply_luts_and_shifts(int(lut_seed), True)
+    if channel_shifts:
+        from chisurf.core.fio.tttr_shift import apply_shifts
+
+        apply_shifts(tttr, 0, {int(k): int(v) for k, v in channel_shifts.items()})
+    return tttr

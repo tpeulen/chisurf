@@ -31,6 +31,9 @@ class TCSPCTTTRReader(TCSPCReader):
             micro_time_coarsening: int = 1,
             micro_time_shift: int = 0,
             reading_routine: str | None = None,
+            channel_luts: dict | None = None,
+            channel_shifts: dict | None = None,
+            apply_lut: bool = False,
             **kwargs
     ):
         """Initialize a TCSPC TTTR reader.
@@ -44,11 +47,23 @@ class TCSPCTTTRReader(TCSPCReader):
         micro_time_coarsening : int
             Coarsening factor for the micro-time histogram.
         micro_time_shift : int
-            Shift applied to the micro-time histogram (in bins).
+            Histogram-level shift applied to the binned decay (in bins). This is
+            distinct from the photon-level per-channel shift in *channel_shifts*.
         reading_routine : str or None
             tttrlib reading routine (e.g. ``'PTU'``).
+        channel_luts : dict, optional
+            Per-routing-channel TAC-linearization LUTs from the associated setup,
+            ``{routing_channel: NTAC_fract}``. Applied only when *apply_lut* is set.
+        channel_shifts : dict, optional
+            Per-routing-channel photon-level micro-time shifts (wrapping),
+            ``{routing_channel: int}``, from the associated setup.
+        apply_lut : bool
+            Master gate for LUT linearization during reading.
         """
         super().__init__(*args, **kwargs)
+        self.channel_luts = dict(channel_luts) if channel_luts else {}
+        self.channel_shifts = dict(channel_shifts) if channel_shifts else {}
+        self.apply_lut = bool(apply_lut)
         if reading_routine is not None:
             self.reading_routine = reading_routine
         if not hasattr(self, "channel_numbers"):
@@ -260,6 +275,8 @@ class TCSPCTTTRReader(TCSPCReader):
         hdr = getattr(self, "_tttr_header_json", "")
         if hdr:
             meta_data["tttr_header_json"] = hdr
+        if getattr(self, "apply_lut", False) and getattr(self, "channel_luts", None):
+            meta_data["lut_linearized"] = True
         data_set = chisurf.core.data.DataCurve(
             x=t,
             y=y,

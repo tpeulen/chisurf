@@ -13,6 +13,7 @@ from chisurf.core.fio import staging
 
 HERE = pathlib.Path(__file__).resolve().parents[1]  # test/
 PTU = HERE / "data" / "clsm" / "Leica_SP8.ptu"
+SPC = HERE / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
 
 
 @pytest.fixture
@@ -141,3 +142,69 @@ def test_open_tttr_fast_path_no_leftover(isolated_cache):
     # Local sample is fast -> not staged, nothing left in the cache.
     staging.open_tttr(str(PTU))
     assert not any(isolated_cache.iterdir())
+
+
+# --- LUT / photon-shift aware reading -------------------------------------
+#
+# open_tttr is the single seam that applies per-routing-channel TAC
+# linearization LUTs and photon-level micro-time shifts when a setup is
+# associated with the read. These tests pin the contract: default reads are
+# byte-identical to a plain tttrlib open; applied LUTs are reproducible.
+
+import numpy as np  # noqa: E402
+
+
+def _spc_lut_for_first_channel():
+    """Build a real Felekyan LUT for the first routing channel of the SPC fixture."""
+    tttrlib = pytest.importorskip("tttrlib")
+    from chisurf.plugins.tttr.tttr_lut_tools.core import tac_lut
+
+    t = tttrlib.TTTR(str(SPC))
+    ch = sorted(int(c) for c in set(int(x) for x in t.get_used_routing_channels()))[0]
+    n_mt = int(t.header.get_effective_number_of_micro_time_channels())
+    counts = np.bincount(
+        np.asarray(t.get_tttr_by_channel([ch]).micro_times), minlength=n_mt
+    ).astype(float)
+    tbl = tac_lut.build_linearization_table(counts, 0, len(counts), n_mt, 0)
+    return ch, np.asarray(tbl["NTAC_fract"], dtype=np.float64)
+
+
+@pytest.mark.skipif(not SPC.is_file(), reason="sample SPC not available")
+def test_open_tttr_no_lut_is_raw():
+    """No LUT / apply_lut=False -> identical micro-times to a plain open."""
+    tttrlib = pytest.importorskip("tttrlib")
+    raw = np.asarray(tttrlib.TTTR(str(SPC)).micro_times)
+    ch, ntac = _spc_lut_for_first_channel()
+
+    seam = np.asarray(staging.open_tttr(str(SPC)).micro_times)
+    assert np.array_equal(raw, seam)
+
+    # LUT supplied but gate off -> still raw.
+    off = np.asarray(
+        staging.open_tttr(str(SPC), channel_luts={ch: ntac}, apply_lut=False).micro_times
+    )
+    assert np.array_equal(raw, off)
+
+
+@pytest.mark.skipif(not SPC.is_file(), reason="sample SPC not available")
+def test_open_tttr_lut_applied_and_reproducible():
+    """apply_lut=True changes the data and, with the fixed seed, is reproducible."""
+    tttrlib = pytest.importorskip("tttrlib")
+    raw = np.asarray(tttrlib.TTTR(str(SPC)).micro_times)
+    ch, ntac = _spc_lut_for_first_channel()
+
+    a = np.asarray(staging.open_tttr(str(SPC), channel_luts={ch: ntac}, apply_lut=True).micro_times)
+    b = np.asarray(staging.open_tttr(str(SPC), channel_luts={ch: ntac}, apply_lut=True).micro_times)
+
+    assert not np.array_equal(raw, a)  # correction did something
+    assert np.array_equal(a, b)  # fixed-seed dithering -> reproducible
+
+
+@pytest.mark.skipif(not SPC.is_file(), reason="sample SPC not available")
+def test_open_tttr_channel_shift_wraps():
+    """A photon-level channel shift mutates the data independent of apply_lut."""
+    tttrlib = pytest.importorskip("tttrlib")
+    raw = np.asarray(tttrlib.TTTR(str(SPC)).micro_times)
+    ch, _ = _spc_lut_for_first_channel()
+    shifted = np.asarray(staging.open_tttr(str(SPC), channel_shifts={ch: 5}).micro_times)
+    assert not np.array_equal(raw, shifted)
