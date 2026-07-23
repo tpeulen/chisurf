@@ -100,6 +100,7 @@ def run_analysis(
         time_scale=int(settings.time_scale),
         min_photons=int(settings.min_photons),
         return_meta=True,
+        divisors=int(getattr(settings, "divisors", 1)),
     )
 
     # The per-EM-map cache cost scales with the number of *unique* inter-photon
@@ -136,6 +137,7 @@ def run_analysis(
         surrogates=_load_surrogates(settings),
         refine_iters=int(settings.refine_iters),
         patience=settings.patience,
+        divisors=int(getattr(settings, "divisors", 1)),
         progress=progress,
     )
 

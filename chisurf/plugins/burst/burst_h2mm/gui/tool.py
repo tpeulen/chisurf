@@ -276,10 +276,20 @@ class H2mmTool(QMainWindow):
         self.sb_time_scale = QSpinBox()
         self.sb_time_scale.setRange(1, 100000)
         self.sb_time_scale.setValue(1)
+        self.sb_divisors = QSpinBox()
+        self.sb_divisors.setRange(1, 8)
+        self.sb_divisors.setValue(1)
+        self.sb_divisors.setSpecialValueText("off (E only)")
+        self.sb_divisors.setToolTip(
+            "Nanotime divisors: split each stream into this many micro-time "
+            "(fluorescence-lifetime) bins so H2MM can separate states that share "
+            "an apparent FRET E but differ in lifetime. 1 = off."
+        )
         of.addRow("Restarts:", self.sb_restarts)
         of.addRow("Max iterations:", self.sb_max_iter)
         of.addRow("Min photons/burst:", self.sb_min_photons)
         of.addRow("Macro-time scale:", self.sb_time_scale)
+        of.addRow("Nanotime divisors:", self.sb_divisors)
         layout.addWidget(opt)
         layout.addStretch()
         return w
@@ -452,6 +462,7 @@ class H2mmTool(QMainWindow):
             max_iter=self.sb_max_iter.value(),
             min_photons=self.sb_min_photons.value(),
             time_scale=self.sb_time_scale.value(),
+            divisors=self.sb_divisors.value(),
             file_type=self.file_type,
             engine=self.cb_engine.currentData() or "em",
             patience=None if patience < 0 else patience,
@@ -599,7 +610,6 @@ class H2mmTool(QMainWindow):
         ana = self._bundle.analysis
         data = self._bundle.data
         settings = self._bundle.settings
-        aex = 2 if int(data.n_streams) >= 3 else None
         n_boot = 20
 
         self._uprog = EnhancedProgressDialog("H2MM", "Bootstrapping …", 0, n_boot, self)
@@ -621,7 +631,11 @@ class H2mmTool(QMainWindow):
         worker = Worker(
             bootstrap_uncertainty, data, int(ana.best.n_states),
             n_boot=n_boot, engine=getattr(settings, "engine", "em"),
-            n_restarts=1, max_iter=300, aex_stream=aex, progress=_progress,
+            n_restarts=1, max_iter=300,
+            donor_streams=getattr(ana, "donor_streams", (0,)),
+            acceptor_streams=getattr(ana, "acceptor_streams", (1,)),
+            aex_streams=getattr(ana, "aex_streams", None),
+            progress=_progress,
         )
         worker.signals.result.connect(self._on_uncert_result)
         worker.signals.error.connect(self._on_uncert_error)
@@ -683,8 +697,11 @@ class H2mmTool(QMainWindow):
         best = min(fits, key=key)
         from ..core.analysis import state_fret
 
-        acc = 1 if best.model.n_streams > 1 else 0
-        fret = state_fret(best.model, acceptor_stream=acc, donor_stream=0)
+        div = max(int(self.sb_divisors.value()), 1)
+        n_base = max(best.model.n_streams // div, 1)
+        donor = range(0, div)
+        acc = range(div, 2 * div) if n_base > 1 else range(0, div)
+        fret = state_fret(best.model, acceptor_stream=acc, donor_stream=donor)
         self._p_fret.clear()
         for i, e in enumerate(fret):
             if not np.isfinite(e):
@@ -897,8 +914,9 @@ class H2mmTool(QMainWindow):
         micro = np.asarray(meta.micro_time)
         if micro.shape[0] != path.shape[0] or micro.size == 0:
             return
+        donor_streams = getattr(ana, "donor_streams", (0,))
         tau = state_mean_nanotime(path, micro, self._bundle.data.streams, int(fret.shape[0]),
-                                  donor_stream=0)
+                                  donor_stream=donor_streams)
         good = np.isfinite(fret) & np.isfinite(tau)
         if not good.any():
             return

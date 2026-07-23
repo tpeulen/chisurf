@@ -196,6 +196,43 @@ def extract_burst_photons(
     return times_out, streams_out
 
 
+def _divisor_edges(micro_all: np.ndarray, base_all: np.ndarray, n_base: int, divisors: int):
+    """Per-base-stream micro-time quantile edges for ``divisors`` bins.
+
+    Returns a list (one entry per base stream) of the interior bin edges, so a
+    photon's nanotime bin is ``searchsorted(edges[base], micro)``. Quantiles give
+    ≈equal-occupancy bins, which is the robust default for splitting a stream by
+    fluorescence lifetime.
+    """
+    qs = np.linspace(0.0, 1.0, divisors + 1)[1:-1]  # interior quantiles
+    edges: list[np.ndarray] = []
+    for b in range(n_base):
+        m = micro_all[base_all == b]
+        edges.append(np.quantile(m, qs) if m.size else np.zeros(qs.shape))
+    return edges
+
+
+def _apply_divisors(stream_idx, micro, n_base: int, divisors: int):
+    """Split per-burst base streams into ``divisors`` nanotime bins each.
+
+    The expanded stream index is ``base * divisors + bin`` (contiguous blocks per
+    base stream), so a caller can recover the base role as ``index // divisors``.
+    """
+    base_all = np.concatenate(stream_idx) if stream_idx else np.array([], dtype=np.int32)
+    micro_all = np.concatenate(micro) if micro else np.array([], dtype=np.int64)
+    edges = _divisor_edges(micro_all, base_all, n_base, divisors)
+    out: list[np.ndarray] = []
+    for base_b, micro_b in zip(stream_idx, micro):
+        new = np.empty_like(base_b)
+        for b in range(n_base):
+            mask = base_b == b
+            if mask.any():
+                bins = np.searchsorted(edges[b], micro_b[mask], side="right")
+                new[mask] = (b * divisors + bins).astype(new.dtype)
+        out.append(new)
+    return out
+
+
 def bursts_from_dataframe(
     df: pd.DataFrame,
     tttrs: dict[str, tttrlib.TTTR],
@@ -203,14 +240,20 @@ def bursts_from_dataframe(
     time_scale: int = 1,
     min_photons: int = 3,
     return_meta: bool = False,
+    divisors: int = 1,
 ):
     """Return engine-ready :class:`BurstPhotons` from a burst DataFrame.
 
     With ``return_meta`` also returns a :class:`PhotonMeta` whose arrays align
     photon-for-photon with ``BurstPhotons.streams`` (for the per-photon result
-    table).
+    table). With ``divisors > 1`` each of the ``len(streams)`` base streams is
+    split into ``divisors`` micro-time (nanotime) bins, giving
+    ``len(streams) * divisors`` streams laid out as contiguous per-base blocks
+    (so ``stream_index // divisors`` recovers the base stream).
     """
-    if return_meta:
+    divisors = max(int(divisors), 1)
+    need_meta = return_meta or divisors > 1
+    if need_meta:
         times, stream_idx, micro, chan = extract_burst_photons(
             df, tttrs, streams, time_scale=time_scale,
             min_photons=min_photons, with_meta=True,
@@ -221,7 +264,11 @@ def bursts_from_dataframe(
         )
     if not times:
         raise ValueError("no bursts with enough stream-assigned photons")
-    data = prepare_bursts(times, stream_idx, n_streams=len(streams))
+    n_streams = len(streams)
+    if divisors > 1:
+        stream_idx = _apply_divisors(stream_idx, micro, len(streams), divisors)
+        n_streams = len(streams) * divisors
+    data = prepare_bursts(times, stream_idx, n_streams=n_streams)
     if not return_meta:
         return data
     meta = PhotonMeta(

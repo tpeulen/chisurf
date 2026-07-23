@@ -135,12 +135,32 @@ class H2mmAnalysis:
     base_time_s: float
     n_photons: int
     n_bursts: int
+    divisors: int = 1
+    donor_streams: tuple[int, ...] = (0,)
+    acceptor_streams: tuple[int, ...] = (1,)
+    aex_streams: tuple[int, ...] | None = None
 
 
-def state_fret(model: H2mmModel, acceptor_stream: int = 1, donor_stream: int = 0) -> np.ndarray:
-    """Return apparent per-state FRET ``E = A / (A + D)`` from the emission matrix."""
-    a = model.obs[:, acceptor_stream]
-    d = model.obs[:, donor_stream]
+def _obs_sum(model: H2mmModel, streams) -> np.ndarray:
+    """Sum the emission matrix over one or more stream indices (per state)."""
+    if streams is None:
+        return np.zeros(model.n_states, dtype=np.float64)
+    cols = np.atleast_1d(np.asarray(streams, dtype=int))
+    cols = cols[(cols >= 0) & (cols < model.n_streams)]
+    if cols.size == 0:
+        return np.zeros(model.n_states, dtype=np.float64)
+    return model.obs[:, cols].sum(axis=1)
+
+
+def state_fret(model: H2mmModel, acceptor_stream=1, donor_stream=0) -> np.ndarray:
+    """Return apparent per-state FRET ``E = A / (A + D)`` from the emission matrix.
+
+    ``donor_stream`` / ``acceptor_stream`` may be a single index or a sequence of
+    indices (the latter for nanotime-divisor streams, where a role spans several
+    micro-time bins).
+    """
+    a = _obs_sum(model, acceptor_stream)
+    d = _obs_sum(model, donor_stream)
     denom = a + d
     with np.errstate(divide="ignore", invalid="ignore"):
         e = np.where(denom > 0, a / denom, np.nan)
@@ -149,23 +169,29 @@ def state_fret(model: H2mmModel, acceptor_stream: int = 1, donor_stream: int = 0
 
 def state_stoichiometry(
     model: H2mmModel,
-    donor_stream: int = 0,
-    acceptor_stream: int = 1,
-    aex_stream: int | None = 2,
+    donor_stream=0,
+    acceptor_stream=1,
+    aex_stream=2,
 ) -> np.ndarray:
     """Return apparent per-state stoichiometry ``S`` from the emission matrix.
 
     ``S = (D + A) / (D + A + A_ex)`` where ``D`` / ``A`` are the donor- and
     acceptor-emission streams under donor excitation and ``A_ex`` is the
     acceptor-emission stream under acceptor (direct) excitation — the µsALEX/PIE
-    stoichiometry. Returns all-``nan`` when ``aex_stream`` is ``None`` or the
-    model has too few streams (no acceptor-excitation channel defined).
+    stoichiometry. Each argument may be a single index or a sequence of indices
+    (nanotime-divisor streams). Returns all-``nan`` when ``aex_stream`` is ``None``
+    or resolves to no valid stream (no acceptor-excitation channel defined).
     """
     n_states = model.n_states
-    if aex_stream is None or model.n_streams <= aex_stream:
+    if aex_stream is None:
         return np.full(n_states, np.nan, dtype=np.float64)
-    dex = model.obs[:, donor_stream] + model.obs[:, acceptor_stream]
-    denom = dex + model.obs[:, aex_stream]
+    aex_cols = np.atleast_1d(np.asarray(aex_stream, dtype=int))
+    aex_cols = aex_cols[(aex_cols >= 0) & (aex_cols < model.n_streams)]
+    if aex_cols.size == 0:  # no acceptor-excitation channel defined
+        return np.full(n_states, np.nan, dtype=np.float64)
+    aex = model.obs[:, aex_cols].sum(axis=1)
+    dex = _obs_sum(model, donor_stream) + _obs_sum(model, acceptor_stream)
+    denom = dex + aex
     with np.errstate(divide="ignore", invalid="ignore"):
         s = np.where(denom > 0, dex / denom, np.nan)
     return s
@@ -244,9 +270,9 @@ def bootstrap_uncertainty(
     max_iter: int = 300,
     tol: float = 1e-7,
     seed: int = 0,
-    donor_stream: int = 0,
-    acceptor_stream: int = 1,
-    aex_stream: int | None = None,
+    donor_streams=(0,),
+    acceptor_streams=(1,),
+    aex_streams=None,
     ci: tuple[float, float] = (2.5, 97.5),
     progress=None,
 ) -> Uncertainty:
@@ -271,10 +297,10 @@ def bootstrap_uncertainty(
         sub = _subset_bursts(data, idx)
         fit = fit_one(sub, n_states, engine, n_restarts=n_restarts,
                       max_iter=max_iter, tol=tol, seed=int(rng.integers(0, 2**31 - 1)))
-        e = state_fret(fit, acceptor_stream, donor_stream)
+        e = state_fret(fit, acceptor_streams, donor_streams)
         order = np.argsort(e)
         e_samples.append(e[order])
-        s_samples.append(state_stoichiometry(fit, donor_stream, acceptor_stream, aex_stream)[order])
+        s_samples.append(state_stoichiometry(fit, donor_streams, acceptor_streams, aex_streams)[order])
         esc_samples.append((1.0 - np.diag(fit.trans))[order])
         if progress is not None:
             progress(b + 1, int(n_boot))
@@ -307,7 +333,7 @@ def state_mean_nanotime(
     micro_time: np.ndarray,
     streams: np.ndarray,
     n_states: int,
-    donor_stream: int = 0,
+    donor_stream=0,
 ) -> np.ndarray:
     """Mean donor micro-time (nanotime) per Viterbi state.
 
@@ -338,9 +364,11 @@ def state_mean_nanotime(
     path = np.asarray(path)
     micro_time = np.asarray(micro_time, dtype=np.float64)
     streams = np.asarray(streams)
+    donor = np.atleast_1d(np.asarray(donor_stream, dtype=int))
+    is_donor = np.isin(streams, donor)
     out = np.full(n_states, np.nan, dtype=np.float64)
     for s in range(n_states):
-        m = (path == s) & (streams == donor_stream)
+        m = (path == s) & is_donor
         if m.any():
             out[s] = float(micro_time[m].mean())
     return out
@@ -432,23 +460,24 @@ def scan_states(
 
 def _measured_es(
     streams: np.ndarray,
-    donor_stream: int,
-    acceptor_stream: int,
-    aex_stream: int | None,
+    donor_streams,
+    acceptor_streams,
+    aex_streams,
 ) -> tuple[float, float]:
     """Measured ``(E, S)`` for the photons of a single dwell.
 
     ``streams`` is the per-photon stream slice of the dwell; ``E`` and ``S`` use
     the same definitions as :func:`state_fret` / :func:`state_stoichiometry` but
-    from photon *counts* rather than the model emission matrix.
+    from photon *counts* rather than the model emission matrix. Each role argument
+    is a set of stream indices (one, or several for nanotime-divisor streams).
     """
-    d = int(np.count_nonzero(streams == donor_stream))
-    a = int(np.count_nonzero(streams == acceptor_stream))
+    d = int(np.count_nonzero(np.isin(streams, donor_streams)))
+    a = int(np.count_nonzero(np.isin(streams, acceptor_streams)))
     dex = d + a
     e = a / dex if dex > 0 else np.nan
-    if aex_stream is None:
+    if not aex_streams:
         return e, np.nan
-    aex = int(np.count_nonzero(streams == aex_stream))
+    aex = int(np.count_nonzero(np.isin(streams, aex_streams)))
     s = dex / (dex + aex) if (dex + aex) > 0 else np.nan
     return e, s
 
@@ -458,9 +487,9 @@ def _dwells_and_transitions(
     data: BurstPhotons,
     fret: np.ndarray,
     path: np.ndarray,
-    donor_stream: int = 0,
-    acceptor_stream: int = 1,
-    aex_stream: int | None = None,
+    donor_streams=(0,),
+    acceptor_streams=(1,),
+    aex_streams=None,
 ) -> tuple[dict[int, list[int]], list[Dwell], list[Transition], np.ndarray]:
     """Derive dwell records, transitions, and photon populations via Viterbi.
 
@@ -484,7 +513,7 @@ def _dwells_and_transitions(
     def _record_dwell(b: int, st: int, g0: int, g1: int, dur: int) -> None:
         """Append the dwell spanning global photon indices ``[g0, g1)``."""
         dwell_durs[st].append(int(dur))
-        e, s = _measured_es(streams_all[g0:g1], donor_stream, acceptor_stream, aex_stream)
+        e, s = _measured_es(streams_all[g0:g1], donor_streams, acceptor_streams, aex_streams)
         dwells.append(
             Dwell(burst=b, state=st, dur=int(dur), n_photons=int(g1 - g0),
                   e=float(e), s=float(s), start=int(g0), stop=int(g1))
@@ -542,6 +571,7 @@ def analyze(
     surrogates: dict[int, object] | None = None,
     refine_iters: int = 20,
     patience: int | None = None,
+    divisors: int = 1,
     progress=None,
 ) -> H2mmAnalysis:
     """Fit, select, and characterise an H2MM model over a range of states.
@@ -574,6 +604,11 @@ def analyze(
         Early-stop the state-count scan once the criterion has risen for
         ``patience + 1`` consecutive counts (see :func:`scan_states`); ``None``
         scans every count.
+    divisors : int
+        Nanotime divisors: number of micro-time bins per base stream in ``data``
+        (``data.n_streams == n_base * divisors``, contiguous per-base blocks). The
+        FRET/stoichiometry roles sum the emission matrix over each block. ``1``
+        (default) means no nanotime splitting.
     progress : callable, optional
         Called ``progress(done, total, fits)`` after each state-count fit (for
         progress bars / live plots).
@@ -592,17 +627,23 @@ def analyze(
     key = (lambda f: f.icl) if criterion.lower() == "icl" else (lambda f: f.bic)
     best = min(scan, key=key)
 
-    # An acceptor-excitation (Aex) stream — needed for stoichiometry — is present
-    # only for µsALEX/PIE data with three or more streams; otherwise S is absent.
-    aex_stream = 2 if data.n_streams >= 3 else None
+    # With nanotime divisors each base stream (donor, acceptor, optional Aex) is a
+    # contiguous block of ``divisors`` streams; the FRET/stoichiometry roles sum
+    # over the block. An Aex block — needed for stoichiometry — is present only for
+    # µsALEX/PIE data with three or more base streams; otherwise S is absent.
+    div = max(int(divisors), 1)
+    n_base = int(data.n_streams) // div
+    donor_streams = tuple(range(donor_stream * div, donor_stream * div + div))
+    acceptor_streams = tuple(range(acceptor_stream * div, acceptor_stream * div + div))
+    aex_streams = tuple(range(2 * div, 3 * div)) if n_base >= 3 else None
 
-    fret = state_fret(best.model, acceptor_stream, donor_stream)
-    stoich = state_stoichiometry(best.model, donor_stream, acceptor_stream, aex_stream)
+    fret = state_fret(best.model, acceptor_streams, donor_streams)
+    stoich = state_stoichiometry(best.model, donor_streams, acceptor_streams, aex_streams)
 
     path, _ = viterbi(best.model, data)
     dwell_durs, dwells, transitions, populations = _dwells_and_transitions(
         best.model, data, fret, path,
-        donor_stream=donor_stream, acceptor_stream=acceptor_stream, aex_stream=aex_stream,
+        donor_streams=donor_streams, acceptor_streams=acceptor_streams, aex_streams=aex_streams,
     )
     dwell_arrays = {s: np.asarray(v, dtype=np.float64) for s, v in dwell_durs.items()}
 
@@ -626,4 +667,8 @@ def analyze(
         base_time_s=base_time_s,
         n_photons=data.n_photons,
         n_bursts=data.n_bursts,
+        divisors=div,
+        donor_streams=donor_streams,
+        acceptor_streams=acceptor_streams,
+        aex_streams=aex_streams,
     )

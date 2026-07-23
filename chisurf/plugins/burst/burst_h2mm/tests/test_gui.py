@@ -241,7 +241,8 @@ def test_h2mm_gui_alex_es_and_nanotime(qapp):
     from chisurf.plugins.burst.burst_h2mm.core.analysis import bootstrap_uncertainty
 
     w._uncertainty = bootstrap_uncertainty(
-        data, ana.best.n_states, n_boot=4, n_restarts=1, max_iter=120, aex_stream=2, seed=0
+        data, ana.best.n_states, n_boot=4, n_restarts=1, max_iter=120,
+        aex_streams=(2,), seed=0
     )
     w._plot_dwell_fret(ana)
     w._plot_etau(ana)

@@ -46,6 +46,11 @@ class H2mmSettings:
         Maximum EM iterations per fit.
     tol : float
         Convergence threshold on the log-likelihood increment.
+    divisors : int
+        Nanotime divisors — split each photon stream into this many micro-time
+        (fluorescence-lifetime) bins, adding streams so H2MM can separate states
+        that share an apparent FRET E but differ in lifetime. ``1`` (default) is
+        off; bin edges are per-stream micro-time quantiles (≈equal occupancy).
     time_scale : int
         Integer down-scaling of macro times (coarser base unit).
     min_photons : int
@@ -84,6 +89,7 @@ class H2mmSettings:
     n_restarts: int = 2
     max_iter: int = 500
     tol: float = 1e-7
+    divisors: int = 1
     time_scale: int = 1
     min_photons: int = 5
     file_type: str = "SPC-130"

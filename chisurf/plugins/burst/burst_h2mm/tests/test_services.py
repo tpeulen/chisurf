@@ -135,6 +135,46 @@ def test_analyze_stoichiometry_with_alex_stream():
     assert s_vals.size > 0
 
 
+def test_nanotime_divisors_expand_streams_and_recover_fret():
+    """Divisors split each stream into micro-time bins; FRET sums over the blocks."""
+    gt = h2mm.H2mmModel(
+        np.array([0.5, 0.5]),
+        np.array([[0.99, 0.01], [0.02, 0.98]]),
+        np.array([[0.85, 0.15], [0.20, 0.80]]),
+    )
+    rng = np.random.default_rng(11)
+    times = [
+        np.concatenate([[0], np.cumsum(rng.poisson(4, size=79) + 1)]).astype(np.int64)
+        for _ in range(220)
+    ]
+    sim = h2mm.simulate_bursts(gt, times, seed=12)
+    macro, chan, micro, rows = [], [], [], []
+    offset = base = 0
+    for t, s in zip(times, sim):
+        macro.append(t + base)
+        chan.append(s.astype(np.int64))
+        micro.append(rng.integers(0, 4096, size=t.shape[0]))  # non-trivial nanotimes
+        rows.append(("f.spc", offset, offset + t.shape[0]))
+        offset += t.shape[0]
+        base += int(t[-1]) + 1000
+    tttr = _fake_tttr(np.concatenate(macro), np.concatenate(chan), np.concatenate(micro))
+    df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
+    streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
+
+    data = bursts_from_dataframe(df, {"f.spc": tttr}, streams, min_photons=5, divisors=2)
+    assert data.n_streams == 4  # 2 base streams × 2 nanotime bins
+    # Both nanotime bins of each base stream are populated (random micro times).
+    assert set(np.unique(data.streams).tolist()) == {0, 1, 2, 3}
+
+    ana = analysis.analyze(data, state_counts=(2,), divisors=2, base_time_s=1e-6,
+                           n_restarts=2, max_iter=200)
+    assert ana.n_streams == 4 and ana.divisors == 2
+    assert ana.donor_streams == (0, 1) and ana.acceptor_streams == (2, 3)
+    # Apparent FRET, summed over the donor/acceptor blocks, still separates.
+    fret_sorted = np.sort(ana.fret)
+    assert fret_sorted[0] < 0.35 and fret_sorted[-1] > 0.65
+
+
 def test_bootstrap_uncertainty_brackets_state_fret():
     """Bootstrap CIs are ordered, finite, and bracket the recovered FRET states."""
     from chisurf.plugins.burst.burst_h2mm.core.analysis import bootstrap_uncertainty
