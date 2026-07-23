@@ -172,6 +172,10 @@ class DetectorWizardPage(QWizardPage):
         self._channel_shifts: dict[int, int] = {}
         self._channel_lut_sources: dict[int, str] = {}
         self._apply_lut = False
+        # Polarization-resolved detection (default ON): each detector's routing
+        # channels are interleaved parallel/perpendicular (VV/VH). OFF = a single
+        # unpolarized stream per detector (no VV/VH split).
+        self._polarization_resolved = True
         self.show_edit_json = show_edit_json
         self.show_save = show_save
         self.show_setups_file = show_setups_file
@@ -873,6 +877,12 @@ class DetectorWizardPage(QWizardPage):
 
         # Restore per-routing-channel TAC-linearization LUTs + shifts + gate.
         self._apply_lut = bool(data.get("apply_lut", False))
+        self._polarization_resolved = bool(data.get("polarization_resolved", True))
+        cbp = getattr(self, "_pol_resolved_checkbox", None)
+        if cbp is not None:
+            cbp.blockSignals(True)
+            cbp.setChecked(self._polarization_resolved)
+            cbp.blockSignals(False)
         raw_luts = data.get("channel_luts") or {}
         self._channel_luts = {}
         try:
@@ -1100,6 +1110,17 @@ class DetectorWizardPage(QWizardPage):
         self._box_reading = _wrap(self.tttr_layout, "TTTR Reading routine", expanded=True)
         self._box_windows = _wrap(self.gridLayout_2, "PIE Windows", expanded=False)
         self._box_detectors = _wrap(self.gridLayout_3, "Detectors", expanded=True)
+
+        # Polarization-resolved flag (default ON) in the Detectors box header.
+        self._pol_resolved_checkbox = QCheckBox("Polarization resolved")
+        self._pol_resolved_checkbox.setToolTip(
+            "ON: each detector's routing channels are interleaved parallel/"
+            "perpendicular (VV/VH) for anisotropy. OFF: one unpolarized stream "
+            "per detector (no VV/VH split)."
+        )
+        self._pol_resolved_checkbox.setChecked(bool(self._polarization_resolved))
+        self._pol_resolved_checkbox.toggled.connect(self._on_pol_resolved_toggled)
+        self._box_detectors.add_header_widget(self._pol_resolved_checkbox)
         self._box_lut = self._build_lut_box()
 
         ncol = max(1, grid.columnCount())
@@ -1274,6 +1295,14 @@ class DetectorWizardPage(QWizardPage):
             # LUT-aware here would double-apply.
             tttr = open_tttr(str(path), routine, apply_lut=False)
             _update_microtime_preview(self, tttr, file_path=str(path))
+        except Exception:
+            pass
+
+    def _on_pol_resolved_toggled(self, checked: bool):
+        """Polarization-resolved flag toggled (interleaved VV/VH vs single stream)."""
+        self._polarization_resolved = bool(checked)
+        try:
+            self.detectorsChanged.emit()
         except Exception:
             pass
 
@@ -1561,6 +1590,7 @@ class DetectorWizardPage(QWizardPage):
         # setup is self-contained and every reader that selects it reads
         # LUT-aware. Empty when no LUTs are assigned -> readers fall back to raw.
         result["apply_lut"] = bool(self._apply_lut)
+        result["polarization_resolved"] = bool(self._polarization_resolved)
         result["channel_luts"] = {
             str(k): (v.tolist() if hasattr(v, "tolist") else list(v))
             for k, v in self._channel_luts.items()

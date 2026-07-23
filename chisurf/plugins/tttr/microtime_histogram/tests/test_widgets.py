@@ -79,3 +79,29 @@ def test_apply_setup_lut_linearizes_histogram() -> None:
     MicrotimeHistogram._apply_setup_lut(_Self(), d2)
     off = np.asarray(d2.get_tttr_by_channel([0]).get_microtime_histogram(1)[0], dtype=float)
     assert np.array_equal(raw[:n], off[:n])
+
+
+def test_polarization_resolved_gates_parallel_perp() -> None:
+    """polarization_resolved ON = interleaved VV/VH; OFF = one unpolarized stream."""
+    import types
+
+    from chisurf.plugins.tttr.microtime_histogram.wizard import MicrotimeHistogram
+
+    class _Page:
+        _polarization_resolved = True
+
+    class _Self:
+        detector_wizard_page = _Page()
+
+        def _get_interleaved_channels(self):
+            return [8, 0, 3, 9, 1, 2]
+
+    s = _Self()
+    s._is_polarization_resolved = types.MethodType(
+        MicrotimeHistogram._is_polarization_resolved, s)
+    assert MicrotimeHistogram.parallel_channels.fget(s) == [8, 3, 1]
+    assert MicrotimeHistogram.perpendicular_channels.fget(s) == [0, 9, 2]
+
+    _Page._polarization_resolved = False
+    assert MicrotimeHistogram.parallel_channels.fget(s) == [8, 0, 3, 9, 1, 2]
+    assert MicrotimeHistogram.perpendicular_channels.fget(s) == []

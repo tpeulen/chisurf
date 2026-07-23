@@ -159,6 +159,20 @@ def test_shift_dialog_loads_lut_corrected_and_round_trips(qapp):
     assert dlg.shifts() == {0: 5, 1: 10}
 
 
+def test_polarization_resolved_flag_defaults_on_and_round_trips(qapp, tmp_path):
+    data = {"detectors": {"g": {"chs": [0]}}, "tttr_reading": {"file_type": "SPC-130"}}
+    setup = tmp_path / "s.json"
+    setup.write_text(json.dumps(data))
+    page = _page(str(setup))
+    # default ON (no key in the setup)
+    assert page._polarization_resolved is True
+    assert page._pol_resolved_checkbox.isChecked() is True
+    assert page.get_settings()["polarization_resolved"] is True
+    # toggle off -> persisted
+    page._pol_resolved_checkbox.setChecked(False)
+    assert page.get_settings()["polarization_resolved"] is False
+
+
 def test_toggle_apply_lut_updates_state(qapp, lut_setup):
     page = _page(lut_setup)
     page._apply_lut_checkbox.setChecked(False)

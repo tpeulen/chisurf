@@ -131,25 +131,44 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Invalid Input", "Channel input is not valid.")
             return []
     
+    def _is_polarization_resolved(self) -> bool:
+        """Whether the active setup is polarization-resolved (interleaved VV/VH).
+
+        Reads the ``polarization_resolved`` flag off the embedded Detector-Setup
+        page (default True). When False the detector's channels are one
+        unpolarized stream, so there is no VV/VH split.
+        """
+        page = getattr(self, "detector_wizard_page", None)
+        return bool(getattr(page, "_polarization_resolved", True)) if page else True
+
     @property
     def parallel_channels(self) -> list[int]:
         """
         Get the parallel channels (even indices) from the interleaved channel list.
-        
+
+        When the setup is not polarization-resolved, all channels are returned as
+        one (unpolarized) stream.
+
         Returns:
             list[int]: List of parallel channel numbers
         """
         interleaved = self._get_interleaved_channels()
+        if not self._is_polarization_resolved():
+            return list(interleaved)
         return interleaved[::2]  # Even indices (0, 2, 4, ...)
 
     @property
     def perpendicular_channels(self) -> list[int]:
         """
         Get the perpendicular channels (odd indices) from the interleaved channel list.
-        
+
+        Empty when the setup is not polarization-resolved (no VV/VH split).
+
         Returns:
             list[int]: List of perpendicular channel numbers
         """
+        if not self._is_polarization_resolved():
+            return []
         interleaved = self._get_interleaved_channels()
         return interleaved[1::2]  # Odd indices (1, 3, 5, ...)
         
@@ -1460,8 +1479,13 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                 # Get the original histograms without any timeshift
                 # Get interleaved channels and then extract parallel and perpendicular
                 interleaved_channels = self._get_interleaved_channels()
-                parallel_channels = interleaved_channels[::2]  # Even indices (0, 2, 4, ...)
-                perpendicular_channels = interleaved_channels[1::2]  # Odd indices (1, 3, 5, ...)
+                if self._is_polarization_resolved():
+                    parallel_channels = interleaved_channels[::2]  # Even indices
+                    perpendicular_channels = interleaved_channels[1::2]  # Odd indices
+                else:
+                    # Not polarization-resolved: one unpolarized stream, no VV/VH split.
+                    parallel_channels = list(interleaved_channels)
+                    perpendicular_channels = []
                 
                 chisurf.logging.info(f"Using interleaved channels: {interleaved_channels}")
                 chisurf.logging.info(f"Parallel channels (even indices): {parallel_channels}")
