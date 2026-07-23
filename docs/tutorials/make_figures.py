@@ -749,6 +749,60 @@ def fig_h2mm_recovery():
     save(fig, "h2mm_recovery.png")
 
 
+def fig_nsalex_etau():
+    """ns-ALEX: FRET efficiency vs donor lifetime with the static-FRET line."""
+    rng = np.random.default_rng(32)
+    tau0 = 3.8                                       # ns, donor-only lifetime
+    # static populations sit on tau = tau0 (1 - E); a dynamic one sits off it
+    E_lo = rng.normal(0.25, 0.05, 500); tau_lo = tau0 * (1 - E_lo) + rng.normal(0, 0.1, 500)
+    E_hi = rng.normal(0.7, 0.05, 500); tau_hi = tau0 * (1 - E_hi) + rng.normal(0, 0.1, 500)
+    E_dyn = rng.normal(0.5, 0.06, 400)
+    tau_dyn = tau0 * (1 - E_dyn) + 0.6 + rng.normal(0, 0.1, 400)   # above the line
+
+    fig, ax = plt.subplots(figsize=(5.6, 4.2))
+    ax.scatter(E_lo, tau_lo, s=8, alpha=0.4, color="#1f77b4", label="static")
+    ax.scatter(E_hi, tau_hi, s=8, alpha=0.4, color="#1f77b4")
+    ax.scatter(E_dyn, tau_dyn, s=8, alpha=0.4, color="#d62728", label="dynamic")
+    e = np.linspace(0, 1, 100)
+    ax.plot(e, tau0 * (1 - e), "k-", lw=2, label=r"static FRET line  $\tau=\tau_0(1-E)$")
+    ax.set_xlabel("FRET efficiency E"); ax.set_ylabel(r"donor lifetime $\tau_{D}$ (ns)")
+    ax.set_xlim(0, 1); ax.set_ylim(0, tau0 * 1.1)
+    ax.set_title("ns-ALEX: FRET–lifetime (E–τ) plot"); ax.legend(fontsize=8)
+    save(fig, "nsalex_etau.png")
+
+
+def fig_combining_repeats():
+    rng = np.random.default_rng(33)
+    fig, ax = plt.subplots(figsize=(5.8, 4.0))
+    bins = np.arange(-0.05, 1.05, 0.03)
+    allE = []
+    for i, (n, c) in enumerate([(600, "#9ecae1"), (700, "#6baed6"), (550, "#3182bd")]):
+        E = np.concatenate([rng.normal(0.3, 0.05, n // 2), rng.normal(0.72, 0.05, n // 2)])
+        allE.append(E)
+        ax.hist(E, bins=bins, histtype="step", color=c, label=f"repeat {i+1} (n={n})")
+    ax.hist(np.concatenate(allE), bins=bins, color="0.85", zorder=0, label="combined")
+    ax.set_xlabel("FRET efficiency E"); ax.set_ylabel("bursts")
+    ax.set_title("Combining technical repeats"); ax.legend(fontsize=8)
+    save(fig, "combining_repeats.png")
+
+
+def fig_multispot():
+    rng = np.random.default_rng(34)
+    fig, axs = plt.subplots(2, 4, figsize=(9.6, 4.4), sharex=True, sharey=True)
+    bins = np.arange(-0.05, 1.05, 0.04)
+    for spot, ax in enumerate(axs.ravel()):
+        n = rng.integers(300, 600)
+        E = np.concatenate([rng.normal(0.28, 0.05, n // 2),
+                            rng.normal(0.70 + rng.normal(0, 0.01), 0.05, n // 2)])
+        ax.hist(E, bins=bins, color="#1f77b4")
+        ax.axvline(np.median(E[E > 0.5]), color="#d62728", lw=1)
+        ax.set_title(f"spot {spot+1}", fontsize=8)
+        ax.set_xlim(0, 1)
+    fig.suptitle("8-spot multispot smFRET — per-spot E histograms", y=1.0)
+    fig.supxlabel("FRET efficiency E"); fig.supylabel("bursts")
+    save(fig, "multispot.png")
+
+
 if __name__ == "__main__":
     fig_2cde(); fig_rasp(); fig_polymer(); fig_fida(); fig_mdf(); fig_g3(); fig_rcm()
     fig_bva(); fig_fcs_diffusion(); fig_lifetime_anisotropy(); fig_pda()
@@ -756,4 +810,5 @@ if __name__ == "__main__":
     fig_fret_fcs(); fig_filtered_fcs(); fig_simulation(); fig_h2mm(); fig_mcs()
     fig_alex_workflow(); fig_e_hist_fit(); fig_population_selection()
     fig_h2mm_dashboard(); fig_h2mm_recovery()
+    fig_nsalex_etau(); fig_combining_repeats(); fig_multispot()
     print("all figures written to", FIG)

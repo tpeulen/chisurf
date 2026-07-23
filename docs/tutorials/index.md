@@ -40,6 +40,11 @@ sketches.
 | 29 | [FRET-efficiency histogram fitting](29_fret_histogram_fitting.md) | Gaussian mixture on `E` |
 | 30 | [H2MM: complete workflow & results](30_h2mm_workflow_results.md) | `burst_h2mm.core.analysis` |
 | 31 | [H2MM: simulating & validating](31_h2mm_simulation_validation.md) | `BurstWorkflow.simulate`, `burst_h2mm` |
+| 32 | [ns-ALEX / PIE: FRET + stoichiometry + lifetime](32_nsalex_lifetime.md) | burst nanotimes, E–τ plot |
+| 33 | [Working with timestamps and bursts](33_timestamps_and_bursts.md) | `tttrlib.TTTR`, burst index ranges |
+| 34 | [Exporting burst data](34_exporting_burst_data.md) | burst tables, `burst_h2mm` export, `bid_to_analysis` |
+| 35 | [Combining measurements / repeats](35_combining_repeats.md) | `BurstWorkflow.register_all` |
+| 36 | [Multispot (8-spot) smFRET](36_multispot.md) | per-channel burst analysis |
 
 ## Running
 
