@@ -1520,15 +1520,13 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 if tttr is not None:
                     tttr_inputs.append(tttr)
 
-            # keep other file widgets in sync if one-for-all is checked
+            # keep other file widgets in sync if one-for-all is checked. This is a
+            # programmatic mirror (set_paths), which does not fire the drop
+            # callback, so it cannot recurse back through update_*_files.
             if one_for_all and det == self.current_detector:
                 for other_fw in widgets_dict.values():
                     if other_fw is not fw:
-                        other_fw.blockSignals(True)
-                        other_fw.clear()
-                        for fp in files:
-                            other_fw.add_file(str(fp))
-                        other_fw.blockSignals(False)
+                        other_fw.set_paths([str(fp) for fp in files])
 
             if not files:
                 # No dropped files for this detector: preserve any pattern set
@@ -2439,6 +2437,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 list_widget.add_file(file)
 
     def clear_files(self, list_widget):
+        # This method resets the associated state (np dicts, df, plot) itself;
+        # the list clears are programmatic and do not fire the drop callback.
         if isinstance(list_widget, dict):
             for key, value in list_widget.items():
                 value.clear()

@@ -101,102 +101,115 @@ class NumpyEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-class FileListWidget(QtWidgets.QListWidget):
+def expand_mle_folder(folder: Path) -> typing.List[str]:
+    """Expand a dropped folder to its analysable files (burstwise-aware).
+
+    A folder that contains burst (``*.bur``) index files resolves to those;
+    otherwise every file with a tttrlib-supported extension is taken. Mirrors the
+    original ``FileListWidget`` drop behaviour, now reusable as a ``path_list``
+    ``folder_expander`` hook.
+
+    Parameters
+    ----------
+    folder : Path
+        The dropped directory.
+
+    Returns
+    -------
+    list of str
+        Sorted file paths found under *folder*.
     """
-    A QListWidget subclass that accepts file drops and maintains a list of file paths.
+    bursts = sorted(folder.glob("**/*.bur"))
+    if bursts:
+        return [str(f) for f in bursts]
+    out: typing.List[str] = []
+    for ext in tttrlib.get_supported_filetypes():
+        out.extend(str(f) for f in folder.glob(f"**/*{ext}"))
+    return sorted(out)
+
+
+class _MleFileListModel:
+    """Minimal model backing a :class:`PathListWidget` — just holds the path list.
+
+    The change callback is deliberately *not* driven from ``update()``: the
+    original ``FileListWidget`` fired its callback only on a user **drop**, never on
+    a programmatic ``add_file`` / ``clear`` (the wizard adds a burst file and then
+    calls ``load_burst_data`` itself, and that loader *appends*, so a second
+    implicit call would double-load). The factory wires the callback to the inner
+    list's ``pathsDropped`` signal to preserve exactly that drop-only semantics.
+    """
+
+    def __init__(self):
+        self.files: typing.List[str] = []
+
+    def update(self) -> None:
+        # No-op: the widget owns display; nothing else observes the model.
+        pass
+
+
+def FileListWidget(parent=None, file_added_callback=None, process_on_drop=False):
+    """Build a burst-MLE checkable file list on the unified AutoForm path list.
+
+    Historically a bespoke ``QListWidget`` subclass; now a thin factory over the
+    shared :class:`~chisurf.gui.autoform.sections.path_list_section.PathListWidget`
+    (drag-drop + Files/Folder/Database/Remove/Clear with first-class MMFDB) so
+    every file selector in ChiSurf behaves the same. The returned widget keeps the
+    small API the wizard relies on — ``add_file``, ``get_selected_files``,
+    ``clear`` (inherited), ``setAcceptDrops`` (routed to the inner list). The
+    ``file_added_callback`` is fired only on a user **drop**, matching the original.
 
     Parameters
     ----------
     parent : QWidget, optional
         Parent widget.
     file_added_callback : callable, optional
-        Function to call when files are added.
+        Called after files are added by a drag-and-drop (never on a programmatic
+        ``add_file`` / ``clear``), preserving the original drop-only trigger.
     process_on_drop : bool, optional
-        Whether to process files immediately on drop.
+        Accepted for backward compatibility; the drop callback already drives
+        processing, so it no longer has an independent effect.
+
+    Returns
+    -------
+    PathListWidget
+        The configured list widget (a ``QWidget``), with the compat methods bound.
     """
+    from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 
-    def __init__(self, parent=None, file_added_callback=None, process_on_drop=False):
-        super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.file_added_callback = file_added_callback
-        self.process_on_drop = process_on_drop
-        # Allow the file list to grow vertically and fill available space
-        sp = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
-        self.setSizePolicy(sp)
-        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+    model = _MleFileListModel()
+    widget = PathListWidget(
+        model, "files",
+        checkable=True,
+        add_folders=True,
+        folder_expander=expand_mle_folder,
+        mmfdb=True,
+    )
+    widget._mle_model = model
+    if parent is not None:
+        widget.setParent(parent)
+    widget.setSizePolicy(
+        QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding
+    )
+    # Drop-only callback: the inner list commits the drop first (its pathsDropped
+    # slot is connected in PathListWidget.__init__), then this fires — so the
+    # callback sees the freshly-committed file set. Programmatic add_file/clear
+    # go through the model's no-op update() and never call back.
+    if file_added_callback is not None:
+        widget._list.pathsDropped.connect(lambda _paths: file_added_callback())
 
-    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
-        """
-        Handle drag enter events to accept file URLs.
-        """
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
+    def add_file(file_path, _w=widget):
+        _w.add_paths([str(file_path)])
 
-    def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
-        """
-        Handle drag move events to accept file URLs.
-        """
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
+    def get_selected_files(_w=widget):
+        return [Path(p) for p in _w.checked_paths()]
 
-    def dropEvent(self, event: QtGui.QDropEvent):
-        """
-        Handle drop events, extract file paths, and add them to the list.
-        """
-        if not event.mimeData().hasUrls():
-            event.ignore()
-            return
+    def set_accept_drops(enabled, _w=widget):
+        _w._list.setAcceptDrops(bool(enabled))
 
-        file_paths: typing.List[str] = []
-        for url in event.mimeData().urls():
-            local = Path(url.toLocalFile())
-            if local.is_file():
-                file_paths.append(str(local))
-            elif local.is_dir():
-                bursts = list(local.glob('**/*.bur'))
-                if bursts:
-                    file_paths.extend(str(f) for f in bursts)
-                else:
-                    for ext in tttrlib.get_supported_filetypes():
-                        file_paths.extend(str(f) for f in local.glob(f'**/*{ext}'))
-        file_paths.sort()
-        self.blockSignals(True)
-        for fp in file_paths:
-            self.add_file(fp)
-        self.blockSignals(False)
-        if self.file_added_callback:
-            self.file_added_callback()
-        event.acceptProposedAction()
-
-    def add_file(self, file_path: str):
-        """
-        Add a file path to the list as a checkable item.
-
-        Parameters
-        ----------
-        file_path : str
-            Path of the file to add.
-        """
-        item = QtWidgets.QListWidgetItem(file_path, self)
-        item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-        item.setCheckState(QtCore.Qt.Checked)
-        self.addItem(item)
-
-    def get_selected_files(self) -> typing.List[Path]:
-        """
-        Get the list of currently selected (checked) files.
-
-        Returns
-        -------
-        List[Path]
-            Paths of selected files.
-        """
-        return [Path(self.item(i).text()) for i in range(self.count())
-                if self.item(i).checkState() == QtCore.Qt.Checked]
+    widget.add_file = add_file
+    widget.get_selected_files = get_selected_files
+    widget.setAcceptDrops = set_accept_drops
+    return widget
 
 
 # --- Hyperparameter optimization utilities ---
