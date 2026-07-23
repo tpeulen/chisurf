@@ -31,26 +31,15 @@ def _apply_setup_lut_to_tttr(page, tttr) -> bool:
     ``apply_channel_luts`` / ``apply_luts_and_shifts`` with the same fixed dither
     seed as the reading seam, so the preview matches production reads.
     """
-    if not bool(getattr(page, "_apply_lut", False)):
-        return False
-    luts = getattr(page, "_channel_luts", None) or {}
-    if not luts:
-        return False
     try:
-        from chisurf.core.fio.staging import LUT_DITHER_SEED
+        from chisurf.core.fio.staging import apply_setup_lut
 
-        seed = int(LUT_DITHER_SEED)
-    except Exception:
-        seed = 42
-    try:
-        channel_luts = {int(k): np.asarray(v, dtype=np.float64) for k, v in luts.items()}
-        tttr.apply_channel_luts(channel_luts, {})
-        tttr.apply_luts_and_shifts(seed, True)
-        shifts = getattr(page, "_channel_shifts", None) or {}
-        for ch, s in shifts.items():
-            if int(s):
-                tttr.shift_micro_time_by_channel(int(ch), int(s))
-        return True
+        return apply_setup_lut(
+            tttr,
+            getattr(page, "_channel_luts", None),
+            getattr(page, "_channel_shifts", None),
+            apply_lut=bool(getattr(page, "_apply_lut", False)),
+        )
     except Exception as exc:  # pragma: no cover - best-effort preview
         logger.debug("Applying setup LUT to preview failed: %s", exc)
         return False

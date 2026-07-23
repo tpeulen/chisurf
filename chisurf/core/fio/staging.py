@@ -362,19 +362,59 @@ def open_tttr(
         else:
             tttr = tttrlib.TTTR(str(local), routine)
 
-    # Apply per-routing-channel TAC linearization (LUT), gated by apply_lut, then
-    # the wrapping photon-level shift. Order matters: linearize the TAC axis first
-    # so the subsequent shift moves photons in uniform (corrected) bins.
+    apply_setup_lut(tttr, channel_luts, channel_shifts, apply_lut=apply_lut, lut_seed=lut_seed)
+    return tttr
+
+
+def apply_setup_lut(
+    tttr,
+    channel_luts: dict | None,
+    channel_shifts: dict | None = None,
+    *,
+    apply_lut: bool = True,
+    lut_seed: int = LUT_DITHER_SEED,
+) -> bool:
+    """Apply per-channel TAC-linearization LUTs + shifts to *tttr* **in place**.
+
+    The single sanctioned way to LUT-correct a ``tttrlib.TTTR`` you already have
+    (e.g. a raw object opened for a decay preview). Any code that produces a
+    micro-time histogram from a setup that carries LUTs should call this before
+    histogramming — otherwise the decay is raw and ignores the LUT. Reads opened
+    through :func:`open_tttr` already run this.
+
+    LUT first (linearize the TAC axis), then the wrapping photon-level shift, so
+    the shift moves photons in uniform corrected bins. Uses a fixed positive
+    dither seed for reproducibility.
+
+    Parameters
+    ----------
+    tttr : tttrlib.TTTR
+        Object to correct in place.
+    channel_luts : dict or None
+        ``{routing_channel: NTAC_fract}``; ignored when *apply_lut* is false or empty.
+    channel_shifts : dict or None
+        ``{routing_channel: int}`` photon-level shifts (applied regardless of *apply_lut*).
+    apply_lut : bool
+        Master gate for the LUT linearization.
+    lut_seed : int
+        Dither seed (see :data:`LUT_DITHER_SEED`).
+
+    Returns
+    -------
+    bool
+        ``True`` if a LUT was applied.
+    """
+    applied = False
     if apply_lut and channel_luts:
         import numpy as np
 
         luts = {int(k): np.asarray(v, dtype=np.float64) for k, v in channel_luts.items()}
         if luts:
             tttr.apply_channel_luts(luts, {})
-            # Fixed positive seed + dithering: reproducible and artifact-free.
             tttr.apply_luts_and_shifts(int(lut_seed), True)
+            applied = True
     if channel_shifts:
         from chisurf.core.fio.tttr_shift import apply_shifts
 
         apply_shifts(tttr, 0, {int(k): int(v) for k, v in channel_shifts.items()})
-    return tttr
+    return applied

@@ -208,3 +208,26 @@ def test_open_tttr_channel_shift_wraps():
     ch, _ = _spc_lut_for_first_channel()
     shifted = np.asarray(staging.open_tttr(str(SPC), channel_shifts={ch: 5}).micro_times)
     assert not np.array_equal(raw, shifted)
+
+
+@pytest.mark.skipif(not SPC.is_file(), reason="sample SPC not available")
+def test_apply_setup_lut_in_place():
+    """apply_setup_lut is the shared in-place LUT correction for a raw TTTR.
+
+    Any decay-preview / analysis path that opens a raw ``tttrlib.TTTR`` should
+    call this before histogramming so the result is not silently uncorrected.
+    """
+    tttrlib = pytest.importorskip("tttrlib")
+    ch, ntac = _spc_lut_for_first_channel()
+
+    # gate off / no LUT -> no-op, returns False
+    t0 = tttrlib.TTTR(str(SPC))
+    raw = np.asarray(t0.micro_times).copy()
+    assert staging.apply_setup_lut(t0, {ch: ntac}, apply_lut=False) is False
+    assert np.array_equal(raw, np.asarray(t0.micro_times))
+
+    # gate on -> mutates in place, returns True, matches open_tttr's correction
+    t1 = tttrlib.TTTR(str(SPC))
+    assert staging.apply_setup_lut(t1, {ch: ntac}, apply_lut=True) is True
+    ref = staging.open_tttr(str(SPC), channel_luts={ch: ntac}, apply_lut=True)
+    assert np.array_equal(np.asarray(t1.micro_times), np.asarray(ref.micro_times))

@@ -507,8 +507,6 @@ class TCSPCTTTRReaderControlWidget(
 
         # Direct TTTR-based microtime histogram per routing channel
         try:
-            import tttrlib  # type: ignore[import]
-
             routine = getattr(reader_obj, "reading_routine", None)
             chs_value = getattr(reader_obj, "channel_numbers", None)
             if chs_value is None:
@@ -531,10 +529,20 @@ class TCSPCTTTRReaderControlWidget(
 
             from chisurf.gui.widgets.staged_loading import load_with_progress
 
+            # Apply the reader's per-channel LUTs/shifts so the preview decay
+            # matches what reading produces (else it shows the raw decay and the
+            # LUT looks like it does nothing).
+            _luts = getattr(reader_obj, "channel_luts", None)
+            _shifts = getattr(reader_obj, "channel_shifts", None)
+            _apply_lut = bool(getattr(reader_obj, "apply_lut", False))
+
             def _load(local_path):
-                if routine:
-                    return tttrlib.TTTR(local_path, routine)
-                return tttrlib.TTTR(local_path)
+                from chisurf.core.fio.staging import open_tttr
+
+                return open_tttr(
+                    local_path, routine or None,
+                    channel_luts=_luts, channel_shifts=_shifts, apply_lut=_apply_lut,
+                )
 
             tttr_all = load_with_progress(
                 self, _load, path.as_posix(), title="Loading preview"
