@@ -212,6 +212,15 @@ def _burst_bva(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return widget
 
 
+def _burst_2cde(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the 2CDE (FRET-2CDE / ALEX-2CDE) panel."""
+    from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
+
+    widget = BurstTwoCdeTool(parent=parent, embedded=True)
+    _bind(parent, "two_cde", widget)
+    return widget
+
+
 def _burst_mle(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the burst MLE panel."""
     from chisurf.plugins.burst.burst_mle_analysis.wizard import MLELifetimeAnalysisWizard
@@ -351,14 +360,21 @@ BURST_PANELS = [
         "role": "bva",
     },
     {
-        "name": "4. MLE-Lifetime",
+        "name": "4. 2CDE",
+        "icon": Glyphs.CHART,
+        "description": "Compute the FRET-2CDE / ALEX-2CDE burst-dynamics feature.",
+        "factory": _burst_2cde,
+        "role": "two_cde",
+    },
+    {
+        "name": "5. MLE-Lifetime",
         "icon": Glyphs.TARGET,
         "description": "Fit burst lifetimes using selected bursts.",
         "factory": _burst_mle,
         "role": "mle",
     },
     {
-        "name": "5. H2MM",
+        "name": "6. H2MM",
         "icon": Glyphs.SHUFFLE,
         "description": "Resolve sub-burst FRET dynamics with photon-by-photon HMM.",
         "factory": _burst_h2mm,
@@ -372,7 +388,7 @@ BURST_PANELS = [
         ),
     },
     {
-        "name": "6. Browser",
+        "name": "7. Browser",
         "icon": Glyphs.COPY,
         "description": "Inspect the current burst workflow result.",
         "factory": _burst_browser,
