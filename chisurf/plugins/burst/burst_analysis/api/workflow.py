@@ -252,6 +252,68 @@ class Bva:
 
 
 @dataclass
+class TwoCde:
+    """Result of a 2CDE (FRET-2CDE / ALEX-2CDE) burst-feature analysis.
+
+    Attributes
+    ----------
+    table : pandas.DataFrame
+        Per-burst table with a ``FRET-2CDE`` or ``ALEX-2CDE`` column.
+    variant : str
+        ``"fret"`` or ``"alex"``.
+    """
+
+    table: pd.DataFrame
+    variant: str = "fret"
+
+    @property
+    def column(self) -> str:
+        """Name of the 2CDE feature column in :attr:`table`."""
+        return "ALEX-2CDE" if self.variant == "alex" else "FRET-2CDE"
+
+    @property
+    def mean_2cde(self) -> float:
+        """Mean 2CDE value across all bursts (finite entries only)."""
+        return float(np.nanmean(self.table[self.column].to_numpy(dtype=float)))
+
+    def dynamic_fraction(self, threshold: float = 12.0) -> float:
+        """Fraction of bursts whose FRET-2CDE exceeds ``threshold``.
+
+        FRET-2CDE is ~10 for static bursts and larger under ms dynamics, so a
+        threshold slightly above 10 separates the dynamic sub-population.
+        """
+        vals = self.table[self.column].to_numpy(dtype=float)
+        finite = vals[np.isfinite(vals)]
+        if finite.size == 0:
+            return 0.0
+        return float(np.mean(finite > threshold))
+
+    def plot(self, ax: Any = None) -> Any:
+        """Draw the 2CDE histogram (and E-vs-2CDE scatter when E is available)."""
+        import matplotlib.pyplot as plt
+
+        vals = self.table[self.column].to_numpy(dtype=float)
+        finite = np.isfinite(vals)
+        e_col = next((c for c in ("Proximity Ratio Mean", "E", "Efficiency")
+                      if c in self.table), None)
+        if ax is None:
+            _, ax = plt.subplots(figsize=(6, 5))
+        if e_col is not None:
+            e = self.table[e_col].to_numpy(dtype=float)
+            m = finite & np.isfinite(e)
+            ax.scatter(e[m], vals[m], s=8, alpha=0.25, color="#1f77b4")
+            ax.set_xlabel("Proximity ratio (apparent FRET)")
+            ax.set_ylabel(self.column)
+            ax.set_xlim(0, 1)
+        else:
+            ax.hist(vals[finite], bins=40, color="#1f77b4", alpha=0.8)
+            ax.set_xlabel(self.column)
+            ax.set_ylabel("bursts")
+        ax.set_title(self.column)
+        return ax
+
+
+@dataclass
 class H2mm:
     """Result of a photon-by-photon H2MM analysis.
 
@@ -607,6 +669,54 @@ class Bursts:
             number_of_photons_per_slice=photons_per_slice,
         )
         return Bva(table=table, photons_per_slice=photons_per_slice)
+
+    def two_cde(
+        self,
+        donor: str | None = None,
+        acceptor: str | None = None,
+        *,
+        acceptor_excitation: str | None = None,
+        tau: float = 100e-6,
+        kernel: str = "laplace",
+        variant: str = "fret",
+    ) -> TwoCde:
+        """Compute the 2CDE dynamics feature on a chosen detector pair.
+
+        FRET-2CDE / ALEX-2CDE (Tomov et al., BJ 2012) flag within-burst
+        dynamics; downstream code filters bursts on the returned values.
+
+        Parameters
+        ----------
+        donor, acceptor : str, optional
+            Detector names forming the FRET pair (default: first two detectors).
+        acceptor_excitation : str, optional
+            Detector for the acceptor-excitation stream (``variant="alex"``
+            only); defaults to the acceptor detector.
+        tau : float
+            Kernel time constant in seconds.
+        kernel : {"laplace", "gaussian"}
+            Density kernel (Laplace is the Tomov original).
+        variant : {"fret", "alex"}
+            Which 2CDE quantity to compute.
+        """
+        from chisurf.plugins.burst.burst_2cde.core.computation import compute_2cde
+
+        donor_name, acceptor_name = self.setup._pair(donor, acceptor)
+        d = self.setup.detector(donor_name)
+        a = self.setup.detector(acceptor_name)
+        aex = self.setup.detector(acceptor_excitation) if acceptor_excitation else None
+        table = compute_2cde(
+            self.table.copy(),
+            self._tttrs,
+            donor_channels=list(d.routing_channels),
+            donor_micro_time_ranges=d.bva_ranges(),
+            acceptor_channels=list(a.routing_channels),
+            acceptor_micro_time_ranges=a.bva_ranges(),
+            acceptor_excitation_channels=list(aex.routing_channels) if aex else None,
+            acceptor_excitation_micro_time_ranges=aex.bva_ranges() if aex else None,
+            tau=tau, kernel=kernel, variant=variant,
+        )
+        return TwoCde(table=table, variant=variant)
 
     def h2mm(
         self,

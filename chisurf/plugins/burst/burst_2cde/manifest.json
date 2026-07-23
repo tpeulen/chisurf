@@ -1,0 +1,38 @@
+{
+  "id": "burst_2cde",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Single-Molecule:2CDE",
+  "description": "FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012).",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Spectroscopy", "Single-Molecule"],
+  "state_namespace": "burst_2cde",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
+  "entrypoints": {
+    "cli": "chisurf.plugins.burst.burst_2cde.cli.main:cli",
+    "services": "chisurf.plugins.burst.burst_2cde.backend.services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "burst_2cde.jobs.compute",
+      "summary": "Compute the FRET-2CDE / ALEX-2CDE burst feature.",
+      "long_running": true
+    },
+    {
+      "name": "burst_2cde.workflow.prepare",
+      "summary": "Resolve 2CDE settings and folders from a burst workflow context.",
+      "long_running": false
+    },
+    {
+      "name": "burst_2cde.contract.describe",
+      "summary": "Return the 2CDE workflow contract.",
+      "long_running": false
+    }
+  ],
+  "menu_hidden": true
+}
