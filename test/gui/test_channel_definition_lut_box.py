@@ -112,6 +112,25 @@ def test_microtime_preview_applies_lut(qapp, tmp_path):
     assert np.array_equal(raw, np.asarray(page._microtime_counts))
 
 
+def test_assigning_a_lut_auto_enables_apply(qapp, tmp_path):
+    """General rule: adding a LUT turns the master gate ON (else it's never applied)."""
+    data = {"detectors": {"g": {"chs": [0]}}, "tttr_reading": {"file_type": "SPC-130"}}
+    setup = tmp_path / "s.json"
+    setup.write_text(json.dumps(data))
+    page = _page(str(setup))
+    assert page._apply_lut is False
+
+    class _Panel:
+        class settings_panel:
+            channel_luts = {0: np.linspace(0, 4096, 4096)}
+            channel_shifts = {}
+
+    page._pull_luts_from_panel(_Panel())
+    assert page._apply_lut is True
+    assert page._apply_lut_checkbox.isChecked() is True
+    assert page.get_settings()["apply_lut"] is True
+
+
 def test_toggle_apply_lut_updates_state(qapp, lut_setup):
     page = _page(lut_setup)
     page._apply_lut_checkbox.setChecked(False)

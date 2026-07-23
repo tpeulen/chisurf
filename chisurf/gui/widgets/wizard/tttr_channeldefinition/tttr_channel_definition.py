@@ -1312,6 +1312,7 @@ class DetectorWizardPage(QWizardPage):
         if arr.size:
             self._channel_luts[ch] = arr
             self._channel_lut_sources[ch] = pathlib.Path(path).name
+            self._enable_apply_lut()
             self._refresh_lut_box()
             self._refresh_preview_lut()
 
@@ -1343,6 +1344,22 @@ class DetectorWizardPage(QWizardPage):
         self._refresh_lut_box()
         self._refresh_preview_lut()
 
+    def _enable_apply_lut(self):
+        """Turn the master LUT gate ON (ticks the checkbox) once a LUT exists.
+
+        General rule: LUT on ⇒ the LUT is applied on every read. Adding a LUT is
+        an explicit action, so we enable the gate automatically — otherwise the
+        LUT is stored but silently never applied.
+        """
+        if not getattr(self, "_channel_luts", None):
+            return
+        self._apply_lut = True
+        cb = getattr(self, "_apply_lut_checkbox", None)
+        if cb is not None:
+            cb.blockSignals(True)
+            cb.setChecked(True)
+            cb.blockSignals(False)
+
     def _pull_luts_from_panel(self, panel):
         """Best-effort import of ``channel_luts``/``channel_shifts`` from a LUT panel."""
         settings_panel = getattr(panel, "settings_panel", None) or panel
@@ -1363,6 +1380,7 @@ class DetectorWizardPage(QWizardPage):
                     self._channel_shifts[int(k)] = int(v)
                 except Exception:
                     continue
+        self._enable_apply_lut()
 
     def get_settings(self):
         # windows
