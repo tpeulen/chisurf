@@ -245,6 +245,10 @@ class H2mmTool(QMainWindow):
         # not a single cramped grid. A default 2-column arrangement mirrors the
         # familiar dashboard while every plot stays independently resizable.
         self._build_plot_docks()
+        # Full chisurf-dock behaviour (same as BVA): right-click context menu to
+        # split/move/close docks, not just a plain tab bar.
+        self.dock_area.setContextMenuEnabled(True)
+        self.dock_area.setContextMenuMode("basic")
         layout.addWidget(self.dock_area, 1)
 
         self._status_label = QLabel("Ready")
