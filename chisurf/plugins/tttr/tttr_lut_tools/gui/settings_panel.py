@@ -552,6 +552,31 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         main_layout.addWidget(json_group)
         main_layout.addStretch(1)
 
+    def receive_computed_lut(self, name: str, ntac_fract) -> None:
+        """Register an in-memory LUT (from stage ① Compute) for assignment.
+
+        The ①→② bridge: instead of Save-LUT-then-Load-LUT, a LUT computed in the
+        Compute panel is handed straight here and selected, ready to Assign.
+
+        Parameters
+        ----------
+        name : str
+            Display name for the LUT list entry.
+        ntac_fract : array-like
+            The cumulative ``NTAC_fract`` array.
+        """
+        lut_array = np.asarray(ntac_fract, dtype=float).ravel()
+        self.loaded_luts[name] = lut_array
+        items = [self.lut_list.item(i).text() for i in range(self.lut_list.count())]
+        if name not in items:
+            self.lut_list.addItem(name)
+        for index in range(self.lut_list.count()):
+            if self.lut_list.item(index).text() == name:
+                self.lut_list.setCurrentRow(index)
+                break
+        self.btn_assign_lut_selected.setEnabled(True)
+        self.btn_assign_lut_all.setEnabled(True)
+
     def _handle_lut_drop(self, path: str) -> None:
         """Handle a dropped LUT file."""
         try:

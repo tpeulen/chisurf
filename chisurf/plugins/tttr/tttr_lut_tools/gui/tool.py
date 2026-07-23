@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import pathlib
 
 from qtpy import QtCore, QtWidgets
 
@@ -11,6 +12,39 @@ from chisurf.gui.widgets.dock_area import DockArea
 
 from .settings_panel import TTTRSettingsPanel
 from .tac_lut_panel import TACLinearizationPanel
+
+_README = pathlib.Path(__file__).parents[1] / "README.md"
+
+#: One-line explanation shown in the header so the two stages are never a mystery.
+_FLOW_TEXT = (
+    "①  Compute a LUT from a uniform-illumination measurement   →   "
+    "②  Assign it to channels & export   →   "
+    "Configure LUTs… in the Detector setup applies it at read time"
+)
+
+
+class _HelpDialog(QtWidgets.QDialog):
+    """Modal help window rendering the plugin README (Markdown)."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("TTTR LUT Tools — help")
+        self.resize(640, 560)
+        layout = QtWidgets.QVBoxLayout(self)
+        browser = QtWidgets.QTextBrowser()
+        browser.setOpenExternalLinks(True)
+        try:
+            text = _README.read_text(encoding="utf-8")
+        except Exception:
+            text = "Help unavailable."
+        if hasattr(browser, "setMarkdown"):
+            browser.setMarkdown(text)
+        else:  # pragma: no cover - very old Qt
+            browser.setPlainText(text)
+        layout.addWidget(browser, 1)
+        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
 
 
 class TTRLutToolsWidget(QtWidgets.QMainWindow):
@@ -23,6 +57,31 @@ class TTRLutToolsWidget(QtWidgets.QMainWindow):
         self.setWindowTitle("TTTR LUT Tools")
         self.resize(1100, 700)
 
+        # Header: a one-line flow explanation + the ①→② bridge + a ? help modal,
+        # so users understand what the two tabs are and how a LUT reaches a setup.
+        header = QtWidgets.QToolBar("LUT flow", self)
+        header.setMovable(False)
+        flow = QtWidgets.QLabel(_FLOW_TEXT)
+        flow.setStyleSheet("color: #9ba3af; font-size: 11px; padding: 2px 6px;")
+        header.addWidget(flow)
+        spacer = QtWidgets.QWidget()
+        spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
+        header.addWidget(spacer)
+        self.bridge_btn = QtWidgets.QToolButton()
+        self.bridge_btn.setText("→ Use in ② Assign")
+        self.bridge_btn.setToolTip(
+            "Hand the LUT just computed in ① straight to ② Assign & Export — no "
+            "need to Save then Load a file."
+        )
+        self.bridge_btn.clicked.connect(self._bridge_compute_to_assign)
+        header.addWidget(self.bridge_btn)
+        help_btn = QtWidgets.QToolButton()
+        help_btn.setText("?")
+        help_btn.setToolTip("What is the difference between the two tabs? (help)")
+        help_btn.clicked.connect(self._show_help)
+        header.addWidget(help_btn)
+        self.addToolBar(QtCore.Qt.TopToolBarArea, header)
+
         self.dock_area = DockArea(self)
         self.dock_area.setNewTabButtonVisible(False)
         self.dock_area.setTabsClosable(False)
@@ -31,12 +90,45 @@ class TTRLutToolsWidget(QtWidgets.QMainWindow):
 
         self.tac_panel = TACLinearizationPanel()
         self.settings_panel = TTTRSettingsPanel()
-        self.dock_area.addTab(self.tac_panel, "Compute Microtime LUT")
-        self.dock_area.addTab(self.settings_panel, "Create LUT Settings")
+        self.tac_panel.setToolTip(
+            "Stage ①: MAKE a LUT from a flat / uniform-illumination measurement."
+        )
+        self.settings_panel.setToolTip(
+            "Stage ②: ASSIGN computed LUTs to routing channels and export settings.tttr.json."
+        )
+        self.dock_area.addTab(self.tac_panel, "① Compute LUT")
+        self.dock_area.addTab(self.settings_panel, "② Assign / Export")
 
-        self.statusBar().showMessage("Create a LUT, then assign it to channels in Create LUT Settings.")
+        self.statusBar().showMessage(
+            "① Compute a LUT from flat light, then ‘→ Use in ② Assign’ to assign it to channels."
+        )
         self.dock_area.layoutChanged.connect(self.save_dock_layout_state)
         self.restore_dock_layout_state()
+
+    def _show_help(self) -> None:
+        """Open the modal help window (the README)."""
+        _HelpDialog(self).exec_()
+
+    def _bridge_compute_to_assign(self) -> None:
+        """Hand the LUT computed in ① to ② Assign (the in-memory bridge)."""
+        table = getattr(self.tac_panel, "current_table", None)
+        if not table or table.get("NTAC_fract") is None:
+            QtWidgets.QMessageBox.information(
+                self, "No LUT yet",
+                "Compute a LUT in ‘① Compute LUT’ first (load a uniform-illumination "
+                "file and pick the linear region).",
+            )
+            return
+        name = f"computed_{table.get('linear_start', 0)}_{table.get('linear_stop', 0)}"
+        self.settings_panel.receive_computed_lut(name, table["NTAC_fract"])
+        # Switch focus to the Assign tab.
+        try:
+            self.dock_area.setCurrentWidget(self.settings_panel)
+        except Exception:
+            pass
+        self.statusBar().showMessage(
+            f"LUT ‘{name}’ sent to ② Assign — select a channel and click Assign."
+        )
 
     def _lut_tools_settings(self) -> QtCore.QSettings:
         """Return QSettings for the LUT tools dock layout."""
