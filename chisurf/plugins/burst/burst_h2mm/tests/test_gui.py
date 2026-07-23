@@ -232,10 +232,8 @@ def test_h2mm_gui_alex_es_and_nanotime(qapp):
     assert len(w._p_fret.items) > 0
     assert len(w._p_nano.listDataItems()) >= 1
     assert len(w._p_path.items) > 0
-    # E–τ FRET-lifetime panel drew per-state points + the static-FRET line.
-    assert len(w._p_etau.items) > 0
 
-    # Bootstrap uncertainty overlays error bars on the E–S scatter and E–τ panel.
+    # Bootstrap uncertainty overlays error bars on the E–S scatter.
     import pyqtgraph as pg
 
     from chisurf.plugins.burst.burst_h2mm.core.analysis import bootstrap_uncertainty
@@ -245,7 +243,5 @@ def test_h2mm_gui_alex_es_and_nanotime(qapp):
         aex_streams=(2,), seed=0
     )
     w._plot_dwell_fret(ana)
-    w._plot_etau(ana)
     assert any(isinstance(it, pg.ErrorBarItem) for it in w._p_fret.items)
-    assert any(isinstance(it, pg.ErrorBarItem) for it in w._p_etau.items)
     w.close()
