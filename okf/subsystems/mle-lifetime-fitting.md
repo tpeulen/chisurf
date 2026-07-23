@@ -65,8 +65,35 @@ Only models whose constructor takes the acquisition inputs (`dt`, `irf`,
 signature and **skips** reference-decay models like fit26 (`pattern_1`/
 `pattern_2`). fit23 keeps its authored rows (with the anisotropy extras); every
 other model uses the generic schema-driven editor, the two panels swapping
-visibility. Batch **Run** export is still fit23-only (a guard warns for the
-rest); interactive fit + plot are model-generic.
+visibility.
+
+## Batch Run export is model-generic (not fit23-only)
+
+The per-burst batch export (the **Run** button → `process_bursts` → the
+multiprocessing `_mp_worker.process_one_file_worker`) runs **every fit2x model**
+(fit23/24/25), not just fit23. Three things are wired model-aware:
+
+- the worker builds the **raw tttrlib estimator named by the registry**
+  (`cfg['method']`, e.g. `Fit24`), exactly as `wizard.create_fit_instance` does
+  for the live preview — so batch and preview use the same estimator and free-
+  parameter layout (fit25 keeps its trailing `r0` input; the `Fit2x` facade's
+  batch layout drops it, so the worker deliberately bypasses the facade). The
+  background is area-normalised in `_build_fitter`, the same rule the facade
+  applies (see "background must be area-normalised" below);
+- the start vector is per-detector for fit23 (its authored rows differ per
+  detector) but a single registry-editor vector for the other models (that
+  editor is not per-detector);
+- output columns follow the model (`_burst_result_columns` +
+  `_mp_worker._record`): fit23 keeps its historical `.b?4` layout byte-for-byte
+  (tau/gamma/r0/rho + the two anisotropy columns); other models write `Tau`
+  (the best lifetime, `x[0]`) plus one column per registry free parameter and
+  **drop** the fit23-only anisotropy columns. `_save_burst_results_fast`
+  reindexes so a model that did not emit a column writes NaN rather than raising.
+
+The **tail fit** stays preview-only in batch: it is a different estimator family
+(`DecayFitNExp`, no per-burst gamma/anisotropy) and a per-burst multi-exponential
+tail fit is under-determined at burst photon counts, so `process_bursts` warns
+and returns for it.
 
 ## Tail fit (a different estimator family)
 

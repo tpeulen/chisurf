@@ -223,6 +223,129 @@ def test_tail_fit_recovers_a_plausible_lifetime(fitted_wizard):
     )
 
 
+def test_burst_result_columns_are_model_specific():
+    """The batch export column set follows the fitted model.
+
+    ``fit23`` keeps its historical layout (tau/gamma/r0/rho + the two anisotropy
+    columns); fit24/fit25 drop the anisotropy columns and write one column per
+    registry free parameter. ``Tau`` (the best lifetime) is present for every
+    model so downstream burst plots key on it uniformly.
+    """
+    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
+        MLELifetimeAnalysisWizard,
+    )
+
+    col = MLELifetimeAnalysisWizard._burst_result_columns
+    c23 = col("green", "fit23", ["tau", "gamma", "r0", "rho"])
+    assert "Tau (green)" in c23
+    assert "r0 (green)" in c23 and "rho (green)" in c23
+    assert "r Scatter (green)" in c23 and "r Experimental (green)" in c23
+
+    c24 = col("green", "fit24", ["tau1", "gamma", "tau2", "A2", "offset"])
+    assert "Tau (green)" in c24
+    assert {"tau1 (green)", "tau2 (green)", "A2 (green)", "offset (green)"} <= set(c24)
+    # anisotropy columns are fit23-only
+    assert "r Scatter (green)" not in c24 and "r0 (green)" not in c24
+
+    c25 = col("green", "fit25", ["tau1", "tau2", "tau3", "tau4", "gamma", "r0"])
+    assert {"tau1 (green)", "tau4 (green)", "gamma (green)"} <= set(c25)
+    assert "r Experimental (green)" not in c25
+
+
+def _synthetic_worker_job(model, method, param_names, x0, fixed, *, n=64,
+                          tau_true=2.0, dt=0.05):
+    """Build a one-burst shared-memory job for ``process_one_file_worker``.
+
+    Emits a mono-exponential parallel/perpendicular decay as a photon list
+    (routing 0=P, 1=S) so the worker rebuilds the histogram exactly as it does
+    for real data. Returns ``(args, shm_blocks)``; the caller must close/unlink
+    the blocks.
+    """
+    from multiprocessing import shared_memory
+
+    rng = np.random.default_rng(0)
+    bins = np.arange(n)
+    shape = np.exp(-bins * dt / tau_true)
+    cp = rng.poisson(shape * 400).astype(int)
+    cs = rng.poisson(shape * 120).astype(int)
+    rc = np.concatenate([np.repeat(0, cp.sum()), np.repeat(1, cs.sum())]).astype(np.uint16)
+    mt = np.concatenate([np.repeat(bins, cp), np.repeat(bins, cs)]).astype(np.uint16)
+
+    rc_shm = shared_memory.SharedMemory(create=True, size=rc.nbytes)
+    np.ndarray(rc.shape, dtype=rc.dtype, buffer=rc_shm.buf)[:] = rc
+    mt_shm = shared_memory.SharedMemory(create=True, size=mt.nbytes)
+    np.ndarray(mt.shape, dtype=mt.dtype, buffer=mt_shm.buf)[:] = mt
+
+    class_lut = np.array([0, 1], dtype=np.int8)  # rc 0->P, 1->S
+    irf = np.zeros(2 * n, dtype=np.float64)
+    irf[0] = 1.0            # delta prompt in VV
+    irf[n] = 1.0            # delta prompt in VH
+    bg = np.zeros(2 * n, dtype=np.float64)
+    cfg = {
+        'sb': 0, 'eb': n, 'half_len': n,
+        'dt': dt, 'period': n * dt,
+        'g_factor': 1.0, 'l1': 0.0, 'l2': 0.0,
+        'p2s_twoIstar': False, 'BIFL_scatter': False, 'min_photons': 1,
+        'x0': np.asarray(x0, dtype=np.float64),
+        'fixed': np.asarray(fixed, dtype=np.int32),
+        'irf': irf, 'bg': bg, 'class_lut': class_lut,
+        'model': model, 'method': method, 'param_names': list(param_names),
+    }
+    args = ("synthetic.spc", [(0, int(rc.size))],
+            rc_shm.name, rc.shape, str(rc.dtype),
+            mt_shm.name, mt.shape, str(mt.dtype),
+            ["green"], {"green": cfg}, 0)
+    return args, [rc_shm, mt_shm]
+
+
+@pytest.mark.parametrize(
+    "model, method, names, x0, fixed",
+    [
+        ("fit24", "Fit24", ["tau1", "gamma", "tau2", "A2", "offset"],
+         [2.0, 0.0, 2.0, 0.0, 0.0], [0, 1, 1, 1, 1]),
+        ("fit25", "Fit25", ["tau1", "tau2", "tau3", "tau4", "gamma", "r0"],
+         [0.5, 1.0, 2.0, 4.0, 0.0, 0.38], [1, 1, 1, 1, 1, 1]),
+    ],
+)
+def test_batch_worker_fits_non_fit23_models(model, method, names, x0, fixed):
+    """The multiprocessing worker batch-exports fit24/fit25, not just fit23.
+
+    Runs the real per-file worker on a synthetic mono-exponential burst and
+    asserts it produces a finite lifetime and the model's own parameter columns
+    (never the fit23-only anisotropy columns), so the export column set and the
+    worker records stay in lock-step.
+    """
+    import tttrlib  # noqa: F401
+
+    from chisurf.plugins.burst.burst_mle_analysis._mp_worker import (
+        process_one_file_worker,
+    )
+
+    args, blocks = _synthetic_worker_job(model, method, names, x0, fixed)
+    try:
+        records, n_bursts = process_one_file_worker(args)
+    finally:
+        for b in blocks:
+            b.close()
+            b.unlink()
+
+    assert n_bursts == 1
+    assert len(records) == 1
+    rec = records[0]
+    assert rec["Detector"] == "green"
+    # a lifetime came back and the fit-quality column is present (its value is
+    # whatever tttrlib returns for the model — it can be NaN for some fixed
+    # configs, which the worker passes through unchanged).
+    assert np.isfinite(rec["Tau (green)"]) and rec["Tau (green)"] > 0
+    assert "2I*  (green)" in rec
+    # the model's own free-parameter columns are present ...
+    for nm in names:
+        assert f"{nm} (green)" in rec
+    # ... and the fit23-only anisotropy columns are not.
+    assert "r Scatter (green)" not in rec
+    assert "r Experimental (green)" not in rec
+
+
 def test_fit_dt_and_period_come_from_the_file_header():
     """The lifetime is only meaningful if ``dt`` and ``period`` are correct.
 

@@ -67,6 +67,32 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
     Only process_bursts_new4 is kept here and exposed as `process_bursts`.
     """
 
+    @staticmethod
+    def _burst_result_columns(color: str, model: str, param_names) -> list:
+        """Per-detector export columns for ``model`` (matches the worker rows).
+
+        ``fit23`` keeps its historical column order so the ``.b?4`` export is
+        unchanged; other fit2x models write ``Tau`` (the best lifetime) followed
+        by one column per registry free parameter, then the flags.
+        """
+        if model == "fit23":
+            return [
+                'Ng-p-all', 'Ng-s-all',
+                f'Number of Photons (fit window) ({color})',
+                f'2I*  ({color})', f'Tau ({color})', f'gamma ({color})',
+                f'r0 ({color})', f'rho ({color})', f'BIFL scatter? ({color})',
+                f'2I*: P+2S? ({color})', f'r Scatter ({color})',
+                f'r Experimental ({color})',
+            ]
+        cols = [
+            'Ng-p-all', 'Ng-s-all',
+            f'Number of Photons (fit window) ({color})',
+            f'2I*  ({color})', f'Tau ({color})',
+        ]
+        cols += [f'{nm} ({color})' for nm in param_names]
+        cols += [f'BIFL scatter? ({color})', f'2I*: P+2S? ({color})']
+        return cols
+
     def _save_burst_results_fast(self, result_df: pd.DataFrame) -> None:
         """
         Save burst-fit results grouped by (file stem, detector) with a fast, vectorized path.
@@ -101,19 +127,17 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         res = result_df.loc[mask].copy()
         res['First Stem'] = stems_series.loc[mask].values
 
-        # Prepare detector metadata (columns per detector)
+        # Prepare detector metadata (columns per detector). The column set is
+        # model-aware: fit23 keeps its historical layout (byte-for-byte export);
+        # other fit2x models write Tau + one column per registry free parameter.
         dets = list(self.channel_definer.detectors.keys())
+        model = self.fit_model
+        param_names = self._fit_param_names(model)
         det_meta = {}
         for det in dets:
             color = det.lower()
             letter = color[0]
-            cols = [
-                'Ng-p-all', 'Ng-s-all',
-                f'Number of Photons (fit window) ({color})',
-                f'2I*  ({color})', f'Tau ({color})', f'gamma ({color})',
-                f'r0 ({color})', f'rho ({color})', f'BIFL scatter? ({color})',
-                f'2I*: P+2S? ({color})', f'r Scatter ({color})', f'r Experimental ({color})'
-            ]
+            cols = self._burst_result_columns(color, model, param_names)
             det_meta[det] = (color, letter, cols)
 
         # Group once by (First Stem, Detector)
@@ -165,8 +189,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             out_dir.mkdir(parents=True, exist_ok=True)
             written_dirs.add(out_dir.name)
 
-            # Build zero-interleaved matrix efficiently
-            arr = df_g[cols].to_numpy(dtype=float, copy=False)
+            # Build zero-interleaved matrix efficiently (reindex tolerates a
+            # model that did not emit every column — missing → NaN).
+            arr = df_g.reindex(columns=cols).to_numpy(dtype=float, copy=False)
             out = np.zeros((arr.shape[0] * 2 + 1, arr.shape[1]), dtype=float)
             out[1::2] = arr  # fill odd rows with data
 
@@ -3866,17 +3891,31 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "No Data", "No burst data loaded.")
             return
 
-        # The batch export (per-burst columns, multiprocessing worker) is wired
-        # for fit23. Other models can be explored interactively (the live fit +
-        # plot are model-generic) but not yet batch-exported.
-        if self.fit_model != "fit23":
+        # The batch export runs every fit2x model (fit23/24/25) through the same
+        # multiprocessing worker. The tail fit is a different estimator family
+        # (DecayFitNExp, no per-burst gamma/anisotropy) whose per-burst export is
+        # not meaningful on low burst counts, so it stays preview-only.
+        model = self.fit_model
+        if model == "tail":
             QtWidgets.QMessageBox.warning(
                 self, "Batch export",
-                f"Batch 'Run' export is currently implemented for fit23 only. "
-                f"'{self.comboBox_fit_model.currentText()}' can be fit and inspected "
-                f"interactively, but not yet exported per burst.",
+                "The tail fit (DecayFitNExp) can be inspected interactively but "
+                "is not exported per burst — a per-burst multi-exponential tail "
+                "fit is under-determined at burst photon counts. Use a fit2x "
+                "model (fit23/24/25) for batch export.",
             )
             return
+
+        # Registry method + free-parameter names for the selected model. fit23
+        # uses its per-detector authored start vector; the other fit2x models
+        # share one start vector read from the registry-driven editor.
+        try:
+            from chisurf.core import tttrlib_registry as _reg
+            method = _reg.describe(_reg.FIT_MODEL, model).get("method") or "Fit23"
+        except Exception:
+            method = "Fit23"
+        param_names = self._fit_param_names(model)
+        batch_x0, batch_fixed = self.fit_parameters  # model-aware (see property)
 
         # UI
         self.stop_processing = False
@@ -3964,6 +4003,15 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 if pchs.size: class_lut[pchs] = 0
                 if schs.size: class_lut[schs] = 1
                 half_len = max(1, irf_cache[det].size // 2)
+                # fit23 keeps its per-detector authored start vector; every other
+                # fit2x model shares the one start vector from the registry-driven
+                # editor (the editor is not per-detector).
+                if model == "fit23":
+                    x0 = np.asarray(st['initial_x0'], dtype=np.float64)
+                    fixed = np.asarray(st['fixed_flags'], dtype=np.int32)
+                else:
+                    x0 = np.asarray(batch_x0, dtype=np.float64)
+                    fixed = np.asarray(batch_fixed, dtype=np.int32)
                 perdet_cfg[det] = {
                     'sb': int(window_cache[det][0]),
                     'eb': int(window_cache[det][1]),
@@ -3975,11 +4023,14 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                     'p2s_twoIstar': bool(st['p2s_twoIstar']),
                     'BIFL_scatter': bool(st['BIFL_scatter']),
                     'min_photons': int(st['min_photons']),
-                    'x0': np.asarray(st['initial_x0'], dtype=np.float64),
-                    'fixed': np.asarray(st['fixed_flags'], dtype=np.int32),
+                    'x0': x0,
+                    'fixed': fixed,
                     'irf': np.asarray(irf_cache[det], dtype=np.float64),
                     'bg': np.asarray(bg_cache[det], dtype=np.float64),
                     'class_lut': class_lut,
+                    'model': model,
+                    'method': method,
+                    'param_names': list(param_names),
                 }
 
             bursts = list(df_file[['First Photon', 'Last Photon']].itertuples(index=False, name=None))
