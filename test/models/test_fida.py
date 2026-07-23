@@ -73,6 +73,18 @@ def test_brighter_species_has_larger_mandel_q():
     assert q_bright > q_dim
 
 
+def test_fit_fida_recovers_brightness_and_number():
+    """FPCHFidaFit-style fit recovers the (q, N) that generated the histogram."""
+    q_true, n_true = 3.0, 2.0
+    p = fida.fida_pch(60, [(q_true, n_true)])
+    counts = 500_000 * p                          # noise-free "measurement"
+    res = fida.fit_fida(counts, species_guess=[(1.5, 1.0)])
+    q_fit, n_fit = res["species"][0]
+    assert abs(q_fit - q_true) < 0.15
+    assert abs(n_fit - n_true) < 0.15
+    assert res["chi2r"] < 1e-3                     # exact model -> ~0 residuals
+
+
 def test_residuals_zero_at_truth():
     p = fida.fida_pch(40, [(2.5, 2.0)])
     counts = 10_000 * p                        # "data" == model exactly

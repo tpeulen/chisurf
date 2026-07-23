@@ -137,3 +137,81 @@ def fida_residuals(
     expected = n_bins * p
     sigma = np.sqrt(n_bins * p * (1.0 - p))
     return (expected - np.asarray(counts, dtype=float)) / sigma
+
+
+def fit_fida(
+    counts: np.ndarray,
+    species_guess: Sequence[Tuple[float, float]],
+    background: float = 0.0,
+    fit_background: bool = False,
+    profile: Tuple[np.ndarray, np.ndarray] | None = None,
+    oversample: int = 8,
+):
+    r"""Fit a photon-counting histogram with the FIDA model (Fretica ``FPCHFidaFit``).
+
+    Levenberg--Marquardt least-squares on the multinomial residuals
+    :func:`fida_residuals`, exactly as in Fretica: the per-``k`` standardised
+    residual is :math:`(n_\mathrm{bins} p_k - counts_k)/\sqrt{n_\mathrm{bins}
+    p_k(1-p_k)}` and the reduced :math:`\chi^2` is normalised by
+    ``k_max - n_params``.
+
+    Parameters
+    ----------
+    counts : numpy.ndarray
+        Observed histogram counts for ``k = 0 .. k_max``.
+    species_guess : sequence of (float, float)
+        Initial ``(q, N)`` per species.
+    background : float
+        Background counts/bin (initial value).
+    fit_background : bool
+        Whether ``background`` is a free parameter.
+    profile : (x, w), optional
+        Spatial brightness profile (:func:`dvdx_gaussian` by default).
+    oversample : int
+        PGF-inversion FFT factor.
+
+    Returns
+    -------
+    dict
+        ``{"species": [(q, N), ...], "background": float, "chi2r": float,
+        "model": P(k), "success": bool}``.
+    """
+    from scipy.optimize import least_squares
+
+    counts = np.asarray(counts, dtype=float)
+    k_max = counts.size - 1
+    n_bins = float(counts.sum())
+    guess = list(species_guess)
+    n_species = len(guess)
+
+    # Pack params as [q1, N1, q2, N2, ..., (bg)].
+    p0 = []
+    for q, n in guess:
+        p0 += [q, n]
+    if fit_background:
+        p0.append(background)
+    p0 = np.array(p0, dtype=float)
+
+    def unpack(p):
+        species = [(abs(p[2 * i]), abs(p[2 * i + 1])) for i in range(n_species)]
+        bg = abs(p[-1]) if fit_background else background
+        return species, bg
+
+    def resid(p):
+        species, bg = unpack(p)
+        model = fida_pch(k_max, species, profile=profile, background=bg, oversample=oversample)
+        return fida_residuals(model, counts, n_bins)
+
+    res = least_squares(resid, p0, method="lm")
+    species, bg = unpack(res.x)
+    model = fida_pch(k_max, species, profile=profile, background=bg, oversample=oversample)
+    n_params = len(p0)
+    dof = max(k_max - n_params, 1)
+    chi2r = float(np.sum(fida_residuals(model, counts, n_bins) ** 2) / dof)
+    return {
+        "species": species,
+        "background": bg,
+        "chi2r": chi2r,
+        "model": model,
+        "success": bool(res.success),
+    }
