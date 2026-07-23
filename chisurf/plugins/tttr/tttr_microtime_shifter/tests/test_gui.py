@@ -121,7 +121,7 @@ def test_tool_reset_button_and_logy() -> None:
     buttons = tool.findChildren(QtWidgets.QPushButton)
     reset_btn = None
     for btn in buttons:
-        if btn.text() == "↻":
+        if btn.text() == "🔄":
             reset_btn = btn
             break
 
