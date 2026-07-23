@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -632,7 +633,7 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_downstream(self) -> None:
         """Apply current workflow context to loaded downstream panels."""
-        for role in ("selection", "bva", "mle", "browser", "background", "irf_bg"):
+        for role in ("selection", "bva", "two_cde", "mle", "browser", "background", "irf_bg"):
             widget = self._workflow_panels.get(role)
             if widget is not None:
                 self._apply_context_to_panel(role, widget)
@@ -643,6 +644,8 @@ class BurstAnalysisTool(NavigationPanelTool):
             self._apply_channels_to_burst_selection(widget)
         elif role == "bva":
             self._apply_context_to_bva(widget)
+        elif role == "two_cde":
+            self._apply_context_to_2cde(widget)
         elif role == "mle":
             self._apply_context_to_mle(widget)
         elif role == "h2mm":
@@ -679,17 +682,40 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_bva(self, widget: QtWidgets.QWidget) -> None:
         """Use upstream burst folder and channels in BVA."""
-        settings = self.workflow_context.channel_settings
-        detector_page = getattr(widget, "detector_page", None)
-        if settings and detector_page is not None:
+        # Applying context touches the detector table, the donor/acceptor combos and
+        # the folder -- each of which fires BVA's ``_on_param_changed``. Suspend
+        # auto-recompute across the batch so switching to BVA triggers a single
+        # read/compute/plot instead of several.
+        suspend = getattr(widget, "suspend_recompute", None)
+        ctx = suspend() if callable(suspend) else contextlib.nullcontext()
+        with ctx:
+            settings = self.workflow_context.channel_settings
+            detector_page = getattr(widget, "detector_page", None)
+            if settings and detector_page is not None:
+                try:
+                    detector_page.load_data_into_tables(settings)
+                    widget._refresh_detector_combos()
+                except Exception:
+                    pass
+            if self.workflow_context.burst_folder is not None:
+                try:
+                    widget._set_folder(str(self.workflow_context.burst_folder))
+                except Exception:
+                    pass
+
+    def _apply_context_to_2cde(self, widget: QtWidgets.QWidget) -> None:
+        """Use the upstream burst analysis folder in the 2CDE panel.
+
+        The 2CDE tool reads a burstwise analysis folder (BUR/BST files); like BVA it
+        should adopt the folder produced upstream instead of asking the user to pick
+        it again. ``set_folder`` only fills the folder field (it does not auto-run),
+        so this is a cheap, side-effect-free hand-off.
+        """
+        folder = self.workflow_context.burst_folder
+        set_folder = getattr(widget, "set_folder", None)
+        if folder is not None and callable(set_folder):
             try:
-                detector_page.load_data_into_tables(settings)
-                widget._refresh_detector_combos()
-            except Exception:
-                pass
-        if self.workflow_context.burst_folder is not None:
-            try:
-                widget._set_folder(str(self.workflow_context.burst_folder))
+                set_folder(str(folder))
             except Exception:
                 pass
 
@@ -723,7 +749,14 @@ class BurstAnalysisTool(NavigationPanelTool):
             except Exception:
                 pass
         file_list = getattr(widget, "burst_files_list", None)
-        if self.workflow_context.bur_files and file_list is not None and file_list.count() == 0:
+        # ``burst_files_list`` is the unified PathListWidget-backed file list (via
+        # the burst-MLE ``FileListWidget`` factory), whose public API is ``paths()``
+        # -- it has no QListWidget ``count()``.
+        if (
+            self.workflow_context.bur_files
+            and file_list is not None
+            and len(file_list.paths()) == 0
+        ):
             for path in self.workflow_context.bur_files:
                 file_list.add_file(str(path))
             # A real drop fires the list's file_added_callback (load_burst_data),

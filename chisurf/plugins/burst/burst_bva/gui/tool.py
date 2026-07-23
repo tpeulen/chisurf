@@ -9,7 +9,7 @@ from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
-from qtpy.QtCore import QCoreApplication, QSettings, QSize, Qt, Signal
+from qtpy.QtCore import QCoreApplication, QSettings, QSize, Qt, QTimer, Signal
 from qtpy.QtGui import QDragEnterEvent, QDropEvent
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -229,7 +229,57 @@ class BVATool(QMainWindow):
         self._burst_df: pd.DataFrame | None = None
         self._tttrs: list | None = None
         self._static_line_item: pg.PlotDataItem | None = None
+        # Coalesce parameter-change bursts (e.g. applying workflow context loads the
+        # detector table, refreshes the donor/acceptor combos and sets the folder in
+        # one turn, each of which fires ``_on_param_changed``) into a single recompute
+        # via a zero-delay single-shot timer, and let callers suspend auto-recompute
+        # entirely while applying a batch of settings.
+        self._recompute_pending = False
+        self._suspend_recompute = 0
+        self._recompute_timer = QTimer(self)
+        self._recompute_timer.setSingleShot(True)
+        self._recompute_timer.setInterval(0)
+        self._recompute_timer.timeout.connect(self._flush_recompute)
         self._build_ui()
+
+    # ── recompute coalescing ──────────────────────────────────────────
+
+    def suspend_recompute(self):
+        """Context manager suppressing auto-recompute while applying settings.
+
+        Rapid programmatic changes (workflow-context application) would otherwise
+        each trigger a full read/compute/plot pass. Wrap them in this manager; a
+        single coalesced recompute is scheduled on exit if any change requested one.
+        """
+        tool = self
+
+        class _Suspend:
+            def __enter__(self_inner):
+                tool._suspend_recompute += 1
+
+            def __exit__(self_inner, *exc):
+                tool._suspend_recompute -= 1
+                if tool._suspend_recompute == 0 and tool._recompute_pending:
+                    tool._recompute_timer.start()
+                return False
+
+        return _Suspend()
+
+    def _flush_recompute(self):
+        """Run the single coalesced recompute scheduled by ``_on_param_changed``."""
+        if not self._recompute_pending:
+            return
+        self._recompute_pending = False
+        if self._burst_df is not None:
+            self._compute_and_plot(write_output=False)
+        elif self.data_folder is not None:
+            # Read + compute share one progress dialog (no per-phase flashing).
+            progress = self._begin_progress("Reading burst data...", 0)
+            try:
+                if self._read_burst_data(progress=progress):
+                    self._compute_and_plot(write_output=False, progress=progress)
+            finally:
+                progress.close()
 
     # ── UI Build ──────────────────────────────────────────────────────
 
@@ -594,28 +644,61 @@ class BVATool(QMainWindow):
     def _on_folder_dropped(self, path: str):
         self._set_folder(path)
 
-    def _read_burst_data(self) -> bool:
-        """Read burst data from the analysis folder and store it."""
-        if not self.data_folder:
-            return False
+    def _begin_progress(self, message: str, max_value: int):
+        """Return a shown, single BVA progress dialog for a fresh phase.
+
+        Callers pass the returned dialog to the read/compute/write helpers so all
+        phases of one run share **one** progress window instead of flashing a new
+        dialog per phase.
+        """
         progress = _ProgressDialog(
-            title="BVA Analysis", message="Reading burst data...", max_value=100, parent=self,
+            title="BVA Analysis", message=message, max_value=max_value, parent=self,
         )
         progress.show()
         QCoreApplication.processEvents()
+        return progress
+
+    @staticmethod
+    def _phase(progress, message: str, max_value: int):
+        """Retarget an existing progress dialog to the next phase (label + range)."""
+        progress.label.setText(message)
+        progress.progress.setRange(0, max_value)
+        progress.progress.setValue(0)
+        QCoreApplication.processEvents()
+
+    def _read_burst_data(self, progress=None) -> bool:
+        """Read burst data from the analysis folder and store it.
+
+        When *progress* is given the phase reuses that shared dialog; otherwise a
+        transient one is created and closed here.
+        """
+        if not self.data_folder:
+            return False
+        own = progress is None
+        # Reading has no incremental hook, so show a busy (indeterminate) bar.
+        if own:
+            progress = self._begin_progress("Reading burst data...", 0)
+        else:
+            self._phase(progress, "Reading burst data...", 0)
         try:
             self._burst_df, self._tttrs = core.read_burst_analysis(
                 self.analysis_folder, self.file_type, pattern="bi4_bur",
             )
-            progress.close()
+            if own:
+                progress.close()
             return True
         except Exception as e:
-            progress.close()
+            if own:
+                progress.close()
             QMessageBox.critical(self, "Read Error", f"Could not read burst data:\n{e}")
             return False
 
-    def _compute_and_plot(self, write_output: bool = False):
-        """Compute BVA from stored burst data and update the plot."""
+    def _compute_and_plot(self, write_output: bool = False, progress=None):
+        """Compute BVA from stored burst data and update the plot.
+
+        When *progress* is given the compute/write phases reuse that shared dialog;
+        otherwise a transient one is created and closed here.
+        """
         if self._burst_df is None or self._tttrs is None:
             return
         try:
@@ -624,23 +707,22 @@ class BVATool(QMainWindow):
             QMessageBox.critical(self, "BVA Settings Error", str(e))
             return
 
-        progress = _ProgressDialog(
-            title="BVA Analysis", message="Computing BVA...",
-            max_value=len(self._burst_df), parent=self,
-        )
-        progress.show()
-        QCoreApplication.processEvents()
+        own = progress is None
+        if own:
+            progress = self._begin_progress("Computing BVA...", len(self._burst_df))
+        else:
+            self._phase(progress, "Computing BVA...", len(self._burst_df))
 
         try:
             df_v = core.compute_bva(
                 self._burst_df, self._tttrs, progress_window=progress, **self.bva_settings,
             )
         except Exception as e:
-            progress.close()
+            if own:
+                progress.close()
             QMessageBox.critical(self, "BVA Error", str(e))
             return
 
-        progress.close()
         self._df = df_v
 
         df_selected = df_v[df_v["Proximity Ratio Std"] > 0.0]
@@ -659,19 +741,17 @@ class BVATool(QMainWindow):
         self._plot_static_line(n_photons)
 
         if write_output:
-            write_progress = _ProgressDialog(
-                title="Writing BV4", message="Writing BV4 files...",
-                max_value=len(df_v.groupby("First File")), parent=self,
+            # Reuse the same progress dialog for the write phase so a single run
+            # shows one window through compute → write.
+            self._phase(
+                progress, "Writing BV4 files...", len(df_v.groupby("First File"))
             )
-            write_progress.show()
-            QCoreApplication.processEvents()
             try:
                 core.write_bv4_analysis(
-                    df_v, str(self.analysis_folder), progress_window=write_progress,
+                    df_v, str(self.analysis_folder), progress_window=progress,
                 )
             except Exception as e:
                 logging.error(f"BV4 write failed: {e}")
-            write_progress.close()
 
             bv4_folder = self.analysis_folder / "bv4"
             bv4_folder.mkdir(parents=True, exist_ok=True)
@@ -679,6 +759,9 @@ class BVATool(QMainWindow):
             with open(settings_path, "w") as f:
                 json.dump(self.bva_settings, f, indent=4)
             logging.info(f"BVA settings saved to {settings_path}")
+
+        if own:
+            progress.close()
 
         self._tb_info.setText(f"{len(df_selected)} / {len(df_v)} bursts")
         self._status(
@@ -689,19 +772,25 @@ class BVATool(QMainWindow):
         if not self.data_folder:
             QMessageBox.warning(self, "Error", "Please select a data folder first.")
             return
-        QCoreApplication.processEvents()
-        if not self._read_burst_data():
-            return
-        self._compute_and_plot(write_output=True)
+        # One shared progress dialog spans read \u2192 compute \u2192 write.
+        progress = self._begin_progress("Reading burst data...", 0)
+        try:
+            if not self._read_burst_data(progress=progress):
+                return
+            self._compute_and_plot(write_output=True, progress=progress)
+        finally:
+            progress.close()
 
     def _on_param_changed(self):
         if not self._auto_update_cb.isChecked():
             return
-        if self._burst_df is not None:
-            self._compute_and_plot(write_output=False)
-        elif self.data_folder is not None:
-            if self._read_burst_data():
-                self._compute_and_plot(write_output=False)
+        # Coalesce this change into one recompute. While a batch of settings is
+        # being applied (suspend_recompute) just remember that a recompute is due;
+        # otherwise schedule the single-shot flush, which collapses several changes
+        # fired in the same event-loop turn into a single read/compute/plot pass.
+        self._recompute_pending = True
+        if self._suspend_recompute == 0:
+            self._recompute_timer.start()
 
     def _on_bin_changed(self):
         if not self._auto_update_cb.isChecked():

@@ -322,6 +322,123 @@ def test_data_selection_imports_local_files_to_mmfdb(tmp_path: Path) -> None:
     app.processEvents()
 
 
+def test_mle_burst_file_list_exposes_paths_not_count(qapp) -> None:
+    """The burst-MLE file list is queried via ``paths()``, never ``count()``.
+
+    Regression: ``burst_files_list`` migrated from a ``QListWidget`` to the shared
+    ``PathListWidget``-backed factory, which has no ``count()``. Applying workflow
+    context to the MLE panel crashed with ``'PathListWidget' object has no
+    attribute 'count'``. The compat widget must expose ``paths()`` (and keep
+    ``add_file``), and must NOT expose ``count`` — otherwise the caller regresses.
+    """
+    from chisurf.plugins.burst.burst_mle_analysis.utils import FileListWidget
+
+    widget = FileListWidget()
+    assert hasattr(widget, "paths")
+    assert callable(widget.paths)
+    assert widget.paths() == []
+    assert hasattr(widget, "add_file")
+    assert not hasattr(widget, "count")
+
+
+def test_apply_context_to_mle_prepopulates_via_paths(tmp_path: Path) -> None:
+    """MLE context uses ``len(paths())``/``add_file`` (no ``count()``)."""
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstAnalysisTool,
+        BurstWorkflowContext,
+    )
+
+    added: list[str] = []
+
+    class FakeList:
+        def __init__(self) -> None:
+            self._paths: list[str] = []
+
+        def paths(self) -> list[str]:
+            return list(self._paths)
+
+        def add_file(self, path: str) -> None:
+            self._paths.append(str(path))
+            added.append(str(path))
+
+    class FakeMle:
+        def __init__(self) -> None:
+            self.burst_files_list = FakeList()
+            self.channel_definer = None
+
+        def load_burst_data(self) -> None:  # noqa: D401 - stub
+            pass
+
+        def update_burst_files(self) -> None:  # noqa: D401 - stub
+            pass
+
+    tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
+    bur = tmp_path / "bi4_bur" / "a.bur"
+    tool.workflow_context = BurstWorkflowContext(bur_files=[bur])
+
+    mle = FakeMle()
+    BurstAnalysisTool._apply_context_to_mle(tool, mle)
+    assert added == [str(bur)]
+
+
+def test_apply_context_to_2cde_sets_folder(tmp_path: Path) -> None:
+    """2CDE adopts the upstream burst analysis folder (like BVA)."""
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstAnalysisTool,
+        BurstWorkflowContext,
+    )
+
+    seen: list[str] = []
+
+    class Fake2cde:
+        def set_folder(self, folder: str) -> None:
+            seen.append(str(folder))
+
+    tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
+    folder = tmp_path / "burstwise"
+    tool.workflow_context = BurstWorkflowContext(burst_folder=folder)
+
+    BurstAnalysisTool._apply_context_to_2cde(tool, Fake2cde())
+    assert seen == [str(folder)]
+
+
+def test_bva_param_changes_coalesce_into_one_recompute(qapp) -> None:
+    """Several rapid param changes trigger a single BVA recompute, not many.
+
+    Regression: applying workflow context loaded the detector table, refreshed the
+    donor/acceptor combos and set the folder in one turn, each firing a synchronous
+    full read/compute/plot. The tool now coalesces them via a zero-delay timer and
+    a ``suspend_recompute`` batch guard.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.plugins.burst.burst_bva.gui.tool import BVATool
+
+    tool = BVATool(embedded=True)
+    tool._burst_df = object()  # non-None so _flush_recompute takes the compute path
+    calls: list[int] = []
+    tool._compute_and_plot = lambda *a, **k: calls.append(1)
+    tool._auto_update_cb.setChecked(True)
+
+    # Batch of programmatic changes inside a suspend guard => one coalesced compute.
+    with tool.suspend_recompute():
+        for _ in range(5):
+            tool._on_param_changed()
+        assert calls == []  # nothing computed while suspended
+    QtWidgets.QApplication.processEvents()
+    assert calls == [1]
+
+    # A fresh burst of changes outside the guard also collapses to one compute.
+    calls.clear()
+    for _ in range(4):
+        tool._on_param_changed()
+    QtWidgets.QApplication.processEvents()
+    assert calls == [1]
+
+    tool.close()
+    QtWidgets.QApplication.processEvents()
+
+
 def test_data_selection_uses_the_shared_path_list_widget() -> None:
     """Data Selection hosts the unified AutoForm path_list, not a custom list.
 
