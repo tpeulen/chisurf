@@ -24,8 +24,40 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.tttr.tttr_lut_tools.gui.tool:TTRLutToolsWidget"
+    "gui": "chisurf.plugins.tttr.tttr_lut_tools.gui.tool:TTRLutToolsWidget",
+    "cli": "lut-tools=chisurf.plugins.tttr.tttr_lut_tools.cli.main:cli",
+    "services": "chisurf.plugins.tttr.tttr_lut_tools.backend.services:register_services"
   },
+  "rpc_methods": [
+    {
+      "name": "lut.autodetect_region",
+      "summary": "Auto-detect the flat linear TAC region of a histogram.",
+      "params_schema": {"type": "object", "properties": {
+        "counts": {"type": "array", "items": {"type": "number"}, "description": "TAC histogram counts."},
+        "noffset": {"type": "integer", "description": "Offset guess to skip early bins."}}}
+    },
+    {
+      "name": "lut.compute",
+      "summary": "Compute a TAC-linearization LUT from uniform-illumination TTTR files.",
+      "params_schema": "api.contract#/COMPUTE_PARAMS"
+    },
+    {
+      "name": "lut.apply_preview",
+      "summary": "Apply a LUT to one channel and return its corrected micro-time histogram.",
+      "params_schema": "api.contract#/APPLY_PREVIEW_PARAMS"
+    },
+    {
+      "name": "lut.settings_build",
+      "summary": "Build a settings.tttr.json bundle from per-channel LUTs and shifts.",
+      "params_schema": "api.contract#/SETTINGS_BUILD_PARAMS"
+    },
+    {
+      "name": "lut.settings_load",
+      "summary": "Load a settings.tttr.json bundle.",
+      "params_schema": {"type": "object", "properties": {
+        "path": {"type": "string", "description": "Path to settings.tttr.json."}}}
+    }
+  ],
   "menu_hidden": true,
   "deprecated": false
 }
