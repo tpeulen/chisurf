@@ -6,8 +6,13 @@ the LUT keys.
 """
 
 import json
+import pathlib
 
+import numpy as np
 import pytest
+
+_SPC = (pathlib.Path(__file__).resolve().parents[2]
+        / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc")
 
 
 @pytest.fixture
@@ -71,6 +76,40 @@ def test_get_settings_round_trips_lut_keys(qapp, lut_setup):
     assert list(s["channel_luts"].keys()) == ["0"]
     assert s["channel_luts"]["0"] == [0.0, 1.0, 2.5, 4.0, 8.0]
     assert s["channel_shifts"]["8"] == 3
+
+
+@pytest.mark.skipif(not _SPC.is_file(), reason="sample SPC not available")
+def test_microtime_preview_applies_lut(qapp, tmp_path):
+    """The decay preview reflects the configured LUT (regression: it read raw)."""
+    from chisurf.plugins.tttr.tttr_lut_tools.api import compute
+
+    data = {
+        "windows": {"p": [0, 2048]},
+        "detectors": {"g": {"chs": [0]}},
+        "tttr_reading": {"file_type": "SPC-130"},
+    }
+    setup = tmp_path / "s.json"
+    setup.write_text(json.dumps(data))
+    page = _page(str(setup))
+    page._microtime_decay_file_path = str(_SPC)
+
+    page._apply_lut = False
+    page._refresh_preview_lut()
+    raw = np.asarray(page._microtime_counts).copy()
+
+    tbl = compute.compute_lut_from_files([str(_SPC)], channel=0,
+                                         linear_start=1500, linear_stop=3000)
+    page._channel_luts[0] = np.asarray(tbl["NTAC_fract"])
+    page._apply_lut = True
+    page._refresh_preview_lut()
+    corrected = np.asarray(page._microtime_counts)
+
+    n = min(raw.size, corrected.size)
+    assert not np.array_equal(raw[:n], corrected[:n])  # LUT changed the decay
+    # toggling the gate off returns the raw decay
+    page._apply_lut = False
+    page._refresh_preview_lut()
+    assert np.array_equal(raw, np.asarray(page._microtime_counts))
 
 
 def test_toggle_apply_lut_updates_state(qapp, lut_setup):

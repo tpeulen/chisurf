@@ -24,6 +24,38 @@ def _load_vv_vh_gfactor_calculator_class():
     return cls
 
 
+def _apply_setup_lut_to_tttr(page, tttr) -> bool:
+    """Apply the page's per-channel LUT + shifts to *tttr* in place when enabled.
+
+    Returns ``True`` if a LUT was applied. Uses tttrlib's native
+    ``apply_channel_luts`` / ``apply_luts_and_shifts`` with the same fixed dither
+    seed as the reading seam, so the preview matches production reads.
+    """
+    if not bool(getattr(page, "_apply_lut", False)):
+        return False
+    luts = getattr(page, "_channel_luts", None) or {}
+    if not luts:
+        return False
+    try:
+        from chisurf.core.fio.staging import LUT_DITHER_SEED
+
+        seed = int(LUT_DITHER_SEED)
+    except Exception:
+        seed = 42
+    try:
+        channel_luts = {int(k): np.asarray(v, dtype=np.float64) for k, v in luts.items()}
+        tttr.apply_channel_luts(channel_luts, {})
+        tttr.apply_luts_and_shifts(seed, True)
+        shifts = getattr(page, "_channel_shifts", None) or {}
+        for ch, s in shifts.items():
+            if int(s):
+                tttr.shift_micro_time_by_channel(int(ch), int(s))
+        return True
+    except Exception as exc:  # pragma: no cover - best-effort preview
+        logger.debug("Applying setup LUT to preview failed: %s", exc)
+        return False
+
+
 def _update_microtime_preview(page, tttr, file_path=None):
     """Feed the page's micro-time preview with the data's decay histogram.
 
@@ -43,6 +75,10 @@ def _update_microtime_preview(page, tttr, file_path=None):
     setter = getattr(page, "set_microtime_data", None)
     if not callable(setter):
         return
+    # Apply the setup's TAC-linearization LUT so the preview reflects the
+    # correction the user configured in the LUT-handling box (else the decay
+    # shown here is raw and ignores the LUT). Mutates the local ``tttr``.
+    _apply_setup_lut_to_tttr(page, tttr)
     try:
         hist, _ = tttr.get_microtime_histogram(1)
         setter(np.asarray(hist, dtype=float), file_path=file_path)

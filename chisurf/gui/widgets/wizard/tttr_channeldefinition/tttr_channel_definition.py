@@ -1244,9 +1244,33 @@ class DetectorWizardPage(QWizardPage):
             table.setCellWidget(row, 2, shift_spin)
         table.blockSignals(False)
 
+    def _refresh_preview_lut(self):
+        """Re-read the previewed file and redraw the decay with the current LUT.
+
+        The user typically reads the calibration file *before* computing/assigning
+        LUTs, so the micro-time decay preview must be recomputed whenever the LUT
+        gate or an assignment changes — otherwise it keeps showing the raw decay.
+        """
+        path = getattr(self, "_microtime_decay_file_path", None)
+        if not path or not pathlib.Path(str(path)).is_file():
+            return
+        try:
+            from chisurf.core.fio.staging import open_tttr
+
+            from .tttr_channel_definition_tttr_io import _update_microtime_preview
+
+            routine = self.file_type_combo.currentText().strip()
+            routine = None if routine in ("", "Auto") else routine
+            # Open raw here; _update_microtime_preview applies the setup's LUT.
+            tttr = open_tttr(str(path), routine)
+            _update_microtime_preview(self, tttr, file_path=str(path))
+        except Exception:
+            pass
+
     def _on_apply_lut_toggled(self, checked: bool):
         """Master gate toggled: store it; if on with missing LUTs, offer to compute."""
         self._apply_lut = bool(checked)
+        self._refresh_preview_lut()
         if not checked:
             return
         have = getattr(self, "_channel_luts", {})
@@ -1289,6 +1313,7 @@ class DetectorWizardPage(QWizardPage):
             self._channel_luts[ch] = arr
             self._channel_lut_sources[ch] = pathlib.Path(path).name
             self._refresh_lut_box()
+            self._refresh_preview_lut()
 
     def _on_open_lut_tools(self):
         """Jump to the existing LUT Tools panel (compute + assign + settings.tttr.json)."""
@@ -1316,6 +1341,7 @@ class DetectorWizardPage(QWizardPage):
         # Best-effort: pull assigned LUTs/shifts back from the settings panel.
         self._pull_luts_from_panel(panel)
         self._refresh_lut_box()
+        self._refresh_preview_lut()
 
     def _pull_luts_from_panel(self, panel):
         """Best-effort import of ``channel_luts``/``channel_shifts`` from a LUT panel."""
