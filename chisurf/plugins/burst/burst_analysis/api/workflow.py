@@ -314,6 +314,85 @@ class TwoCde:
 
 
 @dataclass
+class Recurrence:
+    """Recurrence Analysis of Single Particles (RASP) on a burst set.
+
+    Returned by :meth:`Bursts.recurrence`. Holds the per-burst arrival times and
+    FRET efficiencies and exposes the same-molecule probability and recurrence
+    FRET histograms (Hoffmann et al., PCCP 2011).
+
+    Attributes
+    ----------
+    times_s : numpy.ndarray
+        Per-burst arrival times in seconds.
+    efficiency : numpy.ndarray
+        Per-burst FRET efficiency / proximity ratio.
+    """
+
+    times_s: np.ndarray
+    efficiency: np.ndarray
+
+    def same_molecule_probability(
+        self, tau_min_s: float = 1e-3, tau_max_s: float = 1.0, n_bins: int = 50,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Return ``(tau, P_same)`` — the same-molecule probability vs lag."""
+        from chisurf.core.fluorescence.burst.recurrence import same_molecule_probability
+
+        tau, p_same, _ = same_molecule_probability(
+            self.times_s, tau_min_s, tau_max_s, n_bins)
+        return tau, p_same
+
+    def recurrence_time(self, threshold: float = 0.5, **kwargs) -> float:
+        """Largest lag (s) at which ``P_same`` still exceeds ``threshold``.
+
+        A practical upper bound for the recurrence-time window: beyond it a
+        recurring burst is more likely a different molecule than the same one.
+        """
+        tau, p_same = self.same_molecule_probability(**kwargs)
+        ok = tau[p_same >= threshold]
+        return float(ok.max()) if ok.size else float("nan")
+
+    def efficiencies(
+        self, e_range: tuple[float, float], dt_range_s: tuple[float, float],
+    ) -> np.ndarray:
+        """Efficiencies of bursts recurring after the ``e_range`` sub-population."""
+        from chisurf.core.fluorescence.burst.recurrence import recurrence_efficiencies
+
+        return recurrence_efficiencies(self.times_s, self.efficiency, e_range, dt_range_s)
+
+    def histogram(
+        self, e_range: tuple[float, float], dt_range_s: tuple[float, float],
+        bins: int = 50,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return ``(centers, recurrence_hist, overall_hist)`` (unit area)."""
+        from chisurf.core.fluorescence.burst.recurrence import recurrence_histogram
+
+        return recurrence_histogram(
+            self.times_s, self.efficiency, e_range, dt_range_s, bins)
+
+    def plot(
+        self, e_range: tuple[float, float] = (0.0, 0.4),
+        dt_range_s: tuple[float, float] = (1e-3, 0.1), ax: Any = None,
+    ) -> Any:
+        """Overlay the recurrence FRET histogram on the overall histogram."""
+        import matplotlib.pyplot as plt
+
+        centers, rec, overall = self.histogram(e_range, dt_range_s)
+        if ax is None:
+            _, ax = plt.subplots(figsize=(6, 5))
+        w = centers[1] - centers[0] if centers.size > 1 else 0.02
+        ax.bar(centers, overall, width=w, color="0.8", label="all bursts")
+        ax.bar(centers, rec, width=w, color="#1f77b4", alpha=0.7,
+               label=f"recurrence E∈[{e_range[0]:g}, {e_range[1]:g}]")
+        ax.axvspan(e_range[0], e_range[1], color="crimson", alpha=0.08)
+        ax.set_xlabel("FRET efficiency (proximity ratio)")
+        ax.set_ylabel("probability density")
+        ax.set_title("Recurrence analysis (RASP)")
+        ax.legend()
+        return ax
+
+
+@dataclass
 class H2mm:
     """Result of a photon-by-photon H2MM analysis.
 
@@ -717,6 +796,52 @@ class Bursts:
             tau=tau, kernel=kernel, variant=variant,
         )
         return TwoCde(table=table, variant=variant)
+
+    def recurrence(
+        self,
+        donor: str | None = None,
+        acceptor: str | None = None,
+    ) -> Recurrence:
+        """Recurrence Analysis of Single Particles (RASP).
+
+        Resolves each burst's arrival time and FRET efficiency from the burst
+        table and returns a :class:`Recurrence` handle exposing the
+        same-molecule probability and recurrence FRET histograms (Hoffmann et
+        al., PCCP 2011) — slow (ms..s) dynamics between diffusing-molecule
+        events, not resolvable within a single burst.
+
+        Parameters
+        ----------
+        donor, acceptor : str, optional
+            Detector names for the proximity ratio when it must be derived from
+            per-detector photon counts (default: first two detectors). Ignored
+            when the table already carries an efficiency column.
+        """
+        from chisurf.plugins.burst.burst_selection.api.features import proximity_ratio
+
+        e = proximity_ratio(self.table)
+        if e is None:
+            for col in ("Proximity Ratio Mean", "E", "Efficiency"):
+                if col in self.table:
+                    e = self.table[col].to_numpy(dtype=float)
+                    break
+        if e is None:
+            raise ValueError(
+                "recurrence(): no FRET efficiency / proximity-ratio column in the "
+                "burst table (need 'Proximity Ratio' or per-detector photon counts)."
+            )
+
+        time_col = next(
+            (c for c in ("Mean Macro Time (ms)", "Mean Macro Time (s)") if c in self.table),
+            None,
+        )
+        if time_col is None:
+            raise ValueError("recurrence(): burst table has no 'Mean Macro Time' column.")
+        times = self.table[time_col].to_numpy(dtype=float)
+        if time_col.endswith("(ms)"):
+            times = times / 1e3
+
+        return Recurrence(times_s=times, efficiency=np.asarray(e, dtype=float))
 
     def h2mm(
         self,
