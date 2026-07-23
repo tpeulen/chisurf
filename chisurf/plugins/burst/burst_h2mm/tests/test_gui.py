@@ -24,9 +24,21 @@ def test_h2mm_gui_instantiates(qapp):
     from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
 
     w = H2mmTool(embedded=True)
-    tabs = [w.dock_area.tabText(i) for i in range(3)]
-    assert "H2MM Settings" in tabs
-    assert "Results" in tabs
+    # Each result plot is now its own dock (no single cramped "Results" grid).
+    tab_names = set(w.dock_area._tab_names.values())
+    assert "H2MM Settings" in tab_names
+    assert "Channel Definitions" in tab_names
+    assert "Results" not in tab_names
+    assert set(w._plot_pages) <= tab_names
+    assert set(w._plot_pages) == {
+        "Dwell FRET states",
+        "Transition density",
+        "Model selection",
+        "Dwell times",
+        "Per-state decay",
+        "Transition rates",
+        "State path",
+    }
     w.close()
 
 

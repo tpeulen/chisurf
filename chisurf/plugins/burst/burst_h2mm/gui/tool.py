@@ -218,7 +218,7 @@ class H2mmTool(QMainWindow):
     def __init__(self, parent=None, *, embedded: bool = False):
         super().__init__(parent)
         self._embedded = embedded
-        self.setWindowTitle("smFRET H2MM Analysis  ⚠️ experimental")
+        self.setWindowTitle("smFRET H2MM Analysis")
         self.data_folder: pathlib.Path | None = None
         self.file_type = "SPC-130"
         self._result = None
@@ -241,7 +241,10 @@ class H2mmTool(QMainWindow):
         self.dock_area = DockArea()
         self.dock_area.addTab(self._build_settings_tab(), "H2MM Settings", close_mode="hide")
         self.dock_area.addTab(self._build_channels_tab(), "Channel Definitions", close_mode="hide")
-        self.dock_area.addTab(self._build_plots(), "Results", close_mode="hide")
+        # Each result plot is its own dock (drag to split / rearrange / resize),
+        # not a single cramped grid. A default 2-column arrangement mirrors the
+        # familiar dashboard while every plot stays independently resizable.
+        self._build_plot_docks()
         layout.addWidget(self.dock_area, 1)
 
         self._status_label = QLabel("Ready")
@@ -250,6 +253,8 @@ class H2mmTool(QMainWindow):
         layout.addWidget(self._status_label)
 
         self._connect_signals()
+        self._apply_default_plot_layout()
+        self.dock_area.enable_persistence("burst_h2mm")
         self._load_settings()
 
     def _setup_toolbar(self):
@@ -428,49 +433,79 @@ class H2mmTool(QMainWindow):
             # A 3rd detector (e.g. PIE 'yellow') is a good Aex default.
             self.cb_aex.setCurrentIndex(3)
 
-    def _build_plots(self) -> QWidget:
-        """Build the burstH2MM-style 3×2 result grid plus a burst state-path viewer."""
-        container = QWidget()
-        v = QVBoxLayout(container)
-        v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(2)
+    #: dock tab titles for each result plot (stable — used by the default layout).
+    _DOCK_FRET = "Dwell FRET states"
+    _DOCK_TDP = "Transition density"
+    _DOCK_SEL = "Model selection"
+    _DOCK_DWELL = "Dwell times"
+    _DOCK_NANO = "Per-state decay"
+    _DOCK_RATES = "Transition rates"
+    _DOCK_PATH = "State path"
 
-        self.plot_widget = pg.GraphicsLayoutWidget()
-        # Row 0 — dwell FRET (E histogram or E–S scatter) + transition-density.
-        self._p_fret = self.plot_widget.addPlot(row=0, col=0, title="Dwell FRET states")
+    @staticmethod
+    def _new_plot(title: str) -> pg.PlotWidget:
+        """Create a single-plot dock page whose PlotItem is returned by the caller."""
+        return pg.PlotWidget(title=title)
+
+    def _build_plot_docks(self) -> None:
+        """Add each burstH2MM-style result plot as its own dock in the dock area.
+
+        Previously all seven plots were packed into one ``GraphicsLayoutWidget`` in a
+        single "Results" dock, so each was tiny. They are now independent docks the
+        user can resize, tab, maximize or drag into any split arrangement; a default
+        two-column layout is applied in :meth:`_apply_default_plot_layout`.
+        """
+        # Row-0 plots — dwell FRET (E histogram or E–S scatter) + transition density.
+        w_fret = self._new_plot(self._DOCK_FRET)
+        self._p_fret = w_fret.getPlotItem()
         self._p_fret.setLabels(bottom="Apparent FRET E", left="Dwells")
         self._p_fret.setXRange(0, 1)
         self._fret_legend = self._p_fret.addLegend(offset=(-5, 5))
-        self._p_tdp = self.plot_widget.addPlot(row=0, col=1, title="Transition-density plot")
+
+        w_tdp = self._new_plot(self._DOCK_TDP)
+        self._p_tdp = w_tdp.getPlotItem()
         self._p_tdp.setLabels(bottom="E before", left="E after")
         self._p_tdp.setRange(xRange=(0, 1), yRange=(0, 1))
         self._tdp_img = pg.ImageItem(axisOrder="col-major")
         self._p_tdp.addItem(self._tdp_img)
-        # Row 1 — model selection + dwell-time distributions.
-        self._p_sel = self.plot_widget.addPlot(row=1, col=0, title="Model selection")
+
+        # Row-1 plots — model selection + dwell-time distributions.
+        w_sel = self._new_plot(self._DOCK_SEL)
+        self._p_sel = w_sel.getPlotItem()
         self._p_sel.setLabels(bottom="Number of states", left="Criterion")
         self._p_sel.addLegend()
-        self._p_dwell = self.plot_widget.addPlot(row=1, col=1, title="Dwell-time distributions")
+
+        w_dwell = self._new_plot(self._DOCK_DWELL)
+        self._p_dwell = w_dwell.getPlotItem()
         self._p_dwell.setLabels(bottom="Dwell time (ms)", left="Counts")
         self._dwell_legend = self._p_dwell.addLegend(offset=(-5, 5))
-        # Row 2 — per-state fluorescence decay + transition-rate matrix.
-        self._p_nano = self.plot_widget.addPlot(row=2, col=0, title="Per-state fluorescence decay")
+
+        # Row-2 plots — per-state fluorescence decay + transition-rate matrix.
+        w_nano = self._new_plot(self._DOCK_NANO)
+        self._p_nano = w_nano.getPlotItem()
         self._p_nano.setLabels(bottom="Micro time (channel)", left="Counts")
         self._p_nano.setLogMode(y=True)
         self._nano_legend = self._p_nano.addLegend(offset=(-5, 5))
-        self._p_rates = self.plot_widget.addPlot(row=2, col=1, title="Transition rates (1/s)")
+
+        w_rates = self._new_plot(self._DOCK_RATES)
+        self._p_rates = w_rates.getPlotItem()
         self._p_rates.setLabels(bottom="to state", left="from state")
         self._p_rates.invertY(True)
         self._p_rates.setAspectLocked(True)
         self._rates_img = pg.ImageItem(axisOrder="row-major")
         self._p_rates.addItem(self._rates_img)
-        # Row 3 — burst state path, full width (it is a time series).
-        self._p_path = self.plot_widget.addPlot(row=3, col=0, colspan=2, title="Burst state path")
+
+        # Burst state path — plot plus its navigation bar, in one dock.
+        path_page = QWidget()
+        v = QVBoxLayout(path_page)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(2)
+        w_path = self._new_plot(self._DOCK_PATH)
+        self._p_path = w_path.getPlotItem()
         self._p_path.setLabels(bottom="Time in burst (ms)", left="FRET E")
         self._p_path.setYRange(-0.05, 1.05)
-        v.addWidget(self.plot_widget, 1)
+        v.addWidget(w_path, 1)
 
-        # Burst-path navigation bar.
         nav = QHBoxLayout()
         nav.setContentsMargins(6, 0, 6, 2)
         self.btn_prev_burst = QToolButton()
@@ -498,7 +533,72 @@ class H2mmTool(QMainWindow):
         self.btn_next_burst.clicked.connect(lambda: self.sb_burst.stepBy(1))
         self.sb_burst.valueChanged.connect(self._update_burst_path)
         self.cb_dynamic_only.toggled.connect(self._apply_nav_filter)
-        return container
+
+        # Keep an ordered handle on the plot dock pages (for Save-plot / grabbing).
+        self._plot_pages = {
+            self._DOCK_FRET: w_fret,
+            self._DOCK_TDP: w_tdp,
+            self._DOCK_SEL: w_sel,
+            self._DOCK_DWELL: w_dwell,
+            self._DOCK_NANO: w_nano,
+            self._DOCK_RATES: w_rates,
+            self._DOCK_PATH: path_page,
+        }
+        for title, page in self._plot_pages.items():
+            self.dock_area.addTab(page, title, close_mode="hide")
+
+    def _apply_default_plot_layout(self) -> None:
+        """Arrange the plot docks as a default two-column grid beside the controls.
+
+        Mirrors the original dashboard (two columns of plots, the state path along
+        the bottom) but as independent, resizable docks. Falls back silently to the
+        flat tab order if the layout cannot be applied. A persisted arrangement (if
+        any) overrides this on show — see ``DockArea.enable_persistence``.
+        """
+        def _tab(name: str) -> dict:
+            return {"type": "tab", "current_index": 0, "tabs": [{"tab_name": name}]}
+
+        def _row(left: str, right: str) -> dict:
+            return {
+                "type": "splitter",
+                "orientation": "horizontal",
+                "sizes": [600, 600],
+                "children": [_tab(left), _tab(right)],
+            }
+
+        state = {
+            "version": 1,
+            "root": {
+                "type": "splitter",
+                "orientation": "horizontal",
+                "sizes": [300, 1200],
+                "children": [
+                    {
+                        "type": "tab",
+                        "current_index": 0,
+                        "tabs": [
+                            {"tab_name": "H2MM Settings"},
+                            {"tab_name": "Channel Definitions"},
+                        ],
+                    },
+                    {
+                        "type": "splitter",
+                        "orientation": "vertical",
+                        "sizes": [320, 320, 320, 220],
+                        "children": [
+                            _row(self._DOCK_FRET, self._DOCK_TDP),
+                            _row(self._DOCK_SEL, self._DOCK_DWELL),
+                            _row(self._DOCK_NANO, self._DOCK_RATES),
+                            _tab(self._DOCK_PATH),
+                        ],
+                    },
+                ],
+            },
+        }
+        try:
+            self.dock_area.set_layout_state(state)
+        except Exception:
+            pass
 
     def _connect_signals(self):
         self.btn_folder.clicked.connect(self._select_folder)
@@ -1206,9 +1306,20 @@ class H2mmTool(QMainWindow):
         self._burst_label.setText(f"burst {b} · {e - s} photons · {n_tr} transitions")
 
     def _save_plot(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Save plot", "h2mm.png", "PNG (*.png)")
-        if path:
-            self.plot_widget.grab().save(path)
+        # Plots are now separate docks; save the one whose dock is currently active,
+        # falling back to the FRET plot if the active page isn't a plot dock.
+        current = self.dock_area.currentWidget() if hasattr(self.dock_area, "currentWidget") else None
+        page = current if current in getattr(self, "_plot_pages", {}).values() else None
+        if page is None:
+            page = self._plot_pages.get(self._DOCK_FRET)
+        default_name = "h2mm.png"
+        for title, candidate in self._plot_pages.items():
+            if candidate is page:
+                default_name = f"h2mm_{title.lower().replace(' ', '_').replace('–', '-')}.png"
+                break
+        path, _ = QFileDialog.getSaveFileName(self, "Save plot", default_name, "PNG (*.png)")
+        if path and page is not None:
+            page.grab().save(path)
 
     # ── workflow integration ─────────────────────────────────────────
 

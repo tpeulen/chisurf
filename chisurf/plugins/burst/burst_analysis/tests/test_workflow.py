@@ -159,13 +159,13 @@ def test_burst_workflow_panel_order() -> None:
     assert "channels" not in {p.get("role") for p in BURST_PANELS}
 
 
-def test_h2mm_panel_is_flagged_experimental() -> None:
-    """The H2MM step carries the experimental flag so the nav shows ⚠️ + banner."""
+def test_h2mm_panel_is_not_flagged_experimental() -> None:
+    """The H2MM step no longer carries the experimental flag (no ⚠️ / banner)."""
     from chisurf.plugins.burst.burst_analysis.gui.tool import BURST_PANELS
 
     h2mm = next(p for p in BURST_PANELS if p.get("role") == "h2mm")
-    assert h2mm.get("experimental") is True
-    assert h2mm.get("experimental_message")
+    assert not h2mm.get("experimental")
+    assert not h2mm.get("experimental_message")
 
 
 def test_workflow_context_payload_is_json_ready(tmp_path: Path) -> None:
