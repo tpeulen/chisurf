@@ -541,9 +541,6 @@ class SetupMixin:
             "chisurf.gui.widgets.models.fcs.DyeShapeFCSWidget": (
                 "chisurf.gui.widgets.models.fcs.dye_volume_widget.DyeShapeFCSWidget"
             ),
-            "chisurf.gui.widgets.models.fcs.MdfFCSWidget": (
-                "chisurf.gui.widgets.models.fcs.mdf_widget.MdfFCSWidget"
-            ),
             "chisurf.gui.widgets.models.fcs.MaxEntFCSWidget": (
                 "chisurf.gui.widgets.models.fcs.maxent_widget.MaxEntFCSWidget"
             ),

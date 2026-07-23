@@ -1,0 +1,97 @@
+{
+  "_comment": "Editor layout for the general composable FCS model (GeneralFCSModel). PRD-62: pick a diffusion type (MDF, single-focus Gauss, or two-focus Gauss, each also taking bunching/antibunching relaxation terms). Panel fold state reflects the model's default diffusion_mode ('mdf') at editor-build time, same convention as the TCSPC anisotropy polarization_type panel; the non-default diffusion panels start collapsed regardless of the current mode (no live re-fold on combo change), open them manually after switching mode.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Diffusion",
+      "collapsible": false,
+      "sections": [
+        {"type": "choice", "attr": "diffusion_mode", "label": "Type",
+         "options": ["mdf", "gauss", "two_focus"], "labels": ["MDF", "Gauss", "Two-focus"], "style": "radio",
+         "description": "MDF = Enderlein Gauss-Lorentz molecule-detection function (accurate absolute Veff/concentration). Gauss = classic single-focus 3D-Gaussian PSF approximation. Two-focus = classic Dertinger dual-focus technique (same 3D-Gaussian term, known inter-focus distance yields an absolute D)."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "MDF (Gauss-Lorentz)",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {"type": "parameter_group_table", "target": "mdf_physical", "collapsible": false},
+        {"type": "parameter_group_table", "target": "mdf_optics", "collapsible": false}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "3D Gaussian (single-focus)",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {"type": "parameter_group_table", "target": "gauss", "collapsible": false}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "3D Gaussian (two-focus)",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {"type": "parameter_group_table", "target": "two_focus", "collapsible": false}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Bunching terms",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {
+          "type": "dynamic_group",
+          "target": "bunching",
+          "append_method": "add_bunching",
+          "remove_method": "remove_bunching",
+          "rows_source": "_bunching_parameter_rows",
+          "row_width": 2,
+          "style": "table",
+          "min_rows": 0,
+          "collapsible": false
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Antibunching terms",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {
+          "type": "dynamic_group",
+          "target": "antibunching",
+          "append_method": "add_antibunching",
+          "remove_method": "remove_antibunching",
+          "rows_source": "_antibunching_parameter_rows",
+          "row_width": 2,
+          "style": "table",
+          "min_rows": 0,
+          "collapsible": false
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Outputs (MDF mode)",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {"type": "parameter_group_table", "target": "mdf_outputs", "collapsible": false}
+      ]
+    }
+  ],
+  "plots": [
+    {"key": "line", "options": {"scale_x": "log", "d_scaley": "lin", "r_scaley": "lin", "x_label": "t_c (ms)", "y_label": "G_c(t_c)"}},
+    {"key": "fit_table", "options": {}},
+    {"key": "fit_info", "options": {}},
+    {"key": "parameter_scan", "options": {}},
+    {"key": "residual", "options": {}}
+  ]
+}

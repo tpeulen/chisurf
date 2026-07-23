@@ -333,12 +333,12 @@ def main(argv: Optional[List[str]] = None) -> None:
     else:
         out_path = source_root / "settings" / "constants" / "parameter_registry.json"
 
-    existing = _load_existing_registry(out_path)
+    existing, existing_qualified = _load_existing_registry(out_path)
     if not isinstance(existing, dict):
         existing = {}
 
     merged = _update_tcspc_descriptions(existing)
-    _save_registry(out_path, merged)
+    _save_registry(out_path, merged, existing_qualified)
 
 
 if __name__ == "__main__":

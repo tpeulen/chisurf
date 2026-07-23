@@ -2,6 +2,7 @@ from __future__ import annotations
 from chisurf import typing
 
 import abc
+import inspect
 import json
 import math
 
@@ -12,6 +13,32 @@ import chisurf.core.base
 import chisurf.core.decorators
 
 T = typing.TypeVar('T', bound='Parameter')
+
+
+def _owning_class_name() -> typing.Optional[str]:
+    """Best-effort class name of the object constructing the current ``Parameter``.
+
+    Walks caller frames looking for the first ``self`` local that is *not* a
+    ``Parameter`` instance — i.e. past ``Parameter.__init__`` and any
+    subclass ``__init__`` (e.g. ``FittingParameter``) that simply forwards to
+    it, up to the model/group whose ``__init__`` body actually wrote
+    ``self._x = FittingParameter(name="x", ...)``. This mirrors the "class"
+    context ``build_tools/dev_utils/export_fitting_parameters.py`` records for
+    the same call site, so the two agree on what a parameter is scoped to.
+    """
+    frame = inspect.currentframe()
+    try:
+        f = frame.f_back if frame else None
+        for _ in range(8):
+            if f is None:
+                return None
+            owner = f.f_locals.get("self")
+            if owner is not None and not isinstance(owner, Parameter):
+                return type(owner).__name__
+            f = f.f_back
+    finally:
+        del frame
+    return None
 
 
 @chisurf.core.decorators.register
@@ -534,15 +561,33 @@ class Parameter(chisurf.core.base.Base):
             try:
                 meta = getattr(chisurf.core.settings, "parameter_registry", {})
                 params_meta = meta.get("parameters", meta) if isinstance(meta, dict) else {}
+                qualified_meta = meta.get("by_qualified_id", {}) if isinstance(meta, dict) else {}
                 entry = None
-                if isinstance(params_meta, dict):
-                    if registry_id is not None:
+                # 1) An explicit registry_id (e.g. "rics.D") always wins, checked
+                #    against the scoped index first, then the legacy bare-name one.
+                if registry_id is not None:
+                    if isinstance(qualified_meta, dict):
+                        entry = qualified_meta.get(registry_id)
+                    if entry is None and isinstance(params_meta, dict):
                         entry = params_meta.get(registry_id)
-                    if entry is None:
-                        entry = params_meta.get(self._name)
+                # 2) Scope to the owning class ("<ClassName>.<name>") so two
+                #    unrelated classes reusing the same bare name (e.g. FRET's
+                #    Forster-radius "R0" vs. an unrelated model's own "R0")
+                #    never cross-contaminate descriptions.
+                if entry is None and isinstance(qualified_meta, dict):
+                    owner_cls = _owning_class_name()
+                    if owner_cls is not None:
+                        entry = qualified_meta.get(f"{owner_cls}.{self._name}")
+                # 3) Legacy bare-name fallback, but only when it is not flagged
+                #    ambiguous (i.e. more than one class contributed it) — an
+                #    ambiguous bare-name entry has no reliable single meaning.
+                if entry is None and isinstance(params_meta, dict):
+                    candidate = params_meta.get(self._name)
+                    if isinstance(candidate, dict) and not candidate.get("ambiguous"):
+                        entry = candidate
                     if entry is None:
                         for _key, _val in params_meta.items():
-                            if not isinstance(_val, dict):
+                            if not isinstance(_val, dict) or _val.get("ambiguous"):
                                 continue
                             aliases = _val.get("aliases") or []
                             if isinstance(aliases, list) and self._name in aliases:

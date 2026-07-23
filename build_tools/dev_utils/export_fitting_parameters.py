@@ -108,23 +108,26 @@ class FittingParameterVisitor(ast.NodeVisitor):
         }
 
 
-def _load_existing_registry(path: Path) -> Dict[str, Any]:
+def _load_existing_registry(path: Path) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Return the existing ``(parameters, by_qualified_id)`` dicts, if any."""
     if not path.is_file():
-        return {}
+        return {}, {}
     try:
         with path.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
     except Exception:
-        return {}
+        return {}, {}
     if isinstance(data, dict) and "parameters" in data and isinstance(data["parameters"], dict):
-        return data["parameters"]
+        by_qualified = data.get("by_qualified_id")
+        return data["parameters"], (by_qualified if isinstance(by_qualified, dict) else {})
     if isinstance(data, dict):
-        return data
-    return {}
+        # Legacy shape: the whole document *is* the bare-name parameters dict.
+        return data, {}
+    return {}, {}
 
 
-def _save_registry(path: Path, parameters: Dict[str, Any]) -> None:
-    doc = {"version": 1, "parameters": parameters}
+def _save_registry(path: Path, parameters: Dict[str, Any], by_qualified_id: Dict[str, Any]) -> None:
+    doc = {"version": 2, "parameters": parameters, "by_qualified_id": by_qualified_id}
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8") as fh:
@@ -133,71 +136,108 @@ def _save_registry(path: Path, parameters: Dict[str, Any]) -> None:
     tmp.replace(path)
 
 
-def _merge_results(existing: Dict[str, Any], discovered: List[Dict[str, Any]]) -> Dict[str, Any]:
-    params = dict(existing) if isinstance(existing, dict) else {}
+def _qualified_id(info: Dict[str, Any]) -> str:
+    """Return ``"<ClassName>.<param_name>"`` (or ``"<module>.<param_name>"`` with no class)."""
+    scope = info.get("class") or info.get("module") or "?"
+    return f"{scope}.{info['name']}"
+
+
+def _merge_entry(entry: Any, info: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge one discovered ``FittingParameter(...)`` call site into ``entry``."""
+    if not isinstance(entry, dict):
+        entry = {"description": "", "keywords": [], "aliases": [], "label_texts": [], "sources": []}
+
+    # Preserve existing description/keywords/aliases/label_texts if present
+    desc = entry.get("description")
+    if not isinstance(desc, str):
+        desc = ""
+    code_desc = info.get("description_in_code")
+    if not desc and isinstance(code_desc, str) and code_desc:
+        desc = code_desc
+
+    keywords = entry.get("keywords") or []
+    if not isinstance(keywords, list):
+        keywords = []
+
+    aliases = entry.get("aliases") or []
+    if not isinstance(aliases, list):
+        aliases = []
+
+    label_texts = entry.get("label_texts") or []
+    if not isinstance(label_texts, list):
+        label_texts = []
+    lt = info.get("label_text")
+    if isinstance(lt, str) and lt and lt not in label_texts:
+        label_texts.append(lt)
+
+    # Merge source info (avoid exact duplicates)
+    sources = entry.get("sources") or []
+    if not isinstance(sources, list):
+        sources = []
+    src_key = (info.get("file"), info.get("line"))
+    seen = {(s.get("file"), s.get("line")) for s in sources if isinstance(s, dict)}
+    if src_key not in seen:
+        sources.append({
+            "module": info.get("module"),
+            "file": info.get("file"),
+            "line": info.get("line"),
+            "class": info.get("class"),
+            "function": info.get("function"),
+            "description_in_code": info.get("description_in_code"),
+            "label_text": info.get("label_text"),
+            "fixed": info.get("fixed"),
+            "bounds_on": info.get("bounds_on"),
+            "lb": info.get("lb"),
+            "ub": info.get("ub"),
+        })
+
+    entry["description"] = desc
+    entry["keywords"] = keywords
+    entry["aliases"] = aliases
+    entry["label_texts"] = label_texts
+    entry["sources"] = sources
+    return entry
+
+
+def _merge_results(
+    existing_params: Dict[str, Any],
+    existing_qualified: Dict[str, Any],
+    discovered: List[Dict[str, Any]],
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Merge discovered call sites into both the bare-name and qualified-id indexes.
+
+    The bare-name ``parameters`` index is kept for backward compatibility (e.g.
+    ``chisurf.core.project.mmfdb_adapter.resolve_parameter_name``) and keeps
+    merging every call site sharing a name, same as before — a parameter name
+    used by unrelated classes (e.g. FRET's ``R0`` vs. an FCS model's own ``R0``)
+    still lands in one bare-name entry here, which is why it is marked
+    ``ambiguous`` below rather than trusted blindly.
+
+    ``by_qualified_id`` additionally keys every call site by
+    ``"<ClassName>.<name>"`` so a scoped lookup (``chisurf.core.parameter``'s
+    runtime description lookup, or an explicit ``registry_id=``) never crosses
+    between two unrelated classes that happen to reuse the same bare name.
+    """
+    params = dict(existing_params) if isinstance(existing_params, dict) else {}
+    by_qualified: Dict[str, Any] = dict(existing_qualified) if isinstance(existing_qualified, dict) else {}
 
     for info in discovered:
         name = info.get("name")
         if not isinstance(name, str) or not name:
             continue
 
-        entry = params.get(name)
+        params[name] = _merge_entry(params.get(name), info)
+
+        qid = _qualified_id(info)
+        by_qualified[qid] = _merge_entry(by_qualified.get(qid), info)
+
+    for entry in params.values():
         if not isinstance(entry, dict):
-            entry = {"description": "", "keywords": [], "aliases": [], "label_texts": [], "sources": []}
+            continue
+        classes = {s.get("class") for s in entry.get("sources", []) if isinstance(s, dict) and s.get("class")}
+        entry["ambiguous"] = len(classes) > 1
 
-        # Preserve existing description/keywords/aliases/label_texts if present
-        desc = entry.get("description")
-        if not isinstance(desc, str):
-            desc = ""
-        code_desc = info.get("description_in_code")
-        if not desc and isinstance(code_desc, str) and code_desc:
-            desc = code_desc
-
-        keywords = entry.get("keywords") or []
-        if not isinstance(keywords, list):
-            keywords = []
-
-        aliases = entry.get("aliases") or []
-        if not isinstance(aliases, list):
-            aliases = []
-
-        label_texts = entry.get("label_texts") or []
-        if not isinstance(label_texts, list):
-            label_texts = []
-        lt = info.get("label_text")
-        if isinstance(lt, str) and lt and lt not in label_texts:
-            label_texts.append(lt)
-
-        # Merge source info (avoid exact duplicates)
-        sources = entry.get("sources") or []
-        if not isinstance(sources, list):
-            sources = []
-        src_key = (info.get("file"), info.get("line"))
-        seen = {(s.get("file"), s.get("line")) for s in sources if isinstance(s, dict)}
-        if src_key not in seen:
-            sources.append({
-                "module": info.get("module"),
-                "file": info.get("file"),
-                "line": info.get("line"),
-                "class": info.get("class"),
-                "function": info.get("function"),
-                "description_in_code": info.get("description_in_code"),
-                "label_text": info.get("label_text"),
-                "fixed": info.get("fixed"),
-                "bounds_on": info.get("bounds_on"),
-                "lb": info.get("lb"),
-                "ub": info.get("ub"),
-            })
-
-        entry["description"] = desc
-        entry["keywords"] = keywords
-        entry["aliases"] = aliases
-        entry["label_texts"] = label_texts
-        entry["sources"] = sources
-
-        params[name] = entry
-
-    return params
+    return params, by_qualified
 
 
 def _discover_fitting_parameters(source_root: Path, include_tests: bool = False) -> List[Dict[str, Any]]:
@@ -282,9 +322,9 @@ def main(argv: Optional[list[str]] = None) -> None:
         out_path = source_root / "settings" / "constants" / "parameter_registry.json"
 
     discovered = _discover_fitting_parameters(source_root, include_tests=args.include_tests)
-    existing = _load_existing_registry(out_path)
-    merged = _merge_results(existing, discovered)
-    _save_registry(out_path, merged)
+    existing_params, existing_qualified = _load_existing_registry(out_path)
+    merged_params, merged_qualified = _merge_results(existing_params, existing_qualified, discovered)
+    _save_registry(out_path, merged_params, merged_qualified)
 
 
 if __name__ == "__main__":

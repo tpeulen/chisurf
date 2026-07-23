@@ -189,10 +189,10 @@ def main(argv: Optional[list[str]] = None) -> None:
         out_path = source_root / "settings" / "constants" / "parameter_registry.json"
 
     models = _load_models(yaml_path)
-    existing = _load_existing_registry(out_path)
+    existing, existing_qualified = _load_existing_registry(out_path)
 
     if not models:
-        _save_registry(out_path, existing)
+        _save_registry(out_path, existing, existing_qualified)
         return
 
     param_usage = _collect_param_usage(models)
@@ -203,7 +203,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         origin_tag = str(yaml_path)
 
     merged_params = _merge_fcs_parameters(existing, param_usage, origin_tag=origin_tag)
-    _save_registry(out_path, merged_params)
+    _save_registry(out_path, merged_params, existing_qualified)
 
 
 if __name__ == "__main__":

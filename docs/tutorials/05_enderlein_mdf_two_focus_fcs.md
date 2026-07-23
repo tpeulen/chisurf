@@ -55,4 +55,6 @@ the foci — the signature that fixes an absolute `D`.
 ## See also
 
 - `chisurf/core/fluorescence/fcs/enderlein.py` (`mdf`, `effective_volume`, `g_diff`, `acf`)
-- Model widget: `chisurf/gui/widgets/models/fcs/mdf_widget.py`.
+- Model: `chisurf/core/models/fcs/mdf.py` (`MdfFCSModel`, table-view `mdf.view.json`), and the
+  general composable model `chisurf/core/models/fcs/general.py` (`GeneralFCSModel`), which lets
+  you pick MDF vs. classic 3D-Gaussian diffusion and add bunching/antibunching terms.

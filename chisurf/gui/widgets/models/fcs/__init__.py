@@ -5,7 +5,6 @@ import importlib
 __all__ = [
     "ParseFCSWidget",
     "DyeShapeFCSWidget",
-    "MdfFCSWidget",
     "MaxEntFCSWidget",
     "MaxEntRHWidget",
 ]
@@ -13,7 +12,6 @@ __all__ = [
 _EXPORTS = {
     "ParseFCSWidget": ".parse_fcs_widget",
     "DyeShapeFCSWidget": ".dye_volume_widget",
-    "MdfFCSWidget": ".mdf_widget",
     "MaxEntFCSWidget": ".maxent_widget",
     "MaxEntRHWidget": ".maxent_widget",
 }

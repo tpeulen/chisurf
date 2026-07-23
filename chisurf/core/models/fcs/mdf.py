@@ -1,0 +1,217 @@
+"""Enderlein Gauss--Lorentz MDF FCS model (Qt-free, PRD-38/PRD-62 view-spec split).
+
+Unlike the formula-string ``ParseFCSModel`` catalogue, this is a Python-computed
+:class:`~chisurf.core.models.model.ModelCurve` that evaluates the diffusion
+autocorrelation of the Enderlein molecule-detection function (MDF) by numerical
+integration (see :mod:`chisurf.core.fluorescence.fcs.enderlein`). It yields an
+accurate effective volume — hence an absolute concentration — without the 3-D
+Gaussian approximation, and is the basis for two-focus / dual-focus calibration.
+
+Parameters are grouped into :class:`~chisurf.core.fitting.parameter.FittingParameterGroup`
+sub-objects (:class:`MdfPhysical`, :class:`MdfOptics`, :class:`MdfOutputs`) so
+the editor renders them as compact tables (``mdf.view.json``); compute stays
+here, the JSON is user-editable. :class:`MdfPhysical` and :class:`MdfOptics`
+are also reused by the general composable FCS model
+(:mod:`chisurf.core.models.fcs.general`) for its ``"mdf"`` diffusion mode.
+"""
+
+from __future__ import annotations
+
+import math
+
+import numpy as np
+
+import chisurf as cs
+from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
+from chisurf.core.models.model import ModelCurve
+from chisurf.core.fluorescence.fcs import enderlein
+from chisurf.core.models.fcs.relaxation import BunchingTerms
+
+#: Avogadro constant for the concentration output (1/mol).
+NA = 6.02214076e23
+
+
+class MdfPhysical(FittingParameterGroup):
+    """Free physical parameters of the Enderlein Gauss-Lorentz MDF.
+
+    ``w0`` is the excitation beam's lateral 1/e^2 waist; ``wem`` is the
+    emission/collection-side Gauss-Lorentz waist (Enderlein's ``R0``, renamed
+    to avoid colliding with the unrelated Foerster-radius ``R0`` in the
+    parameter registry — see PRD-62). ``diam`` is the known inter-focus
+    separation for two-focus (dual-focus) FCS; 0 means single-focus
+    auto-correlation (the default).
+    """
+
+    def __init__(self, name: str = "mdf_physical", **kwargs):
+        """Initialize the free physical parameter group."""
+        super().__init__(name=name, **kwargs)
+        self._N = FittingParameter(
+            value=1.0, name="N", lb=1e-6, ub=1e9, fixed=False, registry_id="fcs_mdf.N")
+        self._D = FittingParameter(
+            value=300.0, name="D", lb=1e-3, ub=1e5, fixed=False,
+            label_text="D[µm²/s]", registry_id="fcs_mdf.D")
+        self._w0 = FittingParameter(
+            value=250.0, name="w0", lb=10.0, ub=5000.0, fixed=False,
+            label_text="w<sub>0</sub>[nm]", registry_id="fcs_mdf.w0")
+        self._wem = FittingParameter(
+            value=250.0, name="wem", lb=10.0, ub=5000.0, fixed=False,
+            label_text="w<sub>em</sub>[nm]", registry_id="fcs_mdf.wem")
+        self._b = FittingParameter(
+            value=0.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_mdf.b")
+        self._diam = FittingParameter(
+            value=0.0, name="diam", lb=0.0, ub=5000.0, fixed=True,
+            label_text="d<sub>foci</sub>[nm]", registry_id="fcs_mdf.diam")
+
+    N = property(lambda s: float(s._N.value))
+    D = property(lambda s: float(s._D.value))
+    w0 = property(lambda s: float(s._w0.value))
+    wem = property(lambda s: float(s._wem.value))
+    b = property(lambda s: float(s._b.value))
+    diam = property(lambda s: float(s._diam.value))
+
+
+class MdfOptics(FittingParameterGroup):
+    """Fixed confocal optical parameters for the Enderlein MDF."""
+
+    def __init__(self, name: str = "mdf_optics", **kwargs):
+        """Initialize the fixed optical parameter group."""
+        super().__init__(name=name, **kwargs)
+        self._lam_ex = FittingParameter(
+            value=485.0, name="lam_ex", lb=200.0, ub=1200.0, fixed=True,
+            label_text="&lambda;<sub>ex</sub>[nm]", registry_id="fcs_mdf.lam_ex")
+        self._lam_em = FittingParameter(
+            value=520.0, name="lam_em", lb=200.0, ub=1200.0, fixed=True,
+            label_text="&lambda;<sub>em</sub>[nm]", registry_id="fcs_mdf.lam_em")
+        self._n = FittingParameter(
+            value=1.33, name="n", lb=1.0, ub=2.0, fixed=True, registry_id="fcs_mdf.n")
+        self._pinhole = FittingParameter(
+            value=50.0, name="pinhole", lb=1.0, ub=1000.0, fixed=True,
+            label_text="pinhole[µm]", registry_id="fcs_mdf.pinhole")
+        self._mag = FittingParameter(
+            value=60.0, name="mag", lb=1.0, ub=1000.0, fixed=True, registry_id="fcs_mdf.mag")
+
+    lam_ex = property(lambda s: float(s._lam_ex.value))
+    lam_em = property(lambda s: float(s._lam_em.value))
+    n = property(lambda s: float(s._n.value))
+    pinhole = property(lambda s: float(s._pinhole.value))
+    mag = property(lambda s: float(s._mag.value))
+
+    def as_optics(self) -> enderlein.Optics:
+        """Build an :class:`~chisurf.core.fluorescence.fcs.enderlein.Optics` instance."""
+        return enderlein.Optics(
+            excitation_wavelength=self.lam_ex * 1e-3,   # nm -> µm
+            emission_wavelength=self.lam_em * 1e-3,
+            refractive_index=self.n,
+            pinhole=self.pinhole,
+            magnification=self.mag,
+        )
+
+
+class MdfOutputs(FittingParameterGroup):
+    """Derived (read-only) outputs of the Enderlein MDF model."""
+
+    def __init__(self, name: str = "mdf_outputs", **kwargs):
+        """Initialize the derived-output parameter group (all NaN until fit)."""
+        super().__init__(name=name, **kwargs)
+        self._Veff = FittingParameter(
+            value=float("nan"), name="Veff", fixed=True, is_output=True,
+            label_text="V<sub>eff</sub>[fL]", registry_id="fcs_mdf.Veff")
+        self._conc = FittingParameter(
+            value=float("nan"), name="conc", fixed=True, is_output=True,
+            label_text="c[nM]", registry_id="fcs_mdf.conc")
+        self._tauD = FittingParameter(
+            value=float("nan"), name="tauD", fixed=True, is_output=True,
+            label_text="&tau;<sub>D</sub>[ms]", registry_id="fcs_mdf.tauD")
+
+
+def set_output_parameter(fit, param: FittingParameter, value: float) -> None:
+    """Write a derived output parameter (value + keep fixed) via the fitting client.
+
+    Shared by :class:`MdfFCSModel` and the general composable FCS model
+    (:mod:`chisurf.core.models.fcs.general`) so a derived output round-trips
+    through the same client-side path a user edit would.
+    """
+    try:
+        param.value = value
+    except Exception:
+        pass
+    try:
+        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+
+        fc = get_fitting_client()
+        if fc is not None:
+            fit_idx = getattr(fit, "fit_idx", None)
+            fc.set_parameter_value(parameter_name=str(param.name), value=float(value), fit_index=fit_idx)
+            fc.set_parameter_fixed(parameter_name=str(param.name), fixed=True, fit_index=fit_idx)
+    except Exception:
+        pass
+
+
+class MdfFCSModel(ModelCurve):
+    """Enderlein Gauss--Lorentz MDF diffusion FCS model.
+
+    Fitting parameters
+    ------------------
+    physical.N, .D, .w0, .wem, .b, .diam : see :class:`MdfPhysical`.
+    optics.lam_ex, .lam_em, .n, .pinhole, .mag : see :class:`MdfOptics`.
+    bunching : zero or more extra exponential relaxation terms, see
+        :class:`~chisurf.core.models.fcs.relaxation.BunchingTerms`.
+
+    Output parameters
+    -----------------
+    outputs.Veff, .conc, .tauD : see :class:`MdfOutputs`.
+
+    The correlation lag ``data.x`` is taken in **milliseconds** (matching the
+    other ChiSurf FCS models) and converted to seconds internally.
+    """
+
+    name = "FCS MDF (Gauss-Lorentz)"
+    view_spec_file = "mdf.view.json"
+
+    def __init__(self, fit: "cs.core.fitting.fit.Fit", **kwargs):
+        """Initialize the physical/optics/bunching/outputs parameter groups."""
+        super().__init__(fit, **kwargs)
+        self.physical = MdfPhysical(name="mdf_physical", fit=fit)
+        self.optics = MdfOptics(name="mdf_optics", fit=fit)
+        self.bunching = BunchingTerms(name="mdf_bunching", fit=fit)
+        self.outputs = MdfOutputs(name="mdf_outputs", fit=fit)
+        self.find_parameters()
+
+    def update_model(self, **kwargs) -> None:
+        """Evaluate the Enderlein-MDF diffusion autocorrelation into ``self.y``."""
+        data = self.fit.data
+        tau_ms = np.asarray(data.x, dtype=float).ravel()
+        if tau_ms.size == 0:
+            self.x = np.array([], dtype=float)
+            self.y = np.array([], dtype=float)
+            return
+
+        p = self.physical
+        w0 = p.w0 * 1e-3   # nm -> µm
+        wem = p.wem * 1e-3
+        D = p.D            # µm²/s
+        N = p.N
+        b = p.b
+
+        if not (math.isfinite(w0) and w0 > 0 and math.isfinite(wem) and wem > 0
+                and math.isfinite(D) and D > 0 and math.isfinite(N) and N != 0):
+            self.x = tau_ms
+            self.y = np.full_like(tau_ms, float("nan"))
+            return
+
+        tau_s = tau_ms * 1e-3
+        separation = p.diam * 1e-3   # nm -> µm
+        optics = self.optics.as_optics()
+        g = enderlein.g_diff(tau_s, w0, wem, D, optics=optics, normalize=True,
+                              n_grid=121, span=30.0, separation=separation)
+        g = self.bunching.apply(g, tau_ms)
+
+        veff_um3 = enderlein.effective_volume(w0, wem, optics)
+        conc_nM = (N / (veff_um3 * 1e-15 * NA)) * 1e9 if veff_um3 > 0 else float("nan")
+        tauD_ms = (w0 * w0) / (4.0 * D) * 1e3
+        set_output_parameter(self.fit, self.outputs._Veff, veff_um3)
+        set_output_parameter(self.fit, self.outputs._conc, conc_nM)
+        set_output_parameter(self.fit, self.outputs._tauD, tauD_ms)
+
+        self.x = tau_ms
+        self.y = b + g / N

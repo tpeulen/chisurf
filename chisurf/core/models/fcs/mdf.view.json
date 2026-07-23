@@ -1,0 +1,58 @@
+{
+  "_comment": "Editor layout for the Enderlein Gauss-Lorentz MDF FCS model (MdfFCSModel). PRD-62: relocated out of gui/widgets, R0 renamed to wem (registry collision with FRET's Foerster-radius R0), regrouped into table-view parameter groups, added optional bunching terms.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Physical",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {"type": "parameter_group_table", "target": "physical", "collapsible": false}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Bunching terms",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {
+          "type": "dynamic_group",
+          "target": "bunching",
+          "append_method": "add_bunching",
+          "remove_method": "remove_bunching",
+          "rows_source": "_bunching_parameter_rows",
+          "row_width": 2,
+          "style": "table",
+          "min_rows": 0,
+          "collapsible": false
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Optics",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {"type": "parameter_group_table", "target": "optics", "collapsible": false}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Outputs",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {"type": "parameter_group_table", "target": "outputs", "collapsible": false}
+      ]
+    }
+  ],
+  "plots": [
+    {"key": "line", "options": {"scale_x": "log", "d_scaley": "lin", "r_scaley": "lin", "x_label": "t_c (ms)", "y_label": "G_c(t_c)"}},
+    {"key": "fit_table", "options": {}},
+    {"key": "fit_info", "options": {}},
+    {"key": "parameter_scan", "options": {}},
+    {"key": "residual", "options": {}}
+  ]
+}

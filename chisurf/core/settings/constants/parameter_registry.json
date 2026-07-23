@@ -1,7 +1,458 @@
 {
+  "by_qualified_id": {
+    "GaussDiffusion.D": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "D[µm²/s]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "D[µm²/s]",
+          "lb": 0.001,
+          "line": 54,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 100000.0
+        }
+      ]
+    },
+    "GaussDiffusion.N": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": null,
+          "lb": 1e-06,
+          "line": 52,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 1000000000.0
+        }
+      ]
+    },
+    "GaussDiffusion.b": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": null,
+          "lb": null,
+          "line": 63,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 10.0
+        }
+      ]
+    },
+    "GaussDiffusion.diam": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "d<sub>foci</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "d<sub>foci</sub>[nm]",
+          "lb": 0.0,
+          "line": 65,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 5000.0
+        }
+      ]
+    },
+    "GaussDiffusion.w_r": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "w<sub>r</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "w<sub>r</sub>[nm]",
+          "lb": 10.0,
+          "line": 57,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 5000.0
+        }
+      ]
+    },
+    "GaussDiffusion.w_z": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "w<sub>z</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "w<sub>z</sub>[nm]",
+          "lb": 10.0,
+          "line": 60,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 20000.0
+        }
+      ]
+    },
+    "MdfOptics.lam_em": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "&lambda;<sub>em</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOptics",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "&lambda;<sub>em</sub>[nm]",
+          "lb": 200.0,
+          "line": 82,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 1200.0
+        }
+      ]
+    },
+    "MdfOptics.lam_ex": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "&lambda;<sub>ex</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOptics",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "&lambda;<sub>ex</sub>[nm]",
+          "lb": 200.0,
+          "line": 79,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 1200.0
+        }
+      ]
+    },
+    "MdfOptics.mag": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOptics",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": null,
+          "lb": 1.0,
+          "line": 90,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 1000.0
+        }
+      ]
+    },
+    "MdfOptics.n": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOptics",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": null,
+          "lb": 1.0,
+          "line": 85,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 2.0
+        }
+      ]
+    },
+    "MdfOptics.pinhole": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "pinhole[µm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOptics",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "pinhole[µm]",
+          "lb": 1.0,
+          "line": 87,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 1000.0
+        }
+      ]
+    },
+    "MdfOutputs.Veff": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "V<sub>eff</sub>[fL]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOutputs",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "V<sub>eff</sub>[fL]",
+          "lb": null,
+          "line": 116,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": null
+        }
+      ]
+    },
+    "MdfOutputs.conc": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "c[nM]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOutputs",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "c[nM]",
+          "lb": null,
+          "line": 119,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": null
+        }
+      ]
+    },
+    "MdfOutputs.tauD": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "&tau;<sub>D</sub>[ms]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOutputs",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "&tau;<sub>D</sub>[ms]",
+          "lb": null,
+          "line": 122,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": null
+        }
+      ]
+    },
+    "MdfPhysical.D": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "D[µm²/s]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "D[µm²/s]",
+          "lb": 0.001,
+          "line": 50,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 100000.0
+        }
+      ]
+    },
+    "MdfPhysical.N": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": null,
+          "lb": 1e-06,
+          "line": 48,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 1000000000.0
+        }
+      ]
+    },
+    "MdfPhysical.b": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": null,
+          "lb": null,
+          "line": 59,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 10.0
+        }
+      ]
+    },
+    "MdfPhysical.diam": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "d<sub>foci</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "d<sub>foci</sub>[nm]",
+          "lb": 0.0,
+          "line": 61,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 5000.0
+        }
+      ]
+    },
+    "MdfPhysical.w0": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "w<sub>0</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "w<sub>0</sub>[nm]",
+          "lb": 10.0,
+          "line": 53,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 5000.0
+        }
+      ]
+    },
+    "MdfPhysical.wem": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "w<sub>em</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "w<sub>em</sub>[nm]",
+          "lb": 10.0,
+          "line": 56,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 5000.0
+        }
+      ]
+    }
+  },
   "parameters": {
     "AtB": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter AtB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.AtB",
       "keywords": [
@@ -27,6 +478,7 @@
     },
     "BG": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.BG",
       "keywords": [],
@@ -49,6 +501,7 @@
     },
     "BR": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.BR",
       "keywords": [],
@@ -71,6 +524,7 @@
     },
     "BtA": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter BtA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.BtA",
       "keywords": [
@@ -96,6 +550,7 @@
     },
     "D": {
       "aliases": [],
+      "ambiguous": true,
       "description": "Model parameter D used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.D",
       "keywords": [
@@ -155,11 +610,38 @@
           "line": 111,
           "module": "chisurf.core.models.tcspc.av_decay",
           "ub": null
+        },
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "D[µm²/s]",
+          "lb": 0.001,
+          "line": 50,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 100000.0
+        },
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "D[µm²/s]",
+          "lb": 0.001,
+          "line": 54,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 100000.0
         }
       ]
     },
     "E_FRET": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Apparent FRET efficiency parameter E_FRET (0e00..1).",
       "flrcif_item_id": "_flr_chisurf_parameter.E_FRET",
       "keywords": [
@@ -189,6 +671,7 @@
     },
     "N": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.N",
       "keywords": [],
@@ -206,11 +689,38 @@
           "line": 97,
           "module": "chisurf.gui.widgets.models.fcs.dye_volume_widget",
           "ub": 1000000000.0
+        },
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": null,
+          "lb": 1e-06,
+          "line": 48,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 1000000000.0
+        },
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": null,
+          "lb": 1e-06,
+          "line": 52,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 1000000000.0
         }
       ]
     },
     "N1": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.N1",
       "keywords": [],
@@ -233,6 +743,7 @@
     },
     "N2": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.N2",
       "keywords": [],
@@ -255,6 +766,7 @@
     },
     "N3": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.N3",
       "keywords": [],
@@ -277,6 +789,7 @@
     },
     "QYA": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.QYA",
       "keywords": [],
@@ -299,6 +812,7 @@
     },
     "QYD": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.QYD",
       "keywords": [],
@@ -321,6 +835,7 @@
     },
     "R0": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Frster radius R0 of the donor-acceptor pair.",
       "flrcif_item_id": "_flr_chisurf_parameter.R0",
       "keywords": [
@@ -349,8 +864,34 @@
         }
       ]
     },
+    "Veff": {
+      "aliases": [],
+      "ambiguous": false,
+      "description": "",
+      "flrcif_item_id": "_flr_chisurf_parameter.Veff",
+      "keywords": [],
+      "label_texts": [
+        "V<sub>eff</sub>[fL]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOutputs",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "V<sub>eff</sub>[fL]",
+          "lb": null,
+          "line": 116,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": null
+        }
+      ]
+    },
     "aT": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.aT",
       "keywords": [],
@@ -373,6 +914,7 @@
     },
     "alpha": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.alpha",
       "keywords": [],
@@ -395,6 +937,7 @@
     },
     "b": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.b",
       "keywords": [],
@@ -438,11 +981,38 @@
           "line": 801,
           "module": "chisurf.gui.widgets.models.fcs.maxent_widget",
           "ub": 10.0
+        },
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": null,
+          "lb": null,
+          "line": 59,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 10.0
+        },
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": null,
+          "lb": null,
+          "line": 63,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 10.0
         }
       ]
     },
     "ba": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.ba",
       "keywords": [],
@@ -465,6 +1035,7 @@
     },
     "bg": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Constant background level added to the time-resolved decay curve (counts per time channel).",
       "flrcif_item_id": "_flr_chisurf_parameter.bg",
       "keywords": [
@@ -493,6 +1064,7 @@
     },
     "bg0": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.bg0",
       "keywords": [],
@@ -515,6 +1087,7 @@
     },
     "bg1": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.bg1",
       "keywords": [],
@@ -537,6 +1110,7 @@
     },
     "bt": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.bt",
       "keywords": [],
@@ -557,8 +1131,34 @@
         }
       ]
     },
+    "conc": {
+      "aliases": [],
+      "ambiguous": false,
+      "description": "",
+      "flrcif_item_id": "_flr_chisurf_parameter.conc",
+      "keywords": [],
+      "label_texts": [
+        "c[nM]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOutputs",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "c[nM]",
+          "lb": null,
+          "line": 119,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": null
+        }
+      ]
+    },
     "cont": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter cont used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.cont",
       "keywords": [
@@ -584,6 +1184,7 @@
     },
     "cpm": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.cpm",
       "keywords": [],
@@ -619,6 +1220,7 @@
     },
     "cpm_all": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.cpm_all",
       "keywords": [],
@@ -652,8 +1254,47 @@
         }
       ]
     },
+    "diam": {
+      "aliases": [],
+      "ambiguous": true,
+      "description": "",
+      "flrcif_item_id": "_flr_chisurf_parameter.diam",
+      "keywords": [],
+      "label_texts": [
+        "d<sub>foci</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "d<sub>foci</sub>[nm]",
+          "lb": 0.0,
+          "line": 61,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 5000.0
+        },
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "d<sub>foci</sub>[nm]",
+          "lb": 0.0,
+          "line": 65,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 5000.0
+        }
+      ]
+    },
     "dt": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Time bin width of the TCSPC histogram (time per channel).",
       "flrcif_item_id": "_flr_chisurf_parameter.dt",
       "keywords": [
@@ -681,6 +1322,7 @@
     },
     "dtMT[ns]": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.dtMT[ns]",
       "keywords": [],
@@ -703,6 +1345,7 @@
     },
     "dtTAC[ns]": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.dtTAC[ns]",
       "keywords": [],
@@ -725,6 +1368,7 @@
     },
     "eps1": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.eps1",
       "keywords": [],
@@ -747,6 +1391,7 @@
     },
     "eps2": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.eps2",
       "keywords": [],
@@ -769,6 +1414,7 @@
     },
     "eps3": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.eps3",
       "keywords": [],
@@ -793,6 +1439,7 @@
       "aliases": [
         "C"
       ],
+      "ambiguous": false,
       "description": "Dimensionless factor C used in the rotational correlation / anisotropy term.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_C",
       "keywords": [
@@ -816,6 +1463,7 @@
       "aliases": [
         "N"
       ],
+      "ambiguous": false,
       "description": "Average number of fluorescent particles in the observation volume. In standard FCS models the correlation amplitude scales roughly as 1/N.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_N",
       "keywords": [
@@ -869,6 +1517,7 @@
       "aliases": [
         "N3"
       ],
+      "ambiguous": false,
       "description": "Average number of fluorescent particles in the observation volume. In standard FCS models the correlation amplitude scales roughly as 1/N.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_N3",
       "keywords": [
@@ -893,6 +1542,7 @@
       "aliases": [
         "a"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_a",
       "keywords": [
@@ -916,6 +1566,7 @@
       "aliases": [
         "a1"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_a1",
       "keywords": [
@@ -950,6 +1601,7 @@
       "aliases": [
         "a2"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_a2",
       "keywords": [
@@ -975,6 +1627,7 @@
       "aliases": [
         "a21"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_a21",
       "keywords": [
@@ -998,6 +1651,7 @@
       "aliases": [
         "a22"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_a22",
       "keywords": [
@@ -1021,6 +1675,7 @@
       "aliases": [
         "a31"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_a31",
       "keywords": [
@@ -1044,6 +1699,7 @@
       "aliases": [
         "aR"
       ],
+      "ambiguous": false,
       "description": "Amplitude of a relaxation or anticorrelation term (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aR",
       "keywords": [
@@ -1071,6 +1727,7 @@
       "aliases": [
         "aR1"
       ],
+      "ambiguous": false,
       "description": "Amplitude of a relaxation or anticorrelation term (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aR1",
       "keywords": [
@@ -1095,6 +1752,7 @@
       "aliases": [
         "aR2"
       ],
+      "ambiguous": false,
       "description": "Amplitude of a relaxation or anticorrelation term (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aR2",
       "keywords": [
@@ -1119,6 +1777,7 @@
       "aliases": [
         "aRa"
       ],
+      "ambiguous": false,
       "description": "Amplitude of a relaxation or anticorrelation term (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aRa",
       "keywords": [
@@ -1143,6 +1802,7 @@
       "aliases": [
         "aab"
       ],
+      "ambiguous": false,
       "description": "Amplitude of the photon antibunching term (very fast correlation component).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aab",
       "keywords": [
@@ -1173,6 +1833,7 @@
       "aliases": [
         "ab1"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ab1",
       "keywords": [
@@ -1197,6 +1858,7 @@
       "aliases": [
         "ab2"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ab2",
       "keywords": [
@@ -1221,6 +1883,7 @@
       "aliases": [
         "ab3"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ab3",
       "keywords": [
@@ -1245,6 +1908,7 @@
       "aliases": [
         "ab4"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ab4",
       "keywords": [
@@ -1269,6 +1933,7 @@
       "aliases": [
         "aba"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aba",
       "keywords": [
@@ -1295,6 +1960,7 @@
       "aliases": [
         "aba1"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aba1",
       "keywords": [
@@ -1321,6 +1987,7 @@
       "aliases": [
         "aba2"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aba2",
       "keywords": [
@@ -1347,6 +2014,7 @@
       "aliases": [
         "aba3"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aba3",
       "keywords": [
@@ -1373,6 +2041,7 @@
       "aliases": [
         "aba4"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aba4",
       "keywords": [
@@ -1399,6 +2068,7 @@
       "aliases": [
         "abf"
       ],
+      "ambiguous": false,
       "description": "Total amplitude factor for a group of anticorrelation components.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_abf",
       "keywords": [
@@ -1424,6 +2094,7 @@
       "aliases": [
         "abt"
       ],
+      "ambiguous": false,
       "description": "Time constant of an antibunching or anticorrelation component.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt",
       "keywords": [
@@ -1450,6 +2121,7 @@
       "aliases": [
         "abt1"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt1",
       "keywords": [
@@ -1476,6 +2148,7 @@
       "aliases": [
         "abt2"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt2",
       "keywords": [
@@ -1502,6 +2175,7 @@
       "aliases": [
         "abt3"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt3",
       "keywords": [
@@ -1528,6 +2202,7 @@
       "aliases": [
         "abt4"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt4",
       "keywords": [
@@ -1554,6 +2229,7 @@
       "aliases": [
         "abt5"
       ],
+      "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt5",
       "keywords": [
@@ -1580,6 +2256,7 @@
       "aliases": [
         "af"
       ],
+      "ambiguous": false,
       "description": "Overall amplitude factor for a set of anticorrelation components.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_af",
       "keywords": [
@@ -1604,6 +2281,7 @@
       "aliases": [
         "aroc"
       ],
+      "ambiguous": false,
       "description": "Amplitude of the rotational correlation (anisotropy) contribution.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_aroc",
       "keywords": [
@@ -1628,6 +2306,7 @@
       "aliases": [
         "b"
       ],
+      "ambiguous": false,
       "description": "Additive baseline/offset of the correlation function.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_b",
       "keywords": [
@@ -1682,6 +2361,7 @@
       "aliases": [
         "ba"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba",
       "keywords": [
@@ -1709,6 +2389,7 @@
       "aliases": [
         "ba1"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba1",
       "keywords": [
@@ -1749,6 +2430,7 @@
       "aliases": [
         "ba11"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba11",
       "keywords": [
@@ -1775,6 +2457,7 @@
       "aliases": [
         "ba12"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba12",
       "keywords": [
@@ -1801,6 +2484,7 @@
       "aliases": [
         "ba2"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba2",
       "keywords": [
@@ -1838,6 +2522,7 @@
       "aliases": [
         "ba21"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba21",
       "keywords": [
@@ -1864,6 +2549,7 @@
       "aliases": [
         "ba22"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba22",
       "keywords": [
@@ -1890,6 +2576,7 @@
       "aliases": [
         "ba3"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba3",
       "keywords": [
@@ -1923,6 +2610,7 @@
       "aliases": [
         "ba31"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba31",
       "keywords": [
@@ -1948,6 +2636,7 @@
       "aliases": [
         "ba32"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba32",
       "keywords": [
@@ -1973,6 +2662,7 @@
       "aliases": [
         "ba4"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba4",
       "keywords": [
@@ -2004,6 +2694,7 @@
       "aliases": [
         "ba5"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba5",
       "keywords": [
@@ -2032,6 +2723,7 @@
       "aliases": [
         "ba6"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba6",
       "keywords": [
@@ -2057,6 +2749,7 @@
       "aliases": [
         "ba7"
       ],
+      "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba7",
       "keywords": [
@@ -2082,6 +2775,7 @@
       "aliases": [
         "bs2"
       ],
+      "ambiguous": false,
       "description": "Stretching exponent for a stretched-exponential relaxation term.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bs2",
       "keywords": [
@@ -2106,6 +2800,7 @@
       "aliases": [
         "bs21"
       ],
+      "ambiguous": false,
       "description": "Stretching exponent for a stretched-exponential relaxation term.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bs21",
       "keywords": [
@@ -2130,6 +2825,7 @@
       "aliases": [
         "bs22"
       ],
+      "ambiguous": false,
       "description": "Stretching exponent for a stretched-exponential relaxation term.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bs22",
       "keywords": [
@@ -2154,6 +2850,7 @@
       "aliases": [
         "bt"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt",
       "keywords": [
@@ -2181,6 +2878,7 @@
       "aliases": [
         "bt1"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt1",
       "keywords": [
@@ -2221,6 +2919,7 @@
       "aliases": [
         "bt11"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt11",
       "keywords": [
@@ -2247,6 +2946,7 @@
       "aliases": [
         "bt12"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt12",
       "keywords": [
@@ -2273,6 +2973,7 @@
       "aliases": [
         "bt2"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt2",
       "keywords": [
@@ -2310,6 +3011,7 @@
       "aliases": [
         "bt21"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt21",
       "keywords": [
@@ -2336,6 +3038,7 @@
       "aliases": [
         "bt22"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt22",
       "keywords": [
@@ -2362,6 +3065,7 @@
       "aliases": [
         "bt3"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt3",
       "keywords": [
@@ -2395,6 +3099,7 @@
       "aliases": [
         "bt31"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt31",
       "keywords": [
@@ -2420,6 +3125,7 @@
       "aliases": [
         "bt32"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt32",
       "keywords": [
@@ -2445,6 +3151,7 @@
       "aliases": [
         "bt4"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt4",
       "keywords": [
@@ -2476,6 +3183,7 @@
       "aliases": [
         "bt5"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt5",
       "keywords": [
@@ -2504,6 +3212,7 @@
       "aliases": [
         "bt6"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt6",
       "keywords": [
@@ -2529,6 +3238,7 @@
       "aliases": [
         "bt7"
       ],
+      "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt7",
       "keywords": [
@@ -2554,6 +3264,7 @@
       "aliases": [
         "s"
       ],
+      "ambiguous": false,
       "description": "Structure parameter s = z0 / w0 describing the axial-to-radial extent of the detection volume.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_s",
       "keywords": [
@@ -2595,6 +3306,7 @@
       "aliases": [
         "tR"
       ],
+      "ambiguous": false,
       "description": "Relaxation or anticorrelation time constant of a kinetic component.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_tR",
       "keywords": [
@@ -2622,6 +3334,7 @@
       "aliases": [
         "tR1"
       ],
+      "ambiguous": false,
       "description": "Relaxation or anticorrelation time constant of a kinetic component.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_tR1",
       "keywords": [
@@ -2646,6 +3359,7 @@
       "aliases": [
         "tR2"
       ],
+      "ambiguous": false,
       "description": "Relaxation or anticorrelation time constant of a kinetic component.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_tR2",
       "keywords": [
@@ -2670,6 +3384,7 @@
       "aliases": [
         "tR3"
       ],
+      "ambiguous": false,
       "description": "Relaxation or anticorrelation time constant of a kinetic component.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_tR3",
       "keywords": [
@@ -2694,6 +3409,7 @@
       "aliases": [
         "tRa"
       ],
+      "ambiguous": false,
       "description": "Relaxation or anticorrelation time constant of a kinetic component.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_tRa",
       "keywords": [
@@ -2718,6 +3434,7 @@
       "aliases": [
         "tab"
       ],
+      "ambiguous": false,
       "description": "Correlation time of the photon antibunching term (fast time scale).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_tab",
       "keywords": [
@@ -2747,6 +3464,7 @@
       "aliases": [
         "tb1"
       ],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_tb1",
       "keywords": [],
@@ -2766,6 +3484,7 @@
       "aliases": [
         "tb2"
       ],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_tb2",
       "keywords": [],
@@ -2785,6 +3504,7 @@
       "aliases": [
         "tb3"
       ],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_tb3",
       "keywords": [],
@@ -2804,6 +3524,7 @@
       "aliases": [
         "tb4"
       ],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_tb4",
       "keywords": [],
@@ -2823,6 +3544,7 @@
       "aliases": [
         "td"
       ],
+      "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_td",
       "keywords": [
@@ -2859,6 +3581,7 @@
       "aliases": [
         "td1"
       ],
+      "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_td1",
       "keywords": [
@@ -2893,6 +3616,7 @@
       "aliases": [
         "td2"
       ],
+      "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_td2",
       "keywords": [
@@ -2930,6 +3654,7 @@
       "aliases": [
         "td21"
       ],
+      "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_td21",
       "keywords": [
@@ -2953,6 +3678,7 @@
       "aliases": [
         "td22"
       ],
+      "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_td22",
       "keywords": [
@@ -2976,6 +3702,7 @@
       "aliases": [
         "td3"
       ],
+      "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_td3",
       "keywords": [
@@ -3002,6 +3729,7 @@
       "aliases": [
         "td31"
       ],
+      "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_td31",
       "keywords": [
@@ -3025,6 +3753,7 @@
       "aliases": [
         "td32"
       ],
+      "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_td32",
       "keywords": [
@@ -3048,6 +3777,7 @@
       "aliases": [
         "trc1"
       ],
+      "ambiguous": false,
       "description": "Rotational correlation time used in the anisotropy / rotational diffusion term.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_trc1",
       "keywords": [
@@ -3072,6 +3802,7 @@
       "aliases": [
         "trc2trc1"
       ],
+      "ambiguous": false,
       "description": "Rotational correlation time used in the anisotropy / rotational diffusion term.",
       "flrcif_item_id": "_flr_chisurf_parameter.fcs_trc2trc1",
       "keywords": [
@@ -3094,6 +3825,7 @@
     },
     "g": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter g used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.g",
       "keywords": [
@@ -3119,6 +3851,7 @@
     },
     "gG": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.gG",
       "keywords": [],
@@ -3141,6 +3874,7 @@
     },
     "gR": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.gR",
       "keywords": [],
@@ -3163,6 +3897,7 @@
     },
     "ik": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Shape parameter of the synthetic IRF model.",
       "flrcif_item_id": "_flr_chisurf_parameter.ik",
       "keywords": [
@@ -3192,6 +3927,7 @@
     },
     "irf_start": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Start index (or time) of the IRF region used for convolution.",
       "flrcif_item_id": "_flr_chisurf_parameter.irf_start",
       "keywords": [
@@ -3222,6 +3958,7 @@
     },
     "irf_stop": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Stop index (or time) of the IRF region used for convolution.",
       "flrcif_item_id": "_flr_chisurf_parameter.irf_stop",
       "keywords": [
@@ -3252,6 +3989,7 @@
     },
     "iw": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Width parameter of the synthetic IRF model.",
       "flrcif_item_id": "_flr_chisurf_parameter.iw",
       "keywords": [
@@ -3281,6 +4019,7 @@
     },
     "k2": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Orientation factor  governing dipole-dipole coupling in FRET.",
       "flrcif_item_id": "_flr_chisurf_parameter.k2",
       "keywords": [
@@ -3311,6 +4050,7 @@
     },
     "kQ": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.kQ",
       "keywords": [],
@@ -3333,6 +4073,7 @@
     },
     "l": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter l used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.l",
       "keywords": [
@@ -3358,6 +4099,7 @@
     },
     "l1": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter l1 used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.l1",
       "keywords": [
@@ -3383,6 +4125,7 @@
     },
     "l2": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter l2 used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.l2",
       "keywords": [
@@ -3406,8 +4149,59 @@
         }
       ]
     },
+    "lam_em": {
+      "aliases": [],
+      "ambiguous": false,
+      "description": "",
+      "flrcif_item_id": "_flr_chisurf_parameter.lam_em",
+      "keywords": [],
+      "label_texts": [
+        "&lambda;<sub>em</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOptics",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "&lambda;<sub>em</sub>[nm]",
+          "lb": 200.0,
+          "line": 82,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 1200.0
+        }
+      ]
+    },
+    "lam_ex": {
+      "aliases": [],
+      "ambiguous": false,
+      "description": "",
+      "flrcif_item_id": "_flr_chisurf_parameter.lam_ex",
+      "keywords": [],
+      "label_texts": [
+        "&lambda;<sub>ex</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOptics",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "&lambda;<sub>ex</sub>[nm]",
+          "lb": 200.0,
+          "line": 79,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 1200.0
+        }
+      ]
+    },
     "lb": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Lamp background level subtracted from the instrument response function.",
       "flrcif_item_id": "_flr_chisurf_parameter.lb",
       "keywords": [
@@ -3436,6 +4230,7 @@
     },
     "line_dur": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.line_dur",
       "keywords": [],
@@ -3471,6 +4266,7 @@
     },
     "lp": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter lp used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.lp",
       "keywords": [
@@ -3496,6 +4292,7 @@
     },
     "mA": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter mA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.mA",
       "keywords": [
@@ -3521,6 +4318,7 @@
     },
     "mB": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter mB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.mB",
       "keywords": [
@@ -3544,8 +4342,32 @@
         }
       ]
     },
+    "mag": {
+      "aliases": [],
+      "ambiguous": false,
+      "description": "",
+      "flrcif_item_id": "_flr_chisurf_parameter.mag",
+      "keywords": [],
+      "label_texts": [],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOptics",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": null,
+          "lb": 1.0,
+          "line": 90,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 1000.0
+        }
+      ]
+    },
     "n": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.n",
       "keywords": [],
@@ -3576,11 +4398,25 @@
           "line": 498,
           "module": "chisurf.gui.widgets.models.rics.widgets",
           "ub": 1000000000.0
+        },
+        {
+          "bounds_on": null,
+          "class": "MdfOptics",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": null,
+          "lb": 1.0,
+          "line": 85,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 2.0
         }
       ]
     },
     "n curves": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.n curves",
       "keywords": [],
@@ -3603,6 +4439,7 @@
     },
     "n photons": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.n photons",
       "keywords": [],
@@ -3625,6 +4462,7 @@
     },
     "n0": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Initial number of excited donor molecules used to scale the model decay to the experimental counts.",
       "flrcif_item_id": "_flr_chisurf_parameter.n0",
       "keywords": [
@@ -3654,6 +4492,7 @@
     },
     "nPh_bg": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Output: estimated number of background photons in the TCSPC trace based on background level and measurement timing settings.",
       "flrcif_item_id": "_flr_chisurf_parameter.nPh_bg",
       "keywords": [
@@ -3684,6 +4523,7 @@
     },
     "nPh_fl": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Output: estimated number of fluorescence photons (after background subtraction) in the TCSPC trace.",
       "flrcif_item_id": "_flr_chisurf_parameter.nPh_fl",
       "keywords": [
@@ -3714,6 +4554,7 @@
     },
     "nPh_max": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.nPh_max",
       "keywords": [],
@@ -3736,6 +4577,7 @@
     },
     "nPh_min": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.nPh_min",
       "keywords": [],
@@ -3758,6 +4600,7 @@
     },
     "nTAC": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.nTAC",
       "keywords": [],
@@ -3780,6 +4623,7 @@
     },
     "n_rh": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.n_rh",
       "keywords": [],
@@ -3802,6 +4646,7 @@
     },
     "n_td": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.n_td",
       "keywords": [],
@@ -3824,6 +4669,7 @@
     },
     "offset": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.offset",
       "keywords": [],
@@ -3857,8 +4703,34 @@
         }
       ]
     },
+    "pinhole": {
+      "aliases": [],
+      "ambiguous": false,
+      "description": "",
+      "flrcif_item_id": "_flr_chisurf_parameter.pinhole",
+      "keywords": [],
+      "label_texts": [
+        "pinhole[µm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOptics",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "pinhole[µm]",
+          "lb": 1.0,
+          "line": 87,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 1000.0
+        }
+      ]
+    },
     "pureA": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter pureA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.pureA",
       "keywords": [
@@ -3884,6 +4756,7 @@
     },
     "pureB": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter pureB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.pureB",
       "keywords": [
@@ -3909,6 +4782,7 @@
     },
     "pxl_dur": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.pxl_dur",
       "keywords": [],
@@ -3944,6 +4818,7 @@
     },
     "pxl_size": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.pxl_size",
       "keywords": [],
@@ -3979,6 +4854,7 @@
     },
     "r0": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Frster radius R0 of the donor-acceptor pair.",
       "flrcif_item_id": "_flr_chisurf_parameter.r0",
       "keywords": [
@@ -4007,6 +4883,7 @@
     },
     "r_ss_i": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Intensity-domain steady-state anisotropy. For dual-channel data, ChiSurf background-corrects VV and VH (per-channel metadata when available), compensates objective mixing via l1/l2, and evaluates rS,I from channel sums using the ChiSurf convention r = (VV - VH) / (g*VV + 2*VH). For single-channel fallback, VM is reconstructed from the active anisotropy model before summation.",
       "flrcif_item_id": "_flr_chisurf_parameter.r_ss_i",
       "keywords": [
@@ -4037,6 +4914,7 @@
     },
     "r_ss_l": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Lifetime-domain steady-state anisotropy derived from the model lifetime spectrum and rotational spectrum. This value is model-predicted (spectrum/integral domain) and does not depend on direct VV/VH channel integration.",
       "flrcif_item_id": "_flr_chisurf_parameter.r_ss_l",
       "keywords": [
@@ -4067,6 +4945,7 @@
     },
     "rc_ele": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter rc_ele used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.rc_ele",
       "keywords": [
@@ -4092,6 +4971,7 @@
     },
     "reg": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.reg",
       "keywords": [],
@@ -4127,6 +5007,7 @@
     },
     "rep": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Laser repetition rate of the excitation source.",
       "flrcif_item_id": "_flr_chisurf_parameter.rep",
       "keywords": [
@@ -4155,6 +5036,7 @@
     },
     "rh_max": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.rh_max",
       "keywords": [],
@@ -4177,6 +5059,7 @@
     },
     "rh_min": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.rh_min",
       "keywords": [],
@@ -4199,7 +5082,8 @@
     },
     "rics.D": {
       "aliases": [],
-      "description": "Diffusion coefficient D in \u00b5m\u00b2/s.",
+      "ambiguous": false,
+      "description": "Diffusion coefficient D in µm²/s.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_D",
       "keywords": [
         "RICS",
@@ -4212,7 +5096,8 @@
     },
     "rics.aT": {
       "aliases": [],
-      "description": "Triplet/blinking fraction a_T (0\u20131).",
+      "ambiguous": false,
+      "description": "Triplet/blinking fraction a_T (0–1).",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_aT",
       "keywords": [
         "RICS",
@@ -4228,6 +5113,7 @@
       "aliases": [
         "line_duration"
       ],
+      "ambiguous": false,
       "description": "Time between successive scanned lines in milliseconds.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_line_dur",
       "keywords": [
@@ -4242,6 +5128,7 @@
     },
     "rics.n": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Average number of fluorescent molecules in the observation volume N. RICS/ICS amplitude G(0) is proportional to 1/N.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_n",
       "keywords": [
@@ -4256,6 +5143,7 @@
     },
     "rics.offset": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Additive offset of the correlation function.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_offset",
       "keywords": [
@@ -4271,6 +5159,7 @@
       "aliases": [
         "pixel_duration"
       ],
+      "ambiguous": false,
       "description": "Pixel dwell time (line scan) in microseconds.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_pxl_dur",
       "keywords": [
@@ -4287,6 +5176,7 @@
       "aliases": [
         "pixel_size"
       ],
+      "ambiguous": false,
       "description": "Pixel size in the sample plane in nanometers.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_pxl_size",
       "keywords": [
@@ -4301,7 +5191,8 @@
     },
     "rics.tauT": {
       "aliases": [],
-      "description": "Triplet/blinking correlation time \u03c4_T in milliseconds.",
+      "ambiguous": false,
+      "description": "Triplet/blinking correlation time τ_T in milliseconds.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_tauT",
       "keywords": [
         "RICS",
@@ -4315,7 +5206,8 @@
     },
     "rics.w_r": {
       "aliases": [],
-      "description": "Radial waist of the detection PSF in \u00b5m.",
+      "ambiguous": false,
+      "description": "Radial waist of the detection PSF in µm.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_w_r",
       "keywords": [
         "RICS",
@@ -4329,7 +5221,8 @@
     },
     "rics.w_z": {
       "aliases": [],
-      "description": "Axial waist of the detection PSF in \u00b5m.",
+      "ambiguous": false,
+      "description": "Axial waist of the detection PSF in µm.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_w_z",
       "keywords": [
         "RICS",
@@ -4343,6 +5236,7 @@
     },
     "s": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.s",
       "keywords": [],
@@ -4391,6 +5285,7 @@
     },
     "sc": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Relative amplitude of a prompt scattering contribution that is added to the model decay.",
       "flrcif_item_id": "_flr_chisurf_parameter.sc",
       "keywords": [
@@ -4419,6 +5314,7 @@
     },
     "slowf": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter slowf used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.slowf",
       "keywords": [
@@ -4444,6 +5340,7 @@
     },
     "start": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Start time (or channel) of the fit/convolution window.",
       "flrcif_item_id": "_flr_chisurf_parameter.start",
       "keywords": [
@@ -4471,6 +5368,7 @@
     },
     "stop": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Stop time (or channel) of the fit/convolution window.",
       "flrcif_item_id": "_flr_chisurf_parameter.stop",
       "keywords": [
@@ -4498,6 +5396,7 @@
     },
     "t0": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
       "flrcif_item_id": "_flr_chisurf_parameter.t0",
       "keywords": [
@@ -4526,6 +5425,7 @@
     },
     "tBg": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Measurement time of the background acquisition.",
       "flrcif_item_id": "_flr_chisurf_parameter.tBg",
       "keywords": [
@@ -4553,6 +5453,7 @@
     },
     "tDead": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter tDead used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.tDead",
       "keywords": [
@@ -4578,6 +5479,7 @@
     },
     "tMeas": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Measurement time of the main TCSPC experiment.",
       "flrcif_item_id": "_flr_chisurf_parameter.tMeas",
       "keywords": [
@@ -4605,6 +5507,7 @@
     },
     "tau0": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
       "flrcif_item_id": "_flr_chisurf_parameter.tau0",
       "keywords": [
@@ -4631,6 +5534,7 @@
     },
     "tauD": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.tauD",
       "keywords": [],
@@ -4648,11 +5552,25 @@
           "line": 175,
           "module": "chisurf.gui.widgets.models.fcs.dye_volume_widget",
           "ub": null
+        },
+        {
+          "bounds_on": null,
+          "class": "MdfOutputs",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "&tau;<sub>D</sub>[ms]",
+          "lb": null,
+          "line": 122,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": null
         }
       ]
     },
     "tauT": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.tauT",
       "keywords": [],
@@ -4677,6 +5595,7 @@
       "aliases": [
         "Ddye"
       ],
+      "ambiguous": false,
       "description": "Translational diffusion coefficient of the fluorescent dye.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_Ddye",
       "keywords": [
@@ -4702,6 +5621,7 @@
       "aliases": [
         "Nq"
       ],
+      "ambiguous": false,
       "description": "Effective number or concentration of quenchers in the interaction volume.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_Nq",
       "keywords": [
@@ -4728,6 +5648,7 @@
       "aliases": [
         "Rdye"
       ],
+      "ambiguous": false,
       "description": "Characteristic interaction radius or distance parameter for the dye\u00113quencher system.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_Rdye",
       "keywords": [
@@ -4754,6 +5675,7 @@
       "aliases": [
         "Vav"
       ],
+      "ambiguous": false,
       "description": "Effective averaging volume used in the transient-quenching model.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_Vav",
       "keywords": [
@@ -4779,6 +5701,7 @@
       "aliases": [
         "a"
       ],
+      "ambiguous": false,
       "description": "Pre-exponential amplitude or population fraction of this decay component (dimensionless contribution to the overall time-resolved signal).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_a",
       "keywords": [
@@ -4803,6 +5726,7 @@
       "aliases": [
         "a1"
       ],
+      "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_a1",
       "keywords": [
@@ -4833,6 +5757,7 @@
       "aliases": [
         "a2"
       ],
+      "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_a2",
       "keywords": [
@@ -4861,6 +5786,7 @@
       "aliases": [
         "a3"
       ],
+      "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_a3",
       "keywords": [
@@ -4885,6 +5811,7 @@
       "aliases": [
         "aD"
       ],
+      "ambiguous": false,
       "description": "Fraction of donors subject to additional quenching or rate channels (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_aD",
       "keywords": [
@@ -4909,6 +5836,7 @@
       "aliases": [
         "aDA"
       ],
+      "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_aDA",
       "keywords": [
@@ -4933,6 +5861,7 @@
       "aliases": [
         "aDAA"
       ],
+      "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_aDAA",
       "keywords": [
@@ -4957,6 +5886,7 @@
       "aliases": [
         "aDO"
       ],
+      "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_aDO",
       "keywords": [
@@ -4981,6 +5911,7 @@
       "aliases": [
         "ad1"
       ],
+      "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_ad1",
       "keywords": [
@@ -5005,6 +5936,7 @@
       "aliases": [
         "af1A"
       ],
+      "ambiguous": false,
       "description": "Pre-exponential amplitude or population fraction of this decay component (dimensionless contribution to the overall time-resolved signal).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_af1A",
       "keywords": [
@@ -5029,6 +5961,7 @@
       "aliases": [
         "b"
       ],
+      "ambiguous": false,
       "description": "Empirical coefficient of the sqrt(time) term in the transient-quenching decay model; controls deviations from a pure single-exponential decay.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_b",
       "keywords": [
@@ -5053,6 +5986,7 @@
       "aliases": [
         "kQ"
       ],
+      "ambiguous": false,
       "description": "Quenching rate constant added to the inverse lifetime (1/tau + kQ).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_kQ",
       "keywords": [
@@ -5080,6 +6014,7 @@
       "aliases": [
         "kf1A"
       ],
+      "ambiguous": false,
       "description": "Effective FRET or energy-transfer rate constant for this channel.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_kf1A",
       "keywords": [
@@ -5105,6 +6040,7 @@
       "aliases": [
         "kf1AA"
       ],
+      "ambiguous": false,
       "description": "Effective FRET or energy-transfer rate constant for this channel.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_kf1AA",
       "keywords": [
@@ -5130,6 +6066,7 @@
       "aliases": [
         "kf2A"
       ],
+      "ambiguous": false,
       "description": "Effective FRET or energy-transfer rate constant for this channel.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_kf2A",
       "keywords": [
@@ -5155,6 +6092,7 @@
       "aliases": [
         "p0"
       ],
+      "ambiguous": false,
       "description": "Overall normalization or intensity at time zero of the decay curve.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_p0",
       "keywords": [
@@ -5182,6 +6120,7 @@
       "aliases": [
         "tau0"
       ],
+      "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_tau0",
       "keywords": [
@@ -5206,6 +6145,7 @@
       "aliases": [
         "tau1"
       ],
+      "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_tau1",
       "keywords": [
@@ -5235,6 +6175,7 @@
       "aliases": [
         "tau2"
       ],
+      "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_tau2",
       "keywords": [
@@ -5261,6 +6202,7 @@
       "aliases": [
         "tau3"
       ],
+      "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_tau3",
       "keywords": [
@@ -5284,6 +6226,7 @@
       "aliases": [
         "td1"
       ],
+      "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_td1",
       "keywords": [
@@ -5307,6 +6250,7 @@
       "aliases": [
         "td2"
       ],
+      "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_td2",
       "keywords": [
@@ -5330,6 +6274,7 @@
       "aliases": [
         "xD"
       ],
+      "ambiguous": false,
       "description": "Fraction of donors subject to additional quenching or rate channels (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.tcspc_xD",
       "keywords": [
@@ -5352,6 +6297,7 @@
     },
     "td_max": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.td_max",
       "keywords": [],
@@ -5374,6 +6320,7 @@
     },
     "td_min": {
       "aliases": [],
+      "ambiguous": false,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.td_min",
       "keywords": [],
@@ -5396,6 +6343,7 @@
     },
     "temp": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.temp",
       "keywords": [],
@@ -5431,6 +6379,7 @@
     },
     "ts": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Additional temporal shift applied to align IRF and decay.",
       "flrcif_item_id": "_flr_chisurf_parameter.ts",
       "keywords": [
@@ -5458,6 +6407,7 @@
     },
     "vh_bg_int": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Background-corrected summed VH intensity used by anisotropy diagnostics. Derived after channel/background extraction and channel-wise summation over the active trace.",
       "flrcif_item_id": "_flr_chisurf_parameter.vh_bg_int",
       "keywords": [
@@ -5488,6 +6438,7 @@
     },
     "vv_bg_int": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Background-corrected summed VV intensity used by anisotropy diagnostics. Derived after channel/background extraction and channel-wise summation over the active trace.",
       "flrcif_item_id": "_flr_chisurf_parameter.vv_bg_int",
       "keywords": [
@@ -5518,6 +6469,7 @@
     },
     "w": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter w used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.w",
       "keywords": [
@@ -5543,6 +6495,7 @@
     },
     "w0": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.w0",
       "keywords": [],
@@ -5573,11 +6526,25 @@
           "line": 812,
           "module": "chisurf.gui.widgets.models.fcs.maxent_widget",
           "ub": 5000.0
+        },
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "w<sub>0</sub>[nm]",
+          "lb": 10.0,
+          "line": 53,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 5000.0
         }
       ]
     },
     "w_r": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.w_r",
       "keywords": [],
@@ -5608,11 +6575,25 @@
           "line": 552,
           "module": "chisurf.gui.widgets.models.rics.widgets",
           "ub": 100.0
+        },
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "w<sub>r</sub>[nm]",
+          "lb": 10.0,
+          "line": 57,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 5000.0
         }
       ]
     },
     "w_z": {
       "aliases": [],
+      "ambiguous": true,
       "description": "",
       "flrcif_item_id": "_flr_chisurf_parameter.w_z",
       "keywords": [],
@@ -5643,11 +6624,50 @@
           "line": 561,
           "module": "chisurf.gui.widgets.models.rics.widgets",
           "ub": 1000.0
+        },
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/general.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "w<sub>z</sub>[nm]",
+          "lb": 10.0,
+          "line": 60,
+          "module": "chisurf.core.models.fcs.general",
+          "ub": 20000.0
+        }
+      ]
+    },
+    "wem": {
+      "aliases": [],
+      "ambiguous": false,
+      "description": "",
+      "flrcif_item_id": "_flr_chisurf_parameter.wem",
+      "keywords": [],
+      "label_texts": [
+        "w<sub>em</sub>[nm]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "chisurf/core/models/fcs/mdf.py",
+          "fixed": false,
+          "function": "__init__",
+          "label_text": "w<sub>em</sub>[nm]",
+          "lb": 10.0,
+          "line": 56,
+          "module": "chisurf.core.models.fcs.mdf",
+          "ub": 5000.0
         }
       ]
     },
     "win-size": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter win-size used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.win_size",
       "keywords": [
@@ -5673,6 +6693,7 @@
     },
     "xA": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter xA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.xA",
       "keywords": [
@@ -5698,6 +6719,7 @@
     },
     "xB": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Model parameter xB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
       "flrcif_item_id": "_flr_chisurf_parameter.xB",
       "keywords": [
@@ -5723,6 +6745,7 @@
     },
     "xDOnly": {
       "aliases": [],
+      "ambiguous": false,
       "description": "Fraction of donors subject to additional quenching or rate channels (dimensionless).",
       "flrcif_item_id": "_flr_chisurf_parameter.xDOnly",
       "keywords": [
@@ -5751,5 +6774,5 @@
       ]
     }
   },
-  "version": 1
+  "version": 2
 }
