@@ -16,6 +16,16 @@ PTU = HERE / "data" / "clsm" / "Leica_SP8.ptu"
 SPC = HERE / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
 
 
+@pytest.fixture(autouse=True)
+def _clear_lut_context():
+    """Reset the process-global active-setup LUT context around each test."""
+    from chisurf.core.fio.lut_context import clear_active_setup_lut
+
+    clear_active_setup_lut()
+    yield
+    clear_active_setup_lut()
+
+
 @pytest.fixture
 def isolated_cache(tmp_path, monkeypatch):
     """Point the staging cache at a tmp dir so leftovers are easy to assert."""
@@ -208,6 +218,34 @@ def test_open_tttr_channel_shift_wraps():
     ch, _ = _spc_lut_for_first_channel()
     shifted = np.asarray(staging.open_tttr(str(SPC), channel_shifts={ch: 5}).micro_times)
     assert not np.array_equal(raw, shifted)
+
+
+@pytest.mark.skipif(not SPC.is_file(), reason="sample SPC not available")
+def test_open_tttr_uses_active_setup_context():
+    """When the caller passes no correction, open_tttr consults the global context.
+
+    This is the general 'route all TTTR through a routine that accounts for setup
+    specifics' mechanism: publish once, every seam read is LUT-aware.
+    """
+    tttrlib = pytest.importorskip("tttrlib")
+    from chisurf.core.fio import lut_context
+
+    ch, ntac = _spc_lut_for_first_channel()
+    raw = np.asarray(tttrlib.TTTR(str(SPC)).micro_times)
+
+    # no context -> raw
+    assert np.array_equal(raw, np.asarray(staging.open_tttr(str(SPC)).micro_times))
+
+    # publish an active setup -> a plain open applies it
+    lut_context.set_active_setup_lut({ch: ntac}, {}, apply_lut=True)
+    assert not np.array_equal(raw, np.asarray(staging.open_tttr(str(SPC)).micro_times))
+
+    # explicit apply_lut=False forces raw despite the context (inspection opt-out)
+    assert np.array_equal(raw, np.asarray(staging.open_tttr(str(SPC), apply_lut=False).micro_times))
+
+    # clearing returns to raw
+    lut_context.clear_active_setup_lut()
+    assert np.array_equal(raw, np.asarray(staging.open_tttr(str(SPC)).micro_times))
 
 
 @pytest.mark.skipif(not SPC.is_file(), reason="sample SPC not available")

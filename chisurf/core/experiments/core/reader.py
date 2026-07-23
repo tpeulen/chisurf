@@ -191,7 +191,9 @@ class ExperimentReader(chisurf.core.base.Base):
         if channel_shifts is None:
             channel_shifts = getattr(self, "channel_shifts", None)
         if apply_lut is None:
-            apply_lut = bool(getattr(self, "apply_lut", False))
+            # Leave as None when the reader carries no explicit gate so
+            # open_tttr falls back to the active-setup context.
+            apply_lut = getattr(self, "apply_lut", None)
 
         return staging.open_tttr(
             path,

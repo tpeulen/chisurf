@@ -900,6 +900,7 @@ class DetectorWizardPage(QWizardPage):
             cb.blockSignals(True)
             cb.setChecked(bool(self._apply_lut))
             cb.blockSignals(False)
+        self._publish_lut_context()
         try:
             self._refresh_lut_box()
         except Exception:
@@ -1268,8 +1269,10 @@ class DetectorWizardPage(QWizardPage):
 
             routine = self.file_type_combo.currentText().strip()
             routine = None if routine in ("", "Auto") else routine
-            # Open raw here; _update_microtime_preview applies the setup's LUT.
-            tttr = open_tttr(str(path), routine)
+            # Open RAW (apply_lut=False, bypassing the active-setup context);
+            # _update_microtime_preview applies THIS page's LUT, so opening
+            # LUT-aware here would double-apply.
+            tttr = open_tttr(str(path), routine, apply_lut=False)
             _update_microtime_preview(self, tttr, file_path=str(path))
         except Exception:
             pass
@@ -1277,6 +1280,7 @@ class DetectorWizardPage(QWizardPage):
     def _on_apply_lut_toggled(self, checked: bool):
         """Master gate toggled: store it; if on with missing LUTs, offer to compute."""
         self._apply_lut = bool(checked)
+        self._publish_lut_context()
         self._refresh_preview_lut()
         if not checked:
             return
@@ -1378,6 +1382,24 @@ class DetectorWizardPage(QWizardPage):
             self._refresh_lut_box()
             self._refresh_preview_lut()
 
+    def _publish_lut_context(self):
+        """Publish this setup's LUT/shift as the process-global active correction.
+
+        So every TTTR read that flows through ``staging.open_tttr`` (the single
+        seam) applies this setup's LUT without threading it to each call site —
+        the general "LUT on ⇒ apply on every read" mechanism.
+        """
+        try:
+            from chisurf.core.fio.lut_context import set_active_setup_lut
+
+            set_active_setup_lut(
+                getattr(self, "_channel_luts", None),
+                getattr(self, "_channel_shifts", None),
+                bool(getattr(self, "_apply_lut", False)),
+            )
+        except Exception:
+            pass
+
     def _enable_apply_lut(self):
         """Turn the master LUT gate ON (ticks the checkbox) once a LUT exists.
 
@@ -1386,6 +1408,7 @@ class DetectorWizardPage(QWizardPage):
         LUT is stored but silently never applied.
         """
         if not getattr(self, "_channel_luts", None):
+            self._publish_lut_context()
             return
         self._apply_lut = True
         cb = getattr(self, "_apply_lut_checkbox", None)
@@ -1393,6 +1416,7 @@ class DetectorWizardPage(QWizardPage):
             cb.blockSignals(True)
             cb.setChecked(True)
             cb.blockSignals(False)
+        self._publish_lut_context()
 
     def _pull_luts_from_panel(self, panel):
         """Best-effort import of ``channel_luts``/``channel_shifts`` from a LUT panel."""
@@ -1417,6 +1441,10 @@ class DetectorWizardPage(QWizardPage):
         self._enable_apply_lut()
 
     def get_settings(self):
+        # Keep the process-global active-setup LUT context in sync with this
+        # setup, so any analysis that reads TTTR through staging.open_tttr after
+        # inspecting the setup is LUT-aware.
+        self._publish_lut_context()
         # windows
         wins = {}
         for r in range(self.windows_form.rowCount()):

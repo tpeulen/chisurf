@@ -310,7 +310,7 @@ def open_tttr(
     *,
     channel_luts: dict | None = None,
     channel_shifts: dict | None = None,
-    apply_lut: bool = False,
+    apply_lut: bool | None = None,
     lut_seed: int = LUT_DITHER_SEED,
     progress_cb: ProgressCallback | None = None,
     cancel_cb: CancelCallback | None = None,
@@ -356,13 +356,29 @@ def open_tttr(
     """
     import tttrlib
 
+    # When the caller does not specify the correction (apply_lut is None), consult
+    # the process-global active-setup context so every read through this single
+    # seam is LUT-aware without threading the setup to each call site. Pass
+    # apply_lut=False explicitly to force a raw read (inspection/editor tools).
+    if apply_lut is None:
+        from chisurf.core.fio.lut_context import get_active_setup_lut
+
+        ctx_luts, ctx_shifts, ctx_apply = get_active_setup_lut()
+        apply_lut = ctx_apply
+        if channel_luts is None:
+            channel_luts = ctx_luts
+        if channel_shifts is None:
+            channel_shifts = ctx_shifts
+
     with staged_source(src, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs) as local:
         if routine is None or routine == "":
             tttr = tttrlib.TTTR(str(local))
         else:
             tttr = tttrlib.TTTR(str(local), routine)
 
-    apply_setup_lut(tttr, channel_luts, channel_shifts, apply_lut=apply_lut, lut_seed=lut_seed)
+    apply_setup_lut(
+        tttr, channel_luts, channel_shifts, apply_lut=bool(apply_lut), lut_seed=lut_seed
+    )
     return tttr
 
 

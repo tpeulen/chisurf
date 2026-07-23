@@ -15,6 +15,16 @@ _SPC = (pathlib.Path(__file__).resolve().parents[2]
         / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc")
 
 
+@pytest.fixture(autouse=True)
+def _clear_lut_context():
+    """Reset the process-global active-setup LUT context around each test."""
+    from chisurf.core.fio.lut_context import clear_active_setup_lut
+
+    clear_active_setup_lut()
+    yield
+    clear_active_setup_lut()
+
+
 @pytest.fixture
 def lut_setup(tmp_path):
     data = {
