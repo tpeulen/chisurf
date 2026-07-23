@@ -9,6 +9,37 @@ from chisurf.gui.widgets.dock_area.dock_tab_bar import DockTabBar
 _MAX_TAB_TEXT_LEN = 30
 
 
+def _is_deleted(widget) -> bool:
+    """Return whether *widget*'s underlying C/C++ object has been destroyed.
+
+    A page widget can outlive its Python reference in ``_all_widgets`` (e.g. when
+    an embedding host tears down the widget tree). Calling into such a wrapper
+    raises ``RuntimeError: wrapped C/C++ object ... has been deleted``; this probe
+    lets the dock area skip those entries instead of crashing.
+    """
+    if widget is None:
+        return True
+    try:  # PyQt (sip)
+        from qtpy import sip  # type: ignore
+
+        return bool(sip.isdeleted(widget))
+    except Exception:
+        pass
+    try:  # PySide (shiboken)
+        import shiboken6  # type: ignore
+
+        return not shiboken6.isValid(widget)
+    except Exception:
+        pass
+    try:  # last resort: touch a cheap method
+        widget.objectName()
+        return False
+    except RuntimeError:
+        return True
+    except Exception:
+        return False
+
+
 def _shorten_path(name: str) -> tuple[str, str]:
     """Return ``(display_text, full_tooltip)`` for a tab name.
 
@@ -1208,10 +1239,16 @@ class DockArea(QtWidgets.QWidget):
                     return True
         return False
 
+    def _prune_deleted(self) -> None:
+        """Drop registry entries whose underlying C/C++ object has been destroyed."""
+        self._all_widgets = [w for w in self._all_widgets if not _is_deleted(w)]
+        self._hidden_widgets = [w for w in self._hidden_widgets if not _is_deleted(w)]
+
     def showTab(self, index: int) -> bool:
         """Restore a hidden tab by absolute index."""
         w = self.widget(index)
-        if w is None:
+        if w is None or _is_deleted(w):
+            self._prune_deleted()
             return False
         if w not in self._hidden_widgets and self._tab_widget_for_page(w) is not None:
             return False
@@ -1789,6 +1826,7 @@ class DockArea(QtWidgets.QWidget):
 
     def _add_dock_visibility_actions(self, menu: QtWidgets.QMenu) -> None:
         """Add checkable dock visibility actions to ``menu``."""
+        self._prune_deleted()
         if not self._all_widgets:
             return
         if menu.actions():

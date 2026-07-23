@@ -257,8 +257,11 @@ class H2mmTool(QMainWindow):
         layout.addWidget(self._status_label)
 
         self._connect_signals()
-        self._apply_default_plot_layout()
-        self.dock_area.enable_persistence("burst_h2mm")
+        # Restore a saved dock arrangement, else apply the default two-column grid
+        # (both synchronous here, matching BVA — no showEvent-time restore, which
+        # interacts badly with the embedded navigation lifecycle).
+        self._restore_dock_layout()
+        self.dock_area.layoutChanged.connect(self._save_dock_layout)
         self._load_settings()
 
     def _setup_toolbar(self):
@@ -556,8 +559,8 @@ class H2mmTool(QMainWindow):
 
         Mirrors the original dashboard (two columns of plots, the state path along
         the bottom) but as independent, resizable docks. Falls back silently to the
-        flat tab order if the layout cannot be applied. A persisted arrangement (if
-        any) overrides this on show — see ``DockArea.enable_persistence``.
+        flat tab order if the layout cannot be applied. Only used when there is no
+        saved arrangement (see :meth:`_restore_dock_layout`).
         """
         def _tab(name: str) -> dict:
             return {"type": "tab", "current_index": 0, "tabs": [{"tab_name": name}]}
@@ -600,9 +603,43 @@ class H2mmTool(QMainWindow):
             },
         }
         try:
-            self.dock_area.set_layout_state(state)
+            self.dock_area.set_layout_state(state, emit_change=False)
         except Exception:
             pass
+
+    def _save_dock_layout(self) -> None:
+        """Persist the current dock arrangement (same INI file as the settings)."""
+        try:
+            import json
+
+            ini = QSettings(str(get_plugin_settings_path("burst_h2mm")), QSettings.IniFormat)
+            ini.setValue("dock_layout", json.dumps(self.dock_area.get_layout_state(), sort_keys=True))
+        except Exception:
+            pass
+
+    def _restore_dock_layout(self) -> None:
+        """Restore a saved dock arrangement, else apply the default grid.
+
+        Both paths run synchronously here (BVA-style), never on ``showEvent`` — a
+        showEvent-time restore fought the embedded navigation lifecycle and could
+        leave a stale (deleted) plot widget registered, crashing a later show.
+        Restore uses ``emit_change=False`` so rebuilding does not re-trigger a save.
+        """
+        try:
+            import json
+
+            ini = QSettings(str(get_plugin_settings_path("burst_h2mm")), QSettings.IniFormat)
+            raw = ini.value("dock_layout")
+            state = None
+            if isinstance(raw, str) and raw:
+                state = json.loads(raw)
+            elif isinstance(raw, dict):
+                state = raw
+            if state and self.dock_area.set_layout_state(state, emit_change=False):
+                return
+        except Exception:
+            pass
+        self._apply_default_plot_layout()
 
     def _connect_signals(self):
         self.btn_folder.clicked.connect(self._select_folder)
@@ -1366,6 +1403,7 @@ class H2mmTool(QMainWindow):
             self._set_folder(str(lf))
 
     def closeEvent(self, event):
-        """Persist settings when the window closes."""
+        """Persist settings and dock arrangement when the window closes."""
         self._save_settings()
+        self._save_dock_layout()
         super().closeEvent(event)
