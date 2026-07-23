@@ -1315,6 +1315,29 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                 chisurf.logging.error(f"Failed to calculate FWHM: {str(e)}")
                 self.lineEdit_fwhm.setText("Error")
 
+    def _apply_setup_lut(self, tttr):
+        """Apply the associated setup's per-channel LUT + shifts to *tttr* in place.
+
+        General rule: LUT on ⇒ the LUT is applied on every read. The histogram is
+        computed from raw ``tttrlib.TTTR`` opens, so it must linearize here (using
+        the embedded Detector-Setup page's ``channel_luts``/``apply_lut``) or the
+        decay is uncorrected.
+        """
+        page = getattr(self, "detector_wizard_page", None)
+        if page is None:
+            return
+        try:
+            from chisurf.core.fio.staging import apply_setup_lut
+
+            apply_setup_lut(
+                tttr,
+                getattr(page, "_channel_luts", None),
+                getattr(page, "_channel_shifts", None),
+                apply_lut=bool(getattr(page, "_apply_lut", False)),
+            )
+        except Exception as exc:  # pragma: no cover - best-effort
+            chisurf.logging.warning(f"Applying setup LUT to histogram failed: {exc}")
+
     def compute_microtime_histogram(self):
         chisurf.logging.info("Computing microtime histogram...")
         self.plotWidget.clear()  # Clear plot before drawing new data
@@ -1380,6 +1403,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             path = Path(filename)
             if path.is_file():
                 d = tttrlib.TTTR(path.as_posix(), self.tttr_filetype)
+                self._apply_setup_lut(d)
 
                 # Try to find matching BID/BUR ranges for this TTTR file
                 tttr_stem = path.stem
