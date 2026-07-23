@@ -92,6 +92,16 @@ def default_calculators() -> list[CalculatorEntry]:
             widget="chisurf.plugins.calculator.kappa2_dist.gui.tool:Kappa2Dist",
             icon="🎯",
         ),
+        CalculatorEntry(
+            id="f_test",
+            label="F-test / χ²-max",
+            description=(
+                "Compare two nested model fits (confidence ↔ χ² threshold) and compute "
+                "the χ²-max upper limit of a single fit at a confidence level."
+            ),
+            widget="chisurf.plugins.core.f_test.gui.tool:FTestTool",
+            icon="📉",
+        ),
     ]
 
 
