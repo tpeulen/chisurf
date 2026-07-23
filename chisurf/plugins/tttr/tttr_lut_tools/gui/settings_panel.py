@@ -289,7 +289,7 @@ class ReadmeDialog(QtWidgets.QDialog):
         self.resize(800, 600)
         layout = QtWidgets.QVBoxLayout(self)
 
-        readme_path = Path(__file__).parents[2] / "tttr_settings_generator" / "README.md"
+        readme_path = Path(__file__).parents[1] / "README.md"
         try:
             readme_text = readme_path.read_text(encoding="utf-8")
         except Exception:
