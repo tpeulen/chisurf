@@ -34,6 +34,12 @@ sketches.
 | 24 | [Confocal scan images (CLSM)](24_scan_images.md) | `tttrlib.CLSMImage`, `plugins/microscopy` |
 | 25 | [RCM from FRET-labelled samples (PIE/ALEX)](25_rcm_from_fret_samples.md) | `fret/calibration.py`, `burst/es.py` |
 | 26 | [2-D peak fitting](26_2d_peak_fitting.md) | `burst_selection` GMM features |
+| | **End-to-end workflows** | |
+| 27 | [Complete µs-ALEX smFRET workflow](27_alex_smfret_workflow.md) | `BurstWorkflow` facade |
+| 28 | [Selecting & comparing FRET populations](28_selecting_fret_populations.md) | `Bursts.table`, `burst_selection` |
+| 29 | [FRET-efficiency histogram fitting](29_fret_histogram_fitting.md) | Gaussian mixture on `E` |
+| 30 | [H2MM: complete workflow & results](30_h2mm_workflow_results.md) | `burst_h2mm.core.analysis` |
+| 31 | [H2MM: simulating & validating](31_h2mm_simulation_validation.md) | `BurstWorkflow.simulate`, `burst_h2mm` |
 
 ## Running
 

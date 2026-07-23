@@ -614,9 +614,146 @@ def fig_mcs():
     save(fig, "mcs.png")
 
 
+# ==========================================================================
+# Workflow tutorials (based on established burst-analysis / H2MM notebooks)
+# ==========================================================================
+
+def _alex_populations(rng, n_fret=1400):
+    """Synthetic ALEX bursts: two FRET states + donor-only + acceptor-only."""
+    def pop(n, e, s, se=0.06, ss=0.05):
+        return rng.normal(e, se, n), rng.normal(s, ss, n)
+    E = np.concatenate([pop(n_fret // 2, 0.25, 0.52)[0], pop(n_fret // 2, 0.72, 0.50)[0],
+                        pop(400, 0.03, 0.93)[0], pop(250, 0.55, 0.08)[0]])
+    S = np.concatenate([pop(n_fret // 2, 0.25, 0.52)[1], pop(n_fret // 2, 0.72, 0.50)[1],
+                        pop(400, 0.03, 0.93)[1], pop(250, 0.55, 0.08)[1]])
+    return E, S
+
+
+def fig_alex_workflow():
+    rng = np.random.default_rng(27)
+    E, S = _alex_populations(rng)
+    fret = (S > 0.25) & (S < 0.75)                 # gate out D-only / A-only
+
+    fig = plt.figure(figsize=(6.0, 5.4))
+    gs = fig.add_gridspec(2, 2, width_ratios=(4, 1), height_ratios=(1, 4),
+                          wspace=0.05, hspace=0.05)
+    ax = fig.add_subplot(gs[1, 0]); axx = fig.add_subplot(gs[0, 0], sharex=ax)
+    axy = fig.add_subplot(gs[1, 1], sharey=ax)
+    ax.hexbin(E, S, gridsize=45, cmap="viridis", mincnt=1, extent=(-0.1, 1.1, 0, 1))
+    ax.set_xlabel("FRET efficiency E"); ax.set_ylabel("stoichiometry S")
+    ax.set_xlim(-0.1, 1.1); ax.set_ylim(0, 1)
+    axx.hist(E, bins=np.arange(-0.1, 1.1, 0.03), color="#1f77b4"); axx.axis("off")
+    axy.hist(S, bins=np.arange(0, 1, 0.03), orientation="horizontal", color="#1f77b4")
+    axy.axis("off")
+    axx.set_title("μs-ALEX smFRET burst analysis")
+    save(fig, "alex_workflow.png")
+
+
+def fig_e_hist_fit():
+    from sklearn.mixture import GaussianMixture
+    rng = np.random.default_rng(28)
+    E, S = _alex_populations(rng)
+    e = E[(S > 0.25) & (S < 0.75)]                 # FRET bursts only
+    gm = GaussianMixture(n_components=3, random_state=0).fit(e.reshape(-1, 1))
+    x = np.linspace(-0.1, 1.1, 400)
+    from scipy.stats import norm
+    comps = [w * norm.pdf(x, m[0], np.sqrt(c[0, 0]))
+             for w, m, c in zip(gm.weights_, gm.means_, gm.covariances_)]
+
+    fig, ax = plt.subplots(figsize=(5.6, 4.0))
+    ax.hist(e, bins=np.arange(-0.1, 1.1, 0.025), density=True, color="0.8", label="bursts")
+    for i, cc in enumerate(comps):
+        ax.plot(x, cc, lw=1.2, label=f"comp {i+1}: E={gm.means_[i,0]:.2f}")
+    ax.plot(x, np.sum(comps, axis=0), "k-", lw=2, label="mixture fit")
+    ax.set_xlabel("FRET efficiency E"); ax.set_ylabel("p.d.f."); ax.set_xlim(-0.1, 1.1)
+    ax.set_title("FRET-efficiency histogram fit (Gaussian mixture)")
+    ax.legend(fontsize=7)
+    save(fig, "e_hist_fit.png")
+
+
+def fig_population_selection():
+    rng = np.random.default_rng(29)
+    E, S = _alex_populations(rng)
+    roi = dict(E1=0.55, E2=1.05, S1=0.25, S2=0.75)   # high-FRET ROI
+    high = (E > roi["E1"]) & (E < roi["E2"]) & (S > roi["S1"]) & (S < roi["S2"])
+    low = (E < 0.45) & (S > 0.25) & (S < 0.75)
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(9.4, 4.0))
+    a1.hexbin(E, S, gridsize=45, cmap="Greys", mincnt=1, extent=(-0.1, 1.1, 0, 1))
+    a1.add_patch(plt.Rectangle((roi["E1"], roi["S1"]), roi["E2"] - roi["E1"],
+                 roi["S2"] - roi["S1"], fill=False, ec="#d62728", lw=2))
+    a1.set_xlabel("E"); a1.set_ylabel("S"); a1.set_title("ROI selection on E–S")
+    a1.set_xlim(-0.1, 1.1); a1.set_ylim(0, 1)
+    bins = np.arange(-0.1, 1.1, 0.03)
+    a2.hist(E[low], bins=bins, alpha=0.6, color="#1f77b4", label=f"low-FRET (n={low.sum()})")
+    a2.hist(E[high], bins=bins, alpha=0.6, color="#d62728", label=f"high-FRET (n={high.sum()})")
+    a2.set_xlabel("E"); a2.set_ylabel("bursts"); a2.set_title("Selected sub-populations")
+    a2.legend(fontsize=8)
+    save(fig, "population_selection.png")
+
+
+def fig_h2mm_dashboard():
+    rng = np.random.default_rng(30)
+    E_states = np.array([0.25, 0.55, 0.8])
+    # dwells with measured E scattered around 3 states
+    dwell_E, before, after = [], [], []
+    s = 0
+    for _ in range(1500):
+        ns = rng.integers(0, 3)
+        d = rng.integers(4, 25)
+        dwell_E.append((rng.binomial(d, E_states[ns]) / d))
+        if s is not None:
+            before.append(E_states[s]); after.append(E_states[ns])
+        s = ns
+    dwell_E = np.asarray(dwell_E)
+
+    fig, axs = plt.subplots(2, 2, figsize=(8.6, 6.4))
+    axs[0, 0].hist(dwell_E, bins=np.linspace(0, 1, 40), color="#1f77b4")
+    for e in E_states: axs[0, 0].axvline(e, ls="--", color="k", lw=1)
+    axs[0, 0].set_title("Dwell E histogram"); axs[0, 0].set_xlabel("E")
+    axs[0, 1].hexbin(before, after, gridsize=25, cmap="magma", mincnt=1,
+                     extent=(0, 1, 0, 1))
+    axs[0, 1].set_title("Transition-density plot"); axs[0, 1].set_xlabel("E before")
+    axs[0, 1].set_ylabel("E after")
+    states = np.array([1, 2, 3, 4])
+    bic = np.array([9500, 8200, 8180, 8240])
+    axs[1, 0].plot(states, bic, "o-"); axs[1, 0].axvline(3, ls="--", color="#d62728")
+    axs[1, 0].set_title("Model selection (BIC)"); axs[1, 0].set_xlabel("states")
+    for i, e in enumerate(E_states):
+        d = rng.exponential(1.5 + i, 2000)
+        axs[1, 1].hist(d, bins=40, histtype="step", label=f"state {i+1}")
+    axs[1, 1].set_title("Per-state dwell times"); axs[1, 1].set_xlabel("dwell (ms)")
+    axs[1, 1].legend(fontsize=7)
+    fig.suptitle("H2MM results dashboard", y=1.01)
+    save(fig, "h2mm_dashboard.png")
+
+
+def fig_h2mm_recovery():
+    rng = np.random.default_rng(31)
+    true_E = [0.3, 0.7]
+    states = np.array([1, 2, 3])
+    bic = np.array([4200, 3100, 3120])
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(9.0, 3.8))
+    a1.plot(states, bic, "o-", color="#1f77b4")
+    a1.axvline(2, ls="--", color="#d62728", label="selected (min BIC)")
+    a1.set_xlabel("number of states"); a1.set_ylabel("BIC")
+    a1.set_title("Model selection recovers 2 states"); a1.legend(fontsize=8)
+    a1.set_xticks(states)
+    recovered = [0.31, 0.69]
+    x = np.arange(2)
+    a2.bar(x - 0.15, true_E, 0.3, label="true", color="0.7")
+    a2.bar(x + 0.15, recovered, 0.3, label="H2MM", color="#1f77b4")
+    a2.set_xticks(x); a2.set_xticklabels(["state 1", "state 2"])
+    a2.set_ylabel("FRET efficiency"); a2.set_ylim(0, 1)
+    a2.set_title("Recovered vs simulated E"); a2.legend(fontsize=8)
+    save(fig, "h2mm_recovery.png")
+
+
 if __name__ == "__main__":
     fig_2cde(); fig_rasp(); fig_polymer(); fig_fida(); fig_mdf(); fig_g3(); fig_rcm()
     fig_bva(); fig_fcs_diffusion(); fig_lifetime_anisotropy(); fig_pda()
     fig_tttr(); fig_burst_search(); fig_es(); fig_background()
     fig_fret_fcs(); fig_filtered_fcs(); fig_simulation(); fig_h2mm(); fig_mcs()
+    fig_alex_workflow(); fig_e_hist_fit(); fig_population_selection()
+    fig_h2mm_dashboard(); fig_h2mm_recovery()
     print("all figures written to", FIG)
