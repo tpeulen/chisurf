@@ -16,8 +16,13 @@ reference `H2MM_C` library by P. D. Harris.
   matrix) over a range of state counts.
 - Selects the number of states by **BIC** or **ICL** (Viterbi complete-data).
 - Reports per-state apparent FRET, Viterbi state populations, transition rates
-  (1/s), a **transition-density plot** (E before vs E after), and per-state
-  **dwell-time distributions**.
+  (1/s), and (for µsALEX/PIE data) per-state **stoichiometry** `S`.
+- Decodes the per-photon Viterbi path into **dwells** carrying their *measured*
+  E/S, so the GUI shows the burstH2MM-style result panels: a dwell **E histogram**
+  (or **E–S scatter** for ALEX/PIE), a **transition-density plot** (E before vs
+  E after), the **BIC/ICL model-selection** curve, per-state **dwell-time
+  distributions**, per-state **fluorescence-decay** (nanotime) histograms, and an
+  interactive per-burst **Viterbi state-path** viewer.
 
 ## Architecture (client–server standard)
 
@@ -50,8 +55,12 @@ not clock ticks.
 
 A *stream* is a detector category (e.g. donor "green", acceptor "red"), defined
 by routing channels plus optional micro-time windows (PIE/ALEX). The first two
-streams are treated as donor/acceptor for apparent-FRET reporting. Photons
-matching no stream are dropped.
+streams are treated as donor/acceptor for apparent-FRET reporting. An **optional
+third** stream — acceptor emission under acceptor (direct) excitation, e.g. the
+PIE "yellow" micro-time window — enables per-state **stoichiometry**
+`S = (D + A) / (D + A + A_ex)` and the dwell E–S scatter; with only two streams
+the analysis degrades cleanly to FRET-E only (`S` is `NaN`). Photons matching no
+stream are dropped.
 
 ## Usage
 

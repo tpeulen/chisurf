@@ -163,4 +163,73 @@ def test_h2mm_gui_plots_render(qapp):
     w._bundle = H2mmAnalysisBundle(ana, data, H2mmSettings())
     w._update_plots()  # must not raise
     assert w._result.n_states == 2
+    # Burst-path viewer is populated and navigates.
+    assert w.sb_burst.maximum() == data.n_bursts - 1
+    w.sb_burst.setValue(1)  # must not raise (draws a different burst)
+    w.cb_dynamic_only.setChecked(True)  # restrict to bursts with transitions
+    assert "burst" in w._burst_label.text()
+    w.close()
+
+
+def test_h2mm_gui_alex_es_and_nanotime(qapp):
+    """A 3-stream ALEX run renders the E–S scatter, per-state decay, and burst path."""
+    import types
+
+    import pandas as pd
+
+    from chisurf.plugins.burst.burst_h2mm.api.models import H2mmSettings
+    from chisurf.plugins.burst.burst_h2mm.backend.services import (
+        H2mmAnalysisBundle,
+        _result_from_analysis,
+    )
+    from chisurf.plugins.burst.burst_h2mm.core import analysis, h2mm
+    from chisurf.plugins.burst.burst_h2mm.core.photons import (
+        StreamDef,
+        bursts_from_dataframe,
+    )
+    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+
+    gt = h2mm.H2mmModel(
+        np.array([0.5, 0.5]),
+        np.array([[0.98, 0.02], [0.03, 0.97]]),
+        np.array([[0.45, 0.10, 0.45], [0.10, 0.45, 0.45]]),
+    )
+    rng = np.random.default_rng(5)
+    times = [
+        np.concatenate([[0], np.cumsum(rng.poisson(4, size=79) + 1)]).astype(np.int64)
+        for _ in range(150)
+    ]
+    sim = h2mm.simulate_bursts(gt, times, seed=6)
+    macro, chan, micro, rows = [], [], [], []
+    off = base = 0
+    for t, s in zip(times, sim):
+        macro.append(t + base)
+        chan.append(s.astype(np.int64))
+        micro.append(rng.exponential(np.where(s == 0, 200.0, 600.0)).astype(np.int64) % 4096)
+        rows.append(("f.spc", off, off + len(t)))
+        off += len(t)
+        base += int(t[-1]) + 2000
+    hdr = types.SimpleNamespace(tag=lambda k: {"value": 1e-6}, macro_time_resolution=1e-6)
+    tttr = types.SimpleNamespace(
+        macro_times=np.concatenate(macro),
+        routing_channels=np.concatenate(chan),
+        micro_times=np.concatenate(micro),
+        header=hdr,
+    )
+    df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
+    streams = [StreamDef("green", [0]), StreamDef("red", [1]), StreamDef("yellow", [2])]
+    data, meta = bursts_from_dataframe(df, {"f.spc": tttr}, streams, min_photons=8, return_meta=True)
+    ana = analysis.analyze(data, state_counts=(1, 2), base_time_s=1e-6, n_restarts=2, max_iter=200)
+
+    w = H2mmTool(embedded=True)
+    w._result = _result_from_analysis(ana, H2mmSettings())
+    w._bundle = H2mmAnalysisBundle(ana, data, H2mmSettings())
+    w._bundle.meta = meta
+    w._update_plots()  # must not raise for the ALEX/PIE + nanotime path
+    assert w._result.has_alex
+    assert w._p_fret.titleLabel.text == "Dwell E–S scatter"
+    # E–S scatter drew per-state clouds; nanotime drew per-state decays.
+    assert len(w._p_fret.items) > 0
+    assert len(w._p_nano.listDataItems()) >= 1
+    assert len(w._p_path.items) > 0
     w.close()

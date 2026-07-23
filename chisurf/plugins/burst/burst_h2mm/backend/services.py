@@ -165,7 +165,6 @@ def write_result_tables(
     Records every written path in ``result.output_paths``.
     """
     from ..core.export import build_tables, write_csv, write_hdf5
-    from ..core.h2mm import viterbi
 
     out_dir = pathlib.Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -179,8 +178,7 @@ def write_result_tables(
     if meta is None or not getattr(bundle.settings, "write_photons", True):
         return
     ana = bundle.analysis
-    path, _ = viterbi(ana.best.model, bundle.data)
-    tables = build_tables(bundle.data, meta, path, ana.fret, ana.base_time_s)
+    tables = build_tables(bundle.data, meta, ana.path, ana.fret, ana.base_time_s)
     try:
         result.output_paths["photons_hdf5"] = write_hdf5(tables.photons, out_dir / "h2mm_photons.h5")
     except Exception:  # pragma: no cover - pytables optional; CSV is the fallback
@@ -208,6 +206,7 @@ def _result_from_analysis(ana, settings: H2mmSettings) -> H2mmResult:
         float(np.mean(v)) * ana.base_time_s if v.size else 0.0
         for _, v in sorted(ana.dwell_times.items())
     ]
+    has_alex = bool(np.isfinite(np.asarray(ana.stoichiometry)).any())
     return H2mmResult(
         n_states=ana.best.n_states,
         criterion=settings.criterion,
@@ -217,6 +216,8 @@ def _result_from_analysis(ana, settings: H2mmSettings) -> H2mmResult:
         obs=[[float(x) for x in row] for row in best.obs],
         trans_rates=[[float(x) for x in row] for row in ana.trans_rates],
         fret=[float(x) for x in ana.fret],
+        stoichiometry=[float(x) for x in ana.stoichiometry] if has_alex else [],
+        has_alex=has_alex,
         populations=[float(x) for x in ana.populations],
         dwell_mean_s=dwell_mean,
         n_transitions=len(ana.transitions),

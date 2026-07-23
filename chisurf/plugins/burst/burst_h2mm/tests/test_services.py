@@ -75,6 +75,66 @@ def test_bursts_from_dataframe_and_analyze():
     assert len(ana.transitions) > 0
 
 
+def test_analyze_populates_dwells_path_and_measured_es():
+    """analyze() exposes a Viterbi path and per-dwell measured E aligned to states."""
+    df, tttrs = _synthetic_dataset()
+    streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
+    data = bursts_from_dataframe(df, tttrs, streams, min_photons=5)
+    ana = analysis.analyze(
+        data, state_counts=(1, 2, 3), base_time_s=1e-6, n_restarts=1, max_iter=200,
+    )
+    # Viterbi path covers every analysed photon.
+    assert ana.path.shape[0] == data.n_photons
+    assert int(ana.path.max()) < ana.best.n_states
+    # No acceptor-excitation stream → stoichiometry is all-NaN.
+    assert not np.isfinite(ana.stoichiometry).any()
+    # Every dwell is accounted for and the legacy duration mapping matches.
+    assert len(ana.dwells) == sum(len(v) for v in ana.dwell_times.values())
+    # Measured dwell E tracks the model per-state E: the low-E state's dwells have
+    # a lower mean measured E than the high-E state's.
+    low = int(np.argmin(ana.fret))
+    high = int(np.argmax(ana.fret))
+    e_low = np.array([d.e for d in ana.dwells if d.state == low and np.isfinite(d.e)])
+    e_high = np.array([d.e for d in ana.dwells if d.state == high and np.isfinite(d.e)])
+    assert e_low.mean() < e_high.mean()
+
+
+def test_analyze_stoichiometry_with_alex_stream():
+    """A 3rd acceptor-excitation stream yields finite per-state stoichiometry."""
+    gt = h2mm.H2mmModel(
+        np.array([0.5, 0.5]),
+        np.array([[0.98, 0.02], [0.03, 0.97]]),
+        # [DexDem, DexAem, AexAem]; both states S ~ 0.5, E low/high.
+        np.array([[0.45, 0.10, 0.45], [0.10, 0.45, 0.45]]),
+    )
+    rng = np.random.default_rng(3)
+    times = [
+        np.concatenate([[0], np.cumsum(rng.poisson(4, size=79) + 1)]).astype(np.int64)
+        for _ in range(200)
+    ]
+    sim = h2mm.simulate_bursts(gt, times, seed=4)
+    macro, chan, micro, rows = [], [], [], []
+    offset = base = 0
+    for t, s in zip(times, sim):
+        macro.append(t + base)
+        chan.append(s.astype(np.int64))
+        micro.append(np.zeros_like(s))
+        rows.append(("f.spc", offset, offset + t.shape[0]))
+        offset += t.shape[0]
+        base += int(t[-1]) + 1000
+    tttr = _fake_tttr(np.concatenate(macro), np.concatenate(chan), np.concatenate(micro))
+    df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
+    streams = [StreamDef("green", [0]), StreamDef("red", [1]), StreamDef("yellow", [2])]
+    data = bursts_from_dataframe(df, {"f.spc": tttr}, streams, min_photons=8)
+    assert data.n_streams == 3
+    ana = analysis.analyze(data, state_counts=(1, 2), base_time_s=1e-6, n_restarts=2, max_iter=200)
+    assert np.isfinite(ana.stoichiometry).all()
+    assert np.allclose(ana.stoichiometry, 0.5, atol=0.15)
+    # Measured per-dwell S is populated (finite for multi-photon dwells).
+    s_vals = np.array([d.s for d in ana.dwells if np.isfinite(d.s)])
+    assert s_vals.size > 0
+
+
 def test_stream_microtime_gating():
     macro = np.array([0, 1, 2, 3])
     chan = np.array([0, 0, 1, 1])
@@ -110,8 +170,9 @@ def test_contract_describe_rpc():
 
 def test_load_tttrs_resolves_legacy_burst_folder_parent(tmp_path, monkeypatch):
     """CUSUM/burstwise .bur folders reference TTTR files in the dataset root."""
-    from chisurf.plugins.burst.burst_h2mm.backend import services
     import tttrlib
+
+    from chisurf.plugins.burst.burst_h2mm.backend import services
 
     data_root = tmp_path / "bh_spc132_sm_dna"
     burst_dir = data_root / "cusum_All 0.2000#30" / "bi4_bur"

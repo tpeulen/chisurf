@@ -41,6 +41,46 @@ class Transition:
 
 
 @dataclass
+class Dwell:
+    """One Viterbi-decoded dwell (a maximal same-state run within a burst).
+
+    Unlike :attr:`H2mmAnalysis.fret` (the *model* per-state efficiency), the
+    :attr:`e` / :attr:`s` here are **measured** from the photons that fall in the
+    dwell — the quantities burstH2MM histograms per state.
+
+    Attributes
+    ----------
+    burst : int
+        Zero-based burst index the dwell belongs to.
+    state : int
+        Viterbi state of the dwell.
+    dur : int
+        Dwell duration in base time units (``0`` for a single-photon dwell).
+    n_photons : int
+        Photons in the dwell.
+    e : float
+        Measured apparent FRET ``E = A / (A + D)`` over the dwell's photons
+        (``nan`` if it has no donor/acceptor photons).
+    s : float
+        Measured stoichiometry ``S = (D + A) / (D + A + A_ex)`` over the dwell
+        (``nan`` when no acceptor-excitation stream is defined).
+    start : int
+        Global (CSR) index of the dwell's first photon.
+    stop : int
+        Global (CSR) index one past the dwell's last photon.
+    """
+
+    burst: int
+    state: int
+    dur: int
+    n_photons: int
+    e: float
+    s: float
+    start: int
+    stop: int
+
+
+@dataclass
 class H2mmAnalysis:
     """Full result of an H2MM analysis run.
 
@@ -54,13 +94,24 @@ class H2mmAnalysis:
         Per-state apparent FRET efficiency, shape ``(n_states,)``.
     populations : numpy.ndarray
         Viterbi state populations (photon fraction per state).
+    stoichiometry : numpy.ndarray
+        Per-state apparent stoichiometry ``S``, shape ``(n_states,)``. All-``nan``
+        when the data has no acceptor-excitation stream (< 3 streams).
     dwell_times : dict
         Maps ``state -> numpy.ndarray`` of dwell durations (base time units).
+    dwells : list of Dwell
+        Every Viterbi-decoded dwell with its measured E/S (for per-state dwell
+        histograms and E–S scatter plots).
     transitions : list of Transition
         Within-burst transitions for the transition-density plot.
     trans_rates : numpy.ndarray
         Transition matrix converted to rates (1/s) using ``base_time_s``;
         diagonal is zero.
+    path : numpy.ndarray
+        Per-photon Viterbi state, length ``n_photons`` (aligned with the engine
+        photon layout / :class:`~.photons.PhotonMeta`).
+    n_streams : int
+        Number of photon streams in the fitted data.
     base_time_s : float
         Seconds per base time unit.
     n_photons : int
@@ -73,9 +124,13 @@ class H2mmAnalysis:
     scan: list[StateFit]
     fret: np.ndarray
     populations: np.ndarray
+    stoichiometry: np.ndarray
     dwell_times: dict[int, np.ndarray]
+    dwells: list[Dwell]
     transitions: list[Transition]
     trans_rates: np.ndarray
+    path: np.ndarray
+    n_streams: int
     base_time_s: float
     n_photons: int
     n_bursts: int
@@ -89,6 +144,30 @@ def state_fret(model: H2mmModel, acceptor_stream: int = 1, donor_stream: int = 0
     with np.errstate(divide="ignore", invalid="ignore"):
         e = np.where(denom > 0, a / denom, np.nan)
     return e
+
+
+def state_stoichiometry(
+    model: H2mmModel,
+    donor_stream: int = 0,
+    acceptor_stream: int = 1,
+    aex_stream: int | None = 2,
+) -> np.ndarray:
+    """Return apparent per-state stoichiometry ``S`` from the emission matrix.
+
+    ``S = (D + A) / (D + A + A_ex)`` where ``D`` / ``A`` are the donor- and
+    acceptor-emission streams under donor excitation and ``A_ex`` is the
+    acceptor-emission stream under acceptor (direct) excitation — the µsALEX/PIE
+    stoichiometry. Returns all-``nan`` when ``aex_stream`` is ``None`` or the
+    model has too few streams (no acceptor-excitation channel defined).
+    """
+    n_states = model.n_states
+    if aex_stream is None or model.n_streams <= aex_stream:
+        return np.full(n_states, np.nan, dtype=np.float64)
+    dex = model.obs[:, donor_stream] + model.obs[:, acceptor_stream]
+    denom = dex + model.obs[:, aex_stream]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        s = np.where(denom > 0, dex / denom, np.nan)
+    return s
 
 
 def scan_states(
@@ -175,23 +254,66 @@ def scan_states(
     return fits
 
 
+def _measured_es(
+    streams: np.ndarray,
+    donor_stream: int,
+    acceptor_stream: int,
+    aex_stream: int | None,
+) -> tuple[float, float]:
+    """Measured ``(E, S)`` for the photons of a single dwell.
+
+    ``streams`` is the per-photon stream slice of the dwell; ``E`` and ``S`` use
+    the same definitions as :func:`state_fret` / :func:`state_stoichiometry` but
+    from photon *counts* rather than the model emission matrix.
+    """
+    d = int(np.count_nonzero(streams == donor_stream))
+    a = int(np.count_nonzero(streams == acceptor_stream))
+    dex = d + a
+    e = a / dex if dex > 0 else np.nan
+    if aex_stream is None:
+        return e, np.nan
+    aex = int(np.count_nonzero(streams == aex_stream))
+    s = dex / (dex + aex) if (dex + aex) > 0 else np.nan
+    return e, s
+
+
 def _dwells_and_transitions(
     model: H2mmModel,
     data: BurstPhotons,
     fret: np.ndarray,
-) -> tuple[dict[int, list[int]], list[Transition], np.ndarray]:
-    """Derive dwell times, transitions, and photon populations via Viterbi."""
-    path, _ = viterbi(model, data)
+    path: np.ndarray,
+    donor_stream: int = 0,
+    acceptor_stream: int = 1,
+    aex_stream: int | None = None,
+) -> tuple[dict[int, list[int]], list[Dwell], list[Transition], np.ndarray]:
+    """Derive dwell records, transitions, and photon populations via Viterbi.
+
+    Returns ``(dwell_durations, dwells, transitions, populations)`` where
+    ``dwell_durations`` keeps the legacy ``state -> [durations]`` mapping and
+    ``dwells`` is the richer per-dwell record list with measured E/S.
+    """
     n_states = model.n_states
     offsets = data.burst_offsets
+    streams_all = np.asarray(data.streams)
 
-    dwells: dict[int, list[int]] = {s: [] for s in range(n_states)}
+    dwell_durs: dict[int, list[int]] = {s: [] for s in range(n_states)}
+    dwells: list[Dwell] = []
     transitions: list[Transition] = []
     populations = np.zeros(n_states, dtype=np.float64)
 
     # We need macro times to measure dwell durations; reconstruct per burst
     # from gap_slot + unique_dt (cumulative), which mirrors the input times.
     unique_dt = data.unique_dt
+
+    def _record_dwell(b: int, st: int, g0: int, g1: int, dur: int) -> None:
+        """Append the dwell spanning global photon indices ``[g0, g1)``."""
+        dwell_durs[st].append(int(dur))
+        e, s = _measured_es(streams_all[g0:g1], donor_stream, acceptor_stream, aex_stream)
+        dwells.append(
+            Dwell(burst=b, state=st, dur=int(dur), n_photons=int(g1 - g0),
+                  e=float(e), s=float(s), start=int(g0), stop=int(g1))
+        )
+
     for b in range(data.n_bursts):
         s = int(offsets[b])
         e = int(offsets[b + 1])
@@ -208,7 +330,8 @@ def _dwells_and_transitions(
         run_start = 0
         for rel in range(1, e - s):
             if seg[rel] != seg[rel - 1]:
-                dwells[int(seg[rel - 1])].append(int(t[rel] - t[run_start]))
+                _record_dwell(b, int(seg[rel - 1]), s + run_start, s + rel,
+                              int(t[rel] - t[run_start]))
                 transitions.append(
                     Transition(
                         burst=b,
@@ -221,11 +344,11 @@ def _dwells_and_transitions(
                 )
                 run_start = rel
         # Trailing dwell of the final run.
-        dwells[int(seg[-1])].append(int(t[e - s - 1] - t[run_start]))
+        _record_dwell(b, int(seg[-1]), s + run_start, e, int(t[e - s - 1] - t[run_start]))
 
     if populations.sum() > 0:
         populations /= populations.sum()
-    return dwells, transitions, populations
+    return dwell_durs, dwells, transitions, populations
 
 
 def analyze(
@@ -293,9 +416,19 @@ def analyze(
     key = (lambda f: f.icl) if criterion.lower() == "icl" else (lambda f: f.bic)
     best = min(scan, key=key)
 
+    # An acceptor-excitation (Aex) stream — needed for stoichiometry — is present
+    # only for µsALEX/PIE data with three or more streams; otherwise S is absent.
+    aex_stream = 2 if data.n_streams >= 3 else None
+
     fret = state_fret(best.model, acceptor_stream, donor_stream)
-    dwells, transitions, populations = _dwells_and_transitions(best.model, data, fret)
-    dwell_arrays = {s: np.asarray(v, dtype=np.float64) for s, v in dwells.items()}
+    stoich = state_stoichiometry(best.model, donor_stream, acceptor_stream, aex_stream)
+
+    path, _ = viterbi(best.model, data)
+    dwell_durs, dwells, transitions, populations = _dwells_and_transitions(
+        best.model, data, fret, path,
+        donor_stream=donor_stream, acceptor_stream=acceptor_stream, aex_stream=aex_stream,
+    )
+    dwell_arrays = {s: np.asarray(v, dtype=np.float64) for s, v in dwell_durs.items()}
 
     # Transition probabilities → rates (1/s); diagonal set to zero.
     trans = best.model.trans
@@ -307,9 +440,13 @@ def analyze(
         scan=scan,
         fret=fret,
         populations=populations,
+        stoichiometry=stoich,
         dwell_times=dwell_arrays,
+        dwells=dwells,
         transitions=transitions,
         trans_rates=rates,
+        path=np.asarray(path, dtype=np.int64),
+        n_streams=int(data.n_streams),
         base_time_s=base_time_s,
         n_photons=data.n_photons,
         n_bursts=data.n_bursts,

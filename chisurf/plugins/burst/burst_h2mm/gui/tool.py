@@ -20,6 +20,7 @@ from qtpy.QtCore import (
 )
 from qtpy.QtGui import QDragEnterEvent, QDropEvent
 from qtpy.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -120,10 +121,13 @@ class HelpDialog(QDialog):
             <h3>Workflow</h3>
             <ol>
               <li>Select a folder of <code>.bur</code> burst files.</li>
-              <li>Define donor/acceptor detector channels.</li>
+              <li>Define donor/acceptor detector channels (and, for µsALEX/PIE
+                  data, an optional acceptor-excitation stream for stoichiometry).</li>
               <li>Choose the state range and BIC/ICL selection.</li>
-              <li><b>Run</b> to fit models and view FRET states, a transition-density
-                  plot, model selection, and dwell-time distributions.</li>
+              <li><b>Run</b> to fit models and view the dwell FRET (E histogram or
+                  E–S scatter), transition-density plot, model selection,
+                  dwell-time distributions, per-state fluorescence decays, and an
+                  interactive per-burst Viterbi state-path viewer.</li>
             </ol>
             <hr><h3>CLI reference</h3>
             """
@@ -283,6 +287,17 @@ class H2mmTool(QMainWindow):
         self.cb_acceptor = QComboBox()
         row2.addWidget(self.cb_acceptor, 1)
         sl.addLayout(row2)
+        row3 = QHBoxLayout()
+        row3.addWidget(QLabel("Acceptor (Aex):"))
+        self.cb_aex = QComboBox()
+        self.cb_aex.setToolTip(
+            "Optional acceptor-excitation stream for µsALEX/PIE data (e.g. the "
+            "'yellow' acceptor-emission-after-acceptor-excitation window). When "
+            "set, per-state stoichiometry S and a dwell E–S scatter are computed; "
+            "leave as '— none —' for 2-colour FRET-only analysis."
+        )
+        row3.addWidget(self.cb_aex, 1)
+        sl.addLayout(row3)
         layout.addWidget(sel)
 
         self.detector_page = DetectorWizardPage(parent=self)
@@ -291,37 +306,95 @@ class H2mmTool(QMainWindow):
         self._refresh_detector_combos()
         return w
 
+    _AEX_NONE = "— none —"
+
     def _refresh_detector_combos(self):
         settings = self.detector_page.get_settings()
         names = list(settings.get("detectors", {}).keys())
         donor_cur, acc_cur = self.cb_donor.currentText(), self.cb_acceptor.currentText()
+        aex_cur = self.cb_aex.currentText()
         self.cb_donor.clear()
         self.cb_acceptor.clear()
+        self.cb_aex.clear()
         self.cb_donor.addItems(names)
         self.cb_acceptor.addItems(names)
+        self.cb_aex.addItems([self._AEX_NONE, *names])
         if donor_cur in names:
             self.cb_donor.setCurrentText(donor_cur)
         if acc_cur in names:
             self.cb_acceptor.setCurrentText(acc_cur)
         elif len(names) > 1:
             self.cb_acceptor.setCurrentIndex(1)
+        if aex_cur in names:
+            self.cb_aex.setCurrentText(aex_cur)
+        elif len(names) > 2:
+            # A 3rd detector (e.g. PIE 'yellow') is a good Aex default.
+            self.cb_aex.setCurrentIndex(3)
 
     def _build_plots(self) -> QWidget:
+        """Build the burstH2MM-style 3×2 result grid plus a burst state-path viewer."""
+        container = QWidget()
+        v = QVBoxLayout(container)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(2)
+
         self.plot_widget = pg.GraphicsLayoutWidget()
-        self._p_fret = self.plot_widget.addPlot(row=0, col=0, title="FRET states")
-        self._p_fret.setLabels(bottom="Apparent FRET E", left="Population")
+        # Row 0 — dwell FRET (E histogram or E–S scatter) + transition-density.
+        self._p_fret = self.plot_widget.addPlot(row=0, col=0, title="Dwell FRET states")
+        self._p_fret.setLabels(bottom="Apparent FRET E", left="Dwells")
         self._p_fret.setXRange(0, 1)
+        self._fret_legend = self._p_fret.addLegend(offset=(-5, 5))
         self._p_tdp = self.plot_widget.addPlot(row=0, col=1, title="Transition-density plot")
         self._p_tdp.setLabels(bottom="E before", left="E after")
         self._p_tdp.setRange(xRange=(0, 1), yRange=(0, 1))
         self._tdp_img = pg.ImageItem(axisOrder="col-major")
         self._p_tdp.addItem(self._tdp_img)
+        # Row 1 — model selection + dwell-time distributions.
         self._p_sel = self.plot_widget.addPlot(row=1, col=0, title="Model selection")
         self._p_sel.setLabels(bottom="Number of states", left="Criterion")
         self._p_sel.addLegend()
         self._p_dwell = self.plot_widget.addPlot(row=1, col=1, title="Dwell-time distributions")
         self._p_dwell.setLabels(bottom="Dwell time (ms)", left="Counts")
-        return self.plot_widget
+        self._dwell_legend = self._p_dwell.addLegend(offset=(-5, 5))
+        # Row 2 — per-state fluorescence decay + burst state path.
+        self._p_nano = self.plot_widget.addPlot(row=2, col=0, title="Per-state fluorescence decay")
+        self._p_nano.setLabels(bottom="Micro time (channel)", left="Counts")
+        self._p_nano.setLogMode(y=True)
+        self._nano_legend = self._p_nano.addLegend(offset=(-5, 5))
+        self._p_path = self.plot_widget.addPlot(row=2, col=1, title="Burst state path")
+        self._p_path.setLabels(bottom="Time in burst (ms)", left="FRET E")
+        self._p_path.setYRange(-0.05, 1.05)
+        v.addWidget(self.plot_widget, 1)
+
+        # Burst-path navigation bar.
+        nav = QHBoxLayout()
+        nav.setContentsMargins(6, 0, 6, 2)
+        self.btn_prev_burst = QToolButton()
+        self.btn_prev_burst.setText("◀")
+        self.btn_next_burst = QToolButton()
+        self.btn_next_burst.setText("▶")
+        self.sb_burst = QSpinBox()
+        self.sb_burst.setMinimum(0)
+        self.sb_burst.setMaximum(0)
+        self.sb_burst.setToolTip("Burst shown in the state-path plot")
+        self.cb_dynamic_only = QCheckBox("dynamic bursts only")
+        self.cb_dynamic_only.setToolTip("Navigate only bursts with ≥1 state transition")
+        self._burst_label = QLabel("no fit yet")
+        self._burst_label.setStyleSheet("color:#888;")
+        nav.addWidget(QLabel("State path — burst:"))
+        nav.addWidget(self.btn_prev_burst)
+        nav.addWidget(self.sb_burst)
+        nav.addWidget(self.btn_next_burst)
+        nav.addWidget(self.cb_dynamic_only)
+        nav.addWidget(self._burst_label)
+        nav.addStretch(1)
+        v.addLayout(nav)
+
+        self.btn_prev_burst.clicked.connect(lambda: self.sb_burst.stepBy(-1))
+        self.btn_next_burst.clicked.connect(lambda: self.sb_burst.stepBy(1))
+        self.sb_burst.valueChanged.connect(self._update_burst_path)
+        self.cb_dynamic_only.toggled.connect(self._apply_nav_filter)
+        return container
 
     def _connect_signals(self):
         self.btn_folder.clicked.connect(self._select_folder)
@@ -342,7 +415,12 @@ class H2mmTool(QMainWindow):
             ranges = [(int(a), int(b)) for a, b in d.get("micro_time_ranges", [])]
             return StreamSettings(name=name or "stream", channels=list(d.get("chs", [])), micro_time_ranges=ranges)
 
-        return [_stream(self.cb_donor.currentText()), _stream(self.cb_acceptor.currentText())]
+        streams = [_stream(self.cb_donor.currentText()), _stream(self.cb_acceptor.currentText())]
+        # Optional acceptor-excitation (Aex) stream → stoichiometry (µsALEX/PIE).
+        aex = self.cb_aex.currentText()
+        if aex and aex != self._AEX_NONE and aex in detectors:
+            streams.append(_stream(aex))
+        return streams
 
     def _gather_settings(self) -> H2mmSettings:
         patience = self.sb_patience.value()
@@ -516,55 +594,219 @@ class H2mmTool(QMainWindow):
 
     # ── plotting ─────────────────────────────────────────────────────
 
+    @staticmethod
+    def _state_color(i: int) -> str:
+        """Return the fixed per-state colour (cycles for > 8 states)."""
+        return _STATE_COLORS[i % len(_STATE_COLORS)]
+
+    # Photon-stream marker: donor ●, acceptor (Dex) ▲, acceptor (Aex) ■.
+    _STREAM_SYMBOL = ("o", "t", "s")
+
     def _update_plots(self):
         if self._result is None or self._bundle is None:
             return
-        res = self._result
         ana = self._bundle.analysis
+        self._plot_dwell_fret(ana)
+        self._plot_tdp(ana)
+        self._plot_model_selection(self._result)
+        self._plot_dwell_times(ana)
+        self._plot_nanotime(ana)
+        self._rebuild_nav_bursts(ana)
 
-        # FRET states as vertical bars sized by population.
-        self._p_fret.clear()
-        for i, (e, pop) in enumerate(zip(res.fret, res.populations)):
-            if not np.isfinite(e):
-                continue
-            color = _STATE_COLORS[i % len(_STATE_COLORS)]
-            bar = pg.BarGraphItem(x=[e], height=[pop], width=0.03, brush=color)
-            self._p_fret.addItem(bar)
+    def _plot_dwell_fret(self, ana):
+        """Top-left: measured per-dwell E histogram, or an E–S scatter for ALEX/PIE.
 
-        # Transition-density plot: E_before vs E_after 2D histogram.
-        if ana.transitions:
-            eb = np.array([t.e_from for t in ana.transitions])
-            ea = np.array([t.e_to for t in ana.transitions])
-            good = np.isfinite(eb) & np.isfinite(ea)
-            hist, _, _ = np.histogram2d(
-                eb[good], ea[good], bins=(41, 41), range=[[0, 1], [0, 1]]
-            )
-            self._tdp_img.setImage(hist)
-            self._tdp_img.setRect(0, 0, 1, 1)
-            try:
-                self._tdp_img.setColorMap(pg.colormap.get("CET-L4"))
-            except Exception:
-                pass
+        Mirrors burstH2MM ``dwell_E_hist`` / ``dwell_ES_scatter``: histograms of
+        the *measured* dwell efficiencies per state (weighted by dwell photons),
+        with the *model* per-state E marked; when an acceptor-excitation stream is
+        present the panel switches to a 2-D dwell E–S scatter.
+        """
+        p = self._p_fret
+        p.clear()
+        self._fret_legend.clear()
+        fret = np.asarray(ana.fret, dtype=np.float64)
+        stoich = np.asarray(getattr(ana, "stoichiometry", np.full_like(fret, np.nan)))
+        has_alex = np.isfinite(stoich).any()
+        e = np.array([d.e for d in ana.dwells], dtype=np.float64)
+        s = np.array([d.s for d in ana.dwells], dtype=np.float64)
+        st = np.array([d.state for d in ana.dwells], dtype=np.int64)
+        w = np.array([d.n_photons for d in ana.dwells], dtype=np.float64)
 
-        # Model-selection curve: BIC and ICL vs number of states.
+        if has_alex:
+            p.setTitle("Dwell E–S scatter")
+            p.setLabels(bottom="Dwell E", left="Dwell S")
+            p.setRange(xRange=(0, 1), yRange=(0, 1))
+            for i in range(fret.shape[0]):
+                m = (st == i) & np.isfinite(e) & np.isfinite(s)
+                if not m.any():
+                    continue
+                color = self._state_color(i)
+                p.addItem(pg.ScatterPlotItem(
+                    e[m], s[m], size=5, pen=None,
+                    brush=pg.mkBrush(color + "80"), name=f"S{i}",
+                ))
+                if np.isfinite(fret[i]) and np.isfinite(stoich[i]):
+                    p.addItem(pg.ScatterPlotItem(
+                        [fret[i]], [stoich[i]], size=15, symbol="x",
+                        pen=pg.mkPen(color, width=3), brush=None,
+                    ))
+            return
+
+        p.setTitle("Dwell FRET states")
+        p.setLabels(bottom="Apparent FRET E", left="Dwells")
+        p.setXRange(0, 1)
+        for i in range(fret.shape[0]):
+            m = (st == i) & np.isfinite(e)
+            color = self._state_color(i)
+            if m.any():
+                counts, edges = np.histogram(e[m], bins=41, range=(0, 1), weights=w[m])
+                centers = (edges[:-1] + edges[1:]) / 2
+                p.plot(centers, counts, pen=pg.mkPen(color, width=2), fillLevel=0,
+                       brush=pg.mkBrush(color + "40"), name=f"S{i}")
+            if np.isfinite(fret[i]):
+                p.addItem(pg.InfiniteLine(pos=float(fret[i]), angle=90,
+                          pen=pg.mkPen(color, width=1, style=Qt.DashLine)))
+
+    def _plot_tdp(self, ana):
+        """Top-right: transition-density plot (E before vs E after, 2-D histogram)."""
+        if not ana.transitions:
+            self._tdp_img.clear()
+            return
+        eb = np.array([t.e_from for t in ana.transitions])
+        ea = np.array([t.e_to for t in ana.transitions])
+        good = np.isfinite(eb) & np.isfinite(ea)
+        hist, _, _ = np.histogram2d(eb[good], ea[good], bins=(41, 41), range=[[0, 1], [0, 1]])
+        self._tdp_img.setImage(hist)
+        self._tdp_img.setRect(0, 0, 1, 1)
+        try:
+            self._tdp_img.setColorMap(pg.colormap.get("CET-L4"))
+        except Exception:
+            pass
+
+    def _plot_model_selection(self, res):
+        """Bottom-left: BIC and ICL vs number of states."""
         self._p_sel.clear()
         ns = [f.n_states for f in res.scan]
-        bic = [f.bic for f in res.scan]
-        icl = [f.icl for f in res.scan]
-        self._p_sel.plot(ns, bic, pen=pg.mkPen("#4e79a7", width=2), symbol="o", name="BIC")
-        self._p_sel.plot(ns, icl, pen=pg.mkPen("#e15759", width=2), symbol="s", name="ICL")
+        self._p_sel.plot(ns, [f.bic for f in res.scan],
+                         pen=pg.mkPen("#4e79a7", width=2), symbol="o", name="BIC")
+        self._p_sel.plot(ns, [f.icl for f in res.scan],
+                         pen=pg.mkPen("#e15759", width=2), symbol="s", name="ICL")
 
-        # Dwell-time distributions per state (ms).
+    def _plot_dwell_times(self, ana):
+        """Bottom-right: per-state dwell-time distributions (ms)."""
         self._p_dwell.clear()
+        self._dwell_legend.clear()
         base_ms = ana.base_time_s * 1e3
-        for i, (state, arr) in enumerate(sorted(ana.dwell_times.items())):
+        for i, (_state, arr) in enumerate(sorted(ana.dwell_times.items())):
             if arr.size == 0:
                 continue
-            dwell_ms = arr * base_ms
-            counts, edges = np.histogram(dwell_ms, bins=30)
+            counts, edges = np.histogram(arr * base_ms, bins=30)
             centers = (edges[:-1] + edges[1:]) / 2
-            color = _STATE_COLORS[i % len(_STATE_COLORS)]
-            self._p_dwell.plot(centers, counts, pen=pg.mkPen(color, width=2))
+            self._p_dwell.plot(centers, counts, pen=pg.mkPen(self._state_color(i), width=2),
+                               name=f"S{i}")
+
+    def _plot_nanotime(self, ana):
+        """Row 2, left: per-state fluorescence decay (micro-time histogram by state).
+
+        Requires the per-photon micro times (``bundle.meta``); when absent (e.g. a
+        result loaded without photon metadata) the panel is left empty.
+        """
+        p = self._p_nano
+        p.clear()
+        self._nano_legend.clear()
+        meta = getattr(self._bundle, "meta", None)
+        path = np.asarray(ana.path, dtype=np.int64)
+        if meta is None or getattr(meta, "micro_time", None) is None:
+            return
+        micro = np.asarray(meta.micro_time)
+        if micro.shape[0] != path.shape[0] or micro.size == 0:
+            return
+        mx = int(micro.max())
+        if mx <= 0:
+            return
+        bins = int(min(256, max(16, mx)))
+        for i in range(int(ana.fret.shape[0])):
+            m = micro[path == i]
+            if m.size == 0:
+                continue
+            counts, edges = np.histogram(m, bins=bins, range=(0, mx + 1))
+            centers = (edges[:-1] + edges[1:]) / 2
+            keep = counts > 0
+            p.plot(centers[keep], counts[keep], pen=pg.mkPen(self._state_color(i), width=2),
+                   name=f"S{i}")
+
+    # ── burst state-path viewer ──────────────────────────────────────
+
+    def _burst_times_ms(self, b: int):
+        """Return ``(start, stop, t_ms)`` for burst ``b`` (times relative to its start)."""
+        data = self._bundle.data
+        offsets = np.asarray(data.burst_offsets)
+        s, e = int(offsets[b]), int(offsets[b + 1])
+        gap = np.asarray(data.gap_slot)
+        uniq = np.asarray(data.unique_dt)
+        n = e - s
+        t = np.zeros(n, dtype=np.float64)
+        if n > 1 and uniq.size:
+            slots = gap[s : s + n - 1]
+            dt = np.where(slots >= 0, uniq[np.clip(slots, 0, len(uniq) - 1)], 0)
+            t[1:] = np.cumsum(dt)
+        return s, e, t * (self._bundle.analysis.base_time_s * 1e3)
+
+    def _rebuild_nav_bursts(self, ana):
+        """Refresh the burst-path navigation lists after a fit."""
+        self._all_bursts = list(range(int(self._bundle.data.n_bursts)))
+        self._dynamic_bursts = sorted({t.burst for t in ana.transitions})
+        self._apply_nav_filter()
+
+    def _apply_nav_filter(self, *_):
+        """Point the burst spinbox at all bursts or only dynamic ones."""
+        if self._bundle is None or not getattr(self, "_all_bursts", None):
+            return
+        use_dyn = self.cb_dynamic_only.isChecked() and bool(self._dynamic_bursts)
+        self._nav_bursts = self._dynamic_bursts if use_dyn else self._all_bursts
+        n = len(self._nav_bursts)
+        self.sb_burst.blockSignals(True)
+        self.sb_burst.setMaximum(max(n - 1, 0))
+        if self.sb_burst.value() > n - 1:
+            self.sb_burst.setValue(0)
+        self.sb_burst.blockSignals(False)
+        self._update_burst_path()
+
+    def _update_burst_path(self, *_):
+        """Draw the selected burst's Viterbi state path (photons coloured by state)."""
+        p = self._p_path
+        p.clear()
+        if self._bundle is None or not getattr(self, "_nav_bursts", None):
+            self._burst_label.setText("no fit yet")
+            return
+        idx = self.sb_burst.value()
+        if idx >= len(self._nav_bursts):
+            return
+        b = self._nav_bursts[idx]
+        ana = self._bundle.analysis
+        s, e, t = self._burst_times_ms(b)
+        seg = np.asarray(ana.path[s:e], dtype=np.int64)
+        streams = np.asarray(self._bundle.data.streams)[s:e]
+        fret = np.asarray(ana.fret, dtype=np.float64)
+        ey = np.where(np.isfinite(fret[seg]), fret[seg], np.nan)
+
+        # State-E trajectory (light connecting line) + photons coloured by state,
+        # marker shape encoding the photon stream (donor/acceptor/Aex).
+        p.plot(t, ey, pen=pg.mkPen("#999999", width=1))
+        n_states = int(fret.shape[0])
+        for i in range(n_states):
+            color = self._state_color(i)
+            for k in range(int(self._bundle.data.n_streams)):
+                m = (seg == i) & (streams == k)
+                if not m.any():
+                    continue
+                sym = self._STREAM_SYMBOL[k % len(self._STREAM_SYMBOL)]
+                p.addItem(pg.ScatterPlotItem(
+                    t[m], ey[m], size=7, symbol=sym, pen=None,
+                    brush=pg.mkBrush(color),
+                ))
+        n_tr = int(np.count_nonzero(np.diff(seg))) if seg.size else 0
+        self._burst_label.setText(f"burst {b} · {e - s} photons · {n_tr} transitions")
 
     def _save_plot(self):
         path, _ = QFileDialog.getSaveFileName(self, "Save plot", "h2mm.png", "PNG (*.png)")

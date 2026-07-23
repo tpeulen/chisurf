@@ -134,6 +134,11 @@ class H2mmResult:
         Transition rates in 1/s (diagonal zeroed).
     fret : list of float
         Apparent per-state FRET efficiency.
+    stoichiometry : list of float
+        Apparent per-state stoichiometry ``S`` (µsALEX/PIE). Empty when the data
+        has no acceptor-excitation stream.
+    has_alex : bool
+        Whether an acceptor-excitation stream was defined (stoichiometry valid).
     populations : list of float
         Viterbi photon fraction per state.
     dwell_mean_s : list of float
@@ -160,6 +165,8 @@ class H2mmResult:
     obs: list[list[float]] = field(default_factory=list)
     trans_rates: list[list[float]] = field(default_factory=list)
     fret: list[float] = field(default_factory=list)
+    stoichiometry: list[float] = field(default_factory=list)
+    has_alex: bool = False
     populations: list[float] = field(default_factory=list)
     dwell_mean_s: list[float] = field(default_factory=list)
     n_transitions: int = 0
