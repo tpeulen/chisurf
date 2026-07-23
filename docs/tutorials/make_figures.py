@@ -369,16 +369,254 @@ def fig_pda():
     save(fig, "pda.png")
 
 
+# --------------------------------------------------------------------------
+# 12. TTTR file handling — micro-time histogram
+# --------------------------------------------------------------------------
+def fig_tttr():
+    rng = np.random.default_rng(12)
+    n_ch = 4096; dt = 0.016
+    t = np.arange(n_ch) * dt
+    # two detectors with different lifetimes on a shared IRF
+    irf_pos = 0.6
+    micro_g = rng.exponential(3.2, 40000)
+    micro_r = rng.exponential(1.4, 30000)
+    hist_g, edges = np.histogram(irf_pos + micro_g, bins=n_ch, range=(0, n_ch * dt))
+    hist_r, _ = np.histogram(irf_pos + micro_r, bins=n_ch, range=(0, n_ch * dt))
+    c = 0.5 * (edges[:-1] + edges[1:])
+
+    fig, ax = plt.subplots(figsize=(5.4, 4.0))
+    ax.semilogy(c, hist_g + 1, color="#2ca02c", label="green detector")
+    ax.semilogy(c, hist_r + 1, color="#d62728", label="red detector")
+    ax.set_xlim(0, 25); ax.set_ylim(1, None)
+    ax.set_xlabel("micro time (ns)"); ax.set_ylabel("counts")
+    ax.set_title("Micro-time histograms from a TTTR file")
+    ax.legend(fontsize=8)
+    save(fig, "tttr.png")
+
+
+# --------------------------------------------------------------------------
+# 13. Burst identification — sliding-window count rate
+# --------------------------------------------------------------------------
+def fig_burst_search():
+    rng = np.random.default_rng(13)
+    # background photons + occasional bright bursts (inhomogeneous Poisson)
+    T = 0.5                                   # s
+    bg_rate = 3e3
+    t = list(rng.uniform(0, T, int(bg_rate * T)))
+    burst_times = np.sort(rng.uniform(0.02, T - 0.02, 25))
+    for bt in burst_times:
+        t += list(bt + rng.exponential(3e-5, rng.integers(60, 200)))
+    t = np.sort(np.asarray(t))
+    # sliding-window count rate: photons in a 0.5 ms window
+    win = 5e-4
+    edges = np.arange(0, T, win)
+    rate = np.histogram(t, edges)[0] / win / 1e3   # kHz
+    tc = edges[:-1] + win / 2
+    thr = 15.0
+
+    fig, ax = plt.subplots(figsize=(6.4, 3.6))
+    ax.plot(tc * 1e3, rate, color="0.4", lw=0.8)
+    ax.fill_between(tc * 1e3, rate, thr, where=rate > thr, color="#d62728", alpha=0.5,
+                    step="mid", label="detected bursts")
+    ax.axhline(thr, ls="--", color="k", lw=1, label="threshold")
+    ax.set_xlabel("time (ms)"); ax.set_ylabel("count rate (kHz)")
+    ax.set_title("Burst identification (sliding-window count rate)")
+    ax.legend(fontsize=8)
+    save(fig, "burst_search.png")
+
+
+# --------------------------------------------------------------------------
+# 14. Multi-parameter E–S histogram (µsALEX / PIE)
+# --------------------------------------------------------------------------
+def fig_es():
+    rng = np.random.default_rng(14)
+
+    def pop(n, e, s, spread=0.06):
+        return rng.normal(e, spread, n), rng.normal(s, spread * 0.7, n)
+
+    E = np.concatenate([pop(800, 0.15, 0.55)[0], pop(800, 0.75, 0.55)[0],
+                        pop(300, 0.05, 0.92)[0], pop(200, 0.5, 0.1)[0]])
+    S = np.concatenate([pop(800, 0.15, 0.55)[1], pop(800, 0.75, 0.55)[1],
+                        pop(300, 0.05, 0.92)[1], pop(200, 0.5, 0.1)[1]])
+
+    fig, ax = plt.subplots(figsize=(5.2, 4.4))
+    hb = ax.hexbin(E, S, gridsize=45, cmap="viridis", mincnt=1, extent=(-0.1, 1.1, 0, 1))
+    ax.axhspan(0.85, 1.0, color="orange", alpha=0.12)   # donor-only
+    ax.axhspan(0.0, 0.2, color="red", alpha=0.10)        # acceptor-only
+    ax.text(0.5, 0.93, "donor-only", ha="center", fontsize=8)
+    ax.text(0.5, 0.06, "acceptor-only", ha="center", fontsize=8)
+    ax.set_xlabel("FRET efficiency E"); ax.set_ylabel("stoichiometry S")
+    ax.set_title("Multi-parameter E–S histogram (ALEX/PIE)")
+    ax.set_xlim(-0.1, 1.1); ax.set_ylim(0, 1)
+    fig.colorbar(hb, ax=ax, shrink=0.85, label="bursts")
+    save(fig, "es.png")
+
+
+# --------------------------------------------------------------------------
+# 15. Background rate from inter-photon times
+# --------------------------------------------------------------------------
+def fig_background():
+    rng = np.random.default_rng(15)
+    bg_rate = 2.0e3                            # Hz
+    dark = rng.exponential(1 / bg_rate, 20000)
+    burst = rng.exponential(1 / 2e5, 6000)     # bright bursts: short gaps
+    gaps = np.concatenate([dark, burst]) * 1e3  # ms
+    bins = np.logspace(-4, 1.5, 60)
+    h, edges = np.histogram(gaps, bins=bins)
+    c = np.sqrt(edges[:-1] * edges[1:])
+
+    fig, ax = plt.subplots(figsize=(5.4, 4.0))
+    ax.loglog(c, h + 1, "o", ms=3, color="#1f77b4")
+    tail = c > 0.5
+    ax.loglog(c[tail], (h[tail].max() + 1) * np.exp(-(c[tail] - c[tail][0]) * bg_rate / 1e3),
+              "r-", lw=1.5, label=f"tail fit → {bg_rate/1e3:.1f} kHz background")
+    ax.set_xlabel("inter-photon time (ms)"); ax.set_ylabel("counts")
+    ax.set_title("Background from the inter-photon-time tail")
+    ax.legend(fontsize=8)
+    save(fig, "background.png")
+
+
+# --------------------------------------------------------------------------
+# 16. FRET-FCS — species auto/cross-correlation
+# --------------------------------------------------------------------------
+def fig_fret_fcs():
+    tau = np.logspace(-6, -1, 200)
+    td = 3e-4
+    diff = (1 / (1 + tau / td)) / np.sqrt(1 + (tau / td) / 25)
+    kex = 5e3                                   # exchange rate (Hz)
+    relax = np.exp(-kex * tau)
+    dd = diff * (1 + 0.4 * relax)               # donor auto: bunching
+    aa = diff * (1 + 0.4 * relax)
+    da = diff * (1 - 0.4 * relax)               # cross: anti-correlation
+
+    fig, ax = plt.subplots(figsize=(5.4, 4.0))
+    ax.semilogx(tau * 1e3, dd, color="#2ca02c", label="donor × donor")
+    ax.semilogx(tau * 1e3, aa, color="#d62728", label="acceptor × acceptor")
+    ax.semilogx(tau * 1e3, da, color="#1f77b4", label="donor × acceptor (cross)")
+    ax.set_xlabel("lag τ (ms)"); ax.set_ylabel("G(τ) (norm.)")
+    ax.set_title("FRET-FCS: dynamics as anti-correlation")
+    ax.legend(fontsize=8)
+    save(fig, "fret_fcs.png")
+
+
+# --------------------------------------------------------------------------
+# 17. Filtered FCS — species lifetime patterns + filters
+# --------------------------------------------------------------------------
+def fig_filtered_fcs():
+    from chisurf.core.fluorescence.fcs.filtered import calc_ffcs_filters
+    n = 128
+    ch = np.arange(n)
+    p1 = np.exp(-ch / 25.0); p1 /= p1.sum()          # long lifetime
+    p2 = np.exp(-ch / 6.0); p2 /= p2.sum()           # short lifetime
+    patterns = np.vstack([p1, p2])
+    total = 0.6 * p1 + 0.4 * p2
+    filters, _recon, _w = calc_ffcs_filters(total, patterns)
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(9.0, 3.8))
+    a1.semilogy(ch, p1, color="#1f77b4", label="species 1 (τ long)")
+    a1.semilogy(ch, p2, color="#d62728", label="species 2 (τ short)")
+    a1.semilogy(ch, total, "k--", lw=1, label="measured mix")
+    a1.set_xlabel("micro-time channel"); a1.set_ylabel("p(channel)")
+    a1.set_title("Species lifetime patterns"); a1.legend(fontsize=8)
+    a2.plot(ch, filters[0], color="#1f77b4", label="filter 1")
+    a2.plot(ch, filters[1], color="#d62728", label="filter 2")
+    a2.axhline(0, color="k", lw=0.6)
+    a2.set_xlabel("micro-time channel"); a2.set_ylabel("filter weight")
+    a2.set_title("Statistical (fFCS) filters"); a2.legend(fontsize=8)
+    save(fig, "filtered_fcs.png")
+
+
+# --------------------------------------------------------------------------
+# 18. TTTR simulation of a diffusing particle (confocal)
+# --------------------------------------------------------------------------
+def fig_simulation():
+    rng = np.random.default_rng(18)
+    # A 1-D confocal transit model: molecule diffuses through a Gaussian spot,
+    # emitting Poisson photons at the local brightness -> intensity trace.
+    dt = 1e-4                                    # s
+    n = 40000
+    D = 1.0                                      # arb. diffusion
+    x = np.cumsum(rng.normal(0, np.sqrt(2 * D * dt), n))
+    # periodic re-seeding to emulate new molecules entering the spot
+    x = (x % 8.0) - 4.0
+    bright = 20.0 * np.exp(-2 * x ** 2 / 1.0 ** 2)
+    counts = rng.poisson(bright + 0.5)
+    t = np.arange(n) * dt
+
+    # autocorrelation of the simulated trace
+    c = counts - counts.mean()
+    ac = np.correlate(c, c, "full")[n - 1:]
+    ac = ac / ac[0]
+    lag = np.arange(n) * dt
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(9.2, 3.6))
+    a1.plot(t[:4000] * 1e3, counts[:4000], color="#1f77b4", lw=0.7)
+    a1.set_xlabel("time (ms)"); a1.set_ylabel("counts / bin")
+    a1.set_title("Simulated confocal intensity trace")
+    keep = (lag > 0) & (lag < 0.05)
+    a2.semilogx(lag[keep] * 1e3, ac[keep], color="#d62728")
+    a2.set_xlabel("lag τ (ms)"); a2.set_ylabel("G(τ) (norm.)")
+    a2.set_title("… and its correlation")
+    save(fig, "simulation.png")
+
+
+# --------------------------------------------------------------------------
+# 19. Hidden Markov model (H2MM) — state trajectory and dwell E histogram
+# --------------------------------------------------------------------------
+def fig_h2mm():
+    rng = np.random.default_rng(19)
+    # Two-state kinetics with E1=0.3, E2=0.7; Viterbi-style state path over dwells.
+    E_states = np.array([0.3, 0.7])
+    states, dwell_E = [], []
+    s = 0
+    for _ in range(400):
+        s = 1 - s if rng.random() < 0.5 else s
+        d = rng.integers(3, 20)                     # dwell length (photons)
+        states += [s] * d
+        # measured dwell E = shot-noise around the state E
+        k = rng.binomial(d, E_states[s])
+        dwell_E.append(k / d)
+    states = np.asarray(states); dwell_E = np.asarray(dwell_E)
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(9.2, 3.6))
+    a1.step(np.arange(300), E_states[states[:300]], where="mid", color="#1f77b4")
+    a1.set_ylim(0, 1); a1.set_xlabel("photon index"); a1.set_ylabel("state E")
+    a1.set_title("Viterbi state path (2 states)")
+    a2.hist(dwell_E, bins=np.linspace(0, 1, 30), color="#1f77b4", alpha=0.8)
+    for e in E_states:
+        a2.axvline(e, ls="--", color="k", lw=1)
+    a2.set_xlabel("dwell FRET efficiency"); a2.set_ylabel("dwells")
+    a2.set_title("Per-dwell E histogram")
+    save(fig, "h2mm.png")
+
+
+# --------------------------------------------------------------------------
+# 20. Binned photon trace (MCS)
+# --------------------------------------------------------------------------
+def fig_mcs():
+    rng = np.random.default_rng(20)
+    T, dt = 0.2, 1e-3
+    n = int(T / dt)
+    green = rng.poisson(2.0, n).astype(float)
+    red = rng.poisson(1.5, n).astype(float)
+    for t0 in rng.integers(0, n - 6, 15):          # coincident FRET bursts
+        green[t0:t0 + 6] += rng.poisson(8, 6)
+        red[t0:t0 + 6] += rng.poisson(12, 6)
+    t = np.arange(n) * dt * 1e3
+
+    fig, ax = plt.subplots(figsize=(6.4, 3.4))
+    ax.plot(t, green, color="#2ca02c", lw=0.8, label="green")
+    ax.plot(t, -red, color="#d62728", lw=0.8, label="red")
+    ax.axhline(0, color="k", lw=0.6)
+    ax.set_xlabel("time (ms)"); ax.set_ylabel("counts / 1 ms  (green up / red down)")
+    ax.set_title("Binned photon trace (MCS)")
+    ax.legend(fontsize=8, loc="upper right")
+    save(fig, "mcs.png")
+
+
 if __name__ == "__main__":
-    fig_2cde()
-    fig_rasp()
-    fig_polymer()
-    fig_fida()
-    fig_mdf()
-    fig_g3()
-    fig_rcm()
-    fig_bva()
-    fig_fcs_diffusion()
-    fig_lifetime_anisotropy()
-    fig_pda()
+    fig_2cde(); fig_rasp(); fig_polymer(); fig_fida(); fig_mdf(); fig_g3(); fig_rcm()
+    fig_bva(); fig_fcs_diffusion(); fig_lifetime_anisotropy(); fig_pda()
+    fig_tttr(); fig_burst_search(); fig_es(); fig_background()
+    fig_fret_fcs(); fig_filtered_fcs(); fig_simulation(); fig_h2mm(); fig_mcs()
     print("all figures written to", FIG)

@@ -19,6 +19,21 @@ sketches.
 | 9 | [Diffusion FCS](09_diffusion_fcs.md) | FCS models + `fcs_correlator` plugin |
 | 10 | [Lifetime & anisotropy decay fitting](10_lifetime_anisotropy_fitting.md) | `core.fluorescence.tcspc`, TCSPC models |
 | 11 | [Photon Distribution Analysis (PDA)](11_pda.md) | `tttrlib.Pda`, `core.models.pda` |
+| 12 | [Handling TTTR files (& Photon-HDF5)](12_handling_tttr_files.md) | `tttrlib.TTTR`, `plugins/tttr` |
+| 13 | [Photon burst identification](13_burst_identification.md) | `TTTR.burst_search`, `burst_selection` |
+| 14 | [Multi-parameter E–S & correction factors](14_multiparameter_es.md) | `burst/es.py`, `fret/calibration.py` |
+| 15 | [Background rates](15_background_rates.md) | `burst/background.py`, `burst_background` |
+| 16 | [FRET-FCS](16_fret_fcs.md) | FRET-FCCS models + correlator |
+| 17 | [Filtered FCS (fFCS / 2D-FLCS)](17_filtered_fcs.md) | `fcs/filtered.py`, `flc_2d` |
+| 18 | [TTTR simulation of diffusing particles](18_tttr_simulation.md) | `tttrlib.SimEngine` |
+| 19 | [Photon-by-photon HMM (H2MM)](19_h2mm_hidden_markov.md) | `burst_h2mm`, `tttrlib.H2MM` |
+| 20 | [HMM of binned traces (ebFRET)](20_ebfret_binned_hmm.md) | `burst_ebfret` |
+| 21 | [Lifetime from photon bursts (MLE)](21_lifetime_from_bursts.md) | `core.fluorescence.mle`, `burst_mle_analysis` |
+| 22 | [Binned photon traces (MCS)](22_binned_photon_traces.md) | `trace_browser`, TTTR binning |
+| 23 | [Accessible-volume (AV) calculations](23_accessible_volume.md) | `core.structure.av`, `fps_json_editor` |
+| 24 | [Confocal scan images (CLSM)](24_scan_images.md) | `tttrlib.CLSMImage`, `plugins/microscopy` |
+| 25 | [RCM from FRET-labelled samples (PIE/ALEX)](25_rcm_from_fret_samples.md) | `fret/calibration.py`, `burst/es.py` |
+| 26 | [2-D peak fitting](26_2d_peak_fitting.md) | `burst_selection` GMM features |
 
 ## Running
 
