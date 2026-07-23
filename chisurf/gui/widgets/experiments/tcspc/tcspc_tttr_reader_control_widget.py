@@ -148,6 +148,20 @@ class _TcspcTttrDetectorWidget(QtWidgets.QWidget):
             self._model.detector_name = det_name
         except Exception:
             pass
+        # Push the selected setup's per-routing-channel LUTs/shifts + master gate
+        # onto the reader so reading this file becomes LUT-aware (setup-triggered).
+        try:
+            luts = sd.get("channel_luts") if isinstance(sd, dict) else None
+            shifts = sd.get("channel_shifts") if isinstance(sd, dict) else None
+            self._model.channel_luts = {
+                int(k): v for k, v in (luts or {}).items()
+            }
+            self._model.channel_shifts = {
+                int(k): int(v) for k, v in (shifts or {}).items()
+            }
+            self._model.apply_lut = bool(sd.get("apply_lut", False)) if isinstance(sd, dict) else False
+        except Exception:
+            pass
         if emit:
             self.changed.emit()
 

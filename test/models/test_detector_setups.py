@@ -102,5 +102,59 @@ def test_default_detector_setups_store_in_mmfdb(tmp_path):
     assert loaded["setups"]["BH SPC-130"]["detectors"]["red"]["chs"] == [1, 9]
     assert not (tmp_path / "detector_setups.json").exists()
 
+
+def test_channel_luts_round_trip_mmfdb(tmp_path):
+    """Per-channel LUTs / shifts / apply_lut survive an MMFDB save+load."""
+    db_path = str(tmp_path / "mmfdb.sqlite")
+    lut0 = [0.0, 1.5, 2.5, 4.0, 8.0]
+    setup_data = {
+        "setups": {
+            "SPC-130 linearized": {
+                "windows": {"prompt": [0, 2048]},
+                "detectors": {"green": {"chs": [0, 8]}},
+                "tttr_reading": {"file_type": "SPC-130"},
+                "apply_lut": True,
+                "channel_luts": {"0": lut0},
+                "channel_shifts": {"0": 3},
+                "channel_lut_sources": {"0": "uniform.spc"},
+            }
+        }
+    }
+    assert save_detector_setups(setup_data, db_path=db_path, user_id="")
+    loaded = load_detector_setups(db_path=db_path, user_id="", skip_migration=True)
+    s = loaded["setups"]["SPC-130 linearized"]
+    assert s["apply_lut"] is True
+    # keys may come back as str or int depending on serializer; normalize.
+    luts = {str(k): v for k, v in s["channel_luts"].items()}
+    shifts = {str(k): v for k, v in s["channel_shifts"].items()}
+    assert luts["0"] == lut0
+    assert int(shifts["0"]) == 3
+
+
+def test_channel_luts_round_trip_json(tmp_path):
+    """Same round-trip through the JSON fallback store."""
+    path = str(tmp_path / "setups.json")
+    lut = [0.0, 2.0, 4.0, 6.0]
+    save_detector_setups(
+        {
+            "setups": {
+                "s1": {
+                    "detectors": {"g": {"chs": [1]}},
+                    "apply_lut": True,
+                    "channel_luts": {"1": lut},
+                    "channel_shifts": {"1": -2},
+                }
+            }
+        },
+        path,
+    )
+    loaded = load_detector_setups(path)
+    s = loaded["setups"]["s1"]
+    assert s["apply_lut"] is True
+    luts = {str(k): v for k, v in s["channel_luts"].items()}
+    assert luts["1"] == lut
+    assert int({str(k): v for k, v in s["channel_shifts"].items()}["1"]) == -2
+
+
 if __name__ == "__main__":
     test_save_detector_setups()

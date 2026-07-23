@@ -162,6 +162,13 @@ class DetectorWizardPage(QWizardPage):
         self.current_setups_file = str(DETECTOR_SETUPS_FILE)
         self._selected_detector_info = None
         self._optical_config = None
+        # Per-routing-channel TAC-linearization LUTs (+ photon shifts) carried by
+        # this setup. ``_apply_lut`` is the master gate consulted at read time.
+        # Populated by the LUT-handling box; serialized in ``get_settings``.
+        self._channel_luts: dict[int, np.ndarray] = {}
+        self._channel_shifts: dict[int, int] = {}
+        self._channel_lut_sources: dict[int, str] = {}
+        self._apply_lut = False
         self.show_edit_json = show_edit_json
         self.show_save = show_save
         self.show_setups_file = show_setups_file
@@ -853,6 +860,30 @@ class DetectorWizardPage(QWizardPage):
         # Restore optical config (from easy mode dialog)
         self._optical_config = data.get("optical_config")
 
+        # Restore per-routing-channel TAC-linearization LUTs + shifts + gate.
+        self._apply_lut = bool(data.get("apply_lut", False))
+        raw_luts = data.get("channel_luts") or {}
+        self._channel_luts = {}
+        try:
+            for k, v in raw_luts.items():
+                arr = np.asarray(v, dtype=float).ravel()
+                if arr.size:
+                    self._channel_luts[int(k)] = arr
+        except Exception:
+            self._channel_luts = {}
+        try:
+            self._channel_shifts = {
+                int(k): int(v) for k, v in (data.get("channel_shifts") or {}).items()
+            }
+        except Exception:
+            self._channel_shifts = {}
+        try:
+            self._channel_lut_sources = {
+                int(k): str(v) for k, v in (data.get("channel_lut_sources") or {}).items()
+            }
+        except Exception:
+            self._channel_lut_sources = {}
+
         # re-enable
         self.windows_form.blockSignals(False)
         self.detectors_form.blockSignals(False)
@@ -1122,6 +1153,21 @@ class DetectorWizardPage(QWizardPage):
         # Include optical config from the easy mode dialog (if set)
         if self._optical_config is not None:
             result["optical_config"] = self._optical_config
+
+        # Per-routing-channel TAC-linearization LUTs (+ shifts) and the master
+        # apply gate. Stored inline (string keys survive JSON/msgpack), so the
+        # setup is self-contained and every reader that selects it reads
+        # LUT-aware. Empty when no LUTs are assigned -> readers fall back to raw.
+        result["apply_lut"] = bool(self._apply_lut)
+        result["channel_luts"] = {
+            str(k): (v.tolist() if hasattr(v, "tolist") else list(v))
+            for k, v in self._channel_luts.items()
+        }
+        result["channel_shifts"] = {str(k): int(v) for k, v in self._channel_shifts.items()}
+        if self._channel_lut_sources:
+            result["channel_lut_sources"] = {
+                str(k): str(v) for k, v in self._channel_lut_sources.items()
+            }
 
         # Persist the microtime decay histogram (if loaded) so it survives restarts.
         counts = self._microtime_counts
