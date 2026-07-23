@@ -1,0 +1,62 @@
+# Polymer inter-dye distance distributions
+
+## What it does
+
+FRET between two dyes on a flexible chain reports on the **distribution** of
+inter-dye distances $P(R)$, not a single distance — and for unfolded /
+intrinsically disordered proteins the *shape* of $P(R)$ is set by polymer
+statistics. ChiSurf provides the common analytic models in one place
+(`chisurf.core.math.functions.rdf`):
+
+- `gaussian_chain` — the ideal (theta) chain.
+- `worm_like_chain` — semi-flexible chain (persistence length).
+- **`saw_nu`** — the self-avoiding walk with Flory exponent $\nu$ (des Cloizeaux
+  form; Zheng et al., *JACS* 2018):
+  $P(R)\propto R^{2+\theta}\,e^{-(R/r_0)^{\delta}}$, $\theta=(\gamma-1)/\nu$,
+  $\delta=1/(1-\nu)$, scaled to a target RMS. $\nu\approx0.588$ is an expanded
+  chain, $0.5$ theta, $<0.4$ collapsed.
+- **`ising_chain`** — a two-state (folded/unfolded) chain: each residue is
+  structured or unstructured under a nearest-neighbour Ising Hamiltonian
+  (cooperativity $J$, field $h$), with a Gaussian bond per residue. Because the
+  characteristic function factorises, $\varphi(k)$ is an exact 2×2
+  transfer-matrix product and $P(R)$ follows from the isotropic inverse
+  transform. It reduces to `gaussian_chain` when the two bond lengths are equal.
+
+## In ChiSurf
+
+```python
+import numpy as np
+from chisurf.core.math.functions import rdf
+
+r = np.linspace(1e-3, 160.0, 4000)
+
+# SAW-ν at fixed RMS, varying the Flory exponent
+p_expanded = rdf.saw_nu(r, r_rms=55.0, nu=0.588)
+p_theta    = rdf.saw_nu(r, r_rms=55.0, nu=0.50)
+
+# Ising two-state chain: field drives folded (compact) <-> unfolded (expanded)
+p_folded   = rdf.ising_chain(r, number_of_residues=40, b_structured=4.0,
+                             b_unstructured=9.0, coupling=1.5, field=+3.0)
+p_unfolded = rdf.ising_chain(r, 40, 4.0, 9.0, coupling=1.5, field=-3.0)
+```
+
+Both are wired into ChiSurf's fit stages as distance-distribution FRET models:
+
+- **TCSPC** (time-resolved FRET decay): the models *“FRET: FD (SAW-ν polymer)”*
+  and *“FRET: FD (Ising two-state chain)”* in the TCSPC experiment.
+- **PDA** (burst FRET-E histograms): the *“PDA-SAW-ν-distance”* model.
+
+## Result
+
+**Left:** SAW-ν distributions at a fixed RMS distance — increasing $\nu$
+(expansion) shifts the peak outward and thins the short-distance side.
+**Right:** the Ising two-state chain — the field $h$ tunes the population from a
+compact folded state (green), through a broad mixed distribution at the midpoint
+(blue), to an expanded unfolded state (red).
+
+![Polymer distance distributions](figures/polymer.png)
+
+## See also
+
+- `chisurf/core/math/functions/rdf.py` (`saw_nu`, `ising_chain`, `worm_like_chain`, `gaussian_chain`)
+- Models: `core/models/tcspc/fret.py` (`SawNuModel`, `IsingChainModel`), `core/models/pda/saw_nu.py`.
