@@ -328,12 +328,15 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                 self.comboBox_2.setCurrentIndex(index)
                 chisurf.logging.info(f"Updated binning to: {binning}")
         
-        # Update the dt field based on the selected setup
+        # Update the dt field based on the selected setup. The detector setup
+        # stores the (effective) micro-time resolution in PICOSECONDS; dt here is
+        # in NANOSECONDS, so convert (ps -> ns).
         effective_resolution = self.detector_wizard_page.effective_micro_time_resolution
         if effective_resolution:
-            self.lineEdit_4.setText(f"{effective_resolution:.6f}")
-            self.time_resolution = effective_resolution  # Update the time_resolution property
-            chisurf.logging.info(f"Updated dt to: {effective_resolution:.6f} ns")
+            dt_ns = float(effective_resolution) * 1e-3
+            self.lineEdit_4.setText(f"{dt_ns:.6f}")
+            self.time_resolution = dt_ns  # Update the time_resolution property
+            chisurf.logging.info(f"Updated dt to: {dt_ns:.6f} ns")
         
         # Populate the detector selection combobox
         self.detector_selection_combobox.clear()
@@ -1025,10 +1028,10 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                 if path.suffix.lower() in SPECIAL_FILETYPES:
                     if hasattr(self, 'detector_wizard_page') and self.detector_wizard_page:
                         try:
-                            # Get the micro_time_resolution in picoseconds from the detector_wizard_page
+                            # micro_time_le is in PICOSECONDS; dt/time_step is in
+                            # NANOSECONDS, so convert (ps -> ns).
                             micro_time_resolution = float(self.detector_wizard_page.micro_time_le.text())
-                            # Calculate the effective resolution with our current binning
-                            binned_micro_time_resolution = micro_time_resolution * bf  # ns
+                            binned_micro_time_resolution = micro_time_resolution * bf * 1e-3  # ns
                             self.time_step = binned_micro_time_resolution  # Update time_step attribute
                             chisurf.logging.info(f"Updated dt to: {binned_micro_time_resolution:.6f} ns for SPC file based on DetectorWizard")
                         except (ValueError, TypeError, AttributeError) as e:
@@ -1046,10 +1049,10 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             # If no files are loaded but we have a detector_wizard_page, calculate dt based on current binning
             # Get the base micro_time_resolution from detector_wizard_page
             try:
-                # Get the micro_time_resolution in picoseconds from the detector_wizard_page
+                # micro_time_le is in PICOSECONDS; dt/time_step is in NANOSECONDS,
+                # so convert (ps -> ns).
                 micro_time_resolution = float(self.detector_wizard_page.micro_time_le.text())
-                # Calculate the effective resolution with our current binning (not the one from detector_wizard_page)
-                binned_micro_time_resolution = micro_time_resolution * bf # ns
+                binned_micro_time_resolution = micro_time_resolution * bf * 1e-3  # ns
                 self.time_step = binned_micro_time_resolution  # Update time_step attribute
                 chisurf.logging.info(f"Updated dt to: {binned_micro_time_resolution:.6f} ns based on binning change")
             except (ValueError, TypeError, AttributeError) as e:
