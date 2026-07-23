@@ -17,8 +17,8 @@ _README = pathlib.Path(__file__).parents[1] / "README.md"
 
 #: One-line explanation shown in the header so the flow is never a mystery.
 _FLOW_TEXT = (
-    "①  Compute LUT — per routing channel — then  ➡ Add to Detector setup.       "
-    "②  is optional: it only saves / loads a settings.tttr.json file."
+    "①  Load a flat-light file → ➡ Add all channels to setup (one LUT per routing "
+    "channel).   ②  is optional: it only saves / loads a settings.tttr.json file."
 )
 
 
@@ -67,11 +67,12 @@ class TTRLutToolsWidget(QtWidgets.QMainWindow):
         spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         header.addWidget(spacer)
         self.bridge_btn = QtWidgets.QToolButton()
-        self.bridge_btn.setText("➡ Add to Detector setup")
+        self.bridge_btn.setText("➡ Add all channels to setup")
         self.bridge_btn.setToolTip(
-            "Assign the per-channel LUT just computed in ① to its routing channel in "
-            "your Detector setup. This is the normal way to use a LUT — applied when "
-            "you close this window. Saving a .npy LUT / settings.tttr.json is optional."
+            "Compute a LUT for EVERY routing channel in the loaded file (one per "
+            "channel — TAC non-linearity is per channel) and assign them all to your "
+            "Detector setup. This is the normal way to use LUTs — applied when you "
+            "close this window. Saving a .npy LUT / settings.tttr.json is optional."
         )
         self.bridge_btn.setStyleSheet("font-weight: bold;")
         self.bridge_btn.clicked.connect(self._bridge_compute_to_assign)
@@ -114,35 +115,28 @@ class TTRLutToolsWidget(QtWidgets.QMainWindow):
         _HelpDialog(self).exec_()
 
     def _bridge_compute_to_assign(self) -> None:
-        """Add the per-channel LUT computed in ① to the Detector setup (default).
+        """Compute a LUT for **every** routing channel and add all to the setup.
 
-        Assigns it to its routing channel in the (optional) settings panel, which
-        the channel-definition editor pulls into the setup when this window
-        closes. Saving a LUT file is a separate, optional action.
+        Assigns each per-channel LUT to its routing channel in the (optional)
+        settings panel, which the channel-definition editor pulls into the setup
+        when this window closes. Saving a file is a separate, optional action.
         """
-        table = getattr(self.tac_panel, "current_table", None)
-        if not table or table.get("NTAC_fract") is None:
+        model = self.tac_panel.model
+        luts = model.compute_all_channels() if hasattr(model, "compute_all_channels") else {}
+        if not luts:
             QtWidgets.QMessageBox.information(
-                self, "No LUT yet",
-                "Compute a LUT in ‘① Compute LUT’ first (load a uniform-illumination "
-                "file, pick a routing channel and the linear region).",
+                self, "No LUTs yet",
+                "Load a uniform-illumination file in ‘① Compute LUT’ first — a LUT is "
+                "then computed for every routing channel it contains.",
             )
             return
-        ch = getattr(self.tac_panel.model, "channel", "")
-        ch_int = int(ch) if str(ch) != "" else None
-        name = (f"ch{ch}_lut" if ch_int is not None
-                else f"computed_{table.get('linear_start', 0)}_{table.get('linear_stop', 0)}")
-        self.settings_panel.receive_computed_lut(name, table["NTAC_fract"], channel=ch_int)
-        if ch_int is not None:
-            self.statusBar().showMessage(
-                f"Channel {ch} LUT added to the Detector setup — "
-                "compute the next channel, or close this window to apply."
-            )
-        else:
-            self.dock_area.setCurrentWidget(self.settings_panel)
-            self.statusBar().showMessage(
-                f"LUT ‘{name}’ staged — pick a routing channel in ② and Assign."
-            )
+        for ch, ntac in luts.items():
+            self.settings_panel.receive_computed_lut(f"ch{ch}_lut", ntac, channel=int(ch))
+        chans = ", ".join(str(c) for c in sorted(luts))
+        self.statusBar().showMessage(
+            f"Added LUTs for channel(s) {chans} to the Detector setup — "
+            "close this window to apply."
+        )
 
     def _lut_tools_settings(self) -> QtCore.QSettings:
         """Return QSettings for the LUT tools dock layout."""

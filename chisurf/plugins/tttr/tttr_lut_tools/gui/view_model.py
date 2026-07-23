@@ -81,12 +81,14 @@ class LutComputeViewModel:
             except Exception:  # pragma: no cover
                 logger.debug("lut compute observer failed", exc_info=True)
 
-    def update(self) -> None:
+    def update(self, *_args) -> None:
         """AutoForm hook after a bound field changes.
 
         The ``path_list`` file section, the ``channel`` selector and every
         parameter field route here. A changed file list (re)loads the data; a
         changed channel re-histograms that channel; otherwise we just recompute.
+        The value some ``call`` hooks pass in is ignored — the model attribute is
+        already committed before this runs.
         """
         if list(self.files) != self._loaded_files:
             if self.files:
@@ -160,9 +162,11 @@ class LutComputeViewModel:
         except Exception as exc:  # pragma: no cover - user feedback path
             logger.info("autodetect failed: %s", exc)
 
-    def _fallback_region(self) -> tuple[int, int]:
-        n = len(self.counts) if self.counts is not None else 4096
-        nonzero = np.where(self.counts > 0)[0] if self.counts is not None else np.array([])
+    def _fallback_region(self, counts: np.ndarray | None = None) -> tuple[int, int]:
+        if counts is None:
+            counts = self.counts
+        n = len(counts) if counts is not None else 4096
+        nonzero = np.where(counts > 0)[0] if counts is not None else np.array([])
         if nonzero.size < 4:
             start = max(0, n // 4)
             return start, min(n, start + max(32, n // 10))
@@ -200,6 +204,44 @@ class LutComputeViewModel:
             )
         except Exception:
             self.current_table = None
+
+    def _lut_for_channel(self, ch: int, linear_start=None, linear_stop=None) -> dict | None:
+        """Build the LUT table for one routing channel (auto-region if unset)."""
+        if self._micro_all is None:
+            return None
+        micro = self._micro_all[self._route_all == int(ch)]
+        if micro.size == 0:
+            return None
+        counts = _lut.histogram_micro(micro, self.n_bins).astype(float)
+        counts[counts < float(self.threshold)] = 0
+        if linear_start is None or linear_stop is None:
+            try:
+                linear_start, linear_stop = _lut.autodetect_linear_region(counts)
+            except Exception:
+                linear_start, linear_stop = self._fallback_region(counts)
+        try:
+            return _lut.build_linearization_table(
+                counts, int(linear_start), int(linear_stop),
+                int(self.ntac_required), int(self.noffset))
+        except Exception:
+            return None
+
+    def compute_all_channels(self) -> dict[int, np.ndarray]:
+        """Compute a LUT for **every** used routing channel (auto-region each).
+
+        The currently selected channel keeps its (possibly hand-tuned) region;
+        the others use their own auto-detected plateau. Shared ``ntac_required``
+        / ``noffset`` apply to all. Returns ``{channel: NTAC_fract}``.
+        """
+        out: dict[int, np.ndarray] = {}
+        for ch in self.available_channels:
+            if str(ch) == str(self._selected_channel) and self.current_table is not None:
+                tbl = self.current_table
+            else:
+                tbl = self._lut_for_channel(int(ch))
+            if tbl is not None:
+                out[int(ch)] = np.asarray(tbl["NTAC_fract"], dtype=float)
+        return out
 
     def corrected_after_hist(self) -> tuple[np.ndarray, np.ndarray] | None:
         """Return ``(x, counts)`` of the corrected micro-time preview histogram."""

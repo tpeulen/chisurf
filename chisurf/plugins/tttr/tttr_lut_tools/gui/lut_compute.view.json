@@ -5,7 +5,7 @@
       "type": "custom", "key": "help",
       "options": {
         "title": "① Compute LUT — help",
-        "text": "This is the main tool. Build a TAC-linearization LUT from a **uniform-illumination** (uncorrelated-light / scatter) measurement — light that *should* give a flat TAC histogram. Real TAC hardware (e.g. SPC-130) has differential non-linearity, **per routing channel**, so you make one LUT per channel.\n\n**Steps:** load the file(s) → pick a **Routing channel** → drag the orange region over the flat **linear plateau** (or Auto-detect) → **➡ Add to Detector setup** → repeat for each channel → close.\n\nSaving a LUT file or a settings.tttr.json (tab ②) is optional — only for sharing a correction between machines."
+        "text": "This is the main tool. Build TAC-linearization LUTs from a **uniform-illumination** (uncorrelated-light / scatter) measurement — light that *should* give a flat TAC histogram. Real TAC hardware (e.g. SPC-130) has differential non-linearity **per routing channel**, so one LUT is computed per channel.\n\n**Steps:** load the file(s) → **➡ Add all channels to setup**. A LUT is computed for every routing channel (region auto-detected each) and assigned. Use the **Preview channel** selector + the orange region only if you want to check or hand-tune a specific channel first.\n\nSaving a LUT file or a settings.tttr.json (tab ②) is optional — only for sharing a correction between machines."
       }
     },
     {
@@ -17,9 +17,9 @@
       }
     },
     {
-      "type": "choice", "attr": "channel", "label": "Routing channel",
-      "options_source": "channels_options",
-      "description": "Compute the LUT for THIS routing channel — TAC differential non-linearity is per channel, so each channel gets its own LUT."
+      "type": "choice", "attr": "channel", "label": "Preview channel",
+      "options_source": "channels_options", "call": "update",
+      "description": "Preview / tune THIS routing channel's histogram + region. ‘Add to Detector setup’ computes and assigns a LUT for ALL channels."
     },
     {"type": "custom", "key": "lut_compute_plot"},
     {"type": "custom", "key": "lut_info_label"},

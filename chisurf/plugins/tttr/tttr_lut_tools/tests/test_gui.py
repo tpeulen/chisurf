@@ -1,9 +1,14 @@
 """GUI smoke tests for the LUT Tools workspace (offscreen)."""
 
+import pathlib
+
 import numpy as np
 import pytest
 
 pytest.importorskip("qtpy")
+
+_SPC = (pathlib.Path(__file__).resolve().parents[5]
+        / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc")
 
 
 @pytest.fixture(scope="module")
@@ -23,17 +28,17 @@ def test_tool_builds_and_exposes_panels(qapp):
     assert hasattr(w, "bridge_btn")
 
 
-def test_compute_to_assign_bridge(qapp):
+@pytest.mark.skipif(not _SPC.is_file(), reason="sample SPC not available")
+def test_add_all_channels_to_setup(qapp):
     from chisurf.plugins.tttr.tttr_lut_tools.gui.tool import TTRLutToolsWidget
 
     w = TTRLutToolsWidget()
-    w.tac_panel.current_table = {
-        "NTAC_fract": np.linspace(0, 4096, 4096),
-        "linear_start": 100, "linear_stop": 4000,
-    }
+    w.tac_panel.model.load_files([str(_SPC)])
+    # "Add all channels to setup" computes + assigns a LUT for every channel.
     w._bridge_compute_to_assign()
-    assert "computed_100_4000" in w.settings_panel.loaded_luts
-    assert w.settings_panel.lut_list.count() == 1
+    chans = w.tac_panel.model.available_channels
+    assert len(chans) > 1
+    assert sorted(w.settings_panel.channel_luts) == list(chans)
 
 
 def test_help_dialog_builds_from_readme(qapp):
@@ -62,7 +67,6 @@ def test_compute_viewmodel_load_and_region():
         import pytest
 
         pytest.skip("sample SPC not available")
-    import numpy as np
 
     vm = LutComputeViewModel()
     vm.load_files([str(spc)])
@@ -83,3 +87,8 @@ def test_compute_viewmodel_load_and_region():
     vm.ntac_required = 2048
     vm.update()
     assert vm.current_table["ntac_required"] == 2048
+    # compute_all_channels: one LUT per used channel, per-channel distinct
+    all_luts = vm.compute_all_channels()
+    assert sorted(all_luts) == list(vm.available_channels)
+    chs = list(vm.available_channels)
+    assert not np.array_equal(all_luts[chs[0]], all_luts[chs[1]])

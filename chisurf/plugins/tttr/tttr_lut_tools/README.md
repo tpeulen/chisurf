@@ -5,15 +5,16 @@ setup. The two tabs are **not** equal partners:
 
 | Tab | What it is | When you use it |
 |-----|------------|-----------------|
-| **① Compute LUT** | The main tool. Makes a LUT **per routing channel** and adds it to your Detector setup. | Always. |
+| **① Compute LUT** | The main tool. Makes one LUT **per routing channel** and adds them all to your Detector setup. | Always. |
 | **② settings.tttr.json** | Optional file interchange — save/load the correction as a portable file, or hand-assign LUT *files* to channels. | Only to share a correction, or import one you already have. |
 
 **Normal workflow:** open this from the Detector setup's *Configure LUTs…*
-button → in **① Compute LUT** pick a routing channel, mark the flat region →
-**➡ Add to Detector setup** → repeat per channel → close the window. That's it —
-you never need tab ②, and saving a file is optional.
+button → in **① Compute LUT** load the flat-light file → **➡ Add all channels to
+setup** (a LUT is computed for every routing channel) → close the window. That's
+it — you never need tab ②, and saving a file is optional. The **Preview channel**
+selector is only for checking/hand-tuning one channel before adding.
 
-## ① Compute LUT — *make* a per-channel LUT
+## ① Compute LUT — *make* per-channel LUTs
 
 Build a linearization table from a **uniform-illumination** (uncorrelated-light /
 scatter) measurement. Real TCSPC/TAC hardware has *differential non-linearity*
@@ -21,12 +22,13 @@ scatter) measurement. Real TCSPC/TAC hardware has *differential non-linearity*
 histogram — which *should* be flat — is not. The Felekyan et al. (Rev. Sci.
 Instrum. 2005) construction turns that histogram into a cumulative table
 (`NTAC_fract`) that remaps every photon's raw micro-time onto a corrected,
-equal-width axis. **DNL is per routing channel**, so you compute one LUT per
-channel — pick the channel in the selector.
+equal-width axis. **DNL is per routing channel**, so one LUT is computed per
+channel.
 
-Workflow: load the flat-light TTTR file(s) → pick a **Routing channel** → drag
-the orange region to mark the flat **linear plateau** (or auto-detect) → adjust
-NTAC / Noffset → **➡ Add to Detector setup**. Optionally **Save LUT file…**.
+Workflow: load the flat-light TTTR file(s) → **➡ Add all channels to setup** (a
+LUT is computed for every routing channel, its region auto-detected, and assigned).
+Use the **Preview channel** selector + the orange region only to check or
+hand-tune a specific channel first. Optionally **Save LUT file…**.
 
 ## ② settings.tttr.json — *optional* file interchange
 
