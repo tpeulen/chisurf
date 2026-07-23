@@ -24,7 +24,13 @@ click-pick / markers / on-image text labels / ROI), `image_browser` (a
 navigable entry list — files, molecules, frames — beside that `image` canvas,
 with per-entry star ratings, an editable note, a filter and drag-drop; shared by
 the TTTR image browser and the molecule-wise MLE tool), `waterfall` (RGB
-time-vs-µtime images), `path_list` (drag-drop file/folder lists),
+time-vs-µtime images), `path_list` (the one drag-drop file/folder list every
+plugin now uses instead of a hand-rolled widget — drops + Files/Folder/Remove/Clear
+plus first-class MMFDB "select from database" selection, and options for the cases
+that used to justify a custom list: `checkable` tick boxes, a `folder_expander`
+hook, a `path_filter` predicate, `replace_on_drop`, and `allow_duplicates` for
+ordered lists that may legitimately repeat an entry, such as a homodimer's per-body
+PDBs),
 `rate_matrix` (a reusable editable N×N transition-rate grid that tracks a
 `size_attr` such as the species/state count, with the diagonal fixed at 0 — for
 kinetic interconversion matrices anywhere in ChiSurf), `parameter_group_table` (a

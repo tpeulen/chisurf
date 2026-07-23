@@ -79,6 +79,35 @@ def test_repeats_route_to_errors():
     assert params["n_trials"] == 5
 
 
+def test_pdb_list_widget_homodimer_and_roundtrip(qapp, tmp_path):
+    """The unified PDB path list keeps a repeated (homodimer) file, syncs the
+    comma-joined model string, removes one occurrence by row, and round-trips a
+    project load verbatim."""
+    from chisurf.plugins.modelling.fret.gui.dock_tool import FretDockingTool
+
+    a = tmp_path / "bodyA.pdb"; a.write_text("ATOM\n")
+    b = tmp_path / "bodyB.pdb"; b.write_text("ATOM\n")
+
+    w = FretDockingTool()
+    # homodimer: same structure for body 0 and 1, plus a distinct body 2
+    w._pdb_widget.add_paths([a, a, b])
+    assert w._pdb_widget.paths() == [str(a), str(a), str(b)]
+    # model mirrors it as the comma-joined engine string, repeats preserved
+    assert w._model.pdb_list() == [str(a), str(a), str(b)]
+
+    # remove only the first occurrence (by row), not both copies of A
+    w._pdb_widget._list.setCurrentRow(0)
+    w._pdb_widget._remove_selected()
+    assert w._model.pdb_list() == [str(a), str(b)]
+
+    # a project load replaces the list verbatim (order + repeats), even if a file
+    # is momentarily missing on disk
+    gone = tmp_path / "missing.pdb"
+    w._set_pdb_list([a, a, b, gone])
+    assert w._pdb_widget.paths() == [str(a), str(a), str(b), str(gone)]
+    assert w._model.pdb_list() == [str(a), str(a), str(b), str(gone)]
+
+
 def test_results_table_and_plot(qapp, tmp_path):
     """A repeated-docking result populates the table and one curve per trial."""
     from chisurf.plugins.modelling.fret.gui.dock_tool import FretDockingTool

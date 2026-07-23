@@ -60,6 +60,11 @@ class PathListWidget(QtWidgets.QWidget):
     ``checkable`` (option) gives every entry a tick box (default *checked*), adds
     ☑️ All / ☐ None buttons, exposes :meth:`checked_paths` and emits
     :attr:`checkChanged` — for tools that batch-process a user-selected subset.
+
+    ``allow_duplicates`` (option) keeps repeated paths instead of de-duplicating
+    (e.g. a homodimer that reuses one structure for two rigid bodies whose order
+    encodes body id); removal is then by row position. It cannot be combined with
+    ``checkable``. Use :meth:`set_paths` to load a stored list verbatim.
     """
 
     #: marker so a hosting dock panel gives this section the spare vertical space.
@@ -88,6 +93,13 @@ class PathListWidget(QtWidgets.QWidget):
         self._mmfdb_scope = options.get("mmfdb_scope", "all")
         self._select_first = bool(options.get("select_first", False))
         self._checkable = bool(options.get("checkable", False))
+        # When True the same path may appear more than once (e.g. a homodimer that
+        # reuses one structure for two rigid bodies) and removal is by row position
+        # rather than path identity. Incompatible with ``checkable`` (tick state is
+        # keyed on the path text), so the two must not be combined.
+        self._allow_duplicates = bool(options.get("allow_duplicates", False))
+        if self._allow_duplicates and self._checkable:
+            raise ValueError("path_list: 'allow_duplicates' cannot be combined with 'checkable'")
         # When True a drop *replaces* the list (clear + add) instead of appending.
         self._replace_on_drop = bool(options.get("replace_on_drop", False))
         # Optional host hook: ``folder_expander(pathlib.Path) -> list[str]`` replaces
@@ -180,13 +192,16 @@ class PathListWidget(QtWidgets.QWidget):
         return list(value) if isinstance(value, list) else []
 
     def _commit(self, paths: list[str]) -> None:
-        # de-duplicate while preserving order
-        seen: set[str] = set()
-        unique = [p for p in paths if not (p in seen or seen.add(p))]
-        setattr(self._model, self._target, unique)
+        if self._allow_duplicates:
+            committed = list(paths)
+        else:
+            # de-duplicate while preserving order
+            seen: set[str] = set()
+            committed = [p for p in paths if not (p in seen or seen.add(p))]
+        setattr(self._model, self._target, committed)
         # forget check state for paths no longer present
-        self._unchecked &= set(unique)
-        self._refresh_list(unique)
+        self._unchecked &= set(committed)
+        self._refresh_list(committed)
         try:
             self._model.update()
         except Exception:
@@ -283,9 +298,16 @@ class PathListWidget(QtWidgets.QWidget):
             self._add([str(p) for p in paths])
 
     def _remove_selected(self) -> None:
-        remove = {it.text() for it in self._list.selectedItems()}
-        if remove:
-            self._commit([p for p in self._current() if p not in remove])
+        # Remove by row position so a duplicated path (allow_duplicates) drops only
+        # the selected occurrence; positions map 1:1 to the current list because the
+        # displayed items mirror it in order.
+        rows = sorted((self._list.row(it) for it in self._list.selectedItems()), reverse=True)
+        if rows:
+            current = self._current()
+            for r in rows:
+                if 0 <= r < len(current):
+                    del current[r]
+            self._commit(current)
 
     def _clear(self) -> None:
         self._commit([])
@@ -294,6 +316,17 @@ class PathListWidget(QtWidgets.QWidget):
     def add_paths(self, paths: list) -> None:
         """Add files/folders (folders expanded, extension-filtered, de-duplicated)."""
         self._add([str(p) for p in paths])
+
+    def set_paths(self, paths: list) -> None:
+        """Replace the list with *paths* verbatim.
+
+        Unlike :meth:`add_paths` the paths are neither folder-expanded nor
+        existence-filtered — order (and, when ``allow_duplicates`` is set,
+        repeats) is preserved exactly. Use it to load a stored list (e.g. a saved
+        project's file set) where entries must round-trip even if a referenced
+        file is momentarily missing.
+        """
+        self._commit([str(p) for p in paths])
 
     def paths(self) -> list[str]:
         """Return the current ordered list of file paths."""

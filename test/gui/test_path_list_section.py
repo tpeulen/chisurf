@@ -174,6 +174,41 @@ def test_replace_on_drop(qapp, tmp_path):
     assert w.paths() == [str(fs[1]), str(fs[2])]
 
 
+def test_allow_duplicates_keeps_repeats_and_removes_by_row(qapp, tmp_path):
+    """allow_duplicates keeps the same path twice; removal drops only one occurrence."""
+    a = tmp_path / "a.pdb"; a.write_bytes(b"1")
+    b = tmp_path / "b.pdb"; b.write_bytes(b"2")
+    model = _Model()
+    w = PathListWidget(model, "files", extensions=[".pdb"], allow_duplicates=True)
+
+    # a homodimer: same structure for body 0 and body 1, plus a distinct body 2
+    w.add_paths([a, a, b])
+    assert w.paths() == [str(a), str(a), str(b)]
+
+    # select the *first* row and remove it -> only that occurrence goes
+    w._list.setCurrentRow(0)
+    w._remove_selected()
+    assert w.paths() == [str(a), str(b)]
+
+
+def test_allow_duplicates_rejects_checkable(qapp):
+    """allow_duplicates and checkable are mutually exclusive (tick state keys on text)."""
+    with pytest.raises(ValueError):
+        PathListWidget(_Model(), "files", allow_duplicates=True, checkable=True)
+
+
+def test_set_paths_loads_verbatim_including_missing(qapp, tmp_path):
+    """set_paths stores the list exactly — no expansion, no existence filtering."""
+    a = tmp_path / "a.pdb"; a.write_bytes(b"1")
+    missing = tmp_path / "gone.pdb"  # never created
+    model = _Model()
+    w = PathListWidget(model, "files", extensions=[".pdb"], allow_duplicates=True)
+
+    w.set_paths([a, a, missing])
+    assert w.paths() == [str(a), str(a), str(missing)]
+    assert model.files == [str(a), str(a), str(missing)]
+
+
 def test_rejected_paths_signal(qapp, tmp_path):
     """A path_filter rejection on drop surfaces via rejectedPaths (for host warnings)."""
     from chisurf.gui.widgets.tools.chisurf_dock_tool import PathDropListWidget
