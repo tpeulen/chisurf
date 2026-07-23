@@ -79,20 +79,24 @@ def test_build_tables_schema_and_lengths():
     path, _ = h2mm.viterbi(fit, data)
     fret = np.array([0.15, 0.80])
 
-    tables = X.build_tables(data, meta, path, fret, base_time_s=1e-6, micro_time_ns=0.032)
+    tables = X.build_tables(
+        data, meta, path, fret, base_time_s=1e-6, micro_time_ns=0.032,
+        stream_groups=[("green", (0,)), ("red", (1,))],
+    )
     ph, bu = tables.photons, tables.bursts
 
     assert len(ph) == data.n_photons
     assert len(bu) == data.n_bursts
     for col in ("Mean Macro Time (s)", "Micro Time", "Channel", "Stream", "State", "Burst"):
         assert col in ph.columns
-    # ndX FRET-line plot columns (its default X/Y axes + presets key on these names).
-    for col in ("Tau (green)", "Proximity ratio", "FRET efficiency"):
+    # ndX FRET-line plot columns (its default Y axis + the per-colour mean micro time).
+    for col in ("Mean Microtime (green)", "Mean Microtime (red)",
+                "Proximity ratio", "FRET efficiency"):
         assert col in bu.columns
-    # Measured proximity ratio is a finite fraction; donor lifetime is finite (ns).
+    # Measured proximity ratio is a finite fraction; mean micro time is finite (ns).
     pr = bu["Proximity ratio"].to_numpy()
     assert np.all((pr[np.isfinite(pr)] >= 0) & (pr[np.isfinite(pr)] <= 1))
-    assert np.isfinite(bu["Tau (green)"].to_numpy()).any()
+    assert np.isfinite(bu["Mean Microtime (green)"].to_numpy()).any()
     # Every column ndX imports must be numeric (else it drops them).
     assert all(np.issubdtype(dt, np.number) for dt in ph.dtypes)
     assert all(np.issubdtype(dt, np.number) for dt in bu.dtypes)
@@ -140,7 +144,7 @@ def test_write_result_tables_emits_ndx_fret_line_columns(tmp_path):
     csv = result.output_paths.get("bursts_csv")
     assert csv is not None
     df = pd.read_csv(csv)
-    for col in ("Tau (green)", "Proximity ratio", "FRET efficiency",
+    for col in ("Mean Microtime (green)", "Proximity ratio", "FRET efficiency",
                 "Mean Macro Time (s)", "Dominant State"):
         assert col in df.columns
-    assert np.isfinite(df["Tau (green)"].to_numpy()).any()
+    assert np.isfinite(df["Mean Microtime (green)"].to_numpy()).any()

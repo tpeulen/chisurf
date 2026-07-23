@@ -194,6 +194,7 @@ fcs:
   models:
     - chisurf.gui.widgets.models.fcs.ParseFCSWidget
     - chisurf.gui.widgets.models.fcs.DyeShapeFCSWidget
+    - chisurf.gui.widgets.models.fcs.MdfFCSWidget
     - chisurf.gui.widgets.models.fcs.MaxEntFCSWidget
     - chisurf.gui.widgets.models.fcs.MaxEntRHWidget
 

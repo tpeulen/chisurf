@@ -182,10 +182,24 @@ def write_result_tables(
         return
     ana = bundle.analysis
     micro_ns = getattr(bundle, "micro_time_ns", None)
+
+    # Name each base-stream role by its detector name for the per-colour
+    # "Mean Microtime (<name>)" columns (donor, acceptor, optional Aex).
+    stream_settings = list(getattr(bundle.settings, "streams", []) or [])
+
+    def _stream_name(i: int, default: str) -> str:
+        return stream_settings[i].name if i < len(stream_settings) else default
+
+    stream_groups = [
+        (_stream_name(0, "green"), getattr(ana, "donor_streams", (0,))),
+        (_stream_name(1, "red"), getattr(ana, "acceptor_streams", (1,))),
+    ]
+    if getattr(ana, "aex_streams", None):
+        stream_groups.append((_stream_name(2, "yellow"), ana.aex_streams))
+
     tables = build_tables(
         bundle.data, meta, ana.path, ana.fret, ana.base_time_s,
-        donor_streams=getattr(ana, "donor_streams", (0,)),
-        acceptor_streams=getattr(ana, "acceptor_streams", (1,)),
+        stream_groups=stream_groups,
         micro_time_ns=(micro_ns if micro_ns else None),
     )
     try:

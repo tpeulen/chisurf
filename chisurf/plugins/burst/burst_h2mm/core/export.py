@@ -43,17 +43,18 @@ def build_tables(
     fret: np.ndarray,
     base_time_s: float,
     *,
-    donor_streams=(0,),
-    acceptor_streams=(1,),
+    stream_groups=None,
     micro_time_ns: float | None = None,
 ) -> H2mmTables:
     """Assemble the per-photon and per-burst ndX tables.
 
-    The per-burst table uses the MFD column names ndxplorer recognises so it opens
-    directly onto ndX's static/dynamic **FRET-line** plot (E vs donor lifetime):
-    ``Tau (green)`` (donor lifetime, its default X axis), ``Proximity ratio`` (its
-    default Y axis) and ``FRET efficiency`` — plus the H2MM ``Dominant State`` /
-    ``Number of Transitions`` for colouring and dynamics.
+    The per-burst table is written so it opens directly onto ndxplorer's
+    static/dynamic **FRET-line** plot (efficiency vs donor micro time): a per-colour
+    ``Mean Microtime (<name>)`` column (the mean TCSPC micro time of that stream's
+    photons — an IRF-uncorrected donor-lifetime proxy, ndX's FRET-line X axis) plus
+    ``FRET efficiency`` / ``Proximity ratio`` (measured apparent E, its Y axis) and
+    the H2MM ``Dominant State`` / ``Number of Transitions`` for colouring and
+    dynamics.
 
     Parameters
     ----------
@@ -67,13 +68,15 @@ def build_tables(
         Per-state apparent FRET efficiency (for the model ``Mean FRET E`` column).
     base_time_s : float
         Seconds per base time unit (macro-time → seconds).
-    donor_streams, acceptor_streams : sequence of int
-        Stream indices of the donor / acceptor role (several each with nanotime
-        divisors); used for the measured per-burst E and donor lifetime.
+    stream_groups : sequence of (str, sequence of int), optional
+        Named base-stream roles ``(name, stream_indices)`` in role order — donor
+        first, acceptor second, then any acceptor-excitation. Each yields a
+        ``Mean Microtime (<name>)`` column; the first two define the measured E /
+        proximity ratio. Several indices per role support nanotime divisors.
+        Defaults to ``[("green", (0,)), ("red", (1,))]`` limited to what exists.
     micro_time_ns : float, optional
-        Nanoseconds per micro-time channel. When given, ``Tau (green)`` is the
-        per-burst mean donor micro time in ns (an IRF-uncorrected lifetime proxy);
-        otherwise that column is ``NaN``.
+        Nanoseconds per micro-time channel. When given the ``Mean Microtime``
+        columns are in ns; otherwise they are ``NaN``.
 
     Returns
     -------
@@ -95,50 +98,61 @@ def build_tables(
         }
     )
 
+    if stream_groups is None:
+        stream_groups = [("green", (0,))]
+        if int(data.n_streams) > 1:
+            stream_groups.append(("red", (1,)))
+    groups = [(str(name), np.atleast_1d(np.asarray(idx, dtype=int)))
+              for name, idx in stream_groups]
+
     # Per-burst aggregation.
     offsets = data.burst_offsets
     n_bursts = data.n_bursts
     n_states = int(fret.shape[0])
     streams_all = np.asarray(data.streams)
     micro_all = np.asarray(meta.micro_time, dtype=np.float64)
-    donor_streams = np.atleast_1d(np.asarray(donor_streams, dtype=int))
-    acceptor_streams = np.atleast_1d(np.asarray(acceptor_streams, dtype=int))
-    rows = []
     fret_arr = np.asarray(fret, dtype=np.float64)
+
+    cols: dict[str, list] = {"Burst": [], "Number of Photons": [], "Mean Macro Time (s)": []}
+    for name, _ in groups:
+        cols[f"Mean Microtime ({name})"] = []
+    cols["FRET efficiency"] = []
+    cols["Proximity ratio"] = []
+    cols["Dominant State"] = []
+    cols["Number of Transitions"] = []
+    cols["Mean FRET E"] = []
+
+    donor_idx = groups[0][1]
+    acceptor_idx = groups[1][1] if len(groups) > 1 else np.array([], dtype=int)
     for b in range(n_bursts):
         s = int(offsets[b])
         e = int(offsets[b + 1])
         seg = path[s:e]
-        occ = np.bincount(seg, minlength=n_states).astype(np.float64)
-        dominant = int(np.argmax(occ))
-        n_trans = int(np.count_nonzero(np.diff(seg)))
-        mean_e = float((occ * fret_arr).sum() / occ.sum()) if occ.sum() > 0 else np.nan
-        t0 = float(meta.macro_time[s]) * base_time_s
-
         strm = streams_all[s:e]
-        donor_mask = np.isin(strm, donor_streams)
-        d = int(np.count_nonzero(donor_mask))
-        a = int(np.count_nonzero(np.isin(strm, acceptor_streams)))
+        micro = micro_all[s:e]
+        occ = np.bincount(seg, minlength=n_states).astype(np.float64)
+
+        cols["Burst"].append(b)
+        cols["Number of Photons"].append(e - s)
+        cols["Mean Macro Time (s)"].append(float(meta.macro_time[s]) * base_time_s)
+        for name, idx in groups:
+            mask = np.isin(strm, idx)
+            if micro_time_ns is not None and mask.any():
+                cols[f"Mean Microtime ({name})"].append(
+                    float(micro[mask].mean()) * float(micro_time_ns))
+            else:
+                cols[f"Mean Microtime ({name})"].append(np.nan)
+        d = int(np.count_nonzero(np.isin(strm, donor_idx)))
+        a = int(np.count_nonzero(np.isin(strm, acceptor_idx)))
         pr = a / (d + a) if (d + a) > 0 else np.nan
-        if micro_time_ns is not None and d > 0:
-            tau_green = float(micro_all[s:e][donor_mask].mean()) * float(micro_time_ns)
-        else:
-            tau_green = np.nan
-        rows.append((b, e - s, t0, tau_green, pr, pr, dominant, n_trans, mean_e))
-    bursts = pd.DataFrame(
-        rows,
-        columns=[
-            "Burst",
-            "Number of Photons",     # ndX auto-uses this as a histogram weight
-            "Mean Macro Time (s)",
-            "Tau (green)",           # ndX FRET-line default X axis (donor lifetime, ns)
-            "FRET efficiency",       # measured apparent E (uncorrected)
-            "Proximity ratio",       # ndX FRET-line default Y axis (= apparent E here)
-            "Dominant State",
-            "Number of Transitions",
-            "Mean FRET E",           # model-derived per-state mean (Viterbi-weighted)
-        ],
-    )
+        cols["FRET efficiency"].append(pr)   # measured apparent E (uncorrected)
+        cols["Proximity ratio"].append(pr)
+        cols["Dominant State"].append(int(np.argmax(occ)))
+        cols["Number of Transitions"].append(int(np.count_nonzero(np.diff(seg))))
+        cols["Mean FRET E"].append(
+            float((occ * fret_arr).sum() / occ.sum()) if occ.sum() > 0 else np.nan)
+
+    bursts = pd.DataFrame(cols)
     return H2mmTables(photons=photons, bursts=bursts)
 
 
