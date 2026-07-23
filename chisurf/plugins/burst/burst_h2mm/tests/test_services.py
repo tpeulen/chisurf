@@ -175,6 +175,27 @@ def test_nanotime_divisors_expand_streams_and_recover_fret():
     assert fret_sorted[0] < 0.35 and fret_sorted[-1] > 0.65
 
 
+def test_profile_likelihood_peaks_at_mle_with_ordered_ci():
+    """Each E profile peaks at the fitted value with a low ≤ MLE ≤ high interval."""
+    from chisurf.plugins.burst.burst_h2mm.core.analysis import profile_likelihood
+
+    df, tttrs = _synthetic_dataset()
+    streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
+    data = bursts_from_dataframe(df, tttrs, streams, min_photons=5)
+    ana = analysis.analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=2, max_iter=200)
+    scans = profile_likelihood(data, ana.best.model, donor_streams=(0,), acceptor_streams=(1,),
+                               n_points=21, half_width=0.15)
+    assert len(scans) == 2  # two E profiles (no Aex → no S)
+    assert all(s.param == "E" for s in scans)
+    for s in scans:
+        # The likelihood peaks at the fitted value, and the CI brackets it.
+        step = float(s.values[1] - s.values[0])
+        assert abs(s.values[int(np.argmax(s.loglik))] - s.mle) <= step + 1e-9
+        assert s.ci[0] <= s.mle + 1e-6
+        assert s.mle <= s.ci[1] + 1e-6
+        assert np.all(np.isfinite(s.loglik))
+
+
 def test_bootstrap_uncertainty_brackets_state_fret():
     """Bootstrap CIs are ordered, finite, and bracket the recovered FRET states."""
     from chisurf.plugins.burst.burst_h2mm.core.analysis import bootstrap_uncertainty

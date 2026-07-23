@@ -16,6 +16,7 @@ import numpy as np
 
 from .engines import fit_one, viterbi
 from .h2mm import BurstPhotons, H2mmModel, prepare_bursts
+from .h2mm import optimize as _h2mm_optimize
 
 
 @dataclass
@@ -326,6 +327,190 @@ def bootstrap_uncertainty(
             stoich_lo=_pct(s_arr, lo), stoich_hi=_pct(s_arr, hi), stoich_std=_std(s_arr),
             escape_lo=_pct(esc_arr, lo), escape_hi=_pct(esc_arr, hi), escape_std=_std(esc_arr),
         )
+
+
+@dataclass
+class LikelihoodScan:
+    """A one-parameter profile of the log-likelihood around the fitted value.
+
+    Holding every other parameter fixed, one parameter (a state's E or S) is swept
+    over ``values`` and the model log-likelihood recomputed at each — the burstH2MM
+    ``ll_*_scatter`` diagnostic. The confidence interval is where the deviance
+    ``2·(logL_max − logL)`` stays below ``threshold`` (χ²₁: 3.84 → 95 %). A flat
+    profile (CI spanning the whole scan window) flags a poorly-identified state.
+
+    Attributes
+    ----------
+    state : int
+        State index the parameter belongs to.
+    param : str
+        ``"E"`` or ``"S"``.
+    values : numpy.ndarray
+        Swept parameter grid.
+    loglik : numpy.ndarray
+        Model log-likelihood at each grid point.
+    mle : float
+        The fitted (maximum-likelihood) value of the parameter.
+    ci : tuple of float
+        ``(low, high)`` confidence interval at ``threshold`` deviance.
+    threshold : float
+        Deviance threshold used for the interval (default 3.84).
+    """
+
+    state: int
+    param: str
+    values: np.ndarray
+    loglik: np.ndarray
+    mle: float
+    ci: tuple[float, float]
+    threshold: float
+
+
+def fixed_loglik(model: H2mmModel, data: BurstPhotons) -> float:
+    """Forward log-likelihood of a *fixed* model (one EM map, no parameter update).
+
+    ``optimize(..., max_iter=1, tol=0.0)`` runs a single E-step whose reported
+    ``loglik`` is that of the input model — the same fixed-model forward
+    log-likelihood the A/B tests check against ``H2MM_C``.
+    """
+    return float(_h2mm_optimize(model, data, max_iter=1, tol=0.0).loglik)
+
+
+def _rescale_group(row: np.ndarray, cols: np.ndarray, new_total: float) -> None:
+    """Rescale ``row[cols]`` in place to sum to ``new_total`` (spread evenly if 0)."""
+    cur = float(row[cols].sum())
+    if cur > 0:
+        row[cols] *= new_total / cur
+    elif cols.size:
+        row[cols] = new_total / cols.size
+
+
+def _model_with_state_e(
+    model: H2mmModel, state: int, new_e: float, donor: np.ndarray, acceptor: np.ndarray
+) -> H2mmModel:
+    """Copy ``model`` with state ``state``'s apparent E set to ``new_e``.
+
+    The donor+acceptor (donor-excitation) probability mass is preserved and split
+    ``(1−E) : E`` between the donor and acceptor stream groups; other streams
+    (e.g. acceptor-excitation) are untouched, so the emission row stays normalised.
+    """
+    obs = np.array(model.obs, dtype=np.float64, copy=True)
+    row = obs[state]
+    dex = float(row[donor].sum() + row[acceptor].sum())
+    _rescale_group(row, donor, (1.0 - new_e) * dex)
+    _rescale_group(row, acceptor, new_e * dex)
+    return H2mmModel(prior=np.array(model.prior, copy=True),
+                     trans=np.array(model.trans, copy=True), obs=obs)
+
+
+def _model_with_state_s(
+    model: H2mmModel, state: int, new_s: float,
+    donor: np.ndarray, acceptor: np.ndarray, aex: np.ndarray,
+) -> H2mmModel:
+    """Copy ``model`` with state ``state``'s stoichiometry S set to ``new_s``.
+
+    The colour mass (donor + acceptor + Aex) is split ``S : (1−S)`` between the
+    donor-excitation block (donor+acceptor, internal E kept) and the Aex block.
+    """
+    obs = np.array(model.obs, dtype=np.float64, copy=True)
+    row = obs[state]
+    total = float(row[donor].sum() + row[acceptor].sum() + row[aex].sum())
+    dex = float(row[donor].sum() + row[acceptor].sum())
+    new_dex = new_s * total
+    if dex > 0:
+        row[donor] *= new_dex / dex
+        row[acceptor] *= new_dex / dex
+    else:
+        _rescale_group(row, np.concatenate([donor, acceptor]), new_dex)
+    _rescale_group(row, aex, (1.0 - new_s) * total)
+    return H2mmModel(prior=np.array(model.prior, copy=True),
+                     trans=np.array(model.trans, copy=True), obs=obs)
+
+
+def _ci_from_scan(values: np.ndarray, loglik: np.ndarray, threshold: float) -> tuple[float, float]:
+    """Confidence interval where deviance ``2·(max−logL)`` first exceeds ``threshold``.
+
+    Linearly interpolates the crossing on each side of the peak; if the profile
+    never crosses within the window the interval is the window edge (a flat,
+    poorly-identified direction).
+    """
+    values = np.asarray(values, dtype=np.float64)
+    loglik = np.asarray(loglik, dtype=np.float64)
+    imax = int(np.argmax(loglik))
+    dev = 2.0 * (loglik[imax] - loglik)
+
+    def _cross(order):
+        prev_v, prev_d = values[imax], 0.0
+        for i in order:
+            if dev[i] >= threshold:
+                denom = dev[i] - prev_d
+                frac = (threshold - prev_d) / denom if denom > 0 else 0.0
+                return prev_v + frac * (values[i] - prev_v)
+            prev_v, prev_d = values[i], dev[i]
+        return values[order[-1]] if len(order) else values[imax]
+
+    lo = _cross(list(range(imax - 1, -1, -1)))
+    hi = _cross(list(range(imax + 1, len(values))))
+    return float(min(lo, hi)), float(max(lo, hi))
+
+
+def profile_likelihood(
+    data: BurstPhotons,
+    model: H2mmModel,
+    *,
+    donor_streams=(0,),
+    acceptor_streams=(1,),
+    aex_streams=None,
+    n_points: int = 25,
+    half_width: float = 0.25,
+    threshold: float = 3.84,
+    progress=None,
+) -> list[LikelihoodScan]:
+    """Profile the log-likelihood in each state's E (and S) around the fit.
+
+    For every state the apparent E is swept over a ``±half_width`` window (clipped
+    to ``[0, 1]``) with all other parameters held fixed, and the model
+    log-likelihood recomputed (:func:`fixed_loglik`); the same is done for S when an
+    acceptor-excitation stream is present. This is the burstH2MM likelihood-based
+    uncertainty — it exposes *unidentifiable* directions (a flat profile) that a
+    data bootstrap can miss.
+
+    ``progress`` is called ``progress(done, total)`` after each evaluated point.
+    """
+    donor = np.atleast_1d(np.asarray(donor_streams, dtype=int))
+    acceptor = np.atleast_1d(np.asarray(acceptor_streams, dtype=int))
+    aex = np.atleast_1d(np.asarray(aex_streams, dtype=int)) if aex_streams is not None else None
+    n_states = model.n_states
+
+    e0 = state_fret(model, acceptor, donor)
+    s0 = (state_stoichiometry(model, donor, acceptor, aex)
+          if aex is not None else np.full(n_states, np.nan))
+
+    jobs: list[tuple[int, str]] = [(i, "E") for i in range(n_states) if np.isfinite(e0[i])]
+    if aex is not None:
+        jobs += [(i, "S") for i in range(n_states) if np.isfinite(s0[i])]
+    total = len(jobs) * int(n_points)
+    done = 0
+
+    scans: list[LikelihoodScan] = []
+    for state, param in jobs:
+        centre = e0[state] if param == "E" else s0[state]
+        grid = np.clip(np.linspace(centre - half_width, centre + half_width, int(n_points)), 0.0, 1.0)
+        grid = np.unique(grid)
+        ll = np.empty(grid.shape[0], dtype=np.float64)
+        for k, v in enumerate(grid):
+            if param == "E":
+                m = _model_with_state_e(model, state, float(v), donor, acceptor)
+            else:
+                m = _model_with_state_s(model, state, float(v), donor, acceptor, aex)
+            ll[k] = fixed_loglik(m, data)
+            done += 1
+            if progress is not None:
+                progress(done, total)
+        scans.append(LikelihoodScan(
+            state=state, param=param, values=grid, loglik=ll,
+            mle=float(centre), ci=_ci_from_scan(grid, ll, threshold), threshold=float(threshold)))
+    return scans
 
 
 def scan_states(

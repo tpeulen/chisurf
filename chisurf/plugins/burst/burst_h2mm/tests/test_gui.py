@@ -248,4 +248,17 @@ def test_h2mm_gui_alex_es_and_nanotime(qapp):
     )
     w._plot_dwell_fret(ana)
     assert any(isinstance(it, pg.ErrorBarItem) for it in w._p_fret.items)
+
+    # Profile-likelihood scan builds a dialog with E and S profiles (ALEX data).
+    from chisurf.plugins.burst.burst_h2mm.core.analysis import profile_likelihood
+    from chisurf.plugins.burst.burst_h2mm.gui.tool import LikelihoodScanDialog
+
+    scans = profile_likelihood(
+        data, ana.best.model,
+        donor_streams=ana.donor_streams, acceptor_streams=ana.acceptor_streams,
+        aex_streams=ana.aex_streams, n_points=11, half_width=0.15,
+    )
+    assert {s.param for s in scans} == {"E", "S"}
+    dlg = LikelihoodScanDialog(scans, w._uncertainty, w._state_color, w)  # must not raise
+    dlg.close()
     w.close()

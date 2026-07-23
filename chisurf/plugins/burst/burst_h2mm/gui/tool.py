@@ -145,6 +145,72 @@ class HelpDialog(QDialog):
         layout.addWidget(buttons)
 
 
+class LikelihoodScanDialog(QDialog):
+    """Show per-state log-likelihood profiles (E and S) with CI markers.
+
+    Solid curve = deviance ``2·(logL_max − logL)`` vs the parameter; its shaded
+    band is the likelihood CI (where the deviance crosses the 95 % threshold).
+    When a bootstrap was run, its CI is overlaid as dotted lines so the two
+    methods can be compared (they diverge on poorly-identified states).
+    """
+
+    def __init__(self, scans, uncertainty, color_fn, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("H2MM likelihood scan")
+        self.resize(780, 480)
+        layout = QVBoxLayout(self)
+        glw = pg.GraphicsLayoutWidget()
+        layout.addWidget(glw, 1)
+
+        # Map each state to its E-ascending rank (index into the bootstrap arrays).
+        e_scans = sorted((s for s in scans if s.param == "E"), key=lambda s: s.mle)
+        rank_of = {s.state: r for r, s in enumerate(e_scans)}
+
+        params = [p for p in ("E", "S") if any(s.param == p for s in scans)]
+        for col, param in enumerate(params):
+            p = glw.addPlot(row=0, col=col,
+                            title=("FRET-E profile" if param == "E" else "Stoichiometry profile"))
+            p.setLabels(bottom=("Apparent FRET E" if param == "E" else "Stoichiometry S"),
+                        left="Δ(2·logL)")
+            p.setXRange(0, 1)
+            p.setYRange(-0.3, 12)
+            p.addLegend(offset=(-5, 5))
+            thr = 3.84
+            for s in (s for s in scans if s.param == param):
+                color = color_fn(s.state)
+                dev = 2.0 * (np.max(s.loglik) - s.loglik)
+                p.plot(s.values, dev, pen=pg.mkPen(color, width=2), name=f"S{s.state}")
+                p.addItem(pg.InfiniteLine(pos=float(s.mle), angle=90,
+                          pen=pg.mkPen(color, width=1, style=Qt.DashLine)))
+                region = pg.LinearRegionItem(values=(float(s.ci[0]), float(s.ci[1])),
+                                             brush=pg.mkBrush(color + "22"), movable=False)
+                region.setZValue(-10)
+                p.addItem(region)
+                thr = s.threshold
+                if uncertainty is not None and s.state in rank_of:
+                    r = rank_of[s.state]
+                    lo, hi = ((uncertainty.fret_lo[r], uncertainty.fret_hi[r]) if param == "E"
+                              else (uncertainty.stoich_lo[r], uncertainty.stoich_hi[r]))
+                    if np.isfinite(lo) and np.isfinite(hi):
+                        for xb in (lo, hi):
+                            p.addItem(pg.InfiniteLine(pos=float(xb), angle=90,
+                                      pen=pg.mkPen(color, width=1, style=Qt.DotLine)))
+            p.addItem(pg.InfiniteLine(pos=thr, angle=0, pen=pg.mkPen("#888888", style=Qt.DashLine)))
+
+        cap = QLabel(
+            "Solid = likelihood profile (shaded = its 95% CI); dashed vertical = MLE; "
+            "horizontal dashed = χ²₁ threshold (Δ=3.84); dotted vertical = bootstrap CI "
+            "(if computed). A flat curve / window-wide CI means the state is poorly identified."
+        )
+        cap.setWordWrap(True)
+        cap.setStyleSheet("color:#888;")
+        layout.addWidget(cap)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(self.reject)
+        buttons.accepted.connect(self.accept)
+        layout.addWidget(buttons)
+
+
 @persist_plugin_state("burst_h2mm")
 class H2mmTool(QMainWindow):
     """H2MM analysis widget with toolbar, tabbed settings, and result plots."""
@@ -209,6 +275,12 @@ class H2mmTool(QMainWindow):
             "on the per-state E/S (overlaid as error bars). Compute-heavy — run "
             "after a fit."
         )
+        self.btn_llscan = _tbtn("\U0001f4c8  LL scan")
+        self.btn_llscan.setToolTip(
+            "Profile the log-likelihood in each state's E/S (holding the rest "
+            "fixed) → likelihood-based confidence intervals. A flat profile flags "
+            "an unidentifiable state. Complements the bootstrap; run after a fit."
+        )
         self.btn_save = _tbtn("\U0001f4be  Save plot")
         self.btn_help = _tbtn("ℹ️  Help")
 
@@ -217,6 +289,7 @@ class H2mmTool(QMainWindow):
         self.toolbar.addSeparator()
         self.toolbar.addWidget(self.btn_run)
         self.toolbar.addWidget(self.btn_uncert)
+        self.toolbar.addWidget(self.btn_llscan)
         self.toolbar.addWidget(self.btn_save)
         self.toolbar.addSeparator()
         self.toolbar.addWidget(self.btn_help)
@@ -432,6 +505,7 @@ class H2mmTool(QMainWindow):
         self._folder_field.folderDropped.connect(self._set_folder)
         self.btn_run.clicked.connect(self._run_analysis)
         self.btn_uncert.clicked.connect(self._run_uncertainty)
+        self.btn_llscan.clicked.connect(self._run_llscan)
         self.btn_save.clicked.connect(self._save_plot)
         self.btn_help.clicked.connect(lambda: HelpDialog(self).exec_())
 
@@ -681,6 +755,80 @@ class H2mmTool(QMainWindow):
         """E-ascending rank of each native state (index into the Uncertainty arrays)."""
         finite = np.where(np.isfinite(fret), fret, np.inf)
         return np.argsort(np.argsort(finite))
+
+    # ── profile-likelihood scan ──────────────────────────────────────
+
+    def _run_llscan(self):
+        """Profile the log-likelihood per state and show the scans in a dialog."""
+        if self._bundle is None or self._result is None:
+            QMessageBox.information(self, "H2MM", "Run a fit before the likelihood scan.")
+            return
+        from ..core.analysis import profile_likelihood
+
+        ana = self._bundle.analysis
+        data = self._bundle.data
+        model = ana.best.model
+        n_points = 25
+
+        self._llprog = EnhancedProgressDialog("H2MM", "Likelihood scan …", 0, 100, self)
+        self._llprog.show()
+        self.btn_llscan.setEnabled(False)
+        self._llcancel = threading.Event()
+        try:
+            self._llprog.canceled.connect(self._llcancel.set)
+        except Exception:
+            pass
+        self._llscan_signals = _UncertSignals()
+        self._llscan_signals.tick.connect(self._on_llscan_progress)
+
+        def _progress(done, total_):
+            if self._llcancel.is_set():
+                raise _FitCancelled()
+            self._llscan_signals.tick.emit(int(done), int(total_))
+
+        worker = Worker(
+            profile_likelihood, data, model,
+            donor_streams=getattr(ana, "donor_streams", (0,)),
+            acceptor_streams=getattr(ana, "acceptor_streams", (1,)),
+            aex_streams=getattr(ana, "aex_streams", None),
+            n_points=n_points, progress=_progress,
+        )
+        worker.signals.result.connect(self._on_llscan_result)
+        worker.signals.error.connect(self._on_llscan_error)
+        QThreadPool.globalInstance().start(worker)
+
+    def _on_llscan_progress(self, done: int, total: int):
+        try:
+            pct = int(100 * done / max(total, 1))
+            self._llprog.setValue(pct)
+            self._llprog.setLabelText(f"Likelihood scan … {done}/{total} evaluations")
+        except Exception:
+            pass
+
+    def _on_llscan_result(self, scans):
+        try:
+            self._llprog.close()
+        except Exception:
+            pass
+        self.btn_llscan.setEnabled(True)
+        if not scans:
+            self._status("Likelihood scan: nothing to profile")
+            return
+        LikelihoodScanDialog(scans, self._uncertainty, self._state_color, self).show()
+        self._status(f"Likelihood scan: {len(scans)} parameter profiles")
+
+    def _on_llscan_error(self, tb):
+        try:
+            self._llprog.close()
+        except Exception:
+            pass
+        self.btn_llscan.setEnabled(True)
+        if tb and "_FitCancelled" in str(tb):
+            self._status("Likelihood scan cancelled")
+            return
+        message = str(tb).strip().splitlines()[-1] if tb else "unknown error"
+        QMessageBox.critical(self, "H2MM likelihood scan error", message)
+        logging.error(f"H2MM likelihood scan failed: {tb}")
 
     def _plot_scan_live(self, fits):
         """Live-update the model-selection and FRET-state plots during the scan."""
