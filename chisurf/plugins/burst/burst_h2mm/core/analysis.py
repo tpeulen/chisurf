@@ -8,13 +8,14 @@ Viterbi state paths, dwell times, and transition tables.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
 
 from .engines import fit_one, viterbi
-from .h2mm import BurstPhotons, H2mmModel
+from .h2mm import BurstPhotons, H2mmModel, prepare_bursts
 
 
 @dataclass
@@ -168,6 +169,137 @@ def state_stoichiometry(
     with np.errstate(divide="ignore", invalid="ignore"):
         s = np.where(denom > 0, dex / denom, np.nan)
     return s
+
+
+@dataclass
+class Uncertainty:
+    """Bootstrap confidence intervals for the selected model's parameters.
+
+    All arrays are in **E-ascending state order** (sort each replicate's states by
+    apparent FRET, then take percentiles), so index ``r`` is the ``r``-th lowest-E
+    state — align to the native model order with ``numpy.argsort(analysis.fret)``.
+
+    Attributes
+    ----------
+    n_boot : int
+        Number of bootstrap resamples that contributed.
+    ci : tuple of float
+        The (low, high) percentiles used for the intervals.
+    fret_lo, fret_hi, fret_std : numpy.ndarray
+        Per-state apparent-FRET interval and standard deviation.
+    stoich_lo, stoich_hi, stoich_std : numpy.ndarray
+        Per-state stoichiometry interval / std (all-``nan`` without an Aex stream).
+    escape_lo, escape_hi, escape_std : numpy.ndarray
+        Per-state one-step escape probability ``1 − trans[i, i]`` interval / std.
+    """
+
+    n_boot: int
+    ci: tuple[float, float]
+    fret_lo: np.ndarray
+    fret_hi: np.ndarray
+    fret_std: np.ndarray
+    stoich_lo: np.ndarray
+    stoich_hi: np.ndarray
+    stoich_std: np.ndarray
+    escape_lo: np.ndarray
+    escape_hi: np.ndarray
+    escape_std: np.ndarray
+
+
+def _subset_bursts(data: BurstPhotons, idx: np.ndarray) -> BurstPhotons:
+    """Build a new :class:`BurstPhotons` from the bursts ``idx`` (with repeats).
+
+    Rebuilds each selected burst's ``(times, streams)`` from the CSR arrays (the
+    absolute macro-time origin is irrelevant to H2MM — only inter-photon gaps
+    matter) so a bootstrap resample can be re-fitted with the normal pipeline.
+    """
+    offsets = np.asarray(data.burst_offsets)
+    streams_all = np.asarray(data.streams)
+    gap = np.asarray(data.gap_slot)
+    uniq = np.asarray(data.unique_dt)
+    times_list: list[np.ndarray] = []
+    strm_list: list[np.ndarray] = []
+    for b in idx:
+        s, e = int(offsets[b]), int(offsets[b + 1])
+        n = e - s
+        if n <= 0:
+            continue
+        t = np.zeros(n, dtype=np.int64)
+        if n > 1 and uniq.size:
+            slots = gap[s : e - 1]
+            dt = np.where(slots >= 0, uniq[np.clip(slots, 0, len(uniq) - 1)], 0)
+            t[1:] = np.cumsum(dt.astype(np.int64))
+        times_list.append(t)
+        strm_list.append(streams_all[s:e].astype(np.int32))
+    return prepare_bursts(times_list, strm_list, n_streams=int(data.n_streams))
+
+
+def bootstrap_uncertainty(
+    data: BurstPhotons,
+    n_states: int,
+    *,
+    n_boot: int = 20,
+    engine: str = "em",
+    n_restarts: int = 1,
+    max_iter: int = 300,
+    tol: float = 1e-7,
+    seed: int = 0,
+    donor_stream: int = 0,
+    acceptor_stream: int = 1,
+    aex_stream: int | None = None,
+    ci: tuple[float, float] = (2.5, 97.5),
+    progress=None,
+) -> Uncertainty:
+    """Bootstrap the selected ``n_states`` model over bursts to size its errors.
+
+    Draws ``n_boot`` burst resamples (with replacement), refits an ``n_states``
+    model to each, and returns per-state percentile confidence intervals for E, S
+    and the escape probability. Replicates are aligned by sorting each fit's states
+    on apparent FRET (label-switching is otherwise unidentifiable). This is the
+    burstH2MM uncertainty step; it is compute-heavy (``n_boot`` extra fits), so
+    callers typically run it on demand rather than with every analysis.
+
+    ``progress``, if given, is called ``progress(done, n_boot)`` after each resample.
+    """
+    rng = np.random.default_rng(seed)
+    n_b = int(data.n_bursts)
+    e_samples: list[np.ndarray] = []
+    s_samples: list[np.ndarray] = []
+    esc_samples: list[np.ndarray] = []
+    for b in range(int(n_boot)):
+        idx = rng.integers(0, n_b, n_b)
+        sub = _subset_bursts(data, idx)
+        fit = fit_one(sub, n_states, engine, n_restarts=n_restarts,
+                      max_iter=max_iter, tol=tol, seed=int(rng.integers(0, 2**31 - 1)))
+        e = state_fret(fit, acceptor_stream, donor_stream)
+        order = np.argsort(e)
+        e_samples.append(e[order])
+        s_samples.append(state_stoichiometry(fit, donor_stream, acceptor_stream, aex_stream)[order])
+        esc_samples.append((1.0 - np.diag(fit.trans))[order])
+        if progress is not None:
+            progress(b + 1, int(n_boot))
+
+    e_arr = np.asarray(e_samples, dtype=np.float64)
+    s_arr = np.asarray(s_samples, dtype=np.float64)
+    esc_arr = np.asarray(esc_samples, dtype=np.float64)
+    lo, hi = ci
+
+    def _pct(a, q):
+        return np.nanpercentile(a, q, axis=0) if a.size else np.full(n_states, np.nan)
+
+    def _std(a):
+        return np.nanstd(a, axis=0) if a.size else np.full(n_states, np.nan)
+
+    with warnings.catch_warnings():
+        # Stoichiometry columns are all-NaN without an Aex stream; that is expected.
+        warnings.simplefilter("ignore", RuntimeWarning)
+        return Uncertainty(
+            n_boot=int(n_boot),
+            ci=(float(lo), float(hi)),
+            fret_lo=_pct(e_arr, lo), fret_hi=_pct(e_arr, hi), fret_std=_std(e_arr),
+            stoich_lo=_pct(s_arr, lo), stoich_hi=_pct(s_arr, hi), stoich_std=_std(s_arr),
+            escape_lo=_pct(esc_arr, lo), escape_hi=_pct(esc_arr, hi), escape_std=_std(esc_arr),
+        )
 
 
 def state_mean_nanotime(

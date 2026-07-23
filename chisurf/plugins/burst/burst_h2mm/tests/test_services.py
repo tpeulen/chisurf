@@ -135,6 +135,28 @@ def test_analyze_stoichiometry_with_alex_stream():
     assert s_vals.size > 0
 
 
+def test_bootstrap_uncertainty_brackets_state_fret():
+    """Bootstrap CIs are ordered, finite, and bracket the recovered FRET states."""
+    from chisurf.plugins.burst.burst_h2mm.core.analysis import bootstrap_uncertainty
+
+    df, tttrs = _synthetic_dataset()
+    streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
+    data = bursts_from_dataframe(df, tttrs, streams, min_photons=5)
+    ana = analysis.analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=200)
+    unc = bootstrap_uncertainty(data, ana.best.n_states, n_boot=8, n_restarts=1,
+                                max_iter=150, seed=1)
+    assert unc.n_boot == 8
+    assert unc.fret_lo.shape == (2,)
+    # Intervals are ordered and cover the E-sorted recovered efficiencies.
+    fret_sorted = np.sort(ana.fret)
+    assert np.all(unc.fret_lo <= unc.fret_hi)
+    assert np.all(unc.fret_lo - 0.1 <= fret_sorted)
+    assert np.all(fret_sorted <= unc.fret_hi + 0.1)
+    # No Aex stream → stoichiometry CIs are NaN; escape probabilities are finite.
+    assert np.isnan(unc.stoich_lo).all()
+    assert np.isfinite(unc.escape_std).all()
+
+
 def test_state_mean_nanotime_per_state_donor_lifetime():
     """state_mean_nanotime averages donor micro-times per state, ignoring acceptor."""
     from chisurf.plugins.burst.burst_h2mm.core.analysis import state_mean_nanotime

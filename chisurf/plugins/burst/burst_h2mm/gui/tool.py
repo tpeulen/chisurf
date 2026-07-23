@@ -62,6 +62,12 @@ class _FitSignals(QObject):
 
     tick = Signal(float, int, object)
 
+
+class _UncertSignals(QObject):
+    """Cross-thread bootstrap-progress signal carrying ``(done, n_boot)``."""
+
+    tick = Signal(int, int)
+
 _STATE_COLORS = [
     "#4e79a7", "#f28e2b", "#59a14f", "#e15759",
     "#b07aa1", "#76b7b2", "#edc948", "#ff9da7",
@@ -151,6 +157,7 @@ class H2mmTool(QMainWindow):
         self.file_type = "SPC-130"
         self._result = None
         self._bundle = None
+        self._uncertainty = None
         self._build_ui()
 
     # ── UI build ─────────────────────────────────────────────────────
@@ -196,6 +203,12 @@ class H2mmTool(QMainWindow):
         self._folder_field = _FolderLineEdit(placeholder="No folder selected")
         self._folder_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.btn_run = _tbtn("▶  Run")
+        self.btn_uncert = _tbtn("±  Uncertainty")
+        self.btn_uncert.setToolTip(
+            "Bootstrap the selected model over bursts to put confidence intervals "
+            "on the per-state E/S (overlaid as error bars). Compute-heavy — run "
+            "after a fit."
+        )
         self.btn_save = _tbtn("\U0001f4be  Save plot")
         self.btn_help = _tbtn("ℹ️  Help")
 
@@ -203,6 +216,7 @@ class H2mmTool(QMainWindow):
         self.toolbar.addWidget(self._folder_field)
         self.toolbar.addSeparator()
         self.toolbar.addWidget(self.btn_run)
+        self.toolbar.addWidget(self.btn_uncert)
         self.toolbar.addWidget(self.btn_save)
         self.toolbar.addSeparator()
         self.toolbar.addWidget(self.btn_help)
@@ -404,6 +418,7 @@ class H2mmTool(QMainWindow):
         self.btn_folder.clicked.connect(self._select_folder)
         self._folder_field.folderDropped.connect(self._set_folder)
         self.btn_run.clicked.connect(self._run_analysis)
+        self.btn_uncert.clicked.connect(self._run_uncertainty)
         self.btn_save.clicked.connect(self._save_plot)
         self.btn_help.clicked.connect(lambda: HelpDialog(self).exec_())
 
@@ -544,6 +559,7 @@ class H2mmTool(QMainWindow):
         result, bundle = payload
         self._result = result
         self._bundle = bundle
+        self._uncertainty = None  # bootstrap CIs are stale after a new fit
         try:
             self._prog.setValue(100)
             self._prog.close()
@@ -570,6 +586,86 @@ class H2mmTool(QMainWindow):
         message = str(tb).strip().splitlines()[-1] if tb else "unknown error"
         QMessageBox.critical(self, "H2MM error", message)
         logging.error(f"H2MM analysis failed: {tb}")
+
+    # ── uncertainty (bootstrap) ──────────────────────────────────────
+
+    def _run_uncertainty(self):
+        """Bootstrap the selected model over bursts and overlay E/S error bars."""
+        if self._bundle is None or self._result is None:
+            QMessageBox.information(self, "H2MM", "Run a fit before estimating uncertainty.")
+            return
+        from ..core.analysis import bootstrap_uncertainty
+
+        ana = self._bundle.analysis
+        data = self._bundle.data
+        settings = self._bundle.settings
+        aex = 2 if int(data.n_streams) >= 3 else None
+        n_boot = 20
+
+        self._uprog = EnhancedProgressDialog("H2MM", "Bootstrapping …", 0, n_boot, self)
+        self._uprog.show()
+        self.btn_uncert.setEnabled(False)
+        self._ucancel = threading.Event()
+        try:
+            self._uprog.canceled.connect(self._ucancel.set)
+        except Exception:
+            pass
+        self._uncert_signals = _UncertSignals()
+        self._uncert_signals.tick.connect(self._on_uncert_progress)
+
+        def _progress(done, total):
+            if self._ucancel.is_set():
+                raise _FitCancelled()
+            self._uncert_signals.tick.emit(int(done), int(total))
+
+        worker = Worker(
+            bootstrap_uncertainty, data, int(ana.best.n_states),
+            n_boot=n_boot, engine=getattr(settings, "engine", "em"),
+            n_restarts=1, max_iter=300, aex_stream=aex, progress=_progress,
+        )
+        worker.signals.result.connect(self._on_uncert_result)
+        worker.signals.error.connect(self._on_uncert_error)
+        QThreadPool.globalInstance().start(worker)
+
+    def _on_uncert_progress(self, done: int, total: int):
+        try:
+            self._uprog.setValue(done)
+            self._uprog.setLabelText(f"Bootstrapping … {done}/{total} resamples")
+        except Exception:
+            pass
+
+    def _on_uncert_result(self, unc):
+        """Store bootstrap CIs and redraw the E/E–S and E–τ panels with error bars."""
+        self._uncertainty = unc
+        try:
+            self._uprog.close()
+        except Exception:
+            pass
+        self.btn_uncert.setEnabled(True)
+        if self._bundle is not None:
+            ana = self._bundle.analysis
+            self._plot_dwell_fret(ana)
+            self._plot_etau(ana)
+        self._status(f"Uncertainty from {unc.n_boot} bootstrap resamples "
+                     f"({unc.ci[0]:.0f}–{unc.ci[1]:.0f}% CI)")
+
+    def _on_uncert_error(self, tb):
+        try:
+            self._uprog.close()
+        except Exception:
+            pass
+        self.btn_uncert.setEnabled(True)
+        if tb and "_FitCancelled" in str(tb):
+            self._status("Uncertainty cancelled")
+            return
+        message = str(tb).strip().splitlines()[-1] if tb else "unknown error"
+        QMessageBox.critical(self, "H2MM uncertainty error", message)
+        logging.error(f"H2MM bootstrap failed: {tb}")
+
+    def _uncert_ranks(self, fret: np.ndarray) -> np.ndarray:
+        """E-ascending rank of each native state (index into the Uncertainty arrays)."""
+        finite = np.where(np.isfinite(fret), fret, np.inf)
+        return np.argsort(np.argsort(finite))
 
     def _plot_scan_live(self, fits):
         """Live-update the model-selection and FRET-state plots during the scan."""
@@ -655,6 +751,7 @@ class H2mmTool(QMainWindow):
                         [fret[i]], [stoich[i]], size=15, symbol="x",
                         pen=pg.mkPen(color, width=3), brush=None,
                     ))
+            self._overlay_es_uncert(p, fret, stoich)
             return
 
         p.setTitle("Dwell FRET states")
@@ -671,6 +768,45 @@ class H2mmTool(QMainWindow):
             if np.isfinite(fret[i]):
                 p.addItem(pg.InfiniteLine(pos=float(fret[i]), angle=90,
                           pen=pg.mkPen(color, width=1, style=Qt.DashLine)))
+        self._overlay_e_ci_bands(p, fret)
+
+    def _overlay_es_uncert(self, p, fret, stoich):
+        """Draw bootstrap E/S error bars on the E–S state markers, if available."""
+        unc = self._uncertainty
+        if unc is None:
+            return
+        ranks = self._uncert_ranks(fret)
+        for i in range(int(fret.shape[0])):
+            r = int(ranks[i])
+            if not (np.isfinite(fret[i]) and np.isfinite(stoich[i])):
+                continue
+            left = max(fret[i] - unc.fret_lo[r], 0.0)
+            right = max(unc.fret_hi[r] - fret[i], 0.0)
+            top = bottom = 0.0
+            if np.isfinite(unc.stoich_lo[r]) and np.isfinite(unc.stoich_hi[r]):
+                bottom = max(stoich[i] - unc.stoich_lo[r], 0.0)
+                top = max(unc.stoich_hi[r] - stoich[i], 0.0)
+            p.addItem(pg.ErrorBarItem(
+                x=np.array([fret[i]]), y=np.array([stoich[i]]),
+                left=np.array([left]), right=np.array([right]),
+                top=np.array([top]), bottom=np.array([bottom]),
+                beam=0.02, pen=pg.mkPen(self._state_color(i), width=2)))
+
+    def _overlay_e_ci_bands(self, p, fret):
+        """Draw translucent per-state E confidence bands on the dwell-E histogram."""
+        unc = self._uncertainty
+        if unc is None:
+            return
+        ranks = self._uncert_ranks(fret)
+        for i in range(int(fret.shape[0])):
+            r = int(ranks[i])
+            if not (np.isfinite(unc.fret_lo[r]) and np.isfinite(unc.fret_hi[r])):
+                continue
+            region = pg.LinearRegionItem(
+                values=(float(unc.fret_lo[r]), float(unc.fret_hi[r])),
+                brush=pg.mkBrush(self._state_color(i) + "22"), movable=False)
+            region.setZValue(-10)
+            p.addItem(region)
 
     def _plot_tdp(self, ana):
         """Top-right: transition-density plot (E before vs E after, 2-D histogram)."""
@@ -771,9 +907,18 @@ class H2mmTool(QMainWindow):
         if tau0 > 0:
             xs = np.array([0.0, 1.0])
             p.plot(xs, tau0 * (1.0 - xs), pen=pg.mkPen("#999999", width=1, style=Qt.DashLine))
+        ranks = self._uncert_ranks(fret) if self._uncertainty is not None else None
         for i in range(int(fret.shape[0])):
             if not (np.isfinite(fret[i]) and np.isfinite(tau[i])):
                 continue
+            if ranks is not None:
+                r = int(ranks[i])
+                left = max(fret[i] - self._uncertainty.fret_lo[r], 0.0)
+                right = max(self._uncertainty.fret_hi[r] - fret[i], 0.0)
+                p.addItem(pg.ErrorBarItem(
+                    x=np.array([fret[i]]), y=np.array([tau[i]]),
+                    left=np.array([left]), right=np.array([right]),
+                    beam=0.0, pen=pg.mkPen(self._state_color(i), width=2)))
             p.addItem(pg.ScatterPlotItem([fret[i]], [tau[i]], size=13, symbol="o",
                                          pen=pg.mkPen("k"), brush=pg.mkBrush(self._state_color(i))))
 
