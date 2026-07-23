@@ -23,6 +23,7 @@ therefore hidden from the plugin menu.
 """
 
 name = "Spectroscopy:Fluorescence Correlation Spectroscopy:Correlator"
+icon = "⚛️"
 
 # Hidden from the ribbon menu: the correlator is surfaced through the merged
 # "FCS" tool (fcs_toolbox), not as its own entry.

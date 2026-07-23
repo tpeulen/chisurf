@@ -5,7 +5,7 @@
   "description": "Merge / average multiple FCS correlation curves to improve signal-to-noise.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Spectroscopy", "Fluorescence Correlation Spectroscopy"],
-  "icon": "icon.png",
+  "icon": "🔀",
   "state_namespace": "fcs_merger",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",

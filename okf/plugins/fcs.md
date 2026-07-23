@@ -252,4 +252,13 @@ Correlation curves are fitted against a catalogue of string-equation models in `
 
 The **Correlator step wires the FLCS filters into the GUI**: its `4. Correlator` panel has a lifetime-filter load/unload control (`🧬 Load filters… / ✖ Unload`, plus a `🧪 Filter Calc…` button that deep-links to the Filter Calculator tool via `NavigationPanelTool.show_panel_by_role("filter_calc")`) that reads an fFCS `FilterResult` JSON (from the Filter Calculator; nuisance filters excluded) or a `.npy`/`.npz` filter matrix and calls `CorrelatorSettingsModel.set_lifetime_filters`. While filters are loaded the panel is in *species mode*: the A/B selectors list the filter species instead of detector channels, and pressing *Correlate* computes that species pair's auto-correlation (A = B) or cross-correlation (A ≠ B) via `species_filtered_correlation` restricted to the two chosen filter rows. Unloading returns the panel to detector-channel correlation.
 
+The FCS plugin family carries a **coherent emoji icon set** (previously a mix of
+raster `icon.png`, one emoji, and blanks): the FCS umbrella tool `〰️`,
+Correlator `⚛️`, diffusion Calculator `🧮`, fFCS Filter Calculator `🎚️`,
+Converter `🔁`, Merger `🔀`, Lifetime-FCS Simulator `🎲`, 2D-FLCS `🌈`, and the
+Channel Preset `📡`. Icons are declared in each plugin's `manifest.json` `icon`
+field (or, for the manifest-less legacy plugins, a module `icon` attribute);
+superseded `icon.png` assets were removed. Resolution order is manifest icon →
+on-disk image → module attribute (see [GUI & AutoForm](/subsystems/gui-autoform.md)).
+
 See also: [plugin system](/architecture/plugin-system.md), [Plugins target](/specs/plugins.md), [GUI & AutoForm](/subsystems/gui-autoform.md). Per-burst FCS lives in the [burst group](burst.md). Formats interoperate with established FCS/multiparameter-fluorescence suites.

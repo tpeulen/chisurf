@@ -13,6 +13,7 @@ from __future__ import annotations
 from .tool import FcsTool, FcsToolboxTool
 
 name = "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS"
+icon = "〰️"
 
 __all__ = ["FcsTool", "FcsToolboxTool", "name"]
 

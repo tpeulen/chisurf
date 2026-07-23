@@ -5,6 +5,7 @@ formats directly from the ChiSurf CLI.
 """
 
 name = "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS Converter"
+icon = "🔁"
 
 # Expose the Click CLI through the top-level ``csc`` entry point.
 cli_entrypoint = "fcs-convert=chisurf.plugins.fcs.fcs_convert.cli:cli"

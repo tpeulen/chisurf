@@ -5,7 +5,7 @@
   "description": "Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Spectroscopy", "Fluorescence Correlation Spectroscopy"],
-  "icon": "icon.png",
+  "icon": "🌈",
   "state_namespace": "flc_2d",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
