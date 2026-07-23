@@ -380,12 +380,17 @@ class H2mmTool(QMainWindow):
         self._p_dwell = self.plot_widget.addPlot(row=1, col=1, title="Dwell-time distributions")
         self._p_dwell.setLabels(bottom="Dwell time (ms)", left="Counts")
         self._dwell_legend = self._p_dwell.addLegend(offset=(-5, 5))
-        # Row 2 — per-state fluorescence decay + burst state path (full width).
-        self._p_nano = self.plot_widget.addPlot(row=2, col=0, colspan=2,
-                                                title="Per-state fluorescence decay")
+        # Row 2 — per-state fluorescence decay + transition-rate matrix.
+        self._p_nano = self.plot_widget.addPlot(row=2, col=0, title="Per-state fluorescence decay")
         self._p_nano.setLabels(bottom="Micro time (channel)", left="Counts")
         self._p_nano.setLogMode(y=True)
         self._nano_legend = self._p_nano.addLegend(offset=(-5, 5))
+        self._p_rates = self.plot_widget.addPlot(row=2, col=1, title="Transition rates (1/s)")
+        self._p_rates.setLabels(bottom="to state", left="from state")
+        self._p_rates.invertY(True)
+        self._p_rates.setAspectLocked(True)
+        self._rates_img = pg.ImageItem(axisOrder="row-major")
+        self._p_rates.addItem(self._rates_img)
         # Row 3 — burst state path, full width (it is a time series).
         self._p_path = self.plot_widget.addPlot(row=3, col=0, colspan=2, title="Burst state path")
         self._p_path.setLabels(bottom="Time in burst (ms)", left="FRET E")
@@ -724,6 +729,7 @@ class H2mmTool(QMainWindow):
         self._plot_model_selection(self._result)
         self._plot_dwell_times(ana)
         self._plot_nanotime(ana)
+        self._plot_rates(ana)
         self._rebuild_nav_bursts(ana)
 
     def _plot_dwell_fret(self, ana):
@@ -764,23 +770,113 @@ class H2mmTool(QMainWindow):
                         pen=pg.mkPen(color, width=3), brush=None,
                     ))
             self._overlay_es_uncert(p, fret, stoich)
+            self._overlay_trans_arrows(p, fret, stoich, ana)
             return
 
         p.setTitle("Dwell FRET states")
         p.setLabels(bottom="Apparent FRET E", left="Dwells")
         p.setXRange(0, 1)
+        ymax = 1.0
         for i in range(fret.shape[0]):
             m = (st == i) & np.isfinite(e)
             color = self._state_color(i)
             if m.any():
                 counts, edges = np.histogram(e[m], bins=41, range=(0, 1), weights=w[m])
                 centers = (edges[:-1] + edges[1:]) / 2
+                ymax = max(ymax, float(counts.max()))
                 p.plot(centers, counts, pen=pg.mkPen(color, width=2), fillLevel=0,
                        brush=pg.mkBrush(color + "40"), name=f"S{i}")
             if np.isfinite(fret[i]):
                 p.addItem(pg.InfiniteLine(pos=float(fret[i]), angle=90,
                           pen=pg.mkPen(color, width=1, style=Qt.DashLine)))
         self._overlay_e_ci_bands(p, fret)
+        # Kinetic scheme along the E axis: state nodes at a common top baseline.
+        node_y = np.full_like(fret, ymax * 1.08)
+        self._overlay_trans_arrows(p, fret, node_y, ana, node_size=10)
+
+    def _overlay_trans_arrows(self, p, xs, ys, ana, node_size=0):
+        """Draw transition-rate arrows between states (burstH2MM ``trans_arrow_ES``).
+
+        Each state ``i → j`` gets a straight arrow from node ``i`` to node ``j``,
+        line width scaled by the rate and a slight perpendicular offset so the two
+        directions don't overlap. ``ana.trans_rates`` supplies the 1/s rates.
+        """
+        rates = np.asarray(getattr(ana, "trans_rates", np.empty((0, 0))), dtype=np.float64)
+        xs = np.asarray(xs, dtype=np.float64)
+        ys = np.asarray(ys, dtype=np.float64)
+        n = xs.shape[0]
+        if rates.shape != (n, n):
+            return
+        pos = rates[np.isfinite(rates) & (rates > 0)]
+        if pos.size == 0:
+            return
+        rmax = float(pos.max())
+        span = float(np.nanmax(np.abs(np.diff(xs)))) if n > 1 else 1.0
+        off = 0.03 * (span or 1.0)
+        for i in range(n):
+            for j in range(n):
+                if i == j or not (np.isfinite(rates[i, j]) and rates[i, j] > 0):
+                    continue
+                if not (np.isfinite(xs[i]) and np.isfinite(xs[j])
+                        and np.isfinite(ys[i]) and np.isfinite(ys[j])):
+                    continue
+                dx, dy = xs[j] - xs[i], ys[j] - ys[i]
+                length = float(np.hypot(dx, dy)) or 1.0
+                ox, oy = -dy / length, dx / length   # unit perpendicular
+                x0, y0 = xs[i] + ox * off, ys[i] + oy * off
+                x1, y1 = xs[j] + ox * off, ys[j] + oy * off
+                color = self._state_color(i)
+                width = 1.0 + 4.0 * (rates[i, j] / rmax)
+                p.plot([x0, x1], [y0, y1], pen=pg.mkPen(color, width=width))
+                ang = float(np.degrees(np.arctan2(y1 - y0, x1 - x0)))
+                p.addItem(pg.ArrowItem(pos=(x1, y1), angle=180 - ang,
+                                       headLen=12, brush=color, pen=None))
+        if node_size:
+            for i in range(n):
+                if np.isfinite(xs[i]) and np.isfinite(ys[i]):
+                    p.addItem(pg.ScatterPlotItem(
+                        [xs[i]], [ys[i]], size=node_size, symbol="o",
+                        pen=pg.mkPen("k"), brush=pg.mkBrush(self._state_color(i))))
+
+    @staticmethod
+    def _fmt_rate(v: float) -> str:
+        """Human-readable 1/s rate label."""
+        if v >= 1e6:
+            return f"{v / 1e6:.1f}M"
+        if v >= 1e3:
+            return f"{v / 1e3:.1f}k"
+        if v >= 1:
+            return f"{v:.0f}"
+        return f"{v:.2g}"
+
+    def _plot_rates(self, ana):
+        """Row 2, right: the transition-rate matrix (1/s) as an annotated heatmap."""
+        p = self._p_rates
+        for it in list(p.items):
+            if isinstance(it, pg.TextItem):
+                p.removeItem(it)
+        rates = np.asarray(getattr(ana, "trans_rates", np.empty((0, 0))), dtype=np.float64)
+        if rates.ndim != 2 or rates.shape[0] == 0:
+            self._rates_img.clear()
+            return
+        n = rates.shape[0]
+        self._rates_img.setImage(rates)
+        self._rates_img.setRect(0, 0, n, n)
+        try:
+            self._rates_img.setColorMap(pg.colormap.get("CET-L4"))
+        except Exception:
+            pass
+        ticks = [[(i + 0.5, f"S{i}") for i in range(n)]]
+        p.getAxis("bottom").setTicks(ticks)
+        p.getAxis("left").setTicks(ticks)
+        for i in range(n):       # row i = from state, col j = to state
+            for j in range(n):
+                if i == j or not (np.isfinite(rates[i, j]) and rates[i, j] > 0):
+                    continue
+                t = pg.TextItem(self._fmt_rate(float(rates[i, j])), anchor=(0.5, 0.5), color="w")
+                t.setPos(j + 0.5, i + 0.5)
+                p.addItem(t)
+        p.setRange(xRange=(0, n), yRange=(0, n), padding=0)
 
     def _overlay_es_uncert(self, p, fret, stoich):
         """Draw bootstrap E/S error bars on the E–S state markers, if available."""

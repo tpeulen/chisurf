@@ -233,9 +233,13 @@ def test_h2mm_gui_alex_es_and_nanotime(qapp):
     assert len(w._p_nano.listDataItems()) >= 1
     assert len(w._p_path.items) > 0
 
-    # Bootstrap uncertainty overlays error bars on the E–S scatter.
     import pyqtgraph as pg
 
+    # Transition-rate matrix drew value labels; E–S scatter got rate arrows.
+    assert any(isinstance(it, pg.TextItem) for it in w._p_rates.items)
+    assert any(isinstance(it, pg.ArrowItem) for it in w._p_fret.items)
+
+    # Bootstrap uncertainty overlays error bars on the E–S scatter.
     from chisurf.plugins.burst.burst_h2mm.core.analysis import bootstrap_uncertainty
 
     w._uncertainty = bootstrap_uncertainty(
