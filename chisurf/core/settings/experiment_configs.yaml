@@ -244,6 +244,7 @@ pch:
       controller_params: {}
   models:
     - chisurf.gui.widgets.models.pch.PchMultiComponentModelWidget
+    - chisurf.gui.widgets.models.pch.FidaModelWidget
 
 structure:
   readers:
