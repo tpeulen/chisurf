@@ -65,6 +65,7 @@ tcspc:
     - chisurf.gui.widgets.models.tcspc.GaussianModelWidget
     - chisurf.gui.widgets.models.tcspc.PDDEMModelWidget
     - chisurf.gui.widgets.models.tcspc.WormLikeChainModelWidget
+    - chisurf.gui.widgets.models.tcspc.SawNuChainModelWidget
     - chisurf.gui.widgets.models.tcspc.ParseDecayModelWidget
     - chisurf.gui.widgets.models.tcspc.LifetimeMixtureModelWidget
     # PRD-40: additive AutoForm prototype for the mixer. Pure compute model whose
@@ -114,6 +115,7 @@ pda:
     # build_model_editor seam wraps these via view_spec() -> *.view.json.
     - chisurf.core.models.pda.simple.PdaSimpleModel
     - chisurf.core.models.pda.pdagauss.PdaGaussianDistanceModel
+    - chisurf.core.models.pda.saw_nu.PdaSawNuModel
     - chisurf.core.models.pda.dynamic.PdaDynamicTwoStateModel
     - chisurf.core.models.pda.dynamic_mc.PdaDynamicThreeStateModel
     - chisurf.core.models.pda.anisotropy.PdaAnisotropyModel

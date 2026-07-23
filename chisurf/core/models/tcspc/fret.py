@@ -1055,6 +1055,61 @@ class WormLikeChainModel(FRETModel):
         )
 
 
+class SawNuModel(FRETModel):
+    """FRET model with a SAW-ν polymer inter-dye distance distribution.
+
+    Describes the donor-acceptor distance distribution of a disordered chain by
+    the self-avoiding-walk model with Flory scaling exponent ``nu`` (Zheng et
+    al., JACS 2018): ``nu ~ 0.588`` expanded, ``0.5`` theta, ``< 0.4`` collapsed.
+    Fits the root-mean-square inter-dye distance ``Rrms`` and ``nu`` from the
+    time-resolved FRET decay.  See
+    :func:`chisurf.core.fluorescence.polymer.saw_nu_pofr`.
+    """
+
+    name = "FRET: FD (SAW-ν polymer)"
+
+    @property
+    def distance_distribution(self):
+        """Distance distribution array ``[[P(R), rda_axis]]`` from the SAW-ν P(R)."""
+        prob = cs.core.math.functions.rdf.saw_nu(
+            rda_axis, self._r_rms.value, self._nu.value
+        )
+        dist = np.array([prob, rda_axis]).reshape(
+            [1, 2, cs.core.settings.fret['rda_resolution']]
+        )
+        return dist
+
+    @property
+    def r_rms(self) -> float:
+        """Root-mean-square inter-dye distance (Å)."""
+        return self._r_rms.value
+
+    @r_rms.setter
+    def r_rms(self, v: float) -> None:
+        self._r_rms.value = v
+
+    @property
+    def nu(self) -> float:
+        """Flory scaling exponent (0 < nu < 1)."""
+        return self._nu.value
+
+    @nu.setter
+    def nu(self, v: float) -> None:
+        self._nu.value = v
+
+    def __init__(self, fit: cs.core.fitting.fit.FitGroup, **kwargs):
+        """Initialize the SAW-ν FRET model."""
+        super().__init__(fit, **kwargs)
+        self._r_rms = FittingParameter(
+            name='Rrms', value=55.0, model=self, fixed=False, text='Rrms',
+            lb=1.0, ub=1000.0,
+        )
+        self._nu = FittingParameter(
+            name='nu', value=0.588, model=self, fixed=False, text='&nu;',
+            lb=0.30, ub=0.95, bounds_on=True,
+        )
+
+
 class SingleDistanceModel(FRETModel):
 
     name = "Fixed distance distribution"

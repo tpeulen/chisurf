@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from math import exp, log
+from math import exp, gamma, log
 
 import numpy as np
 import numba as nb
@@ -45,6 +45,48 @@ def gaussian_chain(
     """
     r2_mean = gaussian_chain_ree(segment_length, number_of_segments) ** 2
     return 4*np.pi*r**2/(2./3. * np.pi*r2_mean)**(3./2.) * np.exp(-3./2. * r**2 / r2_mean)
+
+
+def saw_nu(
+        r,
+        r_rms: float,
+        nu: float = 0.588,
+        gamma_exp: float = 1.1615,
+):
+    """Radial distribution of a self-avoiding walk with Flory exponent ``nu``.
+
+    The SAW-ν inter-monomer distance distribution (des Cloizeaux form; Zheng
+    et al., J. Am. Chem. Soc. 2018), the standard model for disordered/unfolded
+    chains in single-molecule FRET:
+
+    .. math::
+
+        P(r) \\propto r^{2+\\theta}\\,\\exp[-(r/r_0)^{\\delta}], \\quad
+        \\theta = (\\gamma-1)/\\nu, \\quad \\delta = 1/(1-\\nu),
+
+    with the scale :math:`r_0` fixed so that :math:`\\sqrt{\\langle r^2\\rangle}
+    = r_\\mathrm{rms}`.  With ``nu = 0.5`` and ``gamma_exp = 1`` it reduces to the
+    :func:`gaussian_chain`.  Complements :func:`worm_like_chain`.
+
+    :param r: numpy-array of inter-dye distances (> 0).
+    :param r_rms: target root-mean-square inter-dye distance.
+    :param nu: Flory scaling exponent (``~0.588`` expanded, ``0.5`` theta,
+        ``< 0.4`` collapsed); ``0 < nu < 1``.
+    :param gamma_exp: SAW susceptibility exponent (default 1.1615; 1.0 = ideal).
+    :return: the (analytically normalised) radial distribution ``P(r)``.
+    """
+    r = np.asarray(r, dtype=float)
+    if not (0.0 < nu < 1.0) or r_rms <= 0.0:
+        return np.zeros_like(r)
+    theta = (gamma_exp - 1.0) / nu
+    delta = 1.0 / (1.0 - nu)
+    # <r^2> = r0^2 * Gamma((5+theta)/delta) / Gamma((3+theta)/delta)
+    ratio = gamma((5.0 + theta) / delta) / gamma((3.0 + theta) / delta)
+    r0 = r_rms / np.sqrt(ratio)
+    norm = delta / (r0 ** (3.0 + theta) * gamma((3.0 + theta) / delta))
+    with np.errstate(over="ignore", invalid="ignore"):
+        pr = norm * r ** (2.0 + theta) * np.exp(-((r / r0) ** delta))
+    return np.nan_to_num(pr, nan=0.0, posinf=0.0, neginf=0.0)
 
 
 # TODO: needs docstring
