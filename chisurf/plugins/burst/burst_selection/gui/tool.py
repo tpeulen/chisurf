@@ -773,7 +773,7 @@ class BurstSelectionTool(ChisurfDockTool):
         self.gmm_components_spin.setRange(0, 10)
         self.gmm_auto_components_check = QtWidgets.QCheckBox("Auto components", widget)
         self.fit_gmm_button = QtWidgets.QPushButton("🎯 Fit GMM", widget)
-        self.gmm_settings_button = QtWidgets.QPushButton("⚙", widget)
+        self.gmm_settings_button = QtWidgets.QPushButton("⚙️", widget)
         self.gmm_settings_button.setToolTip("Advanced GMM settings…")
         self.gmm_settings_button.setMaximumWidth(28)
         gmm_layout = QtWidgets.QHBoxLayout()
@@ -2885,26 +2885,28 @@ class BurstSelectionTool(ChisurfDockTool):
         toolbar.setMovable(False)
         toolbar.setFloatable(False)
         toolbar.setIconSize(QtCore.QSize(16, 16))
-        toolbar.setContentsMargins(4, 2, 4, 2)
+        toolbar.setContentsMargins(2, 1, 2, 1)
         if toolbar.layout() is not None:
-            toolbar.layout().setSpacing(6)
+            toolbar.layout().setSpacing(2)
         toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         toolbar.setStyleSheet(
             """
             QToolBar#burstSelectionMainToolbar {
                 background-color: transparent;
                 border: none;
-                padding: 3px 4px;
-                spacing: 6px;
+                padding: 1px 2px;
+                spacing: 2px;
             }
             QToolBar#burstSelectionMainToolbar::separator {
-                width: 8px;
+                width: 1px;
+                margin: 2px 4px;
+                background: rgba(255, 255, 255, 40);
             }
             QToolBar#burstSelectionMainToolbar QToolButton {
                 background-color: rgba(45, 45, 45, 210);
                 border: 1px solid rgba(255, 255, 255, 45);
                 border-radius: 4px;
-                padding: 4px 8px;
+                padding: 3px 6px;
                 margin: 0px;
             }
             QToolBar#burstSelectionMainToolbar QToolButton:hover {
@@ -2956,19 +2958,13 @@ class BurstSelectionTool(ChisurfDockTool):
         batch_action.triggered.connect(self.open_batch_dialog)
         toolbar.addAction(batch_action)
 
-        toolbar.addSeparator()
-
         analyze_action = QtWidgets.QAction("🚀 Process", self)
         analyze_action.triggered.connect(self.analyze_files)
         toolbar.addAction(analyze_action)
 
-        toolbar.addSeparator()
-
         clear_action = QtWidgets.QAction("🗑️ Clear", self)
         clear_action.triggered.connect(self.clear)
         toolbar.addAction(clear_action)
-
-        toolbar.addSeparator()
 
         refresh_action = QtWidgets.QAction("🔄 Refresh", self)
         refresh_action.triggered.connect(self.update_burst_plots)
