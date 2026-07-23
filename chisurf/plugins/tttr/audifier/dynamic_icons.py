@@ -6,6 +6,7 @@ Provides context-aware icons that change based on plugin state.
 from qtpy.QtCore import QObject, QTimer, Signal
 from qtpy.QtGui import QIcon
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.icon_utils import create_emoji_icon, create_text_icon
 
 
@@ -41,14 +42,14 @@ class DynamicIconManager(QObject):
             emoji = emojis[self._animation_frame % len(emojis)]
             return create_emoji_icon(emoji, size=size, bg_color="#4CAF50")
         elif state == "paused":
-            return create_emoji_icon("⏸️", size=size, bg_color="#FF9800")
+            return create_emoji_icon(Glyphs.PAUSE, size=size, bg_color="#FF9800")
         elif state == "processing":
             # Animated processing indicator
             processing_emojis = ["Wait", "Processing", "Done"]
             emoji = processing_emojis[self._animation_frame % len(processing_emojis)]
             return create_emoji_icon(emoji, size=size, bg_color="#2196F3")
         elif state == "error":
-            return create_emoji_icon("❌", size=size, bg_color="#F44336")
+            return create_emoji_icon(Glyphs.ERROR, size=size, bg_color="#F44336")
         elif state == "loaded":
             return create_emoji_icon("🎵", size=size, bg_color="#9C27B0")
         else:  # idle
@@ -137,7 +138,7 @@ def create_context_aware_icon(
             "▶", size=size, bg_color="#4CAF50", text_color="white", shape="circle"
         )
     elif is_processing:
-        return create_text_icon("⏳", size=size, bg_color="#2196F3", text_color="white")
+        return create_text_icon(Glyphs.PENDING, size=size, bg_color="#2196F3", text_color="white")
     elif data_loaded:
         return create_text_icon(base_text, size=size, bg_color="#9C27B0", text_color="white")
     else:

@@ -16,9 +16,10 @@ from __future__ import annotations
 from qtpy import QtCore, QtWidgets
 
 from chisurf import typing
+from chisurf.gui.glyphs import Glyphs
 
 #: Prefix shown in the nav list for a completed step.
-_CHECK = "✓ "
+_CHECK = f"{Glyphs.CHECK} "
 
 
 class WizardWidget(QtWidgets.QWidget):

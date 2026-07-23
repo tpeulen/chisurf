@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from qtpy import QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import NavigationPanelTool
 
 
@@ -53,21 +54,21 @@ def _vv_vh_g_factor(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 LIFETIME_PANELS = [
     {
         "name": "1. IRF Estimation",
-        "icon": "🌊",
+        "icon": Glyphs.WAVE,
         "description": "Estimate instrument response functions from fluorescence decays.",
         "factory": _irf_estimator,
         "role": "irf",
     },
     {
         "name": "2. MaxEnt MEM",
-        "icon": "📈",
+        "icon": Glyphs.CHART_UP,
         "description": "Run maximum entropy lifetime and FRET-distance analysis.",
         "factory": _maxent_mem,
         "role": "maxent",
     },
     {
         "name": "3. Lazy Lifetime Analysis",
-        "icon": "⏱️",
+        "icon": Glyphs.TIMER,
         "description": "Analyze TCSPC decays with the LLTF workflow.",
         "experimental": True,
         "experimental_message": "Lazy Lifetime Analysis is experimental and not yet validated.",
@@ -76,7 +77,7 @@ LIFETIME_PANELS = [
     },
     {
         "name": "4. Histogram-Microtime",
-        "icon": "📊",
+        "icon": Glyphs.CHART,
         "description": "Build TTTR microtime histograms.",
         "factory": _microtime_histogram,
         "role": "microtime_histogram",

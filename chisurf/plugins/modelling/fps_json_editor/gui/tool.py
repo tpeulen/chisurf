@@ -8,6 +8,7 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
+from chisurf.gui.glyphs import Glyphs
 
 from ..api.client import FpsJsonEditorClient
 from .editor import FpsJsonEditor
@@ -36,25 +37,25 @@ class FpsJsonEditorTool(QtWidgets.QMainWindow):
 
         file_menu = self.menuBar().addMenu("&File")
 
-        load_action = QtWidgets.QAction("📂 Load", self)
+        load_action = QtWidgets.QAction(f"{Glyphs.OPEN} Load", self)
         load_action.triggered.connect(self.editor.onLoadJSON)
         file_menu.addAction(load_action)
         toolbar.addAction(load_action)
 
-        save_action = QtWidgets.QAction("💾 Save", self)
+        save_action = QtWidgets.QAction(f"{Glyphs.SAVE} Save", self)
         save_action.triggered.connect(self.editor.onSaveJSON)
         file_menu.addAction(save_action)
         toolbar.addAction(save_action)
         
         toolbar.addSeparator()
 
-        update_action = QtWidgets.QAction("🔄 Update", self)
+        update_action = QtWidgets.QAction(f"{Glyphs.REFRESH} Update", self)
         update_action.setToolTip("Update UI models from JSON editor text")
         update_action.triggered.connect(self.editor.onReadTextEdit)
         file_menu.addAction(update_action)
         toolbar.addAction(update_action)
 
-        clear_action = QtWidgets.QAction("🗑️ Clear", self)
+        clear_action = QtWidgets.QAction(f"{Glyphs.DELETE} Clear", self)
         clear_action.triggered.connect(self.editor.onClearAll)
         file_menu.addAction(clear_action)
         toolbar.addAction(clear_action)
@@ -63,7 +64,7 @@ class FpsJsonEditorTool(QtWidgets.QMainWindow):
         spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
         toolbar.addWidget(spacer)
 
-        help_action = QtWidgets.QAction("ℹ️ Help", self)
+        help_action = QtWidgets.QAction(f"{Glyphs.INFO} Help", self)
         help_action.setToolTip("Show help and documentation")
         help_action.triggered.connect(self._show_help)
         toolbar.addAction(help_action)
@@ -90,13 +91,13 @@ class FpsJsonEditorTool(QtWidgets.QMainWindow):
             "<li><b>Positions:</b> Define dye attachment points by selecting residues from a PDB structure. Use the table to set parameters such as linker length and width.</li>"
             "<li><b>Distances:</b> Define expected distances between your positions. You can group these into different scoring sets.</li>"
             "<li><b>FlexFit:</b> Setup rigid body or flexible fitting parameters for molecular simulations.</li>"
-            "<li><b>JSON:</b> Review and manually edit the underlying raw JSON configuration. Click <b>🔄 Update</b> in the toolbar to apply manual changes to the UI.</li>"
+            f"<li><b>JSON:</b> Review and manually edit the underlying raw JSON configuration. Click <b>{Glyphs.REFRESH} Update</b> in the toolbar to apply manual changes to the UI.</li>"
             "</ul>"
             "<p><b>Toolbar Actions:</b></p>"
             "<ul>"
-            "<li><b>📂 Load / 💾 Save:</b> Load or save the entire FPS model configuration to disk.</li>"
-            "<li><b>🔄 Update:</b> Push any raw text edits from the JSON panel back to the visual editor.</li>"
-            "<li><b>🗑️ Clear:</b> Remove all positions and distances to start from scratch.</li>"
+            f"<li><b>{Glyphs.OPEN} Load / {Glyphs.SAVE} Save:</b> Load or save the entire FPS model configuration to disk.</li>"
+            f"<li><b>{Glyphs.REFRESH} Update:</b> Push any raw text edits from the JSON panel back to the visual editor.</li>"
+            f"<li><b>{Glyphs.DELETE} Clear:</b> Remove all positions and distances to start from scratch.</li>"
             "</ul>"
         )
         text_edit.setHtml(help_html)

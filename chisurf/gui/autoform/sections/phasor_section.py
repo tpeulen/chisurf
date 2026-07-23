@@ -28,6 +28,8 @@ import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 from .registry import register_section
 
 logger = logging.getLogger(__name__)
@@ -132,7 +134,7 @@ class PhasorSectionWidget(QtWidgets.QWidget):
         self._play_btn.clicked.connect(self._toggle_play)
         bar.addWidget(self._play_btn)
         self._loop_btn = QtWidgets.QToolButton()
-        self._loop_btn.setText("🔁")
+        self._loop_btn.setText(Glyphs.LOOP)
         self._loop_btn.setCheckable(True)
         self._loop_btn.setChecked(True)
         self._loop_btn.setToolTip("Loop playback (wrap around at the end)")

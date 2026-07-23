@@ -11,6 +11,7 @@ import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea, DockSplitter
 
 from ..api.models import IRFEstimationSettings
@@ -448,7 +449,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
         )
         toolbar.addWidget(spacer)
 
-        help_action = QtWidgets.QAction("ℹ️ Help", self)
+        help_action = QtWidgets.QAction(f"{Glyphs.INFO} Help", self)
         help_action.setToolTip("Show help and CLI reference")
         help_action.triggered.connect(self._show_help)
         toolbar.addAction(help_action)

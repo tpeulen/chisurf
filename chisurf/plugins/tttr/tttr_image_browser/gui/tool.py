@@ -15,6 +15,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.plugins.tttr.tttr_image_browser import TTTRImageBrowser
 from chisurf.plugins.tttr.tttr_image_browser.gui.client import TTTRImageBrowserClient
@@ -46,7 +47,7 @@ class TTTRImageBrowserTool(QMainWindow):
         self._workspace = TTTRImageBrowser(self)
         self.client = TTTRImageBrowserClient()
         self._dock_area = DockArea(self)
-        self._dock_area.addTab(self._workspace, "📈 Images")
+        self._dock_area.addTab(self._workspace, f"{Glyphs.CHART_UP} Images")
         self.setCentralWidget(self._dock_area)
         self._setup_toolbar()
         # When embedded in Image Tools, selecting an image proactively warms the
@@ -128,13 +129,13 @@ class TTTRImageBrowserTool(QMainWindow):
 
     def _setup_toolbar(self) -> None:
         """Create emoji toolbar actions backed by the workspace."""
-        toolbar = QToolBar("🧰 TTTR Image Browser", self)
+        toolbar = QToolBar(f"{Glyphs.TOOLBOX} TTTR Image Browser", self)
         toolbar.setObjectName("tttrImageBrowserMainToolbar")
         actions = [
-            ("📂 Open", self._workspace._on_pick_folder, "Pick a folder with TTTR images"),
-            ("🧹 Clear", self._workspace._on_clear, "Clear the file list"),
-            ("♻️ Caches", self._workspace._on_clear_caches, "Clear image caches"),
-            ("📤 Export", self._workspace._on_export, "Export selected image files"),
+            (f"{Glyphs.OPEN} Open", self._workspace._on_pick_folder, "Pick a folder with TTTR images"),
+            (f"{Glyphs.CLEAR} Clear", self._workspace._on_clear, "Clear the file list"),
+            (f"{Glyphs.RESET} Caches", self._workspace._on_clear_caches, "Clear image caches"),
+            (f"{Glyphs.EXPORT} Export", self._workspace._on_export, "Export selected image files"),
             ("TIFF", self._workspace._on_save_tiff, "Save intensity images as TIFF stacks"),
             ("DOCX", self._workspace._on_export_docx, "Export selected images as DOCX"),
         ]

@@ -17,6 +17,7 @@ import pathlib
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class _IoSection(QtWidgets.QWidget):
         layout.addLayout(row)
 
         self._save_btn = QtWidgets.QToolButton()
-        self._save_btn.setText("💾 Save clash-free…")
+        self._save_btn.setText(f"{Glyphs.SAVE} Save clash-free…")
         self._save_btn.setToolTip(
             "Drop every frame that contains an atom-atom clash and write a new H5 trajectory."
         )

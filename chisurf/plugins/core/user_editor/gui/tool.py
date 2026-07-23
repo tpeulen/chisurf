@@ -1,17 +1,34 @@
 import os
 import uuid
-import yaml
 
-from chisurf import logging
-from qtpy.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QLineEdit, QTextEdit, QTableWidget, QTableWidgetItem,
-    QMessageBox, QStatusBar, QHeaderView, QGroupBox, QFormLayout,
-    QComboBox, QCheckBox, QDialog, QProgressBar, QSizePolicy
-)
+import yaml
 from qtpy.QtCore import Qt
+from qtpy.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QSizePolicy,
+    QStatusBar,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 import chisurf.core.settings as cs_settings
+from chisurf import logging
+from chisurf.gui.glyphs import Glyphs
 
 
 class PasswordChangeDialog(QDialog):
@@ -335,7 +352,7 @@ class UserEditorWidget(QWidget):
         self.table.setRowCount(len(self.users))
         for i, user in enumerate(self.users):
             is_active = user["user_id"] == active_id
-            active_text = "★" if is_active else ""
+            active_text = Glyphs.STAR_ON if is_active else ""
             
             item_active = QTableWidgetItem(active_text)
             item_active.setTextAlignment(Qt.AlignCenter)
@@ -605,6 +622,7 @@ class UserEditorWidget(QWidget):
             rename_runtime_session_token,
             rename_session_token,
         )
+
         from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
 
         mmfdb_settings = cs_settings.cs_settings.setdefault("mmfdb", {})
@@ -633,6 +651,7 @@ class UserEditorWidget(QWidget):
             load_session_token,
             store_runtime_session_token,
         )
+
         from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
         mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
@@ -664,6 +683,7 @@ class UserEditorWidget(QWidget):
             MMFDB user whose local autologin state should be cleared.
         """
         from mmfdb.security.credentials import delete_runtime_session_token, delete_session_token
+
         from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
 
         mmfdb_settings = cs_settings.cs_settings.setdefault("mmfdb", {})

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.core.code_editor.context_retriever import retrieve_context
 from chisurf.plugins.core.code_editor.validation import validate_writes
 from chisurf.plugins.core.code_editor.wiki_indexer import build_api_index
@@ -123,13 +124,13 @@ class WikiDialog(QtWidgets.QDialog):
         search_layout.addWidget(self.search_input)
 
         self.refresh_btn = QtWidgets.QToolButton()
-        self.refresh_btn.setText("🔄 Refresh")
+        self.refresh_btn.setText(f"{Glyphs.REFRESH} Refresh")
         self.refresh_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.refresh_btn.clicked.connect(self.load_wiki_index)
         search_layout.addWidget(self.refresh_btn)
 
         self.populate_btn = QtWidgets.QToolButton()
-        self.populate_btn.setText("📡 Populate Wiki")
+        self.populate_btn.setText(f"{Glyphs.ANTENNA} Populate Wiki")
         self.populate_btn.setToolTip("Feed current codebase to LLM Wiki")
         self.populate_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         if self._populate_callback:
@@ -316,7 +317,7 @@ class AgentPanelWidget(QtWidgets.QWidget):
         header_layout = QtWidgets.QHBoxLayout()
         header_layout.setContentsMargins(4, 4, 4, 2)
 
-        header_label = QtWidgets.QLabel("🤖 AI Assistant")
+        header_label = QtWidgets.QLabel(f"{Glyphs.ROBOT} AI Assistant")
         header_label.setStyleSheet("font-weight: bold; font-size: 10pt;")
         header_layout.addWidget(header_label)
 
@@ -330,8 +331,8 @@ class AgentPanelWidget(QtWidgets.QWidget):
         self.mode_combo = QtWidgets.QComboBox()
         self.mode_combo.setMinimumWidth(130)
         self.mode_combo.addItem("💬 Chat only", AgentMode.CHAT_ONLY.value)
-        self.mode_combo.addItem("🔧 ChiSurf tools", AgentMode.CHISURF_TOOLS.value)
-        self.mode_combo.addItem("🤖 Autonomous fit", AgentMode.AUTONOMOUS_FIT.value)
+        self.mode_combo.addItem(f"{Glyphs.WRENCH} ChiSurf tools", AgentMode.CHISURF_TOOLS.value)
+        self.mode_combo.addItem(f"{Glyphs.ROBOT} Autonomous fit", AgentMode.AUTONOMOUS_FIT.value)
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
         header_layout.addWidget(self.mode_combo)
 
@@ -371,14 +372,14 @@ class AgentPanelWidget(QtWidgets.QWidget):
         button_layout = QtWidgets.QHBoxLayout()
 
         self.restart_btn = QtWidgets.QToolButton()
-        self.restart_btn.setText("🔄 Restart")
+        self.restart_btn.setText(f"{Glyphs.REFRESH} Restart")
         self.restart_btn.setToolTip("Clear chat history")
         self.restart_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.restart_btn.clicked.connect(self.clear_history)
         button_layout.addWidget(self.restart_btn)
 
         self.wiki_btn = QtWidgets.QToolButton()
-        self.wiki_btn.setText("📚 Wiki")
+        self.wiki_btn.setText(f"{Glyphs.DOCS} Wiki")
         self.wiki_btn.setToolTip("Open LLM Wiki")
         self.wiki_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.wiki_btn.clicked.connect(self._open_wiki)
@@ -401,7 +402,7 @@ class AgentPanelWidget(QtWidgets.QWidget):
         button_layout.addWidget(self.send_btn)
 
         self.cancel_btn = QtWidgets.QToolButton()
-        self.cancel_btn.setText("✕ Cancel")
+        self.cancel_btn.setText(f"{Glyphs.CLOSE} Cancel")
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.setToolTip("Cancel running agent operation")
         self.cancel_btn.setStyleSheet("color: #e06c75; font-weight: bold;")
@@ -431,7 +432,7 @@ class AgentPanelWidget(QtWidgets.QWidget):
             "• 🐛 Find bugs or issues\n"
             "• 🧪 Write tests\n"
             "• 📝 Add documentation\n\n"
-            "📚 Use 'Wiki' to feed the current codebase to the LLM Wiki."
+            f"{Glyphs.DOCS} Use 'Wiki' to feed the current codebase to the LLM Wiki."
         )
 
     def _populate_providers(self) -> None:
@@ -449,7 +450,7 @@ class AgentPanelWidget(QtWidgets.QWidget):
 
             label = name
             if has_key:
-                label += " ✓"
+                label += f" {Glyphs.CHECK}"
             if model:
                 label += f"  [{model}]"
 
@@ -490,8 +491,8 @@ class AgentPanelWidget(QtWidgets.QWidget):
         """Update the status label with current mode info."""
         labels = {
             AgentMode.CHAT_ONLY: "💬 Chat only",
-            AgentMode.CHISURF_TOOLS: "🔧 Tool mode active",
-            AgentMode.AUTONOMOUS_FIT: "🤖 Autonomous fit mode",
+            AgentMode.CHISURF_TOOLS: f"{Glyphs.WRENCH} Tool mode active",
+            AgentMode.AUTONOMOUS_FIT: f"{Glyphs.ROBOT} Autonomous fit mode",
         }
         self.status_label.setText(labels.get(mode, ""))
 
@@ -518,7 +519,7 @@ class AgentPanelWidget(QtWidgets.QWidget):
         """Cancel the running agent operation."""
         if self._runtime is not None:
             self._runtime.cancel()
-            self._append_sys("⏹️ Cancellation requested...")
+            self._append_sys(f"{Glyphs.STOP} Cancellation requested...")
         self.cancel_btn.setEnabled(False)
 
     def _open_wiki(self) -> None:
@@ -935,7 +936,7 @@ updated: 2026-06-09
     def _process_message(self, text: str) -> None:
         """Process the user's message asynchronously without blocking the UI."""
         context = self._get_context() if self._get_context_callback else ""
-        self.status_label.setText("🔍 Retrieving ChiSurf API context...")
+        self.status_label.setText(f"{Glyphs.SEARCH} Retrieving ChiSurf API context...")
         self.progress_bar.setVisible(True)
         self.send_btn.setEnabled(False)
         self.input.setEnabled(False)
@@ -967,7 +968,7 @@ updated: 2026-06-09
 
         writes = self._apply_file_writes(response)
         if writes:
-            self._append_sys("📝 Applying generated code to the editor...")
+            self._append_sys(f"{Glyphs.NOTE} Applying generated code to the editor...")
             self._start_validation(writes, iteration=0, label="Initial code")
         else:
             self._append_sys("💬 No code was written; no compile or ruff checks run.")
@@ -981,7 +982,7 @@ updated: 2026-06-09
         self.progress_bar.setVisible(False)
         self.send_btn.setEnabled(True)
         self.input.setEnabled(True)
-        self.status_label.setText("⚠️ Error")
+        self.status_label.setText(f"{Glyphs.WARNING} Error")
 
         self._append_sys(f"Error: {error_msg}")
         std_logging.error(f"Agent error: {error_msg}")
@@ -1019,7 +1020,7 @@ updated: 2026-06-09
                 state=state,
             )
             if not available:
-                self._append_sys("⚠️ ChiSurf RPC server not available. Tool execution disabled.")
+                self._append_sys(f"{Glyphs.WARNING} ChiSurf RPC server not available. Tool execution disabled.")
                 self.send_btn.setEnabled(True)
                 self.input.setEnabled(True)
                 return
@@ -1129,7 +1130,7 @@ updated: 2026-06-09
         self.cancel_btn.setEnabled(True)
         self.mode_combo.setEnabled(False)
         self.progress_bar.setVisible(True)
-        self.status_label.setText("🤖 Agent running...")
+        self.status_label.setText(f"{Glyphs.ROBOT} Agent running...")
         self._check_rpc_status()
 
     def _on_runtime_finished(self) -> None:
@@ -1163,7 +1164,7 @@ updated: 2026-06-09
             tool = data.get("tool", "?")
             ok = data.get("ok", False)
             elapsed = data.get("elapsed_ms", 0)
-            status = "✅" if ok else "❌"
+            status = Glyphs.SUCCESS if ok else Glyphs.ERROR
             self._append_sys(f"{status} <b>{tool}</b> ({elapsed}ms)")
         elif event == "tool.failed":
             error = data.get("error", "unknown error")
@@ -1181,15 +1182,15 @@ updated: 2026-06-09
                 chi2 = metrics.get("chi2", "?")
                 self._append_sys(
                     f"📊 chi2r={chi2r} chi2={chi2} "
-                    f"{'✅ improved' if ok else '❌ worsened'} "
+                    f"{f'{Glyphs.SUCCESS} improved' if ok else f'{Glyphs.ERROR} worsened'} "
                     f"(worsening streak: {worsening})"
                 )
             else:
-                self._append_sys(f"📊 Fit iteration: {'✅' if ok else '❌'} {reason}")
+                self._append_sys(f"📊 Fit iteration: {Glyphs.SUCCESS if ok else Glyphs.ERROR} {reason}")
         elif event == "fit.rollback.completed":
             self._append_sys("⏪ Restored best-known parameter snapshot")
         elif event == "agent.cancelled":
-            self._append_sys("⏹️ Agent cancelled by user")
+            self._append_sys(f"{Glyphs.STOP} Agent cancelled by user")
         elif event == "agent.failed":
             error = data.get("error", "unknown error")
             self._append_sys(f"⚠️ Agent failed: {error}")
@@ -1265,7 +1266,7 @@ updated: 2026-06-09
             self._append_sys(f"📝 Applying auto-fix round {iteration + 1} to the editor...")
             self._start_validation(writes, iteration + 1, f"Fix round {iteration + 1}")
         else:
-            self._append_sys("⚠️ Fix response did not contain WRITE_FILE code; leaving current diagnostics visible.")
+            self._append_sys(f"{Glyphs.WARNING} Fix response did not contain WRITE_FILE code; leaving current diagnostics visible.")
             self.send_btn.setEnabled(True)
             self.input.setEnabled(True)
             self.progress_bar.setVisible(False)
@@ -1296,7 +1297,7 @@ updated: 2026-06-09
             QtCore.QTimer.singleShot(0, lambda: self._start_fix_loop(issues, iteration))
             return
 
-        self._append_sys("✅ All checks pass — code is clean.")
+        self._append_sys(f"{Glyphs.SUCCESS} All checks pass — code is clean.")
         self.send_btn.setEnabled(True)
         self.input.setEnabled(True)
         self.progress_bar.setVisible(False)
@@ -1527,7 +1528,7 @@ updated: 2026-06-09
         self._chat_history = []
         _save_history([])
         self.transcript.clear()
-        self._append_sys("🗑️ History cleared. Current file context will be included with your next question.")
+        self._append_sys(f"{Glyphs.DELETE} History cleared. Current file context will be included with your next question.")
 
     def _update_provider_label(self, provider_key: str | None = None) -> None:
         """Update the provider status label."""

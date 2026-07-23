@@ -2,32 +2,31 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
 from chisurf import logging
+from chisurf.core.base import Base, find_by_uuid
 from chisurf.core.fitting.fit import Fit, FitGroup
 from chisurf.core.fitting.parameter import FittingParameter
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.plots.table_plot import BooleanToggleDelegate
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
-from chisurf.core.base import Base, find_by_uuid
-
 from chisurf.plugins.core.globalview.parameter_table_model import (
-    COL_ROW,
-    COL_FIT,
-    COL_LOCAL_FIT,
-    COL_PARAM,
-    COL_VALUE,
-    COL_FIXED,
-    COL_BOUNDS_LO,
     COL_BOUNDS_HI,
+    COL_BOUNDS_LO,
     COL_BOUNDS_ON,
     COL_ERROR,
+    COL_FIT,
+    COL_FIXED,
     COL_LINK_ROW,
     COL_LINKED,
+    COL_LOCAL_FIT,
+    COL_PARAM,
+    COL_ROW,
+    COL_VALUE,
     ParameterTableModel,
 )
-
 
 NUMERIC_COLS = {COL_ROW, COL_VALUE, COL_BOUNDS_LO, COL_BOUNDS_HI, COL_ERROR}
 FROZEN_COLS = 4  # Row, Fit, Local fit, Parameter
@@ -372,31 +371,31 @@ class ParameterTableView(QtWidgets.QWidget):
         toolbar.setSpacing(1)
 
         self._filter_edit = QtWidgets.QLineEdit()
-        self._filter_edit.setPlaceholderText("🔍 filter: fit:name param:name…")
+        self._filter_edit.setPlaceholderText(f"{Glyphs.SEARCH} filter: fit:name param:name…")
         self._filter_edit.setClearButtonEnabled(True)
         self._filter_edit.setMaximumWidth(250)
         toolbar.addWidget(self._filter_edit)
 
         self._mode_combo = QtWidgets.QComboBox()
-        self._mode_combo.addItems(["☰ all", "🟢 free", "📌 fixed", "🔗 linked"])
-        self._mode_combo.setToolTip("🔍 Show only parameters matching status")
+        self._mode_combo.addItems(["☰ all", "🟢 free", f"{Glyphs.PIN} fixed", f"{Glyphs.LINK} linked"])
+        self._mode_combo.setToolTip(f"{Glyphs.SEARCH} Show only parameters matching status")
         toolbar.addWidget(self._mode_combo)
 
         toolbar.addStretch()
 
         self._btn_link = QtWidgets.QToolButton()
-        self._btn_link.setText("🔗 Link")
-        self._btn_link.setToolTip("🔗 Link selected parameters (first = master)")
+        self._btn_link.setText(f"{Glyphs.LINK} Link")
+        self._btn_link.setToolTip(f"{Glyphs.LINK} Link selected parameters (first = master)")
         toolbar.addWidget(self._btn_link)
 
         self._btn_unlink = QtWidgets.QToolButton()
-        self._btn_unlink.setText("⛓️ Unlink")
-        self._btn_unlink.setToolTip("⛓️ Unlink selected parameters")
+        self._btn_unlink.setText(f"{Glyphs.CHAIN} Unlink")
+        self._btn_unlink.setToolTip(f"{Glyphs.CHAIN} Unlink selected parameters")
         toolbar.addWidget(self._btn_unlink)
 
         self._btn_fix = QtWidgets.QToolButton()
-        self._btn_fix.setText("📌 Fix")
-        self._btn_fix.setToolTip("📌 Fix selected parameters")
+        self._btn_fix.setText(f"{Glyphs.PIN} Fix")
+        self._btn_fix.setToolTip(f"{Glyphs.PIN} Fix selected parameters")
         toolbar.addWidget(self._btn_fix)
 
         self._btn_unfix = QtWidgets.QToolButton()
@@ -405,8 +404,8 @@ class ParameterTableView(QtWidgets.QWidget):
         toolbar.addWidget(self._btn_unfix)
 
         self._btn_set_value = QtWidgets.QToolButton()
-        self._btn_set_value.setText("🎯 Set value…")
-        self._btn_set_value.setToolTip("🎯 Set value for all selected parameters")
+        self._btn_set_value.setText(f"{Glyphs.TARGET} Set value…")
+        self._btn_set_value.setToolTip(f"{Glyphs.TARGET} Set value for all selected parameters")
         toolbar.addWidget(self._btn_set_value)
 
         self._btn_link_by_name = QtWidgets.QToolButton()
@@ -415,13 +414,13 @@ class ParameterTableView(QtWidgets.QWidget):
         toolbar.addWidget(self._btn_link_by_name)
 
         self._btn_refresh = QtWidgets.QToolButton()
-        self._btn_refresh.setText("🔄 Refresh")
-        self._btn_refresh.setToolTip("🔄 Reload all parameters from fits")
+        self._btn_refresh.setText(f"{Glyphs.REFRESH} Refresh")
+        self._btn_refresh.setToolTip(f"{Glyphs.REFRESH} Reload all parameters from fits")
         toolbar.addWidget(self._btn_refresh)
 
         self._btn_find_uid = QtWidgets.QToolButton()
-        self._btn_find_uid.setText("🔍 Find by UUID…")
-        self._btn_find_uid.setToolTip("🔍 Look up a parameter or fit by its unique identifier")
+        self._btn_find_uid.setText(f"{Glyphs.SEARCH} Find by UUID…")
+        self._btn_find_uid.setToolTip(f"{Glyphs.SEARCH} Look up a parameter or fit by its unique identifier")
         toolbar.addWidget(self._btn_find_uid)
 
         layout.addLayout(toolbar)
@@ -569,23 +568,23 @@ class ParameterTableView(QtWidgets.QWidget):
     def _show_context_menu(self, pos: QtCore.QPoint):
         menu = QtWidgets.QMenu(self)
 
-        copy_action = menu.addAction("📋 Copy", self._table._copy_selection)
+        copy_action = menu.addAction(f"{Glyphs.COPY} Copy", self._table._copy_selection)
         copy_action.setShortcut(QtGui.QKeySequence.Copy)
-        paste_action = menu.addAction("📥 Paste", self._table._paste_to_selection)
+        paste_action = menu.addAction(f"{Glyphs.IMPORT} Paste", self._table._paste_to_selection)
         paste_action.setShortcut(QtGui.QKeySequence.Paste)
 
         menu.addSeparator()
-        menu.addAction("🔗 Link selected", self._on_link)
-        menu.addAction("⛓️ Unlink selected", self._on_unlink)
+        menu.addAction(f"{Glyphs.LINK} Link selected", self._on_link)
+        menu.addAction(f"{Glyphs.CHAIN} Unlink selected", self._on_unlink)
         menu.addSeparator()
-        menu.addAction("📌 Fix selected", self._on_fix)
+        menu.addAction(f"{Glyphs.PIN} Fix selected", self._on_fix)
         menu.addAction("🧷 Unfix selected", self._on_unfix)
         menu.addSeparator()
-        menu.addAction("🎯 Set value…", self._on_set_value)
+        menu.addAction(f"{Glyphs.TARGET} Set value…", self._on_set_value)
         menu.addSeparator()
         menu.addAction("🔤 Link by name across fits…", self._on_link_by_name)
         menu.addSeparator()
-        menu.addAction("🔄 Refresh", self._on_refresh)
+        menu.addAction(f"{Glyphs.REFRESH} Refresh", self._on_refresh)
         menu.exec(self._table.viewport().mapToGlobal(pos))
 
     # ── bulk actions ──────────────────────────────────────────────────
@@ -681,7 +680,7 @@ class ParameterTableView(QtWidgets.QWidget):
             return
         value, ok = QtWidgets.QInputDialog.getDouble(
             self,
-            "🎯 Set value",
+            f"{Glyphs.TARGET} Set value",
             f"🎯 New value for {len(params_with_idx)} parameter(s):",
             params_with_idx[0][2].value,
             -1e12,
@@ -771,8 +770,8 @@ class ParameterTableView(QtWidgets.QWidget):
         """Open a dialog to look up an object by UUID and select its row."""
         uid, ok = QtWidgets.QInputDialog.getText(
             self,
-            "🔍 Find by UUID",
-            "🔍 Enter a unique identifier (UUID):",
+            f"{Glyphs.SEARCH} Find by UUID",
+            f"{Glyphs.SEARCH} Enter a unique identifier (UUID):",
         )
         if not ok or not uid:
             return
@@ -808,7 +807,7 @@ class ParameterTableView(QtWidgets.QWidget):
 # TODO: needs docstring
                 QtWidgets.QMessageBox.information(
                     self,
-                    "🔍 Found but not in table",
+                    f"{Glyphs.SEARCH} Found but not in table",
                     f"Parameter '{obj.name}' was found but is not in the current table view.\n"
                     f"Try changing the filter or refreshing.",
                 )
@@ -817,7 +816,7 @@ class ParameterTableView(QtWidgets.QWidget):
             QtWidgets.QMessageBox.information(
 # TODO: needs docstring
                 self,
-                    "✅ Found",
+                    f"{Glyphs.SUCCESS} Found",
                 f"Found: {type(obj).__name__} '{getattr(obj, 'name', '')}'\n"
                 f"UID: {uid}",
             )
@@ -825,7 +824,7 @@ class ParameterTableView(QtWidgets.QWidget):
         else:
             QtWidgets.QMessageBox.information(
                 self,
-                "✅ Found",
+                f"{Glyphs.SUCCESS} Found",
                 f"Found: {type(obj).__name__} '{getattr(obj, 'name', '')}'\n"
                 f"UID: {uid}",
             )

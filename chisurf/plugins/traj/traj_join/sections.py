@@ -17,6 +17,7 @@ import pathlib
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class _IoSection(QtWidgets.QWidget):
         )
 
         self._save_btn = QtWidgets.QToolButton()
-        self._save_btn.setText("💾 Save joined…")
+        self._save_btn.setText(f"{Glyphs.SAVE} Save joined…")
         self._save_btn.setToolTip(
             "Join the two trajectories and write the result as a new H5 trajectory."
         )

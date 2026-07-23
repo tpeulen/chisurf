@@ -3,6 +3,8 @@ from pathlib import Path
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 
 class DownloadPanel(QtWidgets.QWidget):
     """Run scrapers into the staging DB and push it to the MMFDB.
@@ -36,7 +38,7 @@ class DownloadPanel(QtWidgets.QWidget):
         self.scraped_info = QtWidgets.QLabel("")
         self.scraped_info.setWordWrap(True)
         self.info_layout.addWidget(self.scraped_info, 1)
-        self.browse_source_btn = QtWidgets.QPushButton("🔍 Browse this source")
+        self.browse_source_btn = QtWidgets.QPushButton(f"{Glyphs.SEARCH} Browse this source")
         self.browse_source_btn.setToolTip("Browse the already-scraped data for the selected source.")
         self.browse_source_btn.clicked.connect(self._browse_selected_source)
         self.info_layout.addWidget(self.browse_source_btn)

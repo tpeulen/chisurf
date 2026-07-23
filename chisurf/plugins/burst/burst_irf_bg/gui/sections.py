@@ -18,6 +18,7 @@ import logging
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ class _RunSection(QtWidgets.QWidget):
         )
         bar.addWidget(
             _tool_button(
-                "🎯 Send to MLE",
+                f"{Glyphs.TARGET} Send to MLE",
                 "Feed the extracted IRF and background to the burst-MLE lifetime fit "
                 "(available inside the Burst Analysis workflow).",
                 self._send_to_mle,

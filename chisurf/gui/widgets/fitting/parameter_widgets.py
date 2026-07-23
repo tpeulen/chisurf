@@ -1,28 +1,28 @@
 from __future__ import annotations
 
 import os
-import typing
 import pathlib
 import textwrap
+import typing
 
-import numpy as np
-from qtpy import QtWidgets, uic, QtCore, QtGui
-from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
 import matplotlib.colors as mcolors
+import numpy as np
+from qtpy import QtCore, QtGui, QtWidgets, uic
 
 import chisurf as cs
 import chisurf.core.data
-import chisurf.core.fitting
 import chisurf.core.decorators
-import chisurf.gui.decorators
+import chisurf.core.fitting
 import chisurf.core.settings
-
+import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
-from chisurf.gui.widgets.general import Controller
-from chisurf.core.math.optimization.leastsqbound import OptimizationCancelled
 from chisurf.core.actions import record_action
+from chisurf.core.math.optimization.leastsqbound import OptimizationCancelled
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
+from chisurf.gui.widgets.general import Controller
 from chisurf.macros.core_fit import link_fit_group
 
 parameter_settings = chisurf.core.settings.parameter
@@ -105,10 +105,10 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.lbl_link = QtWidgets.QLabel("")
         self.lbl_link.setStyleSheet("color: gray; font-size: 9pt")
         self.btn_change_link = QtWidgets.QToolButton()
-        self.btn_change_link.setText("🔗 Link…")
+        self.btn_change_link.setText(f"{Glyphs.LINK} Link…")
         self.btn_change_link.setToolTip("Link this parameter to another parameter")
         self.btn_unlink = QtWidgets.QToolButton()
-        self.btn_unlink.setText("✂️ Unlink")
+        self.btn_unlink.setText(f"{Glyphs.CUT} Unlink")
         self.btn_unlink.setToolTip("Detach this parameter from the one it is linked to")
         header_row.addWidget(self.lbl_title)
         header_row.addWidget(self.lbl_link, 1)
@@ -1433,8 +1433,8 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
                 return
             if hasattr(self, '_chisurf_code_badge_installed'):
                 return
-            from chisurf.gui.widgets.code_badge import install_code_badge
             from chisurf.gui.devtools.source_jump import resolve_parameter_group_source
+            from chisurf.gui.widgets.code_badge import install_code_badge
             resolver = lambda: resolve_parameter_group_source(self)
             install_code_badge(self, resolver, corner='top-right', margin=4)
             self._chisurf_code_badge_installed = True

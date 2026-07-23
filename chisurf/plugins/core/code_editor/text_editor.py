@@ -6,6 +6,7 @@ import sys
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
+from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.core.code_editor.settings import (
     EDITOR_COLOR_SCHEMES,
     EDITOR_SETTINGS_KEYS,
@@ -265,7 +266,7 @@ class FindBar(QtWidgets.QWidget):
         layout.setSpacing(4)
 
         close_btn = QtWidgets.QToolButton(self)
-        close_btn.setText("✕")
+        close_btn.setText(Glyphs.CLOSE)
         close_btn.setFixedSize(18, 18)
         close_btn.setToolTip("Close (Esc)")
         close_btn.clicked.connect(self.close_bar)

@@ -12,11 +12,12 @@ from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.general import apply_compact_table_style
+from chisurf.gui.widgets.spectrum_view import SpectrumView
 
 from .component_detail_form import ComponentDetailForm
 from .duplicates_dialog import DuplicatesDialog
-from chisurf.gui.widgets.spectrum_view import SpectrumView
 
 _PROPERTY_MAP = {
     "Cut-On Wavelength (nm)": "cut_on",
@@ -157,32 +158,32 @@ class OpticalComponentDock(QtWidgets.QWidget):
         layout.setSpacing(4)
 
         self._import_btn = QtWidgets.QToolButton()
-        self._import_btn.setText("📥 Import ref. set")
+        self._import_btn.setText(f"{Glyphs.IMPORT} Import ref. set")
         self._import_btn.setToolTip("Import reference data from the bundled reference database")
         self._import_btn.clicked.connect(self._on_import)
         layout.addWidget(self._import_btn)
 
         self._approve_btn = QtWidgets.QToolButton()
-        self._approve_btn.setText("✅ Approve")
+        self._approve_btn.setText(f"{Glyphs.SUCCESS} Approve")
         self._approve_btn.setToolTip("Mark the selected item as approved")
         self._approve_btn.clicked.connect(self._on_approve)
         layout.addWidget(self._approve_btn)
 
         self._reject_btn = QtWidgets.QToolButton()
-        self._reject_btn.setText("❌ Reject")
+        self._reject_btn.setText(f"{Glyphs.ERROR} Reject")
         self._reject_btn.setToolTip("Mark the selected item as rejected")
         self._reject_btn.clicked.connect(self._on_reject)
         layout.addWidget(self._reject_btn)
 
         self._review_btn = QtWidgets.QToolButton()
-        self._review_btn.setText("🔍 Review queue")
+        self._review_btn.setText(f"{Glyphs.SEARCH} Review queue")
         self._review_btn.setToolTip("Filter to unverified items needing review")
         self._review_btn.setCheckable(True)
         self._review_btn.clicked.connect(self._on_review_queue)
         layout.addWidget(self._review_btn)
 
         self._ai_btn = QtWidgets.QToolButton()
-        self._ai_btn.setText("🤖 AI triage")
+        self._ai_btn.setText(f"{Glyphs.ROBOT} AI triage")
         self._ai_btn.setToolTip("Run deterministic checks on the selected item")
         self._ai_btn.clicked.connect(self._on_ai_triage)
         layout.addWidget(self._ai_btn)
@@ -247,7 +248,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
         layout.addWidget(self._status_combo)
 
         refresh_btn = QtWidgets.QToolButton()
-        refresh_btn.setText("🔄")
+        refresh_btn.setText(Glyphs.REFRESH)
         refresh_btn.setToolTip("Refresh list")
         refresh_btn.clicked.connect(self.refresh)
         layout.addWidget(refresh_btn)
@@ -313,7 +314,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
         self._table.blockSignals(True)
         try:
             columns = self._active_component["columns"]
-            headers = ["✓"] + [c[0] for c in columns]
+            headers = [Glyphs.CHECK] + [c[0] for c in columns]
             self._table.setColumnCount(len(headers))
             self._table.setHorizontalHeaderLabels(headers)
             
@@ -615,20 +616,20 @@ class OpticalComponentDock(QtWidgets.QWidget):
 
         if has_row:
             menu.addAction(
-                "🔍 Open details",
+                f"{Glyphs.SEARCH} Open details",
                 lambda: self._open_row_details(current_row),
             )
             menu.addSeparator()
 
-        menu.addAction("📋 Copy checked IDs", self._copy_checked_ids)
-        menu.addAction("📋 Copy selected row", self._copy_selected_row)
-        menu.addAction("📋 Copy selected cell", self._copy_selected_cell)
+        menu.addAction(f"{Glyphs.COPY} Copy checked IDs", self._copy_checked_ids)
+        menu.addAction(f"{Glyphs.COPY} Copy selected row", self._copy_selected_row)
+        menu.addAction(f"{Glyphs.COPY} Copy selected cell", self._copy_selected_cell)
         menu.addSeparator()
-        menu.addAction("☑️ Check selected rows", lambda: self._set_selected_checks(True))
-        menu.addAction("☐ Uncheck selected rows", lambda: self._set_selected_checks(False))
-        menu.addAction("☑️ Check all visible", lambda: self._set_all_checks(True))
-        menu.addAction("☐ Uncheck all", lambda: self._set_all_checks(False))
-        menu.addAction("🔁 Invert visible checks", self._invert_checks)
+        menu.addAction(f"{Glyphs.CHECKBOX_ON} Check selected rows", lambda: self._set_selected_checks(True))
+        menu.addAction(f"{Glyphs.CHECKBOX_OFF} Uncheck selected rows", lambda: self._set_selected_checks(False))
+        menu.addAction(f"{Glyphs.CHECKBOX_ON} Check all visible", lambda: self._set_all_checks(True))
+        menu.addAction(f"{Glyphs.CHECKBOX_OFF} Uncheck all", lambda: self._set_all_checks(False))
+        menu.addAction(f"{Glyphs.LOOP} Invert visible checks", self._invert_checks)
         menu.addSeparator()
         menu.addAction("⬛ Select all rows", self._table.selectAll)
         menu.addAction("🔳 Clear selection", self._table.clearSelection)

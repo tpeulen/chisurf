@@ -28,6 +28,7 @@ from qtpy.QtWidgets import (
 import chisurf as cs
 import chisurf.core.settings
 from chisurf.core.info import help_url
+from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.core.help.gui.client import HelpClient
 
 try:
@@ -81,7 +82,7 @@ class HelpWidget(QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("📖 ChiSurf Help")
+        self.setWindowTitle(f"{Glyphs.BOOK} ChiSurf Help")
         self.setMinimumSize(800, 500)
         self.docs_index = {}
         self.current_path = None
@@ -102,7 +103,7 @@ class HelpWidget(QMainWindow):
 
         # Header
         header = QHBoxLayout()
-        title = QLabel("📖 ChiSurf Documentation and Help Resources")
+        title = QLabel(f"{Glyphs.BOOK} ChiSurf Documentation and Help Resources")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         title.setStyleSheet("font-weight: bold; font-size: 12pt;")
         header.addWidget(title)
@@ -135,7 +136,7 @@ class HelpWidget(QMainWindow):
         right_layout.setContentsMargins(4, 0, 0, 0)
         right_layout.setSpacing(4)
 
-        self.title_label = QLabel("📄 Select a document")
+        self.title_label = QLabel(f"{Glyphs.FILE} Select a document")
         self.title_label.setStyleSheet("font-weight: bold; font-size: 11pt;")
         self.path_label = QLabel("")
         self.path_label.setStyleSheet("color: #888888; font-size: 8pt;")
@@ -163,20 +164,20 @@ class HelpWidget(QMainWindow):
         self.addToolBar(toolbar)
 
         # Edit
-        self.edit_btn = toolbar.addAction("✏️  Edit")
+        self.edit_btn = toolbar.addAction(f"{Glyphs.EDIT}  Edit")
         self.edit_btn.setCheckable(True)
         self.edit_btn.setEnabled(False)
         self.edit_btn.toggled.connect(self._on_edit_toggled)
 
         # Save
-        self.save_btn = toolbar.addAction("💾  Save")
+        self.save_btn = toolbar.addAction(f"{Glyphs.SAVE}  Save")
         self.save_btn.setEnabled(False)
         self.save_btn.triggered.connect(self._save_current_document)
 
         toolbar.addSeparator()
 
         # Open Documentation
-        doc_action = toolbar.addAction("📖  Open Docs")
+        doc_action = toolbar.addAction(f"{Glyphs.BOOK}  Open Docs")
         doc_action.triggered.connect(self._open_documentation)
 
         # Video Tutorials
@@ -185,7 +186,7 @@ class HelpWidget(QMainWindow):
 
         toolbar.addSeparator()
 
-        filter_label = QLabel("🔍 Filter:")
+        filter_label = QLabel(f"{Glyphs.SEARCH} Filter:")
         self.filter_line_edit = QLineEdit()
         self.filter_line_edit.setPlaceholderText("Type to filter documents...")
         self.filter_line_edit.setMaximumWidth(260)
@@ -196,7 +197,7 @@ class HelpWidget(QMainWindow):
         toolbar.addSeparator()
 
         # Close
-        close_action = toolbar.addAction("✕  Close")
+        close_action = toolbar.addAction(f"{Glyphs.CLOSE}  Close")
         close_action.triggered.connect(self.hide)
 
     # ── document discovery ──────────────────────────────────────────
@@ -511,7 +512,7 @@ class HelpWidget(QMainWindow):
                 self.edit_btn.setChecked(False)
             return
 
-        self.edit_btn.setText("👁️  View" if checked else "✏️  Edit")
+        self.edit_btn.setText(f"{Glyphs.EYE}  View" if checked else f"{Glyphs.EDIT}  Edit")
 
         if checked:
             result = self.client.read_doc(str(self.current_path))

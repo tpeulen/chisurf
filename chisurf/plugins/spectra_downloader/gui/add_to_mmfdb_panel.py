@@ -21,6 +21,7 @@ from qtpy import QtGui, QtWidgets
 
 from chisurf.core.dataspec import load_view_spec
 from chisurf.gui.autoform import AutoForm
+from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.core.mmfdb_admin.gui.session import (
     active_user_id,
     client_is_admin,
@@ -71,7 +72,7 @@ class AddToMmfdbPanel(QtWidgets.QWidget):
         layout.addWidget(self._form)
 
         row = QtWidgets.QHBoxLayout()
-        self._check_btn = QtWidgets.QPushButton("🔄 Check session")
+        self._check_btn = QtWidgets.QPushButton(f"{Glyphs.REFRESH} Check session")
         self._check_btn.setToolTip("Re-check whether the current session may add to the MMFDB.")
         self._check_btn.clicked.connect(self._refresh_session)
         row.addWidget(self._check_btn)

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 
 class LoadedDatasetSelector(QtWidgets.QWidget):
     """A refreshable, checkable list bound to ``model.selected_dataset_indices``."""
@@ -30,7 +32,7 @@ class LoadedDatasetSelector(QtWidgets.QWidget):
 
         bar = QtWidgets.QHBoxLayout()
         refresh = QtWidgets.QToolButton()
-        refresh.setText("🔄 Refresh")
+        refresh.setText(f"{Glyphs.REFRESH} Refresh")
         refresh.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         refresh.setToolTip("Re-scan the datasets currently loaded in ChiSurf.")
         refresh.clicked.connect(self.repopulate)

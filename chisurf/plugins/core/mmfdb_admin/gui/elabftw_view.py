@@ -7,6 +7,8 @@ from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 Submit = Callable[
     [Callable[[], Any], Callable[[Any], None], Callable[[str], None]], None
 ]
@@ -105,7 +107,7 @@ class ELabFTWView(QtWidgets.QWidget):
 
         self.remote_table = QtWidgets.QTableWidget(0, 7)
         self.remote_table.setHorizontalHeaderLabels(
-            ["✓", "Remote ID", "Title", "Date", "Status", "Modified", "Tags"]
+            [Glyphs.CHECK, "Remote ID", "Title", "Date", "Status", "Modified", "Tags"]
         )
         self.remote_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.remote_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)

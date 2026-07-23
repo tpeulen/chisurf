@@ -16,6 +16,7 @@ import pathlib
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class _IoSection(QtWidgets.QWidget):
         layout.addLayout(row)
 
         self._save_btn = QtWidgets.QToolButton()
-        self._save_btn.setText("💾 Save topology…")
+        self._save_btn.setText(f"{Glyphs.SAVE} Save topology…")
         self._save_btn.setToolTip("Write the first frame of the trajectory as a PDB file.")
         self._save_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self._save_btn.clicked.connect(self._save_topology)

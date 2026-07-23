@@ -22,6 +22,8 @@ from collections.abc import Callable
 
 import numpy as np
 
+from chisurf.gui.glyphs import Glyphs
+
 from ..core import fits as core_fits
 from ..core import irf as core_irf
 from ..core import spectra as core_spectra
@@ -316,7 +318,7 @@ class AnisotropyViewModel:
             ("Data VH", self.data_vh_path),
         ):
             ok = bool(path) and pathlib.Path(path).is_file()
-            mark = "✅" if ok else "—"
+            mark = Glyphs.SUCCESS if ok else "—"
             rows.append(f"<tr><td>{label}</td><td>{mark}</td><td>{path or ''}</td></tr>")
         return "<table cellpadding='3'>" + "".join(rows) + "</table>"
 

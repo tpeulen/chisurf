@@ -9,6 +9,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 import chisurf as cs
 import chisurf.gui.widgets
 from chisurf.core.experiments.core import reader
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 
@@ -282,17 +283,17 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
         header.addStretch(1)
 
         self.toolbtn_compute_pch = QtWidgets.QToolButton(preview_group)
-        self.toolbtn_compute_pch.setText("🔬 Compute")
+        self.toolbtn_compute_pch.setText(f"{Glyphs.SCIENCE} Compute")
         self.toolbtn_compute_pch.setToolTip("Compute P(k) preview for the current file")
         header.addWidget(self.toolbtn_compute_pch)
 
         self.toolbtn_add_pch = QtWidgets.QToolButton(preview_group)
-        self.toolbtn_add_pch.setText("➕ Add")
+        self.toolbtn_add_pch.setText(f"{Glyphs.ADD} Add")
         self.toolbtn_add_pch.setToolTip("Add PCH dataset for the current file")
         header.addWidget(self.toolbtn_add_pch)
 
         self.toolbtn_clear_preview = QtWidgets.QToolButton(preview_group)
-        self.toolbtn_clear_preview.setText("🧹 Clear")
+        self.toolbtn_clear_preview.setText(f"{Glyphs.CLEAR} Clear")
         self.toolbtn_clear_preview.setToolTip("Clear preview")
         header.addWidget(self.toolbtn_clear_preview)
         preview_layout.addLayout(header)

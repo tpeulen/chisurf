@@ -23,6 +23,7 @@ import logging
 
 from qtpy import QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import NavigationPanelTool, embed_mainwindow
 
 logger = logging.getLogger(__name__)
@@ -83,14 +84,14 @@ def _traj_tools(parent: StructureToolsTool) -> QtWidgets.QWidget:
 STRUCTURE_PANELS: list[dict] = [
     {
         "name": "1. FPS JSON Editor",
-        "icon": "📝",
+        "icon": Glyphs.NOTE,
         "description": "Edit fps.json files for FRET accessible-volume modelling and fetch reference PDBs.",
         "factory": _fps_json_editor,
         "role": "fps_json_editor",
     },
     {
         "name": "2. Docking & Screening",
-        "icon": "🎯",
+        "icon": Glyphs.TARGET,
         "description": "FRET-restrained rigid-body docking, refinement and structure-library screening (IMP + IMP.bff).",
         "factory": _docking,
         "role": "docking",
@@ -117,7 +118,7 @@ STRUCTURE_PANELS: list[dict] = [
     },
     {
         "name": "HydroPro",
-        "icon": "🌊",
+        "icon": Glyphs.WAVE,
         "description": "Hydrodynamic property prediction (HydroPro) from atomic structures.",
         "factory": _hydropro,
         "role": "hydropro",
@@ -143,7 +144,7 @@ class StructureToolsTool(NavigationPanelTool):
 
     def __init__(self, parent=None):
         super().__init__(
-            title="🧬 Structure Tools",
+            title=f"{Glyphs.DNA} Structure Tools",
             panels=STRUCTURE_PANELS,
             parent=parent,
             minimum_size=(900, 600),

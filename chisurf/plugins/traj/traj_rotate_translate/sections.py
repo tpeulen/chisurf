@@ -18,6 +18,7 @@ import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ class _IoSection(QtWidgets.QWidget):
 
         # ── save button ─────────────────────────────────────────────────
         self._save_btn = QtWidgets.QToolButton()
-        self._save_btn.setText("💾 Save rotated/translated…")
+        self._save_btn.setText(f"{Glyphs.SAVE} Save rotated/translated…")
         self._save_btn.setToolTip("Rotate + translate every frame and write a new H5 trajectory.")
         self._save_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self._save_btn.clicked.connect(self._save)

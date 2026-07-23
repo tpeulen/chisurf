@@ -13,6 +13,7 @@ import chisurf as cs
 from chisurf.core.dataspec import load_view_spec
 from chisurf.core.fluorescence.fcs.channel_setups import load_fcs_channel_setups
 from chisurf.gui.autoform import register_section
+from chisurf.gui.glyphs import Glyphs
 
 _GUI_DIR = pathlib.Path(__file__).resolve().parent
 
@@ -643,7 +644,7 @@ class _LifetimeFilterControls(QtWidgets.QWidget):
         layout.setSpacing(4)
 
         self.btn_load = QtWidgets.QToolButton()
-        self.btn_load.setText("🧬 Load filters…")
+        self.btn_load.setText(f"{Glyphs.DNA} Load filters…")
         self.btn_load.setToolTip(
             "Load lifetime (FLCS) filters from a Filter-Calculator JSON, or a "
             ".npy/.npz filter matrix. Correlation then produces species "
@@ -653,7 +654,7 @@ class _LifetimeFilterControls(QtWidgets.QWidget):
         layout.addWidget(self.btn_load)
 
         self.btn_unload = QtWidgets.QToolButton()
-        self.btn_unload.setText("✕ Unload")
+        self.btn_unload.setText(f"{Glyphs.CLOSE} Unload")
         self.btn_unload.setToolTip(
             "Remove the loaded lifetime filters and return to detector-channel "
             "correlation."
@@ -663,7 +664,7 @@ class _LifetimeFilterControls(QtWidgets.QWidget):
 
         # Direct link to the Filter Calculator (which computes these filters).
         self.btn_filter_calc = QtWidgets.QToolButton()
-        self.btn_filter_calc.setText("🧪 Filter Calc…")
+        self.btn_filter_calc.setText(f"{Glyphs.TEST} Filter Calc…")
         self.btn_filter_calc.setToolTip(
             "Open the fFCS Filter Calculator to compute lifetime filters from decay patterns."
         )

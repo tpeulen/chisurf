@@ -7,15 +7,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-
 from qtpy import QtCore, QtGui, QtWidgets
-
-from chisurf.core.file_formats import FILE_FORMATS as _FILE_FORMATS
 from qtpy.QtCore import Qt
 
 import chisurf.core.fitting
+from chisurf.core.file_formats import FILE_FORMATS as _FILE_FORMATS
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.plots import plotbase
 from chisurf.gui.widgets.metadata_editor import MetadataEditor
+
 
 def _configure_fill_table(table: QtWidgets.QTableWidget) -> None:
     """Configure a table to fill the available tab space."""
@@ -225,7 +225,7 @@ class FitInfo(plotbase.Plot):
         uuid_row = QtWidgets.QHBoxLayout()
         uuid_row.setSpacing(2)
         gen_uuid_btn = QtWidgets.QToolButton()
-        gen_uuid_btn.setText("🔄")
+        gen_uuid_btn.setText(Glyphs.REFRESH)
         gen_uuid_btn.setToolTip("Generate new UUID")
         gen_uuid_btn.setFixedSize(24, 24)
         gen_uuid_btn.clicked.connect(self._generate_sample_uuid)
@@ -483,7 +483,7 @@ class FitInfo(plotbase.Plot):
 
         toolbar = QtWidgets.QToolBar()
         refresh_btn = QtWidgets.QToolButton()
-        refresh_btn.setText("🔄")
+        refresh_btn.setText(Glyphs.REFRESH)
         refresh_btn.setToolTip("Compute full mmCIF preview")
         refresh_btn.setFixedSize(24, 24)
         refresh_btn.clicked.connect(lambda: self._update_cif_preview(full=True))
@@ -566,7 +566,7 @@ class FitInfo(plotbase.Plot):
             if not has_analysis_meta and not tttr_data:
                 lines.append("(no metadata)")
             lines.append("")
-            lines.append("Click 🔄 to compute full mmCIF with embedded small data.")
+            lines.append(f"Click {Glyphs.REFRESH} to compute full mmCIF with embedded small data.")
             self.cif_preview.setPlainText("\n".join(lines))
             return
         try:

@@ -16,6 +16,7 @@ import pathlib
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -197,7 +198,7 @@ class _RunSection(QtWidgets.QWidget):
         layout.setSpacing(6)
 
         self._btn = _tool_button(
-            "✂️ Convert / Split",
+            f"{Glyphs.CUT} Convert / Split",
             self._run,
             "Split / convert the loaded TTTR file into the output folder.",
         )

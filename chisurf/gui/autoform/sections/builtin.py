@@ -12,6 +12,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 import chisurf as cs
 import chisurf.core.math.datatools
 from chisurf import logging
+from chisurf.gui.glyphs import Glyphs
 
 from .registry import register_plot, register_section
 
@@ -128,7 +129,7 @@ class CurveInputWidget(QtWidgets.QWidget):
         layout.addWidget(self.select_btn)
 
         self.unload_btn = QtWidgets.QToolButton()
-        self.unload_btn.setText("✕")  # ✕
+        self.unload_btn.setText(Glyphs.CLOSE)  # ✕
         self.unload_btn.setToolTip(f"Unload {section.label}")
         self.unload_btn.clicked.connect(self._unload)
         self.unload_btn.setVisible(bool(section.unload_action))
@@ -969,7 +970,7 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
         if section.kind == "secret":
             self.reveal = QtWidgets.QToolButton()
             self.reveal.setCheckable(True)
-            self.reveal.setText("👁️")
+            self.reveal.setText(Glyphs.EYE)
             self.reveal.setToolTip("Show / hide")
             self.reveal.toggled.connect(self._toggle_secret)
             layout.addWidget(self.reveal)
@@ -1539,7 +1540,7 @@ class ImageMapWidget(QtWidgets.QWidget):
             self._play_btn.clicked.connect(self._on_play_clicked)
             bar.addWidget(self._play_btn)
             self._loop_btn = QtWidgets.QToolButton()
-            self._loop_btn.setText("🔁")
+            self._loop_btn.setText(Glyphs.LOOP)
             self._loop_btn.setCheckable(True)
             self._loop_btn.setChecked(True)  # loop by default
             self._loop_btn.setToolTip("Loop playback (wrap around at the end)")
@@ -1996,7 +1997,7 @@ class FitMixerWidget(QtWidgets.QWidget):
         toolbar.addWidget(self.cb, 2)
 
         refresh_btn = QtWidgets.QToolButton()
-        refresh_btn.setText("🔄")
+        refresh_btn.setText(Glyphs.REFRESH)
         refresh_btn.setToolTip("Refresh the list of available lifetime fits.")
         refresh_btn.clicked.connect(self._refresh_fit_list)
         toolbar.addWidget(refresh_btn)

@@ -53,6 +53,8 @@ import logging
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 from .builtin import ImageMapWidget
 from .registry import register_section
 
@@ -201,14 +203,14 @@ class ImageBrowserWidget(QtWidgets.QWidget):
         lay.addWidget(QtWidgets.QLabel("Rating"))
         for i in range(1, self._max_rating + 1):
             btn = QtWidgets.QToolButton()
-            btn.setText("☆")
+            btn.setText(Glyphs.STAR_OFF)
             btn.setAutoRaise(True)
             btn.setToolTip(f"Rate {i}/{self._max_rating}")
             btn.clicked.connect(lambda _checked=False, value=i: self._set_rating(value))
             self._star_buttons.append(btn)
             lay.addWidget(btn)
         clear = QtWidgets.QToolButton()
-        clear.setText("✕")
+        clear.setText(Glyphs.CLOSE)
         clear.setAutoRaise(True)
         clear.setToolTip("Clear rating")
         clear.clicked.connect(lambda: self._set_rating(0))
@@ -236,7 +238,7 @@ class ImageBrowserWidget(QtWidgets.QWidget):
                 rating = int(e["rating"])
                 break
         for i, btn in enumerate(self._star_buttons, start=1):
-            btn.setText("★" if i <= rating else "☆")
+            btn.setText(Glyphs.STAR_ON if i <= rating else Glyphs.STAR_OFF)
 
     # ── selection ──
     def _current_selection_ids(self) -> list:

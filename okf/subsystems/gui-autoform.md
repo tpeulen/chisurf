@@ -149,9 +149,16 @@ interactive close/cancel; `🗑️` = destructive delete vs `➖` = remove-a-row
 `🔄` = refresh vs `🔁` = loop/brand-icon vs `♻️` = reset-to-defaults. These
 collisions are resolved per-site, not by `normalize`. New/edited GUI code should
 reference `Glyphs.*` rather than hardcoding a glyph; JSON view/manifest files use
-the same canonical literals by convention. Rendering emoji/text/color/file icons
-into `QIcon`s is a separate concern handled by `chisurf/plugins/icon_utils.py`
-(see `chisurf/plugins/ICON_SYSTEM.md`).
+the same canonical literals by convention. Production GUI Python has been swept
+to follow this: inline emoji literals are `Glyphs.*` references (whole-string
+literals as attribute refs, `icon = "ℹ️"` → `icon = Glyphs.INFO`; mixed strings as
+f-strings, `"💾 Save"` → `f"{Glyphs.SAVE} Save"`), so each concept has one authored
+source. Left as literals on purpose: **directional arrows** `→`/`←` (prose- and
+identifier-dominant), docstrings and multi-line help text, tests (literal
+regression anchors), and plugin **brand** icons in `manifest.json`/module `icon`
+attributes (deliberate per-plugin identity, still drawn from the canonical set).
+Rendering emoji/text/color/file icons into `QIcon`s is a separate concern handled
+by `chisurf/plugins/icon_utils.py` (see `chisurf/plugins/ICON_SYSTEM.md`).
 
 # Citations
 

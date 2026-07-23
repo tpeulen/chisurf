@@ -28,6 +28,7 @@ import pathlib
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ class _SetupSection(QtWidgets.QWidget):
         self._combo.currentIndexChanged.connect(self._on_potential_changed)
         combo_row.addWidget(self._combo, 1)
         self._add_btn = QtWidgets.QToolButton()
-        self._add_btn.setText("➕ Add")
+        self._add_btn.setText(f"{Glyphs.ADD} Add")
         self._add_btn.setToolTip("Add the configured potential to the list of used potentials.")
         self._add_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self._add_btn.clicked.connect(self._add_potential)
@@ -258,7 +259,7 @@ class _RunSection(QtWidgets.QWidget):
         layout.setSpacing(6)
 
         self._btn = QtWidgets.QToolButton()
-        self._btn.setText("⚙️ Process")
+        self._btn.setText(f"{Glyphs.SETTINGS} Process")
         self._btn.setToolTip("Score every frame of the trajectory and write the energies to a CSV.")
         self._btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self._btn.clicked.connect(self._run)

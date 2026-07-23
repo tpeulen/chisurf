@@ -9,56 +9,54 @@ Page 1: Trace browser with folder selection, file list, star quality rating (0�
 Metadata (ratings and annotations) are stored in a JSON file in the same folder
 as the traces: .trace_browser_meta.json
 """
-import os
-import json
-import shutil
-import pathlib
 import csv
+import json
+import os
+import pathlib
+import shutil
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-
+from qtpy.QtCore import QEvent, QSize, Qt, QTimer, Signal
+from qtpy.QtGui import QColor, QFont, QPainter
 from qtpy.QtWidgets import (
+    QAbstractItemView,
     QApplication,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QFileDialog,
-    QLabel,
-    QListWidget,
-    QListWidgetItem,
-    QSplitter,
-    QTextEdit,
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QProgressDialog,
+    QPushButton,
+    QSizePolicy,
+    QSplitter,
     QTableWidget,
     QTableWidgetItem,
-    QAbstractItemView,
-    QHeaderView,
-    QLineEdit,
-    QMessageBox,
-    QSizePolicy,
-    QCheckBox,
-    QGroupBox,
-    QGridLayout,
+    QTextEdit,
     QToolButton,
-    QProgressDialog,
+    QVBoxLayout,
+    QWidget,
 )
-from qtpy.QtCore import Qt, QEvent, QSize, QTimer, Signal
-from qtpy.QtGui import QPainter, QColor, QFont
-
-from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
-
-from chisurf.core.plugin import load_manifest
-from chisurf.plugins.tttr.trace_browser.gui.client import TraceBrowserClient
 
 # Logging
 from chisurf import logging
+from chisurf.core.plugin import load_manifest
+from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
+from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
 
 # Reuse existing widgets/utilities
 from chisurf.plugins.tttr.intensity_trace.__init__ import IntensityPlotWidget, IntensityTrace
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
+from chisurf.plugins.tttr.trace_browser.gui.client import TraceBrowserClient
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -69,7 +67,9 @@ except ImportError:
 # Import TTTR Time Window plugin
 try:
     from chisurf.plugins.tttr.tttr_time_windows.api.selection import compute_bids_from_tttr
-    from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool as TTTRTimeWindowWizard
+    from chisurf.plugins.tttr.tttr_time_windows.gui.tool import (
+        TTTRTimeWindowTool as TTTRTimeWindowWizard,
+    )
 except Exception:
     TTTRTimeWindowWizard = None
     compute_bids_from_tttr = None
@@ -159,10 +159,10 @@ class StarCombo(QComboBox):
     def __init__(self, parent=None):
         super().__init__(parent)
         # Ratings 0..3
-        self.addItem("☆☆☆", 0)
-        self.addItem("★☆☆", 1)
-        self.addItem("★★☆", 2)
-        self.addItem("★★★", 3)
+        self.addItem(f"{Glyphs.STAR_OFF}{Glyphs.STAR_OFF}{Glyphs.STAR_OFF}", 0)
+        self.addItem(f"{Glyphs.STAR_ON}{Glyphs.STAR_OFF}{Glyphs.STAR_OFF}", 1)
+        self.addItem(f"{Glyphs.STAR_ON}{Glyphs.STAR_ON}{Glyphs.STAR_OFF}", 2)
+        self.addItem(f"{Glyphs.STAR_ON}{Glyphs.STAR_ON}{Glyphs.STAR_ON}", 3)
 
     def set_rating(self, r: int):
         idx = max(0, min(3, int(r)))
@@ -338,7 +338,7 @@ class StarRatingWidget(QWidget):
             font = painter.font()
             font.setPointSize(max(9, int(rect.height() * 0.6)))
             painter.setFont(font)
-            stars_str = ("★" * int(self._rating)) + ("☆" * int(self._stars - self._rating))
+            stars_str = (Glyphs.STAR_ON * int(self._rating)) + (Glyphs.STAR_OFF * int(self._stars - self._rating))
             # Center text
             painter.setPen(QColor(240, 180, 0))
             painter.drawText(rect, Qt.AlignCenter, stars_str)
@@ -483,10 +483,10 @@ class TraceBrowser(QWidget):
         self.filter_combo = QComboBox(self.page1)
         self.filter_combo.addItems([
             "All",
-            "≥ 1★",
-            "≥ 2★★",
-            "≥ 3★★★",
-            "Only 0★"
+            f"≥ 1{Glyphs.STAR_ON}",
+            f"≥ 2{Glyphs.STAR_ON}{Glyphs.STAR_ON}",
+            f"≥ 3{Glyphs.STAR_ON}{Glyphs.STAR_ON}{Glyphs.STAR_ON}",
+            f"Only 0{Glyphs.STAR_ON}"
         ])
         self.filter_combo.currentIndexChanged.connect(self._apply_filter)
 

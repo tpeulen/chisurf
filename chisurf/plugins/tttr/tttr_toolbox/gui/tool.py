@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import pathlib
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import NavigationPanelTool, load_panels_json
 
 # ---------------------------------------------------------------------------
@@ -35,7 +36,7 @@ class TttrToolboxTool(NavigationPanelTool):
 
     def __init__(self, parent=None):
         super().__init__(
-            title=_PANEL_SPEC.get("title", "🧰 TTTR Tools"),
+            title=_PANEL_SPEC.get("title", f"{Glyphs.TOOLBOX} TTTR Tools"),
             panels=TTTR_PANELS,
             parent=parent,
             minimum_size=(900, 600),

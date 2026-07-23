@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import base64
+import json
 import tempfile
 import uuid
 from datetime import datetime
@@ -13,6 +13,8 @@ from typing import Any, Callable
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import QUrl
 
+from chisurf.gui.glyphs import Glyphs
+
 try:
     from qtpy import sip
 except ImportError:
@@ -21,33 +23,33 @@ except ImportError:
     except ImportError:
         sip = None
 
-from chisurf.gui.misc_helpers import get_plugin_settings_path
-from chisurf.gui.widgets.general import apply_compact_table_style
-from chisurf.gui.widgets.metadata_editor import MetadataEditor
-from chisurf.gui.widgets.navigation import NavigationPanelTool
 from mmfdb.models import (
     COMMON_PROBE_NAMES,
     DEFAULT_FLUOROPHORE_SPECTRA,
     ENTITY_TYPES,
     VALIDATION_STATUS_VALUES,
 )
+from mmfdb.schema.dictionary_schema_map import DictionarySchemaMap, build_dictionary_schema_map
+from mmfdb.schema.pdbx_metadata import MmcifDictionary
 
 import chisurf.logging
+from chisurf.gui.misc_helpers import get_plugin_settings_path
+from chisurf.gui.widgets.general import apply_compact_table_style
+from chisurf.gui.widgets.metadata_editor import MetadataEditor
+from chisurf.gui.widgets.navigation import NavigationPanelTool
 
-from .client import MMFDBClient
-from .generic_form import MMFDBDetailWidget
-from .entity_registry import ENTITY_REGISTRY, EntitySpec, build_registry_dict
-from .entity_dock import EntityDock
-from .metadata_dock import MetadataDock
-from .studies_view import StudiesView
-from .protocols_view import ProtocolsView
-from .lifecycle_view import LifecycleView
 from .calibrations_view import CalibrationsView
-from .reagents_view import ReagentLotsView
-from .pipelines_view import PipelinesView
+from .client import MMFDBClient
 from .elabftw_view import ELabFTWView
-from mmfdb.schema.pdbx_metadata import MmcifDictionary
-from mmfdb.schema.dictionary_schema_map import DictionarySchemaMap, build_dictionary_schema_map
+from .entity_dock import EntityDock
+from .entity_registry import ENTITY_REGISTRY, EntitySpec, build_registry_dict
+from .generic_form import MMFDBDetailWidget
+from .lifecycle_view import LifecycleView
+from .metadata_dock import MetadataDock
+from .pipelines_view import PipelinesView
+from .protocols_view import ProtocolsView
+from .reagents_view import ReagentLotsView
+from .studies_view import StudiesView
 
 
 class _MMFDBBackgroundTask(QtCore.QObject):
@@ -247,7 +249,7 @@ class PasswordChangeDialog(QtWidgets.QDialog):
 
         buttons = QtWidgets.QHBoxLayout()
         save_button = QtWidgets.QToolButton()
-        save_button.setText("💾 Save")
+        save_button.setText(f"{Glyphs.SAVE} Save")
         save_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
         save_button.setAutoRaise(True)
         save_button.setToolTip("Save password")
@@ -261,7 +263,7 @@ class PasswordChangeDialog(QtWidgets.QDialog):
         )
         clear_button.setEnabled(not self.is_admin)
         cancel_button = QtWidgets.QToolButton()
-        cancel_button.setText("✕ Cancel")
+        cancel_button.setText(f"{Glyphs.CLOSE} Cancel")
         cancel_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
         cancel_button.setAutoRaise(True)
         cancel_button.setToolTip("Cancel password change")
@@ -531,12 +533,12 @@ class MMFDBWidget(NavigationPanelTool):
         password : str, optional
             Password to use for authentication. If not provided, tries passwordless login first.
         """
+        from chisurf.plugins.core.mmfdb_admin.gui.client import credential_endpoint
         from chisurf.plugins.core.mmfdb_admin.gui.session import (
             cache_session,
             cached_token,
             cached_user,
         )
-        from chisurf.plugins.core.mmfdb_admin.gui.client import credential_endpoint
 
         if getattr(self.client, "token", None):
             self._auth_login_user = getattr(self.client, "_auth_user_id", None)
@@ -766,21 +768,21 @@ class MMFDBWidget(NavigationPanelTool):
         has_row = current_row >= 0 and current_row < table.rowCount()
         if has_row and delete_one_fn is not None:
             menu.addAction(
-                "🔍 Open details",
+                f"{Glyphs.SEARCH} Open details",
                 lambda: self._open_table_row(table, current_row, item_kind, id_col),
             )
 
         # Copy actions
         menu.addAction(
-            "📋 Copy checked IDs",
+            f"{Glyphs.COPY} Copy checked IDs",
             lambda: self._copy_checked_ids_to_clipboard(table, id_col),
         )
         menu.addAction(
-            "📋 Copy selected row",
+            f"{Glyphs.COPY} Copy selected row",
             lambda: self._copy_selected_row(table),
         )
         menu.addAction(
-            "📋 Copy selected cell",
+            f"{Glyphs.COPY} Copy selected cell",
             lambda: self._copy_selected_cell(table),
         )
 
@@ -788,16 +790,16 @@ class MMFDBWidget(NavigationPanelTool):
 
         # Check/uncheck actions
         menu.addAction(
-            "☑️ Check selected rows",
+            f"{Glyphs.CHECKBOX_ON} Check selected rows",
             lambda: self._set_selected_checks(table, True),
         )
         menu.addAction(
-            "☐ Uncheck selected rows",
+            f"{Glyphs.CHECKBOX_OFF} Uncheck selected rows",
             lambda: self._set_selected_checks(table, False),
         )
-        menu.addAction("☑️ Check all visible", lambda: self._set_all_checks(table, True))
-        menu.addAction("☐ Uncheck all", lambda: self._set_all_checks(table, False))
-        menu.addAction("🔁 Invert visible checks", lambda: self._invert_checks(table))
+        menu.addAction(f"{Glyphs.CHECKBOX_ON} Check all visible", lambda: self._set_all_checks(table, True))
+        menu.addAction(f"{Glyphs.CHECKBOX_OFF} Uncheck all", lambda: self._set_all_checks(table, False))
+        menu.addAction(f"{Glyphs.LOOP} Invert visible checks", lambda: self._invert_checks(table))
 
         menu.addSeparator()
 
@@ -914,7 +916,7 @@ class MMFDBWidget(NavigationPanelTool):
         extra_actions : list of (label, callable) or None
             Additional context-menu entries.
         """
-        all_headers = ["✓"] + list(headers)
+        all_headers = [Glyphs.CHECK] + list(headers)
         table.setColumnCount(len(all_headers))
         table.setHorizontalHeaderLabels(all_headers)
         apply_compact_table_style(table)
@@ -1023,13 +1025,13 @@ class MMFDBWidget(NavigationPanelTool):
 
         if save_slot:
             save_btn = self._text_icon_button(
-                "💾 Save", QtWidgets.QStyle.SP_DialogSaveButton, "Save changes", save_slot
+                f"{Glyphs.SAVE} Save", QtWidgets.QStyle.SP_DialogSaveButton, "Save changes", save_slot
             )
             buttons_layout.addWidget(save_btn)
 
         if delete_slot:
             delete_btn = self._text_icon_button(
-                "🗑️ Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete selected", delete_slot
+                f"{Glyphs.DELETE} Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete selected", delete_slot
             )
             buttons_layout.addWidget(delete_btn)
 
@@ -1291,7 +1293,7 @@ class MMFDBWidget(NavigationPanelTool):
 
         if spec.key == "user":
             pw_btn = QtWidgets.QToolButton()
-            pw_btn.setText("🔑 Change password")
+            pw_btn.setText(f"{Glyphs.KEY} Change password")
             pw_btn.setToolTip("Change the selected user's password")
             pw_btn.clicked.connect(self._change_password_for_selected_user)
             btns.append(pw_btn)
@@ -1304,39 +1306,39 @@ class MMFDBWidget(NavigationPanelTool):
 
         elif spec.key == "branch":
             head_btn = QtWidgets.QToolButton()
-            head_btn.setText("🕐 Set head")
+            head_btn.setText(f"{Glyphs.CLOCK} Set head")
             head_btn.setToolTip("Update the head operation of this branch")
             head_btn.clicked.connect(self._set_branch_head_for_selected)
             btns.append(head_btn)
 
         elif spec.key == "object":
             copy_btn = QtWidgets.QToolButton()
-            copy_btn.setText("📋 Copy UUID")
+            copy_btn.setText(f"{Glyphs.COPY} Copy UUID")
             copy_btn.setToolTip("Copy the selected object UUID")
             copy_btn.clicked.connect(self._copy_selected_object_entity_uuid)
             btns.append(copy_btn)
 
             reveal_btn = QtWidgets.QToolButton()
-            reveal_btn.setText("📂 Reveal")
+            reveal_btn.setText(f"{Glyphs.OPEN} Reveal")
             reveal_btn.setToolTip("Reveal the selected object in the file manager")
             reveal_btn.clicked.connect(self._reveal_selected_object_entity)
             btns.append(reveal_btn)
 
             delete_btn = QtWidgets.QToolButton()
-            delete_btn.setText("🗑️ Delete object")
+            delete_btn.setText(f"{Glyphs.DELETE} Delete object")
             delete_btn.setToolTip("Delete the selected object or decrement its refcount")
             delete_btn.clicked.connect(self._delete_selected_object_entity)
             btns.append(delete_btn)
 
         elif spec.key == "raw_data":
             copy_btn = QtWidgets.QToolButton()
-            copy_btn.setText("📋 Copy ID")
+            copy_btn.setText(f"{Glyphs.COPY} Copy ID")
             copy_btn.setToolTip("Copy the selected raw-data artifact ID")
             copy_btn.clicked.connect(self._copy_selected_raw_data_id)
             btns.append(copy_btn)
 
             reveal_btn = QtWidgets.QToolButton()
-            reveal_btn.setText("📂 Reveal")
+            reveal_btn.setText(f"{Glyphs.OPEN} Reveal")
             reveal_btn.setToolTip("Open the selected raw-data file or URL")
             reveal_btn.clicked.connect(self._reveal_selected_raw_data)
             btns.append(reveal_btn)
@@ -1348,26 +1350,26 @@ class MMFDBWidget(NavigationPanelTool):
             btns.append(seed_btn)
 
             validate_btn = QtWidgets.QToolButton()
-            validate_btn.setText("✓ Validate")
+            validate_btn.setText(f"{Glyphs.CHECK} Validate")
             validate_btn.setToolTip("Set validation status for the selected raw-data artifact")
             validate_btn.clicked.connect(self._validate_selected_raw_data)
             btns.append(validate_btn)
 
             delete_btn = QtWidgets.QToolButton()
-            delete_btn.setText("🗑️ Delete")
+            delete_btn.setText(f"{Glyphs.DELETE} Delete")
             delete_btn.setToolTip("Soft-delete the selected raw-data artifact")
             delete_btn.clicked.connect(self._delete_selected_raw_data)
             btns.append(delete_btn)
 
         elif spec.key == "processed_product":
             copy_btn = QtWidgets.QToolButton()
-            copy_btn.setText("📋 Copy ID")
+            copy_btn.setText(f"{Glyphs.COPY} Copy ID")
             copy_btn.setToolTip("Copy the selected processed-data artifact ID")
             copy_btn.clicked.connect(self._copy_selected_processed_product_id)
             btns.append(copy_btn)
 
             reveal_btn = QtWidgets.QToolButton()
-            reveal_btn.setText("📂 Reveal")
+            reveal_btn.setText(f"{Glyphs.OPEN} Reveal")
             reveal_btn.setToolTip("Open the selected processed-data file or URL")
             reveal_btn.clicked.connect(self._reveal_selected_processed_product)
             btns.append(reveal_btn)
@@ -1379,26 +1381,26 @@ class MMFDBWidget(NavigationPanelTool):
             btns.append(seed_btn)
 
             validate_btn = QtWidgets.QToolButton()
-            validate_btn.setText("✓ Validate")
+            validate_btn.setText(f"{Glyphs.CHECK} Validate")
             validate_btn.setToolTip("Set validation status for the selected processed-data artifact")
             validate_btn.clicked.connect(self._validate_selected_processed_product)
             btns.append(validate_btn)
 
             delete_btn = QtWidgets.QToolButton()
-            delete_btn.setText("🗑️ Delete")
+            delete_btn.setText(f"{Glyphs.DELETE} Delete")
             delete_btn.setToolTip("Soft-delete the selected processed-data artifact")
             delete_btn.clicked.connect(self._delete_selected_processed_product)
             btns.append(delete_btn)
 
         elif spec.key == "analysis":
             copy_btn = QtWidgets.QToolButton()
-            copy_btn.setText("📋 Copy ID")
+            copy_btn.setText(f"{Glyphs.COPY} Copy ID")
             copy_btn.setToolTip("Copy the selected analysis run ID")
             copy_btn.clicked.connect(self._copy_selected_analysis_id)
             btns.append(copy_btn)
 
             detail_btn = QtWidgets.QToolButton()
-            detail_btn.setText("🔍 Details")
+            detail_btn.setText(f"{Glyphs.SEARCH} Details")
             detail_btn.setToolTip("Show parameters and linked products for the selected analysis run")
             detail_btn.clicked.connect(self._show_selected_analysis_details)
             btns.append(detail_btn)
@@ -1789,12 +1791,12 @@ class MMFDBWidget(NavigationPanelTool):
 
     #: Per-entity nav emoji, keyed by entity-registry key.
     _ENTITY_ICONS = {
-        "sample": "🧪", "condition": "🌡️", "entity": "🧬", "probe": "💡",
-        "position": "📍", "fret_pair": "🔗", "experiment": "🔬",
-        "experiment_type": "🧾", "setup": "⚙️", "detector_channel": "📡",
-        "pie_window": "🪟", "fcs_pair": "🔀", "device": "🖥️", "raw_data": "📂",
-        "processing_run": "🏭", "processed_product": "📦", "analysis": "📈",
-        "object": "🧱", "project": "📁", "branch": "🌿", "user": "👤",
+        "sample": Glyphs.TEST, "condition": "🌡️", "entity": Glyphs.DNA, "probe": "💡",
+        "position": "📍", "fret_pair": Glyphs.LINK, "experiment": Glyphs.SCIENCE,
+        "experiment_type": "🧾", "setup": Glyphs.SETTINGS, "detector_channel": Glyphs.ANTENNA,
+        "pie_window": "🪟", "fcs_pair": Glyphs.SHUFFLE, "device": "🖥️", "raw_data": Glyphs.OPEN,
+        "processing_run": "🏭", "processed_product": Glyphs.PACKAGE, "analysis": Glyphs.CHART_UP,
+        "object": "🧱", "project": Glyphs.FOLDER, "branch": "🌿", "user": Glyphs.USER,
     }
 
     def _build_panels(self) -> list[dict[str, Any]]:
@@ -1807,9 +1809,9 @@ class MMFDBWidget(NavigationPanelTool):
         fluorophore curation view is integrated from the fluorophore_db plugin.
         """
         panels: list[dict[str, Any]] = [
-            {"name": "Overview", "icon": "📊", "factory": lambda p: self.overview_tab()},
+            {"name": "Overview", "icon": Glyphs.CHART, "factory": lambda p: self.overview_tab()},
             {"name": "All items", "icon": "🗂", "factory": lambda p: self.all_items_tab()},
-            {"name": "Measurements", "icon": "📈", "factory": lambda p: self.measurements_tab()},
+            {"name": "Measurements", "icon": Glyphs.CHART_UP, "factory": lambda p: self.measurements_tab()},
         ]
 
         def _add_group_entities(group: str) -> None:
@@ -1826,14 +1828,14 @@ class MMFDBWidget(NavigationPanelTool):
         panels.append({"name": "Samples & chemistry", "icon": "🧫", "separator": True})
         _add_group_entities("Samples & chemistry")
         panels.append({
-            "name": "Sample Metadata", "icon": "🏷️", "entity_key": "metadata",
+            "name": "Sample Metadata", "icon": Glyphs.LABEL, "entity_key": "metadata",
             "factory": self._metadata_factory,
         })
         panels.append({
             "name": "Spectra", "icon": "🌈", "factory": self._fluorophore_factory,
         })
 
-        panels.append({"name": "Experiments & data", "icon": "🔬", "separator": True})
+        panels.append({"name": "Experiments & data", "icon": Glyphs.SCIENCE, "separator": True})
         _add_group_entities("Experiments & data")
 
         panels.append({"name": "Provenance", "icon": "🕸️", "separator": True})
@@ -1842,17 +1844,17 @@ class MMFDBWidget(NavigationPanelTool):
 
         panels.append({"name": "Administration", "icon": "🛡️", "separator": True})
         _add_group_entities("Administration")
-        panels.append({"name": "Import / Export", "icon": "🔄", "factory": lambda p: self.import_export_tab()})
+        panels.append({"name": "Import / Export", "icon": Glyphs.REFRESH, "factory": lambda p: self.import_export_tab()})
         panels.append({"name": "eLabFTW", "icon": "📓", "factory": lambda p: ELabFTWView(self.client, p)})
 
-        panels.append({"name": "Workflows & QC", "icon": "🧰", "separator": True})
+        panels.append({"name": "Workflows & QC", "icon": Glyphs.TOOLBOX, "separator": True})
         panels += [
-            {"name": "Studies", "icon": "📚", "factory": lambda p: StudiesView(self.client, p)},
-            {"name": "Protocols", "icon": "📋", "factory": lambda p: ProtocolsView(self.client, p)},
-            {"name": "Lifecycle", "icon": "♻️", "factory": lambda p: LifecycleView(self.client, p)},
-            {"name": "Calibrations", "icon": "🎯", "factory": lambda p: CalibrationsView(self.client, p)},
+            {"name": "Studies", "icon": Glyphs.DOCS, "factory": lambda p: StudiesView(self.client, p)},
+            {"name": "Protocols", "icon": Glyphs.COPY, "factory": lambda p: ProtocolsView(self.client, p)},
+            {"name": "Lifecycle", "icon": Glyphs.RESET, "factory": lambda p: LifecycleView(self.client, p)},
+            {"name": "Calibrations", "icon": Glyphs.TARGET, "factory": lambda p: CalibrationsView(self.client, p)},
             {"name": "Reagent Lots", "icon": "🧴", "factory": lambda p: ReagentLotsView(self.client, p)},
-            {"name": "Pipelines", "icon": "🛠️", "factory": lambda p: PipelinesView(self.client, p)},
+            {"name": "Pipelines", "icon": Glyphs.TOOLS, "factory": lambda p: PipelinesView(self.client, p)},
         ]
         return panels
 
@@ -1960,18 +1962,18 @@ class MMFDBWidget(NavigationPanelTool):
 
     def setup_menu_bar(self) -> None:
         file_menu = self.menuBar().addMenu("&File")
-        file_menu.addAction("📥 &Import...", self.import_file)
-        file_menu.addAction("📤 &Export selected sample...", self.export_selected_sample)
-        file_menu.addAction("💾 &Backup database...", self.backup_database)
-        file_menu.addAction("♻️ Reset", self.reset_from_source)
+        file_menu.addAction(f"{Glyphs.IMPORT} &Import...", self.import_file)
+        file_menu.addAction(f"{Glyphs.EXPORT} &Export selected sample...", self.export_selected_sample)
+        file_menu.addAction(f"{Glyphs.SAVE} &Backup database...", self.backup_database)
+        file_menu.addAction(f"{Glyphs.RESET} Reset", self.reset_from_source)
         file_menu.addSeparator()
-        file_menu.addAction("✕ &Close", self.close)
+        file_menu.addAction(f"{Glyphs.CLOSE} &Close", self.close)
 
         settings_menu = self.menuBar().addMenu("&Settings")
         settings_menu.addAction("🗔 &Reset window layout", self.reset_window_layout)
 
         help_menu = self.menuBar().addMenu("&Help")
-        help_menu.addAction("ℹ️ &About mmfdb-admin", self.show_about)
+        help_menu.addAction(f"{Glyphs.INFO} &About mmfdb-admin", self.show_about)
 
     DEFAULT_URL = "tcp://127.0.0.1:8765"
 
@@ -2016,13 +2018,13 @@ class MMFDBWidget(NavigationPanelTool):
 
         # Auth — a single line: user + (optional) password. With an active
         # session the password is not needed; "More…" opens the AutoForm dialog.
-        toolbar.addWidget(QtWidgets.QLabel(" 👤 "))
+        toolbar.addWidget(QtWidgets.QLabel(f" {Glyphs.USER} "))
         self.username_edit = QtWidgets.QLineEdit()
         self.username_edit.setFixedWidth(110)
         self.username_edit.setToolTip("MMFDB username")
         self.username_edit.returnPressed.connect(self._on_login_clicked)
         toolbar.addWidget(self.username_edit)
-        toolbar.addWidget(QtWidgets.QLabel(" 🔑 "))
+        toolbar.addWidget(QtWidgets.QLabel(f" {Glyphs.KEY} "))
         self.password_edit = QtWidgets.QLineEdit()
         self.password_edit.setFixedWidth(110)
         self.password_edit.setEchoMode(QtWidgets.QLineEdit.Password)
@@ -2050,13 +2052,13 @@ class MMFDBWidget(NavigationPanelTool):
         toolbar.addWidget(spacer)
         toolbar.addSeparator()
         
-        self.refresh_action = toolbar.addAction("🔄 Refresh", self.refresh)
+        self.refresh_action = toolbar.addAction(f"{Glyphs.REFRESH} Refresh", self.refresh)
         self.refresh_action.setToolTip("Reload MMFDB status and visible tables")
         self._transport_actions = [self.refresh_action]
         for text, slot, tip in (
-            ("⬇️ Import", self.import_file, "Import fluorescence/sample/project data into MMFDB"),
-            ("💾 Backup", self.backup_database, "Create a backup copy of the active MMFDB database"),
-            ("♻️ Reset", self.reset_from_source, "Reset the active MMFDB database. A backup is created first."),
+            (f"{Glyphs.DOWN} Import", self.import_file, "Import fluorescence/sample/project data into MMFDB"),
+            (f"{Glyphs.SAVE} Backup", self.backup_database, "Create a backup copy of the active MMFDB database"),
+            (f"{Glyphs.RESET} Reset", self.reset_from_source, "Reset the active MMFDB database. A backup is created first."),
         ):
             action = toolbar.addAction(text, slot)
             action.setToolTip(tip)
@@ -2328,7 +2330,7 @@ class MMFDBWidget(NavigationPanelTool):
         layout.setSpacing(6)
 
         refresh_btn = self._text_icon_button(
-            "🔄 Refresh overview", QtWidgets.QStyle.SP_BrowserReload,
+            f"{Glyphs.REFRESH} Refresh overview", QtWidgets.QStyle.SP_BrowserReload,
             "Reload database overview", self._refresh_overview
         )
         layout.addWidget(refresh_btn)
@@ -2436,7 +2438,7 @@ class MMFDBWidget(NavigationPanelTool):
         self.meas_search_edit.setPlaceholderText("Search...")
         filter_bar.addWidget(self.meas_search_edit)
         filter_bar.addWidget(self._text_icon_button(
-            "🔄 Refresh", QtWidgets.QStyle.SP_BrowserReload,
+            f"{Glyphs.REFRESH} Refresh", QtWidgets.QStyle.SP_BrowserReload,
             "Refresh measurements list", self._refresh_measurements
         ))
         filter_bar.addStretch()
@@ -2539,7 +2541,7 @@ class MMFDBWidget(NavigationPanelTool):
         self.all_items_count_label = QtWidgets.QLabel("0 / 0")
         controls.addWidget(self.all_items_count_label)
         refresh_btn = self._text_icon_button(
-            "🔄 Refresh",
+            f"{Glyphs.REFRESH} Refresh",
             QtWidgets.QStyle.SP_BrowserReload,
             "Reload all MMFDB items",
             self._populate_all_items,
@@ -2832,10 +2834,10 @@ class MMFDBWidget(NavigationPanelTool):
         self.sample_id_edit.setPlaceholderText("Type sample id (autocomplete searches existing)")
 
         btn_row = QtWidgets.QHBoxLayout()
-        new_btn = self._text_icon_button("🧪 New", QtWidgets.QStyle.SP_FileDialogNewFolder, "Create new sample", self.new_sample)
-        save_btn = self._text_icon_button("💾 Save", QtWidgets.QStyle.SP_DialogSaveButton, "Save sample", self.save_sample)
-        delete_btn = self._text_icon_button("🗑️ Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete sample", self.delete_sample)
-        clear_btn = self._text_icon_button("🧹 Clear", QtWidgets.QStyle.SP_DialogResetButton, "Clear form", self.clear_form)
+        new_btn = self._text_icon_button(f"{Glyphs.TEST} New", QtWidgets.QStyle.SP_FileDialogNewFolder, "Create new sample", self.new_sample)
+        save_btn = self._text_icon_button(f"{Glyphs.SAVE} Save", QtWidgets.QStyle.SP_DialogSaveButton, "Save sample", self.save_sample)
+        delete_btn = self._text_icon_button(f"{Glyphs.DELETE} Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete sample", self.delete_sample)
+        clear_btn = self._text_icon_button(f"{Glyphs.CLEAR} Clear", QtWidgets.QStyle.SP_DialogResetButton, "Clear form", self.clear_form)
         full_btn = self._text_icon_button(
             "Full description",
             QtWidgets.QStyle.SP_FileDialogDetailedView,
@@ -3129,10 +3131,10 @@ class MMFDBWidget(NavigationPanelTool):
 
         buttons = QtWidgets.QHBoxLayout()
         buttons.addWidget(self._text_icon_button(
-            "💾 Save", QtWidgets.QStyle.SP_DialogSaveButton, "Save condition", self.save_condition
+            f"{Glyphs.SAVE} Save", QtWidgets.QStyle.SP_DialogSaveButton, "Save condition", self.save_condition
         ))
         buttons.addWidget(self._text_icon_button(
-            "🧹 Clear", QtWidgets.QStyle.SP_DialogResetButton, "Clear form", self.clear_condition_form
+            f"{Glyphs.CLEAR} Clear", QtWidgets.QStyle.SP_DialogResetButton, "Clear form", self.clear_condition_form
         ))
         buttons.addStretch()
         layout.addLayout(buttons)
@@ -3237,7 +3239,7 @@ class MMFDBWidget(NavigationPanelTool):
         layout.setSpacing(2)
         buttons = QtWidgets.QHBoxLayout()
         buttons.addWidget(self._text_icon_button(
-            "🔄 Refresh", QtWidgets.QStyle.SP_BrowserReload,
+            f"{Glyphs.REFRESH} Refresh", QtWidgets.QStyle.SP_BrowserReload,
             "Reload probe positions", self.fill_positions
         ))
         buttons.addStretch()
@@ -3279,7 +3281,7 @@ class MMFDBWidget(NavigationPanelTool):
         filter_bar.addWidget(QtWidgets.QLabel("Sample:"))
         filter_bar.addWidget(self.fp_sample_combo)
         filter_bar.addWidget(self._text_icon_button(
-            "🔄 Refresh", QtWidgets.QStyle.SP_BrowserReload,
+            f"{Glyphs.REFRESH} Refresh", QtWidgets.QStyle.SP_BrowserReload,
             "Refresh FRET pairs for selected sample", self._refresh_fret_pairs_tab
         ))
         filter_bar.addStretch()
@@ -3421,17 +3423,17 @@ class MMFDBWidget(NavigationPanelTool):
         file_row.setContentsMargins(0, 0, 0, 0)
         file_row.setSpacing(2)
         self.file_edit = QtWidgets.QLineEdit()
-        browse_button = self._text_icon_button("📂 Browse", QtWidgets.QStyle.SP_DirOpenIcon, "Browse for file", self.browse_import_file)
+        browse_button = self._text_icon_button(f"{Glyphs.OPEN} Browse", QtWidgets.QStyle.SP_DirOpenIcon, "Browse for file", self.browse_import_file)
         file_row.addWidget(self.file_edit)
         file_row.addWidget(browse_button)
         layout.addLayout(file_row)
         buttons = QtWidgets.QHBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
         buttons.setSpacing(2)
-        import_button = self._text_icon_button("📥 Import file", QtWidgets.QStyle.SP_ArrowDown, "Import file into database", self.import_file)
-        export_button = self._text_icon_button("📤 Export selected sample", QtWidgets.QStyle.SP_ArrowUp, "Export selected sample to FLR CIF", self.export_selected_sample)
-        preview_button = self._text_icon_button("👁️ Preview CIF", QtWidgets.QStyle.SP_FileDialogDetailedView, "Preview flrCIF output in the text area below", self.preview_cif)
-        export_table_button = self._text_icon_button("📊 Export table CSV/XLSX", QtWidgets.QStyle.SP_FileIcon, "Export sample table", self.export_table)
+        import_button = self._text_icon_button(f"{Glyphs.IMPORT} Import file", QtWidgets.QStyle.SP_ArrowDown, "Import file into database", self.import_file)
+        export_button = self._text_icon_button(f"{Glyphs.EXPORT} Export selected sample", QtWidgets.QStyle.SP_ArrowUp, "Export selected sample to FLR CIF", self.export_selected_sample)
+        preview_button = self._text_icon_button(f"{Glyphs.EYE} Preview CIF", QtWidgets.QStyle.SP_FileDialogDetailedView, "Preview flrCIF output in the text area below", self.preview_cif)
+        export_table_button = self._text_icon_button(f"{Glyphs.CHART} Export table CSV/XLSX", QtWidgets.QStyle.SP_FileIcon, "Export sample table", self.export_table)
         buttons.addWidget(import_button)
         buttons.addWidget(export_button)
         buttons.addWidget(preview_button)
@@ -3461,19 +3463,19 @@ class MMFDBWidget(NavigationPanelTool):
         buttons.setContentsMargins(0, 0, 0, 0)
         buttons.setSpacing(2)
         save_metadata_btn = self._text_icon_button(
-            "💾 Save metadata",
+            f"{Glyphs.SAVE} Save metadata",
             QtWidgets.QStyle.SP_DialogSaveButton,
             "Persist metadata key/value rows for the selected sample",
             self.save_sample_metadata,
         )
         add_metadata_btn = self._text_icon_button(
-            "➕ Add row",
+            f"{Glyphs.ADD} Add row",
             QtWidgets.QStyle.SP_FileDialogNewFolder,
             "Add an empty metadata row",
             self.add_metadata_row,
         )
         delete_metadata_btn = self._text_icon_button(
-            "🗑️ Delete row",
+            f"{Glyphs.DELETE} Delete row",
             QtWidgets.QStyle.SP_TrashIcon,
             "Delete the selected metadata row",
             self.delete_metadata_row,
@@ -3546,13 +3548,13 @@ class MMFDBWidget(NavigationPanelTool):
         )
 
         new_user_button = self._text_icon_button(
-            "👤 New user",
+            f"{Glyphs.USER} New user",
             QtWidgets.QStyle.SP_FileDialogNewFolder,
             "Prepare the form for a new user (auto-generates UUID)",
             self.new_user,
         )
         change_password_button = self._text_icon_button(
-            "🔑 Password", QtWidgets.QStyle.SP_DialogApplyButton, "Change password", self.change_user_password
+            f"{Glyphs.KEY} Password", QtWidgets.QStyle.SP_DialogApplyButton, "Change password", self.change_user_password
         )
 
         return self._create_standard_dock_tab(
@@ -3610,14 +3612,14 @@ class MMFDBWidget(NavigationPanelTool):
 
         user_buttons = QtWidgets.QHBoxLayout()
         self.set_active_branch_button = self._text_icon_button(
-            "🔀 Switch Active Branch",
+            f"{Glyphs.SHUFFLE} Switch Active Branch",
             QtWidgets.QStyle.SP_BrowserReload,
             "Switch the selected user to the chosen branch",
             self.switch_active_branch,
         )
         user_buttons.addWidget(self.set_active_branch_button)
         self.jump_branch_button = self._text_icon_button(
-            "⏱️ Create Time Branch",
+            f"{Glyphs.TIMER} Create Time Branch",
             QtWidgets.QStyle.SP_FileDialogNewFolder,
             "Create and activate a branch at the requested operation",
             self.create_time_branch,
@@ -3700,10 +3702,10 @@ class MMFDBWidget(NavigationPanelTool):
         data_layout.addWidget(data_header)
         data_layout.addWidget(self.experiment_data_table, stretch=1)
 
-        add_data_button = self._text_icon_button("➕ Add", QtWidgets.QStyle.SP_FileDialogNewFolder, "Add data row", self.add_experiment_data_row)
-        save_data_button = self._text_icon_button("💾 Save data", QtWidgets.QStyle.SP_DialogSaveButton, "Save data", self.save_experiment_data)
-        delete_data_button = self._text_icon_button("🗑️ Del data", QtWidgets.QStyle.SP_TrashIcon, "Delete data", self.delete_experiment_data)
-        open_data_button = self._text_icon_button("📂 Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open linked data", self.open_experiment_data)
+        add_data_button = self._text_icon_button(f"{Glyphs.ADD} Add", QtWidgets.QStyle.SP_FileDialogNewFolder, "Add data row", self.add_experiment_data_row)
+        save_data_button = self._text_icon_button(f"{Glyphs.SAVE} Save data", QtWidgets.QStyle.SP_DialogSaveButton, "Save data", self.save_experiment_data)
+        delete_data_button = self._text_icon_button(f"{Glyphs.DELETE} Del data", QtWidgets.QStyle.SP_TrashIcon, "Delete data", self.delete_experiment_data)
+        open_data_button = self._text_icon_button(f"{Glyphs.OPEN} Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open linked data", self.open_experiment_data)
 
         return self._create_standard_dock_tab(
             table=self.experiments_table,
@@ -5368,13 +5370,13 @@ class MMFDBWidget(NavigationPanelTool):
         )
 
         restore_button = self._text_icon_button(
-            "📥 Restore project to ChiSurf",
+            f"{Glyphs.IMPORT} Restore project to ChiSurf",
             QtWidgets.QStyle.SP_DialogOpenButton,
             "Restore project state from database",
             self.restore_selected_project,
         )
         delete_button = self._text_icon_button(
-            "🗑️ Delete archived version",
+            f"{Glyphs.DELETE} Delete archived version",
             QtWidgets.QStyle.SP_TrashIcon,
             "Delete the archived project version",
             self.delete_selected_project,
@@ -5509,7 +5511,7 @@ class MMFDBWidget(NavigationPanelTool):
         self.setup_validation_label.setWordWrap(True)
 
         validate_setup_button = self._text_icon_button(
-            "✅ Validate setup", QtWidgets.QStyle.SP_DialogApplyButton, "Validate setup", self.validate_setup
+            f"{Glyphs.SUCCESS} Validate setup", QtWidgets.QStyle.SP_DialogApplyButton, "Validate setup", self.validate_setup
         )
 
         return self._create_standard_dock_tab(
@@ -5636,10 +5638,10 @@ class MMFDBWidget(NavigationPanelTool):
         self.raw_data_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 
         btn_open = self._text_icon_button(
-            "📂 Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open raw data file/URL", self._on_raw_open_clicked
+            f"{Glyphs.OPEN} Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open raw data file/URL", self._on_raw_open_clicked
         )
         btn_copy = self._text_icon_button(
-            "📋 Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy raw data ID to clipboard", self._on_raw_copy_clicked
+            f"{Glyphs.COPY} Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy raw data ID to clipboard", self._on_raw_copy_clicked
         )
         btn_seed = self._text_icon_button(
             "🌱 Use as provenance seed",
@@ -5744,7 +5746,7 @@ class MMFDBWidget(NavigationPanelTool):
         self.processing_runs_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 
         btn_copy = self._text_icon_button(
-            "📋 Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy processing ID to clipboard", self._on_proc_copy_clicked
+            f"{Glyphs.COPY} Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy processing ID to clipboard", self._on_proc_copy_clicked
         )
         btn_seed = self._text_icon_button(
             "🌱 Use as provenance seed",
@@ -5844,16 +5846,16 @@ class MMFDBWidget(NavigationPanelTool):
         )
 
         btn_open = self._text_icon_button(
-            "📂 Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open processed product", self._on_prod_open_clicked
+            f"{Glyphs.OPEN} Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open processed product", self._on_prod_open_clicked
         )
         ndx_button = self._text_icon_button(
-            "🔬 Open in NDXplorer",
+            f"{Glyphs.SCIENCE} Open in NDXplorer",
             QtWidgets.QStyle.SP_FileDialogContentsView,
             "Open the selected product in NDXplorer",
             self.open_in_ndxplorer,
         )
         btn_copy = self._text_icon_button(
-            "📋 Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy product ID to clipboard", self._on_prod_copy_clicked
+            f"{Glyphs.COPY} Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy product ID to clipboard", self._on_prod_copy_clicked
         )
         btn_seed = self._text_icon_button(
             "🌱 Use as provenance seed",
@@ -6028,7 +6030,7 @@ class MMFDBWidget(NavigationPanelTool):
         filter_layout.addWidget(QtWidgets.QLabel("Limit:"))
         filter_layout.addWidget(self.object_limit_spin)
         refresh_button = self._text_icon_button(
-            "🔄 Refresh",
+            f"{Glyphs.REFRESH} Refresh",
             QtWidgets.QStyle.SP_BrowserReload,
             "Refresh object list",
             self.fill_object_table,
@@ -6047,19 +6049,19 @@ class MMFDBWidget(NavigationPanelTool):
         self.objects_table.itemSelectionChanged.connect(self.load_object)
 
         btn_delete = self._text_icon_button(
-            "🗑️ Delete object",
+            f"{Glyphs.DELETE} Delete object",
             QtWidgets.QStyle.SP_TrashIcon,
             "Delete the selected object (or decrement refcount)",
             self.delete_selected_object,
         )
         btn_copy = self._text_icon_button(
-            "📋 Copy UUID",
+            f"{Glyphs.COPY} Copy UUID",
             QtWidgets.QStyle.SP_FileIcon,
             "Copy object UUID to clipboard",
             self._on_object_copy_clicked,
         )
         btn_reveal = self._text_icon_button(
-            "📂 Reveal",
+            f"{Glyphs.OPEN} Reveal",
             QtWidgets.QStyle.SP_DirOpenIcon,
             "Reveal the object in the file manager",
             self._on_object_reveal_clicked,
@@ -6177,7 +6179,7 @@ class MMFDBWidget(NavigationPanelTool):
         self.analyses_table.itemSelectionChanged.connect(self.load_analysis)
 
         btn_copy = self._text_icon_button(
-            "📋 Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy analysis ID to clipboard", self._on_analysis_copy_clicked
+            f"{Glyphs.COPY} Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy analysis ID to clipboard", self._on_analysis_copy_clicked
         )
         btn_seed = self._text_icon_button(
             "🌱 Use as provenance seed",
@@ -6267,7 +6269,7 @@ class MMFDBWidget(NavigationPanelTool):
         toolbar.addWidget(self.prov_seed_id_edit)
 
         self.btn_load_upstream = self._text_icon_button(
-            "⬆️ Load upstream",
+            f"{Glyphs.UP} Load upstream",
             QtWidgets.QStyle.SP_ArrowUp,
             "Trace ancestors of the seed",
             self.load_provenance_upstream,
@@ -6275,7 +6277,7 @@ class MMFDBWidget(NavigationPanelTool):
         toolbar.addWidget(self.btn_load_upstream)
 
         self.btn_load_downstream = self._text_icon_button(
-            "⬇️ Load downstream",
+            f"{Glyphs.DOWN} Load downstream",
             QtWidgets.QStyle.SP_ArrowDown,
             "Trace descendants of the seed",
             self.load_provenance_downstream,
@@ -6291,7 +6293,7 @@ class MMFDBWidget(NavigationPanelTool):
         toolbar.addWidget(self.btn_load_full)
 
         self.btn_export_json = self._text_icon_button(
-            "📄 Export JSON",
+            f"{Glyphs.FILE} Export JSON",
             QtWidgets.QStyle.SP_DialogSaveButton,
             "Export provenance graph as JSON",
             self.export_provenance_json_action,
@@ -6299,7 +6301,7 @@ class MMFDBWidget(NavigationPanelTool):
         toolbar.addWidget(self.btn_export_json)
 
         self.btn_export_zip = self._text_icon_button(
-            "📦 Export ZIP",
+            f"{Glyphs.PACKAGE} Export ZIP",
             QtWidgets.QStyle.SP_DriveHDIcon,
             "Export provenance graph as ZIP archive",
             self.export_provenance_zip_action,

@@ -15,6 +15,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.plugins.tttr.trace_browser import TraceBrowser
 from chisurf.plugins.tttr.trace_browser.gui.client import TraceBrowserClient
@@ -36,11 +37,11 @@ class TraceBrowserTool(QMainWindow):
     def __init__(self, parent=None):
         """Create the toolbar/dock shell and embed the Trace Browser workspace."""
         super().__init__(parent)
-        self.setWindowTitle("🔍 Trace Browser")
+        self.setWindowTitle(f"{Glyphs.SEARCH} Trace Browser")
         self._workspace = TraceBrowser(self)
         self.client = TraceBrowserClient()
         self._dock_area = DockArea(self)
-        self._dock_area.addTab(self._workspace, "📈 Traces")
+        self._dock_area.addTab(self._workspace, f"{Glyphs.CHART_UP} Traces")
         self.setCentralWidget(self._dock_area)
         self._setup_toolbar()
 
@@ -62,18 +63,18 @@ class TraceBrowserTool(QMainWindow):
 
     def _setup_toolbar(self) -> None:
         """Create emoji toolbar actions backed by the workspace."""
-        toolbar = QToolBar("🧰 Trace Browser", self)
+        toolbar = QToolBar(f"{Glyphs.TOOLBOX} Trace Browser", self)
         toolbar.setObjectName("traceBrowserMainToolbar")
         actions = [
-            ("📂 Open", self._workspace._on_pick_folder, "Pick a folder with TTTR traces"),
-            ("🧹 Clear", self._workspace._on_clear, "Clear the file list"),
-            ("♻️ Caches", self._workspace._on_clear_caches, "Clear trace caches"),
-            ("📤 Export", self._workspace._on_export, "Export selected traces"),
+            (f"{Glyphs.OPEN} Open", self._workspace._on_pick_folder, "Pick a folder with TTTR traces"),
+            (f"{Glyphs.CLEAR} Clear", self._workspace._on_clear, "Clear the file list"),
+            (f"{Glyphs.RESET} Caches", self._workspace._on_clear_caches, "Clear trace caches"),
+            (f"{Glyphs.EXPORT} Export", self._workspace._on_export, "Export selected traces"),
             ("CSV", self._workspace._on_export_csv, "Export traces as CSV"),
             ("DOCX", self._workspace._on_export_docx, "Export selected traces as DOCX"),
-            ("🧠 HMM", self._workspace._on_transfer_to_analysis, "Open in Intensity Trace Analysis"),
-            ("⏱️ TW", self._workspace._on_transfer_to_tw, "Open in TTTR Time Window"),
-            ("📊 NDX", self._workspace._on_open_in_ndxplorer, "Open in NDXplorer"),
+            (f"{Glyphs.BRAIN} HMM", self._workspace._on_transfer_to_analysis, "Open in Intensity Trace Analysis"),
+            (f"{Glyphs.TIMER} TW", self._workspace._on_transfer_to_tw, "Open in TTTR Time Window"),
+            (f"{Glyphs.CHART} NDX", self._workspace._on_open_in_ndxplorer, "Open in NDXplorer"),
         ]
         for text, slot, tooltip in actions:
             action = QAction(text, self)

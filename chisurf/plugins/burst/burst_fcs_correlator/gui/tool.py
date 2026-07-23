@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.wizard.tttr_correlator import WizardTTTRCorrelator
 
 from ..core.algorithms import BurstFcsSettings, PairConfig, parse_channel_list
@@ -108,7 +109,7 @@ class BurstFcsTool(QtWidgets.QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("🔬 Burst-wise FCS Correlator")
+        self.setWindowTitle(f"{Glyphs.SCIENCE} Burst-wise FCS Correlator")
         self.resize(960, 620)
 
         self._client = BurstFcsClient()
@@ -141,10 +142,10 @@ class BurstFcsTool(QtWidgets.QMainWindow):
         menu_btn.setText("≡ Settings")
         menu_btn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
         menu = QtWidgets.QMenu(menu_btn)
-        menu.addAction("📂 Load settings…", self._on_load_settings)
-        menu.addAction("💾 Save settings…", self._on_save_settings)
+        menu.addAction(f"{Glyphs.OPEN} Load settings…", self._on_load_settings)
+        menu.addAction(f"{Glyphs.SAVE} Save settings…", self._on_save_settings)
         menu.addSeparator()
-        menu.addAction("🔬 Show FCS pairs JSON", self._on_show_pairs_json)
+        menu.addAction(f"{Glyphs.SCIENCE} Show FCS pairs JSON", self._on_show_pairs_json)
         menu_btn.setMenu(menu)
         tb.addWidget(menu_btn)
 
@@ -183,7 +184,7 @@ class BurstFcsTool(QtWidgets.QMainWindow):
         rcol.setSpacing(6)
 
         self.line_filter = QtWidgets.QLineEdit()
-        self.line_filter.setPlaceholderText("🔍 Filter by file or pair name (e.g. 'GG')")
+        self.line_filter.setPlaceholderText(f"{Glyphs.SEARCH} Filter by file or pair name (e.g. 'GG')")
         self.line_filter.textChanged.connect(self._refresh_browser_list)
         rcol.addWidget(self.line_filter)
 
@@ -416,7 +417,7 @@ class BurstFcsTool(QtWidgets.QMainWindow):
         pairs = [{"pair_name": p.pair_name, "chs_a": p.chs_a, "chs_b": p.chs_b}
                  for p in self._selected_pairs()]
         dlg = QtWidgets.QDialog(self)
-        dlg.setWindowTitle("🔬 FCS pairs JSON")
+        dlg.setWindowTitle(f"{Glyphs.SCIENCE} FCS pairs JSON")
         v = QtWidgets.QVBoxLayout(dlg)
         edit = QtWidgets.QPlainTextEdit(json.dumps(pairs, indent=2))
         edit.setReadOnly(True)

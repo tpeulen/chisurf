@@ -12,6 +12,7 @@ from pathlib import Path
 
 from qtpy import QtGui, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.core.mmfdb_admin.gui.optical_components.component_detail_form import (
     ComponentDetailForm,
 )
@@ -34,7 +35,7 @@ class OverviewPanel(QtWidgets.QWidget):
         self._form = ComponentDetailForm(_VIEW)
         layout.addWidget(self._form)
 
-        refresh = QtWidgets.QPushButton("🔄 Refresh")
+        refresh = QtWidgets.QPushButton(f"{Glyphs.REFRESH} Refresh")
         refresh.clicked.connect(self.refresh)
         row = QtWidgets.QHBoxLayout()
         row.addStretch()

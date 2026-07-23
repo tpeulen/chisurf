@@ -9,6 +9,7 @@ from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import NavigationPanelTool
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.setup_client import (
     DetectorSetupClient,
@@ -330,35 +331,35 @@ def _hide_dock_tab_by_name(widget: QtWidgets.QWidget, tab_name: str) -> None:
 BURST_PANELS = [
     {
         "name": "1. Data Selection",
-        "icon": "📂",
+        "icon": Glyphs.OPEN,
         "description": "Select raw TTTR files used by all later steps.",
         "factory": _data_selection,
         "role": "data",
     },
     {
         "name": "2. Burst Selection",
-        "icon": "🔍",
+        "icon": Glyphs.SEARCH,
         "description": "Define detector channels and find/filter bursts from TTTR data.",
         "factory": _burst_selection,
         "role": "selection",
     },
     {
         "name": "3. BVA",
-        "icon": "📊",
+        "icon": Glyphs.CHART,
         "description": "Run burst variance analysis using selected bursts.",
         "factory": _burst_bva,
         "role": "bva",
     },
     {
         "name": "4. MLE-Lifetime",
-        "icon": "🎯",
+        "icon": Glyphs.TARGET,
         "description": "Fit burst lifetimes using selected bursts.",
         "factory": _burst_mle,
         "role": "mle",
     },
     {
         "name": "5. H2MM",
-        "icon": "🔀",
+        "icon": Glyphs.SHUFFLE,
         "description": "Resolve sub-burst FRET dynamics with photon-by-photon HMM.",
         "factory": _burst_h2mm,
         "role": "h2mm",
@@ -372,7 +373,7 @@ BURST_PANELS = [
     },
     {
         "name": "6. Browser",
-        "icon": "📋",
+        "icon": Glyphs.COPY,
         "description": "Inspect the current burst workflow result.",
         "factory": _burst_browser,
         "role": "browser",
@@ -392,7 +393,7 @@ BURST_PANELS = [
     },
     {
         "name": "IRF & Background",
-        "icon": "✨",
+        "icon": Glyphs.SPARKLE,
         "description": (
             "Extract a per-detector IRF and background from the non-burst photons "
             "and feed them to the MLE-Lifetime fit."

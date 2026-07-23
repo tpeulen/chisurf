@@ -28,6 +28,8 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from chisurf.gui.glyphs import Glyphs
+
 from ..api.models import FitResult, PchResult
 from .client import PCHClient
 
@@ -49,6 +51,7 @@ class HelpDialog(QDialog):
         cli_text = ""
         try:
             from click.testing import CliRunner
+
             from ..cli.main import cli
 
             runner = CliRunner()
@@ -118,22 +121,22 @@ class PCHApp(QMainWindow):
         tb.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.addToolBar(tb)
 
-        self.action_load = tb.addAction("📥 Load TTTR")
+        self.action_load = tb.addAction(f"{Glyphs.IMPORT} Load TTTR")
         self.action_load.triggered.connect(self._on_load)
 
         tb.addSeparator()
 
-        self.action_compute = tb.addAction("📊 Compute PCH")
+        self.action_compute = tb.addAction(f"{Glyphs.CHART} Compute PCH")
         self.action_compute.setEnabled(False)
         self.action_compute.triggered.connect(self._on_compute)
 
-        self.action_fit = tb.addAction("🧪 Fit Model")
+        self.action_fit = tb.addAction(f"{Glyphs.TEST} Fit Model")
         self.action_fit.setEnabled(False)
         self.action_fit.triggered.connect(self._on_fit)
 
         tb.addSeparator()
 
-        self.action_save = tb.addAction("💾 Save Results")
+        self.action_save = tb.addAction(f"{Glyphs.SAVE} Save Results")
         self.action_save.setEnabled(False)
         self.action_save.triggered.connect(self._on_save)
 
@@ -145,7 +148,7 @@ class PCHApp(QMainWindow):
         tb.addWidget(spacer)
 
         # Help button (last, on the very right)
-        self.action_help = tb.addAction("ℹ️ Help")
+        self.action_help = tb.addAction(f"{Glyphs.INFO} Help")
         self.action_help.setToolTip("Show help and CLI reference")
         self.action_help.triggered.connect(self._show_help)
 
@@ -534,6 +537,7 @@ class PCHApp(QMainWindow):
 
     def _save_outputs(self, fname_base: str):
         import numpy as np
+
         from ..api.algorithms import pch_mixture
 
         npz_path = f"{fname_base}.npz"

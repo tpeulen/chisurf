@@ -4,15 +4,24 @@ import os
 import pathlib
 import shutil
 
+from qtpy.QtCore import QRegularExpression, Qt
+from qtpy.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat
 from qtpy.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-    QComboBox, QMessageBox, QStatusBar, QPlainTextEdit, QInputDialog,
+    QComboBox,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QStatusBar,
+    QVBoxLayout,
+    QWidget,
 )
-from qtpy.QtCore import Qt, QRegularExpression
-from qtpy.QtGui import QTextCharFormat, QFont, QColor, QSyntaxHighlighter
 
 import chisurf as cs
 import chisurf.core.settings
+from chisurf.gui.glyphs import Glyphs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -149,16 +158,16 @@ class StyleManagerWidget(QWidget):
         self.file_combo.currentIndexChanged.connect(self.on_file_selected)
         
         # Buttons
-        self.new_button = QPushButton("✨ New")
+        self.new_button = QPushButton(f"{Glyphs.SPARKLE} New")
         self.new_button.clicked.connect(self.on_new_file)
         
-        self.save_button = QPushButton("💾 Save")
+        self.save_button = QPushButton(f"{Glyphs.SAVE} Save")
         self.save_button.clicked.connect(self.on_save_file)
         
-        self.apply_button = QPushButton("✅ Apply")
+        self.apply_button = QPushButton(f"{Glyphs.SUCCESS} Apply")
         self.apply_button.clicked.connect(self.on_apply_style)
         
-        self.clear_button = QPushButton("🗑️ Clear All Styles")
+        self.clear_button = QPushButton(f"{Glyphs.DELETE} Clear All Styles")
         self.clear_button.clicked.connect(self.on_clear_styles)
         
         # Add widgets to top layout

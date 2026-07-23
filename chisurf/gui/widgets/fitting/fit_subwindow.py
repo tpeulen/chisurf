@@ -1,5 +1,4 @@
 from __future__ import annotations
-import chisurf as cs
 
 import json
 import os
@@ -7,22 +6,23 @@ import pathlib
 import textwrap
 import typing
 
-import numpy as np
-from qtpy import QtWidgets, uic, QtCore, QtGui
 import matplotlib.colors as mcolors
+import numpy as np
+from qtpy import QtCore, QtGui, QtWidgets, uic
 
+import chisurf as cs
 import chisurf.core.data
-import chisurf.core.fitting
 import chisurf.core.decorators
-import chisurf.gui.decorators
+import chisurf.core.fitting
 import chisurf.core.settings
-
+import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
-from chisurf.gui.widgets.mdi_custom_titlebar import CustomMdiSubWindow
-from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.core.math.optimization.leastsqbound import OptimizationCancelled
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
+from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+from chisurf.gui.widgets.mdi_custom_titlebar import CustomMdiSubWindow
 
 
 class FitSubWindow(CustomMdiSubWindow):
@@ -162,7 +162,7 @@ class FitSubWindow(CustomMdiSubWindow):
         self.back_layout.addWidget(self.code_editor)
 
         self.agent_btn = QtWidgets.QToolButton()
-        self.agent_btn.setText("🤖")
+        self.agent_btn.setText(Glyphs.ROBOT)
         self.agent_btn.setToolTip("Toggle AI agent panel")
         self.agent_btn.clicked.connect(self.code_editor._toggle_agent_panel)
         self.back_toolbar.insertWidget(0, self.agent_btn)
@@ -640,6 +640,7 @@ class FitSubWindow(CustomMdiSubWindow):
     def show_code_view(self):
         import inspect
         import pathlib
+
         from chisurf.gui.devtools.source_jump import resolve_compute_model_class
         # Resolve the underlying *compute* model class so "Code" opens the pure
         # model source (e.g. core/models/tcspc/lifetime.py) and its co-located
@@ -772,8 +773,9 @@ class FitSubWindow(CustomMdiSubWindow):
             return
 
         source_file = self.original_source_file
-        import os
         import inspect
+        import os
+
         from chisurf.core.settings.path_utils import get_path
         
         target_file = source_file

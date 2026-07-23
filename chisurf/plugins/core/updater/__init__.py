@@ -16,17 +16,20 @@ Notes:
 - The update URL is configured in the settings or defaults to the one specified in info.py.
 """
 
-import sys
-import logging
 import html
-import yaml
+import logging
 import os
-from qtpy import QtWidgets, QtCore, QtGui
+import sys
 
-from .updater import ChiSurfUpdater, check_for_updates, update_chisurf
-from .package_widget import PackageManagerDialog
-from chisurf.core import info
+import yaml
+from qtpy import QtCore, QtGui, QtWidgets
+
 import chisurf.core.settings as _cs_settings_mod
+from chisurf.core import info
+from chisurf.gui.glyphs import Glyphs
+
+from .package_widget import PackageManagerDialog
+from .updater import ChiSurfUpdater, check_for_updates, update_chisurf
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -196,11 +199,11 @@ class UpdaterWidget(QtWidgets.QWidget):
 
         # Buttons with emoji icons
         button_layout = QtWidgets.QHBoxLayout()
-        self.check_button = QtWidgets.QPushButton(" 🔍  Check for Updates")
+        self.check_button = QtWidgets.QPushButton(f" {Glyphs.SEARCH}  Check for Updates")
         self.check_button.clicked.connect(self.check_for_updates)
         button_layout.addWidget(self.check_button)
 
-        self.update_button = QtWidgets.QPushButton(" ⬇️  Update Now")
+        self.update_button = QtWidgets.QPushButton(f" {Glyphs.DOWN}  Update Now")
         self.update_button.clicked.connect(self.update_chisurf)
         self.update_button.setEnabled(False)  # Disabled until updates are available
         button_layout.addWidget(self.update_button)

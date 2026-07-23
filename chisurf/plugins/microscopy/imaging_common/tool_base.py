@@ -13,6 +13,7 @@ import logging
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.autoform import AutoForm
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ class ImagingMapTool(QtWidgets.QWidget):
         a_run = toolbar.addAction("▶ Run")
         a_run.setToolTip("Compute the per-pixel maps from the loaded file.")
         a_run.triggered.connect(self.run_with_progress)
-        a_h5 = toolbar.addAction(getattr(self.model, "HDF5_ACTION_LABEL", "➕ Add to HDF5"))
+        a_h5 = toolbar.addAction(getattr(self.model, "HDF5_ACTION_LABEL", f"{Glyphs.ADD} Add to HDF5"))
         a_h5.setToolTip("Add these fields to a standard imaging HDF5 (or create it).")
         a_h5.triggered.connect(self.model.add_to_hdf5)
         a_ndx = toolbar.addAction("🧭 ndxplorer")

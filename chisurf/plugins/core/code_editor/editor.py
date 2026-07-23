@@ -16,6 +16,7 @@ import chisurf as cs
 import chisurf.core.fio as io
 import chisurf.gui.widgets
 from chisurf import logging
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.plugins.core.code_editor.agent_panel import AgentPanelWidget
 from chisurf.plugins.core.code_editor.document_store import DocumentStore
@@ -236,21 +237,21 @@ class CodeEditor(QtWidgets.QWidget):
         """Create shared editor actions for menus and toolbars."""
         parent = parent or self
         actions = {
-            "new":              QtWidgets.QAction(create_emoji_icon("📄", size=20), "New", parent),
-            "open":             QtWidgets.QAction(create_emoji_icon("📂", size=20), "Open", parent),
+            "new":              QtWidgets.QAction(create_emoji_icon(Glyphs.FILE, size=20), "New", parent),
+            "open":             QtWidgets.QAction(create_emoji_icon(Glyphs.OPEN, size=20), "Open", parent),
             "open_folder":      QtWidgets.QAction(create_emoji_icon("🗂", size=20), "Folder", parent),
-            "save":             QtWidgets.QAction(create_emoji_icon("💾", size=20), "Save", parent),
-            "save_as":          QtWidgets.QAction(create_emoji_icon("💾", size=20), "Save As", parent),
-            "reload":           QtWidgets.QAction(create_emoji_icon("🔄", size=20), "Reload", parent),
+            "save":             QtWidgets.QAction(create_emoji_icon(Glyphs.SAVE, size=20), "Save", parent),
+            "save_as":          QtWidgets.QAction(create_emoji_icon(Glyphs.SAVE, size=20), "Save As", parent),
+            "reload":           QtWidgets.QAction(create_emoji_icon(Glyphs.REFRESH, size=20), "Reload", parent),
             "run":              QtWidgets.QAction(create_emoji_icon("▶", size=20), "Run", parent),
-            "ruff":             QtWidgets.QAction(create_emoji_icon("🧹", size=20), "Lint", parent),
+            "ruff":             QtWidgets.QAction(create_emoji_icon(Glyphs.CLEAR, size=20), "Lint", parent),
             "back":             QtWidgets.QAction(create_emoji_icon("◀", size=20), "Back", parent),
             "forward":          QtWidgets.QAction(create_emoji_icon("▶", size=20), "Fwd", parent),
-            "definition":       QtWidgets.QAction(create_emoji_icon("🔍", size=20), "Def", parent),
-            "completion":       QtWidgets.QAction(create_emoji_icon("✨", size=20), "Hint", parent),
-            "settings":         QtWidgets.QAction(create_emoji_icon("⚙️", size=20), "Settings", parent),
-            "agent":            QtWidgets.QAction(create_emoji_icon("🤖", size=20), "Agent", parent),
-            "find":                QtWidgets.QAction(create_emoji_icon("🔍", size=20), "Find", parent),
+            "definition":       QtWidgets.QAction(create_emoji_icon(Glyphs.SEARCH, size=20), "Def", parent),
+            "completion":       QtWidgets.QAction(create_emoji_icon(Glyphs.SPARKLE, size=20), "Hint", parent),
+            "settings":         QtWidgets.QAction(create_emoji_icon(Glyphs.SETTINGS, size=20), "Settings", parent),
+            "agent":            QtWidgets.QAction(create_emoji_icon(Glyphs.ROBOT, size=20), "Agent", parent),
+            "find":                QtWidgets.QAction(create_emoji_icon(Glyphs.SEARCH, size=20), "Find", parent),
             "toggle_line_numbers": QtWidgets.QAction("Show Line Numbers", parent),
             "toggle_lsp":          QtWidgets.QAction("Enable Python LSP", parent),
             "toggle_whitespace":   QtWidgets.QAction(create_emoji_icon("¶", size=20), "", parent),
@@ -318,7 +319,7 @@ class CodeEditor(QtWidgets.QWidget):
     def create_settings_button(self, parent=None):
         """Create a gear button that opens the editor settings dialog."""
         button = QtWidgets.QToolButton(parent)
-        button.setText("⚙️")
+        button.setText(Glyphs.SETTINGS)
         button.setToolTip("Settings")
         button.setPopupMode(QtWidgets.QToolButton.MenuButtonPopup)
         button.setStyleSheet("QToolButton::menu-indicator { image: none; width: 0px; }")
@@ -662,7 +663,7 @@ class CodeEditor(QtWidgets.QWidget):
 
         if path is not None and path.is_file():
             menu.addAction(
-                create_emoji_icon("📄", size=16), "Open in Editor",
+                create_emoji_icon(Glyphs.FILE, size=16), "Open in Editor",
                 lambda p=path: self.open_file(str(p))
             )
             if path.suffix == ".py":
@@ -675,7 +676,7 @@ class CodeEditor(QtWidgets.QWidget):
             menu.addAction("Copy File Name", lambda p=path: self._copy_to_clipboard(p.name))
         elif path is not None and path.is_dir():
             menu.addAction(
-                create_emoji_icon("📂", size=16), "Set as Project Root",
+                create_emoji_icon(Glyphs.OPEN, size=16), "Set as Project Root",
                 lambda p=path: self.set_project_root(p)
             )
             menu.addSeparator()
@@ -684,7 +685,7 @@ class CodeEditor(QtWidgets.QWidget):
         reveal_target = path if path else self.project_root
         reveal_label = "Reveal in Finder" if platform.system() == "Darwin" else "Open Containing Folder"
         menu.addAction(
-            create_emoji_icon("🔍", size=16), reveal_label,
+            create_emoji_icon(Glyphs.SEARCH, size=16), reveal_label,
             lambda t=reveal_target: self._reveal_in_file_manager(t)
         )
 
@@ -696,7 +697,7 @@ class CodeEditor(QtWidgets.QWidget):
             else (path if (path and path.is_dir()) else self.project_root)
         )
         menu.addAction(
-            create_emoji_icon("📄", size=16), "New Python File…",
+            create_emoji_icon(Glyphs.FILE, size=16), "New Python File…",
             lambda d=dir_for_new: self._new_file_in_dir(d, suffix=".py")
         )
 

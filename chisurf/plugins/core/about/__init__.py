@@ -13,14 +13,23 @@ Features:
 from __future__ import annotations
 
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QDialog, QGridLayout, QPushButton, QTextEdit, QSizePolicy, QLayout
-from qtpy.QtWidgets import QFrame
+from qtpy.QtWidgets import (
+    QDialog,
+    QFrame,
+    QGridLayout,
+    QLayout,
+    QPushButton,
+    QSizePolicy,
+    QTextEdit,
+)
+
+from chisurf.gui.glyphs import Glyphs
 
 # Define the plugin name - this will appear in the Plugins menu
 name = "Help:About ChiSurf"
 
 # Plugin icon - displayed in menus and ribbon
-icon = "ℹ️"
+icon = Glyphs.INFO
 
 
 class AboutDialog(QDialog):
@@ -51,9 +60,11 @@ class AboutDialog(QDialog):
         self.textEdit.setTextInteractionFlags(Qt.NoTextInteraction)
 
         import pathlib
-        import chisurf
+
         from qtpy.QtCore import QUrl
         from qtpy.QtGui import QPixmap
+
+        import chisurf
 
         logo = QPixmap(":/icons/icons/cs_logo.png")
         if logo.isNull():

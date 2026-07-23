@@ -37,17 +37,18 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtCore, QtWidgets
 
+from chisurf.core.fluorescence.fcs.channel_setups import (
+    build_channels_from_setup,
+    load_fcs_channel_setups,
+    save_fcs_channel_setups,
+)
 from chisurf.core.settings import cs_settings
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
     resolve_active_user_id,
-)
-from chisurf.core.fluorescence.fcs.channel_setups import (
-    load_fcs_channel_setups,
-    save_fcs_channel_setups,
-    build_channels_from_setup,
 )
 
 try:
@@ -58,7 +59,7 @@ except ImportError:
 
 # Plugin category/name for the ChiSurf menu
 name = "Setup:FCS Definitions"
-icon = "📡"
+icon = Glyphs.ANTENNA
 
 
 @persist_plugin_state("fcs_channel_preset")
@@ -99,7 +100,7 @@ class FCSChannelWidget(QtWidgets.QWidget):
         self.setup_combo.currentIndexChanged.connect(self._on_setup_changed)
         top.addWidget(self.setup_combo, 1)
         self.btn_reload = QtWidgets.QToolButton(self)
-        self.btn_reload.setText("🔄 Reload")
+        self.btn_reload.setText(f"{Glyphs.REFRESH} Reload")
         self.btn_reload.clicked.connect(self._reload_detector_setups)
         top.addWidget(self.btn_reload)
         top.addWidget(self._public_checkbox)
@@ -145,7 +146,7 @@ class FCSChannelWidget(QtWidgets.QWidget):
         self.edit_name = QtWidgets.QLineEdit(right_box)
         self.edit_name.setPlaceholderText("Pair label (optional)")
         self.btn_add = QtWidgets.QToolButton(right_box)
-        self.btn_add.setText("➕ Add")
+        self.btn_add.setText(f"{Glyphs.ADD} Add")
 
         controls.addWidget(QtWidgets.QLabel("A:", right_box))
         controls.addWidget(self.combo_a)
@@ -164,9 +165,9 @@ class FCSChannelWidget(QtWidgets.QWidget):
         bottom = QtWidgets.QHBoxLayout()
         bottom.addStretch(1)
         self.btn_save = QtWidgets.QToolButton(self)
-        self.btn_save.setText("💾 Save")
+        self.btn_save.setText(f"{Glyphs.SAVE} Save")
         self.btn_close = QtWidgets.QToolButton(self)
-        self.btn_close.setText("✕ Close")
+        self.btn_close.setText(f"{Glyphs.CLOSE} Close")
         self.btn_save.clicked.connect(self._on_save)
         self.btn_close.clicked.connect(self.close)
         bottom.addWidget(self.btn_save)
@@ -276,7 +277,7 @@ class FCSChannelWidget(QtWidgets.QWidget):
             self.table_pairs.setCellWidget(row, 5, chk)
             # Delete button per row
             btn_del = QtWidgets.QToolButton(self.table_pairs)
-            btn_del.setText("✕")
+            btn_del.setText(Glyphs.CLOSE)
             btn_del.setToolTip("Remove this pair")
             btn_del.clicked.connect(lambda checked, r=row: self._on_remove_row(r))
             self.table_pairs.setCellWidget(row, 6, btn_del)
@@ -422,7 +423,7 @@ class FCSChannelWidget(QtWidgets.QWidget):
         self.table_pairs.setCellWidget(row, 5, chk)
         # Delete button
         btn_del = QtWidgets.QToolButton(self.table_pairs)
-        btn_del.setText("✕")
+        btn_del.setText(Glyphs.CLOSE)
         btn_del.setToolTip("Remove this pair")
         btn_del.clicked.connect(lambda checked, r=row: self._on_remove_row(r))
         self.table_pairs.setCellWidget(row, 6, btn_del)

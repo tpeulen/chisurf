@@ -12,6 +12,7 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.core import dataspec as ds
 from chisurf.gui.autoform import AutoForm, register_section
+from chisurf.gui.glyphs import Glyphs
 
 
 @register_section("acq_channels")
@@ -745,14 +746,14 @@ class SimulationSettingsModel:
                     ),
                 ),
                 ds.ButtonRowSection(
-                    menu="🛠️ Tools",
+                    menu=f"{Glyphs.TOOLS} Tools",
                     buttons=(
-                        {"label": "🧬 Decay…", "action": "open_decay_dialog",
+                        {"label": f"{Glyphs.DNA} Decay…", "action": "open_decay_dialog",
                          "description": "Define the per-species fluorescence decay "
                                         "(lifetimes / IRF) or load an existing decay pattern."},
-                        {"label": "📂 Load JSON", "action": "load_json",
+                        {"label": f"{Glyphs.OPEN} Load JSON", "action": "load_json",
                          "description": "Load simulation parameters from a JSON file."},
-                        {"label": "💾 Save JSON", "action": "save_json",
+                        {"label": f"{Glyphs.SAVE} Save JSON", "action": "save_json",
                          "description": "Save the current simulation parameters to a JSON file."},
                         {"label": "🧾 View JSON", "action": "view_json",
                          "description": "Show the current simulation parameters as JSON."},

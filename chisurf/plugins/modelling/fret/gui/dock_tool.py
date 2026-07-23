@@ -19,6 +19,24 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core.dataspec import load_view_spec
+from chisurf.gui.glyphs import Glyphs
+
+
+class _PdbListModel:
+    """Adapter binding a :class:`PathListWidget` to the tool's ``pdb_paths`` string.
+
+    The docking engine consumes ``pdb_paths`` as a comma-joined string — one entry
+    per rigid body, order = body id, the *same* file allowed twice for a homodimer.
+    This adapter exposes the ``list[str]`` the widget edits and forwards every
+    change to the host, which re-joins it back into the model string.
+    """
+
+    def __init__(self, on_change) -> None:
+        self.files: list[str] = []
+        self._on_change = on_change
+
+    def update(self) -> None:
+        self._on_change()
 
 
 class _NumericItem(QtWidgets.QTableWidgetItem):
@@ -265,34 +283,42 @@ class FretDockingTool(QtWidgets.QWidget):
 
         # Toolbar with emoji actions (replaces the old button rows).
         tb = QtWidgets.QToolBar(self)
-        self._act_load = tb.addAction("📂 Project", self._load_project)
+        self._act_load = tb.addAction(f"{Glyphs.OPEN} Project", self._load_project)
         self._act_load.setToolTip("Load a docking project (.json): PDBs, fps.json and parameters.")
-        self._act_save = tb.addAction("💾 Save", self._save_project)
+        self._act_save = tb.addAction(f"{Glyphs.SAVE} Save", self._save_project)
         self._act_save.setToolTip("Save the current inputs and parameters as a docking project.")
         tb.addSeparator()
-        tb.addAction("➕ Add PDB", self._pick_pdbs).setToolTip(
-            "Add one or more PDB files (one rigid body per file).")
-        tb.addAction("➖ Remove PDB", self._remove_pdb).setToolTip(
-            "Remove the selected PDB(s) from the list.")
-        tb.addAction("🏷️ fps.json", self._pick_fps).setToolTip(
+        tb.addAction(f"{Glyphs.LABEL} fps.json", self._pick_fps).setToolTip(
             "Choose the labelling/distance fps.json (or FPS LPs .txt) file.")
-        tb.addAction("📁 Output", self._pick_out).setToolTip("Choose the output directory.")
+        tb.addAction(f"{Glyphs.FOLDER} Output", self._pick_out).setToolTip("Choose the output directory.")
         tb.addSeparator()
-        self._act_run = tb.addAction("▶️ Run", self._on_run)
+        self._act_run = tb.addAction(f"{Glyphs.RUN} Run", self._on_run)
         self._act_run.setToolTip("Run docking; results are appended to the table.")
-        self._act_clear = tb.addAction("🧹 Clear", self._clear_results)
+        self._act_clear = tb.addAction(f"{Glyphs.CLEAR} Clear", self._clear_results)
         self._act_clear.setToolTip("Clear the results table and score plot.")
         layout.addWidget(tb)
 
-        # PDB rigid bodies as an editable list (one file per rigid body).
-        pdb_box = QtWidgets.QGroupBox("🧬 PDB rigid bodies (one per body)")
+        # PDB rigid bodies as an editable list (one file per rigid body). The
+        # unified AutoForm path list handles drops, the file picker and MMFDB;
+        # allow_duplicates keeps a homodimer's repeated structure, order = body id.
+        from chisurf.gui.autoform.sections.path_list_section import PathListWidget
+
+        pdb_box = QtWidgets.QGroupBox(f"{Glyphs.DNA} PDB rigid bodies (one per body)")
         pv = QtWidgets.QVBoxLayout(pdb_box)
         pv.setContentsMargins(6, 2, 6, 4)
-        self._pdb_list = QtWidgets.QListWidget()
-        self._pdb_list.setSelectionMode(QtWidgets.QListWidget.ExtendedSelection)
-        self._pdb_list.setMaximumHeight(90)
-        self._pdb_list.setToolTip("PDB files, one per rigid body; order = body_id 0,1,2…")
-        pv.addWidget(self._pdb_list)
+        self._pdb_model = _PdbListModel(self._sync_pdb_model)
+        self._pdb_widget = PathListWidget(
+            self._pdb_model, "files",
+            extensions=[".pdb"], add_folders=False, allow_duplicates=True,
+            dialog_filter="PDB (*.pdb);;All files (*)",
+            mmfdb_kinds=["structure"],
+        )
+        self._pdb_widget.setMaximumHeight(150)
+        self._pdb_widget.setToolTip(
+            "PDB files, one per rigid body; order = body_id 0,1,2… "
+            "(the same file twice = homodimer).")
+        self._pdb_widget.selectionChanged.connect(self._on_pdb_selected)
+        pv.addWidget(self._pdb_widget)
         layout.addWidget(pdb_box)
 
         self._form = AutoForm(self._model, parent=self)
@@ -329,9 +355,9 @@ class FretDockingTool(QtWidgets.QWidget):
         from chisurf.gui.autoform.sections.chimol_section import ChiMolSectionWidget
         self._structure_view = ChiMolSectionWidget(self._model, "preview_models")
 
-        self._dock_area.addTab(self._table, "📊 Results")
-        self._dock_area.addTab(self._plot, "📈 Score")
-        self._dock_area.addTab(self._structure_view, "🧬 Structure")
+        self._dock_area.addTab(self._table, f"{Glyphs.CHART} Results")
+        self._dock_area.addTab(self._plot, f"{Glyphs.CHART_UP} Score")
+        self._dock_area.addTab(self._structure_view, f"{Glyphs.DNA} Structure")
 
         # Status line (bottom) — outcome / score of the last run.
         self._statusbar = QtWidgets.QStatusBar(self)
@@ -381,41 +407,21 @@ class FretDockingTool(QtWidgets.QWidget):
         if pdb:
             self._show_structure(pdb)
 
-    # -- file pickers ------------------------------------------------------
-    def _pick_pdbs(self) -> None:
-        files, _ = QtWidgets.QFileDialog.getOpenFileNames(
-            self, "Select PDB file(s)", "", "PDB (*.pdb);;All files (*)")
-        if files:
-            for f in files:
-                self._add_pdb_item(f)
-            self._sync_pdb_model()
-            self._show_structure(files[0])  # preview the chosen structure
-
-    def _add_pdb_item(self, path: str) -> None:
-        item = QtWidgets.QListWidgetItem(pathlib.Path(path).name)
-        item.setToolTip(path)
-        item.setData(QtCore.Qt.UserRole, path)
-        self._pdb_list.addItem(item)
-
-    def _pdb_paths_from_list(self):
-        return [self._pdb_list.item(i).data(QtCore.Qt.UserRole)
-                for i in range(self._pdb_list.count())]
+    # -- PDB rigid-body list (unified AutoForm path list) ------------------
+    def _on_pdb_selected(self, paths) -> None:
+        """Preview the highlighted PDB structure in the 3D view."""
+        if paths:
+            self._show_structure(paths[0])
 
     def _sync_pdb_model(self) -> None:
         """Mirror the PDB list into the model (comma-joined for the engine)."""
-        self._model.pdb_paths = ", ".join(self._pdb_paths_from_list())
+        self._model.pdb_paths = ", ".join(self._pdb_widget.paths())
 
     def _set_pdb_list(self, paths) -> None:
-        self._pdb_list.clear()
-        for p in paths:
-            if p:
-                self._add_pdb_item(p)
-        self._sync_pdb_model()
+        """Load a stored PDB list verbatim (project load; keeps order and repeats)."""
+        self._pdb_widget.set_paths([str(p) for p in paths if p])
 
-    def _remove_pdb(self) -> None:
-        for item in self._pdb_list.selectedItems():
-            self._pdb_list.takeItem(self._pdb_list.row(item))
-        self._sync_pdb_model()
+    # -- file pickers ------------------------------------------------------
 
     def _pick_fps(self) -> None:
         f, _ = QtWidgets.QFileDialog.getOpenFileName(

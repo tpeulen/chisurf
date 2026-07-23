@@ -15,6 +15,7 @@ import pathlib
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +57,8 @@ class _ActionsSection(QtWidgets.QWidget):
         self._edit.dropEvent = self._drop
         self._edit.editingFinished.connect(lambda: self._load(self._edit.text().strip()))
         row.addWidget(self._edit, 1)
-        row.addWidget(_tool_button("📂 Load", "Load a TTTR file.", self._browse))
-        self._save_btn = _tool_button("💾 Save", "Save the ALEX-converted file.", self._save)
+        row.addWidget(_tool_button(f"{Glyphs.OPEN} Load", "Load a TTTR file.", self._browse))
+        self._save_btn = _tool_button(f"{Glyphs.SAVE} Save", "Save the ALEX-converted file.", self._save)
         self._save_btn.setEnabled(False)
         row.addWidget(self._save_btn)
         layout.addLayout(row)
@@ -184,7 +185,7 @@ class _BatchRunSection(QtWidgets.QWidget):
         self._status = QtWidgets.QLabel("")
         self._status.setStyleSheet("color: #888;")
         run_row.addWidget(self._status, 1)
-        run_row.addWidget(_tool_button("⚙️ Run batch", "Convert each / merge into one.", self._run))
+        run_row.addWidget(_tool_button(f"{Glyphs.SETTINGS} Run batch", "Convert each / merge into one.", self._run))
         layout.addLayout(run_row)
 
     def _browse_output(self) -> None:

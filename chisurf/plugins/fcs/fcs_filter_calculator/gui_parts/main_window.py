@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import pathlib
 import hashlib
-from typing import List, Dict
+import pathlib
+from typing import Dict, List
 
 import numpy as np
-from qtpy import QtWidgets, QtCore, QtGui
 import pyqtgraph as pg
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
 from chisurf.core.fluorescence.decay import (
@@ -17,16 +17,18 @@ from chisurf.core.fluorescence.decay import (
     sample_decay_shot_noise,
     scattered_light_decay_pattern,
 )
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
-from ..api import compute_filters, synthetic_component_decay, unmix_decay, FilterResult
+
+from ..api import FilterResult, compute_filters, synthetic_component_decay, unmix_decay
 
 
 def _build_filter_client():
     from ..gui.client import FilterCalcClient
     return FilterCalcClient()
-from .widgets import SpeciesListWidget
 from .calculator_options import CalculatorOptionsViewModel
 from .data_loading import load_vector
+from .widgets import SpeciesListWidget
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -201,12 +203,12 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.le_total.setToolTip("The measured mixed (total) decay histogram to unmix.")
         total_row.addWidget(self.le_total, 1)
         self.btn_load_total = QtWidgets.QToolButton()
-        self.btn_load_total.setText("📂 Load…")
+        self.btn_load_total.setText(f"{Glyphs.OPEN} Load…")
         self.btn_load_total.setToolTip("Open a measured mixed decay histogram to replace the built-in example.")
         self.btn_load_total.clicked.connect(self._add_total_dialog)
         total_row.addWidget(self.btn_load_total)
         self.btn_total_from_correlator = QtWidgets.QToolButton()
-        self.btn_total_from_correlator.setText("📡 From correlator")
+        self.btn_total_from_correlator.setText(f"{Glyphs.ANTENNA} From correlator")
         self.btn_total_from_correlator.setToolTip(
             "Use the TTTR files already loaded in the Correlator (Files & Steps) as "
             "the mixed decay."
@@ -285,7 +287,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.setAcceptDrops(True)
 
     def _build_toolbar(self) -> None:
-        self.action_load_total = self.toolbar.addAction("📂 Mixed…")
+        self.action_load_total = self.toolbar.addAction(f"{Glyphs.OPEN} Mixed…")
         self.action_load_total.setToolTip(
             "Open a measured mixed decay histogram to replace the built-in example."
         )
@@ -295,7 +297,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         # (right-click) and double-click-to-edit — not toolbar buttons.
 
         self.toolbar.addSeparator()
-        autofit_action = self.toolbar.addAction("🎯 Auto-fit")
+        autofit_action = self.toolbar.addAction(f"{Glyphs.TARGET} Auto-fit")
         autofit_action.setToolTip(
             "Auto-fit the measured mixed decay to N lifetime components and add them "
             "as species — a quick starting set of filter components."
@@ -310,7 +312,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         unmix_action.triggered.connect(self._unmix_total)
         self.btn_unmix = self.toolbar.widgetForAction(unmix_action)
 
-        project_action = self.toolbar.addAction("💾 Project")
+        project_action = self.toolbar.addAction(f"{Glyphs.SAVE} Project")
         project_action.setToolTip("Save or load a Filter Calculator project, or export its results.")
         project_button = self.toolbar.widgetForAction(project_action)
         project_menu = QtWidgets.QMenu(project_button)
@@ -392,7 +394,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             sig = w.currentIndexChanged if isinstance(w, QtWidgets.QComboBox) else w.valueChanged
             sig.connect(self._sync_autofit_settings)
 
-        self.btn_autofit_run = QtWidgets.QPushButton("🎯 Fit + generate filters")
+        self.btn_autofit_run = QtWidgets.QPushButton(f"{Glyphs.TARGET} Fit + generate filters")
         self.btn_autofit_run.setToolTip("Run the auto-fit over the selected range and add the species.")
         self.btn_autofit_run.clicked.connect(lambda: self._auto_fit_components())
         form.addRow(self.btn_autofit_run)
@@ -1954,16 +1956,16 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         """Right-click menu on the Components list: add / edit / remove."""
         item = self.lw_species.itemAt(pos)
         menu = QtWidgets.QMenu(self.lw_species)
-        act_add = menu.addAction("➕ Add component…")
+        act_add = menu.addAction(f"{Glyphs.ADD} Add component…")
         act_add.setToolTip("Add a synthetic decay component (plain lifetime spectrum or FRET species).")
         act_add.triggered.connect(lambda: self._add_component_dialog())
-        act_add_file = menu.addAction("📈 Add measured pattern…")
+        act_add_file = menu.addAction(f"{Glyphs.CHART_UP} Add measured pattern…")
         act_add_file.triggered.connect(self._add_species_dialog)
-        act_edit = menu.addAction("✏️ Edit…")
+        act_edit = menu.addAction(f"{Glyphs.EDIT} Edit…")
         act_edit.setEnabled(self._is_editable_component(item))
         act_edit.triggered.connect(lambda: self._edit_component_item(item))
         menu.addSeparator()
-        act_remove = menu.addAction("➖ Remove")
+        act_remove = menu.addAction(f"{Glyphs.REMOVE} Remove")
         act_remove.setEnabled(bool(self.lw_species.selectedItems()) or item is not None)
 
         def _remove():

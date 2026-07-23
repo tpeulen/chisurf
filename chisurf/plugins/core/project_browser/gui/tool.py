@@ -5,6 +5,7 @@ from typing import Any
 from qtpy import QtCore, QtWidgets
 
 from chisurf import logging
+from chisurf.gui.glyphs import Glyphs
 
 from .client import ProjectBrowserClient
 
@@ -163,34 +164,34 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
         self._action_toolbar.setMovable(False)
 
         self._open_btn = self._add_toolbar_button(
-            "📂 Open / Restore",
+            f"{Glyphs.OPEN} Open / Restore",
             "Restore the selected project version or newest version of the selected project",
             self._on_open,
         )
         self._action_toolbar.addSeparator()
         self._save_btn = self._add_toolbar_button(
-            "💾 Save Current Project",
+            f"{Glyphs.SAVE} Save Current Project",
             "Save the current Chisurf project as a new version in the database",
             self._on_save,
         )
         self._export_btn = self._add_toolbar_button(
-            "📤 Export .csp",
+            f"{Glyphs.EXPORT} Export .csp",
             "Export the selected version to a .csp archive file",
             self._on_export,
         )
         self._import_btn = self._add_toolbar_button(
-            "📥 Import Project",
+            f"{Glyphs.IMPORT} Import Project",
             "Import a .csp archive into the database",
             self._on_import,
         )
         self._delete_btn = self._add_toolbar_button(
-            "🗑️ Delete Version",
+            f"{Glyphs.DELETE} Delete Version",
             "Delete the selected version (requires manage permission)",
             self._on_delete,
         )
         self._action_toolbar.addSeparator()
         self._refresh_btn = self._add_toolbar_button(
-            "🔄 Refresh",
+            f"{Glyphs.REFRESH} Refresh",
             "Refresh the project list",
             self.refresh,
         )

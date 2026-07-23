@@ -10,9 +10,12 @@ from typing import Optional
 
 import numpy as np
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.plugins.fluorescence_decay.maxent_decay.core.settings import (
     get_settings_file,
+)
+from chisurf.plugins.fluorescence_decay.maxent_decay.core.settings import (
     load_maxent_settings as maxent_load_settings,
 )
 
@@ -20,12 +23,12 @@ from .gui_actions import _MaxentActionsMixin
 from .gui_data import _MaxentDataMixin
 from .gui_helpers import _MaxentHelpersMixin
 from .gui_mode import _MaxentModeMixin
-from .gui_priors import _MaxentPriorsMixin
 from .gui_plotting import _MaxentPlottingMixin
+from .gui_priors import _MaxentPriorsMixin
 from .gui_run import _MaxentRunMixin
 
 try:
-    from qtpy import QtWidgets, QtCore, QtGui
+    from qtpy import QtCore, QtGui, QtWidgets
 except Exception:
     QtWidgets = QtCore = QtGui = None
 
@@ -44,8 +47,9 @@ class HelpDialog(QtWidgets.QDialog):
 
         cli_text = ""
         try:
-            from ..cli.cli import cli
             from click.testing import CliRunner
+
+            from ..cli.cli import cli
 
             runner = CliRunner()
             result = runner.invoke(cli, ["--help"])
@@ -813,7 +817,7 @@ class MaxentDecayWidget(
         toolbar.addSeparator()
 
         self.btn_help = QtWidgets.QToolButton()
-        self.btn_help.setText("ℹ️ Help")
+        self.btn_help.setText(f"{Glyphs.INFO} Help")
         self.btn_help.setObjectName("maxentBtnHelp")
         self.btn_help.setAutoRaise(True)
         self.btn_help.setToolTip("Show help and CLI reference")

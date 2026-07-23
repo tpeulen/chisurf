@@ -4,6 +4,7 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.core.code_editor.editor import (
     CodeEditor,
     get_editor_settings,
@@ -152,7 +153,7 @@ class CodeEditorWindow(QtWidgets.QMainWindow):
         endpoint = QtWidgets.QComboBox(toolbar)
         _endpoint_keys = ["console", "process", "ipython"]
         endpoint.addItem(create_emoji_icon("🖥", size=16), "Console")
-        endpoint.addItem(create_emoji_icon("⚙️", size=16), "Process")
+        endpoint.addItem(create_emoji_icon(Glyphs.SETTINGS, size=16), "Process")
         endpoint.addItem(create_emoji_icon("🐍", size=16), "IPython")
         settings = get_editor_settings()
         current = settings.get("run_endpoint", "process")

@@ -4,19 +4,20 @@ from __future__ import annotations
 
 from qtpy import QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import NavigationPanelTool
 
 SETTINGS_PANELS = [
     {
         "name": "Getting Started",
-        "icon": "🚀",
+        "icon": Glyphs.ROCKET,
         "description": "First-run onboarding assistant (settings, detectors, FCS channels).",
         "class_path": "chisurf.plugins.core.boarding.wizard",
         "class_name": "BoardingAssistantWidget",
     },
     {
         "name": "ChiSurf Settings",
-        "icon": "📄",
+        "icon": Glyphs.FILE,
         "class_path": "chisurf.plugins.core.setup.gui.tool",
         "class_name": "ChiSurfSettingsEditorWidget",
     },
@@ -28,43 +29,43 @@ SETTINGS_PANELS = [
     },
     {
         "name": "Styles",
-        "icon": "🎨",
+        "icon": Glyphs.PALETTE,
         "class_path": "chisurf.plugins.core.style_manager.gui.tool",
         "class_name": "StyleManagerWidget",
     },
     {
         "name": "Models",
-        "icon": "⚙️",
+        "icon": Glyphs.SETTINGS,
         "class_path": "chisurf.plugins.core.model_manager.gui.tool",
         "class_name": "ModelManagerWidget",
     },
     {
         "name": "User Editor",
-        "icon": "👥",
+        "icon": Glyphs.USERS,
         "class_path": "chisurf.plugins.core.user_editor.gui.tool",
         "class_name": "UserEditorWidget",
     },
     {
         "name": "AI Settings",
-        "icon": "🤖",
+        "icon": Glyphs.ROBOT,
         "class_path": "chisurf.plugins.ai_settings.gui.tool",
         "class_name": "AISettingsWidget",
     },
     {
         "name": "Plugins",
-        "icon": "🔌",
+        "icon": Glyphs.PLUGIN,
         "class_path": "chisurf.plugins.core.plugin_manager.gui.tool",
         "class_name": "PluginManagerWidget",
     },
     {
         "name": "Updates",
-        "icon": "⬆️",
+        "icon": Glyphs.UP,
         "class_path": "chisurf.plugins.core.setup.gui.tool",
         "class_name": "UpdatesSettingsPanel",
     },
     {
         "name": "Packages",
-        "icon": "📦",
+        "icon": Glyphs.PACKAGE,
         "class_path": "chisurf.plugins.core.setup.gui.tool",
         "class_name": "PackagesSettingsPanel",
     },
@@ -76,7 +77,7 @@ SETTINGS_PANELS = [
     },
     {
         "name": "FCS Definitions",
-        "icon": "📡",
+        "icon": Glyphs.ANTENNA,
         "class_path": "chisurf.plugins.fcs.fcs_channel_preset.gui.tool",
         "class_name": "FCSChannelWidget",
     },
@@ -88,7 +89,7 @@ SETTINGS_PANELS = [
     },
     {
         "name": "Plugin Check",
-        "icon": "🧪",
+        "icon": Glyphs.TEST,
         "class_path": "chisurf.plugins.core.plugin_check.gui.tool",
         "class_name": "PluginCheckTool",
     },

@@ -7,17 +7,17 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from mmfdb.repository import MFDatabase
 from qtpy import QtCore, QtGui, QtWidgets
 
-from mmfdb.repository import MFDatabase
 from chisurf.core.settings import cs_settings
+from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.filtered_table import FilteredTableWidget
 from chisurf.plugins.core.lightpath_simulator.core.workflow import (
     MFDatabaseAdapter,
     _simulate_with_db,
     resolve_db_path,
 )
-
-from chisurf.gui.widgets.filtered_table import FilteredTableWidget
 
 logger = logging.getLogger(__name__)
 
@@ -956,8 +956,9 @@ def _persist_fret_setting(key: str, value: float) -> None:
     """Persist a single fret setting to the user's YAML and in-memory dict."""
     cs_settings.setdefault("fret", {})[key] = value
     try:
-        from chisurf.core.settings.path_utils import get_path
         import yaml
+
+        from chisurf.core.settings.path_utils import get_path
         settings_file = get_path("settings") / "settings_chisurf.yaml"
         data = {}
         try:
@@ -1284,6 +1285,8 @@ class _DetectorTableWidget(QtWidgets.QWidget):
 from chisurf.gui.widgets.collapsible_box import CollapsibleBox as _CollapsibleBox
 from chisurf.gui.widgets.spectra_tooltip import (
     TooltipItem as _SpectraTooltipItem,
+)
+from chisurf.gui.widgets.spectra_tooltip import (
     render_spectra_thumbnail as _render_spectra_thumbnail,
 )
 
@@ -1329,13 +1332,13 @@ class LightPathEasyWidget(QtWidgets.QWidget):
 
         # ── Preset toolbar ──
         bar = QtWidgets.QHBoxLayout()
-        self.btn_save = QtWidgets.QPushButton("💾")
+        self.btn_save = QtWidgets.QPushButton(Glyphs.SAVE)
         self.btn_save.setToolTip("Save preset")
-        self.btn_load = QtWidgets.QPushButton("📂")
+        self.btn_load = QtWidgets.QPushButton(Glyphs.OPEN)
         self.btn_load.setToolTip("Load preset")
         self.preset_combo = QtWidgets.QComboBox()
         self.preset_combo.setPlaceholderText("Optical Path Presets…")
-        self.btn_edit = QtWidgets.QPushButton("✏️")
+        self.btn_edit = QtWidgets.QPushButton(Glyphs.EDIT)
         self.btn_edit.setToolTip("Edit in Full Simulator")
         bar.addWidget(self.btn_save)
         bar.addWidget(self.btn_load)

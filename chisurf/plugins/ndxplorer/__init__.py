@@ -30,13 +30,16 @@ spectroscopic properties.
 name = "Main:Tools:ndXplorer"
 
 import chisurf as cs
+from chisurf.gui.glyphs import Glyphs
+
 log = cs.logging.info
 
 
 if __name__ == '__main__':
     import sys
-    from qtpy.QtWidgets import QApplication
+
     import ndxplorer
+    from qtpy.QtWidgets import QApplication
     app = QApplication(sys.argv)
     ndx = ndxplorer.NDXplorer()
     ndx.show()
@@ -45,8 +48,8 @@ if __name__ == '__main__':
     sys.exit(app.exec())
 
 if __name__ == "plugin":
-    import sys
     import pathlib
+    import sys
     _ndxplorer_module = pathlib.Path(__file__).resolve().parents[3] / "modules" / "ndxplorer"
     if _ndxplorer_module.is_dir():
         p = str(_ndxplorer_module)
@@ -68,13 +71,16 @@ if __name__ == "plugin":
 
     # Add MMFDB toolbar button if MMFDB is connected
     try:
-        from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
-        from chisurf.plugins.ndxplorer.mmfdb_launcher import (
-            BURST_FORMATS, BURST_KINDS, resolve_dataset_path,
-        )
-        from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetPickerDialog
         from ndxplorer.__main__ import open_path_like_drop
         from qtpy import QtCore
+
+        from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetPickerDialog
+        from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
+        from chisurf.plugins.ndxplorer.mmfdb_launcher import (
+            BURST_FORMATS,
+            BURST_KINDS,
+            resolve_dataset_path,
+        )
 
         client = MMFDBClient(inprocess=True)
         client.status()  # raises if MMFDB database is not accessible
@@ -98,7 +104,7 @@ if __name__ == "plugin":
 
         toolbar = ndx.addToolBar("MMFDB")
         toolbar.setObjectName("ndxplorerMmfdbToolbar")
-        mmfdb_action = toolbar.addAction("🗄️ Open from MMFDB")
+        mmfdb_action = toolbar.addAction(f"{Glyphs.DATABASE} Open from MMFDB")
         mmfdb_action.setToolTip("Open a burst selection registered in MMFDB")
         mmfdb_action.triggered.connect(_open_burst_in_current_ndx)
     except Exception:

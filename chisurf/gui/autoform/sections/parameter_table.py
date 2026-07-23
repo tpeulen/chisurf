@@ -24,6 +24,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf import typing
 from chisurf.core.fitting.parameter import FittingParameter
+from chisurf.gui.glyphs import Glyphs
 
 # ── column enumeration ──────────────────────────────────────────────────
 
@@ -619,8 +620,8 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         index = self._table.indexAt(pos)
         if index.isValid():
             self._add_link_actions(menu, index.row())
-        act_copy = menu.addAction("📋 Copy")
-        act_paste = menu.addAction("📥 Paste")
+        act_copy = menu.addAction(f"{Glyphs.COPY} Copy")
+        act_paste = menu.addAction(f"{Glyphs.IMPORT} Paste")
         act_copy.setShortcut("Ctrl+C")
         act_paste.setShortcut("Ctrl+V")
         act_copy.triggered.connect(self._copy_selection)
@@ -636,7 +637,7 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         link_menu.setTitle(f"🔗 Link {param.name} to")
         menu.addMenu(link_menu)
 
-        act_unlink = menu.addAction("⛓️‍💥 Unlink")
+        act_unlink = menu.addAction(f"{Glyphs.CHAIN}‍💥 Unlink")
         act_unlink.setEnabled(bool(getattr(param, "is_linked", False)))
         act_unlink.triggered.connect(lambda: self._unlink(row))
         menu.addSeparator()
@@ -1265,11 +1266,11 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         if pa is not None:
             param, _ = pa
             self._add_link_actions(menu, param)
-            act_details = menu.addAction("🔍 Details…")
+            act_details = menu.addAction(f"{Glyphs.SEARCH} Details…")
             act_details.triggered.connect(lambda: self._open_details_popup(param))
             menu.addSeparator()
-        act_copy = menu.addAction("📋 Copy")
-        act_paste = menu.addAction("📥 Paste")
+        act_copy = menu.addAction(f"{Glyphs.COPY} Copy")
+        act_paste = menu.addAction(f"{Glyphs.IMPORT} Paste")
         act_copy.setShortcut("Ctrl+C")
         act_paste.setShortcut("Ctrl+V")
         act_copy.triggered.connect(self._copy_selection)
@@ -1282,7 +1283,7 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         link_menu = ctrl.build_link_menu()
         link_menu.setTitle(f"🔗 Link {param.name} to")
         menu.addMenu(link_menu)
-        act_unlink = menu.addAction("⛓️‍💥 Unlink")
+        act_unlink = menu.addAction(f"{Glyphs.CHAIN}‍💥 Unlink")
         act_unlink.setEnabled(bool(getattr(param, "is_linked", False)))
         act_unlink.triggered.connect(lambda: self._unlink(param))
         menu.addSeparator()

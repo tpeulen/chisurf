@@ -10,6 +10,7 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.path_list_section import PathListWidget
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
 from chisurf.gui.widgets.tools import ChisurfDockTool
@@ -276,7 +277,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
 
         # File loading (local + MMFDB) is handled by the unified file list's
         # ➕ Files / 📁 Folder / 🗄️ Database buttons, so no separate Load action.
-        self.save_action = QtWidgets.QAction("💾 Save...", self)
+        self.save_action = QtWidgets.QAction(f"{Glyphs.SAVE} Save...", self)
         self.save_action.setObjectName("microtimeShifterSave")
         self.save_action.setEnabled(False)
         self.save_action.triggered.connect(self._open_save_dialog)
@@ -284,13 +285,13 @@ class MicrotimeShifterTool(ChisurfDockTool):
 
         tb.addSeparator()
 
-        self.show_trigger_action = QtWidgets.QAction("🎯 Show Trigger", self, checkable=True)
+        self.show_trigger_action = QtWidgets.QAction(f"{Glyphs.TARGET} Show Trigger", self, checkable=True)
         self.show_trigger_action.setObjectName("microtimeShifterShowTrigger")
         self.show_trigger_action.setChecked(True)
         self.show_trigger_action.toggled.connect(self._on_toggle_trigger_lines)
         tb.addAction(self.show_trigger_action)
 
-        self.logy_action = QtWidgets.QAction("📈 Log Y", self, checkable=True)
+        self.logy_action = QtWidgets.QAction(f"{Glyphs.CHART_UP} Log Y", self, checkable=True)
         self.logy_action.setObjectName("microtimeShifterLogY")
         self.logy_action.setChecked(False)
         self.logy_action.toggled.connect(self._on_toggle_logy)
@@ -462,7 +463,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
         else:
             spin.editingFinished.connect(self._make_chan_fn(channel, spin))
 
-        btn = QtWidgets.QPushButton("🔄")
+        btn = QtWidgets.QPushButton(Glyphs.REFRESH)
         btn.setFixedWidth(30)
         if channel is None:
             btn.clicked.connect(self._make_global_reset_fn(spin))
@@ -777,8 +778,8 @@ class MicrotimeShifterTool(ChisurfDockTool):
                     saved_path = sp
                     if shifted_generated and shifted_generated != sp:
                         try:
-                            import shutil
                             import os
+                            import shutil
                             if os.path.exists(sp):
                                 os.remove(sp)
                             shutil.move(shifted_generated, sp)

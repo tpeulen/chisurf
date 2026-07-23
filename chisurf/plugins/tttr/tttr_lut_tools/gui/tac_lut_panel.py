@@ -8,6 +8,8 @@ import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 from ..core import (
     build_linearization_table,
     histogram_micro,
@@ -172,10 +174,10 @@ class TACLinearizationPanel(QtWidgets.QWidget):
         self.files_list.setAcceptDrops(True)
         self.files_list.installEventFilter(self)
 
-        btn_load = QtWidgets.QPushButton("📂 Load TTTR Files...")
+        btn_load = QtWidgets.QPushButton(f"{Glyphs.OPEN} Load TTTR Files...")
         btn_load.clicked.connect(self._load_files)
 
-        btn_clear = QtWidgets.QPushButton("🧹 Clear list")
+        btn_clear = QtWidgets.QPushButton(f"{Glyphs.CLEAR} Clear list")
         btn_clear.clicked.connect(self._clear_files)
 
         files_layout.addWidget(self.files_list)
@@ -220,14 +222,14 @@ class TACLinearizationPanel(QtWidgets.QWidget):
         self.chk_norm.setChecked(False)
         params_layout.addRow("", self.chk_norm)
 
-        self.btn_advanced = QtWidgets.QPushButton("⚙️ Advanced Parameters...")
+        self.btn_advanced = QtWidgets.QPushButton(f"{Glyphs.SETTINGS} Advanced Parameters...")
         self.btn_advanced.clicked.connect(self._show_advanced_dialog)
         params_layout.addRow("", self.btn_advanced)
 
         buttons_layout = QtWidgets.QHBoxLayout()
-        self.btn_save = QtWidgets.QPushButton("💾 Save LUT")
-        self.btn_apply = QtWidgets.QPushButton("🔧 Apply params")
-        self.btn_export = QtWidgets.QPushButton("📤 Export corrected…")
+        self.btn_save = QtWidgets.QPushButton(f"{Glyphs.SAVE} Save LUT")
+        self.btn_apply = QtWidgets.QPushButton(f"{Glyphs.WRENCH} Apply params")
+        self.btn_export = QtWidgets.QPushButton(f"{Glyphs.EXPORT} Export corrected…")
 
         buttons_layout.addWidget(self.btn_save)
         buttons_layout.addWidget(self.btn_apply)

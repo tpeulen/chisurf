@@ -17,6 +17,8 @@ from collections.abc import Callable
 
 import numpy as np
 
+from chisurf.gui.glyphs import Glyphs
+
 logger = logging.getLogger(__name__)
 
 #: Worker-result keys that are display-only (movie stacks / raw intensity) and
@@ -35,7 +37,7 @@ class ImagingMapViewModel:
 
     RESULT_KEYS: tuple[str, ...] = ()
     #: Label of the HDF5 toolbar action (Intensity overrides to "Create").
-    HDF5_ACTION_LABEL: str = "➕ Add to HDF5"
+    HDF5_ACTION_LABEL: str = f"{Glyphs.ADD} Add to HDF5"
 
     def __init__(self, view_json: pathlib.Path) -> None:
         self._view_json = pathlib.Path(view_json)

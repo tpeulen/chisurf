@@ -1,9 +1,12 @@
 from __future__ import annotations
+
 import pathlib
 from typing import Dict, List
 
 import numpy as np
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
+
+from chisurf.gui.glyphs import Glyphs
 
 # Removed reference to .models since it doesn't exist in gui_parts
 HAS_DETECTOR_WIZARD = True
@@ -66,7 +69,7 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         super().__init__("Detectors", parent)
         self.setToolTip(
             "Select detectors and set each one's scatter/IRF. Load a measured IRF "
-            "with … (then ✕ to unload); otherwise a synthetic IRF is fitted from "
+            f"with … (then {Glyphs.CLOSE} to unload); otherwise a synthetic IRF is fitted from "
             "the Width/Skew starting values."
         )
         self._polarized = False
@@ -269,7 +272,7 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
             shsb.blockSignals(False)
         btn = self.table.cellWidget(row, 5)
         if btn is not None:
-            btn.setText("✕" if has_irf else "…")
+            btn.setText(Glyphs.CLOSE if has_irf else "…")
             btn.setToolTip(
                 f"Unload measured IRF\n{self._irf.get(key, '')}" if has_irf
                 else "Load a measured IRF file for this detector"

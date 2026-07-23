@@ -20,6 +20,7 @@ import pathlib
 from qtpy import QtWidgets
 
 from chisurf.core.plugin.manifest import load_manifest
+from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.fcs.fcs_correlator.tool import CORRELATOR_PANELS, FcsCorrelatorTool
 
 #: chisurf/plugins directory (this file is plugins/fcs/fcs_toolbox/tool.py).
@@ -106,7 +107,7 @@ TOOL_PANELS = _apply_manifest_flags(
         },
         {
             "name": "Lifetime-FCS Sim",
-            "icon": "🧬",
+            "icon": Glyphs.DNA,
             "factory": _make_lfcs_sim,
             "role": "lfcs_sim",
             "manifest": "fcs/fcs_lfcs_sim",
@@ -114,7 +115,7 @@ TOOL_PANELS = _apply_manifest_flags(
         },
         {
             "name": "Burst-wise FCS",
-            "icon": "🔬",
+            "icon": Glyphs.SCIENCE,
             "factory": _make_burst_fcs,
             "role": "burst_fcs",
             "description": "Per-burst fluorescence correlation.",
@@ -128,7 +129,7 @@ TOOL_PANELS = _apply_manifest_flags(
         },
         {
             "name": "Filter Calc",
-            "icon": "🧪",
+            "icon": Glyphs.TEST,
             "factory": _make_filter_calc,
             "role": "filter_calc",
             "manifest": "fcs/fcs_filter_calculator",

@@ -13,7 +13,7 @@ from typing import Any
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.logging
-
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.metadata_editor import (
     ALL_METADATA_KEYS,
     MetadataEditor,
@@ -67,7 +67,7 @@ class MetadataDock(QtWidgets.QWidget):
         selector_layout.addWidget(self._sample_combo, stretch=1)
 
         refresh_btn = QtWidgets.QToolButton()
-        refresh_btn.setText("🔄")
+        refresh_btn.setText(Glyphs.REFRESH)
         refresh_btn.setToolTip("Reload sample list and metadata")
         refresh_btn.clicked.connect(self.refresh_samples)
         selector_layout.addWidget(refresh_btn)
@@ -130,19 +130,19 @@ class MetadataDock(QtWidgets.QWidget):
         bar_layout.addStretch()
 
         save_btn = QtWidgets.QToolButton()
-        save_btn.setText("💾 Save all")
+        save_btn.setText(f"{Glyphs.SAVE} Save all")
         save_btn.setToolTip("Persist all metadata rows for the current sample")
         save_btn.clicked.connect(self._save_metadata)
         bar_layout.addWidget(save_btn)
 
         add_btn = QtWidgets.QToolButton()
-        add_btn.setText("➕ Add row")
+        add_btn.setText(f"{Glyphs.ADD} Add row")
         add_btn.setToolTip("Add an empty metadata row")
         add_btn.clicked.connect(self._editor._on_add_empty_row)
         bar_layout.addWidget(add_btn)
 
         delete_btn = QtWidgets.QToolButton()
-        delete_btn.setText("🗑️ Delete row")
+        delete_btn.setText(f"{Glyphs.DELETE} Delete row")
         delete_btn.setToolTip("Delete the selected metadata row")
         delete_btn.clicked.connect(self._editor._on_delete_row)
         bar_layout.addWidget(delete_btn)

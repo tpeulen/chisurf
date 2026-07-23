@@ -6,6 +6,8 @@ from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 
 class PluginCheckTool(QtWidgets.QWidget):
     """Plugin startup-check tool with toolbar controls."""
@@ -15,7 +17,7 @@ class PluginCheckTool(QtWidgets.QWidget):
         super().__init__(parent)
         self.test_runner = None
         self.plugin_results: dict[str, dict[str, Any]] = {}
-        self.setWindowTitle("🧪 ChiSurf Plugin Check")
+        self.setWindowTitle(f"{Glyphs.TEST} ChiSurf Plugin Check")
         self.setMinimumSize(940, 560)
 
         self._build_ui()
@@ -30,7 +32,7 @@ class PluginCheckTool(QtWidgets.QWidget):
 
         self._setup_toolbar(layout)
 
-        title_label = QtWidgets.QLabel("🧪 ChiSurf Plugin Check")
+        title_label = QtWidgets.QLabel(f"{Glyphs.TEST} ChiSurf Plugin Check")
         title_font = QtGui.QFont()
         title_font.setPointSize(12)
         title_font.setBold(True)
@@ -38,7 +40,7 @@ class PluginCheckTool(QtWidgets.QWidget):
         layout.addWidget(title_label)
 
         desc_label = QtWidgets.QLabel(
-            "Tests all plugins for startup errors. ✅ success, ❌ failure, ⚠️ skipped."
+            f"Tests all plugins for startup errors. {Glyphs.SUCCESS} success, {Glyphs.ERROR} failure, {Glyphs.WARNING} skipped."
         )
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("color: #666; font-size: 11px;")
@@ -129,7 +131,7 @@ class PluginCheckTool(QtWidgets.QWidget):
 
         layout.addWidget(splitter, 1)
 
-        self.status_label = QtWidgets.QLabel("Ready ✨")
+        self.status_label = QtWidgets.QLabel(f"Ready {Glyphs.SPARKLE}")
         self.status_label.setStyleSheet("color: #666; font-size: 10px;")
         layout.addWidget(self.status_label)
 
@@ -142,7 +144,7 @@ class PluginCheckTool(QtWidgets.QWidget):
         toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         layout.addWidget(toolbar)
 
-        self.test_all_action = QtWidgets.QAction("🧪 Test All Plugins", self)
+        self.test_all_action = QtWidgets.QAction(f"{Glyphs.TEST} Test All Plugins", self)
         self.test_all_action.setToolTip("Run startup checks for every plugin")
         self.test_all_action.triggered.connect(self.start_testing)
         toolbar.addAction(self.test_all_action)
@@ -152,14 +154,14 @@ class PluginCheckTool(QtWidgets.QWidget):
         self.test_safe_action.triggered.connect(self.start_safe_testing)
         toolbar.addAction(self.test_safe_action)
 
-        self.refresh_action = QtWidgets.QAction("🔄 Refresh", self)
+        self.refresh_action = QtWidgets.QAction(f"{Glyphs.REFRESH} Refresh", self)
         self.refresh_action.setToolTip("Refresh the plugin list")
         self.refresh_action.triggered.connect(self.refresh_plugins)
         toolbar.addAction(self.refresh_action)
 
         toolbar.addSeparator()
 
-        self.clear_blacklist_action = QtWidgets.QAction("🗑️ Clear Blacklist", self)
+        self.clear_blacklist_action = QtWidgets.QAction(f"{Glyphs.DELETE} Clear Blacklist", self)
         self.clear_blacklist_action.setToolTip("Remove all plugins from the blacklist")
         self.clear_blacklist_action.triggered.connect(self.clear_blacklist)
         toolbar.addAction(self.clear_blacklist_action)
@@ -206,7 +208,7 @@ class PluginCheckTool(QtWidgets.QWidget):
 
                 item = QtWidgets.QTreeWidgetItem(self.plugin_tree)
                 item.setText(0, plugin_name)
-                item.setText(1, "⏳")
+                item.setText(1, Glyphs.PENDING)
                 item.setText(2, source)
                 item.setText(3, "")
                 item.setData(0, QtCore.Qt.UserRole, plugin_info)
@@ -233,7 +235,7 @@ class PluginCheckTool(QtWidgets.QWidget):
                     break
 
         if not plugins:
-            self.status_label.setText("No plugins to test ⏳")
+            self.status_label.setText(f"No plugins to test {Glyphs.PENDING}")
             return
 
         self._setup_runner(plugins, safe_mode=True)
@@ -257,7 +259,7 @@ class PluginCheckTool(QtWidgets.QWidget):
                 plugins.append(plugin_info)
 
         if not plugins:
-            self.status_label.setText("No plugins to test ⏳")
+            self.status_label.setText(f"No plugins to test {Glyphs.PENDING}")
             return
 
         self._setup_runner(plugins, safe_mode=False)
@@ -265,7 +267,7 @@ class PluginCheckTool(QtWidgets.QWidget):
         self.progress_bar.setVisible(True)
         self.progress_bar.setMaximum(len(plugins))
         self.progress_bar.setValue(0)
-        self.status_label.setText("🧪 Testing plugins...")
+        self.status_label.setText(f"{Glyphs.TEST} Testing plugins...")
         self.test_runner.start_testing()
 
     def _set_test_buttons_enabled(self, enabled: bool) -> None:
@@ -308,13 +310,13 @@ class PluginCheckTool(QtWidgets.QWidget):
             if item.text(0) == plugin_name:
                 error = error_message or ""
                 if success:
-                    item.setText(1, "✅")
+                    item.setText(1, Glyphs.SUCCESS)
                     item.setForeground(1, QtGui.QColor("green"))
                 elif any(skip_word in error.lower() for skip_word in ["skipped", "gui execution blocked"]):
-                    item.setText(1, "⚠️")
+                    item.setText(1, Glyphs.WARNING)
                     item.setForeground(1, QtGui.QColor("orange"))
                 else:
-                    item.setText(1, "❌")
+                    item.setText(1, Glyphs.ERROR)
                     item.setForeground(1, QtGui.QColor("red"))
 
                 item.setText(3, error[:50] + "..." if len(error) > 50 else error)
@@ -338,7 +340,7 @@ class PluginCheckTool(QtWidgets.QWidget):
         failed = total - successful - skipped
 
         if total == 0:
-            self.status_label.setText("No plugins tested ⏳")
+            self.status_label.setText(f"No plugins tested {Glyphs.PENDING}")
         else:
             self.status_label.setText(
                 f"Testing complete ✨ {successful} ✅ success, {failed} ❌ failed, {skipped} ⚠️ skipped"
@@ -354,7 +356,7 @@ class PluginCheckTool(QtWidgets.QWidget):
         """Clear all blacklisted plugins."""
         if self.test_runner:
             self.test_runner.blacklisted.clear()
-        self.status_label.setText("Blacklist cleared 🧹")
+        self.status_label.setText(f"Blacklist cleared {Glyphs.CLEAR}")
 
     def on_plugin_selected(self, item: QtWidgets.QTreeWidgetItem, column: int) -> None:
         """Handle plugin selection to show details."""
@@ -369,7 +371,7 @@ class PluginCheckTool(QtWidgets.QWidget):
                 f"<b>Plugin:</b> {plugin_name}",
                 f"<b>Module:</b> {plugin_info.get('module_path', 'Unknown')}",
                 f"<b>Source:</b> {plugin_info.get('source', 'Unknown')}",
-                f"<b>Status:</b> {'✅ Success' if result['success'] else '❌ Failed'}",
+                f"<b>Status:</b> {f'{Glyphs.SUCCESS} Success' if result['success'] else f'{Glyphs.ERROR} Failed'}",
             ]
 
             if plugin_info.get("description"):

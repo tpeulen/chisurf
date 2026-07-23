@@ -58,6 +58,7 @@ import chisurf.core.settings
 import chisurf.plugins
 from chisurf.core.plugin import load_manifest
 from chisurf.core.settings import ai_settings
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -268,17 +269,17 @@ class PluginManagerWidget(QWidget):
         toolbar_layout = QHBoxLayout()
         toolbar_layout.setContentsMargins(0, 0, 0, 10)
         
-        save_button = QPushButton("💾 Save Settings")
+        save_button = QPushButton(f"{Glyphs.SAVE} Save Settings")
         save_button.setToolTip("Save all plugin settings to configuration file")
         save_button.clicked.connect(self.save_settings)
         toolbar_layout.addWidget(save_button)
 
-        refresh_button = QPushButton("🔄 Refresh Plugins")
+        refresh_button = QPushButton(f"{Glyphs.REFRESH} Refresh Plugins")
         refresh_button.setToolTip("Reload the list of available plugins")
         refresh_button.clicked.connect(self.load_plugins)
         toolbar_layout.addWidget(refresh_button)
 
-        import_button = QPushButton("📥 Import Plugin")
+        import_button = QPushButton(f"{Glyphs.IMPORT} Import Plugin")
         import_button.setToolTip("Import a new plugin from an external directory or ZIP file")
         import_button.clicked.connect(self.import_plugin)
         toolbar_layout.addWidget(import_button)
@@ -293,7 +294,7 @@ class PluginManagerWidget(QWidget):
 
         toolbar_layout.addSpacing(20)
 
-        mode_label = QLabel("🧠 Statefulness:")
+        mode_label = QLabel(f"{Glyphs.BRAIN} Statefulness:")
         mode_label.setToolTip("Global policy for remembering plugin window states")
         toolbar_layout.addWidget(mode_label)
 
@@ -352,7 +353,7 @@ class PluginManagerWidget(QWidget):
         name_layout.addWidget(self.plugin_name_label)
 
         # Add rename button
-        self.rename_button = QPushButton("✏️ Rename")
+        self.rename_button = QPushButton(f"{Glyphs.EDIT} Rename")
         self.rename_button.clicked.connect(self.on_rename_plugin)
         self.rename_button.setEnabled(False)
         name_layout.addWidget(self.rename_button)
@@ -367,12 +368,12 @@ class PluginManagerWidget(QWidget):
         status_layout.addWidget(self.disabled_checkbox)
 
         # Toolbar placement
-        self.toolbar_checkbox = QCheckBox("📌 Show in toolbar")
+        self.toolbar_checkbox = QCheckBox(f"{Glyphs.PIN} Show in toolbar")
         self.toolbar_checkbox.stateChanged.connect(self.on_toolbar_changed)
         status_layout.addWidget(self.toolbar_checkbox)
 
         # Statefulness override
-        self.statefulness_checkbox = QCheckBox("🧠 Remember window state")
+        self.statefulness_checkbox = QCheckBox(f"{Glyphs.BRAIN} Remember window state")
         self.statefulness_checkbox.setTristate(True)
         self.statefulness_checkbox.stateChanged.connect(self.on_statefulness_changed)
         status_layout.addWidget(self.statefulness_checkbox)
@@ -385,11 +386,11 @@ class PluginManagerWidget(QWidget):
         order_label = QLabel("Plugin Order:")
         order_layout.addWidget(order_label)
 
-        self.move_up_button = QPushButton("⬆️ Move Up")
+        self.move_up_button = QPushButton(f"{Glyphs.UP} Move Up")
         self.move_up_button.clicked.connect(self.on_move_up)
         order_layout.addWidget(self.move_up_button)
 
-        self.move_down_button = QPushButton("⬇️ Move Down")
+        self.move_down_button = QPushButton(f"{Glyphs.DOWN} Move Down")
         self.move_down_button.clicked.connect(self.on_move_down)
         order_layout.addWidget(self.move_down_button)
 
@@ -429,12 +430,12 @@ class PluginManagerWidget(QWidget):
         icon_source_layout.addLayout(icon_path_layout)
 
         icon_button_layout = QHBoxLayout()
-        self.browse_icon_button = QPushButton("📂 Choose Image")
+        self.browse_icon_button = QPushButton(f"{Glyphs.OPEN} Choose Image")
         self.browse_icon_button.clicked.connect(self.on_choose_icon_image)
         self.browse_icon_button.setEnabled(False)
         icon_button_layout.addWidget(self.browse_icon_button)
 
-        self.apply_icon_button = QPushButton("✅ Use Image")
+        self.apply_icon_button = QPushButton(f"{Glyphs.SUCCESS} Use Image")
         self.apply_icon_button.clicked.connect(self.on_apply_icon_image)
         self.apply_icon_button.setEnabled(False)
         icon_button_layout.addWidget(self.apply_icon_button)
@@ -444,12 +445,12 @@ class PluginManagerWidget(QWidget):
         self.generate_icon_button.setEnabled(False)
         icon_button_layout.addWidget(self.generate_icon_button)
 
-        self.edit_icon_button = QPushButton("✏️ Edit")
+        self.edit_icon_button = QPushButton(f"{Glyphs.EDIT} Edit")
         self.edit_icon_button.clicked.connect(self.on_edit_icon)
         self.edit_icon_button.setEnabled(False)
         icon_button_layout.addWidget(self.edit_icon_button)
 
-        self.clear_icon_button = QPushButton("🗑️ Clear")
+        self.clear_icon_button = QPushButton(f"{Glyphs.DELETE} Clear")
         self.clear_icon_button.clicked.connect(self.on_clear_icon)
         self.clear_icon_button.setEnabled(False)
         icon_button_layout.addWidget(self.clear_icon_button)

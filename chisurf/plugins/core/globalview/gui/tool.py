@@ -2,29 +2,27 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 import networkx as nx
-
+import numpy as np
 import pyqtgraph as pg
-
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
-import chisurf.gui.widgets
 import chisurf.core.fitting.fit
 import chisurf.core.models
 import chisurf.core.parameter
-from chisurf.core.parameter import Parameter
+import chisurf.gui.widgets
 from chisurf import logging
+from chisurf.core.parameter import Parameter
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
-
-from chisurf.plugins.core.globalview.api.graph import build_graph as api_build_graph
 from chisurf.plugins.core.globalview.api.graph import GraphResult
+from chisurf.plugins.core.globalview.api.graph import build_graph as api_build_graph
 from chisurf.plugins.core.globalview.gui.adapter import (
     NODE_COLORS,
+    compute_layout,
     compute_node_types,
     graph_result_to_networkx,
-    compute_layout,
 )
 from chisurf.plugins.core.globalview.gui.graphplotwidget import GraphPlotWidget
 from chisurf.plugins.core.globalview.gui.parameter_table_view import ParameterTableView
@@ -138,20 +136,20 @@ class GraphWizard(QtWidgets.QMainWindow):
         toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         
         self._btn_save = QtWidgets.QToolButton()
-        self._btn_save.setText("💾 Save")
-        self._btn_save.setToolTip("💾 Save the current graph to a GraphML file")
+        self._btn_save.setText(f"{Glyphs.SAVE} Save")
+        self._btn_save.setToolTip(f"{Glyphs.SAVE} Save the current graph to a GraphML file")
         toolbar.addWidget(self._btn_save)
         
         self._btn_load = QtWidgets.QToolButton()
-        self._btn_load.setText("📂 Load")
-        self._btn_load.setToolTip("📂 Load a graph from a GraphML file")
+        self._btn_load.setText(f"{Glyphs.OPEN} Load")
+        self._btn_load.setToolTip(f"{Glyphs.OPEN} Load a graph from a GraphML file")
         toolbar.addWidget(self._btn_load)
         
         toolbar.addSeparator()
         
         self._btn_redraw = QtWidgets.QToolButton()
-        self._btn_redraw.setText("🔄 Redraw")
-        self._btn_redraw.setToolTip("🔄 Redraw the graph with current settings")
+        self._btn_redraw.setText(f"{Glyphs.REFRESH} Redraw")
+        self._btn_redraw.setToolTip(f"{Glyphs.REFRESH} Redraw the graph with current settings")
         toolbar.addWidget(self._btn_redraw)
 
     def _setup_tabs(self, central_widget, main_layout):
@@ -212,39 +210,39 @@ class GraphWizard(QtWidgets.QMainWindow):
         
         row += 1
         
-        self._label_layout = QtWidgets.QLabel("🎨 Layout:")
-        self._label_layout.setToolTip("🎨 Choose a graph layout algorithm")
+        self._label_layout = QtWidgets.QLabel(f"{Glyphs.PALETTE} Layout:")
+        self._label_layout.setToolTip(f"{Glyphs.PALETTE} Choose a graph layout algorithm")
         viz_layout.addWidget(self._label_layout, row, 0)
         
         self._combo_layout = QtWidgets.QComboBox()
-        self._combo_layout.setToolTip("🎨 Select graph layout algorithm (kamada_kawai, spring, shell, arf, spectral)")
+        self._combo_layout.setToolTip(f"{Glyphs.PALETTE} Select graph layout algorithm (kamada_kawai, spring, shell, arf, spectral)")
         viz_layout.addWidget(self._combo_layout, row, 1, 1, 2)
         
         row += 1
         
         self._btn_redraw_tab = QtWidgets.QToolButton()
-        self._btn_redraw_tab.setText("🔄 Redraw")
-        self._btn_redraw_tab.setToolTip("🔄 Redraw the graph with current settings")
+        self._btn_redraw_tab.setText(f"{Glyphs.REFRESH} Redraw")
+        self._btn_redraw_tab.setToolTip(f"{Glyphs.REFRESH} Redraw the graph with current settings")
         viz_layout.addWidget(self._btn_redraw_tab, row, 2)
         
         row += 1
         
-        self._check_connect_fits = QtWidgets.QCheckBox("🔗 Connect fits")
-        self._check_connect_fits.setToolTip("🔗 Draw connections between fits (visual only, does not link parameters)")
+        self._check_connect_fits = QtWidgets.QCheckBox(f"{Glyphs.LINK} Connect fits")
+        self._check_connect_fits.setToolTip(f"{Glyphs.LINK} Draw connections between fits (visual only, does not link parameters)")
         viz_layout.addWidget(self._check_connect_fits, row, 0, 1, 2)
         
         row += 1
         
-        self._check_include_fixed = QtWidgets.QCheckBox("📌 Include fixed")
-        self._check_include_fixed.setToolTip("📌 Include fixed parameters in the graph visualization")
+        self._check_include_fixed = QtWidgets.QCheckBox(f"{Glyphs.PIN} Include fixed")
+        self._check_include_fixed.setToolTip(f"{Glyphs.PIN} Include fixed parameters in the graph visualization")
         viz_layout.addWidget(self._check_include_fixed, row, 0, 1, 2)
         
         parent_layout.addWidget(viz_group)
 
     def _setup_link_controls(self, parent_layout):
         """Create the link controls group."""
-        link_group = QtWidgets.QGroupBox("🔗 Link")
-        link_group.setToolTip("🔗 Parameter linking controls")
+        link_group = QtWidgets.QGroupBox(f"{Glyphs.LINK} Link")
+        link_group.setToolTip(f"{Glyphs.LINK} Parameter linking controls")
         link_layout = QtWidgets.QGridLayout(link_group)
         link_layout.setContentsMargins(2, 2, 2, 2)
         link_layout.setSpacing(2)
@@ -254,17 +252,17 @@ class GraphWizard(QtWidgets.QMainWindow):
         link_layout.addWidget(self._param_widget, 0, 0, 4, 1)
         
         self._btn_link = QtWidgets.QToolButton()
-        self._btn_link.setText("🔗 Link")
-        self._btn_link.setToolTip("🔗 Link selected parameters (first selection = master)")
+        self._btn_link.setText(f"{Glyphs.LINK} Link")
+        self._btn_link.setToolTip(f"{Glyphs.LINK} Link selected parameters (first selection = master)")
         link_layout.addWidget(self._btn_link, 0, 1)
         
         self._btn_clear_links = QtWidgets.QToolButton()
-        self._btn_clear_links.setText("🧹 Clear")
-        self._btn_clear_links.setToolTip("🧹 Clear links from selected parameters")
+        self._btn_clear_links.setText(f"{Glyphs.CLEAR} Clear")
+        self._btn_clear_links.setToolTip(f"{Glyphs.CLEAR} Clear links from selected parameters")
         link_layout.addWidget(self._btn_clear_links, 1, 1)
         
-        self._check_clear_all = QtWidgets.QCheckBox("☑️ all")
-        self._check_clear_all.setToolTip("☑️ Clear links from ALL parameters when clearing")
+        self._check_clear_all = QtWidgets.QCheckBox(f"{Glyphs.CHECKBOX_ON} all")
+        self._check_clear_all.setToolTip(f"{Glyphs.CHECKBOX_ON} Clear links from ALL parameters when clearing")
         link_layout.addWidget(self._check_clear_all, 2, 1)
         
         parent_layout.addWidget(link_group)
@@ -277,7 +275,7 @@ class GraphWizard(QtWidgets.QMainWindow):
         params_tab_layout.setSpacing(0)
         
         self.paramsTabLayout = params_tab_layout
-        self.tab_widget.addTab(params_tab, "🎛️ Parameters")
+        self.tab_widget.addTab(params_tab, f"{Glyphs.GRID} Parameters")
 
     def _setup_statusbar(self):
         """Create the status bar."""

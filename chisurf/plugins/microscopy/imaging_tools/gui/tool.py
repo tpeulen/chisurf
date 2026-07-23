@@ -23,12 +23,13 @@ Panels (lazy-loaded via factory functions):
 
 from __future__ import annotations
 
-import logging
 import hashlib
+import logging
 from pathlib import Path
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import NavigationPanelTool
 
 from .client import DetectorSetupClient
@@ -183,7 +184,7 @@ IMAGING_PANELS: list[dict] = [
     },
     {
         "name": "Browser",
-        "icon": "📂",
+        "icon": Glyphs.OPEN,
         "description": "Browse TTTR image files and explore intensity maps.",
         "factory": _browser,
         "role": "browser",
@@ -197,21 +198,21 @@ IMAGING_PANELS: list[dict] = [
     },
     {
         "name": "2. Number & Brightness",
-        "icon": "✨",
+        "icon": Glyphs.SPARKLE,
         "description": "Per-pixel Number (N) and Brightness (B); adds fields to the imaging HDF5.",
         "factory": _pixel_nb,
         "role": "pixel_nb",
     },
     {
         "name": "3. Mean Micro-Time",
-        "icon": "⏱️",
+        "icon": Glyphs.TIMER,
         "description": "Per-pixel mean micro-time (arrival time, ns) per detector window; adds fields to the imaging HDF5.",
         "factory": _pixel_micro_time,
         "role": "pixel_micro_time",
     },
     {
         "name": "4. IRF & BG",
-        "icon": "🎛️",
+        "icon": Glyphs.GRID,
         "description": "Optional: per-detector IRF file + background (kHz); transferred to Phasor and MLE. Skippable.",
         "factory": _calibration,
         "role": "calibration",
@@ -238,7 +239,7 @@ IMAGING_PANELS: list[dict] = [
     },
     {
         "name": "CLSM Draw",
-        "icon": "✏️",
+        "icon": Glyphs.EDIT,
         "description": "Interactive CLSM pixel selection, ROI drawing and decay extraction; opens imaging HDF5 (via source back-reference).",
         "factory": _clsm_draw,
         "role": "clsm_draw",
@@ -296,7 +297,7 @@ class ImagingToolsTool(NavigationPanelTool):
         self._owns_mmfdb_db = False
         self._mmfdb_source_artifact_id = ""
         super().__init__(
-            title="🔬 Image Tools",
+            title=f"{Glyphs.SCIENCE} Image Tools",
             panels=IMAGING_PANELS,
             parent=parent,
             minimum_size=(900, 600),
@@ -610,9 +611,9 @@ class ImagingToolsTool(NavigationPanelTool):
                 hasher.update(chunk)
         digest = hasher.hexdigest()
         from mmfdb.security.auth import (
+            PERM_READ,
             AuthenticatedPrincipal,
             can_access,
-            PERM_READ,
         )
 
         principal = AuthenticatedPrincipal(session.user_id, session.is_admin)

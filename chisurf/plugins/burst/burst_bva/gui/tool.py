@@ -34,6 +34,7 @@ from qtpy.QtWidgets import (
 )
 
 from chisurf import logging
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.misc_helpers import (
     get_plugin_settings_path,
     persist_plugin_state,
@@ -321,7 +322,7 @@ class BVATool(QMainWindow):
         self.toolbar.addWidget(self.btn_clear)
         self.toolbar.addWidget(self.btn_save_settings)
         self.toolbar.addSeparator()
-        self.btn_help = _tbtn("ℹ️ Help", "help")
+        self.btn_help = _tbtn(f"{Glyphs.INFO} Help", "help")
         self.toolbar.addWidget(self.btn_help)
         self.btn_help.clicked.connect(self._show_help)
 

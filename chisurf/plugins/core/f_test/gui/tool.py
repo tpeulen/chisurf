@@ -24,6 +24,7 @@ from scipy.stats import f as fdist
 
 from chisurf.core.dataspec import load_view_spec
 from chisurf.core.math.statistics import chi2_max
+from chisurf.gui.glyphs import Glyphs
 
 _GUI_DIR = pathlib.Path(__file__).parent
 
@@ -106,7 +107,7 @@ class FTestTool(QtWidgets.QMainWindow):
         toolbar.setObjectName("fTestToolbar")
         toolbar.setMovable(False)
         self._from_fit_btn = QtWidgets.QToolButton()
-        self._from_fit_btn.setText("📊 From fit")
+        self._from_fit_btn.setText(f"{Glyphs.CHART} From fit")
         self._from_fit_btn.setToolTip("Load n_points / n_free / χ²r from an open fit.")
         self._from_fit_btn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
         self._from_fit_btn.setMenu(self._build_fit_menu())

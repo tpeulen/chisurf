@@ -11,6 +11,8 @@ import pyqtgraph as pg
 import tttrlib
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 VALID_EXTS = {".spc", ".ht3", ".ptu", ".phu", ".photonhdf5"}
 EPS = 1e-12
 COLOR_CYCLE = [
@@ -445,11 +447,11 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         self.reading_combo.currentIndexChanged.connect(self._on_reading_routine_changed)
 
         self.btn_load_lut = QtWidgets.QToolButton()
-        self.btn_load_lut.setText("📥 Load LUT")
+        self.btn_load_lut.setText(f"{Glyphs.IMPORT} Load LUT")
         self.btn_clear_luts = QtWidgets.QToolButton()
-        self.btn_clear_luts.setText("🧹 Clear LUTs")
+        self.btn_clear_luts.setText(f"{Glyphs.CLEAR} Clear LUTs")
         self.btn_assign_lut_selected = QtWidgets.QToolButton()
-        self.btn_assign_lut_selected.setText("🎯 Selected")
+        self.btn_assign_lut_selected.setText(f"{Glyphs.TARGET} Selected")
         self.btn_assign_lut_all = QtWidgets.QToolButton()
         self.btn_assign_lut_all.setText("🌐 All")
         self.btn_load_lut.clicked.connect(self._load_lut)

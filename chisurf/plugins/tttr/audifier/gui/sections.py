@@ -16,6 +16,7 @@ import logging
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +59,13 @@ class _SetupSection(QtWidgets.QWidget):
         layout.setSpacing(4)
 
         bar = QtWidgets.QHBoxLayout()
-        bar.addWidget(_tool_button("📂 Load TTTR", "Load a TTTR file.", self._load))
+        bar.addWidget(_tool_button(f"{Glyphs.OPEN} Load TTTR", "Load a TTTR file.", self._load))
         self._file_lbl = QtWidgets.QLabel("No file loaded")
         self._file_lbl.setStyleSheet("color: #888;")
         bar.addWidget(self._file_lbl, 1)
         bar.addWidget(
             _tool_button(
-                "🔄 Update channels", "Rebuild channels/detectors from the setup.", self._update
+                f"{Glyphs.REFRESH} Update channels", "Rebuild channels/detectors from the setup.", self._update
             )
         )
         layout.addLayout(bar)
@@ -190,7 +191,7 @@ class _MixSection(QtWidgets.QWidget):
         chk.toggled.connect(lambda v, i=index: self._model.set_detector(i, enabled=v))
         rl.addWidget(chk)
         color_btn = QtWidgets.QToolButton()
-        color_btn.setText("🎨 Color")
+        color_btn.setText(f"{Glyphs.PALETTE} Color")
         color_btn.setToolTip("Pick the detector's waterfall colour.")
         self._apply_btn_color(color_btn, det["color"])
         color_btn.clicked.connect(lambda _=False, i=index, b=color_btn: self._pick_color(i, b))
@@ -276,16 +277,16 @@ class _TransportSection(QtWidgets.QWidget):
         layout.setSpacing(4)
 
         bar = QtWidgets.QHBoxLayout()
-        bar.addWidget(_tool_button("🔄 Update", "Recompute the waterfall.", self._update))
-        bar.addWidget(_tool_button("▶️ Play", "Synthesize and play audio.", self._play))
-        self._btn_pause = _tool_button("⏸️ Pause", "Pause playback.", self._pause)
-        self._btn_stop = _tool_button("⏹️ Stop", "Stop playback.", self._stop)
+        bar.addWidget(_tool_button(f"{Glyphs.REFRESH} Update", "Recompute the waterfall.", self._update))
+        bar.addWidget(_tool_button(f"{Glyphs.RUN} Play", "Synthesize and play audio.", self._play))
+        self._btn_pause = _tool_button(f"{Glyphs.PAUSE} Pause", "Pause playback.", self._pause)
+        self._btn_stop = _tool_button(f"{Glyphs.STOP} Stop", "Stop playback.", self._stop)
         self._btn_pause.setEnabled(False)
         self._btn_stop.setEnabled(False)
         bar.addWidget(self._btn_pause)
         bar.addWidget(self._btn_stop)
         bar.addWidget(_tool_button("⏪ Revert", "Revert to start.", self._revert))
-        bar.addWidget(_tool_button("💾 WAV", "Save audio as WAV.", self._save_wav))
+        bar.addWidget(_tool_button(f"{Glyphs.SAVE} WAV", "Save audio as WAV.", self._save_wav))
         self._pos = QtWidgets.QLabel("00:00 / 00:00")
         bar.addWidget(self._pos)
         bar.addStretch(1)

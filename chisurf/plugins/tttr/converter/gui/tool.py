@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import pathlib
 
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import NavigationPanelTool, load_panels_json
 
 # ---------------------------------------------------------------------------
@@ -34,7 +35,7 @@ class ConverterTool(NavigationPanelTool):
 
     def __init__(self, parent=None):
         super().__init__(
-            title=_PANEL_SPEC.get("title", "🔁 Converter"),
+            title=_PANEL_SPEC.get("title", f"{Glyphs.LOOP} Converter"),
             panels=CONVERTER_PANELS,
             parent=parent,
             minimum_size=(900, 600),

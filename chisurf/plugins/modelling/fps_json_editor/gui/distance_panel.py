@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-import numpy as np
 
+import numpy as np
 from qtpy import QtCore, QtWidgets
 
 import chisurf.core.fio
 import chisurf.gui.widgets
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger("chisurf.plugins.modelling.fret")
 
@@ -229,7 +230,7 @@ class DistancePanel(QtWidgets.QWidget):
             """
         )
 
-        self.add_row_action = self.toolbar.addAction("➕ Add Row")
+        self.add_row_action = self.toolbar.addAction(f"{Glyphs.ADD} Add Row")
         self.add_row_action.triggered.connect(self.onAddRowTriggered)
         self.toolbar.addSeparator()
 
@@ -329,7 +330,7 @@ class DistancePanel(QtWidgets.QWidget):
             self.distances_table.setCellWidget(row, 6, set_cb)
 
             # Delete button (col 7)
-            del_btn = QtWidgets.QPushButton("🗑️")
+            del_btn = QtWidgets.QPushButton(Glyphs.DELETE)
             del_btn.setFixedWidth(30)
             del_btn.clicked.connect(self.onDeleteRowClicked)
             self.distances_table.setCellWidget(row, 7, del_btn)

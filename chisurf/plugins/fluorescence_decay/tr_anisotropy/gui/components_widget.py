@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 
 class _SpectrumTable(QtWidgets.QWidget):
     """One labelled table of ``[amplitude, value]`` rows with add/remove."""
@@ -51,12 +53,12 @@ class _SpectrumTable(QtWidgets.QWidget):
         self._val.setValue(1.0)
         bar.addWidget(self._val)
         add = QtWidgets.QToolButton()
-        add.setText("➕")
+        add.setText(Glyphs.ADD)
         add.setToolTip("Add a component.")
         add.clicked.connect(self._add)
         bar.addWidget(add)
         rem = QtWidgets.QToolButton()
-        rem.setText("➖")
+        rem.setText(Glyphs.REMOVE)
         rem.setToolTip("Remove the selected component.")
         rem.clicked.connect(self._remove)
         bar.addWidget(rem)
@@ -143,12 +145,12 @@ class ComponentsWidget(QtWidgets.QWidget):
 
         bar = QtWidgets.QHBoxLayout()
         save = QtWidgets.QToolButton()
-        save.setText("💾 Save spectrum")
+        save.setText(f"{Glyphs.SAVE} Save spectrum")
         save.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         save.setToolTip("Save both spectra to a .spk.json file.")
         save.clicked.connect(self._save)
         load = QtWidgets.QToolButton()
-        load.setText("📂 Load spectrum")
+        load.setText(f"{Glyphs.OPEN} Load spectrum")
         load.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         load.setToolTip("Load both spectra from a .spk.json file.")
         load.clicked.connect(self._load)

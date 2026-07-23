@@ -13,6 +13,8 @@ import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.glyphs import Glyphs
+
 
 class IrfNormalizationWidget(QtWidgets.QWidget):
     """Plot + region selector bound to an :class:`AnisotropyViewModel`."""
@@ -30,7 +32,7 @@ class IrfNormalizationWidget(QtWidgets.QWidget):
 
         bar = QtWidgets.QHBoxLayout()
         load_btn = QtWidgets.QToolButton()
-        load_btn.setText("🔄 Load / reload data")
+        load_btn.setText(f"{Glyphs.REFRESH} Load / reload data")
         load_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         load_btn.setToolTip("Load the polarised IRF/data files selected on the previous step.")
         load_btn.clicked.connect(self._on_load)

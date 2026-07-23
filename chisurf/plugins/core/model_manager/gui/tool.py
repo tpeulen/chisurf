@@ -1,23 +1,35 @@
 """Model Manager GUI tool."""
 
-import sys
-import pathlib
 import importlib
-import yaml
-from typing import Optional, Dict, List, Type
+import pathlib
+import sys
+from typing import Dict, List, Optional, Type
 
-from qtpy.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-    QListWidget, QListWidgetItem, QCheckBox, QMessageBox, QGroupBox,
-    QSplitter, QTextEdit, QLineEdit, QTabWidget,
-)
-from qtpy.QtCore import Qt, QSize
+import yaml
+from qtpy.QtCore import QSize, Qt
 from qtpy.QtGui import QIcon
+from qtpy.QtWidgets import (
+    QCheckBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QSplitter,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 import chisurf as cs
-import chisurf.core.models
 import chisurf.core.experiments
+import chisurf.core.models
 import chisurf.core.settings
+from chisurf.gui.glyphs import Glyphs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -46,12 +58,12 @@ class ModelManagerWidget(QWidget):
         toolbar_layout = QHBoxLayout()
         toolbar_layout.setContentsMargins(0, 0, 0, 10)
         
-        save_button = QPushButton("💾 Save Settings")
+        save_button = QPushButton(f"{Glyphs.SAVE} Save Settings")
         save_button.setToolTip("Save all model settings to configuration file")
         save_button.clicked.connect(self.save_settings)
         toolbar_layout.addWidget(save_button)
 
-        refresh_button = QPushButton("🔄 Refresh Lists")
+        refresh_button = QPushButton(f"{Glyphs.REFRESH} Refresh Lists")
         refresh_button.setToolTip("Reload the lists of models and experiments")
         refresh_button.clicked.connect(self.load_all)
         toolbar_layout.addWidget(refresh_button)

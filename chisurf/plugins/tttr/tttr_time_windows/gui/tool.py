@@ -10,6 +10,7 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf import logging
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.misc_helpers import persist_plugin_state
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.tools import ChisurfDockTool
@@ -95,6 +96,7 @@ class HelpDialog(QtWidgets.QDialog):
         cli_text = ""
         try:
             from click.testing import CliRunner
+
             from ..cli.main import cli
 
             runner = CliRunner()
@@ -229,7 +231,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         files_splitter.setStretchFactor(0, 0)
         files_splitter.setStretchFactor(1, 1)
 
-        self.dock_area.addTab(files_splitter, "📁 Files")
+        self.dock_area.addTab(files_splitter, f"{Glyphs.FOLDER} Files")
 
         # 👁️ Preview dock
         preview_splitter = QtWidgets.QSplitter(
@@ -243,7 +245,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         self.dock_area.addTab(preview_splitter, "👁️\ufe0f Preview")
 
         # 📋 Summary dock
-        self.dock_area.addTab(self.status_log, "📋 Summary")
+        self.dock_area.addTab(self.status_log, f"{Glyphs.COPY} Summary")
 
         self.dock_area.setTabsClosable(True)
         self.dock_area.layoutChanged.connect(self._save_dock_layout)
@@ -381,7 +383,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
 
         # File add / database selection are provided by the unified file list's
         # own ➕ Files / 📁 Folder / 🗄️ Database buttons (no duplicate toolbar actions).
-        process_action = QtWidgets.QAction("🕐 Process", self)
+        process_action = QtWidgets.QAction(f"{Glyphs.CLOCK} Process", self)
         process_action.setToolTip(
             "Compute time-window BIDs for all queued TTTR files and "
             "save .bst output files."
@@ -414,9 +416,9 @@ class TTTRTimeWindowTool(ChisurfDockTool):
 
         # Apply object names for stylesheet targeting
         name_map = {
-            "📂 Add Files": "twToolbarAdd",
-            "🗄️ Database": "twToolbarDatabase",
-            "🕐 Process": "twToolbarProcess",
+            f"{Glyphs.OPEN} Add Files": "twToolbarAdd",
+            f"{Glyphs.DATABASE} Database": "twToolbarDatabase",
+            f"{Glyphs.CLOCK} Process": "twToolbarProcess",
             "🗑️\ufe0f Clear": "twToolbarClear",
             "ℹ️\ufe0f Help": "twToolbarHelp",
         }

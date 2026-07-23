@@ -8,16 +8,16 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from mmfdb.schema.dictionary_schema_map import DictionarySchemaMap
+from mmfdb.schema.pdbx_metadata import MmcifDictionary
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.logging
-
-from mmfdb.schema.dictionary_schema_map import DictionarySchemaMap
-from mmfdb.schema.pdbx_metadata import MmcifDictionary
+from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.general import apply_compact_table_style
 
-from .entity_schema import FieldSpec, field_specs_for_category
 from .entity_registry import EntitySpec
+from .entity_schema import FieldSpec, field_specs_for_category
 from .generic_form import SCHEMAS
 
 
@@ -162,7 +162,7 @@ class TableMixin:
     def build_table(self) -> QtWidgets.QTableWidget:
         cols = self.columns()
         table = QtWidgets.QTableWidget(0, len(cols) + 1)
-        headers = ["✓"] + [label for _, label in cols]
+        headers = [Glyphs.CHECK] + [label for _, label in cols]
         table.setHorizontalHeaderLabels(headers)
         table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
@@ -448,13 +448,13 @@ class DockToolbarMixin:
 
         if self._spec.writable:
             new_btn = QtWidgets.QToolButton()
-            new_btn.setText("➕ New")
+            new_btn.setText(f"{Glyphs.ADD} New")
             new_btn.setToolTip(f"Create a new {self._spec.key} — edit fields, changes save automatically on Enter")
             new_btn.clicked.connect(self._on_new)
             layout.addWidget(new_btn)
 
             del_btn = QtWidgets.QToolButton()
-            del_btn.setText("🗑️ Delete")
+            del_btn.setText(f"{Glyphs.DELETE} Delete")
             del_btn.setToolTip("Delete checked rows")
             del_btn.clicked.connect(self._on_delete)
             layout.addWidget(del_btn)

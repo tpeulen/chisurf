@@ -6,33 +6,35 @@ fluorescence bursts in TTTR data.
 """
 
 from pathlib import Path
-from qtpy import QtWidgets, QtCore, QtGui
 
 import pyqtgraph as pg
+from qtpy import QtCore, QtGui, QtWidgets
+
+from chisurf.gui.glyphs import Glyphs
+
 try:
     from guidata.widgets.dataframeeditor import DataFrameEditor
 except Exception:  # pragma: no cover - optional dependency
     DataFrameEditor = None  # type: ignore
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+from sklearn.mixture import GaussianMixture
 
 import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.wizard
-
 from chisurf import logging
-
-from sklearn.mixture import GaussianMixture
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
     persist_plugin_state = lambda n: lambda c: c
 
-from ..gmm_settings_dialog import GMMSettingsDialog
 from chisurf.gui.widgets.progress import EnhancedProgressDialog
+
 from .. import adapter as burst_gui
+from ..gmm_settings_dialog import GMMSettingsDialog
 
 # Module-level logger for this file
 logger = logging.getLogger(__name__)
@@ -116,9 +118,9 @@ class BatchProcessingDialog(QtWidgets.QDialog):
 
         # Buttons: delete selected, clear, process
         btn_row = QtWidgets.QHBoxLayout()
-        self.btn_delete = QtWidgets.QPushButton("🗑️ Delete Selected")
-        self.btn_clear = QtWidgets.QPushButton("🧹 Clear All")
-        self.btn_process = QtWidgets.QPushButton("🚀 Process")
+        self.btn_delete = QtWidgets.QPushButton(f"{Glyphs.DELETE} Delete Selected")
+        self.btn_clear = QtWidgets.QPushButton(f"{Glyphs.CLEAR} Clear All")
+        self.btn_process = QtWidgets.QPushButton(f"{Glyphs.ROCKET} Process")
         btn_row.addStretch(1)
         btn_row.addWidget(self.btn_delete)
         btn_row.addWidget(self.btn_clear)
@@ -418,7 +420,7 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         dialog_layout.addWidget(self.channel_definer)
 
         # Add OK button to close the dialog
-        ok_button = QtWidgets.QPushButton("✅ OK", self.channel_settings_dialog)
+        ok_button = QtWidgets.QPushButton(f"{Glyphs.SUCCESS} OK", self.channel_settings_dialog)
         ok_button.clicked.connect(self.channel_settings_dialog.accept)
         dialog_layout.addWidget(ok_button)
 

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from chisurf import logging
-import re
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +12,8 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.core.structure
 import chisurf.gui.widgets
+from chisurf import logging
+from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.chimol.chimol.renderer.view import MolView
 
 from ..core.colors import DEFAULT_AV_COLOR, normalize_rgba, rgba_to_json
@@ -309,18 +310,18 @@ class PositionPanel(QtWidgets.QWidget):
         )
 
         name_map = {
-            "➕ Add Row": "toolbarAddRow",
-            "🚀 Compute AVs": "toolbarComputeAV",
-            "💾 Save AV MRC": "toolbarSaveMRC",
+            f"{Glyphs.ADD} Add Row": "toolbarAddRow",
+            f"{Glyphs.ROCKET} Compute AVs": "toolbarComputeAV",
+            f"{Glyphs.SAVE} Save AV MRC": "toolbarSaveMRC",
         }
         
-        self.add_row_action = self.toolbar.addAction("➕ Add Row")
+        self.add_row_action = self.toolbar.addAction(f"{Glyphs.ADD} Add Row")
         self.add_row_action.triggered.connect(self.onAddRowTriggered)
 
-        self.compute_avs_action = self.toolbar.addAction("🚀 Compute AVs")
+        self.compute_avs_action = self.toolbar.addAction(f"{Glyphs.ROCKET} Compute AVs")
         self.compute_avs_action.triggered.connect(self.onComputeAVAll)
 
-        self.save_av_mrc_action = self.toolbar.addAction("💾 Save AV MRC")
+        self.save_av_mrc_action = self.toolbar.addAction(f"{Glyphs.SAVE} Save AV MRC")
         self.save_av_mrc_action.setToolTip("Save selected computed AV(s) as MRC density map(s)")
         self.save_av_mrc_action.triggered.connect(self.onSaveSelectedAVsAsMRC)
         
@@ -460,7 +461,7 @@ class PositionPanel(QtWidgets.QWidget):
             self.table.setCellWidget(row, 9, color_btn)
 
             # Delete Button (col 10)
-            del_btn = QtWidgets.QPushButton("🗑️")
+            del_btn = QtWidgets.QPushButton(Glyphs.DELETE)
             del_btn.setFixedWidth(30)
             del_btn.clicked.connect(self.onDeleteRowClicked)
             self.table.setCellWidget(row, 10, del_btn)

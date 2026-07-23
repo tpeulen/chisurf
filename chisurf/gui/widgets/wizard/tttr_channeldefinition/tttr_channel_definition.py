@@ -14,13 +14,15 @@ import sys
 
 import numpy as np
 
+from chisurf.gui.glyphs import Glyphs
+
 try:  # pyqtgraph is optional; the preview plot degrades gracefully without it
     import pyqtgraph as pg
 except Exception:  # pragma: no cover - environment without pyqtgraph
     pg = None
 
 from qtpy import uic as _uic
-from qtpy.QtCore import Signal, Qt
+from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -46,6 +48,14 @@ def qtpy_loadUi(path, baseinstance=None):
 
 import tttrlib
 
+from chisurf.plugins.core.lightpath_simulator.core.workflow import (
+    get_probes_info,
+    resolve_db_path,
+)
+from chisurf.plugins.core.lightpath_simulator.gui.easy_mode import (
+    LightPathEasyDialog,
+)
+
 from .tttr_channel_definition_json_dialog import JsonEditorDialog
 from .tttr_channel_definition_tttr_io import (
     on_calc_g_factor as _on_calc_g_factor,
@@ -58,13 +68,6 @@ from .tttr_detector_setups import (
     _resolve_active_user_id,
     load_detector_setups,
     save_detector_setups,
-)
-from chisurf.plugins.core.lightpath_simulator.core.workflow import (
-    get_probes_info,
-    resolve_db_path,
-)
-from chisurf.plugins.core.lightpath_simulator.gui.easy_mode import (
-    LightPathEasyDialog,
 )
 
 help_text = """You can either load an existing detector Pulsed-Interleaved Excitation (PIE)
@@ -270,7 +273,7 @@ class DetectorWizardPage(QWizardPage):
 
         # Plot toggle button in the TTTR section
         self.plot_toggle_button = QToolButton()
-        self.plot_toggle_button.setText("📊 Plot")
+        self.plot_toggle_button.setText(f"{Glyphs.CHART} Plot")
         self.plot_toggle_button.setCheckable(True)
         self.plot_toggle_button.setToolTip("Show/hide micro-time decay preview plot")
         self.plot_toggle_button.toggled.connect(self._toggle_plot_visibility)
@@ -674,7 +677,7 @@ class DetectorWizardPage(QWizardPage):
                 item.widget().setVisible(visible)
 
     def _toggle_help(self):
-        from qtpy.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton
+        from qtpy.QtWidgets import QDialog, QPushButton, QTextEdit, QVBoxLayout
         dlg = QDialog(self)
         dlg.setWindowTitle("Help — Detector Setup")
         dlg.resize(600, 400)
@@ -868,7 +871,7 @@ class DetectorWizardPage(QWizardPage):
         for _le in (start_le, end_le):
             _le.editingFinished.connect(self._refresh_microtime_preview)
 
-        btn = QPushButton("🗑️")
+        btn = QPushButton(Glyphs.DELETE)
         btn.setMaximumWidth(30)
         btn.setToolTip("Delete window")
         btn.clicked.connect(lambda _, b=btn: self._remove_window_by_button(b))
@@ -915,7 +918,7 @@ class DetectorWizardPage(QWizardPage):
             pass
 
         # Delete button
-        btn = QPushButton("🗑️")
+        btn = QPushButton(Glyphs.DELETE)
         btn.setMaximumWidth(30)
         btn.setToolTip("Delete detector")
         btn.clicked.connect(lambda _, b=btn: self._remove_detector_by_button(b))
@@ -1405,6 +1408,7 @@ class DetectorWizardPage(QWizardPage):
         try:
             from mmfdb.repository import MFDatabase
             from mmfdb.store.database_resolver import resolve_database_path
+
             from .tttr_setup_utils import setup_id_for_name
 
             setup_id = setup_id_for_name(setup_name, _resolve_active_user_id())
@@ -1438,6 +1442,7 @@ class DetectorWizardPage(QWizardPage):
         try:
             from mmfdb.repository import MFDatabase
             from mmfdb.store.database_resolver import resolve_database_path
+
             from .tttr_setup_utils import setup_id_for_name
 
             setup_id = setup_id_for_name(self.current_setup_name, _resolve_active_user_id())
