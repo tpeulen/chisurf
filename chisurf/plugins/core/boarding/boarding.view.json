@@ -99,7 +99,9 @@
           "subtitle": "Configure PIE / channel windows for TTTR workflows.",
           "complete_when": {"attr": "has_detector_setups", "equals": "True"},
           "sections": [
-            {"type": "info", "source": "detector_intro_html", "height": 90},
+            {"type": "custom", "key": "help",
+             "options": {"title": "Detector setup — help",
+                         "text": "TTTR experiments (TCSPC/PIE) need a detector/channel definition. Define a setup once for your hardware below and save it — it is stored in your user settings."}},
             {
               "type": "custom",
               "key": "embed",
@@ -116,7 +118,9 @@
           "subtitle": "Define which channels/pairs to correlate for FCS workflows.",
           "complete_when": {"attr": "has_fcs_setups", "equals": "True"},
           "sections": [
-            {"type": "info", "source": "fcs_intro_html", "height": 90},
+            {"type": "custom", "key": "help",
+             "options": {"title": "FCS channels — help",
+                         "text": "For burst-wise FCS and correlator tools, ChiSurf needs to know which detector channels (or channel pairs) belong to a correlation setup. Create at least one setup below and save it."}},
             {
               "type": "custom",
               "key": "embed",

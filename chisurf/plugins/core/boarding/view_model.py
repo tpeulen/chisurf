@@ -42,16 +42,9 @@ baseline. <b>Create missing files</b> only writes files that do not exist yet;
 defaults.</p>
 """
 
-_DETECTOR_INTRO_HTML = """
-<p>TTTR experiments (TCSPC/PIE) need a detector/channel definition. Define a setup
-once for your hardware below and save it — it is stored in your user settings.</p>
-"""
-
-_FCS_INTRO_HTML = """
-<p>For burst-wise FCS and correlator tools, ChiSurf needs to know which detector
-channels (or channel pairs) belong to a correlation setup. Create at least one
-setup below and save it.</p>
-"""
+# The detector/FCS step introductions moved into ``?`` modal help buttons
+# (``help`` sections in ``boarding.view.json``) so they no longer occupy space
+# above the embedded editors.
 
 _FINISH_HTML = """
 <h3>You are ready to start working</h3>
@@ -104,14 +97,6 @@ class BoardingViewModel:
     def repair_intro_html(self) -> str:
         """Return the fix/initialize-step explanation (HTML)."""
         return _REPAIR_INTRO_HTML
-
-    def detector_intro_html(self) -> str:
-        """Return the detector-step introduction (HTML)."""
-        return _DETECTOR_INTRO_HTML
-
-    def fcs_intro_html(self) -> str:
-        """Return the FCS-step introduction (HTML)."""
-        return _FCS_INTRO_HTML
 
     def finish_html(self) -> str:
         """Return the finish-step next-steps text (HTML)."""
