@@ -66,6 +66,7 @@ tcspc:
     - chisurf.gui.widgets.models.tcspc.PDDEMModelWidget
     - chisurf.gui.widgets.models.tcspc.WormLikeChainModelWidget
     - chisurf.gui.widgets.models.tcspc.SawNuChainModelWidget
+    - chisurf.gui.widgets.models.tcspc.IsingChainModelWidget
     - chisurf.gui.widgets.models.tcspc.ParseDecayModelWidget
     - chisurf.gui.widgets.models.tcspc.LifetimeMixtureModelWidget
     # PRD-40: additive AutoForm prototype for the mixer. Pure compute model whose

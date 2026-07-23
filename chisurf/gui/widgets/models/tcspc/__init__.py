@@ -72,6 +72,7 @@ from chisurf.gui.widgets.models.tcspc.discrete_distance import DiscreteDistanceW
 from chisurf.gui.widgets.models.tcspc.fret_rate import FRETrateModelWidget
 from chisurf.gui.widgets.models.tcspc.worm_like_chain import WormLikeChainModelWidget
 from chisurf.gui.widgets.models.tcspc.saw_nu import SawNuChainModelWidget
+from chisurf.gui.widgets.models.tcspc.ising_chain import IsingChainModelWidget
 from chisurf.gui.widgets.models.tcspc.parse_decay import ParseDecayModelWidget
 from chisurf.gui.widgets.models.tcspc.lifetime_mix import LifetimeMixModelWidget
 try:

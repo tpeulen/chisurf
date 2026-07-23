@@ -5,6 +5,8 @@ from math import exp, gamma, log
 import numpy as np
 import numba as nb
 
+_trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
+
 from chisurf.core.math.functions.special import i0
 from . import distributions
 
@@ -87,6 +89,89 @@ def saw_nu(
     with np.errstate(over="ignore", invalid="ignore"):
         pr = norm * r ** (2.0 + theta) * np.exp(-((r / r0) ** delta))
     return np.nan_to_num(pr, nan=0.0, posinf=0.0, neginf=0.0)
+
+
+def ising_chain(
+        r,
+        number_of_residues: int,
+        b_structured: float,
+        b_unstructured: float,
+        coupling: float = 1.5,
+        field: float = 0.0,
+        n_k: int = 2000,
+):
+    r"""Inter-dye distance distribution of an Ising two-state Gaussian chain.
+
+    The tractable form of the Ising-worm-like-chain FRET model for partially
+    structured / folded-unfolded chains (cf. Fretica ``FIsingWLCFRET*``): every
+    residue is either **structured** (``S``) or **unstructured** (``U``) with a
+    nearest-neighbour Ising Hamiltonian (cooperativity ``coupling`` J, field
+    ``field`` h biasing towards S), and each residue contributes a Gaussian bond
+    whose mean-square extension is :math:`b_S^2` (S) or :math:`b_U^2` (U).
+
+    For a Gaussian-segment chain the characteristic function factorises per
+    residue, so the Boltzmann-weighted end-to-end characteristic function is an
+    exact 2x2 **transfer-matrix product** in Fourier (``k``) space,
+
+    .. math::
+
+        \varphi(k) = \frac{\mathbf{1}^\top \big[\prod_i M_i(k)\big]\,\mathbf{1}}
+                          {\varphi(0)}, \quad
+        M(k)_{\sigma\sigma'} = W(\sigma,\sigma')\,
+        e^{-k^2 b_{\sigma'}^2/6},
+
+    and the radial distribution is recovered by the isotropic inverse transform
+    :math:`P(R) = (2R/\pi)\int_0^\infty k\,\sin(kR)\,\varphi(k)\,dk`.  With
+    ``b_S = b_U`` (or all residues in one state) it reduces to the
+    :func:`gaussian_chain`.
+
+    :param r: numpy-array of inter-dye distances (> 0).
+    :param number_of_residues: number of residues (bonds) between the dyes.
+    :param b_structured: RMS bond contribution per structured residue.
+    :param b_unstructured: RMS bond contribution per unstructured residue.
+    :param coupling: Ising nearest-neighbour coupling ``J`` (cooperativity).
+    :param field: Ising field ``h`` (positive biases towards structured).
+    :param n_k: number of ``k`` grid points for the inverse transform.
+    :return: the (numerically normalised) radial distribution ``P(R)``.
+    """
+    r = np.asarray(r, dtype=float)
+    n = int(number_of_residues)
+    if n < 1:
+        return np.zeros_like(r)
+
+    vS = b_structured * b_structured / 6.0
+    vU = b_unstructured * b_unstructured / 6.0
+
+    # Ising nearest-neighbour weights W(sigma, sigma'), states 0 = S, 1 = U.
+    # Energy: -J*delta(sigma,sigma') - (h/2)*(is_S(sigma)+is_S(sigma')).
+    W = np.array([
+        [np.exp(coupling + field), np.exp(-coupling + 0.5 * field)],
+        [np.exp(-coupling + 0.5 * field), np.exp(coupling)],
+    ], dtype=float)
+
+    # k grid: cover up to where phi has decayed (set by the smallest bond var).
+    r_max = float(np.max(r)) if r.size else 1.0
+    k_max = 30.0 / max(np.sqrt(min(vS, vU) * n), r_max / n, 1e-6)
+    k = np.linspace(1e-6, k_max, n_k)
+
+    phi = np.empty_like(k)
+    for j, kk in enumerate(k):
+        g = np.array([np.exp(-kk * kk * vS), np.exp(-kk * kk * vU)])  # per-residue bond factor
+        M = W * g[np.newaxis, :]                                      # M[s,s'] = W[s,s'] g[s']
+        # phi(k) = 1^T M^n 1 (bonds); start vector uniform over the first state.
+        v = np.array([1.0, 1.0])
+        for _ in range(n):
+            v = v @ M
+        phi[j] = v.sum()
+    phi /= phi[0]  # normalise phi(0) = 1
+
+    # Isotropic inverse transform: P(R) = (2 R / pi) * int k sin(kR) phi(k) dk.
+    kr = np.outer(r, k)
+    integrand = k[np.newaxis, :] * np.sin(kr) * phi[np.newaxis, :]
+    pr = (2.0 * r / np.pi) * _trapz(integrand, k, axis=1)
+    pr = np.clip(np.nan_to_num(pr, nan=0.0), 0.0, None)
+    area = _trapz(pr, r)
+    return pr / area if area > 0 else pr
 
 
 # TODO: needs docstring

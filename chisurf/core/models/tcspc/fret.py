@@ -1110,6 +1110,48 @@ class SawNuModel(FRETModel):
         )
 
 
+class IsingChainModel(FRETModel):
+    """FRET model with an Ising two-state Gaussian-chain distance distribution.
+
+    The tractable Ising-worm-like-chain model for partially structured /
+    folded-unfolded chains: each residue is structured or unstructured under a
+    nearest-neighbour Ising Hamiltonian (cooperativity ``J``, field ``h``), with
+    a Gaussian bond per residue (RMS ``bS`` / ``bU``).  See
+    :func:`chisurf.core.math.functions.rdf.ising_chain`.
+    """
+
+    name = "FRET: FD (Ising two-state chain)"
+
+    @property
+    def distance_distribution(self):
+        """Distance distribution ``[[P(R), rda_axis]]`` from the Ising-chain P(R)."""
+        prob = cs.core.math.functions.rdf.ising_chain(
+            rda_axis,
+            int(round(self._n_residues.value)),
+            self._b_structured.value,
+            self._b_unstructured.value,
+            self._coupling.value,
+            self._field.value,
+        )
+        return np.array([prob, rda_axis]).reshape(
+            [1, 2, cs.core.settings.fret['rda_resolution']]
+        )
+
+    def __init__(self, fit: cs.core.fitting.fit.FitGroup, **kwargs):
+        """Initialize the Ising two-state chain FRET model."""
+        super().__init__(fit, **kwargs)
+        self._n_residues = FittingParameter(
+            name='N', value=40.0, model=self, fixed=True, text='N', lb=2.0, ub=1000.0)
+        self._b_structured = FittingParameter(
+            name='bS', value=4.0, model=self, fixed=False, text='bS', lb=0.5, ub=50.0)
+        self._b_unstructured = FittingParameter(
+            name='bU', value=8.0, model=self, fixed=False, text='bU', lb=0.5, ub=50.0)
+        self._coupling = FittingParameter(
+            name='J', value=1.5, model=self, fixed=False, text='J', lb=0.0, ub=10.0)
+        self._field = FittingParameter(
+            name='h', value=0.0, model=self, fixed=False, text='h', lb=-10.0, ub=10.0)
+
+
 class SingleDistanceModel(FRETModel):
 
     name = "Fixed distance distribution"
