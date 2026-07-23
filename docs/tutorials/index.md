@@ -15,6 +15,10 @@ sketches.
 | 5 | [Enderlein MDF & two-focus FCS](05_enderlein_mdf_two_focus_fcs.md) | `core.fluorescence.fcs.enderlein` |
 | 6 | [ns-FCS second-order correlation](06_nsfcs_second_order.md) | `core.fluorescence.fcs.correlate.second_order_correlation` |
 | 7 | [RCM detection calibration](07_rcm_calibration.md) | `core.fluorescence.fret.calibration.rcm_from_dye_solutions` |
+| 8 | [Burst Variance Analysis (BVA)](08_burst_variance_analysis.md) | `tttrlib.BVA`, `burst_bva` plugin |
+| 9 | [Diffusion FCS](09_diffusion_fcs.md) | FCS models + `fcs_correlator` plugin |
+| 10 | [Lifetime & anisotropy decay fitting](10_lifetime_anisotropy_fitting.md) | `core.fluorescence.tcspc`, TCSPC models |
+| 11 | [Photon Distribution Analysis (PDA)](11_pda.md) | `tttrlib.Pda`, `core.models.pda` |
 
 ## Running
 

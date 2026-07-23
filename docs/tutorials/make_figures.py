@@ -222,6 +222,153 @@ def fig_rcm():
     save(fig, "rcm.png")
 
 
+# --------------------------------------------------------------------------
+# 8. Burst Variance Analysis (BVA)
+# --------------------------------------------------------------------------
+def fig_bva():
+    import tttrlib
+    rng = np.random.default_rng(8)
+    n_slice = 5
+
+    def build(chan_per_burst, gap=1_000_000):
+        macro, chan, rows = [], [], []
+        t = 0
+        for ch in chan_per_burst:
+            start = len(macro)
+            for c in ch:
+                t += 1; macro.append(t); chan.append(int(c))
+            t += gap
+            rows.append((start, len(macro) - 1))
+        d = tttrlib.TTTR()
+        d.append_events(np.asarray(macro, np.uint64), np.zeros(len(macro), np.uint16),
+                        np.asarray(chan, np.int8), np.zeros(len(macro), np.int8), False, 0)
+        return d, np.asarray(rows, np.int64)
+
+    static = [(rng.random(300) < 0.5).astype(int) for _ in range(80)]
+    dynamic = []
+    for _ in range(80):
+        dynamic.append(np.concatenate(
+            [(rng.random(60) < (0.15 if i % 2 else 0.85)).astype(int) for i in range(5)]))
+
+    fig, ax = plt.subplots(figsize=(5.2, 4.0))
+    for bursts, color, label in [(static, "#1f77b4", "static"), (dynamic, "#d62728", "dynamic")]:
+        d, bounds = build(bursts)
+        bva = tttrlib.BVA(d)
+        bva.set_donor([0]); bva.set_acceptor([1])
+        bva.compute(bounds, n_slice, 0.01)
+        ax.scatter(bva.proximity_ratio_mean, bva.proximity_ratio_std,
+                   s=12, alpha=0.5, color=color, label=label)
+    grid = np.linspace(0.01, 0.99, 200)
+    _, sd = tttrlib.BVA.compute_static_bva_line(grid, n_slice)
+    ax.plot(grid, sd, "k-", lw=2, label="shot-noise limit")
+    ax.set_xlabel("proximity ratio (mean)"); ax.set_ylabel("proximity ratio (std)")
+    ax.set_title("Burst Variance Analysis"); ax.set_xlim(0, 1); ax.set_ylim(0, 0.6)
+    ax.legend()
+    save(fig, "bva.png")
+
+
+# --------------------------------------------------------------------------
+# 9. Diffusion FCS
+# --------------------------------------------------------------------------
+def fig_fcs_diffusion():
+    tau = np.logspace(-6, 0, 300)          # seconds
+
+    def g_3d_gauss(tau, N, td, s, trip_a=0.0, trip_t=1e-6):
+        g = (1.0 / N) / (1 + tau / td) / np.sqrt(1 + (tau / td) / s ** 2)
+        return g * (1 - trip_a + trip_a * np.exp(-tau / trip_t))
+
+    fig, ax = plt.subplots(figsize=(5.4, 4.0))
+    for td, c in [(3e-5, "#2ca02c"), (1e-4, "#1f77b4"), (5e-4, "#d62728")]:
+        ax.semilogx(tau * 1e3, g_3d_gauss(tau, N=2.0, td=td, s=5.0),
+                    color=c, label=f"τ_D = {td*1e3:.2g} ms")
+    ax.semilogx(tau * 1e3, g_3d_gauss(tau, 2.0, 1e-4, 5.0, trip_a=0.2, trip_t=3e-6),
+                "k--", lw=1, label="+ triplet")
+    ax.set_xlabel("lag τ (ms)"); ax.set_ylabel("G(τ)")
+    ax.set_title("3-D Gaussian diffusion FCS")
+    ax.legend(fontsize=8)
+    save(fig, "fcs_diffusion.png")
+
+
+# --------------------------------------------------------------------------
+# 10. Fluorescence lifetime and anisotropy decays
+# --------------------------------------------------------------------------
+def fig_lifetime_anisotropy():
+    from chisurf.core.fluorescence.tcspc.convolve import convolve_lifetime_spectrum
+    n = 4096
+    dt = 0.016                              # ns/channel
+    t = np.arange(n) * dt
+    # Gaussian IRF
+    irf = np.exp(-0.5 * ((t - 0.6) / 0.05) ** 2); irf /= irf.sum()
+
+    def decay(spectrum):
+        out = np.zeros(n)
+        convolve_lifetime_spectrum(out, np.asarray(spectrum, float), irf, -1, t)
+        return out
+
+    d_mono = decay([1.0, 3.5])                      # tau = 3.5 ns
+    d_bi = decay([0.6, 3.5, 0.4, 0.7])              # 3.5 ns + 0.7 ns (FRET)
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(9.2, 3.8))
+    a1.semilogy(t, d_mono / d_mono.max(), color="#1f77b4", label="no FRET (τ=3.5 ns)")
+    a1.semilogy(t, d_bi / d_bi.max(), color="#d62728", label="with FRET (3.5 & 0.7 ns)")
+    a1.semilogy(t, irf / irf.max(), color="0.5", lw=1, label="IRF")
+    a1.set_xlabel("time (ns)"); a1.set_ylabel("counts (norm.)")
+    a1.set_ylim(1e-3, 1.5); a1.set_xlim(0, 20)
+    a1.set_title("Fluorescence-lifetime decays"); a1.legend(fontsize=8)
+
+    # Anisotropy decay r(t) = r0 exp(-t/rho)
+    for rho, c in [(0.5, "#2ca02c"), (2.0, "#1f77b4"), (8.0, "#d62728")]:
+        a2.plot(t, 0.4 * np.exp(-t / rho), color=c, label=f"ρ = {rho:g} ns")
+    a2.set_xlabel("time (ns)"); a2.set_ylabel("anisotropy r(t)")
+    a2.set_xlim(0, 20); a2.set_title("Anisotropy decays"); a2.legend(fontsize=8)
+    save(fig, "lifetime_anisotropy.png")
+
+
+# --------------------------------------------------------------------------
+# 11. Photon Distribution Analysis (PDA)
+# --------------------------------------------------------------------------
+def fig_pda():
+    import tttrlib
+    pda = tttrlib.Pda(hist2d_nmax=60, hist2d_nmin=5)
+    pda.background_ch1 = 0.0
+    pda.background_ch2 = 0.0
+    # Poisson-distributed burst sizes.
+    pf = np.zeros(61); mu = 25.0
+    from scipy.stats import poisson
+    pf[:] = poisson.pmf(np.arange(61), mu)
+    pda.setPF(pf)
+
+    def e_hist(pch0, label):
+        # single species with a given channel-1 probability p(ch0)
+        pda.set_probability_spectrum_ch1([1.0, pch0])
+        s1s2 = np.asarray(pda.get_S1S2_matrix()).reshape(61, 61)
+        # collapse to proximity ratio histogram
+        e_bins = np.linspace(0, 1, 41)
+        e_hist = np.zeros(len(e_bins) - 1)
+        for s1 in range(61):
+            for s2 in range(61):
+                tot = s1 + s2
+                if tot < 5:
+                    continue
+                e = s2 / tot
+                idx = min(int(e * (len(e_bins) - 1)), len(e_bins) - 2)
+                e_hist[idx] += s1s2[s1, s2]
+        c = 0.5 * (e_bins[:-1] + e_bins[1:])
+        return c, e_hist / e_hist.sum(), label
+
+    fig, ax = plt.subplots(figsize=(5.4, 4.0))
+    try:
+        for pch0, c in [(0.7, "#1f77b4"), (0.4, "#d62728")]:
+            centers, h, _ = e_hist(pch0, f"p(ch0)={pch0}")
+            ax.plot(centers, h, color=c, label=f"E ≈ {1-pch0:.1f}")
+        ax.set_title("PDA: shot-noise-limited E histograms")
+    except Exception as exc:   # pragma: no cover
+        ax.text(0.5, 0.5, f"PDA demo unavailable:\n{exc}", ha="center", transform=ax.transAxes)
+    ax.set_xlabel("proximity ratio E"); ax.set_ylabel("frequency")
+    ax.legend(fontsize=8)
+    save(fig, "pda.png")
+
+
 if __name__ == "__main__":
     fig_2cde()
     fig_rasp()
@@ -230,4 +377,8 @@ if __name__ == "__main__":
     fig_mdf()
     fig_g3()
     fig_rcm()
+    fig_bva()
+    fig_fcs_diffusion()
+    fig_lifetime_anisotropy()
+    fig_pda()
     print("all figures written to", FIG)
