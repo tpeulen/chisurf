@@ -54,6 +54,19 @@ def test_acf_amplitude_is_one_over_n_plus_offset():
     assert abs((g[0] - offset) - 1.0 / N) < 0.05       # G(0) = offset + 1/N
 
 
+def test_two_focus_cross_correlation():
+    """A finite inter-focus separation suppresses G(0) and shifts the peak to
+    a finite lag (the two-focus cross-correlation signature)."""
+    tau = np.logspace(-6, 0, 80)
+    auto = en.g_diff(tau, 0.25, 0.25, diffusion=300.0, separation=0.0)
+    cross = en.g_diff(tau, 0.25, 0.25, diffusion=300.0, separation=0.5)  # 0.5 µm apart
+    assert cross[0] < 0.5                      # cross-corr is suppressed at tau->0
+    assert np.argmax(cross) > 0                # and peaks at a finite lag
+    # Larger separation suppresses the short-lag amplitude further.
+    cross_far = en.g_diff(tau, 0.25, 0.25, diffusion=300.0, separation=0.8)
+    assert cross_far[0] < cross[0]
+
+
 def test_g0_matches_inverse_n_veff():
     """Unnormalised g_diff(0) equals 1/V_eff (absolute-concentration relation)."""
     w0 = R0 = 0.25

@@ -70,6 +70,9 @@ class MdfFCSModel(ModelCurve):
         self._n = FittingParameter(name="n", value=1.33, lb=1.0, ub=2.0, fixed=True)
         self._pinhole = FittingParameter(name="pinhole", value=50.0, lb=1.0, ub=1000.0, fixed=True)
         self._mag = FittingParameter(name="mag", value=60.0, lb=1.0, ub=1000.0, fixed=True)
+        # Two-focus inter-focus distance (nm); 0 = single-focus auto-correlation.
+        # A known, fixed separation yields an ABSOLUTE diffusion coefficient.
+        self._diam = FittingParameter(name="diam", value=0.0, lb=0.0, ub=5000.0, fixed=True)
 
         # Derived outputs.
         self._Veff = FittingParameter(name="Veff", value=float("nan"), fixed=True, is_output=True)
@@ -111,7 +114,9 @@ class MdfFCSModel(ModelCurve):
             return
 
         tau_s = tau_ms * 1e-3
-        y = enderlein.acf(tau_s, N, D, w0, R0, offset=b, optics=optics, n_grid=121, span=30.0)
+        separation = float(self._diam.value) * 1e-3   # nm -> µm
+        y = enderlein.acf(tau_s, N, D, w0, R0, offset=b, optics=optics,
+                          n_grid=121, span=30.0, separation=separation)
 
         # Derived outputs (Veff in µm³ -> fL is 1:1; conc in nM; tauD in ms).
         veff_um3 = enderlein.effective_volume(w0, R0, optics)
@@ -192,6 +197,7 @@ class MdfFCSWidget(ModelWidget, MdfFCSModel):
             mfw(self._n),
             mfw(self._pinhole, suffix=" µm"),
             mfw(self._mag),
+            mfw(self._diam, label_text="d<sub>foci</sub>", suffix=" nm"),
             mfw(self._Veff, suffix=" fL"),
             mfw(self._conc, suffix=" nM"),
             mfw(self._tauD, label_text="&tau;<sub>D</sub>", suffix=" ms"),

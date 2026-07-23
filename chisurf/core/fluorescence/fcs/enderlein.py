@@ -150,7 +150,7 @@ def effective_volume(
 def g_diff(
     tau: np.ndarray, w0: float, R0: float, diffusion: float,
     optics: Optics | None = None, n_grid: int = 201, span: float = 40.0,
-    normalize: bool = True, n_herm: int = 40,
+    normalize: bool = True, n_herm: int = 40, separation: float = 0.0,
 ) -> np.ndarray:
     r"""Diffusion autocorrelation for the Enderlein MDF.
 
@@ -201,22 +201,29 @@ def g_diff(
     # grid only has to resolve the smooth kappa/w profile.  Absolute prefactors
     # cancel in the g(0)-normalised shape, so they are dropped here.
     xi, hq = np.polynomial.hermite.hermgauss(n_herm)
+    d2 = separation * separation
 
-    def _raw(t: float) -> float:
+    def _raw(t: float, sep2: float = 0.0) -> float:
         t = max(t, 1e-18)
         s = 4.0 * diffusion * t
         zp = z[:, None] + np.sqrt(s) * xi[None, :]          # (nz, n_herm)
         kzp = _kappa(zp, R0, optics)
         wzp2 = _w(zp, w0, optics) ** 2
-        g_lat = 1.0 / (4.0 + (w2[:, None] + wzp2) / (2.0 * diffusion * t))
+        w_sum = w2[:, None] + wzp2
+        g_lat = 1.0 / (4.0 + w_sum / (2.0 * diffusion * t))
+        if sep2 > 0.0:
+            # Two-focus cross-correlation: the lateral overlap of two foci a
+            # distance d apart is attenuated by exp(-d^2 / (4 D t + (w^2+w'^2)/2)),
+            # which decays with tau and yields an ABSOLUTE D from the known d.
+            g_lat = g_lat * np.exp(-sep2 / (4.0 * diffusion * t + 0.5 * w_sum))
         inner = np.sum(hq[None, :] * kzp * g_lat, axis=1)   # Gauss--Hermite over xi
         return float((1.0 / s) * _trapz(kappa * inner, z))
 
-    num0 = _raw(1e-15)                                       # small-lag plateau ~ g(0)
+    num0 = _raw(1e-15)                                       # AUTO small-lag plateau ~ g(0)
     out = np.empty(tau.shape, dtype=float)
     for i, t in enumerate(tau):
-        out[i] = num0 if t <= 0.0 else _raw(t)
-    g = out / num0                                           # shape, g(0) = 1
+        out[i] = _raw(1e-15) if t <= 0.0 else _raw(t, d2)
+    g = out / num0                                           # shape (auto g(0)=1; cross<1)
 
     if normalize:
         return g
