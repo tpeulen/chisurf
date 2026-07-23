@@ -803,7 +803,47 @@ def fig_multispot():
     save(fig, "multispot.png")
 
 
+def fig_lut():
+    """TAC differential non-linearity and its LUT correction (concepts figure)."""
+    from chisurf.plugins.tttr.tttr_lut_tools import api
+
+    rng = np.random.default_rng(7)
+    n_bins = 4096
+    # A *uniform-illumination* measurement should be flat, but TAC DNL modulates
+    # the effective bin widths -> a wavy histogram (this is what we correct).
+    bins = np.arange(n_bins)
+    dnl = 1.0 + 0.25 * np.sin(2 * np.pi * bins / 512) + 0.10 * np.sin(2 * np.pi * bins / 97)
+    rate = 250.0 * dnl
+    raw_counts = rng.poisson(rate).astype(float)
+
+    # Build the LUT from the flat-light histogram, then apply it to fresh photons.
+    tbl = api.compute.compute_lut_from_counts(raw_counts, 64, n_bins - 64, n_bins, 0)
+    ntac = np.asarray(tbl["NTAC_fract"])
+    photons = rng.integers(0, n_bins, size=1_500_000)
+    # weight photons by the same DNL so the raw histogram is wavy
+    keep = rng.random(photons.size) < dnl[photons] / dnl.max()
+    photons = photons[keep]
+    corrected = api.lut.stochastic_rebin_ntac(photons, ntac, 0, seed=42, rounding="ceil")
+    raw_hist = np.bincount(photons, minlength=n_bins)[:n_bins]
+    cor_hist = np.bincount(np.clip(corrected, 0, n_bins - 1), minlength=n_bins)[:n_bins]
+
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(9.4, 3.6))
+    sm = lambda y: np.convolve(y, np.ones(24) / 24, mode="same")  # noqa: E731
+    ax0.plot(sm(raw_hist), color="#d62728", lw=1.2, label="raw (DNL-distorted)")
+    ax0.plot(sm(cor_hist), color="#1f77b4", lw=1.2, label="LUT-linearized")
+    ax0.set_title("Uniform-illumination histogram")
+    ax0.set_xlabel("micro-time channel"); ax0.set_ylabel("counts")
+    ax0.legend(fontsize=8)
+    ax1.plot(ntac, color="#4c9be8", lw=1.3, label="NTAC_fract (LUT)")
+    ax1.plot([0, n_bins], [0, ntac[-1]], "k--", lw=0.8, alpha=0.6, label="ideal (linear)")
+    ax1.set_title("Cumulative LUT vs the linear ideal")
+    ax1.set_xlabel("raw channel"); ax1.set_ylabel("corrected NTAC")
+    ax1.legend(fontsize=8)
+    save(fig, "lut.png")
+
+
 if __name__ == "__main__":
+    fig_lut()
     fig_2cde(); fig_rasp(); fig_polymer(); fig_fida(); fig_mdf(); fig_g3(); fig_rcm()
     fig_bva(); fig_fcs_diffusion(); fig_lifetime_anisotropy(); fig_pda()
     fig_tttr(); fig_burst_search(); fig_es(); fig_background()

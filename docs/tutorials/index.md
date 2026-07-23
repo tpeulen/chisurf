@@ -45,11 +45,19 @@ sketches.
 | 34 | [Exporting burst data](34_exporting_burst_data.md) | burst tables, `burst_h2mm` export, `bid_to_analysis` |
 | 35 | [Combining measurements / repeats](35_combining_repeats.md) | `BurstWorkflow.register_all` |
 | 36 | [Multispot (8-spot) smFRET](36_multispot.md) | per-channel burst analysis |
+| 37 | [TAC linearization: microtime LUTs](37_tttr_microtime_lut.md) | `tttr_lut_tools` plugin, `staging.open_tttr` |
 
 ## Running
 
 ```bash
 pixi run -e docs python docs/tutorials/make_figures.py   # regenerate all figures
+```
+
+GUI screenshots (e.g. tutorial 37) are regenerated separately from the real
+widgets under an offscreen Qt platform (needs the full GUI environment):
+
+```bash
+QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/tutorials/make_screenshots.py
 ```
 
 or, outside pixi, with the project on the path:
