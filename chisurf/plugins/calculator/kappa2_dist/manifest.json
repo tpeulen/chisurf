@@ -5,7 +5,7 @@
   "description": "Calculate and visualise the k² orientation-factor distribution for FRET using WIC, DWT, or isotropic models.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Structure", "FRET"],
-  "icon": "icon.png",
+  "icon": "📐",
   "state_namespace": "kappa2_dist",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",

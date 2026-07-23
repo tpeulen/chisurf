@@ -63,25 +63,7 @@ name = "Tools:Converter:BID→Analysis"
 menu_hidden = True
 
 # Optional icon exposed for the plugin manager/UI
-icon = None
-try:
-    # Import lazily and guard for headless environments
-    from pathlib import Path as _Path
-    _plugin_dir = _Path(__file__).parent
-    _png = _plugin_dir / "icon.png"
-    _svg = _plugin_dir / "icon.svg"
-    try:
-        from qtpy.QtGui import QIcon as _QIcon  # type: ignore
-    except Exception:
-        _QIcon = None  # type: ignore
-    if '_QIcon' in globals() and _QIcon is not None:
-        if _png.exists():
-            icon = _QIcon(str(_png))
-        elif _svg.exists():
-            icon = _QIcon(str(_svg))
-except Exception:
-    # Never fail import due to icon issues
-    icon = None
+icon = "🔗"
 
 # Supported TTTR extensions mapped to tttrlib file types
 _TTTR_EXT2TYPE: Dict[str, str] = {

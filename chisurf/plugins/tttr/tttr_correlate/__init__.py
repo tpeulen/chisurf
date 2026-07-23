@@ -14,6 +14,9 @@ The correlator is essential for analyzing dynamic processes in fluorescence
 correlation spectroscopy (FCS) and related techniques.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "➿"
+
 import sys
 from chisurf.plugins.tttr.tttr_correlate.gui import CorrelateTTTR
 

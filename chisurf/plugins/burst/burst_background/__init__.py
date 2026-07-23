@@ -9,6 +9,9 @@ It uses the detector and PIE-window definitions from the
 so that the same setups can be shared with other TTTR tools.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "🌑"
+
 name = "Spectroscopy:Single-Molecule:Burst Background Estimation"
 
 # Expose the plugin CLI through chisurf.core.cli

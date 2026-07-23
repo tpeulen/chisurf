@@ -7,6 +7,9 @@ Qt-free data in :mod:`.core.registry`; the GUI host (:mod:`.gui.tool`) resolves
 and embeds each calculator widget lazily on first selection.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "🧮"
+
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest

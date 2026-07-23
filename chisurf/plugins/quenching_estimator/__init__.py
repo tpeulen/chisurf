@@ -26,6 +26,9 @@ The plugin provides a graphical interface for setting up and running these simul
 as well as for analyzing and visualizing the results.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "💧"
+
 name = "Structure:Computation:QuEst"
 menu_hidden = True  # integrated into Structure Tools; hidden from ribbon
 

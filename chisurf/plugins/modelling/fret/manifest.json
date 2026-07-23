@@ -5,7 +5,7 @@
   "description": "FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation using IMP + IMP.bff accessible volumes (a thin shim around IMP.pmi).",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Structure", "FRET"],
-  "icon": "icon.png",
+  "icon": "🧲",
   "state_namespace": "fret_docking",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",

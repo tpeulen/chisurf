@@ -5,7 +5,7 @@
   "description": "Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics).",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Tools", "Acquisition"],
-  "icon": "icon.png",
+  "icon": "📷",
   "state_namespace": "acq",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",

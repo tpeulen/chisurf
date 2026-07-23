@@ -20,6 +20,9 @@ The generated settings files can be used for correcting TTTR data in other
 analysis tools.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "🛠️"
+
 import sys
 import os
 import json

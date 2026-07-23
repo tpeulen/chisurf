@@ -7,6 +7,9 @@ to a new HDF5 trajectory.
 
 from __future__ import annotations
 
+# Plugin brand icon (unified emoji set)
+icon = "🔃"
+
 from chisurf.plugins.traj.traj_rotate_translate.widget import (
     RotateTranslateTrajectoryWidget,
 )

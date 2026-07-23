@@ -161,10 +161,17 @@ literals as attribute refs, `icon = "ℹ️"` → `icon = Glyphs.INFO`; mixed st
 f-strings, `"💾 Save"` → `f"{Glyphs.SAVE} Save"`), so each concept has one authored
 source. Left as literals on purpose: **directional arrows** `→`/`←` (prose- and
 identifier-dominant), docstrings and multi-line help text, tests (literal
-regression anchors), and plugin **brand** icons in `manifest.json`/module `icon`
-attributes (deliberate per-plugin identity, still drawn from the canonical set).
-Rendering emoji/text/color/file icons into `QIcon`s is a separate concern handled
-by `chisurf/plugins/icon_utils.py` (see `chisurf/plugins/ICON_SYSTEM.md`).
+regression anchors). Plugin **brand** icons are a parallel axis: every plugin now
+declares a single **emoji** brand icon (in its `manifest.json` `icon` field, or a
+module `icon` attribute for manifest-less legacy plugins) — the former mix of
+raster `icon.png`, dangling image references, and blank/name-fallback icons was
+eliminated so a family reads coherently in the menu/ribbon (icons are distinct
+within a family; cross-family repeats are fine since they live in separate menus).
+Superseded and dead `icon.png` assets were removed; the resolver order is manifest
+icon → on-disk image → module attribute → name fallback, so a leftover png would
+otherwise shadow a module emoji. Rendering emoji/text/color/file icons into
+`QIcon`s is a separate concern handled by `chisurf/plugins/icon_utils.py` (see
+`chisurf/plugins/ICON_SYSTEM.md`).
 
 # Citations
 

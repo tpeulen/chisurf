@@ -5,7 +5,7 @@
   "description": "Interactive network graph for visualizing and managing parameter relationships across fits in global analysis.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Main", "Tools"],
-  "icon": "icon.png",
+  "icon": "🌐",
   "state_namespace": "globalview",
   "statefulness": {
     "enabled": true,

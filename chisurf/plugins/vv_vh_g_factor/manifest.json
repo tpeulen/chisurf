@@ -5,7 +5,7 @@
   "description": "Calculate detector G-factors using tail-matching on VV/VH format files.",
   "authors": ["Thomas-Otavio Peulen <thomas.peulen@tu-dortmund.de>"],
   "categories": ["Spectroscopy", "Fluorescence decay"],
-  "icon": "icon.png",
+  "icon": "⚖️",
   "state_namespace": "vv_vh_g_factor",
   "statefulness": {
     "enabled": true,

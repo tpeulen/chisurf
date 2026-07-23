@@ -10,7 +10,7 @@
     "Spectroscopy",
     "Fluorescence Correlation Spectroscopy"
   ],
-  "icon": "icon.png",
+  "icon": "🌀",
   "state_namespace": "burst_fcs_correlator",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",

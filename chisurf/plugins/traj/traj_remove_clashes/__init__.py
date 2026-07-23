@@ -14,6 +14,9 @@ further analysis, especially when working with modeled structures or
 trajectories from enhanced sampling methods.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "💢"
+
 import sys
 from chisurf.plugins.traj.traj_remove_clashes.widget import RemoveClashedFrames
 

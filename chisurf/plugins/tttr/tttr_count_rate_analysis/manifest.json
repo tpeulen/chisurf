@@ -5,7 +5,7 @@
   "description": "Count rates per detector channel across many TTTR files, with mean/std and a per-file plot.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["TTTR", "Analysis"],
-  "icon": "icon.png",
+  "icon": "📟",
   "menu_hidden": true,
   "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
   "entrypoints": {

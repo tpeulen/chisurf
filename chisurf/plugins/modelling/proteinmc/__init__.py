@@ -3,6 +3,9 @@
 Expose the ProteinMC cmd tool via the unified ChiSurf CLI.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "🎲"
+
 name = "Structure:Computation:Protein Monte Carlo"
 
 # Register CLI entrypoint for chisurf.core.cli discovery

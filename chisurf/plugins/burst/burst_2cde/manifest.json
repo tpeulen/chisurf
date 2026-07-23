@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Single-Molecule:2CDE",
   "description": "FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012).",
+  "icon": "⚡",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Spectroscopy", "Single-Molecule"],
   "state_namespace": "burst_2cde",

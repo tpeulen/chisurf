@@ -5,7 +5,7 @@
   "description": "Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Main", "Tools"],
-  "icon": "icon.png",
+  "icon": "🔭",
   "state_namespace": "ndxplorer",
   "entrypoints": {
     "gui": "chisurf.plugins.ndxplorer.rpc_bridge:make_ndxplorer",

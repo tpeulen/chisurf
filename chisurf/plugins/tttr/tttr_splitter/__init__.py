@@ -20,6 +20,9 @@ This tool is particularly valuable for handling large datasets from long-duratio
 single-molecule or imaging experiments, making them more manageable for subsequent analysis.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "✂️"
+
 name = "TTTR:Editor:Split/Convert"
 
 # Aggregated into the TTTR Tools toolbox (tttr_toolbox); hidden as a top-level

@@ -26,6 +26,9 @@ Dependencies:
 Author: Based on compute_lut.py by Felekyan et al.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "🗺️"
+
 import os
 import sys
 import glob

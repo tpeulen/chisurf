@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Single-Molecule:H2MM",
   "description": "Photon-by-photon Hidden Markov Model (H2MM) analysis of single-molecule FRET burst data, with BIC/ICL state selection and Viterbi dwell/transition analysis.",
+  "icon": "🔀",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Spectroscopy", "Single-Molecule"],
   "state_namespace": "burst_h2mm",

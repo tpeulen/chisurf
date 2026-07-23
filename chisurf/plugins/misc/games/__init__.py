@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# Plugin brand icon (unified emoji set)
+icon = "🎮"
+
 import sys
 from pathlib import Path
 

@@ -22,6 +22,9 @@ Features
 This widget can run as a ChiSurf plugin (see chisurf.plugins.vv_vh_anisotropy.__plugin__) or standalone.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "🎏"
+
 import numpy as np
 import warnings
 from pathlib import Path

@@ -5,7 +5,7 @@
   "description": "Apply global and per-channel micro-time shifts to TTTR files.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["TTTR", "Editor"],
-  "icon": "icon.png",
+  "icon": "↔️",
   "menu_hidden": true,
   "state_namespace": "microtime_shifter",
   "state_schema": {

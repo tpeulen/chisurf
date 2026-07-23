@@ -13,6 +13,9 @@ Joining trajectories is useful for analyzing simulations that were run in
 multiple segments or for combining related simulations into a single dataset.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "🔗"
+
 import sys
 from chisurf.plugins.traj.traj_join.widget import JoinTrajectoriesWidget
 

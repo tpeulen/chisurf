@@ -14,6 +14,9 @@ analysis tools, providing the connectivity and parameter information needed
 to interpret coordinate data correctly.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "💾"
+
 import sys
 from chisurf.plugins.traj.traj_save_topology.widget import SaveTopology
 

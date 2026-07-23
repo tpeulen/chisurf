@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# Plugin brand icon (unified emoji set)
+icon = "🧰"
+
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest

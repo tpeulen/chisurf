@@ -7,6 +7,9 @@ The widget is built via AutoForm (PRD-40) from ``fret_line.view.json``.
 
 from __future__ import annotations
 
+# Plugin brand icon (unified emoji set)
+icon = "🧵"
+
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest

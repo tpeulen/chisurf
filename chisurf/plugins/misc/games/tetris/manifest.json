@@ -5,7 +5,7 @@
   "description": "Classic Tetris game with line clearing, score tracking, and next-piece preview; contained in the Games hub.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Tools", "Miscellaneous"],
-  "icon": "icon.png",
+  "icon": "🧩",
   "state_namespace": "tetris_game",
   "statefulness": {
     "enabled": true,

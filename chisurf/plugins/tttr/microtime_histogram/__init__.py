@@ -23,6 +23,9 @@ temporal information about photon arrival is critical for understanding molecula
 properties and dynamics.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "📊"
+
 name = "Spectroscopy:Fluorescence decay:Histogram-Microtime"
 
 # Expose the plugin's CLI helper through chisurf.core.cli. This forwards to the

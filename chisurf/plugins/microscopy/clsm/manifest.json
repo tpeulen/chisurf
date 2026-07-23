@@ -10,7 +10,7 @@
     "Imaging",
     "Lifetime"
   ],
-  "icon": "icon.png",
+  "icon": "🖌️",
   "state_namespace": "clsm_draw",
   "statefulness": {
     "enabled": true,

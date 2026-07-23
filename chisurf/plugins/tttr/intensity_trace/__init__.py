@@ -31,6 +31,9 @@ observed in fluorescence intensity traces. The HMM approach is particularly powe
 for detecting states in noisy data with overlapping distributions.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "📶"
+
 name = "Spectroscopy:Single-Molecule:Intensity trace"
 
 

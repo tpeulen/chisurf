@@ -20,6 +20,9 @@ Ideal for extracting detailed information about fluorophore environments and dyn
 from time-resolved fluorescence experiments.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "⏳"
+
 # Define the plugin name - this will appear in the Plugins menu
 name = "Spectroscopy:Fluorescence decay:Lazy Lifetime Analysis"
 

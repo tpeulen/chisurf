@@ -1,5 +1,8 @@
 """Boarding wizard plugin for first-run ChiSurf setup."""
 
+# Plugin brand icon (unified emoji set)
+icon = "🧭"
+
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest

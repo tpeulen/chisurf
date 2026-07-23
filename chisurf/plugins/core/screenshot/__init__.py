@@ -8,6 +8,9 @@ Behavior:
 - It displays a temporary message box confirming the action.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "📸"
+
 # Display name used by the Plugins menu (category: name)
 name = "Main:Tools:Screenshot"
 

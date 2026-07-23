@@ -11,7 +11,7 @@
     "Fluorescence",
     "Database"
   ],
-  "icon": "icon.png",
+  "icon": "🗃️",
   "state_namespace": "mmfdb_admin",
   "statefulness": {
     "enabled": true,

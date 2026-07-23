@@ -28,6 +28,9 @@ Output is always a PTU container, because it is the only ``tttrlib`` container
 that persists arbitrary edited header tags without loss.
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "🏷️"
+
 name = "TTTR:Editor:TTTR Header editor"
 
 # Aggregated into the TTTR Tools toolbox (tttr_toolbox); hidden as a top-level

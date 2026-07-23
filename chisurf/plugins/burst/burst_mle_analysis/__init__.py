@@ -23,4 +23,7 @@ Fluorescence Lifetime Analysis of Single Molecules.
 Analytical Chemistry, 73(9), 2078-2086. https://doi.org/10.1021/ac000877g
 """
 
+# Plugin brand icon (unified emoji set)
+icon = "📈"
+
 name = "Spectroscopy:Single-Molecule:Burst MLE"

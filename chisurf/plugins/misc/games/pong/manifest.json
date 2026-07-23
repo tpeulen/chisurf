@@ -5,7 +5,7 @@
   "description": "Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Tools", "Miscellaneous"],
-  "icon": "icon.png",
+  "icon": "🏓",
   "state_namespace": "pong_game",
   "statefulness": {
     "enabled": true,

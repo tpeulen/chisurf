@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "display_name": "Spectroscopy:Single-Molecule:ebFRET (binned traces)",
   "description": "Empirical-Bayes Gaussian hidden Markov model for binned single-molecule FRET time traces (ebFRET/vbFRET-style), with a state-count scan, per-state emission recovery, and Viterbi dwell/transition analysis. Complements the photon-by-photon H2MM plugin for TIRF-style intensity-vs-time data.",
+  "icon": "🪜",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Spectroscopy", "Single-Molecule"],
   "state_namespace": "burst_ebfret",

@@ -1,3 +1,6 @@
+
+# Plugin brand icon (unified emoji set)
+icon = "📇"
 from pathlib import Path
 
 import numpy as np
