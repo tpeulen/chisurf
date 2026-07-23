@@ -34,6 +34,7 @@ import numpy as np
 import pandas as pd
 
 from chisurf.core.fluorescence.mle import Fit2xModel, Fit2xSettings
+from chisurf.core.fluorescence.mle.fit2x import PARAMETER_NAMES
 from chisurf.core.fluorescence.mle.parallel import fit_matrix_threaded
 
 logger = logging.getLogger(__name__)
@@ -115,6 +116,13 @@ class PixelMleSettings:
     micro_time_stop: int | None = None
     min_photons: int = 20
     stack_frames: bool = False
+    #: Which fit2x estimator to run per pixel (``"fit23"``/``"fit24"``/``"fit25"``).
+    fit_model: str = "fit23"
+    #: Model-generic start vector / fixed mask, ordered as the estimator's free
+    #: parameters (``PARAMETER_NAMES``). When ``None`` the fit23 ``tau``/``gamma``/
+    #: ``r0``/``rho`` fields below are used (back-compat for fit23 callers).
+    initial_values: Sequence[float] | None = None
+    fixed_flags: Sequence[int] | None = None
     tau: float = 4.0
     gamma: float = 0.0
     r0: float = 0.38
@@ -176,11 +184,30 @@ def _fit2x_settings_kwargs(s: PixelMleSettings, dt: float) -> dict:
 
 
 def _initial_and_fixed(s: PixelMleSettings) -> tuple[np.ndarray, np.ndarray]:
-    x0 = np.array([s.tau, s.gamma, s.r0, s.rho], dtype=np.float64)
-    fixed = np.array(
-        [int(s.fix_tau), int(s.fix_gamma), int(s.fix_r0), int(s.fix_rho)],
-        dtype=np.int16,
-    )
+    """Start vector + fixed mask for the selected model.
+
+    Uses the model-generic ``initial_values``/``fixed_flags`` when given;
+    otherwise falls back to the fit23 ``tau``/``gamma``/``r0``/``rho`` fields so
+    existing fit23 callers keep working unchanged.
+    """
+    names = PARAMETER_NAMES[Fit2xModel(s.fit_model)]
+    if s.initial_values is not None:
+        x0 = np.asarray(s.initial_values, dtype=np.float64)
+        fixed = (
+            np.zeros(x0.size, dtype=np.int16)
+            if s.fixed_flags is None
+            else np.asarray(s.fixed_flags, dtype=np.int16)
+        )
+    else:
+        x0 = np.array([s.tau, s.gamma, s.r0, s.rho], dtype=np.float64)
+        fixed = np.array(
+            [int(s.fix_tau), int(s.fix_gamma), int(s.fix_r0), int(s.fix_rho)],
+            dtype=np.int16,
+        )
+    if x0.size != len(names):
+        raise ValueError(
+            f"{s.fit_model} expects {len(names)} initial values {names}, got {x0.size}"
+        )
     return x0, fixed
 
 
@@ -240,7 +267,8 @@ def _fit_rows(vv_vh, rows, settings, dt, n_workers):
     x0, fixed = _initial_and_fixed(settings)
     fit_settings = Fit2xSettings(**_fit2x_settings_kwargs(settings, dt))
     return fit_matrix_threaded(
-        vv_vh, rows, fit_settings, x0, fixed, n_workers, model=Fit2xModel.FIT23
+        vv_vh, rows, fit_settings, x0, fixed, n_workers,
+        model=Fit2xModel(settings.fit_model),
     )
 
 
@@ -325,50 +353,80 @@ def fit_pixel_lifetimes(
     fit_rows = np.where(totals >= settings.min_photons)[0]
 
     # Run the fits (serial or across processes).
+    model = Fit2xModel(settings.fit_model)
+    names = PARAMETER_NAMES[model]
     n_workers = _resolve_workers(settings.n_workers)
     if len(fit_rows) < _MIN_ROWS_FOR_THREADS:
         n_workers = 1  # threading overhead not worth it for a handful of pixels
     if len(fit_rows):
         params = _fit_rows(vv_vh, fit_rows, settings, dt, n_workers)
     else:
-        params = np.empty((0, 5), dtype=np.float64)
+        params = np.empty((0, len(names) + 1), dtype=np.float64)
 
-    # Assemble maps + per-pixel table.
+    # Assemble maps + per-pixel table. ``x[0]`` is the primary lifetime for every
+    # model (fit23 tau, fit24 tau1, fit25 the selected tau) → the tau map; the
+    # rho map is fit23-only (its ``x[3]`` is the rotational time).
     tau_map = np.zeros((n_frames, n_lines, n_pixel), dtype=np.float32)
     rho_map = np.zeros((n_frames, n_lines, n_pixel), dtype=np.float32)
     flat_tau = tau_map.reshape(-1)
     flat_rho = rho_map.reshape(-1)
-    flat_tau[fit_rows] = params[:, 0]
-    flat_rho[fit_rows] = params[:, 3]
+    if len(fit_rows):
+        flat_tau[fit_rows] = params[:, 0]
+        if model is Fit2xModel.FIT23:
+            flat_rho[fit_rows] = params[:, 3]
 
     coords = np.indices((n_frames, n_lines, n_pixel)).reshape(3, -1)
     frame_idx, line_idx, pix_idx = coords[0], coords[1], coords[2]
     n_pix_total = n_frames * n_lines * n_pixel
 
-    df = pd.DataFrame({
+    base = {
         "Y pixel": line_idx,
         "X pixel": pix_idx,
         "Pixel Number": line_idx * n_pixel + pix_idx,
         "Number of Photons (fit window)": totals.astype(np.int64),
-        "tau": np.nan, "gamma": np.nan, "r0": np.nan, "rho": np.nan,
-        "BIFL scatter fit?": 0, "2I*: P+2S?": 0,
-        "rS": np.nan, "rE": np.nan, "2I*": np.nan,
-    })
-    if len(fit_rows):
-        df.loc[fit_rows, "tau"] = params[:, 0]
-        df.loc[fit_rows, "gamma"] = params[:, 1]
-        df.loc[fit_rows, "r0"] = params[:, 2]
-        df.loc[fit_rows, "rho"] = params[:, 3]
-        df.loc[fit_rows, "2I*"] = params[:, 4]
-        df.loc[fit_rows, "BIFL scatter fit?"] = int(settings.soft_bifl_scatter)
-        df.loc[fit_rows, "2I*: P+2S?"] = int(settings.p2s_twoIstar)
+    }
+    if model is Fit2xModel.FIT23:
+        # Unchanged fit23 schema (byte-for-byte with the historical export).
+        df = pd.DataFrame({
+            **base,
+            "tau": np.nan, "gamma": np.nan, "r0": np.nan, "rho": np.nan,
+            "BIFL scatter fit?": 0, "2I*: P+2S?": 0,
+            "rS": np.nan, "rE": np.nan, "2I*": np.nan,
+        })
+        if len(fit_rows):
+            df.loc[fit_rows, "tau"] = params[:, 0]
+            df.loc[fit_rows, "gamma"] = params[:, 1]
+            df.loc[fit_rows, "r0"] = params[:, 2]
+            df.loc[fit_rows, "rho"] = params[:, 3]
+            df.loc[fit_rows, "2I*"] = params[:, 4]
+            df.loc[fit_rows, "BIFL scatter fit?"] = int(settings.soft_bifl_scatter)
+            df.loc[fit_rows, "2I*: P+2S?"] = int(settings.p2s_twoIstar)
+        result_cols = list(_RESULT_COLUMNS)
+    else:
+        # Generic schema: ``tau`` (primary lifetime) + one column per free
+        # parameter named by the registry, then ``2I*``.
+        data = {**base, "tau": np.nan}
+        for nm in names:
+            data[nm] = np.nan
+        data["2I*"] = np.nan
+        df = pd.DataFrame(data)
+        if len(fit_rows):
+            df.loc[fit_rows, "tau"] = params[:, 0]
+            for j, nm in enumerate(names):
+                df.loc[fit_rows, nm] = params[:, j]
+            df.loc[fit_rows, "2I*"] = params[:, -1]
+        result_cols = [
+            "Y pixel", "X pixel", "Pixel Number",
+            "Number of Photons (fit window)", "tau", *names, "2I*",
+        ]
     # Below-threshold pixels report zero photons in the fit window (matches the
     # historical schema, where intensity/count columns come from the Intensity
     # tool rather than the MLE).
     df.loc[totals < settings.min_photons, "Number of Photons (fit window)"] = 0
     if n_frames > 1:
         df["Z pixel"] = frame_idx
-    df = df[list(_RESULT_COLUMNS) + (["Z pixel"] if n_frames > 1 else [])]
+        result_cols = result_cols + ["Z pixel"]
+    df = df[result_cols]
 
     if progress is not None:
         for i in range(n_frames):

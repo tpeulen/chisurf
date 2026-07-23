@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
-from .fit2x import Fit2x, Fit2xModel, Fit2xSettings
+from .fit2x import PARAMETER_NAMES, Fit2x, Fit2xModel, Fit2xSettings
 
 
 def fit_matrix_threaded(
@@ -48,17 +48,20 @@ def fit_matrix_threaded(
         Number of worker threads.  ``1`` fits the whole set in a single
         GIL-released batch call.
     model : Fit2xModel, optional
-        Estimator to use (default ``FIT23``; only ``FIT23`` supports batching).
+        Estimator to use (default ``FIT23``). ``FIT23``/``FIT24``/``FIT25`` each
+        expose a native ``fit_matrix`` batch kernel through :meth:`Fit2x.fit_many`.
 
     Returns
     -------
     numpy.ndarray
-        ``(len(rows), 5)`` array of ``[tau, gamma, r0, rho, 2I*]`` in the same
-        order as ``rows``.
+        ``(len(rows), n_free + 1)`` array of the model's free parameters followed
+        by the ``2I*`` fit quality, in the same order as ``rows`` (for ``FIT23``:
+        ``[tau, gamma, r0, rho, 2I*]``).
     """
     rows = np.asarray(rows)
     n = len(rows)
-    params = np.empty((n, 5), dtype=np.float64)
+    width = len(PARAMETER_NAMES[model]) + 1
+    params = np.empty((n, width), dtype=np.float64)
     if n == 0:
         return params
 

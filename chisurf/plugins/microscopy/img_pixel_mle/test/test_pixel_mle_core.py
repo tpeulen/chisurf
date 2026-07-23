@@ -81,6 +81,37 @@ def test_core_fits_flim_image_headlessly():
     assert int((result.tau > 0).sum()) == result.n_pixels_fit
 
 
+@pytest.mark.parametrize(
+    "model, init, fixed, extra_cols",
+    [
+        ("fit24", [2.0, 0.0, 2.0, 0.0, 0.0], [0, 1, 1, 1, 1],
+         {"tau1", "gamma", "tau2", "A2", "offset"}),
+        ("fit25", [0.5, 1.0, 2.0, 4.0, 0.0], [1, 1, 1, 1, 1],
+         {"tau1", "tau2", "tau3", "tau4", "gamma"}),
+    ],
+)
+def test_core_fits_non_fit23_models(model, init, fixed, extra_cols):
+    # The pixel core runs every fit2x model through the threaded batch kernel,
+    # not just fit23. Each non-fit23 model yields a tau map (x[0]) plus its own
+    # registry parameter columns and drops the fit23-only anisotropy columns.
+    settings = _settings(fit_model=model, initial_values=init, fixed_flags=fixed)
+    result = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), settings)
+
+    df = result.dataframe
+    assert len(df) == 50 * 50
+    assert result.tau.shape == (1, 50, 50)
+    assert {"tau", "2I*"} <= set(df.columns)
+    assert extra_cols <= set(df.columns)
+    # fit23-only columns are gone for the other models
+    assert "rS" not in df.columns and "rE" not in df.columns and "r0" not in df.columns
+
+    assert result.n_pixels_fit > 0
+    tau = df[df["Number of Photons (fit window)"] > 0]["tau"].to_numpy()
+    assert np.all(np.isfinite(tau))
+    assert np.all(tau > 0.0)
+    assert int((result.tau > 0).sum()) == result.n_pixels_fit
+
+
 def test_fast_and_loop_engines_are_equivalent():
     # The vectorised (uint8 get_fluorescence_decay) and exact (bincount) paths
     # must produce identical per-pixel lifetimes.

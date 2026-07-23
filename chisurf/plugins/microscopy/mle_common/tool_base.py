@@ -94,11 +94,25 @@ class AutoFormMleTool(QtWidgets.QWidget):
         if event == "start_run":
             self._start_job(self.model.run)
             return
+        # A structural change (e.g. the fit-model combo swapping the parameter
+        # rows) needs a full form rebuild, not just a value sync. Defer it to the
+        # next event-loop tick: the widget that fired the change (the combo) is
+        # still mid-commit, and rebuild() would delete it out from under itself.
+        if event == "rebuild":
+            QtCore.QTimer.singleShot(0, self._rebuild)
+            return
         if self.handle_event(event):
             return
         if QtCore.QThread.currentThread() is not self.thread():
             return
         self._refresh()
+
+    def _rebuild(self) -> None:
+        """Rebuild the whole AutoForm from the (now model-aware) view spec."""
+        try:
+            self.auto_form.rebuild()
+        except Exception:
+            logger.debug("MLE tool rebuild failed", exc_info=True)
 
     def _refresh(self) -> None:
         for fn in (self.auto_form.sync_fields, self.auto_form.refresh_plots):

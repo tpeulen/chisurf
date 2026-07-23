@@ -95,6 +95,38 @@ The **tail fit** stays preview-only in batch: it is a different estimator family
 tail fit is under-determined at burst photon counts, so `process_bursts` warns
 and returns for it.
 
+## Pixel-wise imaging has the same selector (via the facade batch kernel)
+
+The pixel-wise FLIM tool (`img_pixel_mle`) offers the same **fit23/24/25**
+selector, driven through the shared **facade** batch kernel
+(`fit_matrix_threaded` → `Fit2x.fit_many`) rather than the raw estimator — that
+is the whole point of the fast pixel path (a GIL-released `fit_matrix` per thread
+over pixel chunks). Consequences of routing through the facade:
+
+- `fit_matrix_threaded` allocates the result width from the model
+  (`len(PARAMETER_NAMES[model]) + 1`), not a hardcoded 5, so fit24/fit25 (6
+  columns) work; `img_pixel_mle/core` builds the τ map from `x[0]` for every
+  model and the ρ map only for fit23 (`x[3]` is the rotational time only there).
+- The **free-parameter set is the facade's** `PARAMETER_NAMES`, so **fit25 has
+  no editable `r0`** here (the facade fixes it as a batch input) — unlike the
+  burst wizard, which uses the raw estimator and shows the registry's 6th `r0`
+  row. The two tools deliberately differ: pixel MLE is bound to the batch kernel.
+- The **tail fit is not offered** for pixels (no `fit_matrix` kernel, and a
+  per-pixel multi-exponential tail fit is under-determined) — fit2x only.
+
+The GUI is AutoForm-driven: `PixelMleViewModel.view_spec()` is model-aware — it
+loads the JSON as a dict and **injects** a `fit_model` combo plus one value/fix
+row per free parameter of the selected model (bound to static `p0…p4`
+value/fix slots that proxy that model's start vector / fixed mask). The combo's
+`call` (`set_fit_model`) fires a `"rebuild"` event; the shared
+`AutoFormMleTool._on_model_event` defers a full `auto_form.rebuild()` to the next
+event-loop tick (the combo is mid-commit, so an immediate rebuild would delete it
+under itself). The core `PixelMleSettings` carries `fit_model` +
+`initial_values`/`fixed_flags`; when the latter are `None` it falls back to the
+fit23 `tau`/`gamma`/`r0`/`rho` fields (CLI/RPC back-compat). fit23's per-pixel CSV
+schema is unchanged byte-for-byte; other models write `tau` + one column per free
+parameter + `2I*`.
+
 ## Tail fit (a different estimator family)
 
 The combo also offers a **Tail fit (multi-exp)** entry that is *not* a fit2x

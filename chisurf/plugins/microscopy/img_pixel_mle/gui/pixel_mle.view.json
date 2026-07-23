@@ -1,5 +1,5 @@
 {
-  "_comment": "Pixel-wise FLIM MLE tool. AutoForm over PixelMleViewModel: an Analysis dock (CLSM + IRF file lists, parallel/perpendicular channels, fit window, IRF prep, Fit23 initial/fixed parameters, background, engine + worker threads, Run button) plus a result dock showing the fitted lifetime (tau) map. Each pixel is fitted by single-lifetime Poisson MLE (Fit23) through the shared fit2x harness.",
+  "_comment": "Pixel-wise FLIM MLE tool. AutoForm over PixelMleViewModel: an Analysis dock (CLSM + IRF file lists, parallel/perpendicular channels, fit window, IRF prep, background, engine + worker threads, Run button) plus a result dock showing the fitted lifetime (tau) map. The fit-model combo + per-model parameter rows are injected by PixelMleViewModel.view_spec (fit23/24/25); each pixel is fitted by Poisson MLE through the shared fit2x harness.",
   "sections": [
     {
       "type": "dock_area",
@@ -38,19 +38,7 @@
               {"type": "value", "attr": "shift_ss", "kind": "float", "label": "Shift ⊥", "decimals": 3, "minimum": -1000.0, "maximum": 1000.0,
                "description": "Perpendicular-channel sub-bin IRF shift."}
             ]},
-            {"type": "panel", "title": "Fit (Fit23)", "n_col": 2, "collapsed": true, "sections": [
-              {"type": "value", "attr": "tau", "kind": "float", "label": "τ (ns)", "decimals": 3, "minimum": 0.0, "maximum": 1000.0,
-               "description": "Initial fluorescence lifetime."},
-              {"type": "toggle", "attr": "fix_tau", "label": "fix τ", "description": "Hold the lifetime fixed."},
-              {"type": "value", "attr": "gamma", "kind": "float", "label": "γ", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
-               "description": "Initial scatter fraction."},
-              {"type": "toggle", "attr": "fix_gamma", "label": "fix γ", "description": "Hold the scatter fraction fixed."},
-              {"type": "value", "attr": "r0", "kind": "float", "label": "r0", "decimals": 3, "minimum": 0.0, "maximum": 0.4,
-               "description": "Fundamental anisotropy."},
-              {"type": "toggle", "attr": "fix_r0", "label": "fix r0", "description": "Hold the fundamental anisotropy fixed."},
-              {"type": "value", "attr": "rho", "kind": "float", "label": "ρ (ns)", "decimals": 3, "minimum": 0.0, "maximum": 1000.0,
-               "description": "Rotational correlation time."},
-              {"type": "toggle", "attr": "fix_rho", "label": "fix ρ", "description": "Hold the rotational correlation time fixed."},
+            {"type": "panel", "title": "Fit flags", "n_col": 2, "collapsed": true, "sections": [
               {"type": "toggle", "attr": "twoi_star", "label": "2I* (P+2S)", "description": "Optimise P+2S instead of P and S separately."},
               {"type": "toggle", "attr": "bifl_scatter", "label": "BIFL scatter", "description": "Reduce Istar by the background contribution."}
             ]},

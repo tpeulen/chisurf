@@ -30,7 +30,13 @@ class PixelMleSettings:
     shift_ss: float = 0.0
     irf_shift: int = 0
 
-    # Fit initial / fixed
+    # Fit model + initial / fixed
+    #: fit2x estimator to run per pixel: "fit23" | "fit24" | "fit25".
+    fit_model: str = "fit23"
+    #: Model-generic start vector / fixed mask (ordered as the estimator's free
+    #: parameters). When None the fit23 tau/gamma/r0/rho fields are used.
+    initial_values: list[float] | None = None
+    fixed_flags: list[int] | None = None
     tau: float = 1.0
     gamma: float = 0.0
     r0: float = 0.38

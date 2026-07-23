@@ -22,6 +22,7 @@ from collections.abc import Callable
 
 import numpy as np
 
+from chisurf.core.fluorescence.mle.fit2x import PARAMETER_NAMES, Fit2xModel
 from chisurf.plugins.microscopy.mle_common.base import MleObserverMixin, scalar
 
 from ..api.models import PixelMleSettings as ApiSettings
@@ -29,6 +30,43 @@ from ..api.models import PixelMleSettings as ApiSettings
 logger = logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "pixel_mle.view.json"
+
+#: Selectable fit2x estimators and their combo labels.
+_FIT_MODELS = ("fit23", "fit24", "fit25")
+_FIT_MODEL_LABELS = (
+    "Single lifetime + anisotropy (fit23)",
+    "Bi-exponential (fit24)",
+    "Lifetime selection (fit25)",
+)
+
+#: Per-parameter display metadata (initial value, bounds, label) keyed by the
+#: registry free-parameter name. ``fixed`` is *not* here — it is model-specific
+#: (fit25 fixes its four candidate lifetimes, fit24 frees tau1/tau2), so it lives
+#: in :data:`_MODEL_FIXED_DEFAULT`.
+_PARAM_META = {
+    "tau":    {"label": "τ (ns)",  "default": 2.0,  "min": 0.0, "max": 100.0},
+    "tau1":   {"label": "τ1 (ns)", "default": 2.0,  "min": 0.0, "max": 100.0},
+    "tau2":   {"label": "τ2 (ns)", "default": 0.5,  "min": 0.0, "max": 100.0},
+    "tau3":   {"label": "τ3 (ns)", "default": 4.0,  "min": 0.0, "max": 100.0},
+    "tau4":   {"label": "τ4 (ns)", "default": 8.0,  "min": 0.0, "max": 100.0},
+    "gamma":  {"label": "γ",       "default": 0.0,  "min": 0.0, "max": 1.0},
+    "A2":     {"label": "A2",      "default": 0.5,  "min": 0.0, "max": 1.0},
+    "offset": {"label": "offset",  "default": 0.0,  "min": 0.0, "max": 1e6},
+    "r0":     {"label": "r0",      "default": 0.38, "min": 0.0, "max": 0.4},
+    "rho":    {"label": "ρ (ns)",  "default": 1.0,  "min": 0.0, "max": 1000.0},
+}
+
+#: Default fixed mask per model (1 = fixed). fit23 frees τ only; fit24 frees the
+#: two lifetimes + their fraction; fit25 fixes all four candidate lifetimes (it
+#: *selects* the best-describing one) and γ.
+_MODEL_FIXED_DEFAULT = {
+    "fit23": [0, 1, 1, 1],
+    "fit24": [0, 1, 0, 0, 1],
+    "fit25": [1, 1, 1, 1, 1],
+}
+
+#: Widest free-parameter vector across the offered models (fit24/fit25 → 5).
+_MAX_SLOTS = 5
 
 
 class PixelMleViewModel(MleObserverMixin):
@@ -38,6 +76,9 @@ class PixelMleViewModel(MleObserverMixin):
         self.files: list[str] = []
         self.irf_files: list[str] = []
         self.settings = ApiSettings()
+        #: Selected fit2x estimator and per-model (start-vector, fixed-mask) state.
+        self._fit_model: str = "fit23"
+        self._model_params: dict[str, tuple[list[float], list[int]]] = {}
         self.status_text: str = ""
         #: Per-file :class:`...core.pixel_mle.PixelMleResult` of the last run.
         self.results: list = []
@@ -48,10 +89,103 @@ class PixelMleViewModel(MleObserverMixin):
         self._observers: list[Callable[[str], None]] = []
 
     def view_spec(self):
-        """Resolve AutoForm's view spec from the authored view.json."""
+        """Resolve AutoForm's view spec, injecting the model-aware fit editor.
+
+        The base layout comes from the authored ``pixel_mle.view.json``; the fit
+        section is generated per selected model (a model combo + one value/fix
+        row per registry free parameter), so switching model rebuilds the editor
+        to match the estimator. Parsing a plain dict keeps the JSON the single
+        source for everything else.
+        """
+        import json
+
         from chisurf.core.dataspec import load_view_spec
 
-        return load_view_spec(_VIEW_JSON)
+        spec = json.loads(_VIEW_JSON.read_text())
+        panel = self._analysis_panel(spec)
+        if panel is not None:
+            rows = panel.setdefault("sections", [])
+            # Insert the model combo + parameter panel just before "IRF
+            # preparation" (falls back to appending if the anchor is absent).
+            at = next(
+                (i for i, s in enumerate(rows)
+                 if s.get("type") == "panel" and str(s.get("title", "")).startswith("IRF")),
+                len(rows),
+            )
+            rows[at:at] = [self._fit_model_choice_dict(), self._fit_param_panel_dict()]
+        return load_view_spec(spec)
+
+    @staticmethod
+    def _analysis_panel(spec: dict):
+        """Return the authored "Analysis" panel dict inside the view spec (or None)."""
+        stack = list(spec.get("sections", []))
+        while stack:
+            s = stack.pop()
+            if s.get("type") == "panel" and s.get("title") == "Analysis":
+                return s
+            stack.extend(s.get("sections", []) or [])
+        return None
+
+    def _fit_model_choice_dict(self) -> dict:
+        """Build the fit-model combo section (a ``choice`` bound to ``fit_model``)."""
+        return {
+            "type": "choice", "attr": "fit_model", "call": "set_fit_model",
+            "label": "Fit model", "options": list(_FIT_MODELS),
+            "labels": list(_FIT_MODEL_LABELS),
+            "description": "Per-pixel fit2x estimator. fit23 = one lifetime + "
+                           "anisotropy; fit24 = bi-exponential; fit25 = pick the "
+                           "best of four fixed lifetimes. The τ map is x[0] for "
+                           "every model.",
+        }
+
+    def _fit_param_panel_dict(self) -> dict:
+        """Build a value/fix row per free parameter of the selected model."""
+        names = PARAMETER_NAMES[Fit2xModel(self._fit_model)]
+        sections = []
+        for i, nm in enumerate(names):
+            meta = _PARAM_META.get(nm, {})
+            sections.append({
+                "type": "value", "attr": f"p{i}_value", "kind": "float",
+                "label": meta.get("label", nm), "decimals": 3,
+                "minimum": float(meta.get("min", 0.0)),
+                "maximum": float(meta.get("max", 1e6)),
+                "description": f"Initial value of {nm}.",
+            })
+            sections.append({
+                "type": "toggle", "attr": f"p{i}_fix", "label": "fix",
+                "description": f"Hold {nm} fixed during the fit.",
+            })
+        return {
+            "type": "panel", "title": f"Fit parameters ({self._fit_model})",
+            "n_col": 2, "collapsed": False, "sections": sections,
+        }
+
+    # ── fit-model selection ──
+    @property
+    def fit_model(self) -> str:
+        """The selected fit2x estimator (``"fit23"``/``"fit24"``/``"fit25"``)."""
+        return self._fit_model
+
+    @fit_model.setter
+    def fit_model(self, value) -> None:
+        value = str(value)
+        self._fit_model = value if value in _FIT_MODELS else "fit23"
+
+    def set_fit_model(self, value) -> None:
+        """Combo callback: adopt *value* and rebuild the editor for its params."""
+        self.fit_model = value
+        self.notify("rebuild")
+
+    def _ensure_model_params(self, model: str) -> tuple[list[float], list[int]]:
+        """Return the (start-vector, fixed-mask) lists for *model*, seeded on first use."""
+        if model not in self._model_params:
+            names = PARAMETER_NAMES[Fit2xModel(model)]
+            x0 = [float(_PARAM_META.get(n, {}).get("default", 1.0)) for n in names]
+            fx = list(_MODEL_FIXED_DEFAULT.get(model, [0] * len(names)))
+            if len(fx) != len(names):
+                fx = [0] * len(names)
+            self._model_params[model] = (x0, fx)
+        return self._model_params[model]
 
     # ── shared-setup hook (Imaging Tools aggregator) ──
     def apply_setup_settings(self, payload: dict) -> None:
@@ -247,9 +381,9 @@ class PixelMleViewModel(MleObserverMixin):
         if not self.results:
             return (
                 "<i>Add confocal (CLSM) TTTR image file(s) and an IRF, set the "
-                "parallel/perpendicular channels and fit window, then press "
-                "<b>Run</b>. Each pixel is fitted with a single-lifetime "
-                "Poisson-MLE (Fit23) and the τ map is shown.</i>"
+                "parallel/perpendicular channels and fit window, pick a fit "
+                "model, then press <b>Run</b>. Each pixel is fitted by "
+                "Poisson-MLE and the τ map is shown.</i>"
             )
         lines = []
         total_fit = 0
@@ -325,6 +459,7 @@ class PixelMleViewModel(MleObserverMixin):
             self.notify("progress")
             try:
                 period_ns = self._period_ns(path, s.micro_time_binning)
+                x0, fixed = self._ensure_model_params(self._fit_model)
                 core_settings = PixelMleSettings(
                     channels_parallel=list(s.detector_chs_p),
                     channels_perpendicular=list(s.detector_chs_s),
@@ -338,14 +473,9 @@ class PixelMleViewModel(MleObserverMixin):
                     l1=s.l1,
                     l2=s.l2,
                     min_photons=s.min_photons,
-                    tau=s.tau,
-                    gamma=s.gamma,
-                    r0=s.r0,
-                    rho=s.rho,
-                    fix_tau=s.fix_tau,
-                    fix_gamma=s.fix_gamma,
-                    fix_r0=s.fix_r0,
-                    fix_rho=s.fix_rho,
+                    fit_model=self._fit_model,
+                    initial_values=list(x0),
+                    fixed_flags=list(fixed),
                     convolution_stop=-1,
                     p2s_twoIstar=s.twoi_star,
                     soft_bifl_scatter=s.bifl_scatter,
@@ -388,6 +518,43 @@ class PixelMleViewModel(MleObserverMixin):
             dataframe.to_csv(os.path.join(out_dir, f"{stem}_pixel_mle.csv"), index=False)
         except Exception:
             logger.debug("CSV export failed for %s", path, exc_info=True)
+
+
+def _slot_value_property(i: int):
+    """Make a float property bound to slot *i* of the active model's start vector."""
+    def getter(self: PixelMleViewModel) -> float:
+        x0, _ = self._ensure_model_params(self._fit_model)
+        return float(x0[i]) if i < len(x0) else 0.0
+
+    def setter(self: PixelMleViewModel, value) -> None:
+        x0, _ = self._ensure_model_params(self._fit_model)
+        if i < len(x0):
+            x0[i] = float(value)
+
+    return property(getter, setter)
+
+
+def _slot_fix_property(i: int):
+    """Make a bool property bound to slot *i* of the active model's fixed mask."""
+    def getter(self: PixelMleViewModel) -> bool:
+        _, fx = self._ensure_model_params(self._fit_model)
+        return bool(fx[i]) if i < len(fx) else False
+
+    def setter(self: PixelMleViewModel, value) -> None:
+        _, fx = self._ensure_model_params(self._fit_model)
+        if i < len(fx):
+            fx[i] = int(bool(value))
+
+    return property(getter, setter)
+
+
+# Static, model-independent binding slots (p0…p4). ``view_spec`` emits only as
+# many rows as the active model has free parameters; each row's ``attr`` (e.g.
+# ``p2_value``/``p2_fix``) reads/writes the corresponding slot of that model's
+# start vector / fixed mask via these properties.
+for _slot in range(_MAX_SLOTS):
+    setattr(PixelMleViewModel, f"p{_slot}_value", _slot_value_property(_slot))
+    setattr(PixelMleViewModel, f"p{_slot}_fix", _slot_fix_property(_slot))
 
 
 __all__ = ["PixelMleViewModel"]
