@@ -14,24 +14,50 @@ import tttrlib
 from chisurf.core.fio.fluorescence.burst import read_bur_file, write_dataframe_to_bur
 
 
-def load_tttr(path: str | Path, filetype: str | None = None) -> tttrlib.TTTR:
-    """Load a TTTR file using ``tttrlib``.
+def load_tttr(
+    path: str | Path,
+    filetype: str | None = None,
+    *,
+    channel_luts: dict | None = None,
+    channel_shifts: dict | None = None,
+    apply_lut: bool = False,
+) -> tttrlib.TTTR:
+    """Load a TTTR file, applying the associated setup's LUT/shift when given.
+
+    Routes through :func:`chisurf.core.fio.staging.open_tttr` so that, when the
+    caller passes the selected detector-setup's per-routing-channel LUTs/shifts
+    (typically via :func:`chisurf.core.data_io.detector_setups.setup_lut_open_kwargs`),
+    the burst read is LUT-aware. With no correction it is equivalent to a plain
+    ``tttrlib.TTTR`` open.
 
     Parameters
     ----------
     path : str or Path
         TTTR file path.
     filetype : str, optional
-        Explicit TTTR file type passed to ``tttrlib.TTTR``.
+        Explicit TTTR file type passed to ``tttrlib``.
+    channel_luts : dict, optional
+        ``{routing_channel: NTAC_fract}`` TAC-linearization LUTs (applied only
+        when *apply_lut* is set).
+    channel_shifts : dict, optional
+        ``{routing_channel: int}`` photon-level wrapping micro-time shifts.
+    apply_lut : bool
+        Master gate for LUT linearization.
 
     Returns
     -------
     tttrlib.TTTR
-        Loaded TTTR object.
+        Loaded (and, when requested, LUT-corrected) TTTR object.
     """
-    if filetype:
-        return tttrlib.TTTR(str(path), filetype)
-    return tttrlib.TTTR(str(path))
+    from chisurf.core.fio.staging import open_tttr
+
+    return open_tttr(
+        str(path),
+        filetype or None,
+        channel_luts=channel_luts,
+        channel_shifts=channel_shifts,
+        apply_lut=apply_lut,
+    )
 
 
 def read_bur(path: str | Path) -> pd.DataFrame:

@@ -64,3 +64,48 @@ def save_detector_setups(
         payload["last_used"] = last_used
     with open(path, "w") as f:
         json.dump(payload, f, indent=2)
+
+
+def setup_lut_open_kwargs(setup: dict[str, Any] | None) -> dict[str, Any]:
+    """Return the ``open_tttr`` LUT/shift keyword arguments for a setup dict.
+
+    The single adapter every setup-consuming reader uses to become LUT-aware:
+    a plugin that has resolved its selected setup calls
+    ``open_tttr(path, routine, **setup_lut_open_kwargs(setup))`` (or forwards the
+    result to a reader). Returns ``{"channel_luts": {}, "channel_shifts": {},
+    "apply_lut": False}`` for a missing/empty setup, so the open falls back to
+    raw reading.
+
+    Parameters
+    ----------
+    setup : dict or None
+        A detector-setup dict (as stored under ``setups[name]``) carrying the
+        inline ``channel_luts`` / ``channel_shifts`` / ``apply_lut`` keys.
+
+    Returns
+    -------
+    dict
+        ``{"channel_luts": {int: list}, "channel_shifts": {int: int},
+        "apply_lut": bool}``.
+    """
+    if not isinstance(setup, dict):
+        return {"channel_luts": {}, "channel_shifts": {}, "apply_lut": False}
+    luts_raw = setup.get("channel_luts") or {}
+    shifts_raw = setup.get("channel_shifts") or {}
+    channel_luts: dict[int, Any] = {}
+    for k, v in luts_raw.items():
+        try:
+            channel_luts[int(k)] = v
+        except (TypeError, ValueError):
+            continue
+    channel_shifts: dict[int, int] = {}
+    for k, v in shifts_raw.items():
+        try:
+            channel_shifts[int(k)] = int(v)
+        except (TypeError, ValueError):
+            continue
+    return {
+        "channel_luts": channel_luts,
+        "channel_shifts": channel_shifts,
+        "apply_lut": bool(setup.get("apply_lut", False)),
+    }

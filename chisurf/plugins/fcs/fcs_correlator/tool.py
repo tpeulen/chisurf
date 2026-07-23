@@ -341,12 +341,13 @@ class FcsCorrelatorTool(NavigationPanelTool):
                 "file_type", ""
             ) or ""
         )
+        lut_kwargs = self._lut_open_kwargs()
         objs: dict = {}
         for fn in expanded:
             p = pathlib.Path(fn)
             if not p.exists():
                 continue
-            tt = self._read_tttr(p.as_posix(), filetype)
+            tt = self._read_tttr(p.as_posix(), filetype, lut_kwargs)
             if tt is not None:
                 objs[str(p.resolve())] = tt
         model.set_tttr_objects(objs, expanded)
@@ -415,36 +416,50 @@ class FcsCorrelatorTool(NavigationPanelTool):
         return expanded
 
     @staticmethod
-    def _read_tttr(path: str, filetype: str):
+    def _read_tttr(path: str, filetype: str, lut_kwargs: dict | None = None):
         """Read a TTTR file, preferring ``filetype`` but auto-detecting on failure.
 
         ``tttrlib.TTTR(path, "")`` (or a wrong container type) can return an
         *empty* object without raising, so an empty result also triggers the
-        filename-based auto-detection fallback.
+        filename-based auto-detection fallback. When *lut_kwargs* is given (the
+        selected setup's LUT/shift, from
+        :func:`chisurf.core.data_io.detector_setups.setup_lut_open_kwargs`), the
+        read is LUT-aware.
         """
         from chisurf.core.fio.staging import open_tttr
 
+        lut_kwargs = lut_kwargs or {}
         tt = None
         if filetype:
             try:
-                tt = open_tttr(path, filetype)
+                tt = open_tttr(path, filetype, **lut_kwargs)
             except Exception:
                 tt = None
         if tt is None or len(tt) == 0:
             try:
-                tt = open_tttr(path, None)
+                tt = open_tttr(path, None, **lut_kwargs)
             except Exception:
                 return tt if (tt is not None and len(tt)) else None
         return tt
 
+    def _lut_open_kwargs(self) -> dict:
+        """LUT/shift ``open_tttr`` kwargs for the currently selected setup."""
+        from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
+
+        try:
+            return setup_lut_open_kwargs(self.workflow_context.detector_settings)
+        except Exception:
+            return {}
+
     def _load_raw_combined(self, expanded: list[str], filetype: str):
         """Read and concatenate the raw TTTR files (unfiltered path)."""
+        lut_kwargs = self._lut_open_kwargs()
         tttr_obj = None
         for fn in expanded:
             p = pathlib.Path(fn)
             if not p.exists():
                 continue
-            tt = self._read_tttr(p.as_posix(), filetype)
+            tt = self._read_tttr(p.as_posix(), filetype, lut_kwargs)
             if tt is None:
                 continue
             if tttr_obj is None:

@@ -129,6 +129,20 @@ class _RicsDetectorWidget(QtWidgets.QWidget):
                     self._model.micro_time_ranges = self._micro_time_ranges
                 except Exception:
                     pass
+                # Push the setup's LUTs/shifts + master gate: the RICS read is
+                # LUT-aware (auto-applied by the base reader's _open_tttr).
+                try:
+                    self._model.channel_luts = {
+                        int(k): v for k, v in (sd.get("channel_luts") or {}).items()
+                    }
+                    self._model.channel_shifts = {
+                        int(k): int(v) for k, v in (sd.get("channel_shifts") or {}).items()
+                    }
+                    self._model.apply_lut = (
+                        bool(sd.get("apply_lut", False)) if isinstance(sd, dict) else False
+                    )
+                except Exception:
+                    pass
         self.changed.emit()
 
     def _on_routine_changed(self, text: str) -> None:
