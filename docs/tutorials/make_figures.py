@@ -842,8 +842,51 @@ def fig_lut():
     save(fig, "lut.png")
 
 
+def fig_av():
+    """Accessible-volume dye clouds + inter-dye distance distribution + mean E."""
+    from chisurf.core.structure import Structure
+    from chisurf.core.structure.av import BasicAV
+    pdb = pathlib.Path(__file__).resolve().parents[2] / \
+        "test/data/atomic_coordinates/pdb_files/148l.pdb"
+    s = Structure(filename=str(pdb))
+    kw = dict(linker_length=20.5, linker_width=1.5, radius1=3.5, simulation_type="AV1")
+    donor = BasicAV(s, residue_seq_number=27, atom_name="CA", **kw)
+    accept = BasicAV(s, residue_seq_number=95, atom_name="CA", **kw)
+
+    p, r = donor.pRDA(accept)
+    area = np.trapezoid(p, r)
+    if area > 0:
+        p = p / area
+    R0 = 52.0
+    mean_r = float(np.trapezoid(r * p, r))
+    mean_E = float(np.trapezoid(p / (1.0 + (r / R0) ** 6), r))
+
+    prot = np.asarray(s.xyz, dtype=float).reshape(-1, 3)
+    dp = np.asarray(donor.points, dtype=float)[:, :3]
+    ap = np.asarray(accept.points, dtype=float)[:, :3]
+    rng = np.random.default_rng(0)
+    sub = lambda a, n=4000: a[rng.choice(len(a), min(n, len(a)), replace=False)]
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(9.6, 4.2))
+    a1.scatter(prot[:, 0], prot[:, 1], s=1, color="0.75", alpha=0.4)
+    a1.scatter(sub(dp)[:, 0], sub(dp)[:, 1], s=2, color="#2ca02c", alpha=0.25, label="donor AV")
+    a1.scatter(sub(ap)[:, 0], sub(ap)[:, 1], s=2, color="#d62728", alpha=0.25, label="acceptor AV")
+    a1.scatter(*donor.Rmp[:2], color="#2ca02c", ec="k", s=60, zorder=5)
+    a1.scatter(*accept.Rmp[:2], color="#d62728", ec="k", s=60, zorder=5)
+    a1.set_aspect("equal"); a1.set_xlabel("x (Å)"); a1.set_ylabel("y (Å)")
+    a1.set_title("Accessible volumes on T4 lysozyme"); a1.legend(fontsize=8, loc="upper right")
+
+    a2.plot(r, p, color="#1f77b4", lw=2)
+    a2.axvline(mean_r, ls="--", color="k", lw=1)
+    a2.fill_between(r, p, alpha=0.2, color="#1f77b4")
+    a2.set_xlabel(r"inter-dye distance $R_{DA}$ (Å)"); a2.set_ylabel("P(R)")
+    a2.set_title(rf"$\langle R_{{DA}}\rangle$ = {mean_r:.1f} Å,  ⟨E⟩ = {mean_E:.2f} ($R_0$=52 Å)")
+    save(fig, "av.png")
+
+
 if __name__ == "__main__":
     fig_lut()
+    fig_av()
     fig_2cde(); fig_rasp(); fig_polymer(); fig_fida(); fig_mdf(); fig_g3(); fig_rcm()
     fig_bva(); fig_fcs_diffusion(); fig_lifetime_anisotropy(); fig_pda()
     fig_tttr(); fig_burst_search(); fig_es(); fig_background()

@@ -11,24 +11,42 @@ or Gaussian models, connects a measured efficiency to a structure.
 
 ## In ChiSurf
 
-AV sampling lives in `chisurf/core/structure/av/` (static, dynamic and iterated
-AV, with the fast C accessible-volume kernel) and the labelling framework in
-`chisurf/core/structure/label/`; the molecular-modelling framework
-(`IMP.bff.cgdye`) provides the coarse-grained dye models used for docking.
+`chisurf/core/structure/av/` implements the standard grid-based AV: a
+`BasicAV` samples the volume reachable by a dye of one (`AV1`) or three (`AV3`)
+radii on a linker of given length and width, attached to an atom of a loaded
+`Structure`; `ACV` adds an accessible-*contact* volume (surface-sticking
+fraction) and `DynamicAV` the diffusion-with-quenching variant. The fast kernel
+uses the LabelLib backend when available. Given two AVs, the inter-dye distance
+distribution and the FRET-averaged distance come straight off the object:
 
 ```python
-from chisurf.core.structure.av import functions as av
+from chisurf.core.structure import Structure
+from chisurf.core.structure.av import BasicAV
 
-# grid an accessible volume around an attachment atom given linker geometry
-cloud = av.calculate_av(structure, attachment_atom,
-                        linker_length=20.0, linker_width=4.5, radius=3.5)
-mean_position = cloud.mean_xyz
+s = Structure(filename="protein.pdb")
+kw = dict(linker_length=20.5, linker_width=1.5, radius1=3.5, simulation_type="AV1")
+donor    = BasicAV(s, residue_seq_number=27, atom_name="CA", **kw)
+acceptor = BasicAV(s, residue_seq_number=95, atom_name="CA", **kw)
+
+p, r = donor.pRDA(acceptor)          # inter-dye distance distribution P(R_DA)
+rda_e = donor.dRDAE(acceptor, forster_radius=52.0)   # FRET-averaged <R_DA>_E
+mean_donor_position = donor.Rmp      # mean dye position (for a structural restraint)
 ```
 
-The `fps_json_editor` plugin edits FPS-style labelling/AV configurations, and the
+The `fps_json_editor` plugin edits FPS-style labelling/AV configurations, the
 AV-based decay model (`models/tcspc/av_decay.py`) uses the simulated $P(R_{DA})$
-directly in a FRET decay fit.
+directly in a FRET decay fit, and the FRET-docking tools use AV clouds as
+restraints. The coarse-grained dye models for docking come from the external
+molecular-modelling framework.
+
+## Result
+
+Two accessible volumes (donor, acceptor) simulated on T4 lysozyme (PDB 148L) and
+the resulting inter-dye distance distribution $P(R_{DA})$ — the mean distance and
+mean FRET efficiency follow directly.
+
+![Accessible volumes and the inter-dye distance distribution](figures/av.png)
 
 ## See also
 
-- `chisurf/core/structure/av/`, `chisurf/core/structure/label/`; plugin `modelling/fps_json_editor`.
+- `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`, `calculate_1_radius`/`calculate_3_radius`); plugin `modelling/fps_json_editor`; the AV decay model `models/tcspc/av_decay.py`.
