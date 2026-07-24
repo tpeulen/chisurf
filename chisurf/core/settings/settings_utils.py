@@ -364,6 +364,64 @@ def set_use_ribbon_interface(use_ribbon: bool) -> bool:
         return False
 
 
+def set_language(code: str) -> bool:
+    """Persist the UI language code in the user's settings YAML (``gui.language``).
+
+    Parameters
+    ----------
+    code
+        Two-letter locale code (e.g. ``"en"``, ``"de"``). The change takes effect
+        on the next GUI start, when the ``QTranslator`` is installed.
+
+    Returns
+    -------
+    bool
+        True if the setting was saved successfully, False otherwise.
+    """
+    try:
+        settings_file = get_path('settings') / 'settings_chisurf.yaml'
+
+        # Create settings file if it doesn't exist
+        if not settings_file.is_file():
+            package_path = pathlib.Path(__file__).parent
+            original_settings = package_path / 'settings_chisurf.yaml'
+            if original_settings.is_file():
+                import shutil
+                shutil.copyfile(original_settings, settings_file)
+            else:
+                settings_file.parent.mkdir(parents=True, exist_ok=True)
+                with open(settings_file, 'w', encoding='utf-8') as fh:
+                    yaml.safe_dump({}, fh)
+
+        data = safe_open_file(
+            file_path=settings_file,
+            processor=yaml.safe_load,
+            default_value={},
+            error_message=f"Error opening settings file {settings_file}"
+        )
+        if not isinstance(data, dict):
+            data = {}
+
+        gui_cfg = data.get('gui', {})
+        if not isinstance(gui_cfg, dict):
+            gui_cfg = {}
+            data['gui'] = gui_cfg
+
+        gui_cfg['language'] = str(code).strip() or 'en'
+        with open(settings_file, 'w', encoding='utf-8') as fh:
+            yaml.safe_dump(data, fh, default_flow_style=False)
+
+        # Update the in-memory settings so a subsequent get_locale() is consistent.
+        try:
+            from chisurf.core.settings import cs_settings
+            cs_settings.setdefault('gui', {})['language'] = gui_cfg['language']
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
+
+
 def set_acquisition_settings(acquisition_settings: dict) -> bool:
     """Persist acquisition settings in the user's settings YAML.
 

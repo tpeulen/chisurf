@@ -36,6 +36,14 @@ class TruncatingStatusBar(QtWidgets.QStatusBar):
             s = str(message)
         except Exception:
             return message
+        # Localize static status messages (dynamic/interpolated text simply
+        # falls through unchanged when no catalogue entry matches).
+        try:
+            from chisurf.core.i18n import tr
+
+            s = tr(s)
+        except Exception:
+            pass
         max_len = self._max_message_length
         if not s or len(s) <= max_len:
             return s

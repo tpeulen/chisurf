@@ -5,6 +5,8 @@ import pathlib
 from dataclasses import dataclass, field
 from typing import Any
 
+from chisurf.core.i18n import tr
+
 
 @dataclass
 class RPCMethodSpec:
@@ -121,8 +123,8 @@ class PluginManifest:
         methods = [
             RPCMethodSpec(
                 name=m["name"],
-                summary=m.get("summary", ""),
-                description=m.get("description", ""),
+                summary=tr(m.get("summary", "")),
+                description=tr(m.get("description", "")),
                 params_schema=m.get("params_schema"),
                 result_schema=m.get("result_schema"),
                 long_running=m.get("long_running", False),
@@ -135,8 +137,11 @@ class PluginManifest:
         return cls(
             id=data["id"],
             version=data["version"],
+            # display_name and categories double as menu-path / identity keys
+            # (see registry.py), so they stay canonical and are localized at the
+            # navigation-render seam, not here.
             display_name=data.get("display_name", ""),
-            description=data.get("description", ""),
+            description=tr(data.get("description", "")),
             authors=data.get("authors", []),
             categories=data.get("categories", []),
             icon=data.get("icon"),
@@ -148,10 +153,10 @@ class PluginManifest:
             events=data.get("events", []),
             dependencies=data.get("dependencies", {}),
             experimental=data.get("experimental", False),
-            experimental_message=data.get("experimental_message", ""),
+            experimental_message=tr(data.get("experimental_message", "")),
             menu_hidden=data.get("menu_hidden", False),
             deprecated=data.get("deprecated", False),
-            deprecation_message=data.get("deprecation_message", ""),
+            deprecation_message=tr(data.get("deprecation_message", "")),
         )
 
     def to_dict(self) -> dict[str, Any]:

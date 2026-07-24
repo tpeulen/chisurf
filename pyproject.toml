@@ -2,7 +2,7 @@
 requires = [
     "setuptools>=64",
     "wheel",
-    "numpy<2.0",
+    "numpy",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -33,6 +33,11 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
+# ROLE: installable-wheel metadata (PyPI names) for a bare `pip install chisurf`.
+# This must stay in sync with the two sibling lists that describe the SAME
+# runtime (conda<->PyPI naming differs): the dev env in pixi.toml [dependencies]
+# and the conda-package deps in rattler-recipe/recipe.yaml (run:). The app runs
+# on numpy 2.x (the canonical pixi env resolves numpy 2.4), so numpy is uncapped.
 dependencies = [
     "PyQt5",
     "qtpy",
@@ -40,7 +45,7 @@ dependencies = [
     "pyqtgraph",
     "qtconsole",
     "numba",
-    "numpy<2.0",
+    "numpy",
     "numexpr",
     "scipy",
     "labellib",
@@ -141,7 +146,8 @@ namespaces = true
     "*.png", "*.svg",
     "*.csv", "*.npy", "*.dat",
     "*.dll", "*.so", "*.dylib", "*.pyd", "*.ipynb",
-    "*.db", "*.txt", "*.dic"
+    "*.db", "*.txt", "*.dic",
+    "*.qm", "*.ts"
 ]
 "chisurf.settings.constants" = ["*.json"]
 

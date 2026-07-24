@@ -56,7 +56,7 @@
              "description": "Show a micro-time histogram waterfall or an ILT lifetime waterfall."},
             {
               "type": "panel",
-              "title": "Microtime",
+              "title": "Micro-time",
               "collapsible": true,
               "collapsed": false,
               "n_col": 1,

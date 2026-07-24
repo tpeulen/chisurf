@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 
 from chisurf import typing
+from chisurf.core.i18n import tr
 
 from . import (
     ChoiceSection,
@@ -84,8 +85,10 @@ class RpcMethodView:
         title: typing.Optional[str] = None,
     ):
         self.method_name = str(_method_field(method, "name", "") or "")
-        self.summary = str(_method_field(method, "summary", "") or "")
-        self.description = str(_method_field(method, "description", "") or "")
+        # Localize the method's label/help. tr() is a no-op on text already
+        # localized upstream (e.g. via manifest parsing) or with no catalogue.
+        self.summary = tr(str(_method_field(method, "summary", "") or ""))
+        self.description = tr(str(_method_field(method, "description", "") or ""))
         schema = _method_field(method, "params_schema") or {}
 
         properties: typing.Mapping[str, typing.Any] = schema.get("properties", {}) or {}
@@ -178,12 +181,12 @@ class RpcMethodView:
         return ""
 
     def _field_section(self, name: str, prop: typing.Mapping[str, typing.Any]) -> Section:
-        label = str(prop.get("title", name))
-        description = str(prop.get("description", "") or "")
+        label = tr(str(prop.get("title", name)))
+        description = tr(str(prop.get("description", "") or ""))
         if name in self._required and description:
-            description += " (required)"
+            description += " " + tr("(required)")
         elif name in self._required:
-            description = "(required)"
+            description = tr("(required)")
         common = dict(target="_params_group", attr=name, description=description)
 
         if "enum" in prop:

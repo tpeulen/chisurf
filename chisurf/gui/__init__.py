@@ -2108,6 +2108,16 @@ def _schedule_smoke_exit(app) -> None:
 
 def get_app():
     app = QtWidgets.QApplication(sys.argv)
+    # Install the UI-language translator before any window is built or any .ui
+    # file is loaded (Qt only translates lookups made after install). This also
+    # binds the core translation backend so data-driven view.json/manifest text
+    # is localized. English is the source language and installs no catalogue.
+    try:
+        from chisurf.gui.i18n import install_translation
+
+        install_translation(app)
+    except Exception:
+        logging.getLogger(__name__).debug("UI translation not installed", exc_info=True)
     # Global application font size is configured in the settings YAML
     # (gui.application_font_size); on macOS it compensates for the
     # low-resolution stability mode. 0 keeps the platform default.

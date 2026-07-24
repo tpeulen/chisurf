@@ -3,7 +3,7 @@
   "sections": [
     {
       "type": "dock_area",
-      "title": "Mean Micro-Time",
+      "title": "Mean Micro-time",
       "sections": [
         {
           "type": "panel",

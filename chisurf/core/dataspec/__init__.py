@@ -32,6 +32,7 @@ import json
 import pathlib
 
 from chisurf import typing
+from chisurf.core.i18n import tr
 
 
 @dataclasses.dataclass(frozen=True)
@@ -647,14 +648,57 @@ _SECTION_TYPES = {
 }
 
 
+#: Scalar section fields holding user-facing text that is localized on parse.
+_TEXT_KEYS = (
+    "title",
+    "description",
+    "label",
+    "suffix",
+    "placeholder",
+    "add_label",
+    "remove_label",
+    "component_title",
+    "subtitle",
+    "text",
+    "x_label",
+    "y_label",
+    "menu",
+)
+
+#: Keys carrying user-facing text inside the per-item dicts of ``items`` /
+#: ``buttons`` / ``columns`` (toggle_row / button_row / table sections).
+_ITEM_TEXT_KEYS = ("label", "description", "title")
+
+
+def _tr_item(item: typing.Mapping[str, typing.Any]) -> dict:
+    """Return a copy of a nested item dict with its text keys localized."""
+    out = dict(item)
+    for k in _ITEM_TEXT_KEYS:
+        v = out.get(k)
+        if isinstance(v, str) and v:
+            out[k] = tr(v)
+    return out
+
+
 def _section_from_dict(d: typing.Mapping[str, typing.Any]) -> Section:
-    """Build a :class:`Section` from a JSON dict, validating its ``type``."""
+    """Build a :class:`Section` from a JSON dict, validating its ``type``.
+
+    User-facing text (section titles, labels, descriptions, button captions,
+    table headers, …) is localized here via :func:`chisurf.core.i18n.tr` — the
+    single seam every ``view.json`` spec passes through. With no translation
+    backend installed (headless/server) this is the identity function.
+    """
     kind = d.get("type", "parameter_group")
     cls = _SECTION_TYPES.get(kind)
     if cls is None:
         raise ValueError(f"unknown section type {kind!r}; expected one of {sorted(_SECTION_TYPES)}")
     fields = {f.name for f in dataclasses.fields(cls)}
     kwargs = {k: v for k, v in d.items() if k in fields}
+    # Localize scalar text fields in place.
+    for k in _TEXT_KEYS:
+        v = kwargs.get(k)
+        if isinstance(v, str) and v:
+            kwargs[k] = tr(v)
     # tuples for frozen/hashable dataclasses
     if "header_keys" in kwargs and kwargs["header_keys"] is not None:
         kwargs["header_keys"] = tuple(kwargs["header_keys"])
@@ -666,10 +710,13 @@ def _section_from_dict(d: typing.Mapping[str, typing.Any]) -> Section:
         else:
             kwargs["options"] = tuple(kwargs["options"])
     if "labels" in kwargs and kwargs["labels"] is not None:
-        kwargs["labels"] = tuple(kwargs["labels"])
+        # Choice option display strings — localize each.
+        kwargs["labels"] = tuple(
+            tr(x) if isinstance(x, str) and x else x for x in kwargs["labels"]
+        )
     if "columns" in kwargs and kwargs["columns"] is not None:
         if cls is TableSection:
-            kwargs["columns"] = tuple(dict(c) for c in kwargs["columns"])
+            kwargs["columns"] = tuple(_tr_item(c) for c in kwargs["columns"])
         else:
             kwargs["columns"] = tuple(kwargs["columns"])
     # panels nest child sections — parse them recursively
@@ -680,11 +727,12 @@ def _section_from_dict(d: typing.Mapping[str, typing.Any]) -> Section:
         kwargs["steps"] = tuple(
             _section_from_dict({"type": "wizard_step", **dict(s)}) for s in kwargs["steps"]
         )
-    # ToggleRowSection items / ButtonRowSection buttons must be tuples of plain dicts
+    # ToggleRowSection items / ButtonRowSection buttons must be tuples of plain
+    # dicts; localize their user-facing label/description/title text.
     if "items" in kwargs and kwargs["items"] is not None:
-        kwargs["items"] = tuple(dict(item) for item in kwargs["items"])
+        kwargs["items"] = tuple(_tr_item(item) for item in kwargs["items"])
     if "buttons" in kwargs and kwargs["buttons"] is not None:
-        kwargs["buttons"] = tuple(dict(b) for b in kwargs["buttons"])
+        kwargs["buttons"] = tuple(_tr_item(b) for b in kwargs["buttons"])
     return cls(**kwargs)
 
 

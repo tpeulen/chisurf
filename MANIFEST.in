@@ -5,6 +5,7 @@ include chisurf/models/parse/*.yaml
 include chisurf/settings/*.yaml
 include chisurf/settings/constants/*.json
 include chisurf/gui/styles/*.css
+include chisurf/gui/i18n/*.ts chisurf/gui/i18n/*.qm
 include chisurf/plugins/spectra_viewer/*.db
 include chisurf/core/fio/mmcif/db/sample_management.db
 include chisurf/core/fio/mmcif/db/data/mmcif_pdbx_v50.dic

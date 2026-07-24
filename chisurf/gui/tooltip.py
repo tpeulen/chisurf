@@ -57,11 +57,17 @@ def wrap_tooltip(text: str, width: int | None = None) -> str:
     """Word-wrap ``text`` to ``width`` (default: the configured width).
 
     Existing explicit line breaks are preserved (each paragraph wrapped
-    independently); rich-text/HTML tooltips are returned unchanged.
+    independently); rich-text/HTML tooltips are returned unchanged. Plain
+    tooltips are localized here (:func:`chisurf.core.i18n.tr`) — the app-wide
+    tooltip event filter routes every ``setToolTip`` through this function, so
+    this is the single seam that localizes imperative tooltip strings.
     """
+    from chisurf.core.i18n import tr
+
     text = str(text or "").strip()
     if not text or text.startswith("<"):
         return text
+    text = tr(text)
     if width is None:
         width = tooltip_wrap_width()
     out: list[str] = []
