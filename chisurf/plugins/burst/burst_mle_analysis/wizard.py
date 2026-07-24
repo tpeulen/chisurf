@@ -3987,9 +3987,20 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                     f"range/threshold, or run 'Auto IRF' / load an IRF for '{det}'."
                 )
 
-        # uniform binning
-        det_mbs = {int(st['micro_time_binning']) for st in settings_cache.values()}
-        global_mb = int(next(iter(det_mbs))) if len(det_mbs) == 1 else int(self.micro_time_binning)
+        # Bin the per-burst data at the SAME binning the IRF/background were built
+        # at (``irf_np``/``bg_np`` are always at ``self.micro_time_binning``).
+        # Deriving the binning from the per-detector cache instead was a bug: Auto
+        # IRF's ``_auto_select_binning`` changes ``self.micro_time_binning`` while
+        # the cache keeps the pre-Auto value, so the data histogram and the IRF
+        # ended up at different binnings — their peaks landed on different bins and
+        # Fit23 diverged to τ = period (13.5 ns) for every burst. Force both the
+        # data binning and ``dt`` to the current (IRF) values, overriding stale
+        # cache, so batch and live fits agree.
+        global_mb = int(self.micro_time_binning)
+        cur_dt = float(self.dt_effective)
+        for _st in settings_cache.values():
+            _st['micro_time_binning'] = global_mb
+            _st['dt'] = cur_dt
 
         # windows, channels, rc max
         window_cache = {}
