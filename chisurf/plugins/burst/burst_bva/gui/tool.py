@@ -102,70 +102,13 @@ class HelpDialog(QDialog):
         layout.addWidget(buttons)
 
 
-_BTN_STYLES: dict[str, str] = {
-    "folder": """
-QToolButton { background-color: #2a4a7a; border: 1px solid #4a7aba; }
-QToolButton:hover { background-color: #3a5a9a; border-color: #6a9ada; }
-QToolButton:pressed { background-color: #1a3a6a; }
-""",
-    "run": """
-QToolButton { background-color: #2a6a3a; border: 1px solid #4a9a5a; }
-QToolButton:hover { background-color: #3a8a4a; border-color: #6aba7a; }
-QToolButton:pressed { background-color: #1a5a2a; }
-""",
-    "toggle_static": """
-QToolButton { background-color: #5a3a6a; border: 1px solid #8a5a9a; }
-QToolButton:hover { background-color: #7a4a8a; border-color: #aa7aba; }
-QToolButton:pressed { background-color: #4a2a5a; }
-QToolButton:checked { background-color: #7a5a3a; border-color: #aa8a5a; }
-""",
-    "save": """
-QToolButton { background-color: #6a5a2a; border: 1px solid #9a8a4a; }
-QToolButton:hover { background-color: #8a7a3a; border-color: #baaa5a; }
-QToolButton:pressed { background-color: #5a4a1a; }
-""",
-    "clear": """
-QToolButton { background-color: #6a2a2a; border: 1px solid #9a4a4a; }
-QToolButton:hover { background-color: #8a3a3a; border-color: #ba5a5a; }
-QToolButton:pressed { background-color: #5a1a1a; }
-""",
-    "settings": """
-    QToolButton { background-color: #4a4a6a; border: 1px solid #6a6a9a; }
-    QToolButton:hover { background-color: #5a5a8a; border-color: #8a8aba; }
-    QToolButton:pressed { background-color: #3a3a5a; }
-    """,
-    "help": """
-    QToolButton { background-color: #4a6a4a; border: 1px solid #6a8a6a; }
-    QToolButton:hover { background-color: #5a8a5a; border-color: #8aba7a; }
-    QToolButton:pressed { background-color: #3a5a3a; }
-    """,
-}
-
-_TOOLBAR_BUTTON_BASE = """
-QToolButton {
-    border-radius: 5px;
-    padding: 5px 10px;
-    margin: 0px;
-    font-weight: bold;
-    font-size: 12px;
-    color: #e0e0e0;
-}
-QToolButton:disabled {
-    color: #666;
-}
-"""
-
-_TOOLBAR_STYLE = """
-QToolBar {
-    background-color: transparent;
-    border: none;
-    padding: 3px 4px;
-    spacing: 6px;
-}
-QToolBar QLabel {
-    margin: 0px 3px;
-}
-"""
+# Shared, app-wide tool-button language (this colour scheme is its canonical
+# source). BVA keeps its exact look while every other tool can adopt the same.
+from chisurf.gui.widgets.tool_buttons import (  # noqa: E402
+    BTN_STYLES as _BTN_STYLES,
+    TOOLBAR_BUTTON_BASE as _TOOLBAR_BUTTON_BASE,
+    TOOLBAR_STYLE as _TOOLBAR_STYLE,
+)
 
 
 class _FolderLineEdit(QLineEdit):
@@ -308,6 +251,10 @@ class BVATool(QMainWindow):
         self._status_label.setStyleSheet("color: #888; font-style: italic; padding: 0 8px;")
         self._status_label.setFixedHeight(22)
         main_layout.addWidget(self._status_label)
+        # Embedded in the Burst Analysis shell the shared status bar carries all
+        # messages, so the panel's own status line is redundant — hide it.
+        if self._embedded:
+            self._status_label.setVisible(False)
 
         self._connect_signals()
         self._setup_plot()
@@ -324,23 +271,25 @@ class BVATool(QMainWindow):
         self.toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.toolbar.setStyleSheet(_TOOLBAR_STYLE)
 
-        def _tbtn(text, obj_name):
+        def _tbtn(text, obj_name, tooltip=None):
+            # Space-efficient: emoji only, detail in the tooltip.
             btn = QToolButton()
             btn.setText(text)
             btn.setObjectName(obj_name)
             style = _BTN_STYLES.get(obj_name, "")
             btn.setStyleSheet(_TOOLBAR_BUTTON_BASE + style)
             btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+            if tooltip:
+                btn.setToolTip(tooltip)
             return btn
 
-        self.btn_folder = _tbtn("\U0001f4c2  Data", "folder")
+        self.btn_folder = _tbtn("\U0001f4c2", "folder", "Select data folder")
         self._folder_field = _FolderLineEdit(placeholder="No folder selected")
         self._folder_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.btn_save = _tbtn("\U0001f4be  Save", "save")
-        self.btn_clear = _tbtn("\U0001f5d1  Clear", "clear")
-        self.btn_run = _tbtn("\u25b6  Run", "run")
-        self.btn_save_settings = _tbtn("\u2699", "settings")
-        self.btn_save_settings.setToolTip("Save current settings as default")
+        self.btn_save = _tbtn("\U0001f4be", "save", "Save BVA results")
+        self.btn_clear = _tbtn("\U0001f5d1", "clear", "Clear loaded data")
+        self.btn_run = _tbtn("\u25b6", "run", "Run BVA analysis")
+        self.btn_save_settings = _tbtn("\u2699", "settings", "Save current settings as default")
 
         self.cb_toggle_static = QCheckBox("Show static line")
         self.cb_toggle_static.setChecked(True)
@@ -644,13 +593,30 @@ class BVATool(QMainWindow):
     def _on_folder_dropped(self, path: str):
         self._set_folder(path)
 
-    def _begin_progress(self, message: str, max_value: int):
-        """Return a shown, single BVA progress dialog for a fresh phase.
+    def _reporter(self):
+        """Return the hosting shell's status bar when embedded, else ``None``."""
+        from chisurf.gui.widgets.navigation import find_status_reporter
 
-        Callers pass the returned dialog to the read/compute/write helpers so all
-        phases of one run share **one** progress window instead of flashing a new
-        dialog per phase.
+        return find_status_reporter(self)
+
+    def _notify_error(self, title: str, msg: str) -> None:
+        """Log the error (shown in the shell status bar when embedded); box if standalone."""
+        logging.getLogger(__name__).error("%s: %s", title, msg)
+        if not self._embedded:
+            QMessageBox.critical(self, title, msg)
+
+    def _begin_progress(self, message: str, max_value: int):
+        """Return a single progress handle for a fresh phase.
+
+        When embedded in the Burst Analysis shell this is a status-bar-backed
+        handle (no popup); standalone it is a modal ``_ProgressDialog``. Either way
+        it duck-types ``label`` / ``progress`` / ``set_value`` / ``close`` so all
+        phases of one run share **one** progress surface instead of flashing per
+        phase.
         """
+        reporter = self._reporter()
+        if reporter is not None:
+            return reporter.begin_task(message, max_value)
         progress = _ProgressDialog(
             title="BVA Analysis", message=message, max_value=max_value, parent=self,
         )
@@ -690,7 +656,7 @@ class BVATool(QMainWindow):
         except Exception as e:
             if own:
                 progress.close()
-            QMessageBox.critical(self, "Read Error", f"Could not read burst data:\n{e}")
+            self._notify_error("Read Error", f"Could not read burst data: {e}")
             return False
 
     def _compute_and_plot(self, write_output: bool = False, progress=None):
@@ -704,7 +670,7 @@ class BVATool(QMainWindow):
         try:
             self.bva_settings = self._get_bva_settings()
         except Exception as e:
-            QMessageBox.critical(self, "BVA Settings Error", str(e))
+            self._notify_error("BVA Settings Error", str(e))
             return
 
         own = progress is None
@@ -720,7 +686,7 @@ class BVATool(QMainWindow):
         except Exception as e:
             if own:
                 progress.close()
-            QMessageBox.critical(self, "BVA Error", str(e))
+            self._notify_error("BVA Error", str(e))
             return
 
         self._df = df_v
@@ -770,7 +736,7 @@ class BVATool(QMainWindow):
 
     def _run_analysis(self):
         if not self.data_folder:
-            QMessageBox.warning(self, "Error", "Please select a data folder first.")
+            self._notify_error("Error", "Please select a data folder first.")
             return
         # One shared progress dialog spans read \u2192 compute \u2192 write.
         progress = self._begin_progress("Reading burst data...", 0)
@@ -855,6 +821,8 @@ class BVATool(QMainWindow):
 
     def _status(self, msg: str):
         self._status_label.setText(msg)
+        # Report via normal logging; the shell's status bar shows it when embedded.
+        logging.getLogger(__name__).info(msg)
         QCoreApplication.processEvents()
 
     def _show_help(self):

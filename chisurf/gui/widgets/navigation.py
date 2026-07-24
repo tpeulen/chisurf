@@ -4,12 +4,35 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 import pathlib
 import traceback
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from qtpy import QtCore, QtWidgets
+
+
+class _StatusLogHandler(logging.Handler):
+    """Logging handler that shows records in a shell's shared status bar.
+
+    Lets embedded tools report status with *normal logging* — ``logger.info(...)``
+    — instead of bespoke status plumbing. The shell installs one of these scoped
+    to a logger name (e.g. ``chisurf.plugins.burst``) while its window is open.
+    Records are marshalled onto the GUI thread via a queued signal, so worker
+    threads can log safely.
+    """
+
+    def __init__(self, shell: NavigationPanelTool) -> None:
+        super().__init__()
+        self._shell = shell
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = record.getMessage()
+        except Exception:
+            return
+        self._shell.status_logged.emit(msg)
 
 
 def embed_mainwindow(mw: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -75,6 +98,150 @@ def embed_mainwindow(mw: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return container
 
 
+def find_status_reporter(widget: QtWidgets.QWidget | None):
+    """Return the nearest hosting shell that exposes the status-bar API.
+
+    Embedded tools call this to route progress into the shared status bar instead
+    of popping their own dialog. The check is ``begin_task`` (the status-bar
+    contract of :class:`NavigationPanelTool`). Returns ``None`` when the tool runs
+    standalone in its own window, so standalone behaviour is unchanged.
+    """
+    if widget is None:
+        return None
+    try:
+        win = widget.window()
+    except Exception:
+        win = None
+    if win is not None and callable(getattr(win, "begin_task", None)):
+        return win
+    # Fallback: walk the parent chain (covers widgets not yet in a top-level).
+    node = getattr(widget, "parent", lambda: None)()
+    seen: set[int] = set()
+    while node is not None and id(node) not in seen:
+        seen.add(id(node))
+        if callable(getattr(node, "begin_task", None)):
+            return node
+        node = getattr(node, "parent", lambda: None)()
+    return None
+
+
+class _TaskLabel:
+    """``.label`` shim so a status task duck-types the old popup dialog's label."""
+
+    def __init__(self, task: _StatusTask) -> None:
+        self._task = task
+
+    def setText(self, text: str) -> None:  # noqa: N802 (Qt-style)
+        self._task.setLabelText(text)
+
+    def text(self) -> str:
+        return self._task._shell._status_message.text()
+
+
+class _TaskProgress:
+    """``.progress`` shim so a status task duck-types the old popup dialog's bar."""
+
+    def __init__(self, task: _StatusTask) -> None:
+        self._task = task
+
+    def setRange(self, a: int, b: int) -> None:  # noqa: N802
+        self._task.setRange(a, b)
+
+    def setValue(self, v: int) -> None:  # noqa: N802
+        self._task.set_value(v)
+
+    def setMaximum(self, m: int) -> None:  # noqa: N802
+        self._task.setRange(0, m)
+
+    def value(self) -> int:
+        return int(self._task._shell._status_progress.value())
+
+    def maximum(self) -> int:
+        return int(self._task._shell._status_progress.maximum())
+
+
+class _StatusTask:
+    """Status-bar-backed progress handle that duck-types the popup dialog API.
+
+    Obtained from :meth:`NavigationPanelTool.begin_task`. It renders into the one
+    shared status bar (message + inline bar + Cancel) rather than a modal popup,
+    while exposing the small surface embedded tools and burst cores already call
+    on their old dialogs (``label``, ``progress``, ``set_value``, ``wasCanceled``,
+    ``update_progress``, ``close``). Migration is therefore near-mechanical: a tool
+    only swaps *where the handle comes from*, not how it drives it.
+    """
+
+    def __init__(self, shell: NavigationPanelTool, message: str, maximum: int = 0,
+                 cancel=None) -> None:
+        self._shell = shell
+        self._cancel_cb = cancel
+        self._canceled = False
+        self.label = _TaskLabel(self)
+        self.progress = _TaskProgress(self)
+        shell._activate_task(self, message, maximum, bool(cancel))
+
+    # -- popup-dialog-compatible surface --------------------------------------
+    def set_value(self, v: int) -> None:
+        self._shell._task_set_value(self, int(v))
+
+    def setValue(self, v: int) -> None:  # noqa: N802
+        self.set_value(v)
+
+    def setLabelText(self, text: str) -> None:  # noqa: N802
+        self._shell._task_set_message(self, str(text))
+
+    def setRange(self, a: int, b: int) -> None:  # noqa: N802
+        self._shell._task_set_range(self, int(a), int(b))
+
+    def update_progress(self, value: int, text: str | None = None) -> None:
+        if text is not None:
+            self._shell._task_set_message(self, str(text))
+        self.set_value(value)
+
+    def update_text(self, text: str) -> None:
+        self._shell._task_set_message(self, str(text))
+
+    def wasCanceled(self) -> bool:  # noqa: N802
+        return self._canceled
+
+    def cancel(self) -> None:
+        """Mark canceled and fire the cancel callback (Cancel-button path)."""
+        self._canceled = True
+        if callable(self._cancel_cb):
+            try:
+                self._cancel_cb()
+            except Exception:
+                pass
+
+    def finish(self, *args, **kwargs) -> None:
+        self.close()
+
+    def close(self) -> None:
+        self._shell._deactivate_task(self)
+
+    # QDialog / QProgressDialog-ish no-ops some callers use on a progress object.
+    def show(self) -> None:
+        pass
+
+    def setWindowTitle(self, *args) -> None:  # noqa: N802
+        pass
+
+    def setWindowModality(self, *args) -> None:  # noqa: N802
+        pass
+
+    def setAutoClose(self, *args) -> None:  # noqa: N802
+        pass
+
+    def setAutoReset(self, *args) -> None:  # noqa: N802
+        pass
+
+    def setMinimumDuration(self, *args) -> None:  # noqa: N802
+        pass
+
+    def setCancelButton(self, *args) -> None:  # noqa: N802
+        pass
+
+
 def _resolve_entrypoint(entrypoint: str):
     """Import ``"pkg.module:Attr"`` and return the referenced attribute."""
     module_name, _, attr = entrypoint.partition(":")
@@ -136,6 +303,10 @@ def load_panels_json(path: str | pathlib.Path) -> tuple[dict, list[dict]]:
 class NavigationPanelTool(QtWidgets.QMainWindow):
     """Main-window shell with a left selector and lazy-loaded right panels."""
 
+    #: Emitted (possibly from a worker thread) by the scoped log handler; the
+    #: connected slot updates the status bar on the GUI thread.
+    status_logged = QtCore.Signal(str)
+
     def __init__(
         self,
         *,
@@ -149,6 +320,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         panel_margins: tuple[int, int, int, int] = (12, 12, 12, 12),
         searchable: bool = True,
         settings_key: str | None = None,
+        status_logger: str | None = None,
     ) -> None:
         """Create a navigation shell.
 
@@ -158,6 +330,11 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         ``settings_key`` (when given) makes the window remember its geometry, the
         left/right splitter sizes and the selected panel across sessions under
         that plugin-unique key.
+
+        ``status_logger`` (when given, a logger name) installs a logging handler
+        scoped to that logger, so embedded panels can report status via *normal
+        logging* (``logger.info(...)``) and have it appear in the shared status
+        bar. The handler is removed when the window closes.
         """
         super().__init__(parent)
         self.setWindowTitle(title)
@@ -169,7 +346,11 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         self._searchable = searchable
         self._navigation_min_width = navigation_min_width or navigation_width
         self._settings_key = settings_key
+        self._status_logger_name = status_logger
+        self._status_log_handler: _StatusLogHandler | None = None
         self._build_ui(navigation_width)
+        if status_logger:
+            self._install_status_log_handler(status_logger)
         if settings_key:
             self._restore_window_state()
             self.splitter.splitterMoved.connect(lambda *_: self._save_window_state())
@@ -214,6 +395,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt override)
         """Save the window state on close when persistence is enabled."""
         self._save_window_state()
+        self._remove_status_log_handler()
         super().closeEvent(event)
 
     def _build_ui(self, navigation_width: int) -> None:
@@ -301,9 +483,191 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         self.splitter.setStretchFactor(1, 1)
         assert self.nav_list.minimumWidth() >= self._navigation_min_width
 
+        self._build_status_bar()
+
         self.nav_list.currentRowChanged.connect(self._on_nav_changed)
         if self.panels:
             self.nav_list.setCurrentRow(0)
+
+    # ── shared status bar (message + inline progress + Cancel + stepper) ────
+    def _build_status_bar(self) -> None:
+        """Build the one shared status bar used by every embedded panel.
+
+        Left: a message label + a hidden inline progress bar + a hidden Cancel
+        button (shown only for cancellable tasks). Right (permanent corner): a
+        ``◀ Back`` / ``Next ▶`` stepper that walks non-separator panels. Embedded
+        tools drive this via :meth:`begin_task` instead of popping their own
+        modal progress dialogs, so the whole workflow reads as one calm window.
+        """
+        self._active_task: _StatusTask | None = None
+        bar = self.statusBar()
+        bar.setSizeGripEnabled(False)
+
+        self._status_message = QtWidgets.QLabel("Ready")
+        self._status_message.setStyleSheet("color: #888; padding: 0 6px;")
+        bar.addWidget(self._status_message, 1)
+
+        self._status_progress = QtWidgets.QProgressBar()
+        self._status_progress.setMaximumWidth(220)
+        self._status_progress.setMaximumHeight(16)
+        self._status_progress.setTextVisible(True)
+        self._status_progress.setVisible(False)
+        bar.addWidget(self._status_progress)
+
+        self._status_cancel = QtWidgets.QToolButton()
+        self._status_cancel.setText("Cancel")
+        self._status_cancel.setVisible(False)
+        self._status_cancel.clicked.connect(self._on_status_cancel)
+        bar.addWidget(self._status_cancel)
+
+        self._btn_prev = QtWidgets.QToolButton()
+        self._btn_prev.setText("◀ Back")
+        self._btn_prev.setToolTip("Go to the previous workflow step")
+        self._btn_prev.clicked.connect(self.goto_prev_step)
+        self._btn_next = QtWidgets.QToolButton()
+        self._btn_next.setText("Next ▶")
+        self._btn_next.setToolTip("Go to the next workflow step")
+        self._btn_next.clicked.connect(self.goto_next_step)
+        bar.addPermanentWidget(self._btn_prev)
+        bar.addPermanentWidget(self._btn_next)
+
+        self.status_logged.connect(self._on_log_status)
+
+    def _install_status_log_handler(self, logger_name: str) -> None:
+        """Route ``logger_name`` (INFO+) into the shared status bar."""
+        handler = _StatusLogHandler(self)
+        handler.setLevel(logging.INFO)
+        logging.getLogger(logger_name).addHandler(handler)
+        self._status_log_handler = handler
+
+    def _remove_status_log_handler(self) -> None:
+        """Detach the status-bar log handler (on close)."""
+        handler = self._status_log_handler
+        if handler is not None and self._status_logger_name:
+            logging.getLogger(self._status_logger_name).removeHandler(handler)
+        self._status_log_handler = None
+
+    def _on_log_status(self, msg: str) -> None:
+        """Show a logged status line on the bar's message label.
+
+        Only the message text is touched — never the progress bar — so a line
+        logged during a running task updates the caption without disturbing the
+        task's progress/Cancel widgets, and a final message logged just before a
+        task closes survives (see :meth:`_deactivate_task`).
+        """
+        first = (msg or "").splitlines()[0][:200] if msg else ""
+        self._status_message.setText(first)
+        QtCore.QCoreApplication.processEvents()
+
+    # ── status-bar API (used by embedded tools via find_status_reporter) ────
+    def begin_task(self, message: str, maximum: int = 0, cancel=None) -> _StatusTask:
+        """Start one status-bar task and return a popup-compatible handle.
+
+        ``maximum=0`` shows an indeterminate (busy) bar. Pass ``cancel`` (a
+        callable) to reveal the Cancel button and have it fire that callback and
+        flip ``handle.wasCanceled()``.
+        """
+        return _StatusTask(self, message, maximum, cancel)
+
+    def report_status(self, message: str, *, busy: bool = False) -> None:
+        """Show a one-off status message (optionally with a busy bar)."""
+        self._status_message.setText(str(message))
+        if busy:
+            self._status_progress.setRange(0, 0)
+            self._status_progress.setVisible(True)
+        else:
+            self._status_progress.setVisible(False)
+        QtCore.QCoreApplication.processEvents()
+
+    def report_progress(self, value: int, maximum: int, message: str | None = None) -> None:
+        """Show determinate progress (``value`` of ``maximum``)."""
+        if message is not None:
+            self._status_message.setText(str(message))
+        self._status_progress.setRange(0, int(maximum))
+        self._status_progress.setValue(int(value))
+        self._status_progress.setVisible(True)
+        QtCore.QCoreApplication.processEvents()
+
+    def clear_status(self) -> None:
+        """Reset the status bar to idle."""
+        self._status_message.setText("Ready")
+        self._status_progress.setVisible(False)
+        self._status_cancel.setVisible(False)
+
+    def _on_status_cancel(self) -> None:
+        """Cancel the active task from the status-bar Cancel button."""
+        task = self._active_task
+        if task is not None:
+            task.cancel()
+
+    # -- _StatusTask back-end (only the active task may write the bar) --------
+    def _activate_task(self, task: _StatusTask, message: str, maximum: int,
+                       has_cancel: bool) -> None:
+        self._active_task = task
+        self._status_message.setText(message or "")
+        self._status_progress.setRange(0, int(maximum))
+        self._status_progress.setValue(0)
+        self._status_progress.setVisible(True)
+        self._status_cancel.setVisible(bool(has_cancel))
+        QtCore.QCoreApplication.processEvents()
+
+    def _task_set_message(self, task: _StatusTask, message: str) -> None:
+        if task is not self._active_task:
+            return
+        self._status_message.setText(message)
+        QtCore.QCoreApplication.processEvents()
+
+    def _task_set_range(self, task: _StatusTask, a: int, b: int) -> None:
+        if task is not self._active_task:
+            return
+        self._status_progress.setRange(a, b)
+        QtCore.QCoreApplication.processEvents()
+
+    def _task_set_value(self, task: _StatusTask, v: int) -> None:
+        if task is not self._active_task:
+            return
+        self._status_progress.setValue(v)
+        QtCore.QCoreApplication.processEvents()
+
+    def _deactivate_task(self, task: _StatusTask) -> None:
+        if task is not self._active_task:
+            return
+        self._active_task = None
+        # Hide the progress/Cancel widgets but leave the last message on the bar
+        # (e.g. a tool's final "Done – N bursts", logged just before close).
+        self._status_progress.setVisible(False)
+        self._status_cancel.setVisible(False)
+
+    # ── Next/Back stepper ───────────────────────────────────────────────────
+    def goto_next_step(self) -> bool:
+        """Select the next non-separator panel; return ``True`` if one exists."""
+        cur = self.nav_list.currentRow()
+        for i in range(cur + 1, len(self.panels)):
+            if not self.panels[i].get("separator"):
+                self.nav_list.setCurrentRow(i)
+                return True
+        return False
+
+    def goto_prev_step(self) -> bool:
+        """Select the previous non-separator panel; return ``True`` if one exists."""
+        cur = self.nav_list.currentRow()
+        for i in range(cur - 1, -1, -1):
+            if not self.panels[i].get("separator"):
+                self.nav_list.setCurrentRow(i)
+                return True
+        return False
+
+    def _update_stepper(self) -> None:
+        """Enable/disable the stepper buttons at the workflow ends."""
+        if not hasattr(self, "_btn_next"):
+            return
+        cur = self.nav_list.currentRow()
+        self._btn_next.setEnabled(
+            any(not p.get("separator") for p in self.panels[cur + 1:])
+        )
+        self._btn_prev.setEnabled(
+            any(not p.get("separator") for p in self.panels[:max(cur, 0)])
+        )
 
     def _on_search_changed(self, text: str) -> None:
         """Filter the nav list to panels whose name matches ``text``.
@@ -388,6 +752,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
             panel["instance"] = self._load_panel(panel, index)
 
         self.stacked_widget.setCurrentWidget(panel["instance"])
+        self._update_stepper()
         if was_active:
             QtCore.QTimer.singleShot(0, self._restore_active_window)
 

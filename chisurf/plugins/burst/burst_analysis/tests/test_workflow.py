@@ -402,6 +402,72 @@ def test_apply_context_to_2cde_sets_folder(tmp_path: Path) -> None:
     assert seen == [str(folder)]
 
 
+def test_h2mm_role_wired_into_downstream_propagation() -> None:
+    """H2MM inherits the upstream folder on step change, like BVA/2CDE.
+
+    Regression: ``h2mm`` was missing from ``_apply_context_to_downstream``'s role
+    tuple, so the H2MM panel only picked up the folder on (re)bind, not when the
+    upstream selection changed.
+    """
+    import inspect
+
+    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
+
+    src = inspect.getsource(BurstAnalysisTool._apply_context_to_downstream)
+    assert '"h2mm"' in src
+
+
+def test_h2mm_adopts_folder_via_downstream(tmp_path: Path) -> None:
+    """Applying context to a bound H2MM panel sets its analysis folder."""
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstAnalysisTool,
+        BurstWorkflowContext,
+    )
+
+    seen: list[str] = []
+
+    class FakeH2mm:
+        detector_page = None
+
+        def _set_folder(self, folder: str) -> None:
+            seen.append(str(folder))
+
+    tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
+    folder = tmp_path / "burstwise"
+    tool.workflow_context = BurstWorkflowContext(burst_folder=folder)
+    tool._workflow_panels = {"h2mm": FakeH2mm()}
+
+    tool._apply_context_to_downstream()
+    assert seen == [str(folder)]
+
+
+def test_bva_progress_routes_to_shell_status_bar_when_embedded(qapp) -> None:
+    """Embedded BVA's progress renders in the shell status bar, not a popup."""
+    from chisurf.gui.widgets.navigation import _StatusTask
+    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
+
+    tool = BurstAnalysisTool()
+    try:
+        assert tool.show_panel_by_role("bva")
+        bva = tool._workflow_panels.get("bva")
+        assert bva is not None
+        # Embedded: the reporter resolves to the shell and _begin_progress yields a
+        # status-bar handle (no modal dialog).
+        assert bva._reporter() is tool
+        prog = bva._begin_progress("Reading burst data...", 0)
+        assert isinstance(prog, _StatusTask)
+        assert tool._status_message.text() == "Reading burst data..."
+        # A logged status message reaches the shell bar.
+        bva._status("Done – 7 bursts")
+        prog.close()
+        assert tool._status_message.text() == "Done – 7 bursts"
+    finally:
+        tool.close()
+        from qtpy import QtWidgets
+
+        QtWidgets.QApplication.processEvents()
+
+
 def test_bva_param_changes_coalesce_into_one_recompute(qapp) -> None:
     """Several rapid param changes trigger a single BVA recompute, not many.
 

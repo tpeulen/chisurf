@@ -255,6 +255,9 @@ class H2mmTool(QMainWindow):
         self._status_label.setStyleSheet("color: #888; font-style: italic; padding: 0 8px;")
         self._status_label.setFixedHeight(22)
         layout.addWidget(self._status_label)
+        # Embedded, the shared status bar carries messages — hide the local line.
+        if self._embedded:
+            self._status_label.setVisible(False)
 
         self._connect_signals()
         # Restore a saved dock arrangement, else apply the default two-column grid
@@ -700,22 +703,36 @@ class H2mmTool(QMainWindow):
             self._folder_field.setText(str(p))
             self._status(f"Data folder: {p}")
 
+    def _make_progress(self, title, label, minv, maxv, cancel_cb):
+        """Return a progress handle for a threaded run.
+
+        Embedded in the Burst Analysis shell this drives the shared status bar
+        (no popup), with its Cancel button wired to *cancel_cb*; standalone it is
+        the modal ``EnhancedProgressDialog``. Both duck-type
+        ``setValue`` / ``setLabelText`` / ``close``.
+        """
+        from chisurf.gui.widgets.navigation import find_status_reporter
+
+        reporter = find_status_reporter(self)
+        if reporter is not None:
+            return reporter.begin_task(label, maxv, cancel=cancel_cb)
+        prog = EnhancedProgressDialog(title, label, minv, maxv, self)
+        prog.show()
+        try:
+            prog.canceled.connect(cancel_cb)
+        except Exception:
+            pass
+        return prog
+
     def _run_analysis(self):
         if not self.data_folder:
             QMessageBox.warning(self, "No data", "Please select a folder of .bur files first.")
             return
         settings = self._gather_settings()
 
-        self._prog = EnhancedProgressDialog(
-            "H2MM", "Loading bursts …", 0, 100, self
-        )
-        self._prog.show()
-        self._fit_t0 = time.perf_counter()
         self._cancel = threading.Event()
-        try:
-            self._prog.canceled.connect(self._cancel.set)
-        except Exception:
-            pass
+        self._prog = self._make_progress("H2MM", "Loading bursts …", 0, 100, self._cancel.set)
+        self._fit_t0 = time.perf_counter()
         self.btn_run.setEnabled(False)
         self._status("Fitting H2MM models …")
 
@@ -830,14 +847,11 @@ class H2mmTool(QMainWindow):
         settings = self._bundle.settings
         n_boot = 20
 
-        self._uprog = EnhancedProgressDialog("H2MM", "Bootstrapping …", 0, n_boot, self)
-        self._uprog.show()
         self.btn_uncert.setEnabled(False)
         self._ucancel = threading.Event()
-        try:
-            self._uprog.canceled.connect(self._ucancel.set)
-        except Exception:
-            pass
+        self._uprog = self._make_progress(
+            "H2MM", "Bootstrapping …", 0, n_boot, self._ucancel.set
+        )
         self._uncert_signals = _UncertSignals()
         self._uncert_signals.tick.connect(self._on_uncert_progress)
 
@@ -911,14 +925,11 @@ class H2mmTool(QMainWindow):
         model = ana.best.model
         n_points = 25
 
-        self._llprog = EnhancedProgressDialog("H2MM", "Likelihood scan …", 0, 100, self)
-        self._llprog.show()
         self.btn_llscan.setEnabled(False)
         self._llcancel = threading.Event()
-        try:
-            self._llprog.canceled.connect(self._llcancel.set)
-        except Exception:
-            pass
+        self._llprog = self._make_progress(
+            "H2MM", "Likelihood scan …", 0, 100, self._llcancel.set
+        )
         self._llscan_signals = _UncertSignals()
         self._llscan_signals.tick.connect(self._on_llscan_progress)
 
@@ -1378,6 +1389,8 @@ class H2mmTool(QMainWindow):
 
     def _status(self, msg: str):
         self._status_label.setText(msg)
+        # Report via normal logging; the shell's status bar shows it when embedded.
+        logging.getLogger(__name__).info(msg)
         QCoreApplication.processEvents()
 
     def _save_settings(self):

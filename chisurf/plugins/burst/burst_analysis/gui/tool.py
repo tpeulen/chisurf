@@ -432,6 +432,9 @@ class BurstAnalysisTool(NavigationPanelTool):
             initial_size=(1180, 760),
             navigation_width=270,
             navigation_min_width=250,
+            # Embedded panels report status via normal logging; the shared status
+            # bar shows any INFO record from the burst plugin package.
+            status_logger="chisurf.plugins.burst",
         )
 
     def bind_workflow_panel(self, role: str, widget: QtWidgets.QWidget) -> None:
@@ -626,7 +629,7 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_downstream(self) -> None:
         """Apply current workflow context to loaded downstream panels."""
-        for role in ("selection", "bva", "two_cde", "mle", "browser", "background", "irf_bg"):
+        for role in ("selection", "bva", "two_cde", "mle", "h2mm", "browser", "background", "irf_bg"):
             widget = self._workflow_panels.get(role)
             if widget is not None:
                 self._apply_context_to_panel(role, widget)

@@ -8,12 +8,14 @@ a thin GUI over it, embeddable in the ``burst_analysis`` workflow shell.
 
 from __future__ import annotations
 
+import logging
 import pathlib
 
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtWidgets, QtCore
 
+from chisurf.gui.widgets.tool_buttons import styled_tool_button
 from chisurf.plugins.burst.burst_2cde.core import computation as core
 
 try:
@@ -41,8 +43,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         row = QtWidgets.QHBoxLayout()
         self._folder_edit = QtWidgets.QLineEdit()
         self._folder_edit.setPlaceholderText("Burstwise analysis folder …")
-        browse = QtWidgets.QToolButton()
-        browse.setText("📁")
+        browse = styled_tool_button("📁", kind="folder", tooltip="Choose analysis folder")
         browse.clicked.connect(self._browse)
         row.addWidget(QtWidgets.QLabel("Folder"))
         row.addWidget(self._folder_edit, 1)
@@ -72,8 +73,9 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         layout.addLayout(form)
 
         # --- run button -------------------------------------------------------
-        self._run = QtWidgets.QToolButton()
-        self._run.setText("▶ Compute 2CDE")
+        self._run = styled_tool_button(
+            "▶", kind="run", tooltip="Compute 2CDE over the analysis folder"
+        )
         self._run.clicked.connect(self.run)
         layout.addWidget(self._run)
 
@@ -85,8 +87,20 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
 
         self._status = QtWidgets.QLabel("")
         layout.addWidget(self._status)
+        # Embedded, the shared status bar carries messages — hide the local line.
+        if self._embedded:
+            self._status.setVisible(False)
 
     # -- helpers --------------------------------------------------------------
+    def _set_status(self, msg: str) -> None:
+        """Update the local status label and report via normal logging.
+
+        When embedded in the Burst Analysis shell, the logged line appears in the
+        shared status bar (the shell installs a handler on the burst logger).
+        """
+        self._status.setText(msg)
+        logging.getLogger(__name__).info(msg)
+
     def _browse(self):
         d = QtWidgets.QFileDialog.getExistingDirectory(self, "Select burstwise folder")
         if d:
@@ -103,7 +117,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         """Read the burst folder, compute 2CDE and update the plot."""
         folder = self._folder_edit.text().strip()
         if not folder or not pathlib.Path(folder).is_dir():
-            self._status.setText("Select a valid burstwise analysis folder.")
+            self._set_status("Select a valid burstwise analysis folder.")
             return
         variant = self._variant.currentText()
         column = core.COLUMN_ALEX_2CDE if variant == "alex" else core.COLUMN_FRET_2CDE
@@ -118,7 +132,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
                 variant=variant,
             )
         except Exception as exc:  # pragma: no cover - GUI error path
-            self._status.setText(f"Error: {exc}")
+            self._set_status(f"Error: {exc}")
             return
         self._draw(df, column)
 
@@ -137,5 +151,5 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
             y, x = np.histogram(vals[finite], bins=40)
             self._plot.plot(0.5 * (x[:-1] + x[1:]), y, stepMode=False)
             self._plot.setLabel("bottom", column)
-        self._status.setText(
+        self._set_status(
             f"{column}: {int(finite.sum())} / {len(df)} bursts valid")

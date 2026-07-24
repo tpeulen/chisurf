@@ -23,6 +23,22 @@ from chisurf.gui.autoform import AutoForm
 from chisurf.gui.autoform.sections.registry import register_section
 
 
+def _mle_progress(widget, text: str, maximum: int):
+    """Return a progress handle for a long MLE loop.
+
+    Embedded in the Burst Analysis shell this drives the shared status bar (no
+    popup); standalone it is a modal ``QProgressDialog``. Both duck-type the
+    ``setValue`` / ``setLabelText`` / ``wasCanceled`` / ``close`` surface the loop
+    uses, so the call sites are otherwise unchanged.
+    """
+    from chisurf.gui.widgets.navigation import find_status_reporter
+
+    reporter = find_status_reporter(widget)
+    if reporter is not None:
+        return reporter.begin_task(text, maximum)
+    return QProgressDialog(text, "Cancel", 0, maximum, widget.window())
+
+
 @register_section("host_widget")
 def _host_widget_section(model, target=None, **options):
     """AutoForm custom section that hosts an existing widget owned by the model.
@@ -144,7 +160,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         groups = res.groupby(['First Stem', 'Detector'], sort=False)
         total_tasks = len(groups)
 
-        progress = QProgressDialog("Saving burst-fit results...", "Cancel", 0, total_tasks, self.window())
+        progress = _mle_progress(self, "Saving burst-fit results...", total_tasks)
         progress.setWindowTitle("Saving burst-fit results")
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setAutoClose(True)
@@ -3640,7 +3656,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # Progress UI
         total_bursts = len(self.df_bursts)
-        progress = QProgressDialog("Processing bursts...", "Cancel", 0, total_bursts, self.window())
+        progress = _mle_progress(self, "Processing bursts...", total_bursts)
         progress.setWindowTitle("Processing bursts")
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setAutoClose(False)
@@ -3920,7 +3936,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # UI
         self.stop_processing = False
         total_bursts = len(self.df_bursts)
-        progress = QProgressDialog("Processing bursts...", "Cancel", 0, total_bursts, self.window())
+        progress = _mle_progress(self, "Processing bursts...", total_bursts)
         progress.setWindowTitle("Processing bursts")
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setAutoClose(False)
