@@ -72,11 +72,45 @@ def _grab_tcspc_lifetime_editor():
     _grab(editor, "tcspc_lifetime_editor.png")
 
 
+def _grab_pda_editor():
+    """Grab the PDA (Gaussian-distance) model editor for the PDA guide."""
+    import numpy as np
+    from scipy import stats
+
+    import chisurf.core.fitting.fit as fit_mod
+    import chisurf.core.fluorescence.tcspc as tcspc
+    from chisurf.core.data import DataCurve
+    from chisurf.core.models.pda.pdagauss import PdaGaussianDistanceModel
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+
+    nmax, nmin = 60, 5
+    n = np.arange(nmax + 1)
+    ps = stats.poisson.pmf(n, mu=20.0).astype(float)
+    ps /= ps.sum()
+    s1s2 = np.zeros((nmax + 1, nmax + 1), dtype=float)
+    for N in range(nmin, nmax + 1):
+        g = np.arange(N + 1)
+        s1s2[g, N - g] += ps[N] * stats.binom.pmf(g, N, 0.6) * 1000.0
+    ny, nx = s1s2.shape
+    rr, cc = np.indices((ny, nx))
+    y = s1s2.ravel(order="C")
+    pda = {"maximum_number_of_photons": nmax, "minimum_number_of_photons": nmin,
+           "minimum_time_window_length": 2e-3, "channels": ([0], [1]), "s1s2": s1s2,
+           "ps": ps, "row_indices": rr.ravel().tolist(), "col_indices": cc.ravel().tolist(),
+           "ndim": 2, "shape": (ny, nx), "size": int(y.size), "tttr_indices": None}
+    data = DataCurve(name="synthetic-pda", load_filename_on_init=False, pda=pda,
+                     y=y, x=np.arange(y.size), ey=tcspc.counting_noise(y))
+    fit = fit_mod.Fit(model_class=PdaGaussianDistanceModel, data=data)
+    editor = build_model_editor(fit.model)
+    editor.resize(560, 760)
+    _grab(editor, "pda_model_editor.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
 
-    for grab in (_grab_fcs_model_editor, _grab_tcspc_lifetime_editor):
+    for grab in (_grab_fcs_model_editor, _grab_tcspc_lifetime_editor, _grab_pda_editor):
         try:
             grab()
         except Exception as exc:  # keep going; report which grab failed
