@@ -1,0 +1,30 @@
+(plugin-batch_analysis)=
+# Batch-Analysis
+
+Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP).
+
+## Identity
+
+| Field | Value |
+| --- | --- |
+| Plugin id | `batch_analysis` |
+| Menu path | Main → Tools → **Batch-Analysis** |
+| Categories | Analysis |
+| Version | 1.0.0 |
+| Surfaces | cli, gui |
+| State namespace | `batch_analysis` |
+
+## Parameters
+
+Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Template fit | `selected_fit_name` | choice |  | choices: `fit_names` | The pre-optimised fit whose parameters seed every run. |
+| Results CSV | `save_path` | file |  |  | Destination CSV. A DOCX report and a ZIP of per-run exports are written alongside. |
+
+## Source
+
+- Plugin package: `chisurf/plugins/core/batch_analysis/`
+- Manifest: `chisurf/plugins/core/batch_analysis/manifest.json`
+- UI spec: `chisurf/plugins/core/batch_analysis/batch.view.json`
