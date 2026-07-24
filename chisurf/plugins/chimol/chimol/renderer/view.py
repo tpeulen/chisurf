@@ -20,6 +20,7 @@ from ..colors import (
     _three_to_one_array,
 )
 from ..config import _DISPLAY_CONFIG, register_update_listener, unregister_update_listener
+from ..io.structure import parse_pdb_secondary_structure
 from ..geometry import (
     _build_bond_pairs,
     _build_sphere_mesh,
@@ -1109,7 +1110,47 @@ class MolView(QtWidgets.QWidget):
     ) -> str:
         entry = self._create_object(name=name, source_path=source_path)
         self.set_structure(structure)
+        self._apply_deposited_secondary_structure(source_path)
         return entry.object_id
+
+    def _apply_deposited_secondary_structure(self, source_path: str | None) -> None:
+        """Prefer a PDB file's own HELIX/SHEET records over the computed codes.
+
+        The depositor's annotation is the authority for a deposited structure,
+        and it is also what PyMOL displays — PyMOL only recomputes when asked
+        with ``dss``, or when the file carries no records. Files without them
+        keep the computed assignment.
+
+        Parameters
+        ----------
+        source_path : str or None
+            Path the object was loaded from; anything that is not a readable PDB
+            simply leaves the computed codes in place.
+        """
+        if not source_path or self._residue_ids is None:
+            return
+        # parse_pdb_secondary_structure logs and returns None on any failure, so
+        # a malformed header degrades to the computed assignment.
+        records = parse_pdb_secondary_structure(source_path)
+        if not records:
+            return
+
+        res_ids = np.asarray(self._residue_ids)
+        chain_ids = getattr(self, "_residue_chain_ids", None)
+        codes = []
+        matched = 0
+        for i in range(res_ids.shape[0]):
+            chain = ""
+            if chain_ids is not None and i < len(chain_ids):
+                chain = str(chain_ids[i]).strip()
+            code = records.get((chain, int(res_ids[i])))
+            if code is None:
+                codes.append("C")
+            else:
+                codes.append(code)
+                matched += 1
+        if matched:
+            self.set_secondary_structure_codes(codes)
 
     # ------------------------------------------------------------------
     # Info overlay API

@@ -70,6 +70,27 @@
 
 
 
+* **ChiMOL honours deposited `HELIX`/`SHEET` records, and PyMOL's `dss` is not
+  the target — [ChiMOL profile](/plugins/profiles/chimol.md).** chimol ignored a
+  PDB's own secondary-structure annotation and always recomputed;
+  `io/structure.parse_pdb_secondary_structure` now reads it and
+  `MolView._apply_deposited_secondary_structure` prefers it, matching PyMOL,
+  which only recomputes when asked with `dss` or when the file has no records.
+  On the full RCSB 148L this reproduces the depositor's annotation exactly — 10
+  helix runs, 3 strand runs, **zero mismatches**.
+  **This corrects the entry below.** The in-tree `148l.pdb` is header-stripped,
+  so PyMOL was running `dss` on it, and the earlier note treated that output as
+  ground truth. It is not: `dss` puts the strands at 18-20 / 23-27 / 31-34 and
+  the first helix at 3-7, while the depositors say **14-19 / 25-28 / 31-34** and
+  3-11 — which is what chimol's own hydrogen-bond assignment already produced.
+  chimol was the more faithful of the two; the "remaining SS gap" was not a
+  chimol defect and porting `dss` would have been a regression.
+  With both programs on the same (deposited) secondary structure the cartoon
+  meshes agree to **0.428 Å** mean surface distance, and the strand
+  cross-section that had looked off (1.41 vs 1.25 Å) matches at 1.41 vs 1.43 Å —
+  confirming that residual was assignment, not geometry. `HELIX` and `SHEET`
+  place the chain and sequence number in different columns, so test fixtures use
+  records copied verbatim from 148L rather than hand-typed ones.
 * **ChiMOL cartoon + `ray` + view tuple brought to PyMOL parity on 148L —
   [ChiMOL profile](/plugins/profiles/chimol.md).** Ground truth came from the
   installed PyMOL itself: its cartoon was exported as OBJ under an identity view

@@ -70,3 +70,83 @@ def test_assign_ss_c3_from_atoms_returns_codes():
     assert codes is not None
     assert len(codes) == 6
     assert set(codes).issubset({"H", "E", "C"})
+
+
+# --------------------------------------------------------------------------- #
+# Author-deposited HELIX/SHEET records
+# --------------------------------------------------------------------------- #
+
+# Verbatim records from RCSB entry 148L. HELIX and SHEET put the chain and
+# sequence number in *different* columns, so these must not be re-typed by hand.
+_PDB_WITH_RECORDS = """\
+HEADER    HYDROLASE(O-GLYCOSYL)                   01-JAN-95   148L
+HELIX    1  H1 ILE E    3  GLU E   11  1                                   9
+HELIX    2  H2 LEU E   39  ILE E   50  1                                  12
+SHEET    1   A 3 ARG E  14  LYS E  19  0
+SHEET    2   A 3 TYR E  25  GLY E  28 -1  N  GLU E  26   O  TYR E  18
+ATOM      1  N   MET E   1       0.000   0.000   0.000  1.00 41.09           N
+ATOM      2  CA  MET E   1       1.000   0.000   0.000  1.00 41.86           C
+END
+"""
+
+
+def _write(tmp_path, text, name="rec.pdb"):
+    path = tmp_path / name
+    path.write_text(text)
+    return path
+
+
+def test_secondary_structure_records_are_parsed(tmp_path):
+    from chisurf.plugins.chimol.chimol.io.structure import parse_pdb_secondary_structure
+
+    records = parse_pdb_secondary_structure(_write(tmp_path, _PDB_WITH_RECORDS))
+    assert records is not None
+    # HELIX spans are inclusive of both endpoints
+    assert records[("E", 3)] == "H"
+    assert records[("E", 11)] == "H"
+    assert ("E", 12) not in records
+    assert records[("E", 39)] == "H"
+    assert records[("E", 50)] == "H"
+    # SHEET uses different columns from HELIX; getting them confused silently
+    # yields empty or shifted spans
+    assert records[("E", 14)] == "E"
+    assert records[("E", 19)] == "E"
+    assert records[("E", 25)] == "E"
+    assert records[("E", 28)] == "E"
+    assert ("E", 20) not in records
+    assert sorted({chain for chain, _ in records}) == ["E"]
+
+
+def test_no_records_returns_none(tmp_path):
+    from chisurf.plugins.chimol.chimol.io.structure import parse_pdb_secondary_structure
+
+    stripped = "\n".join(
+        ln for ln in _PDB_WITH_RECORDS.splitlines()
+        if not ln.startswith(("HELIX", "SHEET"))
+    )
+    assert parse_pdb_secondary_structure(_write(tmp_path, stripped, "bare.pdb")) is None
+
+
+def test_records_after_the_coordinates_are_not_read(tmp_path):
+    from chisurf.plugins.chimol.chimol.io.structure import parse_pdb_secondary_structure
+
+    # The scan stops at the first coordinate record, so a stray HELIX line in
+    # the middle of a large trajectory file cannot cost a full-file scan.
+    text = _PDB_WITH_RECORDS + \
+        "HELIX    9  H9 ALA E   90  ALA E   99  1                                  10\n"
+    records = parse_pdb_secondary_structure(_write(tmp_path, text, "late.pdb"))
+    assert records is not None
+    assert ("E", 90) not in records
+
+
+def test_mismatched_chain_span_is_skipped(tmp_path):
+    from chisurf.plugins.chimol.chimol.io.structure import parse_pdb_secondary_structure
+
+    text = _PDB_WITH_RECORDS.replace(
+        "HELIX    1  H1 ILE E    3  GLU E   11  1",
+        "HELIX    1  H1 ILE E    3  GLU F   11  1",
+    )
+    records = parse_pdb_secondary_structure(_write(tmp_path, text, "split.pdb"))
+    assert records is not None
+    assert ("E", 3) not in records      # start/end chains disagree -> not guessed at
+    assert records[("E", 14)] == "E"    # the sheet records still load

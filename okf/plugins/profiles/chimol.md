@@ -218,7 +218,11 @@ chimol's mesh can be compared to PyMOL's numerically and rendered back through
 chimol's *own* raytracer with the same camera. Any behaviour claim below was
 measured that way on **148L**; re-measure rather than reason about it. The
 working parity number is the **symmetric mean surface distance** between the two
-cartoon meshes (currently ~0.45 Å) plus per-SS cross-section dimensions.
+cartoon meshes plus per-SS cross-section dimensions. Give both programs the
+**same** secondary structure before reading the number, otherwise an assignment
+difference is mistaken for a geometry one: on the full RCSB 148L (whose
+`HELIX`/`SHEET` records both honour) the distance is **0.428 Å** and helix,
+strand and loop cross-sections all agree to ~0.1 Å.
 
 ## The extrusion frame convention is load-bearing
 
@@ -302,17 +306,32 @@ vectorisation parity test in `test_geometry_vectorized.py` had frozen the bug
 into its reference loop — when changing sampler behaviour, check that the
 reference is not simply enshrining the old bug.
 
-## Secondary structure is tidied before it is drawn
+## Secondary structure: prefer the author's records, then tidy
 
-`analysis/ss.py` assigns per-residue codes from a PyDSSP-style H-bond map, which
-is fine for analysis but leaves one-residue gaps and isolated singletons: 148L
-came out as **seven** strand fragments where PyMOL's `dss` gives three, so the
-cartoon drew detached slivers with no room for an arrowhead. `tidy_ss_runs`
-bridges short gaps and drops sub-minimum runs, with **per-type gap limits**:
-strands lose bridges readily and are worth closing, but a one-residue break
-between two helices is a real kink (PyMOL keeps 93-106 and 108-113 apart), so
-helices are never bridged. Agreement with `dss` on 148L is 88%, with matching
-run counts.
+**The deposited `HELIX`/`SHEET` records win when the file has them.**
+`io/structure.parse_pdb_secondary_structure` reads them and
+`MolView._apply_deposited_secondary_structure` overrides the computed codes,
+which is also what PyMOL does — it only recomputes when asked with `dss`, or
+when the file carries no records. On the full RCSB 148L this reproduces the
+depositor's annotation exactly (10 helix runs, 3 strand runs, zero mismatches).
+`HELIX` and `SHEET` put the chain and sequence number in **different columns**,
+so never re-type a fixture record by hand; copy it verbatim.
+
+**Do not tune the computed fallback towards PyMOL's `dss`.** The in-tree test
+file `148l.pdb` is header-stripped, so PyMOL runs `dss` on it and reports
+strands at 18-20 / 23-27 / 31-34 and helices 3-7 … 146-155. The depositors say
+**14-19 / 25-28 / 31-34** and 3-11 … 143-155 — and that is what chimol's own
+hydrogen-bond assignment produces. On this structure chimol is closer to the
+truth than `dss` is; measuring against `dss` output would be chasing the wrong
+target.
+
+The raw H-bond assignment does still need tidying for *drawing*: it left 148L
+with **seven** strand fragments, three of them single residues, which the
+cartoon renders as detached slivers with no room for an arrowhead.
+`tidy_ss_runs` bridges short gaps and drops sub-minimum runs, with **per-type
+gap limits** — strands lose bridges readily and are worth closing, but a
+one-residue break between two helices is a real kink, so helices are never
+bridged.
 
 ## The view tuple is PyMOL's, and its transpose is a mirror
 

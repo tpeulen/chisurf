@@ -156,6 +156,68 @@ def _parse_pdb_backbone(path: str) -> PdbBackbone:
     return PdbBackbone(coords=np.asarray(coords, dtype=float))
 
 
+def parse_pdb_secondary_structure(path: str | Path) -> dict[tuple[str, int], str] | None:
+    """Read the author-deposited ``HELIX``/``SHEET`` records from a PDB file.
+
+    A deposited structure carries the depositor's own secondary-structure
+    annotation, and that is what PyMOL shows unless the user explicitly asks it
+    to recompute with ``dss``. For 148L the two agree exactly, so honouring the
+    records is both closer to PyMOL and closer to the truth than any local
+    estimate. Files without the records (predictions, trajectory frames, edited
+    structures) simply return ``None`` and the caller falls back to computing.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        PDB file to read. Only the header records are parsed.
+
+    Returns
+    -------
+    dict or None
+        ``{(chain_id, residue_number): "H" | "E"}`` covering every residue the
+        records span, or ``None`` when the file declares no secondary structure.
+
+    Notes
+    -----
+    Column positions follow the PDB format: ``HELIX`` puts the initial chain and
+    sequence number at columns 20 and 22-25 and the terminal ones at 32 and
+    34-37; ``SHEET`` uses 22 and 23-26, and 33 and 34-37. Records spanning
+    different start and end chains are skipped rather than guessed at.
+    """
+    records: dict[tuple[str, int], str] = {}
+
+    def _span(code: str, chain0: str, res0: str, chain1: str, res1: str) -> None:
+        c0, c1 = chain0.strip(), chain1.strip()
+        if c0 != c1:
+            return
+        try:
+            lo, hi = int(res0), int(res1)
+        except ValueError:
+            return
+        if hi < lo:
+            lo, hi = hi, lo
+        for res in range(lo, hi + 1):
+            records[(c0, res)] = code
+
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                if line.startswith("HELIX "):
+                    _span("H", line[19:20], line[21:25], line[31:32], line[33:37])
+                elif line.startswith("SHEET "):
+                    _span("E", line[21:22], line[22:26], line[32:33], line[33:37])
+                elif line.startswith(("ATOM", "HETATM", "MODEL")):
+                    break  # the records all precede the coordinates
+    except Exception:
+        # Never let a malformed header cost the caller its structure: fall back
+        # to computing the assignment, but say so rather than failing silently.
+        logger.warning("Could not read secondary-structure records from %s", path,
+                       exc_info=True)
+        return None
+
+    return records or None
+
+
 def load_trajectory_frames(path: Path) -> np.ndarray:
     """Load a trajectory or multi-frame structure using MDTraj.
 
@@ -273,5 +335,6 @@ __all__ = [
     "open_structure_files",
     "load_structure_payload",
     "load_trajectory_frames",
+    "parse_pdb_secondary_structure",
     "MdtrajNotAvailableError",
 ]
