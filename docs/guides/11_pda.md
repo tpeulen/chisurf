@@ -1,5 +1,12 @@
 # Photon Distribution Analysis (PDA)
 
+:::{admonition} Theory
+:class: seealso
+Why the FRET histogram is shot-noise broadened, the binomial forward model of the
+photon-count distribution, the corrections, and dynamic PDA are explained in the
+concept page {ref}`concept-pda`.
+:::
+
 ## What it does
 
 The FRET-efficiency histogram of freely-diffusing single molecules is broadened
@@ -35,6 +42,24 @@ s1s2 = np.asarray(pda.get_S1S2_matrix()).reshape(61, 61)
 # collapse S1S2 -> proximity-ratio histogram (see make_figures.py)
 ```
 
+## In ChiSurf
+
+PDA is a fit **experiment**: load a `.pda`-tagged burst dataset and choose a PDA
+model (single distance, Gaussian-distributed distance, or dynamic two/three-state).
+The model editor exposes the Förster parameters, the distance distribution, and
+the correction/nuisance terms:
+
+```{figure} figures/pda_model_editor.png
+:name: fig-pda-model-editor
+:width: 90%
+
+The PDA (Gaussian-distance) model editor. **FRET parameters** hold $\tau_0$, the
+Förster radius $R_0$, and $\kappa^2$; **Distance distribution** is an add/remove
+list of Gaussian components (mean $R_{P}$, width $s_{P}$, fraction $x_{P}$);
+**Corrections / nuisance** carries background, leakage, direct excitation and
+$\gamma$. These map onto the forward model in {ref}`concept-pda`.
+```
+
 ## Result
 
 Two single-species PDA models at different mean efficiencies. Each is a *single*
@@ -45,5 +70,6 @@ the width PDA models exactly and separates from real heterogeneity.
 
 ## See also
 
+- Concept: {ref}`concept-pda`.
 - Models: `chisurf/core/models/pda/`; engine `tttrlib.Pda`.
 - Distance-distribution models shared with TCSPC: [Polymer distance distributions](03_polymer_distance_distributions.md).

@@ -1,5 +1,12 @@
 # FRET-2CDE / ALEX-2CDE burst dynamics
 
+:::{admonition} Theory
+:class: seealso
+The two-channel kernel-density estimator, the FRET-2CDE dynamics score, and the
+ALEX-2CDE brightness-heterogeneity score are explained in the concept page
+{ref}`concept-burst-2cde`.
+:::
+
 ## What it does
 
 Single-molecule FRET bursts from freely-diffusing molecules can hide **sub-burst

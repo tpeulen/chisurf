@@ -18,9 +18,10 @@ rotational mobility (and on dye/protein tumbling).
 :::{admonition} Theory
 :class: seealso
 The reconvolution model, IRF, multi-exponential decay, average-lifetime
-definitions, and the scatter/background/pile-up nuisances are covered in the
-concept page {ref}`concept-tcspc-lifetime`. This guide shows how to fit in
-ChiSurf.
+definitions, and the scatter/background/pile-up nuisances are covered in
+{ref}`concept-tcspc-lifetime`; the anisotropy decay, the G-factor, and the
+rotational-correlation-time model are in {ref}`concept-anisotropy`. This guide
+shows how to fit in ChiSurf.
 :::
 
 ## In ChiSurf

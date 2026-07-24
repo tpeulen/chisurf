@@ -1,5 +1,12 @@
 # Burst Variance Analysis (BVA)
 
+:::{admonition} Theory
+:class: seealso
+The shot-noise variance baseline $\sigma_\text{sn}=\sqrt{E(1-E)/n}$ and how
+excess per-burst variance reveals sub-burst dynamics are explained in the concept
+page {ref}`concept-bva`.
+:::
+
 ## What it does
 
 **BVA** (Torella et al., *Biophys. J.* 2011) is a model-free test for sub-burst
