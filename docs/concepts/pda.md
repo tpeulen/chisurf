@@ -107,6 +107,7 @@ increasing realism:
   $$
   P(F_D, F_A) = \int p(R)\; P\big(F_D, F_A \mid E(R)\big)\, \mathrm{d}R .
   $$
+
 - **Polymer distance distributions.** For unfolded / intrinsically disordered
   chains the Gaussian is replaced by a self-avoiding-walk (SAW-$\nu$) $p(R)$
   parameterized by a root-mean-square distance and the Flory exponent $\nu$

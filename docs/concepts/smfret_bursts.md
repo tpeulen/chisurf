@@ -77,27 +77,35 @@ acceptor-only at $S\to0$.
   directly. Measured on an **acceptor-only** sample as $\delta=F_{da}/F_{aa}$.
 
   Together these give the true FRET-sensitized emission
+
   $$
   F_A = F_{da} - \alpha\,F_{dd} - \delta\,F_{aa}.
   $$
+
 - **Detection factor $\gamma$** — donor and acceptor photons are not detected
   equally: different channel efficiencies $g_D,g_A$ and dye quantum yields
   $\Phi_D,\Phi_A$,
+
   $$
   \gamma = \frac{g_A\,\Phi_A}{g_D\,\Phi_D}.
   $$
+
   It balances a donor photon lost against an acceptor photon gained, giving the
   **accurate efficiency**
+
   $$
   \boxed{\;E = \frac{F_A}{F_A + \gamma\,F_{dd}}\;}
   $$
+
 - **Excitation factor $\beta$** — the two lasers deliver unequal effective
   excitation (power, overlap, absorption cross-sections),
   $\beta = \dfrac{I_\text{Aex}\,\sigma_A}{I_\text{Dex}\,\sigma_D}$. It rescales
   the acceptor-excited channel in the **accurate stoichiometry**
+
   $$
   \boxed{\;S = \frac{\gamma F_{dd}+F_A}{\gamma F_{dd}+F_A + F_{aa}/\beta}\;}
   $$
+
   $\beta$ shifts only $S$; $\gamma$ shifts both.
 
 *Apply the full expression in one step.* Chaining single-factor corrections
@@ -115,15 +123,19 @@ On the *raw* plot the FRET species do **not** lie on a horizontal line —
 $S_\text{raw}$ drifts with $E_\text{raw}$ because the detection imbalance changes
 the photon budget as FRET moves photons from donor to acceptor. The population
 centres follow a straight line
+
 $$
 \frac{1}{S_\text{raw}} = \Omega + \Sigma\,E_\text{raw},
 $$
+
 and fitting it across several FRET standards recovers the factors from the data,
+
 $$
 \gamma = \frac{\Omega-1}{\Omega+\Sigma-1},
 \qquad
 \beta = \Omega + \Sigma - 1
 $$
+
 (Lee 2005 / Hellenkamp 2018). Applying $\gamma$ and $\beta$ **straightens the
 FRET line**: every species falls on the same horizontal $S\approx0.5$, and $E$ is
 now accurate. It then maps to distance through Förster,
