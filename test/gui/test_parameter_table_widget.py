@@ -396,6 +396,40 @@ def test_name_column_renders_html_labels(qapp):
     assert widget.table_model.index(0, COL_NAME).data(QtCore.Qt.DisplayRole) == "n<sub>0</sub>"
 
 
+def test_value_column_uses_scientific_spinbox_not_qt_default(qapp):
+    """Regression: Qt's default double editor truncates to 2 decimals / clamps to 0-99.99.
+
+    ``ParameterGroupTableWidget`` and ``PairedParameterTableWidget`` must swap
+    in ``ScientificDoubleSpinBox`` (via ``_FloatEditDelegate``) for the value
+    / Lo / Hi columns, or a small value like a 0.001 ms bunching time constant
+    displays as "0.00" while editing (and a value above 99.99 can't be typed
+    at all).
+    """
+    from chisurf.core.fitting.parameter import FittingParameter
+    from chisurf.gui.autoform.sections.parameter_table import (
+        ParameterGroupTableWidget, PairedParameterTableWidget,
+        _FloatEditDelegate, COL_VALUE, COL_BOUNDS_LO, COL_BOUNDS_HI,
+    )
+    from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
+
+    tiny = FittingParameter(name="bt1", value=0.001, lb=1e-6, ub=1e3)
+    widget = ParameterGroupTableWidget(params=[tiny])
+    for col in (COL_VALUE, COL_BOUNDS_LO, COL_BOUNDS_HI):
+        assert isinstance(widget.table_view.itemDelegateForColumn(col), _FloatEditDelegate)
+
+    delegate = widget.table_view.itemDelegateForColumn(COL_VALUE)
+    editor = delegate.createEditor(widget.table_view, None, widget.table_model.index(0, COL_VALUE))
+    assert isinstance(editor, ScientificDoubleSpinBox)
+    delegate.setEditorData(editor, widget.table_model.index(0, COL_VALUE))
+    assert editor.value() == pytest.approx(0.001)
+    assert "0.00" != editor.lineEdit().text().strip()   # not truncated to 2 decimals
+
+    large = FittingParameter(name="w_z", value=2020.1)
+    paired = PairedParameterTableWidget(params=[tiny, large], width=2)
+    for col in paired._float_columns():
+        assert isinstance(paired._table.itemDelegateForColumn(col), _FloatEditDelegate)
+
+
 def test_copy_paste_values(qapp):
     from qtpy import QtCore, QtWidgets
     from chisurf.gui.autoform.sections.parameter_table import (

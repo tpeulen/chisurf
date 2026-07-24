@@ -137,7 +137,7 @@ class MdfOutputs(FittingParameterGroup):
             label_text="&tau;<sub>D</sub>[ms]", registry_id="fcs_mdf.tauD")
         self._brightness = FittingParameter(
             value=float("nan"), name="brightness", fixed=True, is_output=True,
-            label_text="&epsiv;[kHz]", registry_id="fcs_mdf.brightness")
+            label_text="&epsilon;[kHz]", registry_id="fcs_mdf.brightness")
 
 
 def compute_brightness(fit, N: float, bg: float = 0.0) -> typing.Optional[float]:

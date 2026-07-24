@@ -93,7 +93,7 @@
       "description": "",
       "keywords": [],
       "label_texts": [
-        "&epsiv;[kHz]"
+        "&epsilon;[kHz]"
       ],
       "sources": [
         {
@@ -103,7 +103,7 @@
           "file": "fcs/general.py",
           "fixed": true,
           "function": "__init__",
-          "label_text": "&epsiv;[kHz]",
+          "label_text": "&epsilon;[kHz]",
           "lb": null,
           "line": 89,
           "module": "fcs.general",
@@ -342,7 +342,7 @@
       "description": "",
       "keywords": [],
       "label_texts": [
-        "&epsiv;[kHz]"
+        "&epsilon;[kHz]"
       ],
       "sources": [
         {
@@ -352,7 +352,7 @@
           "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
-          "label_text": "&epsiv;[kHz]",
+          "label_text": "&epsilon;[kHz]",
           "lb": null,
           "line": 138,
           "module": "fcs.mdf",
@@ -1256,7 +1256,7 @@
       "flrcif_item_id": "_flr_chisurf_parameter.brightness",
       "keywords": [],
       "label_texts": [
-        "&epsiv;[kHz]"
+        "&epsilon;[kHz]"
       ],
       "sources": [
         {
@@ -1266,7 +1266,7 @@
           "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
-          "label_text": "&epsiv;[kHz]",
+          "label_text": "&epsilon;[kHz]",
           "lb": null,
           "line": 138,
           "module": "fcs.mdf",
@@ -1279,7 +1279,7 @@
           "file": "fcs/general.py",
           "fixed": true,
           "function": "__init__",
-          "label_text": "&epsiv;[kHz]",
+          "label_text": "&epsilon;[kHz]",
           "lb": null,
           "line": 89,
           "module": "fcs.general",

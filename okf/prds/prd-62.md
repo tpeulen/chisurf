@@ -224,6 +224,21 @@ AutoForm host; generalizing it to the model editor is a candidate follow-up"):
   metadata) shared by `MdfOutputs` and `GaussDiffusion`. `GaussDiffusion` also
   reports `s = w_z/w_r` as a derived output (still fits absolute `w_r`/`w_z`,
   not the dimensionless legacy parametrization).
+- **Fixed a real, general precision/range bug in every parameter table**
+  (explicit follow-up: "table para edit needs more sig digits, do not cut
+  off"). `ParameterGroupTableWidget`/`PairedParameterTableWidget`'s value/
+  Lo/Hi columns had no custom editor delegate, so Qt's default double-spinbox
+  editor (2 decimals, 0–99.99 range) opened for them — a 0.001 ms bunching
+  time constant displayed as "0.00" while editing, and a value above 99.99
+  (e.g. `w_z[nm] = 2020.1`) could not even be typed. New `_FloatEditDelegate`
+  (`chisurf/gui/autoform/sections/parameter_table.py`) wraps the same
+  `ScientificDoubleSpinBox` (`%g` formatting, unbounded) the standalone
+  per-parameter widgets already use, wired onto both table widgets' value/
+  bounds columns in both `__init__` and `set_params` (so it survives a
+  dynamic-group add/remove rebuild). Also fixed the brightness output's
+  `label_text="&epsiv;[kHz]"` → `"&epsilon;[kHz]"` — Qt's rich-text engine
+  only supports HTML4's Greek-letter entity set; `&epsiv;` (HTML5-only, the
+  curly-epsilon variant) rendered as literal text instead of the glyph.
 
 See [fcs plugin](/plugins/fcs.md), [parameters](/subsystems/parameters.md), and
 [gui-autoform](/subsystems/gui-autoform.md).

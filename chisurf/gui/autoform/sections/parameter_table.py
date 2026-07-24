@@ -196,6 +196,37 @@ class _BooleanToggleDelegate(QtWidgets.QStyledItemDelegate):
         return False
 
 
+class _FloatEditDelegate(QtWidgets.QStyledItemDelegate):
+    """Float-column editor using :class:`ScientificDoubleSpinBox`.
+
+    Qt's default item-editor factory maps a plain ``float`` EditRole value to a
+    stock ``QDoubleSpinBox``, which defaults to 2 decimal places and a 0-99.99
+    range — silently truncating (displaying ``0.00``) and un-enterable outside
+    that range for the small/large values these tables routinely hold (e.g. a
+    bunching time constant of 0.001 ms). This delegate swaps in the same
+    adaptive-significant-figures, unbounded editor the standalone parameter
+    widgets already use (:mod:`chisurf.gui.widgets.fitting.parameter_widgets`).
+    """
+
+    def createEditor(self, parent, option, index):
+        from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
+
+        return ScientificDoubleSpinBox(parent, decimals=6, finite=False)
+
+    def setEditorData(self, editor, index) -> None:
+        value = index.data(QtCore.Qt.EditRole)
+        try:
+            editor.setValue(float(value))
+        except Exception:
+            pass
+
+    def setModelData(self, editor, model, index) -> None:
+        model.setData(index, editor.value(), QtCore.Qt.EditRole)
+
+    def updateEditorGeometry(self, editor, option, index) -> None:
+        editor.setGeometry(option.rect)
+
+
 # ── table model ─────────────────────────────────────────────────────────
 
 
@@ -493,6 +524,9 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         self._toggle_delegate = _BooleanToggleDelegate(self._table)
         self._table.setItemDelegateForColumn(COL_FIXED, self._toggle_delegate)
         self._table.setItemDelegateForColumn(COL_BOUNDS_ON, self._toggle_delegate)
+        self._float_delegate = _FloatEditDelegate(self._table)
+        for col in (COL_VALUE, COL_BOUNDS_LO, COL_BOUNDS_HI):
+            self._table.setItemDelegateForColumn(col, self._float_delegate)
 
         # Wire model changes to optional callback
         self._model.dataChanged.connect(self._on_data_changed)
@@ -1105,6 +1139,12 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         for col in self._bool_columns():
             self._table.setItemDelegateForColumn(col, self._toggle_delegate)
 
+        # Scientific-notation float editors on every value / Lo / Hi column
+        # (Qt's default double-spinbox editor truncates to 2 decimals / 0-99.99).
+        self._float_delegate = _FloatEditDelegate(self._table)
+        for col in self._float_columns():
+            self._table.setItemDelegateForColumn(col, self._float_delegate)
+
         self._model.dataChanged.connect(self._on_data_changed)
 
         self._table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -1134,6 +1174,8 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         self._configure_columns()
         for col in self._bool_columns():
             self._table.setItemDelegateForColumn(col, self._toggle_delegate)
+        for col in self._float_columns():
+            self._table.setItemDelegateForColumn(col, self._float_delegate)
         self.set_bounds_visible(self._bounds_visible)
         self._install_controllers()
         self._size_to_content()
@@ -1167,6 +1209,16 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
             base = 1 + slot * len(SLOT_COLUMN_META)
             for sub, meta in enumerate(SLOT_COLUMN_META):
                 if meta[3] == "bool":
+                    cols.append(base + sub)
+        return cols
+
+    def _float_columns(self) -> list:
+        """Global column indices of every per-slot, editable value / Lo / Hi cell."""
+        cols = []
+        for slot in range(self._model.width):
+            base = 1 + slot * len(SLOT_COLUMN_META)
+            for sub, meta in enumerate(SLOT_COLUMN_META):
+                if meta[2] and meta[3] == "float":
                     cols.append(base + sub)
         return cols
 

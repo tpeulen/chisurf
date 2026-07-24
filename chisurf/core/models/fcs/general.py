@@ -88,7 +88,7 @@ class GaussDiffusion(FittingParameterGroup):
             label_text="s", registry_id="fcs_gauss.s")
         self._brightness = FittingParameter(
             value=float("nan"), name="brightness", fixed=True, is_output=True,
-            label_text="&epsiv;[kHz]", registry_id="fcs_gauss.brightness")
+            label_text="&epsilon;[kHz]", registry_id="fcs_gauss.brightness")
 
     N = property(lambda s: float(s._N.value))
     D = property(lambda s: float(s._D.value))

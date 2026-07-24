@@ -61,7 +61,16 @@ per parameter slot, so an amplitude block sits beside its lifetime block. A
 rich-text header renders the slot's HTML label (`x<sub>l</sub>` → xₗ,
 `&rho;` → ρ) with the per-component index stripped; the paired table reuses the
 `parameter_group_table` cell logic, `FittingParameterProxyController` link/detail
-actions, and copy/paste. The TCSPC Lifetime model's Lifetimes (xₗ/τₗ) and
+actions, and copy/paste. Note: Qt's rich-text engine only supports HTML4's
+Greek-letter entity set (`&tau;`, `&rho;`, `&epsilon;`, ...) — HTML5-only
+entities like `&epsiv;` (the curly-epsilon variant) render as literal text,
+not the glyph; stick to the HTML4 set in `label_text`. Both table widgets'
+value/Lo/Hi columns use `_FloatEditDelegate` (`ScientificDoubleSpinBox`, `%g`
+formatting, no artificial range) instead of Qt's default double-spinbox
+editor, which defaults to 2 decimal places and a 0–99.99 range — without it, a
+value like a 0.001 ms bunching time constant displayed as "0.00" while being
+edited, and a value above 99.99 (e.g. `w_z[nm] = 2020.1`) could not be typed
+at all. The TCSPC Lifetime model's Lifetimes (xₗ/τₗ) and
 Anisotropy rotation (bᵢ/ρᵢ) groups use `style:"table"`. Both table widgets
 (`parameter_group_table` and the paired `dynamic_group` table) can hide the
 **Lo / Hi / Bounds** columns to keep the tables narrow — every `panel` puts a
