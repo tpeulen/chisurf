@@ -19,17 +19,27 @@
   FCS/PRD-62 area) and a tcspc model-name-resolution test. Concept:
   [PRD-42](/prds/prd-42.md).
 
-* **PRD-64 (draft) — chiplot plotting seam + pyqtgraph replacement.** Authored
-  [PRD-64](/prds/prd-64.md): confine all plotting behind one facade package
-  `chisurf.gui.chiplot` (call sites go `import pyqtgraph as pg` →
-  `import chisurf.gui.chiplot as cp`), with pyqtgraph isolated in a single
-  swappable backend module guarded by CI, then grow chiplot into a native
-  OpenGL/immediate-mode renderer behind the same API. Grounded the scope in a
-  clean symbol inventory (~40 pyqtgraph symbols across ~125 files;
-  `mkPen`/`PlotWidget`/`TextItem`/`LinearRegionItem` dominate) and scoped out
-  the cases owned elsewhere: non-plot `SpinBox`/`parametertree`
-  ([PRD-42](/prds/prd-42.md)), ChiMOL raw OpenGL ([PRD-57](/prds/prd-57.md)),
-  and the already-wrapped `DockArea`. Added the index row (✏️ draft).
+* **PRD-64 Phase 1 — chiplot: clean plotting API + pyqtgraph backend + seam
+  guard.** Built `chisurf.gui.chiplot`, a renderer-neutral plotting library
+  meant to *replace* pyqtgraph (not re-export it): `style.py` (Color/Pen/Brush/
+  Colormap value objects + coercers accepting names, hex, 0–255/0–1 tuples, and
+  the `"r"`/`"g"`/`"c"` short codes), `handles.py` (verb-oriented Protocols:
+  Curve/Scatter/Bars/ErrorBars/Image/Region/Marker/Text), `canvas.py`
+  (`Plot`/`Grid` QWidgets with verb-first drawing — `plot.line(x,y,pen="r")`,
+  `plot.region((a,b)).on_change(cb)`, `plot.text(...,draggable=True)`,
+  data-coordinate `clicked` signal), and `backends/` (a `Backend`/`Canvas`/
+  `GridCanvas` ABC contract + the sole pyqtgraph importer
+  `pyqtgraph_backend.py`, selected via `CHISURF_PLOT_BACKEND`). Added the CI
+  guard `test/test_pyqtgraph_seam.py` (new-importer regression + stale-entry
+  checks) over `test/pyqtgraph_import_allowlist.txt` (76 chisurf files, the
+  migration tracker), headless `test/gui/test_chiplot.py` (8 tests, all draw
+  families + updates + region/marker + removal + grid + signal), and migrated
+  `gui/widgets/waterfall_plot.py` end-to-end as proof. Revised the PRD to the
+  clean-API decision (was "API-compatible re-export"); status → in-progress,
+  Phase 1 done. Complements [PRD-42](/prds/prd-42.md) (non-plot uses, now done),
+  ChiMOL OpenGL owned by [PRD-57](/prds/prd-57.md). Concept:
+  [PRD-64](/prds/prd-64.md). Phases 2–4 (port ~75 remaining files) + Phase 5
+  (native OpenGL backend) remain.
 
 * **PRD-46 (partial) — example scripts in the test pipeline + ascii import fix.**
   Added `test/scripts/test_scripts.py` (discovers `examples/scripts/*.py`, runs

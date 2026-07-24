@@ -101,9 +101,9 @@ class WaterfallSectionWidget(QtWidgets.QWidget):
             if payload.get("title"):
                 self._plot.set_title(payload["title"])
             if payload.get("x_label"):
-                pw = self._plot.get_plot_widget()
-                pw.setLabel("bottom", payload["x_label"])
-                pw.setLogMode(x=bool(payload.get("log_x", False)), y=False)
+                p = self._plot.get_plot_widget()
+                p.set_labels(bottom=payload["x_label"])
+                p.set_log(x=bool(payload.get("log_x", False)), y=False)
         # Cheap per-refresh position update (e.g. during audio playback).
         if self._position_source:
             pos = getattr(self._model, self._position_source, None)

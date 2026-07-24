@@ -1,15 +1,18 @@
 """
 Waterfall Plot Widget
 
-A reusable PyQtGraph-based waterfall plot widget for TTTR data visualization.
+A reusable waterfall plot widget for TTTR data visualization, built on the
+:mod:`chisurf.gui.chiplot` plotting API (renderer-neutral; no direct pyqtgraph
+use).
 """
 
 from __future__ import annotations
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QVBoxLayout, QWidget
+
+from chisurf.gui import chiplot as cp
 
 
 class WaterfallPlotWidget(QWidget):
@@ -30,9 +33,9 @@ class WaterfallPlotWidget(QWidget):
         super().__init__(parent)
 
         # Plot components
-        self.plot_widget = pg.PlotWidget(self)
-        self.waterfall_img: pg.ImageItem | None = None
-        self.position_line: pg.InfiniteLine | None = None
+        self.plot = cp.Plot(self)
+        self.waterfall_img: cp.handles.Image | None = None
+        self.position_line: cp.handles.Marker | None = None
 
         # Data storage
         self.waterfall_data: np.ndarray | None = None
@@ -49,33 +52,19 @@ class WaterfallPlotWidget(QWidget):
         layout.setSpacing(0)
 
         # Setup plot widget
-        self.plot_widget.setTitle("Microtime Waterfall")
-        self.plot_widget.setLabel("left", "Macrotime (s)")
-        self.plot_widget.setLabel("bottom", "Microtime (bins)")
-
-        # Create waterfall image item
-        self.waterfall_img = pg.ImageItem()
-        self.plot_widget.addItem(self.waterfall_img)
+        self.plot.set_title("Microtime Waterfall")
+        self.plot.set_labels(left="Macrotime (s)", bottom="Microtime (bins)")
 
         # Create position indicator (horizontal line that moves vertically)
-        self.position_line = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen("y", width=2))
-        self.position_line.setVisible(False)
-        self.plot_widget.addItem(self.position_line)
+        self.position_line = self.plot.hline(0.0, movable=False, pen=cp.to_pen("y", width=2))
+        self.position_line.visible = False
 
-        layout.addWidget(self.plot_widget)
+        layout.addWidget(self.plot)
 
     def _connect_signals(self):
         """Connect signals."""
-        # Emit plot_clicked signal when user clicks on the plot
-        self.plot_widget.scene().sigMouseClicked.connect(self._on_plot_clicked)
-
-    def _on_plot_clicked(self, event):
-        """Handle mouse clicks on the plot."""
-        if event.button() == 1:  # Left click
-            # Get the mouse position in plot coordinates
-            mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(event.scenePos())
-            x, y = mouse_point.x(), mouse_point.y()
-            self.plot_clicked.emit(x, y)
+        # chiplot emits data-coordinate (x, y) for left clicks.
+        self.plot.clicked.connect(self.plot_clicked.emit)
 
     def set_waterfall_data(
         self,
@@ -159,13 +148,16 @@ class WaterfallPlotWidget(QWidget):
         rgba[..., 3] = alpha
 
         # ---- Update image ----
-        # Convert to uint8 for compatibility with PyQtGraph
         rgba_uint8 = (rgba * 255).astype(np.uint8)
-        self.waterfall_img.setImage(rgba_uint8, autoLevels=False)
+        if self.waterfall_img is None:
+            self.waterfall_img = self.plot.image(rgba_uint8)
+            self.position_line.z = 1.0  # keep the indicator above the image
+        else:
+            self.waterfall_img.set_image(rgba_uint8)
 
         # ---- Set axis ranges (keep your convention) ----
-        self.plot_widget.setXRange(float(macro_t_s[0]), float(macro_t_s[-1]))
-        self.plot_widget.setYRange(float(micro_centers[0]), float(micro_centers[-1]))
+        self.plot.set_xlim(float(macro_t_s[0]), float(macro_t_s[-1]))
+        self.plot.set_ylim(float(micro_centers[0]), float(micro_centers[-1]))
 
     def set_position(self, position: float):
         """
@@ -175,7 +167,7 @@ class WaterfallPlotWidget(QWidget):
             position: Position value (in plot coordinates)
         """
         if self.position_line is not None:
-            self.position_line.setPos(position)
+            self.position_line.value = position
 
     def show_position_indicator(self, show: bool = True):
         """
@@ -185,7 +177,7 @@ class WaterfallPlotWidget(QWidget):
             show: True to show, False to hide
         """
         if self.position_line is not None:
-            self.position_line.setVisible(show)
+            self.position_line.visible = show
 
     def reset_position(self):
         """Reset the position indicator to the start (bin 0)."""
@@ -203,7 +195,8 @@ class WaterfallPlotWidget(QWidget):
     def clear_plot(self):
         """Clear the waterfall plot."""
         if self.waterfall_img is not None:
-            self.waterfall_img.clear()
+            self.waterfall_img.remove()
+            self.waterfall_img = None
         self.waterfall_data = None
         self.n_macro_bins = 0
         self.n_micro_bins = 0
@@ -211,8 +204,8 @@ class WaterfallPlotWidget(QWidget):
 
     def set_title(self, title: str):
         """Set the plot title."""
-        self.plot_widget.setTitle(title)
+        self.plot.set_title(title)
 
-    def get_plot_widget(self) -> pg.PlotWidget:
-        """Get the underlying PlotWidget for advanced customization."""
-        return self.plot_widget
+    def get_plot_widget(self) -> cp.Plot:
+        """Get the underlying chiplot Plot for advanced customization."""
+        return self.plot

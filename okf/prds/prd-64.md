@@ -3,7 +3,7 @@ type: PRD
 prd: "64"
 title: "PRD-64: chiplot — single plotting seam and pyqtgraph replacement"
 description: Route every plotting access through one dependency-neutral chiplot facade so pyqtgraph becomes a swappable backend, then grow chiplot into a native OpenGL/immediate-mode renderer behind the same API.
-status: draft
+status: in-progress
 phase: "unassigned"
 resource: chisurf/gui/chiplot/
 tags: [prd, gui, plotting, architecture]
@@ -36,23 +36,38 @@ pyqtgraph's *non-plot* uses (`SpinBox`, `parametertree`). PRD-42 makes pyqtgraph
 
 # Status
 
-Draft. Motivation, current-state inventory, facade design, phased migration, and
-success criteria are specified below. No code has landed. The chiplot native
-renderer (Phase 3+) is a direction, not yet a committed design.
+In-progress. **Phase 1 has landed**: the `chisurf.gui.chiplot` package exists
+with a clean, renderer-neutral API (`Plot`, `Grid`, style value objects, handle
+protocols), a working pyqtgraph backend behind a formal `Backend` contract, a
+CI guard (`test/test_pyqtgraph_seam.py`) with a shrinking allow-list migration
+tracker, and headless tests. One real widget (`waterfall_plot.py`) is migrated
+as proof. Phases 2–4 (migrate the remaining ~75 chisurf files + `modules/`) and
+Phase 5+ (native OpenGL backend) remain.
+
+**Design decision (revised).** The seam is *not* a pyqtgraph-shaped re-export.
+Per the maintainer's direction, chiplot exposes a **clean, purpose-built API**
+that can genuinely replace pyqtgraph — verb-first drawing, color-likes
+everywhere, behaviour flags instead of item subclassing, backend-neutral
+events — see [Design](#design). This raises migration churn versus a re-export
+but is the whole point: the goal is to *get rid of* pyqtgraph, not to enshrine
+its API.
 
 # Goal
 
-1. **One seam.** Exactly one module imports `pyqtgraph`; every other module
-   reaches plotting through `chisurf.gui.chiplot`. Enforced by a CI guard.
-2. **Zero behavioural change on landing.** The facade is a pass-through to
-   pyqtgraph; rendered plots are byte-for-byte what they are today.
-3. **Swappable backend.** The facade selects a backend at import time; a second
-   (native chiplot) backend can be added later without touching call sites.
-4. **A path to native.** Establish the API contract chiplot must satisfy so an
-   OpenGL/immediate-mode renderer can replace pyqtgraph plot-by-plot.
+1. **One seam.** Exactly one module imports `pyqtgraph`
+   (`backends/pyqtgraph_backend.py`); every other module reaches plotting
+   through `chisurf.gui.chiplot`. Enforced by a CI guard.
+2. **A clean API worth keeping.** chiplot's surface is designed for ChiSurf's
+   real plotting patterns, not inherited from pyqtgraph — so it remains the API
+   after pyqtgraph is gone.
+3. **Swappable backend.** The facade selects a backend at import time
+   (`CHISURF_PLOT_BACKEND`); a native chiplot backend can be added later without
+   touching call sites.
+4. **A path to native.** The handle/canvas Protocols *are* the contract the
+   OpenGL/immediate-mode renderer must satisfy to replace pyqtgraph plot-by-plot.
 
 Non-goal for the first landings: writing the native renderer. That is the
-long-term payoff the seam unlocks, tracked as later phases here.
+long-term payoff the seam unlocks, tracked as Phase 5+ here.
 
 # Motivation
 
@@ -117,115 +132,140 @@ Instance-level API in wide use (must be preserved by any backend):
 
 # Design
 
-## Package layout
+## Package layout (as built)
 
 ```
 chisurf/gui/chiplot/
-  __init__.py                 # public facade — the ONLY name call sites import
-  backend/
-    __init__.py               # backend selection (env/setting → module)
+  __init__.py                 # public API: Plot, Grid, styles, enums, configure()
+  style.py                    # Color, Pen, Brush, Colormap, LineStyle + coercers
+  handles.py                  # Protocols: Curve, Scatter, Bars, ErrorBars, Image,
+                              #   Region, Marker, Text (+ Symbol, Orientation)
+  canvas.py                   # Plot(QWidget), Grid(QWidget), PanelPlot
+  backends/
+    __init__.py               # backend registry + selection (CHISURF_PLOT_BACKEND)
+    base.py                   # Backend / Canvas / GridCanvas ABCs — the contract
     pyqtgraph_backend.py       # the ONLY module allowed to `import pyqtgraph`
-    # (future) native_backend.py — OpenGL/immediate-mode renderer
-  types.py                    # backend-neutral typing/Protocols for items+widgets
+    # (future) opengl_backend.py — native OpenGL / immediate-mode renderer
 ```
 
-- **`chisurf.gui.chiplot`** re-exports the confined symbol set from the active
-  backend. Public names match pyqtgraph's (`cp.mkPen`, `cp.PlotWidget`,
-  `cp.TextItem`, …) so the body of a migrated module is unchanged apart from the
-  `pg.` → `cp.` prefix rename.
-- **`backend/pyqtgraph_backend.py`** is a thin module that imports pyqtgraph and
-  exposes exactly the confined surface (the table above). It applies ChiSurf's
-  global pyqtgraph config (`setConfigOptions(...)`, background/foreground,
-  antialias) in one place instead of scattered call sites.
-- **`backend/__init__.py`** picks a backend from a setting/env var
-  (`CHISURF_PLOT_BACKEND`, default `pyqtgraph`) so a future native backend is
-  opt-in per session, then per-plot.
-- **`types.py`** declares `Protocol`s for the plot widget and the item families
-  (curve, scatter, region, marker, image, ROI). These are the **contract** the
-  native backend must satisfy; they also give call sites real typing instead of
-  `Any`.
+- **`style.py`** — small immutable value objects replacing `mkPen`/`mkBrush`/
+  `mkColor`/`intColor`/`colormap`. `to_color` accepts names, `#rrggbbaa` hex,
+  0–255 or 0–1 tuples, packed ints, `QColor`, and the pyqtgraph/matplotlib
+  single-letter codes (`"r"`, `"g"`, `"c"`, …) for painless migration. No
+  rendering import — usable from Qt-free code.
+- **`handles.py`** — `Protocol`s for each drawn element (verb-oriented:
+  `set_data`, `remove`, `value`/`bounds`, `on_change`), **not** a mirror of
+  pyqtgraph's item classes. These are the renderer contract.
+- **`canvas.py`** — `Plot`/`Grid` `QWidget`s that embed the active backend's
+  canvas, so they drop in wherever a `pg.PlotWidget` went. Fluent, chainable
+  axis setters; `clicked`/`mouse_moved` Qt signals in **data coordinates**.
+- **`backends/base.py`** — the `Backend`/`Canvas`/`GridCanvas` ABCs a renderer
+  implements. **`backends/pyqtgraph_backend.py`** is the sole pyqtgraph importer;
+  it also centralises global config via `configure(...)`.
 
-## Why API-compatible (not a new API)
+## What the clean API looks like (vs pyqtgraph)
 
-A clean, redesigned plotting API (`Figure.line(...)`, `Figure.region(...)`)
-would be nicer long-term but requires rewriting all ~125 call sites and every
-item-method call — high churn, high regression risk, and it blocks landing the
-seam behind months of rewrite. Keeping the pyqtgraph-shaped surface makes the
-seam land now with near-mechanical edits; the native renderer then implements
-that same (subset) contract. The contract is small and already de-facto stable,
-so this is a pragmatic, reversible choice — a cleaner API can be layered on top
-of chiplot later without re-touching pyqtgraph.
+| Task | pyqtgraph (before) | chiplot (after) |
+|------|--------------------|-----------------|
+| Line | `pw.plot(x, y, pen=pg.mkPen("r", width=2))` | `plot.line(x, y, pen="r", width=2)` |
+| Region + signal | `r = pg.LinearRegionItem(...)`; `pw.addItem(r)`; `r.sigRegionChangeFinished.connect(cb)` | `r = plot.region((a, b))`; `r.on_change(cb)` |
+| Movable cursor | `pg.InfiniteLine(angle=0, movable=True, pen=pg.mkPen("y"))` | `plot.hline(y, movable=True, pen="y")` |
+| Draggable text | subclass `pg.TextItem`, override 3 mouse events | `plot.text(s, pos, draggable=True)` |
+| Click in data coords | `pw.scene().sigMouseClicked` + `vb.mapSceneToView(...)` | `plot.clicked.connect(cb)` |
+| Multi-panel | `pg.GraphicsLayoutWidget`; `.addPlot(row, col)` | `Grid()`; `.add_plot(row=…, col=…)` |
+
+Behaviours that previously *required subclassing pyqtgraph items* (draggable
+text, custom-styled `GraphicsLayoutWidget`s) become **flags/methods**, which is
+what lets a non-pyqtgraph backend satisfy the same contract.
+
+## Backend swap & escape hatch
+
+`get_backend()` instantiates the backend named by `CHISURF_PLOT_BACKEND`
+(default `pyqtgraph`) once per process; `set_backend(name)` overrides it.
+During migration a handful of advanced call sites may still need the raw
+pyqtgraph object — every `Plot`/handle exposes a `.native` escape hatch for
+that, which the CI guard treats as the seam (the object comes from the backend,
+not a direct import). New code must not use `.native`.
 
 ## CI guard
 
-A test (`test/test_plotting_seam.py`) greps the tree and asserts
-`import pyqtgraph` (and `from pyqtgraph`) appears **only** in
-`chisurf/gui/chiplot/backend/pyqtgraph_backend.py`, with an explicit,
-shrinking allow-list for the ChiMOL OpenGL module (PRD-57) and any
-not-yet-migrated files during the rollout. The allow-list is the migration
-tracker; "done" is an empty allow-list.
+`test/test_pyqtgraph_seam.py` scans `chisurf/` and asserts `import pyqtgraph` /
+`from pyqtgraph` appears **only** in `backends/pyqtgraph_backend.py`, with every
+other current importer listed in `test/pyqtgraph_import_allowlist.txt`. Two
+assertions keep the tracker honest: a **new** direct importer not on the list
+fails (regression guard), and a listed file that no longer imports pyqtgraph
+fails (stale-entry guard, forcing the list to shrink as files migrate). "Done"
+is an empty allow-list (bar the ChiMOL OpenGL module owned by PRD-57).
 
 # Migration plan
 
-**Phase 1 — facade + backend (no call-site change).**
-Create the `chiplot` package, `pyqtgraph_backend.py` exposing the confined
-surface, backend selection, and `types.py` Protocols. Move the global
-`pg.setConfigOptions(...)` initialization into the backend. Add the CI guard
-seeded with the current file list as the allow-list. Add a focused unit test
-that constructs a `cp.PlotWidget`, plots a curve, and adds each item family.
+**Phase 1 — clean API + pyqtgraph backend + guard. ✅ DONE.**
+Built the `chiplot` package (`style`, `handles`, `canvas`, `backends/{base,
+pyqtgraph_backend}`), backend selection via `CHISURF_PLOT_BACKEND`, the CI guard
+(`test/test_pyqtgraph_seam.py`) seeded with the current importer list
+(`test/pyqtgraph_import_allowlist.txt`, 76 files), and headless tests
+(`test/gui/test_chiplot.py`) exercising every draw family, handle updates,
+region/marker values, removal/re-add, grid panels, and the click signal.
+Migrated `chisurf/gui/widgets/waterfall_plot.py` end-to-end as proof.
 
 **Phase 2 — migrate chisurf-core GUI.**
-Rewrite `chisurf/gui/**` call sites: `import pyqtgraph as pg` →
-`import chisurf.gui.chiplot as cp`, and `pg.` → `cp.` within those files
-(mechanical, but only in files whose `pg` is actually pyqtgraph — several
-modules use `pg` as a parameter-group variable and must be skipped). Shrink the
-allow-list as files move. Run `pixi run test-gui` and the headless
+Rewrite `chisurf/gui/**` call sites onto the chiplot API. This is a genuine
+port, not a prefix rename: `pw.plot(x, y, pen=pg.mkPen(...))` → `plot.line(...)`,
+`LinearRegionItem`+`addItem`+signal → `plot.region(...).on_change(...)`,
+subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgraph
+are touched (some modules use `pg` as a parameter-group variable). Remove each
+file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
 
 **Phase 3 — migrate plugins.**
-Same rewrite across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,
-fcs, fluorescence_decay, microscopy, …), each cluster its own commit with its
-plugin construction smoke tests (PRD-23) green.
+Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,
+fcs, fluorescence_decay, microscopy, …); each cluster its own commit with its
+plugin construction smoke tests (PRD-23) green. Add any missing handle
+capability to the contract + pyqtgraph backend as real call sites surface it
+(e.g. ROIs, histogram-LUT panels) rather than speculatively.
 
 **Phase 4 — `modules/` wave.**
 Migrate `ndxplorer` and `quest` on the same contract (committed in their own
 repos per the module ownership rule). Allow-list reaches empty except the
 ChiMOL OpenGL entry owned by PRD-57.
 
-**Phase 5+ — native chiplot renderer (long-term).**
-Implement `native_backend.py`: an OpenGL-backed 2-D plot widget satisfying the
-`types.py` contract — batched line/scatter/bar rendering, an axis/viewbox with
-pan/zoom, region/marker/text overlays, and image blitting — with an
-immediate-mode (imgui-style) control surface for interactive panels where it
-fits. Bring plots over one family at a time (start with the highest-volume,
-most GPU-favourable: large scatter/phasor clouds, waterfalls, dense decays),
-gated behind `CHISURF_PLOT_BACKEND=chiplot` and A/B screenshot comparison
-against the pyqtgraph backend. pyqtgraph is dropped only when the native backend
-covers every used item family at parity.
+**Phase 5+ — native chiplot renderer (long-term, the actual goal).**
+Implement `backends/opengl_backend.py`: an OpenGL-backed 2-D renderer satisfying
+the `backends/base.py` contract — batched line/scatter/bar rendering, an
+axis/viewbox with pan/zoom, region/marker/text overlays, and image blitting —
+with an immediate-mode (imgui-style) control surface for interactive panels
+where it fits. Bring plots over one family at a time (start with the
+highest-volume, most GPU-favourable: large scatter/phasor clouds, waterfalls,
+dense decays), gated behind `CHISURF_PLOT_BACKEND=opengl` and A/B screenshot
+comparison against the pyqtgraph backend, re-running `test/gui/test_chiplot.py`
+against it. pyqtgraph is dropped only when the native backend covers every used
+handle family at parity — at which point the allow-list and this dependency are
+both gone.
 
 # Success criteria
 
 - `grep -rn "import pyqtgraph\|from pyqtgraph" chisurf/` returns only
-  `chisurf/gui/chiplot/backend/pyqtgraph_backend.py` and the PRD-57-owned
+  `chisurf/gui/chiplot/backends/pyqtgraph_backend.py` and the PRD-57-owned
   ChiMOL OpenGL module.
-- The CI guard test passes with an empty (or ChiMOL-only) allow-list.
+- The CI guard test passes with an empty (or ChiMOL-only) allow-list. *(Phase 1:
+  guard is in place and green against the 76-file starting allow-list.)*
 - `pixi run test-gui` and the headless plot-construction tests pass with no new
   failures; rendered plots are visually unchanged from pre-migration (screenshot
   parity).
 - Switching `CHISURF_PLOT_BACKEND` is the *only* change required to route
   plotting through a different backend — no call site references a backend
-  directly.
+  directly. *(Phase 1: selection + `Backend` contract in place.)*
 - (Phase 5+) A demonstrator plot family renders through the native OpenGL
   backend at output parity with pyqtgraph for the same input.
 
 # Non-goals
 
-- Redesigning the plotting *API* (a `Figure`-style fluent API). The facade keeps
-  the pyqtgraph-shaped contract; a nicer API can be layered later.
 - Subsuming ChiMOL 3-D / raw-OpenGL rendering (PRD-57 owns that).
 - Re-exposing non-plot widgets through chiplot (PRD-42 removes those).
+- Speculatively over-building the handle contract — capabilities are added when
+  a real call site needs them during Phases 2–4, not up front.
 - Shipping the native renderer in the first landings — Phases 1–4 leave
-  pyqtgraph as the engine; only the *access path* changes.
+  pyqtgraph as the *engine* behind the clean API; only Phase 5+ replaces it.
 
 # Relationships
 
