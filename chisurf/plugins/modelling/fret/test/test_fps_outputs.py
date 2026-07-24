@@ -22,7 +22,14 @@ from ..core.results import (
     write_pymol_pml,
     write_r_table,
 )
-from ..evaluators import AVSizeEvaluator, PositionEvaluator
+from ..evaluators import (
+    AVSizeEvaluator,
+    AVSphereOverlapEvaluator,
+    AVVolumeEvaluator,
+    Chi2ContributionEvaluator,
+    DistanceDistributionEvaluator,
+    PositionEvaluator,
+)
 
 
 # --------------------------------------------------------------------------------------
@@ -125,7 +132,7 @@ def test_compute_rmsd_shape_mismatch_raises():
 # --------------------------------------------------------------------------------------
 # R15 — AVSizeEvaluator (radius of gyration), no longer an alias
 # --------------------------------------------------------------------------------------
-def _make_av(coords, weights=None):
+def _make_av(coords, weights=None, grid_step=1.0):
     coords = np.asarray(coords, dtype=np.float64)
     n = len(coords)
     w = np.ones(n) if weights is None else np.asarray(weights, dtype=np.float64)
@@ -136,7 +143,7 @@ def _make_av(coords, weights=None):
         points=points,
         density=np.ones((1, 1, 1), dtype=np.float32),
         grid_origin=np.zeros(3),
-        grid_step=1.0,
+        grid_step=grid_step,
         grid_shape=(1, 1, 1),
         attachment_point=coords[0].copy(),
     )
@@ -166,3 +173,54 @@ def test_av_size_empty_is_zero():
     empty.points = np.zeros((0, 4))  # no points
     res = AVSizeEvaluator("s", "A").evaluate({"A": empty})
     assert res.value == pytest.approx(0.0)
+
+
+# --------------------------------------------------------------------------------------
+# R15 coverage — remaining av_cache-based evaluators
+# --------------------------------------------------------------------------------------
+def test_av_volume_evaluator():
+    # 4 points, grid_step 1.5 -> volume = 4 * 1.5**3
+    av = _make_av([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], grid_step=1.5)
+    res = AVVolumeEvaluator("vol", "A").evaluate({"A": av})
+    assert res.value == pytest.approx(4 * 1.5 ** 3)
+    assert res.unit == "Å³"
+
+
+def test_av_sphere_overlap_fraction():
+    # 4 equal-weight points; 3 within radius 1.5 of the origin, 1 outside
+    av = _make_av([[0, 0, 0], [1, 0, 0], [0, 1, 0], [5, 0, 0]])
+    ev = AVSphereOverlapEvaluator("ovl", "A", center=[0.0, 0.0, 0.0], radius=1.5)
+    res = ev.evaluate({"A": av})
+    assert res.value == pytest.approx(3.0 / 4.0)
+
+
+def test_distance_distribution_mean_and_histogram():
+    av1 = _make_av([[0.0, 0.0, 0.0]])
+    av2 = _make_av([[6.0, 0.0, 0.0]])
+    ev = DistanceDistributionEvaluator("dd", "A", "B", rda_min=0.0, rda_max=20.0, n_rda_bins=40)
+    res = ev.evaluate({"A": av1, "B": av2})
+    assert res.value == pytest.approx(6.0)
+    assert len(res.extra["histogram"]) > 0
+    assert len(res.extra["bin_edges"]) > 0
+
+
+def test_chi2_contribution_single_distance():
+    # mean-position distance 8, restraint 6 +/- 2 -> chi2 = (8-6)^2 / 2^2 = 1
+    av1 = _make_av([[0.0, 0.0, 0.0]])
+    av2 = _make_av([[8.0, 0.0, 0.0]])
+    ev = Chi2ContributionEvaluator(
+        "c", "A", "B", distance=6.0, error_neg=2.0, error_pos=2.0, distance_type="Rmp"
+    )
+    res = ev.evaluate({"A": av1, "B": av2})
+    assert res.value == pytest.approx(1.0)
+
+
+def test_evaluator_missing_position_degrades():
+    # any av_cache evaluator returns a zero result rather than raising on a missing AV
+    for ev in (
+        AVVolumeEvaluator("v", "missing"),
+        AVSizeEvaluator("s", "missing"),
+        Chi2ContributionEvaluator("c", "missing", "B", 6.0, 2.0, 2.0),
+    ):
+        res = ev.evaluate({"B": _make_av([[0.0, 0.0, 0.0]])})
+        assert res.value == pytest.approx(0.0)

@@ -35,7 +35,7 @@ coverage (R10/R11 have no IMP-free test).
 
 **Headless test-hardening + R15 fix (2026-07-24).** Much of the headless surface
 was implemented but untested; closed three of those gaps in
-`test/test_fps_outputs.py` (13 tests, pure numpy — no IMP/AV/external data):
+`test/test_fps_outputs.py` (15 tests, pure numpy — no IMP/AV/external data):
 - **R13** — the three output writers (`results.write_pymol_pml` / `write_r_table` /
   `write_chi2_table`) are now covered (header/row/chi²-sum assertions).
 - **R14** — `io.compute_rmsd` is covered including the optional Kabsch
@@ -44,7 +44,11 @@ was implemented but untested; closed three of those gaps in
   (`av_metrics.py` `from .positions import PositionEvaluator as AVSizeEvaluator`);
   replaced with a real, distinct evaluator returning the weight-aware **radius of
   gyration** (Å) of the AV cloud, plus tests. The registry now exposes 14 genuinely
-  distinct evaluator classes with working JSON round-trip.
+  distinct evaluator classes with working JSON round-trip. Also added unit
+  coverage for the previously-untested `av_cache`-based evaluators —
+  `AVVolumeEvaluator`, `AVSphereOverlapEvaluator`, `DistanceDistributionEvaluator`,
+  `Chi2ContributionEvaluator` — plus a missing-position degradation check. (The
+  three `geometry.py` evaluators still need `RigidBody` scaffolding — untested.)
 
 Regression: the headless fret suite (`test_fps_outputs`, `test_evaluators`,
 `test_pair_selection`, `test_stat`, `test_pose_codec`, `test_dock_project`) = 43
