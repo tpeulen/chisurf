@@ -42,6 +42,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [BUG-02](#bug-02) | S1 | BUG | Server | `fit_select` defined twice in `fits.py` (second shadows first) | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-03](#bug-03) | S1 | BUG | Server | `model_component_remove` references undefined `component_type` → `NameError` | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-04](#bug-04) | S2 | BUG | Core | `@abc.abstractmethod` not enforced: `Base(object)` has no `ABCMeta` | ~~VERIFIED~~ ✅ FIXED |
+| [BUG-05](#bug-05) | S1 | BUG | Plugins | F-test calculator's two directions are not inverses (asking for 95% returns a χ² whose confidence is 0.09%) | VERIFIED — needs a convention decision |
 | [DATA-01](#data-01) | S1 | DATA | Plugins | **3** manifests fail validation and are silently dropped by `load_manifest()` | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-02](#data-02) | S2 | DATA | MMFDB | `SCHEMA_VERSION = 40` is a stamp with no migration waterfall | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-03](#data-03) | S2 | DATA | MMFDB | Core `mmfdb_*` DDL is hand-written and defined twice (must be hand-synced) | ~~REPORTED~~ ✅ FIXED |
@@ -141,6 +142,33 @@ The single largest source of non-uniformity across the codebase (see [core steer
 - Impact: because the MRO has no `ABCMeta`, `Parameter` and `Model` are instantiable despite their abstract methods, so a missing override fails at call time instead of construction time. (Runtime confirmation needs the `arm64` env with `chinet` built; the static class declaration is unambiguous.)
 - Fix: give `Base` `metaclass=abc.ABCMeta` (or have the abstract subclasses inherit `abc.ABC`), then fix any concrete subclass that currently skips an override.
 - ✅ **FIXED** (2026-07-05): Added `metaclass=abc.ABCMeta` to `Model` only (not `Base`/`Parameter` — `Base` conflicts with Qt metaclasses in widget multiple-inheritance, and `Parameter` is used concretely throughout). Removed `@abc.abstractmethod` from `Model.update()` (it has a real concrete implementation; making it abstract forced trivial overrides in every subclass). Added 3 guardrail tests: bad subclass raises, good subclass works, `update()` is callable without override.
+
+### BUG-05
+**S1 · The F-test calculator's two directions contradict each other.**
+
+- Location: `chisurf/plugins/core/f_test/gui/tool.py` — `_FTestModel.recompute_conf` and
+  `_FTestModel.recompute_chi2_2`. The same formulas are restated in the help text of
+  `ftest.view.json`, so the docs carry the defect too.
+- The two are meant to be inverses of one another:
+  `conf = F.cdf(χ²₂/χ²₁, n₁, n₂)` inverts to `χ²₂ = χ²₁·F.isf(1−conf, n₁, n₂)`,
+  but the code computes `χ²₂ = χ²₁·(n₂/n₁)·F.isf(1−conf, n₁, n₂)` — a spurious `n₂/n₁`.
+- Evidence (ran, defaults χ²₁ = 1, n₁ = 100, n₂ = 5): entering a confidence of 0.95
+  yields χ²₂ = 0.2203, and feeding that straight back through the tool's own
+  confidence formula reports **0.0009**. At 0.68 → χ²₂ = 0.0798 → 0.0000. Dropping
+  the `n₂/n₁` factor makes the round trip exact (0.95 → 4.4051 → 0.95).
+- Two further questions the fix has to settle first, because they change the numbers:
+  - **Ratio orientation.** `view.json` documents χ²(1) as the *simpler* model and χ²(2)
+    as the *more complex* one. A more complex model fits better, so χ²₂ < χ²₁ and
+    `F.cdf(χ²₂/χ²₁, …)` returns a *low* confidence exactly when the added parameters
+    are most justified. The conventional variance-ratio test uses
+    χ²(simpler)/χ²(complex).
+  - **Degree-of-freedom order.** This panel calls `F(n₁, n₂)` = `F(ν, p)`, while the
+    χ²-max panel of the same tool calls `F(p, ν)`. One of the two is transposed.
+- Fix: decide the intended convention (reduced vs. absolute χ², which model is the
+  numerator, and the dof order), then make the two directions exact inverses and
+  update the help text. Deliberately **not** patched blind: this calculator produces
+  numbers users quote in publications, and a self-consistent-but-wrong convention
+  would be worse than the current obvious breakage.
 
 ## Data / schema / manifest issues (DATA)
 

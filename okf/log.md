@@ -2,6 +2,27 @@
 
 ## 2026-07-24
 
+* **F-test calculator: the two directions contradict each other (BUG-05, logged
+  not patched).** `_FTestModel.recompute_conf` and `recompute_chi2_2` are meant to
+  be inverses, but the second carries a spurious `n₂/n₁`: entering a confidence of
+  0.95 returns χ²₂ = 0.2203, which the tool's own confidence formula then reports as
+  **0.0009**. Dropping the factor makes the round trip exact. Two further questions
+  have to be settled before touching it, because they change the numbers users get:
+  the ratio orientation (the view spec calls χ²(1) the *simpler* model, so
+  `F.cdf(χ²₂/χ²₁, …)` reports low confidence exactly when the extra parameters are
+  most justified), and the dof order (this panel uses `F(ν, p)`, the χ²-max panel of
+  the same tool uses `F(p, ν)`). Deliberately **not** patched blind — this tool
+  produces numbers that go into publications, and a self-consistent-but-wrong
+  convention would be worse than the current obvious breakage. Recorded as
+  [BUG-05](/specs/assessment.md) pending a convention decision.
+
+* **Covariance errors pinned to the Poisson Fisher information.** The `2I*`
+  maximum-likelihood objective minimises a deviance rather than a weighted sum of
+  squares, but `sum(residuals²)` is still what is minimised, so `(JᵀJ)⁻¹` stays the
+  correct covariance. Both noise models now reproduce the analytic Poisson
+  information matrix of the counts to within a percent, which closes out the
+  error-analysis audit: covariance, support plane, MCMC and MLE all agree.
+
 * **Concept pages: three had tool-call scaffolding in them.** `fret.md`,
   `imaging_flim_phasor.md` and `tcspc_lifetime.md` ended with a literal
   `</content>` line — `imaging_flim_phasor.md` with `</content>\n</invoke>` — i.e.
