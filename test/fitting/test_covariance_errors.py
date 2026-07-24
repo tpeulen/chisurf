@@ -105,6 +105,59 @@ def test_grad_is_not_identically_zero(scale):
     assert np.all(np.abs(grad).sum(axis=1) > 0.0), "gradient vanished for a free parameter"
 
 
+@pytest.mark.parametrize("noise_model", ["default", "poisson"])
+def test_covariance_matches_the_poisson_fisher_information(noise_model):
+    """Counting-noise errors must equal the Fisher information of the counts.
+
+    The ``poisson`` noise model minimises the ``2I*`` deviance rather than a
+    weighted sum of squares, but ``sum(residuals**2)`` is still the objective,
+    so ``(J'J)^-1`` remains the right covariance for both -- this pins that down
+    against the analytic Poisson information matrix.
+    """
+    rng = np.random.default_rng(7)
+    a_true, tau_true = 5000.0, 4.0
+    x = np.linspace(0.05, 25.0, 256)
+    y = rng.poisson(a_true * np.exp(-x / tau_true)).astype(float)
+
+    data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(np.maximum(y, 1.0)))
+    fit = fit_module.FitGroup(
+        data=chisurf.core.data.DataGroup([data]),
+        model_class=chisurf.core.models.parse.ParseModel,
+    )
+    fit.noise_model = noise_model
+    for f in fit:
+        f.noise_model = noise_model
+    fit.fit_range = 0, len(fit.model.y)
+    fit.model.func = 'a*exp(-x/tau)'
+    fit.model.find_parameters()
+    values = fit.model.parameters_all_dict
+    values['a'].value, values['tau'].value = 4000.0, 3.0
+    fit.run()
+    fit.update_error_estimates()
+
+    fitted = dict(zip(fit.model.parameter_names, fit.model.parameter_values))
+    a, tau = fitted['a'], fitted['tau']
+    assert a == pytest.approx(a_true, rel=0.05)
+    assert tau == pytest.approx(tau_true, rel=0.05)
+
+    n = len(fit.model.weighted_residuals)
+    xx = x[:n]
+    mu = a * np.exp(-xx / tau)
+    derivatives = {'a': mu / a, 'tau': mu * xx / tau ** 2}
+    order = [p.name for p in fit.model.parameters]
+    information = np.array([
+        [np.sum(derivatives[j] * derivatives[k] / mu) for k in order]
+        for j in order
+    ])
+    fisher_std = np.sqrt(np.diag(np.linalg.inv(information)))
+
+    for parameter, expected in zip(fit.model.parameters, fisher_std):
+        # A percent is tight enough to catch a scale error (the factor sqrt(2)
+        # this file guards against is 41%) while tolerating the O(1/sqrt(N))
+        # difference between the Gauss-Newton and the exact information matrix.
+        assert parameter.error_estimate == pytest.approx(expected, rel=1e-2)
+
+
 def test_covariance_errors_agree_with_the_sampled_posterior():
     """The linearised errors must match the width the sampler actually finds."""
     np.random.seed(5)
