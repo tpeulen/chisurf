@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
@@ -91,32 +91,25 @@ class MicrotimeShifterTool(ChisurfDockTool):
 
     def _create_widgets(self) -> None:
         """Create plot, control, and files list widgets."""
-        self.plot = pg.PlotWidget()
-        self.plot.setLabel("bottom", "Micro-time bin")
-        self.plot.setLabel("left", "Counts")
-        self.plot.setTitle("Micro-time Histograms")
+        self.plot = cp.Plot()
+        self.plot.set_labels(bottom="Micro-time bin", left="Counts")
+        self.plot.set_title("Micro-time Histograms")
 
-        # Create trigger lines (initially visible, movable)
-        self.trigger_level_line = pg.InfiniteLine(
-            angle=0,
-            movable=True,
-            pos=0.0,
-            pen=pg.mkPen('y', style=QtCore.Qt.PenStyle.DashLine, width=2)
+        # Create trigger lines (initially visible, movable). A horizontal line
+        # marks the count trigger level; a vertical line marks the bin position.
+        self.trigger_level_line = self.plot.hline(
+            0.0, movable=True, pen=cp.to_pen("y", width=2, style="dash")
         )
-        self.trigger_pos_line = pg.InfiniteLine(
-            angle=90,
-            movable=True,
-            pos=0.0,
-            pen=pg.mkPen('g', style=QtCore.Qt.PenStyle.DashLine, width=2)
+        self.trigger_pos_line = self.plot.vline(
+            0.0, movable=True, pen=cp.to_pen("g", width=2, style="dash")
         )
-        self.plot.addItem(self.trigger_level_line)
-        self.plot.addItem(self.trigger_pos_line)
 
-        # Connect line signals
-        self.trigger_level_line.sigPositionChanged.connect(self._on_trigger_level_line_changed)
-        self.trigger_pos_line.sigPositionChanged.connect(self._on_trigger_pos_line_changed)
-        self.trigger_level_line.sigPositionChangeFinished.connect(self._on_trigger_level_line_finished)
-        self.trigger_pos_line.sigPositionChangeFinished.connect(self._on_trigger_pos_line_finished)
+        # Connect line signals: ``final=False`` fires on user drag, ``final=True``
+        # once the drag ends (programmatic ``set_value`` does not fire either).
+        self.trigger_level_line.on_change(self._on_trigger_level_line_changed, final=False)
+        self.trigger_pos_line.on_change(self._on_trigger_pos_line_changed, final=False)
+        self.trigger_level_line.on_change(self._on_trigger_level_line_finished, final=True)
+        self.trigger_pos_line.on_change(self._on_trigger_pos_line_finished, final=True)
 
         self.controls_panel = QtWidgets.QWidget()
         self.controls_layout = QtWidgets.QVBoxLayout(self.controls_panel)
@@ -380,13 +373,8 @@ class MicrotimeShifterTool(ChisurfDockTool):
             self.trigger_pos_spin.setValue(self._trigger_pos)
             self.trigger_pos_spin.blockSignals(False)
 
-            self.trigger_level_line.blockSignals(True)
-            self.trigger_level_line.setValue(self._trigger_level)
-            self.trigger_level_line.blockSignals(False)
-
-            self.trigger_pos_line.blockSignals(True)
-            self.trigger_pos_line.setValue(self._trigger_pos)
-            self.trigger_pos_line.blockSignals(False)
+            self.trigger_level_line.set_value(self._trigger_level)
+            self.trigger_pos_line.set_value(self._trigger_pos)
 
             self.save_action.setEnabled(True)
             self.statusBar().showMessage(f"Loaded: {self._current_path}")
@@ -524,13 +512,13 @@ class MicrotimeShifterTool(ChisurfDockTool):
             )
         except Exception:
             self.plot.clear()
-            self.plot.setTitle("Cannot load files for preview")
+            self.plot.set_title("Cannot load files for preview")
             return
 
         self.plot.clear()
         # Add back trigger lines
-        self.plot.addItem(self.trigger_level_line)
-        self.plot.addItem(self.trigger_pos_line)
+        self.plot.add(self.trigger_level_line)
+        self.plot.add(self.trigger_pos_line)
 
         edges = np.arange(self._n_mt + 1)
 
@@ -540,23 +528,20 @@ class MicrotimeShifterTool(ChisurfDockTool):
             if not hist_values:
                 continue
             hist = np.array(hist_values, dtype=int)
-            c = pg.intColor(i, len(self._channel_shifts))
+            c = cp.int_color(i, len(self._channel_shifts))
             if is_logy:
-                self.plot.plot(
-                    edges, hist, pen=c, stepMode=True, name=str(ch)
-                )
+                self.plot.line(edges, hist, pen=c, step=True, name=str(ch))
             else:
-                c.setAlpha(100)
-                self.plot.plot(
-                    edges, hist, pen=c, stepMode=True,
-                    fillLevel=0, brush=c, name=str(ch)
+                faded = c.with_alpha(100)
+                self.plot.line(
+                    edges, hist, pen=faded, step=True, fill=faded, name=str(ch)
                 )
 
         try:
-            self.plot.addLegend()
+            self.plot.legend()
         except Exception:
             pass
-        self.plot.setTitle("Micro-time Histograms (preview)")
+        self.plot.set_title("Micro-time Histograms (preview)")
 
     def auto_align(self) -> None:
         if not self._file_paths or self._n_mt < 1:
@@ -603,24 +588,19 @@ class MicrotimeShifterTool(ChisurfDockTool):
         val = int(self.trigger_level_spin.value())
         val = max(1, val)
         self._trigger_level = val
-        self.trigger_level_line.blockSignals(True)
         if self.logy_action.isChecked():
-            self.trigger_level_line.setValue(np.log10(val))
+            self.trigger_level_line.set_value(np.log10(val))
         else:
-            self.trigger_level_line.setValue(val)
-        self.trigger_level_line.blockSignals(False)
+            self.trigger_level_line.set_value(val)
         self.auto_align()
 
     def _on_trigger_pos_spin_changed(self, *args: object) -> None:
         val = int(self.trigger_pos_spin.value())
         self._trigger_pos = val
-        self.trigger_pos_line.blockSignals(True)
-        self.trigger_pos_line.setValue(val)
-        self.trigger_pos_line.blockSignals(False)
+        self.trigger_pos_line.set_value(val)
         self.auto_align()
 
-    def _on_trigger_level_line_changed(self, *args: object) -> None:
-        line_val = self.trigger_level_line.value()
+    def _on_trigger_level_line_changed(self, line_val: float) -> None:
         if self.logy_action.isChecked():
             val = int(round(10**line_val))
         else:
@@ -631,8 +611,8 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self.trigger_level_spin.setValue(val)
         self.trigger_level_spin.blockSignals(False)
 
-    def _on_trigger_pos_line_changed(self, *args: object) -> None:
-        val = int(self.trigger_pos_line.value())
+    def _on_trigger_pos_line_changed(self, line_val: float) -> None:
+        val = int(line_val)
         self._trigger_pos = val
         self.trigger_pos_spin.blockSignals(True)
         self.trigger_pos_spin.setValue(val)
@@ -645,19 +625,17 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self.auto_align()
 
     def _on_toggle_trigger_lines(self, checked: bool) -> None:
-        self.trigger_level_line.setVisible(checked)
-        self.trigger_pos_line.setVisible(checked)
+        self.trigger_level_line.visible = checked
+        self.trigger_pos_line.visible = checked
 
     def _on_toggle_logy(self, checked: bool) -> None:
-        self.plot.getPlotItem().setLogMode(False, checked)
-        self.trigger_level_line.blockSignals(True)
+        self.plot.set_log(x=False, y=checked)
         if checked:
-            self.trigger_level_line.setValue(np.log10(max(1, self._trigger_level)))
+            self.trigger_level_line.set_value(np.log10(max(1, self._trigger_level)))
         else:
-            self.trigger_level_line.setValue(self._trigger_level)
-        self.trigger_level_line.blockSignals(False)
+            self.trigger_level_line.set_value(self._trigger_level)
         self._update_plot()
-        self.plot.getPlotItem().vb.autoRange()
+        self.plot.autoscale()
 
     def acquire_mmfdb_connection(self) -> Any:
         """Return this tool's explicitly owned MMFDB connection."""

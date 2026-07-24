@@ -87,14 +87,13 @@ def _new_fit_group(model_class) -> _fit.FitGroup:
 
 def _make_plot_widget(parent=None):
     try:
-        import pyqtgraph as pg
+        from chisurf.gui import chiplot as cp
 
-        pw = pg.PlotWidget(parent=parent)
-        pw.setBackground("w")
-        pw.showGrid(x=True, y=True, alpha=0.3)
+        pw = cp.Plot(parent=parent, background="w")
+        pw.grid(x=True, y=True, alpha=0.3)
         pw.setMinimumHeight(140)
         return pw, True
-    except ImportError:
+    except Exception:
         lbl = QtWidgets.QLabel("(install pyqtgraph for inline plots)", parent=parent)
         lbl.setAlignment(QtCore.Qt.AlignCenter)
         lbl.setStyleSheet("color:#888; font-style:italic;")
@@ -361,11 +360,9 @@ class FRETLineTool(QtWidgets.QWidget):
         self._plot_taux, _ = _make_plot_widget()
         self._plot_taux_container = self._plot_taux
         if self._has_pg:
-            self._plot_e.setLabel("bottom", "τ_F (ns)")
-            self._plot_e.setLabel("left", "E_FRET")
-            self._plot_e.addLegend()
-            self._plot_taux.setLabel("bottom", "τ_F (ns)")
-            self._plot_taux.setLabel("left", "τ_X (ns)")
+            self._plot_e.set_labels(bottom="τ_F (ns)", left="E_FRET")
+            self._plot_e.legend()
+            self._plot_taux.set_labels(bottom="τ_F (ns)", left="τ_X (ns)")
         return self._plot_e, self._plot_taux
 
     # ── component lifecycle ───────────────────────────────────────────
@@ -656,12 +653,11 @@ class FRETLineTool(QtWidgets.QWidget):
         """Redraw both plots from scratch, overlaying every computed line."""
         if not self._has_pg:
             return
-        import pyqtgraph as pg
 
         for pw in (self._plot_e, self._plot_taux):
             pw.clear()
             try:
-                pw.getPlotItem().legend.clear()
+                pw.native.getPlotItem().legend.clear()
             except Exception:
                 pass
 
@@ -673,18 +669,19 @@ class FRETLineTool(QtWidgets.QWidget):
             tau_f = np.asarray(r["tau_f"])
             tau_x = np.asarray(r["tau_x"])
             e_fret = np.asarray(r["e_fret"])
-            pen = pg.mkPen(ln["color"], width=2)
-            self._plot_e.plot(tau_f, e_fret, pen=pen, name=ln["name"])
-            self._plot_taux.plot(tau_f, tau_x, pen=pen, name=ln["name"])
+            self._plot_e.line(tau_f, e_fret, pen=ln["color"], width=2, name=ln["name"])
+            self._plot_taux.line(tau_f, tau_x, pen=ln["color"], width=2, name=ln["name"])
             if tau_f.size:
                 tau_max = max(tau_max, float(tau_f.max()))
 
         # diagonal reference (τ_X = τ_F) on the τ_X plot
         ref = float(self._tau_d0_spin.value()) or tau_max
-        self._plot_taux.plot(
+        self._plot_taux.line(
             [0.0, ref],
             [0.0, ref],
-            pen=pg.mkPen("#aaaaaa", width=1, style=QtCore.Qt.DashLine),
+            pen="#aaaaaa",
+            width=1,
+            style="dash",
         )
 
     # ── save / push ───────────────────────────────────────────────────
