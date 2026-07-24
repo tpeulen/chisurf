@@ -2,6 +2,18 @@
 
 ## 2026-07-24
 
+* **PRD-64 (draft) — chiplot plotting seam + pyqtgraph replacement.** Authored
+  [PRD-64](/prds/prd-64.md): confine all plotting behind one facade package
+  `chisurf.gui.chiplot` (call sites go `import pyqtgraph as pg` →
+  `import chisurf.gui.chiplot as cp`), with pyqtgraph isolated in a single
+  swappable backend module guarded by CI, then grow chiplot into a native
+  OpenGL/immediate-mode renderer behind the same API. Grounded the scope in a
+  clean symbol inventory (~40 pyqtgraph symbols across ~125 files;
+  `mkPen`/`PlotWidget`/`TextItem`/`LinearRegionItem` dominate) and scoped out
+  the cases owned elsewhere: non-plot `SpinBox`/`parametertree`
+  ([PRD-42](/prds/prd-42.md)), ChiMOL raw OpenGL ([PRD-57](/prds/prd-57.md)),
+  and the already-wrapped `DockArea`. Added the index row (✏️ draft).
+
 * **PRD-46 (partial) — example scripts in the test pipeline + ascii import fix.**
   Added `test/scripts/test_scripts.py` (discovers `examples/scripts/*.py`, runs
   `process`/no-shebang scripts as tmp-dir subprocesses asserting clean exit;
