@@ -32,8 +32,10 @@ def test_available_languages_and_display_names(qapp):
     langs = gi18n.available_languages()
     assert langs[0] == "en"  # source language first
     assert "de" in langs  # shipped German catalogue discovered
+    assert "fr" in langs  # shipped French catalogue discovered (second locale)
     assert gi18n.language_display_name("en") == "English"
     assert gi18n.language_display_name("de") == "Deutsch"
+    assert gi18n.language_display_name("fr") == "Français"
     assert gi18n.language_display_name("xx") == "xx"  # unknown → bare code
 
 

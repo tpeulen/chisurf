@@ -43,7 +43,7 @@ AUTOGEN = pathlib.Path(__file__).resolve().parent / "_i18n_autogen.py"
 
 #: Target locales to (re)generate. English is the source language; its ``.ts`` is
 #: a translator template (empty translations) and is not installed at runtime.
-DEFAULT_LOCALES = ("en", "de")
+DEFAULT_LOCALES = ("en", "de", "fr")
 
 #: Qt translation context shared by every data-driven string. Must match
 #: :data:`chisurf.core.i18n.DEFAULT_CONTEXT`.
