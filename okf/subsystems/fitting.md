@@ -179,10 +179,12 @@ support plane (`sp`).
 `walk_mcmc` records the state of the chain every `thin` steps *including on
 rejected proposals* — repeating the current state is what makes the samples
 follow the posterior rather than an acceptance-filtered caricature of it — and
-returns an `acceptance_rate` alongside the chain. Proposal widths are a fixed
-fraction (`step_size`) of each parameter's starting value, so a tightly
-constrained parameter can be proposed far outside its posterior and accept
-rarely; the sampler is correct there but inefficient. `sample_emcee` takes
+returns an `acceptance_rate` alongside the chain. Proposal widths start at
+`step_size` relative to each parameter's value and are then tuned by a warm-up
+phase (`n_adapt`) — re-derived from the spread of the warm-up states and
+rescaled by a Robbins-Monro recursion towards `target_acceptance` — and
+**frozen before recording**, so the returned chain remains time-homogeneous and
+its stationary distribution is still the posterior. `sample_emcee` takes
 `steps` as steps *per walker* and returns `steps // thin` states per walker
 (the underlying ensemble sampler counts its own `nsteps` in stored states once
 thinning is on, so the loop iterates in stored states).

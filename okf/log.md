@@ -2,6 +2,21 @@
 
 ## 2026-07-24
 
+* **Adaptive proposals for `walk_mcmc` (makes the fixed sampler usable).**
+  Proposal widths were a fixed fraction of each parameter's *starting value*, so a
+  well-determined parameter was proposed far outside its posterior and almost
+  nothing was accepted (0.7% acceptance in the linear-model check) — statistically
+  correct after the sign fix below, but useless in practice. Added a warm-up phase
+  that re-derives the widths from the spread of the warm-up states and rescales
+  them by a Robbins-Monro recursion towards `target_acceptance`, then **freezes**
+  them before recording, so the returned chain is still a time-homogeneous Markov
+  chain with the posterior as its stationary distribution (adapting while recording
+  would void that). Warm-up steps are extra, not taken out of `steps`. Acceptance
+  0.7% → 30.7% at unchanged accuracy (widths still within ~5% of analytic), and a
+  deliberately 50×-too-wide `step_size` is recovered
+  (`test_walk_mcmc_warmup_tunes_a_badly_scaled_step_size`). Concepts:
+  [PRD-50](/prds/prd-50.md), [fitting](/subsystems/fitting.md).
+
 * **Fixed an inverted Metropolis acceptance test in `walk_mcmc` (PRD-50 error
   surfaces, all models).** Wiring the second error-surface route to PDA surfaced a
   sign error in `chisurf/core/fitting/sample.py::walk_mcmc`: the acceptance test

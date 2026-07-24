@@ -17,15 +17,20 @@ def walk_mcmc(
         thin: int = 1,
         chi2max: float = np.inf,
         callback: typing.Callable = None,
-        check_cancel: typing.Callable = None
+        check_cancel: typing.Callable = None,
+        n_adapt: int = None,
+        target_acceptance: float = 0.3
 ) -> dict:
     """Sample the free parameters of a fit with a Metropolis random walk.
 
     The chain targets the posterior ``exp(lnprob / temp)``, where
     :func:`chisurf.core.fitting.fit.lnprob` returns the log-posterior
-    (``-chi2/2`` plus a flat prior inside ``bounds``). Proposals are Gaussian
-    with a per-parameter width of ``step_size`` relative to the parameter's
-    starting value.
+    (``-chi2/2`` plus a flat prior inside ``bounds``).
+
+    Proposals are Gaussian. Their widths start out at ``step_size`` relative to
+    each parameter's initial value and are then tuned during a warm-up phase
+    (see Notes), because a width that is right for a loosely constrained
+    parameter can be orders of magnitude too wide for a well determined one.
 
     Parameters
     ----------
@@ -33,9 +38,9 @@ def walk_mcmc(
         Fit whose free parameters are sampled.
     steps : int
         Number of Markov-chain steps to take. ``steps // thin`` states are
-        returned.
+        returned. Warm-up steps are additional to this.
     step_size : float
-        Relative width of the Gaussian proposal distribution.
+        Initial width of the Gaussian proposal, relative to the parameter value.
     temp : float, optional
         Sampling temperature. Values above one flatten the posterior.
     thin : int, optional
@@ -46,16 +51,30 @@ def walk_mcmc(
         Called as ``callback(n_recorded, n_samples)`` after each recorded state.
     check_cancel : callable, optional
         Polled once per step; sampling stops early when it returns ``True``.
+    n_adapt : int, optional
+        Number of warm-up steps used to tune the proposal widths. Defaults to
+        half the chain length (bounded to ``[200, 2000]``); pass ``0`` to sample
+        with the proposal widths implied by ``step_size`` alone.
+    target_acceptance : float, optional
+        Acceptance rate the warm-up aims for.
 
     Returns
     -------
     dict
-        ``chi2r``, ``parameter_values`` and ``parameter_names`` of the chain.
+        ``chi2r``, ``parameter_values``, ``parameter_names`` and the
+        ``acceptance_rate`` of the recorded chain.
 
     Notes
     -----
     Rejected proposals re-record the *current* state rather than being skipped,
     as required for the chain to converge to the target distribution.
+
+    Adaptation runs entirely within the warm-up: the widths are re-derived once
+    from the spread of the warm-up states and continuously rescaled by a
+    Robbins-Monro recursion towards ``target_acceptance``. They are then frozen,
+    so the recorded chain is a plain (time-homogeneous) Markov chain whose
+    stationary distribution is the posterior -- adapting while recording would
+    break that guarantee.
     """
     dim = fit.model.n_free
     state_initial = np.asarray(fit.model.parameter_values, dtype=np.float64)
@@ -74,35 +93,79 @@ def walk_mcmc(
     proposal_scale = np.abs(state_initial) * step_size
     proposal_scale[proposal_scale < 1e-15] = step_size
 
-    lnp_prev = float(
-        cs.core.fitting.fit.lnprob(
-            parameter_values=state_prev,
-            fit=fit,
-            chi2max=chi2max,
-            bounds=bounds
-        )
-    )
-
-    n_steps = n_samples * thin
-    for i_step in range(1, n_steps + 1):
-
-        state_next = state_prev + np.random.normal(0.0, 1.0, dim) * proposal_scale
-        lnp_next = float(
+    def _lnprob(state):
+        """Return the log-posterior of a parameter vector."""
+        return float(
             cs.core.fitting.fit.lnprob(
-                parameter_values=state_next,
+                parameter_values=state,
                 fit=fit,
                 chi2max=chi2max,
                 bounds=bounds
             )
         )
 
-        # Metropolis acceptance: moves towards a higher posterior (a lower
-        # chi2) are always taken, downhill moves only with probability
-        # exp((lnp_next - lnp_prev) / temp).
-        if np.isfinite(lnp_next) and (lnp_next - lnp_prev) / temp > np.log(np.random.rand()):
-            np.copyto(state_prev, state_next)
-            lnp_prev = lnp_next
-            n_accepted += 1
+    def _metropolis_step(state, lnp_state, width):
+        """Take one Metropolis step.
+
+        Returns the (possibly unchanged) state, its log-posterior, whether the
+        proposal was accepted, and the acceptance probability of the proposal.
+        """
+        proposal = state + np.random.normal(0.0, 1.0, dim) * width
+        lnp_proposal = _lnprob(proposal)
+        if not np.isfinite(lnp_proposal):
+            return state, lnp_state, False, 0.0
+        delta = (lnp_proposal - lnp_state) / temp
+        alpha = 1.0 if delta >= 0.0 else float(np.exp(delta))
+        # Moves towards a higher posterior (a lower chi2) are always taken,
+        # downhill moves only with probability exp(delta).
+        if delta > np.log(np.random.rand()):
+            return proposal, lnp_proposal, True, alpha
+        return state, lnp_state, False, alpha
+
+    lnp_prev = _lnprob(state_prev)
+
+    n_steps = n_samples * thin
+    if n_adapt is None:
+        n_adapt = min(2000, max(200, n_steps // 2))
+    n_adapt = max(0, int(n_adapt))
+
+    cancelled = False
+    if n_adapt > 0:
+        warmup = np.empty((n_adapt, dim))
+        log_scale = 0.0
+        n_warm = 0
+        for i in range(n_adapt):
+            state_prev, lnp_prev, _, alpha = _metropolis_step(
+                state_prev, lnp_prev, proposal_scale * np.exp(log_scale)
+            )
+            warmup[i] = state_prev
+            n_warm += 1
+            # Robbins-Monro: shrink the step while proposals are rejected too
+            # often, widen it while they are accepted too often.
+            log_scale += (alpha - target_acceptance) / (i + 1) ** 0.6
+            # Once the chain has moved around, the spread of the states it has
+            # visited is a far better per-parameter width than a fixed fraction
+            # of the starting value.
+            if i == n_adapt // 2:
+                spread = warmup[:n_warm].std(axis=0)
+                usable = spread > 1e-12
+                if usable.any():
+                    proposal_scale = np.where(usable, spread, proposal_scale)
+                    log_scale = 0.0
+            if check_cancel and check_cancel():
+                cancelled = True
+                break
+        proposal_scale = proposal_scale * np.exp(log_scale)
+
+    i_step = 0
+    for i_step in range(1, n_steps + 1):
+        if cancelled:
+            break
+
+        state_prev, lnp_prev, accepted, _ = _metropolis_step(
+            state_prev, lnp_prev, proposal_scale
+        )
+        n_accepted += int(accepted)
 
         # Record the state of the chain -- on rejection this repeats the
         # previous state, which is what keeps the samples distributed

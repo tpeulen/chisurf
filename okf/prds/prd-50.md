@@ -100,6 +100,16 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   the independent support-plane F-test interval to ~8%. Since `walk_mcmc` is the
   generic sampler, this fixes MCMC error surfaces for **every** ChiSurf model, not
   only PDA.
+- **Adaptive MCMC proposals (2026-07-24).** `walk_mcmc` proposal widths were a
+  fixed fraction of each parameter's *starting value*, so a well-determined
+  parameter was proposed far outside its posterior and almost nothing was accepted
+  (0.7% in the linear-model check) — correct but unusable. A warm-up phase now
+  tunes the widths: they are re-derived once from the spread of the warm-up states
+  and rescaled by a Robbins-Monro recursion towards a target acceptance rate, then
+  **frozen** before recording, so the returned chain stays a time-homogeneous
+  Markov chain. Acceptance went 0.7% → 30.7% at unchanged accuracy, and warm-up
+  recovers a deliberately 50×-too-wide `step_size`
+  (`test_walk_mcmc_warmup_tunes_a_badly_scaled_step_size`).
 - **`sample_emcee` step accounting (2026-07-24).** The ensemble backend passed
   `nsteps=steps` together with `thin_by=thin`; the underlying sampler counts
   `nsteps` in *stored* states when thinning, so it silently ran `steps * thin`
@@ -113,10 +123,6 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   number-of-time-bins scheme) — the current dynamic models use a single
   dimensionless exchange parameter `K_ex`.
 - Three-color tcPDA (later stage).
-- `walk_mcmc` proposal widths are a fixed fraction of the *starting* parameter
-  value, so a well-constrained parameter is proposed far outside its posterior and
-  the acceptance rate collapses (0.7% in the linear-model check). An adaptive or
-  covariance-informed proposal would make the default settings usable.
 
 # Scope (staged)
 

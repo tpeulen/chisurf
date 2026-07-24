@@ -94,6 +94,40 @@ def test_walk_mcmc_reproduces_the_analytic_posterior():
         assert samples[:, i].std() == pytest.approx(analytic_std[i], rel=0.35)
 
 
+def test_walk_mcmc_warmup_tunes_a_badly_scaled_step_size():
+    """The warm-up must rescue a ``step_size`` that is far too wide.
+
+    ``step_size`` is relative to the parameter value, so for a well determined
+    parameter the default proposal can be orders of magnitude wider than the
+    posterior and virtually nothing is accepted.
+    """
+    np.random.seed(4)
+    fit, x = _quadratic_fit()
+
+    bad_step_size = 0.05  # ~50x the posterior width of 'a'
+    unadapted = chisurf.core.fitting.sample.walk_mcmc(
+        fit=fit, steps=1500, step_size=bad_step_size, temp=1.0, thin=1, n_adapt=0
+    )
+    adapted = chisurf.core.fitting.sample.walk_mcmc(
+        fit=fit, steps=1500, step_size=bad_step_size, temp=1.0, thin=1
+    )
+
+    assert unadapted['acceptance_rate'] < 0.05, "step size was not badly scaled"
+    assert adapted['acceptance_rate'] > 5 * unadapted['acceptance_rate']
+    assert 0.1 < adapted['acceptance_rate'] < 0.6
+
+    # ... and the tuned chain still reproduces the analytic posterior.
+    names = list(fit.model.parameter_names)
+    columns = {'c': np.ones_like(x), 'a': x ** 2}
+    design = np.column_stack([columns[n] for n in names])
+    analytic_std = np.sqrt(np.diag(SIGMA ** 2 * np.linalg.inv(design.T @ design)))
+
+    samples = np.asarray(adapted['parameter_values'], dtype=float)
+    samples = samples[len(samples) // 5:]
+    for i, _ in enumerate(names):
+        assert samples[:, i].std() == pytest.approx(analytic_std[i], rel=0.4)
+
+
 def test_walk_mcmc_thinning_records_every_nth_state():
     """``thin`` reduces the number of returned states, not the chain length."""
     np.random.seed(3)
