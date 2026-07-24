@@ -106,12 +106,32 @@ def _grab_pda_editor():
     _grab(editor, "pda_model_editor.png")
 
 
+def _grab_burst_browser():
+    """Grab the Burst Browser (per-burst table + E/S histograms) on real .bur data."""
+    import glob
+
+    from chisurf.plugins.burst.burst_browser import BurstBrowserWidget
+
+    folders = glob.glob(
+        "chisurf/plugins/burst/burst_selection/tests/data/"
+        "bh_spc132_sm_dna/burstwise_All*/bi4_bur"
+    )
+    if not folders:
+        print("SKIP _grab_burst_browser: no sample .bur folder")
+        return
+    widget = BurstBrowserWidget()
+    widget.resize(1100, 720)
+    widget.load_folder(folders[0])
+    QApplication.instance().processEvents()
+    _grab(widget, "burst_browser.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
 
     for grab in (_grab_fcs_model_editor, _grab_tcspc_lifetime_editor,
-                 _grab_pda_editor):
+                 _grab_pda_editor, _grab_burst_browser):
         try:
             grab()
         except Exception as exc:  # keep going; report which grab failed

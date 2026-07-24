@@ -1,5 +1,12 @@
 # Selecting and comparing FRET populations
 
+:::{admonition} Theory
+:class: seealso
+The FRET efficiency $E$ and stoichiometry $S$ that these populations are gated on,
+and the corrections behind them, are covered in the concept page
+{ref}`concept-smfret-bursts`.
+:::
+
 ## What it does
 
 A single measurement usually contains several sub-populations — different FRET
@@ -13,8 +20,23 @@ doubly-labelled species.
 
 ## In ChiSurf
 
-`Bursts.table` is a pandas DataFrame, so selection is ordinary boolean masking on
-the per-burst observables, and the `burst_selection` plugin provides an
+The **Burst Browser** loads a folder of per-burst `.bur` results into a sortable
+table and live histogram; the **Controls** panel gates the population by
+efficiency, stoichiometry and burst size before histogramming any column:
+
+```{figure} figures/burst_browser.png
+:name: fig-burst-browser
+:width: 95%
+
+The Burst Browser on a real single-molecule DNA dataset (2980 bursts). The
+**Controls** panel sets the histogram column ($E$) and the `E min` / `S min` /
+`Size min` gates; the **Bursts** table lists every burst; the **Histogram**
+panel shows the FRET-efficiency distribution — here clearly bimodal, a donor-only
+peak near $E=0$ and a FRET population around $E\approx0.4$.
+```
+
+`Bursts.table` is also a pandas DataFrame, so selection is ordinary boolean
+masking on the per-burst observables, and the `burst_selection` plugin provides an
 interactive ROI/gate GUI with a Gaussian-mixture clustering
 ([tutorial 26](26_2d_peak_fitting.md)).
 
