@@ -7,32 +7,32 @@ Total registered parameters: **228**.
 
 | Parameter | Meaning | Keywords |
 | --- | --- | --- |
-| `alpha` |  |  |
-| `aT` |  |  |
+| `alpha` | Anomalous-diffusion exponent (α<1 sub-diffusion, α=1 normal, α>1 super-diffusion). |  |
+| `aT` | Triplet/blinking amplitude — fraction of molecules transiently in a dark state. |  |
 | `AtB` | Model parameter AtB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `b` |  |  |
-| `ba` |  |  |
-| `BG` |  |  |
+| `b` | Correlation baseline offset G(τ→∞): ~1 for normalized ACFs, 0 for background-subtracted curves. |  |
+| `ba` | Bunching (blinking/triplet) amplitude of a relaxation term. |  |
+| `BG` | Background count rate used in the correlation-amplitude correction (kHz). |  |
 | `bg` | Constant background level added to the time-resolved decay curve (counts per time channel). | TCSPC, lifetime, background, offset, counts |
-| `bg0` |  |  |
-| `bg1` |  |  |
-| `BR` |  |  |
-| `brightness` |  |  |
-| `bt` |  |  |
+| `bg0` | Background count rate in detection channel 0 (kHz). |  |
+| `bg1` | Background count rate in detection channel 1 (kHz). |  |
+| `BR` | Brightness ratio between species. |  |
+| `brightness` | Molecular brightness — background-corrected count rate per molecule, (CR−bg)/N (kHz). |  |
+| `bt` | Bunching (blinking/triplet) relaxation time. |  |
 | `BtA` | Model parameter BtA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `conc` |  |  |
+| `conc` | Molecular concentration derived from N and the effective volume. |  |
 | `cont` | Model parameter cont used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `cpm` |  |  |
-| `cpm_all` |  |  |
+| `cpm` | Counts per molecule (molecular brightness), (I−B)/N. |  |
+| `cpm_all` | Counts per molecule summed over all detection channels. |  |
 | `D` | Model parameter D used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `diam` |  |  |
+| `diam` | Known inter-focus distance (two-focus FCS) or scan diameter (scanning FCS), in µm. |  |
 | `dt` | Time bin width of the TCSPC histogram (time per channel). | TCSPC, lifetime, time bin, resolution |
-| `dtMT[ns]` |  |  |
-| `dtTAC[ns]` |  |  |
+| `dtMT[ns]` | Macro-time resolution (ns). |  |
+| `dtTAC[ns]` | Micro-time (TAC) channel width (ns). |  |
 | `E_FRET` | Apparent FRET efficiency parameter E_FRET (0e00..1). | TCSPC, lifetime, FRET, efficiency |
-| `eps1` |  |  |
-| `eps2` |  |  |
-| `eps3` |  |  |
+| `eps1` | Molecular brightness of species 1 (counts/molecule/s). |  |
+| `eps2` | Molecular brightness of species 2 (counts/molecule/s). |  |
+| `eps3` | Molecular brightness of species 3 (counts/molecule/s). |  |
 | `fcs.a` | Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1). | FCS, amplitude, population fraction |
 | `fcs.a1` | Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1). | FCS, amplitude, population fraction |
 | `fcs.a2` | Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1). | FCS, amplitude, population fraction |
@@ -99,10 +99,10 @@ Total registered parameters: **228**.
 | `fcs.N3` | Average number of fluorescent particles in the observation volume. In standard FCS models the correlation amplitude scales roughly as 1/N. | FCS, number of molecules, concentration, amplitude |
 | `fcs.s` | Structure parameter s = z0 / w0 describing the axial-to-radial extent of the detection volume. | FCS, structure parameter, PSF, geometry |
 | `fcs.tab` | Correlation time of the photon antibunching term (fast time scale). | FCS, antibunching, correlation time |
-| `fcs.tb1` |  |  |
-| `fcs.tb2` |  |  |
-| `fcs.tb3` |  |  |
-| `fcs.tb4` |  |  |
+| `fcs.tb1` | Relaxation (bunching) time constant of the 1st term. |  |
+| `fcs.tb2` | Relaxation (bunching) time constant of the 2nd term. |  |
+| `fcs.tb3` | Relaxation (bunching) time constant of the 3rd term. |  |
+| `fcs.tb4` | Relaxation (bunching) time constant of the 4th term. |  |
 | `fcs.td` | Characteristic diffusion time of this component (time scale on which particles traverse the observation volume). | FCS, diffusion, correlation time |
 | `fcs.td1` | Characteristic diffusion time of this component (time scale on which particles traverse the observation volume). | FCS, diffusion, correlation time |
 | `fcs.td2` | Characteristic diffusion time of this component (time scale on which particles traverse the observation volume). | FCS, diffusion, correlation time |
@@ -119,57 +119,57 @@ Total registered parameters: **228**.
 | `fcs.trc1` | Rotational correlation time used in the anisotropy / rotational diffusion term. | FCS, anisotropy, rotation, correlation time |
 | `fcs.trc2trc1` | Rotational correlation time used in the anisotropy / rotational diffusion term. | FCS, anisotropy, rotation, correlation time |
 | `g` | Model parameter g used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `gG` |  |  |
-| `gR` |  |  |
+| `gG` | Detection efficiency / g-factor of the green (donor) channel. |  |
+| `gR` | Detection efficiency / g-factor of the red (acceptor) channel. |  |
 | `ik` | Shape parameter of the synthetic IRF model. | TCSPC, lifetime, IRF, shape |
 | `irf_start` | Start index (or time) of the IRF region used for convolution. | TCSPC, lifetime, IRF, window, start |
 | `irf_stop` | Stop index (or time) of the IRF region used for convolution. | TCSPC, lifetime, IRF, window, stop |
 | `iw` | Width parameter of the synthetic IRF model. | TCSPC, lifetime, IRF, width |
 | `k2` | Orientation factor  governing dipole-dipole coupling in FRET. | TCSPC, lifetime, FRET, orientation factor, kappa2 |
-| `kQ` |  |  |
+| `kQ` | Dynamic-quenching rate constant. |  |
 | `l` | Model parameter l used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
 | `l1` | Model parameter l1 used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
 | `l2` | Model parameter l2 used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `lam_em` |  |  |
-| `lam_ex` |  |  |
+| `lam_em` | Emission wavelength (nm). |  |
+| `lam_ex` | Excitation wavelength (nm). |  |
 | `lb` | Lamp background level subtracted from the instrument response function. | TCSPC, lifetime, lamp, background, IRF |
-| `line_dur` |  |  |
+| `line_dur` | Line duration in a confocal scan (s). |  |
 | `lp` | Model parameter lp used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
 | `mA` | Model parameter mA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `mag` |  |  |
+| `mag` | Magnification of the imaging optics. |  |
 | `mB` | Model parameter mB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `N` |  |  |
-| `n` |  |  |
-| `n curves` |  |  |
-| `n photons` |  |  |
+| `N` | Mean number of molecules in the confocal detection volume; sets the correlation amplitude G(0)=1/N. |  |
+| `n` | Refractive index of the immersion/sample medium. |  |
+| `n curves` | Number of correlation curves. |  |
+| `n photons` | Number of photons. |  |
 | `n0` | Initial number of excited donor molecules used to scale the model decay to the experimental counts. | TCSPC, lifetime, normalization, excited molecules |
-| `N1` |  |  |
-| `N2` |  |  |
-| `N3` |  |  |
-| `n_rh` |  |  |
-| `n_td` |  |  |
+| `N1` | Mean number of molecules of species 1 in the detection volume. |  |
+| `N2` | Mean number of molecules of species 2 in the detection volume. |  |
+| `N3` | Mean number of molecules of species 3 in the detection volume. |  |
+| `n_rh` | Number of hydrodynamic-radius grid points (distribution fit). |  |
+| `n_td` | Number of diffusion-time grid points (distribution fit). |  |
 | `nPh_bg` | Output: estimated number of background photons in the TCSPC trace based on background level and measurement timing settings. | TCSPC, background, photons, output |
 | `nPh_fl` | Output: estimated number of fluorescence photons (after background subtraction) in the TCSPC trace. | TCSPC, fluorescence, photons, output |
-| `nPh_max` |  |  |
-| `nPh_min` |  |  |
-| `nTAC` |  |  |
-| `offset` |  |  |
-| `pinhole` |  |  |
+| `nPh_max` | Maximum number of photons per burst considered. |  |
+| `nPh_min` | Minimum number of photons per burst considered. |  |
+| `nTAC` | Number of micro-time (TAC) channels. |  |
+| `offset` | Constant additive offset of the model curve. |  |
+| `pinhole` | Confocal pinhole diameter (µm). |  |
 | `pureA` | Model parameter pureA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
 | `pureB` | Model parameter pureB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `pxl_dur` |  |  |
-| `pxl_size` |  |  |
-| `QYA` |  |  |
-| `QYD` |  |  |
+| `pxl_dur` | Pixel dwell time in an image scan (s). |  |
+| `pxl_size` | Pixel size in an image scan (µm). |  |
+| `QYA` | Fluorescence quantum yield of the acceptor. |  |
+| `QYD` | Fluorescence quantum yield of the donor. |  |
 | `R0` | Frster radius R0 of the donor-acceptor pair. | TCSPC, lifetime, FRET, Forster radius, distance |
 | `r0` | Frster radius R0 of the donor-acceptor pair. | TCSPC, lifetime, FRET, Forster radius, distance |
 | `r_ss_i` | Intensity-domain steady-state anisotropy. For dual-channel data, ChiSurf background-corrects VV and VH (per-channel metadata when available), compensates objective mixing via l1/l2, and evaluates rS,I from channel sums using the ChiSurf convention r = (VV - VH) / (g*VV + 2*VH). For single-channel fallback, VM is reconstructed from the active anisotropy model before summation. | TCSPC, anisotropy, steady state, intensity |
 | `r_ss_l` | Lifetime-domain steady-state anisotropy derived from the model lifetime spectrum and rotational spectrum. This value is model-predicted (spectrum/integral domain) and does not depend on direct VV/VH channel integration. | TCSPC, anisotropy, steady state, lifetime |
 | `rc_ele` | Model parameter rc_ele used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `reg` |  |  |
+| `reg` | Regularization weight for distribution (MEM/Tikhonov) fits. |  |
 | `rep` | Laser repetition rate of the excitation source. | TCSPC, lifetime, repetition rate, laser, frequency |
-| `rh_max` |  |  |
-| `rh_min` |  |  |
+| `rh_max` | Upper bound of the hydrodynamic-radius axis. |  |
+| `rh_min` | Lower bound of the hydrodynamic-radius axis. |  |
 | `rics.aT` | Triplet/blinking fraction a_T (0–1). | RICS, triplet, blinking, fraction |
 | `rics.D` | Diffusion coefficient D in µm²/s. | RICS, diffusion, mobility |
 | `rics.line_dur` | Time between successive scanned lines in milliseconds. | RICS, imaging, timing, line scan |
@@ -180,15 +180,15 @@ Total registered parameters: **228**.
 | `rics.tauT` | Triplet/blinking correlation time τ_T in milliseconds. | RICS, triplet, blinking, kinetics |
 | `rics.w_r` | Radial waist of the detection PSF in µm. | RICS, PSF, waist, radial |
 | `rics.w_z` | Axial waist of the detection PSF in µm. | RICS, PSF, waist, axial |
-| `s` |  |  |
+| `s` | Structure (aspect) parameter of the confocal volume, s = w_z / w_xy. |  |
 | `sc` | Relative amplitude of a prompt scattering contribution that is added to the model decay. | TCSPC, lifetime, scatter, prompt, amplitude |
 | `slowf` | Model parameter slowf used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
 | `start` | Start time (or channel) of the fit/convolution window. | TCSPC, lifetime, fit window, start |
 | `stop` | Stop time (or channel) of the fit/convolution window. | TCSPC, lifetime, fit window, stop |
 | `t0` | Fluorescence lifetime or characteristic decay time of this component. | TCSPC, lifetime, decay time |
 | `tau0` | Fluorescence lifetime or characteristic decay time of this component. | TCSPC, lifetime, decay time |
-| `tauD` |  |  |
-| `tauT` |  |  |
+| `tauD` | Diffusion time — mean residence time in the confocal volume, τ_D = w_xy²/(4D). |  |
+| `tauT` | Triplet/blinking relaxation time. |  |
 | `tBg` | Measurement time of the background acquisition. | TCSPC, lifetime, background, measurement time |
 | `tcspc.a` | Pre-exponential amplitude or population fraction of this decay component (dimensionless contribution to the overall time-resolved signal). | TCSPC, lifetime, amplitude, population fraction |
 | `tcspc.a1` | Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless). | TCSPC, lifetime, amplitude, population fraction |
@@ -217,20 +217,20 @@ Total registered parameters: **228**.
 | `tcspc.td2` | Fluorescence lifetime or characteristic decay time of this component. | TCSPC, lifetime, decay time |
 | `tcspc.Vav` | Effective averaging volume used in the transient-quenching model. | TCSPC, lifetime, volume, quenching model |
 | `tcspc.xD` | Fraction of donors subject to additional quenching or rate channels (dimensionless). | TCSPC, lifetime, donor fraction, population fraction |
-| `td_max` |  |  |
-| `td_min` |  |  |
+| `td_max` | Upper bound of the diffusion-time axis. |  |
+| `td_min` | Lower bound of the diffusion-time axis. |  |
 | `tDead` | Model parameter tDead used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `temp` |  |  |
+| `temp` | Sample temperature. |  |
 | `tMeas` | Measurement time of the main TCSPC experiment. | TCSPC, lifetime, measurement time, experiment |
 | `ts` | Additional temporal shift applied to align IRF and decay. | TCSPC, lifetime, timeshift, alignment |
-| `Veff` |  |  |
+| `Veff` | Effective confocal detection volume, V_eff = π^{3/2}·γ·w_xy³. |  |
 | `vh_bg_int` | Background-corrected summed VH intensity used by anisotropy diagnostics. Derived after channel/background extraction and channel-wise summation over the active trace. | TCSPC, anisotropy, background, VH |
 | `vv_bg_int` | Background-corrected summed VV intensity used by anisotropy diagnostics. Derived after channel/background extraction and channel-wise summation over the active trace. | TCSPC, anisotropy, background, VV |
 | `w` | Model parameter w used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
-| `w0` |  |  |
-| `w_r` |  |  |
-| `w_z` |  |  |
-| `wem` |  |  |
+| `w0` | Lateral 1/e² radius of the confocal detection volume (µm). |  |
+| `w_r` | Lateral 1/e² radius of the confocal detection volume (µm). |  |
+| `w_z` | Axial 1/e² radius of the confocal detection volume (µm). |  |
+| `wem` | Emission-side Gauss–Lorentz detection waist. |  |
 | `win-size` | Model parameter win-size used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
 | `xA` | Model parameter xA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
 | `xB` | Model parameter xB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |

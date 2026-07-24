@@ -34,6 +34,75 @@ OUT_DIR = REPO_ROOT / "docs" / "reference"
 # view.json section types that describe a user-editable parameter.
 PARAM_TYPES = {"value", "choice", "toggle", "toggle_row", "table"}
 
+# Curated fallback descriptions for common fit/model parameters that the
+# auto-generated parameter registry leaves blank. Kept here (not in the model
+# source) so the glossary reads completely without editing chisurf/core.
+FALLBACK_DESCRIPTIONS = {
+    "N": "Mean number of molecules in the confocal detection volume; sets the correlation amplitude G(0)=1/N.",
+    "N1": "Mean number of molecules of species 1 in the detection volume.",
+    "N2": "Mean number of molecules of species 2 in the detection volume.",
+    "N3": "Mean number of molecules of species 3 in the detection volume.",
+    "n": "Refractive index of the immersion/sample medium.",
+    "s": "Structure (aspect) parameter of the confocal volume, s = w_z / w_xy.",
+    "b": "Correlation baseline offset G(τ→∞): ~1 for normalized ACFs, 0 for background-subtracted curves.",
+    "offset": "Constant additive offset of the model curve.",
+    "tauD": "Diffusion time — mean residence time in the confocal volume, τ_D = w_xy²/(4D).",
+    "tauT": "Triplet/blinking relaxation time.",
+    "aT": "Triplet/blinking amplitude — fraction of molecules transiently in a dark state.",
+    "alpha": "Anomalous-diffusion exponent (α<1 sub-diffusion, α=1 normal, α>1 super-diffusion).",
+    "ba": "Bunching (blinking/triplet) amplitude of a relaxation term.",
+    "bt": "Bunching (blinking/triplet) relaxation time.",
+    "fcs.tb1": "Relaxation (bunching) time constant of the 1st term.",
+    "fcs.tb2": "Relaxation (bunching) time constant of the 2nd term.",
+    "fcs.tb3": "Relaxation (bunching) time constant of the 3rd term.",
+    "fcs.tb4": "Relaxation (bunching) time constant of the 4th term.",
+    "diam": "Known inter-focus distance (two-focus FCS) or scan diameter (scanning FCS), in µm.",
+    "w0": "Lateral 1/e² radius of the confocal detection volume (µm).",
+    "w_r": "Lateral 1/e² radius of the confocal detection volume (µm).",
+    "w_z": "Axial 1/e² radius of the confocal detection volume (µm).",
+    "wem": "Emission-side Gauss–Lorentz detection waist.",
+    "Veff": "Effective confocal detection volume, V_eff = π^{3/2}·γ·w_xy³.",
+    "conc": "Molecular concentration derived from N and the effective volume.",
+    "cpm": "Counts per molecule (molecular brightness), (I−B)/N.",
+    "cpm_all": "Counts per molecule summed over all detection channels.",
+    "brightness": "Molecular brightness — background-corrected count rate per molecule, (CR−bg)/N (kHz).",
+    "BG": "Background count rate used in the correlation-amplitude correction (kHz).",
+    "bg": "Constant background count rate (kHz).",
+    "bg0": "Background count rate in detection channel 0 (kHz).",
+    "bg1": "Background count rate in detection channel 1 (kHz).",
+    "BR": "Brightness ratio between species.",
+    "eps1": "Molecular brightness of species 1 (counts/molecule/s).",
+    "eps2": "Molecular brightness of species 2 (counts/molecule/s).",
+    "eps3": "Molecular brightness of species 3 (counts/molecule/s).",
+    "QYD": "Fluorescence quantum yield of the donor.",
+    "QYA": "Fluorescence quantum yield of the acceptor.",
+    "gG": "Detection efficiency / g-factor of the green (donor) channel.",
+    "gR": "Detection efficiency / g-factor of the red (acceptor) channel.",
+    "kQ": "Dynamic-quenching rate constant.",
+    "lam_ex": "Excitation wavelength (nm).",
+    "lam_em": "Emission wavelength (nm).",
+    "pinhole": "Confocal pinhole diameter (µm).",
+    "mag": "Magnification of the imaging optics.",
+    "temp": "Sample temperature.",
+    "pxl_dur": "Pixel dwell time in an image scan (s).",
+    "pxl_size": "Pixel size in an image scan (µm).",
+    "line_dur": "Line duration in a confocal scan (s).",
+    "dtMT[ns]": "Macro-time resolution (ns).",
+    "dtTAC[ns]": "Micro-time (TAC) channel width (ns).",
+    "nTAC": "Number of micro-time (TAC) channels.",
+    "nPh_max": "Maximum number of photons per burst considered.",
+    "nPh_min": "Minimum number of photons per burst considered.",
+    "n photons": "Number of photons.",
+    "n curves": "Number of correlation curves.",
+    "n_rh": "Number of hydrodynamic-radius grid points (distribution fit).",
+    "n_td": "Number of diffusion-time grid points (distribution fit).",
+    "rh_min": "Lower bound of the hydrodynamic-radius axis.",
+    "rh_max": "Upper bound of the hydrodynamic-radius axis.",
+    "td_min": "Lower bound of the diffusion-time axis.",
+    "td_max": "Upper bound of the diffusion-time axis.",
+    "reg": "Regularization weight for distribution (MEM/Tikhonov) fits.",
+}
+
 
 def _md(text) -> str:
     """Escape a value so it is safe inside a Markdown table cell."""
@@ -132,6 +201,8 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
             label, a, kind, default, rng, desc = _param_row(sec)
             if not desc and attr in registry_params:
                 desc = _md(registry_params[attr].get("description", ""))
+            if not desc:
+                desc = _md(FALLBACK_DESCRIPTIONS.get(attr, ""))
             rows.append((panel or "General", label, a, kind, default, rng, desc))
 
     out += ["## Parameters", ""]
@@ -187,7 +258,8 @@ def _parameter_glossary(registry: dict) -> str:
            "| Parameter | Meaning | Keywords |", "| --- | --- | --- |"]
     for name in sorted(params, key=str.lower):
         p = params[name]
-        out.append(f"| `{name}` | {_md(p.get('description', ''))} | "
+        desc = p.get("description", "").strip() or FALLBACK_DESCRIPTIONS.get(name, "")
+        out.append(f"| `{name}` | {_md(desc)} | "
                    f"{_md(', '.join(p.get('keywords', []) or []))} |")
     out.append("")
     return "\n".join(out)
