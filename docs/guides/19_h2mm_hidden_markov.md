@@ -1,5 +1,12 @@
 # Photon-by-photon hidden Markov models (H2MM)
 
+:::{admonition} Theory
+:class: seealso
+The hidden-Markov model for photon streams — emission/transition matrices, the
+$A^{\Delta t}$ propagator, Baum-Welch optimization, and state-number selection by
+BIC/ICL — is explained in the concept page {ref}`concept-h2mm`.
+:::
+
 ## What it does
 
 **H2MM** (Pirchi et al. 2016; Harris et al. 2022) fits a hidden Markov model

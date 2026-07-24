@@ -1,5 +1,13 @@
 # Accessible-volume (AV) calculations
 
+:::{admonition} Theory
+:class: seealso
+The AV grid model, the accessible-contact volume (ACV), the three AV-to-distance
+measures ($R_\text{mp}$, $\langle R_{DA}\rangle$, $\langle R_{DA}\rangle_E$), and
+the $\kappa^2=2/3$ assumption are covered in the concept page
+{ref}`concept-accessible-volume`.
+:::
+
 ## What it does
 
 To turn a FRET distance into a **structural** restraint you need the mean dye

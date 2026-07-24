@@ -1,5 +1,12 @@
 # A complete µs-ALEX smFRET burst-analysis workflow
 
+:::{admonition} Theory
+:class: seealso
+The burst-analysis theory behind this workflow — burst search, accurate $E$/$S$,
+and the leakage/direct-excitation/$\gamma$/$\beta$ corrections — is in the
+concept page {ref}`concept-smfret-bursts`.
+:::
+
 This tutorial walks the full end-to-end pipeline for freely-diffusing
 single-molecule FRET with alternating-laser excitation (µs-ALEX), the way a
 typical analysis notebook is structured — but using ChiSurf's guided

@@ -15,6 +15,14 @@ higher FRET. Polarised detection additionally gives the **anisotropy decay**
 $r(t) = r_0\,e^{-t/\rho}$, whose rotational correlation time $\rho$ reports on
 rotational mobility (and on dye/protein tumbling).
 
+:::{admonition} Theory
+:class: seealso
+The reconvolution model, IRF, multi-exponential decay, average-lifetime
+definitions, and the scatter/background/pile-up nuisances are covered in the
+concept page {ref}`concept-tcspc-lifetime`. This guide shows how to fit in
+ChiSurf.
+:::
+
 ## In ChiSurf
 
 TCSPC is the most mature part of ChiSurf: the **TCSPC experiment** offers lifetime,
@@ -22,6 +30,25 @@ FRET (including the [SAW-ν / Ising / WLC](03_polymer_distance_distributions.md)
 distance-distribution and structural FRET models), anisotropy, and
 mixture models, all built on the fast convolution kernels in
 `chisurf/core/fluorescence/tcspc/`.
+
+The lifetime model editor exposes the whole decay model as grouped parameter
+tables:
+
+```{figure} figures/tcspc_lifetime_editor.png
+:name: fig-tcspc-lifetime-editor
+:width: 90%
+
+The TCSPC lifetime model editor. **Convolution** selects the IRF curve and the
+convolution mode (`per`iodic / `exp` / `full`); **Generic** holds the scatter
+`sc`, background `bg`, and constant-background `tBg` nuisances; **Lifetimes** is
+an add/remove table of amplitude–lifetime pairs ($x_L$, $\tau_L$) with
+normalization and linking; **Anisotropy** adds the polarised $r(t)$ model.
+```
+
+Each group in {numref}`fig-tcspc-lifetime-editor` corresponds to a factor in the
+reconvolution model of {ref}`concept-tcspc-lifetime`: the **Lifetimes** table is
+the $\sum_i a_i e^{-t/\tau_i}$ spectrum, **Convolution** applies the
+$\mathrm{IRF}\ast(\cdot)$, and **Generic** adds the scatter/background terms.
 
 ```python
 import numpy as np
@@ -50,5 +77,8 @@ for three rotational correlation times.
 
 ## See also
 
+- Concept: {ref}`concept-tcspc-lifetime`.
 - `chisurf/core/models/tcspc/` (lifetime, FRET, anisotropy, mixture, structural models).
+- Lifetimes from single-molecule bursts: {doc}`21_lifetime_from_bursts`;
+  ns-ALEX/PIE lifetimes: {doc}`32_nsalex_lifetime`.
 - Distance-distribution FRET models: [Polymer distance distributions](03_polymer_distance_distributions.md).

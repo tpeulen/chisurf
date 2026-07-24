@@ -1,5 +1,12 @@
 # Multi-parameter E–S histograms and correction factors
 
+:::{admonition} Theory
+:class: seealso
+The definitions of accurate $E$ and $S$, and the four correction factors
+(leakage, direct excitation, $\gamma$, $\beta$) that straighten the FRET line,
+are derived in the concept page {ref}`concept-smfret-bursts`.
+:::
+
 ## What it does
 
 With alternating-laser excitation (**ALEX**) or pulsed-interleaved excitation
