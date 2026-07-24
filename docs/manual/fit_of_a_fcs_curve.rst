@@ -1,6 +1,12 @@
 Fit of a FCS curve
 ^^^^^^^^^^^^^^^^^^
 
+.. seealso::
+
+   Theory — the correlation function, diffusion models and derived quantities:
+   :ref:`concept-fcs-correlation`. A shorter task-focused version:
+   :doc:`/guides/09_diffusion_fcs`.
+
 Open Chisurf2016
 
 It might take a while to open – be patient!

@@ -1,6 +1,13 @@
 Loading the Alexa488 data into the anisotropy plugin
 """"""""""""""""""""""""""""""""""""""""""""""""""""
 
+.. seealso::
+
+   Theory — the anisotropy function, the G-factor, and the rotational-
+   correlation-time model: :ref:`concept-anisotropy` (and
+   :ref:`concept-tcspc-lifetime` for the intensity decay it couples to).
+
+
 After the reading parameter have been correctly set, the anisotropy wizard can be started from the "Plugins" tab:
 
 .. image:: _images/image_rId118.png
