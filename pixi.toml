@@ -169,7 +169,14 @@ tttrlib = "*"
      "build-chinet",
      "build-tttrlib",
  ] }
- chisurf = { cmd = "python -m chisurf", depends-on = ["build-extensions"] }
+ chisurf = { cmd = "python -m chisurf", depends-on = ["build-extensions", "i18n-compile"] }
+
+# Internationalisation (translation kit). i18n-extract (re)generates the .ts
+# source catalogues from .ui forms + data-driven view.json/manifest.json specs;
+# i18n-compile compiles them to runtime .qm binaries. `chisurf` depends on the
+# compile so a launched GUI always has fresh translations.
+i18n-extract = { cmd = "python build_tools/i18n/extract_strings.py" }
+i18n-compile = { cmd = "lrelease chisurf/gui/i18n/chisurf_en.ts chisurf/gui/i18n/chisurf_de.ts", inputs = ["chisurf/gui/i18n/*.ts"], outputs = ["chisurf/gui/i18n/*.qm"] }
 
 test-app-linux = { cmd = "echo 'test-app-linux: requires native pixi environment on Linux'", depends-on = ["build-extensions"] }
 test = { cmd = "pytest test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'not gui and not widget and not window'", depends-on = ["build-extensions"] }
