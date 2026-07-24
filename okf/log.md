@@ -2,6 +2,16 @@
 
 ## 2026-07-24
 
+* **Process rule — shared working tree, no destructive git.** Documented that
+  multiple agent instances (and the user) work this repo in parallel, so
+  tree/index-discarding git is banned: no `git reset --hard`, `git checkout --`/
+  `git restore`, `git clean -f`, `git stash`, or `--force`; commit only your own
+  files by explicit pathspec, never `git add -A`/`git commit -a`. Added a
+  "Parallel instances — never destroy uncommitted work" section to
+  [change-tracking](/workflows/change-tracking.md) and a working-practices bullet
+  in `CLAUDE.md`. Prompted by uncommitted edits being wiped mid-session by a
+  concurrent reset.
+
 * **Build/env consolidation onto a single tool (pixi).** Collapsed four
   overlapping dependency/build systems down to pixi as the one tool for dev,
   tests, and release packaging. Deleted the redundant `chisurf-env.yaml` conda

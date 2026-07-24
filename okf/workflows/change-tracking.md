@@ -37,6 +37,26 @@ the same loop**. This is the process rule that the per-area
    [[feedback-no-push]]). End commit messages with the
    `Co-Authored-By: Claude Opus 4.8` trailer.
 
+## Parallel instances — never destroy uncommitted work
+
+Multiple agent instances (and the user) work on this repository **in parallel**,
+each with its own uncommitted edits in the shared working tree. Destructive git
+that discards working-tree or index state will silently wipe another instance's
+in-flight work, so it is **banned**:
+
+- **No `git reset --hard`**, `git checkout -- <path>` / `git restore <path>`,
+  `git clean -f`/`-fd`/`-fdx`, `git stash` (it removes changes from the tree),
+  `git stash drop`, or any `--force` operation — these throw away edits you did
+  not make.
+- **Never revert, restage, or unstage files you did not change.** Assume every
+  other modified/staged/untracked path belongs to another instance and is mid-flight.
+- **Commit only your own files by explicit pathspec** — `git commit -- <your
+  paths>` (or `git add <your paths>` first). Never `git add -A`/`git add .`/
+  `git commit -a`, which sweep up everyone else's changes.
+- **Do not push** (see [[feedback-no-push]]) and do not rebase/amend shared history.
+- If a git command *would* discard work that is not yours, stop and report to the
+  user instead of running it.
+
 ## Make changes traceable
 
 The point of the loop is that anyone (or any future agent) can reconstruct *what
