@@ -3968,16 +3968,22 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # live single-burst fit works) is almost always an empty IRF or a
         # too-high min-photons threshold — surface both up front, per detector.
         for det in det_order:
-            irf_sz = int(np.asarray(irf_cache.get(det, [])).size)
+            irf_arr = np.asarray(irf_cache.get(det, []), dtype=float)
+            irf_sz = int(irf_arr.size)
+            irf_sum = float(irf_arr.sum()) if irf_sz else 0.0
             mp = int(settings_cache[det].get('min_photons', 0))
             cs.logging.info(
-                f"MLE batch: detector '{det}' IRF size={irf_sz}, "
+                f"MLE batch: detector '{det}' IRF size={irf_sz} sum={irf_sum:.3g}, "
                 f"bg size={int(np.asarray(bg_cache.get(det, [])).size)}, min_photons={mp}"
             )
-            if model != "tail" and irf_sz == 0:
+            # An empty *or all-zero* IRF (e.g. over-aggressive IRF range/threshold
+            # zeroing) makes every burst's τ NaN — the live fit may still work if it
+            # processes the IRF differently, so call this out explicitly.
+            if model != "tail" and (irf_sz == 0 or irf_sum <= 0.0):
                 cs.logging.warning(
-                    f"MLE batch: detector '{det}' has an EMPTY IRF — every burst's "
-                    f"τ will be NaN. Run 'Auto IRF' or load/send an IRF for '{det}'."
+                    f"MLE batch: detector '{det}' IRF is empty/all-zero (size={irf_sz}, "
+                    f"sum={irf_sum:.3g}) — every burst's τ will be NaN. Check the IRF "
+                    f"range/threshold, or run 'Auto IRF' / load an IRF for '{det}'."
                 )
 
         # uniform binning
