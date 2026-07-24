@@ -263,13 +263,15 @@ def _compute_file_numpy(
 
 def write_2cde_analysis(df: pd.DataFrame, analysis_folder: str, variant: str = "fret",
                         progress_window=None) -> None:
-    """Write per-burst 2CDE values to sidecar files under a ``2cde/`` subfolder.
+    """Write per-burst 2CDE values to companion files under a ``2c4/`` subfolder.
 
-    One tab-separated file per source TTTR (``<stem>_0.2cde``), matching the
-    per-file sidecar convention used by the burst browser.
+    One tab-separated file per source TTTR named after the ``.bur`` stem
+    (``<stem>.2c4``), part of the ``…4`` burst-companion family (``bg4`` / ``bv4``
+    / ``2c4`` …). Per-stem consumers — ndXplorer and the burst browser — join it
+    to the burst table by stem, so it must match the ``.bur`` name (no ``_0``).
     """
     column = COLUMN_ALEX_2CDE if variant == "alex" else COLUMN_FRET_2CDE
-    out = pathlib.Path(analysis_folder) / "2cde"
+    out = pathlib.Path(analysis_folder) / "2c4"
     out.mkdir(parents=True, exist_ok=True)
     for i, (tttr_file, group) in enumerate(df.groupby("First File"), start=1):
         stem = pathlib.Path(tttr_file).stem
@@ -277,7 +279,7 @@ def write_2cde_analysis(df: pd.DataFrame, analysis_folder: str, variant: str = "
         frame = pd.DataFrame(np.zeros((2 * n + 1, 2)), columns=[column, ""])
         frame[""] = ""
         frame.loc[1::2, [column]] = group[[column]].values
-        frame.to_csv(out / f"{stem}_0.2cde", sep="\t", index=False)
+        frame.to_csv(out / f"{stem}.2c4", sep="\t", index=False)
         if progress_window:
             progress_window.set_value(i)
     logging.info(f"2CDE results written to {out}")

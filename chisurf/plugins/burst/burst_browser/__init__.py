@@ -254,7 +254,7 @@ class BurstBrowserWidget(QtWidgets.QWidget):
 
     def load_bur(self, path: Path) -> None:
         try:
-            df = burstio.read_bur_file(path)
+            df = burstio.read_bur_with_companions(path)
         except Exception as exc:
             logging.error(f"Failed to read BUR file {path}: {exc}")
             QtWidgets.QMessageBox.critical(self, "Error", f"Could not read BUR file:\n{path}\n\n{exc}")
@@ -278,7 +278,9 @@ class BurstBrowserWidget(QtWidgets.QWidget):
         dfs: list[pd.DataFrame] = []
         for fn in bur_files:
             try:
-                df_part = burstio.read_bur_file(fn)
+                # Merge the …4 companions (BVA bv4, 2CDE 2c4, …) so their per-burst
+                # columns show up alongside the .bur data in the browser.
+                df_part = burstio.read_bur_with_companions(fn)
                 df_part["burst_file"] = fn.name
                 dfs.append(df_part)
             except Exception as exc:

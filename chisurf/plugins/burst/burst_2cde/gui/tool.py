@@ -134,6 +134,13 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         except Exception as exc:  # pragma: no cover - GUI error path
             self._set_status(f"Error: {exc}")
             return
+        # Write the ``2c4/`` companion so the browser and ndXplorer can join the
+        # per-burst 2CDE column to the burst table (best-effort; plotting still
+        # works if the folder is read-only).
+        try:
+            core.write_2cde_analysis(df, folder, variant=variant)
+        except Exception as exc:  # pragma: no cover - GUI error path
+            logging.getLogger(__name__).warning("Could not write 2c4 companion: %s", exc)
         self._draw(df, column)
 
     def _draw(self, df, column) -> None:

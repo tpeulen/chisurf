@@ -261,7 +261,10 @@ def write_bv4_analysis(df: pd.DataFrame, analysis_folder: str = "analysis", prog
     groups = list(df.groupby("First File"))
     for i, (tttr_file, group) in enumerate(groups, start=1):
         tttr_stem = pathlib.Path(tttr_file).stem
-        bv4_filename = bv4_folder / f"{tttr_stem}_0.bv4"
+        # Name the companion after the .bur stem (``m000.bur`` -> ``m000.bv4``) so
+        # per-stem consumers (ndXplorer, the burst browser) join it to the burst
+        # table. The historic ``_0`` sub-file suffix broke that stem match.
+        bv4_filename = bv4_folder / f"{tttr_stem}.bv4"
 
         mini_df = group[['Proximity Ratio Mean', 'Proximity Ratio Std']].copy()
         n = len(mini_df)

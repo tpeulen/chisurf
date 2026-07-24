@@ -664,3 +664,88 @@ def read_bur_file(bur_path):
     if not bur_path.exists():
         raise FileNotFoundError(bur_path)
     return pd.read_csv(bur_path, sep="\t")
+
+
+#: Per-burst companion files in the ``…4`` family, keyed to each ``.bur`` by stem:
+#: ``bg4``/``br4``/``by4`` (background/red/yellow), ``bv4`` (BVA), ``td4`` (time
+#: differences), ``2c4`` (2CDE). Same set ndXplorer merges.
+BURST_COMPANION_ENDINGS = ["bg4", "br4", "by4", "bv4", "td4", "2c4"]
+
+
+def _companion_base(bur_path: pathlib.Path) -> pathlib.Path:
+    """Return the analysis folder holding the ``…4`` companion subfolders.
+
+    Companions live at ``<analysis>/<ending>/<stem>.<ending>`` beside the burst
+    directory, so for ``<analysis>/bi4_bur/<stem>.bur`` the base is the parent of
+    ``bi4_bur`` (``bur``); for a loose ``.bur`` it is the file's own directory.
+    """
+    parent = bur_path.parent
+    return parent.parent if parent.name.lower() in ("bi4_bur", "bur") else parent
+
+
+def _read_companion_table(path: pathlib.Path) -> pd.DataFrame:
+    """Read one ``…4`` companion file as a plain per-row table.
+
+    ``.bur`` files and their ``…4`` companions share the same Seidel/PARIS
+    ``2n+1`` interleaved layout (a header then alternating zero/value rows), so a
+    companion is read the *same way* as the ``.bur`` (all rows) and aligned to it
+    by position — the zero rows line up. Empty/unnamed trailing columns are
+    dropped and values are coerced to numeric.
+    """
+    frame = pd.read_csv(path, sep="\t")
+    keep = [
+        c for c in frame.columns
+        if str(c).strip() and not str(c).startswith("Unnamed")
+    ]
+    frame = frame[keep]
+    return frame.apply(pd.to_numeric, errors="coerce")
+
+
+def read_bur_with_companions(bur_path, endings=None) -> pd.DataFrame:
+    """Read a ``.bur`` file and column-merge its ``…4`` companions by stem.
+
+    For a burst table ``<analysis>/bi4_bur/<stem>.bur`` this joins any
+    ``<analysis>/<ending>/<stem>.<ending>`` companion (BVA ``bv4``, 2CDE ``2c4``,
+    …) row-for-row, so consumers (the burst browser, headless analysis) see one
+    per-burst table carrying the BVA/2CDE columns without a separate read. The
+    ``.bur`` and its companions share the same ``2n+1`` interleaved layout, so
+    they align by position. Missing or unreadable companions are skipped; new
+    columns only are added (the ``.bur`` values win on name clashes); a companion
+    is joined only when its row count matches the ``.bur``.
+
+    Parameters
+    ----------
+    bur_path : str or Path
+        Path to the ``.bur`` file.
+    endings : list of str, optional
+        Companion endings to look for. Defaults to the known ``…4`` family
+        (:data:`BURST_COMPANION_ENDINGS`) unioned with any sibling directory whose
+        name ends in ``4`` (so future companions merge with no code change).
+    """
+    bur_path = pathlib.Path(bur_path)
+    df = read_bur_file(bur_path)
+    base = _companion_base(bur_path)
+    stem = bur_path.stem
+    if endings is None:
+        endings = list(BURST_COMPANION_ENDINGS)
+        try:
+            for child in base.iterdir():
+                name = child.name.lower()
+                if child.is_dir() and name.endswith("4") and name not in endings:
+                    endings.append(name)
+        except OSError:
+            pass
+    for ending in endings:
+        companion = base / ending / f"{stem}.{ending}"
+        if not companion.exists():
+            continue
+        try:
+            extra = _read_companion_table(companion)
+        except Exception:
+            continue
+        if len(extra) != len(df):
+            continue
+        for col in extra.columns:
+            if col and col not in df.columns:
+                df[col] = extra[col].values
+    return df

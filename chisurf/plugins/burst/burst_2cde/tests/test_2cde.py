@@ -119,7 +119,7 @@ def test_write_sidecars(tmp_path):
         tau=30.0, variant="fret",
     )
     core.write_2cde_analysis(out, str(tmp_path), variant="fret")
-    files = list((tmp_path / "2cde").glob("*.2cde"))
+    files = list((tmp_path / "2c4").glob("*.2c4"))
     assert len(files) == 1
 
 
