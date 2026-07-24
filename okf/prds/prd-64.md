@@ -246,7 +246,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 64):*
+*Landed so far (allow-list 76 → 62):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -258,6 +258,10 @@ screenshot/qtbot verification after each cluster.
   (`plot.line(..., symbol=…)`) as a real call site (lcurve) demanded it.
   Deferred `plots/av_plot.py` — it is 3-D `pyqtgraph.opengl` + dockarea, owned by
   [PRD-57](prd-57.md), not 2-D chiplot.
+- **Batch 3** — migrated the FCS MaxEnt L-curve model widget (`maxent_widget`)
+  and the micro-time `shift_dialog`. Grew the native API with handle
+  `hide()`/`show()` and `Curve.get_data()` as those call sites needed them, and
+  rewired MaxEnt's scene-click onto the `Plot.clicked(x, y)` signal.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

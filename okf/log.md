@@ -2,6 +2,15 @@
 
 ## 2026-07-24
 
+* **PRD-64 — Phase-2 GUI migration batch 3 (allow-list 64 → 62).** Migrated the
+  FCS MaxEnt L-curve model widget (`maxent_widget`) and the micro-time
+  `shift_dialog` onto the chiplot API. Grew the native surface as real call sites
+  demanded: handle `hide()`/`show()` convenience, `Curve.get_data()` read-back,
+  and line markers reused; rewired MaxEnt's raw `scene().sigMouseClicked` onto
+  the `Plot.clicked(x, y)` data-coordinate signal (dropping the manual
+  scene→view mapping). Seam guard + `test/gui/test_chiplot.py` (14 tests) green;
+  ported modules import-smoke clean. Concept: [PRD-64](/prds/prd-64.md).
+
 * **PRD-64 — Phase-2 GUI migration batch 2 (allow-list 69 → 64).** Moved the
   pyqtgraph `autoRangeEnabled` compat shim out of `gui_tweaks.py` into the
   chiplot pyqtgraph backend (applied on backend load, covering GUI/tests/scripts

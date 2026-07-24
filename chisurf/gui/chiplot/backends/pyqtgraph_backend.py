@@ -161,6 +161,14 @@ class _Item:
     def z(self, value: float) -> None:
         self._native.setZValue(float(value))
 
+    def hide(self) -> None:
+        """Hide the item."""
+        self._native.setVisible(False)
+
+    def show(self) -> None:
+        """Show the item."""
+        self._native.setVisible(True)
+
     def remove(self) -> None:
         """Remove the item from its plot."""
         self._pi.removeItem(self._native)
@@ -177,6 +185,10 @@ class _Curve(_Item):
     def set_data(self, x: np.ndarray, y: np.ndarray) -> None:
         """Replace the curve samples."""
         self._native.setData(np.asarray(x), np.asarray(y))
+
+    def get_data(self):
+        """Return the curve's current ``(x, y)`` samples."""
+        return self._native.getData()
 
 
 class _Scatter(_Item):

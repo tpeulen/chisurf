@@ -99,11 +99,26 @@ def test_handle_visibility_and_removal(qapp):
     c.visible = False
     assert c.visible is False
     c.visible = True
+    c.hide()
+    assert c.visible is False
+    c.show()
+    assert c.visible is True
     c.z = 5
     assert c.z == 5
     c.remove()
     plot.add(c)  # re-add round-trips
     plot.clear()
+
+
+def test_curve_get_data_roundtrip(qapp):
+    import numpy as np
+
+    plot = cp.Plot()
+    x = np.arange(5, dtype=float)
+    c = plot.line(x, x ** 2)
+    gx, gy = c.get_data()
+    assert list(gx) == list(x)
+    assert list(gy) == list(x ** 2)
 
 
 def test_grid_panels(qapp):

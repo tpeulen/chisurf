@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
@@ -16,6 +15,7 @@ from chisurf.core.models.fcs.maxent import (
     fcs_maxent_rh,
 )
 from chisurf.core.models.model import ModelCurve
+from chisurf.gui import chiplot as cp
 from chisurf.gui import plots
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.models.model_widget import ModelWidget
@@ -511,52 +511,47 @@ class MaxEntFCSLCurvePlot(plots.Plot):
             Additional keyword arguments forwarded to the base class.
         """
         super().__init__(fit=fit, **kwargs)
-        self._plot_widget = pg.PlotWidget()
-        self._plot_widget.setMouseEnabled(x=True, y=True)
-        self._plot_widget.getPlotItem().setMouseEnabled(x=True, y=True)
+        self._plot_widget = cp.Plot()
         self.layout.addWidget(self._plot_widget)
 
-        self._curve = self._plot_widget.plot(
+        self._curve = self._plot_widget.line(
             [],
             [],
-            pen=pg.mkPen("#2f80ed", width=2),
+            pen=cp.to_pen("#2f80ed", width=2),
             symbol="o",
-            symbolSize=8,
-            symbolBrush="#2f80ed",
-            symbolPen="w",
+            symbol_size=8,
+            symbol_brush="#2f80ed",
+            symbol_pen="w",
         )
-        self._selected_point = self._plot_widget.plot(
+        self._selected_point = self._plot_widget.scatter(
             [],
             [],
-            pen=None,
             symbol="o",
-            symbolBrush="r",
-            symbolPen="r",
-            symbolSize=16,
+            brush="r",
+            pen="r",
+            size=16,
         )
         try:
-            self._selected_point.setExportHint(False)
+            self._selected_point.native.setExportHint(False)
         except Exception:
             pass
-        self._corner_point = self._plot_widget.plot(
+        self._corner_point = self._plot_widget.scatter(
             [],
             [],
-            pen=None,
             symbol="x",
-            symbolBrush="#ffd166",
-            symbolPen="#ffd166",
-            symbolSize=14,
+            brush="#ffd166",
+            pen="#ffd166",
+            size=14,
         )
         try:
-            self._corner_point.setExportHint(False)
+            self._corner_point.native.setExportHint(False)
         except Exception:
             pass
         self._selected_point.hide()
         self._corner_point.hide()
 
-        self._plot_widget.setLabel("bottom", "Chi2r")
-        self._plot_widget.setLabel("left", "|p|")
-        self._plot_widget.showGrid(x=True, y=True, alpha=0.3)
+        self._plot_widget.set_labels(bottom="Chi2r", left="|p|")
+        self._plot_widget.grid(x=True, y=True, alpha=0.3)
         self._logx = False
         self._logy = False
         self._last_indices = np.array([], dtype=int)
@@ -565,13 +560,12 @@ class MaxEntFCSLCurvePlot(plots.Plot):
         self.plot_controller = MaxEntFCSLCurveController(self)
 
         try:
-            self._curve.sigPointsClicked.connect(self._on_points_clicked)
+            self._curve.native.sigPointsClicked.connect(self._on_points_clicked)
         except Exception:
             pass
-        try:
-            self._plot_widget.scene().sigMouseClicked.connect(self._on_scene_clicked)
-        except Exception:
-            pass
+        # chiplot emits data-coordinate (x, y) for left clicks; no manual
+        # scene->view mapping needed.
+        self._plot_widget.clicked.connect(self._on_plot_clicked)
 
     def update(self, *args, **kwargs) -> None:
         """Refresh the L-curve plot from cached model data."""
@@ -589,9 +583,9 @@ class MaxEntFCSLCurvePlot(plots.Plot):
         """
         self._logx = bool(logx)
         self._logy = bool(logy)
-        self._plot_widget.setLogMode(x=self._logx, y=self._logy)
+        self._plot_widget.set_log(x=self._logx, y=self._logy)
         try:
-            x_data, y_data = self._curve.getData()
+            x_data, y_data = self._curve.get_data()
         except Exception:
             x_data, y_data = None, None
         if x_data is None or y_data is None:
@@ -605,7 +599,7 @@ class MaxEntFCSLCurvePlot(plots.Plot):
             x_arr = np.clip(x_arr, eps, np.inf)
         if self._logy:
             y_arr = np.clip(y_arr, eps, np.inf)
-        self._curve.setData(x_arr, y_arr)
+        self._curve.set_data(x_arr, y_arr)
 
     def _lcurve_arrays(self) -> tuple[np.ndarray, np.ndarray]:
         """Return cached L-curve chi-squared and solution-norm arrays."""
@@ -622,9 +616,9 @@ class MaxEntFCSLCurvePlot(plots.Plot):
         """Clear plotted L-curve data and selection markers."""
         self._last_indices = np.array([], dtype=int)
         self._selected_global_index = None
-        self._curve.setData([], [])
-        self._selected_point.setData([], [])
-        self._corner_point.setData([], [])
+        self._curve.set_data([], [])
+        self._selected_point.set_data([], [])
+        self._corner_point.set_data([], [])
         self._selected_point.hide()
         self._corner_point.hide()
 
@@ -649,7 +643,7 @@ class MaxEntFCSLCurvePlot(plots.Plot):
         self._last_indices = np.nonzero(mask)[0]
         chi2_plot = chi2[mask]
         sol_plot = sol[mask]
-        self._curve.setData(chi2_plot, sol_plot)
+        self._curve.set_data(chi2_plot, sol_plot)
         self.set_log_mode(self._logx, self._logy)
         self._plot_widget.enableAutoRange()
 
@@ -728,7 +722,7 @@ class MaxEntFCSLCurvePlot(plots.Plot):
         if local_idx >= chi2.size or local_idx >= sol.size:
             self._selected_point.hide()
             return
-        self._selected_point.setData(
+        self._selected_point.set_data(
             [float(chi2[local_idx])],
             [float(sol[local_idx])],
         )
@@ -753,7 +747,7 @@ class MaxEntFCSLCurvePlot(plots.Plot):
         if local_idx >= chi2.size or local_idx >= sol.size:
             self._corner_point.hide()
             return
-        self._corner_point.setData(
+        self._corner_point.set_data(
             [float(chi2[local_idx])],
             [float(sol[local_idx])],
         )
@@ -807,13 +801,10 @@ class MaxEntFCSLCurvePlot(plots.Plot):
         except Exception:
             return
 
-    def _on_scene_clicked(self, event):
-        """Qt slot: handle click anywhere in the L-curve plot."""
+    def _on_plot_clicked(self, x: float, y: float):
+        """Qt slot: handle a left click anywhere in the L-curve plot."""
         try:
-            if event.button() != QtCore.Qt.LeftButton:
-                return
-            view_pos = self._plot_widget.getViewBox().mapSceneToView(event.scenePos())
-            idx = self._nearest_global_index(float(view_pos.x()), float(view_pos.y()))
+            idx = self._nearest_global_index(float(x), float(y))
             if idx is not None:
                 self._select_global_index(idx)
         except Exception:

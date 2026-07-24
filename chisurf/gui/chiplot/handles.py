@@ -61,6 +61,14 @@ class Handle(Protocol):
     @z.setter
     def z(self, value: float) -> None: ...
 
+    def hide(self) -> None:
+        """Hide the element (convenience for ``visible = False``)."""
+        ...
+
+    def show(self) -> None:
+        """Show the element (convenience for ``visible = True``)."""
+        ...
+
     def remove(self) -> None:
         """Remove the element from its plot."""
         ...
@@ -82,6 +90,15 @@ class Curve(Handle, Protocol):
         ----------
         x, y : numpy.ndarray
             New coordinates.
+        """
+        ...
+
+    def get_data(self) -> tuple[np.ndarray, np.ndarray]:
+        """Return the curve's current ``(x, y)`` samples.
+
+        Returns
+        -------
+        tuple of numpy.ndarray
         """
         ...
 

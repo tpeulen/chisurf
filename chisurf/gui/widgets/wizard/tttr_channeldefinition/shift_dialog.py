@@ -11,13 +11,9 @@ preview needs no re-read.
 from __future__ import annotations
 
 import numpy as np
-
-try:
-    import pyqtgraph as pg
-except Exception:  # pragma: no cover - environment without pyqtgraph
-    pg = None
-
 from qtpy import QtWidgets
+
+from chisurf.gui import chiplot as cp
 
 
 class MicrotimeShiftDialog(QtWidgets.QDialog):
@@ -46,12 +42,17 @@ class MicrotimeShiftDialog(QtWidgets.QDialog):
 
         self._load(path, routine, channel_luts, apply_lut)
 
-        if pg is not None:
-            self._plot = pg.PlotWidget()
-            self._plot.setLabel("bottom", "Micro-time bin (corrected)" if apply_lut else "Micro-time bin")
-            self._plot.setLabel("left", "Counts")
-            self._plot.addLegend()
+        self._plot = None
+        try:
+            self._plot = cp.Plot()
+            self._plot.set_labels(
+                bottom="Micro-time bin (corrected)" if apply_lut else "Micro-time bin",
+                left="Counts",
+            )
+            self._plot.legend()
             layout.addWidget(self._plot, 1)
+        except Exception:  # pragma: no cover - environment without a plot backend
+            self._plot = None
 
         # per-channel shift spinboxes
         controls = QtWidgets.QWidget()
@@ -97,14 +98,14 @@ class MicrotimeShiftDialog(QtWidgets.QDialog):
         self._redraw()
 
     def _redraw(self):
-        if pg is None or not self._hists:
+        if self._plot is None or not self._hists:
             return
         self._plot.clear()
         x = np.arange(self._n_mt)
         for i, ch in enumerate(sorted(self._hists)):
             shift = int(self._shifts.get(ch, 0)) % max(self._n_mt, 1)
             y = np.roll(self._hists[ch], shift)  # wrapping shift == np.roll on the histogram
-            self._plot.plot(x, y, pen=pg.intColor(i, len(self._hists)), name=f"ch {ch}")
+            self._plot.line(x, y, pen=cp.int_color(i, len(self._hists)), name=f"ch {ch}")
 
     def shifts(self) -> dict[int, int]:
         """Return the chosen per-channel shifts (non-zero entries)."""
