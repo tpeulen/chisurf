@@ -11,6 +11,7 @@
 * [Modelling / ProteinMC roadmap](modelling-roadmap.md) - Durable modelling/simulation roadmap notes salvaged from a personal worklist.
 * [Two-focus FCS (2fFCS) status and gaps](two-focus-fcs.md) - What ChiSurf's absolute-diffusion two-focus FCS models cover today and what a full Dertinger 2fFCS workflow still needs.
 * [FCS catalogue & FLCS filters: PAM port](fcs-pam-port.md) - The PAM-referenced (A/B-verified) FCS fit-model catalogue expansion and FLCS lifetime-filter fixes, with remaining gaps.
+* [QuickFit3 mining — algorithms & models](quickfit3-mining.md) - Survey of ~80 QuickFit3 plugins for portable algorithms, models, UI patterns; ranked by value/effort against chisurf's coverage. Identifies Tier-1 gaps (TIRF-FCS, SPIM-FCS, imaging-FCS correlation, global optimization) and reference implementations.
 * [Spectral crosstalk / linear-mixing core](crosstalk.md) - The shared crosstalk-matrix utility (build/apply/invert) behind the light-path calculator, ratiometric/sensitized-emission FRET, phasor unmixing and DDEM.
 * [smFRET calibration: light-path prior → data-optimized posterior](fret-calibration.md) - Calibration factors as fitting parameters whose prior comes from the light-path calculator and whose posterior comes from optimizing against burst E-S data.
 * [VV/VH stacked-decay format (historically "jordi")](vv-vh-decay-format.md) - Descriptive name, layout, and API for the stacked polarization-resolved decay format; records the historic "jordi" name for discoverability.
