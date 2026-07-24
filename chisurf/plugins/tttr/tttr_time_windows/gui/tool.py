@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf import logging
+from chisurf.core import i18n
+from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.misc_helpers import persist_plugin_state
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
@@ -50,9 +50,7 @@ def _is_supported_path(path: str) -> bool:
     """Return whether a path has a supported TTTR extension (optionally .gz/.bz2)."""
     lower = path.lower()
     return any(
-        lower.endswith(ext)
-        or lower.endswith(ext + ".gz")
-        or lower.endswith(ext + ".bz2")
+        lower.endswith(ext) or lower.endswith(ext + ".gz") or lower.endswith(ext + ".bz2")
         for ext in _supported_exts()
     )
 
@@ -86,7 +84,7 @@ class HelpDialog(QtWidgets.QDialog):
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("About TTTR Time-Window BIDs")
+        self.setWindowTitle(i18n.tr("About TTTR Time-Window BIDs"))
         self.resize(640, 520)
         layout = QtWidgets.QVBoxLayout(self)
 
@@ -106,7 +104,8 @@ class HelpDialog(QtWidgets.QDialog):
             cli_text = f"<p>CLI help unavailable: {exc}</p>"
 
         text.setHtml(
-            """
+            i18n.tr(
+                """
             <h2>TTTR → Time-Window BIDs</h2>
             <p>This tool splits TTTR (Time-Tagged Time-Resolved) photon data
             into fixed-duration <b>time windows</b> and saves the photon-index
@@ -135,6 +134,7 @@ class HelpDialog(QtWidgets.QDialog):
             <hr>
             <h3>CLI Reference</h3>
             """
+            )
             + cli_text
         )
         layout.addWidget(text, 1)
@@ -158,7 +158,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
-        self.setWindowTitle("TTTR Time-Window BIDs")
+        self.setWindowTitle(i18n.tr("TTTR Time-Window BIDs"))
         try:
             self.resize(1000, 700)
         except Exception:
@@ -179,14 +179,13 @@ class TTTRTimeWindowTool(ChisurfDockTool):
 
     def _create_plot_widgets(self) -> None:
         """Create plot widgets early to avoid hot-reload issues."""
-        self.preview_plot: pg.PlotWidget = pg.PlotWidget(self)
-        self.preview_plot.setLabel("bottom", "Time (s)")
-        self.preview_plot.setLabel("left", "Intensity (counts)")
-        self.preview_plot.setTitle("Intensity trace preview")
+        self.preview_plot: cp.Plot = cp.Plot(self)
+        self.preview_plot.set_labels(bottom=i18n.tr("Time (s)"), left=i18n.tr("Intensity (counts)"))
+        self.preview_plot.set_title(i18n.tr("Intensity trace preview"))
 
         self.status_log: QtWidgets.QTextEdit = QtWidgets.QTextEdit(self)
         self.status_log.setReadOnly(True)
-        self.status_log.setPlaceholderText("Processing log will appear here…")
+        self.status_log.setPlaceholderText(i18n.tr("Processing log will appear here…"))
 
     def _build_ui(self) -> None:
         """Build the main layout with dock area."""
@@ -204,13 +203,11 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         """Create dock panels."""
         # ⚙️ Settings dock
         settings_panel = self._build_settings_panel(self.dock_area)
-        self.dock_area.addTab(settings_panel, "⚙️\ufe0f Settings")
+        self.dock_area.addTab(settings_panel, f"⚙️\ufe0f {i18n.tr('Settings')}")
 
         # 📁 Files dock
-        files_splitter = QtWidgets.QSplitter(
-            QtCore.Qt.Orientation.Vertical, self.dock_area
-        )
-        hint = QtWidgets.QLabel("Drop TTTR files here", self.dock_area)
+        files_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical, self.dock_area)
+        hint = QtWidgets.QLabel(i18n.tr("Drop TTTR files here"), self.dock_area)
         hint.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         hint.setStyleSheet("color: gray; font-style: italic;")
         files_splitter.addWidget(hint)
@@ -231,21 +228,19 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         files_splitter.setStretchFactor(0, 0)
         files_splitter.setStretchFactor(1, 1)
 
-        self.dock_area.addTab(files_splitter, f"{Glyphs.FOLDER} Files")
+        self.dock_area.addTab(files_splitter, f"{Glyphs.FOLDER} {i18n.tr('Files')}")
 
         # 👁️ Preview dock
-        preview_splitter = QtWidgets.QSplitter(
-            QtCore.Qt.Orientation.Vertical, self.dock_area
-        )
+        preview_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical, self.dock_area)
         preview_controls = self._build_preview_controls(self.dock_area)
         preview_splitter.addWidget(preview_controls)
         preview_splitter.addWidget(self.preview_plot)
         preview_splitter.setStretchFactor(0, 0)
         preview_splitter.setStretchFactor(1, 1)
-        self.dock_area.addTab(preview_splitter, "👁️\ufe0f Preview")
+        self.dock_area.addTab(preview_splitter, f"👁️\ufe0f {i18n.tr('Preview')}")
 
         # 📋 Summary dock
-        self.dock_area.addTab(self.status_log, f"{Glyphs.COPY} Summary")
+        self.dock_area.addTab(self.status_log, f"{Glyphs.COPY} {i18n.tr('Summary')}")
 
         self.dock_area.setTabsClosable(True)
         self.dock_area.layoutChanged.connect(self._save_dock_layout)
@@ -267,28 +262,32 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         self.tws_spin.setValue(10.0)
         self.tws_spin.setSuffix(" ms")
         self.tws_spin.setToolTip(
-            "Duration of each time window in milliseconds. "
-            "Smaller values create more windows with fewer photons each."
+            i18n.tr(
+                "Duration of each time window in milliseconds. "
+                "Smaller values create more windows with fewer photons each."
+            )
         )
         self.tws_spin.valueChanged.connect(self._on_settings_changed)
-        form.addRow("Time window:", self.tws_spin)
+        form.addRow(i18n.tr("Time window:"), self.tws_spin)
 
         out_layout = QtWidgets.QHBoxLayout()
         self.output_edit = QtWidgets.QLineEdit(panel)
-        self.output_edit.setPlaceholderText("Auto (derived from first file)")
+        self.output_edit.setPlaceholderText(i18n.tr("Auto (derived from first file)"))
         self.output_edit.setToolTip(
-            "Output folder for .bst files. Leave empty to auto-generate "
-            "a folder next to the first input file."
+            i18n.tr(
+                "Output folder for .bst files. Leave empty to auto-generate "
+                "a folder next to the first input file."
+            )
         )
-        self.btn_browse = QtWidgets.QPushButton("Browse…", panel)
-        self.btn_browse.setToolTip("Choose an output folder manually.")
+        self.btn_browse = QtWidgets.QPushButton(i18n.tr("Browse…"), panel)
+        self.btn_browse.setToolTip(i18n.tr("Choose an output folder manually."))
         self.btn_browse.clicked.connect(self._choose_dir)
         out_layout.addWidget(self.output_edit, 1)
         out_layout.addWidget(self.btn_browse)
-        form.addRow("Output folder:", out_layout)
+        form.addRow(i18n.tr("Output folder:"), out_layout)
 
         preview_label = QtWidgets.QLabel(
-            "Select a file to preview its intensity trace.", panel
+            i18n.tr("Select a file to preview its intensity trace."), panel
         )
         preview_label.setWordWrap(True)
         preview_label.setStyleSheet("color: gray; font-style: italic;")
@@ -308,15 +307,17 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         layout = QtWidgets.QHBoxLayout(panel)
         layout.setContentsMargins(4, 4, 4, 4)
 
-        layout.addWidget(QtWidgets.QLabel("Preview file:", panel))
+        layout.addWidget(QtWidgets.QLabel(i18n.tr("Preview file:"), panel))
         self.cmb_file = QtWidgets.QComboBox(panel)
         self.cmb_file.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Fixed,
         )
         self.cmb_file.setToolTip(
-            "Select a loaded TTTR file to preview its intensity trace "
-            "with time-window boundary lines."
+            i18n.tr(
+                "Select a loaded TTTR file to preview its intensity trace "
+                "with time-window boundary lines."
+            )
         )
         self.cmb_file.currentIndexChanged.connect(self._on_select_file)
         layout.addWidget(self.cmb_file, 1)
@@ -335,9 +336,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         toolbar.setContentsMargins(4, 2, 4, 2)
         if toolbar.layout() is not None:
             toolbar.layout().setSpacing(6)
-        toolbar.setToolButtonStyle(
-            QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon
-        )
+        toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         toolbar.setStyleSheet(
             """
             QToolBar#twTimeWindowToolbar {
@@ -383,18 +382,19 @@ class TTTRTimeWindowTool(ChisurfDockTool):
 
         # File add / database selection are provided by the unified file list's
         # own ➕ Files / 📁 Folder / 🗄️ Database buttons (no duplicate toolbar actions).
-        process_action = QtWidgets.QAction(f"{Glyphs.CLOCK} Process", self)
+        process_action = QtWidgets.QAction(f"{Glyphs.CLOCK} {i18n.tr('Process')}", self)
         process_action.setToolTip(
-            "Compute time-window BIDs for all queued TTTR files and "
-            "save .bst output files."
+            i18n.tr(
+                "Compute time-window BIDs for all queued TTTR files and save .bst output files."
+            )
         )
         process_action.triggered.connect(self._process_all)
         toolbar.addAction(process_action)
 
         toolbar.addSeparator()
 
-        clear_action = QtWidgets.QAction("🗑️\ufe0f Clear", self)
-        clear_action.setToolTip("Clear the file list and processing results.")
+        clear_action = QtWidgets.QAction(f"🗑️\ufe0f {i18n.tr('Clear')}", self)
+        clear_action.setToolTip(i18n.tr("Clear the file list and processing results."))
         clear_action.triggered.connect(self._clear_all)
         toolbar.addAction(clear_action)
 
@@ -407,10 +407,8 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         )
         toolbar.addWidget(spacer)
 
-        help_action = QtWidgets.QAction("ℹ️\ufe0f Help", self)
-        help_action.setToolTip(
-            "Show a short help page explaining how this tool works."
-        )
+        help_action = QtWidgets.QAction(f"ℹ️\ufe0f {i18n.tr('Help')}", self)
+        help_action.setToolTip(i18n.tr("Show a short help page explaining how this tool works."))
         help_action.triggered.connect(self._show_help)
         toolbar.addAction(help_action)
 
@@ -418,9 +416,9 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         name_map = {
             f"{Glyphs.OPEN} Add Files": "twToolbarAdd",
             f"{Glyphs.DATABASE} Database": "twToolbarDatabase",
-            f"{Glyphs.CLOCK} Process": "twToolbarProcess",
-            "🗑️\ufe0f Clear": "twToolbarClear",
-            "ℹ️\ufe0f Help": "twToolbarHelp",
+            f"{Glyphs.CLOCK} {i18n.tr('Process')}": "twToolbarProcess",
+            f"🗑️\ufe0f {i18n.tr('Clear')}": "twToolbarClear",
+            f"ℹ️\ufe0f {i18n.tr('Help')}": "twToolbarHelp",
         }
         for widget in toolbar.children():
             if isinstance(widget, QtWidgets.QToolButton):
@@ -438,19 +436,19 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         """Create the status bar."""
         self._status_bar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._status_bar)
-        self._status_bar.showMessage("Ready")
+        self._status_bar.showMessage(i18n.tr("Ready"))
 
     # ── Menu ────────────────────────────────────────────────────────
 
     def _setup_menu(self) -> None:
         """Create menu actions."""
-        file_menu = self.menuBar().addMenu("File")
-        exit_action = QtWidgets.QAction("Exit", self)
+        file_menu = self.menuBar().addMenu(i18n.tr("File"))
+        exit_action = QtWidgets.QAction(i18n.tr("Exit"), self)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
-        help_menu = self.menuBar().addMenu("Help")
-        about_action = QtWidgets.QAction("About", self)
+        help_menu = self.menuBar().addMenu(i18n.tr("Help"))
+        about_action = QtWidgets.QAction(i18n.tr("About"), self)
         about_action.triggered.connect(self._show_help)
         help_menu.addAction(about_action)
 
@@ -460,7 +458,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         """Open a directory chooser dialog."""
         from chisurf.gui.widgets.general import get_directory
 
-        d, _ = get_directory(caption="Select output folder")
+        d, _ = get_directory(caption=i18n.tr("Select output folder"))
         if d is not None:
             self.output_edit.setText(str(d))
 
@@ -496,31 +494,27 @@ class TTTRTimeWindowTool(ChisurfDockTool):
             diag = self._client.load_preview(path, tw_ms)
             if not diag or "counts" not in diag:
                 self.preview_plot.clear()
-                self._status_bar.showMessage("Preview unavailable")
+                self._status_bar.showMessage(i18n.tr("Preview unavailable"))
                 return
 
             counts = diag["counts"]
             time_axis = diag["time_axis"]
 
             self.preview_plot.clear()
-            self.preview_plot.plot(time_axis, counts, pen=pg.mkPen("y", width=1))
+            self.preview_plot.line(time_axis, counts, pen="y", width=1)
 
             tw_s = tw_ms / 1000.0
+            dashed = cp.to_pen("w", width=1, style="dash")
             for t in np.arange(0, time_axis[-1] + tw_s, tw_s):
                 if t == 0:
                     continue
-                line = pg.InfiniteLine(
-                    pos=t,
-                    angle=90,
-                    pen=pg.mkPen("w", width=1, style=QtCore.Qt.PenStyle.DashLine),
-                )
-                self.preview_plot.addItem(line)
+                self.preview_plot.vline(t, pen=dashed)
 
             self._status_bar.showMessage(f"Preview: {path.name}")
         except Exception as exc:
             self.preview_plot.clear()
             self._log(f"Preview failed for {path.name}: {exc}")
-            self._status_bar.showMessage("Preview failed")
+            self._status_bar.showMessage(i18n.tr("Preview failed"))
 
     def _on_settings_changed(self) -> None:
         """Refresh preview when time window changes."""
@@ -530,18 +524,15 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         """Compute time-window BIDs for all queued files."""
         if not self._file_paths:
             self._log("No TTTR files to process. Add files first.")
-            self._status_bar.showMessage("No files to process")
+            self._status_bar.showMessage(i18n.tr("No files to process"))
             return
 
         tw_ms = float(self.tws_spin.value())
         out_dir_txt = self.output_edit.text().strip()
         output_dir: Path | None = Path(out_dir_txt) if out_dir_txt else None
 
-        self._status_bar.showMessage("Processing files…")
-        self._log(
-            f"Processing {len(self._file_paths)} file(s) with "
-            f"time window = {tw_ms:.3f} ms…"
-        )
+        self._status_bar.showMessage(i18n.tr("Processing files…"))
+        self._log(f"Processing {len(self._file_paths)} file(s) with time window = {tw_ms:.3f} ms…")
 
         try:
             result = self._client.analyze_files(
@@ -569,12 +560,11 @@ class TTTRTimeWindowTool(ChisurfDockTool):
                 self._log(f"  {Path(fp).name}: {cnt} windows")
 
             self._status_bar.showMessage(
-                f"Processed {len(self._file_paths)} file(s), "
-                f"{total_windows} windows"
+                f"Processed {len(self._file_paths)} file(s), {total_windows} windows"
             )
         except Exception as exc:
             self._log(f"Processing failed: {exc}")
-            self._status_bar.showMessage("Processing failed")
+            self._status_bar.showMessage(i18n.tr("Processing failed"))
 
     def _clear_all(self) -> None:
         """Clear the file list and results."""
@@ -582,7 +572,7 @@ class TTTRTimeWindowTool(ChisurfDockTool):
         self._last_result = None
         self.preview_plot.clear()
         self.status_log.clear()
-        self._status_bar.showMessage("Cleared")
+        self._status_bar.showMessage(i18n.tr("Cleared"))
 
     def _show_help(self) -> None:
         """Show the help dialog."""

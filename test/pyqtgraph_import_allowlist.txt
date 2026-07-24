@@ -52,5 +52,4 @@ chisurf/plugins/tttr/tttr_correlate/gui.py
 chisurf/plugins/tttr/tttr_histogram/gui.py
 chisurf/plugins/tttr/tttr_lut_tools/gui/sections.py
 chisurf/plugins/tttr/tttr_lut_tools/gui/settings_panel.py
-chisurf/plugins/tttr/tttr_time_windows/gui/tool.py
 chisurf/plugins/vv_vh_anisotropy/__init__.py
