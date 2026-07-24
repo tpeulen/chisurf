@@ -111,7 +111,7 @@ class _RunSection(QtWidgets.QWidget):
     def _compute(self) -> None:
         reason = self._model.can_compute()
         if reason is not None:
-            QtWidgets.QMessageBox.warning(self, "Cannot compute", reason)
+            logging.getLogger(__name__).warning("Cannot compute: %s", reason)
             return
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         try:
@@ -126,9 +126,7 @@ class _RunSection(QtWidgets.QWidget):
 
     def _send_to_mle(self) -> None:
         if not self._model.has_results():
-            QtWidgets.QMessageBox.warning(
-                self, "No results", "Compute the IRF and background first."
-            )
+            logging.getLogger(__name__).warning("Compute the IRF and background first.")
             return
         # Walk up the parent chain to a host that accepts the patterns (the
         # burst-analysis workflow shell); fall back to an informative message.

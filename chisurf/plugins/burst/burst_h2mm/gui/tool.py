@@ -729,7 +729,7 @@ class H2mmTool(QMainWindow):
 
     def _run_analysis(self):
         if not self.data_folder:
-            QMessageBox.warning(self, "No data", "Please select a folder of .bur files first.")
+            self._status("Please select a folder of .bur files first.")
             return
         settings = self._gather_settings()
 
@@ -841,7 +841,7 @@ class H2mmTool(QMainWindow):
     def _run_uncertainty(self):
         """Bootstrap the selected model over bursts and overlay E/S error bars."""
         if self._bundle is None or self._result is None:
-            QMessageBox.information(self, "H2MM", "Run a fit before estimating uncertainty.")
+            self._status("Run a fit before estimating uncertainty.")
             return
         from ..core.analysis import bootstrap_uncertainty
 
@@ -919,7 +919,7 @@ class H2mmTool(QMainWindow):
     def _run_llscan(self):
         """Profile the log-likelihood per state and show the scans in a dialog."""
         if self._bundle is None or self._result is None:
-            QMessageBox.information(self, "H2MM", "Run a fit before the likelihood scan.")
+            self._status("Run a fit before the likelihood scan.")
             return
         from ..core.analysis import profile_likelihood
 

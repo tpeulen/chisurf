@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging as _logging
 import html
 import json
 from dataclasses import asdict
@@ -329,7 +330,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
                 if child.is_file() and child.suffix.lower() in self.allowed_extensions:
                     files.append(str(child.resolve()))
         except OSError as exc:
-            QtWidgets.QMessageBox.warning(self, "Folder scan failed", f"{folder}\n{exc}")
+            _logging.getLogger(__name__).warning(f"{folder}\n{exc}")
         return files
 
     def _add_folder_unique(self, folder: Path) -> None:

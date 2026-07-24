@@ -1,6 +1,7 @@
 
 # Plugin brand icon (unified emoji set)
 icon = "📇"
+import logging as _logging
 from pathlib import Path
 
 import numpy as np
@@ -267,12 +268,12 @@ class BurstBrowserWidget(QtWidgets.QWidget):
     def load_folder(self, folder: Path) -> None:
         folder = Path(folder)
         if not folder.exists() or not folder.is_dir():
-            QtWidgets.QMessageBox.warning(self, "Folder not found", f"Folder does not exist:\n{folder}")
+            _logging.getLogger(__name__).warning(f"Folder does not exist:\n{folder}")
             return
 
         bur_files = sorted(folder.glob("**/*.bur"))
         if not bur_files:
-            QtWidgets.QMessageBox.information(self, "No files", f"No .bur files found in:\n{folder}")
+            _logging.getLogger(__name__).info(f"No .bur files found in:\n{folder}")
             return
 
         dfs: list[pd.DataFrame] = []
@@ -287,7 +288,7 @@ class BurstBrowserWidget(QtWidgets.QWidget):
                 logging.warning(f"BurstBrowser: failed to read {fn}: {exc}")
 
         if not dfs:
-            QtWidgets.QMessageBox.information(self, "No data", "No .bur files could be read.")
+            _logging.getLogger(__name__).info("No .bur files could be read.")
             return
 
         df = pd.concat(dfs, ignore_index=True)

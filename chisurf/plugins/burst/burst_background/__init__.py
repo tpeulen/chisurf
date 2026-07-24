@@ -17,6 +17,7 @@ name = "Spectroscopy:Single-Molecule:Burst Background Estimation"
 # Expose the plugin CLI through chisurf.core.cli
 cli_entrypoint = "burst-background=chisurf.plugins.burst.burst_background.cli:cli"
 
+import logging as _logging
 import os
 import sys
 from typing import Dict
@@ -313,7 +314,7 @@ class BurstBackgroundEstimator(QWidget):
     # ------------------------------------------------------------------
     def _estimate_background(self) -> None:
         if not self.tttr_files:
-            QMessageBox.warning(self, "No Files", "Please load TTTR files first.")
+            _logging.getLogger(__name__).warning("Please load TTTR files first.")
             return
 
         settings = self.detector_wizard_page.get_settings()
