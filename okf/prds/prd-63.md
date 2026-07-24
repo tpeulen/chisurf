@@ -63,9 +63,14 @@ Implementation and architecture live in
       `gui/i18n.py:apply_language()`; incidentally revived the theme combo by
       fixing `SettingsItemDelegate._get_setting_path` for value-column indices.
       Guarded by `test/gui/test_language_selector.py`.
+- [x] **German catalogue ~90% complete** — 2218/2456 messages finished
+      (UI chrome, view.json/manifest display-names + tooltips, and the long
+      markdown help panels); the ~238 remaining are non-translatable by design
+      (Qt signal/slot names, shortcuts, math symbols, identifiers, URLs) and fall
+      back to source. Filled non-destructively; `de.qm` recompiled.
 - [ ] Follow-ups: imperative `setText`/`QMessageBox` wrapping (phased), menu-path
       `display_name`/`categories` localization at the nav seam, `.ui` terminology
-      convergence, and broadening the seeded catalogues beyond German.
+      convergence, and adding a **second** locale beyond German.
 
 # Non-goals (this pass)
 
