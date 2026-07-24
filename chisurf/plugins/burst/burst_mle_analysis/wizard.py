@@ -2565,7 +2565,41 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 except (AttributeError, ValueError) as e:
                     cs.logging.info(f"Could not extract repetition rate from header: {e}")
 
+            # Populate the plots on first data load — run "Auto" by default so the
+            # panel isn't blank. Deferred so channel/IRF setup finishes first, and
+            # guarded so it runs once (not on every re-show / detector switch).
+            if not getattr(self, "_auto_populated", False):
+                self._auto_populated = True
+                QtCore.QTimer.singleShot(0, self._auto_populate_plots)
+
         self._update_max_bins_from_tttr()
+
+    def _auto_populate_plots(self):
+        """Fill the decay/fit plots automatically after the first burst load.
+
+        With an IRF already present (loaded, or sent from IRF & Background), just
+        (re)build the decay and fit; otherwise run the full one-click ``Auto``
+        (auto-binning + window + IRF extraction + fit). Either way the panel shows
+        data + model instead of empty axes. Best-effort — a failure just leaves
+        the plots blank, exactly as before.
+        """
+        try:
+            import numpy as _np
+
+            if self.df_bursts is None or not len(self.df_bursts):
+                return
+            if self._current_tttr() is None:
+                return
+            det = self.current_detector
+            has_irf = det and _np.asarray(self.irf_np.get(det, [])).size > 0
+            if has_irf:
+                self.update_decay_of_detector()
+                self._fit = None
+                self.update_fit()
+            else:
+                self.auto_optimize()  # extracts an IRF + fits (foolproof path)
+        except Exception as exc:  # noqa: BLE001
+            cs.logging.info(f"MLE auto-populate skipped: {exc}")
 
     def _save_min_photons_for_current_detector(self, val: int):
         """Persist min_photons in channel_settings for the current detector."""
