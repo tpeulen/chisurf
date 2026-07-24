@@ -1,5 +1,10 @@
 # Photon-by-photon HMM (H2MM)
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-h2mm` for the photon-by-photon hidden Markov model.
+:::
+
 The `burst_h2mm` plugin fits a **Hidden Markov Model directly to photon arrival
 times and colours** within single-molecule FRET bursts, resolving sub-burst
 FRET-state dynamics on the microsecond scale — down to time-scales far below the

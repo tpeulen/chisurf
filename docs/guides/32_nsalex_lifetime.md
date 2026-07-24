@@ -1,5 +1,10 @@
 # ns-ALEX / PIE: FRET, stoichiometry and lifetime together
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-tcspc-lifetime` for the fluorescence-lifetime model fitted to the burst nanotimes.
+:::
+
 ## What it does
 
 With **pulsed** interleaved excitation (PIE / ns-ALEX) each photon carries a

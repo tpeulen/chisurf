@@ -1,5 +1,10 @@
 # H2MM: complete workflow and results
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-h2mm` for the photon-by-photon hidden Markov model behind these results.
+:::
+
 Building on [tutorial 19](19_h2mm_hidden_markov.md), this walks the full
 photon-by-photon hidden-Markov workflow the way a dedicated H2MM analysis is
 structured: **optimise** models for a range of state counts, **select** by

@@ -1,5 +1,10 @@
 # Multispot (8-spot) smFRET
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-smfret-bursts` for the per-channel burst E/S analysis replicated across spots.
+:::
+
 ## What it does
 
 Multispot excitation splits the beam into several confocal spots imaged onto a

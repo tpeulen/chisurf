@@ -1,5 +1,10 @@
 # RCM from FRET-labelled samples (PIE/ALEX)
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-smfret-bursts` for the E/S corrections and the calibration factors.
+:::
+
 ## What it does
 
 The [dye-solution RCM calibration](07_rcm_calibration.md) needs separate

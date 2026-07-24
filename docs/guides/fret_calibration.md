@@ -1,5 +1,10 @@
 # Accurate FRET: calibration
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-fret` for the Förster mechanism and the R0 / efficiency relations calibration rests on.
+:::
+
 Turning raw single-molecule photon counts into an **accurate** FRET efficiency
 requires a handful of instrument/photophysics **calibration factors**. ChiSurf
 models these as ordinary [fitting parameters](../reference/user_models.md) with a Bayesian

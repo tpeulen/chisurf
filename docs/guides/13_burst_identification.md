@@ -1,5 +1,10 @@
 # Photon burst identification and the burst list
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-smfret-bursts` for burst search and the per-burst observables.
+:::
+
 ## What it does
 
 In a confocal single-molecule experiment the focus is mostly empty; a molecule

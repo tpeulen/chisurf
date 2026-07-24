@@ -1,5 +1,10 @@
 # Working with timestamps and bursts (the data model)
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-smfret-bursts` for burst search over the photon timestamps.
+:::
+
 ## What it does
 
 Every burst analysis rests on three per-photon arrays and one per-burst

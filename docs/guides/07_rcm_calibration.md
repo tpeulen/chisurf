@@ -1,5 +1,10 @@
 # RCM detection calibration from dye solutions
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-smfret-bursts` for the FRET-efficiency corrections that calibration determines.
+:::
+
 ## What it does
 
 Quantitative multi-parameter fluorescence needs the **detection/routing

@@ -1,5 +1,10 @@
 # IRF Estimation - ChiSurf Integration
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-tcspc-lifetime` for the IRF and the reconvolution model it feeds.
+:::
+
 ## Overview
 
 The **IRF Estimation** module provides blind instrument response function (IRF) inference from fluorescence decay data without requiring separate IRF measurements. This implementation uses truncated exponential fitting and Richardson-Lucy deconvolution, reimplemented using numpy/scipy to avoid external dependencies like PyTorch.

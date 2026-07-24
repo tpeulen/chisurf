@@ -1,5 +1,10 @@
 # FRET-FCS
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-fcs-correlation` for the correlation function and FRET-FCCS kinetics.
+:::
+
 ## What it does
 
 Correlating the donor and acceptor signals of freely-diffusing FRET molecules

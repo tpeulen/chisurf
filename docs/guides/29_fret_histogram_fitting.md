@@ -1,5 +1,10 @@
 # FRET-efficiency histogram fitting
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-smfret-bursts` for the accurate FRET efficiency E the histogram is built from.
+:::
+
 ## What it does
 
 The proximity-ratio / FRET-efficiency histogram of a burst set is a sum of

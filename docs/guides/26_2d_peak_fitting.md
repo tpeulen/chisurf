@@ -1,5 +1,10 @@
 # 2-D peak fitting
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-smfret-bursts` for the E–S map the 2-D peaks are fitted on.
+:::
+
 ## What it does
 
 Multi-parameter histograms — most often the [E–S plot](14_multiparameter_es.md),

@@ -1,5 +1,10 @@
 # ns-FCS second-order correlation
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-fcs-correlation` for the correlation function and the photon-antibunching / ns-FCS regime.
+:::
+
 ## What it does
 
 The ordinary (pair) correlation function $g^{(2)}(\tau)$ measures two-photon

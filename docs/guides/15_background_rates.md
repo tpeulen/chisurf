@@ -1,5 +1,10 @@
 # Background rates
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-smfret-bursts` for the role of background in the E/S corrections.
+:::
+
 ## What it does
 
 Every single-molecule measurement has a background — detector dark counts, buffer

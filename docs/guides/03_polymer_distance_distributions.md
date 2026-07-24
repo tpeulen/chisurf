@@ -1,5 +1,10 @@
 # Polymer inter-dye distance distributions
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-accessible-volume` for the inter-dye distance distributions these polymer models describe (and how AV distances relate).
+:::
+
 ## What it does
 
 FRET between two dyes on a flexible chain reports on the **distribution** of

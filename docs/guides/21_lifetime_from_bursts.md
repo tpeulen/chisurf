@@ -1,5 +1,10 @@
 # Fluorescence lifetime from photon bursts
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-tcspc-lifetime` for the multi-exponential decay model and Poisson-MLE lifetime fitting.
+:::
+
 ## What it does
 
 Beyond photon *counts*, each burst carries the donor and acceptor **micro-times**

@@ -1,5 +1,10 @@
 # Enderlein MDF & two-focus FCS
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-fcs-correlation` for the FCS correlation function, the confocal volume, and the two-focus absolute-distance ruler.
+:::
+
 ## What it does
 
 The ordinary FCS models approximate the confocal detection volume by a 3-D
