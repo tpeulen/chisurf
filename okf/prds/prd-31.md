@@ -3,7 +3,7 @@ type: PRD
 prd: "31"
 title: "PRD-31: Headless CLI for the Companion Photon-Data Exploration Tool"
 description: Adds a windowless CLI to the companion exploration tool for parameter-based burst filtering and imaging, integrated with MMFDB.
-status: planned
+status: done
 phase: "2"
 resource: chisurf/plugins/ndxplorer
 tags: [prd, imaging, mmfdb]
@@ -14,7 +14,18 @@ timestamp: '2026-07-05T00:00:00Z'
 Gives the companion photon-data exploration tool a headless CLI for its two core jobs, both previously GUI-only: burst filtering (select a subset of bursts by parameter ranges/gates and emit a filtered burst selection) and imaging (render intensity or per-pixel parameter maps from image-axis/CLSM data, apply gates/ROIs, and export images or a masked sub-selection). Both run with no window, print JSON to stdout, and complete the MMFDB round trip. Pure primitives live in the chisurf-free external module; MMFDB resolution and write-back live in the ChiSurf-side wrapper. Filtered/masked outputs stay a reference beside the same TTTR so photon-index linkage is preserved.
 
 # Status
-Planned overall, though implementation of the headless CLI landed 2026-06-27: the two primitives and both wrappers exist; the `image` MMFDB round trip is implemented but not yet covered by a ChiSurf-side test. A separate, completed (2026-06-24) GUI-migration variant carrying the same number is folded below as "# Companion: pyqtgraph migration".
+Done. The headless CLI landed 2026-06-27 and all Definition-of-Done items are now
+met: the two chisurf-free primitives (`ndxplorer filter|image`) and both
+chisurf-side MMFDB wrappers (`csc ndxplorer filter|image`) exist and are tested,
+including the `image` MMFDB round trip (previously the one open item). Verified
+2026-07-24: `modules/ndxplorer/ndxplorer/tests/test_cli.py` (5 passed) +
+`test/fio/test_ndxplorer_cli.py` (5 passed, hermetic `temp_mmfdb`);
+`grep chisurf modules/ndxplorer/ndxplorer/cli.py` is empty (the only chisurf
+imports in the submodule are optional `try/except`-guarded GUI reuses under
+`ui/`, off the CLI/core path); recipe doc at
+`docs/reference/ndxplorer_headless_cli.md`. A separate, completed (2026-06-24)
+GUI-migration variant carrying the same number is folded below as
+"# Companion: pyqtgraph migration".
 
 ## Implementation state (headless CLI, 2026-06-27)
 
@@ -234,9 +245,13 @@ through `mmfdb.datasets.open`, so `raw+sample → BS → filter` and
       --out <dir>` writes a filtered burst selection headlessly (no window).
 - [x] `ndxplorer image --file <clsm.ptu> --map lifetime --out map.tiff` renders
       and exports a parameter map headlessly; `--roi`/`--select` masks it.
-- [~] `csc ndxplorer filter|image --from-mmfdb <id> --to-mmfdb --sample-id <id>`
+- [x] `csc ndxplorer filter|image --from-mmfdb <id> --to-mmfdb --sample-id <id>`
       completes the MMFDB round trip; outputs resolve via `mmfdb.datasets.open`.
-      **filter tested; image wrapper implemented but not yet tested.**
+      Both modes tested under the hermetic `temp_mmfdb` fixture (no live server):
+      filter (`test/fio/test_ndxplorer_cli.py::test_csc_ndxplorer_filter`) and
+      image, including atomic dual-output registration + rollback
+      (`test_image_workflow_uses_explicit_db_and_registers_outputs_atomically`,
+      `test_image_output_registration_rolls_back_both_outputs_on_second_failure`).
 - [x] `modules/ndxplorer` has no chisurf imports; MMFDB logic is chisurf-side only.
 - [x] Burst/masked outputs reference the same TTTR (photon-index linkage intact).
 - [x] Tests + the recipes pass.

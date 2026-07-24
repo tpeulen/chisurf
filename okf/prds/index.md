@@ -36,7 +36,7 @@ Status: ✅ done · 🚧 in-progress · ✏️ draft · 🌱 stub · 📋 planne
 * 🚧 [PRD-26: Model-Driven Data Layer](prd-26.md) — Adds dictionary-derived DAO, validation, docs, and admin registry pieces; hand-maintained CRUD/SQL remains.
 * 🚧 [PRD-28: Companion-Tool ↔ MMFDB Burst-Selection Round Trip](prd-28.md) — Implements open-from-MMFDB and CLI handoff; the direct "send current Burst Selection result" GUI path remains open.
 * 📋 [PRD-29: Visual Burst Programming — Node-Graph Editor for Burst Analysis](prd-29.md) — Turns the existing node editor into a visual programming canvas for composing, running, previewing, and provenance-recording burst-analysis pipelines.
-* 📋 [PRD-31: Headless CLI for the Companion Photon-Data Exploration Tool](prd-31.md) — Adds a windowless CLI to the companion exploration tool for parameter-based burst filtering and imaging, integrated with MMFDB.
+* ✅ [PRD-31: Headless CLI for the Companion Photon-Data Exploration Tool](prd-31.md) — Adds a windowless CLI to the companion exploration tool for parameter-based burst filtering and imaging, integrated with MMFDB.
 
 # Phase 3 — Provenance + LIMS
 
