@@ -2,6 +2,28 @@
 
 ## 2026-07-24
 
+* **Parameter error estimates were wrong by √2, and absent entirely for large
+  parameters.** Auditing the error-analysis code next to the MCMC fixes found three
+  defects in `chisurf/core/fitting/fit.py`. (1) `covariance_matrix` inverted
+  `0.5 * JᵀJ` instead of `JᵀJ`, so **every** covariance-derived
+  `error_estimate` in ChiSurf was inflated by exactly √2 ≈ 1.414 — the ½ in the
+  textbook definition relates the curvature matrix to the χ² Hessian and was being
+  applied a second time. (2) `approx_grad` used an *absolute* finite-difference
+  step (`1e-12`; `Fit.grad` passed the machine epsilon, `2.2e-16`), which for a
+  parameter of magnitude ≳10⁴ is lost to rounding: the perturbed model came back
+  bit-identical, the partial derivative evaluated to exactly zero, and the parameter
+  was **silently dropped** from the covariance with no error estimate at all — at
+  magnitude 10⁶ *every* parameter was dropped, and `Fit.grad` was identically zero
+  for any parameter ≥ 1. Count amplitudes of 10⁴–10⁷ are routine in TCSPC, so this
+  was hit constantly. Now a relative step, `epsilon · max(|p|, 1)` with
+  `√(machine ε)` as default, rounded to an exactly representable difference.
+  (3) The failure path built `np.zeros_like((n, n))` — a length-2 vector from the
+  shape tuple, not an n×n matrix. Errors now reproduce the analytic least-squares
+  covariance `σ²(XᵀX)⁻¹` **exactly** (rtol 1e-6) at every parameter magnitude from
+  1 to 10⁹, and agree with the sampled posterior
+  (`test/fitting/test_covariance_errors.py`, 9 tests). Concept:
+  [fitting](/subsystems/fitting.md).
+
 * **ndXplorer dialog crashes fixed after full feature test (submodule commit
   `64d2f61`).** Testing every user-facing feature headlessly against real
   `bh_spc132_sm_dna` burst data surfaced that the icon-glyph rollout imported a

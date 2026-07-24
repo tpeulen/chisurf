@@ -440,12 +440,14 @@ class Fit(cs.core.base.Base):
     def grad(self) -> np.array:
         """Approximate gradient of the residuals at current parameters.
 
-        The gradient is computed numerically via :func:`approx_grad`.
+        The gradient is computed numerically via :func:`approx_grad`, which
+        picks a step that scales with each parameter. Passing the machine
+        epsilon here, as this used to, made every step a no-op and the whole
+        gradient zero.
         """
         _, grad = approx_grad(
             self.model.parameter_values,
-            self,
-            cs.core.settings.eps
+            self
         )
         return grad
 
@@ -1947,10 +1949,17 @@ def sample_fit(
 
 
 #@nb.jit#(nopython=True)
+#: Relative finite-difference step for :func:`approx_grad`. The square root of
+#: the machine epsilon is the standard optimum for a forward difference: it
+#: balances the truncation error (linear in the step) against the cancellation
+#: error (inversely proportional to it).
+FINITE_DIFFERENCE_STEP = float(np.sqrt(np.finfo(float).eps))
+
+
 def approx_grad(
         xk: np.array,
         fit: cs.core.fitting.fit.Fit,
-        epsilon: float,
+        epsilon: float = None,
         args=(),
         f0=None
 ) -> typing.Tuple[float, np.array]:
@@ -1962,8 +1971,10 @@ def approx_grad(
         Parameter values around which the gradient is estimated.
     fit : Fit
         Fit providing :meth:`Fit.get_wres` and a model.
-    epsilon : float
-        Differential step size for the finite-difference approximation.
+    epsilon : float, optional
+        **Relative** finite-difference step. The step taken for parameter ``k``
+        is ``epsilon * max(|xk[k]|, 1)``. Defaults to
+        :data:`FINITE_DIFFERENCE_STEP`.
     args : tuple, optional
         Additional positional arguments forwarded to ``fit.get_wres``.
     f0 : array_like, optional
@@ -1974,9 +1985,20 @@ def approx_grad(
     (numpy.ndarray, numpy.ndarray)
         Tuple ``(f0, grad)`` where ``grad`` has shape
         ``(len(xk), len(f0))``.
+
+    Notes
+    -----
+    The step must scale with the parameter: an absolute step is meaningless
+    across the range of magnitudes fluorescence models use. A fixed step of
+    ``1e-12`` added to an amplitude of order ``1e6`` is lost entirely to
+    rounding, the difference evaluates to exactly zero, and the parameter then
+    looks as though it has no influence on the model at all.
     """
+    if epsilon is None:
+        epsilon = FINITE_DIFFERENCE_STEP
     p0 = fit.model.parameter_values
     f = fit.get_wres
+    xk = np.asarray(xk, dtype=float)
     n_xk = len(xk)
     if f0 is None:
         f0 = f(*((xk,) + args))
@@ -1985,9 +2007,13 @@ def approx_grad(
     ei = np.zeros((n_xk, ), float)
 
     for k in range(n_xk):
+        step = epsilon * max(abs(float(xk[k])), 1.0)
+        # Round the step to an exactly representable difference so that the
+        # divisor below is the step the model actually saw.
+        step = (xk[k] + step) - xk[k]
         ei[k] = 1.0
-        d = epsilon * ei
-        grad[k] = (f(*((xk + d,) + args)) - f0) / d[k]
+        d = step * ei
+        grad[k] = (f(*((xk + d,) + args)) - f0) / step
         ei[k] = 0.0
 
     fit.model.parameter_values = p0
@@ -1996,17 +2022,25 @@ def approx_grad(
 
 def covariance_matrix(
         fit: cs.core.fitting.fit.Fit,
-        epsilon: float = 1e-12, #cs.core.settings.eps,
+        epsilon: float = None,
         **kwargs
 ) -> typing.Tuple[np.array, typing.List[int]]:
     """Estimate the covariance matrix of the fit parameters.
+
+    With ``J = d(weighted residuals)/dp``, the curvature matrix of
+    ``chi2 = sum(wres**2)`` is ``alpha = J'J`` and the parameter covariance is
+    its inverse. (The factor of one half that appears in textbook definitions
+    belongs to ``alpha`` relative to the chi² Hessian, which is ``2*alpha`` --
+    it must not be applied a second time here.)
 
     Parameters
     ----------
     fit : Fit
         The fit whose model and residuals are used.
     epsilon : float, optional
-        Step size for the numerical gradient.
+        Relative step size for the numerical gradient, see :func:`approx_grad`.
+    **kwargs
+        Ignored; accepted so callers may pass through unrelated options.
 
     Returns
     -------
@@ -2036,10 +2070,12 @@ def covariance_matrix(
             da_beta = pdi[i_beta]
             m[i_alpha, i_beta] = ((da_alpha * da_beta)).sum()
     try:
-        cov_m = scipy.linalg.pinvh(0.5 * m)
+        cov_m = scipy.linalg.pinvh(m)
     except (scipy.linalg.LinAlgError, np.linalg.LinAlgError) as e:
         cs.logging.debug(f"Failed to compute covariance matrix: {e}")
-        cov_m = np.zeros_like(
+        # np.zeros_like((n, n)) would build a length-2 vector from the shape
+        # tuple rather than an n x n matrix.
+        cov_m = np.zeros(
             (n_important_parameters, n_important_parameters),
             dtype=float
         )

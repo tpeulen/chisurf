@@ -176,6 +176,18 @@ makes a real component look negligible.
 Per-parameter `error_estimate` records whether it came from `cov` or the
 support plane (`sp`).
 
+With `J = d(weighted residuals)/dp`, the curvature matrix is `α = JᵀJ` and the
+parameter covariance is `α⁻¹` — the factor of ½ in textbook definitions relates
+`α` to the χ² Hessian (`2α`) and must not be applied again when inverting.
+`approx_grad` takes a **relative** finite-difference step
+(`epsilon · max(|p|, 1)`, default `√(machine ε)`): an absolute step cannot work
+across the parameter magnitudes fluorescence models span, since adding it to a
+count amplitude of order 10⁶ is lost to rounding, the difference evaluates to
+exactly zero, and the parameter is then indistinguishable from one that does not
+influence the model at all. Verified against the analytic least-squares
+covariance `σ²(XᵀX)⁻¹`, over parameter magnitudes 1 → 10⁹, and cross-checked
+against the sampled posterior (`test/fitting/test_covariance_errors.py`).
+
 `walk_mcmc` records the state of the chain every `thin` steps *including on
 rejected proposals* — repeating the current state is what makes the samples
 follow the posterior rather than an acceptance-filtered caricature of it — and
