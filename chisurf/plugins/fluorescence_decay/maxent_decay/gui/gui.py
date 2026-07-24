@@ -832,21 +832,21 @@ class MaxentDecayWidget(
         menubar = self.menuBar()
 
         file_menu = menubar.addMenu("File")
-        save_action = QtGui.QAction("Save result", self)
+        save_action = QtWidgets.QAction("Save result", self)
         save_action.triggered.connect(self._on_save_clicked)
         file_menu.addAction(save_action)
         file_menu.addSeparator()
-        exit_action = QtGui.QAction("Exit", self)
+        exit_action = QtWidgets.QAction("Exit", self)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
         settings_menu = menubar.addMenu("Settings")
-        edit_action = QtGui.QAction("Edit JSON settings", self)
+        edit_action = QtWidgets.QAction("Edit JSON settings", self)
         edit_action.triggered.connect(self._on_edit_settings_clicked)
         settings_menu.addAction(edit_action)
 
         help_menu = menubar.addMenu("Help")
-        readme_action = QtGui.QAction("README", self)
+        readme_action = QtWidgets.QAction("README", self)
         readme_action.triggered.connect(self._on_help_clicked)
         help_menu.addAction(readme_action)
 

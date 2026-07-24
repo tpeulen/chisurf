@@ -2,6 +2,12 @@
 
 ## 2026-07-24
 
+* **Bugfix — `maxent_decay` would not launch.** `gui/gui.py` built its menu with
+  `QtGui.QAction` (absent in this Qt binding — `QAction` is `QtWidgets.QAction`
+  here, the repo-wide idiom), raising `AttributeError` on open. Fixed the 4 call
+  sites; the MaxEnt/MEM tool now opens (verified headlessly, 1200×1091). It is a
+  dock+plots tool, so its i18n path is `i18n.tr` wrapping, not an AutoForm port.
+
 * **Plugin UI uniformity + i18n — reference AutoForm port (`fcs_channel_preset`).**
   Audited all 68 user-facing analysis-plugin GUIs headlessly (offscreen
   `QWidget.grab()` via a reusable subprocess-isolated harness): 42 already on
