@@ -2,6 +2,7 @@
 
 ## 2026-07-24
 
+* **OKF science-theory KB complete (batch 4): ebFRET, filtered-FCS/2D-FLCS, photon-stream simulation.** Final three internal KB concepts + clean OKF-free `docs/concepts/` pages, grounded in the real chisurf code: [ebfret-theory](/references/ebfret-theory.md) (variational-Bayes binned-trace HMM, empirical-Bayes shared prior, ELBO state selection, mapped to `burst_ebfret` `vbem.py`/`ebayes.py`; van de Meent 2014); [filtered-fcs-2dflcs-theory](/references/filtered-fcs-2dflcs-theory.md) (micro-time filters F=(DᵀWD)⁻¹DᵀW, species FCS, afterpulse removal, 2D-FLCS MEM inversion, mapped to `filtered.py` + `flc_2d/mem_2d.py`; Böhmer 2002, Ishii/Tahara 2013) — complements [fcs-pam-port](/references/fcs-pam-port.md); [photophysics-simulation-theory](/references/photophysics-simulation-theory.md) (Brownian→PSF→Poisson→FRET→TTTR, mapped to `tttrlib.SimEngine` config keys + `fcs_lfcs_sim`; Wohland 2001, Ingargiola/PyBroMo). Docs guides 17/18/20/31 gained `{ref}` theory cross-refs; the concepts index is now a curated pedagogical ordering (fundamentals → correlation → smFRET bursts → HMM dynamics → structure/imaging → simulation). **The science-theory layer is complete at 16 concepts.**
 * **Bugfix — `maxent_decay` would not launch.** `gui/gui.py` built its menu with
   `QtGui.QAction` (absent in this Qt binding — `QAction` is `QtWidgets.QAction`
   here, the repo-wide idiom), raising `AttributeError` on open. Fixed the 4 call
