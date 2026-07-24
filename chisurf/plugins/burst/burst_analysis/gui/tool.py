@@ -382,17 +382,17 @@ BURST_PANELS = [
         "role": "h2mm",
     },
     {
-        "name": "7. Browser",
-        "icon": Glyphs.COPY,
-        "description": "Inspect the current burst workflow result.",
-        "factory": _burst_browser,
-        "role": "browser",
-    },
-    {
         "name": "────────",
         "icon": "",
         "separator": True,
         "role": "separator",
+    },
+    {
+        "name": "Browser",
+        "icon": Glyphs.COPY,
+        "description": "Inspect the current burst workflow result.",
+        "factory": _burst_browser,
+        "role": "browser",
     },
     {
         "name": "Background",

@@ -140,8 +140,8 @@ def test_burst_workflow_panel_order() -> None:
 
     labels = [f"{panel.get('icon', '')} {panel['name']}".strip() for panel in BURST_PANELS]
     # No standalone Channels step (channels come from the Burst Selection setup);
-    # the numbered pipeline is the main flow, with the utility steps (Background,
-    # IRF & Background — auto-button driven) below the separator, unnumbered.
+    # the numbered pipeline (Data → H2MM) is the main flow, with the utility steps
+    # (Browser, Background, IRF & Background) below the separator, unnumbered.
     assert labels == [
         "📂 1. Data Selection",
         "🔍 2. Burst Selection",
@@ -149,13 +149,13 @@ def test_burst_workflow_panel_order() -> None:
         "📊 4. 2CDE",
         "🎯 5. MLE-Lifetime",
         "🔀 6. H2MM",
-        "📋 7. Browser",
         "────────",
+        "📋 Browser",
         "🌙 Background",
         "✨ IRF & Background",
     ]
-    # The separator sits after the seven numbered steps.
-    assert BURST_PANELS[7]["separator"] is True
+    # The separator sits after the six numbered steps.
+    assert BURST_PANELS[6]["separator"] is True
     assert "channels" not in {p.get("role") for p in BURST_PANELS}
 
 

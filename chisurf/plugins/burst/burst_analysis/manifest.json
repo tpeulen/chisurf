@@ -1,7 +1,7 @@
 {
   "id": "burst_analysis",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Single-Molecule:Burst Analysis",
+  "display_name": "Spectroscopy:Burst Analysis",
   "description": "Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Spectroscopy", "Single-Molecule"],
