@@ -94,6 +94,18 @@
   `protocol.py` METHOD_SCHEMAS thread the new optional keys. Tests:
   `test/server/test_services_parameters_uid.py` (8, incl. out-of-fit→fit link), legacy
   `test_services_parameters.py` + `test_protocol.py` still green.
+* **Global View — out-of-fit parameters, phase 3 (AutoForm section).** New AutoForm
+  custom section `global_parameter_table`
+  (`chisurf/gui/autoform/sections/global_parameter_table.py`): a table spanning every
+  fit parameter (descending into FitGroup members, skipping GlobalFitModel) **plus**
+  every out-of-fit group from the parameter-group registry, with Owner + cross-owner
+  Link columns. Edits/links route through an injected mutator (default
+  `FittingClientParamMutator`): fit rows use the fit-addressed RPC path, group rows use
+  `parameter_uid`/`owner_uid`; link targets are always addressed by
+  `target_parameter_uid`. Reuses the delegates from `parameter_table.py`; opts into
+  `AUTOFORM_REFRESH` and refreshes on registry changes + `parameter.` RPC events. Small
+  `GlobalViewParametersModel` (in the plugin) emits one CustomSection for the tab.
+  Tests: `test/gui/test_global_parameter_table_section.py` (4, offscreen).
 
 
 * **Burst nav + ribbon regrouping.** (1) The Burst Analysis nav moved **Browser below the workflow separator** (a utility alongside Background / IRF & Background); the numbered pipeline is now 1..6 (Data Selection → H2MM). (2) Ribbon menu: elevated **FCS / Decay Analysis / Burst Analysis** to sit directly under a single **Spectroscopy** group (their hierarchical `display_name`/`name` shortened to `Spectroscopy:<Name>`); **hid the Synthetic Decay Generator** (`menu_hidden`); moved **Structure Tools** into the same ribbon group as ChiMOL (`Structure:Structure:…`). Test `test_burst_workflow_panel_order` updated; manifest validation passes. Still open (large, deferred): converting the **Burst Browser** and **Background** plugins to the modern AutoForm framework (foldable boxes + chisurf docks) — both are working, tightly-coupled Qt tools embedded in the workflow, so they warrant a focused conversion using the `burst_irf_bg` template rather than a rushed rewrite.

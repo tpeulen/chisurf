@@ -12,6 +12,7 @@ from . import (
     chimol_section,  # noqa: F401  (registers the "chimol" section)
     decay_conv_section,  # noqa: F401  (registers the "decay_conv" section)
     embed_section,  # noqa: F401  (registers the "embed" section)
+    global_parameter_table,  # noqa: F401  (registers the "global_parameter_table" section)
     help_section,  # noqa: F401  (registers the "help" section)
     image_browser_section,  # noqa: F401  (registers the "image_browser" section)
     path_list_section,  # noqa: F401  (registers the "path_list" section)
