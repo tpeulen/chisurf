@@ -470,11 +470,14 @@ class GlobalParameterTableWidget(QtWidgets.QWidget):
             self._registry_cb = self._on_external_change
         except Exception:
             self._registry_cb = None
-        # parameter.* RPC events (a fit parameter changed elsewhere).
+        # parameter.* / fit.* RPC events (a parameter changed, or fits were
+        # added/removed/reordered elsewhere).
         try:
             fc = get_fitting_client()
             if fc is not None:
-                fc.subscribe("parameter.", lambda *a, **k: self._on_external_change())
+                cb = lambda *a, **k: self._on_external_change()
+                fc.subscribe("parameter.", cb)
+                fc.subscribe("fit.", cb)
         except Exception:
             pass
 

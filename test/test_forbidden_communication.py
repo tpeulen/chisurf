@@ -44,6 +44,9 @@ EXPECTED_VIOLATIONS: Dict[str, int] = {
     "chisurf/plugins/core/globalview/backend/services.py": 3,
     "chisurf/gui/main.py": 5,
     "chisurf/gui/main_helper.py": 22,
+    # global_parameter_table: in-process Global-View table needs live fit
+    # objects (params/UUIDs) that cannot cross the ZMQ boundary.
+    "chisurf/gui/autoform/sections/global_parameter_table.py": 1,
     "chisurf/gui/widgets/experiments/fcs.py": 1,
     "chisurf/gui/widgets/experiments/modelling/modelling.py": 2,
     "chisurf/gui/widgets/experiments/pch.py": 4,
@@ -59,7 +62,6 @@ EXPECTED_VIOLATIONS: Dict[str, int] = {
     "chisurf/gui/widgets/node_editor/chinet_eval.py": 1,
     "chisurf/gui/widgets/node_editor/port_item.py": 1,
     "chisurf/plugins/core/batch_analysis/wizard.py": 2,
-    "chisurf/plugins/core/globalview/parameter_table_model.py": 4,
     "chisurf/plugins/fluorescence_decay/irf_estimator/__init__.py": 1,
 }
 

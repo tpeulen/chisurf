@@ -25,7 +25,7 @@ from chisurf.plugins.core.globalview.gui.adapter import (
     graph_result_to_networkx,
 )
 from chisurf.plugins.core.globalview.gui.graphplotwidget import GraphPlotWidget
-from chisurf.plugins.core.globalview.gui.parameter_table_view import ParameterTableView
+from chisurf.plugins.core.globalview.parameters_model import GlobalViewParametersModel
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -285,12 +285,17 @@ class GraphWizard(QtWidgets.QMainWindow):
 
     def _setup_connections(self):
         """Set up widget connections after UI is created."""
-        self.parameter_table_view = ParameterTableView(self)
-        self.parameter_table_view.refresh_from_fits(self.fit_list)
+        # The Parameters tab is an AutoForm hosting the ``global_parameter_table``
+        # section — every fit parameter plus every registered out-of-fit group.
+        # Graph resync happens via the ``parameter.``/``fit.`` event subscriptions
+        # in ``_connect_events``; the table refreshes itself on the same events.
+        from chisurf.gui.autoform.auto_form import AutoForm
+
+        self.parameters_form = AutoForm(GlobalViewParametersModel())
         if self.paramsTabLayout is not None:
-            self.paramsTabLayout.addWidget(self.parameter_table_view)
-        self.parameter_table_view.paramChanged.connect(self.recompute_graph)
-        
+            self.paramsTabLayout.addWidget(self.parameters_form)
+
+
         self._combo_layout.addItems(self.graph_layouts)
         
         self._btn_link.clicked.connect(self.link_selection)
