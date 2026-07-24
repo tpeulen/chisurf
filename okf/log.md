@@ -2,6 +2,26 @@
 
 ## 2026-07-24
 
+* **Plugin UI uniformity + i18n — reference AutoForm port (`fcs_channel_preset`).**
+  Audited all 68 user-facing analysis-plugin GUIs headlessly (offscreen
+  `QWidget.grab()` via a reusable subprocess-isolated harness): 42 already on
+  AutoForm/`view.json`, 26 hand-built PyQt. Ported `fcs/fcs_channel_preset` as the
+  reference: split into the standard three files — `fcs_channel_preset.view.json`
+  (choice/toggle/button_row/panel), a Qt-free `FCSChannelViewModel`, and a thin
+  `AutoForm` host reusing the old class name `FCSChannelWidget`. The pairs table
+  (per-cell channel combos + *fine* checkbox + delete) stays a registered
+  `custom` section (`fcs_channel_pairs`), the framework's escape hatch — no
+  functionality loss. **i18n**: an AutoForm port moves strings into `view.json`
+  (auto-translated at parse + auto-extracted); enabled the deferred imperative
+  path by AST-scanning `chisurf/**/*.py` for `i18n.tr("…")` in
+  `build_tools/i18n/extract_strings.py` (skips `self.tr` — wrong context). Seeded
+  full German for the plugin; verified the whole form renders German offscreen
+  (*Detektor-Setup / Kanalpaare / Kaskaden / Speichern / Schließen*, window title
+  *FCS-Kanaldefinitionen*). 3 plugin tests pass. Finding: the rich mixed tools
+  (`fret_line` dock+plots, `fcs_merger` shared wizard, `tttr_microtime_shifter`)
+  are **not** AutoForm-appropriate — uniformity there is conventions + `i18n.tr`
+  wrapping, not a form rewrite. Concept: [i18n](/subsystems/i18n.md).
+
 * **PRD-58 advanced — headless test-hardening + a real AVSizeEvaluator.** Much of
   the FRET plugin's headless surface was implemented but untested. Added
   `chisurf/plugins/modelling/fret/test/test_fps_outputs.py` (13 tests, pure numpy —

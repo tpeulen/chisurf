@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import chisurf as cs
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
-from chisurf.plugins.fcs.fcs_channel_preset.gui.tool import FCSChannelWidget, FCSChannelDialog
+from chisurf.plugins.fcs.fcs_channel_preset.gui.tool import FCSChannelDialog, FCSChannelWidget
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:

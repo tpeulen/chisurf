@@ -12,8 +12,10 @@ ChiSurf's user-facing text lives in three surfaces (see
 * **declarative** — the hand-built ``.ui`` files. ``pylupdate5`` extracts these
   natively (context = the form's class name), so they are translated for free at
   runtime once a ``QTranslator`` is installed.
-* **imperative** — ``self.tr(...)`` / ``QCoreApplication.translate(...)`` calls in
-  ``.py``. Extracted natively too (mostly a future phase).
+* **imperative** — ``chisurf.core.i18n.tr(...)`` calls in ``.py`` (message boxes,
+  window titles, custom-section labels). ``pylupdate5`` cannot see the aliased
+  ``i18n.tr`` token, so :func:`_collect_from_python` walks the AST and feeds those
+  literals into the same ``_i18n_autogen.py`` stub under the ``chisurf`` context.
 
 The script then runs ``pylupdate5`` over a generated ``.pro`` project listing the
 generated stub, every ``.ui`` form, and the ``.py`` sources, merging into
@@ -28,6 +30,7 @@ Compile the resulting ``.ts`` to ``.qm`` with ``pixi run i18n-compile``
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import pathlib
 import subprocess
@@ -112,8 +115,50 @@ def _collect_labels(node: object, out: set[str]) -> None:
             _collect_labels(item, out)
 
 
+def _collect_from_python(strings: set[str]) -> None:
+    """Collect literal strings passed to the imperative ``i18n.tr(...)`` seam.
+
+    Imperative GUI code (message boxes, window titles, custom-section labels)
+    localizes text through :func:`chisurf.core.i18n.tr`, which routes to
+    ``QCoreApplication.translate("chisurf", text)`` — the same flat ``chisurf``
+    context as the data-driven strings. ``pylupdate5`` only recognizes a literal
+    ``.tr(``/``translate(`` token, so an aliased ``i18n.tr`` call is invisible to
+    it; we walk the AST instead and feed the literals into the same autogen stub.
+
+    Matched call shapes (first argument a string literal):
+
+    * ``i18n.tr("…")`` — the canonical form (receiver named ``i18n``);
+    * a bare ``tr("…")`` where ``tr`` is the imported function.
+
+    ``self.tr(...)`` is deliberately **not** matched: Qt resolves it under the
+    enclosing class's context, not ``chisurf``, so it would not round-trip
+    through this flat catalogue.
+    """
+    for path in sorted(CHISURF.rglob("*.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except Exception:  # noqa: BLE001 - skip unparseable/partial files
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not node.args:
+                continue
+            func = node.func
+            is_tr = (
+                isinstance(func, ast.Attribute)
+                and func.attr == "tr"
+                and isinstance(func.value, ast.Name)
+                and func.value.id == "i18n"
+            ) or (isinstance(func, ast.Name) and func.id == "tr")
+            if not is_tr:
+                continue
+            first = node.args[0]
+            if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                if first.value.strip():
+                    strings.add(first.value)
+
+
 def collect_strings() -> set[str]:
-    """Walk every view.json + manifest.json and return the unique source strings."""
+    """Walk view.json + manifest.json + ``i18n.tr`` calls; return unique strings."""
     strings: set[str] = set(EXTRA_LITERALS)
     specs = sorted(CHISURF.rglob("*.view.json")) + sorted(CHISURF.rglob("manifest.json"))
     for path in specs:
@@ -124,6 +169,7 @@ def collect_strings() -> set[str]:
             continue
         _collect_from_json(data, strings)
         _collect_labels(data, strings)
+    _collect_from_python(strings)
     # Drop empties / pure-format placeholders.
     return {s for s in strings if s and s.strip()}
 
@@ -193,9 +239,9 @@ def main() -> int:
 
     I18N_DIR.mkdir(parents=True, exist_ok=True)
 
-    print("Collecting data-driven strings from view.json + manifest.json …")
+    print("Collecting strings from view.json + manifest.json + i18n.tr() calls …")
     strings = collect_strings()
-    print(f"  {len(strings)} unique data-driven strings")
+    print(f"  {len(strings)} unique source strings")
     write_autogen(strings)
 
     ui_files = sorted(CHISURF.rglob("*.ui"))

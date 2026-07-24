@@ -1,0 +1,69 @@
+{
+  "_comment": "AutoForm view spec for the FCS channel-definition editor (PRD-40 uniformity port). All user-facing strings under label/description/title/add_label/placeholder/remove_label/labels/columns[].label are auto-translated via chisurf.core.i18n.tr at parse time and are picked up by build_tools/i18n/extract_strings.py.",
+  "sections": [
+    {
+      "type": "choice",
+      "attr": "current_setup",
+      "options_source": "setup_names",
+      "label": "Detector setup",
+      "description": "Detector setup whose logical channels are paired for correlation. Detector setups are managed in the channel-definition wizard."
+    },
+    {
+      "type": "toggle",
+      "attr": "is_public",
+      "label": "Public",
+      "description": "When checked, this setup is visible to all users in the MMFDB. Only the owner can change this setting."
+    },
+    {
+      "type": "button_row",
+      "buttons": [
+        {
+          "label": "🔄 Reload",
+          "action": "reload_setups",
+          "description": "Reload the detector setups from disk."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Channel pairs",
+      "collapsible": false,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "fcs_channel_pairs",
+          "target": "pairs",
+          "options": {
+            "add_label": "Add",
+            "placeholder": "Pair label (optional)",
+            "remove_label": "Remove this pair",
+            "labels": ["A", "B"],
+            "columns": [
+              {"key": "name", "label": "Name"},
+              {"key": "channel_a", "label": "Channel A"},
+              {"key": "channel_b", "label": "Channel B"},
+              {"key": "n_bins", "label": "Bins"},
+              {"key": "n_casc", "label": "Cascades"},
+              {"key": "make_fine", "label": "Fine"}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "button_row",
+      "buttons": [
+        {
+          "label": "💾 Save",
+          "action": "save",
+          "description": "Save the channel-pair definitions for this detector setup."
+        },
+        {
+          "label": "✕ Close",
+          "action": "request_close",
+          "description": "Close the editor."
+        }
+      ]
+    }
+  ]
+}
