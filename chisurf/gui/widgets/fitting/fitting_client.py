@@ -592,6 +592,8 @@ class FittingClient:
         fit_uid: Optional[str] = None,
         fit_index: Optional[int] = None,
         local_idx: Optional[int] = None,
+        parameter_uid: Optional[str] = None,
+        owner_uid: Optional[str] = None,
     ) -> Dict[str, Any]:
         params: Dict[str, Any] = {"parameter_name": parameter_name, "value": value}
         if fit_uid is not None:
@@ -600,6 +602,10 @@ class FittingClient:
             params["fit_index"] = fit_index
         if local_idx is not None:
             params["local_idx"] = local_idx
+        if parameter_uid is not None:
+            params["parameter_uid"] = parameter_uid
+        if owner_uid is not None:
+            params["owner_uid"] = owner_uid
         result = self._try_rpc("parameter.set_value", params)
         if result is not None and result.get("ok", False):
             return result
@@ -612,6 +618,8 @@ class FittingClient:
         fit_uid: Optional[str] = None,
         fit_index: Optional[int] = None,
         local_idx: Optional[int] = None,
+        parameter_uid: Optional[str] = None,
+        owner_uid: Optional[str] = None,
     ) -> Dict[str, Any]:
         params: Dict[str, Any] = {"parameter_name": parameter_name, "fixed": fixed}
         if fit_uid is not None:
@@ -620,6 +628,10 @@ class FittingClient:
             params["fit_index"] = fit_index
         if local_idx is not None:
             params["local_idx"] = local_idx
+        if parameter_uid is not None:
+            params["parameter_uid"] = parameter_uid
+        if owner_uid is not None:
+            params["owner_uid"] = owner_uid
         result = self._try_rpc("parameter.set_fixed", params)
         if result is not None and result.get("ok", False):
             return result
@@ -632,6 +644,8 @@ class FittingClient:
         fit_uid: Optional[str] = None,
         fit_index: Optional[int] = None,
         local_idx: Optional[int] = None,
+        parameter_uid: Optional[str] = None,
+        owner_uid: Optional[str] = None,
     ) -> Dict[str, Any]:
         params: Dict[str, Any] = {
             "parameter_name": parameter_name,
@@ -643,6 +657,10 @@ class FittingClient:
             params["fit_index"] = fit_index
         if local_idx is not None:
             params["local_idx"] = local_idx
+        if parameter_uid is not None:
+            params["parameter_uid"] = parameter_uid
+        if owner_uid is not None:
+            params["owner_uid"] = owner_uid
         result = self._try_rpc("parameter.set_bounds", params)
         if result is not None and result.get("ok", False):
             return result
@@ -655,6 +673,8 @@ class FittingClient:
         fit_uid: Optional[str] = None,
         fit_index: Optional[int] = None,
         local_idx: Optional[int] = None,
+        parameter_uid: Optional[str] = None,
+        owner_uid: Optional[str] = None,
     ) -> Dict[str, Any]:
         params: Dict[str, Any] = {"parameter_name": parameter_name, "bounds_on": bounds_on}
         if fit_uid is not None:
@@ -663,6 +683,10 @@ class FittingClient:
             params["fit_index"] = fit_index
         if local_idx is not None:
             params["local_idx"] = local_idx
+        if parameter_uid is not None:
+            params["parameter_uid"] = parameter_uid
+        if owner_uid is not None:
+            params["owner_uid"] = owner_uid
         result = self._try_rpc("parameter.set_bounds_on", params)
         if result is not None and result.get("ok", False):
             return result
@@ -675,6 +699,8 @@ class FittingClient:
         fit_uid: Optional[str] = None,
         fit_index: Optional[int] = None,
         local_idx: Optional[int] = None,
+        parameter_uid: Optional[str] = None,
+        owner_uid: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Set (or clear) a parameter's prior via its serialisable state dict.
 
@@ -694,6 +720,10 @@ class FittingClient:
             params["fit_index"] = fit_index
         if local_idx is not None:
             params["local_idx"] = local_idx
+        if parameter_uid is not None:
+            params["parameter_uid"] = parameter_uid
+        if owner_uid is not None:
+            params["owner_uid"] = owner_uid
         result = self._try_rpc("parameter.set_prior", params)
         if result is not None and result.get("ok", False):
             return result
@@ -709,6 +739,10 @@ class FittingClient:
         target_fit_uid: Optional[str] = None,
         local_idx: Optional[int] = None,
         target_local_idx: Optional[int] = None,
+        parameter_uid: Optional[str] = None,
+        owner_uid: Optional[str] = None,
+        target_parameter_uid: Optional[str] = None,
+        target_owner_uid: Optional[str] = None,
     ) -> Dict[str, Any]:
         params: Dict[str, Any] = {
             "parameter_name": parameter_name,
@@ -726,6 +760,14 @@ class FittingClient:
             params["local_idx"] = local_idx
         if target_local_idx is not None:
             params["target_local_idx"] = target_local_idx
+        if parameter_uid is not None:
+            params["parameter_uid"] = parameter_uid
+        if owner_uid is not None:
+            params["owner_uid"] = owner_uid
+        if target_parameter_uid is not None:
+            params["target_parameter_uid"] = target_parameter_uid
+        if target_owner_uid is not None:
+            params["target_owner_uid"] = target_owner_uid
         result = self._try_rpc("parameter.link", params)
         if result is not None and result.get("ok", False):
             return result
@@ -737,6 +779,8 @@ class FittingClient:
         fit_uid: Optional[str] = None,
         fit_index: Optional[int] = None,
         local_idx: Optional[int] = None,
+        parameter_uid: Optional[str] = None,
+        owner_uid: Optional[str] = None,
     ) -> Dict[str, Any]:
         params: Dict[str, Any] = {"parameter_name": parameter_name}
         if fit_uid is not None:
@@ -745,6 +789,10 @@ class FittingClient:
             params["fit_index"] = fit_index
         if local_idx is not None:
             params["local_idx"] = local_idx
+        if parameter_uid is not None:
+            params["parameter_uid"] = parameter_uid
+        if owner_uid is not None:
+            params["owner_uid"] = owner_uid
         result = self._try_rpc("parameter.unlink", params)
         if result is not None and result.get("ok", False):
             return result
