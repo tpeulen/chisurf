@@ -13,6 +13,11 @@ test = ["build", "test"]
 dev = ["build", "test", "dev"]
 docs = ["docs"]
 
+# ROLE: the dev/runtime conda environment — the source of truth developers use.
+# Two sibling lists describe the SAME runtime for other consumers and must be
+# kept in sync (conda<->PyPI naming differs): the installable-wheel metadata in
+# pyproject.toml [project.dependencies], and the conda-package deps in
+# rattler-recipe/recipe.yaml (run:). numpy is unpinned here and resolves to 2.x.
 [dependencies]
 python = "3.12.*"
 # The build-extensions tasks run in the default environment and shell out to
@@ -63,7 +68,11 @@ sqlalchemy = ">=2.0"
 # msgpack-python (`msgpack` does not exist as a conda package).
 msgpack-python = ">=1.1.2"
 
+# PyPI-only runtime deps (no conda package exists). latexify-py backs the LaTeX
+# expression renderer in chisurf/gui/widgets/models/parse/latex.py. This block is
+# the single home for such deps — the former chisurf-env.yaml pip section is gone.
 [pypi-dependencies]
+latexify-py = "*"
 
 [pypi-options]
 dependency-overrides = { "numpy" = {} }
@@ -129,9 +138,10 @@ tttrlib = "*"
 
  [tasks]
  test-chinet = { cmd = "python -m pytest modules/chinet/test -x -q" }
- build-ndxplorer = { cmd = "export CMAKE_ARGS=\"-DEigen3_DIR=$CONDA_PREFIX/share/eigen3/cmake -DEigen3_INCLUDE_DIR=$CONDA_PREFIX/include/eigen3\" && pip install -e modules/ndxplorer --no-deps", inputs = [
-     "modules/ndxplorer/CMakeLists.txt",
-     "modules/ndxplorer/setup.py",
+ # ndxplorer is now pure-Python (no CMake/Eigen); a plain editable install.
+ build-ndxplorer = { cmd = "pip install -e modules/ndxplorer --no-deps", inputs = [
+     "modules/ndxplorer/pyproject.toml",
+     "modules/ndxplorer/ndxplorer/**",
  ] }
  build-quest = { cmd = "pip install -e modules/quest --no-deps", inputs = [
      "modules/quest/pyproject.toml",
@@ -182,5 +192,3 @@ python = ">=3.12.13,<3.13"
 scikit-build-core = ">=0.12.1,<0.13"
 pybind11 = ">=3.0.3,<4"
 llvm-openmp = ">=22.1.3,<23"
-
-[target.win-64.tasks]

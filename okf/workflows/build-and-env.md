@@ -9,11 +9,27 @@ timestamp: '2026-07-05T00:00:00Z'
 
 # Environment
 
-Pixi is the canonical environment/build manager (CI uses it). Run everything
-through `pixi run <task>`. Python must run inside the project environment —
-never the conda `base` env — because the Qt stack and the
+Pixi is the **single** environment/build tool — for dev, tests, and release
+packaging alike (all three CI workflows drive `pixi run`). Run everything through
+`pixi run <task>`. Python must run inside the project environment — never the
+conda `base` env — because the Qt stack and the
 [compiled extensions](/subsystems/compiled-modules.md) are not present there.
 Python is pinned to 3.12.
+
+There is no separate `environment.yml` — the former `chisurf-env.yaml` was
+removed; `pixi.toml` is the one source of truth (PyPI-only deps such as
+`latexify-py` live under `[pypi-dependencies]`). Three dependency lists remain,
+each for a distinct consumer and kept in sync by cross-referencing comments:
+`pixi.toml [dependencies]` (dev env), `pyproject.toml [project.dependencies]`
+(installable-wheel metadata, PyPI names), and `rattler-recipe/recipe.yaml` `run:`
+(the released conda package). The runtime is numpy 2.x (the canonical pixi env
+resolves numpy 2.4), so numpy is unpinned across all three.
+
+Pixi environments are **detached** from the source tree: with
+`detached-environments = true` set in the global pixi config, the multi-GB solved
+env lives under the central pixi cache instead of `<repo>/.pixi/envs`, so the repo
+folder stays clean. Set it once per machine with
+`pixi config set --global detached-environments true`.
 
 # Common commands
 
@@ -52,9 +68,11 @@ the baked prefix is wrong there too. The `.app` launcher itself invokes
 
 # Installer smoke tests
 
-The `Build and Release` workflow (`.github/workflows/pixi-ci.yml`) launches each
-freshly built installable app on its runner OS and asserts it reaches the main
-window. A headless self-test mode in `chisurf/gui/__init__.py` drives this: when
+The `Build and Release` workflow (`.github/workflows/pixi-ci.yml`) builds the
+conda package + installer through a single pixi step
+(`pixi run -e build build-installer`, which chains `build-pkg` → rattler-build →
+`build-extensions`), then launches each freshly built installable app on its
+runner OS and asserts it reaches the main window. A headless self-test mode in `chisurf/gui/__init__.py` drives this: when
 `CHISURF_SMOKE_TEST` is truthy, `get_app()` skips the interactive MMFDB login,
 lets the window paint, then (after `CHISURF_SMOKE_DELAY_MS`, default 5000 ms)
 optionally writes the `CHISURF_SMOKE_SENTINEL` file and quits so the process

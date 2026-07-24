@@ -62,7 +62,7 @@ requirements:
     - wheel
     - cython >=0.29,<3
     - pythran >=0.9.14,<1
-    - numpy <2.0
+    - numpy
     - swig <4.3.0
     - ${{ "pkg-config" if unix }}
     - ${{ "llvm-openmp" if osx }}
@@ -75,9 +75,13 @@ requirements:
     - eigen
     # Windows-only dependency for TTTRlib
     - ${{ "hdf5" if win }}
+  # ROLE: the released conda-package deps. Keep in sync with the two sibling
+  # lists that describe the SAME runtime (conda<->PyPI naming differs): the dev
+  # env in pixi.toml [dependencies] and the wheel metadata in pyproject.toml
+  # [project.dependencies]. numpy is unpinned to match the numpy-2 dev runtime.
   run:
     - python 3.12.*
-    - numpy <2.0
+    - numpy
     - typing-extensions >=4.14
     - pytools >=2024.0
     - pyyaml

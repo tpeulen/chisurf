@@ -182,7 +182,7 @@ Prime-backend **collections** (with collection shares) and secondary-backend **t
 Distinct from deposition ("deposition ≠ dissemination", "two clocks"). Once a record is deposited and curated, `mint_doi` (prime backend `CAP_DOI`) requests a DOI via the prime backend's public-repository path — the route by which databank content becomes citable and public. The secondary backend offers only trusted-timestamping, not DOIs. No dissemination happens automatically; it is an explicit, curated action.
 
 ## 12. Config & dependencies
-- Add the secondary backend's official Python SDK to `chisurf-env.yaml`. The prime backend has no canonical SDK → a thin `requests`-based client generated/checked against its `/api/v1/swagger_doc`.
+- Add the secondary backend's official Python SDK to `pixi.toml` (`[pypi-dependencies]`, the single dependency source of truth). The prime backend has no canonical SDK → a thin `requests`-based client generated/checked against its `/api/v1/swagger_doc`.
 - Per-backend connection config (base URL, scope name, verify-TLS, default prime-backend collection / secondary-backend team) surfaced through ChiSurf settings.
 
 # CLI / headless surface
@@ -211,7 +211,7 @@ GUI (a button in `mmfdb_admin`) is a thin wrapper, deferred.
 | `chisurf/core/mmfdb/eln/sync.py` | new — capability-aware push/pull |
 | `chisurf/core/mmfdb/eln/reconcile.py` | new — conflict policy |
 | `chisurf/core/mmfdb/eln/test/` | new — offline unit + round-trip tests, both backends |
-| `chisurf-env.yaml` | add the secondary backend's Python SDK |
+| `pixi.toml` | add the secondary backend's Python SDK (`[pypi-dependencies]`) |
 | CLI registration (`csc`) | new `eln` group |
 | `chisurf/core/mmfdb/events.py` | (opt) async push subscriber, later phase |
 
