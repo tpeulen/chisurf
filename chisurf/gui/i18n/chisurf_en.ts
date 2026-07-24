@@ -3766,132 +3766,132 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="141"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="142"/>
         <source>Background rate (CUSUM).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="142"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="143"/>
         <source>Background rate (per channel)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="143"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="144"/>
         <source>Bandwidth (nm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="144"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="145"/>
         <source>Base URL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="145"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="146"/>
         <source>Base64-encoded binary data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="146"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="147"/>
         <source>Batch</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="147"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="148"/>
         <source>Bead stack: use the z-slider to browse slices, click a bead to select+fit it. Green squares mark detected beads on the current slice; the yellow circle is the fitted lateral FWHM.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="148"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="149"/>
         <source>Bead/shell model definition (HYDROPRO manual §3.a).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="149"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="150"/>
         <source>Bearer token for the endpoint. Pasting a key auto-saves it and tests the connection. Not needed for most local servers.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="150"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="151"/>
         <source>Bin index where the ideal decay begins (prompt offset).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="151"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="152"/>
         <source>Bin time [µs]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="152"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="153"/>
         <source>Bin width</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="153"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="154"/>
         <source>Bin width for the binned-intensity trace used by BOCPD/Kalman.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="154"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="155"/>
         <source>Bin width of the count-rate trace.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="155"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="156"/>
         <source>Bins</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="156"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="157"/>
         <source>Bins at or below this count are zeroed before building the LUT (or drag the green line).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="157"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="158"/>
         <source>Bins the photon stream into counting intervals of bin_time_us and histograms the counts per bin into the photon counting histogram P(k). An optional micro-time window gates the photons before binning.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="158"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="159"/>
         <source>Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="159"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="160"/>
         <source>Block-rebin the 2D-FDC down to this many bins before inversion (speed vs resolution).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="160"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="161"/>
         <source>Boolean mask of pixels within a circular or elliptic phasor cursor.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="161"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="162"/>
         <source>Box radius XY (µm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="162"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="163"/>
         <source>Box radius Z (µm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="163"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="164"/>
         <source>Brightness</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="164"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="165"/>
         <source>Brightness (B)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="165"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="166"/>
         <source>Brightness q (species×channel)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="166"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="167"/>
         <source>Brightness ε</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3991,6417 +3991,6407 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="188"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="189"/>
         <source>Burst IRF &amp; Background</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="189"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="190"/>
         <source>Burst Variance Analysis for single-molecule FRET experiments.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="190"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="191"/>
         <source>Burst selection and FRET analysis for single-molecule fluorescence data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="191"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="192"/>
         <source>Burst-detection threshold (Kalman).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="192"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="193"/>
         <source>Burst-search minimum photons. Photons NOT in a burst are treated as background/scatter.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="193"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="194"/>
         <source>Burst-search time window (ms).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="195"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="196"/>
         <source>By atoms (stack)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="196"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="197"/>
         <source>By time (append frames)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="197"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="198"/>
         <source>By time joins the trajectories along the frame axis (same topology, frames appended). By atoms stacks the trajectories along the atom axis (same number of frames, topologies merged).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="198"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="199"/>
         <source>CLSM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="199"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="200"/>
         <source>CLSM Generator</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="200"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="201"/>
         <source>CLSM images built for the selected channels (+ to create, − to remove).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="201"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="202"/>
         <source>CLSM imaging files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="202"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="203"/>
         <source>CUSUM alpha</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="203"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="204"/>
         <source>CUSUM beta</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="204"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="205"/>
         <source>CUSUM bg rate</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="205"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="206"/>
         <source>CUSUM s/b ratio</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="206"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="207"/>
         <source>Calculate FRET observables from molecular dynamics trajectories.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="207"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="208"/>
         <source>Calculate G-factor based on tail matching for VV/VH decays.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="208"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="209"/>
         <source>Calculate and analyze trajectory energy time series.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="209"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="210"/>
         <source>Calculate and visualise the k² orientation-factor distribution for FRET using WIC, DWT, or isotropic models.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="210"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="211"/>
         <source>Calculate detector G-factors using tail-matching on VV/VH format files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="211"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="212"/>
         <source>Calculate potential energy components for structures and trajectories.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="212"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="213"/>
         <source>Calculation Options</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="213"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="214"/>
         <source>Calibration</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="214"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="215"/>
         <source>Calibration / background</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="215"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="216"/>
         <source>Cameras / SPADs / PMTs (quantum-efficiency curves).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="216"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="217"/>
         <source>Cascades</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="217"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="218"/>
         <source>Category</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="218"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="219"/>
         <source>Center Wavelength (nm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="219"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="220"/>
         <source>Center wavelength.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="220"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="221"/>
         <source>Center zero lag</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="221"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="222"/>
         <source>Centre (prompt position) of the synthetic IRF in ns. Ignored for Detect/File/None.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="222"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="223"/>
         <source>Ch A</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="223"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="224"/>
         <source>Ch B</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="224"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="225"/>
         <source>Change-point parameters (BOCPD / Kalman / CUSUM)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="225"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="226"/>
         <source>Channel Definition</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="226"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="227"/>
         <source>Channel selection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="227"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="228"/>
         <source>Channel shift applied to the VH decay relative to VV.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="228"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="229"/>
         <source>Channel width (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="229"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="230"/>
         <source>Channel-mixing correction factor l1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="230"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="231"/>
         <source>Channel-mixing correction factor l2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="231"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="232"/>
         <source>Channels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="232"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="233"/>
         <source>Characteristic anisotropy-decay time distribution: rotational depolarisation (rho) in parallel with energy-transfer depolarisation (2·k_FRET).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="233"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="234"/>
         <source>Check optional Python packages used by specific features.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="234"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="235"/>
         <source>Check the endpoint responds to a /models request.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="235"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="236"/>
         <source>Choose where to save results, then run the batch.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="236"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="237"/>
         <source>Chromophore / fluorophore name.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="237"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="238"/>
         <source>Chunk size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="238"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="239"/>
         <source>Circular (wrap-around) shift of the VH IRF, in micro-time channels.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="239"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="240"/>
         <source>Circular (wrap-around) shift of the VV IRF, in micro-time channels.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="240"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="241"/>
         <source>Clash k</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="241"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="242"/>
         <source>Classic Breakout game with progressive difficulty, multiple brick types, mouse/keyboard control, and particle effects; contained in the Games hub.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="242"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="243"/>
         <source>Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="243"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="244"/>
         <source>Classic Tetris game with line clearing, score tracking, and next-piece preview; contained in the Games hub.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="244"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="245"/>
         <source>Clear selection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="245"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="246"/>
         <source>Clear the pixel selection.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="246"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="247"/>
         <source>Coarsen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="247"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="248"/>
         <source>Coast safety factor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="248"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="249"/>
         <source>Coasting (skip far molecules)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="249"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="250"/>
         <source>Coasting: a molecule far from BOTH the focus and the box surface skips its per-window diffusion/emission and is caught up EXACTLY on wake. Large speedup for dilute samples and statistically exact (±0.1%) — safe to leave on for FCS/smFRET. No effect during a scan.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="250"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="251"/>
         <source>Colorize a stack of boolean masks into an RGB label image.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="251"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="252"/>
         <source>Colour shift (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="252"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="253"/>
         <source>Columns (CSV only)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="253"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="254"/>
         <source>Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="254"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="255"/>
         <source>Combined heteroFRET and homoFRET parameter calculator.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="255"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="256"/>
         <source>Comma or space-separated detector routing channels for channel A.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="256"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="257"/>
         <source>Comma or space-separated detector routing channels for channel B.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="257"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="258"/>
         <source>Comma-separated atom ids used as the reference set for the superposition. Leave empty to align on all atoms.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="258"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="259"/>
         <source>Comma-separated reference lifetimes (ns) drawn as the iso-lifetime grid and semicircle ticks.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="259"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="260"/>
         <source>Comma-separated structural files (PDB or bead coordinate files). Set with the 'Select files…' button.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="260"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="261"/>
         <source>Command port</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="261"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="262"/>
         <source>Component 1 g.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="262"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="263"/>
         <source>Component 1 s.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="263"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="264"/>
         <source>Component 2 g.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="264"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="265"/>
         <source>Component 2 s.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="265"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="266"/>
         <source>Components</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="266"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="267"/>
         <source>Components that carry at least one spectrum.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="267"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="268"/>
         <source>Compute 1D lifetime inversion L-curve diagnostics.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="268"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="269"/>
         <source>Compute FRET parameters from donor lifetime with acceptor.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="269"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="270"/>
         <source>Compute FRET parameters from donor-acceptor distance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="270"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="271"/>
         <source>Compute FRET parameters from rate constant.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="271"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="272"/>
         <source>Compute FRET parameters from transfer efficiency.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="272"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="273"/>
         <source>Compute MFD fFCS filters from arrays.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="273"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="274"/>
         <source>Compute MFD fFCS filters from files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="274"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="275"/>
         <source>Compute TTTR microtime LUTs and create channel LUT settings in one dockable workspace.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="275"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="276"/>
         <source>Compute a PCH histogram from a loaded TTTR file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="276"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="277"/>
         <source>Compute a TAC-linearization LUT from uniform-illumination TTTR files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="277"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="278"/>
         <source>Compute an intensity / mean-micro-time image representation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="278"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="279"/>
         <source>Compute fFCS filters from arrays.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="279"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="280"/>
         <source>Compute fFCS filters from histogram files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="280"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="281"/>
         <source>Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="281"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="282"/>
         <source>Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.bst) / BUR files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="282"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="283"/>
         <source>Compute homoFRET exchange rate and effective distance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="283"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="284"/>
         <source>Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndxplorer.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="284"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="285"/>
         <source>Compute the FRET-2CDE / ALEX-2CDE burst feature.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="285"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="286"/>
         <source>Compute the Fourier Ring Correlation of an image representation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="286"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="287"/>
         <source>Computed FCS correlation curves, one per chunk.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="287"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="288"/>
         <source>Computed apparent lifetimes and mixing fractions for the reference geometry.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="288"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="289"/>
         <source>Conc (nM)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="289"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="290"/>
         <source>Concentration; N = 0.602214 × c_nM × Veff_fL.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="290"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="291"/>
         <source>Confidence level for the χ² upper limit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="291"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="292"/>
         <source>Confidence that the more complex model is justified over the simpler one.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="292"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="293"/>
         <source>Configure PIE / channel windows for TTTR workflows.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="293"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="294"/>
         <source>Configure one endpoint per provider. Switching reloads that provider&apos;s saved values.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="294"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="295"/>
         <source>Confocal (CLSM) TTTR image file(s) to analyse. Drag-drop to add.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="295"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="296"/>
         <source>Confocal aspect ratio (axial / lateral beam waist).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="296"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="297"/>
         <source>Constraint (choose one)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="297"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="298"/>
         <source>Container format written to disk; differs from input ⇒ transcode.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="298"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="299"/>
         <source>Container format written when saving (differs from input ⇒ transcode).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="299"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="300"/>
         <source>Continue from the docked poses of the last run or the loaded project (skip the random shuffle) instead of starting fresh. Enabled automatically when a project with saved poses is loaded.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="300"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="301"/>
         <source>Controls</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="301"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="302"/>
         <source>Conv start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="302"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="303"/>
         <source>Conv stop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="303"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="304"/>
         <source>Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of .sm and other TTTR files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="304"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="305"/>
         <source>Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="305"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="306"/>
         <source>Convert each</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="306"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="307"/>
         <source>Convert every file to its own ALEX output, or merge them all into one.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="307"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="308"/>
         <source>Convert molecular dynamics trajectory files between supported formats.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="308"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="309"/>
         <source>Convert one ALEX file per input to micro-time.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="309"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="310"/>
         <source>Convolution</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="310"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="311"/>
         <source>Convolution/fit window start (micro-time channel). Drag the blue region.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="311"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="312"/>
         <source>Convolution/fit window stop (micro-time channel). Drag the blue region.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="312"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="313"/>
         <source>Convolve</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="313"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="314"/>
         <source>Copy the lifetime spectrum from an open ChiSurf fit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="314"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="315"/>
         <source>Core database connector services for source/user database resolution, migration, backup, reset, repository access, and FLR CIF import/export.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="315"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="316"/>
         <source>Corrections</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="316"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="317"/>
         <source>Corrections / nuisance</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="317"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="318"/>
         <source>Correlate every burst x pair for one TTTR file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="318"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="319"/>
         <source>Correlation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="319"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="320"/>
         <source>Correlation Channels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="320"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="321"/>
         <source>Correlation Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="321"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="322"/>
         <source>Correlation list (left) and FCS plots (right) in draggable, resizable docks. Select a row to highlight its curve.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="322"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="323"/>
         <source>Correlation time (ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="323"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="324"/>
         <source>Correlation time t_c (ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="324"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="325"/>
         <source>Correlator</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="325"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="326"/>
         <source>Count Rate Analysis</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="326"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="327"/>
         <source>Count Rates</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="327"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="328"/>
         <source>Count rate (kHz)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="328"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="329"/>
         <source>Count rates per detector channel across many TTTR files, with mean/std and a per-file plot.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="329"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="330"/>
         <source>Counting bin width in microseconds.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="330"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="331"/>
         <source>Counts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="331"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="332"/>
         <source>Coupled channel decays</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="332"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="333"/>
         <source>Create CLSM-TTTR image representations, select pixels interactively, and export fluorescence-decay histograms.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="333"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="334"/>
         <source>Create and inspect TTTR microtime histograms.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="334"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="335"/>
         <source>Create missing settings files or restore packaged defaults.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="335"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="336"/>
         <source>Create the VV, VH and global fits with all parameters linked.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="336"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="337"/>
         <source>Create the linked VV/VH global anisotropy fit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="337"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="338"/>
         <source>Crosstalk (α/β/γ/δ)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="338"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="339"/>
         <source>Cursor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="339"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="340"/>
         <source>Cursor centre g.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="340"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="341"/>
         <source>Cursor centre s.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="341"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="342"/>
         <source>Cursor g</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="342"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="343"/>
         <source>Cursor radius</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="343"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="344"/>
         <source>Cursor s</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="344"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="345"/>
         <source>Custom (OpenAI-compatible)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="345"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="346"/>
         <source>Cut-Off (nm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="346"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="347"/>
         <source>Cut-On (nm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="347"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="348"/>
         <source>Cut-off wavelength.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="348"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="349"/>
         <source>Cut-on wavelength.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="349"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="350"/>
         <source>D (µm²/s)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="350"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="351"/>
         <source>DNL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="351"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="352"/>
         <source>DWT (Diffusion)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="352"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="353"/>
         <source>Dark-count floor (quantile)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="353"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="354"/>
         <source>Data</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="354"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="355"/>
         <source>Data + IRF decay (semilog) with a draggable convolution range and background line.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="355"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="356"/>
         <source>Data VH</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="356"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="357"/>
         <source>Data VV</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="357"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="358"/>
         <source>Decay</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="358"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="359"/>
         <source>Decay &amp; IRF</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="359"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="360"/>
         <source>Decay Analysis is experimental and not yet validated</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="360"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="361"/>
         <source>Decay preview</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="361"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="362"/>
         <source>Define the lifetime and rotation spectra.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="362"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="363"/>
         <source>Define which channels/pairs to correlate for FCS workflows.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="363"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="364"/>
         <source>Degrees of freedom (observations minus parameters).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="364"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="365"/>
         <source>Degrees of freedom added by the second model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="365"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="366"/>
         <source>Degrees of freedom of the first model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="366"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="367"/>
         <source>Delete an object or decrement its refcount.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="367"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="368"/>
         <source>Dependencies</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="368"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="369"/>
         <source>Describe the 2D-FLCS RPC namespace.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="369"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="370"/>
         <source>Describe the ALEX Creator workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="370"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="371"/>
         <source>Description</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="371"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="372"/>
         <source>Destination CSV. A DOCX report and a ZIP of per-run exports are written alongside.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="372"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="373"/>
         <source>Detect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="373"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="374"/>
         <source>Detection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="374"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="375"/>
         <source>Detection channels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="375"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="376"/>
         <source>Detection-efficiency ratio (g-factor) between the parallel and perpendicular channels.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="376"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="377"/>
         <source>Detection-efficiency ratio between the VV and VH channels.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="377"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="378"/>
         <source>Detection-path polarization mixing for the PARALLEL channel (objective/optics depolarization). Small: ~0–0.05 (typical ~0.03).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="378"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="379"/>
         <source>Detection-path polarization mixing for the PERPENDICULAR channel. Small: ~0–0.05 (typical ~0.04).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="379"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="380"/>
         <source>Detector</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="380"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="381"/>
         <source>Detector Channel and PIE-window definition wizard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="381"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="382"/>
         <source>Detector channels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="382"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="383"/>
         <source>Detector name / model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="383"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="384"/>
         <source>Detector routing channels to keep (comma/space separated; empty = all).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="384"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="385"/>
         <source>Detector setup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="385"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="386"/>
         <source>Detector setup — help</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="386"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="387"/>
         <source>Detector to calibrate (settings are per detector).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="387"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="388"/>
         <source>Detector type.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="388"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="389"/>
         <source>Detectors</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="389"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="390"/>
         <source>Dichroic beamsplitters / mirrors.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="390"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="391"/>
         <source>Dichroic name / model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="391"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="392"/>
         <source>Dichroic type.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="392"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="393"/>
         <source>Dichroics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="393"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="394"/>
         <source>Diffusion</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="394"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="395"/>
         <source>Diffusion (mobile)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="395"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="396"/>
         <source>Diffusion / volume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="396"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="397"/>
         <source>Diffusion coefficient (per species)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="397"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="398"/>
         <source>Diffusion correlation time τ_D.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="398"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="399"/>
         <source>Diffusion seed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="399"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="400"/>
         <source>Diffusion time τ_D (ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="400"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="401"/>
         <source>Diffusion-time distribution</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="401"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="402"/>
         <source>Diffusion/integration window in the macro-time unit (ms ⇒ 0.001 = 1 µs; default 0.01). Sets the diffusion resolution — do NOT enlarge it for speed (it is sub-stepped internally, so it won't help; use the Performance knobs instead).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="402"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="403"/>
         <source>Dipole (kappa2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="403"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="404"/>
         <source>Dipole atoms</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="404"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="405"/>
         <source>Direct acceptor excitation by the donor-excitation laser.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="405"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="406"/>
         <source>Directory for RMF trajectory, best-scoring PDBs and the score CSV.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="406"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="407"/>
         <source>Distance (Gaussians)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="407"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="408"/>
         <source>Distance (Rice)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="408"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="409"/>
         <source>Distance DA</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="409"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="410"/>
         <source>Distance distribution</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="410"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="411"/>
         <source>Distance distribution (Å)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="411"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="412"/>
         <source>Distance distribution around R_DA: Gaussian vs the non-negative chi distribution (active one solid).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="412"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="413"/>
         <source>Distance grid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="413"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="414"/>
         <source>Distributions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="414"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="415"/>
         <source>Divide the displayed histogram by the region mean (display only).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="415"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="416"/>
         <source>Docking</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="416"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="417"/>
         <source>Docking controls (FPS-style: runs, iterations, clash, refinement).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="417"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="418"/>
         <source>Docking engine: minimize = fast IMP conjugate-gradient energy minimisation (default); mc = replica-exchange Monte-Carlo sampling.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="418"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="419"/>
         <source>Document lifecycle events</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="419"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="420"/>
         <source>Documentation browser and help resource viewer for ChiSurf.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="420"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="421"/>
         <source>Donor QY</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="421"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="422"/>
         <source>Donor bleedthrough into the acceptor (red) channel.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="422"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="423"/>
         <source>Donor bᵢ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="423"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="424"/>
         <source>Donor decay (D0)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="424"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="425"/>
         <source>Donor fluorescence quantum yield.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="425"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="426"/>
         <source>Donor lifetime in the absence of FRET.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="426"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="427"/>
         <source>Donor lifetime in the presence of acceptor (D in DA). Editable input that back-computes the distance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="427"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="428"/>
         <source>Donor rotational correlation time of this component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="428"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="429"/>
         <source>Donor tau0</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="429"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="430"/>
         <source>Donor-acceptor distance distribution: Gaussian vs the non-negative chi distribution (active one solid).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="430"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="431"/>
         <source>Donor-acceptor distance implied by the homo-FRET rate. Editable input that back-maps to the anisotropy relaxation time.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="431"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="432"/>
         <source>Donor-acceptor distance. Any of distance, lifetime, efficiency or rate may be entered; the others are recomputed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="432"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="433"/>
         <source>Donor-only (D0/0D)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="433"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="434"/>
         <source>Donor-only fluorescence lifetime (no acceptor).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="434"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="435"/>
         <source>Donor-only fluorescence lifetime.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="435"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="436"/>
         <source>Donor-only fraction within the DA population (no acceptor / no transfer).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="436"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="437"/>
         <source>Donor-only lifetime for the FRET trajectory (tau_DA = tau_D0 * (1 - E)).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="437"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="438"/>
         <source>Download a PDB file from RCSB by four-character PDB ID.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="438"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="439"/>
         <source>Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="439"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="440"/>
         <source>Drag-drop files (or add a folder) to fit with the template.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="440"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="441"/>
         <source>Draw a circular gating-cursor outline at the position below.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="441"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="442"/>
         <source>Draw a mixing line between the two component phasors below.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="442"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="443"/>
         <source>Draw a polar coordinate grid (concentric circles + angular spokes) for reading phase and modulation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="443"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="444"/>
         <source>Draw iso-phase and iso-modulation lines for the reference lifetimes.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="444"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="445"/>
         <source>Draw the quenched-donor FRET trajectory for the donor-only lifetime below.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="445"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="446"/>
         <source>Draw the two-component mixing geometry and the fraction-weighted mixture point (uses g1/s1, g2/s2 as the components).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="446"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="447"/>
         <source>Drop files to process and choose the template fit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="447"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="448"/>
         <source>Drop the loaded pattern and return to the amplitude/lifetime spectrum.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="448"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="449"/>
         <source>Dwell</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="449"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="450"/>
         <source>Dynamics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="450"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="451"/>
         <source>D₁ (µm²/ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="451"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="452"/>
         <source>D₂ (µm²/ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="452"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="453"/>
         <source>E</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="453"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="454"/>
         <source>ETA</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="454"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="455"/>
         <source>Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB structures by RCSB ID.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="455"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="456"/>
         <source>Effective confocal volume (read-only unless &apos;Fix Veff&apos;).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="456"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="457"/>
         <source>Efficiency</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="457"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="458"/>
         <source>Em max</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="458"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="459"/>
         <source>Emission maximum (nm).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="459"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="460"/>
         <source>Emission seed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="460"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="461"/>
         <source>Empirical-Bayes Gaussian hidden Markov model for binned single-molecule FRET time traces (ebFRET/vbFRET-style), with a state-count scan, per-state emission recovery, and Viterbi dwell/transition analysis. Complements the photon-by-photon H2MM plugin for TIRF-style intensity-vs-time data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="461"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="462"/>
         <source>Enable the PMI simulated-annealing temperature schedule.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="462"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="463"/>
         <source>Endpoint</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="463"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="464"/>
         <source>Engine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="464"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="465"/>
         <source>Entropy prior model (mi) ported from TK_mi_ModelFunction: 0 flat (resolution-weighted), 1 self (current dist.), 2 blend, 3 Gaussian.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="465"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="466"/>
         <source>Entropy regularisation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="466"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="467"/>
         <source>Env floor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="467"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="468"/>
         <source>Env scale</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="468"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="469"/>
         <source>Envelope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="469"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="470"/>
         <source>Envelope compression applied to per-bin photon counts.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="470"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="471"/>
         <source>Epsilon used when &apos;Mitigate wrap spike&apos; is on.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="471"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="472"/>
         <source>Equation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="472"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="473"/>
         <source>Estimate detector background rates from TTTR burst data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="473"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="474"/>
         <source>Evaluate the excitation Gaussian analytically instead of sampling a voxel grid: zero construction cost and memory, and exact — but for a GAUSSIAN focus only. Leave OFF to use the general voxel grid, which supports any measured / ISM / aberrated PSF. Turn on only when the focus is a clean 3D Gaussian.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="474"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="475"/>
         <source>Event marker</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="475"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="476"/>
         <source>Excitation Gaussian 1/e² radii [w0 (lateral), z0 (axial)] in µm (default [0.3, 2.0]). Confocal: w0 ~0.2–0.4, aspect z0/w0 ~3–6. Field I ∝ exp(-2((x²+y²)/w0² + z²/z0²)).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="476"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="477"/>
         <source>Excluded-volume / clash penalty weight (FPS k_clash).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="477"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="478"/>
         <source>Executable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="478"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="479"/>
         <source>Executable &amp; input</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="479"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="480"/>
         <source>Expected bright pixels per frame; sets the adaptive quantile threshold for bead detection.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="480"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="481"/>
         <source>Expected integrated photons for Poisson sampling.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="481"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="482"/>
         <source>Experimental IRF</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="482"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="483"/>
         <source>Experimental PCH probabilities P(k), same length as k_vals.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="483"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="484"/>
         <source>Experimental headless port of ebFRET&apos;s per-trace VBEM + empirical-Bayes hyperparameter loop. Validated for state recovery against ebFRET&apos;s own simulated-K04-N350 dataset; the single-prior (non-mixture) D=1 path only, and no GUI tool yet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="484"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="485"/>
         <source>Experiments</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="485"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="486"/>
         <source>Export intensity images (per combo) as TIFF stacks.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="486"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="487"/>
         <source>Export selected traces as CSV files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="487"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="488"/>
         <source>Export the combined per-molecule table (all files) to a TSV/CSV.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="488"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="489"/>
         <source>Extinction</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="489"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="490"/>
         <source>Extract a decay histogram from a pixel selection.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="490"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="491"/>
         <source>Extract a per-detector IRF and background rate from the non-burst photons of a single-molecule measurement, and feed them to the burst MLE lifetime fit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="491"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="492"/>
         <source>F-test &amp; χ²-max — help</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="492"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="493"/>
         <source>F-test calculator: compare two nested model fits (confidence &lt;-&gt; chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="493"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="494"/>
         <source>F-test confidence level; recomputed from the χ² ratio, or drives the χ²(2) threshold when edited.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="494"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="495"/>
         <source>F-test — compare two nested models</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="495"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="496"/>
         <source>FCS Correlation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="496"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="497"/>
         <source>FCS Filter Calculator is experimental and not yet validated</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="497"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="498"/>
         <source>FCS bins (B)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="498"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="499"/>
         <source>FCS channel definition plugin per detector setup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="499"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="500"/>
         <source>FCS channels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="500"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="501"/>
         <source>FCS channels — help</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="501"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="502"/>
         <source>FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="502"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="503"/>
         <source>FPS-style refinement cycles after docking: re-compute the accessible volumes on the docked structure (real AV calc, accounting for inter-body occlusion) and re-minimise. 0 = none.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="503"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="504"/>
         <source>FRC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="504"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="505"/>
         <source>FRET</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="505"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="506"/>
         <source>FRET E</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="506"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="507"/>
         <source>FRET efficiency (used for DWT model).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="507"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="508"/>
         <source>FRET efficiency. Editable input that back-computes the distance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="508"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="509"/>
         <source>FRET pair (DA)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="509"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="510"/>
         <source>FRET parameters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="510"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="511"/>
         <source>FRET rate constant. Editable input that back-computes the distance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="511"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="512"/>
         <source>FRET species — help</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="512"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="513"/>
         <source>FRET trajectory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="513"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="514"/>
         <source>FRET transfer efficiency (efficiency mode).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="514"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="515"/>
         <source>FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="515"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="516"/>
         <source>FRET-rate-constant distribution induced by the distance distribution.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="516"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="517"/>
         <source>FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation using IMP + IMP.bff accessible volumes (a thin shim around IMP.pmi).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="517"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="518"/>
         <source>FWHM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="518"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="519"/>
         <source>False-alarm probability (CUSUM).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="519"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="520"/>
         <source>File</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="520"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="521"/>
         <source>File index</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="521"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="522"/>
         <source>Filename</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="522"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="523"/>
         <source>Files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="523"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="524"/>
         <source>Files &amp; Parameters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="524"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="525"/>
         <source>Files &amp; fit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="525"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="526"/>
         <source>Files (drop .sm files or folders)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="526"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="527"/>
         <source>Files to process</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="527"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="528"/>
         <source>Fill gaps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="528"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="529"/>
         <source>Fill α/β/γ/δ and R0 from the selected detector-setup calibration.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="529"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="530"/>
         <source>Filter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="530"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="531"/>
         <source>Filter bandwidth.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="531"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="532"/>
         <source>Filter by creator user UUID.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="532"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="533"/>
         <source>Filter name / model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="533"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="534"/>
         <source>Filter type.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="534"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="535"/>
         <source>Filters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="535"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="536"/>
         <source>Fine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="536"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="537"/>
         <source>Fine grid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="537"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="538"/>
         <source>Finish</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="538"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="539"/>
         <source>First bin after the flat linear region.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="539"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="540"/>
         <source>First bin of the flat linear region (or drag the orange region).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="540"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="541"/>
         <source>First frame</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="541"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="542"/>
         <source>First frame of the processed range.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="542"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="543"/>
         <source>First photon index shown in the dT plot.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="543"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="544"/>
         <source>Fit (Fit23)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="544"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="545"/>
         <source>Fit 3D Gaussian PSF to a bead stack.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="545"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="546"/>
         <source>Fit Results</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="546"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="547"/>
         <source>Fit a 2D-FDC matrix to lifetime species.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="547"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="548"/>
         <source>Fit a GMM to features extracted from a .bur file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="548"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="549"/>
         <source>Fit a correlation curve (simple/MaxEnt) per settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="549"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="550"/>
         <source>Fit a multi-species PCH model to experimental data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="550"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="551"/>
         <source>Fit an empirical-Bayes Gaussian HMM over a set of binned FRET traces.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="551"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="552"/>
         <source>Fit every selected file pixel-by-pixel; writes &lt;stem&gt;_pixel_mle.csv next to each.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="552"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="553"/>
         <source>Fit flags</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="553"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="554"/>
         <source>Fit photon-by-photon HMM (H2MM) models over burst data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="554"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="555"/>
         <source>Fit start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="555"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="556"/>
         <source>Fit stop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="556"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="557"/>
         <source>Fit worker threads. 0 = auto (cpu − 1); 1 = serial.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="557"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="558"/>
         <source>Fit-window start on the binned micro-time axis.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="558"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="559"/>
         <source>Fit-window stop on the binned micro-time axis.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="559"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="560"/>
         <source>Fits an n-component PCH model to an experimental P(k), yielding per-species molecular brightness (epsilon), mean occupancy (N) and amplitude fractions plus chi-square statistics. Restrict the fitted k range with fit_low/fit_high.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="560"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="561"/>
         <source>Fitted single-pixel lifetime (τ) map of the selected file; the in-plot selector switches between analysed files and the z-slider scrubs frames.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="561"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="562"/>
         <source>Fitting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="562"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="563"/>
         <source>Fix / Initialize</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="563"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="564"/>
         <source>Fixed body</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="564"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="565"/>
         <source>Fixed intensity threshold; &lt; 0 uses Otsu.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="565"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="566"/>
         <source>Fixed-DURATION stop: measurement duration = max_windows × dt (0 = unlimited, default 0). e.g. 10 min at dt = 1 µs ⇒ 6e8 windows. REQUIRED by Independent-molecule mode, which then ignores N_ph_max.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="566"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="567"/>
         <source>Flow</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="567"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="568"/>
         <source>Fluorescence lifetime (ns).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="568"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="569"/>
         <source>Fluorescence lifetime in nanoseconds.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="569"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="570"/>
         <source>Fluorescence lifetime of species 1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="570"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="571"/>
         <source>Fluorescence lifetime of species 2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="571"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="572"/>
         <source>Fluorescence lifetime of state 1 (ns).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="572"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="573"/>
         <source>Fluorescence lifetime of state 2 (ns).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="573"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="574"/>
         <source>Fluorescence lifetime of the donor in the absence of FRET, in nanoseconds.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="574"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="575"/>
         <source>Fluorescence quantum yield.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="575"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="576"/>
         <source>Fluorophores</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="576"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="577"/>
         <source>Focus threshold (frac of peak)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="577"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="578"/>
         <source>Focus waists [w0, z0] (µm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="578"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="579"/>
         <source>Foerster radius of the donor-acceptor dye pair, in Angstrom.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="579"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="580"/>
         <source>Folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="580"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="581"/>
         <source>Folder containing .cor or .json.gz correlation chunk files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="581"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="582"/>
         <source>For burst-wise FCS and correlator tools, ChiSurf needs to know which detector channels (or channel pairs) belong to a correlation setup. Create at least one setup below and save it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="582"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="583"/>
         <source>Force an input container type, or Auto to detect it from the file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="583"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="584"/>
         <source>Force the input container type, or Auto to detect it from the file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="584"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="585"/>
         <source>Format</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="585"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="586"/>
         <source>Formats</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="586"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="587"/>
         <source>Fraction</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="587"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="588"/>
         <source>Fraction c1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="588"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="589"/>
         <source>Fraction of component 1 by projection onto the two-component line.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="589"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="590"/>
         <source>Fraction of peak excitation that defines the effective-focus bounding box shared by Coasting, the two-step lookup and the Active margin (default 1e-3). Smaller ⇒ a larger, more conservative focus box.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="590"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="591"/>
         <source>Fraction of the IRF maximum below which bins are zeroed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="591"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="592"/>
         <source>Fractional intensity of component 1 (component 2 gets the remainder); sets the mixture point.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="592"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="593"/>
         <source>Frame</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="593"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="594"/>
         <source>Frame marker numbers, comma separated.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="594"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="595"/>
         <source>Frame markers</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="595"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="596"/>
         <source>Frame shift</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="596"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="597"/>
         <source>Frames</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="597"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="598"/>
         <source>Frames (movie)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="598"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="599"/>
         <source>Framewise RICS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="599"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="600"/>
         <source>Free-text description.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="600"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="601"/>
         <source>Free-text filter description.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="601"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="602"/>
         <source>Free-text probe description.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="602"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="603"/>
         <source>Frequency</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="603"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="604"/>
         <source>Frequency (MHz, -1=auto)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="604"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="605"/>
         <source>From file (default)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="605"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="606"/>
         <source>Full diffusion tensor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="606"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="607"/>
         <source>Full width at half maximum of the synthetic IRF (ns).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="607"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="608"/>
         <source>Fundamental (time-zero) fluorescence anisotropy (default 0 = anisotropy off). Physical range −0.2…0.4; organic dyes ~0.36–0.4. &gt;0 enables photoselection + rotational depolarization (needs a decay pattern and D_rot).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="608"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="609"/>
         <source>Fundamental anisotropy of the dye.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="609"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="610"/>
         <source>Fundamental anisotropy r0</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="610"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="611"/>
         <source>Fundamental anisotropy.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="611"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="612"/>
         <source>Förster R0</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="612"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="613"/>
         <source>Förster radius (distance mode).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="613"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="614"/>
         <source>Förster radius R0.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="614"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="615"/>
         <source>G</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="615"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="616"/>
         <source>G (polarization detection ratio)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="616"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="617"/>
         <source>G-factor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="617"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="618"/>
         <source>G_c(t_c)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="618"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="619"/>
         <source>Gauss</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="619"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="620"/>
         <source>Gaussian</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="620"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="621"/>
         <source>Gaussian FWHM (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="621"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="622"/>
         <source>Gaussian IRF centre (micro-time channels).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="622"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="623"/>
         <source>Gaussian IRF width (micro-time channels).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="623"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="624"/>
         <source>Gaussian smoothing sigma applied before thresholding.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="624"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="625"/>
         <source>Generate a decay from a component definition (lifetime / spectrum / gaussian-lifetime / gaussian-distance).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="625"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="626"/>
         <source>Generate a decay from lifetimes/amplitudes (+ optional IRF, shot noise).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="626"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="627"/>
         <source>Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="627"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="628"/>
         <source>Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="628"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="629"/>
         <source>Generate the decay and update the plot.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="629"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="630"/>
         <source>Generation Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="630"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="631"/>
         <source>Generator status.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="631"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="632"/>
         <source>Generic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="632"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="633"/>
         <source>Get an open editor document.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="633"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="634"/>
         <source>Graph lifecycle events</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="634"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="635"/>
         <source>Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic properties (e.g. translational diffusion coefficient) from atomic or bead-model structures.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="635"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="636"/>
         <source>Green / red / yellow (and ∥/⊥) decays for this labeling state.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="636"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="637"/>
         <source>Grid extent [xy, z] (µm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="637"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="638"/>
         <source>Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="638"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="639"/>
         <source>HYDRO executable and the structures to process.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="639"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="640"/>
         <source>Half-width of the macro-time lag window (ddT). Wider = more photon pairs but coarser lag resolution.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="640"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="641"/>
         <source>Harmonic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="641"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="642"/>
         <source>Harmonic number; the effective frequency is frequency x harmonic.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="642"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="643"/>
         <source>Header tags</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="643"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="644"/>
         <source>Highest k included in the fit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="644"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="645"/>
         <source>Histogram</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="645"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="646"/>
         <source>Histogram &amp; convolution</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="646"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="647"/>
         <source>Histogram extraction: fast = vectorised C++, loop = exact bincount, auto = fast with bincount fallback on saturation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="647"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="648"/>
         <source>Hold the fundamental anisotropy fixed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="648"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="649"/>
         <source>Hold the lifetime fixed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="649"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="650"/>
         <source>Hold the rotational correlation time fixed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="650"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="651"/>
         <source>Hold the scatter fraction fixed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="651"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="652"/>
         <source>Homo-FRET (energy-migration) rate constant (derived from t_RM / rho).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="652"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="653"/>
         <source>Host</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="653"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="654"/>
         <source>How conservative coasting is: a sleeper's per-step displacement std ≤ (distance-to-boundary) / coast_safety (default 3; 3–4 typical). Larger = safer but slower. Only used when Coasting is on.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="654"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="655"/>
         <source>How many photons to use for the corrected-preview histogram.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="655"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="656"/>
         <source>How the IRF used for lifetime deconvolution is obtained. Synthetic = Gaussian pulse; Detect = place a synthetic pulse at the decay's prompt rise; File = IRF opened via 📈 Open IRF; None = tail-fit without an IRF.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="656"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="657"/>
         <source>Hub that groups ChiSurf&apos;s FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="657"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="658"/>
         <source>Hub that lists ChiSurf&apos;s guided wizards and embeds the selected one in a two-panel view.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="658"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="659"/>
         <source>Hydrodynamic radius (read-only unless 'Fix rₕ').</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="659"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="660"/>
         <source>Hydrodynamic radius of primary elements. Typical: 2.9 (mode 1), 4.8 (2), 6.1 (4).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="660"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="661"/>
         <source>IDIF=1: output the full 6×6 diffusion tensor and diffusion centre.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="661"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="662"/>
         <source>INDMODE</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="662"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="663"/>
         <source>IRF</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="663"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="664"/>
         <source>IRF &amp; BG</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="664"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="665"/>
         <source>IRF &amp; noise</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="665"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="666"/>
         <source>IRF (non-burst scatter)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="666"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="667"/>
         <source>IRF (normalised)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="667"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="668"/>
         <source>IRF TTTR file(s) for this detector (summed); carried to Phasor + pixel-wise MLE. Drag-drop to add.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="668"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="669"/>
         <source>IRF TTTR measurement (the first file is used).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="669"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="670"/>
         <source>IRF VH</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="670"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="671"/>
         <source>IRF VV</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="671"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="672"/>
         <source>IRF centre</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="672"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="673"/>
         <source>IRF file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="673"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="674"/>
         <source>IRF files (this detector)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="674"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="675"/>
         <source>IRF preparation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="675"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="676"/>
         <source>IRF start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="676"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="677"/>
         <source>IRF stop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="677"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="678"/>
         <source>IRF window start (separate from the conv window). Drag the green region.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="678"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="679"/>
         <source>IRF window stop (separate from the conv window). Drag the green region.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="679"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="680"/>
         <source>IRF σ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="680"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="681"/>
         <source>If enabled, the time-axis dt is multiplied by the y-rebin factor (set automatically for stacked VV/VH files).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="681"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="682"/>
         <source>If enabled, uses two atoms per fluorophore and computes the orientation factor kappa2; otherwise only the first atom of each dye defines the distance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="682"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="683"/>
         <source>Image</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="683"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="684"/>
         <source>Image model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="684"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="685"/>
         <source>Image representations (+ to create from the current CLSM image).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="685"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="686"/>
         <source>Image type</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="686"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="687"/>
         <source>Images</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="687"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="688"/>
         <source>Imaging (acquisition)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="688"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="689"/>
         <source>Imaging (pixel size)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="689"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="690"/>
         <source>Immobile + shift</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="690"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="691"/>
         <source>Immobile fraction</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="691"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="692"/>
         <source>Independent-molecule mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="692"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="693"/>
         <source>Initial MEM regulator (RegulatorConst). Larger = smoother; the schedule relaxes it over outer iterations.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="693"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="694"/>
         <source>Initial fluorescence lifetime.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="694"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="695"/>
         <source>Initial scatter fraction.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="695"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="696"/>
         <source>Input</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="696"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="697"/>
         <source>Input / Output</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="697"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="698"/>
         <source>Input format</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="698"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="699"/>
         <source>Input is a folder of PDBs</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="699"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="700"/>
         <source>Inputs</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="700"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="701"/>
         <source>Inspect a saved ChiSurf .bur file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="701"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="702"/>
         <source>Inspect burstwise analysis tables and plots.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="702"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="703"/>
         <source>Instrument parameters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="703"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="704"/>
         <source>Instrumental g-factor and channel-mixing corrections.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="704"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="705"/>
         <source>Integer down-binning of the micro-time axis before fitting.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="705"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="706"/>
         <source>Integer micro-time shift in bins applied to the decay histogram.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="706"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="707"/>
         <source>Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="707"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="708"/>
         <source>Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, and VV/VH G-factor calibration.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="708"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="709"/>
         <source>Intensity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="709"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="710"/>
         <source>Intensity along x through the fitted bead centre (data) with the Gaussian fit overlay.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="710"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="711"/>
         <source>Intensity along y through the fitted bead centre (data) with the Gaussian fit overlay.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="711"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="712"/>
         <source>Intensity along z through the fitted bead centre (data) with the Gaussian fit overlay.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="712"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="713"/>
         <source>Intensity image</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="713"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="714"/>
         <source>Intensity image (TIFF or .npy/.npz); sets the per-pixel brightness.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="714"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="715"/>
         <source>Intensity levels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="715"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="716"/>
         <source>Intensity-dependent rates k_rad</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="716"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="718"/>
         <source>Interactive network graph for visualizing and managing parameter relationships across fits in global analysis.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="717"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="719"/>
         <source>Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line. Declarative AutoForm view.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="718"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="720"/>
         <source>Intervals for the distance distribution p(r): 0 omit, -1 automatic, &gt;0 specify RMAX.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="719"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="721"/>
         <source>Inverse occupancy G(0) = 1/N.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="720"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="722"/>
         <source>Inverse-Laplace solver: Tikhonov (closed-form, fastest), NNLS (strict non-negativity, default), or maximum-entropy (faithful, slower).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="721"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="723"/>
         <source>Invert the selection (keep the rejected photons).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="722"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="724"/>
         <source>Inverted lifetime-lifetime distribution P (the 2D-FLCS map); its diagonal is the marginal lifetime spectrum, off-diagonals encode lifetime exchange.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="723"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="725"/>
         <source>Iso-lifetime grid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="724"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="726"/>
         <source>Isotropic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="725"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="727"/>
         <source>Iterations</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="726"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="728"/>
         <source>JSON</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="727"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="729"/>
         <source>Job lifecycle events</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="728"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="730"/>
         <source>Join mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="729"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="731"/>
         <source>Join or stack molecular dynamics trajectories.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="730"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="732"/>
         <source>Join trajectories</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="731"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="733"/>
         <source>Kalman Q</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="732"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="734"/>
         <source>Kalman R scale</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="733"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="735"/>
         <source>Kalman merge gap</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="734"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="736"/>
         <source>Kalman min len</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="735"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="737"/>
         <source>Kalman z-thresh</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="736"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="738"/>
         <source>Keep best</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="737"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="739"/>
         <source>Keep original</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="738"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="740"/>
         <source>Kinetics (advanced)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="739"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="741"/>
         <source>Kinetics / statistics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="740"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="742"/>
         <source>L-curve</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="741"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="743"/>
         <source>Label for this component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="742"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="744"/>
         <source>Label for this decay component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="743"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="745"/>
         <source>Labeling state</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="744"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="746"/>
         <source>Labelling positions and experimental distances (fps.json).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="745"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="747"/>
         <source>Lamps / LEDs / lasers.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="746"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="748"/>
         <source>Largest reduced χ² still compatible with a fit's χ² minimum at the chosen confidence.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="747"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="749"/>
         <source>Largest trial lifetime (ns).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="748"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="750"/>
         <source>Laser period (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="749"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="751"/>
         <source>Laser period (ns, 0 ⇒ full window)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="750"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="752"/>
         <source>Last frame</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="751"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="753"/>
         <source>Last frame of the processed range (-1 = all frames).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="752"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="754"/>
         <source>Last photon index shown in the dT plot (0 = all).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="753"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="755"/>
         <source>Lateral ROI size (pixels) cut around a bead for the 3D Gaussian fit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="754"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="756"/>
         <source>Lateral camera/scanner pixel size in nm; scales σx/σy to physical FWHM.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="755"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="757"/>
         <source>Lateral half-extent of the ellipsoidal simulation box (µm, default 2). Must exceed the focus by a few diffusion lengths; larger = more dilute but slower. Prefer 'Active margin' (Performance) to auto-shrink around the focus instead of a tiny box.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="756"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="758"/>
         <source>Latest single-bead fit report or batch summary.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="757"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="759"/>
         <source>Lazy Lifetime Analysis for TCSPC fluorescence decay data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="758"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="760"/>
         <source>Lazy Lifetime Analysis is experimental and not yet validated</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="759"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="761"/>
         <source>Leave the source file in place (off = delete after writing).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="760"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="762"/>
         <source>Lifetime</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="761"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="763"/>
         <source>Lifetime (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="762"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="764"/>
         <source>Lifetime D0</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="763"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="765"/>
         <source>Lifetime DA</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="764"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="766"/>
         <source>Lifetime distribution</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="765"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="767"/>
         <source>Lifetime inversion</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="766"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="768"/>
         <source>Lifetime map</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="767"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="769"/>
         <source>Lifetime map(s)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="768"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="770"/>
         <source>Lifetime spectrum</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="769"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="771"/>
         <source>Lifetime ticks</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="770"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="772"/>
         <source>Lifetime-FCS simulator: a synthetic-data teaching/validation tool. The recovered curves depend on the simulated statistics.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="771"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="773"/>
         <source>Lifetime-filtered species auto- and cross-correlations; their relaxation encodes the interconversion.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="772"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="774"/>
         <source>Lifetimes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="773"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="775"/>
         <source>Lifetimes (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="774"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="776"/>
         <source>Light source name / model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="775"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="777"/>
         <source>Light source type.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="776"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="778"/>
         <source>Light sources</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="777"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="779"/>
         <source>Limited width (σ = p%·R)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="778"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="780"/>
         <source>Lin. table</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="779"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="781"/>
         <source>Line dur [ms]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="780"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="782"/>
         <source>Line start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="781"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="783"/>
         <source>Line stop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="782"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="784"/>
         <source>Link two parameters by name across fits.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="783"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="785"/>
         <source>List TTTR image files and metadata for a folder.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="784"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="786"/>
         <source>List TTTR trace files and metadata for a folder.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="785"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="787"/>
         <source>List all available documentation files with metadata.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="786"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="788"/>
         <source>List all parameters across fits with their values, bounds, and link status.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="787"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="789"/>
         <source>List built-in CLSM acquisition-setup presets.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="788"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="790"/>
         <source>List objects with optional filtering.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="789"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="791"/>
         <source>List open editor documents.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="790"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="792"/>
         <source>List saved light-path simulations from MMFDB.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="791"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="793"/>
         <source>Live JSON view of the full TTTR header with the edited tags.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="792"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="794"/>
         <source>Live preview of the current decay.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="793"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="795"/>
         <source>Live update</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="794"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="796"/>
         <source>Load .cor / .json.gz correlation chunks from a folder.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="795"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="797"/>
         <source>Load TTTR Image Browser ratings and annotations.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="796"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="798"/>
         <source>Load TTTR metadata and optionally photon arrays.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="797"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="799"/>
         <source>Load Trace Browser ratings and annotations.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="798"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="800"/>
         <source>Load a TTTR CLSM file, or an imaging HDF5 (resolved to its source photon data via the stored back-reference); markers are auto-detected.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="799"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="801"/>
         <source>Load a TTTR file and return its metadata (routing channels, photon count, resolutions).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="800"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="802"/>
         <source>Load a TTTR file, build a CLSM image and report its dimensions.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="801"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="803"/>
         <source>Load a VV/VH format decay file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="802"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="804"/>
         <source>Load a lifetime spectrum from a CSV/text file (interleaved a,τ list or 2-column amplitude/lifetime table).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="803"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="805"/>
         <source>Load a measured instrument response histogram (text / .npy); overrides the synthetic Gaussian below.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="804"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="806"/>
         <source>Load a settings.tttr.json bundle.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="805"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="807"/>
         <source>Load binned image mosaic for preview.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="806"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="808"/>
         <source>Load binned trace data for preview.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="807"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="809"/>
         <source>Load decay data from a ChiSurf dataset.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="808"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="810"/>
         <source>Load one saved light-path simulation from MMFDB.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="809"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="811"/>
         <source>Loaded data</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="810"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="812"/>
         <source>Local (Ollama, LMStudio, ...)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="811"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="813"/>
         <source>Local MMFDB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="812"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="814"/>
         <source>Local file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="813"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="815"/>
         <source>Log amplitude</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="814"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="816"/>
         <source>Log scale</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="815"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="817"/>
         <source>Log τ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="816"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="818"/>
         <source>Look up a file in the MMFDB object store.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="817"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="819"/>
         <source>Low-count threshold</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="818"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="820"/>
         <source>Lower correlation-time bound of the fit window (0 = full).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="819"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="821"/>
         <source>Lower diffusion-time bound for the MaxEnt grid (0 = auto).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="820"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="822"/>
         <source>Lower inter-photon-time threshold.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="821"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="823"/>
         <source>Lower micro-time gate (channel index); no lower gate when omitted.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="822"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="824"/>
         <source>Lower micro-time gate (ns) for the decay axis.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="823"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="825"/>
         <source>Lowest k included in the fit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="824"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="826"/>
         <source>MC steps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="825"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="827"/>
         <source>MCS bin (ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="826"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="828"/>
         <source>MDF</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="827"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="829"/>
         <source>MDF (Gauss-Lorentz)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="828"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="830"/>
         <source>MDF = Enderlein Gauss-Lorentz molecule-detection function (accurate absolute Veff/concentration). Gauss = classic single-focus 3D-Gaussian PSF approximation (the default). Two-focus = classic Dertinger dual-focus technique (same 3D-Gaussian term, known inter-focus distance yields an absolute D).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="829"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="831"/>
         <source>MEM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="830"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="832"/>
         <source>MIME type.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="831"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="833"/>
         <source>MMFDB password for the user below. Blank attempts a passwordless login.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="832"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="834"/>
         <source>MMFDB password. Not needed when the session user is already an administrator.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="833"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="835"/>
         <source>MMFDB probe identifier.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="834"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="836"/>
         <source>MMFDB server host (server mode).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="835"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="837"/>
         <source>MMFDB server host. Change to connect to a different server.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="836"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="838"/>
         <source>MMFDB user id to authenticate as.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="837"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="839"/>
         <source>Macro time interval</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="838"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="840"/>
         <source>Macro times of each output file restart at zero.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="839"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="841"/>
         <source>Macro-time bin width used to build the amplitude envelope.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="840"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="842"/>
         <source>Macro-time lag dT at which the 2D fluorescence-decay correlation is built. Pick a value within the dynamics timescale to see lifetime cross-peaks.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="841"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="843"/>
         <source>Manage installed plugins.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="842"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="844"/>
         <source>Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="843"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="845"/>
         <source>Maps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="844"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="846"/>
         <source>Mark imported as approved</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="845"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="847"/>
         <source>Mark the reference lifetimes on the universal semicircle.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="846"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="848"/>
         <source>Master gain</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="847"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="849"/>
         <source>Max gap</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="848"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="850"/>
         <source>Max tokens</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="849"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="851"/>
         <source>MaxEnt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="850"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="852"/>
         <source>MaxEnt diffusion-time distribution (shown for MaxEnt fits).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="851"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="853"/>
         <source>MaxEnt diffusion-time summary of a correlation curve.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="852"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="854"/>
         <source>MaxEnt reg (log10)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="853"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="855"/>
         <source>MaxEnt regularisation strength as log10(reg).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="854"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="856"/>
         <source>Maximum distance for p(r) (only when NS &gt; 0).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="855"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="857"/>
         <source>Maximum docking iterations per run (FPS max_iter) — conjugate-gradient steps for minimize, Monte-Carlo frames for mc.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="856"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="858"/>
         <source>Maximum gap (photons) bridged when filling gaps.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="857"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="859"/>
         <source>Maximum gap between bursts to merge (Kalman).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="858"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="860"/>
         <source>Maximum likelihood lifetime analysis for single-molecule burst data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="859"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="861"/>
         <source>Maximum minibead radius (shell modes 1/2 when NSIG ≠ -1).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="860"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="862"/>
         <source>Maximum number of tokens to generate per response.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="861"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="863"/>
         <source>Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="862"/>
-        <source>Mean Micro-Time</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="863"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="865"/>
         <source>Mean R (Å)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="864"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="866"/>
         <source>Mean R_app/R_DA</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="865"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="867"/>
         <source>Mean donor-acceptor distance of this Gaussian.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="866"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="868"/>
         <source>Mean micro-time (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="867"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="869"/>
         <source>Mean micro-time movie</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="868"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="870"/>
         <source>Mean κ²</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="869"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="871"/>
         <source>Measurement-noise scaling (Kalman).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="870"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="872"/>
         <source>Merge / average multiple FCS correlation curves to improve signal-to-noise.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="871"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="873"/>
         <source>Merge into one</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="872"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="874"/>
         <source>Merge selected segments separated by up to &apos;Max gap&apos; photons.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="873"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="875"/>
         <source>Merge several ALEX files into a single micro-time file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="874"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="876"/>
         <source>Method</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="875"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="877"/>
         <source>Micro bins</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="876"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="878"/>
         <source>Micro time (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="877"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="880"/>
         <source>Micro-time (TAC) binning factor.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="878"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="881"/>
         <source>Micro-time (TAC) channels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="879"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="882"/>
         <source>Micro-time (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="880"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="883"/>
         <source>Micro-time bin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="881"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="884"/>
         <source>Micro-time bin width in nanoseconds.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="882"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="885"/>
         <source>Micro-time bin width.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="883"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="886"/>
         <source>Micro-time binning</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="884"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="887"/>
         <source>Micro-time binning factor (clamped to ≥8 for SPC containers).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="885"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="888"/>
         <source>Micro-time binning factor for fine correlation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="886"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="889"/>
         <source>Micro-time bins.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="887"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="890"/>
         <source>Micro-time channel width in NANOSECONDS (the TAC/TCSPC resolution; default ≈0.004 ns). Separate ns axis from the macro-time.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="888"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="891"/>
         <source>Micro-time channel width; the excitation period is n_micro × dt.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="889"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="892"/>
         <source>Micro-time channels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="890"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="893"/>
         <source>Micro-time coarsening (binning) factor: neighbouring micro-time bins are summed before histogramming.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="891"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="894"/>
         <source>Micro-time coarsening for the MLE IRF/background patterns (match the burst-MLE binning).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="892"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="895"/>
         <source>Micro-time histogram after mapping the ALEX period/shift; updates live.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="893"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="896"/>
         <source>Micro-time range(s) to keep, e.g. 0-2048;2048-4095.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="894"/>
-        <source>Microtime</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="895"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="897"/>
         <source>Min #Ph</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="896"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="898"/>
         <source>Min area (px)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="897"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="899"/>
         <source>Min coast windows</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="898"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="900"/>
         <source>Min dist (px)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="899"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="901"/>
         <source>Min distance</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="900"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="902"/>
         <source>Min photons</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="901"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="903"/>
         <source>Min photons/burst</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="902"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="904"/>
         <source>Min. photons</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="903"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="905"/>
         <source>Minimum allowed atom-atom distance (shown in Ångström). Frames with any selected atom pair closer than this (after a /10 conversion to the trajectory length unit) are removed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="904"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="906"/>
         <source>Minimum burst length in bins (Kalman).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="905"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="907"/>
         <source>Minimum lateral distance between accepted beads (pixels); rejects clustered candidates.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="906"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="908"/>
         <source>Minimum minibead radius (shell modes 1/2 when NSIG ≠ -1).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="907"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="909"/>
         <source>Minimum photons per burst (burst) / max photons in window (count-rate).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="908"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="910"/>
         <source>Minimum photons per pixel for a valid phasor.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="909"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="911"/>
         <source>Minimum photons per pixel for the mean micro time.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="910"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="912"/>
         <source>Missed-detection parameter (CUSUM).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="911"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="913"/>
         <source>Mistral</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="912"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="914"/>
         <source>Mitigate wrap spike (floor + ε)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="913"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="915"/>
         <source>Mixer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="914"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="916"/>
         <source>Mixing region</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="915"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="917"/>
         <source>Mixture</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="916"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="918"/>
         <source>Mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="917"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="919"/>
         <source>Model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="918"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="920"/>
         <source>Model Manager for ChiSurf</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="919"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="921"/>
         <source>Model scattered excitation light (the IRF) as a nuisance component. Each detector&apos;s measured IRF file, or its synthetic-IRF Width/Skew, is set per row in the Detectors table below. Afterpulse and scatter/IRF are always absorbed by their filters and excluded from the correlation-facing output.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="920"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="922"/>
         <source>Model the finite laser repetition period: the previous pulse&apos;s decay tail wraps into the window (fixes the ramp/offset in the residuals).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="921"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="923"/>
         <source>Models</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="922"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="924"/>
         <source>Modulation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="923"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="925"/>
         <source>Modulation frequency used to map lifetimes onto the phasor plot.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="924"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="926"/>
         <source>Modulation frequency; -1 auto-derives from the TTTR header.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="925"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="927"/>
         <source>Molar extinction coefficient (M^-1 cm^-1).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="926"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="928"/>
         <source>Molecular shape</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="927"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="929"/>
         <source>Molecular structure viewer and protein analysis plugin for ChiSurf.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="928"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="930"/>
         <source>Molecular weight in daltons.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="929"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="931"/>
         <source>Molecule-wise MLE</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="930"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="932"/>
         <source>Molecule-wise MLE lifetime analysis from TTTR imaging data (PTU).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="931"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="933"/>
         <source>Molecules</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="932"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="934"/>
         <source>Molecules smaller than this many pixels are discarded.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="933"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="935"/>
         <source>Molecules with fewer photons in the fit window are not fitted.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="934"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="936"/>
         <source>Monte-Carlo (mc method only)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="935"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="937"/>
         <source>Monte-Carlo steps per frame.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="936"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="938"/>
         <source>Monte-Carlo trials for the covolume calculation (0 to omit; very time-consuming).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="937"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="939"/>
         <source>Movie</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="938"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="940"/>
         <source>Multi-tau cascades for the filtered correlation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="939"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="941"/>
         <source>Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="940"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="942"/>
         <source>N</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="941"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="943"/>
         <source>N τ points</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="942"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="944"/>
         <source>NNLS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="943"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="945"/>
         <source>NQ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="944"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="946"/>
         <source>NS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="945"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="947"/>
         <source>NSIG</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="946"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="948"/>
         <source>NTRIALS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="947"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="949"/>
         <source>NaN-safe median or gaussian filtering of g, s phasor maps.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="948"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="950"/>
         <source>Name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="949"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="951"/>
         <source>Named chi2 score set in the fps.json (empty = all distances).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="950"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="952"/>
         <source>Never sleep a molecule for fewer than this many windows (default 8) — avoids coasting overhead on short gaps. Only used when Coasting is on.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="951"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="953"/>
         <source>Noffset</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="952"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="954"/>
         <source>Noise</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="953"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="955"/>
         <source>Noise model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="954"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="956"/>
         <source>Non-negative, sum-to-one fractions for N &gt;= 2 component phasors.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="955"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="957"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="956"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="958"/>
         <source>None / uniform</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="957"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="959"/>
         <source>Norm.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="958"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="960"/>
         <source>Normalize IRF</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="959"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="961"/>
         <source>Normalize an fps.json payload through the core data model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="960"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="962"/>
         <source>Normalize by region mean</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="961"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="963"/>
         <source>Nucleus-sampling probability mass.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="962"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="964"/>
         <source>Number &amp; Brightness</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="963"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="965"/>
         <source>Number (N)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="964"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="966"/>
         <source>Number of Gaussian lifetime components to fit to the MEM distribution.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="965"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="967"/>
         <source>Number of best-scoring PDB models to write (and step through in the 3D preview).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="966"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="968"/>
         <source>Number of bins in the κ² histogram.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="967"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="969"/>
         <source>Number of chunks to split data into for block averaging.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="968"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="970"/>
         <source>Number of components in the staging database.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="969"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="971"/>
         <source>Number of detection (routing) channels (default 2). 2 = donor/acceptor; 4 = 2-colour PIE or polarization-resolved; 6 = 3-colour, or colour×polarization.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="970"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="972"/>
         <source>Number of free parameters of the model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="971"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="973"/>
         <source>Number of independent docking runs from random starts (FPS n_trials). &gt;1 estimates the score spread; each run is plotted and listed in the results table and runs in parallel.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="972"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="974"/>
         <source>Number of linear correlation bins per cascade.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="973"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="975"/>
         <source>Number of log-spaced trial lifetimes in the inversion basis.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="974"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="976"/>
         <source>Number of macro-time lags for the global multi-lag MEM / kinetics scan.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="975"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="977"/>
         <source>Number of micro-time (TAC) bins in the decay histogram.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="976"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="978"/>
         <source>Number of micro-time (TAC) bins.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="977"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="979"/>
         <source>Number of micro-time (TAC) channels.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="978"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="980"/>
         <source>Number of micro-time (TCSPC/TAC) channels on the fluorescence-decay axis (default 4096; match the instrument, typically 1024–4096). N_tac × tac_dt should span one laser period.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="979"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="981"/>
         <source>Number of minibead radii (&gt;2, typically 5–8). Use -1 for automatic SIGMIN/SIGMAX.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="980"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="982"/>
         <source>Number of molecular / photophysical states (default 1). Brightness q, diffusion D and the N×N rate matrices are all sized by this. Use ≥2 for FRET states, species mixtures, or blinking (a bright + a dark state).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="981"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="983"/>
         <source>Number of molecular species in the model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="982"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="984"/>
         <source>Number of multi-tau cascades (n_casc).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="983"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="985"/>
         <source>Number of multi-tau cascades.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="984"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="986"/>
         <source>Number of photons generated.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="985"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="987"/>
         <source>Number of photons over which the local count rate is computed (burst mode).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="986"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="988"/>
         <source>N×N row-major (i→j) SPONTANEOUS transition-rate matrix, per macro-time unit — blinking / conformational dynamics, independent of excitation. e.g. a two-state blinker uses k(bright→dark) and k(dark→bright). Length N_species².</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="987"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="989"/>
         <source>N×N row-major (i→j) transition-rate matrix SCALED by the local excitation intensity — photo-induced processes such as photobleaching — per macro-time unit. Length N_species². All-zero = no light-driven transitions (the common case).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="988"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="990"/>
         <source>Occupancy</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="989"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="991"/>
         <source>Offset guess to skip early bins.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="990"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="992"/>
         <source>Offset subtracted from corrected NTAC indices (or drag the red line).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="991"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="993"/>
         <source>One fluorescence-lifetime map (ns) per detector channel, matching the intensity-image shape.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="992"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="994"/>
         <source>Only every Nth frame is scored; also seeds the emitted frame numbers.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="993"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="995"/>
         <source>Only used when Method = mc; ignored by the default minimize docking.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="994"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="996"/>
         <source>Only writes settings files that do not exist yet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="995"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="997"/>
         <source>Op</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="996"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="998"/>
         <source>Open results</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="997"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="999"/>
         <source>Open the ChiSurf settings editor to adjust paths and options.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="998"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1000"/>
         <source>Open the provider&apos;s console to create or copy an API key.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="999"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1001"/>
         <source>Open the user settings folder (~/.chisurf) in your file manager.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1000"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1002"/>
         <source>Open-volume expected molecule count per species IN THE BOX (default [1.5]); with the box size this sets the concentration (= M / box volume). smFRET is dilute — on average ~1 molecule in the focus (single-digit to tens of pM).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1001"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1003"/>
         <source>OpenAI (ChatGPT)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1002"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1004"/>
         <source>OpenAI-compatible API base URL for the selected provider.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1003"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1005"/>
         <source>Opens a TTTR file with tttrlib and reports its metadata: available routing channels, total photon count, macro-time resolution and micro-time range. Call this first to discover which channels to select for pch.compute.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1004"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1006"/>
         <source>Optical Density</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1005"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1007"/>
         <source>Optical density.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1006"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1008"/>
         <source>Optical filters.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1007"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1009"/>
         <source>Optical light path simulator to calculate crosstalk and R0 overlap integrals.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1008"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1010"/>
         <source>Optics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1009"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1011"/>
         <source>Optimise P+2S instead of P and S separately.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1010"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1012"/>
         <source>Optional [xy, z] half-extent of the excitation voxel grid, INDEPENDENT of the box (µm). Sizing it to the focus (e.g. [3, 5]) instead of the full box makes grid construction ~50× cheaper with IDENTICAL physics, since the field is ≈0 outside. Empty = span the whole box. Ignored when 'Analytic Gaussian focus' is on.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1011"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1013"/>
         <source>Optional calculations</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1012"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1014"/>
         <source>Optional instrument response function file (text or .npy) to convolve with the decay. Empty = ideal decay.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1013"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1015"/>
         <source>Optionally pick datasets already loaded in ChiSurf.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1014"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1016"/>
         <source>Orientation factor (distance mode); 2/3 for free rotation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1015"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1017"/>
         <source>Original filename.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1016"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1018"/>
         <source>Outcome of the last run.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1017"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1019"/>
         <source>Output</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1018"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1020"/>
         <source>Output base name; the extension below is appended.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1019"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1021"/>
         <source>Output file extension / format.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1020"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1022"/>
         <source>Output format</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1021"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1023"/>
         <source>Outputs</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1022"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1024"/>
         <source>Outputs (MDF mode)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1023"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1025"/>
         <source>P(R_DA)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1024"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1026"/>
         <source>P(τ_D)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1025"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1027"/>
         <source>PDB fetch lifecycle events</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1026"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1028"/>
         <source>PSF / focus model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1027"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1029"/>
         <source>PSF Determination</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1028"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1030"/>
         <source>PSF file (radial)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1029"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1031"/>
         <source>PSF parameters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1030"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1032"/>
         <source>PSF r step (µm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1031"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1033"/>
         <source>PSF z step (µm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1032"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1034"/>
         <source>PTU files (drop files or folders)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1033"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1035"/>
         <source>PTU/HT3 imaging file (or drop one onto the window); CLSM markers auto-detected.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1034"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1036"/>
         <source>PTU/HT3 imaging file; CLSM markers are auto-detected from the header.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1035"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1037"/>
         <source>PTU/HT3 imaging file; CLSM markers auto-detected.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1036"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1038"/>
         <source>Padding ±[ms]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1037"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1039"/>
         <source>Parallel background counts spread over the fit window.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1038"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1040"/>
         <source>Parallel channels (∥)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1039"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1041"/>
         <source>Parallel-channel background subtracted from the VV IRF (0 = auto baseline).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1040"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1042"/>
         <source>Parallel-channel sub-bin IRF shift.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1041"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1043"/>
         <source>Parameter mutation events</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1042"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1044"/>
         <source>Parameters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1043"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1045"/>
         <source>Parse a BUR file into TTTR path + burst ranges.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1044"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1046"/>
         <source>Parse a Burst-ID .bst file into TTTR path + burst ranges.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1045"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1047"/>
         <source>Parse a HYDRO *.res report for the translational diffusion coefficient.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1046"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1048"/>
         <source>Parse, average and optionally save the correlations in a folder.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1047"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1049"/>
         <source>Partial specific volume (proteins ≈ 0.73–0.75 cm³/g).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1048"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1050"/>
         <source>Password</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1049"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1051"/>
         <source>Paste API key — it is saved and tested automatically</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1050"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1052"/>
         <source>Path of the TTTR file to analyse.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1051"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1053"/>
         <source>Path of the TTTR file to open (PTU, HT3, SPC, ...).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1052"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1054"/>
         <source>Path to a numeric/measured radially-symmetric PSF sampled on the (r, z) half-plane: .npy (2D [nz, nr] array), .npz ('rz' + steps), or .mat (PyBroMo). Only used when PSF model = 'radial'. The PSF is filled into the voxel grid by bilinear interpolation at r=√(x²+y²).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1053"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1055"/>
         <source>Path to correlation chunks...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1054"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1056"/>
         <source>Path to settings.tttr.json.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1055"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1057"/>
         <source>Path to the HYDROPRO or HYDRO++ executable. The flavour is auto-detected from the filename.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1056"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1058"/>
         <source>Path to the staging spectra database being summarised.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1057"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1059"/>
         <source>Path to the written SPC / photon-stream file(s), if an output path was given (else null).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1058"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1060"/>
         <source>Peak footprint</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1059"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1061"/>
         <source>Peak molecular brightness per (species, channel): photons per macro-time unit at the focus centre (ms ⇒ kHz). Flattened species-major: [q(sp0,ch0), q(sp0,ch1), q(sp1,ch0), …]. Single-molecule peak brightness is typically ~20–100 kHz; the channel split encodes FRET efficiency / anisotropy.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1060"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1062"/>
         <source>Peak per-pixel brightness (the brightest pixel).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1061"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1063"/>
         <source>Per-burst correlation curve (points) and its fit (line).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1062"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1064"/>
         <source>Per-curve fit: none, single-component diffusion, or MaxEnt distribution.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1063"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1065"/>
         <source>Per-detector IRF file and background (kHz) calibration; transferred to phasor and pixel-wise MLE. Optional (skippable) pipeline step.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1064"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1066"/>
         <source>Per-detector scatter-derived IRF from the non-burst photons (log y).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1065"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1067"/>
         <source>Per-detector-channel count rate (kHz) for each loaded file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1066"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1068"/>
         <source>Per-frame phasor density animated over acquisition frames (play/loop/stop + frame slider).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1067"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1069"/>
         <source>Per-parameter results of the last run.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1068"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1070"/>
         <source>Per-pixel Number (N) and Brightness (B) maps from TTTR imaging data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1069"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1071"/>
         <source>Per-pixel dwell time (simulator macro-time units).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1070"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1072"/>
         <source>Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference) that N&amp;B / phasor / MLE enrich.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1071"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1073"/>
         <source>Per-pixel mean micro-time (arrival time) maps from TTTR imaging data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1072"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1074"/>
         <source>Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1073"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1075"/>
         <source>Per-state brightness in counts per second (equal for both states).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1074"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1076"/>
         <source>Performance</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1075"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1077"/>
         <source>Period</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1076"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1078"/>
         <source>Perpendicular background counts spread over the fit window.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1077"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1079"/>
         <source>Perpendicular channels (⊥)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1078"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1080"/>
         <source>Perpendicular-channel background subtracted from the VH IRF (0 = auto baseline).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1079"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1081"/>
         <source>Perpendicular-channel detection correction.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1080"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1082"/>
         <source>Perpendicular-channel sub-bin IRF shift.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1081"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1083"/>
         <source>Perrin steady-state anisotropy for a sphere.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1082"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1084"/>
         <source>Persist a light-path graph and simulated outputs as MMFDB artifacts.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1083"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1085"/>
         <source>Persist the current provider&apos;s settings to ~/.chisurf/ai_api_settings.json.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1084"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1086"/>
         <source>Phase shift of the ALEX period before the macro→micro mapping.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1085"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1087"/>
         <source>Phasor calculator</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1086"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1088"/>
         <source>Phasor g</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1087"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1089"/>
         <source>Phasor g movie</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1088"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1090"/>
         <source>Phasor plot</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1089"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1091"/>
         <source>Phasor plot movie</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1090"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1092"/>
         <source>Phasor s</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1091"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1093"/>
         <source>Phasor s movie</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1092"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1094"/>
         <source>Phasor-FLIM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1093"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1095"/>
         <source>Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1094"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1096"/>
         <source>Photon budget. More photons = cleaner filtered correlations (and a slower simulation).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1095"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1097"/>
         <source>Photon time padding added around each burst before correlation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1096"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1098"/>
         <source>Photon window</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1097"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1099"/>
         <source>Photon-by-photon Hidden Markov Model (H2MM) analysis of single-molecule FRET burst data, with BIC/ICL state selection and Viterbi dwell/transition analysis.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1098"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1100"/>
         <source>Photon-count axis k of the experimental histogram.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1099"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1101"/>
         <source>Photon-noise (Suren)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1100"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1102"/>
         <source>Photon-number range</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1101"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1103"/>
         <source>Photons</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1102"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1104"/>
         <source>Photons per output file (×1000) when 'Split into files' is on.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1103"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1105"/>
         <source>Photons/file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1104"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1106"/>
         <source>Physical</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1105"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1107"/>
         <source>Physical pixel size.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1106"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1108"/>
         <source>Pick a background region; IRFs are subtracted and intensity-matched.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1107"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1109"/>
         <source>Pick a file to preview its detector-window intensity mosaic; rate ★ and annotate. Drop a folder to open it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1108"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1110"/>
         <source>Pile-up</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1109"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1111"/>
         <source>Pixel (nm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1110"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1112"/>
         <source>Pixel dur [µs]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1111"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1113"/>
         <source>Pixel size (µm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1112"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1114"/>
         <source>Pixel-wise MLE</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1113"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1115"/>
         <source>Pixel-wise MLE lifetime analysis for TTTR imaging data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1114"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1116"/>
         <source>Pixel/line</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1115"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1117"/>
         <source>Pixels per line. 0 makes it equal to the number of lines.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1116"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1118"/>
         <source>Pixels with fewer photons in the fit window are not fitted.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1117"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1119"/>
         <source>Pixels with fewer photons than this are discriminated (set to 0); press Run to apply.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1118"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1120"/>
         <source>Plot settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1119"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1121"/>
         <source>Plugin Manager for ChiSurf</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1120"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1122"/>
         <source>Point-spread / molecule-detection function for the excitation focus. 'gaussian3d' = separable 3D Gaussian (waists [w0, z0]); 'analytic_gaussian3d' = same Gaussian evaluated grid-free (zero build cost, exact, Gaussian only — equivalent to 'Analytic Gaussian focus'); 'gaussian_lorentzian' = confocal MDF with a z-expanding waist w(z)²=w0²(1+(z/zR)²) (uses w0 and the Rayleigh range zR); 'radial' = a numeric/measured radially-symmetric PSF loaded from a file (see 'PSF file').</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1121"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1123"/>
         <source>Poisson noise</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1122"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1124"/>
         <source>Poisson-sample a finite-count observation (uses Photons + Seed). Off = normalized ideal pattern.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1123"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1125"/>
         <source>Polar grid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1124"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1126"/>
         <source>Polarisation mixing correction l1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1125"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1127"/>
         <source>Polarisation mixing correction l2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1126"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1128"/>
         <source>Polarization</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1127"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1129"/>
         <source>Polarization channel(s) to read when multiple routing channels are selected.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1128"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1130"/>
         <source>Polarization channel(s) to read: magic-angle, parallel, perpendicular, or stacked VV,VH.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1129"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1131"/>
         <source>Polarization mixing l1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1130"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1132"/>
         <source>Polarization mixing l2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1131"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1133"/>
         <source>Polarized (∥/⊥)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1132"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1134"/>
         <source>Populated after a run completes.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1133"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1135"/>
         <source>Population (per species)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1134"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1136"/>
         <source>Potential</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1135"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1137"/>
         <source>Potential energy</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1136"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1138"/>
         <source>Potential type.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1137"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1139"/>
         <source>Preview / tune THIS routing channel's histogram + region. ‘Add to Detector setup’ computes and assigns a LUT for ALL channels.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1138"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1140"/>
         <source>Preview channel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1139"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1141"/>
         <source>Primary model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1140"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1142"/>
         <source>Prior photon count for the BOCPD Gamma prior.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1141"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1143"/>
         <source>Probability of a burst start in any bin (BOCPD).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1142"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1144"/>
         <source>Probe ID</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1143"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1145"/>
         <source>Probe category (detector).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1144"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1146"/>
         <source>Probe category (dichroic).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1145"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1147"/>
         <source>Probe category (filter).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1146"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1148"/>
         <source>Probe category (light_source).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1147"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1149"/>
         <source>Probe category (organic_dye, protein, nucleic_acid, ...).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1148"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1150"/>
         <source>Probe type.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1149"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1151"/>
         <source>Process</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1150"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1152"/>
         <source>Process many files with the options above; folders are scanned recursively for .ptu.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1151"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1153"/>
         <source>Process-noise parameter (Kalman).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1152"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1154"/>
         <source>Proteins + organic dyes + other fluorophores.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1153"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1155"/>
         <source>Provenance source (fpbase, atto, spectra_db, user, ...).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1154"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1156"/>
         <source>Provenance source.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1155"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1157"/>
         <source>Provider</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1156"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1158"/>
         <source>Publish port</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1157"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1159"/>
         <source>Pulsed-excitation repetition period in NANOSECONDS (default 13.596 ≈ 73.5 MHz). Micro-times wrap modulo this. Only relevant in Pulsed mode.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1158"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1160"/>
         <source>Purge the existing reference probes before importing (a backup is made for local files).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1159"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1161"/>
         <source>Px/frame</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1160"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1162"/>
         <source>QMAX</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1161"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1163"/>
         <source>QY</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1162"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1164"/>
         <source>Quality</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1163"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1165"/>
         <source>Quality grade: unknown / low / medium / high.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1164"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1166"/>
         <source>Quantile of the non-burst micro-time histogram taken as the flat dark-count floor, subtracted before normalising the IRF.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1165"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1167"/>
         <source>Quantisation levels for the intensity axis.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1166"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1168"/>
         <source>Quantisation levels for the lifetime axis (more = finer, slower).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1167"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1169"/>
         <source>Query the endpoint&apos;s /models list and split it into text and image models.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1168"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1170"/>
         <source>R (Å)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1169"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1171"/>
         <source>R0</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1170"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1172"/>
         <source>R0 [Ang]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1171"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1173"/>
         <source>R&lt;sub&gt;0&lt;/sub&gt; (Å)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1172"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1174"/>
         <source>RHO</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1173"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1175"/>
         <source>RM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1174"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1176"/>
         <source>RMAX</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1175"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1177"/>
         <source>RNG seed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1176"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1178"/>
         <source>RNG seed (deterministic output).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1177"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1179"/>
         <source>RNG seed for diffusion, geometry and state transitions. Fix it for reproducible traces; change it for independent replicates.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1178"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1180"/>
         <source>RNG seed for emission, channel choice and background (independent of the diffusion seed).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1179"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1181"/>
         <source>ROI xy (px)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1180"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1182"/>
         <source>ROI z (sl)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1181"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1183"/>
         <source>ROIs</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1182"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1184"/>
         <source>R_DA</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1183"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1185"/>
         <source>Radial (r) sample spacing of the numeric PSF file, in µm. Only used for PSF model = 'radial' when not supplied by the file itself (.npz).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1184"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1186"/>
         <source>Radius of the circular gating cursor.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1185"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1187"/>
         <source>Random seed for the shot-noise realization (reproducible).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1186"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1188"/>
         <source>Range hi</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1187"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1189"/>
         <source>Range lo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1188"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1191"/>
         <source>Rating filter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1189"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1192"/>
         <source>Rayleigh range zR (µm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1190"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1193"/>
         <source>Rayleigh range zR (µm) for the Gaussian-Lorentzian PSF: the axial distance over which the beam waist expands by √2 (w(z)²=w0²(1+(z/zR)²)). Confocal ~0.5–1.5 µm. Only used when PSF model = 'gaussian_lorentzian'.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1191"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1194"/>
         <source>Re-check the optional dependencies.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1192"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1195"/>
         <source>Re-check the settings files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1193"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1196"/>
         <source>Re-sync experiment_configs.yaml from the packaged default so new fitting models (e.g. the AutoForm PDA models) show up. Requires a restart.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1194"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1197"/>
         <source>Read a documentation file and return its content.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1195"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1198"/>
         <source>Read every Nth frame of the source trajectory.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1196"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1199"/>
         <source>Rebin factor along the x-axis: neighbouring channels are summed, e.g. a value of 2 turns &apos;1,2,3,4&apos; into &apos;3,7&apos;.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1197"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1200"/>
         <source>Rebin factor along the y-axis: neighbouring counts are summed, e.g. a value of 2 turns &apos;1,2,3,4&apos; into &apos;3,7&apos;.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1198"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1201"/>
         <source>Recompute the decay while brushing.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1199"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1202"/>
         <source>Reduce Istar by the background contribution.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1200"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1203"/>
         <source>Reduced χ² (minimum) of the fit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1201"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1204"/>
         <source>Reduced χ² of the first (simpler) model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1202"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1205"/>
         <source>Reduced χ² of the second (more complex) model; recomputed when the confidence changes.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1203"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1206"/>
         <source>Reference</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1204"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1207"/>
         <source>Reference dye (D @ 25 °C, water)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1205"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1208"/>
         <source>Reference-geometry polylines (semicircle, lifetime grid/ticks, FRET, component line).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1206"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1209"/>
         <source>Refine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1207"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1210"/>
         <source>Refractive index n</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1208"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1211"/>
         <source>Refractive index of the medium.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1209"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1212"/>
         <source>Register reference decay and archive G-factor calibration in MMFDB.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1210"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1213"/>
         <source>Regularisation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1211"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1214"/>
         <source>Regularisation as log10(reg); 0 selects it automatically by L-curve.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1212"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1215"/>
         <source>Regularization</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1213"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1216"/>
         <source>Reject far-from-focus field queries with a cheap 6-comparison bounding-box test before the trilinear interpolation. Drops the sub-threshold field tail — a small, statistically unbiased approximation. Safe to leave on; biggest help with large voxel grids.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1214"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1217"/>
         <source>Relative weight (fraction) of this lifetime component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1215"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1218"/>
         <source>Relative weight of this acceptor lifetime.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1216"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1219"/>
         <source>Relative weight of this distance component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1217"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1220"/>
         <source>Relative weight of this donor lifetime.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1218"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1221"/>
         <source>Release</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1219"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1222"/>
         <source>Remove clashed frames</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1220"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1223"/>
         <source>Remove frames containing steric clashes from trajectories.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1221"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1224"/>
         <source>Remove the last acceptor lifetime component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1222"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1225"/>
         <source>Remove the last acceptor rotational component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1223"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1226"/>
         <source>Remove the last distance component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1224"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1227"/>
         <source>Remove the last donor lifetime component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1225"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1228"/>
         <source>Remove the last donor rotational component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1226"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1229"/>
         <source>Remove the last lifetime component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1227"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1230"/>
         <source>Remove the selected lifetime component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1228"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1231"/>
         <source>Reopen a saved molecule_data.tsv (or joint_output.tsv) from a previous analysis to browse its molecules.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1229"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1232"/>
         <source>Repetition period for periodic convolution (e.g. 12.5 ns at 80 MHz); 0 = aperiodic.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1230"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1233"/>
         <source>Repetition period for periodic convolution (e.g. 12.5 ns at 80 MHz); adds the inter-pulse tail from earlier pulses. 0 = aperiodic (linear) convolution.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1231"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1234"/>
         <source>Replace an open editor document.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1232"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1235"/>
         <source>Replace current user settings files with packaged defaults.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1233"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1236"/>
         <source>Replace existing reference set</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1234"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1237"/>
         <source>Reproducible random seed; change for another realization.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1235"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1238"/>
         <source>Reset macro times</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1236"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1239"/>
         <source>Reset the current provider&apos;s fields to defaults (not saved until you press Save).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1237"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1240"/>
         <source>Residual (hindered) anisotropy.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1238"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1241"/>
         <source>Residual anisotropy of FRET-sensitised acceptor.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1239"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1242"/>
         <source>Residual anisotropy of direct-excited acceptor.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1240"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1243"/>
         <source>Residual anisotropy of the donor without FRET.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1241"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1244"/>
         <source>Residual of the 2D inversion (data − model); should be structureless noise for a good fit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1242"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1245"/>
         <source>Residual vs solution norm of the 1D lifetime inversion (log-log); the highlighted corner is the auto-selected regularization weight.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1243"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1246"/>
         <source>Resolve 2CDE settings and folders from a burst workflow context.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1244"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1247"/>
         <source>Resolve BVA settings and folders from workflow context.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1245"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1248"/>
         <source>Resolve H2MM settings and folders from a burst workflow context.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1246"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1249"/>
         <source>Resolve MLE burst files and channel definitions from workflow context.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1247"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1250"/>
         <source>Resolve a 1D lifetime spectrum from microtimes.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1248"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1251"/>
         <source>Resolved fluorescence-lifetime distribution; overlaid with the 1D-MEM and its Gaussian fit when enabled.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1249"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1252"/>
         <source>Resulting χ² upper limit at the chosen confidence level.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1250"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1253"/>
         <source>Results</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1251"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1254"/>
         <source>Results CSV</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1252"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1255"/>
         <source>Resume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1253"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1256"/>
         <source>Retrieve blob content by object UUID (returns base64-encoded data).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1254"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1257"/>
         <source>Retrieve object metadata by UUID.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1255"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1258"/>
         <source>Return phasor toolkit capabilities and defaults (frequency, harmonic, overlay sets, filters).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1256"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1259"/>
         <source>Return probe metadata used by the light-path simulator palette.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1257"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1260"/>
         <source>Return routing channels and n_mt for a file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1258"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1261"/>
         <source>Return the 2CDE workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1259"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1262"/>
         <source>Return the ALEX micro-time histogram of a file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1260"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1263"/>
         <source>Return the BVA workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1261"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1264"/>
         <source>Return the Burst MLE workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1262"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1265"/>
         <source>Return the Burst Selection workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1263"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1266"/>
         <source>Return the FPS JSON Editor workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1264"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1267"/>
         <source>Return the H2MM workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1265"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1268"/>
         <source>Return the Help plugin workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1266"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1269"/>
         <source>Return the IRF Estimator workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1267"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1270"/>
         <source>Return the MaxEnt workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1268"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1271"/>
         <source>Return the Micro-time Shifter workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1269"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1272"/>
         <source>Return the RPC contract descriptor.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1270"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1273"/>
         <source>Return the RPC contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1271"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1274"/>
         <source>Return the TTTR Image Browser RPC contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1272"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1275"/>
         <source>Return the Time Window Bins workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1273"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1276"/>
         <source>Return the Trace Browser RPC contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1274"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1277"/>
         <source>Return the light-path simulator workflow contract.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1275"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1278"/>
         <source>Reverse</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1276"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1279"/>
         <source>Reverse each read chunk of trajectory 1 in time before joining.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1277"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1280"/>
         <source>Reverse each read chunk of trajectory 2 in time before joining.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1278"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1281"/>
         <source>Reverse trajectory 1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1279"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1282"/>
         <source>Reverse trajectory 2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1280"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1283"/>
         <source>Review your user settings files; open the editor when needed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1281"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1284"/>
         <source>Rotate / translate trajectory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1282"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1285"/>
         <source>Rotational correlation time rho.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1283"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1286"/>
         <source>Rotational correlation time.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1284"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1287"/>
         <source>Rotational diffusion D_rot</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1285"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1288"/>
         <source>Rotational diffusion coefficient, rad²/ns (default 0). Depolarizes emission over the fluorescence lifetime (Perrin). A protein with rotational correlation time of a few ns corresponds to D_rot ~0.05.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1286"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1289"/>
         <source>Routine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1287"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1290"/>
         <source>Routing channels to include; all channels when omitted.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1288"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1291"/>
         <source>Routing channels to restrict the metadata scan to; all channels when omitted.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1289"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1292"/>
         <source>Routing channels, comma separated (e.g. 0,1).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1290"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1293"/>
         <source>Run</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1291"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1294"/>
         <source>Run Burst Variance Analysis over burst data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1292"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1295"/>
         <source>Run HYDROPRO/HYDRO++ over structures and return diffusion coefficients.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1293"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1296"/>
         <source>Run IRF estimation on loaded decay data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1294"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1297"/>
         <source>Run MaxEnt FRET distance MEM on arrays.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1295"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1298"/>
         <source>Run MaxEnt lifetime MEM on arrays.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1296"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1299"/>
         <source>Run Ruff fixes on an open editor document.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1297"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1300"/>
         <source>Run Ruff on an open editor document.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1298"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1301"/>
         <source>Run a light-path simulation for a JSON graph.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1299"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1302"/>
         <source>Run burst selection analysis over TTTR files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1300"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1303"/>
         <source>Run molecule-wise MLE on PTU files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1301"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1304"/>
         <source>Run photon filtering and burst finding for diagnostic plots.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1302"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1305"/>
         <source>Run pixel-wise MLE on TTTR imaging data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1303"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1306"/>
         <source>Run the template fit over every selected dataset/file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1304"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1307"/>
         <source>Run the tttrlib Sim* photon simulator: Brownian diffusion of fluorophores through a confocal excitation focus, with N-state photophysics/FRET, rotational anisotropy and CW/pulsed emission, returning (or writing) the photon stream (macro-time window, routing channel, micro-time/TAC channel). Every parameter maps onto tttrlib&apos;s SimSystem / SimSpecies / SimGrid / SimIntegrator; this per-parameter help is the single source of truth shared by the GUI tooltips, the CLI, the Python API and this RPC method. Diffusion/rate/brightness units share one abstract MACRO-time unit (ChiSurf/BurstNet convention: milliseconds, so a rate of 1.0 = 1 kHz); the micro-time / TAC axis is a separate axis in nanoseconds.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1305"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1308"/>
         <source>Runs</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1306"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1309"/>
         <source>R₀ (Förster radius, Å)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1307"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1310"/>
         <source>S (wz/wxy)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1308"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1311"/>
         <source>SD R_app/R_DA</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1309"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1312"/>
         <source>SD κ²</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1310"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1313"/>
         <source>SIGMAX</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1311"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1314"/>
         <source>SIGMIN</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1312"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1315"/>
         <source>Sample a finite-count histogram; off = normalized ideal pattern.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1313"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1316"/>
         <source>Sample rate</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1314"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1317"/>
         <source>Sampling temperature (0 = deterministic, higher = more random).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1315"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1318"/>
         <source>Save AV points as an IMP-backed MRC density map.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1316"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1319"/>
         <source>Save TTTR Image Browser ratings and annotations.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1317"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1320"/>
         <source>Save Trace Browser ratings and annotations.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1318"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1321"/>
         <source>Save content to a documentation file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1319"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1322"/>
         <source>Save estimated IRF to a VV/VH file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1320"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1323"/>
         <source>Save the docking trajectory (minimize) so the 3D preview can animate the docking path with the movie slider.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1321"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1324"/>
         <source>Save the generated decay (CSV / text / .npy / JSON).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1322"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1325"/>
         <source>Save the generated photon stream (.npz / .ptu / .spc / .ht3) + an intensity TIFF.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1323"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1326"/>
         <source>Save topology</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1324"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1327"/>
         <source>Save topology or first-frame structure files from trajectories.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1325"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1328"/>
         <source>Scaling factor applied to this potential.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1326"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1329"/>
         <source>Scattering q values: 0 omit, -1 automatic, &gt;0 specify QMAX.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1327"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1330"/>
         <source>Scattering, distance distribution and covolume (HYDROPRO manual §3.c).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1328"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1331"/>
         <source>Score set</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1329"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1332"/>
         <source>Search documentation files for matching text.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1330"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1333"/>
         <source>Seed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1331"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1334"/>
         <source>Seed for the stochastic rebinning (reproducible previews).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1332"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1335"/>
         <source>Segment and fit molecules in every selected file; writes molecule_data.tsv + joint_output.tsv.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1333"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1336"/>
         <source>Segment the first file with the current settings (no fitting) to tune the molecule count.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1334"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1337"/>
         <source>Segmentation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1335"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1338"/>
         <source>Select existing lifetime fits, add them with mixing fractions, and double-click a row to remove it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1336"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1339"/>
         <source>Select the polarisation-resolved IRF and decay files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1337"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1340"/>
         <source>Semicolon-separated microtime ranges for channel A: start-end;start-end.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1338"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1341"/>
         <source>Semicolon-separated microtime ranges for channel B: start-end;start-end.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1339"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1342"/>
         <source>Server (ZMQ)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1340"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1343"/>
         <source>Server-side file path to store.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1341"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1344"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1342"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1345"/>
         <source>Settings JSON</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1343"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1346"/>
         <source>Setup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1344"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1347"/>
         <source>Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1345"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1348"/>
         <source>Shift</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1346"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1349"/>
         <source>Shift VH (⊥, ch)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1347"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1350"/>
         <source>Shift VV (∥, ch)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1348"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1351"/>
         <source>Shift ∥</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1349"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1352"/>
         <source>Shift ⊥</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1350"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1353"/>
         <source>Shot noise</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1351"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1354"/>
         <source>Show a micro-time histogram waterfall or an ILT lifetime waterfall.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1352"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1355"/>
         <source>Show only files at/above (or exactly at) a star rating.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1353"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1356"/>
         <source>Shrink the simulated box to the focus AABB + this margin (µm), holding concentration fixed, so molecules that never reach the focus are never simulated (open-volume only; default 0 = off, ~7× faster at ~2 µm). Exact for diffusion/FCS. WARNING for INTERNAL KINETICS: the margin must exceed √(2·D / k_min) so a molecule reaches its stationary bright/dark distribution BEFORE entering the focus — too small biases brightness (measured up to +6% for a fast ~2–3 kHz blinker at 1.5 µm).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1354"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1357"/>
         <source>Sigma</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1355"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1358"/>
         <source>Signal-to-background ratio (CUSUM).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1356"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1359"/>
         <source>Simple</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1357"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1360"/>
         <source>Simulate a single-molecule confocal photon stream</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1358"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1361"/>
         <source>Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1359"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1362"/>
         <source>Simulate each molecule's WHOLE timeline independently (coasting far, fine-stepping near the focus) and merge the streams — embarrassingly parallel across molecules (combine with worker threads). REQUIRES 'Max windows' &gt; 0 (fixed duration) and IGNORES N_ph_max. Big throughput win for dilute samples.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1360"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1363"/>
         <source>Simulate the CLSM photon image from the loaded intensity + lifetime maps.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1361"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1364"/>
         <source>Simulation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1362"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1365"/>
         <source>Simulator</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1363"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1366"/>
         <source>Single-component diffusion-time fit of a correlation curve.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1364"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1367"/>
         <source>Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1365"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1368"/>
         <source>Skew</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1366"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1369"/>
         <source>Skewness of the synthetic IRF (0 = symmetric Gaussian); models the asymmetric detector-response tail.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1367"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1370"/>
         <source>Skewness of the synthetic IRF pulse (0 = symmetric Gaussian).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1368"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1371"/>
         <source>Sliding photon window used by the burst search to estimate the local count rate.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1369"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1372"/>
         <source>Smallest trial lifetime (ns).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1370"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1373"/>
         <source>Smoothing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1371"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1374"/>
         <source>Smoothing σ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1372"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1375"/>
         <source>Solution (≈ solvent) density in g/cm³.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1373"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1376"/>
         <source>Solution properties (HYDROPRO manual §3.b).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1374"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1377"/>
         <source>Solve for the linked l1=l2 mixing parameter.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1375"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1378"/>
         <source>Solve the linked confocal-FCS quantities for one constraint.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1376"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1379"/>
         <source>Solvent &amp; macromolecule</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1377"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1380"/>
         <source>Solvent viscosity in poises (water at 20 °C ≈ 0.01 P).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1378"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1381"/>
         <source>Solvent viscosity; computed from the water model when 'Use water η(T)' is enabled.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1379"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1382"/>
         <source>Source</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1380"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1383"/>
         <source>Source ref</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1381"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1384"/>
         <source>Source reference / URL / accession.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1382"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1385"/>
         <source>Source reference / URL.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1383"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1386"/>
         <source>Space-separated routing channels forming the parallel (VV) detection.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1384"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1387"/>
         <source>Space-separated routing channels forming the perpendicular (VH) detection.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1385"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1388"/>
         <source>Space-separated routing channels; even = parallel (∥), odd = perpendicular (⊥).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1386"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1389"/>
         <source>Species</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1387"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1390"/>
         <source>Species (discrete)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1388"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1391"/>
         <source>Species (lifetime + diffusion)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1389"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1392"/>
         <source>Species correlation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1390"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1393"/>
         <source>Specify FRET by efficiency, or physically by a distributed distance + Förster radius.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1391"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1394"/>
         <source>Spline local variance (5 knots)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1392"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1395"/>
         <source>Split / Convert</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1393"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1396"/>
         <source>Split TTTR files into fixed-duration time-window BID (.bst) files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1394"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1397"/>
         <source>Split TTTR files into fixed-duration time-window BIDs.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1395"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1398"/>
         <source>Split each channel into parallel/perpendicular using the anisotropy r(t) = Σ bᵢ·exp(-t/ρᵢ) + r∞.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1396"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1399"/>
         <source>Split into chunks of N photons; off = a single output file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1397"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1400"/>
         <source>Split into files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1398"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1401"/>
         <source>Split into one file per frame</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1399"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1402"/>
         <source>Split options</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1400"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1403"/>
         <source>Splits</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1401"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1404"/>
         <source>Spontaneous rates k_nrad</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1402"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1405"/>
         <source>Square footprint side for watershed-seed peak detection.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1403"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1406"/>
         <source>Stack</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1404"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1407"/>
         <source>Stack parallel and perpendicular detector-routing channels for anisotropy-aware filter computation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1405"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1408"/>
         <source>Staging DB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1406"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1409"/>
         <source>Stamp imported components as approved instead of unverified.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1407"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1410"/>
         <source>Starchev</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1408"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1411"/>
         <source>Start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1409"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1412"/>
         <source>Starting mean number of molecules per species.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1410"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1413"/>
         <source>Starting molecular brightness per species (counts per bin per molecule).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1411"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1414"/>
         <source>Startup onboarding wizard for first-run ChiSurf configuration.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1412"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1415"/>
         <source>State</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1413"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1416"/>
         <source>State patch events</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1414"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1417"/>
         <source>State patch events for IRF estimator plugin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1415"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1418"/>
         <source>State patch events for TTTR image browser plugin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1416"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1419"/>
         <source>State patch events for burst selection plugin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1417"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1420"/>
         <source>State patch events for the FPS JSON Editor plugin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1418"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1421"/>
         <source>State patch events for time window bins plugin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1419"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1422"/>
         <source>State patch events for trace browser plugin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1420"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1423"/>
         <source>Status</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1421"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1424"/>
         <source>Step (°)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1422"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1425"/>
         <source>Stop after photons</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1423"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1426"/>
         <source>Stop after windows</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1424"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1427"/>
         <source>Stop once this many photons are generated (fixed-COUNT mode, default 1e6; a training chunk is often ~1e5). For a fixed measurement DURATION set &apos;Max windows&apos; &gt; 0 instead (Independent-molecule mode requires that).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1425"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1428"/>
         <source>Store a file or bytes in the object store (deduplicates by MD5).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1426"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1429"/>
         <source>Store base64-encoded bytes in the object store.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1427"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1430"/>
         <source>Stride</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1428"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1431"/>
         <source>Structures</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1429"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1432"/>
         <source>Structures and FRET restraints to model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1430"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1433"/>
         <source>Style Manager Plugin for ChiSurf</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1431"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1434"/>
         <source>Sub-bin periodic IRF colour shift applied to every channel.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1432"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1435"/>
         <source>Sub-bin periodic time shift of the IRF (TCSPC colour shift); wraps over the window.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1433"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1436"/>
         <source>Substring filter on original filename.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1434"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1437"/>
         <source>Subtract</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1435"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1438"/>
         <source>Subtract a flat background from the fit window.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1436"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1439"/>
         <source>Subtract avg</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1437"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1440"/>
         <source>Summarize positions, distances, score sets, and unresolved references.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1438"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1441"/>
         <source>Sweep regularization values and return L-curve data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1439"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1442"/>
         <source>Switch the active MMFDB user for this ChiSurf session.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1440"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1443"/>
         <source>Symmetric species interconversion rate (0 = static species). Set the two diffusion coefficients equal to isolate the exchange in the cross-correlation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1441"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1444"/>
         <source>Synthetic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1442"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1445"/>
         <source>Synthetic Gaussian IRF width; 0 = ideal (no IRF) unless an experimental IRF is loaded.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1443"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1446"/>
         <source>Synthetic decay</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1444"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1447"/>
         <source>Synthetic decay — help</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1445"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1448"/>
         <source>T</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1446"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1449"/>
         <source>T (°C)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1447"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1450"/>
         <source>TAC histogram counts.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1448"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1451"/>
         <source>TAC resolution (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1449"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1452"/>
         <source>TTTR Audifier</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1450"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1453"/>
         <source>TTTR CLSM file or imaging .h5 …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1451"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1454"/>
         <source>TTTR Header Editor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1452"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1455"/>
         <source>TTTR experiments (TCSPC/PIE) need a detector/channel definition. Define a setup once for your hardware below and save it — it is stored in your user settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1453"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1456"/>
         <source>TTTR file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1454"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1457"/>
         <source>TTTR files (drop files or folders)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1455"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1458"/>
         <source>TTTR type</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1456"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1459"/>
         <source>Target MMFDB SQLite path (local mode). Blank = the resolved live MMFDB.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1457"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1460"/>
         <source>Target number of corrected NTAC bins (defaults to the input bin count).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1458"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1461"/>
         <source>Temperature</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1459"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1462"/>
         <source>Temperature in centigrade.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1460"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1463"/>
         <source>Temperature.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1461"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1464"/>
         <source>Template fit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1462"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1465"/>
         <source>Tests all ChiSurf plugins for startup errors and reports successes, failures, and skipped checks.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1463"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1466"/>
         <source>Text model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1464"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1467"/>
         <source>The active IRF (cyan) and the decay it deconvolves (yellow), both peak-normalized.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1465"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1468"/>
         <source>The compound fitting equation currently active, including any bunching terms.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1466"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1469"/>
         <source>The compound fitting equation currently active: the selected diffusion term times any active bunching/anticorrelation factors.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1467"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1470"/>
         <source>The generated fluorescence-decay histogram.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1468"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1471"/>
         <source>The per-channel IRF itself comes from the Detector settings; these set the periodic (laser-period) convolution and colour shift.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1469"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1472"/>
         <source>The pre-optimised fit whose parameters seed every run.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1470"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1473"/>
         <source>The repetition rate of the laser in MHz.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1471"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1474"/>
         <source>This is the main tool. Build TAC-linearization LUTs from a **uniform-illumination** (uncorrelated-light / scatter) measurement — light that *should* give a flat TAC histogram. Real TAC hardware (e.g. SPC-130) has differential non-linearity **per routing channel**, so one LUT is computed per channel.
 
 **Steps:** load the file(s) → **➡ Add all channels to setup**. A LUT is computed for every routing channel (region auto-detected each) and assigned. Use the **Preview channel** selector + the orange region only if you want to check or hand-tune a specific channel first.
@@ -10410,1658 +10400,1683 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1472"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1475"/>
         <source>Threads</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1473"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1476"/>
         <source>Three exchanging states with Gaussian distances (R, s) and a 3x3 rate scheme kIJ (state I to J, Hz). Kinetics are sampled by Gillespie Monte-Carlo over N_win observation windows of duration T_win; set unused rates to 0. Free only the rates in your scheme.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1474"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1477"/>
         <source>Three-state kinetics (Monte-Carlo)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1475"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1478"/>
         <source>Threshold</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1476"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1479"/>
         <source>Tikhonov</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1477"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1480"/>
         <source>Time between successive trajectory frames, in nanoseconds.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1478"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1481"/>
         <source>Time resolution per channel in nanoseconds.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1479"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1482"/>
         <source>Time window (ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1480"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1483"/>
         <source>Time window assumed for the BOCPD prior count.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1481"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1484"/>
         <source>Time-window dt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1482"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1485"/>
         <source>Timestamp of the verification decision.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1483"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1486"/>
         <source>Timing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1484"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1487"/>
         <source>Top-p</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1485"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1488"/>
         <source>Total components</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1486"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1489"/>
         <source>Total photon count for the Poisson observation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1487"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1490"/>
         <source>Trace bin (ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1488"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1491"/>
         <source>Trajectories are read piecewise to save memory; the chunk size sets the number of frames per read.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1489"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1492"/>
         <source>Transfer IRF / convolution-range / background to Phasor and MLE.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1490"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1493"/>
         <source>Transfer efficiency E</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1491"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1494"/>
         <source>Transfer estimated IRF to ChiSurf as a dataset.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1492"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1495"/>
         <source>Transition rate state 1 → 2 (1/s).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1493"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1496"/>
         <source>Transition rate state 2 → 1 (1/s).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1494"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1497"/>
         <source>Translational diffusion coefficient (read-only unless &apos;Fix D&apos;).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1495"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1498"/>
         <source>Translational diffusion coefficient of species 1. τ_D = w₀²/(4·D).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1496"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1499"/>
         <source>Translational diffusion coefficient of species 2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1497"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1500"/>
         <source>Translational diffusion coefficient per species, µm² per macro-time unit (ms ⇒ µm²/ms). Typical: free dyes ~0.3–0.5, labelled proteins ~0.05–0.15; default 3.0 is a fast 'toy' value. 0 = immobile.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1498"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1501"/>
         <source>Treat the file as stacked VV/VH: the parallel and perpendicular detection channels are stored vertically one after another. Disables the header row and scales dt by the rebin factor.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1499"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1502"/>
         <source>Triplet / blinking</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1500"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1503"/>
         <source>Two exchanging states with Gaussian distances (R, s). x1 = steady-state occupancy of state 1; K_ex = mean transitions per observation window (0 = static two-state, large = fast averaging).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1501"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1504"/>
         <source>Two-component line</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1502"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1505"/>
         <source>Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1503"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1506"/>
         <source>Two-focus</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1504"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1507"/>
         <source>Two-state kinetics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1505"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1508"/>
         <source>Two-step field lookup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1506"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1509"/>
         <source>Type</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1507"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1510"/>
         <source>Uncorrelated background (dark counts + scatter) per channel, photons per macro-time unit (ms ⇒ kHz). Typical confocal ~0.5–2 kHz per channel. Default 0.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1508"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1511"/>
         <source>Unified Settings for ChiSurf</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1509"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1512"/>
         <source>Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor and Split/Convert.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1510"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1513"/>
         <source>Unified converter hub: TTTR Split/Convert, TTTR→Time-Window BIDs and BID→Analysis.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1511"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1514"/>
         <source>Unified imaging toolbox: Image Browser, CLSM Draw, Molecule-wise MLE, Pixel-wise MLE, PSF Determination.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1512"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1515"/>
         <source>Unified structure toolbox: FPS JSON Editor, FRET Docking &amp; Screening, Kappa2 Distribution, QuEst, HydroPro and Trajectory Tools.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1513"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1516"/>
         <source>Uniform-illumination TTTR file(s)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1514"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1517"/>
         <source>Universal semicircle with the selected reference-lifetime grid/ticks, FRET trajectory and two-component mixing line.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1515"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1518"/>
         <source>Unlink a parameter.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1516"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1519"/>
         <source>Update checker/installer and conda package manager. Surfaced as panels inside the unified Settings dialog.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1517"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1520"/>
         <source>Update experiment/model configuration so new models appear.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1518"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1521"/>
         <source>Upper correlation-time bound of the fit window (0 = full).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1519"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1522"/>
         <source>Upper diffusion-time bound for the MaxEnt grid (0 = auto).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1520"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1523"/>
         <source>Upper inter-photon-time threshold; also the burst/count-rate time window.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1521"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1524"/>
         <source>Upper limit of scattering variable q (only when NQ &gt; 0).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1522"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1525"/>
         <source>Upper micro-time gate (channel index); no upper gate when omitted.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1523"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1526"/>
         <source>Upper micro-time gate (ns) for the decay axis.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1524"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1527"/>
         <source>Use a 3D non-central chi distance distribution (non-negative, vanishes at contact) instead of a Gaussian.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1525"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1528"/>
         <source>Use a 3D non-central chi distance distribution instead of a Gaussian. Distances are never Gaussian: a Gaussian assigns weight to negative / near-zero distances, while the chi distribution is non-negative and vanishes at contact (R=0).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1526"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1529"/>
         <source>Use a measured decay histogram instead of the amplitude/lifetime spectrum.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1527"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1530"/>
         <source>Use file&apos;s parent as output folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1528"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1531"/>
         <source>Use floor rounding + a small ε to avoid a spike at the wrap boundary.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1529"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1532"/>
         <source>Use the fine (micro-time-resolved) correlation grid.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1530"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1533"/>
         <source>Use the micro-time-resolved correlation grid.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1531"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1534"/>
         <source>Use the temperature-dependent viscosity of water (Kapusta 2010 app note).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1532"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1535"/>
         <source>Use water η(T)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1533"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1536"/>
         <source>Used for chat, code editing, explanations, and other text tasks. Type a model id or pick from fetched models.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1534"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1537"/>
         <source>Used only for plugin icon and other image-generation tasks.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1535"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1538"/>
         <source>User</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1536"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1539"/>
         <source>User editor plugin for Chisurf to manage users registered in the MMFDB.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1537"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1540"/>
         <source>User who approved/rejected this detector.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1538"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1541"/>
         <source>User who approved/rejected this dichroic.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1539"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1542"/>
         <source>User who approved/rejected this filter.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1540"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1543"/>
         <source>User who approved/rejected this light source.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1541"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1544"/>
         <source>User who approved/rejected this probe.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1542"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1545"/>
         <source>V(t)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1543"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1546"/>
         <source>VBAR</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1544"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1547"/>
         <source>VH</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1545"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1548"/>
         <source>VH shift [bins]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1546"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1549"/>
         <source>VM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1547"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1550"/>
         <source>VV</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1548"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1551"/>
         <source>VV,VH</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1549"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1552"/>
         <source>VV/VH decay of the selected molecule with the fitted Fit23 model overlaid (semilog).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1550"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1553"/>
         <source>Validate an fps.json payload and return errors, warnings, and a summary.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1551"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1554"/>
         <source>Veff (fL)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1552"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1555"/>
         <source>Verification status.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1553"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1556"/>
         <source>Verification status: unverified / needs_review / approved / rejected.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1554"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1557"/>
         <source>Verified at</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1555"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1558"/>
         <source>Verified by</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1556"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1559"/>
         <source>Vertical-excitation, horizontal-emission IRF file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1557"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1560"/>
         <source>Vertical-excitation, horizontal-emission sample decay.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1558"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1561"/>
         <source>Vertical-excitation, vertical-emission IRF file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1559"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1562"/>
         <source>Vertical-excitation, vertical-emission sample decay.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1560"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1563"/>
         <source>WIC (Cone)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1561"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1564"/>
         <source>Water viscosity (mPa·s) at a temperature.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1562"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1565"/>
         <source>Waterfall</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1563"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1566"/>
         <source>Waterfall params</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1564"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1567"/>
         <source>Weight</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1565"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1568"/>
         <source>Weighted-average a list of correlation dicts.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1566"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1569"/>
         <source>Welcome</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1567"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1570"/>
         <source>When checked, use the δ angle computed from residual anisotropies.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1568"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1571"/>
         <source>When on, every *.pdb file in the chosen folder is processed instead of a single trajectory file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1569"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1572"/>
         <source>When running the 1D-MEM, scan the IRF rise position and average the distributions around the optimum (port of TK_MyMain_Search_RiseIRF_1DMEM); reduces the IRF-timing systematic.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1570"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1573"/>
         <source>Where to add the staging components: a local MMFDB file, or a running MMFDB server.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1571"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1574"/>
         <source>Which labeling state this component represents.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1572"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1575"/>
         <source>Width (σ) of this Gaussian distance component.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1573"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1576"/>
         <source>Width of the distance distribution shown in the plot below.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1574"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1577"/>
         <source>Width of the donor-acceptor distance distribution.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1575"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1578"/>
         <source>Width of the mean-position transfer function (FPS distance distribution width).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1576"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1579"/>
         <source>With spectra</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1577"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1580"/>
         <source>Wobbling-in-Cone, Diffusion-with-Traps, or isotropic orientation model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1578"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1581"/>
         <source>Write each frame to its own {filename}_%08d{ending} file instead of one combined file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1579"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1582"/>
         <source>Write only every Nth frame to the output.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1580"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1583"/>
         <source>You are ready to start working.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1581"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1584"/>
         <source>Z step (nm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1582"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1585"/>
         <source>ZMQ command port (server mode).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1583"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1586"/>
         <source>ZMQ command port.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1584"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1587"/>
         <source>ZMQ publish port (server mode).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1585"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1588"/>
         <source>ZMQ publish port.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1586"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1589"/>
         <source>all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1587"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1590"/>
         <source>amplitude</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1588"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1591"/>
         <source>bg ∥</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1589"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1592"/>
         <source>bg ⊥</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1590"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1593"/>
         <source>bins</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1591"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1594"/>
         <source>blend</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1592"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1595"/>
         <source>body_id kept fixed as the reference; the others are mobile.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1593"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1596"/>
         <source>burst / count-rate thresholding, or change-point burst detection (BOCPD / Kalman / CUSUM).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1594"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1597"/>
         <source>cascades</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1595"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1598"/>
         <source>center</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1596"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1599"/>
         <source>chi distribution</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1597"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1600"/>
         <source>coarsen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1598"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1601"/>
         <source>confidence</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1599"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1602"/>
         <source>corr</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1600"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1603"/>
         <source>correlation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1601"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1604"/>
         <source>counts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1602"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1605"/>
         <source>cps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1603"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1606"/>
         <source>dock = rigid-body docking; refine = CG minimisation; screen = rank a library; score = single structure.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1604"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1607"/>
         <source>dt [ns/ch]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1605"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1608"/>
         <source>e.g. 0, 1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1606"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1609"/>
         <source>e.g. 0, 1, 2, 3 (empty = all atoms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1607"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1610"/>
         <source>e.g. 0-100;200-300</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1608"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1611"/>
         <source>e.g. 2, 3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1609"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1612"/>
         <source>e.g. 50-150;250-350</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1610"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1613"/>
         <source>e.g. name CA and resSeq 1 to 256</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1611"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1614"/>
         <source>enable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1612"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1615"/>
         <source>fix r0</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1613"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1616"/>
         <source>fix γ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1614"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1617"/>
         <source>fix ρ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1615"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1618"/>
         <source>fix τ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1616"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1619"/>
         <source>flat</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1617"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1620"/>
         <source>fps.json</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1618"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1621"/>
         <source>g-factor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1619"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1622"/>
         <source>g1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1620"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1623"/>
         <source>g2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1621"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1624"/>
         <source>gMEM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1622"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1625"/>
         <source>grid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1623"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1626"/>
         <source>https://api.openai.com/v1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1624"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1627"/>
         <source>hydropro10.exe / hydro++10.exe</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1625"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1628"/>
         <source>intensity (a.u.)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1626"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1629"/>
         <source>invert</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1627"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1630"/>
         <source>k (1/ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1628"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1631"/>
         <source>kFRET</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1629"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1632"/>
         <source>k_FRET (1/ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1630"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1633"/>
         <source>k_homo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1631"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1634"/>
         <source>k₁₂</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1632"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1635"/>
         <source>k₂₁</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1633"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1636"/>
         <source>l1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1634"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1637"/>
         <source>l2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1635"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1638"/>
         <source>labelling.fps.json</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1636"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1639"/>
         <source>lag</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1637"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1640"/>
         <source>lag t_c (s)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1638"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1641"/>
         <source>lags</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1639"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1642"/>
         <source>leave blank for passwordless login</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1640"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1643"/>
         <source>leave blank for the resolved/connected MMFDB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1641"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1644"/>
         <source>lifetime τ (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1642"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1645"/>
         <source>linear_start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1643"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1646"/>
         <source>linear_stop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1644"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1647"/>
         <source>log λ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1645"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1648"/>
         <source>l₁ (polarization mixing)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1646"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1649"/>
         <source>l₂ (polarization mixing)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1647"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1650"/>
         <source>max dMT (ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1648"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1651"/>
         <source>mdtraj atom-selection expression. The listed atoms&apos; pairwise distances are tested; a frame is dropped when any pair is closer than the minimum distance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1649"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1652"/>
         <source>method</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1650"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1653"/>
         <source>micro-time channel (∥ | ⊥)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1651"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1654"/>
         <source>min dMT (ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1652"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1655"/>
         <source>nPh max</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1653"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1656"/>
         <source>nPh min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1654"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1657"/>
         <source>norm.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1655"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1658"/>
         <source>ntac_required</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1656"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1659"/>
         <source>n₁</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1657"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1660"/>
         <source>n₂</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1658"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1661"/>
         <source>only needed if the session is not already authorized</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1659"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1662"/>
         <source>out/</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1660"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1663"/>
         <source>output base name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1661"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1664"/>
         <source>p(R)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1662"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1665"/>
         <source>p(k)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1663"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1666"/>
         <source>p(κ²)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1664"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1667"/>
         <source>p(τ)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1665"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1668"/>
         <source>params</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1666"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1669"/>
         <source>peaks</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1667"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1670"/>
         <source>photons</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1668"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1671"/>
         <source>pol.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1669"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1672"/>
         <source>preview photons</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1670"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1673"/>
         <source>prior</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1671"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1674"/>
         <source>r0</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1672"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1675"/>
         <source>r&lt;sub&gt;∞&lt;/sub&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1673"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1676"/>
         <source>r_AD known (use δ)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1674"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1677"/>
         <source>r_AD∞</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1675"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1678"/>
         <source>r_A∞</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1676"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1679"/>
         <source>r_D∞</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1677"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1680"/>
         <source>rebin x</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1678"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1681"/>
         <source>rebin y</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1679"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1682"/>
         <source>rep. [MHz]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1680"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1683"/>
         <source>rho</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1681"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1684"/>
         <source>rise</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1682"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1685"/>
         <source>run</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1683"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1686"/>
         <source>r₀ (fund.)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1684"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1687"/>
         <source>rₕ (nm)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1685"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1688"/>
         <source>s1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1686"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1689"/>
         <source>s2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1687"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1690"/>
         <source>scale dt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1688"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1691"/>
         <source>self</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1689"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1692"/>
         <source>session user</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1690"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1693"/>
         <source>shift [bins]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1691"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1694"/>
         <source>sigma_DA</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1692"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1695"/>
         <source>skew</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1693"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1696"/>
         <source>source</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1694"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1697"/>
         <source>spatial frequency</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1695"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1698"/>
         <source>stacked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1696"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1699"/>
         <source>t (µs)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1697"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1700"/>
         <source>t-step [ns]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1698"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1701"/>
         <source>t_RM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1699"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1702"/>
         <source>t_c (ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1700"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1703"/>
         <source>t_max [ms]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1701"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1704"/>
         <source>t_min [ms]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1702"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1705"/>
         <source>tau0</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1703"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1706"/>
         <source>tau0 [ns]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1704"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1707"/>
         <source>time</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1705"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1708"/>
         <source>time (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1706"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1709"/>
         <source>tmax</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1707"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1710"/>
         <source>tmin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1708"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1711"/>
         <source>true κ²</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1709"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1712"/>
         <source>use 'Select files…'</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1710"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1713"/>
         <source>use max</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1711"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1714"/>
         <source>use min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1712"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1715"/>
         <source>win</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1713"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1716"/>
         <source>x (pixels)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1714"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1717"/>
         <source>x(D-only)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1715"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1718"/>
         <source>x-profile</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1716"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1719"/>
         <source>y (pixels)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1717"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1720"/>
         <source>y-profile</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1718"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1721"/>
         <source>z (slices)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1719"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1722"/>
         <source>z-profile</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1720"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1723"/>
         <source>{{ cookiecutter.plugin_description }}</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1721"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1724"/>
         <source>µ-time binning</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1722"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1725"/>
         <source>µt A</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1723"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1726"/>
         <source>µt B</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1724"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1727"/>
         <source>µt bin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1725"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1728"/>
         <source>µt range</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1726"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1729"/>
         <source>µtime max</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1727"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1730"/>
         <source>µtime min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1728"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1731"/>
         <source>Δt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1729"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1732"/>
         <source>Δt (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1730"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1733"/>
         <source>α (spectral crosstalk / leakage)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1731"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1734"/>
         <source>α leakage</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1732"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1735"/>
         <source>β (direct acceptor excitation)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1733"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1736"/>
         <source>β exc. flux</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1734"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1737"/>
         <source>γ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1735"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1738"/>
         <source>γ (detection / quantum-yield)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1736"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1739"/>
         <source>γ detection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1737"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1740"/>
         <source>δ (acceptor direct-excitation prob.)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1738"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1741"/>
         <source>δ (deg)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1739"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1742"/>
         <source>δ direct exc.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1740"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1743"/>
         <source>ε (wrap)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1741"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1744"/>
         <source>η (mPa·s)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1742"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1745"/>
         <source>κ²</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1743"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1746"/>
         <source>λ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1744"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1747"/>
         <source>ν (dof)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1745"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1748"/>
         <source>ρ (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1746"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1749"/>
         <source>σ (Å)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1747"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1750"/>
         <source>τ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1748"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1751"/>
         <source>τ (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1749"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1752"/>
         <source>τ (µs)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1750"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1753"/>
         <source>τ levels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1751"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1754"/>
         <source>τ max</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1752"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1755"/>
         <source>τ min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1753"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1756"/>
         <source>τ_D max [ms]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1754"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1757"/>
         <source>τ_D min [ms]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1755"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1758"/>
         <source>τ_aniso (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1756"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1759"/>
         <source>τmax</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1757"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1760"/>
         <source>τmin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1758"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1761"/>
         <source>τ₁</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1759"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1762"/>
         <source>τ₁ (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1760"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1763"/>
         <source>τ₂</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1761"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1764"/>
         <source>τ₂ (ns)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1762"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1765"/>
         <source>χ² max</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1763"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1766"/>
         <source>χ² min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1764"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1767"/>
         <source>χ²(1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1765"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1768"/>
         <source>χ²(2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1766"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1769"/>
         <source>χ²-max — upper limit from one fit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1767"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1770"/>
         <source>↔ Pol</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1768"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1771"/>
         <source>↺ Reset</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1769"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1772"/>
         <source>① Compute LUT — help</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1770"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1773"/>
         <source>▤ AP</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1771"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1774"/>
         <source>▶ Run</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1772"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1775"/>
         <source>▶️ Run batch</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1773"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1776"/>
         <source>♻️ Restore defaults (overwrite)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1774"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1777"/>
         <source>⚡ IRF</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1775"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1778"/>
         <source>✅ Create fits</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1776"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1779"/>
         <source>✏️ Open settings editor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1777"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1780"/>
         <source>✕ Clear</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1778"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1781"/>
         <source>❓ Open Help</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1779"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1782"/>
         <source>➕</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1780"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1783"/>
         <source>➕ Add</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1781"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1784"/>
         <source>➕ Create missing files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1782"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1785"/>
         <source>➖</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1783"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1786"/>
         <source>➖ Remove</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1784"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1787"/>
         <source>⟳ Periodic convolution</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1785"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1788"/>
         <source>👁️ Preview</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1786"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1789"/>
         <source>💾 Export</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1787"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1790"/>
         <source>💾 Save</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1788"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1791"/>
         <source>📂 Load</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1789"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1792"/>
         <source>📂 Open settings folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1790"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1793"/>
         <source>📂 Pattern…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1791"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1794"/>
         <source>📥 Fetch models</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1792"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1795"/>
         <source>📥 Fit…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1793"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1796"/>
         <source>📥 Seed from calibration</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1794"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1797"/>
         <source>🔁 Update experiments</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1795"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1798"/>
         <source>🔄 Refresh</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1796"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1799"/>
         <source>🔌 Test connection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1797"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1800"/>
         <source>🔑 Sign in via browser</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1798"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1801"/>
         <source>🧩 Open Plugin Manager</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1799"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1802"/>
         <source>🧪 Generate</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="167"/>
-        <source>Browse &amp; Gate</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="187"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="188"/>
         <source>Burst Browser</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="194"/>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="195"/>
         <source>Bursts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="141"/>
+        <source>Background rate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="187"/>
+        <source>Burst Background</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="717"/>
+        <source>Inter-photon time</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="864"/>
+        <source>Mean Micro-time</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="879"/>
+        <source>Micro-time</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1190"/>
+        <source>Rate (kHz)</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
