@@ -259,7 +259,7 @@ def test_bva_embedded_mode_does_not_restore_top_level_geometry(monkeypatch) -> N
     class Settings:
         def __init__(self, *args) -> None:
             self.values = {
-                "dock_layout": '{"tabs": []}',
+                "dock_layout_v2": '{"tabs": []}',
                 "window_geometry": b"geometry",
                 "window_state": b"state",
             }

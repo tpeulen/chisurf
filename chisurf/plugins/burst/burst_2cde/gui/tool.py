@@ -15,7 +15,7 @@ import numpy as np
 import pyqtgraph as pg
 from qtpy import QtWidgets
 
-from chisurf.gui.widgets.tool_buttons import action_button
+from chisurf.gui.widgets.tool_buttons import TOOLBAR_STYLE, action_button
 from chisurf.plugins.burst.burst_2cde.core import computation as core
 
 try:

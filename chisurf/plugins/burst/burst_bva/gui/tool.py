@@ -244,6 +244,10 @@ class BVATool(QMainWindow):
         self._restore_dock_layout()
         self.dock_area.layoutChanged.connect(self._save_dock_layout)
         main_layout.addWidget(self.dock_area, 1)
+        # Make the Plot dock absorb extra horizontal space (a QSplitter otherwise
+        # redistributes a window resize ~50/50, drifting off the plot-dominant
+        # default). Deferred so it runs after the splitter is laid out.
+        QTimer.singleShot(0, self._bias_plot_width)
 
         self._status_label = QLabel("Ready")
         self._status_label.setStyleSheet("color: #888; font-style: italic; padding: 0 8px;")
@@ -336,6 +340,11 @@ class BVATool(QMainWindow):
         layout.addWidget(display_group)
 
         layout.addStretch()
+
+        # Keep the input fields compact so the settings column stays narrow and the
+        # Plot dock gets the width (otherwise expanding fields set a wide minimum).
+        for field in w.findChildren((QLineEdit, QComboBox, QSpinBox)):
+            field.setMaximumWidth(190)
 
         return w
 
@@ -818,11 +827,63 @@ class BVATool(QMainWindow):
         self._save_dock_layout()
         super().closeEvent(event)
 
+    def _bias_plot_width(self) -> None:
+        """Bias the horizontal split so the Plot dock keeps most of the width.
+
+        A ``QSplitter`` redistributes a window resize by stretch factor; without
+        this the compact settings and the plot drift back toward 50/50 and the
+        plot looks cramped. Give every child but the last (the Plot, per the
+        default layout) zero stretch and seed a ~1/3 : 2/3 split.
+        """
+        try:
+            from qtpy.QtWidgets import QSplitter
+
+            for sp in self.dock_area.findChildren(QSplitter):
+                if sp.orientation() != Qt.Horizontal or sp.count() < 2:
+                    continue
+                for i in range(sp.count()):
+                    sp.setStretchFactor(i, 0)
+                sp.setStretchFactor(sp.count() - 1, 1)
+                total = sp.width() or 1200
+                left = max(360, int(total * 0.32))
+                sp.setSizes([left, max(1, total - left)])
+        except Exception:
+            pass
+
+    @staticmethod
+    def _default_dock_layout() -> dict:
+        """Plot-dominant default: settings/channels on the left, a wide Plot right.
+
+        The settings need little width, so give the Plot ~2/3 of the horizontal
+        space (it otherwise inherited a stale 50/50 saved split and looked
+        cramped). Users can still drag/re-tab; their arrangement is saved.
+        """
+        def _tab(*names):
+            return {
+                "type": "tab",
+                "current_index": 0,
+                "tabs": [{"widget_key": n, "tab_name": n, "tab_text": n} for n in names],
+            }
+
+        return {
+            "version": 1,
+            "root": {
+                "type": "splitter",
+                "orientation": "horizontal",
+                "sizes": [430, 900],
+                "children": [_tab("BVA Settings", "Channel Definitions"), _tab("Plot")],
+            },
+            "active_tab_widget": [],
+            "current_index": 0,
+        }
+
     def _save_dock_layout(self):
         try:
             settings = QSettings("chisurf", "BVATool")
             layout_state = self.dock_area.get_layout_state()
-            settings.setValue("dock_layout", json.dumps(layout_state, sort_keys=True))
+            # v2: dropped the old (often stale 50/50) "dock_layout" key so the new
+            # plot-dominant default applies once.
+            settings.setValue("dock_layout_v2", json.dumps(layout_state, sort_keys=True))
             if not self._embedded:
                 settings.setValue("window_geometry", self.saveGeometry())
                 settings.setValue("window_state", self.saveState())
@@ -833,12 +894,14 @@ class BVATool(QMainWindow):
     def _restore_dock_layout(self):
         try:
             settings = QSettings("chisurf", "BVATool")
-            value = settings.value("dock_layout")
+            value = settings.value("dock_layout_v2")
             if isinstance(value, str):
                 layout_state = json.loads(value)
             elif isinstance(value, dict):
                 layout_state = value
             else:
+                # No saved arrangement yet — apply the plot-dominant default.
+                self.dock_area.set_layout_state(self._default_dock_layout(), emit_change=False)
                 return
             if not self._embedded:
                 geometry = settings.value("window_geometry")
