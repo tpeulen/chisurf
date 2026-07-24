@@ -2,6 +2,21 @@
 
 ## 2026-07-24
 
+* **AutoForm fields auto-inherit parameter-registry tooltips.** Factored the
+  `Parameter.__init__` description-lookup (registry_id → class-scoped
+  `by_qualified_id` → non-ambiguous bare name/aliases) into the shared helper
+  `chisurf.core.settings.describe_parameter(name, owner=None, registry_id=None)`
+  (owner passed explicitly instead of stack-walking). `Parameter.__init__` now
+  calls it with `owner=_owning_class_name()`. The AutoForm renderer reuses it:
+  `_BoundControlMixin._effective_description` (`gui/autoform/sections/builtin.py`)
+  falls back to the registry (keyed on the bound `attr`, scoped by the target
+  group's class) whenever a `value`/`choice`/`toggle` section carries no explicit
+  `description`, so every field bound to a registered parameter shows the same
+  inline help its fitting widget already does — on the editor and the field
+  label. Registry-scoping tests still pass; added
+  `test_field_tooltip_falls_back_to_parameter_registry`. Concepts:
+  [parameters](/subsystems/parameters.md), [gui-autoform](/subsystems/gui-autoform.md).
+
 * **Global View — out-of-fit parameters, phase 1 (registry core).** Added
   `chisurf/core/parameter_group_registry.py`: a process-global, weakref-backed
   registry of `FittingParameterGroup`s that live **outside** `chisurf.fits` (e.g. a

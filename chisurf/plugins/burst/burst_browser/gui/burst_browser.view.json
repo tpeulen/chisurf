@@ -1,0 +1,23 @@
+{
+  "_comment": "Declarative AutoForm layout for the Burst Browser: a persistent dock area with a Browse & Gate controls panel (open action, detector/column combos, a foldable Gating box) plus the per-burst table and the histogram, each as a draggable chisurf dock.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Burst Browser",
+      "persist": "burst_browser",
+      "split": "horizontal",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Controls",
+          "sections": [
+            {"type": "custom", "key": "browser_source"},
+            {"type": "custom", "key": "browser_controls"}
+          ]
+        },
+        {"type": "custom", "key": "browser_table", "title": "Bursts"},
+        {"type": "custom", "key": "browser_histogram", "title": "Histogram"}
+      ]
+    }
+  ]
+}

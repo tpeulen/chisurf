@@ -262,17 +262,43 @@ class _BoundControlMixin:
     """Shared get/set/dispatch for attribute- or action-bound controls."""
 
     def _apply_tooltip(self, *widgets):
-        """Set the section's ``description`` as the tooltip on the given widgets.
+        """Set the effective description as the tooltip on the given widgets.
 
         Qt does not propagate a parent widget's tooltip to its children, so the
         interactive editor needs its own copy for the help to show on hover.
+        The section's own ``description`` wins; when it is empty the bound
+        attribute (``section.attr``) is looked up in the shared parameter
+        registry so authored view specs get inline help for free.
         """
-        desc = _wrap_tooltip(getattr(self._section, "description", ""))
+        desc = _wrap_tooltip(self._effective_description())
         if not desc:
             return
         for w in widgets:
             if w is not None:
                 w.setToolTip(desc)
+
+    def _effective_description(self) -> str:
+        """Resolve the section description, falling back to the registry.
+
+        Returns ``section.description`` verbatim when set. Otherwise the bound
+        attribute name is resolved against
+        :func:`chisurf.core.settings.describe_parameter`, scoped by the target
+        group's class so a bare name maps to the right entry.
+        """
+        desc = getattr(self._section, "description", "")
+        if desc:
+            return desc
+        attr = getattr(self._section, "attr", None)
+        if not attr:
+            return ""
+        try:
+            import chisurf.core.settings
+
+            group = self._group()
+            owner = type(group).__name__ if group is not None else None
+            return chisurf.core.settings.describe_parameter(attr, owner=owner)
+        except Exception:
+            return ""
 
     def _group(self):
         target = getattr(self._section, "target", None)

@@ -1,0 +1,365 @@
+"""Qt-free view-model backing the Burst Browser (AutoForm) tool.
+
+:class:`BurstBrowserViewModel` reads burstwise ``.bur`` tables (merging the ``…4``
+companions — BVA ``bv4``, 2CDE ``2c4`` … — via
+:func:`chisurf.core.fio.fluorescence.burst.read_bur_with_companions`), derives the
+per-burst FRET efficiency ``E`` and stoichiometry ``S`` when absent, and holds the
+gating state (E/S/size ranges, selected detector, histogram column, selection
+mode). It computes the gating mask and the histogram data. All Qt concerns (table
+view, plot, combos, foldable panels, docks) live in ``gui/sections.py`` + the
+AutoForm rendered from ``burst_browser.view.json``.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import pathlib
+from collections.abc import Callable
+
+import numpy as np
+import pandas as pd
+
+from chisurf.core.fio.fluorescence import burst as burstio
+
+logger = logging.getLogger(__name__)
+
+_VIEW_JSON = pathlib.Path(__file__).parent / "gui" / "burst_browser.view.json"
+
+_ALL = "All"
+
+
+class BurstBrowserViewModel:
+    """State + logic for the Burst Browser (no Qt)."""
+
+    def view_spec(self):
+        """Resolve AutoForm's view spec from the authored ``burst_browser.view.json``."""
+        from chisurf.core.dataspec import load_view_spec
+
+        return load_view_spec(_VIEW_JSON)
+
+    def __init__(self) -> None:
+        # Data state.
+        self.dataframe: pd.DataFrame | None = None
+        self.mask: np.ndarray | None = None
+        self.path_text: str = "No data loaded"
+        self._col_E: str | None = None
+        self._col_S: str | None = None
+        self._col_size: str | None = None
+        self.have_E: bool = False
+        self.have_S: bool = False
+        self.setup_info: dict | None = None
+        self.setup_windows: dict | None = None
+        self.setup_detectors: dict | None = None
+        #: Base-frame row indices selected in the table (set by the table section).
+        self.selected_indices: list[int] = []
+
+        # Bound controls (AutoForm value/choice/toggle sections).
+        self.detector: str = _ALL
+        self.hist_column: str = ""
+        self.e_min: float = 0.0
+        self.e_max: float = 1.0
+        self.s_min: float = 0.0
+        self.s_max: float = 1.0
+        self.size_min: int = 0
+        self.size_max: int = 0
+        self.use_selection: bool = False
+
+        self._observers: list[Callable[[str], None]] = []
+
+    # ── observer hook ──────────────────────────────────────────────────
+    def add_observer(self, cb: Callable[[str], None]) -> None:
+        """Register *cb* to be called with an event name on every change."""
+        self._observers.append(cb)
+
+    def notify(self, event: str = "changed") -> None:
+        """Notify observers that state changed."""
+        for cb in list(self._observers):
+            try:
+                cb(event)
+            except Exception:
+                logger.debug("burst-browser observer failed", exc_info=True)
+
+    def update(self) -> None:
+        """AutoForm hook: a bound value/toggle changed — recompute + refresh."""
+        self.refresh()
+
+    def refresh(self) -> None:
+        """Recompute the gating mask and notify observers (gating/column/toggle)."""
+        self._recompute_mask()
+        self.notify("gating")
+
+    # ── AutoForm choice sources ────────────────────────────────────────
+    def detector_options(self) -> list[str]:
+        """Detector names for the combo (``All`` + names from columns/setup)."""
+        dets: set[str] = set()
+        df = self.dataframe
+        if df is not None:
+            for c in df.columns:
+                s = str(c)
+                if s.startswith("Number of Photons (") and ")" in s:
+                    name = s.split("Number of Photons (", 1)[1].split(")", 1)[0]
+                    # "Number of Photons (fit window) (green)" yields "fit window",
+                    # which is not a detector — skip it.
+                    if name and name != "fit window":
+                        dets.add(name)
+        try:
+            if self.setup_detectors:
+                dets.update(str(d) for d in self.setup_detectors.keys())
+        except Exception:
+            pass
+        return [_ALL, *sorted(dets)]
+
+    def hist_column_options(self) -> list[str]:
+        """Histogram-column choices — global first, then detector-scoped columns."""
+        df = self.dataframe
+        if df is None:
+            return []
+        preferred: list[str] = []
+        for col in ("E", "S", "Number of Photons"):
+            if col in df.columns and col not in preferred:
+                preferred.append(col)
+
+        sel_det = None if self.detector in ("", _ALL) else str(self.detector)
+        for c in map(str, df.columns):
+            if c in preferred:
+                continue
+            if sel_det:
+                if f"({sel_det})" in c or f" {sel_det} (" in c or f" {sel_det})" in c:
+                    preferred.append(c)
+                elif "Count Rate" in c and sel_det.lower() in c.lower():
+                    preferred.append(c)
+            elif "Count Rate" in c or "Number of Photons (" in c:
+                preferred.append(c)
+        return preferred or list(map(str, df.columns))
+
+    def on_detector_changed(self, value: str) -> None:
+        """Detector combo changed — keep it and re-derive the column choices."""
+        self.detector = value
+        cols = self.hist_column_options()
+        if cols and self.hist_column not in cols:
+            self.hist_column = cols[0]
+        self.notify("gating")
+
+    # ── loading ────────────────────────────────────────────────────────
+    def load_bur(self, path) -> None:
+        """Load a single ``.bur`` file (with its ``…4`` companions)."""
+        path = pathlib.Path(path)
+        df = burstio.read_bur_with_companions(path)
+        self.path_text = str(path)
+        self._prepare_dataframe(df)
+        self._load_setup_info(path.parent)
+        self.refresh()
+        self.notify("data")
+
+    def load_folder(self, folder) -> None:
+        """Load and concatenate every ``.bur`` (+ companions) under *folder*."""
+        folder = pathlib.Path(folder)
+        if not folder.exists() or not folder.is_dir():
+            logger.warning("Folder does not exist: %s", folder)
+            return
+        bur_files = sorted(folder.glob("**/*.bur"))
+        if not bur_files:
+            logger.info("No .bur files found in: %s", folder)
+            return
+        dfs: list[pd.DataFrame] = []
+        for fn in bur_files:
+            try:
+                part = burstio.read_bur_with_companions(fn)
+                part["burst_file"] = fn.name
+                dfs.append(part)
+            except Exception as exc:
+                logger.warning("BurstBrowser: failed to read %s: %s", fn, exc)
+        if not dfs:
+            logger.info("No .bur files could be read.")
+            return
+        df = pd.concat(dfs, ignore_index=True)
+        self.path_text = f"{folder} ({len(bur_files)} .bur)"
+        self._prepare_dataframe(df)
+        self._load_setup_info(folder)
+        self.refresh()
+        self.notify("data")
+
+    # ── data prep (E / S / size columns + gating ranges) ───────────────
+    def _prepare_dataframe(self, df: pd.DataFrame) -> None:
+        df = df.copy()
+        if "Number of Photons" in df.columns:
+            try:
+                n = pd.to_numeric(df["Number of Photons"], errors="coerce")
+                df = df[n > 0].reset_index(drop=True)
+            except Exception:
+                pass
+
+        self._col_E = self._col_S = self._col_size = None
+        self.have_E = self.have_S = False
+        red_col = green_col = None
+
+        if "E" in df.columns:
+            self._col_E, self.have_E = "E", True
+        elif "Proximity Ratio" in df.columns:
+            self._col_E, self.have_E = "Proximity Ratio", True
+        else:
+            photon_cols = [c for c in df.columns if "Number of Photons (" in c]
+            red_candidates = [c for c in photon_cols if "red" in c.lower()]
+            green_candidates = [c for c in photon_cols if "green" in c.lower()]
+            if red_candidates and green_candidates:
+                red_col, green_col = red_candidates[0], green_candidates[0]
+                try:
+                    red = pd.to_numeric(df[red_col], errors="coerce")
+                    green = pd.to_numeric(df[green_col], errors="coerce")
+                    denom = red + green
+                    with np.errstate(divide="ignore", invalid="ignore"):
+                        df["E"] = np.where(denom > 0, red / denom, np.nan)
+                    self._col_E, self.have_E = "E", True
+                except Exception:
+                    logger.warning("BurstBrowser: failed to compute E")
+
+        if "S" in df.columns:
+            self._col_S, self.have_S = "S", True
+        elif self.have_E and red_col and green_col and "Number of Photons" in df.columns:
+            try:
+                nd = pd.to_numeric(df[green_col], errors="coerce")
+                na = pd.to_numeric(df[red_col], errors="coerce")
+                total = pd.to_numeric(df["Number of Photons"], errors="coerce")
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    df["S"] = np.where(total > 0, (nd + na) / total, np.nan)
+                self._col_S, self.have_S = "S", True
+            except Exception:
+                logger.warning("BurstBrowser: failed to compute S")
+
+        if "Number of Photons" in df.columns:
+            self._col_size = "Number of Photons"
+        else:
+            cands = [c for c in df.columns if "Number of Photons" in c]
+            self._col_size = cands[0] if cands else None
+
+        self.dataframe = df
+        self.selected_indices = []
+
+        # Seed the gating ranges from the data.
+        self.e_min, self.e_max = self._col_range(self._col_E, 0.0, 1.0, as_int=False)
+        self.s_min, self.s_max = self._col_range(self._col_S, 0.0, 1.0, as_int=False)
+        smin, smax = self._col_range(self._col_size, 0, 0, as_int=True)
+        self.size_min, self.size_max = int(smin), int(smax)
+
+        # Reset the choice selections to valid values for the new frame.
+        self.detector = _ALL
+        cols = self.hist_column_options()
+        self.hist_column = cols[0] if cols else ""
+
+    def _col_range(self, col, lo, hi, *, as_int):
+        df = self.dataframe
+        if not col or df is None or col not in df.columns:
+            return lo, hi
+        try:
+            v = pd.to_numeric(df[col], errors="coerce")
+            if not np.isfinite(v).any():
+                return lo, hi
+            vmin = float(np.nanmin(v))
+            vmax = float(np.nanmax(v))
+        except Exception:
+            return lo, hi
+        if as_int:
+            vmin, vmax = max(0, int(vmin)), int(vmax)
+        if vmin >= vmax:
+            return lo, hi
+        return vmin, vmax
+
+    # ── gating ─────────────────────────────────────────────────────────
+    def _recompute_mask(self) -> None:
+        df = self.dataframe
+        if df is None:
+            self.mask = None
+            return
+        mask = np.ones(len(df), dtype=bool)
+        for have, col, lo, hi in (
+            (self.have_E, self._col_E, self.e_min, self.e_max),
+            (self.have_S, self._col_S, self.s_min, self.s_max),
+            (self._col_size is not None, self._col_size, self.size_min, self.size_max),
+        ):
+            if have and col and col in df.columns:
+                try:
+                    c = pd.to_numeric(df[col], errors="coerce").to_numpy()
+                    mask &= np.isfinite(c) & (c >= float(lo)) & (c <= float(hi))
+                except Exception:
+                    pass
+        self.mask = mask
+
+    def status_text(self) -> str:
+        """One-line 'N / total selected' summary for the status bar."""
+        if self.dataframe is None or self.mask is None:
+            return "No data loaded"
+        return f"Bursts: {int(self.mask.sum())} / {int(len(self.dataframe))} selected"
+
+    def masked_row_indices(self) -> np.ndarray:
+        """Base-frame indices passing the gate (all rows if no mask yet)."""
+        if self.dataframe is None:
+            return np.zeros(0, dtype=int)
+        if self.mask is None:
+            return np.arange(len(self.dataframe))
+        return np.where(self.mask)[0]
+
+    # ── histogram ──────────────────────────────────────────────────────
+    def histogram(self) -> dict | None:
+        """Return ``{centers, counts, width, label}`` for the current column.
+
+        Uses the table selection when ``use_selection`` is on, else all gated
+        bursts. Returns ``None`` when there is nothing to plot.
+        """
+        df = self.dataframe
+        if df is None:
+            return None
+        col = self.hist_column
+        if not col or col not in df.columns:
+            return None
+        if self.use_selection:
+            rows = list(self.selected_indices)
+            if not rows:
+                return None
+        else:
+            rows = self.masked_row_indices().tolist()
+            if not rows:
+                return None
+        try:
+            data = pd.to_numeric(df.loc[rows, col], errors="coerce").dropna().to_numpy()
+        except Exception:
+            return None
+        if data.size == 0:
+            return None
+        try:
+            counts, edges = np.histogram(data, bins=60)
+        except Exception:
+            return None
+        if counts.size == 0:
+            return None
+        centers = 0.5 * (edges[:-1] + edges[1:])
+        return {"centers": centers, "counts": counts,
+                "width": float(edges[1] - edges[0]), "label": str(col)}
+
+    # ── setup info ─────────────────────────────────────────────────────
+    def _load_setup_info(self, root: pathlib.Path) -> None:
+        self.setup_info = self.setup_windows = self.setup_detectors = None
+        try:
+            from chisurf.core.settings.file_utils import safe_open_file
+        except Exception:
+            return
+        for info_dir in (root / "Info", root.parent / "Info"):
+            jf = info_dir / "photon_selection_parameters.json"
+            if jf.exists():
+                try:
+                    data = safe_open_file(jf, processor=json.load, default_value=None,
+                                          error_message=f"Could not read setup info from {jf}")
+                except Exception as exc:
+                    logger.warning("BurstBrowser: failed to read setup info: %s", exc)
+                    data = None
+                if isinstance(data, dict):
+                    setup = data.get("setup_info") or {}
+                    if isinstance(setup, dict):
+                        self.setup_info = setup
+                        self.setup_windows = setup.get("windows", {}) or {}
+                        self.setup_detectors = setup.get("detectors", {}) or {}
+                        logger.info("BurstBrowser: loaded experimental setup from %s", info_dir)
+                return
+
+
+__all__ = ["BurstBrowserViewModel"]

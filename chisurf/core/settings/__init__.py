@@ -154,6 +154,68 @@ parameter_registry = safe_open_file(
     error_message="Error opening parameter_registry.json file"
 )
 
+
+def describe_parameter(name, owner=None, registry_id=None):
+    """Look up a parameter's human-readable description in the registry.
+
+    Resolves ``name`` against :data:`parameter_registry` using the same
+    precedence as :class:`chisurf.core.parameter.Parameter`, so a description
+    surfaced in a fitting widget and one surfaced in an AutoForm field agree:
+
+    1. An explicit ``registry_id`` (e.g. ``"rics.D"``) wins, checked against the
+       scoped ``by_qualified_id`` index first, then the legacy bare-name one.
+    2. A class-scoped ``"<owner>.<name>"`` qualified id, so two unrelated
+       classes reusing the same bare name never cross-contaminate.
+    3. A non-ambiguous bare ``name`` (or a non-ambiguous entry listing ``name``
+       among its ``aliases``).
+
+    Parameters
+    ----------
+    name : str
+        Bare parameter name (e.g. ``"D"``).
+    owner : str, optional
+        Class name owning the parameter, used to disambiguate a scoped id.
+    registry_id : str, optional
+        Fully-qualified registry id that takes precedence over ``name``.
+
+    Returns
+    -------
+    str
+        The description, or an empty string when no match is found.
+    """
+    meta = parameter_registry if isinstance(parameter_registry, dict) else {}
+    params_meta = meta.get("parameters", meta) if isinstance(meta, dict) else {}
+    qualified_meta = meta.get("by_qualified_id", {}) if isinstance(meta, dict) else {}
+    entry = None
+    # 1) Explicit registry id.
+    if registry_id is not None:
+        if isinstance(qualified_meta, dict):
+            entry = qualified_meta.get(registry_id)
+        if entry is None and isinstance(params_meta, dict):
+            entry = params_meta.get(registry_id)
+    # 2) Class-scoped qualified id.
+    if entry is None and owner and isinstance(qualified_meta, dict):
+        entry = qualified_meta.get(f"{owner}.{name}")
+    # 3) Non-ambiguous bare name (then aliases).
+    if entry is None and isinstance(params_meta, dict):
+        candidate = params_meta.get(name)
+        if isinstance(candidate, dict) and not candidate.get("ambiguous"):
+            entry = candidate
+        if entry is None:
+            for _val in params_meta.values():
+                if not isinstance(_val, dict) or _val.get("ambiguous"):
+                    continue
+                aliases = _val.get("aliases") or []
+                if isinstance(aliases, list) and name in aliases:
+                    entry = _val
+                    break
+    if isinstance(entry, dict):
+        d = entry.get("description")
+        if isinstance(d, str):
+            return d
+    return ""
+
+
 eps = sys.float_info.epsilon
 working_path = ''
 
