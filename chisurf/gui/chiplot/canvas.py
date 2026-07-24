@@ -68,9 +68,22 @@ class Plot(QtWidgets.QWidget):
 
     # -- drawing --------------------------------------------------------
     def line(
-        self, x, y, *, pen="w", width=None, style=None, name=None, fill=None, step=False
+        self,
+        x,
+        y,
+        *,
+        pen="w",
+        width=None,
+        style=None,
+        name=None,
+        fill=None,
+        step=False,
+        symbol=None,
+        symbol_size=7.0,
+        symbol_brush=None,
+        symbol_pen=None,
     ) -> H.Curve:
-        """Draw a line (or step) curve.
+        """Draw a line (or step) curve, optionally with point markers.
 
         Parameters
         ----------
@@ -88,6 +101,14 @@ class Plot(QtWidgets.QWidget):
             Fill to the baseline under the curve.
         step : bool
             Draw as a centered step curve (histogram outline).
+        symbol : str or handles.Symbol, optional
+            If given, draw a marker at each point (``"o"``, ``"s"``, ``"x"``, …).
+        symbol_size : float
+            Marker size in pixels (when ``symbol`` is set).
+        symbol_brush : brush-like, optional
+            Marker fill.
+        symbol_pen : pen-like, optional
+            Marker outline.
 
         Returns
         -------
@@ -98,6 +119,9 @@ class Plot(QtWidgets.QWidget):
             overrides["width"] = width
         if style is not None:
             overrides["style"] = style
+        sym = None
+        if symbol is not None:
+            sym = symbol if isinstance(symbol, H.Symbol) else H.Symbol(symbol)
         return self._canvas.add_curve(
             np.asarray(x),
             np.asarray(y),
@@ -105,6 +129,10 @@ class Plot(QtWidgets.QWidget):
             name=name,
             fill=S.to_brush(fill) if fill is not None else None,
             step=step,
+            symbol=sym,
+            symbol_size=symbol_size,
+            symbol_brush=S.to_brush(symbol_brush) if symbol_brush is not None else None,
+            symbol_pen=S.to_pen(symbol_pen) if symbol_pen is not None else None,
         )
 
     def scatter(self, x, y, *, size=7.0, brush="w", pen=None, symbol="o", name=None) -> H.Scatter:

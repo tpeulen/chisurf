@@ -246,10 +246,18 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 69):* centralised the global pyqtgraph config
-(`gui/__init__.py`, `plots/__init__.py`) onto `cp.configure(...)`, and migrated
-the single-plot preview widgets — PCH, TCSPC simulator, TCSPC TTTR-reader, and
-the FCS correlator wizard (`_ui` + logic).
+*Landed so far (allow-list 76 → 64):*
+- **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
+  `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
+  widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
+- **Batch 2** — moved the pyqtgraph `autoRangeEnabled` compat shim out of
+  `gui_tweaks.py` into the pyqtgraph backend (applied on backend load); dropped
+  dead/near-dead pyqtgraph imports (`gui_tweaks`, `misc_helpers` warmup,
+  `experiments/widgets.py`); migrated the `plots/lcurve` and `plots/wr_plot`
+  diagnostic plots. Grew the native API with **line markers**
+  (`plot.line(..., symbol=…)`) as a real call site (lcurve) demanded it.
+  Deferred `plots/av_plot.py` — it is 3-D `pyqtgraph.opengl` + dockarea, owned by
+  [PRD-57](prd-57.md), not 2-D chiplot.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

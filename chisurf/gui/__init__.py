@@ -1331,9 +1331,9 @@ def setup_gui(
 def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
     logging.info("Starting GUI startup (get_win)")
     from chisurf.gui import chiplot as cp
-    from chisurf.gui.gui_tweaks import apply_pyqtgraph_autorange_compat
+    # Configuring the backend also loads it, which applies the pyqtgraph
+    # autoRangeEnabled compat shim (see the chiplot pyqtgraph backend).
     cp.configure(useOpenGL=False)  # Disable OpenGL in the plotting backend
-    apply_pyqtgraph_autorange_compat()
 
     import chisurf.gui.resources
     import pathlib

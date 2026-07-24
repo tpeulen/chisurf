@@ -170,41 +170,7 @@ def apply_dock_tab_colors(window) -> None:
                     pass
 
 
-def apply_pyqtgraph_autorange_compat(pg=None) -> None:
-    try:
-        from pyqtgraph.widgets.PlotWidget import PlotWidget as _CsPlotWidget
-    except Exception:
-        return
-    try:
-        if hasattr(_CsPlotWidget, "autoRangeEnabled"):
-            return
-
-        def _chisurf_pg_autorange_enabled_compat(self):
-            vb = None
-            try:
-                vb = self.getViewBox()
-            except Exception:
-                vb = None
-            if vb is not None and hasattr(vb, "autoRangeEnabled"):
-                try:
-                    return vb.autoRangeEnabled()
-                except Exception:
-                    pass
-            return (True, True)
-
-        _CsPlotWidget.autoRangeEnabled = _chisurf_pg_autorange_enabled_compat
-    except Exception:
-        return
-
-
-# Apply at import rather than only from get_win(). pyqtgraph >= 0.14 dropped
-# PlotWidget.autoRangeEnabled (it lives on ViewBox now), and anything that
-# builds a plot WITHOUT going through full GUI startup -- tests, scripts,
-# headless harnesses -- otherwise hits a swallowed AttributeError and silently
-# takes a degraded path. The shim is idempotent (it returns early once the
-# attribute exists), so applying it here and in get_win() is harmless.
-try:  # pragma: no cover - depends on the installed pyqtgraph
-    import pyqtgraph as _pg
-    apply_pyqtgraph_autorange_compat(_pg)
-except Exception:
-    pass
+# The pyqtgraph >= 0.14 ``PlotWidget.autoRangeEnabled`` compatibility shim moved
+# to the chiplot pyqtgraph backend (chisurf/gui/chiplot/backends/
+# pyqtgraph_backend.py), where it is applied on backend load — covering full GUI
+# startup, tests, and scripts alike, without gui_tweaks importing pyqtgraph.

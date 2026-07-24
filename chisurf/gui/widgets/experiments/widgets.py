@@ -1,25 +1,24 @@
 from __future__ import annotations
 
-import pathlib
-
-from chisurf import typing
 import os
+import pathlib
 import pickle
 
-from qtpy import QtWidgets, QtCore, QtGui
-import pyqtgraph as pg
+from qtpy import QtCore, QtGui, QtWidgets
 
+import chisurf.core.data
+import chisurf.core.decorators
 import chisurf.core.fio
+import chisurf.core.fitting
 import chisurf.gui.widgets
 import chisurf.gui.widgets.fio
-import chisurf.core.data
-import chisurf.core.fitting
-import chisurf.core.decorators
+from chisurf import typing
 from chisurf.core.experiments.core import reader
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
-from .rics import RICSController
-from .pch import PCHController
+
 from .fcs import FCSController
+from .pch import PCHController
+from .rics import RICSController
 
 
 @chisurf.core.decorators.register

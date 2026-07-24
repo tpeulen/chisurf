@@ -10,8 +10,8 @@ not modify the fit.
 """
 
 import numpy as np
-import pyqtgraph as pg
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
 
 
@@ -23,19 +23,16 @@ class LCurvePlot(plotbase.Plot):
     def __init__(self, fit, **kwargs):
         """Build the log-log L-curve plot with a highlighted corner marker."""
         super().__init__(fit=fit, **kwargs)
-        self._pw = pg.PlotWidget()
+        self._pw = cp.Plot()
         self.layout.addWidget(self._pw)
-        item = self._pw.getPlotItem()
-        item.setLogMode(x=True, y=True)
-        item.showGrid(x=True, y=True, alpha=0.3)
-        self._pw.setLabel("bottom", "residual ||K P - F||")
-        self._pw.setLabel("left", "roughness ||L P||")
-        self._curve = self._pw.plot(
-            [], [], pen=pg.mkPen("#2f80ed", width=2),
-            symbol="o", symbolSize=6, symbolBrush="#2f80ed", symbolPen="w")
-        self._corner = self._pw.plot(
-            [], [], pen=None, symbol="x", symbolSize=16,
-            symbolBrush="#ffd166", symbolPen="#ffd166")
+        self._pw.set_log(x=True, y=True)
+        self._pw.grid(x=True, y=True, alpha=0.3)
+        self._pw.set_labels(bottom="residual ||K P - F||", left="roughness ||L P||")
+        self._curve = self._pw.line(
+            [], [], pen=cp.to_pen("#2f80ed", width=2),
+            symbol="o", symbol_size=6, symbol_brush="#2f80ed", symbol_pen="w")
+        self._corner = self._pw.scatter(
+            [], [], symbol="x", size=16, brush="#ffd166", pen="#ffd166")
 
     def _model(self):
         """Return the selected fit's model, or ``None``."""
@@ -53,15 +50,15 @@ class LCurvePlot(plotbase.Plot):
         except Exception:
             data = None
         if not data:
-            self._curve.setData([], [])
-            self._corner.setData([], [])
+            self._curve.set_data([], [])
+            self._corner.set_data([], [])
             return
         rho = np.asarray(data.get("rho"), dtype=float)
         eta = np.asarray(data.get("eta"), dtype=float)
         ok = np.isfinite(rho) & np.isfinite(eta) & (rho > 0) & (eta > 0)
-        self._curve.setData(rho[ok], eta[ok])
+        self._curve.set_data(rho[ok], eta[ok])
         c = data.get("corner")
         if c is not None and 0 <= int(c) < rho.size and ok[int(c)]:
-            self._corner.setData([rho[int(c)]], [eta[int(c)]])
+            self._corner.set_data([rho[int(c)]], [eta[int(c)]])
         else:
-            self._corner.setData([], [])
+            self._corner.set_data([], [])

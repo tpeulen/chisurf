@@ -2,6 +2,18 @@
 
 ## 2026-07-24
 
+* **PRD-64 — Phase-2 GUI migration batch 2 (allow-list 69 → 64).** Moved the
+  pyqtgraph `autoRangeEnabled` compat shim out of `gui_tweaks.py` into the
+  chiplot pyqtgraph backend (applied on backend load, covering GUI/tests/scripts
+  alike); dropped dead/near-dead pyqtgraph imports (`gui_tweaks`, the
+  `misc_helpers` warmup now warms `cp.get_backend()`, `experiments/widgets.py`);
+  migrated the `plots/lcurve` and `plots/wr_plot` diagnostics. Grew the native
+  API with line markers (`plot.line(..., symbol=…)`) when lcurve needed a
+  line-with-points. Deferred `plots/av_plot.py` (3-D `pyqtgraph.opengl` +
+  dockarea → [PRD-57](/prds/prd-57.md), not 2-D chiplot). Seam guard +
+  `test/gui/test_chiplot.py` (13 tests) green; ported modules import-smoke clean.
+  Concept: [PRD-64](/prds/prd-64.md).
+
 * **PRD-64 — chiplot passthrough safety net + Phase-2 GUI migration batch 1.**
   Added a flagged passthrough so migration needn't wait for full native
   coverage: `chisurf.gui.chiplot.__getattr__` resolves unknown symbols

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
-import pyqtgraph as pg
 
 import chisurf.core.fitting
+from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
 
 color_scheme = chisurf.core.settings.colors
@@ -35,27 +35,27 @@ class ResidualPlot(plotbase.Plot):
         curves = list()
         lw = chisurf.core.settings.gui['plot']['line_width']
 
-        p = pg.PlotWidget()
+        p = cp.Plot()
         self.layout.addWidget(p)
 
         try:
-            p.getPlotItem().setLabel('left', 'w.res.')
+            p.set_labels(left='w.res.')
         except Exception:
             pass
 
         for i, f in enumerate(_member_fits(fit)):
             color = chisurf.core.settings.colors[i % len(chisurf.core.settings.colors)]['hex']
-            c = pg.PlotCurveItem(pen=pg.mkPen(color, width=lw), name=f.data.name)
-            p.addItem(c)
-            c.setPos(0, i*6)
+            c = p.line([], [], pen=cp.to_pen(color, width=lw), name=f.data.name)
             curves.append(c)
         self.curves = curves
 
     def update(self, *args, **kwargs) -> None:
         super().update(*args, **kwargs)
-        # Get parameters from plot-control
+        # Get parameters from plot-control. Each member's residuals are stacked
+        # by a constant vertical offset (i*6), applied to the y-data (equivalent
+        # to the former per-item setPos, without needing an item-offset API).
         fits = _member_fits(self.fit)
-        for ci, fi in zip(self.curves, fits):
+        for i, (ci, fi) in enumerate(zip(self.curves, fits)):
             w_res = fi.model.weighted_residuals
             x = np.arange(len(w_res))
-            ci.setData(x, w_res)
+            ci.set_data(x, w_res + i * 6)

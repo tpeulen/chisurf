@@ -19,6 +19,45 @@ from chisurf.gui.chiplot import handles as H
 from chisurf.gui.chiplot import style as S
 from chisurf.gui.chiplot.backends import base
 
+
+def _apply_autorange_compat() -> None:
+    """Restore ``PlotWidget.autoRangeEnabled`` dropped in pyqtgraph >= 0.14.
+
+    pyqtgraph moved ``autoRangeEnabled`` from ``PlotWidget`` onto ``ViewBox``.
+    Code (and headless harnesses) that call it on the widget otherwise hit a
+    swallowed ``AttributeError`` and silently take a degraded path. Applied when
+    this backend module loads, so it covers full GUI startup, tests, and scripts
+    alike. Idempotent: returns early once the attribute already exists.
+    """
+    try:
+        from pyqtgraph.widgets.PlotWidget import PlotWidget as _PW
+    except Exception:
+        return
+    if hasattr(_PW, "autoRangeEnabled"):
+        return
+
+    def _compat(self):
+        vb = None
+        try:
+            vb = self.getViewBox()
+        except Exception:
+            vb = None
+        if vb is not None and hasattr(vb, "autoRangeEnabled"):
+            try:
+                return vb.autoRangeEnabled()
+            except Exception:
+                pass
+        return (True, True)
+
+    try:
+        _PW.autoRangeEnabled = _compat
+    except Exception:
+        pass
+
+
+_apply_autorange_compat()
+
+
 # --------------------------------------------------------------------------
 # style translation
 # --------------------------------------------------------------------------
@@ -293,8 +332,21 @@ class _PgCanvas(base.Canvas):
         return self._host
 
     # -- drawing --------------------------------------------------------
-    def add_curve(self, x, y, *, pen, name=None, fill=None, step=False) -> H.Curve:
-        """Draw a line/step curve."""
+    def add_curve(
+        self,
+        x,
+        y,
+        *,
+        pen,
+        name=None,
+        fill=None,
+        step=False,
+        symbol=None,
+        symbol_size=7.0,
+        symbol_brush=None,
+        symbol_pen=None,
+    ) -> H.Curve:
+        """Draw a line/step curve, optionally with point markers."""
         kw = {"pen": _pen(pen)}
         if name is not None:
             kw["name"] = name
@@ -303,6 +355,11 @@ class _PgCanvas(base.Canvas):
         if fill is not None:
             kw["fillLevel"] = 0.0
             kw["brush"] = _brush(fill)
+        if symbol is not None:
+            kw["symbol"] = symbol.value
+            kw["symbolSize"] = symbol_size
+            kw["symbolBrush"] = _brush(symbol_brush) if symbol_brush is not None else None
+            kw["symbolPen"] = _pen(symbol_pen) if symbol_pen is not None else None
         item = self._pi.plot(np.asarray(x), np.asarray(y), **kw)
         return _Curve(item, self._pi)
 

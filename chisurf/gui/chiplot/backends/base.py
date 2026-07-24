@@ -43,8 +43,12 @@ class Canvas(abc.ABC):
         name: str | None = None,
         fill: S.Brush | None = None,
         step: bool = False,
+        symbol: H.Symbol | None = None,
+        symbol_size: float = 7.0,
+        symbol_brush: S.Brush | None = None,
+        symbol_pen: S.Pen | None = None,
     ) -> H.Curve:
-        """Draw a line/step curve and return its handle."""
+        """Draw a line/step curve (optionally with markers) and return its handle."""
 
     @abc.abstractmethod
     def add_scatter(

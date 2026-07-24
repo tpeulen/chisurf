@@ -59,7 +59,9 @@ class TruncatingStatusBar(QtWidgets.QStatusBar):
 def warmup_imports():
     """Preload heavy modules to improve first-use responsiveness."""
     try:
-        import pyqtgraph as _pg  # noqa: F401
+        from chisurf.gui import chiplot as _cp  # noqa: F401
+
+        _cp.get_backend()  # warms the plotting backend (pyqtgraph today)
         import scipy.linalg as _sl  # noqa: F401
         import scipy.stats as _sstats  # noqa: F401
         from matplotlib import colors as _mcolors  # noqa: F401
