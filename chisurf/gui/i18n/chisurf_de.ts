@@ -31,7 +31,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="51"/>
         <source>✏️ Rename</source>
-        <translation type="unfinished"></translation>
+        <translation>✏️ Umbenennen</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="53"/>
@@ -41,7 +41,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="58"/>
         <source>🗑️ Delete</source>
-        <translation type="unfinished"></translation>
+        <translation>🗑️ Löschen</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="60"/>
@@ -66,7 +66,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="83"/>
         <source>File Type:</source>
-        <translation type="unfinished"></translation>
+        <translation>Dateityp:</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="90"/>
@@ -111,7 +111,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="140"/>
         <source>📂 Read</source>
-        <translation type="unfinished"></translation>
+        <translation>📂 Lesen</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="142"/>
@@ -131,7 +131,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="309"/>
         <source>➕ Add</source>
-        <translation type="unfinished"></translation>
+        <translation>➕ Hinzufügen</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="185"/>
@@ -141,7 +141,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="215"/>
         <source>Window Name</source>
-        <translation type="unfinished"></translation>
+        <translation>Fenstername</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="220"/>
@@ -156,7 +156,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="237"/>
         <source>Detectors</source>
-        <translation type="unfinished"></translation>
+        <translation>Detektoren</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="250"/>
@@ -196,7 +196,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="302"/>
         <source>🧮 G-factor</source>
-        <translation type="unfinished"></translation>
+        <translation>🧮 G-Faktor</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="304"/>
@@ -211,7 +211,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="320"/>
         <source>📝 Edit JSON</source>
-        <translation type="unfinished"></translation>
+        <translation>📝 JSON bearbeiten</translation>
     </message>
 </context>
 <context>
@@ -304,12 +304,12 @@
     <message>
         <location filename="../widgets/models/parse/parseWidget.ui" line="118"/>
         <source>Parse parameters</source>
-        <translation type="unfinished"></translation>
+        <translation>Parameter einlesen</translation>
     </message>
     <message>
         <location filename="../widgets/models/parse/parseWidget.ui" line="142"/>
         <source>FCS parameters</source>
-        <translation type="unfinished"></translation>
+        <translation>FCS-Parameter</translation>
     </message>
     <message>
         <location filename="../widgets/models/parse/parseWidget.ui" line="166"/>
@@ -344,12 +344,12 @@
     <message>
         <location filename="../widgets/models/parse/parseWidget.ui" line="248"/>
         <source>Edit model file</source>
-        <translation type="unfinished"></translation>
+        <translation>Modelldatei bearbeiten</translation>
     </message>
     <message>
         <location filename="../widgets/models/stopped_flow/reaction.ui" line="42"/>
         <source>Reactions</source>
-        <translation type="unfinished"></translation>
+        <translation>Reaktionen</translation>
     </message>
     <message>
         <location filename="../widgets/models/stopped_flow/reaction.ui" line="55"/>
@@ -389,12 +389,12 @@
     <message>
         <location filename="../../plugins/tttr/tttr_correlate/correlatorWidget.ui" line="26"/>
         <source>Parameters</source>
-        <translation type="unfinished"></translation>
+        <translation>Parameter</translation>
     </message>
     <message>
         <location filename="../widgets/models/stopped_flow/reaction.ui" line="178"/>
         <source>Species</source>
-        <translation type="unfinished"></translation>
+        <translation>Spezies</translation>
     </message>
     <message>
         <location filename="../widgets/models/stopped_flow/reaction.ui" line="215"/>
@@ -414,17 +414,17 @@
     <message>
         <location filename="../widgets/models/stopped_flow/reaction.ui" line="260"/>
         <source>Integrate</source>
-        <translation type="unfinished"></translation>
+        <translation>Integrieren</translation>
     </message>
     <message>
         <location filename="../widgets/models/stopped_flow/reaction.ui" line="265"/>
         <source>Load reaction</source>
-        <translation type="unfinished"></translation>
+        <translation>Reaktion laden</translation>
     </message>
     <message>
         <location filename="../widgets/models/stopped_flow/reaction.ui" line="270"/>
         <source>Save reaction</source>
-        <translation type="unfinished"></translation>
+        <translation>Reaktion speichern</translation>
     </message>
     <message>
         <location filename="../widgets/models/stopped_flow/reaction.ui" line="275"/>
@@ -434,7 +434,7 @@
     <message>
         <location filename="../../core/models/tcspc/load_distance_distibution.ui" line="39"/>
         <source>Distribution</source>
-        <translation type="unfinished"></translation>
+        <translation>Verteilung</translation>
     </message>
     <message>
         <location filename="../../core/models/tcspc/load_distance_distibution.ui" line="46"/>
@@ -464,7 +464,7 @@
     <message>
         <location filename="../plots/lineplot/linePlotWidget.ui" line="84"/>
         <source>Density</source>
-        <translation type="unfinished"></translation>
+        <translation>Dichte</translation>
     </message>
     <message>
         <location filename="../plots/lineplot/linePlotWidget.ui" line="94"/>
@@ -524,7 +524,7 @@
     <message>
         <location filename="../plots/lineplot/linePlotWidget.ui" line="295"/>
         <source>Update Plot</source>
-        <translation type="unfinished"></translation>
+        <translation>Diagramm aktualisieren</translation>
     </message>
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="23"/>
@@ -544,7 +544,7 @@
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="341"/>
         <source>Previous frame</source>
-        <translation type="unfinished"></translation>
+        <translation>Vorheriges Bild</translation>
     </message>
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="60"/>
@@ -554,7 +554,7 @@
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="331"/>
         <source>Pause</source>
-        <translation type="unfinished"></translation>
+        <translation>Pause</translation>
     </message>
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="70"/>
@@ -564,7 +564,7 @@
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="326"/>
         <source>Play</source>
-        <translation type="unfinished"></translation>
+        <translation>Abspielen</translation>
     </message>
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="80"/>
@@ -574,7 +574,7 @@
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="336"/>
         <source>Next frame</source>
-        <translation type="unfinished"></translation>
+        <translation>Nächstes Bild</translation>
     </message>
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="90"/>
@@ -584,7 +584,7 @@
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="97"/>
         <source>Last frame</source>
-        <translation type="unfinished"></translation>
+        <translation>Letztes Bild</translation>
     </message>
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="100"/>
@@ -599,7 +599,7 @@
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="131"/>
         <source>Spectrum</source>
-        <translation type="unfinished"></translation>
+        <translation>Spektrum</translation>
     </message>
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="143"/>
@@ -619,17 +619,17 @@
     <message>
         <location filename="../widgets/models/tcspc/et_model_free.ui" line="473"/>
         <source>Start/Stop</source>
-        <translation type="unfinished"></translation>
+        <translation>Start/Stopp</translation>
     </message>
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="192"/>
         <source>Current frame</source>
-        <translation type="unfinished"></translation>
+        <translation>Aktuelles Bild</translation>
     </message>
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="217"/>
         <source>Number of frames</source>
-        <translation type="unfinished"></translation>
+        <translation>Anzahl der Frames</translation>
     </message>
     <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="230"/>
@@ -689,7 +689,7 @@
     <message>
         <location filename="../resources/fitting/chi2Hist.ui" line="342"/>
         <source>Parameter</source>
-        <translation type="unfinished"></translation>
+        <translation>Parameter</translation>
     </message>
     <message>
         <location filename="../plots/parameter_scan/parameter_scan.ui" line="33"/>
@@ -764,7 +764,7 @@
     <message>
         <location filename="../../plugins/tttr/tttr_histogram/tcspcTTTRWidget.ui" line="82"/>
         <source>Selection</source>
-        <translation type="unfinished"></translation>
+        <translation>Auswahl</translation>
     </message>
     <message>
         <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="204"/>
@@ -784,27 +784,27 @@
     <message>
         <location filename="../resources/fitting/chi2Hist.ui" line="347"/>
         <source>Min</source>
-        <translation type="unfinished"></translation>
+        <translation>Min</translation>
     </message>
     <message>
         <location filename="../resources/fitting/chi2Hist.ui" line="352"/>
         <source>Max</source>
-        <translation type="unfinished"></translation>
+        <translation>Max</translation>
     </message>
     <message>
         <location filename="../resources/fitting/chi2Hist.ui" line="357"/>
         <source>Enable</source>
-        <translation type="unfinished"></translation>
+        <translation>Aktivieren</translation>
     </message>
     <message>
         <location filename="../resources/fitting/chi2Hist.ui" line="362"/>
         <source>Invert</source>
-        <translation type="unfinished"></translation>
+        <translation>Invertieren</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/modelling/proteinMCLoad.ui" line="35"/>
         <source>Structure</source>
-        <translation type="unfinished"></translation>
+        <translation>Struktur</translation>
     </message>
     <message>
         <location filename="../widgets/pdb/proteinFolderLoad.ui" line="105"/>
@@ -929,7 +929,7 @@
     <message>
         <location filename="../widgets/experiments/pda/pda_tttr.ui" line="338"/>
         <source>Auto load</source>
-        <translation type="unfinished"></translation>
+        <translation>Automatisch laden</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/tcspc/tcspc_simulator.ui" line="165"/>
@@ -939,7 +939,7 @@
     <message>
         <location filename="../widgets/experiments/tcspc/tcspc_sdt.ui" line="106"/>
         <source>Curve</source>
-        <translation type="unfinished"></translation>
+        <translation>Kurve</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/tcspc/tcspc_sdt.ui" line="113"/>
@@ -949,12 +949,12 @@
     <message>
         <location filename="../widgets/experiments/tcspc/tcspc_sdt.ui" line="126"/>
         <source>Open SDT-file</source>
-        <translation type="unfinished"></translation>
+        <translation>SDT-Datei öffnen</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/tcspc/tcspc_sdt.ui" line="131"/>
         <source>Add curve</source>
-        <translation type="unfinished"></translation>
+        <translation>Kurve hinzufügen</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/tcspc/tcspc_simulator.ui" line="35"/>
@@ -999,12 +999,12 @@
     <message>
         <location filename="../widgets/fio/csvInput.ui" line="35"/>
         <source>Format</source>
-        <translation type="unfinished"></translation>
+        <translation>Format</translation>
     </message>
     <message>
         <location filename="../widgets/fio/csvInput.ui" line="61"/>
         <source>Filename</source>
-        <translation type="unfinished"></translation>
+        <translation>Dateiname</translation>
     </message>
     <message>
         <location filename="../widgets/fio/csvInput.ui" line="71"/>
@@ -1064,7 +1064,7 @@
     <message>
         <location filename="../widgets/fio/csvInput.ui" line="170"/>
         <source>Header</source>
-        <translation type="unfinished"></translation>
+        <translation>Kopfzeile</translation>
     </message>
     <message>
         <location filename="../widgets/fio/csvInput.ui" line="358"/>
@@ -1129,7 +1129,7 @@
     <message>
         <location filename="../widgets/fio/spcSampleSelectWidget.ui" line="35"/>
         <source>File select</source>
-        <translation type="unfinished"></translation>
+        <translation>Dateiauswahl</translation>
     </message>
     <message>
         <location filename="../widgets/fio/spcSampleSelectWidget.ui" line="56"/>
@@ -1159,7 +1159,7 @@
     <message>
         <location filename="../widgets/fio/spcSampleSelectWidget.ui" line="171"/>
         <source>Load files</source>
-        <translation type="unfinished"></translation>
+        <translation>Dateien laden</translation>
     </message>
     <message>
         <location filename="../widgets/fio/spcSampleSelectWidget.ui" line="189"/>
@@ -1204,7 +1204,7 @@
     <message>
         <location filename="../widgets/fio/spcSampleSelectWidget.ui" line="270"/>
         <source>Load sample</source>
-        <translation type="unfinished"></translation>
+        <translation>Probe laden</translation>
     </message>
     <message>
         <location filename="../widgets/fio/spcSampleSelectWidget.ui" line="275"/>
@@ -1214,12 +1214,12 @@
     <message>
         <location filename="../widgets/fitting/fittingWidget.ui" line="47"/>
         <source>Dataset selection</source>
-        <translation type="unfinished"></translation>
+        <translation>Datensatzauswahl</translation>
     </message>
     <message>
         <location filename="../widgets/fitting/fittingWidget.ui" line="103"/>
         <source>Sampling</source>
-        <translation type="unfinished"></translation>
+        <translation>Abtastung</translation>
     </message>
     <message>
         <location filename="../widgets/fitting/fittingWidget.ui" line="127"/>
@@ -1239,12 +1239,12 @@
     <message>
         <location filename="../widgets/fitting/fittingWidget.ui" line="188"/>
         <source>Sample</source>
-        <translation type="unfinished"></translation>
+        <translation>Probe</translation>
     </message>
     <message>
         <location filename="../widgets/fitting/fittingWidget.ui" line="217"/>
         <source>Fitting</source>
-        <translation type="unfinished"></translation>
+        <translation>Anpassung</translation>
     </message>
     <message>
         <location filename="../widgets/fitting/fittingWidget.ui" line="241"/>
@@ -1254,7 +1254,7 @@
     <message>
         <location filename="../widgets/fitting/fittingWidget.ui" line="292"/>
         <source>Range selection</source>
-        <translation type="unfinished"></translation>
+        <translation>Bereichsauswahl</translation>
     </message>
     <message>
         <location filename="../widgets/fitting/fittingWidget.ui" line="377"/>
@@ -1284,7 +1284,7 @@
     <message>
         <location filename="../widgets/fitting/fittingWidget.ui" line="403"/>
         <source>Change dataset</source>
-        <translation type="unfinished"></translation>
+        <translation>Datensatz wechseln</translation>
     </message>
     <message>
         <location filename="../widgets/fitting/fittingWidget.ui" line="411"/>
@@ -1314,7 +1314,7 @@
     <message>
         <location filename="../widgets/fluorescence/av/av_property.ui" line="98"/>
         <source>Resolution</source>
-        <translation type="unfinished"></translation>
+        <translation>Auflösung</translation>
     </message>
     <message>
         <location filename="../widgets/fluorescence/av/av_property.ui" line="163"/>
@@ -1429,7 +1429,7 @@
     <message>
         <location filename="../widgets/models/tcspc/et_model_free.ui" line="192"/>
         <source>Log</source>
-        <translation type="unfinished"></translation>
+        <translation>Protokoll</translation>
     </message>
     <message>
         <location filename="../widgets/models/tcspc/et_model_free.ui" line="204"/>
@@ -1454,7 +1454,7 @@
     <message>
         <location filename="../widgets/models/tcspc/et_model_free.ui" line="273"/>
         <source>Regularization</source>
-        <translation type="unfinished"></translation>
+        <translation>Regularisierung</translation>
     </message>
     <message>
         <location filename="../widgets/models/tcspc/et_model_free.ui" line="280"/>
@@ -1484,7 +1484,7 @@
     <message>
         <location filename="../widgets/models/tcspc/et_model_free.ui" line="418"/>
         <source>Points</source>
-        <translation type="unfinished"></translation>
+        <translation>Punkte</translation>
     </message>
     <message>
         <location filename="../widgets/models/tcspc/et_model_free.ui" line="425"/>
@@ -1519,7 +1519,7 @@
     <message>
         <location filename="../widgets/models/tcspc/et_model_free.ui" line="678"/>
         <source>Optimize</source>
-        <translation type="unfinished"></translation>
+        <translation>Optimieren</translation>
     </message>
     <message>
         <location filename="../widgets/models/tcspc/et_model_free.ui" line="683"/>
@@ -1539,7 +1539,7 @@
     <message>
         <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="69"/>
         <source>Window</source>
-        <translation type="unfinished"></translation>
+        <translation>Fenster</translation>
     </message>
     <message>
         <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="82"/>
@@ -1554,7 +1554,7 @@
     <message>
         <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="108"/>
         <source>Linearize</source>
-        <translation type="unfinished"></translation>
+        <translation>Linearisieren</translation>
     </message>
     <message>
         <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="130"/>
@@ -1569,7 +1569,7 @@
     <message>
         <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="35"/>
         <source>Convolve</source>
-        <translation type="unfinished"></translation>
+        <translation>Falten</translation>
     </message>
     <message>
         <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="71"/>
@@ -1609,22 +1609,22 @@
     <message>
         <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="233"/>
         <source>Select IRF</source>
-        <translation type="unfinished"></translation>
+        <translation>IRF auswählen</translation>
     </message>
     <message>
         <location filename="../widgets/pdb/pdb_widget.ui" line="44"/>
         <source>Chain</source>
-        <translation type="unfinished"></translation>
+        <translation>Kette</translation>
     </message>
     <message>
         <location filename="../widgets/pdb/pdb_widget.ui" line="61"/>
         <source>Atom</source>
-        <translation type="unfinished"></translation>
+        <translation>Atom</translation>
     </message>
     <message>
         <location filename="../widgets/pdb/pdb_widget.ui" line="68"/>
         <source>Residue</source>
-        <translation type="unfinished"></translation>
+        <translation>Rest</translation>
     </message>
     <message>
         <location filename="../widgets/pdb/proteinFolderLoad.ui" line="26"/>
@@ -1674,7 +1674,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="409"/>
         <source>Target</source>
-        <translation type="unfinished"></translation>
+        <translation>Ziel</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/fcs_merger/fcs_merger.ui" line="187"/>
@@ -1700,12 +1700,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="76"/>
         <source>Preset</source>
-        <translation type="unfinished"></translation>
+        <translation>Voreinstellung</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="88"/>
         <source>Correlation channels</source>
-        <translation type="unfinished"></translation>
+        <translation>Korrelationskanäle</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/tttr_correlate/correlatorWidget.ui" line="209"/>
@@ -1715,7 +1715,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="190"/>
         <source>Channel numbers</source>
-        <translation type="unfinished"></translation>
+        <translation>Kanalnummern</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="157"/>
@@ -1735,7 +1735,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="180"/>
         <source>Correlate</source>
-        <translation type="unfinished"></translation>
+        <translation>Korrelieren</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="197"/>
@@ -1755,7 +1755,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="276"/>
         <source>Correlation settings</source>
-        <translation type="unfinished"></translation>
+        <translation>Korrelationseinstellungen</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="297"/>
@@ -1795,7 +1795,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="416"/>
         <source>Target path</source>
-        <translation type="unfinished"></translation>
+        <translation>Zielpfad</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="461"/>
@@ -1851,7 +1851,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/wizard/tttr_fileformat/tttr_file_format.ui" line="117"/>
         <source>File format</source>
-        <translation type="unfinished"></translation>
+        <translation>Dateiformat</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_fileformat/tttr_file_format.ui" line="124"/>
@@ -1881,7 +1881,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="491"/>
         <source>Binning</source>
-        <translation type="unfinished"></translation>
+        <translation>Binning</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_fileformat/tttr_file_format.ui" line="225"/>
@@ -1891,7 +1891,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/wizard/tttr_fileformat/tttr_file_format.ui" line="235"/>
         <source>Update Values</source>
-        <translation type="unfinished"></translation>
+        <translation>Werte aktualisieren</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="14"/>
@@ -1916,7 +1916,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="120"/>
         <source>Detector:</source>
-        <translation type="unfinished"></translation>
+        <translation>Detektor:</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="133"/>
@@ -1956,7 +1956,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="236"/>
         <source>Output</source>
-        <translation type="unfinished"></translation>
+        <translation>Ausgabe</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="249"/>
@@ -1986,7 +1986,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="349"/>
         <source>Compute</source>
-        <translation type="unfinished"></translation>
+        <translation>Berechnen</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="356"/>
@@ -2016,7 +2016,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="422"/>
         <source>Transfer to ChiSurf</source>
-        <translation type="unfinished"></translation>
+        <translation>An ChiSurf übertragen</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="465"/>
@@ -2081,12 +2081,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/tttr/tttr_histogram/tttr_histogram.ui" line="212"/>
         <source>Add Curve</source>
-        <translation type="unfinished"></translation>
+        <translation>Kurve hinzufügen</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/tttr_histogram/tcspcTTTRWidget.ui" line="35"/>
         <source>Channel Select</source>
-        <translation type="unfinished"></translation>
+        <translation>Kanalauswahl</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/tttr_histogram/tcspcTTTRWidget.ui" line="62"/>
@@ -2196,7 +2196,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/tttr/tttr_histogram/tttr_histogram.ui" line="148"/>
         <source>Decay histograms</source>
-        <translation type="unfinished"></translation>
+        <translation>Zerfallshistogramme</translation>
     </message>
 </context>
 <context>
@@ -2404,7 +2404,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="902"/>
         <source>About ChiSurf</source>
-        <translation type="unfinished"></translation>
+        <translation>Über ChiSurf</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="923"/>
@@ -2414,7 +2414,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="938"/>
         <source>Dataset</source>
-        <translation type="unfinished"></translation>
+        <translation>Datensatz</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="949"/>
@@ -2444,12 +2444,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="984"/>
         <source>Save fits</source>
-        <translation type="unfinished"></translation>
+        <translation>Fits speichern</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="987"/>
         <source>Save all fits</source>
-        <translation type="unfinished"></translation>
+        <translation>Alle Fits speichern</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1002"/>
@@ -2494,7 +2494,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1076"/>
         <source>Add dataset</source>
-        <translation type="unfinished"></translation>
+        <translation>Datensatz hinzufügen</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1079"/>
@@ -2534,7 +2534,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1136"/>
         <source>Calculate Potential</source>
-        <translation type="unfinished"></translation>
+        <translation>Potenzial berechnen</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1145"/>
@@ -2554,7 +2554,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1166"/>
         <source>Add fit</source>
-        <translation type="unfinished"></translation>
+        <translation>Fit hinzufügen</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1171"/>
@@ -2564,12 +2564,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1180"/>
         <source>Close all</source>
-        <translation type="unfinished"></translation>
+        <translation>Alle schließen</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1189"/>
         <source>Delete dataset</source>
-        <translation type="unfinished"></translation>
+        <translation>Datensatz löschen</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1194"/>
@@ -2584,7 +2584,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1204"/>
         <source>Remove clashes</source>
-        <translation type="unfinished"></translation>
+        <translation>Kollisionen entfernen</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1209"/>
@@ -2594,7 +2594,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1214"/>
         <source>Save topology</source>
-        <translation type="unfinished"></translation>
+        <translation>Topologie speichern</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1219"/>
@@ -2604,17 +2604,17 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1228"/>
         <source>Close all fits</source>
-        <translation type="unfinished"></translation>
+        <translation>Alle Fits schließen</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1233"/>
         <source>New Project</source>
-        <translation type="unfinished"></translation>
+        <translation>Neues Projekt</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1238"/>
         <source>Save Project</source>
-        <translation type="unfinished"></translation>
+        <translation>Projekt speichern</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1243"/>
@@ -2624,7 +2624,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1252"/>
         <source>Load Fit</source>
-        <translation type="unfinished"></translation>
+        <translation>Fit laden</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1261"/>
@@ -2639,17 +2639,17 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1276"/>
         <source>Convert</source>
-        <translation type="unfinished"></translation>
+        <translation>Konvertieren</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1288"/>
         <source>Decay histogram</source>
-        <translation type="unfinished"></translation>
+        <translation>Zerfallshistogramm</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1297"/>
         <source>Correlate</source>
-        <translation type="unfinished"></translation>
+        <translation>Korrelieren</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1302"/>
@@ -2659,7 +2659,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1311"/>
         <source>Simulate decay</source>
-        <translation type="unfinished"></translation>
+        <translation>Zerfall simulieren</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1316"/>
@@ -2674,17 +2674,17 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1330"/>
         <source>Update</source>
-        <translation type="unfinished"></translation>
+        <translation>Aktualisieren</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1335"/>
         <source>Edit</source>
-        <translation type="unfinished"></translation>
+        <translation>Bearbeiten</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1344"/>
         <source>Record</source>
-        <translation type="unfinished"></translation>
+        <translation>Aufnehmen</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1353"/>
@@ -2699,7 +2699,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1367"/>
         <source>Reset local settings</source>
-        <translation type="unfinished"></translation>
+        <translation>Lokale Einstellungen zurücksetzen</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1372"/>
@@ -2744,12 +2744,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../gui.ui" line="1441"/>
         <source>Close Project</source>
-        <translation type="unfinished"></translation>
+        <translation>Projekt schließen</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1450"/>
         <source>Reinitialize</source>
-        <translation type="unfinished"></translation>
+        <translation>Neu initialisieren</translation>
     </message>
     <message>
         <location filename="../gui.ui" line="1453"/>
@@ -2779,22 +2779,22 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="98"/>
         <source>Max</source>
-        <translation type="unfinished"></translation>
+        <translation>Max</translation>
     </message>
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="105"/>
         <source>Min</source>
-        <translation type="unfinished"></translation>
+        <translation>Min</translation>
     </message>
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="141"/>
         <source>Feature</source>
-        <translation type="unfinished"></translation>
+        <translation>Merkmal</translation>
     </message>
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="168"/>
         <source>Process</source>
-        <translation type="unfinished"></translation>
+        <translation>Verarbeiten</translation>
     </message>
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="175"/>
@@ -2824,7 +2824,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="211"/>
         <source>Remove Folder</source>
-        <translation type="unfinished"></translation>
+        <translation>Ordner entfernen</translation>
     </message>
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="236"/>
@@ -2839,27 +2839,27 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="278"/>
         <source>Show Data</source>
-        <translation type="unfinished"></translation>
+        <translation>Daten anzeigen</translation>
     </message>
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="342"/>
         <source>Save bursts</source>
-        <translation type="unfinished"></translation>
+        <translation>Bursts speichern</translation>
     </message>
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="347"/>
         <source>Open folder</source>
-        <translation type="unfinished"></translation>
+        <translation>Ordner öffnen</translation>
     </message>
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="352"/>
         <source>Save Histogram</source>
-        <translation type="unfinished"></translation>
+        <translation>Histogramm speichern</translation>
     </message>
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="357"/>
         <source>Update Histogram</source>
-        <translation type="unfinished"></translation>
+        <translation>Histogramm aktualisieren</translation>
     </message>
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="362"/>
@@ -2874,7 +2874,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/burst/burst_selection/gui/assets/gui.ui" line="372"/>
         <source>Clear Files</source>
-        <translation type="unfinished"></translation>
+        <translation>Dateien leeren</translation>
     </message>
 </context>
 <context>
@@ -2882,7 +2882,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/simple_error_dialog.ui" line="20"/>
         <source>ChiSurf Error</source>
-        <translation type="unfinished"></translation>
+        <translation>ChiSurf-Fehler</translation>
     </message>
     <message>
         <location filename="../widgets/simple_error_dialog.ui" line="26"/>
@@ -2897,7 +2897,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/simple_error_dialog.ui" line="55"/>
         <source>Clear Settings</source>
-        <translation type="unfinished"></translation>
+        <translation>Einstellungen zurücksetzen</translation>
     </message>
     <message>
         <location filename="../widgets/simple_error_dialog.ui" line="62"/>
@@ -2935,7 +2935,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/vv_vh_g_factor/wizard.ui" line="81"/>
         <source>Background Correction</source>
-        <translation type="unfinished"></translation>
+        <translation>Hintergrundkorrektur</translation>
     </message>
     <message>
         <location filename="../../plugins/vv_vh_g_factor/wizard.ui" line="88"/>
@@ -3015,12 +3015,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/vv_vh_g_factor/wizard.ui" line="341"/>
         <source>Show raw</source>
-        <translation type="unfinished"></translation>
+        <translation>Rohdaten anzeigen</translation>
     </message>
     <message>
         <location filename="../../plugins/vv_vh_g_factor/wizard.ui" line="351"/>
         <source>Show corrected</source>
-        <translation type="unfinished"></translation>
+        <translation>Korrigiert anzeigen</translation>
     </message>
     <message>
         <location filename="../../plugins/vv_vh_g_factor/wizard.ui" line="361"/>
@@ -3035,7 +3035,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../../plugins/vv_vh_g_factor/wizard.ui" line="394"/>
         <source>No file loaded</source>
-        <translation type="unfinished"></translation>
+        <translation>Keine Datei geladen</translation>
     </message>
     <message>
         <location filename="../../plugins/vv_vh_g_factor/wizard.ui" line="404"/>
@@ -3483,7 +3483,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="86"/>
         <source>Advanced</source>
-        <translation type="unfinished"></translation>
+        <translation>Erweitert</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="87"/>
@@ -3528,7 +3528,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="95"/>
         <source>Amplitude</source>
-        <translation type="unfinished"></translation>
+        <translation>Amplitude</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="96"/>
@@ -3578,7 +3578,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="105"/>
         <source>Anisotropy Parameters</source>
-        <translation type="unfinished"></translation>
+        <translation>Anisotropie-Parameter</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="106"/>
@@ -3588,12 +3588,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="107"/>
         <source>Anisotropy species</source>
-        <translation type="unfinished"></translation>
+        <translation>Anisotropie-Spezies</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="108"/>
         <source>Anneal</source>
-        <translation type="unfinished"></translation>
+        <translation>Ausglühen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="109"/>
@@ -3668,7 +3668,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="123"/>
         <source>Atom selection</source>
-        <translation type="unfinished"></translation>
+        <translation>Atomauswahl</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="124"/>
@@ -3823,7 +3823,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="156"/>
         <source>Bin width</source>
-        <translation type="unfinished"></translation>
+        <translation>Bin-Breite</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="157"/>
@@ -3878,7 +3878,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="167"/>
         <source>Brightness</source>
-        <translation type="unfinished"></translation>
+        <translation>Helligkeit</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="168"/>
@@ -4108,7 +4108,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="216"/>
         <source>Calculation Options</source>
-        <translation type="unfinished"></translation>
+        <translation>Berechnungsoptionen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="217"/>
@@ -4133,7 +4133,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="221"/>
         <source>Category</source>
-        <translation type="unfinished"></translation>
+        <translation>Kategorie</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="222"/>
@@ -4178,7 +4178,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="233"/>
         <source>Channel selection</source>
-        <translation type="unfinished"></translation>
+        <translation>Kanalauswahl</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="234"/>
@@ -4203,7 +4203,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="238"/>
         <source>Channels</source>
-        <translation type="unfinished"></translation>
+        <translation>Kanäle</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="239"/>
@@ -4268,7 +4268,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="251"/>
         <source>Clear selection</source>
-        <translation type="unfinished"></translation>
+        <translation>Auswahl aufheben</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="252"/>
@@ -4278,7 +4278,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="254"/>
         <source>Coarsen</source>
-        <translation type="unfinished"></translation>
+        <translation>Vergröbern</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="255"/>
@@ -4373,7 +4373,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="273"/>
         <source>Components</source>
-        <translation type="unfinished"></translation>
+        <translation>Komponenten</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="274"/>
@@ -4608,7 +4608,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="320"/>
         <source>Convolve</source>
-        <translation type="unfinished"></translation>
+        <translation>Falten</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="321"/>
@@ -4643,12 +4643,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="327"/>
         <source>Correlation Channels</source>
-        <translation type="unfinished"></translation>
+        <translation>Korrelationskanäle</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="328"/>
         <source>Correlation Settings</source>
-        <translation type="unfinished"></translation>
+        <translation>Korrelationseinstellungen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="329"/>
@@ -4668,7 +4668,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="332"/>
         <source>Correlator</source>
-        <translation type="unfinished"></translation>
+        <translation>Korrelator</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="334"/>
@@ -4698,7 +4698,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="339"/>
         <source>Counts</source>
-        <translation type="unfinished"></translation>
+        <translation>Zählungen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="340"/>
@@ -4848,7 +4848,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="369"/>
         <source>Decay preview</source>
-        <translation type="unfinished"></translation>
+        <translation>Zerfallsvorschau</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="370"/>
@@ -4883,7 +4883,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="376"/>
         <source>Dependencies</source>
-        <translation type="unfinished"></translation>
+        <translation>Abhängigkeiten</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="377"/>
@@ -4898,7 +4898,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="379"/>
         <source>Description</source>
-        <translation type="unfinished"></translation>
+        <translation>Beschreibung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="380"/>
@@ -4908,17 +4908,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="381"/>
         <source>Detect</source>
-        <translation type="unfinished"></translation>
+        <translation>Erkennen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="382"/>
         <source>Detection</source>
-        <translation type="unfinished"></translation>
+        <translation>Detektion</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="383"/>
         <source>Detection channels</source>
-        <translation type="unfinished"></translation>
+        <translation>Detektionskanäle</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="384"/>
@@ -4953,7 +4953,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="390"/>
         <source>Detector channels</source>
-        <translation type="unfinished"></translation>
+        <translation>Detektorkanäle</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="391"/>
@@ -4988,7 +4988,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="398"/>
         <source>Detectors</source>
-        <translation type="unfinished"></translation>
+        <translation>Detektoren</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="399"/>
@@ -5013,7 +5013,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="403"/>
         <source>Diffusion</source>
-        <translation type="unfinished"></translation>
+        <translation>Diffusion</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="404"/>
@@ -5093,7 +5093,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="419"/>
         <source>Distance distribution</source>
-        <translation type="unfinished"></translation>
+        <translation>Abstandsverteilung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="420"/>
@@ -5113,7 +5113,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="423"/>
         <source>Distributions</source>
-        <translation type="unfinished"></translation>
+        <translation>Verteilungen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="424"/>
@@ -5328,7 +5328,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="466"/>
         <source>Efficiency</source>
-        <translation type="unfinished"></translation>
+        <translation>Effizienz</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="467"/>
@@ -5363,7 +5363,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="473"/>
         <source>Engine</source>
-        <translation type="unfinished"></translation>
+        <translation>Engine</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="474"/>
@@ -5433,7 +5433,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="487"/>
         <source>Executable</source>
-        <translation type="unfinished"></translation>
+        <translation>Ausführbare Datei</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="488"/>
@@ -5453,7 +5453,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="491"/>
         <source>Experimental IRF</source>
-        <translation type="unfinished"></translation>
+        <translation>Experimentelles IRF</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="492"/>
@@ -5468,7 +5468,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="494"/>
         <source>Experiments</source>
-        <translation type="unfinished"></translation>
+        <translation>Experimente</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="495"/>
@@ -5593,7 +5593,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="520"/>
         <source>FRET parameters</source>
-        <translation type="unfinished"></translation>
+        <translation>FRET-Parameter</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="521"/>
@@ -5648,17 +5648,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="531"/>
         <source>File index</source>
-        <translation type="unfinished"></translation>
+        <translation>Dateiindex</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="532"/>
         <source>Filename</source>
-        <translation type="unfinished"></translation>
+        <translation>Dateiname</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="533"/>
         <source>Files</source>
-        <translation type="unfinished"></translation>
+        <translation>Dateien</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="534"/>
@@ -5678,7 +5678,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="537"/>
         <source>Files to process</source>
-        <translation type="unfinished"></translation>
+        <translation>Zu verarbeitende Dateien</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="538"/>
@@ -5718,7 +5718,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="545"/>
         <source>Filters</source>
-        <translation type="unfinished"></translation>
+        <translation>Filter</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="546"/>
@@ -5733,7 +5733,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="548"/>
         <source>Finish</source>
-        <translation type="unfinished"></translation>
+        <translation>Fertigstellen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="549"/>
@@ -5748,7 +5748,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="551"/>
         <source>First frame</source>
-        <translation type="unfinished"></translation>
+        <translation>Erstes Bild</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="552"/>
@@ -5773,7 +5773,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="556"/>
         <source>Fit Results</source>
-        <translation type="unfinished"></translation>
+        <translation>Fit-Ergebnisse</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="557"/>
@@ -5808,7 +5808,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="563"/>
         <source>Fit flags</source>
-        <translation type="unfinished"></translation>
+        <translation>Fit-Kennzeichen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="564"/>
@@ -5818,12 +5818,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="565"/>
         <source>Fit start</source>
-        <translation type="unfinished"></translation>
+        <translation>Fit-Beginn</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="566"/>
         <source>Fit stop</source>
-        <translation type="unfinished"></translation>
+        <translation>Fit-Ende</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="567"/>
@@ -5853,7 +5853,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="572"/>
         <source>Fitting</source>
-        <translation type="unfinished"></translation>
+        <translation>Anpassung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="573"/>
@@ -5923,7 +5923,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="586"/>
         <source>Fluorophores</source>
-        <translation type="unfinished"></translation>
+        <translation>Fluorophore</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="587"/>
@@ -5943,7 +5943,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="590"/>
         <source>Folder</source>
-        <translation type="unfinished"></translation>
+        <translation>Ordner</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="591"/>
@@ -5968,12 +5968,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="595"/>
         <source>Format</source>
-        <translation type="unfinished"></translation>
+        <translation>Format</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="596"/>
         <source>Formats</source>
-        <translation type="unfinished"></translation>
+        <translation>Formate</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="597"/>
@@ -6028,7 +6028,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="607"/>
         <source>Frames</source>
-        <translation type="unfinished"></translation>
+        <translation>Bilder</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="608"/>
@@ -6058,7 +6058,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="613"/>
         <source>Frequency</source>
-        <translation type="unfinished"></translation>
+        <translation>Frequenz</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="614"/>
@@ -6193,7 +6193,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="640"/>
         <source>Generation Settings</source>
-        <translation type="unfinished"></translation>
+        <translation>Erzeugungseinstellungen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="641"/>
@@ -6248,7 +6248,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="651"/>
         <source>Harmonic</source>
-        <translation type="unfinished"></translation>
+        <translation>Harmonische</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="652"/>
@@ -6258,7 +6258,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="653"/>
         <source>Header tags</source>
-        <translation type="unfinished"></translation>
+        <translation>Kopf-Tags</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="654"/>
@@ -6308,7 +6308,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="663"/>
         <source>Host</source>
-        <translation type="unfinished"></translation>
+        <translation>Host</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="664"/>
@@ -6458,7 +6458,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="693"/>
         <source>Image</source>
-        <translation type="unfinished"></translation>
+        <translation>Bild</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="694"/>
@@ -6473,12 +6473,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="696"/>
         <source>Image type</source>
-        <translation type="unfinished"></translation>
+        <translation>Bildtyp</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="697"/>
         <source>Images</source>
-        <translation type="unfinished"></translation>
+        <translation>Bilder</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="698"/>
@@ -6523,17 +6523,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="706"/>
         <source>Input</source>
-        <translation type="unfinished"></translation>
+        <translation>Eingabe</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="707"/>
         <source>Input / Output</source>
-        <translation type="unfinished"></translation>
+        <translation>Eingabe / Ausgabe</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="708"/>
         <source>Input format</source>
-        <translation type="unfinished"></translation>
+        <translation>Eingabeformat</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="709"/>
@@ -6543,7 +6543,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="710"/>
         <source>Inputs</source>
-        <translation type="unfinished"></translation>
+        <translation>Eingaben</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="711"/>
@@ -6558,7 +6558,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="713"/>
         <source>Instrument parameters</source>
-        <translation type="unfinished"></translation>
+        <translation>Geräteparameter</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="714"/>
@@ -6608,7 +6608,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="723"/>
         <source>Intensity image</source>
-        <translation type="unfinished"></translation>
+        <translation>Intensitätsbild</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="724"/>
@@ -6668,12 +6668,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="736"/>
         <source>Isotropic</source>
-        <translation type="unfinished"></translation>
+        <translation>Isotrop</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="737"/>
         <source>Iterations</source>
-        <translation type="unfinished"></translation>
+        <translation>Iterationen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="738"/>
@@ -6733,7 +6733,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="749"/>
         <source>Keep original</source>
-        <translation type="unfinished"></translation>
+        <translation>Original behalten</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="750"/>
@@ -6798,7 +6798,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="762"/>
         <source>Last frame</source>
-        <translation type="unfinished"></translation>
+        <translation>Letztes Bild</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="763"/>
@@ -6868,7 +6868,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="776"/>
         <source>Lifetime distribution</source>
-        <translation type="unfinished"></translation>
+        <translation>Lebensdauerverteilung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="777"/>
@@ -6878,7 +6878,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="778"/>
         <source>Lifetime map</source>
-        <translation type="unfinished"></translation>
+        <translation>Lebensdauerkarte</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="779"/>
@@ -6888,7 +6888,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="780"/>
         <source>Lifetime spectrum</source>
-        <translation type="unfinished"></translation>
+        <translation>Lebensdauerspektrum</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="781"/>
@@ -7013,7 +7013,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="805"/>
         <source>Live update</source>
-        <translation type="unfinished"></translation>
+        <translation>Live-Aktualisierung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="806"/>
@@ -7093,7 +7093,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="821"/>
         <source>Loaded data</source>
-        <translation type="unfinished"></translation>
+        <translation>Geladene Daten</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="822"/>
@@ -7118,7 +7118,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="826"/>
         <source>Log scale</source>
-        <translation type="unfinished"></translation>
+        <translation>Logarithmische Skala</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="827"/>
@@ -7263,7 +7263,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="855"/>
         <source>Maps</source>
-        <translation type="unfinished"></translation>
+        <translation>Karten</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="856"/>
@@ -7413,7 +7413,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="886"/>
         <source>Method</source>
-        <translation type="unfinished"></translation>
+        <translation>Methode</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="887"/>
@@ -7613,7 +7613,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="927"/>
         <source>Mixture</source>
-        <translation type="unfinished"></translation>
+        <translation>Mischung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="928"/>
@@ -7643,7 +7643,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="933"/>
         <source>Models</source>
-        <translation type="unfinished"></translation>
+        <translation>Modelle</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="934"/>
@@ -7693,7 +7693,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="943"/>
         <source>Molecules</source>
-        <translation type="unfinished"></translation>
+        <translation>Moleküle</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="944"/>
@@ -7723,7 +7723,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="949"/>
         <source>Movie</source>
-        <translation type="unfinished"></translation>
+        <translation>Film</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="950"/>
@@ -7798,12 +7798,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="965"/>
         <source>Noise</source>
-        <translation type="unfinished"></translation>
+        <translation>Rauschen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="966"/>
         <source>Noise model</source>
-        <translation type="unfinished"></translation>
+        <translation>Rauschmodell</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="967"/>
@@ -7813,7 +7813,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="968"/>
         <source>None</source>
-        <translation type="unfinished"></translation>
+        <translation>Keine</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="969"/>
@@ -7828,7 +7828,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="971"/>
         <source>Normalize IRF</source>
-        <translation type="unfinished"></translation>
+        <translation>IRF normieren</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="972"/>
@@ -8018,7 +8018,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1009"/>
         <source>Open results</source>
-        <translation type="unfinished"></translation>
+        <translation>Ergebnisse öffnen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1010"/>
@@ -8078,7 +8078,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1021"/>
         <source>Optics</source>
-        <translation type="unfinished"></translation>
+        <translation>Optik</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1022"/>
@@ -8093,7 +8093,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1024"/>
         <source>Optional calculations</source>
-        <translation type="unfinished"></translation>
+        <translation>Optionale Berechnungen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1025"/>
@@ -8123,7 +8123,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1030"/>
         <source>Output</source>
-        <translation type="unfinished"></translation>
+        <translation>Ausgabe</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1031"/>
@@ -8138,12 +8138,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1033"/>
         <source>Output format</source>
-        <translation type="unfinished"></translation>
+        <translation>Ausgabeformat</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1034"/>
         <source>Outputs</source>
-        <translation type="unfinished"></translation>
+        <translation>Ausgaben</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1035"/>
@@ -8183,7 +8183,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1042"/>
         <source>PSF parameters</source>
-        <translation type="unfinished"></translation>
+        <translation>PSF-Parameter</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1043"/>
@@ -8248,7 +8248,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1056"/>
         <source>Parameters</source>
-        <translation type="unfinished"></translation>
+        <translation>Parameter</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1057"/>
@@ -8278,7 +8278,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1062"/>
         <source>Password</source>
-        <translation type="unfinished"></translation>
+        <translation>Passwort</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1063"/>
@@ -8408,12 +8408,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1088"/>
         <source>Performance</source>
-        <translation type="unfinished"></translation>
+        <translation>Leistung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1089"/>
         <source>Period</source>
-        <translation type="unfinished"></translation>
+        <translation>Periode</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1090"/>
@@ -8558,7 +8558,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1118"/>
         <source>Physical</source>
-        <translation type="unfinished"></translation>
+        <translation>Physikalisch</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1119"/>
@@ -8783,7 +8783,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1163"/>
         <source>Process</source>
-        <translation type="unfinished"></translation>
+        <translation>Verarbeiten</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1164"/>
@@ -8813,7 +8813,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1169"/>
         <source>Provider</source>
-        <translation type="unfinished"></translation>
+        <translation>Anbieter</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1171"/>
@@ -8848,7 +8848,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1177"/>
         <source>Quality</source>
-        <translation type="unfinished"></translation>
+        <translation>Qualität</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1178"/>
@@ -9053,7 +9053,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1219"/>
         <source>Reference</source>
-        <translation type="unfinished"></translation>
+        <translation>Referenz</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1220"/>
@@ -9068,7 +9068,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1222"/>
         <source>Refine</source>
-        <translation type="unfinished"></translation>
+        <translation>Verfeinern</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1223"/>
@@ -9088,7 +9088,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1226"/>
         <source>Regularisation</source>
-        <translation type="unfinished"></translation>
+        <translation>Regularisierung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1227"/>
@@ -9098,7 +9098,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1228"/>
         <source>Regularization</source>
-        <translation type="unfinished"></translation>
+        <translation>Regularisierung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1229"/>
@@ -9213,7 +9213,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1253"/>
         <source>Reset macro times</source>
-        <translation type="unfinished"></translation>
+        <translation>Makrozeiten zurücksetzen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1254"/>
@@ -9293,12 +9293,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1269"/>
         <source>Results CSV</source>
-        <translation type="unfinished"></translation>
+        <translation>Ergebnisse (CSV)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1270"/>
         <source>Resume</source>
-        <translation type="unfinished"></translation>
+        <translation>Fortsetzen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1271"/>
@@ -9413,7 +9413,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1293"/>
         <source>Reverse</source>
-        <translation type="unfinished"></translation>
+        <translation>Umkehren</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1294"/>
@@ -9603,7 +9603,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1331"/>
         <source>Sample rate</source>
-        <translation type="unfinished"></translation>
+        <translation>Abtastrate</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1332"/>
@@ -9653,7 +9653,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1343"/>
         <source>Save topology</source>
-        <translation type="unfinished"></translation>
+        <translation>Topologie speichern</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1344"/>
@@ -9688,7 +9688,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1352"/>
         <source>Seed</source>
-        <translation type="unfinished"></translation>
+        <translation>Startwert</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1353"/>
@@ -9748,7 +9748,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1365"/>
         <source>Settings JSON</source>
-        <translation type="unfinished"></translation>
+        <translation>Einstellungen (JSON)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1366"/>
@@ -9763,7 +9763,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1368"/>
         <source>Shift</source>
-        <translation type="unfinished"></translation>
+        <translation>Verschiebung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1369"/>
@@ -9808,7 +9808,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1377"/>
         <source>Sigma</source>
-        <translation type="unfinished"></translation>
+        <translation>Sigma</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1378"/>
@@ -9818,7 +9818,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1379"/>
         <source>Simple</source>
-        <translation type="unfinished"></translation>
+        <translation>Einfach</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1380"/>
@@ -9843,12 +9843,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1384"/>
         <source>Simulation</source>
-        <translation type="unfinished"></translation>
+        <translation>Simulation</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1385"/>
         <source>Simulator</source>
-        <translation type="unfinished"></translation>
+        <translation>Simulator</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1386"/>
@@ -9863,7 +9863,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1388"/>
         <source>Skew</source>
-        <translation type="unfinished"></translation>
+        <translation>Schiefe</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1389"/>
@@ -9888,12 +9888,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1393"/>
         <source>Smoothing</source>
-        <translation type="unfinished"></translation>
+        <translation>Glättung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1394"/>
         <source>Smoothing σ</source>
-        <translation type="unfinished"></translation>
+        <translation>Glättung σ</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1395"/>
@@ -9933,7 +9933,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1402"/>
         <source>Source</source>
-        <translation type="unfinished"></translation>
+        <translation>Quelle</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1403"/>
@@ -9968,7 +9968,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1409"/>
         <source>Species</source>
-        <translation type="unfinished"></translation>
+        <translation>Spezies</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1410"/>
@@ -10023,7 +10023,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1420"/>
         <source>Split into files</source>
-        <translation type="unfinished"></translation>
+        <translation>In Dateien aufteilen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1421"/>
@@ -10033,7 +10033,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1422"/>
         <source>Split options</source>
-        <translation type="unfinished"></translation>
+        <translation>Aufteilungsoptionen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1423"/>
@@ -10098,7 +10098,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1435"/>
         <source>State</source>
-        <translation type="unfinished"></translation>
+        <translation>Zustand</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1436"/>
@@ -10138,7 +10138,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1443"/>
         <source>Status</source>
-        <translation type="unfinished"></translation>
+        <translation>Status</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1444"/>
@@ -10173,12 +10173,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1450"/>
         <source>Stride</source>
-        <translation type="unfinished"></translation>
+        <translation>Schrittweite</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1451"/>
         <source>Structures</source>
-        <translation type="unfinished"></translation>
+        <translation>Strukturen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1452"/>
@@ -10208,7 +10208,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1457"/>
         <source>Subtract</source>
-        <translation type="unfinished"></translation>
+        <translation>Subtrahieren</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1458"/>
@@ -10328,7 +10328,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1481"/>
         <source>Temperature</source>
-        <translation type="unfinished"></translation>
+        <translation>Temperatur</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1482"/>
@@ -10402,7 +10402,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1495"/>
         <source>Threads</source>
-        <translation type="unfinished"></translation>
+        <translation>Threads</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1496"/>
@@ -10417,7 +10417,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1498"/>
         <source>Threshold</source>
-        <translation type="unfinished"></translation>
+        <translation>Schwellenwert</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1499"/>
@@ -10457,7 +10457,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1506"/>
         <source>Timing</source>
-        <translation type="unfinished"></translation>
+        <translation>Zeitsteuerung</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1507"/>
@@ -10467,7 +10467,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1508"/>
         <source>Total components</source>
-        <translation type="unfinished"></translation>
+        <translation>Gesamtkomponenten</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1509"/>
@@ -10717,7 +10717,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1558"/>
         <source>User</source>
-        <translation type="unfinished"></translation>
+        <translation>Benutzer</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1559"/>
@@ -10862,7 +10862,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1587"/>
         <source>Weight</source>
-        <translation type="unfinished"></translation>
+        <translation>Gewicht</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1588"/>
@@ -10872,7 +10872,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1589"/>
         <source>Welcome</source>
-        <translation type="unfinished"></translation>
+        <translation>Willkommen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1591"/>
@@ -11882,7 +11882,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1792"/>
         <source>↺ Reset</source>
-        <translation type="unfinished"></translation>
+        <translation>↺ Zurücksetzen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1793"/>
@@ -11897,12 +11897,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1795"/>
         <source>▶ Run</source>
-        <translation type="unfinished"></translation>
+        <translation>▶ Ausführen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1796"/>
         <source>▶️ Run batch</source>
-        <translation type="unfinished"></translation>
+        <translation>▶️ Stapel ausführen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1797"/>
@@ -11912,12 +11912,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1798"/>
         <source>⚡ IRF</source>
-        <translation type="unfinished"></translation>
+        <translation>⚡ IRF</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1799"/>
         <source>✅ Create fits</source>
-        <translation type="unfinished"></translation>
+        <translation>✅ Fits erstellen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1800"/>
@@ -11927,12 +11927,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1801"/>
         <source>✕ Clear</source>
-        <translation type="unfinished"></translation>
+        <translation>✕ Leeren</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1803"/>
         <source>❓ Open Help</source>
-        <translation type="unfinished"></translation>
+        <translation>❓ Hilfe öffnen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1804"/>
@@ -11942,7 +11942,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1805"/>
         <source>➕ Add</source>
-        <translation type="unfinished"></translation>
+        <translation>➕ Hinzufügen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1806"/>
@@ -11957,7 +11957,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1808"/>
         <source>➖ Remove</source>
-        <translation type="unfinished"></translation>
+        <translation>➖ Entfernen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1809"/>
@@ -11967,12 +11967,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1810"/>
         <source>👁️ Preview</source>
-        <translation type="unfinished"></translation>
+        <translation>👁️ Vorschau</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1811"/>
         <source>💾 Export</source>
-        <translation type="unfinished"></translation>
+        <translation>💾 Exportieren</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1812"/>
@@ -11982,7 +11982,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1813"/>
         <source>📂 Load</source>
-        <translation type="unfinished"></translation>
+        <translation>📂 Laden</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1814"/>
@@ -11997,7 +11997,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1816"/>
         <source>📥 Fetch models</source>
-        <translation type="unfinished"></translation>
+        <translation>📥 Modelle abrufen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1817"/>
@@ -12012,17 +12012,17 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1819"/>
         <source>🔁 Update experiments</source>
-        <translation type="unfinished"></translation>
+        <translation>🔁 Experimente aktualisieren</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1820"/>
         <source>🔄 Refresh</source>
-        <translation type="unfinished"></translation>
+        <translation>🔄 Aktualisieren</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1822"/>
         <source>🔌 Test connection</source>
-        <translation type="unfinished"></translation>
+        <translation>🔌 Verbindung testen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1823"/>
@@ -12037,7 +12037,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1825"/>
         <source>🧪 Generate</source>
-        <translation type="unfinished"></translation>
+        <translation>🧪 Erzeugen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="191"/>
@@ -12047,12 +12047,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="198"/>
         <source>Bursts</source>
-        <translation type="unfinished"></translation>
+        <translation>Bursts</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="144"/>
         <source>Background rate</source>
-        <translation type="unfinished"></translation>
+        <translation>Hintergrundrate</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="190"/>
