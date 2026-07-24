@@ -8,7 +8,6 @@ from typing import Dict, Tuple
 
 import numpy as np
 import pandas as pd
-import pyqtgraph as pg
 from qtpy.QtCore import QCoreApplication, QSettings, QSize, Qt, QTimer, Signal
 from qtpy.QtGui import QDragEnterEvent, QDropEvent
 from qtpy.QtWidgets import (
@@ -34,6 +33,7 @@ from qtpy.QtWidgets import (
 )
 
 from chisurf import logging
+from chisurf.gui import chiplot as cp
 from chisurf.gui.misc_helpers import (
     get_plugin_settings_path,
     persist_plugin_state,
@@ -105,6 +105,8 @@ class HelpDialog(QDialog):
 # source). BVA keeps its exact look while every other tool can adopt the same.
 from chisurf.gui.widgets.tool_buttons import (  # noqa: E402
     TOOLBAR_STYLE as _TOOLBAR_STYLE,
+)
+from chisurf.gui.widgets.tool_buttons import (
     action_button,
 )
 
@@ -169,7 +171,7 @@ class BVATool(QMainWindow):
         self._df: pd.DataFrame | None = None
         self._burst_df: pd.DataFrame | None = None
         self._tttrs: list | None = None
-        self._static_line_item: pg.PlotDataItem | None = None
+        self._static_line_item: cp.handles.Curve | None = None
         # Coalesce parameter-change bursts (e.g. applying workflow context loads the
         # detector table, refreshes the donor/acceptor combos and sets the folder in
         # one turn, each of which fires ``_on_param_changed``) into a single recompute
@@ -237,7 +239,7 @@ class BVATool(QMainWindow):
         self.dock_area = DockArea()
         self.dock_area.addTab(self._build_settings_tab(), "BVA Settings", close_mode="hide")
         self.dock_area.addTab(self._build_channels_tab(), "Channel Definitions", close_mode="hide")
-        self.plot_widget = pg.GraphicsLayoutWidget()
+        self.plot_widget = cp.Grid()
         self.dock_area.addTab(self.plot_widget, "Plot", close_mode="hide")
         self.dock_area.setContextMenuEnabled(True)
         self.dock_area.setContextMenuMode("basic")
@@ -449,30 +451,28 @@ class BVATool(QMainWindow):
     # ── Plot helpers ────────────────────────────────────────────────
 
     def _setup_plot(self):
-        plot = self.plot_widget.addPlot()
-        plot.setLabels(bottom="Mean Proximity Ratio", left="Std Proximity Ratio")
-        plot.setRange(xRange=(-0.05, 1.05), yRange=(-0.01, 0.44))
-        plot.showGrid(x=True, y=True, alpha=0.3)
+        plot = self.plot_widget.add_plot()
+        plot.set_labels(bottom="Mean Proximity Ratio", left="Std Proximity Ratio")
+        plot.set_range(x=(-0.05, 1.05), y=(-0.01, 0.44))
+        plot.grid(x=True, y=True, alpha=0.3)
 
-        self._image_item = pg.ImageItem(axisOrder='col-major')
-        plot.addItem(self._image_item)
+        self._image_item = plot.image(np.zeros((1, 1)), axis_order='col-major')
 
-        self._static_line_item = pg.PlotDataItem(
-            pen=pg.mkPen(color="#ff6b6b", width=2),
+        self._static_line_item = plot.line([], [], pen=cp.to_pen("#ff6b6b", width=2))
+
+        self._profile_mean_item = plot.line(
+            [], [], pen=cp.to_pen("cyan", width=2),
+            symbol='o', symbol_size=4, symbol_brush=(0, 255, 255, 150),
         )
-        plot.addItem(self._static_line_item)
-
-        self._profile_mean_item = pg.PlotDataItem(
-            pen=pg.mkPen(color="cyan", width=2),
-            symbol='o', symbolSize=4, symbolBrush=(0, 255, 255, 150),
+        self._profile_error_item = plot.errorbars(
+            np.array([]), np.array([]), height=np.array([]), beam=0.01,
         )
-        plot.addItem(self._profile_mean_item)
-        self._profile_error_item = pg.ErrorBarItem(beam=0.01)
-        plot.addItem(self._profile_error_item)
 
-        self._hist_lut = pg.HistogramLUTItem()
-        self._hist_lut.setImageItem(self._image_item)
-        cm = pg.colormap.get("CET-L4")
+        # HistogramLUTItem is a pyqtgraph LUT composite chiplot does not model
+        # natively yet; created via passthrough and attached to the layout.
+        self._hist_lut = cp.HistogramLUTItem()
+        self._hist_lut.setImageItem(self._image_item.native)
+        cm = cp.get_backend().raw_module().colormap.get("CET-L4")
         self._hist_lut.gradient.setColorMap(cm)
         self.plot_widget.addItem(self._hist_lut)
         self._plot_ref = plot
@@ -511,16 +511,16 @@ class BVATool(QMainWindow):
         if vmin is None:
             vmin = hist.min()
         clipped = np.clip(hist, vmin, vmax)
-        self._image_item.setImage(clipped)
-        self._image_item.setRect(
+        self._image_item.set_image(clipped)
+        self._image_item.set_rect(
             range_x[0], range_y[0],
             range_x[1] - range_x[0], range_y[1] - range_y[0],
         )
         mean, sd = self._average_histogram(hist, x_edges, y_edges)
         x_centers = (x_edges[:-1] + x_edges[1:]) / 2
-        self._profile_mean_item.setData(x_centers, mean)
-        self._profile_error_item.setData(
-            x=x_centers, y=mean, top=sd, bottom=sd,
+        self._profile_mean_item.set_data(x_centers, mean)
+        self._profile_error_item.set_data(
+            x_centers, mean, top=sd, bottom=sd,
         )
 
     def _plot_static_line(self, n_photons: int = 10):
@@ -528,7 +528,7 @@ class BVATool(QMainWindow):
         mean_sim, std_sim = core.compute_static_bva_line(
             x_axis, number_of_photons_per_slice=n_photons,
         )
-        self._static_line_item.setData(mean_sim, std_sim)
+        self._static_line_item.set_data(mean_sim, std_sim)
 
     # ── Settings helper ──────────────────────────────────────────────
 
@@ -796,7 +796,7 @@ class BVATool(QMainWindow):
 
     def _toggle_static_line(self, visible: bool):
         if self._static_line_item:
-            self._static_line_item.setVisible(visible)
+            self._static_line_item.visible = visible
 
     def _save_plot(self):
         path, _ = QFileDialog.getSaveFileName(

@@ -96,6 +96,7 @@ class Canvas(abc.ABC):
         top: np.ndarray | None,
         bottom: np.ndarray | None,
         pen: S.Pen,
+        beam: float | None = None,
     ) -> H.ErrorBars:
         """Draw error bars and return their handle."""
 
@@ -107,6 +108,7 @@ class Canvas(abc.ABC):
         colormap: S.Colormap | None,
         levels: tuple[float, float] | None,
         rect: tuple[float, float, float, float] | None,
+        axis_order: str = "row-major",
     ) -> H.Image:
         """Draw an image/heatmap and return its handle."""
 

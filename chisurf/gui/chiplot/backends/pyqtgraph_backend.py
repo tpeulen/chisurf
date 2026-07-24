@@ -468,9 +468,11 @@ class _PgCanvas(base.Canvas):
         self._pi.addItem(item)
         return _Item(item, self._pi)
 
-    def add_errorbars(self, x, y, *, height, top, bottom, pen) -> H.ErrorBars:
+    def add_errorbars(self, x, y, *, height, top, bottom, pen, beam=None) -> H.ErrorBars:
         """Draw error bars."""
         kw = {"x": np.asarray(x), "y": np.asarray(y), "pen": _pen(pen)}
+        if beam is not None:
+            kw["beam"] = beam
         if height is not None:
             kw["height"] = np.asarray(height)
         if top is not None:
@@ -481,9 +483,9 @@ class _PgCanvas(base.Canvas):
         self._pi.addItem(item)
         return _ErrorBars(item, self._pi)
 
-    def add_image(self, data, *, colormap, levels, rect) -> H.Image:
+    def add_image(self, data, *, colormap, levels, rect, axis_order="row-major") -> H.Image:
         """Draw an image/heatmap."""
-        item = pg.ImageItem(np.asarray(data))
+        item = pg.ImageItem(np.asarray(data), axisOrder=axis_order)
         lut = _lut(colormap)
         if lut is not None:
             item.setLookupTable(lut)

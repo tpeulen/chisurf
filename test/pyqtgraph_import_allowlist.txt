@@ -22,7 +22,6 @@ chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter_plots.py
 chisurf/plugins/burst/burst_2cde/gui/tool.py
 chisurf/plugins/burst/burst_background/gui/sections.py
 chisurf/plugins/burst/burst_browser/gui/sections.py
-chisurf/plugins/burst/burst_bva/gui/tool.py
 chisurf/plugins/burst/burst_fcs_correlator/wizard.py
 chisurf/plugins/burst/burst_h2mm/gui/tool.py
 chisurf/plugins/burst/burst_h2mm/tests/test_gui.py

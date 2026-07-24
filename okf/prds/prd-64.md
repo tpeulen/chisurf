@@ -246,7 +246,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 58):*
+*Landed so far (allow-list 76 → 57):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -282,6 +282,12 @@ screenshot/qtbot verification after each cluster.
   `autoform/phasor_section`. Deferred `burst_bva` (custom `GraphicsLayoutWidget`
   + `HistogramLUTItem`, and `pg.colormap.get` collides with chiplot's
   `colormap`).
+- **Batch 7** — added `Grid` passthrough (parity for `GraphicsLayoutWidget`
+  methods) and two small native params (`plot.image(axis_order=…)`,
+  `plot.errorbars(beam=…)`); migrated `burst_bva`. Its plot content is clean
+  chiplot (Grid panel + image + lines + errorbars); the `HistogramLUTItem` LUT
+  composite stays passthrough (a flagged gap), and the `pg.colormap.get`
+  collision is resolved via `cp.get_backend().raw_module().colormap.get(...)`.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

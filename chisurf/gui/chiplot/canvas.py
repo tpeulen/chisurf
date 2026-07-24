@@ -212,7 +212,9 @@ class Plot(QtWidgets.QWidget):
         """
         return self._canvas.add_fill_between(lower, upper, brush=S.to_brush(brush))
 
-    def errorbars(self, x, y, *, height=None, top=None, bottom=None, pen="w") -> H.ErrorBars:
+    def errorbars(
+        self, x, y, *, height=None, top=None, bottom=None, pen="w", beam=None
+    ) -> H.ErrorBars:
         """Draw error bars.
 
         Parameters
@@ -225,6 +227,8 @@ class Plot(QtWidgets.QWidget):
             Asymmetric extents.
         pen : pen-like
             Bar color/style.
+        beam : float, optional
+            Width of the end caps in data units.
 
         Returns
         -------
@@ -237,9 +241,12 @@ class Plot(QtWidgets.QWidget):
             top=None if top is None else np.asarray(top),
             bottom=None if bottom is None else np.asarray(bottom),
             pen=S.to_pen(pen),
+            beam=beam,
         )
 
-    def image(self, data, *, colormap=None, levels=None, rect=None) -> H.Image:
+    def image(
+        self, data, *, colormap=None, levels=None, rect=None, axis_order="row-major"
+    ) -> H.Image:
         """Draw a 2-D image / heatmap.
 
         Parameters
@@ -252,6 +259,8 @@ class Plot(QtWidgets.QWidget):
             ``(min, max)`` mapped to the colormap ends.
         rect : tuple of float, optional
             ``(x, y, w, h)`` placement in data coordinates.
+        axis_order : str
+            ``"row-major"`` (default) or ``"col-major"`` for the data layout.
 
         Returns
         -------
@@ -260,7 +269,9 @@ class Plot(QtWidgets.QWidget):
         cmap = colormap
         if isinstance(cmap, str):
             cmap = S.colormap(cmap)
-        return self._canvas.add_image(np.asarray(data), colormap=cmap, levels=levels, rect=rect)
+        return self._canvas.add_image(
+            np.asarray(data), colormap=cmap, levels=levels, rect=rect, axis_order=axis_order
+        )
 
     def region(
         self, bounds, *, orientation="vertical", movable=True, brush=None, pen=None
@@ -559,6 +570,32 @@ class Grid(QtWidgets.QWidget):
     def native(self):
         """The backend grid object (escape hatch; avoid in new code)."""
         return self._grid.native
+
+    def __getattr__(self, name: str):
+        """Proxy unknown attributes to the native grid widget, flagged.
+
+        Gives pyqtgraph parity for ``GraphicsLayoutWidget`` methods chiplot does
+        not model natively (``addItem``, ``ci``, …).
+
+        Parameters
+        ----------
+        name : str
+            Attribute not found on this :class:`Grid`.
+
+        Raises
+        ------
+        AttributeError
+            During construction or if the native grid also lacks ``name``.
+        """
+        if name.startswith("__") or name == "_grid":
+            raise AttributeError(name)
+        from chisurf.gui.chiplot._passthrough import record_and_warn
+
+        native = self._grid.native
+        if hasattr(native, name):
+            record_and_warn("Grid", name)
+            return getattr(native, name)
+        raise AttributeError(name)
 
 
 class ImageView(QtWidgets.QWidget):
