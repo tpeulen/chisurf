@@ -201,6 +201,7 @@ def generate() -> None:
 
     catalogue: dict = {}
     written = 0
+    n_declarative = 0
     for man_path in sorted(PLUGIN_ROOT.rglob("manifest.json")):
         manifest = _load_json(man_path)
         if not manifest or not manifest.get("id"):
@@ -208,6 +209,10 @@ def generate() -> None:
         pid = manifest["id"]
         (plugins_dir / f"{pid}.md").write_text(
             _plugin_page(manifest, man_path.parent, registry_params), encoding="utf-8")
+        # coverage: does the plugin expose declarative (AutoForm) parameters?
+        if any(True for v in man_path.parent.rglob("*.view.json")
+               for _ in _iter_view_params(_load_json(v) or {})):
+            n_declarative += 1
         category, leaf = _display_parts(manifest.get("display_name", ""), pid)
         catalogue.setdefault(category, []).append(
             (leaf, pid, manifest.get("description", ""), bool(manifest.get("menu_hidden"))))
@@ -215,9 +220,13 @@ def generate() -> None:
 
     idx = ["# Plugin catalogue", "",
            "Every discoverable ChiSurf plugin, grouped by its menu category. Each "
-           "page lists the plugin's editable parameters and its JSON-RPC surface. "
-           "Model/fit parameter meanings are collected in the "
-           "[parameter glossary](../parameters.md).", "",
+           "page gives the plugin's identity, its editable parameters, and its "
+           "JSON-RPC surface.", "",
+           f"Of the **{written} plugins**, **{n_declarative}** build their interface "
+           "from declarative AutoForm specs and get a full per-parameter table on "
+           "their page; the remainder use custom Qt widgets, so their controls are "
+           "described in each plugin's guide while every named fit/model parameter "
+           "is defined once in the **[parameter glossary](../parameters.md)**.", "",
            "```{toctree}", ":hidden:", ":glob:", "", "*", "```", "",
            f"**{written} plugins** across {len(catalogue)} categories.", ""]
     for category in sorted(catalogue):

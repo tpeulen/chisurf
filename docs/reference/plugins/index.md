@@ -1,6 +1,8 @@
 # Plugin catalogue
 
-Every discoverable ChiSurf plugin, grouped by its menu category. Each page lists the plugin's editable parameters and its JSON-RPC surface. Model/fit parameter meanings are collected in the [parameter glossary](../parameters.md).
+Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
+
+Of the **98 plugins**, **40** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
