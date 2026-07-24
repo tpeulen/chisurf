@@ -1,7 +1,7 @@
 """Headless model-editor tests for the MDF and general composable FCS models (PRD-62).
 
 Mirrors ``test_rics_model_editor.py``: each pure model builds through the real
-AutoForm seam (table-view parameter groups + dynamic bunching/antibunching
+AutoForm seam (table-view parameter groups + dynamic bunching/anticorrelation
 groups render), and the model computes a finite correlation curve. A synthetic
 log-spaced lag grid (ms) avoids any file I/O.
 """
@@ -165,7 +165,7 @@ def test_general_model_two_focus_preset_is_suppressed_by_default():
     assert g0_two_focus < g0_single
 
 
-def test_general_model_antibunching_dips_below_bunched_curve():
+def test_general_model_anticorr_dips_below_bunched_curve():
     from chisurf.core.models.fcs.general import GeneralFCSModel
 
     fit = _make_fcs_fit(GeneralFCSModel)
@@ -174,13 +174,87 @@ def test_general_model_antibunching_dips_below_bunched_curve():
     model.update()
     baseline = np.asarray(model.y).copy()
 
-    model.antibunching.add_antibunching(aba=0.8, abt=0.0005)
+    model.anticorr.add_anticorr(aca=0.8, act=500.0)   # 500 ns
     model.find_parameters()
     model.update()
     dipped = np.asarray(model.y)
 
     assert np.all(np.isfinite(dipped))
-    # Antibunching only affects short lags (fast exp(-tau/abt) decay); the
-    # curve must differ near tau ~ abt and converge back at long lag.
+    # Anticorrelation only affects short lags (fast exp(-tau/act) decay); the
+    # curve must differ near tau ~ act and converge back at long lag.
     assert not np.allclose(baseline[:5], dipped[:5])
     np.testing.assert_allclose(baseline[-1], dipped[-1], rtol=1e-6)
+
+
+def test_general_model_default_diffusion_mode_is_gauss():
+    from chisurf.core.models.fcs.general import GeneralFCSModel
+
+    fit = _make_fcs_fit(GeneralFCSModel)
+    assert fit.model.diffusion_mode == "gauss"
+
+
+def test_bunching_and_anticorr_defaults_step_by_decade():
+    from chisurf.core.models.fcs.relaxation import AnticorrTerms, BunchingTerms
+
+    bunching = BunchingTerms()
+    for _ in range(3):
+        bunching.add_bunching()
+    assert [bt for _, bt in bunching.terms()] == pytest.approx([0.001, 0.01, 0.1])
+
+    anticorr = AnticorrTerms()
+    for _ in range(3):
+        anticorr.add_anticorr()
+    assert [act for _, act in anticorr.terms()] == pytest.approx([1.0, 10.0, 100.0])
+
+
+def test_default_offset_b_is_one():
+    from chisurf.core.models.fcs.general import GeneralFCSModel
+    from chisurf.core.models.fcs.mdf import MdfFCSModel
+
+    mdf_model = _make_fcs_fit(MdfFCSModel).model
+    assert mdf_model.physical.b == pytest.approx(1.0)
+
+    general_model = _make_fcs_fit(GeneralFCSModel).model
+    assert general_model.gauss.b == pytest.approx(1.0)
+    assert general_model.two_focus.b == pytest.approx(1.0)
+
+
+def test_general_model_gauss_reports_shape_and_brightness_outputs():
+    from chisurf.core.models.fcs.general import GeneralFCSModel
+
+    fit = _make_fcs_fit(GeneralFCSModel)
+    model = fit.model
+    model.diffusion_mode = "gauss"
+    model.gauss._w_r.value = 250.0
+    model.gauss._w_z.value = 1000.0
+    model.update()
+
+    assert model.gauss._s.value == pytest.approx(4.0)   # w_z / w_r
+    # No mean_count_rate metadata on the synthetic data -> brightness stays NaN.
+    assert np.isnan(model.gauss._brightness.value)
+
+
+def test_general_model_diffusion_panels_refold_on_mode_change(qapp):
+    """Live re-fold: switching diffusion_mode + AutoForm.rebuild() only expands the active panel."""
+    from chisurf.core.models.fcs.general import GeneralFCSModel
+    from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+
+    fit = _make_fcs_fit(GeneralFCSModel)
+    model = fit.model
+    editor = build_model_editor(model)   # AutoForm itself (AutoModelWidget is an alias)
+    assert model.diffusion_mode == "gauss"
+
+    def _expanded(title):
+        for box in editor.findChildren(CollapsibleBox):
+            if box.title() == title:
+                return box.is_expanded()
+        return None
+
+    assert _expanded("3D Gaussian (single-focus)") is True
+    assert _expanded("MDF (Gauss-Lorentz)") is False
+
+    model.diffusion_mode = "mdf"
+    editor.rebuild()
+    assert _expanded("3D Gaussian (single-focus)") is False
+    assert _expanded("MDF (Gauss-Lorentz)") is True

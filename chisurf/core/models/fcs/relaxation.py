@@ -1,4 +1,4 @@
-"""Shared dynamic bunching / antibunching relaxation-term groups for FCS models.
+"""Shared dynamic bunching / anticorrelation relaxation-term groups for FCS models.
 
 Reused by both the Enderlein-MDF model (:mod:`chisurf.core.models.fcs.mdf`) and
 the general composable FCS model (:mod:`chisurf.core.models.fcs.general`) so the
@@ -6,8 +6,13 @@ add/remove-a-relaxation-term editor UI and formula convention exist in one
 place. The multiplicative forms match the FCS parse-model catalogue
 (``chisurf/core/models/fcs/models.yaml``): bunching terms are
 ``(1 - a_i + a_i * exp(-tau/t_i))`` (a plateau-shifting relaxation, e.g.
-triplet/blinking); antibunching terms are ``(1 - a_i * exp(-tau/t_i))`` (a pure
-sub-Poissonian dip, no plateau shift).
+triplet/blinking, microsecond-to-millisecond timescale); anticorrelation
+(photon-antibunching) terms are ``(1 - a_i * exp(-tau/t_i))`` (a pure
+sub-Poissonian dip, no plateau shift, nanosecond timescale). Each ``add_*``
+call defaults its new term's time constant to the next decade up from the
+previous term (1, 10, 100, ... µs for bunching; 1, 10, 100, ... ns for
+anticorrelation) so a user adding several terms gets a sensibly spread-out
+starting point instead of stacked duplicates.
 """
 
 from __future__ import annotations
@@ -43,9 +48,18 @@ class BunchingTerms(FittingParameterGroup):
             rows.append(t)
         return rows
 
-    def add_bunching(self, ba: float = 0.1, bt: float = 0.001, fixed: bool = False, **kwargs) -> None:
-        """Add one bunching term (default amplitude 0.1, time constant 1 µs)."""
+    def add_bunching(
+        self, ba: float = 0.1, bt: typing.Optional[float] = None, fixed: bool = False, **kwargs
+    ) -> None:
+        """Add one bunching term.
+
+        ``bt`` (time constant, ms) defaults to the next decade up from the
+        previous term when omitted: 0.001 ms (1 µs), 0.01 ms (10 µs), 0.1 ms
+        (100 µs), ...
+        """
         i = len(self) + 1
+        if bt is None:
+            bt = 0.001 * (10 ** (i - 1))
         a = FittingParameter(
             value=ba, name=f"ba{i}", lb=0.0, ub=0.999, fixed=fixed,
             label_text=f"a<sub>b{i}</sub>", registry_id="fcs.bunching.ba")
@@ -69,52 +83,61 @@ class BunchingTerms(FittingParameterGroup):
         return g
 
 
-class AntibunchingTerms(FittingParameterGroup):
-    """Zero or more photon-antibunching dip terms."""
+class AnticorrTerms(FittingParameterGroup):
+    """Zero or more photon-anticorrelation (antibunching) dip terms."""
 
-    def __init__(self, name: str = "antibunching", **kwargs):
-        """Initialize with no antibunching terms; add them via :meth:`add_antibunching`."""
+    def __init__(self, name: str = "anticorr", **kwargs):
+        """Initialize with no anticorrelation terms; add them via :meth:`add_anticorr`."""
         super().__init__(name=name, **kwargs)
-        self._aba: typing.List[FittingParameter] = []
-        self._abt: typing.List[FittingParameter] = []
+        self._aca: typing.List[FittingParameter] = []
+        self._act: typing.List[FittingParameter] = []
 
     def __len__(self) -> int:
-        """Return the number of active antibunching terms."""
-        return len(self._aba)
+        """Return the number of active anticorrelation terms."""
+        return len(self._aca)
 
     def terms(self) -> typing.List[typing.Tuple[float, float]]:
-        """Return ``[(amplitude, time_constant_ms), ...]`` for the active terms."""
-        return [(float(a.value), float(t.value)) for a, t in zip(self._aba, self._abt)]
+        """Return ``[(amplitude, time_constant_ns), ...]`` for the active terms."""
+        return [(float(a.value), float(t.value)) for a, t in zip(self._aca, self._act)]
 
-    def _antibunching_parameter_rows(self) -> list:
+    def _anticorr_parameter_rows(self) -> list:
         """Interleaved ``(amplitude, time_constant)`` rows for the dynamic table."""
         rows = []
-        for a, t in zip(self._aba, self._abt):
+        for a, t in zip(self._aca, self._act):
             rows.append(a)
             rows.append(t)
         return rows
 
-    def add_antibunching(self, aba: float = 0.5, abt: float = 0.0001, fixed: bool = False, **kwargs) -> None:
-        """Add one antibunching term (default amplitude 0.5, time constant 100 ns)."""
-        i = len(self) + 1
-        a = FittingParameter(
-            value=aba, name=f"aba{i}", lb=0.0, ub=1.0, fixed=fixed,
-            label_text=f"a<sub>ab{i}</sub>", registry_id="fcs.antibunching.aba")
-        t = FittingParameter(
-            value=abt, name=f"abt{i}", lb=1e-9, ub=1.0, fixed=fixed,
-            label_text=f"&tau;<sub>ab{i}</sub>[ms]", registry_id="fcs.antibunching.abt")
-        self._aba.append(a)
-        self._abt.append(t)
+    def add_anticorr(
+        self, aca: float = 0.5, act: typing.Optional[float] = None, fixed: bool = False, **kwargs
+    ) -> None:
+        """Add one anticorrelation term.
 
-    def remove_antibunching(self) -> None:
-        """Remove the last antibunching term, if any."""
-        if self._aba:
-            self._aba.pop()
-            self._abt.pop()
+        ``act`` (time constant, ns) defaults to the next decade up from the
+        previous term when omitted: 1, 10, 100, ... ns.
+        """
+        i = len(self) + 1
+        if act is None:
+            act = 1.0 * (10 ** (i - 1))
+        a = FittingParameter(
+            value=aca, name=f"aca{i}", lb=0.0, ub=1.0, fixed=fixed,
+            label_text=f"a<sub>ac{i}</sub>", registry_id="fcs.anticorr.aca")
+        t = FittingParameter(
+            value=act, name=f"act{i}", lb=1e-3, ub=1e6, fixed=fixed,
+            label_text=f"&tau;<sub>ac{i}</sub>[ns]", registry_id="fcs.anticorr.act")
+        self._aca.append(a)
+        self._act.append(t)
+
+    def remove_anticorr(self) -> None:
+        """Remove the last anticorrelation term, if any."""
+        if self._aca:
+            self._aca.pop()
+            self._act.pop()
 
     def apply(self, g: np.ndarray, tau_ms: np.ndarray) -> np.ndarray:
-        """Multiply ``g`` by every active antibunching term's dip factor."""
-        for aba, abt in self.terms():
-            if abt > 0:
-                g = g * (1.0 - aba * np.exp(-tau_ms / abt))
+        """Multiply ``g`` by every active anticorrelation term's dip factor."""
+        for aca, act_ns in self.terms():
+            act_ms = act_ns * 1e-6
+            if act_ms > 0:
+                g = g * (1.0 - aca * np.exp(-tau_ms / act_ms))
         return g

@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the general composable FCS model (GeneralFCSModel). PRD-62: pick a diffusion type (MDF, single-focus Gauss, or two-focus Gauss, each also taking bunching/antibunching relaxation terms). Panel fold state reflects the model's default diffusion_mode ('mdf') at editor-build time, same convention as the TCSPC anisotropy polarization_type panel; the non-default diffusion panels start collapsed regardless of the current mode (no live re-fold on combo change), open them manually after switching mode.",
+  "_comment": "Editor layout for the general composable FCS model (GeneralFCSModel). PRD-62: pick a diffusion type (Gauss, MDF, or two-focus Gauss, each also taking bunching/anticorrelation relaxation terms). The diffusion_mode choice carries rebuild_on_change, so picking a mode schedules a deferred AutoForm.rebuild(); each diffusion panel's collapsed_when (not_equals its own mode) then re-folds live — only the active mode's panel stays expanded.",
   "sections": [
     {
       "type": "panel",
@@ -8,7 +8,8 @@
       "sections": [
         {"type": "choice", "attr": "diffusion_mode", "label": "Type",
          "options": ["mdf", "gauss", "two_focus"], "labels": ["MDF", "Gauss", "Two-focus"], "style": "radio",
-         "description": "MDF = Enderlein Gauss-Lorentz molecule-detection function (accurate absolute Veff/concentration). Gauss = classic single-focus 3D-Gaussian PSF approximation. Two-focus = classic Dertinger dual-focus technique (same 3D-Gaussian term, known inter-focus distance yields an absolute D)."}
+         "rebuild_on_change": true,
+         "description": "MDF = Enderlein Gauss-Lorentz molecule-detection function (accurate absolute Veff/concentration). Gauss = classic single-focus 3D-Gaussian PSF approximation (the default). Two-focus = classic Dertinger dual-focus technique (same 3D-Gaussian term, known inter-focus distance yields an absolute D)."}
       ]
     },
     {
@@ -16,6 +17,7 @@
       "title": "MDF (Gauss-Lorentz)",
       "collapsible": true,
       "collapsed": false,
+      "collapsed_when": {"attr": "diffusion_mode", "not_equals": "mdf"},
       "sections": [
         {"type": "parameter_group_table", "target": "mdf_physical", "collapsible": false},
         {"type": "parameter_group_table", "target": "mdf_optics", "collapsible": false}
@@ -25,7 +27,8 @@
       "type": "panel",
       "title": "3D Gaussian (single-focus)",
       "collapsible": true,
-      "collapsed": true,
+      "collapsed": false,
+      "collapsed_when": {"attr": "diffusion_mode", "not_equals": "gauss"},
       "sections": [
         {"type": "parameter_group_table", "target": "gauss", "collapsible": false}
       ]
@@ -34,7 +37,8 @@
       "type": "panel",
       "title": "3D Gaussian (two-focus)",
       "collapsible": true,
-      "collapsed": true,
+      "collapsed": false,
+      "collapsed_when": {"attr": "diffusion_mode", "not_equals": "two_focus"},
       "sections": [
         {"type": "parameter_group_table", "target": "two_focus", "collapsible": false}
       ]
@@ -60,16 +64,16 @@
     },
     {
       "type": "panel",
-      "title": "Antibunching terms",
+      "title": "Anticorr terms",
       "collapsible": true,
       "collapsed": true,
       "sections": [
         {
           "type": "dynamic_group",
-          "target": "antibunching",
-          "append_method": "add_antibunching",
-          "remove_method": "remove_antibunching",
-          "rows_source": "_antibunching_parameter_rows",
+          "target": "anticorr",
+          "append_method": "add_anticorr",
+          "remove_method": "remove_anticorr",
+          "rows_source": "_anticorr_parameter_rows",
           "row_width": 2,
           "style": "table",
           "min_rows": 0,

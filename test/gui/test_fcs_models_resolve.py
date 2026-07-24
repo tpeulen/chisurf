@@ -6,7 +6,7 @@ must resolve to a class exposing a non-empty ``name`` (the string the model
 combobox shows and ``add_fit`` matches on), so a renamed/deleted model fails
 here instead of silently vanishing from the menu. Covers ``MdfFCSModel``
 (Enderlein Gauss--Lorentz MDF) and ``GeneralFCSModel`` (PRD-62 composable
-diffusion + bunching/antibunching model), both Qt-free pure models rendered by
+diffusion + bunching/anticorrelation model), both Qt-free pure models rendered by
 the generic ``AutoForm``/``AutoModelWidget`` (see
 ``chisurf.gui.widgets.models.model_editor.build_model_editor``).
 """

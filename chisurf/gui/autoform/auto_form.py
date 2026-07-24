@@ -696,14 +696,18 @@ class AutoForm(QtWidgets.QWidget):
         return WizardWidget(section, pages, _is_complete)
 
     def _collapsed_when(self, cond) -> bool:
-        """Evaluate a ``{target, attr, equals}`` fold condition against the model."""
+        """Evaluate a ``{target, attr, equals|not_equals}`` fold condition against the model."""
         if not cond:
             return False
         try:
             target = cond.get("target")
             group = getattr(self.model, target) if target else self.model
             value = getattr(group, cond["attr"])
-            return str(value).lower() == str(cond["equals"]).lower()
+            if "equals" in cond:
+                return str(value).lower() == str(cond["equals"]).lower()
+            if "not_equals" in cond:
+                return str(value).lower() != str(cond["not_equals"]).lower()
+            return False
         except Exception:
             return False
 

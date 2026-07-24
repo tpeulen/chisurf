@@ -1,24 +1,28 @@
 """General composable FCS model (PRD-62).
 
-Pick a diffusion type — ``"mdf"`` (the Enderlein Gauss-Lorentz MDF,
-:mod:`.mdf`), ``"gauss"`` (a classic single-focus 3-D-Gaussian PSF), or
+Pick a diffusion type — ``"gauss"`` (a classic single-focus 3-D-Gaussian PSF,
+the default), ``"mdf"`` (the Enderlein Gauss-Lorentz MDF, :mod:`.mdf`), or
 ``"two_focus"`` (the classic Dertinger two-focus/dual-focus technique, a
 directly selectable preset rather than a parameter buried in a table) — and
-add an arbitrary number of bunching and antibunching relaxation terms
-(:mod:`.relaxation`). Two-focus cross-correlation (a known inter-focus
-separation ``diam`` > 0, the Dertinger convention already used by the
-"Two-focus 3D diffusion" entry in the FCS parse-model catalogue,
-``chisurf/core/models/fcs/models.yaml``) is available in every mode; the
-``"two_focus"`` preset just starts with it unfixed and non-zero.
+add an arbitrary number of bunching and anticorrelation (photon-antibunching)
+relaxation terms (:mod:`.relaxation`). Only the panel for the active diffusion
+mode stays expanded — the ``diffusion_mode`` choice section re-folds its
+siblings live via ``rebuild_on_change``/``collapsed_when``'s ``not_equals``.
+Two-focus cross-correlation (a known inter-focus separation ``diam`` > 0, the
+Dertinger convention already used by the "Two-focus 3D diffusion" entry in the
+FCS parse-model catalogue, ``chisurf/core/models/fcs/models.yaml``) is
+available in every mode; the ``"two_focus"`` preset just starts with it
+unfixed and non-zero.
 
-This supersedes the diffusion x bunching/antibunching combinatorial subset of
-that catalogue (``"3D Gauss, N bunching"``, ``"... + antibunching"``,
+This supersedes the diffusion x bunching/anticorrelation combinatorial subset
+of that catalogue (``"3D Gauss, N bunching"``, ``"... + antibunching"``,
 multi-diffusion+bunching combos) for new work; the catalogue itself is
 untouched and remains the path for cases this model does not cover (flow,
-scanning FCS, FRET-FCCS, background/afterpulsing/bleaching correction terms).
+scanning FCS, FRET-FCCS, afterpulsing/bleaching correction terms).
 
 Normalization: ``G(0) = b + 1/N`` at zero two-focus separation, for both
-diffusion modes — matching :mod:`.mdf`. This differs from the legacy parse
+diffusion modes — matching :mod:`.mdf`; ``b`` defaults to 1 (the typical
+normalized-ACF baseline), not 0. This differs from the legacy parse
 catalogue's ``1/(N*sqrt(8))`` convention (a PAM-specific artifact of how those
 older models define ``N``); porting a catalogue ``N`` here requires dividing
 it by ``sqrt(8)``.
@@ -34,8 +38,10 @@ import chisurf as cs
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.fluorescence.fcs import enderlein
-from chisurf.core.models.fcs.mdf import MdfPhysical, MdfOptics, MdfOutputs, NA, set_output_parameter
-from chisurf.core.models.fcs.relaxation import AntibunchingTerms, BunchingTerms
+from chisurf.core.models.fcs.mdf import (
+    MdfPhysical, MdfOptics, MdfOutputs, NA, compute_brightness, set_output_parameter,
+)
+from chisurf.core.models.fcs.relaxation import AnticorrTerms, BunchingTerms
 
 
 class GaussDiffusion(FittingParameterGroup):
@@ -43,7 +49,16 @@ class GaussDiffusion(FittingParameterGroup):
 
     ``G_diff(tau) = (1 + 4*D*tau/w_r^2)^-1 * (1 + 4*D*tau/w_z^2)^-1/2 * exp(-diam^2/(w_r^2+4*D*tau))``,
     the Dertinger two-focus form (PAM ``FCS_2Focus_D``); ``diam = 0`` reduces
-    it to the single-focus 3-D-Gaussian diffusion term.
+    it to the single-focus 3-D-Gaussian diffusion term. ``b`` (baseline
+    offset) defaults to 1 to match the typical normalized-ACF convention
+    (``G(tau) -> 1`` far from zero lag). ``s = w_z/w_r`` (the classic
+    structure/aspect-ratio parameter) and the background-corrected molecular
+    brightness are derived, read-only outputs (see :meth:`GeneralFCSModel.
+    _gauss_shape`) rather than independent fit parameters — this group still
+    fits absolute ``w_r``/``w_z`` directly (see the module docstring), ``s``
+    is reported for comparison with the legacy dimensionless parametrization.
+    ``bg`` is a background count rate (kHz) subtracted before computing
+    brightness, matching :class:`~chisurf.core.models.fcs.mdf.MdfPhysical`.
     """
 
     def __init__(self, name: str = "gauss_diffusion", **kwargs):
@@ -61,10 +76,19 @@ class GaussDiffusion(FittingParameterGroup):
             value=1000.0, name="w_z", lb=10.0, ub=20000.0, fixed=False,
             label_text="w<sub>z</sub>[nm]", registry_id="fcs_gauss.w_z")
         self._b = FittingParameter(
-            value=0.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_gauss.b")
+            value=1.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_gauss.b")
         self._diam = FittingParameter(
             value=0.0, name="diam", lb=0.0, ub=5000.0, fixed=True,
             label_text="d<sub>foci</sub>[nm]", registry_id="fcs_gauss.diam")
+        self._bg = FittingParameter(
+            value=0.0, name="bg", lb=0.0, ub=1e6, fixed=True,
+            label_text="BG[kHz]", registry_id="fcs_gauss.bg")
+        self._s = FittingParameter(
+            value=float("nan"), name="s", fixed=True, is_output=True,
+            label_text="s", registry_id="fcs_gauss.s")
+        self._brightness = FittingParameter(
+            value=float("nan"), name="brightness", fixed=True, is_output=True,
+            label_text="&epsiv;[kHz]", registry_id="fcs_gauss.brightness")
 
     N = property(lambda s: float(s._N.value))
     D = property(lambda s: float(s._D.value))
@@ -72,6 +96,7 @@ class GaussDiffusion(FittingParameterGroup):
     w_z = property(lambda s: float(s._w_z.value))
     b = property(lambda s: float(s._b.value))
     diam = property(lambda s: float(s._diam.value))
+    bg = property(lambda s: float(s._bg.value))
 
     def g_diff(self, tau_ms: np.ndarray) -> np.ndarray:
         """3-D-Gaussian diffusion shape (``g(0) = 1`` at ``diam = 0``)."""
@@ -94,7 +119,9 @@ class GeneralFCSModel(ModelCurve):
     Attributes
     ----------
     diffusion_mode : {"mdf", "gauss", "two_focus"}
-        Active diffusion type. ``"mdf"`` uses :attr:`mdf_physical`/
+        Active diffusion type, ``"gauss"`` by default (the common case; MDF's
+        accurate absolute Veff/concentration needs optics parameters most
+        users do not have calibrated). ``"mdf"`` uses :attr:`mdf_physical`/
         :attr:`mdf_optics` (Enderlein Gauss-Lorentz MDF); ``"gauss"`` uses
         :attr:`gauss` (classic single-focus 3-D Gaussian); ``"two_focus"``
         uses :attr:`two_focus` — the same 3-D-Gaussian term as ``"gauss"``
@@ -105,10 +132,10 @@ class GeneralFCSModel(ModelCurve):
         buried inside the single-focus table. ``diam`` is also available
         (fixed at 0 by default) in ``"mdf"``/``"gauss"`` for users who want
         two-focus combined with those modes without switching presets.
-    bunching, antibunching : see :mod:`chisurf.core.models.fcs.relaxation`.
+    bunching, anticorr : see :mod:`chisurf.core.models.fcs.relaxation`.
     """
 
-    name = "FCS (general: diffusion + bunching/antibunching)"
+    name = "FCS (general: diffusion + bunching/anticorr)"
     view_spec_file = "general.view.json"
 
     _DIFFUSION_MODES = ("mdf", "gauss", "two_focus")
@@ -116,7 +143,7 @@ class GeneralFCSModel(ModelCurve):
     def __init__(self, fit: "cs.core.fitting.fit.Fit", **kwargs):
         """Initialize every diffusion-mode parameter group plus relaxation terms."""
         super().__init__(fit, **kwargs)
-        self._diffusion_mode = "mdf"
+        self._diffusion_mode = "gauss"
         self.mdf_physical = MdfPhysical(name="mdf_physical", fit=fit)
         self.mdf_optics = MdfOptics(name="mdf_optics", fit=fit)
         self.mdf_outputs = MdfOutputs(name="mdf_outputs", fit=fit)
@@ -125,7 +152,7 @@ class GeneralFCSModel(ModelCurve):
         self.two_focus._diam.value = 400.0
         self.two_focus._diam.fixed = True   # a known, fixed geometric constant
         self.bunching = BunchingTerms(name="bunching", fit=fit)
-        self.antibunching = AntibunchingTerms(name="antibunching", fit=fit)
+        self.anticorr = AnticorrTerms(name="anticorr", fit=fit)
         self.find_parameters()
 
     @property
@@ -163,12 +190,20 @@ class GeneralFCSModel(ModelCurve):
         set_output_parameter(self.fit, self.mdf_outputs._Veff, veff_um3)
         set_output_parameter(self.fit, self.mdf_outputs._conc, conc_nM)
         set_output_parameter(self.fit, self.mdf_outputs._tauD, tauD_ms)
+        brightness = compute_brightness(self.fit, N, p.bg)
+        if brightness is not None:
+            set_output_parameter(self.fit, self.mdf_outputs._brightness, brightness)
         return g, N, p.b
 
     def _gauss_shape(self, gp: GaussDiffusion, tau_ms: np.ndarray):
         """Return ``(g, N, b)`` for a Gaussian diffusion group, or ``None`` if invalid."""
         if not (math.isfinite(gp.D) and gp.D > 0 and math.isfinite(gp.N) and gp.N != 0):
             return None
+        s = gp.w_z / gp.w_r if gp.w_r > 0 else float("nan")
+        set_output_parameter(self.fit, gp._s, s)
+        brightness = compute_brightness(self.fit, gp.N, gp.bg)
+        if brightness is not None:
+            set_output_parameter(self.fit, gp._brightness, brightness)
         return gp.g_diff(tau_ms), gp.N, gp.b
 
     def update_model(self, **kwargs) -> None:
@@ -193,7 +228,7 @@ class GeneralFCSModel(ModelCurve):
         g, N, b = shape
 
         g = self.bunching.apply(g, tau_ms)
-        g = self.antibunching.apply(g, tau_ms)
+        g = self.anticorr.apply(g, tau_ms)
 
         self.x = tau_ms
         self.y = b + g / N

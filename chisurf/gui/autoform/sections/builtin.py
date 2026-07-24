@@ -296,6 +296,28 @@ class _BoundControlMixin:
                 return
             widget = widget.parentWidget()
 
+    def _maybe_rebuild_host(self) -> None:
+        """Deferred full rebuild of the hosting AutoForm, opt-in via ``rebuild_on_change``.
+
+        Generalizes the combo-driven ``QTimer.singleShot(0, form.rebuild)``
+        pattern already used by several tool-specific hosts (e.g. the PCH
+        detector/setup combos) so any ``choice`` section can ask for it
+        declaratively. Deferred so the rebuild does not tear down widgets while
+        still inside the ``toggled``/``currentIndexChanged`` signal that
+        triggered it. A full ``rebuild()`` re-evaluates every ``collapsed_when``
+        (including ``not_equals``), so sibling panels bound to this section's
+        attribute re-fold immediately instead of only on the next manual
+        rebuild.
+        """
+        if not getattr(self._section, "rebuild_on_change", False):
+            return
+        widget = self.parentWidget() if hasattr(self, "parentWidget") else None
+        while widget is not None:
+            if hasattr(widget, "rebuild") and hasattr(widget, "sync_fields"):
+                QtCore.QTimer.singleShot(0, widget.rebuild)
+                return
+            widget = widget.parentWidget()
+
     def _own_fit_index(self) -> int:
         try:
             fit = getattr(self._model, "fit", None)
@@ -351,6 +373,7 @@ class _BoundControlMixin:
             # ``fit`` and must not trigger a recompute.
             if getattr(self._model, "fit", None) is not None:
                 cs.core.actions.dispatch(name="fit.update", payload={"fit_index": int(fit_index)})
+            self._maybe_rebuild_host()
         except Exception as exc:
             logging.warning(f"bound control commit failed ({section.label}): {exc}")
 

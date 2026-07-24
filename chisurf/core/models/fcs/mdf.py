@@ -22,9 +22,11 @@ import math
 import numpy as np
 
 import chisurf as cs
+from chisurf import typing
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.fluorescence.fcs import enderlein
+from chisurf.core.fluorescence.fcs.normalization import compute_cpm, resolve_total_mean_count_rate
 from chisurf.core.models.fcs.relaxation import BunchingTerms
 
 #: Avogadro constant for the concentration output (1/mol).
@@ -39,7 +41,14 @@ class MdfPhysical(FittingParameterGroup):
     to avoid colliding with the unrelated Foerster-radius ``R0`` in the
     parameter registry — see PRD-62). ``diam`` is the known inter-focus
     separation for two-focus (dual-focus) FCS; 0 means single-focus
-    auto-correlation (the default).
+    auto-correlation (the default). ``b`` is the correlation-curve baseline
+    offset, defaulting to 1 to match the typical normalized-ACF convention
+    (``G(tau) -> 1`` far from zero lag, e.g. the Kristine format) rather than a
+    background-subtracted 0-baseline. ``bg`` is a background count rate (kHz,
+    detector dark counts/scatter/afterpulsing) subtracted from the data file's
+    total count rate before computing :attr:`MdfOutputs`'s brightness output —
+    the Parse-FCS catalogue's ``Counts``/``BG`` convention
+    (``models.yaml``'s "3D diffusion + background" family).
     """
 
     def __init__(self, name: str = "mdf_physical", **kwargs):
@@ -57,10 +66,13 @@ class MdfPhysical(FittingParameterGroup):
             value=250.0, name="wem", lb=10.0, ub=5000.0, fixed=False,
             label_text="w<sub>em</sub>[nm]", registry_id="fcs_mdf.wem")
         self._b = FittingParameter(
-            value=0.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_mdf.b")
+            value=1.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_mdf.b")
         self._diam = FittingParameter(
             value=0.0, name="diam", lb=0.0, ub=5000.0, fixed=True,
             label_text="d<sub>foci</sub>[nm]", registry_id="fcs_mdf.diam")
+        self._bg = FittingParameter(
+            value=0.0, name="bg", lb=0.0, ub=1e6, fixed=True,
+            label_text="BG[kHz]", registry_id="fcs_mdf.bg")
 
     N = property(lambda s: float(s._N.value))
     D = property(lambda s: float(s._D.value))
@@ -68,6 +80,7 @@ class MdfPhysical(FittingParameterGroup):
     wem = property(lambda s: float(s._wem.value))
     b = property(lambda s: float(s._b.value))
     diam = property(lambda s: float(s._diam.value))
+    bg = property(lambda s: float(s._bg.value))
 
 
 class MdfOptics(FittingParameterGroup):
@@ -122,6 +135,27 @@ class MdfOutputs(FittingParameterGroup):
         self._tauD = FittingParameter(
             value=float("nan"), name="tauD", fixed=True, is_output=True,
             label_text="&tau;<sub>D</sub>[ms]", registry_id="fcs_mdf.tauD")
+        self._brightness = FittingParameter(
+            value=float("nan"), name="brightness", fixed=True, is_output=True,
+            label_text="&epsiv;[kHz]", registry_id="fcs_mdf.brightness")
+
+
+def compute_brightness(fit, N: float, bg: float = 0.0) -> typing.Optional[float]:
+    """Background-corrected molecular brightness ``(CR_total - bg) / N``, in kHz.
+
+    ``CR_total`` comes from the data file's ``mean_count_rate``(``_total``)
+    metadata (e.g. the Kristine format's header); returns ``None`` when that
+    metadata is absent, mirroring :func:`~chisurf.core.fluorescence.fcs.
+    normalization.compute_cpm`. ``bg`` is a background count rate (kHz) to
+    subtract first — see :class:`MdfPhysical`. Shared by :class:`MdfFCSModel`
+    and the general composable FCS model's ``"mdf"``/``"gauss"``/
+    ``"two_focus"`` modes so brightness is computed identically everywhere.
+    """
+    meta = getattr(getattr(fit, "data", None), "meta_data", {}) or {}
+    mean_cr_total = resolve_total_mean_count_rate(meta)
+    if mean_cr_total is None:
+        return None
+    return compute_cpm(mean_cr_total - bg, N)
 
 
 def set_output_parameter(fit, param: FittingParameter, value: float) -> None:
@@ -152,14 +186,14 @@ class MdfFCSModel(ModelCurve):
 
     Fitting parameters
     ------------------
-    physical.N, .D, .w0, .wem, .b, .diam : see :class:`MdfPhysical`.
+    physical.N, .D, .w0, .wem, .b, .diam, .bg : see :class:`MdfPhysical`.
     optics.lam_ex, .lam_em, .n, .pinhole, .mag : see :class:`MdfOptics`.
     bunching : zero or more extra exponential relaxation terms, see
         :class:`~chisurf.core.models.fcs.relaxation.BunchingTerms`.
 
     Output parameters
     -----------------
-    outputs.Veff, .conc, .tauD : see :class:`MdfOutputs`.
+    outputs.Veff, .conc, .tauD, .brightness : see :class:`MdfOutputs`.
 
     The correlation lag ``data.x`` is taken in **milliseconds** (matching the
     other ChiSurf FCS models) and converted to seconds internally.
@@ -212,6 +246,9 @@ class MdfFCSModel(ModelCurve):
         set_output_parameter(self.fit, self.outputs._Veff, veff_um3)
         set_output_parameter(self.fit, self.outputs._conc, conc_nM)
         set_output_parameter(self.fit, self.outputs._tauD, tauD_ms)
+        brightness = compute_brightness(self.fit, N, p.bg)
+        if brightness is not None:
+            set_output_parameter(self.fit, self.outputs._brightness, brightness)
 
         self.x = tau_ms
         self.y = b + g / N

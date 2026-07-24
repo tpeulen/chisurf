@@ -226,7 +226,11 @@ class PanelSection(Section):
     ``collapsed`` sets the initial fold state; ``collapsed_when`` folds the panel
     when a model attribute has a given value (e.g. fold anisotropy under magic
     angle): ``{"target": "anisotropy", "attr": "polarization_type",
-    "equals": "vm"}``.
+    "equals": "vm"}``. Use ``"not_equals"`` instead of ``"equals"`` to fold a
+    panel *unless* the attribute has the given value (e.g. a diffusion-mode
+    selector where each mode's panel should be the only one expanded); pair
+    with a ``choice`` section that sets ``rebuild_on_change`` so switching the
+    mode live re-folds every panel bound to it.
     """
 
     #: Whether the panel header can fold/unfold its contents.
@@ -239,12 +243,13 @@ class PanelSection(Section):
     #: (value/choice/toggle). ``None`` uses the renderer default; ``1`` gives a
     #: single-column form layout that saves horizontal space in narrow docks.
     n_col: typing.Optional[int] = None
-    #: When ``True``, the panel header carries a small checkable toggle that
-    #: shows/hides the Lo / Hi / Bounds columns of *every* parameter table in the
-    #: panel. The columns start **hidden** (bounds remain editable in the
-    #: parameter details popup) so the tables stay narrow. See
-    #: :class:`ParameterGroupTableSection` and the paired ``dynamic_group`` table.
-    bounds_toggle: bool = False
+    #: When ``True`` (the default), the panel header carries a small checkable
+    #: toggle that shows/hides the Lo / Hi / Bounds columns of *every* parameter
+    #: table in the panel. The columns start **hidden** (bounds remain editable
+    #: in the parameter details popup) so the tables stay narrow by default; set
+    #: ``False`` to opt a panel out. See :class:`ParameterGroupTableSection` and
+    #: the paired ``dynamic_group`` table.
+    bounds_toggle: bool = True
     #: Ordered child sections rendered inside the panel.
     sections: typing.Tuple[Section, ...] = ()
 
@@ -292,6 +297,15 @@ class ChoiceSection(Section):
     add_label: str = "+"
     remove_action: str = ""
     remove_label: str = "−"
+    #: When ``True``, changing the selection schedules a deferred full rebuild
+    #: of the hosting AutoForm (like a tool-specific host's combo-driven
+    #: ``rebuild()``, generalized here) so sibling panels whose
+    #: ``collapsed_when``/``not_equals`` is bound to this same attribute
+    #: re-fold immediately. Opt-in and scoped to this section only — unlike a
+    #: plain ``call``, it never fires for ``value``/``toggle`` edits, so it is
+    #: safe for a discrete mode selector without risking a rebuild mid-drag on
+    #: a spin box or slider elsewhere in the form.
+    rebuild_on_change: bool = False
 
 
 @dataclasses.dataclass(frozen=True)

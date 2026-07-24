@@ -64,14 +64,31 @@ rich-text header renders the slot's HTML label (`x<sub>l</sub>` → xₗ,
 actions, and copy/paste. The TCSPC Lifetime model's Lifetimes (xₗ/τₗ) and
 Anisotropy rotation (bᵢ/ρᵢ) groups use `style:"table"`. Both table widgets
 (`parameter_group_table` and the paired `dynamic_group` table) can hide the
-**Lo / Hi / Bounds** columns to keep the tables narrow — a `panel` with
-`bounds_toggle:true` puts a small checkable "bounds" button in its fold header
-that shows/hides those columns for *every* table in the panel at once (columns
-start hidden; bounds stay editable in the parameter details popup). The
+**Lo / Hi / Bounds** columns to keep the tables narrow — every `panel` puts a
+small checkable "bounds" button in its fold header (`bounds_toggle` defaults to
+`true`; set `false` on a panel to opt out) that shows/hides those columns for
+*every* table in the panel at once (columns start hidden; bounds stay editable
+in the parameter details popup) — this is the default specifically so a
+`dynamic_group` table's paired Lo/Hi/Bounds/Error columns (doubled per slot)
+don't force horizontal scrolling in a narrow dock. The
 `CollapsibleBox` header gained `add_header_widget` to host such per-section
-controls with no extra vertical space),
-`help` (a `?` modal button), and
-`wizard`/`info`/`embed`. **All tables** (log, `parameter_group_table`,
+controls with no extra vertical space), `help` (a `?` modal button), and
+`wizard`/`info`/`embed`.
+
+A `panel`'s (or `parameter_group_table`'s / `dynamic_group`'s)
+`collapsed_when: {target?, attr, equals|not_equals}` folds it based on a bound
+attribute's current value at editor-build time; `not_equals` folds *unless*
+the attribute matches, the shape a mode selector wants (fold every panel
+except the active mode's). A `choice` section can additionally set
+`rebuild_on_change: true` so picking a new value schedules a deferred
+`AutoForm.rebuild()` (`QTimer.singleShot(0, ...)`, generalizing the
+combo-driven rebuild pattern several tool-specific hosts already used, e.g. the
+PCH detector/setup combos) — this makes `collapsed_when` live instead of
+build-time-only, at the cost of a full form rebuild, so it is opt-in and scoped
+to `choice` sections only (never fires for a `value`/`toggle` edit, so a spin
+box drag never triggers a mid-edit rebuild). See the FCS general model's
+`diffusion_mode` selector (`chisurf/core/models/fcs/general.view.json`) for the
+worked example. **All tables** (log, `parameter_group_table`,
 `scalar_table`, AutoForm record `table`) share the central
 `chisurf.gui.widgets.general.table_font` — monospace by default (configurable via
 `gui.table`) so tables look like the log/console and numeric columns align. Sections take a `description` field mapped to widget

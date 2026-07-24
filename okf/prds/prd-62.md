@@ -143,15 +143,55 @@ to compose them with a chosen diffusion type outside that catalogue.
 
 # Follow-ups
 
-- `GeneralFCSModel`'s diffusion-panel fold state is computed once at editor
-  build time (the same static `collapsed_when` convention as the TCSPC
-  anisotropy `polarization_type` panel) — switching `diffusion_mode` after
-  the editor is open does not live-re-fold the panels; only a rebuild
-  (e.g. reloading the fit) re-evaluates it. A live-rebuild-on-`call` wiring
-  exists for at least one other tool-specific AutoForm host; generalizing it
-  to the model editor is a candidate follow-up if this friction is reported.
 - The Parse-FCS catalogue (`models.yaml`) is untouched; deciding whether to
   deprecate its now-superseded diffusion×bunching entries in favor of
   `GeneralFCSModel` is left to a future PRD.
+- Several `registry_id=` strings across `mdf.py`/`general.py` (e.g.
+  `"fcs_mdf.N"`) don't match the generator's actual `by_qualified_id` key
+  format (`"MdfPhysical.N"`), so they never hit that index and silently fall
+  through to the class-scoped frame-inspection step, which happens to resolve
+  correctly anyway. Harmless (no wrong description, just a redundant lookup
+  miss) but inconsistent; a broad rename to match the real convention (or
+  changing the generator to also index the literal `registry_id` string) is
+  unscoped cleanup, not tied to any open bug.
 
-See [fcs plugin](/plugins/fcs.md) and [parameters](/subsystems/parameters.md).
+## 2026-07-24 follow-up (same-day UX polish)
+
+First real use of `GeneralFCSModel` surfaced several rough edges, fixed in one
+pass — this also **resolved the live-re-fold follow-up above** (previously:
+"diffusion-panel fold state is computed once at editor build time ... a
+live-rebuild-on-`call` wiring exists for at least one other tool-specific
+AutoForm host; generalizing it to the model editor is a candidate follow-up"):
+
+- **Live re-fold, `not_equals`, default mode.** `ChoiceSection` gained
+  `rebuild_on_change` (deferred `AutoForm.rebuild()`, generalizing the
+  tool-specific combo-driven rebuild pattern into `_BoundControlMixin`, scoped
+  to `choice` sections only); `_collapsed_when` gained `not_equals`. Each
+  diffusion panel now folds via `not_equals` its own mode, and the
+  `diffusion_mode` choice sets `rebuild_on_change`, so switching modes
+  live-re-folds the siblings — only the active mode's panel stays expanded.
+  Default `diffusion_mode` changed `"mdf"` → `"gauss"`.
+- **Bounds columns hidden by default everywhere.** `PanelSection.bounds_toggle`
+  default flipped `False` → `True` (previously opt-in per panel, e.g. only
+  TCSPC lifetime) — fixes the bunching/anticorrelation dynamic tables (many
+  paired Lo/Hi/Bounds/Error columns) overflowing narrow docks.
+  General framework change, not FCS-specific.
+- **Decade-spaced relaxation defaults + rename.** `add_bunching`/`add_anticorr`
+  default a new term's time constant to the next decade up (bunching: 1, 10,
+  100 µs; anticorrelation: 1, 10, 100 ns) instead of a fixed value.
+  `AntibunchingTerms` renamed `AnticorrTerms` (the legacy Parse-FCS catalogue
+  keeps its own, older "antibunching" terminology unchanged); anticorrelation
+  time constants now stored/labeled in ns (were ms — unreadably small at the
+  real timescale).
+- **Background-corrected outputs.** Baseline offset `b` default `0` → `1`
+  (matches the typical normalized-ACF convention, e.g. Kristine data, where
+  `G(∞) → 1`). Added a `bg` background-count-rate parameter (kHz, matching the
+  catalogue's `Counts`/`BG` convention) to `MdfPhysical`/`GaussDiffusion`, and
+  a derived `brightness` output (`mdf.py::compute_brightness`,
+  `(CR_total − bg)/N`, `CR_total` from the data file's `mean_count_rate`
+  metadata) shared by `MdfOutputs` and `GaussDiffusion`. `GaussDiffusion` also
+  reports `s = w_z/w_r` as a derived output (still fits absolute `w_r`/`w_z`,
+  not the dimensionless legacy parametrization).
+
+See [fcs plugin](/plugins/fcs.md), [parameters](/subsystems/parameters.md), and
+[gui-autoform](/subsystems/gui-autoform.md).

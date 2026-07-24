@@ -12,13 +12,13 @@
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "D[µm²/s]",
           "lb": 0.001,
-          "line": 54,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 69,
+          "module": "fcs.general",
           "ub": 100000.0
         }
       ]
@@ -33,13 +33,13 @@
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
           "label_text": null,
           "lb": 1e-06,
-          "line": 52,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 67,
+          "module": "fcs.general",
           "ub": 1000000000.0
         }
       ]
@@ -54,14 +54,60 @@
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
           "label_text": null,
           "lb": null,
-          "line": 63,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 78,
+          "module": "fcs.general",
           "ub": 10.0
+        }
+      ]
+    },
+    "GaussDiffusion.bg": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "BG[kHz]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "fcs/general.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "BG[kHz]",
+          "lb": 0.0,
+          "line": 83,
+          "module": "fcs.general",
+          "ub": 1000000.0
+        }
+      ]
+    },
+    "GaussDiffusion.brightness": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "&epsiv;[kHz]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "fcs/general.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "&epsiv;[kHz]",
+          "lb": null,
+          "line": 89,
+          "module": "fcs.general",
+          "ub": null
         }
       ]
     },
@@ -77,14 +123,37 @@
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "d<sub>foci</sub>[nm]",
           "lb": 0.0,
-          "line": 65,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 80,
+          "module": "fcs.general",
           "ub": 5000.0
+        }
+      ]
+    },
+    "GaussDiffusion.s": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "s"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "fcs/general.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "s",
+          "lb": null,
+          "line": 86,
+          "module": "fcs.general",
+          "ub": null
         }
       ]
     },
@@ -100,13 +169,13 @@
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "w<sub>r</sub>[nm]",
           "lb": 10.0,
-          "line": 57,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 72,
+          "module": "fcs.general",
           "ub": 5000.0
         }
       ]
@@ -123,13 +192,13 @@
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "w<sub>z</sub>[nm]",
           "lb": 10.0,
-          "line": 60,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 75,
+          "module": "fcs.general",
           "ub": 20000.0
         }
       ]
@@ -146,13 +215,13 @@
           "bounds_on": null,
           "class": "MdfOptics",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "&lambda;<sub>em</sub>[nm]",
           "lb": 200.0,
-          "line": 82,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 95,
+          "module": "fcs.mdf",
           "ub": 1200.0
         }
       ]
@@ -169,13 +238,13 @@
           "bounds_on": null,
           "class": "MdfOptics",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "&lambda;<sub>ex</sub>[nm]",
           "lb": 200.0,
-          "line": 79,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 92,
+          "module": "fcs.mdf",
           "ub": 1200.0
         }
       ]
@@ -190,13 +259,13 @@
           "bounds_on": null,
           "class": "MdfOptics",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": null,
           "lb": 1.0,
-          "line": 90,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 103,
+          "module": "fcs.mdf",
           "ub": 1000.0
         }
       ]
@@ -211,13 +280,13 @@
           "bounds_on": null,
           "class": "MdfOptics",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": null,
           "lb": 1.0,
-          "line": 85,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 98,
+          "module": "fcs.mdf",
           "ub": 2.0
         }
       ]
@@ -234,13 +303,13 @@
           "bounds_on": null,
           "class": "MdfOptics",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "pinhole[µm]",
           "lb": 1.0,
-          "line": 87,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 100,
+          "module": "fcs.mdf",
           "ub": 1000.0
         }
       ]
@@ -257,13 +326,36 @@
           "bounds_on": null,
           "class": "MdfOutputs",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "V<sub>eff</sub>[fL]",
           "lb": null,
-          "line": 116,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 129,
+          "module": "fcs.mdf",
+          "ub": null
+        }
+      ]
+    },
+    "MdfOutputs.brightness": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "&epsiv;[kHz]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOutputs",
+          "description_in_code": null,
+          "file": "fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "&epsiv;[kHz]",
+          "lb": null,
+          "line": 138,
+          "module": "fcs.mdf",
           "ub": null
         }
       ]
@@ -280,13 +372,13 @@
           "bounds_on": null,
           "class": "MdfOutputs",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "c[nM]",
           "lb": null,
-          "line": 119,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 132,
+          "module": "fcs.mdf",
           "ub": null
         }
       ]
@@ -303,13 +395,13 @@
           "bounds_on": null,
           "class": "MdfOutputs",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "&tau;<sub>D</sub>[ms]",
           "lb": null,
-          "line": 122,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 135,
+          "module": "fcs.mdf",
           "ub": null
         }
       ]
@@ -326,13 +418,13 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "D[µm²/s]",
           "lb": 0.001,
-          "line": 50,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 59,
+          "module": "fcs.mdf",
           "ub": 100000.0
         }
       ]
@@ -347,13 +439,13 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
           "label_text": null,
           "lb": 1e-06,
-          "line": 48,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 57,
+          "module": "fcs.mdf",
           "ub": 1000000000.0
         }
       ]
@@ -368,14 +460,37 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
           "label_text": null,
           "lb": null,
-          "line": 59,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 68,
+          "module": "fcs.mdf",
           "ub": 10.0
+        }
+      ]
+    },
+    "MdfPhysical.bg": {
+      "aliases": [],
+      "description": "",
+      "keywords": [],
+      "label_texts": [
+        "BG[kHz]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "BG[kHz]",
+          "lb": 0.0,
+          "line": 73,
+          "module": "fcs.mdf",
+          "ub": 1000000.0
         }
       ]
     },
@@ -391,13 +506,13 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "d<sub>foci</sub>[nm]",
           "lb": 0.0,
-          "line": 61,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 70,
+          "module": "fcs.mdf",
           "ub": 5000.0
         }
       ]
@@ -414,13 +529,13 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "w<sub>0</sub>[nm]",
           "lb": 10.0,
-          "line": 53,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 62,
+          "module": "fcs.mdf",
           "ub": 5000.0
         }
       ]
@@ -437,13 +552,13 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "w<sub>em</sub>[nm]",
           "lb": 10.0,
-          "line": 56,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 65,
+          "module": "fcs.mdf",
           "ub": 5000.0
         }
       ]
@@ -615,26 +730,26 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "D[µm²/s]",
           "lb": 0.001,
-          "line": 50,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 59,
+          "module": "fcs.mdf",
           "ub": 100000.0
         },
         {
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "D[µm²/s]",
           "lb": 0.001,
-          "line": 54,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 69,
+          "module": "fcs.general",
           "ub": 100000.0
         }
       ]
@@ -694,26 +809,26 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
           "label_text": null,
           "lb": 1e-06,
-          "line": 48,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 57,
+          "module": "fcs.mdf",
           "ub": 1000000000.0
         },
         {
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
           "label_text": null,
           "lb": 1e-06,
-          "line": 52,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 67,
+          "module": "fcs.general",
           "ub": 1000000000.0
         }
       ]
@@ -878,13 +993,13 @@
           "bounds_on": null,
           "class": "MdfOutputs",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "V<sub>eff</sub>[fL]",
           "lb": null,
-          "line": 116,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 129,
+          "module": "fcs.mdf",
           "ub": null
         }
       ]
@@ -986,26 +1101,26 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
           "label_text": null,
           "lb": null,
-          "line": 59,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 68,
+          "module": "fcs.mdf",
           "ub": 10.0
         },
         {
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
           "label_text": null,
           "lb": null,
-          "line": 63,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 78,
+          "module": "fcs.general",
           "ub": 10.0
         }
       ]
@@ -1035,7 +1150,7 @@
     },
     "bg": {
       "aliases": [],
-      "ambiguous": false,
+      "ambiguous": true,
       "description": "Constant background level added to the time-resolved decay curve (counts per time channel).",
       "flrcif_item_id": "_flr_chisurf_parameter.bg",
       "keywords": [
@@ -1059,6 +1174,32 @@
           "line": 124,
           "module": "chisurf.core.models.tcspc.nusiance",
           "ub": null
+        },
+        {
+          "bounds_on": null,
+          "class": "MdfPhysical",
+          "description_in_code": null,
+          "file": "fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "BG[kHz]",
+          "lb": 0.0,
+          "line": 73,
+          "module": "fcs.mdf",
+          "ub": 1000000.0
+        },
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "fcs/general.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "BG[kHz]",
+          "lb": 0.0,
+          "line": 83,
+          "module": "fcs.general",
+          "ub": 1000000.0
         }
       ]
     },
@@ -1108,6 +1249,44 @@
         }
       ]
     },
+    "brightness": {
+      "aliases": [],
+      "ambiguous": true,
+      "description": "",
+      "flrcif_item_id": "_flr_chisurf_parameter.brightness",
+      "keywords": [],
+      "label_texts": [
+        "&epsiv;[kHz]"
+      ],
+      "sources": [
+        {
+          "bounds_on": null,
+          "class": "MdfOutputs",
+          "description_in_code": null,
+          "file": "fcs/mdf.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "&epsiv;[kHz]",
+          "lb": null,
+          "line": 138,
+          "module": "fcs.mdf",
+          "ub": null
+        },
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "fcs/general.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "&epsiv;[kHz]",
+          "lb": null,
+          "line": 89,
+          "module": "fcs.general",
+          "ub": null
+        }
+      ]
+    },
     "bt": {
       "aliases": [],
       "ambiguous": false,
@@ -1145,13 +1324,13 @@
           "bounds_on": null,
           "class": "MdfOutputs",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "c[nM]",
           "lb": null,
-          "line": 119,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 132,
+          "module": "fcs.mdf",
           "ub": null
         }
       ]
@@ -1268,26 +1447,26 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "d<sub>foci</sub>[nm]",
           "lb": 0.0,
-          "line": 61,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 70,
+          "module": "fcs.mdf",
           "ub": 5000.0
         },
         {
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "d<sub>foci</sub>[nm]",
           "lb": 0.0,
-          "line": 65,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 80,
+          "module": "fcs.general",
           "ub": 5000.0
         }
       ]
@@ -4163,13 +4342,13 @@
           "bounds_on": null,
           "class": "MdfOptics",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "&lambda;<sub>em</sub>[nm]",
           "lb": 200.0,
-          "line": 82,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 95,
+          "module": "fcs.mdf",
           "ub": 1200.0
         }
       ]
@@ -4188,13 +4367,13 @@
           "bounds_on": null,
           "class": "MdfOptics",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "&lambda;<sub>ex</sub>[nm]",
           "lb": 200.0,
-          "line": 79,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 92,
+          "module": "fcs.mdf",
           "ub": 1200.0
         }
       ]
@@ -4354,13 +4533,13 @@
           "bounds_on": null,
           "class": "MdfOptics",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": null,
           "lb": 1.0,
-          "line": 90,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 103,
+          "module": "fcs.mdf",
           "ub": 1000.0
         }
       ]
@@ -4403,13 +4582,13 @@
           "bounds_on": null,
           "class": "MdfOptics",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": null,
           "lb": 1.0,
-          "line": 85,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 98,
+          "module": "fcs.mdf",
           "ub": 2.0
         }
       ]
@@ -4717,13 +4896,13 @@
           "bounds_on": null,
           "class": "MdfOptics",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "pinhole[µm]",
           "lb": 1.0,
-          "line": 87,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 100,
+          "module": "fcs.mdf",
           "ub": 1000.0
         }
       ]
@@ -5280,6 +5459,19 @@
           "line": 792,
           "module": "chisurf.gui.widgets.models.fcs.maxent_widget",
           "ub": 20.0
+        },
+        {
+          "bounds_on": null,
+          "class": "GaussDiffusion",
+          "description_in_code": null,
+          "file": "fcs/general.py",
+          "fixed": true,
+          "function": "__init__",
+          "label_text": "s",
+          "lb": null,
+          "line": 86,
+          "module": "fcs.general",
+          "ub": null
         }
       ]
     },
@@ -5557,13 +5749,13 @@
           "bounds_on": null,
           "class": "MdfOutputs",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
           "label_text": "&tau;<sub>D</sub>[ms]",
           "lb": null,
-          "line": 122,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 135,
+          "module": "fcs.mdf",
           "ub": null
         }
       ]
@@ -6531,13 +6723,13 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "w<sub>0</sub>[nm]",
           "lb": 10.0,
-          "line": 53,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 62,
+          "module": "fcs.mdf",
           "ub": 5000.0
         }
       ]
@@ -6580,13 +6772,13 @@
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "w<sub>r</sub>[nm]",
           "lb": 10.0,
-          "line": 57,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 72,
+          "module": "fcs.general",
           "ub": 5000.0
         }
       ]
@@ -6629,13 +6821,13 @@
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/general.py",
+          "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "w<sub>z</sub>[nm]",
           "lb": 10.0,
-          "line": 60,
-          "module": "chisurf.core.models.fcs.general",
+          "line": 75,
+          "module": "fcs.general",
           "ub": 20000.0
         }
       ]
@@ -6654,13 +6846,13 @@
           "bounds_on": null,
           "class": "MdfPhysical",
           "description_in_code": null,
-          "file": "chisurf/core/models/fcs/mdf.py",
+          "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
           "label_text": "w<sub>em</sub>[nm]",
           "lb": 10.0,
-          "line": 56,
-          "module": "chisurf.core.models.fcs.mdf",
+          "line": 65,
+          "module": "fcs.mdf",
           "ub": 5000.0
         }
       ]
