@@ -3971,10 +3971,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             irf_arr = np.asarray(irf_cache.get(det, []), dtype=float)
             irf_sz = int(irf_arr.size)
             irf_sum = float(irf_arr.sum()) if irf_sz else 0.0
-            mp = int(settings_cache[det].get('min_photons', 0))
+            # NB: not ``mp`` — that name is ``import multiprocessing as mp`` here.
+            min_ph = int(settings_cache[det].get('min_photons', 0))
             cs.logging.info(
                 f"MLE batch: detector '{det}' IRF size={irf_sz} sum={irf_sum:.3g}, "
-                f"bg size={int(np.asarray(bg_cache.get(det, [])).size)}, min_photons={mp}"
+                f"bg size={int(np.asarray(bg_cache.get(det, [])).size)}, min_photons={min_ph}"
             )
             # An empty *or all-zero* IRF (e.g. over-aggressive IRF range/threshold
             # zeroing) makes every burst's τ NaN — the live fit may still work if it
