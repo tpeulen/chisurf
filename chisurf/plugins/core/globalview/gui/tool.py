@@ -405,12 +405,22 @@ class GraphWizard(QtWidgets.QMainWindow):
         if fc is not None:
             src_fit_idx = self._fit_idx_for_node(source)
             tgt_fit_idx = self._fit_idx_for_node(target)
-            fc.link_parameters(
+            kw = dict(
                 parameter_name=str(source.name),
                 target_parameter_name=str(target.name),
-                fit_index=src_fit_idx,
-                target_fit_index=tgt_fit_idx,
             )
+            # A fit parameter keeps the fit-addressed path; an out-of-fit (group)
+            # parameter — fit_idx < 0 — is addressed by its global UUID so it joins
+            # the same link graph as fits.
+            if src_fit_idx is not None and src_fit_idx >= 0:
+                kw["fit_index"] = src_fit_idx
+            else:
+                kw["parameter_uid"] = str(getattr(source, "unique_identifier", ""))
+            if tgt_fit_idx is not None and tgt_fit_idx >= 0:
+                kw["target_fit_index"] = tgt_fit_idx
+            else:
+                kw["target_parameter_uid"] = str(getattr(target, "unique_identifier", ""))
+            fc.link_parameters(**kw)
         return True
 
     def on_link_requested(self, source_idx: int, target_idx: int):
@@ -451,20 +461,57 @@ class GraphWizard(QtWidgets.QMainWindow):
             for n in self.selected_nodes:
                 fit_idx = self._fit_idx_for_node(n)
                 if fc is not None:
-                    fc.unlink_parameter(
-                        parameter_name=str(n.name),
-                        fit_index=fit_idx,
-                    )
+                    if fit_idx is not None and fit_idx >= 0:
+                        fc.unlink_parameter(
+                            parameter_name=str(n.name),
+                            fit_index=fit_idx,
+                        )
+                    else:
+                        fc.unlink_parameter(
+                            parameter_name=str(n.name),
+                            parameter_uid=str(getattr(n, "unique_identifier", "")),
+                        )
         self.recompute_graph()
 
     def get_fit(self, G, node):
-        return self.fit_list[G.nodes[node]["fit.idx"]]
+        idx = G.nodes[node].get("fit.idx", -1)
+        if idx is None or not (0 <= idx < len(self.fit_list)):
+            return None
+        return self.fit_list[idx]
 
     def get_parameters(self, G, node):
-        if G.nodes[node]["node.type"] == "parameter":
-            fit = self.get_fit(G, node)
-            return fit.model.parameters_all_dict[G.nodes[node]["node.name"]]
-        return None
+        if G.nodes[node].get("node.type") != "parameter":
+            return None
+        # Resolve by global UUID first (works for out-of-fit group parameters);
+        # fall back to the fit's parameter dict by name.
+        uid = G.nodes[node].get("param.uid", "")
+        if uid:
+            from chisurf.core.base import Base
+            p = Base.find_by_uuid(uid)
+            if p is not None:
+                return p
+        fit = self.get_fit(G, node)
+        if fit is None:
+            return None
+        return getattr(fit.model, "parameters_all_dict", {}).get(
+            G.nodes[node]["node.name"]
+        )
+
+    @staticmethod
+    def _node_param_address(G: nx.Graph, node: Any, param: Any) -> Dict[str, Any]:
+        """Return the RPC address kwargs for a graph node's parameter.
+
+        Fit parameters keep the fit-addressed path (``parameter_name`` +
+        ``fit_index``); out-of-fit (group) parameters — ``fit.idx`` < 0 — are
+        addressed by their global ``parameter_uid``.
+        """
+        fit_idx = G.nodes[node].get("fit.idx")
+        if fit_idx is not None and fit_idx >= 0:
+            return {"parameter_name": str(param.name), "fit_index": fit_idx}
+        return {
+            "parameter_name": str(param.name),
+            "parameter_uid": str(getattr(param, "unique_identifier", "")),
+        }
 
     def link(
         self,
@@ -483,16 +530,12 @@ class GraphWizard(QtWidgets.QMainWindow):
             p = self.get_parameters(G, node)
             if p is not None:
                 if fc is not None:
-                    fit_idx = G.nodes[node].get("fit.idx")
+                    addr = self._node_param_address(G, node, p)
                     fc.set_parameter_value(
-                        parameter_name=str(p.name),
-                        value=float(G.nodes[node]["value"]),
-                        fit_index=fit_idx,
+                        value=float(G.nodes[node]["value"]), **addr,
                     )
                     fc.set_parameter_fixed(
-                        parameter_name=str(p.name),
-                        fixed=bool(G.nodes[node]["fixed"]),
-                        fit_index=fit_idx,
+                        fixed=bool(G.nodes[node]["fixed"]), **addr,
                     )
 
         for edge in G.edges:
@@ -501,12 +544,16 @@ class GraphWizard(QtWidgets.QMainWindow):
             p2 = self.get_parameters(G, n2)
             if p1 is not None and p2 is not None:
                 if fc is not None:
-                    fc.link_parameters(
-                        parameter_name=str(p2.name),
-                        target_parameter_name=str(p1.name),
-                        fit_index=G.nodes[n2].get("fit.idx"),
-                        target_fit_index=G.nodes[n1].get("fit.idx"),
-                    )
+                    kw = self._node_param_address(G, n2, p2)
+                    kw["target_parameter_name"] = str(p1.name)
+                    tgt_idx = G.nodes[n1].get("fit.idx")
+                    if tgt_idx is not None and tgt_idx >= 0:
+                        kw["target_fit_index"] = tgt_idx
+                    else:
+                        kw["target_parameter_uid"] = str(
+                            getattr(p1, "unique_identifier", "")
+                        )
+                    fc.link_parameters(**kw)
 
         self.recompute_graph()
 
@@ -525,24 +572,45 @@ class GraphWizard(QtWidgets.QMainWindow):
         include_fixed: bool = True,
         fit_list: List[Any] = None,
         connect_fits: bool = False,
+        group_list: Optional[List[Any]] = None,
         **kwargs,
     ):
         if fit_list is None:
             fc = get_fitting_client()
             fit_list = fc.get_fit_objects() if fc is not None else []
-        api_result = api_build_graph(fit_list, include_fixed, connect_fits)
+        if group_list is None:
+            from chisurf.core.parameter_group_registry import (
+                iter_registered_parameter_groups,
+            )
+            group_list = iter_registered_parameter_groups()
+        api_result = api_build_graph(
+            fit_list, include_fixed, connect_fits, group_list=group_list,
+        )
         G = graph_result_to_networkx(api_result)
+
+        from chisurf.core.base import Base
+
+        # Map each registered group by its owner_id so "group" owner nodes resolve
+        # to the live group object; parameters resolve globally by their UUID.
+        groups_by_owner = {str(oid): g for oid, _label, g in group_list}
         node_objects = {}
         for n in api_result.nodes:
             if n.node_type == "fit":
-                node_objects[n.node_idx] = fit_list[n.fit_idx] if n.fit_idx < len(fit_list) else None
+                node_objects[n.node_idx] = (
+                    fit_list[n.fit_idx] if 0 <= n.fit_idx < len(fit_list) else None
+                )
+            elif n.node_type == "group":
+                node_objects[n.node_idx] = groups_by_owner.get(n.owner_id)
             else:
-                try:
-                    fit = fit_list[n.fit_idx]
-                    p = getattr(fit.model, "parameters_all_dict", {}).get(n.name)
-                    node_objects[n.node_idx] = p
-                except Exception:
-                    node_objects[n.node_idx] = None
+                obj = Base.find_by_uuid(n.param_uid) if n.param_uid else None
+                if obj is None and 0 <= n.fit_idx < len(fit_list):
+                    try:
+                        obj = getattr(
+                            fit_list[n.fit_idx].model, "parameters_all_dict", {}
+                        ).get(n.name)
+                    except Exception:
+                        obj = None
+                node_objects[n.node_idx] = obj
         return G, node_objects
 
     def make_graph(
@@ -578,6 +646,8 @@ class GraphWizard(QtWidgets.QMainWindow):
                         node_types.append(2)
                     else:
                         node_types.append(3)
+            elif G.nodes.get(node, {}).get("node.type") == "group":
+                node_types.append(4)
             else:
                 node_types.append(0)
             node_names.append(G.nodes[node]["node.name"])

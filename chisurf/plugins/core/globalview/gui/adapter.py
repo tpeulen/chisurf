@@ -13,6 +13,7 @@ NODE_COLORS = {
     1: [0, 128, 0, 128],    # parameter fixed
     2: [0, 128, 0, 255],    # parameter linked
     3: [128, 0, 128, 255],  # parameter free
+    4: [180, 95, 6, 255],   # out-of-fit group owner (plugin working model)
 }
 
 
@@ -31,6 +32,8 @@ def compute_node_types(
     for n in result.nodes:
         if n.node_type == "fit":
             types.append(0)
+        elif n.node_type == "group":
+            types.append(4)
         else:
             if n.fixed:
                 types.append(1)
@@ -53,6 +56,9 @@ def graph_result_to_networkx(result: GraphResult) -> nx.Graph:
             "value": n.value,
             "fixed": n.fixed,
             "name": n.name,
+            "param.uid": n.param_uid,
+            "owner.uid": n.owner_uid,
+            "owner.id": n.owner_id,
         })
     for e in result.edges:
         G.add_edge(e.source, e.target)

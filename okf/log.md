@@ -506,6 +506,16 @@
   `subsystems/parameters.md` (new "Out-of-fit parameters and the Global View" section on
   `Base._uuid_index`, the parameter-group registry, and the `parameter_uid` mutation path)
   and `subsystems/gui-autoform.md` (the `global_parameter_table` cross-owner custom section).
+* **Global View — graph tab extended to out-of-fit groups.** `api/graph.build_graph` now takes
+  an optional `group_list` and renders registered parameter groups as `"group"` owner nodes
+  (distinct color, adapter type code 4) with their parameters; `GraphNode` carries `param_uid`/
+  `owner_uid`/`owner_id` so the GUI resolves live objects by UUID (owner-agnostic). Cross-owner
+  links (plugin↔fit) draw as edges automatically. The tool auto-includes
+  `iter_registered_parameter_groups()` when no `group_list` is given, and its link/unlink/set
+  paths (drag-to-link, selection unlink, GraphML restore via new `_node_param_address`) address
+  out-of-fit parameters by `parameter_uid`, keeping fit parameters on the fit-addressed path.
+  Now both Global-View tabs (Parameters + Graph) show fits and plugins. Tests:
+  `test/plugins/test_globalview_graph.py` (4).
 
 
 * **Burst nav + ribbon regrouping.** (1) The Burst Analysis nav moved **Browser below the workflow separator** (a utility alongside Background / IRF & Background); the numbered pipeline is now 1..6 (Data Selection → H2MM). (2) Ribbon menu: elevated **FCS / Decay Analysis / Burst Analysis** to sit directly under a single **Spectroscopy** group (their hierarchical `display_name`/`name` shortened to `Spectroscopy:<Name>`); **hid the Synthetic Decay Generator** (`menu_hidden`); moved **Structure Tools** into the same ribbon group as ChiMOL (`Structure:Structure:…`). Test `test_burst_workflow_panel_order` updated; manifest validation passes. Still open (large, deferred): converting the **Burst Browser** and **Background** plugins to the modern AutoForm framework (foldable boxes + chisurf docks) — both are working, tightly-coupled Qt tools embedded in the workflow, so they warrant a focused conversion using the `burst_irf_bg` template rather than a rushed rewrite.
