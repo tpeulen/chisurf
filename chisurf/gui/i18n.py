@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import logging
 import pathlib
-import typing
 
 from qtpy import QtCore, QtWidgets
 
@@ -33,7 +32,7 @@ logger = logging.getLogger(__name__)
 I18N_DIR = pathlib.Path(__file__).parent / "i18n"
 
 #: Keeps installed translators alive for the lifetime of the application.
-_installed: typing.List[QtCore.QTranslator] = []
+_installed: list[QtCore.QTranslator] = []
 
 
 def _qm_path(code: str) -> pathlib.Path:
@@ -42,8 +41,8 @@ def _qm_path(code: str) -> pathlib.Path:
 
 
 def install_translation(
-    app: typing.Optional[QtWidgets.QApplication] = None,
-    code: typing.Optional[str] = None,
+    app: QtWidgets.QApplication | None = None,
+    code: str | None = None,
 ) -> str:
     """Bind the core translation backend and install the UI-language catalogue.
 

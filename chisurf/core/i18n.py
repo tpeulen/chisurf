@@ -42,10 +42,10 @@ DEFAULT_CONTEXT = "chisurf"
 #: Signature of a translation backend: ``(context, source_text) -> translated``.
 TranslationBackend = typing.Callable[[str, str], str]
 
-_backend: typing.Optional[TranslationBackend] = None
+_backend: TranslationBackend | None = None
 
 
-def set_translation_backend(backend: typing.Optional[TranslationBackend]) -> None:
+def set_translation_backend(backend: TranslationBackend | None) -> None:
     """Install (or clear) the process-wide translation backend.
 
     Parameters
@@ -64,7 +64,7 @@ def has_translation_backend() -> bool:
     return _backend is not None
 
 
-def tr(text: typing.Optional[str], context: str = DEFAULT_CONTEXT) -> typing.Optional[str]:
+def tr(text: str | None, context: str = DEFAULT_CONTEXT) -> str | None:
     """Translate ``text`` through the active backend (identity if none).
 
     Empty/``None`` values pass straight through so call sites can wrap optional

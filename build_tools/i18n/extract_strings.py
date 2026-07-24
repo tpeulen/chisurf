@@ -149,7 +149,9 @@ def write_autogen(strings: set[str]) -> None:
     AUTOGEN.write_text("\n".join(lines), encoding="utf-8")
 
 
-def write_pro(ui_files: list[pathlib.Path], py_sources: list[pathlib.Path], locales) -> pathlib.Path:
+def write_pro(
+    ui_files: list[pathlib.Path], py_sources: list[pathlib.Path], locales
+) -> pathlib.Path:
     """Write a pylupdate5 project file listing forms, sources and translations.
 
     pylupdate5 resolves the paths in a ``.pro`` relative to the ``.pro`` file's
@@ -163,7 +165,9 @@ def write_pro(ui_files: list[pathlib.Path], py_sources: list[pathlib.Path], loca
 
     forms = " \\\n    ".join(_rel(p) for p in ui_files)
     sources = " \\\n    ".join(_rel(p) for p in py_sources)
-    translations = " \\\n    ".join((I18N_DIR / f"chisurf_{code}.ts").relative_to(REPO).as_posix() for code in locales)
+    translations = " \\\n    ".join(
+        (I18N_DIR / f"chisurf_{code}.ts").relative_to(REPO).as_posix() for code in locales
+    )
     pro.write_text(
         f"FORMS = {forms}\n\nSOURCES = {sources}\n\nTRANSLATIONS = {translations}\n",
         encoding="utf-8",
@@ -172,6 +176,7 @@ def write_pro(ui_files: list[pathlib.Path], py_sources: list[pathlib.Path], loca
 
 
 def main() -> int:
+    """Collect strings, run pylupdate5, and (re)generate the ``.ts`` catalogues."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--locales",
