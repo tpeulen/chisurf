@@ -28,8 +28,8 @@ def test_fps_json_editor_panels(qtbot):
     assert editor.flexfit_panel is not None
     assert editor.json_editor is not None
 
-    # Check that positions list is empty initially
-    assert editor.position_panel.positions_list.count() == 0
+    # Check that the position panel model is empty initially
+    assert len(editor.position_panel._positions) == 0
     assert len(editor.positions) == 0
 
 
@@ -79,10 +79,12 @@ def test_fps_json_editor_payload_roundtrip(qtbot):
     assert "D1_D2" in editor.distances
     assert "Group1" in editor.score_sets
 
-    # Check position panel
-    assert editor.position_panel.positions_list.count() == 1
-    assert editor.position_panel.positions_list.item(0).text() == "D1"
+    # Check position panel model reflects the loaded payload
+    assert len(editor.position_panel._positions) == 1
+    assert "D1" in editor.position_panel._positions
 
-    # Check distance table
-    assert editor.distance_panel.distances_table.rowCount() == 1
-    assert editor.distance_panel.distances_table.item(0, 0).text() == "D1_D2"
+    # Check distance table shows the distance (col 1 = Name; a trailing template
+    # row means rowCount is not a clean count).
+    dt = editor.distance_panel.distances_table
+    names = [dt.item(r, 1).text() for r in range(dt.rowCount()) if dt.item(r, 1)]
+    assert "D1_D2" in names

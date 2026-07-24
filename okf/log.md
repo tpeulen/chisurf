@@ -2,6 +2,15 @@
 
 ## 2026-07-24
 
+* **PRD-58 — fixed 2 stale `fps_json_editor` GUI tests.** `test_gui.py`
+  (`test_fps_json_editor_panels`, `test_fps_json_editor_payload_roundtrip`) asserted
+  against a `PositionPanel.positions_list` (`QListWidget`) and a col-0 distance name
+  — but both panels migrated to `QTableWidget` (name in **col 1**, with a trailing
+  template row so `rowCount` ≠ item count). Updated the assertions to the current
+  API: position sync via the panel model `_positions`, distance presence via a col-1
+  name scan. Run offscreen in arm64: `test_gui.py` = 3 passed. Concept:
+  [PRD-58](/prds/prd-58.md).
+
 * **PRD-64 — close the parity gaps (near-total pyqtgraph parity).** After the
   honest "read-passthrough, not full parity" correction, closed the three real
   gaps: (1) `chiplot.colormap` is now a **hybrid** — `cp.colormap("viridis")`
