@@ -327,6 +327,9 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             editor = self._create_theme_editor(parent, value, tooltip)
             return editor
 
+        if self._is_folder_setting(setting_path):
+            return self._create_folder_editor(parent, value, tooltip)
+
         # Create appropriate editor based on data type
         if data_type == bool or (isinstance(value, str) and value.strip().lower() in ("true", "false")):
             editor = QtWidgets.QCheckBox(parent)
@@ -422,6 +425,45 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
     def _is_theme_setting(self, setting_path: str) -> bool:
         return setting_path == "gui.style_sheet"
 
+    # Settings that name a directory rather than a file. These get a folder
+    # picker even when the stored value is empty (the generic path widget only
+    # triggers on values that already contain a path separator).
+    _FOLDER_SETTINGS = frozenset({"gui.acquisition.output_path"})
+
+    def _is_folder_setting(self, setting_path: str) -> bool:
+        return setting_path in self._FOLDER_SETTINGS
+
+    def _create_folder_editor(self, parent, value, tooltip):
+        """Line edit plus a browse button that opens a directory dialog."""
+        widget = QtWidgets.QWidget(parent)
+        layout = QtWidgets.QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        line_edit = QtWidgets.QLineEdit(widget)
+        line_edit.setText("" if value is None else str(value))
+        if tooltip:
+            line_edit.setToolTip(tooltip)
+
+        browse_button = QtWidgets.QPushButton("...", widget)
+        browse_button.setMaximumWidth(30)
+        browse_button.clicked.connect(lambda: self._browse_folder(line_edit))
+
+        layout.addWidget(line_edit)
+        layout.addWidget(browse_button)
+
+        widget.setProperty("lineEdit", line_edit)
+        return widget
+
+    def _browse_folder(self, line_edit):
+        """Open a directory dialog and set the selected folder path."""
+        start_dir = line_edit.text() or ""
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            line_edit.parent(), "Select Folder", start_dir
+        )
+        if folder:
+            line_edit.setText(folder)
+
     def _create_theme_editor(self, parent, value, tooltip):
         current_value = "" if value is None else str(value)
         combo = QtWidgets.QComboBox(parent)
@@ -509,6 +551,13 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             model.setData(index, new_value, QtCore.Qt.EditRole)
             model.setData(index, new_value, QtCore.Qt.UserRole)
             return
+
+        if self._is_folder_setting(setting_path):
+            line_edit = editor.property("lineEdit")
+            if line_edit is not None:
+                model.setData(index, line_edit.text(), QtCore.Qt.EditRole)
+                model.setData(index, line_edit.text(), QtCore.Qt.UserRole)
+                return
 
         # Prefer typed value from UserRole; fallback to EditRole
         value = index.data(QtCore.Qt.UserRole)

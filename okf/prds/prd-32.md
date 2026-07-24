@@ -3,7 +3,7 @@ type: PRD
 prd: "32"
 title: "PRD-32: Acquisition Standard Output Folder"
 description: Adds a single user-configurable standard output folder to acquisition so new measurements have a predictable save location.
-status: planned
+status: done
 phase: "cross-cutting"
 resource: chisurf/plugins/core/acq
 tags: [prd, acquisition]
@@ -14,7 +14,14 @@ timestamp: '2026-07-05T00:00:00Z'
 Gives acquisition a single, user-configurable standard output folder so new measurements have a predictable save location without the user picking a directory every time. The setting is made explicit in the Setup surface, persisted in `gui.acquisition`, used to prefill the acquisition dock, and resolved as the default runtime destination (creating the folder before a run writes files). Intentionally narrow: no direct MMFDB registration, no device-format changes, no project-scoped output-tree policy.
 
 # Status
-Planned per the authoritative status table, though the configuration/runtime path is implemented in the current branch: the acquisition settings panel exposes a standard output folder, the acquisition dock reads it by default, and new runs resolve their output location from that setting before starting.
+Done. The runtime path was already implemented (the acquisition dock prefills
+from `_default_acquisition_output_path()`, resolves the folder at start when the
+dock field is blank, and `mkdir`s the destination before writing). The remaining
+gap — the setting being read but never declared — is closed: `gui.acquisition.output_path`
+is now a documented key in the default settings YAML (empty string ⇒ fall back to
+`<working_path>/acquisition`), and the generic Setup settings editor renders it
+with a directory picker (`SettingsDelegate._is_folder_setting` /
+`_create_folder_editor` / `_browse_folder`).
 
 # Goal
 
@@ -47,11 +54,11 @@ runtime destination for acquisition output.
 
 # Definition of Done
 
-- [ ] Acquisition settings expose a standard output-folder field.
-- [ ] The folder persists across restarts.
-- [ ] The acquisition dock defaults to the saved folder.
-- [ ] Acquisition start uses the saved folder when the dock field is empty.
-- [ ] The output folder is created before a run writes files.
+- [x] Acquisition settings expose a standard output-folder field.
+- [x] The folder persists across restarts.
+- [x] The acquisition dock defaults to the saved folder.
+- [x] Acquisition start uses the saved folder when the dock field is empty.
+- [x] The output folder is created before a run writes files.
 
 # Notes
 

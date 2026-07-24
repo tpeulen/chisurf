@@ -132,6 +132,13 @@ gui:
   mol_viewer: chimol # 3D molecule viewer backend: chimol (default) or pymol
   memory_widget_update_interval_ms: 5000 # Memory usage widget update interval in milliseconds
   start_jupyter_on_startup: true
+  acquisition:
+    # Standard output folder for new acquisition runs. When left empty, the
+    # acquisition dock and the runtime fall back to <working_path>/acquisition
+    # (or ~/chisurf/acquisition). This value prefills the acquisition dock's
+    # "Output folder" field and is used as the default destination when that
+    # field is left blank; the folder is created before a run writes files.
+    output_path: ""
   # mcp_autostart removed — server is always auto-started on a dynamic port
   collapsible_box:
     auto_fold_timeout_ms: 1500  # -1 disables auto-fold globally

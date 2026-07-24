@@ -62,7 +62,7 @@ Status: ✅ done · 🚧 in-progress · ✏️ draft · 🌱 stub · 📋 planne
 
 * 🚧 [PRD-23: Thin Widgets / View–API Separation](prd-23.md) — Makes GUI widgets pure view — no data processing, no database or acquisition-library calls, no side effects on construction — with mandatory construction smoke tests and a shared dockable-tool base.
 * 📋 [PRD-30: CLI Pipeline Tools with Unix Pipe Support](prd-30.md) — Gives burst/TTTR CLI tools stdin/stdout streaming via a self-describing msgpack frame format so they compose as Unix pipes.
-* 📋 [PRD-32: Acquisition Standard Output Folder](prd-32.md) — Adds a single user-configurable standard output folder to acquisition so new measurements have a predictable save location.
+* ✅ [PRD-32: Acquisition Standard Output Folder](prd-32.md) — Adds a single user-configurable standard output folder to acquisition so new measurements have a predictable save location.
 * 📋 [PRD-33: Acquisition-to-MMFDB Registration](prd-33.md) — Adds a save mode that writes a newly acquired measurement directly into MMFDB with sample linkage and provenance.
 * 📋 [PRD-34: Burst-ID Native MMFDB Save and Downstream Ingest](prd-34.md) — Makes MMFDB the default save target for burst-identification selections when connected, and lets downstream burst tools ingest them directly from the dataset picker.
 * 🚧 [PRD-36: Dockable-Tool Base Migration Tracker](prd-36.md) — Tracks the per-tool rollout of the shared dockable-tool base across remaining QMainWindow plugin tools so drag-drop, dock, geometry, and MMFDB-connectivity boilerplate is implemented once.
