@@ -128,9 +128,13 @@ myst-parser = "*"
 
 [feature.docs.tasks]
 docs-plugins = { cmd = "python build_tools/docs/generate_plugin_docs.py" }
+docs-screenshots = { cmd = "python docs/guides/make_screenshots.py" }
+# docs-manual is retired: the docs/manual/ RST worked-examples are now hand-
+# maintained (folded into the Guides section), no longer regenerated from the
+# manual.docx. The task is kept for one-off re-imports but is NOT a docs-html dep.
 docs-manual = { cmd = "python build_tools/docs/convert_manual.py" }
 docs-clean = { cmd = "rm -rf docs/_build" }
-docs-html = { depends-on = ["docs-manual", "docs-plugins"], cmd = "sphinx-build -E -b html docs docs/_build" }
+docs-html = { depends-on = ["docs-plugins"], cmd = "sphinx-build -E -b html docs docs/_build" }
 
 [target.win-64.dependencies]
 hdf5 = "*"
