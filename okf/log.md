@@ -2,6 +2,8 @@
 
 ## 2026-07-24
 
+* **OKF science-theory KB, batch 2: BVA, FRET/ALEX-2CDE, anisotropy, PDA.** Four more internal knowledge-base concepts (the OKF layer is authoring scaffolding for the user docs, not a published artifact), each paired with a clean user-facing `docs/concepts/` page (no OKF references in the docs) and grounded in the real chisurf implementation: [bva-theory](/references/bva-theory.md) (shot-noise baseline √(E(1−E)/n), Monte-Carlo static line, `compute_bva`/`tttrlib.BVA`, `.bv4`; Torella 2011); [burst-2cde-theory](/references/burst-2cde-theory.md) (two-channel KDE, FRET-2CDE dynamics + ALEX-2CDE purity, `tttrlib.TwoCDE`, `.2c4` — **flagged a paper-vs-chisurf ALEX-2CDE formula divergence**, chisurf form authoritative; Tomov 2012); [anisotropy-theory](/references/anisotropy-theory.md) (VV/VH, G-factor + l1/l2 mixing, r0/ρ/r_∞, Perrin, `vm_rt_to_vv_vh`; Lakowicz) — cross-links [vv-vh-decay-format](/references/vv-vh-decay-format.md); [pda-theory](/references/pda-theory.md) (binomial forward model, background/α/δ/γ, static/Gaussian/SAW-ν/dynamic, `tttrlib.Pda`; Antonik 2006, Kalinin 2008). Docs guides 01/08/10/11 gained `{ref}` theory cross-refs; guide 11 embeds the real PDA model-editor screenshot. Wired into [references/index.md](/references/index.md).
+
 * **PRD-55 done — phasor analysis toolkit; closed the CLI-smoke gap.** The four
   pure ops (apparent lifetime, fractions/unmixing, filtering, cursor) + RPC were
   already implemented and tested; the one open required-acceptance item was
