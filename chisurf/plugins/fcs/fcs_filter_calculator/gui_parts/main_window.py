@@ -445,6 +445,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 params = []
         if not params:
             host.setVisible(False)
+            self._unregister_autofit_model()
             return
 
         from chisurf.gui.autoform.sections.parameter_table import (
@@ -454,6 +455,43 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.autofit_parameter_table = ParameterGroupTableWidget(params=params)
         layout.addWidget(self.autofit_parameter_table)
         host.setVisible(True)
+
+        # Expose this out-of-fit model to the Global View so its lifetimes/E can be
+        # viewed and linked to real fits. A strong ref is kept because the registry
+        # holds the group only weakly; re-registering under the same owner replaces
+        # the previous (now-stale) model.
+        self._register_autofit_model(model)
+
+    def _register_autofit_model(self, model) -> None:
+        """Register the auto-fit model with the Global View parameter registry."""
+        try:
+            from chisurf.core.parameter_group_registry import register_parameter_group
+
+            self._registered_autofit_model = model
+            register_parameter_group(
+                model,
+                owner_id="fcs_filter_calc",
+                label="FCS Filter Calc",
+            )
+        except Exception as error:
+            cs.logging.warning(f"Could not register auto-fit model globally: {error}")
+
+    def _unregister_autofit_model(self) -> None:
+        """Drop the auto-fit model from the Global View registry (if registered)."""
+        if getattr(self, "_registered_autofit_model", None) is None:
+            return
+        try:
+            from chisurf.core.parameter_group_registry import unregister_parameter_group
+
+            unregister_parameter_group("fcs_filter_calc")
+        except Exception:
+            pass
+        self._registered_autofit_model = None
+
+    def closeEvent(self, event) -> None:
+        """Unregister the auto-fit model from the Global View on close."""
+        self._unregister_autofit_model()
+        super().closeEvent(event)
 
     def _sync_autofit_settings(self) -> None:
         """Mirror the Auto-fit dock's controls into the settings dict."""

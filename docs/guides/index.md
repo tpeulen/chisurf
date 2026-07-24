@@ -1,10 +1,22 @@
-# ChiSurf single-molecule tutorials
+# Guides — how to do it in ChiSurf
 
-A set of short, self-contained tutorials for the single-molecule fluorescence
-analyses in ChiSurf.  Each tutorial is runnable headlessly and its figure is
-produced by [`make_figures.py`](make_figures.py) from synthetic data using the
-very functions the tutorial describes — so the plots are real output, not
-sketches.
+```{toctree}
+:hidden:
+:glob:
+
+*
+```
+
+Step-by-step guides for the fluorescence analyses in ChiSurf. Each guide shows
+**how to run the analysis in the actual user interface** and links to the
+matching {doc}`concept </concepts/index>` page for the underlying theory. Figures
+are real output — matplotlib plots produced by [`make_figures.py`](make_figures.py)
+from synthetic data using the very functions the guide describes, and GUI
+screenshots grabbed from the real widgets by
+[`make_screenshots.py`](make_screenshots.py) under an offscreen Qt platform.
+
+Related how-to pages: [FRET calibration](fret_calibration.md),
+[IRF estimation](irf_estimation.md), and [photon-by-photon HMM (H2MM)](h2mm.md).
 
 | # | Tutorial | ChiSurf entry point |
 |---|----------|---------------------|

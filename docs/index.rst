@@ -1,49 +1,58 @@
-Welcome to chisurf's documentation!
-===================================
+ChiSurf documentation
+=====================
+
+**ChiSurf** is an interactive global-analysis platform for time-resolved and
+single-molecule fluorescence data — time-correlated single-photon counting
+(TCSPC), fluorescence correlation spectroscopy (FCS), and single-molecule FRET
+(smFRET). This documentation is organized in four layers:
+
+* **Getting started** — install ChiSurf, launch it, and run a first analysis.
+* **Concepts** — the theory behind each technique (what the models mean and why),
+  self-contained and cited.
+* **Guides** — step-by-step, *how to do it in ChiSurf*, with real screenshots of
+  the actual user interface, cross-linked to the matching concept.
+* **Reference** — file formats, settings, the full plugin catalogue (every plugin
+  and every parameter), and the Python API.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Getting started
 
-   irf_estimation
-   history_project_mcp
-   architecture_mvc_actions
-   architecture
-   architecture_client_server
-   client_server_migration_plan
-   client_server_next_steps
-   client_server_agent_entrypoint
-   proxy_rpc_design
-   plugins
-   H2MM
-   FRET calibration
-   user_models
-   parameter_registry_tools
-   chisurf_settings
-   ci-act
-   VERSIONING
-   RELEASES
-   FCS files
-   PCH files
-   PDA files
-   RDA axis settings
-   RICS files
-   TCSPC files
-   TCSPC TXT CSV
-   README_bhfiles
-   README_becker_hickl_set
+   getting_started/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Concepts (theory)
+
+   concepts/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Guides (how-to in ChiSurf)
+
+   guides/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference
+
+   reference/index
    manual/index
-   api
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Development
+
+   development/index
 
 .. note::
 
-   By default, ChiSurf does not start the bundled Jupyter notebook server
-   on startup. To enable it, set ``gui.start_jupyter_on_startup: true`` in
-   your user settings file (``settings_chisurf.yaml``) or via the
-   Settings Editor.
+   By default, ChiSurf does not start the bundled Jupyter notebook server on
+   startup. To enable it, set ``gui.start_jupyter_on_startup: true`` in your user
+   settings file (``settings_chisurf.yaml``) or via the Settings Editor.
 
 Indices and tables
-==================
+===================
 
 * :ref:`genindex`
 * :ref:`modindex`

@@ -149,6 +149,8 @@ class FRETLineTool(QtWidgets.QWidget):
         super().__init__(*args, **kwargs)
         # Each component: {"label", "fit", "model", "editor", "weight"}
         self._components: list[dict] = []
+        #: Owner ids currently registered with the Global View parameter registry.
+        self._registered_owner_ids: set[str] = set()
         self._cur = -1
         # Accumulated, computed FRET lines (snapshots) — additive across
         # successive "Compute" presses. Each entry:
@@ -485,6 +487,62 @@ class FRETLineTool(QtWidgets.QWidget):
         when the editor changes is the enabled-state of the export buttons.
         """
         self._update_action_buttons()
+        self._sync_global_registry()
+
+    def _sync_global_registry(self) -> None:
+        """Expose each component's working model to the Global View.
+
+        Each component model is registered under a stable ``fret_line_c{i}``
+        owner id so its FRET/lifetime parameters can be viewed and linked to
+        real fits. Re-synced on every mixture edit; stale ids (from removed
+        components) are dropped.
+        """
+        try:
+            from chisurf.core.parameter_group_registry import (
+                register_parameter_group,
+                unregister_parameter_group,
+            )
+        except Exception:
+            return
+        previous = set(getattr(self, "_registered_owner_ids", ()) or ())
+        current: set[str] = set()
+        for i, comp in enumerate(self._components):
+            model = comp.get("model")
+            if model is None:
+                continue
+            owner_id = f"fret_line_c{i}"
+            current.add(owner_id)
+            try:
+                register_parameter_group(
+                    model, owner_id=owner_id,
+                    label=f"FRET Line C{i}: {comp.get('label', '')}",
+                )
+            except Exception:
+                pass
+        for owner_id in previous - current:
+            try:
+                unregister_parameter_group(owner_id)
+            except Exception:
+                pass
+        self._registered_owner_ids = current
+
+    def _unregister_global_registry(self) -> None:
+        """Drop all this tool's component models from the Global View registry."""
+        try:
+            from chisurf.core.parameter_group_registry import unregister_parameter_group
+        except Exception:
+            return
+        for owner_id in list(getattr(self, "_registered_owner_ids", ()) or ()):
+            try:
+                unregister_parameter_group(owner_id)
+            except Exception:
+                pass
+        self._registered_owner_ids = set()
+
+    def closeEvent(self, event) -> None:
+        """Unregister component models from the Global View on close."""
+        self._unregister_global_registry()
+        super().closeEvent(event)
 
     def _update_action_buttons(self) -> None:
         has = bool(self._lines)

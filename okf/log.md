@@ -156,6 +156,14 @@
   same events. `test_forbidden_communication` ledger updated (dropped the deleted module,
   added the new section's one accepted in-process `cs.fits` read). NOTE: that test also
   reports pre-existing unledgered violations in ~8 unrelated files (unchanged vs HEAD).
+* **Global View — out-of-fit parameters, phase 5 (plugin registration).** Two concrete
+  plugins now expose their working models to the Global View: the **FCS Filter Calculator**
+  registers its auto-fit `LifetimeModel` (owner_id `fcs_filter_calc`) whenever the auto-fit
+  parameter table is shown, unregistering when cleared/closed; the **FRET Line** tool
+  registers each mixture component model (`fret_line_c{i}`) on every mixture edit, dropping
+  stale ids and unregistering all on close. Added `PluginContext.register_working_model` /
+  `unregister_working_model` so any model-bearing plugin can opt in with one call. Existing
+  `test_gui_tool_fret_line` still green; registry/service/section suites (20) green.
 
 
 * **Burst nav + ribbon regrouping.** (1) The Burst Analysis nav moved **Browser below the workflow separator** (a utility alongside Background / IRF & Background); the numbered pipeline is now 1..6 (Data Selection → H2MM). (2) Ribbon menu: elevated **FCS / Decay Analysis / Burst Analysis** to sit directly under a single **Spectroscopy** group (their hierarchical `display_name`/`name` shortened to `Spectroscopy:<Name>`); **hid the Synthetic Decay Generator** (`menu_hidden`); moved **Structure Tools** into the same ribbon group as ChiMOL (`Structure:Structure:…`). Test `test_burst_workflow_panel_order` updated; manifest validation passes. Still open (large, deferred): converting the **Burst Browser** and **Background** plugins to the modern AutoForm framework (foldable boxes + chisurf docks) — both are working, tightly-coupled Qt tools embedded in the workflow, so they warrant a focused conversion using the `burst_irf_bg` template rather than a rushed rewrite.

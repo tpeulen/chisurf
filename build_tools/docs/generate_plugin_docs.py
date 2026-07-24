@@ -106,5 +106,5 @@ def generate_plugin_md(output_path: str | pathlib.Path) -> str:
 
 
 if __name__ == "__main__":
-    output = REPO_ROOT / "docs" / "plugins.md"
+    output = REPO_ROOT / "docs" / "reference" / "plugins.md"
     generate_plugin_md(output)

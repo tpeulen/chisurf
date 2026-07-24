@@ -57,13 +57,29 @@ for optional_extension in [
     if importlib.util.find_spec(optional_extension) is not None:
         extensions.append(optional_extension)
 
+# -- MyST (Markdown) configuration -------------------------------------------
+# Enable dollar/inline math, colon-fenced directives (```{toctree}``` etc.),
+# and auto-generated header anchors so cross-references resolve.
+myst_enable_extensions = [
+    'dollarmath',       # $...$ and $$...$$ math in Markdown
+    'colon_fence',      # ::: fenced directives
+    'deflist',
+    'attrs_inline',
+]
+myst_heading_anchors = 3
+
+# Number figures/tables so ``:numref:`` works for theory <-> screenshot links.
+numfig = True
+numfig_format = {'figure': 'Figure %s', 'table': 'Table %s'}
+suppress_warnings.append('myst.header')
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_old_manual', 'README.md']
 
 
 # -- Options for HTML output -------------------------------------------------

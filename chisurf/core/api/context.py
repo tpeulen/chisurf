@@ -82,3 +82,34 @@ class PluginContext:
         if self.api is not None:
             return self.api.ping()
         return {"ok": False, "error": "no api available"}
+
+    # ── Global-View parameter exposure ───────────────────────────────
+
+    def register_working_model(
+        self, model: Any, *, owner_id: str, label: Optional[str] = None
+    ) -> None:
+        """Expose a plugin working model to the Global View parameter table.
+
+        Any model-bearing plugin can call this so its out-of-fit parameters (a
+        ``FittingParameterGroup`` such as a ``LifetimeModel``) become visible and
+        linkable alongside real fits. Re-registering the same ``owner_id``
+        replaces; the group is held weakly, so keep your own reference.
+
+        Parameters
+        ----------
+        model : FittingParameterGroup
+            The working model/group to expose.
+        owner_id : str
+            Stable identifier for this plugin's model (e.g. the plugin id).
+        label : str, optional
+            Human-readable Owner-column label (defaults to ``owner_id``).
+        """
+        from chisurf.core.parameter_group_registry import register_parameter_group
+
+        register_parameter_group(model, owner_id=owner_id, label=label or owner_id)
+
+    def unregister_working_model(self, owner_id: str) -> None:
+        """Remove a model previously exposed via :meth:`register_working_model`."""
+        from chisurf.core.parameter_group_registry import unregister_parameter_group
+
+        unregister_parameter_group(owner_id)

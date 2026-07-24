@@ -2,7 +2,7 @@
 
 Turning raw single-molecule photon counts into an **accurate** FRET efficiency
 requires a handful of instrument/photophysics **calibration factors**. ChiSurf
-models these as ordinary [fitting parameters](user_models.md) with a Bayesian
+models these as ordinary [fitting parameters](../reference/user_models.md) with a Bayesian
 workflow: the **light-path calculator** provides a physically-motivated *prior*,
 and **optimizing against the measured data** yields the *posterior* factors used
 for accurate FRET. The same calibration can be shared across many datasets
@@ -67,7 +67,7 @@ ChiSurf offers two complementary routes; use either or both.
 
 ### 1. Light-path prior → data-optimized posterior
 
-The [light-path calculator](plugins.md) computes the spectral crosstalk matrices
+The [light-path calculator](../reference/plugins.md) computes the spectral crosstalk matrices
 of the optical setup (spectra, filters, detector QE). Those give a
 *physically-motivated* value for each factor, attached as a **Gaussian prior**;
 the factor stays free and is refined against the data.
@@ -113,7 +113,7 @@ out = calibrate_from_samples(
 
 Hellenkamp's four scalars assume two colours and no acceptor→acceptor bleed. The
 general correction consumes the two crosstalk matrices the
-[light-path calculator](plugins.md) produces and needs no scalar factors at all:
+[light-path calculator](../reference/plugins.md) produces and needs no scalar factors at all:
 
 * the **excitation matrix** $X_{lk}$ — the rate at which laser $l$ directly
   excites chromophore $k$ (absorption × flux); off-diagonals are direct
@@ -282,7 +282,7 @@ link_to_calibration(my_fit.model.parameters_all_dict["gamma"], calib, "gamma")
 ```
 
 The optimized calibration can also be pushed into an open
-[ndxplorer](ndxplorer_headless_cli.md) window so its per-burst/per-pixel derived
+[ndxplorer](../reference/ndxplorer_headless_cli.md) window so its per-burst/per-pixel derived
 FRET uses the data-optimized factors:
 
 ```python
