@@ -2,6 +2,17 @@
 
 ## 2026-07-24
 
+* **PRD-58 — CLI contract R09 + R16.** Completed two `fret` CLI-flag requirements
+  with real dispatch tests. **R16**: `evaluate` gained explicit `--pdb-dir` and
+  `--top` flags via a pure `_resolve_evaluate_mode(pdb, pdb_dir, top, traj,
+  input_type)` selector (explicit flags win; legacy `--pdb`/`--input-type` still
+  work; empty/ambiguous combos error). **R09**: `imp dock` gained `--av-backend`,
+  routed into the docking request (`DockRequest.av_backend`). New
+  `test/test_cli_flags.py` (11 tests): 7 resolver unit tests + 3 monkeypatched
+  `evaluate`-dispatch tests + 1 `imp dock` av-backend-routing test (no AV/IMP/data).
+  Regression: headless fret suite = 84 passed, 16 deselected. Concept:
+  [PRD-58](/prds/prd-58.md).
+
 * **PRD-58 — rigid-body docking scorer + optimal-FRET-network fix/tests.** Hardened
   the two pure (IMP-free) subsystems under the docking and OLGA workflows. **RBD**:
   added `core.evaluate.score_bodies(bodies, restraints)` — an IMP-free pose→chi²

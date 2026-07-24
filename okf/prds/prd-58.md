@@ -69,8 +69,21 @@ pure (IMP-free) subsystems the docking and OLGA workflows rest on:
   capped to the pair count, `max_pairs<=0` → empty, `unique_only` has no repeats,
   and precision-decay is non-increasing.
 
+**CLI contract — R09 + R16 (2026-07-24).** Completed two CLI-flag requirements
+with real dispatch tests (not just `--help`):
+- **R16** — the `evaluate` command gained explicit `--pdb-dir` and `--top` flags
+  (previously only `--pdb` + `--input-type`). A pure `_resolve_evaluate_mode`
+  helper maps the flag combination to `(mode, structure, traj)` — explicit flags
+  win, legacy `--pdb`/`--input-type` still work, ambiguous/empty combos error
+  cleanly. Tested by 7 resolver unit tests + 3 `CliRunner` dispatch tests
+  (monkeypatched `evaluate_directory`/`evaluate_trajectory` — no AV/IMP).
+- **R09** — `imp dock` gained `--av-backend`, routed into the docking request
+  (`DockRequest.av_backend` → `DockingParameters.av_backend`). Tested by a
+  `CliRunner` test that monkeypatches `operations.dock` and asserts the flag lands
+  in the request dict.
+
 Regression: the full headless fret suite (excluding GUI + external-data
-`test_examples`) = **73 passed, 16 deselected**. (The `test_examples.py` failures on
+`test_examples`) = **84 passed, 16 deselected**. (The `test_examples.py` failures on
 this machine are missing external OLGA data at `/Users/tpeulen/dev/olga/...`, not
 code regressions.)
 

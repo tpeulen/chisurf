@@ -110,14 +110,64 @@ def screen_cmd(fps: str, pdb_dir: str, output: str, n_threads: int, av_backend: 
     click.echo(f"Screening complete. Saved results to {output}")
 
 
+def _resolve_evaluate_mode(pdb, pdb_dir, top, traj, input_type):
+    """Resolve ``(mode, structure_path, traj_path)`` from the ``evaluate`` flags.
+
+    Explicit ``--pdb-dir`` and ``--top`` + ``--traj`` take precedence; otherwise
+    this falls back to the legacy ``--pdb`` (+ optional ``--input-type``) selection.
+
+    Parameters
+    ----------
+    pdb : str or None
+        Single PDB file (or, with ``input_type='PDB Directory'``, a directory).
+    pdb_dir : str or None
+        Directory of PDB structures — selects directory mode.
+    top : str or None
+        Topology file for a trajectory (paired with ``traj``).
+    traj : str or None
+        Trajectory file — selects trajectory mode (topology is ``top`` or ``pdb``).
+    input_type : str or None
+        Optional legacy mode override.
+
+    Returns
+    -------
+    tuple
+        ``(mode, structure_path, traj_path)`` where ``mode`` is one of
+        ``"Single PDB File" | "PDB Directory" | "MDTraj Trajectory"``.
+
+    Raises
+    ------
+    ValueError
+        If the flag combination does not identify a usable input.
+    """
+    if pdb_dir:
+        return "PDB Directory", pdb_dir, None
+    if traj:
+        topology = top or pdb
+        if not topology:
+            raise ValueError("--traj requires a topology (--top or --pdb).")
+        return "MDTraj Trajectory", topology, traj
+    if input_type == "PDB Directory":
+        if not pdb:
+            raise ValueError("--input-type 'PDB Directory' requires --pdb (the directory).")
+        return "PDB Directory", pdb, None
+    if input_type == "MDTraj Trajectory":
+        raise ValueError("--input-type 'MDTraj Trajectory' requires --traj.")
+    if pdb:
+        return "Single PDB File", pdb, None
+    raise ValueError("Provide one of --pdb, --pdb-dir, or --top + --traj.")
+
+
 @main.command("evaluate")
 @click.option("--fps", required=True, help="Path to labeling.fps.json.")
-@click.option("--pdb", required=True, help="PDB file path or directory.")
-@click.option("--traj", default=None, help="Trajectory file path (DCD/XTC) for MDTraj evaluation.")
+@click.option("--pdb", default=None, help="Single PDB file (or directory with --input-type 'PDB Directory').")
+@click.option("--pdb-dir", default=None, help="Directory of PDB structures (selects directory mode).")
+@click.option("--top", default=None, help="Topology file for a trajectory (paired with --traj).")
+@click.option("--traj", default=None, help="Trajectory file (DCD/XTC); topology is --top or --pdb.")
 @click.option("--output", required=True, help="Output CSV file path.")
-@click.option("--input-type", default="Single PDB File", type=click.Choice(["Single PDB File", "PDB Directory", "MDTraj Trajectory"]), help="Type of input.")
+@click.option("--input-type", default=None, type=click.Choice(["Single PDB File", "PDB Directory", "MDTraj Trajectory"]), help="Legacy mode override (prefer --pdb-dir / --top+--traj).")
 @click.option("--av-backend", default="auto", type=click.Choice(["auto", "labellib", "imp-bff"]), help="Accessible Volume backend.")
-def evaluate_cmd(fps: str, pdb: str, traj: str | None, output: str, input_type: str, av_backend: str):
+def evaluate_cmd(fps, pdb, pdb_dir, top, traj, output, input_type, av_backend):
     """Run OLGA-style structure evaluations."""
     av.select_backend(av_backend)
     positions, distances, _, _ = io.read_fps_json(fps)
@@ -130,21 +180,22 @@ def evaluate_cmd(fps: str, pdb: str, traj: str | None, output: str, input_type: 
             for name, d in distances.items()
         ]
 
-    if input_type == "Single PDB File":
-        res = evaluate.evaluate_structure(pdb, positions, evaluators)
+    try:
+        mode, structure, traj_path = _resolve_evaluate_mode(pdb, pdb_dir, top, traj, input_type)
+    except ValueError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+
+    if mode == "Single PDB File":
+        res = evaluate.evaluate_structure(structure, positions, evaluators)
         storage = evaluate.EvaluationStorage()
-        storage.add_frame(os.path.basename(pdb), res)
-        storage.to_csv(output)
-    elif input_type == "PDB Directory":
-        storage = evaluate.evaluate_directory(pdb, positions, evaluators)
-        storage.to_csv(output)
-    elif input_type == "MDTraj Trajectory":
-        if not traj:
-            click.echo("Error: Trajectory file (--traj) is required for MDTraj Trajectory evaluation.", err=True)
-            sys.exit(1)
-        storage = evaluate.evaluate_trajectory(pdb, traj, positions, evaluators)
-        storage.to_csv(output)
-    
+        storage.add_frame(os.path.basename(structure), res)
+    elif mode == "PDB Directory":
+        storage = evaluate.evaluate_directory(structure, positions, evaluators)
+    else:  # MDTraj Trajectory
+        storage = evaluate.evaluate_trajectory(structure, traj_path, positions, evaluators)
+    storage.to_csv(output)
+
     click.echo(f"Evaluation complete. Results written to {output}")
 
 
@@ -234,9 +285,11 @@ def imp_score(pdb, fps_json, score_set, output_csv, mean_position):
               help="FPS-style AV-recompute refinement cycles after docking.")
 @click.option("--save-distributions", is_flag=True, default=False,
               help="Export full P(R_DA) distance distributions to distance_distributions.csv.")
+@click.option("--av-backend", default="auto", type=click.Choice(["auto", "labellib", "imp-bff"]),
+              help="Accessible Volume backend.")
 def imp_dock(pdb, fps_json, output_dir, n_frames, mc_steps, score_set,
              n_best, simulated_annealing, fixed_body, sigma_da, method,
-             refine_av_cycles, save_distributions):
+             refine_av_cycles, save_distributions, av_backend):
     """Run FRET-restrained rigid-body docking (minimisation or Monte-Carlo)."""
     from ..api import operations as ops
     res = ops.dock({"pdb_paths": _split_pdbs(pdb), "fps_json": fps_json,
@@ -245,7 +298,8 @@ def imp_dock(pdb, fps_json, output_dir, n_frames, mc_steps, score_set,
                     "simulated_annealing": simulated_annealing, "fixed_body": fixed_body,
                     "sigma_da": sigma_da, "method": method,
                     "refine_av_cycles": refine_av_cycles,
-                    "save_distributions": save_distributions})
+                    "save_distributions": save_distributions,
+                    "av_backend": av_backend})
     click.echo(json.dumps(res, indent=2))
 
 
