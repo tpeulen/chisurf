@@ -103,7 +103,7 @@
     ba: 0.05
     aba: 0.1
     abt: 0.1
-  description: No description!
+  description: One-component 3D-Gaussian diffusion with one exponential bunching (blinking/triplet) term and one photon-antibunching dip
 3D Gauss, 2 bunching + 1 anti-bunching:
   equation:
       b+1/abs(N)*(1+x/td)**(-1)/sqrt(1+1/s**2*x/td)*(1-abs(ba1)+abs(ba1)*exp(-x/abs(bt1))-ba2+ba2*exp(-x/bt2))*(1-abs(aba)*exp(-x/abs(abt)))
@@ -118,7 +118,7 @@
     ba2: 0.05
     aba: 0.1
     abt: 0.1
-  description: No description!
+  description: One-component 3D-Gaussian diffusion with two exponential bunching (blinking/triplet) terms and one photon-antibunching dip
 3D Gauss, 1 bunching + 1+5 anti-bunching:
   equation: b+1/abs(N)*(1+x/td)**(-1)/sqrt(1+1/s**2*x/td)*(1-abs(ba1)+abs(ba1)*exp(-x/abs(bt1)))*(1-abs(aba)*exp(-x/abs(abt)))*(1-
     abs(abf)*(abs(aba1)*exp(-x/abs(abt1))+abs(aba2)*exp(-x/abs(abt2))+abs(aba3)*exp(-x/abs(abt3))+abs(aba4)*exp(-x/abs(abt4))+abs(1-abs(aba1)-abs(aba2)-abs(aba3)-abs(aba4))*exp(-x/abs(abt5))))
@@ -141,7 +141,7 @@
     aba4: 0.1
     abt4: 0.5
     abt5: 1
-  description: No description!
+  description: One-component 3D-Gaussian diffusion with one bunching term and a six-component photon-antibunching term (1 + 5 exponentials)
 2 comp 3D Gauss, 3 individual bunch:
   equation: b+1/abs(N)*(a1*(1+x/abs(td1))**(-1)/sqrt(1+1/s**2*x/abs(td1))*(1-abs(ba11)+abs(ba11)*exp(-x/abs(bt11))-abs(ba21)+abs(ba21)*exp(-x/abs(bt21))-abs(ba31)+abs(ba31)*exp(-x/abs(bt31)))+(1-a1)
     * (1+x/abs(td2))**(-1)*(1+1/s**2*x/abs(td2))**(-0.5)*(1-abs(ba12)+abs(ba12)*exp(-x/abs(bt12))-abs(ba22)+abs(ba22)*exp(-x/abs(bt22))-abs(ba32)+abs(ba32)*exp(-x/abs(bt32))))
@@ -164,7 +164,7 @@
     bt22: 0.1
     bt31: 0.1
     bt32: 0.1
-  description: No description!
+  description: Two-component 3D-Gaussian diffusion, each component carrying three independent exponential bunching (blinking/triplet) terms
 3D Gauss, 1 exp. bunch, 1 stretched exp. bunch:
   equation: b+1/abs(N)*a1*(1+x/abs(td1))**(-1)/sqrt(1+1/s**2*x/abs(td1))*(1-abs(ba1)+abs(ba1)*exp(-x/abs(bt1))-abs(ba2)+abs(ba2)*exp(-(x/abs(bt2))**bs2))
   initial:
@@ -199,7 +199,7 @@
     bt12: 0.1
     bt22: 0.1
     bs22: 1
-  description: No description!
+  description: Two-component 3D-Gaussian diffusion, each component with one exponential and one stretched-exponential bunching term
 Autocorrelation with biexponential anisotropy term:
   equation: b+1/N*(1+x/td1)**(-1)/sqrt(1+1/s**2*x/td1)* (1- aab*exp(-x/tab)) * (1+aroc*((1/(1+C))*exp(-x/trc1)+(C/(1+C))*exp(-x/(trc1*trc2trc1))))
     * (1-abs(ab1)+abs(ab1)*exp(-x/abs(tb1))-abs(ab2)+abs(ab2)*exp(-x/abs(tb2))-abs(ab3)+abs(ab3)*exp(-x/abs(tb3))-abs(ab4)+abs(ab4)*exp(-x/abs(tb4)))
@@ -481,7 +481,7 @@ Simple 2D diffusion & 1x relaxation:
     aba4: 0.1
     abt4: 0.001
     abt5: 1
-  description: for crosscorrelation curves
+  description: Two-component 2D-membrane diffusion with one bunching term and a five-component anti-correlation (reaction/exchange) term; for cross-correlation curves
 1x2D Gauss, 1x3D Gauss, 1 bunching + 5 anti-correlation:
   equation: b+ 1/N*(a2/(1+ x/td2)+(1-a2)/(1+x/td3)*(1/sqrt(1+1/s**2*x/td3)))*(1-ba1+ba1*exp(-x/bt1))*(1-abf*(aba1*exp(-x/abt1)+aba2*exp(-x/abt2)+aba3*exp(-x/abt3)+aba4*exp(-x/abt4)+abs(1-aba1-aba2-aba3-aba4)*exp(-x/abt5)))
   initial:
@@ -503,7 +503,7 @@ Simple 2D diffusion & 1x relaxation:
     aba4: 0.1
     abt4: 0.001
     abt5: 1
-  description: for crosscorrelation curves
+  description: Mixed 2D-membrane plus 3D-Gaussian diffusion with one bunching term and a five-component anti-correlation (reaction/exchange) term; for cross-correlation curves
 
 # --- PAM-derived FCS models (ported from junk/PAM/Models/fcs, A/B-verified). x in s. ---
 3D diffusion (D, triplet):
