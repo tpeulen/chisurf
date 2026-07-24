@@ -198,10 +198,22 @@ natively falls through to the backend's raw library — flagged**:
 
 - **Module level** — `chisurf.gui.chiplot.__getattr__` resolves unknown names
   (`mkPen`, `PlotWidget`, `LinearRegionItem`, …) from `Backend.raw_module()`
-  (pyqtgraph). A migration can therefore be as small as
-  `import pyqtgraph as pg` → `import chisurf.gui.chiplot as pg` and still run.
-- **Instance level** — a native `Plot` proxies unknown attributes
-  (`getViewBox`, `setLogMode`, …) to its underlying backend plot object.
+  (pyqtgraph).
+- **Instance level** — a native `Plot`/`ImageView`/`Grid` and every handle proxy
+  unknown attribute *reads/calls* (`getViewBox`, `setLogMode`, `.setData`, …) to
+  their underlying backend object.
+
+**Scope — read-passthrough, not total parity.** Passthrough covers *reading or
+calling* anything chiplot lacks natively, which is the vast majority of real
+usage. It does **not** cover: (1) names chiplot itself defines — `colormap`
+(use `cp.get_backend().raw_module().colormap`), `Color`, `ImageView` (so
+`isinstance(x, cp.ImageView)` ≠ `pg.ImageView`); (2) attribute *assignment*
+(`obj.foo = x` hits the wrapper, not the native — `__setattr__` is unforwarded);
+(3) dunder/container protocols (`len`, `[]`, iteration). So a **blind
+`import pyqtgraph as pg` → `import chisurf.gui.chiplot as pg` swap is not
+guaranteed to work** — the migration path is a real port to the chiplot API
+(with `.native` for the rare pyqtgraph-specific case), and passthrough is the
+safety net that keeps a partially-ported file running.
 
 Every fall-through raises a `ChiplotPassthroughWarning` **once per symbol** and
 is recorded; `chiplot.passthrough_gaps()` returns the exact set of pyqtgraph
@@ -288,9 +300,12 @@ screenshot/qtbot verification after each cluster.
   `set_histogram_width`); migrated `experiments/rics` onto it. This unblocks the
   remaining ImageView consumers (`autoform/builtin`, `burst_bva`, microscopy).
 - **Batch 6** — extended the flagged passthrough to **every handle** (not just
-  `Plot`/`ImageView`): a handle proxies unknown attributes to its native
-  pyqtgraph item, giving **full pyqtgraph parity** (any item method chiplot
-  lacks natively still works, flagged). Added `Image.clear()`. Migrated
+  `Plot`/`ImageView`): a handle proxies unknown attribute *reads/calls* to its
+  native pyqtgraph item (any item method chiplot lacks natively still works,
+  flagged). This is **read-passthrough parity, not total parity** — it does not
+  cover attribute *assignment*, dunder/container protocols, or the names chiplot
+  shadows (`colormap`/`Color`/`ImageView`); see the [Passthrough](#passthrough-migration-safety-net)
+  scope. Added `Image.clear()`. Migrated
   `autoform/phasor_section`. Deferred `burst_bva` (custom `GraphicsLayoutWidget`
   + `HistogramLUTItem`, and `pg.colormap.get` collides with chiplot's
   `colormap`).

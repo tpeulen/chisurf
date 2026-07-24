@@ -17,6 +17,21 @@
   (max_pairs cap, empty, unique_only, non-increasing precision decay). Regression:
   headless fret suite = 73 passed, 16 deselected. Concept: [PRD-58](/prds/prd-58.md).
 
+* **PRD-64 — correct the "full parity" overstatement.** An earlier note claimed
+  the passthrough gives *full pyqtgraph parity*; verifying against pyqtgraph
+  showed that is wrong. Passthrough is **read-passthrough parity**: it forwards
+  reads/calls of anything chiplot lacks natively (the common case), but does NOT
+  cover (1) names chiplot shadows — `colormap` (so `cp.colormap.get` fails —
+  use `cp.get_backend().raw_module().colormap`), `Color`, `ImageView`
+  (`isinstance` mismatch); (2) attribute assignment (`__setattr__` unforwarded);
+  (3) dunder/container protocols (`len`/`[]`/iter). So a blind
+  `import pyqtgraph as pg` → `import chisurf.gui.chiplot as pg` swap is not safe;
+  the migration path is a real port to the chiplot API. Corrected the wording in
+  `_passthrough.py` and [PRD-64](/prds/prd-64.md). Verified the already-migrated
+  files avoid all three gap patterns (they use the clean API + explicit
+  `.native`/`raw_module()`), so no migration regressions. Concept:
+  [PRD-64](/prds/prd-64.md).
+
 * **PRD-64 — chiplot rich right-click menu + CSV/image export (parity).** Gave
   every chiplot `Plot` a rich context menu at pyqtgraph parity: on the pyqtgraph
   backend it **keeps** the native viewbox menu (already offers Export →
