@@ -7,6 +7,7 @@ TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
 import tempfile
+import glob
 import numpy as np
 import copy
 
@@ -328,15 +329,14 @@ class FitTests(unittest.TestCase):
             50
         )
 
-        # There is an alternative sampler that directly saves to files
-        _, filename = tempfile.mkstemp(
-            suffix='.er4'
-        )
+        # There is an alternative sampler that directly saves to files. It
+        # creates a timestamped sub-directory holding the chains.
+        target_directory = tempfile.mkdtemp()
         n_runs = 5
         sampling_method = 'emcee'
         chisurf.core.fitting.fit.sample_fit(
             fit=fit,
-            filename=filename,
+            target_directory=target_directory,
             steps=10,
             thin=1,
             n_runs=n_runs,
@@ -344,11 +344,13 @@ class FitTests(unittest.TestCase):
         )
 
         # Every run is a file. Test if all the runs are written out
-        for i_run in range(n_runs):
-            fn = os.path.splitext(filename)[0] + "_" + str(i_run) + '.er4'
-            self.assertTrue(
-                os.path.isfile(fn)
-            )
+        chain_files = glob.glob(
+            os.path.join(target_directory, '*', 'chains', '*.er4')
+        )
+        self.assertEqual(
+            len(chain_files),
+            n_runs
+        )
 
         fit.run()
         r = chisurf.core.fitting.sample.walk_mcmc(
@@ -367,13 +369,18 @@ class FitTests(unittest.TestCase):
         sampling_method = 'mcmc'
         n_runs = 1
         fit.run()
+        mcmc_directory = tempfile.mkdtemp()
         chisurf.core.fitting.fit.sample_fit(
             fit=fit,
-            filename=filename,
+            target_directory=mcmc_directory,
             steps=50,
             thin=1,
             n_runs=n_runs,
             method=sampling_method
+        )
+        self.assertEqual(
+            len(glob.glob(os.path.join(mcmc_directory, '*', 'chains', '*.er4'))),
+            n_runs
         )
 
         fit.run()

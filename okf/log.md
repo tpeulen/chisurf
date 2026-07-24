@@ -2,6 +2,29 @@
 
 ## 2026-07-24
 
+* **Fixed an inverted Metropolis acceptance test in `walk_mcmc` (PRD-50 error
+  surfaces, all models).** Wiring the second error-surface route to PDA surfaced a
+  sign error in `chisurf/core/fitting/sample.py::walk_mcmc`: the acceptance test
+  compared `(-lnp_next + lnp_prev)` against `log(u)`, accepting moves that *lowered*
+  the log-posterior, i.e. sampling `exp(+χ²/2)`. A chain started at the optimum ran
+  away from it (χ²ᵣ 1.0 → 3·10⁶ in 400 steps). Two further defects in the same
+  function: rejected proposals were skipped instead of re-recording the current state
+  (which biases the chain), and `thin` only shrank the output rather than thinning.
+  All three fixed; the sampler now also returns `acceptance_rate`. Separately,
+  `sample_emcee` passed `nsteps=steps` with `thin_by=thin`, but the ensemble sampler
+  counts `nsteps` in *stored* states when thinning — it silently ran `steps*thin`
+  iterations and stored `steps` per walker instead of the documented `steps // thin`;
+  the loop now iterates in stored states. Validated against the analytic posterior
+  `σ²(XᵀX)⁻¹` of a linear model (widths agree to ~5%, new
+  `test/fitting/test_mcmc_posterior.py`) and on PDA, where the MCMC 99% credible
+  interval brackets the true distance and agrees to ~8% with the independent
+  support-plane F-test interval
+  (`test_pda_mcmc_posterior_brackets_truth_and_agrees_with_support_plane`).
+  `walk_mcmc` is the generic sampler, so this repairs MCMC error surfaces for **every**
+  ChiSurf model. Also un-rotted three stale tests that had been masking the sampling
+  path (`sample_fit`'s `filename`→`target_directory` API, the mock model/`save_project`
+  signatures). Concepts: [PRD-50](/prds/prd-50.md), [fitting](/subsystems/fitting.md).
+
 * **PRD-50 — fixed the PDA 1D-residual χ² (+ unblocked SPA error surfaces).**
   Following yesterday's diagnosis, fixed two bugs in
   `common.pda_1d_residuals_from_s1s2`: (1) the model S1S2 histogram (a normalised

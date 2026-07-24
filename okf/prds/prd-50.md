@@ -11,10 +11,13 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histogram of single-molecule bursts to recover inter-dye distance distributions and, in its dynamic form, kinetic exchange between conformational states. The `tttrlib.Pda` C++ engine already computes the histograms, but no ChiSurf model, `view.json`, or plugin wraps it. This PRD adds the model + schema + AutoForm UI + fit integration in staged scope: static (single/multi-Gaussian, Lorentzian) PDA, dynamic/N-state kinetic PDA, Support-Plane/MCMC error surfaces, three-color PDA, and a kinetic consistency check. Dual-color models are already ported to the PRD-38 model/view-spec split with headless coverage; time-binned dynamic PDA, a 3-state variant, and PDA-specific error surfaces remain.
+Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histogram of single-molecule bursts to recover inter-dye distance distributions and, in its dynamic form, kinetic exchange between conformational states. The `tttrlib.Pda` C++ engine already computes the histograms, but no ChiSurf model, `view.json`, or plugin wraps it. This PRD adds the model + schema + AutoForm UI + fit integration in staged scope: static (single/multi-Gaussian, Lorentzian) PDA, dynamic/N-state kinetic PDA, Support-Plane/MCMC error surfaces, three-color PDA, and a kinetic consistency check. Dual-color models are already ported to the PRD-38 model/view-spec split with headless coverage, and both error-surface routes (support-plane and MCMC) are validated against each other; time-binned dynamic PDA and three-color tcPDA remain.
 
 # Status
-Draft / unassigned (STATUS TABLE authoritative). Dual-color static plus a dynamic two-state model done under AutoForm; several follow-ups (GUI light-path hook, time-binned dynamic PDA, 2D residual plot, PDA error surfaces) open.
+Draft / unassigned (STATUS TABLE authoritative). Dual-color static plus a dynamic
+two-state model done under AutoForm; error surfaces work via both support-plane and
+MCMC. Follow-ups (GUI light-path hook, time-binned dynamic PDA, tcPDA, adaptive MCMC
+proposals) open.
 
 Parent: [PRD-49](prd-49.md) (Phase 1, first target). Related: PRD-38
 (model/view-spec split), PRD-40 (declarative editors), PRD-04 (burst pipeline),
@@ -81,6 +84,28 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   `Fit.adaptive_chi2_scan` on the mean and asserts the 99% F-test CI brackets the
   true value (previously the surface was flat and the CI came back `(None, None)`).
 
+- **MCMC error surfaces + Metropolis sign fix (2026-07-24).** With SPA working,
+  wiring MCMC to PDA exposed a sign error in the Metropolis acceptance test of
+  `chisurf/core/fitting/sample.py::walk_mcmc`: it compared
+  `(-lnp_next + lnp_prev)` against `log(u)`, i.e. it accepted moves that *lowered*
+  the log-posterior and so sampled `exp(+chi2/2)`. A chain started at the optimum
+  ran away from it (chi2r 1.0 → 3e6). The same function also skipped rejected
+  proposals instead of re-recording the current state, which biases the chain, and
+  ignored `thin`. All three are fixed, and the sampler now also reports its
+  `acceptance_rate`. Validated two ways: against the analytic posterior
+  `sigma^2 (X'X)^-1` of a linear model (widths agree to ~5%,
+  `test/fitting/test_mcmc_posterior.py`), and on PDA itself
+  (`test_pda_mcmc_posterior_brackets_truth_and_agrees_with_support_plane`), where
+  the 99% credible interval brackets the true distance and its width agrees with
+  the independent support-plane F-test interval to ~8%. Since `walk_mcmc` is the
+  generic sampler, this fixes MCMC error surfaces for **every** ChiSurf model, not
+  only PDA.
+- **`sample_emcee` step accounting (2026-07-24).** The ensemble backend passed
+  `nsteps=steps` together with `thin_by=thin`; the underlying sampler counts
+  `nsteps` in *stored* states when thinning, so it silently ran `steps * thin`
+  iterations and stored `steps` per walker instead of the documented `steps // thin`.
+  The loop now iterates in stored states and reports progress in raw steps.
+
 **Follow-ups (not yet done):**
 - GUI button wiring the live light-path plugin session to a selected PDA model
   (the pure bridge API is done and tested; only the one-click GUI hook remains).
@@ -88,9 +113,10 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   number-of-time-bins scheme) — the current dynamic models use a single
   dimensionless exchange parameter `K_ex`.
 - Three-color tcPDA (later stage).
-- MCMC error surfaces (`sample.walk_mcmc`) specifically wired/validated on PDA
-  parameters — the SPA (support-plane) path now works (see Done); an equivalent
-  MCMC posterior-CI test is still to add.
+- `walk_mcmc` proposal widths are a fixed fraction of the *starting* parameter
+  value, so a well-constrained parameter is proposed far outside its posterior and
+  the acceptance rate collapses (0.7% in the linear-model check). An adaptive or
+  covariance-informed proposal would make the default settings usable.
 
 # Scope (staged)
 
@@ -148,6 +174,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - **Dynamic PDA:** synthetic 2-state exchange at known rate is recovered; static-only
   fit is rejected by F-test (`f_test` plugin).
 - **Error surface:** SPA/MCMC produces a confidence interval bracketing the true value.
+  *(Met — both routes, and they agree on the interval width.)*
 - **UI:** model appears in the add-fit combobox, renders parameter groups and the
   histogram-overlay from `view.json` with no empty groups or crashes (model-editor
   headless checks).

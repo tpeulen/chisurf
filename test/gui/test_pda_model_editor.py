@@ -420,3 +420,49 @@ def test_pda_error_surface_ci_brackets_truth(qapp):
     assert low is not None and high is not None, f"one-sided CI: {cis[0]['crossings']}"
     assert low < high, "degenerate confidence interval"
     assert low < true_mean < high, f"99% CI [{low:.2f}, {high:.2f}] does not bracket {true_mean}"
+
+
+def test_pda_mcmc_posterior_brackets_truth_and_agrees_with_support_plane(qapp):
+    """MCMC sampling of a PDA parameter reproduces the support-plane interval.
+
+    This is the second error-surface route required by PRD-50. It also guards the
+    Metropolis acceptance sign in ``sample.walk_mcmc``: with the sign inverted the
+    chain ran away from the optimum instead of sampling the posterior.
+    """
+    import chisurf.core.fitting.sample
+    from chisurf.core.fitting.support_plane import confidence_intervals_from_scan_result
+
+    true_mean = 52.0
+    fit, m, mean_p = _pda_noisy_truth_fit(true_mean=true_mean, total=1500.0, seed=3)
+    fit.run()
+    chi2r_best = fit.chi2r
+    assert chi2r_best < 3.0
+
+    np.random.seed(0)
+    r = chisurf.core.fitting.sample.walk_mcmc(
+        fit=fit, steps=800, step_size=0.01, temp=1.0, thin=1
+    )
+    assert list(r["parameter_names"]) == [mean_p.name]
+    assert r["acceptance_rate"] > 0.05, "chain is stuck; proposal scale is degenerate"
+
+    chi2r = np.asarray(r["chi2r"], dtype=float)
+    # An inverted acceptance test drives the chain uphill in chi2 without bound.
+    assert np.median(chi2r) < 3.0 * chi2r_best
+
+    samples = np.asarray(r["parameter_values"], dtype=float)[:, 0]
+    samples = samples[len(samples) // 5:]  # discard burn-in
+    assert samples.mean() == pytest.approx(true_mean, abs=2.0)
+
+    mcmc_low, mcmc_high = np.percentile(samples, [0.5, 99.5])
+    assert mcmc_low < true_mean < mcmc_high, (
+        f"99% credible interval [{mcmc_low:.2f}, {mcmc_high:.2f}] misses {true_mean}"
+    )
+
+    # The two independent error-surface routes must agree on the width.
+    mean_p.value = true_mean
+    fit.run()
+    result = fit.adaptive_chi2_scan(mean_p.name, p_value=0.99)
+    spa_low, spa_high = confidence_intervals_from_scan_result(
+        result, p_values=(0.99,)
+    )[0]["crossings"]
+    assert (mcmc_high - mcmc_low) == pytest.approx(spa_high - spa_low, rel=0.5)

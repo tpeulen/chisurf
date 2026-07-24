@@ -176,6 +176,22 @@ makes a real component look negligible.
 Per-parameter `error_estimate` records whether it came from `cov` or the
 support plane (`sp`).
 
+`walk_mcmc` records the state of the chain every `thin` steps *including on
+rejected proposals* — repeating the current state is what makes the samples
+follow the posterior rather than an acceptance-filtered caricature of it — and
+returns an `acceptance_rate` alongside the chain. Proposal widths are a fixed
+fraction (`step_size`) of each parameter's starting value, so a tightly
+constrained parameter can be proposed far outside its posterior and accept
+rarely; the sampler is correct there but inefficient. `sample_emcee` takes
+`steps` as steps *per walker* and returns `steps // thin` states per walker
+(the underlying ensemble sampler counts its own `nsteps` in stored states once
+thinning is on, so the loop iterates in stored states).
+
+Both routes are cross-validated headlessly: `test/fitting/test_mcmc_posterior.py`
+checks the sampled width against the analytic posterior `σ²(XᵀX)⁻¹` of a linear
+model, and the PDA suite checks that the MCMC credible interval and the
+support-plane F-test interval agree.
+
 # Exposure
 
 - Active fits live in the `chisurf.fits` list (indexed via `find_fit_idx`) — a

@@ -1,8 +1,7 @@
-"""
-
-"""
+"""Parameter-space sampling backends (Metropolis and ensemble MCMC)."""
 from __future__ import annotations
-from typing import Dict
+
+import typing
 
 import numpy as np
 
@@ -19,69 +18,114 @@ def walk_mcmc(
         chi2max: float = np.inf,
         callback: typing.Callable = None,
         check_cancel: typing.Callable = None
-) -> Dict:
-    """
+) -> dict:
+    """Sample the free parameters of a fit with a Metropolis random walk.
 
-    :param fit:
-    :param steps:
-    :param step_size:
-    :param chi2max:
-    :param temp:
-    :param thin:
-    :return:
+    The chain targets the posterior ``exp(lnprob / temp)``, where
+    :func:`chisurf.core.fitting.fit.lnprob` returns the log-posterior
+    (``-chi2/2`` plus a flat prior inside ``bounds``). Proposals are Gaussian
+    with a per-parameter width of ``step_size`` relative to the parameter's
+    starting value.
+
+    Parameters
+    ----------
+    fit : chisurf.core.fitting.fit.Fit
+        Fit whose free parameters are sampled.
+    steps : int
+        Number of Markov-chain steps to take. ``steps // thin`` states are
+        returned.
+    step_size : float
+        Relative width of the Gaussian proposal distribution.
+    temp : float, optional
+        Sampling temperature. Values above one flatten the posterior.
+    thin : int, optional
+        Record the chain state only every ``thin`` steps.
+    chi2max : float, optional
+        Hard cutoff on chi²; proposals above it are always rejected.
+    callback : callable, optional
+        Called as ``callback(n_recorded, n_samples)`` after each recorded state.
+    check_cancel : callable, optional
+        Polled once per step; sampling stops early when it returns ``True``.
+
+    Returns
+    -------
+    dict
+        ``chi2r``, ``parameter_values`` and ``parameter_names`` of the chain.
+
+    Notes
+    -----
+    Rejected proposals re-record the *current* state rather than being skipped,
+    as required for the chain to converge to the target distribution.
     """
     dim = fit.model.n_free
-    state_initial = fit.model.parameter_values
-    n_samples = steps // thin
+    state_initial = np.asarray(fit.model.parameter_values, dtype=np.float64)
+    thin = max(1, int(thin))
+    n_samples = max(1, int(steps) // thin)
     # initialize arrays
     lnp = np.empty(n_samples)
     parameter = np.empty((n_samples, dim))
+    n_recorded = 0
     n_accepted = 0
     state_prev = np.copy(state_initial)
     bounds = fit.model.parameter_bounds
 
-    lnp_prev = np.array(
+    # Proposal width is relative to the starting value; parameters that start
+    # at (numerically) zero would never move, so fall back to an absolute step.
+    proposal_scale = np.abs(state_initial) * step_size
+    proposal_scale[proposal_scale < 1e-15] = step_size
+
+    lnp_prev = float(
         cs.core.fitting.fit.lnprob(
-            parameter_values=state_initial,
+            parameter_values=state_prev,
             fit=fit,
             chi2max=chi2max,
             bounds=bounds
         )
     )
 
-    while n_accepted < n_samples:
+    n_steps = n_samples * thin
+    for i_step in range(1, n_steps + 1):
 
-        state_next = state_prev + np.random.normal(0.0, step_size, dim) * state_initial
-        lnp_next = cs.core.fitting.fit.lnprob(
-            parameter_values=state_next,
-            fit=fit,
-            chi2max=chi2max,
-            bounds=bounds
+        state_next = state_prev + np.random.normal(0.0, 1.0, dim) * proposal_scale
+        lnp_next = float(
+            cs.core.fitting.fit.lnprob(
+                parameter_values=state_next,
+                fit=fit,
+                chi2max=chi2max,
+                bounds=bounds
+            )
         )
 
-        if not np.isfinite(lnp_next):
-            continue
-
-        if (-lnp_next + lnp_prev) / temp > np.log(np.random.rand()):
-            # save results
-            parameter[n_accepted] = state_next
-            lnp[n_accepted] = lnp_next
-            # switch previous and next
+        # Metropolis acceptance: moves towards a higher posterior (a lower
+        # chi2) are always taken, downhill moves only with probability
+        # exp((lnp_next - lnp_prev) / temp).
+        if np.isfinite(lnp_next) and (lnp_next - lnp_prev) / temp > np.log(np.random.rand()):
             np.copyto(state_prev, state_next)
-            np.copyto(lnp_prev, lnp_next)
+            lnp_prev = lnp_next
             n_accepted += 1
+
+        # Record the state of the chain -- on rejection this repeats the
+        # previous state, which is what keeps the samples distributed
+        # according to the posterior.
+        if i_step % thin == 0:
+            parameter[n_recorded] = state_prev
+            lnp[n_recorded] = lnp_prev
+            n_recorded += 1
             if callback:
-                callback(n_accepted, n_samples)
-        
+                callback(n_recorded, n_samples)
+
         if check_cancel and check_cancel():
             break
 
+    parameter = parameter[:n_recorded]
+    lnp = lnp[:n_recorded]
     chi2 = -2. * lnp / float(fit.model.n_points - fit.model.n_free - 1.0)
 
     return {
         'chi2r': chi2,
         'parameter_values': parameter,
-        'parameter_names': fit.model.parameter_names
+        'parameter_names': fit.model.parameter_names,
+        'acceptance_rate': n_accepted / float(max(1, i_step))
     }
 
 
@@ -96,8 +140,8 @@ def sample_emcee(
         substeps: int = None,
         callback: typing.Callable = None,
         check_cancel: typing.Callable = None
-) -> Dict:
-    """Sample the parameter space by emcee using a number of 'walkers'
+) -> dict:
+    """Sample the parameter space by emcee using a number of 'walkers'.
 
     :param fit: the fit to be samples
     :param steps: the number of steps of each walker
@@ -106,6 +150,13 @@ def sample_emcee(
     :param chi2max: maximum allowed chi2
     :param std: the standard deviation of the parameters used to randomize the initial set of the walkers
     :return: a list containing the chi2 and the parameter values
+
+    Notes
+    -----
+    ``steps`` counts the steps actually taken by each walker, so
+    ``steps // thin`` states per walker are returned. Note that the underlying
+    ensemble sampler counts ``nsteps`` in *stored* states when it thins, hence
+    the loop below iterates in stored states rather than in raw steps.
     """
     # Imported lazily so that a missing ``emcee`` only disables ensemble
     # sampling rather than breaking the whole fitting stack (and, transitively,
@@ -156,7 +207,7 @@ def sample_emcee(
     previous_state = []
     for _ in range(nwalkers):
         p = p0 + std_vec * np.random.randn(ndim)
-        # Ensure initial state stays within user-provided bounds. 
+        # Ensure initial state stays within user-provided bounds.
         # Clip lb if lb > -inf and ub if ub < inf.
         for j in range(ndim):
             lb, ub = bounds[j]
@@ -166,17 +217,25 @@ def sample_emcee(
                 p[j] = min(p[j], ub)
         previous_state.append(p)
 
-    current_step = 0
-    while current_step < steps:
-        n_to_run = min(substeps, steps - current_step)
+    # ``run_mcmc`` counts ``nsteps`` in stored states when ``thin_by`` is used,
+    # so the loop below is driven in stored states and only the progress
+    # reporting is converted back to raw steps.
+    thin = max(1, int(thin))
+    n_stored = max(1, int(steps) // thin)
+    stored_per_chunk = max(1, int(substeps) // thin)
+
+    current_stored = 0
+    while current_stored < n_stored:
+        n_to_run = min(stored_per_chunk, n_stored - current_stored)
         previous_state = sampler.run_mcmc(
             previous_state,
             nsteps=n_to_run,
             thin_by=thin,
             skip_initial_state_check=True
         )
-        current_step += n_to_run
-        
+        current_stored += n_to_run
+        current_step = current_stored * thin
+
         if progress_bar is not None:
             try:
                 progress_bar.setValue(current_step)
@@ -188,7 +247,7 @@ def sample_emcee(
                 callback(current_step, steps, sampler=sampler)
             except Exception:
                 pass
-        
+
         if check_cancel and check_cancel():
             break
 

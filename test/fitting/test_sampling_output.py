@@ -2,6 +2,7 @@
 import os
 import shutil
 import json
+import pathlib
 import time
 import pytest
 import numpy as np
@@ -26,8 +27,12 @@ def test_sampling_directory_structure(tmp_path):
             self.n_free = 2
             self.__class__.__name__ = "MockModel"
             self.meta_data = {}
+            self._y = np.zeros(self.n_points)
         def update(self):
             pass
+        def __getitem__(self, key):
+            # ``sample_fit`` only accepts curve-based models.
+            return self._y[key]
             
     class MockFit:
         def __init__(self):
@@ -41,7 +46,11 @@ def test_sampling_directory_structure(tmp_path):
     # 2. Mock chisurf.macros.core_fit.save_project to avoid actual saving
     import chisurf.macros.core_fit
     original_save = chisurf.macros.core_fit.save_project
-    chisurf.macros.core_fit.save_project = lambda target_path: os.makedirs(target_path, exist_ok=True)
+    def mock_save_project(target_path, project_name="project", **kwargs):
+        """Stand in for the real project save, which writes ``<target>/<name>``."""
+        os.makedirs(os.path.join(target_path, project_name), exist_ok=True)
+
+    chisurf.macros.core_fit.save_project = mock_save_project
     
     # 3. Mock the sampling backends to do nothing but return dummy results
     import chisurf.core.fitting.sample
@@ -60,12 +69,12 @@ def test_sampling_directory_structure(tmp_path):
         # Run sample_fit with n_runs=1
         fit_module.sample_fit(fit, output_base, method='emcee', n_runs=1, steps=10)
         
-        # 4. Verify directory structure
-        # Find the timestamped directory
-        dirs = [d for d in os.listdir(tmp_path) if os.path.isdir(tmp_path / d)]
+        # 4. Verify directory structure. ``sample_fit`` creates a timestamped
+        # sub-directory *inside* the target directory.
+        dirs = [d for d in os.listdir(output_base) if os.path.isdir(os.path.join(output_base, d))]
         assert len(dirs) == 1, f"Expected 1 timestamped directory, found {dirs}"
-        
-        sampling_dir = tmp_path / dirs[0]
+
+        sampling_dir = pathlib.Path(output_base) / dirs[0]
         assert (sampling_dir / "project").is_dir()
         assert (sampling_dir / "parameters.json").is_file()
         assert (sampling_dir / "chains").is_dir()
