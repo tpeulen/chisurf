@@ -2,6 +2,74 @@
 
 ## 2026-07-24
 
+* **ChiMOL cartoon + `ray` + view tuple brought to PyMOL parity on 148L —
+  [ChiMOL profile](/plugins/profiles/chimol.md).** Ground truth came from the
+  installed PyMOL itself: its cartoon was exported as OBJ under an identity view
+  (so the vertices land in PDB Ångström), rendered back through *chimol's own*
+  raytracer with the same camera, and compared numerically. Symmetric mean
+  surface distance between the two cartoon meshes went **0.50 Å → 0.45 Å**, and
+  the per-element cross-sections now agree: helix half-breadth 1.44 vs 1.37 Å and
+  half-thickness 0.30 vs 0.29 Å, loop 0.53/0.25 vs 0.67/0.23 Å. Seven distinct
+  defects, each measured rather than guessed:
+  - **Ribbon cross-sections were rotated 90° about their own path.**
+    `_extrude_shape` maps a profile's y to `side` and z to `up`, but
+    `_make_oval_shape`/`_make_rectangle_shape` put the *broad* extent on z. Every
+    helix was therefore extruded with its 2.7 Å face pointing radially instead of
+    along the helix axis: measured radial spread 0.75–4.23 Å against PyMOL's
+    1.47–2.90 Å.
+  - **The anti-twist sign propagation flipped every helix residue.** Inside an α
+    helix the ribbon normal is radial and genuinely turns ~100°/residue, so
+    consecutive normals have dot ≈ −0.17 and a plain `dot < 0 → negate` rule fired
+    on all of them. Now only near-antiparallel pairs are corrected.
+  - **Orientations were Catmull-Rom interpolated.** A cubic through four unit
+    vectors 100° apart overshoots and can nearly cancel; replaced with
+    `_sample_orientations` (slerp along the shortest arc).
+  - **The helix-axis estimate used a clamped `ca[i±2]` chord**, which still
+    carries a large radial component and degrades at run ends (40–60° error).
+    Replaced by the exact local bisector, with run ends *extrapolated* by the
+    run's own twist rather than copied.
+  - **No round-helix pass on the path.** PyMOL's `cartoon_round_helices` (on by
+    default) is not only about orientation: measured on 148L its centerline stays
+    at radius 2.17 Å midway between residues whose CAs are at 2.23 Å, and drops to
+    1.88 Å with the setting off. chimol's spline sagged to 1.06 Å, pinching every
+    turn. `_round_helix_path` now interpolates on the actual helical arc.
+  - **No flat-sheet pass on the path.** `cartoon_flat_sheets` moves PyMOL's strand
+    ribbon 1.3 Å off the pleated CAs (0.4 Å with it off); chimol splined the raw
+    ±1.9 Å pleat, so strands had to writhe. `_flatten_sheet_path` de-pleats them.
+  - **Arrowheads never came to a point.** The profile widened to 1.5× at the
+    arrow *base* and tapered back to 1.0× at the tip, scaling thickness too.
+    PyMOL's measured profile is body ~1.0 Å → base ~2.2 Å → tip ~0.3 Å, so the
+    extruder now takes an anisotropic `(side, up)` scale and the arrow spans
+    `arrow_sampling` **residues** rather than that many spline samples.
+* **`_sample_path` dropped every interior control point.** It skipped `j == 0`
+  for each segment after the first as a "duplicate knot", but a segment covers
+  `t ∈ [0, 1)` and so never emits its end point — the skip deleted the knots
+  instead. The cartoon ran ~0.3 Å off the CA trace (PyMOL: ~0.1 Å) and the
+  residue→sample mapping the SS block boundaries rely on was only approximate;
+  it is now exact (`residue i → sample i * subdivisions`). The vectorisation
+  parity test had frozen the bug into its reference loop, so that was corrected
+  too.
+* **Secondary structure is tidied before it is drawn
+  ([ss.py](/plugins/profiles/chimol.md)).** The raw H-bond assignment gave 148L
+  seven strand fragments, three of them single residues, where PyMOL's `dss`
+  gives three strands; the cartoon drew detached slivers with no room for an
+  arrowhead. `tidy_ss_runs` bridges one-residue gaps **in strands only** (a
+  one-residue break between two helices is a real kink — PyMOL keeps 93-106 and
+  108-113 apart) and drops runs below a per-type minimum. Agreement with `dss`
+  is 88%, with 3 strand runs and 10 helix runs on both sides.
+* **The view tuple is now genuinely interchangeable with PyMOL — new
+  [`renderer/view_state.py`](/plugins/profiles/chimol.md).** PyMOL's `get_view`
+  keeps the camera basis in the matrix **columns**; chimol read it as rows, which
+  is the inverse rotation and renders the molecule **mirrored**. Proved with a
+  marker scene (+X red, +Y green, +Z blue) rendered under the same lopsided view
+  in both programs. One Qt-free module now owns pack/unpack for the GL widget,
+  the raytracer and `get_view`/`set_view`; it emits PyMOL's exact 18-float layout
+  (including `(0, 0, -distance)` and the orthoscopic sign on the field of view)
+  and still accepts chimol's older row-major and elevation/azimuth tuples, which
+  are unambiguous by their slot 9/11 pattern. `ray` also honours the tuple's
+  field of view instead of assuming 45°.
+
+
 * **French shipped as a second locale — [PRD-63](/prds/prd-63.md),
   [i18n subsystem](/subsystems/i18n.md).** Generalisation proof for the
   translation kit: `chisurf_fr.ts` was derived from the context-complete `de.ts`

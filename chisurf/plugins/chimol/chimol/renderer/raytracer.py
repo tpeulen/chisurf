@@ -6,6 +6,8 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
+from .view_state import unpack_view_state
+
 try:
     import numba as _nb
     _HAVE_NUMBA = True
@@ -34,32 +36,24 @@ _FOV_DEG_DEFAULT = 45.0
 
 
 def _camera_from_view_state(view: List[float]) -> RayCamera:
-    vals = [float(v) for v in view]
-    distance = max(abs(vals[9]), 1.0)
-    target = np.array(vals[12:15], dtype=float)
-    far_clip = vals[16] if len(vals) > 16 else 200.0
+    """Build a ray camera from an 18-float view tuple.
 
-    # Slots 0-8 hold the world->camera rotation (PyMOL/trackball). Legacy tuples
-    # store identity there and elevation/azimuth in slots 10/11.
-    rot = np.array(vals[0:9], dtype=float).reshape(3, 3)
-    if np.allclose(rot, np.eye(3), atol=1e-6) and (
-        abs(vals[10]) > 1e-9 or abs(vals[11]) > 1e-9
-    ):
-        el = math.radians(vals[10])
-        az = math.radians(vals[11])
-        ce, se = math.cos(el), math.sin(el)
-        ca, sa = math.cos(az), math.sin(az)
-        rx = np.array([[1.0, 0.0, 0.0], [0.0, ce, -se], [0.0, se, ce]])
-        rz = np.array([[ca, -sa, 0.0], [sa, ca, 0.0], [0.0, 0.0, 1.0]])
-        rot = rx @ rz
+    The tuple layout (and the several historical variants that are still
+    accepted) lives in :mod:`.view_state`, so the offscreen raytrace and the
+    interactive GL widget cannot drift apart.
+    """
+    state = unpack_view_state(view)
+    rot = state.rotation
 
-    # Camera axes in world = rows of the rotation; camera sits along +Z (row 2).
-    cam_up = rot[1]
-    forward = -rot[2]
-    origin = target + distance * rot[2]
-
-    return RayCamera(origin=origin, forward=forward, up=cam_up,
-                     fov_degrees=_FOV_DEG_DEFAULT, far_clip=far_clip)
+    # Rows of the world->camera rotation are the camera axes in world space;
+    # the camera sits `distance` along its own +Z (row 2) from the target.
+    return RayCamera(
+        origin=state.target + max(state.distance, 1.0) * rot[2],
+        forward=-rot[2],
+        up=rot[1],
+        fov_degrees=state.fov,
+        far_clip=state.far,
+    )
 
 
 # ------------------------------------------------------------------ #

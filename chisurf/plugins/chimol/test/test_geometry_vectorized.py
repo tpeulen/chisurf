@@ -143,8 +143,10 @@ def _ref_sample(coords, colors, subdivisions=5, tension=0.0):
             c1, c2 = col_arr[i], col_arr[i + 1]
             c3 = col_arr[i + 2] if (i + 2) < n else col_arr[i + 1]
         for j in range(subdivs):
-            if i > 0 and j == 0:
-                continue
+            # Every segment emits its own t = 0 knot. Skipping it for i > 0
+            # (as this reference and the implementation both used to) drops
+            # every interior control point, so the path no longer runs through
+            # the CA positions.
             t = float(j) / float(subdivs)
             out_pos.append(_catmull_rom(p0, p1, p2, p3, t, tension=tension))
             if out_col is not None and col_arr is not None:

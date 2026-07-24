@@ -47,6 +47,18 @@ CONST_F = 332.0
 DEFAULT_CUTOFF = -0.5
 DEFAULT_MARGIN = 1.0
 
+# Cartoon-cleanup thresholds. A raw per-residue H-bond assignment is fine for
+# analysis but not for drawing: it leaves one-residue gaps inside a strand and
+# isolated single-residue elements, which the cartoon renders as detached
+# fragments with no arrowheads. PyMOL's ``dss`` emits contiguous elements, so
+# the same tidy-up is applied here before the codes reach the renderer.
+# Strands lose single bridges readily, so one missing residue inside a strand is
+# noise worth closing. Helices are hydrogen-bond dense: a one-residue break
+# between two helical runs is a real kink (PyMOL keeps 93-106 and 108-113 apart
+# in 148L), so bridging them would fuse two helices into one long ribbon.
+SS_MAX_GAP = {"H": 0, "E": 1}
+SS_MIN_LENGTH = {"H": 4, "E": 2}
+
 
 def _build_backbone_from_atoms(atoms: np.ndarray) -> Optional[np.ndarray]:
     """Return backbone coordinates array of shape (N, 4, 3) or ``None``.
@@ -546,6 +558,80 @@ def _assign_c3_from_hbond(E: np.ndarray, energy_threshold: float = -0.5) -> List
     return ss.tolist()
 
 
+def tidy_ss_runs(
+    codes: List[str],
+    max_gap: Optional[dict] = None,
+    min_length: Optional[dict] = None,
+) -> List[str]:
+    """Make raw per-residue SS codes contiguous enough to draw as a cartoon.
+
+    Two passes, in this order:
+
+    1. **Bridge short gaps** — a run of at most ``max_gap`` coil residues
+       flanked by the same SS type on both sides is absorbed into it, so a
+       single missing H-bond does not split one strand into two.
+    2. **Drop stubs** — any remaining run shorter than ``min_length`` for its
+       type becomes coil.
+
+    Without this, a hydrogen-bond assignment of 148L yields seven strand
+    fragments (including three single-residue ones) where PyMOL's ``dss``
+    yields three strands; the cartoon then shows detached slivers instead of
+    arrows, because an arrowhead needs a run long enough to taper.
+
+    Parameters
+    ----------
+    codes : list of str
+        Per-residue C3 codes, each ``"H"``, ``"E"`` or ``"C"``.
+    max_gap : dict, optional
+        Longest coil run that may be absorbed between two like elements, per SS
+        type; defaults to :data:`SS_MAX_GAP`.
+    min_length : dict, optional
+        Minimum run length per SS type; defaults to :data:`SS_MIN_LENGTH`.
+
+    Returns
+    -------
+    list of str
+        Cleaned per-residue codes, same length as ``codes``.
+    """
+    if not codes:
+        return codes
+    limits = SS_MIN_LENGTH if min_length is None else min_length
+    gaps = SS_MAX_GAP if max_gap is None else max_gap
+    out = list(codes)
+
+    def _runs(seq):
+        spans = []
+        start = 0
+        for i in range(1, len(seq) + 1):
+            if i == len(seq) or seq[i] != seq[start]:
+                spans.append((seq[start], start, i))
+                start = i
+        return spans
+
+    spans = _runs(out)
+    # Decide every bridge against the original run layout, then apply, so
+    # filling one gap cannot renumber the runs still being examined.
+    fills = [
+        (lo, hi, spans[k - 1][0])
+        for k, (kind, lo, hi) in enumerate(spans)
+        if kind == "C"
+        and 0 < k < len(spans) - 1
+        and spans[k - 1][0] == spans[k + 1][0] != "C"
+        and hi - lo <= int(gaps.get(spans[k - 1][0], 0))
+    ]
+    for lo, hi, kind in fills:
+        for i in range(lo, hi):
+            out[i] = kind
+
+    for kind, lo, hi in _runs(out):
+        if kind == "C":
+            continue
+        if hi - lo < int(limits.get(kind, 1)):
+            for i in range(lo, hi):
+                out[i] = "C"
+    return out
+
+
 def assign_ss_c3_from_atoms(
     atoms: np.ndarray,
     n_res: int,
@@ -589,7 +675,7 @@ def assign_ss_c3_from_atoms(
     ss_arr[helix] = "H"
     ss_arr[strand & ~helix] = "E"
 
-    ss_codes = ss_arr.tolist()
+    ss_codes = tidy_ss_runs(ss_arr.tolist())
 
     # Align with n_res
     if len(ss_codes) < n_res:

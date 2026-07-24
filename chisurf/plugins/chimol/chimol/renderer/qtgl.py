@@ -15,6 +15,12 @@ except Exception:  # pragma: no cover - handled at runtime
 from ..config import _DISPLAY_CONFIG
 from .base import Renderer
 from .scene import Geometry, Material, Scene, SceneObject
+from .view_state import pack_view_state, unpack_view_state
+
+# Vertical field of view of the GL camera, in degrees. Shared by the projection
+# matrix and the serialised view tuple so an offscreen raytrace of a saved view
+# frames the scene exactly like the interactive widget does.
+_GL_FOV_DEGREES = 45.0
 
 
 # Minimal set of OpenGL enum values used by this renderer. These are
@@ -486,54 +492,36 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             return
         self.update()
 
-    def get_view_state(self) -> list[float]:
-        """Return an 18-float view tuple for PyMOL-style round-tripping."""
-
-        center = np.zeros(3, dtype=float)
+    def _scene_center(self) -> np.ndarray:
+        """Return the current scene center, or the origin when there is none."""
         if self._scene is not None:
             try:
-                center = np.asarray(self._scene.center, dtype=float)
+                return np.asarray(self._scene.center, dtype=float)
             except Exception:
-                center = np.zeros(3, dtype=float)
-        target = center + self._pan_offset
-        r = self._rot
-        # Slots 0-8 hold the world->camera rotation matrix (PyMOL's convention);
-        # slots 10-11 (the old elevation/azimuth) are left 0 and only read back for
-        # legacy tuples that predate the trackball.
-        return [
-            float(r[0, 0]), float(r[0, 1]), float(r[0, 2]),
-            float(r[1, 0]), float(r[1, 1]), float(r[1, 2]),
-            float(r[2, 0]), float(r[2, 1]), float(r[2, 2]),
-            float(self._distance), 0.0, 0.0,
-            float(target[0]), float(target[1]), float(target[2]),
-            float(self._near_clip), float(self._far_clip), 45.0,
-        ]
+                pass
+        return np.zeros(3, dtype=float)
+
+    def get_view_state(self) -> list[float]:
+        """Return the camera as an 18-float tuple in PyMOL's ``get_view`` layout."""
+
+        return pack_view_state(
+            self._rot,
+            self._distance,
+            self._scene_center() + self._pan_offset,
+            self._near_clip,
+            self._far_clip,
+            _GL_FOV_DEGREES,
+        )
 
     def set_view_state(self, view) -> None:
-        """Restore an 18-float view tuple produced by ``get_view_state``."""
+        """Restore an 18-float view tuple; see :mod:`.view_state` for layouts."""
 
-        vals = [float(v) for v in view]
-        if len(vals) != 18:
-            raise ValueError("view must contain 18 floats")
-        self._distance = max(vals[9], 0.1)
-        rot = np.array(vals[0:9], dtype=float).reshape(3, 3)
-        if not np.allclose(rot, np.eye(3), atol=1e-6) or (
-            abs(vals[10]) < 1e-9 and abs(vals[11]) < 1e-9
-        ):
-            self._rot = rot
-        else:
-            # Legacy tuple: identity matrix + elevation/azimuth in slots 10/11.
-            self._rot = self._make_rot(vals[10], vals[11])
-        target = np.array(vals[12:15], dtype=float)
-        center = np.zeros(3, dtype=float)
-        if self._scene is not None:
-            try:
-                center = np.asarray(self._scene.center, dtype=float)
-            except Exception:
-                center = np.zeros(3, dtype=float)
-        self._pan_offset = target - center
-        self._near_clip = self._clamp_near_clip(vals[15])
-        self._far_clip = max(vals[16], self._near_clip * 10.0)
+        state = unpack_view_state(view)
+        self._distance = max(state.distance, 0.1)
+        self._rot = state.rotation
+        self._pan_offset = state.target - self._scene_center()
+        self._near_clip = self._clamp_near_clip(state.near)
+        self._far_clip = max(state.far, self._near_clip * 10.0)
         self._update_center_opt()
         self.update()
 
@@ -937,7 +925,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         height = max(self.height(), 1)
         aspect = width / float(height)
         proj = QtGui.QMatrix4x4()
-        proj.perspective(45.0, aspect, self._near_clip, self._far_clip)
+        proj.perspective(_GL_FOV_DEGREES, aspect, self._near_clip, self._far_clip)
 
         view = QtGui.QMatrix4x4()
         view.translate(0.0, 0.0, -self._distance)

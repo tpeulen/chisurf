@@ -211,30 +211,138 @@ already accelerates this file, so the cell list stays dependency-clean and exact
 
 # PyMOL parity (cartoon + navigation)
 
-The cartoon and mouse navigation are modelled on PyMOL (source under
-`junk/pymol-open-source`, `layer2/RepCartoon.cpp` + `layer1/SceneMouse.cpp`).
+The cartoon and mouse navigation are modelled on PyMOL. **The reference is a
+real PyMOL install, not the C++ source** — `pymol -qc` can export its own cartoon
+as OBJ, and under an identity view the vertices come out in PDB Ångström, so
+chimol's mesh can be compared to PyMOL's numerically and rendered back through
+chimol's *own* raytracer with the same camera. Any behaviour claim below was
+measured that way on **148L**; re-measure rather than reason about it. The
+working parity number is the **symmetric mean surface distance** between the two
+cartoon meshes (currently ~0.45 Å) plus per-SS cross-section dimensions.
 
-**Cartoon ribbon orientation (`geometry/cartoon.py`).** The per-residue ribbon
-"up" is the **peptide-plane normal** `normalize((N−C)×(N−O))` (PyMOL PASS1), not
-the raw `C−O` carbonyl direction — the latter is noisy and spins around the helix
-axis, which is what made helices render as twisted tape. `_refine_orientations`
-then applies PyMOL's three anti-twist passes before spline sampling: **round
-helices** (`up = normalize(axis×tangent)` from a running CA-difference axis, so
-the oval circles a smooth axis), **flat sheets** (4-cycle 3-point box average of
-orientations across a β-strand), and **refine-normals** (force ⊥ tangent + forward
-sign propagation). Cross-section dims already match PyMOL (oval 0.25×1.35, rect
-0.4×1.4, loop r=0.2). Do not revert the orientation to `C−O`.
+## The extrusion frame convention is load-bearing
+
+`_extrude_shape` maps a cross-section's **y component onto `side`** and its
+**z component onto `up`** (the residue orientation vector). PyMOL's
+`cartoon_oval_width` / `cartoon_rect_width` are the *thickness* along that
+normal and `…_length` the *breadth* across the ribbon, so the broad extent
+belongs on **y**. Swapping the two rotates every ribbon 90° about its own path —
+helices become edge-on twisted tape and strands stand on their side. This was
+the single largest visual defect. Cross-section dims match PyMOL
+(oval 0.25×1.35, rect 0.4×1.4, loop r=0.2).
+
+## Cartoon ribbon orientation (`geometry/cartoon.py`)
+
+The per-residue ribbon "up" starts as the **peptide-plane normal**
+`normalize((N−C)×(N−O))` (PyMOL PASS1), not the raw `C−O` carbonyl direction —
+the latter is noisy and spins around the helix axis. Do not revert it.
+`_refine_orientations` then applies PyMOL's passes:
+
+- **Round helices** — `_helix_radials` sets the normal to the outward radial of
+  the local helix cylinder, taken from the **exact bisector**
+  `−normalize(normalize(ca[i−1]−ca[i]) + normalize(ca[i+1]−ca[i]))`. Do not go
+  back to a chord such as `ca[i+2]−ca[i−2]`: at ~100°/residue that chord still
+  carries a large radial component, and clamping it at run ends put the last turn
+  of every helix 40–60° out. Run ends have no all-helix neighbourhood, so their
+  radial is **extrapolated** by rotating a neighbour's about the run's own axis
+  by its measured twist — copying it verbatim leaves the end ring a full
+  turn-step out of phase.
+- **Flat sheets** — a 4-cycle 3-point box average of orientations across a strand.
+- **Refine normals** — force ⊥ tangent, then propagate the sign. **The sign
+  propagation must skip helices.** Inside an α helix the normal is radial and
+  turns ~100°/residue, so consecutive normals have dot ≈ cos(100°) = −0.17; a
+  plain `dot < 0 → negate` rule flips *every* residue, and the resulting
+  alternating field partly cancels when interpolated. Only near-antiparallel
+  pairs are genuine flips.
+
+Orientations are densified with `_sample_orientations` (**slerp**), never with a
+Catmull-Rom spline: a cubic fitted through four unit vectors ~100° apart
+overshoots the arc and can nearly cancel.
+
+## The path needs two SS-specific corrections, not just the spline
+
+A spline through the CA trace is not what PyMOL draws, and both defaults matter:
+
+- **`cartoon_round_helices`** (PyMOL default on) — measured, PyMOL's ribbon
+  centerline sits at radius **2.17 Å** midway between residues whose CAs are at
+  2.23 Å, dropping to 1.88 Å with the setting off. A Catmull-Rom through
+  100°-spaced points sags to ~0.83 R, so chimol pinched at every turn.
+  `_round_helix_path` replaces those samples with the true helical arc —
+  interpolating the axis point and cylinder radius linearly and slerping the
+  radial — which still passes exactly through every CA, so the joins to the
+  flanking loops stay continuous.
+- **`cartoon_flat_sheets`** (PyMOL default on) — it does **not** only affect
+  orientation. Measured, PyMOL's strand ribbon runs **1.3 Å off** the CAs with
+  the setting on and 0.4 Å off with it off: it de-pleats the backbone.
+  `_flatten_sheet_path` applies the same 4-cycle `(p[i−1] + 2p[i] + p[i+1]) / 4`
+  over strand residues, leaving residues outside the strand fixed so the loop
+  joins do not move. Without it a strand's ±1.9 Å pleat forces the plate to
+  writhe along its length.
+
+## Strand arrowheads
+
+Measured from PyMOL's mesh, a strand's half-breadth goes body ~1.0 Å → arrow
+base ~2.2 Å → tip ~0.3 Å: it flares to about twice the body and comes to a
+point, with the thickness unchanged. `_extrude_shape` therefore accepts an
+anisotropic `(M, 2)` `vert_scale` for the `side` and `up` axes (normals are
+transformed by the reciprocal, the inverse transpose). `arrow_sampling` is in
+**residues** and must be multiplied by the subdivision count before being cut off
+the sampled path — treating it as a sample count makes the arrow a fraction of
+one residue long and invisible.
+
+## `_sample_path` emits every knot
+
+Each segment covers `t ∈ [0, 1)` and so never emits its own end point. Skipping
+`j == 0` for segments after the first (as it once did, ostensibly to drop a
+duplicate knot) therefore deletes **every interior control point**: the cartoon
+drifted ~0.3 Å off the CA trace, against PyMOL's ~0.1 Å. Keeping the knots also
+makes the residue→sample mapping exact (`residue i → sample i * subdivisions`),
+which the SS block boundaries and the round-helix pass depend on. The
+vectorisation parity test in `test_geometry_vectorized.py` had frozen the bug
+into its reference loop — when changing sampler behaviour, check that the
+reference is not simply enshrining the old bug.
+
+## Secondary structure is tidied before it is drawn
+
+`analysis/ss.py` assigns per-residue codes from a PyDSSP-style H-bond map, which
+is fine for analysis but leaves one-residue gaps and isolated singletons: 148L
+came out as **seven** strand fragments where PyMOL's `dss` gives three, so the
+cartoon drew detached slivers with no room for an arrowhead. `tidy_ss_runs`
+bridges short gaps and drops sub-minimum runs, with **per-type gap limits**:
+strands lose bridges readily and are worth closing, but a one-residue break
+between two helices is a real kink (PyMOL keeps 93-106 and 108-113 apart), so
+helices are never bridged. Agreement with `dss` on 148L is 88%, with matching
+run counts.
+
+## The view tuple is PyMOL's, and its transpose is a mirror
+
+`renderer/view_state.py` is the single Qt-free owner of the 18-float camera
+tuple, shared by the GL widget, the raytracer and `get_view`/`set_view`. It emits
+**PyMOL's exact layout** so views can be copied between the two programs.
+
+**PyMOL keeps the camera basis in the matrix _columns_.** chimol works internally
+with a world→camera rotation whose *rows* are the camera axes, i.e. the
+transpose. Reading PyMOL's nine floats straight into a row-major 3×3 and using
+its rows gives the inverse rotation, which renders the molecule **mirrored** —
+this silently produced left-right flipped output. Verify with an asymmetric
+marker scene (+X red, +Y green, +Z blue) under a lopsided rotation, not with an
+identity view, which cannot tell the two readings apart. The rest of the layout
+matters too: slots 9-11 are the camera position in camera space `(0, 0, −distance)`
+(chimol's older tuples put a positive distance in slot 9, which is what makes the
+two unambiguous on input), and slot 17 is the field of view with a negative sign
+meaning orthoscopic. `ray` honours that field of view rather than assuming 45°.
 
 **Navigation (`renderer/qtgl.py`).** The camera orientation is a **3×3
 world→camera rotation matrix** (a virtual trackball), not a turntable. Left-drag
 = trackball (sphere radius `0.45·min(W,H)`, axis `cross(n_prev,n_cur)`,
 `mouse_scale`=1.3, roll-damped `1/(1+|axis.z|)`, left-multiplied + SVD
 re-orthonormalised); middle-drag = pan; right-drag = dolly (right-click still
-opens the menu). Camera right/up/forward are the rotation rows; the 18-float view
-state stores the matrix in slots 0–8 (legacy elevation/azimuth in 10–11 still
-decode), and `raytracer._camera_from_view_state` reads the same so the GL view and
-the offscreen raytrace stay consistent. `reset_view(distance,elevation,azimuth)`
-keeps its signature (builds the matrix internally).
+opens the menu). Camera right/up/forward are the rotation rows; serialisation
+goes through `view_state.pack_view_state` / `unpack_view_state` (above), which
+both `get_view_state` and `raytracer._camera_from_view_state` call, so the GL
+view and the offscreen raytrace cannot drift apart.
+`reset_view(distance,elevation,azimuth)` keeps its signature (builds the matrix
+internally).
 
 # Structure loading (fallback contract)
 

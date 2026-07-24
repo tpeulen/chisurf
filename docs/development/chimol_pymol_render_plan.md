@@ -46,13 +46,22 @@ Upgrade Chimol render quality to match/exceed PyMOL while keeping ChiSurf workin
 - [x] In `view.py:_update_sticks`, replace GL_LINES path with cylinder mesh path using `_build_stick_mesh`
 - [x] Keep lines as a performance fallback for >X bonds
 
-### Milestone 4: Cartoon Quality [LATER]
-**Files changed:** `cartoon.py`, `view.py`
-for that look at pymol code: /Users/tpeulen/dev/pymol-open-source
+### Milestone 4: Cartoon Quality [DONE]
+**Files changed:** `cartoon.py`, `analysis/ss.py`
 
-- [ ] Split cartoon builder into sampler → profile → extruder stages (like PyMOL's `RepCartoon`)
-- [ ] Add proper arrow heads for beta strands
-- [ ] Improve smooth interpolation at SS transitions
+Ground truth is the installed PyMOL itself — `pymol -qc` exports its cartoon as
+OBJ, and under an identity view those vertices are in PDB Ångström, so the two
+meshes can be compared numerically and rendered through the same raytracer. The
+harness and the measured numbers are written up in the
+[ChiMOL OKF profile](../../okf/plugins/profiles/chimol.md); symmetric mean
+surface distance on 148L is ~0.45 Å.
+
+- [x] Cartoon builder is sampler → profile → extruder (like PyMOL's `RepCartoon`)
+- [x] Beta-strand arrowheads flare to ~2.2× the body and taper to a point
+- [x] Round helices: the path follows the helix cylinder, not a corner-cutting spline
+- [x] Flat sheets: the strand backbone is de-pleated before it is drawn
+- [x] Ribbon cross-sections extrude with the broad axis across the ribbon
+- [x] Secondary-structure runs are tidied so strands are contiguous
 
 ### Milestone 5: Mesh Surface [DONE]
 **Files changed:** `surface.py`, `view.py`

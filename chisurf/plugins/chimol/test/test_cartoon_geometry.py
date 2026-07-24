@@ -9,7 +9,13 @@ import pytest
 
 from chisurf.plugins.chimol.chimol.geometry.cartoon import (
     _generate_cartoon_tube_arrays,
+    _flatten_sheet_path,
+    _helix_radials,
+    _path_parameterisation,
+    _refine_orientations,
+    _round_helix_path,
     _sample_path,
+    _sample_orientations,
     _propagate_ups,
     _build_frames,
     _make_circle_shape,
@@ -19,6 +25,14 @@ from chisurf.plugins.chimol.chimol.geometry.cartoon import (
     _extrude_arrowhead,
     _segment_ss,
 )
+
+
+def ideal_helix(n=14, radius=2.3, rise=1.5, twist_deg=100.0):
+    """CA positions of an ideal alpha helix about the +z axis."""
+    ang = np.radians(twist_deg) * np.arange(n)
+    return np.column_stack([
+        radius * np.cos(ang), radius * np.sin(ang), rise * np.arange(n),
+    ])
 
 
 # -- Fixtures --
@@ -64,13 +78,23 @@ class TestShapeProfiles:
         assert np.allclose(norms, 1.0)
 
     def test_oval_shape(self):
+        # width = thickness along the frame's up axis (shape z);
+        # length = breadth across the ribbon, on the side axis (shape y).
+        # Swapping the two rotates every ribbon 90 degrees about its own path.
         sv, sn = _make_oval_shape(16, 2.0, 3.0)
         assert sv.shape == (16, 3)
         assert sn.shape == (16, 3)
         assert np.allclose(sv[:, 0], 0.0)
-        # Check extents
-        assert np.max(sv[:, 1]) == pytest.approx(2.0, abs=0.01)
-        assert np.max(sv[:, 2]) == pytest.approx(3.0, abs=0.01)
+        assert np.max(sv[:, 1]) == pytest.approx(3.0, abs=0.01)
+        assert np.max(sv[:, 2]) == pytest.approx(2.0, abs=0.01)
+
+    def test_rectangle_is_broader_than_it_is_thick(self):
+        # Same axis contract as the oval: PyMOL's cartoon_rect_length is the
+        # breadth (side axis), cartoon_rect_width the thickness (up axis).
+        sv, _ = _make_rectangle_shape(0.4, 1.4)
+        assert np.max(sv[:, 1]) > np.max(sv[:, 2])
+        assert np.max(sv[:, 1]) == pytest.approx(1.4 * np.cos(np.pi / 4), abs=1e-6)
+        assert np.max(sv[:, 2]) == pytest.approx(0.4 * np.sin(np.pi / 4), abs=1e-6)
 
     def test_oval_normals_are_unit(self):
         _, sn = _make_oval_shape(16, 2.0, 3.0)
@@ -244,3 +268,116 @@ class TestGenerateCartoon:
         verts, norms, faces, cols = result
         assert verts.shape[0] > 0
         assert faces.shape[0] > 0
+
+
+# -- PyMOL-parity behaviours --
+
+class TestRoundHelices:
+    """PyMOL's ``cartoon_round_helices``: the ribbon follows the cylinder."""
+
+    def test_radials_point_outward_from_the_axis(self):
+        ca = ideal_helix()
+        is_helix = np.ones(ca.shape[0], dtype=bool)
+        radial, has_radial = _helix_radials(ca, is_helix)
+        assert has_radial.all(), "every residue of a helix run needs a radial"
+        for i, p in enumerate(ca):
+            expected = np.array([p[0], p[1], 0.0])
+            expected /= np.linalg.norm(expected)
+            assert float(radial[i] @ expected) > 0.99
+
+    def test_path_stays_on_the_cylinder_between_residues(self):
+        # A plain Catmull-Rom through 100-degree-spaced points sags to ~0.83 of
+        # the radius midway between residues; the round-helix pass must not.
+        ca = ideal_helix()
+        is_helix = np.ones(ca.shape[0], dtype=bool)
+        path, _ = _sample_path(ca, None, subdivisions=7)
+        raw = np.linalg.norm(path[:, :2], axis=1)
+        assert raw.min() < 0.9 * 2.3, "expected the raw spline to cut the corner"
+
+        rounded = _round_helix_path(path, ca, is_helix, subdivisions=7)
+        r = np.linalg.norm(rounded[:, :2], axis=1)
+        assert np.allclose(r, 2.3, atol=0.02)
+
+    def test_path_still_passes_through_every_ca(self):
+        ca = ideal_helix()
+        is_helix = np.ones(ca.shape[0], dtype=bool)
+        path, _ = _sample_path(ca, None, subdivisions=7)
+        rounded = _round_helix_path(path, ca, is_helix, subdivisions=7)
+        seg, t = _path_parameterisation(ca.shape[0], 7)
+        for i in range(1, ca.shape[0] - 1):
+            k = int(np.flatnonzero((seg == i) & (t == 0.0))[0])
+            assert np.linalg.norm(rounded[k] - ca[i]) < 1e-6
+
+    def test_leaves_non_helix_residues_alone(self):
+        ca = ideal_helix()
+        is_helix = np.zeros(ca.shape[0], dtype=bool)
+        path, _ = _sample_path(ca, None, subdivisions=7)
+        assert np.array_equal(_round_helix_path(path, ca, is_helix, 7), path)
+
+
+class TestFlatSheets:
+    """PyMOL's ``cartoon_flat_sheets``: the strand path is de-pleated."""
+
+    @staticmethod
+    def pleated_strand(n=6, rise=3.3, pleat=0.9):
+        pts = np.zeros((n, 3))
+        pts[:, 0] = rise * np.arange(n)
+        pts[:, 1] = pleat * (-1.0) ** np.arange(n)
+        return pts
+
+    def test_removes_most_of_the_pleat(self):
+        ca = self.pleated_strand()
+        is_sheet = np.ones(ca.shape[0], dtype=bool)
+        before = np.abs(ca[1:-1, 1] - 0.5 * (ca[:-2, 1] + ca[2:, 1])).mean()
+        out = _flatten_sheet_path(ca, is_sheet, cycles=4)
+        after = np.abs(out[1:-1, 1] - 0.5 * (out[:-2, 1] + out[2:, 1])).mean()
+        assert after < 0.25 * before
+
+    def test_endpoints_and_non_strand_residues_do_not_move(self):
+        ca = self.pleated_strand(n=8)
+        is_sheet = np.zeros(ca.shape[0], dtype=bool)
+        is_sheet[2:6] = True
+        out = _flatten_sheet_path(ca, is_sheet, cycles=4)
+        assert np.array_equal(out[:2], ca[:2])
+        assert np.array_equal(out[6:], ca[6:])
+
+    def test_no_op_without_strands(self):
+        ca = self.pleated_strand()
+        out = _flatten_sheet_path(ca, np.zeros(ca.shape[0], dtype=bool), cycles=4)
+        assert np.array_equal(out, ca)
+
+
+class TestOrientationSampling:
+    """Ribbon normals are slerped, and helix rotation is not mistaken for a flip."""
+
+    def test_slerp_keeps_vectors_on_the_arc(self):
+        ups = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+        out = _sample_orientations(ups, subdivisions=4)
+        assert np.allclose(np.linalg.norm(out, axis=1), 1.0)
+        # midway between two perpendicular vectors is the 45-degree bisector
+        mid = out[2]
+        assert mid[0] == pytest.approx(np.cos(np.pi / 4), abs=1e-6)
+        assert mid[1] == pytest.approx(np.sin(np.pi / 4), abs=1e-6)
+
+    def test_layout_matches_sample_path(self):
+        ca = ideal_helix(n=6)
+        path, _ = _sample_path(ca, None, subdivisions=5)
+        ups = _sample_orientations(np.tile([0.0, 0.0, 1.0], (6, 1)), subdivisions=5)
+        assert ups.shape[0] == path.shape[0]
+
+    def test_helix_normals_are_not_sign_flipped(self):
+        # Consecutive helix normals sit ~100 degrees apart, so a naive
+        # "dot < 0 -> negate" rule would flip every single residue.
+        ca = ideal_helix()
+        ss = np.array(["H"] * ca.shape[0], dtype="U1")
+        vo = np.tile([0.0, 0.0, 1.0], (ca.shape[0], 1)).astype(float)
+        refined = _refine_orientations(ca, vo, ss)
+        radial = ca.copy()
+        radial[:, 2] = 0.0
+        radial /= np.linalg.norm(radial, axis=1, keepdims=True)
+        dots = np.einsum("ij,ij->i", refined, radial)
+        # No normal may point inward: a sign flip would show up as dot < 0.
+        assert (dots > 0.0).all(), dots
+        # Away from the run's ends, where the tangent is only a chord estimate,
+        # each normal is the outward radial to within a degree or so.
+        assert (dots[1:-1] > 0.99).all(), dots

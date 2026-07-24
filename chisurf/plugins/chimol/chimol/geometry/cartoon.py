@@ -31,6 +31,17 @@ except Exception:  # pragma: no cover - standalone/file-path loading (see tests)
     _estimate_ambient_occlusion = None  # type: ignore[assignment]
 
 
+# Two consecutive ribbon normals count as a genuine 180-degree flip (rather
+# than an honest rotation of the ribbon) only when they are close to
+# antiparallel. cos(155 deg); see ``_refine_orientations`` step 3.
+_ANTIPARALLEL_DOT = 0.9
+
+# How far a beta-strand arrowhead flares beyond the strand body, as a multiple
+# of the body's half-breadth. Measured from PyMOL's exported 148L cartoon:
+# body ~1.0 A, arrow base ~2.2 A.
+_ARROW_BREADTH_SCALE = 2.2
+
+
 # ---------------------------------------------------------------------------
 # Sampler  (unchanged from Chimol original)
 # ---------------------------------------------------------------------------
@@ -89,8 +100,7 @@ def _sample_path(
         if col_arr.shape[0] != n:
             col_arr = None
 
-    # Vectorised Catmull-Rom (identical to the per-point loop, incl. the
-    # duplicate-knot skip). For every segment i in [0, n-2] the four control
+    # Vectorised Catmull-Rom. For every segment i in [0, n-2] the four control
     # points are gathered by clamped index shifts, and all t = j/subdivs samples
     # are evaluated at once via the Hermite basis.
     seg = np.arange(n - 1)
@@ -118,19 +128,87 @@ def _sample_path(
         m2 = (1.0 - tau) * 0.5 * (p3 - p1)
         return h00 * p1 + h10 * m1 + h01 * p2 + h11 * m2  # (n-1, subdivs, C)
 
-    # Skip j == 0 for every segment after the first to drop duplicate knots,
-    # matching the loop; keep row-major (segment outer, sample inner) order.
-    keep = np.ones((n - 1, subdivs), dtype=bool)
-    keep[1:, 0] = False
-
-    pos = _hermite(arr)[keep]
+    # Every segment contributes its t = 0 sample, which *is* its own control
+    # point: segment i covers t in [0, 1) and so never emits arr[i+1] itself.
+    # Dropping j == 0 for segments after the first (as this did originally) does
+    # not remove a duplicate — it removes every interior control point, so the
+    # ribbon stopped passing through the CA positions and drifted ~0.3 A off
+    # them. PyMOL's cartoon runs within ~0.1 A of every CA. Keeping the knots
+    # also makes the residue-to-sample mapping exact (residue i lands on sample
+    # i * subdivs), which is what the secondary-structure block boundaries and
+    # the round-helix pass rely on.
+    # Row-major (segment outer, sample inner) order.
+    pos = _hermite(arr).reshape(-1, arr.shape[1])
     pos_arr = np.vstack([pos, arr[-1][None, :]])
     if col_arr is not None:
-        col = _hermite(col_arr)[keep]
+        col = _hermite(col_arr).reshape(-1, col_arr.shape[1])
         col_out_arr = np.vstack([col, col_arr[-1][None, :]])
     else:
         col_out_arr = None
     return pos_arr, col_out_arr
+
+
+def _sample_orientations(
+    ups: np.ndarray,
+    subdivisions: int = 5,
+) -> np.ndarray:
+    """Densify per-residue ribbon normals along the spline by slerp.
+
+    The companion to :func:`_sample_path`: it produces one orientation per
+    sampled path point, in the same layout (``subdivisions`` samples per
+    segment, duplicate knots dropped, closing on the last residue).
+
+    A Catmull-Rom spline must **not** be used here. Orientations are unit
+    vectors and inside an alpha helix they sweep ~100 degrees per residue; a
+    cubic fitted through four such vectors overshoots the arc and can very
+    nearly cancel, which collapses the ribbon frame. Spherical linear
+    interpolation moves along the shortest great-circle arc between the two
+    residue normals, so the intermediate frames stay on the cone the helix
+    actually traces.
+
+    Parameters
+    ----------
+    ups : np.ndarray
+        Per-residue orientation vectors, shape ``(N, 3)``; need not be unit.
+    subdivisions : int, optional
+        Samples generated per residue-to-residue segment.
+
+    Returns
+    -------
+    np.ndarray
+        Unit orientation vectors, shape ``(M, 3)``, matching ``_sample_path``.
+    """
+    arr = np.asarray(ups, dtype=float)
+    if arr.ndim != 2 or arr.shape[0] < 2:
+        return arr
+    subdivs = max(int(subdivisions), 1)
+    if subdivs <= 1:
+        return arr
+
+    ln = np.linalg.norm(arr, axis=1, keepdims=True)
+    unit = arr / np.where(ln > 1e-12, ln, 1.0)
+
+    a = unit[:-1]                      # (n-1, 3) segment start
+    b = unit[1:]                       # (n-1, 3) segment end
+    dot = np.clip(np.sum(a * b, axis=1), -1.0, 1.0)
+    omega = np.arccos(dot)             # (n-1,)
+    sin_omega = np.sin(omega)
+
+    t = (np.arange(subdivs, dtype=float) / float(subdivs))[None, :]  # (1, k)
+    om = omega[:, None]
+    so = sin_omega[:, None]
+
+    # slerp where the arc is well conditioned, plain lerp when the two vectors
+    # are almost parallel (sin(omega) -> 0 makes the slerp weights blow up).
+    near = so < 1e-6
+    w_a = np.where(near, 1.0 - t, np.sin((1.0 - t) * om) / np.where(near, 1.0, so))
+    w_b = np.where(near, t, np.sin(t * om) / np.where(near, 1.0, so))
+
+    samples = w_a[:, :, None] * a[:, None, :] + w_b[:, :, None] * b[:, None, :]
+    out = np.vstack([samples.reshape(-1, 3), unit[-1][None, :]])
+
+    ln_out = np.linalg.norm(out, axis=1, keepdims=True)
+    return out / np.where(ln_out > 1e-12, ln_out, 1.0)
 
 
 def _smooth_backbone_points(
@@ -336,25 +414,42 @@ def _make_oval_shape(
     width: float,
     length: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return (shape_vertices, shape_normals) for an oval.
+    """Return (shape_vertices, shape_normals) for a helix oval.
 
-    PyMOL analog: ``ExtrudeOval``
+    PyMOL analog: ``ExtrudeOval`` driven by ``cartoon_oval_width`` /
+    ``cartoon_oval_length``.
 
     Parameters
     ----------
+    n_verts : int
+        Number of vertices around the oval.
     width : float
-        Extent in the side (x) direction.
+        Half-thickness of the ribbon, measured **along the frame's up axis** —
+        i.e. along the residue orientation vector, which for a helix is the
+        radial direction away from the helix axis. PyMOL's
+        ``cartoon_oval_width`` (0.25).
     length : float
-        Extent in the up (y) direction.
+        Half-breadth of the ribbon, measured **along the frame's side axis**
+        (``tangent x up``), which for a helix runs essentially parallel to the
+        helix axis. PyMOL's ``cartoon_oval_length`` (1.35).
+
+    Notes
+    -----
+    The axis assignment is load-bearing: ``_extrude_shape`` maps a shape's y
+    component onto ``side`` and its z component onto ``up``, so the broad
+    ``length`` extent belongs on **y** and the thin ``width`` extent on **z**.
+    Swapping the two rotates every ribbon 90 degrees about its own path, which
+    turns helices into edge-on twisted tape and stands beta strands on their
+    side.
     """
     angles = np.linspace(0.0, 2.0 * math.pi, n_verts, endpoint=False)
     cos_a = np.cos(angles)
     sin_a = np.sin(angles)
-    verts = np.column_stack([np.zeros_like(cos_a), cos_a * width, sin_a * length])
+    verts = np.column_stack([np.zeros_like(cos_a), cos_a * length, sin_a * width])
     norms = np.column_stack([
         np.zeros_like(cos_a),
-        cos_a * length,
-        sin_a * width,
+        cos_a * width,
+        sin_a * length,
     ])
     norm_n = np.linalg.norm(norms[:, 1:], axis=1)
     nonzero = norm_n > 0.0
@@ -367,25 +462,37 @@ def _make_rectangle_shape(
     width: float,
     length: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return (shape_vertices, shape_normals) for a flat ribbon.
+    """Return (shape_vertices, shape_normals) for a flat strand ribbon.
 
-    PyMOL analog: ``ExtrudeRectangle`` (mode=0, 8 vertices).
+    PyMOL analog: ``ExtrudeRectangle`` (mode=0, 8 vertices), driven by
+    ``cartoon_rect_width`` / ``cartoon_rect_length``.
 
     The rectangle has 8 vertices — 4 corners, each split into two
     vertices with different normals (one per adjacent face).
+
+    Parameters
+    ----------
+    width : float
+        Half-thickness along the frame's up axis (the strand's face normal).
+    length : float
+        Half-breadth along the frame's side axis (across the ribbon).
+
+    See :func:`_make_oval_shape` for why ``length`` lives on the y component.
     """
     c = float(math.cos(math.pi / 4))
     s = float(math.sin(math.pi / 4))
+    half_breadth = c * length
+    half_thick = s * width
 
     vdata = np.array([
-        [0.0,  c * width, -s * length],
-        [0.0,  c * width,  s * length],
-        [0.0,  c * width,  s * length],
-        [0.0, -c * width,  s * length],
-        [0.0, -c * width,  s * length],
-        [0.0, -c * width, -s * length],
-        [0.0, -c * width, -s * length],
-        [0.0,  c * width, -s * length],
+        [0.0,  half_breadth, -half_thick],
+        [0.0,  half_breadth,  half_thick],
+        [0.0,  half_breadth,  half_thick],
+        [0.0, -half_breadth,  half_thick],
+        [0.0, -half_breadth,  half_thick],
+        [0.0, -half_breadth, -half_thick],
+        [0.0, -half_breadth, -half_thick],
+        [0.0,  half_breadth, -half_thick],
     ])
 
     ndata = np.array([
@@ -431,8 +538,12 @@ def _extrude_shape(
     colors : (M, 4) or None
     cap_ends : bool
         Add flat end caps.
-    vert_scale : (M,) or None
-        Per-point scale factor for the shape (used for putty/arrow).
+    vert_scale : (M,), (M, 2) or None
+        Per-point scale for the cross-section (used for putty and for strand
+        arrowheads). A 1-D array scales the profile uniformly; an ``(M, 2)``
+        array scales the ``side`` (breadth) and ``up`` (thickness) axes
+        independently, which is what an arrowhead needs — it flares sideways
+        and tapers to a point without ever getting thicker.
     """
     m = path.shape[0]
     s = shape_verts.shape[0]
@@ -452,10 +563,17 @@ def _extrude_shape(
     # which broadcasts over (m, s, 3) without a Python loop.
     side = frames[:, :, 0]  # (m, 3)
     up = frames[:, :, 1]    # (m, 3)
-    if vert_scale is not None:
-        scale = np.asarray(vert_scale, dtype=float).reshape(-1)[:m]
+    if vert_scale is None:
+        scale = np.ones((m, 2), dtype=float)
     else:
-        scale = np.ones(m, dtype=float)
+        scale_in = np.asarray(vert_scale, dtype=float)
+        if scale_in.ndim == 1:
+            scale = np.repeat(scale_in.reshape(-1, 1)[:m], 2, axis=1)
+        else:
+            scale = scale_in[:m, :2]
+    scale_side = scale[:, 0][:, None, None]  # (m, 1, 1)
+    scale_up = scale[:, 1][:, None, None]
+
     sv1 = shape_verts[:, 1][None, :, None]  # (1, s, 1)
     sv2 = shape_verts[:, 2][None, :, None]
     sn1 = shape_norms[:, 1][None, :, None]
@@ -463,9 +581,14 @@ def _extrude_shape(
     side_b = side[:, None, :]  # (m, 1, 3)
     up_b = up[:, None, :]
 
-    tv = (sv1 * side_b + sv2 * up_b) * scale[:, None, None]  # (m, s, 3)
+    tv = sv1 * scale_side * side_b + sv2 * scale_up * up_b  # (m, s, 3)
     ring_verts = path[:, None, :] + tv
-    tn = sn1 * side_b + sn2 * up_b
+    # A non-uniform scale transforms normals by the inverse transpose, i.e. the
+    # reciprocal of each axis scale; without this the arrowhead's flared faces
+    # would be lit as if they were still the un-flared rectangle.
+    inv_side = np.where(np.abs(scale_side) > 1e-9, 1.0 / np.where(scale_side == 0, 1.0, scale_side), 1.0)
+    inv_up = np.where(np.abs(scale_up) > 1e-9, 1.0 / np.where(scale_up == 0, 1.0, scale_up), 1.0)
+    tn = sn1 * inv_side * side_b + sn2 * inv_up * up_b
     tn_norm = np.linalg.norm(tn, axis=2, keepdims=True)
     np.divide(tn, tn_norm, out=tn, where=tn_norm > 1e-10)
 
@@ -546,9 +669,17 @@ def _extrude_arrowhead(
 
     PyMOL analog: ``ExtrudeCGOSurfaceStrand``.
 
-    The first ``m - arrow_sampling`` path points use the normal rectangle
-    shape; the last ``arrow_sampling`` points expand in width to form
-    the arrowhead, and a flat back-face triangle strip closes the tip.
+    The first ``m - arrow_sampling`` path points use the plain rectangle; over
+    the remaining points the profile steps out to
+    :data:`_ARROW_BREADTH_SCALE` times the body breadth and then tapers
+    linearly to a point at the C-terminal tip, while its thickness stays
+    constant. A flat back face closes the step at the base of the arrow.
+
+    Measured against PyMOL's own exported cartoon mesh for 148L, a strand body
+    has a half-breadth of ~1.0 A, the base of the arrow ~2.2 A and the tip
+    ~0.3 A — an arrow that flares to about twice the body and comes to a point.
+    An earlier version here widened to only 1.5x *at the base* and tapered back
+    to 1.0x at the tip, so strands ended in a blunt stub with no arrow at all.
     """
     m = path.shape[0]
     s = shape_verts.shape[0]
@@ -559,14 +690,14 @@ def _extrude_arrowhead(
     if subN < 0:
         subN = 0
 
-    # We'll produce the body and arrowhead separately and merge.
-    # Scale factors: body→1.0 at front, arrow→expanding
-    scale = np.ones(m, dtype=float)
+    # Breadth scales sideways over the arrow region; thickness is untouched.
+    scale = np.ones((m, 2), dtype=float)
+    span = max(float(m - 1 - subN), 1.0)
     for i in range(subN, m):
-        frac = float(m - 1 - i) / max(float(arrow_sampling), 1.0)
-        scale[i] = 1.0 + 0.5 * frac  # expand up to 1.5x at tip
+        frac = float(i - subN) / span          # 0 at the base, 1 at the tip
+        scale[i, 0] = _ARROW_BREADTH_SCALE * (1.0 - frac)
 
-    # Body part: normal extrusion with no caps
+    # Body + arrow in one extrusion; the caps are added below.
     body = _extrude_shape(
         path, frames, shape_verts, shape_norms,
         colors, cap_ends=False, vert_scale=scale,
@@ -693,6 +824,359 @@ def _residue_to_path_index(
     return int(round(float(res_idx) * (n_path - 1) / (n_residues - 1)))
 
 
+def _contiguous_runs(mask: np.ndarray) -> list[tuple[int, int]]:
+    """Return ``[(start, stop), ...]`` half-open spans where ``mask`` is True."""
+    flags = np.asarray(mask, dtype=bool)
+    if flags.size == 0:
+        return []
+    padded = np.concatenate([[False], flags, [False]])
+    edges = np.flatnonzero(padded[1:] != padded[:-1])
+    return [(int(a), int(b)) for a, b in zip(edges[::2], edges[1::2])]
+
+
+def _rotate_about(vec: np.ndarray, axis: np.ndarray, angle: float) -> np.ndarray:
+    """Rotate ``vec`` about the unit ``axis`` by ``angle`` radians (Rodrigues)."""
+    c = math.cos(angle)
+    s = math.sin(angle)
+    out = vec * c + np.cross(axis, vec) * s + axis * float(np.dot(axis, vec)) * (1.0 - c)
+    n = float(np.linalg.norm(out))
+    return out / n if n > 1e-12 else vec
+
+
+def _helix_twist(
+    radial: np.ndarray,
+    valid: np.ndarray,
+) -> tuple[Optional[np.ndarray], float]:
+    """Estimate a helix run's rotation axis and its twist per residue.
+
+    The radial vectors of consecutive helix residues differ by a rotation about
+    the helix axis. Averaging ``cross(r[k], r[k+1])`` recovers that axis with the
+    right sign, and the mean angle between consecutive radials is the twist.
+
+    Parameters
+    ----------
+    radial : np.ndarray
+        Per-residue outward radial vectors, shape ``(N, 3)``.
+    valid : np.ndarray
+        Indices into ``radial`` that hold a well-defined vector, ascending.
+
+    Returns
+    -------
+    tuple
+        ``(axis, twist)`` with ``axis`` a unit vector (or ``None`` when the run
+        is too short to tell) and ``twist`` the per-residue angle in radians.
+    """
+    if valid.size < 2:
+        return None, 0.0
+    pairs = [(int(a), int(b)) for a, b in zip(valid[:-1], valid[1:]) if b - a == 1]
+    if not pairs:
+        return None, 0.0
+
+    axes = []
+    angles = []
+    for a, b in pairs:
+        cr = np.cross(radial[a], radial[b])
+        ln = float(np.linalg.norm(cr))
+        if ln <= 1e-9:
+            continue
+        axes.append(cr / ln)
+        angles.append(math.atan2(ln, float(np.dot(radial[a], radial[b]))))
+    if not axes:
+        return None, 0.0
+
+    axis = np.mean(np.asarray(axes), axis=0)
+    ln = float(np.linalg.norm(axis))
+    if ln <= 1e-9:
+        return None, 0.0
+    return axis / ln, float(np.mean(angles))
+
+
+def _helix_radials(
+    ca: np.ndarray,
+    is_helix: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Outward radial direction of the local helix cylinder, per residue.
+
+    For three consecutive CAs on a helix the bisector
+    ``normalize(ca[i-1]-ca[i]) + normalize(ca[i+1]-ca[i])`` points from the CA
+    straight at the axis, exactly, so the outward radial is its negation. This
+    beats estimating the axis from a chord such as ``ca[i+2]-ca[i-2]``: at ~100
+    degrees of twist per residue that chord still carries a large radial
+    component, and near the ends of a helix the window has to be clamped, which
+    is where such an estimate goes 40-60 degrees wrong and makes the last turn
+    of every helix flare out.
+
+    The first and last residue of a run have no all-helix neighbourhood, so
+    their radial is *extrapolated* rather than copied: a helix advances its
+    radial by a fixed twist per residue, and copying a neighbour's vector
+    verbatim would leave the end ring a full turn-step out of phase.
+
+    Parameters
+    ----------
+    ca : np.ndarray
+        CA coordinates, shape ``(N, 3)``.
+    is_helix : np.ndarray
+        Boolean mask of helical residues, shape ``(N,)``.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        ``(radial, has_radial)`` — unit outward vectors and the mask of
+        residues for which one could be established.
+    """
+    n = ca.shape[0]
+    radial = np.zeros((n, 3), dtype=float)
+    has_radial = np.zeros(n, dtype=bool)
+
+    for i in np.nonzero(is_helix)[0]:
+        i = int(i)
+        if i - 1 < 0 or i + 1 >= n:
+            continue
+        if not (is_helix[i - 1] and is_helix[i + 1]):
+            continue
+        a = ca[i - 1] - ca[i]
+        b = ca[i + 1] - ca[i]
+        an = float(np.linalg.norm(a))
+        bn = float(np.linalg.norm(b))
+        if an <= 1e-6 or bn <= 1e-6:
+            continue
+        bisector = a / an + b / bn
+        bl = float(np.linalg.norm(bisector))
+        if bl <= 1e-6:
+            continue
+        radial[i] = -bisector / bl
+        has_radial[i] = True
+
+    for run_lo, run_hi in _contiguous_runs(is_helix):
+        idx = np.arange(run_lo, run_hi)
+        valid = idx[has_radial[idx]]
+        if valid.size == 0:
+            continue
+        axis_u, twist = _helix_twist(radial, valid)
+        for i in idx:
+            i = int(i)
+            if has_radial[i]:
+                continue
+            j = int(valid[np.argmin(np.abs(valid - i))])
+            if axis_u is None:
+                radial[i] = radial[j]
+            else:
+                radial[i] = _rotate_about(radial[j], axis_u, twist * float(i - j))
+            has_radial[i] = True
+
+    return radial, has_radial
+
+
+def _helix_cylinder_radii(
+    ca: np.ndarray,
+    is_helix: np.ndarray,
+    radial: np.ndarray,
+    has_radial: np.ndarray,
+) -> np.ndarray:
+    """Radius of the local helix cylinder at each helical residue.
+
+    Taken as the circumradius of the three consecutive CAs after projecting
+    them onto the plane perpendicular to the local helix axis; for an ideal
+    alpha helix that is exactly the ~2.3 A CA radius.
+
+    Returns
+    -------
+    np.ndarray
+        Per-residue radii, shape ``(N,)``; zero where undefined.
+    """
+    n = ca.shape[0]
+    radii = np.zeros(n, dtype=float)
+
+    for run_lo, run_hi in _contiguous_runs(is_helix):
+        idx = np.arange(run_lo, run_hi)
+        valid = idx[has_radial[idx]]
+        if valid.size < 2:
+            continue
+        axis_u, _ = _helix_twist(radial, valid)
+        if axis_u is None:
+            continue
+        for i in idx:
+            i = int(i)
+            if i - 1 < run_lo or i + 1 >= run_hi:
+                continue
+            pts = ca[[i - 1, i, i + 1]] - ca[i]
+            flat = pts - np.outer(pts @ axis_u, axis_u)
+            a = float(np.linalg.norm(flat[1] - flat[0]))
+            b = float(np.linalg.norm(flat[2] - flat[1]))
+            c = float(np.linalg.norm(flat[2] - flat[0]))
+            area = 0.5 * float(np.linalg.norm(np.cross(flat[1] - flat[0],
+                                                       flat[2] - flat[0])))
+            if area <= 1e-9:
+                continue
+            radii[i] = a * b * c / (4.0 * area)
+        # carry the nearest measured radius into the run's end residues
+        measured = idx[radii[idx] > 0.0]
+        if measured.size == 0:
+            continue
+        for i in idx:
+            if radii[i] <= 0.0:
+                radii[i] = radii[int(measured[np.argmin(np.abs(measured - i))])]
+
+    return radii
+
+
+def _flatten_sheet_path(
+    ca: np.ndarray,
+    is_sheet: np.ndarray,
+    cycles: int = 4,
+) -> np.ndarray:
+    """De-pleat the backbone through beta strands (PyMOL flat sheets).
+
+    A beta strand's CAs zig-zag by ~1.9 A about the strand axis. Splining
+    straight through them gives a ribbon that has to writhe to follow the
+    pleat, which is why chimol's strands rolled from face-on to edge-on along
+    their length while PyMOL's stay flat.
+
+    PyMOL's ``cartoon_flat_sheets`` (on by default) smooths those positions
+    before drawing: measured on 148L its strand ribbon runs 1.3 A away from the
+    CAs with the setting on and 0.4 A away with it off. This applies the same
+    kind of correction — ``cycles`` passes of the 3-point weighted average
+    ``(p[i-1] + 2 p[i] + p[i+1]) / 4`` over strand residues only, with residues
+    outside the strand left in place so the joins to the flanking loops do not
+    move.
+
+    Parameters
+    ----------
+    ca : np.ndarray
+        Control points, shape ``(N, 3)``; not modified in place.
+    is_sheet : np.ndarray
+        Boolean mask of strand residues, shape ``(N,)``.
+    cycles : int, optional
+        Number of smoothing passes; PyMOL's ``cartoon_flat_cycles`` is 4.
+
+    Returns
+    -------
+    np.ndarray
+        The smoothed control points, shape ``(N, 3)``.
+    """
+    n = ca.shape[0]
+    if n < 3 or cycles <= 0 or not np.any(is_sheet):
+        return ca
+
+    out = np.array(ca, dtype=float, copy=True)
+    interior = np.zeros(n, dtype=bool)
+    interior[1:-1] = is_sheet[1:-1]
+    if not np.any(interior):
+        return out
+
+    for _ in range(int(cycles)):
+        prev = out
+        smoothed = 0.25 * prev[:-2] + 0.5 * prev[1:-1] + 0.25 * prev[2:]
+        out = prev.copy()
+        out[1:-1][interior[1:-1]] = smoothed[interior[1:-1]]
+    return out
+
+
+def _path_parameterisation(
+    n: int,
+    subdivisions: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return, for every sample :func:`_sample_path` emits, its segment and ``t``.
+
+    Mirrors that function's layout exactly: ``subdivisions`` samples per
+    residue-to-residue segment covering ``t`` in ``[0, 1)``, with the final
+    control point appended.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        ``(segment, t)``, both of length ``M``; ``segment[k]`` is the index of
+        the control point the sample starts from and ``t[k]`` its fraction
+        along that segment.
+    """
+    subdivs = max(int(subdivisions), 1)
+    if n < 2 or subdivs <= 1:
+        return np.arange(max(n, 0)), np.zeros(max(n, 0), dtype=float)
+
+    seg = np.repeat(np.arange(n - 1), subdivs)
+    t = np.tile(np.arange(subdivs, dtype=float) / float(subdivs), n - 1)
+    return (np.append(seg, n - 2), np.append(t, 1.0))
+
+
+def _round_helix_path(
+    path: np.ndarray,
+    ca: np.ndarray,
+    is_helix: np.ndarray,
+    subdivisions: int,
+) -> np.ndarray:
+    """Lift the sampled path back onto the helix cylinder (PyMOL round helices).
+
+    A Catmull-Rom spline through alpha-helix CAs cuts the corner badly: with
+    ~100 degrees of turn per residue its midpoint sits at about 0.83x the CA
+    radius, so every turn of the ribbon is visibly pinched inward. PyMOL's
+    ``cartoon_round_helices`` (on by default) avoids this; measured on 148L its
+    ribbon centerline stays at radius 2.17 A midway between residues whose CAs
+    are at 2.23 A, whereas with the setting off it drops to 1.88 A.
+
+    Inside a helix this replaces the spline with the actual helical arc:
+    the axis point and cylinder radius are interpolated linearly between the two
+    bracketing residues while the outward radial is slerped, which reproduces a
+    constant-radius sweep and still passes exactly through every CA, so the
+    joins to the flanking loops stay continuous.
+
+    Parameters
+    ----------
+    path : np.ndarray
+        Sampled path, shape ``(M, 3)``; not modified in place.
+    ca : np.ndarray
+        The control points the path was sampled from, shape ``(N, 3)``.
+    is_helix : np.ndarray
+        Boolean mask over the control points.
+    subdivisions : int
+        The sampling used to build ``path``.
+
+    Returns
+    -------
+    np.ndarray
+        The corrected path, shape ``(M, 3)``.
+    """
+    n = ca.shape[0]
+    if n < 3 or not np.any(is_helix):
+        return path
+
+    radial, has_radial = _helix_radials(ca, is_helix)
+    radii = _helix_cylinder_radii(ca, is_helix, radial, has_radial)
+
+    seg, tt = _path_parameterisation(n, subdivisions)
+    if seg.shape[0] != path.shape[0]:
+        # sampling layout changed under us; leave the path alone rather than
+        # corrupting it
+        return path
+
+    out = np.array(path, dtype=float, copy=True)
+    # axis point for each residue: the CA pulled inward by one radius
+    axis_pt = ca - radial * radii[:, None]
+
+    usable = has_radial & (radii > 1e-6) & is_helix
+    for k in range(out.shape[0]):
+        i = int(seg[k])
+        j = i + 1
+        if j >= n or not (usable[i] and usable[j]):
+            continue
+        t = float(tt[k])
+        r0, r1 = radial[i], radial[j]
+        dot = float(np.clip(np.dot(r0, r1), -1.0, 1.0))
+        omega = math.acos(dot)
+        so = math.sin(omega)
+        if so < 1e-6:
+            rad_t = (1.0 - t) * r0 + t * r1
+        else:
+            rad_t = (math.sin((1.0 - t) * omega) * r0 + math.sin(t * omega) * r1) / so
+        ln = float(np.linalg.norm(rad_t))
+        if ln <= 1e-9:
+            continue
+        rad_t /= ln
+        centre = (1.0 - t) * axis_pt[i] + t * axis_pt[j]
+        radius = (1.0 - t) * radii[i] + t * radii[j]
+        out[k] = centre + radius * rad_t
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -708,10 +1192,9 @@ def _refine_orientations(
     normals, replicating the three mechanisms that stop PyMOL cartoons from
     twisting:
 
-    * **Round helices** — a helix residue's orientation is recomputed as
-      ``normalize(axis x tangent)`` where ``axis`` is a running sum of CA
-      differences over a few residues (a smooth local helix axis), so the oval
-      circles the axis smoothly instead of wobbling with each carbonyl.
+    * **Round helices** — a helix residue's orientation is recomputed as the
+      outward radial direction of the local helix cylinder, so the oval circles
+      a smooth axis instead of wobbling with each carbonyl.
     * **Flat sheets** — orientations across a strand are box-averaged
       (``cartoon_flat_cycles`` = 4, 3-point window) so a whole β-strand shares
       one consistent up-vector and lies flat.
@@ -749,19 +1232,11 @@ def _refine_orientations(
     is_helix = (ss == "H") if ss is not None else np.zeros(n, dtype=bool)
     is_sheet = np.isin(ss, ["S", "E"]) if ss is not None else np.zeros(n, dtype=bool)
 
-    # 1. Round helices.
-    for i in np.nonzero(is_helix)[0]:
-        lo = max(int(i) - 2, 0)
-        hi = min(int(i) + 2, n - 1)
-        axis = ca[hi] - ca[lo]
-        an = float(np.linalg.norm(axis))
-        if an <= 1e-6:
-            continue
-        axis /= an
-        c = np.cross(axis, tang[i])
-        cn = float(np.linalg.norm(c))
-        if cn > 1e-6:
-            vo[i] = c / cn
+    # 1. Round helices: point the ribbon normal radially outward from the local
+    #    helix cylinder, so the oval circles a smooth axis.
+    radial, has_radial = _helix_radials(ca, is_helix)
+    for i in np.nonzero(is_helix & has_radial)[0]:
+        vo[int(i)] = radial[int(i)]
 
     # 2. Flat sheets: 4 cycles of a 3-point box average within strands.
     if is_sheet.any():
@@ -776,13 +1251,27 @@ def _refine_orientations(
                     if ln > 1e-6:
                         vo[i] = acc[i] / ln
 
-    # 3. Refine normals: perpendicular to tangent, then propagate sign.
+    # 3. Refine normals: force perpendicular to the tangent, then propagate the
+    #    sign so a ribbon does not flip over between neighbouring residues.
     dot_t = np.sum(vo * tang, axis=1, keepdims=True)
     vo = vo - dot_t * tang
     ln = np.linalg.norm(vo, axis=1, keepdims=True)
     vo = vo / np.where(ln > 1e-9, ln, 1.0)
+
+    # The sign propagation must skip helices. Inside an alpha helix the ribbon
+    # normal is radial, so it genuinely rotates by ~100 degrees per residue and
+    # consecutive normals have dot ~ cos(100 deg) = -0.17. A plain "dot < 0 ->
+    # negate" rule therefore flips *every* helix residue, turning the smooth
+    # radial field into an alternating zig-zag; once that is interpolated along
+    # the spline the up-vectors partly cancel and the helix renders as pinched,
+    # edge-on tape instead of a coil. A real 180 degree flip is nearly
+    # antiparallel, so only correct those.
     for i in range(1, n):
-        if float(np.dot(vo[i - 1], vo[i])) < 0.0:
+        d = float(np.dot(vo[i - 1], vo[i]))
+        if is_helix[i] or is_helix[i - 1]:
+            if d < -_ANTIPARALLEL_DOT:
+                vo[i] = -vo[i]
+        elif d < 0.0:
             vo[i] = -vo[i]
     return vo
 
@@ -825,6 +1314,29 @@ def _generate_cartoon_tube_arrays(
     subdivisions = int(cfg.get("cartoon_sampling", cfg.get("subdivisions", subdivisions)))
     segments_circle = int(cfg.get("tube_quality", cfg.get("segments_circle", segments_circle)))
 
+    # -- Secondary-structure codes, needed before sampling so the strand path
+    #    can be de-pleated first --
+    ss_arr: Optional[np.ndarray] = None
+    if ss_codes is not None:
+        try:
+            candidate = np.array(
+                [str(s).upper()[:1] if s is not None else "" for s in ss_codes]
+            )
+            if candidate.shape[0] == n:
+                ss_arr = candidate
+        except Exception:
+            ss_arr = None
+
+    # -- Flat sheets: smooth the beta-strand backbone before anything is
+    #    derived from it, so both the ribbon path and its tangents come from the
+    #    de-pleated trace (PyMOL's ``cartoon_flat_sheets``) --
+    if ss_arr is not None and bool(cfg.get("flat_sheets", True)):
+        arr = _flatten_sheet_path(
+            arr,
+            np.isin(ss_arr, ["S", "E"]),
+            cycles=int(cfg.get("flat_cycles", 4)),
+        )
+
     # -- Stage 1: Sample path --
     tension = float(cfg.get("spline_tension", 0.0))
     try:
@@ -839,6 +1351,12 @@ def _generate_cartoon_tube_arrays(
     if m < 2:
         return None
 
+    # -- Round helices: lift the spline back onto the helix cylinder so the
+    #    ribbon does not pinch inward between residues (PyMOL's
+    #    ``cartoon_round_helices``, on by default) --
+    if ss_arr is not None and bool(cfg.get("round_helices", True)):
+        path = _round_helix_path(path, arr, ss_arr == "H", subdivisions)
+
     # -- Refine per-residue orientations (PyMOL round-helix / flat-sheet /
     #    anti-twist), then densify along the spline --
     ups_path: Optional[np.ndarray] = None
@@ -847,8 +1365,8 @@ def _generate_cartoon_tube_arrays(
             ups_arr = np.asarray(trace_ups, dtype=float)
             if ups_arr.shape[0] == n:
                 ups_arr = _refine_orientations(arr, ups_arr, ss_codes)
-                ups_path, _ = _sample_path(
-                    ups_arr, None, subdivisions=subdivisions, tension=tension
+                ups_path = _sample_orientations(
+                    ups_arr, subdivisions=subdivisions
                 )
         except Exception:
             ups_path = None
@@ -937,9 +1455,14 @@ def _generate_cartoon_tube_arrays(
         seg_colors = path_colors[s_path:e_path] if path_colors is not None else None
 
         if ss_t == "E":
-            # Strand: rectangle + arrowhead
-            arrow_samp = min(arrow_sampling_residues, (e_res - s_res) // 2)
-            arrow_samp = max(arrow_samp, 1)
+            # Strand: rectangle + arrowhead. ``arrow_sampling`` is expressed in
+            # residues, but the arrow is cut out of the *sampled* path, so it
+            # has to be converted to path points — otherwise a 2 means two
+            # spline samples (a fraction of one residue) and the arrow is too
+            # small to see. Leave at least two points for the body.
+            seg_points = e_path - s_path
+            arrow_samp = int(round(arrow_sampling_residues * max(subdivisions, 1)))
+            arrow_samp = max(min(arrow_samp, seg_points - 2), 1)
             result = _extrude_arrowhead(
                 seg_path, seg_frames, rect_sv, rect_sn,
                 seg_colors, arrow_samp,
@@ -1676,6 +2199,7 @@ __all__ = [
     "_generate_cartoon_tube_arrays",
     "_generate_nucleic_cartoon_arrays",
     "_sample_path",
+    "_sample_orientations",
     "_generate_trace_arrays",
     "_build_profile",
     "_extrude_sweep",
