@@ -50,6 +50,10 @@ gui:
   RubberBandResize: true
   confirm_close_fit: true
   confirm_close_program: true
+  # UI language (two-letter locale code). "en" is the canonical source language
+  # and needs no catalogue; other codes load chisurf/gui/i18n/chisurf_<code>.qm
+  # at startup. Applied on the next GUI start.
+  language: en
   # Global application UI font point size. On macOS this compensates for the
   # low-resolution stability mode; set 0 to keep the platform default.
   application_font_size: 13
