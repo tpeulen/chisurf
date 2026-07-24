@@ -12,7 +12,6 @@ chisurf/gui/plots/lineplot/lineplot.py
 chisurf/gui/plots/parameter_scan/parameter_scan.py
 chisurf/gui/plots/proteinMC.py
 chisurf/gui/plots/residual_image.py
-chisurf/gui/widgets/experiments/rics.py
 chisurf/gui/widgets/models/tcspc/kappa2_helpers.py
 chisurf/gui/widgets/node_editor/widgets/pt_plot_widget.py
 chisurf/gui/widgets/spectrum_view.py

@@ -3,13 +3,13 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
-from qtpy import QtWidgets, QtCore, QtGui
-import pyqtgraph as pg
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
-import chisurf.gui.widgets
 import chisurf.core.actions
+import chisurf.gui.widgets
 from chisurf.core.experiments.core import reader
+from chisurf.gui import chiplot as cp
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 
 
@@ -400,17 +400,9 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         mode_row.addWidget(self.toolbtn_clear_preview)
         preview_layout.addLayout(mode_row)
 
-        self.preview_view = pg.ImageView()
-        try:
-            self.preview_view.ui.histogram.setMaximumWidth(120)
-        except Exception:
-            pass
-        try:
-            view = self.preview_view.getView()
-            view.setMouseEnabled(x=False, y=False)
-            view.setMenuEnabled(False)
-        except Exception:
-            pass
+        self.preview_view = cp.ImageView()
+        self.preview_view.set_histogram_width(120)
+        self.preview_view.set_interactive(mouse=False, menu=False)
         preview_layout.addWidget(self.preview_view, 1)
 
         self._preview_roi = None
@@ -640,8 +632,7 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             roi = None
         if roi is not None:
             try:
-                view = self.preview_view.getView()
-                view.removeItem(roi)
+                roi.remove()
             except Exception:
                 pass
         try:
@@ -657,7 +648,7 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             self.preview_view.clear()
         except Exception:
             try:
-                self.preview_view.setImage(np.zeros((1, 1), dtype=float))
+                self.preview_view.set_image(np.zeros((1, 1), dtype=float))
             except Exception:
                 pass
 
@@ -859,9 +850,9 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
         try:
             if arr.ndim == 3:
-                self.preview_view.setImage(arr, axes={"t": 0, "y": 1, "x": 2})
+                self.preview_view.set_image(arr, axes={"t": 0, "y": 1, "x": 2})
             elif arr.ndim == 2:
-                self.preview_view.setImage(arr)
+                self.preview_view.set_image(arr)
         except Exception:
             pass
 
@@ -869,7 +860,7 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             self._sync_preview_roi_to_ranges()
             roi = getattr(self, "_preview_roi", None)
             if roi is not None:
-                roi.setVisible(show_intensity)
+                roi.visible = show_intensity
         except Exception:
             pass
 
@@ -906,24 +897,17 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         if self._preview_roi is not None:
             return self._preview_roi
         try:
-            roi = pg.RectROI(
-                [0, 0], [10, 10],
-                pen={"color": 'y', "width": 1},
-                rotatable=False,
+            roi = self.preview_view.add_roi(
+                kind="rect", pos=(0, 0), size=(10, 10),
+                pen=cp.to_pen("y", width=1), rotatable=False,
             )
+            roi.z = 10
         except Exception:
             return None
 
-        try:
-            view = self.preview_view.getView()
-            view.addItem(roi)
-            roi.setZValue(10)
-        except Exception:
-            pass
-
         self._preview_roi = roi
         try:
-            roi.sigRegionChanged.connect(self._on_preview_roi_changed)
+            roi.on_change(self._on_preview_roi_changed, final=False)
         except Exception:
             pass
         return self._preview_roi
@@ -960,8 +944,8 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
         try:
             self._roi_sync_in_progress = True
-            roi.setPos((float(x0), float(y0)))
-            roi.setSize((float(x1 - x0), float(y1 - y0)))
+            roi.set_pos(float(x0), float(y0))
+            roi.set_size(float(x1 - x0), float(y1 - y0))
         finally:
             self._roi_sync_in_progress = False
 
@@ -973,16 +957,16 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         ny, nx = self._preview_img_shape
 
         try:
-            pos = self._preview_roi.pos()
-            size = self._preview_roi.size()
+            pos = self._preview_roi.pos  # (x, y) tuple
+            size = self._preview_roi.size  # (w, h) tuple
         except Exception:
             return
 
         try:
-            x0 = int(round(float(pos.x())))
-            y0 = int(round(float(pos.y())))
-            w = int(round(float(size.x())))
-            h = int(round(float(size.y())))
+            x0 = int(round(float(pos[0])))
+            y0 = int(round(float(pos[1])))
+            w = int(round(float(size[0])))
+            h = int(round(float(size[1])))
         except Exception:
             return
 

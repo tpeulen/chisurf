@@ -269,6 +269,54 @@ class Marker(Handle, Protocol):
 
 
 @runtime_checkable
+class Roi(Handle, Protocol):
+    """A draggable/resizable region-of-interest rectangle over an image."""
+
+    @property
+    def pos(self) -> tuple[float, float]:
+        """The ``(x, y)`` lower-left corner in image coordinates."""
+        ...
+
+    @property
+    def size(self) -> tuple[float, float]:
+        """The ``(w, h)`` size in image coordinates."""
+        ...
+
+    def set_pos(self, x: float, y: float) -> None:
+        """Move the ROI's lower-left corner.
+
+        Parameters
+        ----------
+        x, y : float
+            New corner position in image coordinates.
+        """
+        ...
+
+    def set_size(self, w: float, h: float) -> None:
+        """Resize the ROI.
+
+        Parameters
+        ----------
+        w, h : float
+            New width and height in image coordinates.
+        """
+        ...
+
+    def on_change(self, callback, *, final: bool = True) -> None:
+        """Register a no-argument callback fired when the ROI is dragged/resized.
+
+        Parameters
+        ----------
+        callback : callable
+            Called (no args) when the ROI geometry changes; query
+            :attr:`pos`/:attr:`size` inside it.
+        final : bool
+            If ``True`` fire only when the drag finishes; else continuously.
+        """
+        ...
+
+
+@runtime_checkable
 class Text(Handle, Protocol):
     """A text label anchored in data coordinates."""
 

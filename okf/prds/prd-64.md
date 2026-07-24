@@ -246,7 +246,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 60):*
+*Landed so far (allow-list 76 → 59):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -270,6 +270,11 @@ screenshot/qtbot verification after each cluster.
   multi-panel PlotItems, `stepMode='right'`); `experiments/rics` (`ImageView` +
   `RectROI` composites); `widgets/spectrum_view` (axis/legend theming);
   `plots/parameter_scan` (`pyqtgraph.dockarea`).
+- **Batch 5** — added the **`ImageView`** capability (image + LUT histogram +
+  frame slider, wrapping `pg.ImageView`) and **`Roi`** handles (`add_roi`,
+  pos/size, `on_change`, overlay images, `set_interactive`,
+  `set_histogram_width`); migrated `experiments/rics` onto it. This unblocks the
+  remaining ImageView consumers (`autoform/builtin`, `burst_bva`, microscopy).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

@@ -143,6 +143,35 @@ def test_grid_panels(qapp):
     assert isinstance(p0, cp.Plot) and isinstance(p1, cp.Plot)
 
 
+def test_image_view_and_roi(qapp):
+    import numpy as np
+
+    iv = cp.ImageView()
+    iv.set_image(np.random.rand(16, 16))
+    iv.set_image(np.random.rand(4, 8, 8), axes={"t": 0, "y": 1, "x": 2})  # stack
+    iv.set_colormap("viridis")
+    iv.set_histogram_width(120)
+    iv.set_interactive(mouse=False, menu=False)
+    overlay = iv.add_overlay(np.zeros((8, 8, 4), dtype=np.uint8))
+    assert isinstance(overlay, cp.handles.Image)
+
+    roi = iv.add_roi(kind="rect", pos=(1, 2), size=(3, 4), pen="y")
+    assert isinstance(roi, cp.handles.Roi)
+    assert roi.pos == (1.0, 2.0)
+    assert roi.size == (3.0, 4.0)
+    roi.set_pos(5, 6)
+    roi.set_size(7, 8)
+    assert roi.pos == (5.0, 6.0)
+    assert roi.size == (7.0, 8.0)
+    seen = []
+    roi.on_change(lambda: seen.append(roi.pos), final=False)
+    roi.native.setPos((2.0, 2.0))
+    assert seen  # fired
+    roi.visible = False
+    roi.z = 10
+    iv.clear()
+
+
 def test_clicked_signal_wired(qapp):
     plot = cp.Plot()
     got = []

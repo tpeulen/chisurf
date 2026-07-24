@@ -310,6 +310,35 @@ class _DraggableTextItem(pg.TextItem):
             event.ignore()
 
 
+class _Roi(_Item):
+    """Handle for a pyqtgraph ROI (``RectROI`` / ``CircleROI``)."""
+
+    @property
+    def pos(self) -> tuple[float, float]:
+        """The ``(x, y)`` lower-left corner in image coordinates."""
+        p = self._native.pos()
+        return (float(p.x()), float(p.y()))
+
+    @property
+    def size(self) -> tuple[float, float]:
+        """The ``(w, h)`` size in image coordinates."""
+        s = self._native.size()
+        return (float(s.x()), float(s.y()))
+
+    def set_pos(self, x: float, y: float) -> None:
+        """Move the ROI's lower-left corner."""
+        self._native.setPos((float(x), float(y)))
+
+    def set_size(self, w: float, h: float) -> None:
+        """Resize the ROI."""
+        self._native.setSize((float(w), float(h)))
+
+    def on_change(self, callback, *, final: bool = True) -> None:
+        """Fire ``callback()`` while/after the ROI is dragged or resized."""
+        sig = self._native.sigRegionChangeFinished if final else self._native.sigRegionChanged
+        sig.connect(lambda *_: callback())
+
+
 class _Text(_Item):
     """Handle for a pyqtgraph ``TextItem``."""
 
@@ -585,6 +614,94 @@ class _PgGrid(base.GridCanvas):
         return self._w
 
 
+class _PgImageView(base.ImageViewCanvas):
+    """A pyqtgraph ``ImageView`` (image + LUT histogram + frame slider)."""
+
+    def __init__(self, **opts):
+        self._iv = pg.ImageView(**opts)
+
+    def widget(self) -> QtWidgets.QWidget:
+        """Return the embeddable image-view widget."""
+        return self._iv
+
+    def set_image(self, data, *, auto_levels=True, axes=None) -> None:
+        """Show an image or ``(t, y, x)`` stack."""
+        kw = {"autoLevels": auto_levels}
+        if axes is not None:
+            kw["axes"] = axes
+        self._iv.setImage(np.asarray(data), **kw)
+
+    def set_colormap(self, name, source="matplotlib") -> None:
+        """Apply a named colormap to the image."""
+        for src in (source, None):
+            try:
+                cm = pg.colormap.get(name, source=src) if src else pg.colormap.get(name)
+                if cm is not None:
+                    self._iv.setColorMap(cm)
+                    return
+            except Exception:
+                continue
+
+    def clear(self) -> None:
+        """Clear the image and overlays."""
+        self._iv.clear()
+
+    def set_histogram_width(self, width) -> None:
+        """Constrain (or free, with ``None``) the LUT histogram panel width."""
+        try:
+            self._iv.ui.histogram.setMaximumWidth(16777215 if width is None else int(width))
+        except Exception:
+            pass
+
+    def set_interactive(self, *, mouse=True, menu=True) -> None:
+        """Toggle view pan/zoom and the right-click menu."""
+        vb = self._iv.getView()
+        try:
+            vb.setMouseEnabled(x=mouse, y=mouse)
+            vb.setMenuEnabled(menu)
+        except Exception:
+            pass
+
+    def add_overlay(self, data, *, colormap=None) -> H.Image:
+        """Overlay a second image item on the view."""
+        item = pg.ImageItem(np.asarray(data))
+        lut = _lut(colormap)
+        if lut is not None:
+            item.setLookupTable(lut)
+        view = self._iv.getView()
+        view.addItem(item)
+        return _Image(item, view)
+
+    def add_roi(
+        self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0), pen, movable=True, rotatable=False
+    ) -> H.Roi:
+        """Add a region-of-interest to the view."""
+        if kind == "circle":
+            roi = pg.CircleROI(list(pos), list(size), pen=_pen(pen), movable=movable)
+        else:
+            roi = pg.RectROI(
+                list(pos), list(size), pen=_pen(pen), movable=movable, rotatable=rotatable
+            )
+        view = self._iv.getView()
+        view.addItem(roi)
+        return _Roi(roi, view)
+
+    def on_click(self, callback) -> None:
+        """Register ``callback(x, y)`` for clicks in image coordinates."""
+
+        def _handler(event):
+            vb = self._iv.getView()
+            pt = vb.mapSceneToView(event.scenePos())
+            callback(pt.x(), pt.y())
+
+        self._iv.getView().scene().sigMouseClicked.connect(_handler)
+
+    @property
+    def native(self):
+        """The wrapped pyqtgraph ``ImageView``."""
+        return self._iv
+
+
 class PyQtGraphBackend(base.Backend):
     """chiplot backend rendering through pyqtgraph."""
 
@@ -601,6 +718,10 @@ class PyQtGraphBackend(base.Backend):
     def create_grid(self, **opts) -> base.GridCanvas:
         """Create a multi-panel grid backed by a ``GraphicsLayoutWidget``."""
         return _PgGrid(**opts)
+
+    def create_image_view(self, **opts) -> base.ImageViewCanvas:
+        """Create an image view backed by a ``pg.ImageView``."""
+        return _PgImageView(**opts)
 
     def configure(self, **global_opts) -> None:
         """Apply process-wide pyqtgraph options."""

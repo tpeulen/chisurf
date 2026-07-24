@@ -561,6 +561,162 @@ class Grid(QtWidgets.QWidget):
         return self._grid.native
 
 
+class ImageView(QtWidgets.QWidget):
+    """Image viewer: image + intensity/LUT histogram + (3-D) frame slider.
+
+    Replaces ``pg.ImageView``. Drops into a Qt layout like any widget. Overlays
+    and ROIs attach to its internal view.
+
+    Parameters
+    ----------
+    parent : QWidget, optional
+        Qt parent.
+    **backend_opts
+        Passed to the backend image-view factory.
+
+    Signals
+    -------
+    clicked(float, float)
+        Emitted with the ``(x, y)`` image coordinates of a click.
+    """
+
+    clicked = QtCore.Signal(float, float)
+
+    def __init__(self, parent=None, **backend_opts):
+        super().__init__(parent)
+        self._iv = get_backend().create_image_view(**backend_opts)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self._iv.widget())
+        self._iv.on_click(lambda x, y: self.clicked.emit(x, y))
+
+    def set_image(self, data, *, auto_levels=True, axes=None) -> None:
+        """Show a 2-D image or a 3-D ``(t, y, x)`` stack.
+
+        Parameters
+        ----------
+        data : array-like
+            2-D image or 3-D stack.
+        auto_levels : bool
+            Auto-scale the intensity range to the data.
+        axes : dict, optional
+            Dimension map for stacks, e.g. ``{"t": 0, "y": 1, "x": 2}``.
+        """
+        self._iv.set_image(np.asarray(data), auto_levels=auto_levels, axes=axes)
+
+    def set_colormap(self, name, source="matplotlib") -> None:
+        """Apply a named colormap.
+
+        Parameters
+        ----------
+        name : str
+            Colormap identifier (e.g. ``"viridis"``, ``"CET-L4"``).
+        source : str
+            Namespace hint for the backend.
+        """
+        self._iv.set_colormap(name, source)
+
+    def clear(self) -> None:
+        """Clear the image and overlays."""
+        self._iv.clear()
+
+    def set_histogram_width(self, width) -> None:
+        """Constrain (int) or free (``None``) the LUT histogram panel width."""
+        self._iv.set_histogram_width(width)
+
+    def set_interactive(self, *, mouse=True, menu=True) -> None:
+        """Toggle view pan/zoom (``mouse``) and the right-click menu."""
+        self._iv.set_interactive(mouse=mouse, menu=menu)
+
+    def add_overlay(self, data, *, colormap=None) -> H.Image:
+        """Overlay a second image on the view.
+
+        Parameters
+        ----------
+        data : array-like
+            Overlay image (typically RGBA with transparency).
+        colormap : str or style.Colormap, optional
+            Colormap for grayscale overlays.
+
+        Returns
+        -------
+        handles.Image
+        """
+        cmap = colormap
+        if isinstance(cmap, str):
+            cmap = S.colormap(cmap)
+        return self._iv.add_overlay(np.asarray(data), colormap=cmap)
+
+    def add_roi(
+        self,
+        *,
+        kind="rect",
+        pos=(0.0, 0.0),
+        size=(10.0, 10.0),
+        pen="y",
+        movable=True,
+        rotatable=False,
+    ) -> H.Roi:
+        """Add a region-of-interest rectangle (or circle) over the image.
+
+        Parameters
+        ----------
+        kind : str
+            ``"rect"`` or ``"circle"``.
+        pos : tuple of float
+            Lower-left corner in image coordinates.
+        size : tuple of float
+            ``(w, h)`` in image coordinates.
+        pen : pen-like
+            Outline style.
+        movable : bool
+            Whether the user can drag/resize it.
+        rotatable : bool
+            Whether a rectangle ROI can be rotated (ignored for circles).
+
+        Returns
+        -------
+        handles.Roi
+        """
+        return self._iv.add_roi(
+            kind=kind,
+            pos=tuple(pos),
+            size=tuple(size),
+            pen=S.to_pen(pen),
+            movable=movable,
+            rotatable=rotatable,
+        )
+
+    @property
+    def native(self):
+        """The backend image-view object (escape hatch; avoid in new code)."""
+        return self._iv.native
+
+    def __getattr__(self, name: str):
+        """Proxy unknown attributes to the native image view, flagged.
+
+        Parameters
+        ----------
+        name : str
+            Attribute not found on this :class:`ImageView`.
+
+        Raises
+        ------
+        AttributeError
+            During construction or if the native image view also lacks ``name``.
+        """
+        if name.startswith("__") or name == "_iv":
+            raise AttributeError(name)
+        from chisurf.gui.chiplot._passthrough import record_and_warn
+
+        native = self._iv.native
+        if hasattr(native, name):
+            record_and_warn("ImageView", name)
+            return getattr(native, name)
+        raise AttributeError(name)
+
+
 class PanelPlot(Plot):
     """A :class:`Plot` bound to an existing grid-panel canvas.
 

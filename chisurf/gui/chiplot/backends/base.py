@@ -264,6 +264,75 @@ class GridCanvas(abc.ABC):
         """The backend-specific container object (escape hatch)."""
 
 
+class ImageViewCanvas(abc.ABC):
+    """An image viewer: image + intensity/LUT histogram + (3-D) frame slider.
+
+    Wraps the renderer's composite image-view widget (pyqtgraph ``ImageView``
+    today). Overlays and ROIs live on its internal view.
+    """
+
+    @abc.abstractmethod
+    def widget(self) -> QtWidgets.QWidget:
+        """Return the embeddable Qt widget."""
+
+    @abc.abstractmethod
+    def set_image(
+        self,
+        data: np.ndarray,
+        *,
+        auto_levels: bool = True,
+        axes: dict | None = None,
+    ) -> None:
+        """Show an image or ``(t, y, x)`` stack (``axes`` maps dimensions)."""
+
+    @abc.abstractmethod
+    def set_colormap(self, name: str, source: str = "matplotlib") -> None:
+        """Apply a named colormap to the image."""
+
+    @abc.abstractmethod
+    def clear(self) -> None:
+        """Clear the image and overlays."""
+
+    @abc.abstractmethod
+    def set_histogram_width(self, width: int | None) -> None:
+        """Constrain (or free, with ``None``) the LUT histogram panel width."""
+
+    @abc.abstractmethod
+    def set_interactive(self, *, mouse: bool = True, menu: bool = True) -> None:
+        """Toggle view pan/zoom (``mouse``) and the right-click menu."""
+
+    @abc.abstractmethod
+    def add_overlay(
+        self,
+        data: np.ndarray,
+        *,
+        colormap: S.Colormap | None = None,
+    ) -> H.Image:
+        """Overlay a second image item on the view; return its handle."""
+
+    @abc.abstractmethod
+    def add_roi(
+        self,
+        *,
+        kind: str = "rect",
+        pos: tuple[float, float] = (0.0, 0.0),
+        size: tuple[float, float] = (10.0, 10.0),
+        pen: S.Pen,
+        movable: bool = True,
+        rotatable: bool = False,
+    ) -> H.Roi:
+        """Add a region-of-interest to the view; return its handle."""
+
+    @abc.abstractmethod
+    def on_click(self, callback) -> None:
+        """Register ``callback(x, y)`` for clicks in image coordinates."""
+
+    @property
+    @abc.abstractmethod
+    def native(self):
+        """The backend-specific image-view object (escape hatch)."""
+
+
 class Backend(abc.ABC):
     """Factory that produces canvases and applies global configuration."""
 
@@ -276,6 +345,10 @@ class Backend(abc.ABC):
     @abc.abstractmethod
     def create_grid(self, **opts) -> GridCanvas:
         """Create a multi-panel :class:`GridCanvas`."""
+
+    @abc.abstractmethod
+    def create_image_view(self, **opts) -> ImageViewCanvas:
+        """Create an :class:`ImageViewCanvas`."""
 
     @abc.abstractmethod
     def configure(self, **global_opts) -> None:
