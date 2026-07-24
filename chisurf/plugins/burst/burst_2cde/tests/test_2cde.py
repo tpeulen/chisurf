@@ -109,6 +109,38 @@ def test_result_dataclass_and_plot(tmp_path):
     assert 0.0 <= res.dynamic_fraction(threshold=12.0) <= 1.0
 
 
+def test_read_burst_analysis_skips_json_sidecar_and_isolates_bi4_bur(tmp_path, monkeypatch):
+    """Reading a folder that also holds ``bv4/bva_settings.json`` must not crash.
+
+    Regression: 2CDE read the folder with the default ``b*4*`` glob, which also
+    matched ``bv4/`` and read BVA's ``bva_settings.json`` inside it — corrupting
+    the ``First File`` column so a later ``data_path / ff`` raised
+    ``PosixPath / float``. 2CDE now reads only ``bi4_bur``; the reader also skips
+    JSON/YAML sidecars and coerces the filename to ``str``.
+    """
+    import json
+
+    from chisurf.plugins.burst.burst_bva.core import computation as bva_core
+
+    # Stub TTTR loading — we are testing the table read, not real photon files.
+    monkeypatch.setattr(bva_core.tttrlib, "TTTR", lambda *a, **k: object())
+
+    (tmp_path / "bi4_bur").mkdir()
+    (tmp_path / "bv4").mkdir()
+    rows = ["First Photon\tLast Photon\tFirst File"]
+    for i in range(4):
+        rows.append("0\t0\t")
+        rows.append(f"{i}\t{i + 1}\tm000.spc")
+    (tmp_path / "bi4_bur" / "m000.bur").write_text("\n".join(rows))
+    (tmp_path / "bv4" / "bva_settings.json").write_text(json.dumps({"min_window": 0.01}))
+
+    # 2CDE's path: only the burst tables, never the bv4 sidecars.
+    df, tttrs = bva_core.read_burst_analysis(tmp_path, "SPC-130", pattern="bi4_bur")
+    assert "First File" in df.columns
+    assert list(df["First File"]) == ["m000.spc"] * 4
+    assert list(tttrs) == ["m000.spc"]
+
+
 def test_write_sidecars(tmp_path):
     rng = np.random.default_rng(11)
     bursts = [(rng.random(150) < 0.5).astype(int) for _ in range(5)]

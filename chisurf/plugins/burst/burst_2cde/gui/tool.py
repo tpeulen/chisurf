@@ -120,7 +120,12 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         variant = self._variant.currentText()
         column = core.COLUMN_ALEX_2CDE if variant == "alex" else core.COLUMN_FRET_2CDE
         try:
-            df, tttrs = core.read_burst_analysis(pathlib.Path(folder), self._file_type.text().strip())
+            # Read only the burst tables (bi4_bur). The default ``b*4*`` glob also
+            # matches sibling result folders like ``bv4/`` (and reads BVA's
+            # ``bva_settings.json`` inside it), which corrupts the merged table.
+            df, tttrs = core.read_burst_analysis(
+                pathlib.Path(folder), self._file_type.text().strip(), pattern="bi4_bur"
+            )
             df = core.compute_2cde(
                 df, tttrs,
                 donor_channels=self._channels(self._donor.text()),

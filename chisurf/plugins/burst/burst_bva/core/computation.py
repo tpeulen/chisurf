@@ -45,12 +45,17 @@ def read_burst_analysis(
     for path in paris_path.glob(pattern):
         frames = []
         for fn in sorted(path.glob('*')):
+            # Skip non-burst sidecars (e.g. a ``bva_settings.json`` written into
+            # ``bv4/``) — reading them as a tab table corrupts the merged frame.
+            if not fn.is_file() or fn.suffix.lower() in {'.json', '.yaml', '.yml'}:
+                continue
             with open(fn) as f:
                 t = f.read().splitlines()
                 h = t[0].rstrip('\t').split('\t')
                 d = [line.rstrip('\t').split('\t') for line in t[2::row_stride]]
                 frames.append(pd.DataFrame(d, columns=h))
-        dfs.append(pd.concat(frames, ignore_index=True))
+        if frames:
+            dfs.append(pd.concat(frames, ignore_index=True))
     df = pd.concat(dfs, axis=1)
 
     for column in df.columns:
@@ -64,7 +69,9 @@ def read_burst_analysis(
     tttrs: Dict[str, tttrlib.TTTR] = {}
     for ff in df['First File']:
         if ff not in tttrs:
-            fn = str(data_path / ff)
+            # ``ff`` is a filename string; coerce defensively so a stray numeric
+            # value can't raise ``PosixPath / float`` on the path join.
+            fn = str(data_path / str(ff))
             tttrs[ff] = tttrlib.TTTR(fn, tttr_file_type)
 
     return df, tttrs
