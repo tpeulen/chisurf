@@ -3,6 +3,16 @@
   "sections": [
     {
       "type": "panel",
+      "title": "Equation",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {"type": "info", "source": "equation_html",
+         "description": "The compound fitting equation currently active, including any bunching terms."}
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Physical",
       "collapsible": true,
       "collapsed": false,

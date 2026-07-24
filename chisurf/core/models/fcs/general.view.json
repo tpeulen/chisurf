@@ -14,6 +14,16 @@
     },
     {
       "type": "panel",
+      "title": "Equation",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {"type": "info", "source": "equation_html",
+         "description": "The compound fitting equation currently active: the selected diffusion term times any active bunching/anticorrelation factors."}
+      ]
+    },
+    {
+      "type": "panel",
       "title": "MDF (Gauss-Lorentz)",
       "collapsible": true,
       "collapsed": false,

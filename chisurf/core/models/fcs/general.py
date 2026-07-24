@@ -232,3 +232,30 @@ class GeneralFCSModel(ModelCurve):
 
         self.x = tau_ms
         self.y = b + g / N
+
+    def equation_html(self) -> str:
+        """Render the currently active compound fitting equation as HTML.
+
+        Reflects the active ``diffusion_mode`` and the number of active
+        bunching/anticorrelation terms; bound to an ``info``/``source``
+        section in ``general.view.json`` so it stays live as the mode is
+        switched or terms are added/removed.
+        """
+        if self.diffusion_mode == "mdf":
+            g = "MDF<sub>Enderlein</sub>(&tau;; w<sub>0</sub>, w<sub>em</sub>, D)"
+            diam = self.mdf_physical.diam
+            w_label = "w<sub>0</sub>"
+        else:
+            gp = self.two_focus if self.diffusion_mode == "two_focus" else self.gauss
+            g = (
+                "(1+4D&tau;/w<sub>r</sub>&sup2;)<sup>&minus;1</sup>"
+                " &middot; (1+4D&tau;/w<sub>z</sub>&sup2;)<sup>&minus;1/2</sup>"
+            )
+            diam = gp.diam
+            w_label = "w<sub>r</sub>"
+        if diam > 0:
+            g += f" &middot; exp(&minus;d<sub>foci</sub>&sup2;/({w_label}&sup2;+4D&tau;))"
+        for term_html in (self.bunching.equation_html(), self.anticorr.equation_html()):
+            if term_html:
+                g += " &middot; " + term_html
+        return f"<b>G(&tau;) = b + (1/N)&middot;</b>{g}"

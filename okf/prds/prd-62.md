@@ -183,6 +183,17 @@ AutoForm host; generalizing it to the model editor is a candidate follow-up"):
   keeps its own, older "antibunching" terminology unchanged); anticorrelation
   time constants now stored/labeled in ns (were ms — unreadably small at the
   real timescale).
+- **Compound-equation display.** Both models gain an `equation_html()` method
+  and a top "Equation" panel (`info` section, `source: "equation_html"`)
+  rendering the currently active formula as HTML — the selected diffusion
+  term (or the numerical `MDF_Enderlein(...)` placeholder for `"mdf"` mode)
+  times each active bunching/anticorrelation factor, built from
+  `BunchingTerms.equation_html()`/`AnticorrTerms.equation_html()` (new,
+  mirroring their own `apply()` formula) so the text can never drift from
+  what's actually computed. Live via the existing `AUTOFORM_REFRESH` path (no
+  new wiring): `InfoWidget.refresh()` runs after any bound-control commit or
+  dynamic-group add/remove, and a `rebuild_on_change` mode switch rebuilds the
+  whole form (including this panel) anyway.
 - **Background-corrected outputs.** Baseline offset `b` default `0` → `1`
   (matches the typical normalized-ACF convention, e.g. Kristine data, where
   `G(∞) → 1`). Added a `bg` background-count-rate parameter (kHz, matching the

@@ -252,3 +252,19 @@ class MdfFCSModel(ModelCurve):
 
         self.x = tau_ms
         self.y = b + g / N
+
+    def equation_html(self) -> str:
+        """Render the currently active compound fitting equation as HTML.
+
+        Reflects the number of active bunching terms; bound to an
+        ``info``/``source`` section in ``mdf.view.json`` so it stays live as
+        terms are added/removed (see :meth:`chisurf.core.models.fcs.
+        relaxation.BunchingTerms.equation_html`).
+        """
+        g = "MDF<sub>Enderlein</sub>(&tau;; w<sub>0</sub>, w<sub>em</sub>, D)"
+        if self.physical.diam > 0:
+            g += " &middot; exp(&minus;d<sub>foci</sub>&sup2;/(w<sub>0</sub>&sup2;+4D&tau;))"
+        bunch = self.bunching.equation_html()
+        if bunch:
+            g += " &middot; " + bunch
+        return f"<b>G(&tau;) = b + (1/N)&middot;</b>{g}"

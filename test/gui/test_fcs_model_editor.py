@@ -258,3 +258,64 @@ def test_general_model_diffusion_panels_refold_on_mode_change(qapp):
     editor.rebuild()
     assert _expanded("3D Gaussian (single-focus)") is False
     assert _expanded("MDF (Gauss-Lorentz)") is True
+
+
+def test_general_model_equation_html_reflects_mode_and_terms():
+    from chisurf.core.models.fcs.general import GeneralFCSModel
+
+    fit = _make_fcs_fit(GeneralFCSModel)
+    model = fit.model
+
+    model.diffusion_mode = "gauss"
+    gauss_eq = model.equation_html()
+    assert "w<sub>r</sub>" in gauss_eq and "MDF" not in gauss_eq
+
+    model.diffusion_mode = "mdf"
+    mdf_eq = model.equation_html()
+    assert "MDF" in mdf_eq and "w<sub>r</sub>" not in mdf_eq
+
+    model.diffusion_mode = "two_focus"
+    assert "d<sub>foci</sub>" in model.equation_html()   # non-zero preset diam
+
+    model.diffusion_mode = "gauss"
+    baseline_eq = model.equation_html()
+    model.bunching.add_bunching()
+    model.anticorr.add_anticorr()
+    with_terms_eq = model.equation_html()
+    assert with_terms_eq != baseline_eq
+    assert "a<sub>b1</sub>" in with_terms_eq
+    assert "a<sub>ac1</sub>" in with_terms_eq
+
+
+def test_mdf_model_equation_html_reflects_bunching_terms():
+    from chisurf.core.models.fcs.mdf import MdfFCSModel
+
+    fit = _make_fcs_fit(MdfFCSModel)
+    model = fit.model
+    baseline_eq = model.equation_html()
+    assert "MDF" in baseline_eq
+
+    model.bunching.add_bunching()
+    with_term_eq = model.equation_html()
+    assert with_term_eq != baseline_eq
+    assert "a<sub>b1</sub>" in with_term_eq
+
+
+def test_general_model_editor_renders_a_live_equation_info_widget(qapp):
+    from chisurf.core.models.fcs.general import GeneralFCSModel
+    from chisurf.gui.autoform.sections.builtin import InfoWidget
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+
+    fit = _make_fcs_fit(GeneralFCSModel)
+    model = fit.model
+    editor = build_model_editor(model)
+
+    infos = editor.findChildren(InfoWidget)
+    assert len(infos) == 1
+    assert "MDF" not in infos[0].toPlainText()   # default mode is gauss
+
+    model.diffusion_mode = "mdf"
+    editor.rebuild()
+    infos = editor.findChildren(InfoWidget)
+    assert len(infos) == 1
+    assert "MDF" in infos[0].toPlainText()

@@ -82,6 +82,14 @@ class BunchingTerms(FittingParameterGroup):
                 g = g * (1.0 - ba + ba * np.exp(-tau_ms / bt))
         return g
 
+    def equation_html(self) -> str:
+        """HTML factor chain for the active bunching terms (for a compound-equation display)."""
+        return " &middot; ".join(
+            f"(1 &minus; a<sub>b{i}</sub> + a<sub>b{i}</sub>&middot;"
+            f"e<sup>&minus;&tau;/&tau;<sub>b{i}</sub></sup>)"
+            for i in range(1, len(self) + 1)
+        )
+
 
 class AnticorrTerms(FittingParameterGroup):
     """Zero or more photon-anticorrelation (antibunching) dip terms."""
@@ -141,3 +149,10 @@ class AnticorrTerms(FittingParameterGroup):
             if act_ms > 0:
                 g = g * (1.0 - aca * np.exp(-tau_ms / act_ms))
         return g
+
+    def equation_html(self) -> str:
+        """HTML factor chain for the active anticorrelation terms (for a compound-equation display)."""
+        return " &middot; ".join(
+            f"(1 &minus; a<sub>ac{i}</sub>&middot;e<sup>&minus;&tau;/&tau;<sub>ac{i}</sub></sup>)"
+            for i in range(1, len(self) + 1)
+        )
