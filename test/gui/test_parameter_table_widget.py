@@ -430,6 +430,109 @@ def test_value_column_uses_scientific_spinbox_not_qt_default(qapp):
         assert isinstance(paired._table.itemDelegateForColumn(col), _FloatEditDelegate)
 
 
+def _type_into_cell(qapp, view, index, text, commit_key=None):
+    """Open ``index``'s editor, type ``text``, and commit it like a user would.
+
+    ``commit_key`` is the key that ends the entry (Return / Tab); ``None`` commits
+    by moving the edit focus to another cell.
+    """
+    from qtpy import QtCore
+    from qtpy.QtTest import QTest
+
+    from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
+
+    view.setCurrentIndex(index)
+    view.edit(index)
+    qapp.processEvents()
+    editor = view.viewport().findChildren(ScientificDoubleSpinBox)[0]
+    editor.setFocus()
+    editor.selectAll()
+    QTest.keyClicks(editor, text)
+    if commit_key is not None:
+        QTest.keyClick(editor, commit_key)
+    else:
+        other = index.model().index(0, index.column())
+        view.setCurrentIndex(other)
+        view.edit(other)
+    qapp.processEvents()
+    return editor
+
+
+@pytest.mark.parametrize("commit", ["return", "tab", "focus_out"])
+def test_typed_value_is_committed(qapp, commit):
+    """Regression: a number typed into a value cell must reach the parameter.
+
+    The spin-box editor only turns typed text into a value when the entry is
+    committed, and the item delegate's commit runs *before* the editor sees the
+    Return / focus-out that would do it. Without ``interpretText()`` in
+    ``_FloatEditDelegate.setModelData`` the delegate read the pre-edit number and
+    the cell snapped straight back to its old value.
+    """
+    from qtpy import QtCore
+    from chisurf.core.fitting.parameter import FittingParameter
+    from chisurf.gui.autoform.sections.parameter_table import (
+        ParameterGroupTableWidget, COL_VALUE,
+    )
+
+    params = [
+        FittingParameter(name="N", value=1.0),
+        FittingParameter(name="D", value=300.0),
+    ]
+    widget = ParameterGroupTableWidget(params=params)
+    widget.show()
+    index = widget.table_model.index(1, COL_VALUE)
+    key = {
+        "return": QtCore.Qt.Key_Return,
+        "tab": QtCore.Qt.Key_Tab,
+        "focus_out": None,
+    }[commit]
+
+    _type_into_cell(qapp, widget.table_view, index, "408.147", key)
+
+    assert params[1].value == pytest.approx(408.147)
+    assert widget.table_model.data(index, QtCore.Qt.DisplayRole) == "408.147"
+
+
+def test_typed_value_is_committed_paired_table(qapp):
+    """The paired (dynamic-group) table shares the delegate — same guarantee."""
+    from qtpy import QtCore
+    from chisurf.core.fitting.parameter import FittingParameter
+    from chisurf.gui.autoform.sections.parameter_table import (
+        PairedParameterTableWidget,
+    )
+
+    params = [
+        FittingParameter(name="b1", value=0.5),
+        FittingParameter(name="tc1", value=0.001),
+    ]
+    widget = PairedParameterTableWidget(params=params, width=2)
+    widget.show()
+    # column 0 is the component index; the second slot's value column follows the
+    # first slot's block of slot columns.
+    from chisurf.gui.autoform.sections.parameter_table import SLOT_COLUMN_META
+
+    col = 1 + len(SLOT_COLUMN_META)
+    index = widget.table_model.index(0, col)
+    _type_into_cell(qapp, widget.table_view, index, "0.025", QtCore.Qt.Key_Return)
+
+    assert params[1].value == pytest.approx(0.025)
+
+
+def test_spinbox_interpret_text_ignores_unparsable_entry(qapp):
+    """An aborted entry ("1e") leaves the value alone and restores the display."""
+    from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
+
+    sb = ScientificDoubleSpinBox(value=2.5, decimals=6)
+    sb.lineEdit().setText("1e")
+    sb.interpretText()
+    assert sb.value() == pytest.approx(2.5)
+    assert sb.lineEdit().text().strip() == "2.5"
+
+    sb.lineEdit().setText("1e3")
+    sb.interpretText()
+    assert sb.value() == pytest.approx(1000.0)
+
+
 def test_copy_paste_values(qapp):
     from qtpy import QtCore, QtWidgets
     from chisurf.gui.autoform.sections.parameter_table import (

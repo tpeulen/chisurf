@@ -4,6 +4,7 @@ import csv
 import logging
 from typing import Any
 
+import pyqtgraph as pg
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QApplication,
@@ -27,7 +28,6 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 
 from ..api.models import FitResult, PchResult
@@ -173,14 +173,17 @@ class PCHApp(QMainWindow):
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(4)
 
-        self.trace_plot = cp.Plot(title="Intensity Trace")
-        self.trace_plot.set_labels(bottom="Time (s)", left="Photon Counts")
+        self.trace_plot = pg.PlotWidget(title="Intensity Trace")
+        self.trace_plot.setLabel("bottom", "Time (s)")
+        self.trace_plot.setLabel("left", "Photon Counts")
 
-        self.hist_plot = cp.Plot(title="Photon Counting Histogram")
-        self.hist_plot.set_log(y=True)
-        self.hist_plot.set_labels(bottom="Photon Count k", left="P(k)")
-        self.region = self.hist_plot.region((0.0, 1.0))
-        self.region.on_change(self._on_region_changed, final=False)
+        self.hist_plot = pg.PlotWidget(title="Photon Counting Histogram")
+        self.hist_plot.setLogMode(y=True)
+        self.hist_plot.setLabel("bottom", "Photon Count k")
+        self.hist_plot.setLabel("left", "P(k)")
+        self.region = pg.LinearRegionItem([0, 1], swapMode="handle")
+        self.region.sigRegionChanged.connect(self._on_region_changed)
+        self.hist_plot.addItem(self.region)
 
         layout.addWidget(self.trace_plot, stretch=1)
         layout.addWidget(self.hist_plot, stretch=1)
@@ -364,7 +367,7 @@ class PCHApp(QMainWindow):
             self._fit_result = None
             self._plot_trace()
             self._plot_hist()
-            self.region.set_bounds(0, max(self._result.k_vals))
+            self.region.setRegion([0, max(self._result.k_vals)])
             self.action_fit.setEnabled(True)
             self.action_save.setEnabled(True)
             self.statusBar().showMessage(
@@ -382,7 +385,7 @@ class PCHApp(QMainWindow):
             n_comp = self.spin_comp.value()
             init_eps = [b.value() for b in self.eps_boxes]
             init_Ns = [b.value() for b in self.N_boxes]
-            low, high = self.region.bounds
+            low, high = self.region.getRegion()
             fit_low = int(low)
             fit_high = int(high)
 
@@ -438,7 +441,7 @@ class PCHApp(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
 
-    def _on_region_changed(self, *args):
+    def _on_region_changed(self):
         if self._fit_result is not None and self._result is not None:
             self._update_results_text()
 
@@ -447,18 +450,20 @@ class PCHApp(QMainWindow):
     def _plot_trace(self):
         self.trace_plot.clear()
         if self._result is not None:
-            self.trace_plot.line(
+            self.trace_plot.plot(
                 self._result.trace_t,
                 self._result.trace_counts,
+                stepMode=False,
             )
 
     def _plot_hist(self):
         self.hist_plot.clear()
-        self.hist_plot.add(self.region)
+        self.hist_plot.addItem(self.region)
         if self._result is not None:
-            self.hist_plot.scatter(
+            self.hist_plot.plot(
                 self._result.k_vals,
                 self._result.p_exp,
+                pen=None,
                 symbol="o",
             )
 
@@ -466,10 +471,11 @@ class PCHApp(QMainWindow):
         if self._result is None or self._fit_result is None:
             return
         self.hist_plot.clear()
-        self.hist_plot.add(self.region)
-        self.hist_plot.scatter(
+        self.hist_plot.addItem(self.region)
+        self.hist_plot.plot(
             self._result.k_vals,
             self._result.p_exp,
+            pen=None,
             symbol="o",
         )
         low = self._fit_result.fit_low
@@ -479,11 +485,10 @@ class PCHApp(QMainWindow):
             & (np.array(self._result.k_vals) <= high)
         )
         k_arr = np.array(self._result.k_vals)
-        self.hist_plot.line(
+        self.hist_plot.plot(
             k_arr[mask],
             np.array(self._fit_result.p_fit)[mask],
-            pen="r",
-            width=2,
+            pen=pg.mkPen("r", width=2),
         )
 
     # ── results text ───────────────────────────────────────────────
@@ -494,7 +499,7 @@ class PCHApp(QMainWindow):
         if not hasattr(self, "region"):
             return
         fr = self._fit_result
-        low, high = self.region.bounds
+        low, high = self.region.getRegion()
         fit_low, fit_high = int(low), int(high)
 
         k_arr = np.array(self._result.k_vals)

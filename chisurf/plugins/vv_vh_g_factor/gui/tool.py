@@ -21,8 +21,7 @@ from qtpy.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QDialog
 )
 from qtpy.QtCore import Qt, QTimer
-
-from chisurf.gui import chiplot as cp
+import pyqtgraph as pg
 
 # Optional ChiSurf I/O import for VV/VH reading
 try:
@@ -44,6 +43,12 @@ try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
     persist_plugin_state = lambda n: lambda c: c
+
+
+try:
+    _DASH_LINE_STYLE = Qt.PenStyle.DashLine
+except Exception:
+    _DASH_LINE_STYLE = getattr(Qt, "DashLine", 2)
 
 
 class DataCurve:
@@ -315,31 +320,33 @@ class VvVhGFactorCalculator(QWidget):
         self.bg_perpendicular_label.setVisible(False)
         self.bg_perpendicular_value.setVisible(False)
 
-        self.plot_widget = cp.Plot()
-        self.plot_widget.set_labels(left='Intensity', bottom='Channel')
-        self.plot_widget.set_title('Full Decay Curves')
-        self.plot_widget.legend()
-        self.plot_widget.set_log(x=False, y=True)
+        self.plot_widget = pg.PlotWidget()
+        self.plot_widget.setLabel('left', 'Intensity')
+        self.plot_widget.setLabel('bottom', 'Channel')
+        self.plot_widget.setTitle('Full Decay Curves')
+        self.plot_widget.addLegend()
+        self.plot_widget.setLogMode(x=False, y=True)
 
-        self.region = self.plot_widget.region(
-            tuple(self.region_bounds),
-            brush=(50, 50, 200, 50),
-            movable=True,
+        self.region = pg.LinearRegionItem(
+            values=self.region_bounds,
+            brush=pg.mkBrush(color=(50, 50, 200, 50)),
+            movable=True
         )
-        self.region.on_change(self.on_region_changed, final=False)
+        self.region.sigRegionChanged.connect(self.on_region_changed)
 
-        self.bg_region = self.plot_widget.region(
-            tuple(self.bg_region_bounds),
-            brush=(200, 50, 50, 50),
-            movable=True,
+        self.bg_region = pg.LinearRegionItem(
+            values=self.bg_region_bounds,
+            brush=pg.mkBrush(color=(200, 50, 50, 50)),
+            movable=True
         )
-        self.bg_region.on_change(self.on_bg_region_changed, final=False)
+        self.bg_region.sigRegionChanged.connect(self.on_bg_region_changed)
 
-        self.tail_plot_widget = cp.Plot()
-        self.tail_plot_widget.set_labels(left='r(t)', bottom='Channel')
-        self.tail_plot_widget.set_title('Time-Resolved Anisotropy r(t)')
-        self.tail_plot_widget.legend()
-        self.tail_plot_widget.set_log(x=False, y=False)
+        self.tail_plot_widget = pg.PlotWidget()
+        self.tail_plot_widget.setLabel('left', 'r(t)')
+        self.tail_plot_widget.setLabel('bottom', 'Channel')
+        self.tail_plot_widget.setTitle('Time-Resolved Anisotropy r(t)')
+        self.tail_plot_widget.addLegend()
+        self.tail_plot_widget.setLogMode(x=False, y=False)
 
         self.plotContainerLayout.addWidget(self.plot_widget)
         self.tailPlotContainerLayout.addWidget(self.tail_plot_widget)
@@ -423,7 +430,7 @@ class VvVhGFactorCalculator(QWidget):
             return
 
         self.update_plot()
-        self.plot_widget.add(self.region)
+        self.plot_widget.addItem(self.region)
 
         if self.time_axis is None:
             return
@@ -432,16 +439,16 @@ class VvVhGFactorCalculator(QWidget):
             self.time_axis[int(data_length * 0.7)],
             self.time_axis[int(data_length * 0.9)]
         ]
-        self.region.set_bounds(*self.region_bounds)
+        self.region.setRegion(self.region_bounds)
 
         self.bg_region_bounds = [
             self.time_axis[int(data_length * 0.05)],
             self.time_axis[int(data_length * 0.15)]
         ]
-        self.bg_region.set_bounds(*self.bg_region_bounds)
+        self.bg_region.setRegion(self.bg_region_bounds)
 
         if self.use_background_correction:
-            self.plot_widget.add(self.bg_region)
+            self.plot_widget.addItem(self.bg_region)
 
         self.calculate_g_factor()
 
@@ -494,9 +501,9 @@ class VvVhGFactorCalculator(QWidget):
     def on_bg_correction_changed(self, state):
         self.use_background_correction = (state == Qt.Checked)
         if self.use_background_correction:
-            self.plot_widget.add(self.bg_region)
+            self.plot_widget.addItem(self.bg_region)
         else:
-            self.plot_widget.remove(self.bg_region)
+            self.plot_widget.removeItem(self.bg_region)
 
         self.corrected_g_factor_label.setVisible(self.use_background_correction)
         self.corrected_g_factor_value.setVisible(self.use_background_correction)
@@ -513,12 +520,12 @@ class VvVhGFactorCalculator(QWidget):
         """Debounced trigger for calculate_g_factor (coalesces rapid events)."""
         self._calc_timer.start()
 
-    def on_region_changed(self, *args):
-        self.region_bounds = self.region.bounds
+    def on_region_changed(self):
+        self.region_bounds = self.region.getRegion()
         self._schedule_calculate()
 
-    def on_bg_region_changed(self, *args):
-        self.bg_region_bounds = self.bg_region.bounds
+    def on_bg_region_changed(self):
+        self.bg_region_bounds = self.bg_region.getRegion()
         self._schedule_calculate()
 
     def on_shift_changed(self, value):
@@ -882,8 +889,8 @@ class VvVhGFactorCalculator(QWidget):
                 )
 
         if self.use_background_correction:
-            self.plot_widget.add(self.bg_region)
-        self.plot_widget.add(self.region)
+            self.plot_widget.addItem(self.bg_region)
+        self.plot_widget.addItem(self.region)
 
     @staticmethod
     def _plot_decay_set(plot_widget, time_axis, shifted_time_axis, par_raw, perp_raw, bg_par, bg_perp, g_unc, g_cor, prefix, show_raw=True, show_corrected=True):
@@ -903,18 +910,16 @@ class VvVhGFactorCalculator(QWidget):
             vh_cor_color = (241, 196, 15, 220)
 
         if show_raw:
-            plot_widget.line(time_axis, par_raw, pen=vv_raw_color, width=1.6, name=f'{prefix} VV raw')
-            plot_widget.line(shifted_time_axis, perp_raw, pen=vh_raw_color, width=1.6, name=f'{prefix} VH raw')
+            plot_widget.plot(time_axis, par_raw, pen=pg.mkPen(vv_raw_color, width=1.6), name=f'{prefix} VV raw')
+            plot_widget.plot(shifted_time_axis, perp_raw, pen=pg.mkPen(vh_raw_color, width=1.6), name=f'{prefix} VH raw')
         if show_corrected:
-            plot_widget.line(time_axis, par_corr, pen=vv_cor_color, width=1.6, name=f'{prefix} VV corr')
+            plot_widget.plot(time_axis, par_corr, pen=pg.mkPen(vv_cor_color, width=1.6), name=f'{prefix} VV corr')
 
         if show_corrected and np.isfinite(g_cor) and g_cor > 0.0:
-            plot_widget.line(
+            plot_widget.plot(
                 shifted_time_axis,
                 perp_corr * g_cor,
-                pen=vh_cor_color,
-                width=1.6,
-                style="dash",
+                pen=pg.mkPen(vh_cor_color, width=1.6, style=_DASH_LINE_STYLE),
                 name=f'{prefix} VH corr * G ({g_cor:.3f})'
             )
 
@@ -952,22 +957,19 @@ class VvVhGFactorCalculator(QWidget):
             if show_raw and np.isfinite(g_unc) and g_unc > 0.0:
                 r_unc = compute_rt(par_raw, perp_on_t_raw, g_unc, l1=0.0, l2=0.0)
                 r_unc = np.clip(r_unc, -0.5, 1.5)
-                self.tail_plot_widget.line(
+                self.tail_plot_widget.plot(
                     time_axis,
                     r_unc,
-                    pen=rt_raw_color,
-                    width=1.8,
+                    pen=pg.mkPen(rt_raw_color, width=1.8),
                     name=f'{prefix} r(t) raw, G={g_unc:.4f}'
                 )
             if show_corr and np.isfinite(g_cor) and g_cor > 0.0:
                 r_cor = compute_rt(par_corr, perp_on_t_corr, g_cor, l1=l1_corr, l2=l2_corr)
                 r_cor = np.clip(r_cor, -0.5, 1.5)
-                self.tail_plot_widget.line(
+                self.tail_plot_widget.plot(
                     time_axis,
                     r_cor,
-                    pen=rt_cor_color,
-                    width=1.8,
-                    style="dash",
+                    pen=pg.mkPen(rt_cor_color, width=1.8, style=_DASH_LINE_STYLE),
                     name=f'{prefix} r(t) corr, G={g_cor:.4f}, l1={l1_corr:.4f}, l2={l2_corr:.4f}'
                 )
 
@@ -984,5 +986,5 @@ class VvVhGFactorCalculator(QWidget):
                 fp_time = np.arange(n_fp, dtype=float)
                 _plot_dataset_rt('slow', fp_time, np.asarray(fp_par[:n_fp], dtype=float), np.asarray(fp_perp[:n_fp], dtype=float))
 
-        self.tail_plot_widget.set_title(f'r(t): fast+slow, raw+corr (Shift: {self.decay_shift:.3f} ch)')
-        self.tail_plot_widget.set_ylim(-0.5, 1.5, padding=0.0)
+        self.tail_plot_widget.setTitle(f'r(t): fast+slow, raw+corr (Shift: {self.decay_shift:.3f} ch)')
+        self.tail_plot_widget.setYRange(-0.5, 1.5, padding=0.0)

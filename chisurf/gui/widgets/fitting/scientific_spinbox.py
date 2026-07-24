@@ -154,7 +154,21 @@ class ScientificDoubleSpinBox(QtWidgets.QAbstractSpinBox):
         self.sigValueChanged.emit(self)
 
     # ------------------------------------------------------------ input commit
-    def _commit_text(self) -> None:
+    def interpretText(self) -> None:  # noqa: N802 (Qt naming)
+        """Adopt the text currently in the line edit as this widget's value.
+
+        Qt's item delegates call ``interpretText()`` on a spin-box editor before
+        reading its value, because a spin box only turns typed text into a value
+        when it is committed.  ``QAbstractSpinBox::interpretText`` is not virtual
+        and knows nothing about the value *this* subclass manages, so this
+        override is what a delegate has to call (see
+        :class:`chisurf.gui.autoform.sections.parameter_table._FloatEditDelegate`).
+        Without it, a number typed into a parameter-table cell was thrown away on
+        commit and the cell snapped back to its previous value.
+
+        Unparsable text (an aborted entry such as ``"1e"``) leaves the value
+        untouched and restores the display.
+        """
         text = self.lineEdit().text().strip()
         if self._suffix and text.endswith(self._suffix):
             text = text[: -len(self._suffix)].strip()
@@ -169,6 +183,9 @@ class ScientificDoubleSpinBox(QtWidgets.QAbstractSpinBox):
         self._refresh_display()
         if changed:
             self._emit_changed()
+
+    def _commit_text(self) -> None:
+        self.interpretText()
         # The inner QLineEdit's editingFinished is a *different signal object*
         # from this widget's own, and QAbstractSpinBox does not forward it for a
         # subclass that manages its own value -- so it has to be re-emitted here.

@@ -79,7 +79,14 @@ formatting, no artificial range) instead of Qt's default double-spinbox
 editor, which defaults to 2 decimal places and a 0–99.99 range — without it, a
 value like a 0.001 ms bunching time constant displayed as "0.00" while being
 edited, and a value above 99.99 (e.g. `w_z[nm] = 2020.1`) could not be typed
-at all. The TCSPC Lifetime model's Lifetimes (xₗ/τₗ) and
+at all. A spin box only turns typed *text* into a *value* when the entry is
+committed, and an item delegate's commit runs **before** the editor sees the
+Return / focus-out that would do it — so `_FloatEditDelegate.setModelData` calls
+`ScientificDoubleSpinBox.interpretText()` (the subclass's stand-in for Qt's
+non-virtual `QAbstractSpinBox::interpretText`, which knows nothing about the
+value this subclass manages) before reading `value()`. Without that call every
+number typed into a table cell was discarded on commit and the cell snapped back
+to its previous value. The TCSPC Lifetime model's Lifetimes (xₗ/τₗ) and
 Anisotropy rotation (bᵢ/ρᵢ) groups use `style:"table"`. Both table widgets
 (`parameter_group_table` and the paired `dynamic_group` table) can hide the
 **Lo / Hi / Bounds** columns to keep the tables narrow — every `panel` puts a

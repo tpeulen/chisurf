@@ -4,25 +4,12 @@ from chisurf.gui.widgets.models.tcspc.forster_helpers import open_forster_calcul
 
 import numpy as np
 
-from qtpy import QtWidgets
+from qtpy import QtWidgets, QtCore
 
-from chisurf.gui import chiplot as cp
-
-
-def _plotting_available() -> bool:
-    """Return whether a chiplot rendering backend can be instantiated.
-
-    Returns
-    -------
-    bool
-        ``True`` if the active backend (and its underlying renderer) imports
-        cleanly, ``False`` otherwise — used to degrade gracefully to a warning.
-    """
-    try:
-        cp.get_backend()
-        return True
-    except Exception:  # pragma: no cover - renderer may be missing in headless envs
-        return False
+try:
+    import pyqtgraph as pg
+except Exception:  # pragma: no cover - pyqtgraph may not be available in some environments
+    pg = None  # type: ignore
 
 
 def setup_kappa2_controls(
@@ -177,11 +164,11 @@ def show_kappa2_distribution_plot(
     This works both for the static distribution (slow) and for the
     dynamic scalar case (fast, shown as a single spike at k2).
     """
-    if not _plotting_available():
+    if pg is None:
         QtWidgets.QMessageBox.warning(
             parent,
             "Orientation factor distribution",
-            "Plotting backend is not available, cannot plot k2 distribution.",
+            "pyqtgraph is not available, cannot plot k2 distribution.",
         )
         return
 
@@ -247,44 +234,46 @@ def show_kappa2_distribution_plot(
     k2_vals_sorted = k2_vals[order]
     weights_sorted = amps[order]
 
-    plot_widget = cp.Plot(dialog)
-    plot_widget.grid(x=True, y=True, alpha=0.3)
-    plot_widget.set_labels(bottom="k2", left="Weight")
-    plot_widget.legend()
-    plot_widget.line(
+    plot_widget = pg.PlotWidget(dialog)
+    plot_widget.showGrid(x=True, y=True, alpha=0.3)
+    plot_widget.setLabel("bottom", "k2")
+    plot_widget.setLabel("left", "Weight")
+    plot_widget.addLegend()
+    plot_widget.plot(
         k2_vals_sorted,
         weights_sorted,
-        width=2,
+        pen=pg.mkPen(width=2),
         symbol="o",
-        symbol_size=6,
+        symbolSize=6,
         name="static distribution",
     )
 
     y_max = float(np.max(weights_sorted)) if weights_sorted.size else 1.0
     y_line = y_max * 1.05
-    plot_widget.line(
+    plot_widget.plot(
         [dynamic_k2, dynamic_k2],
         [0.0, y_line],
-        pen=(80, 160, 255),
-        width=2,
+        pen=pg.mkPen(color=(80, 160, 255), width=2),
         name="dynamic (k2)",
     )
-    plot_widget.line(
+    plot_widget.plot(
         [static_mean, static_mean],
         [0.0, y_line],
-        pen=(255, 160, 80),
-        width=2,
-        style="dash",
+        pen=pg.mkPen(color=(255, 160, 80), width=2, style=QtCore.Qt.DashLine),
         name="static avg",
     )
 
     try:
-        plot_widget.text("dynamic", (dynamic_k2, y_line), color=(80, 160, 255), anchor=(0.5, 1.0))
+        dyn_label = pg.TextItem("dynamic", color=(80, 160, 255), anchor=(0.5, 1.0))
+        dyn_label.setPos(dynamic_k2, y_line)
+        plot_widget.addItem(dyn_label)
     except Exception:
         pass
 
     try:
-        plot_widget.text("static avg", (static_mean, y_line), color=(255, 160, 80), anchor=(0.5, 1.0))
+        stat_label = pg.TextItem("static avg", color=(255, 160, 80), anchor=(0.5, 1.0))
+        stat_label.setPos(static_mean, y_line)
+        plot_widget.addItem(stat_label)
     except Exception:
         pass
 
@@ -308,11 +297,11 @@ def show_rapp_rda_distribution_plot(
     This displays the distribution used for FFT convolution:
     R_app/R_DA = (κ²/⟨κ²⟩)^(1/6)
     """
-    if not _plotting_available():
+    if pg is None:
         QtWidgets.QMessageBox.warning(
             parent,
             "R_app/R_DA distribution",
-            "Plotting backend is not available, cannot plot distribution.",
+            "pyqtgraph is not available, cannot plot distribution.",
         )
         return
 
@@ -369,58 +358,56 @@ def show_rapp_rda_distribution_plot(
     layout.addWidget(info_label)
 
     # First plot: κ² distribution
-    plot_k2 = cp.Plot(dialog)
-    plot_k2.grid(x=True, y=True, alpha=0.3)
-    plot_k2.set_labels(bottom="κ²", left="Probability")
-    plot_k2.legend()
-    plot_k2.line(
+    plot_k2 = pg.PlotWidget(dialog)
+    plot_k2.showGrid(x=True, y=True, alpha=0.3)
+    plot_k2.setLabel("bottom", "κ²")
+    plot_k2.setLabel("left", "Probability")
+    plot_k2.addLegend()
+    plot_k2.plot(
         k2_vals,
         amps / np.sum(amps) if np.sum(amps) > 0 else amps,
-        pen=(255, 100, 100),
-        width=2,
+        pen=pg.mkPen(width=2, color=(255, 100, 100)),
         symbol='o',
-        symbol_size=5,
+        symbolSize=5,
         name="ρ(κ²)",
     )
     # Mark mean κ²
     k2_max_y = float(np.max(amps / np.sum(amps))) if np.sum(amps) > 0 else 1.0
-    plot_k2.line(
+    plot_k2.plot(
         [k2_mean, k2_mean],
         [0.0, k2_max_y * 1.05],
-        pen=(255, 160, 80),
-        width=2,
-        style="dash",
+        pen=pg.mkPen(color=(255, 160, 80), width=2, style=QtCore.Qt.DashLine),
         name=f"⟨κ²⟩ = {k2_mean:.3f}",
     )
     layout.addWidget(plot_k2)
 
     # Second plot: R_app/R_DA ratio distribution
-    plot_widget = cp.Plot(dialog)
-    plot_widget.grid(x=True, y=True, alpha=0.3)
-    plot_widget.set_labels(bottom="Rₐₚₚ/Rᴅᴀ", left="Probability Density")
-    plot_widget.legend()
-    plot_widget.line(
+    plot_widget = pg.PlotWidget(dialog)
+    plot_widget.showGrid(x=True, y=True, alpha=0.3)
+    plot_widget.setLabel("bottom", "Rₐₚₚ/Rᴅᴀ")
+    plot_widget.setLabel("left", "Probability Density")
+    plot_widget.addLegend()
+    plot_widget.plot(
         r_ratio,
         weights,
-        pen=(80, 160, 255),
-        width=2,
+        pen=pg.mkPen(width=2, color=(80, 160, 255)),
         name="ρ(Rₐₚₚ/Rᴅᴀ)",
     )
 
     # Mark the mean ratio (should be 1.0 by definition)
     y_max = float(np.max(weights)) if weights.size else 1.0
     y_line = y_max * 1.05
-    plot_widget.line(
+    plot_widget.plot(
         [1.0, 1.0],
         [0.0, y_line],
-        pen=(255, 160, 80),
-        width=2,
-        style="dash",
+        pen=pg.mkPen(color=(255, 160, 80), width=2, style=QtCore.Qt.DashLine),
         name="mean (1.0)",
     )
 
     try:
-        plot_widget.text("(2/3)^(1/6)", (1.0, y_line), color=(255, 160, 80), anchor=(0.5, 1.0))
+        mean_label = pg.TextItem("(2/3)^(1/6)", color=(255, 160, 80), anchor=(0.5, 1.0))
+        mean_label.setPos(1.0, y_line)
+        plot_widget.addItem(mean_label)
     except Exception:
         pass
 
@@ -479,28 +466,27 @@ def show_rapp_rda_distribution_plot(
                         r_app_hist_norm = r_app_hist
                     
                     # Create second plot
-                    plot_widget2 = cp.Plot(dialog)
-                    plot_widget2.grid(x=True, y=True, alpha=0.3)
-                    plot_widget2.set_labels(bottom="Distance (Å)", left="Normalized Intensity")
-                    plot_widget2.legend()
-
+                    plot_widget2 = pg.PlotWidget(dialog)
+                    plot_widget2.showGrid(x=True, y=True, alpha=0.3)
+                    plot_widget2.setLabel("bottom", "Distance (Å)")
+                    plot_widget2.setLabel("left", "Normalized Intensity")
+                    plot_widget2.addLegend()
+                    
                     # Plot R_DA
-                    plot_widget2.line(
+                    plot_widget2.plot(
                         r_da,
                         amp_r_norm,
-                        pen=(80, 255, 160),
-                        width=2,
+                        pen=pg.mkPen(width=2, color=(80, 255, 160)),
                         symbol='o',
-                        symbol_size=4,
+                        symbolSize=4,
                         name="ρ(Rᴅᴀ)",
                     )
-
+                    
                     # Plot R_app
-                    plot_widget2.line(
+                    plot_widget2.plot(
                         r_app_centers,
                         r_app_hist_norm,
-                        pen=(255, 80, 160),
-                        width=2,
+                        pen=pg.mkPen(width=2, color=(255, 80, 160)),
                         name="ρ(Rₐₚₚ)",
                     )
                     

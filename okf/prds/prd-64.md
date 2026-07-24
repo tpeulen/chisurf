@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 52):*
+*Landed so far (allow-list 76 → 57):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -319,23 +319,6 @@ screenshot/qtbot verification after each cluster.
   chiplot (Grid panel + image + lines + errorbars); the `HistogramLUTItem` LUT
   composite stays passthrough (a flagged gap), and the `pg.colormap.get`
   collision is resolved via `cp.get_backend().raw_module().colormap.get(...)`.
-- **Batch 8** (Phase 3 opener, allow-list 57 → 52) — migrated a cluster of
-  single-plot plugin/widget tools with clean, uniform pyqtgraph use onto the
-  native API: `plugins/pch` (region + log-hist + line/scatter),
-  `plugins/fret_line` (E/τ_X overlays + diagonal reference),
-  `plugins/tttr/tttr_microtime_shifter` (movable trigger `hline`/`vline` +
-  step-histograms + `int_color`), `plugins/vv_vh_g_factor` (dual decay/anisotropy
-  plots + signal/background `region`s), and `widgets/models/tcspc/kappa2_helpers`
-  (κ²/R_app dialogs with `plot.text(...)` labels). No new native API needed —
-  every call mapped to existing chiplot verbs (`line`/`scatter`/`region`/
-  `vline`/`hline`/`text`/`set_log`/`legend`/`grid`). Marker/region interaction
-  ports from raw `sigPositionChanged` + `blockSignals` to `handle.on_change(...,
-  final=…)` (drag-only, so the block-signals dance disappears). Optional-pyqtgraph
-  guards (`pg is None`) became backend-availability probes (`cp.get_backend()`).
-  `plugins/tttr/tttr_time_windows` was migrated the same way but is **deferred
-  from the allow-list drop** — its file also carries a concurrent i18n edit from
-  another working-tree instance, so the allow-list entry lands with that combined
-  commit rather than this one.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

@@ -2,6 +2,30 @@
 
 ## 2026-07-24
 
+* **Parameter-table edits were discarded: the delegate read a stale spin-box
+  value.** Typing a number into any AutoForm parameter table cell (value, Lo, Hi
+  — plain *and* paired tables, so every model editor) and pressing Return, Tab,
+  or clicking away left the parameter untouched and the cell snapped back to its
+  old number. `ScientificDoubleSpinBox` manages its own `_value` and only adopts
+  the typed text in `_commit_text`, wired to the *inner* `QLineEdit`'s
+  `editingFinished`; the item delegate's commit (`QStyledItemDelegate::eventFilter`
+  → `commitData` → `setModelData`) runs **before** the editor sees the Return /
+  focus-out, so `editor.value()` still returned the pre-edit number. Qt's own item
+  delegate calls `interpretText()` on spin-box editors for exactly this reason,
+  but `QAbstractSpinBox::interpretText` is not virtual and knows nothing about the
+  value this subclass manages. Added a public
+  `ScientificDoubleSpinBox.interpretText()` (parses the line-edit text, clamps,
+  emits only when changed, restores the display for an unparsable entry such as
+  `"1e"`), made `_commit_text` delegate to it, and called it from
+  `_FloatEditDelegate.setModelData` before reading `value()`. Verified end-to-end
+  through the real FCS model editor (a typed `D = 408.147` now survives the
+  debounced `fit.update` the edit dispatches). Regression tests in
+  `test/gui/test_parameter_table_widget.py`: typed-value commit via Return / Tab /
+  focus-out (parametrised), the paired table, and the unparsable-entry guard — all
+  four fail without the delegate call. Suites: 26 (parameter table) + 3 + 9
+  (spinbox) + 15 (table actions) + 18 (FCS editor) + 27 (auto-model widget) + 4
+  (global parameter table) passed; `test_cell_text_editing.py` fails identically
+  before and after (stale `DetectorWizardPage` attribute, unrelated).
 * **Adaptive proposals for `walk_mcmc` (makes the fixed sampler usable).**
   Proposal widths were a fixed fraction of each parameter's *starting value*, so a
   well-determined parameter was proposed far outside its posterior and almost

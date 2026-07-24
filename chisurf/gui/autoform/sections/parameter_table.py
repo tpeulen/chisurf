@@ -221,6 +221,12 @@ class _FloatEditDelegate(QtWidgets.QStyledItemDelegate):
             pass
 
     def setModelData(self, editor, model, index) -> None:
+        # A spin box only turns typed text into a value when the entry is
+        # committed, and the delegate's commit runs *before* the editor sees the
+        # Return / focus-out that would do it -- so ``value()`` would still hold
+        # the pre-edit number and the cell snapped straight back. Interpreting
+        # the text here is what Qt's own item delegate does for spin-box editors.
+        editor.interpretText()
         model.setData(index, editor.value(), QtCore.Qt.EditRole)
 
     def updateEditorGeometry(self, editor, option, index) -> None:

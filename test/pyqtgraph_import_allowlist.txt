@@ -11,6 +11,7 @@ chisurf/gui/plots/lineplot/lineplot.py
 chisurf/gui/plots/parameter_scan/parameter_scan.py
 chisurf/gui/plots/proteinMC.py
 chisurf/gui/plots/residual_image.py
+chisurf/gui/widgets/models/tcspc/kappa2_helpers.py
 chisurf/gui/widgets/node_editor/widgets/pt_plot_widget.py
 chisurf/gui/widgets/spectrum_view.py
 chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py
@@ -44,13 +45,17 @@ chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py
 chisurf/plugins/fluorescence_decay/maxent_decay/gui/gui.py
 chisurf/plugins/fluorescence_decay/maxent_decay/gui/qt_stack.py
 chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/irf_widget.py
+chisurf/plugins/fret_line/gui/tool.py
 chisurf/plugins/modelling/fret/gui/dock_tool.py
 chisurf/plugins/modelling/fret/gui/pair_selection_wizard.py
+chisurf/plugins/pch/gui/tool.py
 chisurf/plugins/tttr/intensity_trace/__init__.py
 chisurf/plugins/tttr/microtime_histogram/wizard.py
 chisurf/plugins/tttr/tttr_correlate/gui.py
 chisurf/plugins/tttr/tttr_histogram/gui.py
 chisurf/plugins/tttr/tttr_lut_tools/gui/sections.py
 chisurf/plugins/tttr/tttr_lut_tools/gui/settings_panel.py
+chisurf/plugins/tttr/tttr_microtime_shifter/gui/tool.py
 chisurf/plugins/tttr/tttr_time_windows/gui/tool.py
 chisurf/plugins/vv_vh_anisotropy/__init__.py
+chisurf/plugins/vv_vh_g_factor/gui/tool.py
