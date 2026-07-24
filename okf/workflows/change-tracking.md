@@ -51,9 +51,18 @@ in-flight work, so it is **banned**:
   not make.
 - **Never revert, restage, or unstage files you did not change.** Assume every
   other modified/staged/untracked path belongs to another instance and is mid-flight.
-- **Commit only your own files by explicit pathspec** — `git commit -- <your
-  paths>` (or `git add <your paths>` first). Never `git add -A`/`git add .`/
-  `git commit -a`, which sweep up everyone else's changes.
+- **Commit only your own changes.** Never `git add -A`/`git add .`/`git commit -a`,
+  which sweep up everyone else's changes. Beware the **pathspec footgun**:
+  `git commit -- <path>` commits that path's *working-tree* content, not just what
+  you staged, so it sweeps a co-editing instance's uncommitted lines from the same
+  file. Use `git commit -- <paths>` only for files that are **wholly yours**; when
+  a file has another instance's concurrent edits, stage just your hunks
+  (`git apply --cached <hunk.patch>` or `git add -p`) and run `git commit` with
+  **no pathspec** (index only). Confirm with `git diff --cached` first, and check
+  the other instance's hunk is still unstaged afterward. Hot shared files
+  (`okf/log.md`, `okf/prds/index.md`, `pixi.toml`) will often be swept into another
+  instance's commit — that is fine, the content lands; just do not be the one who
+  sweeps theirs.
 - **Do not push** (see [[feedback-no-push]]) and do not rebase/amend shared history.
 - If a git command *would* discard work that is not yours, stop and report to the
   user instead of running it.
