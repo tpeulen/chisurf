@@ -3964,6 +3964,22 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         settings_cache = {det: self._ensure_channel_state(det) for det in self.channel_definer.detectors.keys()}
         det_order = list(self.channel_definer.detectors.keys())
 
+        # Diagnostics: a detector whose whole batch column comes back NaN (while the
+        # live single-burst fit works) is almost always an empty IRF or a
+        # too-high min-photons threshold — surface both up front, per detector.
+        for det in det_order:
+            irf_sz = int(np.asarray(irf_cache.get(det, [])).size)
+            mp = int(settings_cache[det].get('min_photons', 0))
+            cs.logging.info(
+                f"MLE batch: detector '{det}' IRF size={irf_sz}, "
+                f"bg size={int(np.asarray(bg_cache.get(det, [])).size)}, min_photons={mp}"
+            )
+            if model != "tail" and irf_sz == 0:
+                cs.logging.warning(
+                    f"MLE batch: detector '{det}' has an EMPTY IRF — every burst's "
+                    f"τ will be NaN. Run 'Auto IRF' or load/send an IRF for '{det}'."
+                )
+
         # uniform binning
         det_mbs = {int(st['micro_time_binning']) for st in settings_cache.values()}
         global_mb = int(next(iter(det_mbs))) if len(det_mbs) == 1 else int(self.micro_time_binning)
@@ -4103,6 +4119,33 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             return
 
         result_df = pd.DataFrame(results)
+
+        # Diagnostics: per-detector fit yield + photon-window stats, so an all-NaN
+        # τ column (e.g. every green burst below min_photons in the fit window)
+        # is explained in the log rather than appearing as silent NaNs downstream.
+        try:
+            for det in det_order:
+                color = det.lower()
+                tau_col = f"Tau ({color})"
+                nph_col = f"Number of Photons (fit window) ({color})"
+                if tau_col not in result_df.columns:
+                    continue
+                tau_vals = pd.to_numeric(result_df[tau_col], errors="coerce")
+                n_ok = int(tau_vals.notna().sum())
+                n_all = int(len(tau_vals))
+                msg = f"MLE batch '{det}': {n_ok}/{n_all} bursts fitted (τ non-NaN)"
+                if nph_col in result_df.columns:
+                    nph = pd.to_numeric(result_df[nph_col], errors="coerce")
+                    if nph.notna().any():
+                        msg += (
+                            f"; fit-window photons min/median/max="
+                            f"{int(nph.min())}/{int(nph.median())}/{int(nph.max())}"
+                            f", min_photons={int(settings_cache[det].get('min_photons', 0))}"
+                        )
+                (cs.logging.warning if n_ok == 0 and n_all else cs.logging.info)(msg)
+        except Exception:
+            pass
+
         self._save_burst_results_fast(result_df)
 
     def make_vv_vh(
