@@ -67,7 +67,7 @@ ChiSurf offers two complementary routes; use either or both.
 
 ### 1. Light-path prior → data-optimized posterior
 
-The [light-path calculator](../reference/plugins.md) computes the spectral crosstalk matrices
+The [light-path calculator](../reference/plugins/index.md) computes the spectral crosstalk matrices
 of the optical setup (spectra, filters, detector QE). Those give a
 *physically-motivated* value for each factor, attached as a **Gaussian prior**;
 the factor stays free and is refined against the data.
@@ -113,7 +113,7 @@ out = calibrate_from_samples(
 
 Hellenkamp's four scalars assume two colours and no acceptor→acceptor bleed. The
 general correction consumes the two crosstalk matrices the
-[light-path calculator](../reference/plugins.md) produces and needs no scalar factors at all:
+[light-path calculator](../reference/plugins/index.md) produces and needs no scalar factors at all:
 
 * the **excitation matrix** $X_{lk}$ — the rate at which laser $l$ directly
   excites chromophore $k$ (absorption × flux); off-diagonals are direct

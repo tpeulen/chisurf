@@ -9,7 +9,8 @@ headless CLI.
    :maxdepth: 2
 
    file_formats/index
-   plugins
+   plugins/index
+   parameters
    settings
    user_models
    ndxplorer_headless_cli
