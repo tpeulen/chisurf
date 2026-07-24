@@ -19,6 +19,7 @@ from mmfdb.security.base import MMFDBClientBase
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.progress import EnhancedProgressDialog
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
+from chisurf.gui.widgets.tool_buttons import action_button
 from chisurf.gui.widgets.tools import ChisurfDockTool
 from chisurf.gui.widgets.tools import PathDropListWidget as DropListWidget
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition import (
@@ -2942,33 +2943,21 @@ class BurstSelectionTool(ChisurfDockTool):
             """
         )
 
-        name_map = {
-            "📂 Add": "burstToolbarAdd",
-            "🗂️ Batch": "burstToolbarBatch",
-            "🚀 Process": "burstToolbarProcess",
-            "🗑️ Clear": "burstToolbarClear",
-            "🔄 Refresh": "burstToolbarRefresh",
-        }
-
-        add_files_action = QtWidgets.QAction("📂 Add", self)
-        add_files_action.triggered.connect(self.add_files)
-        toolbar.addAction(add_files_action)
-
-        batch_action = QtWidgets.QAction("🗂️ Batch", self)
-        batch_action.triggered.connect(self.open_batch_dialog)
-        toolbar.addAction(batch_action)
-
-        analyze_action = QtWidgets.QAction("🚀 Process", self)
-        analyze_action.triggered.connect(self.analyze_files)
-        toolbar.addAction(analyze_action)
-
-        clear_action = QtWidgets.QAction("🗑️ Clear", self)
-        clear_action.triggered.connect(self.clear)
-        toolbar.addAction(clear_action)
-
-        refresh_action = QtWidgets.QAction("🔄 Refresh", self)
-        refresh_action.triggered.connect(self.update_burst_plots)
-        toolbar.addAction(refresh_action)
+        # Canonical shared actions (same icon / colour / order as every plugin
+        # toolbar: Add, Batch, Run🚀, Clear, Refresh). Detail in the tooltip.
+        self._act_add = action_button("add", on_click=self.add_files,
+                                      tooltip="Add TTTR files")
+        self._act_batch = action_button("batch", on_click=self.open_batch_dialog,
+                                        tooltip="Batch-process a folder of TTTR files")
+        self._act_process = action_button("run", on_click=self.analyze_files,
+                                          tooltip="Process all loaded files")
+        self._act_clear = action_button("clear", on_click=self.clear,
+                                        tooltip="Clear loaded files")
+        self._act_refresh = action_button("refresh", on_click=self.update_burst_plots,
+                                          tooltip="Refresh burst plots")
+        for _btn in (self._act_add, self._act_batch, self._act_process,
+                     self._act_clear, self._act_refresh):
+            toolbar.addWidget(_btn)
 
         toolbar.addSeparator()
 
@@ -3022,21 +3011,9 @@ class BurstSelectionTool(ChisurfDockTool):
         ndx_action.triggered.connect(self._open_in_ndxplorer)
         toolbar.addAction(ndx_action)
 
-        help_action = QtWidgets.QAction("ℹ️ Help", self)
-        help_action.setToolTip("Show help and CLI reference")
-        help_action.triggered.connect(self._show_help)
-        toolbar.addAction(help_action)
-
-        # Apply object names so the toolbar stylesheet can color only the text.
-        for widget in toolbar.children():
-            if isinstance(widget, QtWidgets.QToolButton):
-                action = widget.defaultAction()
-                if action is None:
-                    continue
-                object_name = name_map.get(action.text())
-                if object_name is not None:
-                    widget.setObjectName(object_name)
-                    widget.setAutoRaise(True)
+        self._act_help = action_button("help", on_click=self._show_help,
+                                       tooltip="Show help and CLI reference")
+        toolbar.addWidget(self._act_help)
 
     def _setup_statusbar(self) -> None:
         """Create the status bar."""

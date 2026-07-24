@@ -402,6 +402,32 @@ def test_apply_context_to_2cde_sets_folder(tmp_path: Path) -> None:
     assert seen == [str(folder)]
 
 
+def test_run_button_is_identical_across_plugins(qapp) -> None:
+    """The primary 'run/process' action is the same button in every plugin.
+
+    Same function → same object name → same 🚀 icon → same accent, so the Burst
+    Analysis workflow reads as one app. This also lets the shell's Next button find
+    and trigger each step's 'process all loaded files' action generically.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.gui.glyphs import Glyphs
+    from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
+    from chisurf.plugins.burst.burst_bva.gui.tool import BVATool
+    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+
+    tools = [BVATool(embedded=True), BurstTwoCdeTool(embedded=True), H2mmTool(embedded=True)]
+    try:
+        for tool in tools:
+            run = tool.findChild(QtWidgets.QToolButton, "toolAction_run")
+            assert run is not None, f"{type(tool).__name__} has no canonical Run button"
+            assert run.text() == Glyphs.ROCKET
+    finally:
+        for tool in tools:
+            tool.close()
+        QtWidgets.QApplication.processEvents()
+
+
 def test_h2mm_role_wired_into_downstream_propagation() -> None:
     """H2MM inherits the upstream folder on step change, like BVA/2CDE.
 

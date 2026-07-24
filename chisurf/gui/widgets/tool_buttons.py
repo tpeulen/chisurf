@@ -140,3 +140,99 @@ def styled_tool_button(
     if checkable:
         btn.setCheckable(True)
     return btn
+
+
+# ── Canonical action registry ────────────────────────────────────────────────
+# One fixed icon + label + tooltip + accent + toolbar position per *semantic*
+# action, so the same function is the same button — same icon, same colour, same
+# place — in every plugin toolbar. Icons come from the shared ``Glyphs`` registry.
+# Buttons render icon-only (space-efficient) with the detail in the tooltip.
+
+from dataclasses import dataclass  # noqa: E402
+
+from chisurf.gui.glyphs import Glyphs  # noqa: E402
+
+
+@dataclass(frozen=True)
+class ToolAction:
+    """A canonical toolbar action shared across plugins."""
+
+    key: str
+    icon: str
+    label: str
+    tooltip: str
+    kind: str
+    order: int
+
+
+#: The shared action vocabulary. ``order`` fixes left-to-right toolbar position so
+#: every plugin lays the same actions out in the same place.
+TOOL_ACTIONS: dict[str, ToolAction] = {
+    "add":      ToolAction("add", Glyphs.OPEN, "Add", "Add files", "folder", 10),
+    "folder":   ToolAction("folder", Glyphs.FOLDER, "Folder", "Select data folder", "folder", 12),
+    "batch":    ToolAction("batch", "🗂️", "Batch", "Batch-process a folder", "folder", 20),
+    "run":      ToolAction("run", Glyphs.ROCKET, "Run", "Run — process all loaded data", "run", 30),
+    "auto":     ToolAction("auto", "⚡", "Auto", "Auto-run / auto-optimize", "toggle", 34),
+    "stop":     ToolAction("stop", Glyphs.STOP, "Stop", "Stop the running job", "clear", 38),
+    "clear":    ToolAction("clear", Glyphs.DELETE, "Clear", "Clear loaded data", "clear", 50),
+    "refresh":  ToolAction("refresh", Glyphs.REFRESH, "Refresh", "Refresh plots", "settings", 60),
+    "save":     ToolAction("save", Glyphs.SAVE, "Save", "Save results", "save", 70),
+    "settings": ToolAction("settings", Glyphs.SETTINGS, "Settings", "Settings", "settings", 90),
+    "help":     ToolAction("help", Glyphs.INFO, "Help", "Show help", "help", 95),
+}
+
+#: Object-name prefix so tests / stylesheets can target canonical action buttons.
+TOOL_ACTION_OBJECT_PREFIX = "toolAction_"
+
+
+def _action_caption(action: ToolAction, tooltip: str | None) -> str:
+    """Full tooltip text: the canonical label plus any per-tool detail."""
+    detail = tooltip or action.tooltip
+    return f"{action.label} — {detail}" if detail and detail != action.label else action.label
+
+
+def action_button(
+    key: str,
+    *,
+    on_click=None,
+    tooltip: str | None = None,
+    checkable: bool = False,
+    parent: QtWidgets.QWidget | None = None,
+) -> QtWidgets.QToolButton:
+    """Return the canonical icon-only :class:`QToolButton` for action *key*.
+
+    The button's icon, accent colour and object name are fixed by
+    :data:`TOOL_ACTIONS`, so the same action looks identical in every plugin.
+    Pass ``tooltip`` to add tool-specific detail (kept in the tooltip, not the
+    caption). ``on_click`` connects to ``clicked``.
+    """
+    action = TOOL_ACTIONS[key]
+    btn = styled_tool_button(
+        action.icon, kind=action.kind, tooltip=_action_caption(action, tooltip),
+        checkable=checkable, parent=parent,
+    )
+    btn.setObjectName(f"{TOOL_ACTION_OBJECT_PREFIX}{key}")
+    if on_click is not None:
+        btn.clicked.connect(on_click)
+    return btn
+
+
+def action_qaction(
+    key: str,
+    parent: QtWidgets.QWidget,
+    *,
+    on_click=None,
+    tooltip: str | None = None,
+) -> "QtWidgets.QAction":
+    """Return the canonical :class:`QAction` for action *key* (QMainWindow toolbars).
+
+    Same icon/label/tooltip vocabulary as :func:`action_button`, for tools whose
+    toolbar is built from ``QAction``\\ s rather than ``QToolButton``\\ s.
+    """
+    action = TOOL_ACTIONS[key]
+    qact = QtWidgets.QAction(action.icon, parent)
+    qact.setObjectName(f"{TOOL_ACTION_OBJECT_PREFIX}{key}")
+    qact.setToolTip(_action_caption(action, tooltip))
+    if on_click is not None:
+        qact.triggered.connect(on_click)
+    return qact

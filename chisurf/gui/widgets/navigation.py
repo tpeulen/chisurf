@@ -526,8 +526,10 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         self._btn_prev.clicked.connect(self.goto_prev_step)
         self._btn_next = QtWidgets.QToolButton()
         self._btn_next.setText("Next ▶")
-        self._btn_next.setToolTip("Go to the next workflow step")
-        self._btn_next.clicked.connect(self.goto_next_step)
+        self._btn_next.setToolTip(
+            "Process all loaded files in this step, then go to the next step"
+        )
+        self._btn_next.clicked.connect(self._on_next_clicked)
         bar.addPermanentWidget(self._btn_prev)
         bar.addPermanentWidget(self._btn_next)
 
@@ -639,6 +641,38 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         self._status_cancel.setVisible(False)
 
     # ── Next/Back stepper ───────────────────────────────────────────────────
+    def _current_panel_instance(self) -> QtWidgets.QWidget | None:
+        """Return the loaded wrapper widget of the current panel, if any."""
+        idx = self.nav_list.currentRow()
+        if 0 <= idx < len(self.panels):
+            return self.panels[idx].get("instance")
+        return None
+
+    def process_current_step(self) -> bool:
+        """Run the current step's canonical Run action (process all loaded files).
+
+        Every plugin's primary action is the canonical ``toolAction_run`` button,
+        wired to a *process-all-loaded* handler — so the shell can trigger a step's
+        batch processing generically, without knowing the tool. Returns ``True`` if
+        a Run action was found and triggered.
+        """
+        inst = self._current_panel_instance()
+        if inst is None:
+            return False
+        btn = inst.findChild(QtWidgets.QToolButton, "toolAction_run")
+        if btn is not None and btn.isEnabled():
+            btn.click()
+            return True
+        return False
+
+    def _on_next_clicked(self) -> None:
+        """Next button: process all loaded files in this step, then advance."""
+        self.process_current_step()
+        # Re-assert activation after any processing dialog/embed churn (macOS
+        # can drop the window behind others when a panel is (re)shown).
+        self._restore_active_window()
+        self.goto_next_step()
+
     def goto_next_step(self) -> bool:
         """Select the next non-separator panel; return ``True`` if one exists."""
         cur = self.nav_list.currentRow()
@@ -828,11 +862,28 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         widget.setParent(parent)
 
     def _restore_active_window(self) -> None:
-        """Keep the hosting tool active after a lazy page is embedded."""
+        """Keep the hosting tool active/foreground after a page is (re)shown.
+
+        Embedding or first-showing a tool that was built as a ``QMainWindow`` can,
+        on macOS, briefly create a native window that steals activation and drops
+        this window behind others — the long-standing "window goes to background
+        when I click Next" bug. Raising + activating once often loses the race with
+        that late native window, so re-assert once more on the next event-loop
+        turn.
+        """
         window = self.window()
         window.raise_()
         window.activateWindow()
         self.nav_list.setFocus(QtCore.Qt.OtherFocusReason)
+        # Second pass after pending show/activation events settle.
+        QtCore.QTimer.singleShot(60, self._reassert_active_window)
+
+    def _reassert_active_window(self) -> None:
+        """Second, delayed activation pass (see :meth:`_restore_active_window`)."""
+        window = self.window()
+        if window is not None and window.isVisible():
+            window.raise_()
+            window.activateWindow()
 
     def _error_widget(self, panel: Mapping[str, Any], exc: Exception) -> QtWidgets.QWidget:
         """Create an error panel for failed lazy imports."""

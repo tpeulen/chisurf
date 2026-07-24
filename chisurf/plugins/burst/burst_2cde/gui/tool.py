@@ -13,9 +13,9 @@ import pathlib
 
 import numpy as np
 import pyqtgraph as pg
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets
 
-from chisurf.gui.widgets.tool_buttons import styled_tool_button
+from chisurf.gui.widgets.tool_buttons import action_button
 from chisurf.plugins.burst.burst_2cde.core import computation as core
 
 try:
@@ -43,7 +43,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         row = QtWidgets.QHBoxLayout()
         self._folder_edit = QtWidgets.QLineEdit()
         self._folder_edit.setPlaceholderText("Burstwise analysis folder …")
-        browse = styled_tool_button("📁", kind="folder", tooltip="Choose analysis folder")
+        browse = action_button("folder", tooltip="Choose the burst analysis folder")
         browse.clicked.connect(self._browse)
         row.addWidget(QtWidgets.QLabel("Folder"))
         row.addWidget(self._folder_edit, 1)
@@ -72,10 +72,8 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         form.addRow("File type", self._file_type)
         layout.addLayout(form)
 
-        # --- run button -------------------------------------------------------
-        self._run = styled_tool_button(
-            "▶", kind="run", tooltip="Compute 2CDE over the analysis folder"
-        )
+        # --- run button (canonical Run action, same as every plugin) ----------
+        self._run = action_button("run", tooltip="Compute 2CDE over all loaded data")
         self._run.clicked.connect(self.run)
         layout.addWidget(self._run)
 

@@ -268,44 +268,47 @@ class H2mmTool(QMainWindow):
         self._load_settings()
 
     def _setup_toolbar(self):
+        from chisurf.gui.widgets.tool_buttons import (
+            TOOLBAR_STYLE,
+            action_button,
+            styled_tool_button,
+        )
+
         self.toolbar = QToolBar("Main")
         self.toolbar.setObjectName("h2mmMainToolbar")
         self.toolbar.setMovable(False)
         self.toolbar.setIconSize(QSize(16, 16))
         self.toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.toolbar.setStyleSheet(TOOLBAR_STYLE)
 
-        def _tbtn(text):
-            btn = QToolButton()
-            btn.setText(text)
-            btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-            return btn
-
-        self.btn_folder = _tbtn("\U0001f4c2  Data")
+        # Canonical shared actions (same icon / colour / order as every plugin).
+        self.btn_folder = action_button("folder", tooltip="Select the burst analysis folder")
         self._folder_field = _FolderLineEdit(placeholder="No folder selected")
         self._folder_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.btn_run = _tbtn("▶  Run")
-        self.btn_uncert = _tbtn("±  Uncertainty")
-        self.btn_uncert.setToolTip(
-            "Bootstrap the selected model over bursts to put confidence intervals "
-            "on the per-state E/S (overlaid as error bars). Compute-heavy — run "
-            "after a fit."
-        )
-        self.btn_llscan = _tbtn("\U0001f4c8  LL scan")
-        self.btn_llscan.setToolTip(
-            "Profile the log-likelihood in each state's E/S (holding the rest "
-            "fixed) → likelihood-based confidence intervals. A flat profile flags "
-            "an unidentifiable state. Complements the bootstrap; run after a fit."
-        )
-        self.btn_save = _tbtn("\U0001f4be  Save plot")
-        self.btn_help = _tbtn("ℹ️  Help")
+        self.btn_run = action_button("run", tooltip="Fit H2MM on all loaded bursts")
+        # Tool-specific follow-ups (styled consistently, distinct from Run).
+        self.btn_uncert = styled_tool_button("±", kind="toggle", tooltip=(
+            "Uncertainty — bootstrap the selected model over bursts to put "
+            "confidence intervals on the per-state E/S (overlaid as error bars). "
+            "Compute-heavy — run after a fit."
+        ))
+        self.btn_llscan = styled_tool_button("\U0001f4c8", kind="toggle", tooltip=(
+            "LL scan — profile the log-likelihood in each state's E/S (holding the "
+            "rest fixed) → likelihood-based confidence intervals. A flat profile "
+            "flags an unidentifiable state. Run after a fit."
+        ))
+        self.btn_save = action_button("save", tooltip="Save the active plot")
+        self.btn_help = action_button("help", tooltip="Show help")
 
         self.toolbar.addWidget(self.btn_folder)
-        self.toolbar.addWidget(self._folder_field)
-        self.toolbar.addSeparator()
         self.toolbar.addWidget(self.btn_run)
         self.toolbar.addWidget(self.btn_uncert)
         self.toolbar.addWidget(self.btn_llscan)
         self.toolbar.addWidget(self.btn_save)
+        self.toolbar.addWidget(self._folder_field)
+        _spacer = QWidget()
+        _spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.toolbar.addWidget(_spacer)
         self.toolbar.addSeparator()
         self.toolbar.addWidget(self.btn_help)
 

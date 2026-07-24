@@ -21,6 +21,7 @@ import chisurf as cs
 
 from chisurf.gui.autoform import AutoForm
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.widgets.tool_buttons import action_button
 
 
 def _mle_progress(widget, text: str, maximum: int):
@@ -1812,10 +1813,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.label_14 = Q.QLabel("Min photons")
         self.label_14.setToolTip("Minimum photons per burst to fit.")
         self.spinBox_min_photons = self._isb(5, 1000, 20)
-        self.toolButton_save_fit = Q.QToolButton()
-        self.toolButton_save_fit.setText("💾 Save")
-        self.toolButton_save_fit.setToolTip("Save the current parameters as the detector default.")
-        self.toolButton_save_fit.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Fixed)
+        self.toolButton_save_fit = action_button(
+            "save", tooltip="Save the current parameters as the detector default"
+        )
         g2.addWidget(self.label_21, 0, 0)
         g2.addWidget(self.lineEdit_current_filename, 0, 1, 1, 2)
         g2.addWidget(self.spinBox_current_file_idx, 0, 3)
@@ -2125,17 +2125,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         grid3.addItem(
             Q.QSpacerItem(20, 40, Q.QSizePolicy.Minimum, Q.QSizePolicy.Expanding), 5, 0
         )
-        self.pushButton_process_bursts = Q.QPushButton("▶ Run")
-        self.pushButton_process_bursts.setToolTip(
-            "Process all bursts with the current settings and fit each one."
+        # Canonical Run action (same 🚀 button as every other plugin); it fits
+        # every burst across all loaded files, so the shell's "Next" can trigger it.
+        self.pushButton_process_bursts = action_button(
+            "run", tooltip="Process all loaded burst files and fit each burst"
         )
-        self.pushButton_process_bursts.setSizePolicy(
-            Q.QSizePolicy.Fixed, Q.QSizePolicy.Fixed
-        )
-        run_font = self.pushButton_process_bursts.font()
-        run_font.setBold(True)
-        self.pushButton_process_bursts.setFont(run_font)
-        self.pushButton_process_bursts.setStyleSheet("background-color: rgb(49, 208, 24)")
 
         # --- Populate the top action toolbar (every hosted widget now exists) ---
         def _tb_sep():

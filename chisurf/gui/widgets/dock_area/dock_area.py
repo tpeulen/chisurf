@@ -1241,8 +1241,13 @@ class DockArea(QtWidgets.QWidget):
 
     def _prune_deleted(self) -> None:
         """Drop registry entries whose underlying C/C++ object has been destroyed."""
-        self._all_widgets = [w for w in self._all_widgets if not _is_deleted(w)]
-        self._hidden_widgets = [w for w in self._hidden_widgets if not _is_deleted(w)]
+        try:
+            self._all_widgets = [w for w in self._all_widgets if not _is_deleted(w)]
+            self._hidden_widgets = [w for w in self._hidden_widgets if not _is_deleted(w)]
+        except (RuntimeError, AttributeError):
+            # Called on a not-fully-initialized DockArea (e.g. a unit-test double
+            # built via __new__); there is nothing registered to prune.
+            return
 
     def showTab(self, index: int) -> bool:
         """Restore a hidden tab by absolute index."""

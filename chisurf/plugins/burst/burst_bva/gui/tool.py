@@ -15,6 +15,7 @@ from qtpy.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QDialogButtonBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -24,17 +25,15 @@ from qtpy.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QProgressBar,
-    QPushButton,
     QSizePolicy,
     QSpinBox,
+    QTextEdit,
     QToolBar,
-    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from chisurf import logging
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.misc_helpers import (
     get_plugin_settings_path,
     persist_plugin_state,
@@ -105,9 +104,8 @@ class HelpDialog(QDialog):
 # Shared, app-wide tool-button language (this colour scheme is its canonical
 # source). BVA keeps its exact look while every other tool can adopt the same.
 from chisurf.gui.widgets.tool_buttons import (  # noqa: E402
-    BTN_STYLES as _BTN_STYLES,
-    TOOLBAR_BUTTON_BASE as _TOOLBAR_BUTTON_BASE,
     TOOLBAR_STYLE as _TOOLBAR_STYLE,
+    action_button,
 )
 
 
@@ -271,25 +269,16 @@ class BVATool(QMainWindow):
         self.toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.toolbar.setStyleSheet(_TOOLBAR_STYLE)
 
-        def _tbtn(text, obj_name, tooltip=None):
-            # Space-efficient: emoji only, detail in the tooltip.
-            btn = QToolButton()
-            btn.setText(text)
-            btn.setObjectName(obj_name)
-            style = _BTN_STYLES.get(obj_name, "")
-            btn.setStyleSheet(_TOOLBAR_BUTTON_BASE + style)
-            btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-            if tooltip:
-                btn.setToolTip(tooltip)
-            return btn
-
-        self.btn_folder = _tbtn("\U0001f4c2", "folder", "Select data folder")
+        # Canonical shared actions (same icon / colour / order as every other
+        # plugin toolbar). Detail lives in the tooltip; captions are icon-only.
+        self.btn_folder = action_button("folder", tooltip="Select the burst analysis folder")
         self._folder_field = _FolderLineEdit(placeholder="No folder selected")
         self._folder_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.btn_save = _tbtn("\U0001f4be", "save", "Save BVA results")
-        self.btn_clear = _tbtn("\U0001f5d1", "clear", "Clear loaded data")
-        self.btn_run = _tbtn("\u25b6", "run", "Run BVA analysis")
-        self.btn_save_settings = _tbtn("\u2699", "settings", "Save current settings as default")
+        self.btn_run = action_button("run", tooltip="Run BVA on all loaded data")
+        self.btn_clear = action_button("clear", tooltip="Clear loaded data")
+        self.btn_save = action_button("save", tooltip="Save BVA results")
+        self.btn_save_settings = action_button("settings", tooltip="Save current settings as default")
+        self.btn_help = action_button("help", tooltip="Show help")
 
         self.cb_toggle_static = QCheckBox("Show static line")
         self.cb_toggle_static.setChecked(True)
@@ -299,29 +288,24 @@ class BVATool(QMainWindow):
         self._auto_update_cb.setChecked(True)
         self._auto_update_cb.setStyleSheet("color: #aaa; font-size: 11px;")
 
+        # Left cluster: source, then the primary action group in canonical order.
         self.toolbar.addWidget(self.btn_folder)
+        self.toolbar.addWidget(self.btn_run)
+        self.toolbar.addWidget(self.btn_clear)
+        self.toolbar.addWidget(self.btn_save)
         self.toolbar.addWidget(self._folder_field)
-        spacer = QWidget()
-        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.toolbar.addWidget(spacer)
+        # Middle: tool-specific view toggles + info, pushed to the right.
         self.toolbar.addWidget(self.cb_toggle_static)
         self.toolbar.addWidget(self._auto_update_cb)
-
-        sep = QWidget()
-        sep.setFixedWidth(12)
-        self.toolbar.addWidget(sep)
-
         self._tb_info = QLabel("")
         self._tb_info.setStyleSheet("color: #aaa;")
         self.toolbar.addWidget(self._tb_info)
-
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.toolbar.addWidget(spacer)
+        # Right cluster: settings + help (canonical trailing position).
         self.toolbar.addSeparator()
-        self.toolbar.addWidget(self.btn_run)
-        self.toolbar.addWidget(self.btn_save)
-        self.toolbar.addWidget(self.btn_clear)
         self.toolbar.addWidget(self.btn_save_settings)
-        self.toolbar.addSeparator()
-        self.btn_help = _tbtn(f"{Glyphs.INFO} Help", "help")
         self.toolbar.addWidget(self.btn_help)
         self.btn_help.clicked.connect(self._show_help)
 

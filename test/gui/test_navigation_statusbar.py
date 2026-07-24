@@ -100,6 +100,41 @@ def test_scoped_logger_routes_to_status_bar_and_detaches(qapp):
     assert len(lg.handlers) == n_before  # handler removed on close
 
 
+def test_next_processes_current_step_then_advances(qapp):
+    """The Next button runs the current panel's canonical Run, then advances."""
+    from qtpy import QtWidgets
+
+    from chisurf.gui.widgets.tool_buttons import action_button
+
+    fired = []
+
+    def factory(parent):
+        page = QtWidgets.QWidget()
+        lay = QtWidgets.QVBoxLayout(page)
+        lay.addWidget(action_button("run", on_click=lambda: fired.append(1)))
+        return page
+
+    panels = [
+        {"name": "1", "role": "a", "factory": factory},
+        {"name": "2", "role": "b", "factory": factory},
+    ]
+    w = NavigationPanelTool(title="t", panels=panels)
+    assert w.nav_list.currentRow() == 0
+    w._on_next_clicked()  # process (click Run) + advance
+    assert fired == [1]                      # all-loaded processing was triggered
+    assert w.nav_list.currentRow() == 1      # and we advanced
+
+
+def test_process_current_step_without_run_button_is_noop(qapp):
+    from qtpy import QtWidgets
+
+    w = NavigationPanelTool(
+        title="t",
+        panels=[{"name": "x", "role": "x", "factory": lambda p: QtWidgets.QLabel("no run")}],
+    )
+    assert w.process_current_step() is False  # nothing to run, no crash
+
+
 def test_logged_line_survives_active_task(qapp):
     """A message logged during a task updates the caption; close keeps it."""
     name = "chisurf.test.navstatus2"
