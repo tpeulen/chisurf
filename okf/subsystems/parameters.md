@@ -52,6 +52,34 @@ setter (raising `ValueError` on a recursive link). Passing `link = None` unlinks
 Because links live in the port graph, changing a master propagates to all
 followers without extra bookkeeping.
 
+# Out-of-fit parameters and the Global View
+
+Every `Base` instance (so every parameter, group, model and fit) self-registers in
+a process-global `WeakValueDictionary`, `Base._uuid_index`, resolvable by
+`Base.find_by_uuid(uid)` regardless of whether the object sits inside `chisurf.fits`.
+This is the identity backbone that lets parameters living **outside** a fit — e.g. a
+plugin's working model — be viewed, edited and linked exactly like fit parameters.
+
+Two seams build on it:
+
+- **Enumeration.** `chisurf/core/parameter_group_registry.py` is a process-global,
+  weakref-backed registry keyed by a stable `owner_id`. A model-bearing plugin calls
+  `register_parameter_group(group, owner_id=…, label=…)` (or the
+  `PluginContext.register_working_model` convenience) to expose its group; re-registering
+  an id replaces, and unregistering severs inbound/outbound links so no dangling follower
+  remains. It is surfaced as `chisurf.registered_parameter_groups()` and on
+  `SessionState.registered_parameter_groups`, mirroring `chisurf.fits`.
+- **Mutation.** The parameter service (`chisurf/server/services/parameters.py`) resolves a
+  parameter by a global `parameter_uid` (plus an `owner_uid` finalisation target) in
+  addition to the legacy `fit_index`/`fit_uid` + name path. `parameter_link` accepts a
+  `target_parameter_uid`, so any parameter can link to any other across the fit/plugin
+  boundary through one RPC path (local/hybrid mode; a pure separate server process cannot
+  see GUI-side plugin groups — a documented limitation).
+
+The **Global View** Parameters tab renders all of this: an AutoForm
+[`global_parameter_table`](/subsystems/gui-autoform.md) section spanning every fit
+parameter plus every registered out-of-fit group, with Owner and cross-owner Link columns.
+
 # Description registry scoping
 
 When a `Parameter` is constructed without an explicit `description=`, it

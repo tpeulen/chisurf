@@ -47,6 +47,15 @@ standing in for the absent row widget, which also becomes each parameter's
 `controller` so `FittingParameter.update()` repaints the row; a proxy's
 `finalize()` is a **display refresh only**, never a fit-update dispatch, since
 the model calls it during a recompute),
+`global_parameter_table` (a **cross-owner** variant used by the Global View's
+Parameters tab: unlike `parameter_group_table` it spans *many* owners — every fit
+plus every out-of-fit group from the
+[parameter-group registry](/subsystems/parameters.md) — and adds Owner and Link
+columns. It is a `custom` section (`register_section`) rather than a bound-model
+section, since its rows come from the live fit list and the registry, not one
+model's attribute; edits route through an injected mutator, so fit rows use the
+fit-addressed RPC path and out-of-fit rows use the `parameter_uid` path, keeping
+the widget database- and mutation-policy-free),
 `scalar_table` (the same compact name/value table for **plain** `float`/`int`/
 `bool` model attributes rather than `FittingParameter`s — `{rows:[{attr,label,
 kind}], call}` — for parameter-dense editors like the FRET-species crosstalk /

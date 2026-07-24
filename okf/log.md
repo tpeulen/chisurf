@@ -164,6 +164,15 @@
   stale ids and unregistering all on close. Added `PluginContext.register_working_model` /
   `unregister_working_model` so any model-bearing plugin can opt in with one call. Existing
   `test_gui_tool_fret_line` still green; registry/service/section suites (20) green.
+* **Global View — out-of-fit parameters, phase 6 (verification + concepts).** Verified the
+  feature end-to-end headless: registry (8) + UUID service (8) + section (4) + legacy
+  parameter service (38) + protocol + AutoForm renderer (27, incl. `test_custom_section_registered`)
+  + FRET-line GUI (6) all green. Remaining failures (`test_parameter_linking` empty-model
+  `_setup`, `mdf.py` core→GUI import, `EtModelFreeWidget` name, forbidden-communication in
+  ~8 unrelated files) are pre-existing and in files unchanged vs HEAD. Updated OKF concepts:
+  `subsystems/parameters.md` (new "Out-of-fit parameters and the Global View" section on
+  `Base._uuid_index`, the parameter-group registry, and the `parameter_uid` mutation path)
+  and `subsystems/gui-autoform.md` (the `global_parameter_table` cross-owner custom section).
 
 
 * **Burst nav + ribbon regrouping.** (1) The Burst Analysis nav moved **Browser below the workflow separator** (a utility alongside Background / IRF & Background); the numbered pipeline is now 1..6 (Data Selection → H2MM). (2) Ribbon menu: elevated **FCS / Decay Analysis / Burst Analysis** to sit directly under a single **Spectroscopy** group (their hierarchical `display_name`/`name` shortened to `Spectroscopy:<Name>`); **hid the Synthetic Decay Generator** (`menu_hidden`); moved **Structure Tools** into the same ribbon group as ChiMOL (`Structure:Structure:…`). Test `test_burst_workflow_panel_order` updated; manifest validation passes. Still open (large, deferred): converting the **Burst Browser** and **Background** plugins to the modern AutoForm framework (foldable boxes + chisurf docks) — both are working, tightly-coupled Qt tools embedded in the workflow, so they warrant a focused conversion using the `burst_irf_bg` template rather than a rushed rewrite.
