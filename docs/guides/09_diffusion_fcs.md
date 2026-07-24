@@ -1,30 +1,65 @@
 # Diffusion FCS
 
-## What it does
+**Fluorescence correlation spectroscopy (FCS)** measures the temporal
+autocorrelation of fluorescence fluctuations as molecules diffuse through the
+confocal volume. The correlation amplitude gives the mean number of molecules
+$N$ (hence the concentration); the decay time gives the diffusion time $\tau_D$
+(hence the diffusion coefficient / hydrodynamic radius); fast photophysics
+(triplet blinking) adds a short-lag shoulder.
 
-**Fluorescence correlation spectroscopy** measures the temporal autocorrelation
-of the fluorescence fluctuations as molecules diffuse through the confocal
-volume. The correlation amplitude gives the mean number of molecules $N$ (hence
-the concentration), and the decay time gives the diffusion time $\tau_D$ (hence
-the diffusion coefficient / hydrodynamic radius). Fast photophysics (triplet
-blinking) adds a short-lag shoulder.
-
-For a 3-D Gaussian detection volume with structure parameter $s = z_0/w_0$,
-
-$$G(\tau) = \frac{1}{N}\,\frac{1}{1+\tau/\tau_D}\,
-           \frac{1}{\sqrt{1+(\tau/\tau_D)/s^2}}\,
-           \big(1 - a_T + a_T e^{-\tau/\tau_T}\big).$$
+:::{admonition} Theory
+:class: seealso
+The physics — the $G(\tau)$ decomposition, the confocal Gaussian volume, the
+$\tau_D$-vs-$D$ parameterizations, and the photodynamic factors — is in the
+concept page {ref}`concept-fcs-correlation`. This guide shows how to run the
+analysis in ChiSurf.
+:::
 
 ## In ChiSurf
 
-ChiSurf ships a large catalogue of correlation-curve fit models
-(`chisurf/core/models/fcs/models.yaml`) — 3-D/2-D Gaussian diffusion with one or
-more components, triplet/bunching terms, flow, anomalous diffusion, two-focus,
-FRET-FCCS, ns-FCS antibunching, and scanning FCS — fitted in the **FCS
-experiment**. Correlation curves are computed from TTTR data by the
-`fcs_correlator` plugin (multi-tau, with optional fine/ns-scale correlation),
-and the [Enderlein MDF model](05_enderlein_mdf_two_focus_fcs.md) provides the
-non-Gaussian, absolute-volume alternative.
+Correlation curves are computed from TTTR photon data by the **`fcs_correlator`**
+plugin (multi-tau, with optional fine/ns-scale correlation; see
+{doc}`16_fret_fcs` and {doc}`17_filtered_fcs`) and fitted in the **FCS
+experiment** against the model catalogue in
+`chisurf/core/models/fcs/models.yaml`.
+
+The **composable FCS model editor** builds the correlation function from
+independent factors — pick a diffusion geometry, then add bunching /
+anti-correlation terms as needed:
+
+```{figure} figures/fcs_model_editor.png
+:name: fig-fcs-model-editor
+:width: 90%
+
+The composable FCS model editor. The **Type** selector switches the diffusion
+term (MDF / single-focus Gauss / two-focus). The live **Equation** box shows the
+currently active $G(\tau)$; the parameter table exposes $N$, the diffusion
+coefficient $D$, the lateral/axial waists $w_r$/$w_z$, the offset $b$, and the
+background rate `BG`. **Bunching**, **Anticorr**, and **Outputs** fold-outs add
+triplet/blinking, reaction dynamics, and derived quantities ($V_\text{eff}$,
+concentration, brightness).
+```
+
+Each row of the parameter table in {numref}`fig-fcs-model-editor` maps onto the
+theory in {ref}`concept-fcs-correlation`: $N$ is the amplitude ($G(0)=1/N$),
+$D$/$w_r$/$w_z$ set the diffusion shoulder via $\tau_D=w_r^2/4D$, `BG` drives the
+$(1-B/I)^2$ background correction, and the Bunching/Anticorr terms are the
+photodynamic factor $P(\tau)$.
+
+### Steps
+
+1. Correlate a photon stream with the **FCS Correlator** (or load a `.cor`/
+   Kristine curve) — see {doc}`12_handling_tttr_files` for reading TTTR data.
+2. Add an **FCS fit** on the resulting curve; the model editor
+   ({numref}`fig-fcs-model-editor`) opens.
+3. Choose the diffusion **Type** and, if the curve rises at short lag, add a
+   **Bunching** term (triplet). Fit.
+4. Read $N$, $D$ (or $\tau_D$) and the derived concentration/brightness from the
+   **Outputs** panel.
+
+### Headless / scripting
+
+The same model computes without the GUI:
 
 ```python
 import numpy as np
@@ -43,10 +78,19 @@ The 3-D Gaussian diffusion correlation for three diffusion times (faster
 diffusion → shorter decay), and the effect of adding a triplet term (dashed): a
 short-lag rise above the diffusion plateau.
 
-![3-D Gaussian diffusion FCS](figures/fcs_diffusion.png)
+```{figure} figures/fcs_diffusion.png
+:name: fig-fcs-diffusion
+:width: 80%
+
+3-D Gaussian diffusion FCS for three diffusion times, with (dashed) and without
+a triplet term.
+```
 
 ## See also
 
-- Model catalogue: `chisurf/core/models/fcs/models.yaml`; correlator: `chisurf/plugins/fcs/fcs_correlator/`.
-- Absolute concentrations & two-focus: [Enderlein MDF & two-focus FCS](05_enderlein_mdf_two_focus_fcs.md).
-- Higher-order statistics: [ns-FCS second-order correlation](06_nsfcs_second_order.md).
+- Concept: {ref}`concept-fcs-correlation` · all FCS plugins:
+  {doc}`/reference/plugins/index`.
+- Model catalogue: `chisurf/core/models/fcs/models.yaml`; correlator:
+  `chisurf/plugins/fcs/fcs_correlator/`.
+- Absolute concentrations & two-focus: {doc}`05_enderlein_mdf_two_focus_fcs`.
+- Higher-order statistics: {doc}`06_nsfcs_second_order`.

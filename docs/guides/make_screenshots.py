@@ -37,9 +37,33 @@ def _grab(widget, name):
     print("wrote", name)
 
 
+def _grab_fcs_model_editor():
+    """Grab the composable FCS model editor (AutoForm) for the FCS guide."""
+    import numpy as np
+
+    import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.data import DataCurve
+    from chisurf.core.models.fcs.general import GeneralFCSModel
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+
+    x = np.logspace(-3, 3, 60)  # 1 us .. 1 s, in ms
+    data = DataCurve(name="synthetic-fcs", load_filename_on_init=False,
+                     y=np.zeros_like(x), x=x)
+    fit = fit_mod.Fit(model_class=GeneralFCSModel, data=data)
+    editor = build_model_editor(fit.model)
+    editor.resize(560, 760)
+    _grab(editor, "fcs_model_editor.png")
+
+
 def main():
-    """Generate all TTTR-LUT tutorial screenshots."""
+    """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
+
+    for grab in (_grab_fcs_model_editor,):
+        try:
+            grab()
+        except Exception as exc:  # keep going; report which grab failed
+            print(f"SKIP {grab.__name__}: {exc}")
 
     # ① Compute LUT — the AutoForm panel with a real flat-light file loaded, so
     # the interactive raw/after plots + draggable region are shown.
