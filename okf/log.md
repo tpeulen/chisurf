@@ -2,6 +2,19 @@
 
 ## 2026-07-24
 
+* **PRD-50 — diagnosed why SPA/MCMC error surfaces don't work on PDA yet.**
+  Attempted the error-surface follow-up (support-plane CI on the Gaussian PDA mean).
+  The generic machinery is ready (`Fit.adaptive_chi2_scan`,
+  `support_plane.confidence_intervals_from_scan_result`, `sample.walk_mcmc`) but
+  neither PDA residual mode gives a valid statistical χ²: the default **1D** residual
+  produces a badly-scaled, nearly-flat surface (χ²ᵣ≈12.5 at the optimum, ~0.16
+  variation over mean ∈ [30,80] Å, `fit.run()` misses the true minimum → no F-test
+  crossings, CI `(None,None)`); **2D** mode returns an empty residual array
+  (fit-range/zero-bin masking → `leastsqbound` "N=1 must not exceed M=(0,)"). Recorded
+  the root cause in the [PRD-50](/prds/prd-50.md) follow-up so it's not re-discovered;
+  the real fix is the 1D residual weighting or the 2D fit-range, not a test. No test
+  shipped for this item (the passing fit-recovery test from earlier is unaffected).
+
 * **PRD-50 — PDA fit-recovery test (primary acceptance) + status refresh.** Added
   `test_pda_gaussian_fit_recovers_distance` to `test/gui/test_pda_model_editor.py`:
   it uses the Gaussian PDA model's own S1S2 histogram at a known mean as the

@@ -75,7 +75,20 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - Full time-binned dynamic PDA (an N-vs-observation-time grid, the number-of-E-bins /
   number-of-time-bins scheme) — the current dynamic models use a single
   dimensionless exchange parameter `K_ex`.
-- SPA/MCMC error surfaces wired specifically to PDA parameters.
+- SPA/MCMC error surfaces wired specifically to PDA parameters. **Blocked by a
+  residual issue (diagnosed 2026-07-24), needs real work, not just a test:** on a
+  self-recovery fit (data = model at a known mean + Poisson noise, only the mean
+  free) the **1D** PDA residual (`pda_1d_residuals_from_s1s2`, the default
+  `residual_mode`) yields a badly-scaled, nearly-flat χ² surface — χ²ᵣ ≈ 12.5 at the
+  optimum (should be ≈ 1) and varying only ~0.16 across mean ∈ [30, 80] Å, so
+  `fit.run()` does not settle at the true minimum and the F-test threshold is never
+  crossed → `confidence_intervals_from_scan_result` returns `(None, None)`. The
+  **2D** residual mode (`residual_mode="2D"`) instead returns an *empty* residual
+  array (`leastsqbound`: "N=1 must not exceed M=(0,)") — a fit-range / zero-photon-bin
+  masking problem. So `Fit.adaptive_chi2_scan` + `sample.walk_mcmc` are generic and
+  ready, but neither PDA residual mode currently gives a valid statistical χ² for
+  them; fixing the 1D residual weighting (proper per-bin Poisson χ²) or the 2D
+  residual fit-range is the actual task.
 - Three-color tcPDA (later stage).
 
 # Scope (staged)
