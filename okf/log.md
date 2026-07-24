@@ -1,6 +1,56 @@
 # Update Log
 
 ## 2026-07-24
+* **`docs/reference/user_models.md` documented an API that does not exist.**
+  Sections 1–6 of that page described a registry — `register_user_model`
+  (decorator), `load_user_models()`, `iter_user_models_for_experiment()` on a
+  `chisurf.models` module — **none of which is present anywhere in the tree**;
+  `chisurf.models` itself is a pre-`core` path. It also claimed that "each `*.py`
+  file in `~/.chisurf/models` is imported once when experiments are
+  initialized", which is false: `inject_user_models()` scans that folder **only**
+  for filenames containing `__override__` and ignores every other `.py`. A reader
+  following the page could not have got a model to appear.
+  Rewritten against what `chisurf/gui/main_helper.py` actually does.
+  `_setup_experiment` builds each experiment's model list purely from dotted
+  class paths under the `models:` key of `experiment_configs.yaml`, resolved by
+  `_resolve_class` via a plain `importlib.import_module` + `getattr` — so adding
+  a model means (a) writing an importable `Model`/`ModelCurve` subclass whose one
+  abstract method is `update_model`, and (b) naming its dotted path in
+  `~/.chisurf/experiment_configs.yaml`. The example model and the
+  `FittingParameter(value=…, lb=…, ub=…, bounds_on=True)` idiom were both
+  executed before being documented, rather than written from memory.
+  **Three non-obvious behaviours are now stated**, each of which silently costs a
+  user their configuration: (1) the user YAML is deep-merged onto the packaged
+  default but the merge recurses **only into dicts** — a `models:` *list*
+  replaces the packaged list wholesale, so writing a one-entry block deletes
+  every built-in model for that experiment; (2) `copy_settings_to_user_folder`
+  copies each file only `if not destination_file.exists()`, so an existing
+  `~/.chisurf/experiment_configs.yaml` is **never** refreshed and silently misses
+  experiments/models added since it was written (the same never-refreshed-copy
+  trap already recorded for `epsfcn`); (3) both resolution failures are caught
+  and logged (`Failed to resolve class …` / `Failed to setup model … in …`) with
+  no dialog, so a typo'd path simply produces a missing dropdown entry.
+  Section 7 (the `__override__` / Front-Face-Back-Face editor) was **accurate**
+  and is kept, with the `exec`-into-the-module semantics made explicit: an
+  override patches the module rather than replacing it, so names it does not
+  redefine keep their original values.
+  **Pre-`core` module paths swept from the whole docs tree**: `chisurf.models.*`
+  → `chisurf.core.models.*`, `chisurf.fluorescence.{fcs,general,tcspc}.*` →
+  `chisurf.core.fluorescence.*`, across `reference/settings.md`,
+  `reference/file_formats/{rda_axis_settings,tcspc_files,fcs_files}.md` and
+  `development/parameter_registry_tools.rst`. One had *moved layer* rather than
+  just gaining a prefix — `chisurf.models.pda.widgets` is now
+  `chisurf.gui.widgets.models.pda.widgets`. A verification pass extracts every
+  distinct `chisurf.*` dotted path in the docs (140 of them) and checks the
+  longest real module prefix resolves on disk: **0 unresolved**.
+  **MyST heading anchors are not what docutils emits.** The intra-page links used
+  `#1-registering-a-new-model-class`; the HTML id is
+  `registering-a-new-model-class` (docutils drops the leading number) and *both*
+  spellings fail `myst.xref_missing`. Explicit `(target)=` anchors + `{ref}` are
+  the reliable form for intra-page links — the same convention the concept pages
+  already use. Build is back to zero warnings.
+
+
 
 * **ChiMOL cartoon + `ray` + view tuple brought to PyMOL parity on 148L —
   [ChiMOL profile](/plugins/profiles/chimol.md).** Ground truth came from the

@@ -153,7 +153,7 @@ Purpose:
 
   - ``tcspc.*`` entries from ``tcspc.models.json`` (parsed models);
   - plain entries whose ``sources`` point to modules or files under
-    ``chisurf.models.tcspc.*`` (code-defined parameters in
+    ``chisurf.core.models.tcspc.*`` (code-defined parameters in
     ``nusiance.py``, ``fret.py``, etc.).
 
 - Provide conservative, physically meaningful descriptions for common

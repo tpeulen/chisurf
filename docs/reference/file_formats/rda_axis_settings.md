@@ -12,17 +12,17 @@ controlled by the entries in `settings_chisurf.yaml` under the `fret` section:
 At runtime these values are loaded into `chisurf.settings.fret` and used to
 construct the global axis
 
-- `chisurf.models.tcspc.fret.rda_axis`
+- `chisurf.core.models.tcspc.fret.rda_axis`
 
 If `rda_scale` is `log`, the axis is created with `numpy.logspace`; if it is
 `lin`, `numpy.linspace` is used instead.
 
 This axis is consumed by several components:
 
-- TCSPC FRET distance models in `chisurf.models.tcspc.fret` (Gaussian, discrete
+- TCSPC FRET distance models in `chisurf.core.models.tcspc.fret` (Gaussian, discrete
   and worm-like chain distance distributions).
 - PDA Gaussian-distance models and their per-component distance curves in
-  `chisurf.models.pda.pdagauss` and `chisurf.models.pda.widgets`.
+  `chisurf.core.models.pda.pdagauss` and `chisurf.gui.widgets.models.pda.widgets`.
 - Structural distance histograms that accept an `rda_axis` argument and default
   to the global R_DA axis.
 
@@ -32,6 +32,6 @@ settings. Changing the values and pressing **Save axis** will:
 
 - Update `chisurf.settings.fret['rda_min']`, `['rda_max']`,
   `['rda_resolution']` and `['rda_scale']`.
-- Rebuild `chisurf.models.tcspc.fret.rda_axis` on the fly.
+- Rebuild `chisurf.core.models.tcspc.fret.rda_axis` on the fly.
 - Request an update of the current fit so that FRET-related distance
   distributions use the new axis.

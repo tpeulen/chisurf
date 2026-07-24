@@ -254,7 +254,7 @@ For each selected TTTR file, the reader:
 6. Creates a `chisurf.data.DataCurve` with:
    - `x`: micro-time in ns,
    - `y`: counts per bin,
-   - `ey`: Poisson noise via `chisurf.fluorescence.tcspc.counting_noise(y)`,
+   - `ey`: Poisson noise via `chisurf.core.fluorescence.tcspc.counting_noise(y)`,
    - `experiment`: the current TCSPC experiment,
    - `data_reader`: the `TCSPCTTTRReader` instance.
 
@@ -315,7 +315,7 @@ histograms rather than raw TTTR streams or ASCII/CSV files.
   - `curve` builds a `chisurf.data.DataCurve` with:
     - `x`: time in ns,
     - `y`: photon counts,
-    - `ey`: Poisson noise via `chisurf.fluorescence.tcspc.counting_noise`,
+    - `ey`: Poisson noise via `chisurf.core.fluorescence.tcspc.counting_noise`,
     - `name`: `"<filename> _ <curve_number>"`.
 
 `TCSPCSetupSDTWidget.read` iterates over all available curves in the file and
@@ -365,7 +365,7 @@ following core parameters:
 
 - **Lifetime spectrum** (`lifetime_spectrum`)
   - Comma-separated list of numeric values passed to
-    `chisurf.fluorescence.general.calculate_fluorescence_decay`.
+    `chisurf.core.fluorescence.general.calculate_fluorescence_decay`.
   - Interpreted as component lifetimes / amplitudes according to that
     function.
 
@@ -394,7 +394,7 @@ Internally, `TCSPCSimulatorSetup.read` and the simulation preview
 1. Builds a time axis `x = arange(n_tac) * dt`.
 2. Calls `calculate_fluorescence_decay(lifetime_spectrum=self.lifetime_spectrum,
    time_axis=x)` to obtain a model decay `y`.
-3. Computes Poisson noise via `chisurf.fluorescence.tcspc.counting_noise(y)`.
+3. Computes Poisson noise via `chisurf.core.fluorescence.tcspc.counting_noise(y)`.
 4. Wraps the result in a `DataCurve` and returns a `DataCurveGroup`
    containing the single simulated dataset.
 

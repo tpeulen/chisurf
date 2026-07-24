@@ -56,7 +56,7 @@ dur, cr = data[2, 0], data[2, 1]
 try:
     w = 1.0 / data[3][idx]   # experimental errors if 4th column exists
 except IndexError:
-    w = 1.0 / chisurf.fluorescence.fcs.noise(x, y, dur, cr, weight_type='suren')
+    w = 1.0 / chisurf.core.fluorescence.fcs.noise(x, y, dur, cr, weight_type='suren')
 ```
 
 So the reader interprets the columns as:
@@ -236,7 +236,7 @@ The reader derives:
 - `mean_count_rate`: `sum(intensity) / (acquisition_time * 1000.0)`.
 
 These are used with the correlation data to compute
-`correlation_amplitude_weights` via `chisurf.fluorescence.fcs.noise`.
+`correlation_amplitude_weights` via `chisurf.core.fluorescence.fcs.noise`.
 
 ---
 
@@ -302,7 +302,7 @@ The reader collects:
   `"avg. signal"`.
 
 These are combined to compute noise-based
-`correlation_amplitude_weights` via `chisurf.fluorescence.fcs.noise`.
+`correlation_amplitude_weights` via `chisurf.core.fluorescence.fcs.noise`.
 
 ---
 
@@ -381,7 +381,7 @@ In the newer format, the correlation and count-rate blocks look like:
 - Converting intensity time to seconds and deriving `acquisition_time` and
   `mean_count_rate`.
 - Computing `correlation_amplitude_weights` via
-  `chisurf.fluorescence.fcs.noise`.
+  `chisurf.core.fluorescence.fcs.noise`.
 
 ---
 

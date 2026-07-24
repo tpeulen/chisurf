@@ -64,7 +64,7 @@ Keys:
 
 - **`weighting`**  
   Default index for the correlation weighting mode. Mapped to entries in
-  `chisurf.fluorescence.fcs.weightCalculations` and controls how statistical
+  `chisurf.core.fluorescence.fcs.weightCalculations` and controls how statistical
   weights are computed (e.g. Suren, uniform).
 
 ---
@@ -138,10 +138,10 @@ Used by: `chisurf.base.Data` for embedding raw files into YAML/JSON save files.
 
 ### 1.4 `fcs` (correlation curve weighting)
 
-Used by: FCS utilities in `chisurf.fluorescence.fcs` and various FCS tools.
+Used by: FCS utilities in `chisurf.core.fluorescence.fcs` and various FCS tools.
 
 - **`weight_type`**  
-  Default noise model used by `chisurf.fluorescence.fcs.noise` when computing
+  Default noise model used by `chisurf.core.fluorescence.fcs.noise` when computing
   statistical errors and weights for correlation curves. Common values are
   `"suren"`, `"starchev"`, or `"uniform"`.
 
@@ -198,7 +198,7 @@ Used by: `chisurf.structure.av.*` and related structure modelling code.
 
 ### 1.7 `fret` (global FRET distance grid)
 
-Used primarily by `chisurf.models.tcspc.fret` and helper functions.
+Used primarily by `chisurf.core.models.tcspc.fret` and helper functions.
 
 - **`rda_min`**, **`rda_max`**  
   Minimum and maximum donor–acceptor distances (in Å) defining the global
