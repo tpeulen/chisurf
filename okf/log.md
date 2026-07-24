@@ -2,6 +2,19 @@
 
 ## 2026-07-24
 
+* **PRD-64 — chiplot rich right-click menu + CSV/image export (parity).** Gave
+  every chiplot `Plot` a rich context menu at pyqtgraph parity: on the pyqtgraph
+  backend it **keeps** the native viewbox menu (already offers Export →
+  CSV/image/SVG) and *injects* chiplot `Export data as CSV…` / `Export image…`
+  entries plus any `plot.add_menu_action(label, cb)` custom entries into it; a
+  backend without a native menu (future OpenGL) gets an equivalent chiplot-built
+  menu via `contextMenuEvent`. Backed by backend-neutral `plot.export_csv(path)`
+  (all drawn line/scatter series, padded columns; `Plot` now tracks its series
+  and `Scatter` gained `get_data()`) and `plot.export_image(path)` (pyqtgraph
+  `ImageExporter`, else widget grab) — usable headlessly. Seam guard +
+  `test/gui/test_chiplot.py` (18 tests, incl. CSV export + menu injection)
+  green. Concept: [PRD-64](/prds/prd-64.md).
+
 * **OKF science-theory KB complete (batch 4): ebFRET, filtered-FCS/2D-FLCS, photon-stream simulation.** Final three internal KB concepts + clean OKF-free `docs/concepts/` pages, grounded in the real chisurf code: [ebfret-theory](/references/ebfret-theory.md) (variational-Bayes binned-trace HMM, empirical-Bayes shared prior, ELBO state selection, mapped to `burst_ebfret` `vbem.py`/`ebayes.py`; van de Meent 2014); [filtered-fcs-2dflcs-theory](/references/filtered-fcs-2dflcs-theory.md) (micro-time filters F=(DᵀWD)⁻¹DᵀW, species FCS, afterpulse removal, 2D-FLCS MEM inversion, mapped to `filtered.py` + `flc_2d/mem_2d.py`; Böhmer 2002, Ishii/Tahara 2013) — complements [fcs-pam-port](/references/fcs-pam-port.md); [photophysics-simulation-theory](/references/photophysics-simulation-theory.md) (Brownian→PSF→Poisson→FRET→TTTR, mapped to `tttrlib.SimEngine` config keys + `fcs_lfcs_sim`; Wohland 2001, Ingargiola/PyBroMo). Docs guides 17/18/20/31 gained `{ref}` theory cross-refs; the concepts index is now a curated pedagogical ordering (fundamentals → correlation → smFRET bursts → HMM dynamics → structure/imaging → simulation). **The science-theory layer is complete at 16 concepts.**
 * **Broad German i18n seed — shared UI chrome (~400 finished).** Filled German
   for the high-frequency, unambiguous shared strings already extracted across the

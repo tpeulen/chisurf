@@ -117,6 +117,15 @@ class Scatter(Handle, Protocol):
         """
         ...
 
+    def get_data(self) -> tuple[np.ndarray, np.ndarray]:
+        """Return the scatter's current ``(x, y)`` positions.
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+        """
+        ...
+
 
 @runtime_checkable
 class Bars(Handle, Protocol):

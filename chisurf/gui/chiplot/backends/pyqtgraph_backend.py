@@ -226,6 +226,10 @@ class _Scatter(_Item):
         """Replace the scatter positions."""
         self._native.setData(np.asarray(x), np.asarray(y))
 
+    def get_data(self):
+        """Return the scatter's current ``(x, y)`` positions."""
+        return self._native.getData()
+
 
 class _Bars(_Item):
     """Handle for a pyqtgraph ``BarGraphItem``."""
@@ -594,6 +598,38 @@ class _PgCanvas(base.Canvas):
     def invert_y(self, invert=True) -> None:
         """Invert the y-axis direction."""
         self._pi.getViewBox().invertY(invert)
+
+    def set_menu_enabled(self, enabled) -> None:
+        """Enable/disable pyqtgraph's own right-click viewbox menu."""
+        try:
+            self._pi.getViewBox().setMenuEnabled(enabled)
+            self._pi.setMenuEnabled(enabled)
+        except Exception:
+            pass
+
+    def provides_native_menu(self) -> bool:
+        """Pyqtgraph ships its own rich Export/CSV/image right-click menu."""
+        return True
+
+    def add_menu_action(self, label, callback) -> None:
+        """Inject a custom action into pyqtgraph's viewbox right-click menu."""
+        try:
+            self._pi.getViewBox().menu.addAction(label, callback)
+        except Exception:
+            pass
+
+    def export_image(self, path, *, width=None) -> bool:
+        """Export the panel to an image via pyqtgraph's ImageExporter."""
+        try:
+            from pyqtgraph import exporters
+
+            exp = exporters.ImageExporter(self._pi)
+            if width is not None:
+                exp.parameters()["width"] = int(width)
+            exp.export(path)
+            return True
+        except Exception:
+            return False
 
     # -- events ---------------------------------------------------------
     def on_click(self, callback) -> None:

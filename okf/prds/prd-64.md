@@ -178,6 +178,18 @@ Behaviours that previously *required subclassing pyqtgraph items* (draggable
 text, custom-styled `GraphicsLayoutWidget`s) become **flags/methods**, which is
 what lets a non-pyqtgraph backend satisfy the same contract.
 
+## Rich right-click menu + export
+
+Every `Plot` carries a rich context menu at pyqtgraph parity. On the pyqtgraph
+backend chiplot **keeps** the native viewbox menu (which already offers
+Export → CSV / image / SVG / Matplotlib) and *injects* its own
+`Export data as CSV…` / `Export image…` entries plus any
+`plot.add_menu_action(label, cb)` custom entries into it. A backend that ships
+no native menu (a future OpenGL renderer) gets an equivalent chiplot-built menu
+via `contextMenuEvent`. Programmatic `plot.export_csv(path)` (every drawn
+line/scatter series, padded columns) and `plot.export_image(path)` (backend
+`ImageExporter`, else a widget grab) back the actions and are usable headlessly.
+
 ## Passthrough (migration safety net)
 
 chiplot's native surface does not yet cover every pyqtgraph feature in use.

@@ -55,6 +55,10 @@ class Plot(QtWidgets.QWidget):
     def __init__(self, parent=None, *, title: str | None = None, background=None, **backend_opts):
         super().__init__(parent)
         self._canvas = get_backend().create_canvas(**backend_opts)
+        # (name, handle) of exportable x/y series, for the CSV context action.
+        self._series: list = []
+        self._extra_menu_actions: list = []
+        self._context_menu_enabled = True
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -65,6 +69,12 @@ class Plot(QtWidgets.QWidget):
             self._canvas.set_background(S.to_color(background))
         self._canvas.on_click(lambda x, y, btn: self.clicked.emit(x, y) if btn == "left" else None)
         self._canvas.on_mouse_move(lambda x, y: self.mouse_moved.emit(x, y))
+        # If the backend already ships a rich menu (pyqtgraph: Export/CSV/image),
+        # keep it for parity and inject custom actions into it; otherwise chiplot
+        # builds its own menu via contextMenuEvent.
+        self._native_menu = self._canvas.provides_native_menu()
+        if self._native_menu:
+            self._install_native_export_actions()
 
     # -- drawing --------------------------------------------------------
     def line(
@@ -122,7 +132,7 @@ class Plot(QtWidgets.QWidget):
         sym = None
         if symbol is not None:
             sym = symbol if isinstance(symbol, H.Symbol) else H.Symbol(symbol)
-        return self._canvas.add_curve(
+        handle = self._canvas.add_curve(
             np.asarray(x),
             np.asarray(y),
             pen=S.to_pen(pen, **overrides),
@@ -134,6 +144,8 @@ class Plot(QtWidgets.QWidget):
             symbol_brush=S.to_brush(symbol_brush) if symbol_brush is not None else None,
             symbol_pen=S.to_pen(symbol_pen) if symbol_pen is not None else None,
         )
+        self._series.append((name or f"curve{len(self._series)}", handle))
+        return handle
 
     def scatter(self, x, y, *, size=7.0, brush="w", pen=None, symbol="o", name=None) -> H.Scatter:
         """Draw a scatter cloud.
@@ -157,7 +169,7 @@ class Plot(QtWidgets.QWidget):
         -------
         handles.Scatter
         """
-        return self._canvas.add_scatter(
+        handle = self._canvas.add_scatter(
             np.asarray(x),
             np.asarray(y),
             size=size,
@@ -166,6 +178,8 @@ class Plot(QtWidgets.QWidget):
             symbol=symbol if isinstance(symbol, H.Symbol) else H.Symbol(symbol),
             name=name,
         )
+        self._series.append((name or f"points{len(self._series)}", handle))
+        return handle
 
     def bars(self, x, height, *, width=1.0, brush="w", pen=None) -> H.Bars:
         """Draw a bar graph.
@@ -407,7 +421,119 @@ class Plot(QtWidgets.QWidget):
 
     def clear(self) -> None:
         """Remove every drawn handle from the panel."""
+        self._series.clear()
         self._canvas.clear()
+
+    # -- context menu / export ------------------------------------------
+    def set_context_menu_enabled(self, enabled: bool) -> Plot:
+        """Enable/disable chiplot's right-click menu. Returns ``self``."""
+        self._context_menu_enabled = bool(enabled)
+        return self
+
+    def add_menu_action(self, label: str, callback) -> Plot:
+        """Add a custom entry to the right-click menu. Returns ``self``.
+
+        Works whether the menu is the backend's native one (pyqtgraph) or
+        chiplot's own fallback.
+
+        Parameters
+        ----------
+        label : str
+            Menu text.
+        callback : callable
+            Invoked (no args) when the entry is chosen.
+        """
+        self._extra_menu_actions.append((label, callback))
+        if getattr(self, "_native_menu", False):
+            self._canvas.add_menu_action(label, callback)
+        return self
+
+    def _install_native_export_actions(self) -> None:
+        """Add chiplot's CSV/image export entries to the backend's native menu."""
+        self._canvas.add_menu_action("Export data as CSV…", self._on_export_csv)
+        self._canvas.add_menu_action("Export image…", self._on_export_image)
+
+    def export_csv(self, path: str) -> None:
+        """Write every drawn line/scatter series to a CSV file.
+
+        Columns are ``<name> x`` / ``<name> y`` per series, padded to the
+        longest series with blanks.
+
+        Parameters
+        ----------
+        path : str
+            Destination ``.csv`` path.
+        """
+        import csv
+
+        cols: list[tuple[str, np.ndarray]] = []
+        for name, handle in self._series:
+            getter = getattr(handle, "get_data", None)
+            if getter is None:
+                continue
+            try:
+                x, y = getter()
+            except Exception:
+                continue
+            if x is None or y is None:
+                continue
+            cols.append((f"{name} x", np.asarray(x)))
+            cols.append((f"{name} y", np.asarray(y)))
+        n = max((c.size for _, c in cols), default=0)
+        with open(path, "w", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow([h for h, _ in cols])
+            for i in range(n):
+                w.writerow(["" if i >= c.size else c[i] for _, c in cols])
+
+    def export_image(self, path: str, *, width: int | None = None) -> None:
+        """Save the panel as an image (PNG/SVG via the backend, else a grab).
+
+        Parameters
+        ----------
+        path : str
+            Destination image path.
+        width : int, optional
+            Target pixel width (backend exporter only).
+        """
+        if not self._canvas.export_image(path, width=width):
+            self._canvas.widget().grab().save(path)
+
+    def contextMenuEvent(self, event):  # noqa: N802 (Qt override)
+        """Show chiplot's right-click menu (export data/image, auto-range).
+
+        Skipped when the backend already shows its own rich menu (pyqtgraph),
+        so the two never double up.
+        """
+        if not self._context_menu_enabled or getattr(self, "_native_menu", False):
+            event.ignore()
+            return
+        menu = QtWidgets.QMenu(self)
+        menu.addAction("Export data as CSV…", self._on_export_csv)
+        menu.addAction("Export image…", self._on_export_image)
+        menu.addSeparator()
+        menu.addAction("Auto-range", lambda: self.autoscale())
+        if self._extra_menu_actions:
+            menu.addSeparator()
+            for label, cb in self._extra_menu_actions:
+                menu.addAction(label, cb)
+        menu.exec_(event.globalPos())
+
+    def _on_export_csv(self):
+        """File-dialog + write for the CSV export menu action."""
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Export data as CSV", "", "CSV files (*.csv)"
+        )
+        if path:
+            self.export_csv(path)
+
+    def _on_export_image(self):
+        """File-dialog + write for the image export menu action."""
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Export image", "", "Images (*.png *.svg *.jpg)"
+        )
+        if path:
+            self.export_image(path)
 
     # -- axes / view ----------------------------------------------------
     def set_labels(self, *, left=None, bottom=None, right=None, top=None) -> Plot:
@@ -767,4 +893,12 @@ class PanelPlot(Plot):
         # a panel is a QObject only for signal support and wraps an existing canvas.
         QtWidgets.QWidget.__init__(self)
         self._canvas = canvas
+        self._series = []
+        self._extra_menu_actions = []
+        # A panel is not a standalone widget, so chiplot's contextMenuEvent never
+        # fires here — keep the backend's own menu for grid panels.
+        self._context_menu_enabled = False
+        self._native_menu = self._canvas.provides_native_menu()
+        if self._native_menu:
+            self._install_native_export_actions()
         self._canvas.on_click(lambda x, y, btn: self.clicked.emit(x, y) if btn == "left" else None)

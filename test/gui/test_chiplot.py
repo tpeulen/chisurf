@@ -172,6 +172,34 @@ def test_image_view_and_roi(qapp):
     iv.clear()
 
 
+def test_export_csv_from_series(qapp, tmp_path):
+    import numpy as np
+
+    plot = cp.Plot()
+    x = np.arange(4, dtype=float)
+    plot.line(x, x * 2, name="a")
+    plot.scatter(x, x + 1, name="b")
+    out = tmp_path / "series.csv"
+    plot.export_csv(str(out))
+    text = out.read_text()
+    assert "a x" in text and "a y" in text and "b x" in text and "b y" in text
+    # 4 data rows + 1 header
+    assert len(text.strip().splitlines()) == 5
+
+
+def test_context_menu_and_custom_action(qapp):
+    plot = cp.Plot()
+    fired = []
+    plot.add_menu_action("Do thing", lambda: fired.append(True))
+    plot.set_context_menu_enabled(True)
+    # The extra action is registered; invoke its callback directly.
+    assert plot._extra_menu_actions[0][0] == "Do thing"
+    plot._extra_menu_actions[0][1]()
+    assert fired == [True]
+    plot.clear()  # resets series tracking
+    assert plot._series == []
+
+
 def test_clicked_signal_wired(qapp):
     plot = cp.Plot()
     got = []

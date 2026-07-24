@@ -222,6 +222,29 @@ class Canvas(abc.ABC):
     def invert_y(self, invert: bool = True) -> None:
         """Invert the y-axis direction."""
 
+    def set_menu_enabled(self, enabled: bool) -> None:
+        """Enable/disable the backend's own right-click menu (default no-op)."""
+
+    def provides_native_menu(self) -> bool:
+        """Whether the backend already shows its own rich right-click menu.
+
+        When ``True`` (pyqtgraph), chiplot keeps that menu (export/CSV/image are
+        already there) and only injects custom actions into it. When ``False``,
+        chiplot builds its own menu.
+        """
+        return False
+
+    def add_menu_action(self, label: str, callback) -> None:
+        """Add a custom entry to the backend's native menu (default no-op)."""
+
+    def export_image(self, path: str, *, width: int | None = None) -> bool:
+        """Export the panel to an image file; return ``True`` on success.
+
+        Backends without a native exporter return ``False`` so the caller can
+        fall back to a widget grab.
+        """
+        return False
+
     # -- events ----------------------------------------------------------
     @abc.abstractmethod
     def on_click(self, callback) -> None:
