@@ -13,9 +13,7 @@ and lifetimes turn into physical numbers.
 
 For the step-by-step workflows in ChiSurf, see the guides
 {doc}`/guides/10_lifetime_anisotropy_fitting`,
-{doc}`/guides/21_lifetime_from_bursts` and {doc}`/guides/32_nsalex_lifetime`. The
-theory here is the user-facing rendering of the maintained OKF concept
-`okf/references/tcspc-lifetime-theory.md`.
+{doc}`/guides/21_lifetime_from_bursts` and {doc}`/guides/32_nsalex_lifetime`.
 
 ## The measurement
 
@@ -160,8 +158,6 @@ FRET distance distributions and anisotropy decays are resolved; see
 
 - Guides: {doc}`/guides/10_lifetime_anisotropy_fitting` ·
   {doc}`/guides/21_lifetime_from_bursts` · {doc}`/guides/32_nsalex_lifetime`.
-- Theory reference: `okf/references/tcspc-lifetime-theory.md`; MLE engine and
-  input contract: `okf/subsystems/mle-lifetime-fitting.md`.
 - Implementation: convolution kernels
   `chisurf/core/fluorescence/tcspc/convolve.py`; nuisances (pile-up, DNL)
   `chisurf/core/fluorescence/tcspc/corrections.py`; IRF helpers

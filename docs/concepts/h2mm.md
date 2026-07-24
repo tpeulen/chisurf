@@ -13,9 +13,7 @@ millisecond timescale.
 
 For the step-by-step workflow in ChiSurf, see the guides
 {doc}`/guides/19_h2mm_hidden_markov`, {doc}`/guides/30_h2mm_workflow_results`,
-and {doc}`/guides/31_h2mm_simulation_validation`. The theory here is the
-user-facing rendering of the maintained OKF concept
-`okf/references/h2mm-theory.md`.
+and {doc}`/guides/31_h2mm_simulation_validation`.
 
 ## A hidden Markov model for a photon stream
 
@@ -172,10 +170,7 @@ frame rate), the appropriate tool is binned HMM instead — see
   {doc}`/guides/30_h2mm_workflow_results` ·
   {doc}`/guides/31_h2mm_simulation_validation`; binned-HMM alternative
   {doc}`/guides/20_ebfret_binned_hmm`.
-- FRET corrections on the per-state E/S (γ, leakage, direct excitation):
-  `okf/references/fret-calibration.md`.
 - Plugin: `chisurf/plugins/burst/burst_h2mm/`; engine `tttrlib.H2MM`.
-- OKF concept: `okf/references/h2mm-theory.md`.
 - Key literature: Pirchi, Tsukanov et al. 2016 (J. Phys. Chem. B 120:13065);
   Schrimpf, Barth, Hendrix & Lamb 2018 (Biophys. J. 114:1518, PAM);
   Harris et al. 2022 (Nat. Commun. 13:1000, burstH2MM).

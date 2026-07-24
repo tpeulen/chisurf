@@ -12,9 +12,7 @@ modeling.
 
 This page explains what the AV *is*, why three different "distances" fall out of a
 pair of AVs, and how they become restraints. For the step-by-step workflow and API
-in ChiSurf, see the guide {doc}`/guides/23_accessible_volume`. The theory here is
-the user-facing rendering of the maintained OKF concept
-`okf/references/accessible-volume-theory.md`.
+in ChiSurf, see the guide {doc}`/guides/23_accessible_volume`.
 
 ## Why a tethered dye samples a distribution
 
@@ -175,7 +173,6 @@ hands the network to an AV-restraint scoring function for docking and refinement
 - Code: `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`); FRET plugin
   `chisurf/plugins/modelling/fret/` (`core/av.py`, `core/distance.py`,
   `core/imp_engine.py`); editor `chisurf/plugins/modelling/fps_json_editor/`.
-- OKF concept: `okf/references/accessible-volume-theory.md`.
 - Key literature: Sindbert et al. 2011 (*JACS*, AV); Kalinin et al. 2012
   (*Nat. Methods*, FPS toolkit); Dimura et al. 2016 (*COSB*, integrative FRET
   modeling).

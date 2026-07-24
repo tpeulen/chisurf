@@ -8,8 +8,7 @@ curve *is*, how ChiSurf's fit-model catalogue is built from independent physical
 factors, and how the fit parameters map onto physical quantities.
 
 For the step-by-step workflow in ChiSurf, see the guide
-{doc}`/guides/09_diffusion_fcs`. The theory here is the user-facing rendering of
-the maintained OKF concept `okf/references/fcs-model-theory.md`.
+{doc}`/guides/09_diffusion_fcs`.
 
 ## The anatomy of a correlation curve
 
@@ -109,5 +108,3 @@ $w_{xy}=\sqrt{4D\,\tau_D}$.
   {doc}`/guides/17_filtered_fcs`.
 - Model catalogue: `chisurf/core/models/fcs/models.yaml`; correlator plugin
   `chisurf/plugins/fcs/fcs_correlator/`.
-- OKF concepts: `okf/references/fcs-model-theory.md`, `fcs-pam-port.md`,
-  `two-focus-fcs.md`.

@@ -9,8 +9,7 @@ documents (PRDs), the Python API reference, and release/CI process notes.
 .. note::
 
    These pages describe *how ChiSurf is built*, not how to use it. For usage see
-   :doc:`Guides </guides/index>` and :doc:`Concepts </concepts/index>`. The durable
-   architecture knowledge lives in the project's OKF bundle (``okf/``); these
+   :doc:`Guides </guides/index>` and :doc:`Concepts </concepts/index>`. These
    documents are working notes and design records.
 
 Architecture & API

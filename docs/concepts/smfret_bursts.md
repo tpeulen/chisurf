@@ -14,8 +14,7 @@ instruments.
 This page is the theory. For the step-by-step ChiSurf workflow see the guides
 {doc}`/guides/13_burst_identification`, {doc}`/guides/14_multiparameter_es`,
 {doc}`/guides/15_background_rates`, and the end-to-end
-{doc}`/guides/27_alex_smfret_workflow`. It is the user-facing rendering of the
-maintained OKF concept `okf/references/smfret-burst-analysis.md`.
+{doc}`/guides/27_alex_smfret_workflow`.
 
 ## Finding bursts
 
@@ -134,9 +133,6 @@ $E = 1/[1+(R/R_0)^6]$, i.e. $R = R_0\,(1/E - 1)^{1/6}$.
 
 - Guides: {doc}`/guides/13_burst_identification` · {doc}`/guides/14_multiparameter_es`
   · {doc}`/guides/15_background_rates` · {doc}`/guides/27_alex_smfret_workflow`.
-- OKF concept: `okf/references/smfret-burst-analysis.md`; calibration workflow
-  (light-path prior → data posterior) `okf/references/fret-calibration.md`;
-  linear-mixing core `okf/references/crosstalk.md`.
 - Implementation: per-burst E/S `chisurf/core/fluorescence/burst/es.py`;
   correction algebra `chisurf/core/fluorescence/crosstalk.py`; calibration
   factors `chisurf/core/fluorescence/fret/calibration.py`; burst search &
