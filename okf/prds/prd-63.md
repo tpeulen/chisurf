@@ -56,11 +56,16 @@ Implementation and architecture live in
 - [x] Extractor + `en`/`de` catalogues + compiled `.qm`; `.qm/.ts` packaged.
 - [x] UI glossary + micro-time label harmonisation in the data-driven layer.
 - [x] Headless tests (`test/test_i18n.py`) + full view.json parse regression.
-- [ ] `pixi.toml` `i18n-extract`/`i18n-compile` tasks + `gui.language` YAML
-      default (held back to avoid a shared-file collision; see the log).
+- [x] `pixi.toml` `i18n-extract`/`i18n-compile` tasks + `gui.language` YAML default.
+- [x] **Language selector in Settings** — `gui.language` renders as an
+      endonym combo (discovered from shipped `.qm`), stores the locale code,
+      persists via `set_language`, and switches live via
+      `gui/i18n.py:apply_language()`; incidentally revived the theme combo by
+      fixing `SettingsItemDelegate._get_setting_path` for value-column indices.
+      Guarded by `test/gui/test_language_selector.py`.
 - [ ] Follow-ups: imperative `setText`/`QMessageBox` wrapping (phased), menu-path
       `display_name`/`categories` localization at the nav seam, `.ui` terminology
-      convergence.
+      convergence, and broadening the seeded catalogues beyond German.
 
 # Non-goals (this pass)
 

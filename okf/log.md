@@ -2,6 +2,20 @@
 
 ## 2026-07-24
 
+* **i18n language selector in Settings — [PRD-63](/prds/prd-63.md),
+  [i18n subsystem](/subsystems/i18n.md).** `gui.language` now renders in the
+  settings tree as an endonym combo box (English/Deutsch/…, discovered from the
+  shipped `chisurf_<code>.qm` catalogues via `gui/i18n.py:available_languages()`);
+  picking a language stores the locale *code*, persists it (`set_language`), and
+  switches the UI live (`gui/i18n.py:apply_language()` removes the previous
+  catalogue and installs the new — newly opened tools/dialogs render translated;
+  a restart fully retranslates open windows). Fixed
+  `SettingsItemDelegate._get_setting_path` to resolve the full dotted path from a
+  value-column (col-1) index via each row's col-0 sibling key — it previously
+  dropped the leaf key for exactly the indices `createEditor` receives, so the
+  per-setting editors (theme/folder/language) never fired; this also revived the
+  theme-picker combo. Guarded by `test/gui/test_language_selector.py`.
+
 * **PRD-58 — fixed 2 stale `fps_json_editor` GUI tests.** `test_gui.py`
   (`test_fps_json_editor_panels`, `test_fps_json_editor_payload_roundtrip`) asserted
   against a `PositionPanel.positions_list` (`QListWidget`) and a col-0 distance name
