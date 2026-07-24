@@ -67,6 +67,17 @@ sqlalchemy = ">=2.0"
 # The conda-forge package providing the `msgpack` module is named
 # msgpack-python (`msgpack` does not exist as a conda package).
 msgpack-python = ">=1.1.2"
+# Build tools for the editable module installs + the local tttrlib source build,
+# which run in this default env via `build-extensions`. Formerly a separate
+# top-level [build-dependencies] table (deprecated by pixi); numpy/python are
+# omitted here because they are already declared above.
+cmake-build-extension = ">=0.6.1,<0.7"
+cmake = ">=3.31.8,<4"
+swig = ">=4.4.0,<5"
+ninja = ">=1.13.2,<2"
+scikit-build-core = ">=0.12.1,<0.13"
+pybind11 = ">=3.0.3,<4"
+llvm-openmp = ">=22.1.3,<23"
 
 # PyPI-only runtime deps (no conda package exists). latexify-py backs the LaTeX
 # expression renderer in chisurf/gui/widgets/models/parse/latex.py. This block is
@@ -193,13 +204,3 @@ test-smoke = { cmd = "pytest test/test_basic.py -q", depends-on = ["build-extens
 # a convenience entry point for iterating on the scripts alone.
 test-scripts = { cmd = "pytest test/scripts test/models/test_wlc_public_api.py -o addopts='' -q", depends-on = ["build-extensions"] }
 
-[build-dependencies]
-cmake-build-extension = ">=0.6.1,<0.7"
-cmake = ">=3.31.8,<4"
-swig = ">=4.4.0,<5"
-ninja = ">=1.13.2,<2"
-numpy = ">=2.4.3,<3"
-python = ">=3.12.13,<3.13"
-scikit-build-core = ">=0.12.1,<0.13"
-pybind11 = ">=3.0.3,<4"
-llvm-openmp = ">=22.1.3,<23"
