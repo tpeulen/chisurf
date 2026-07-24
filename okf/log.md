@@ -2,6 +2,13 @@
 
 ## 2026-07-24
 
+* **Process rule — no commit trailers.** Commit messages carry no trailer block
+  of any kind (no `Co-Authored-By`, no "Generated with"/tool attribution);
+  commits are tpeulen-authored plain text. Reversed the stale
+  [change-tracking](/workflows/change-tracking.md) step-5 instruction that told
+  agents to append a `Co-Authored-By` trailer, and added an overriding
+  working-practices bullet in `CLAUDE.md`.
+
 * **Process rule — shared working tree, no destructive git.** Documented that
   multiple agent instances (and the user) work this repo in parallel, so
   tree/index-discarding git is banned: no `git reset --hard`, `git checkout --`/
@@ -76,6 +83,18 @@
   upcoming Global-View AutoForm migration; identity/resolution reuses the existing
   global `Base._uuid_index` / `find_by_uuid`. Tests:
   `test/fitting/test_parameter_group_registry.py` (8, passing).
+* **Global View — out-of-fit parameters, phase 2 (UUID-addressed RPC).** The generic
+  parameter service `chisurf/server/services/parameters.py` now resolves a parameter
+  by a global `parameter_uid` (via `Base.find_by_uuid`) in addition to
+  `fit_index`/`fit_uid` + name — so out-of-fit (plugin) parameters are read, edited
+  and linked through the same path as fit parameters. `_resolve_parameter` returns an
+  *owner* (fit or model/group); new `_model_of` / `_finalize_owner` finalise the right
+  group for both. `parameter_link` gained `target_parameter_uid` / `target_owner_uid`
+  so any parameter can link to any other. `FittingClient` methods and
+  `protocol.py` METHOD_SCHEMAS thread the new optional keys. Tests:
+  `test/server/test_services_parameters_uid.py` (8, incl. out-of-fit→fit link), legacy
+  `test_services_parameters.py` + `test_protocol.py` still green.
+
 
 * **Burst nav + ribbon regrouping.** (1) The Burst Analysis nav moved **Browser below the workflow separator** (a utility alongside Background / IRF & Background); the numbered pipeline is now 1..6 (Data Selection → H2MM). (2) Ribbon menu: elevated **FCS / Decay Analysis / Burst Analysis** to sit directly under a single **Spectroscopy** group (their hierarchical `display_name`/`name` shortened to `Spectroscopy:<Name>`); **hid the Synthetic Decay Generator** (`menu_hidden`); moved **Structure Tools** into the same ribbon group as ChiMOL (`Structure:Structure:…`). Test `test_burst_workflow_panel_order` updated; manifest validation passes. Still open (large, deferred): converting the **Burst Browser** and **Background** plugins to the modern AutoForm framework (foldable boxes + chisurf docks) — both are working, tightly-coupled Qt tools embedded in the workflow, so they warrant a focused conversion using the `burst_irf_bg` template rather than a rushed rewrite.
 * **Burst UX: MLE auto-populates plots on load; info/warning popups routed to the status bar.** (1) The Burst-MLE panel loaded with blank axes until the user clicked Auto/Run — it now, on the first burst-data load (deferred + once), runs "Auto" by default: with an IRF already present (loaded or sent from IRF & Background) it just refits, else it runs the one-click auto-binning + window + IRF-extraction + fit (`_auto_populate_plots` in `load_burst_data`). (2) Replaced the ~20 `QMessageBox.information`/`.warning` popups across the burst tools (MLE, H2MM, Browser, Background, IRF & Background, Selection) with status-bar output — MLE/H2MM via their `_status`, the rest via `logging` (the shell installs a handler on the `chisurf.plugins.burst` logger, so they surface in the shared status bar when embedded). Only `QMessageBox.critical` (genuine errors) stays modal. Also: canonical tool buttons capped to native `QToolButton` height (a stylesheet drops macOS native metrics, making styled buttons taller than plain neighbours — not an emoji issue); BVA plot widened by hard-capping the settings-side dock to 440 px so the Plot dock absorbs the rest; 2CDE gained a pinned top toolbar.
