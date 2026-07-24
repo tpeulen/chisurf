@@ -203,6 +203,17 @@ def test_module_passthrough_warns_once(qapp, recwarn):
     assert len(passthrough_warnings) == 1
 
 
+def test_handle_passthrough_parity(qapp):
+    # A pyqtgraph item method chiplot doesn't expose natively still works on the
+    # handle, flagged as a passthrough gap.
+    cp.reset_gaps()
+    plot = cp.Plot()
+    curve = plot.line([0, 1, 2], [0, 1, 0])
+    with pytest.warns(cp.ChiplotPassthroughWarning):
+        curve.setDownsampling(auto=True)  # pyqtgraph PlotDataItem method
+    assert any(g.startswith("Curve.") for g in cp.passthrough_gaps())
+
+
 def test_unknown_symbol_raises(qapp):
     with pytest.raises(AttributeError):
         cp.this_symbol_does_not_exist_anywhere

@@ -4,7 +4,6 @@
 # adding a NEW path is a test failure. Goal: empty (bar the ChiMOL GL file).
 chisurf/gui/autoform/sections/builtin.py
 chisurf/gui/autoform/sections/decay_conv_section.py
-chisurf/gui/autoform/sections/phasor_section.py
 chisurf/gui/plots/_qwt_compat.py
 chisurf/gui/plots/av_plot.py
 chisurf/gui/plots/distribution.py

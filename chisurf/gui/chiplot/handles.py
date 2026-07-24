@@ -196,6 +196,10 @@ class Image(Handle, Protocol):
         """
         ...
 
+    def clear(self) -> None:
+        """Clear the image data."""
+        ...
+
 
 @runtime_checkable
 class Region(Handle, Protocol):

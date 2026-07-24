@@ -45,6 +45,19 @@
   Concept: [PRD-58](/prds/prd-58.md).
 
 * **OKF science-theory KB, batch 3: FRET theory, PCH/FIDA, recurrence (RASP), FLIM/phasor.** Four more internal KB concepts (authoring scaffolding for the user docs), each paired with a clean OKF-free `docs/concepts/` page grounded in the real chisurf implementation: [fret-theory](/references/fret-theory.md) (foundational R⁻⁶ transfer, E, R₀ from overlap integral/κ²/n, mapped to `forster.py` `overlap_integral`/`forster_radius` `_R0_PREFACTOR_NM=0.02108`; Förster 1948, Lakowicz, Clegg); [pch-fida-theory](/references/pch-fida-theory.md) (brightness ε + N from the count-amplitude distribution, single/multi-species PCH, FIDA PGF route, N&B moments, mapped to `core/models/pch` `compute_p1`/`fida_pch`; Chen 1999, Kask 1999); [recurrence-rasp-theory](/references/recurrence-rasp-theory.md) (same-molecule recurrence P=1−1/G(τ), conditional recurrence FRET histogram, mapped to `burst/recurrence.py`; Hoffmann/Nettels/Gopich/Schuler 2011, PCCP per the codebase); [imaging-flim-phasor-theory](/references/imaging-flim-phasor-theory.md) (CLSM/TTTR, phasor transform + universal semicircle + lever rule, mapped to `tcspc/phasor.py` + `img_pixel_phasor`, PRD-49/52; Digman 2008). Docs guides 02/04/24 gained `{ref}` theory cross-refs. Wired into [references/index.md](/references/index.md). This brings the science-theory layer to **13 concepts** (batches 1–3 + fcs-model-theory).
+* **PRD-64 — Phase-2 batch 6: full handle passthrough parity + phasor_section
+  (allow-list 59 → 58).** Extended the flagged passthrough to **every drawn
+  handle** (previously only `Plot`/`ImageView`): a handle now proxies unknown
+  attributes to its native pyqtgraph item, so any pyqtgraph item method chiplot
+  lacks natively still works (flagged) — **full pyqtgraph parity**, so migrated
+  call sites behave exactly as before. Added `Image.clear()`. Migrated
+  `autoform/sections/phasor_section` (density image + universal semicircle +
+  scatter/text/line overlays). Deferred `burst_bva` (custom
+  `GraphicsLayoutWidget` + `HistogramLUTItem`; `pg.colormap.get` collides with
+  chiplot's `colormap`). Seam guard + `test/gui/test_chiplot.py` (17 tests, incl.
+  handle-passthrough) green; phasor import-smoke clean. Concept:
+  [PRD-64](/prds/prd-64.md).
+
 * **PRD-64 — Phase-2 GUI migration batch 5: chiplot ImageView + ROI (allow-list
   60 → 59).** Added the biggest missing capability — a chiplot `ImageView`
   (image + intensity/LUT histogram + 3-D frame slider, wrapping `pg.ImageView`)

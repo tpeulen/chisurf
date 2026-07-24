@@ -25,9 +25,9 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 
 from .registry import register_section
@@ -69,23 +69,21 @@ class PhasorSectionWidget(QtWidgets.QWidget):
         if self._movie:
             layout.addLayout(self._build_movie_bar())
 
-        self._plot = pg.PlotWidget()
-        self._plot.setLabel("bottom", "g")
-        self._plot.setLabel("left", "s")
-        self._plot.setAspectLocked(True)
-        self._plot.showGrid(x=True, y=True, alpha=0.2)
+        self._plot = cp.Plot()
+        self._plot.set_labels(bottom="g", left="s")
+        self._plot.set_aspect_locked(True)
+        self._plot.grid(x=True, y=True, alpha=0.2)
         if options.get("title"):
-            self._plot.setTitle(str(options["title"]))
-        self._image = pg.ImageItem()
-        self._plot.addItem(self._image)
+            self._plot.set_title(str(options["title"]))
+        self._image = self._plot.image(np.zeros((1, 1)))
         # Universal semicircle: centre (0.5, 0), radius 0.5.
         theta = np.linspace(0.0, np.pi, 256)
-        self._plot.plot(
+        self._plot.line(
             0.5 + 0.5 * np.cos(theta), 0.5 * np.sin(theta),
-            pen=pg.mkPen((255, 255, 255, 200), width=1.5),
+            pen=cp.to_pen((255, 255, 255, 200), width=1.5),
         )
-        self._plot.setXRange(0.0, 1.0)
-        self._plot.setYRange(0.0, 0.6)
+        self._plot.set_xlim(0.0, 1.0)
+        self._plot.set_ylim(0.0, 0.6)
         layout.addWidget(self._plot, 1)
         self.refresh()
 
@@ -118,10 +116,10 @@ class PhasorSectionWidget(QtWidgets.QWidget):
             self._image.clear()
             return
         density = np.asarray(density, dtype=float)
-        self._image.setImage(density, autoLevels=True)
+        self._image.set_image(density)
         g0, g1 = self._g_range
         s0, s1 = self._s_range
-        self._image.setRect(QtCore.QRectF(g0, s0, g1 - g0, s1 - s0))
+        self._image.set_rect(g0, s0, g1 - g0, s1 - s0)
 
     # ── per-frame movie ────────────────────────────────────────────────
     def _build_movie_bar(self) -> QtWidgets.QHBoxLayout:
@@ -243,7 +241,7 @@ class PhasorSectionWidget(QtWidgets.QWidget):
 
     def _refresh_overlays(self) -> None:
         for item in self._overlay_items:
-            self._plot.removeItem(item)
+            item.remove()
         self._overlay_items = []
         source = (
             getattr(self._model, self._overlays_source, None)
@@ -263,24 +261,21 @@ class PhasorSectionWidget(QtWidgets.QWidget):
     def _draw_overlay(self, ov: dict) -> None:
         style = ov.get("style", {}) or {}
         color = style.get("color", "w")
-        pen = pg.mkPen(
+        pen = cp.to_pen(
             color,
             width=style.get("width", 1),
-            style=QtCore.Qt.DashLine if style.get("dash") else QtCore.Qt.SolidLine,
+            style="dash" if style.get("dash") else "solid",
         )
         x, y = ov.get("x", []), ov.get("y", [])
         if ov.get("kind") == "scatter":
-            item = pg.ScatterPlotItem(
-                x=x, y=y, pen=pg.mkPen(color), brush=pg.mkBrush(color),
+            item = self._plot.scatter(
+                x, y, pen=color, brush=color,
                 size=style.get("size", 8), symbol=style.get("symbol", "o"),
             )
-            self._plot.addItem(item)
             self._overlay_items.append(item)
             for xi, yi, label in zip(x, y, ov.get("labels", [])):
-                text = pg.TextItem(str(label), color=color, anchor=(0, 1))
-                text.setPos(float(xi), float(yi))
-                self._plot.addItem(text)
+                text = self._plot.text(str(label), (float(xi), float(yi)), color=color, anchor=(0, 1))
                 self._overlay_items.append(text)
         else:
-            item = self._plot.plot(x, y, pen=pen)
+            item = self._plot.line(x, y, pen=pen)
             self._overlay_items.append(item)

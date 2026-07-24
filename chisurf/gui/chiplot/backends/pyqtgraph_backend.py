@@ -178,6 +178,34 @@ class _Item:
         """The wrapped pyqtgraph item."""
         return self._native
 
+    def __getattr__(self, name: str):
+        """Proxy unknown handle attributes to the native pyqtgraph item, flagged.
+
+        Guarantees pyqtgraph parity: any item method chiplot does not expose
+        natively (``clear``, ``setExportHint``, ``setSymbol``, …) still works via
+        the underlying item and is recorded as a migration gap.
+
+        Parameters
+        ----------
+        name : str
+            Attribute not found on this handle.
+
+        Raises
+        ------
+        AttributeError
+            During construction (before ``_native`` exists) or if the native
+            item also lacks ``name``.
+        """
+        if name.startswith("__") or name in ("_native", "_pi"):
+            raise AttributeError(name)
+        native = object.__getattribute__(self, "_native")
+        if hasattr(native, name):
+            from chisurf.gui.chiplot._passthrough import record_and_warn
+
+            record_and_warn(type(self).__name__.lstrip("_"), name)
+            return getattr(native, name)
+        raise AttributeError(name)
+
 
 class _Curve(_Item):
     """Handle for a pyqtgraph ``PlotDataItem`` / ``PlotCurveItem``."""
@@ -234,6 +262,10 @@ class _Image(_Item):
     def set_rect(self, x: float, y: float, w: float, h: float) -> None:
         """Place the image in data coordinates."""
         self._native.setRect(QtCore.QRectF(x, y, w, h))
+
+    def clear(self) -> None:
+        """Clear the image data."""
+        self._native.clear()
 
 
 class _Region(_Item):

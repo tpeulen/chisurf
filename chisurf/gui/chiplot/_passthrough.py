@@ -11,8 +11,11 @@ Two levels:
   (``mkPen``, ``LinearRegionItem``, `PlotWidget`, …) from the backend's raw
   module. A migration can then be as small as
   ``import pyqtgraph as pg`` → ``import chisurf.gui.chiplot as pg`` and still run.
-- **Instance level** — a native :class:`~chisurf.gui.chiplot.Plot` proxies
-  unknown attributes to its underlying backend plot object.
+- **Instance level** — a native :class:`~chisurf.gui.chiplot.Plot`,
+  :class:`~chisurf.gui.chiplot.ImageView`, and every drawn **handle** proxy
+  unknown attributes to their underlying backend object. This gives full
+  pyqtgraph **parity**: any item/widget method chiplot does not expose natively
+  still works (flagged), so migrated call sites keep behaving exactly as before.
 
 Every fall-through emits a :class:`ChiplotPassthroughWarning` **once per symbol**
 and is recorded; :func:`passthrough_gaps` returns the set of everything that has
