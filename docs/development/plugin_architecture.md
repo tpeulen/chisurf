@@ -147,7 +147,7 @@ GUI receives response
 
 Every plugin MUST have a `manifest.json` in its root package directory. This replaces the current pattern of declaring `name`, `cli_entrypoint` etc. as Python variables parsed via AST.
 
-```json
+```text
 {
   "id": "burst_selection",
   "version": "2.0.0",
@@ -448,7 +448,7 @@ No snake_case legacy names in new code. Old names kept as deprecated aliases dur
 
 ### 6.4 Success response (completed work)
 
-```json
+```text
 {
   "jsonrpc": "2.0",
   "result": {

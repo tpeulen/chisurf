@@ -79,7 +79,7 @@ Loads a registered burst product by its `processed_data_id` from the database. I
 - `processed_data_id`: The ID of the processed product record.
 
 **Response Structure:**
-```json
+```text
 {
   "ok": true,
   "parameter_names": ["Mean Macro Time (s)", "N_ph", ...],
@@ -106,7 +106,7 @@ Persists the results of an ndxplorer operations run (e.g. selection gating, clus
 - `status` (optional): `"succeeded"`, `"failed"`, etc.
 
 **Response Structure:**
-```json
+```text
 {
   "ok": true,
   "processing_run": {
