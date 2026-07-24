@@ -1,19 +1,19 @@
+import json
 import os
 import pathlib
 import typing
 
-import tttrlib
-import json
 import numpy as np
-
-import pyqtgraph as pg
+import tttrlib
 
 import chisurf as cs
 import chisurf.core.fio as io
-import chisurf.gui.decorators
 import chisurf.core.settings
-from chisurf.gui import QtGui, QtWidgets, QtCore, uic
+import chisurf.gui.decorators
 from chisurf.core.fluorescence.fcs.channel_setups import load_fcs_channel_setups
+from chisurf.gui import QtCore, QtGui, QtWidgets, uic
+from chisurf.gui import chiplot as cp
+
 from .tttr_correlator_ui import setup_ui as _setup_ui
 
 colors = cs.core.settings.gui['plot']['colors']
@@ -157,8 +157,8 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         self.pw_fcs.clear()
         if self.is_correlated:
             for i, cor in enumerate(self.correlations):
-                pen = pg.mkPen(cs.core.settings.colors[i % len(cs.core.settings.colors)]['hex'], width=1)
-                self.plot_item_fcs.plot(x=cor['x'], y=cor['y'], pen=pen)
+                pen = cp.to_pen(cs.core.settings.colors[i % len(cs.core.settings.colors)]['hex'], width=1)
+                self.plot_item_fcs.line(cor['x'], cor['y'], pen=pen)
 
     def read_tttrs(self):
         cs.logging.log(0, "WizardTTTRCorrelator::read_tttrs")
@@ -417,8 +417,8 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                 
                 # Update plot immediately after computing each correlation
                 self.is_correlated = True
-                pen = pg.mkPen(cs.core.settings.colors[i % len(cs.core.settings.colors)]['hex'], width=1)
-                self.plot_item_fcs.plot(x=d['x'], y=d['y'], pen=pen)
+                pen = cp.to_pen(cs.core.settings.colors[i % len(cs.core.settings.colors)]['hex'], width=1)
+                self.plot_item_fcs.line(d['x'], d['y'], pen=pen)
             else:
                 cs.logging.log(1, "Warning: No photons to correlate with.")
 

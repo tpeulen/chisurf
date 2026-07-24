@@ -76,7 +76,7 @@ def test_region_and_marker_values(qapp):
     plot = cp.Plot()
     reg = plot.region((1.0, 3.0))
     assert reg.bounds == (1.0, 3.0)
-    reg.bounds = (2.0, 5.0)
+    reg.set_bounds(2.0, 5.0)
     assert reg.bounds == (2.0, 5.0)
 
     seen = []
@@ -86,7 +86,7 @@ def test_region_and_marker_values(qapp):
 
     m = plot.vline(4.0, movable=True)
     assert m.value == 4.0
-    m.value = 6.5
+    m.set_value(6.5)
     assert m.value == 6.5
 
 
@@ -119,3 +119,39 @@ def test_clicked_signal_wired(qapp):
     # Just ensure the signal exists and is connectable; emit synthetically.
     plot.clicked.emit(1.0, 2.0)
     assert got == [(1.0, 2.0)]
+
+
+def test_module_passthrough_flags_and_works(qapp):
+    import pyqtgraph as pg
+
+    cp.reset_gaps()
+    with pytest.warns(cp.ChiplotPassthroughWarning):
+        pen = cp.mkPen("r", width=2)  # not native -> falls through to pyqtgraph
+    assert isinstance(pen, pg.functions.mkPen("r").__class__)
+    # a class symbol falls through too
+    with pytest.warns(cp.ChiplotPassthroughWarning):
+        assert cp.LinearRegionItem is pg.LinearRegionItem
+    assert "module.mkPen" in cp.passthrough_gaps()
+    assert "module.LinearRegionItem" in cp.passthrough_gaps()
+
+
+def test_module_passthrough_warns_once(qapp, recwarn):
+    cp.reset_gaps()
+    cp.mkBrush("g")
+    cp.mkBrush("g")  # second access: no new warning
+    passthrough_warnings = [w for w in recwarn if issubclass(w.category, cp.ChiplotPassthroughWarning)]
+    assert len(passthrough_warnings) == 1
+
+
+def test_unknown_symbol_raises(qapp):
+    with pytest.raises(AttributeError):
+        cp.this_symbol_does_not_exist_anywhere
+
+
+def test_instance_passthrough_to_native(qapp):
+    cp.reset_gaps()
+    plot = cp.Plot()
+    with pytest.warns(cp.ChiplotPassthroughWarning):
+        vb = plot.getViewBox()  # pyqtgraph-only method, not native chiplot
+    assert vb is plot.native.getViewBox()
+    assert "Plot.getViewBox" in cp.passthrough_gaps()

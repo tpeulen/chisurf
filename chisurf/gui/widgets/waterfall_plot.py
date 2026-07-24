@@ -167,7 +167,7 @@ class WaterfallPlotWidget(QWidget):
             position: Position value (in plot coordinates)
         """
         if self.position_line is not None:
-            self.position_line.value = position
+            self.position_line.set_value(position)
 
     def show_position_indicator(self, show: bool = True):
         """

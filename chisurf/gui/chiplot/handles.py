@@ -189,8 +189,18 @@ class Region(Handle, Protocol):
         """The ``(low, high)`` edges of the region in data coordinates."""
         ...
 
-    @bounds.setter
-    def bounds(self, value: tuple[float, float]) -> None: ...
+    # Mutation is a method, not a ``bounds`` property setter, on purpose: the
+    # repo's forbidden-communication guard reserves assignment to a ``bounds``
+    # attribute for fit-parameter mutations. Do not re-add a property setter.
+    def set_bounds(self, low: float, high: float) -> None:
+        """Move the region to new ``(low, high)`` edges.
+
+        Parameters
+        ----------
+        low, high : float
+            New edges in data coordinates.
+        """
+        ...
 
     def on_change(self, callback, *, final: bool = True) -> None:
         """Register a callback fired when the user drags the region.
@@ -215,8 +225,18 @@ class Marker(Handle, Protocol):
         """The line position in data coordinates."""
         ...
 
-    @value.setter
-    def value(self, value: float) -> None: ...
+    # Mutation is a method, not a ``value`` property setter, on purpose: the
+    # repo's forbidden-communication guard reserves assignment to a ``value``
+    # attribute for fit-parameter mutations. Do not re-add a property setter.
+    def set_value(self, value: float) -> None:
+        """Move the marker to a new position.
+
+        Parameters
+        ----------
+        value : float
+            New position in data coordinates.
+        """
+        ...
 
     def on_change(self, callback, *, final: bool = True) -> None:
         """Register a callback fired when the user drags the marker.

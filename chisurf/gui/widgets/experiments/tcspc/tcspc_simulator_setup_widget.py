@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from chisurf.gui import QtWidgets
-
 import pathlib
 
 import numpy as np
-import pyqtgraph as pg
 
 import chisurf as cs
+from chisurf.gui import QtWidgets
+from chisurf.gui import chiplot as cp
+
+
 class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
     """Controller widget for the TCSPC simulator reader.
 
@@ -156,11 +157,10 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
 
         preview_layout.addLayout(header)
 
-        self.simulation_plot = pg.PlotWidget(title="Simulated TCSPC decay")
-        self.simulation_plot.setLabel("bottom", "Time (ns)")
-        self.simulation_plot.setLabel("left", "Counts")
+        self.simulation_plot = cp.Plot(title="Simulated TCSPC decay")
+        self.simulation_plot.set_labels(bottom="Time (ns)", left="Counts")
         try:
-            self.simulation_plot.setLogMode(y=True)
+            self.simulation_plot.set_log(y=True)
         except Exception:
             pass
         preview_layout.addWidget(self.simulation_plot)
@@ -262,8 +262,8 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         reflects the new spectrum.
         """
 
-        from qtpy import QtWidgets as _QtWidgets
         import numpy as _np
+        from qtpy import QtWidgets as _QtWidgets
 
         try:
             start_dir = getattr(cs, "working_path", "") or ""
@@ -544,12 +544,12 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         try:
             self.simulation_plot.clear()
             # Simulated decay
-            self.simulation_plot.plot(t, y, pen='y')
+            self.simulation_plot.line(t, y, pen='y')
             # IRF overlay (if available and matching length)
             if irf is not None and np.size(irf) == np.size(t):
-                self.simulation_plot.plot(t, irf, pen='r')
+                self.simulation_plot.line(t, irf, pen='r')
             try:
-                self.simulation_plot.setLogMode(y=True)
+                self.simulation_plot.set_log(y=True)
             except Exception:
                 pass
 
@@ -567,7 +567,7 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
                     y_min = 0.1
                     if y_max <= y_min:
                         y_max = y_min * 10.0
-                    self.simulation_plot.setYRange(np.log10(y_min), np.log10(y_max))
+                    self.simulation_plot.set_ylim(np.log10(y_min), np.log10(y_max))
             except Exception:
                 pass
         except Exception:
@@ -590,6 +590,7 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         """
 
         import numpy as _np
+
         from chisurf.macros import core_data as _core_data
 
         t = getattr(self, "_sim_t", None)

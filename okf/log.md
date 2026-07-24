@@ -2,6 +2,25 @@
 
 ## 2026-07-24
 
+* **PRD-64 — chiplot passthrough safety net + Phase-2 GUI migration batch 1.**
+  Added a flagged passthrough so migration needn't wait for full native
+  coverage: `chisurf.gui.chiplot.__getattr__` resolves unknown symbols
+  (`mkPen`, `PlotWidget`, `LinearRegionItem`, …) from `Backend.raw_module()`
+  (pyqtgraph), and a native `Plot` proxies unknown attributes to its backend
+  object — each fall-through raises `ChiplotPassthroughWarning` once and is
+  recorded in `passthrough_gaps()` (the worklist; a native backend that returns
+  `raw_module() is None` turns any remaining gap into a hard error). Made handle
+  mutation method-based (`marker.set_value`, `region.set_bounds`; reads stay
+  properties) so chiplot never trips the forbidden-communication guard's
+  `value`/`bounds` param-mutation patterns. Migrated the first Phase-2 cluster
+  (allow-list 76 → 69): centralised the global pyqtgraph config
+  (`gui/__init__.py`, `plots/__init__.py`) onto `cp.configure(...)`, and ported
+  the PCH, TCSPC-simulator, TCSPC-TTTR-reader, and FCS-correlator-wizard preview
+  plots. Seam guard + `test/gui/test_chiplot.py` (16 tests inc. passthrough)
+  green; migrated modules import-smoke clean. (Pre-existing unrelated:
+  `test_forbidden_communication.py` fails on a stale baseline covering ~21
+  files chiplot never touched.) Concept: [PRD-64](/prds/prd-64.md).
+
 * **OKF science-theory KB, batch 2: BVA, FRET/ALEX-2CDE, anisotropy, PDA.** Four more internal knowledge-base concepts (the OKF layer is authoring scaffolding for the user docs, not a published artifact), each paired with a clean user-facing `docs/concepts/` page (no OKF references in the docs) and grounded in the real chisurf implementation: [bva-theory](/references/bva-theory.md) (shot-noise baseline √(E(1−E)/n), Monte-Carlo static line, `compute_bva`/`tttrlib.BVA`, `.bv4`; Torella 2011); [burst-2cde-theory](/references/burst-2cde-theory.md) (two-channel KDE, FRET-2CDE dynamics + ALEX-2CDE purity, `tttrlib.TwoCDE`, `.2c4` — **flagged a paper-vs-chisurf ALEX-2CDE formula divergence**, chisurf form authoritative; Tomov 2012); [anisotropy-theory](/references/anisotropy-theory.md) (VV/VH, G-factor + l1/l2 mixing, r0/ρ/r_∞, Perrin, `vm_rt_to_vv_vh`; Lakowicz) — cross-links [vv-vh-decay-format](/references/vv-vh-decay-format.md); [pda-theory](/references/pda-theory.md) (binomial forward model, background/α/δ/γ, static/Gaussian/SAW-ν/dynamic, `tttrlib.Pda`; Antonik 2006, Kalinin 2008). Docs guides 01/08/10/11 gained `{ref}` theory cross-refs; guide 11 embeds the real PDA model-editor screenshot. Wired into [references/index.md](/references/index.md).
 
 * **PRD-55 done — phasor analysis toolkit; closed the CLI-smoke gap.** The four

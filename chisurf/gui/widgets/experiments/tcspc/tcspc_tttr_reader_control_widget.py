@@ -3,12 +3,12 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtGui
 
 import chisurf as cs
 from chisurf.core.experiments.core import reader
 from chisurf.gui import QtWidgets
+from chisurf.gui import chiplot as cp
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 
@@ -271,11 +271,10 @@ class TCSPCTTTRReaderControlWidget(
         header.addWidget(self.toolbtn_clear)
         preview_layout.addLayout(header)
 
-        self.preview_plot = pg.PlotWidget(title="TCSPC decay preview")
-        self.preview_plot.setLabel("bottom", "Time (ns)")
-        self.preview_plot.setLabel("left", "Counts")
+        self.preview_plot = cp.Plot(title="TCSPC decay preview")
+        self.preview_plot.set_labels(bottom="Time (ns)", left="Counts")
         try:
-            self.preview_plot.setLogMode(y=True)
+            self.preview_plot.set_log(y=True)
         except Exception:
             pass
         preview_layout.addWidget(self.preview_plot)
@@ -620,7 +619,7 @@ class TCSPCTTTRReaderControlWidget(
                 if not t or not y:
                     return
                 try:
-                    self.preview_plot.addLegend()
+                    self.preview_plot.legend()
                 except Exception:
                     pass
                 colors = ["y", "c", "m", "g", "r", "b", "w"]
@@ -634,14 +633,14 @@ class TCSPCTTTRReaderControlWidget(
                         name = f"ch {int(chs[idx])}"
                     else:
                         name = f"ch {idx}"
-                    self.preview_plot.plot(tt, yy, pen=pen, name=name)
+                    self.preview_plot.line(tt, yy, pen=pen, name=name)
             else:
                 if np.size(t) == 0 or np.size(y) == 0:
                     return
-                self.preview_plot.plot(t, y, pen="y")
+                self.preview_plot.line(t, y, pen="y")
 
             try:
-                self.preview_plot.setLogMode(y=True)
+                self.preview_plot.set_log(y=True)
             except Exception:
                 pass
             try:
@@ -666,7 +665,7 @@ class TCSPCTTTRReaderControlWidget(
                         y_min = 0.1
                         if y_max <= y_min:
                             y_max = y_min * 10.0
-                        self.preview_plot.setYRange(y_min, y_max)
+                        self.preview_plot.set_ylim(y_min, y_max)
             except Exception:
                 pass
         except Exception:

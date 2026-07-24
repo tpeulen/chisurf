@@ -3,12 +3,12 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
 import chisurf.gui.widgets
 from chisurf.core.experiments.core import reader
+from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
@@ -312,13 +312,12 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
         header.addWidget(self.toolbtn_clear_preview)
         preview_layout.addLayout(header)
 
-        self.preview_plot = pg.PlotWidget(title="Photon Counting Histogram")
+        self.preview_plot = cp.Plot(title="Photon Counting Histogram")
         try:
-            self.preview_plot.setLogMode(y=True)
+            self.preview_plot.set_log(y=True)
         except Exception:
             pass
-        self.preview_plot.setLabel("bottom", "k")
-        self.preview_plot.setLabel("left", "P(k)")
+        self.preview_plot.set_labels(bottom="k", left="P(k)")
         try:
             self.preview_plot.setMaximumHeight(200)
         except Exception:
@@ -586,9 +585,9 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
             return
         try:
             self.preview_plot.clear()
-            self.preview_plot.plot(self._preview_k, self._preview_p, pen=None, symbol='o')
+            self.preview_plot.scatter(self._preview_k, self._preview_p, symbol='o')
             try:
-                self.preview_plot.setLogMode(y=True)
+                self.preview_plot.set_log(y=True)
             except Exception:
                 pass
         except Exception:

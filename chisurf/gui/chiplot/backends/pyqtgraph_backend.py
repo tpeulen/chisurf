@@ -193,9 +193,9 @@ class _Region(_Item):
         """The ``(low, high)`` edges of the region."""
         return tuple(self._native.getRegion())
 
-    @bounds.setter
-    def bounds(self, value: tuple[float, float]) -> None:
-        self._native.setRegion(tuple(value))
+    def set_bounds(self, low: float, high: float) -> None:
+        """Move the region to new ``(low, high)`` edges."""
+        self._native.setRegion((low, high))
 
     def on_change(self, callback, *, final: bool = True) -> None:
         """Fire ``callback(low, high)`` while/after the region is dragged."""
@@ -211,8 +211,8 @@ class _Marker(_Item):
         """The line position in data coordinates."""
         return float(self._native.value())
 
-    @value.setter
-    def value(self, value: float) -> None:
+    def set_value(self, value: float) -> None:
+        """Move the marker to a new position."""
         self._native.setValue(float(value))
 
     def on_change(self, callback, *, final: bool = True) -> None:
@@ -530,3 +530,7 @@ class PyQtGraphBackend(base.Backend):
     def configure(self, **global_opts) -> None:
         """Apply process-wide pyqtgraph options."""
         pg.setConfigOptions(**global_opts)
+
+    def raw_module(self):
+        """Return the ``pyqtgraph`` module (the passthrough fall-through target)."""
+        return pg

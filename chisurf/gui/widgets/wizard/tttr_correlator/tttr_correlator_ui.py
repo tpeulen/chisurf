@@ -1,8 +1,6 @@
 import chisurf.gui.decorators
-
-import pyqtgraph as pg
-
 from chisurf.gui import QtWidgets
+from chisurf.gui import chiplot as cp
 
 
 def setup_ui(page):
@@ -21,13 +19,15 @@ def setup_ui(page):
     else:
         page.comboBox_fcs_preset = None
 
-    page.pw_fcs = pg.PlotWidget()
+    page.pw_fcs = cp.Plot()
     page.pw_fcs.resize(150, 150)
 
-    page.plot_item_fcs = page.pw_fcs.getPlotItem()
-    page.plot_item_fcs.setLogMode(True, False)
-    page.plot_item_fcs.setLabel('bottom', 'Correlation time, t_c (ms)')
-    page.plot_item_fcs.setLabel('left', 'Correlation amplitude, G')
+    # chiplot Plot is both the widget and the drawing surface.
+    page.plot_item_fcs = page.pw_fcs
+    page.plot_item_fcs.set_log(x=True, y=False)
+    page.plot_item_fcs.set_labels(
+        bottom='Correlation time, t_c (ms)', left='Correlation amplitude, G'
+    )
     page.verticalLayout_2.addWidget(page.pw_fcs)
 
     page.actionUpdate_ouput_path.triggered.connect(page.update_output_path)

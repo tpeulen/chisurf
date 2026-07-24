@@ -1,7 +1,7 @@
 import chisurf.core.settings
-import pyqtgraph as pg
+from chisurf.gui import chiplot as cp
 
-pg.setConfigOptions(
+cp.configure(
     **chisurf.core.settings.cs_settings['gui']['plot']['pyqtgraph_config']
 )
 

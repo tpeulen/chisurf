@@ -266,3 +266,13 @@ class Backend(abc.ABC):
     @abc.abstractmethod
     def configure(self, **global_opts) -> None:
         """Apply process-wide rendering options (antialiasing, defaults)."""
+
+    def raw_module(self):
+        """Return the underlying rendering library module, or ``None``.
+
+        This is the passthrough target: symbols chiplot does not natively offer
+        are resolved from here (flagged) so migration can proceed before every
+        pyqtgraph feature has a chiplot equivalent. A fully native backend that
+        has no third-party library to fall through to returns ``None``.
+        """
+        return None

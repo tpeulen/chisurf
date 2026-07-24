@@ -20,7 +20,6 @@ import importlib
 import chisurf.gui.gui_tweaks  # GUI tweaks (QT_OPENGL, etc.)
 
 from qtpy import QtWidgets, QtGui, QtCore, uic
-import pyqtgraph as pg
 
 import chisurf  # Ensure chisurf is available module-wide
 import chisurf.core.settings
@@ -1331,9 +1330,10 @@ def setup_gui(
 
 def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
     logging.info("Starting GUI startup (get_win)")
+    from chisurf.gui import chiplot as cp
     from chisurf.gui.gui_tweaks import apply_pyqtgraph_autorange_compat
-    pg.setConfigOptions(useOpenGL=False)  # Disable OpenGL in PyQtGraph
-    apply_pyqtgraph_autorange_compat(pg)
+    cp.configure(useOpenGL=False)  # Disable OpenGL in the plotting backend
+    apply_pyqtgraph_autorange_compat()
 
     import chisurf.gui.resources
     import pathlib

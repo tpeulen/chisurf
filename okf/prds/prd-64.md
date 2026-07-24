@@ -178,6 +178,36 @@ Behaviours that previously *required subclassing pyqtgraph items* (draggable
 text, custom-styled `GraphicsLayoutWidget`s) become **flags/methods**, which is
 what lets a non-pyqtgraph backend satisfy the same contract.
 
+## Passthrough (migration safety net)
+
+chiplot's native surface does not yet cover every pyqtgraph feature in use.
+Rather than block migration on full coverage, **anything chiplot does not offer
+natively falls through to the backend's raw library — flagged**:
+
+- **Module level** — `chisurf.gui.chiplot.__getattr__` resolves unknown names
+  (`mkPen`, `PlotWidget`, `LinearRegionItem`, …) from `Backend.raw_module()`
+  (pyqtgraph). A migration can therefore be as small as
+  `import pyqtgraph as pg` → `import chisurf.gui.chiplot as pg` and still run.
+- **Instance level** — a native `Plot` proxies unknown attributes
+  (`getViewBox`, `setLogMode`, …) to its underlying backend plot object.
+
+Every fall-through raises a `ChiplotPassthroughWarning` **once per symbol** and
+is recorded; `chiplot.passthrough_gaps()` returns the exact set of pyqtgraph
+features still lacking a native equivalent — the concrete worklist for growing
+the API and a natural companion to the allow-list. When a fully native backend
+(Phase 5) returns `raw_module() is None`, any remaining passthrough is a hard
+`AttributeError` — so the gaps must all be closed before pyqtgraph is dropped.
+
+## Handle mutation is method-based (guard interop)
+
+Handle *reads* are properties (`marker.value`, `region.bounds`) but *writes* are
+methods (`marker.set_value(x)`, `region.set_bounds(lo, hi)`) — deliberately.
+The repo's forbidden-communication guard (`test/test_forbidden_communication.py`)
+reserves assignment to `value`/`bounds`/`fixed`/`link` attributes for fit-
+parameter mutations; a property setter on a chiplot handle would collide as a
+false positive across every marker/region call site. Method-based mutation keeps
+chiplot orthogonal to that guard.
+
 ## Backend swap & escape hatch
 
 `get_backend()` instantiates the backend named by `CHISURF_PLOT_BACKEND`
@@ -208,7 +238,7 @@ pyqtgraph_backend}`), backend selection via `CHISURF_PLOT_BACKEND`, the CI guard
 region/marker values, removal/re-add, grid panels, and the click signal.
 Migrated `chisurf/gui/widgets/waterfall_plot.py` end-to-end as proof.
 
-**Phase 2 — migrate chisurf-core GUI.**
+**Phase 2 — migrate chisurf-core GUI. 🚧 IN PROGRESS.**
 Rewrite `chisurf/gui/**` call sites onto the chiplot API. This is a genuine
 port, not a prefix rename: `pw.plot(x, y, pen=pg.mkPen(...))` → `plot.line(...)`,
 `LinearRegionItem`+`addItem`+signal → `plot.region(...).on_change(...)`,
@@ -216,6 +246,10 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
+*Landed so far (allow-list 76 → 69):* centralised the global pyqtgraph config
+(`gui/__init__.py`, `plots/__init__.py`) onto `cp.configure(...)`, and migrated
+the single-plot preview widgets — PCH, TCSPC simulator, TCSPC TTTR-reader, and
+the FCS correlator wizard (`_ui` + logic).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

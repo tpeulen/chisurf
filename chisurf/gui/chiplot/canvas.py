@@ -434,6 +434,35 @@ class Plot(QtWidgets.QWidget):
         """The backend plot object (escape hatch; avoid in new code)."""
         return self._canvas.native
 
+    def __getattr__(self, name: str):
+        """Proxy unknown attributes to the native plot object, flagged.
+
+        Only invoked when normal lookup fails, so it never shadows chiplot's own
+        API. Lets a migrated ``Plot`` still answer pyqtgraph-only calls
+        (``setLogMode``, ``getViewBox``, …) while recording each as a migration
+        gap via :func:`~chisurf.gui.chiplot.passthrough_gaps`.
+
+        Parameters
+        ----------
+        name : str
+            Attribute not found on this :class:`Plot`.
+
+        Raises
+        ------
+        AttributeError
+            During construction (before the canvas exists) or if the native
+            plot object also lacks ``name``.
+        """
+        if name.startswith("__") or name == "_canvas":
+            raise AttributeError(name)
+        from chisurf.gui.chiplot._passthrough import record_and_warn
+
+        native = self._canvas.native
+        if hasattr(native, name):
+            record_and_warn("Plot", name)
+            return getattr(native, name)
+        raise AttributeError(name)
+
 
 class Grid(QtWidgets.QWidget):
     """A grid of :class:`Plot`-style panels sharing one widget.

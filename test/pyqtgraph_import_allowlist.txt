@@ -2,13 +2,11 @@
 # The sanctioned backend chisurf/gui/chiplot/backends/pyqtgraph_backend.py
 # is NOT listed. Remove a path here as it migrates to chisurf.gui.chiplot;
 # adding a NEW path is a test failure. Goal: empty (bar the ChiMOL GL file).
-chisurf/gui/__init__.py
 chisurf/gui/autoform/sections/builtin.py
 chisurf/gui/autoform/sections/decay_conv_section.py
 chisurf/gui/autoform/sections/phasor_section.py
 chisurf/gui/gui_tweaks.py
 chisurf/gui/misc_helpers.py
-chisurf/gui/plots/__init__.py
 chisurf/gui/plots/_qwt_compat.py
 chisurf/gui/plots/av_plot.py
 chisurf/gui/plots/deer_pr.py
@@ -19,10 +17,7 @@ chisurf/gui/plots/parameter_scan/parameter_scan.py
 chisurf/gui/plots/proteinMC.py
 chisurf/gui/plots/residual_image.py
 chisurf/gui/plots/wr_plot.py
-chisurf/gui/widgets/experiments/pch.py
 chisurf/gui/widgets/experiments/rics.py
-chisurf/gui/widgets/experiments/tcspc/tcspc_simulator_setup_widget.py
-chisurf/gui/widgets/experiments/tcspc/tcspc_tttr_reader_control_widget.py
 chisurf/gui/widgets/experiments/widgets.py
 chisurf/gui/widgets/models/fcs/maxent_widget.py
 chisurf/gui/widgets/models/tcspc/anisotropy.py
@@ -33,8 +28,6 @@ chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py
 chisurf/gui/widgets/wizard/fcs_merger/fcs_merger_ui.py
 chisurf/gui/widgets/wizard/tttr_channeldefinition/shift_dialog.py
 chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition.py
-chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator.py
-chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator_ui.py
 chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py
 chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter_plots.py
 chisurf/plugins/burst/burst_2cde/gui/tool.py

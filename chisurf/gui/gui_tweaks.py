@@ -170,7 +170,7 @@ def apply_dock_tab_colors(window) -> None:
                     pass
 
 
-def apply_pyqtgraph_autorange_compat(pg) -> None:
+def apply_pyqtgraph_autorange_compat(pg=None) -> None:
     try:
         from pyqtgraph.widgets.PlotWidget import PlotWidget as _CsPlotWidget
     except Exception:
