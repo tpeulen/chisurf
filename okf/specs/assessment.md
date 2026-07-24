@@ -57,8 +57,9 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-07](#inc-07) | S3 | INC | Plugins | `categories` drifts from directory group & `display_name`; demo games mixed in | REPORTED |
 | [INC-08](#inc-08) | S3 | INC | Server | Generic `JobManager` bypassed by the only real long-running jobs | REPORTED |
 | [INC-09](#inc-09) | S3 | INC | MMFDB | MMFDB is packaged standalone but a chisurf-free client is missing; the only RPC client + example facade live in chisurf | VERIFIED |
+| [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 
-24 findings (13 FIXED): 4 VERIFIED, 7 REPORTED. 0×S1, 4×S2, 6×S3.
+25 findings (13 FIXED): 4 VERIFIED, 7 REPORTED, 1 PARTIAL. 0×S1, 4×S2, 7×S3.
 
 ---
 
@@ -215,6 +216,27 @@ The single largest source of non-uniformity across the codebase (see [core steer
 **S3 · MMFDB is packaged standalone but not yet cleanly separable; a chisurf-free client is missing.** [mmfdb steering](mmfdb.md#steering-notes). MMFDB already lives in its own module with its own `pyproject.toml` (`modules/mmfdb/`), and it *is* usable without chisurf — verified in `modules/mmfdb/examples/mmfdb_08_standalone_no_lockin.ipynb`, which drives `mmfdb` + tttrlib + FRETBursts with `chisurf` never imported. But that standalone path has to talk to the **embedded** repository (`mmfdb.repository.MFDatabase`) directly, because the only network/RPC client (`MMFDBClient`) and the ergonomic example facade (`BurstWorkflow`) both live *inside* chisurf (`chisurf/plugins/core/mmfdb_admin/gui/client.py`, `chisurf/plugins/burst/burst_analysis/api/workflow.py`). The `mmfdb.api` functions also require auth even in-process (see INC-04), so a standalone consumer cannot use the public API without bootstrapping a user. Target: mmfdb ships as its own repository that chisurf depends on (one-way); a Qt-free, chisurf-free `mmfdb` client (HTTP + optional in-process default principal) moves into the mmfdb package so external tools get the same ergonomics the chisurf facade has today.
 
 ---
+
+## Internationalisation (I18N)
+
+### I18N-01
+**S3 · i18n coverage gaps after the first pass.** [PRD-63](../prds/prd-63.md)
+landed the translation kit and localized the data-driven (view.json/manifest) and
+`.ui` UI through the [i18n subsystem](../subsystems/i18n.md) seam. Remaining:
+
+- **Imperative strings** — ~4000 `setText`/`QMessageBox`/`QLabel`/`setWindowTitle`
+  call sites (≈65 % in `chisurf/plugins`) are not yet wrapped in `tr()`. Phase the
+  wrapping per subsystem; enable `.py` scanning in `build_tools/i18n/extract_strings.py`
+  as it proceeds.
+- **Menu-path identity** — `manifest.display_name` / `categories` stay canonical
+  (they key menu paths + dedup, see [INC-07](#inc-07)); localize them at the
+  navigation-render seam, not at parse.
+- **`.ui` terminology** — hand-built `.ui` forms still use "Micro time"/"TAC",
+  "Channel Select", and drifting file-open labels/typos; converge to the
+  [UI glossary](../references/ui-glossary.md) as each form is edited/migrated.
+- **Kit wiring** — add the `pixi.toml` `i18n-extract`/`i18n-compile` tasks and the
+  `gui.language` YAML default (held back in the initial commit to avoid a
+  shared-file collision).
 
 ## How to work this list
 

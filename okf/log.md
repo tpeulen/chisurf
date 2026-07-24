@@ -2,6 +2,42 @@
 
 ## 2026-07-24
 
+* **PRD-46 (partial) — example scripts in the test pipeline + ascii import fix.**
+  Added `test/scripts/test_scripts.py` (discovers `examples/scripts/*.py`, runs
+  `process`/no-shebang scripts as tmp-dir subprocesses asserting clean exit;
+  `console`/`ipython` skipped with reason) with numeric-invariant assertions on
+  the FRET-line outputs, and `test/models/test_wlc_public_api.py`
+  (`WormLikeChainModel.chain_length`/`.persistence_length`,
+  `LifetimeMixtureModel.fractions` setter). New `test-scripts` pixi task; tests
+  also run under the default `test` task. **Fixed a pre-existing blocker**:
+  `chisurf/core/fio/ascii.py` read `cs.core.settings.cs_settings['verbose']` as a
+  module-level default arg → `AttributeError` under lazy settings, so the shipped
+  `protein_unfolding_fret_line.py` failed to import; reworked 4 signatures to a
+  `None` sentinel resolved at call time (`_verbose_default()`). Discovered the
+  PRD's proposed "larger Lc → lower E at f=1" assertion is physically wrong (WLC
+  FRET is non-monotonic in Lc) and replaced it with a correct folded-state
+  invariant. Verified: `pytest test/scripts test/models/test_wlc_public_api.py`
+  = 5 passed, 1 skipped. Deferred: headless `console`/`ipython` exec (needs a
+  Qt-free experiment/macros bootstrap). Status → in-progress. Concept:
+  [PRD-46](/prds/prd-46.md).
+
+* **Internationalisation (translation kit) — [PRD-63](/prds/prd-63.md),
+  [i18n subsystem](/subsystems/i18n.md).** Added a Qt-free translation seam
+  (`chisurf/core/i18n.py`: `tr()` identity default + swappable backend +
+  `get/set_locale`) and a GUI `QTranslator` bootstrap (`chisurf/gui/i18n.py`,
+  installed in `get_app()` before any window/`.ui` loads). Localized the modern
+  data-driven UI at central seams — `dataspec._section_from_dict` (view.json),
+  `dataspec/rpc.py` (RPC forms), `manifest.from_dict` (plugin/rpc text), and the
+  tooltip/status funnels; `display_name`/`categories` stay canonical (menu-path /
+  identity keys). Added the extraction kit `build_tools/i18n/extract_strings.py`
+  (walks view.json/manifest + `.ui`, emits Qt `.ts` via `pylupdate5`) with `en`/`de`
+  catalogues + compiled `.qm` (German seed), packaged as data. Added the canonical
+  [UI glossary](/references/ui-glossary.md) and harmonised the micro-time label
+  outliers in the data-driven layer. Deferred (see [assessment I18N-01](/specs/assessment.md#i18n-01)):
+  ~4000 imperative strings, nav-seam `display_name` localization, `.ui` term
+  convergence, and the `pixi.toml` tasks + `gui.language` YAML default (held back
+  to avoid a shared-file collision).
+
 * **Process rule — no commit trailers.** Commit messages carry no trailer block
   of any kind (no `Co-Authored-By`, no "Generated with"/tool attribution);
   commits are tpeulen-authored plain text. Reversed the stale
