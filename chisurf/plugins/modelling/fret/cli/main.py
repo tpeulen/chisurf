@@ -174,7 +174,7 @@ def select_pairs_cmd(fps: str, pdb_dir: str, output: str, max_pairs: int, err: f
     )
     selected_pair_names = [clean_pair_names[i] for i in selected_indices]
     pair_selection.write_pair_selection_report(
-        selected_pair_names, decay, output, rmsds.mean()
+        selected_pair_names, decay, rmsds.mean(), output
     )
     click.echo(f"Pair selection complete. Saved decay report to {output}")
 

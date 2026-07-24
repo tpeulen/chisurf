@@ -2,6 +2,21 @@
 
 ## 2026-07-24
 
+* **PRD-58 — rigid-body docking scorer + optimal-FRET-network fix/tests.** Hardened
+  the two pure (IMP-free) subsystems under the docking and OLGA workflows. **RBD**:
+  added `core.evaluate.score_bodies(bodies, restraints)` — an IMP-free pose→chi²
+  scorer (per restraint: `rmp = |global_position_a − global_position_b|` →
+  transfer function → asymmetric `chi2_score`), filling the gap where no pure pose
+  scoring existed. New `test/test_engine.py` (9 tests) covers it + `RigidBody`
+  transforms, `DistanceRestraint.global_position_a/b`/`get_effective_distance`, the
+  three geometry evaluators (Euler/Translation/MinDistance + `bodies=None` guard),
+  and `chi2_score` branches. **Optimal FRET network**: fixed a real `select-pairs`
+  CLI bug — `write_pair_selection_report` was called with `initial_rmsd`/`output_path`
+  transposed (`open(<float>,"w")` → crash on every run); added a `CliRunner` test
+  (stubbed compute helpers, no PDB/AV/IMP) + greedy-selector correctness tests
+  (max_pairs cap, empty, unique_only, non-increasing precision decay). Regression:
+  headless fret suite = 73 passed, 16 deselected. Concept: [PRD-58](/prds/prd-58.md).
+
 * **PRD-64 — chiplot rich right-click menu + CSV/image export (parity).** Gave
   every chiplot `Plot` a rich context menu at pyqtgraph parity: on the pyqtgraph
   backend it **keeps** the native viewbox menu (already offers Export →

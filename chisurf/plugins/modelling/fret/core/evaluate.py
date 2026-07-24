@@ -11,9 +11,55 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from . import av as _av
+from . import distance as _distance
 from . import io as _io
-from .engine import RigidBody
+from .engine import DistanceRestraint, RigidBody
 from ..evaluators import Evaluator, EvaluatorResult, EvaluationStorage
+
+
+def score_bodies(
+    bodies: List[RigidBody],
+    restraints: List[DistanceRestraint],
+    only_active: bool = True,
+) -> tuple[float, List[tuple]]:
+    """Score a rigid-body pose against distance restraints without IMP.
+
+    This is the Qt-free, IMP-free counterpart of the IMP docking scorer: for each
+    restraint the mean-position distance ``rmp = |global_position_a -
+    global_position_b|`` is passed through the restraint's transfer function
+    (:meth:`DistanceRestraint.get_effective_distance`) and scored with the
+    asymmetric :func:`core.distance.chi2_score` against the experimental distance.
+    It lets docking poses be scored, compared and regression-tested headlessly.
+
+    Parameters
+    ----------
+    bodies : list of RigidBody
+        The rigid bodies, indexed by ``DistanceRestraint.body_a`` / ``body_b``.
+    restraints : list of DistanceRestraint
+        The distance restraints to score.
+    only_active : bool
+        If True, skip restraints whose ``active`` flag is False.
+
+    Returns
+    -------
+    chi2_total : float
+        Sum of the per-restraint chi-squared contributions.
+    per_restraint : list of tuple
+        One ``(name, rmp, model_distance, chi2)`` tuple per scored restraint.
+    """
+    chi2_total = 0.0
+    per_restraint: List[tuple] = []
+    for r in restraints:
+        if only_active and not r.active:
+            continue
+        pa = r.global_position_a(bodies)
+        pb = r.global_position_b(bodies)
+        rmp = float(np.linalg.norm(pa - pb))
+        d_model = float(r.get_effective_distance(rmp))
+        chi2 = float(_distance.chi2_score(d_model, r.distance_exp, r.error_neg, r.error_pos))
+        chi2_total += chi2
+        per_restraint.append((r.name, rmp, d_model, chi2))
+    return chi2_total, per_restraint
 
 
 def make_bodies_for_structure(

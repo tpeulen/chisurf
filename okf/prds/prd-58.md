@@ -50,10 +50,29 @@ was implemented but untested; closed three of those gaps in
   `Chi2ContributionEvaluator` — plus a missing-position degradation check. (The
   three `geometry.py` evaluators still need `RigidBody` scaffolding — untested.)
 
-Regression: the headless fret suite (`test_fps_outputs`, `test_evaluators`,
-`test_pair_selection`, `test_stat`, `test_pose_codec`, `test_dock_project`) = 43
-passed. (The six `test_examples.py` failures on this machine are missing external
-OLGA data at `/Users/tpeulen/dev/olga/...`, not code regressions.)
+**Rigid-body docking (RBD) + optimal FRET network (2026-07-24).** Hardened the two
+pure (IMP-free) subsystems the docking and OLGA workflows rest on:
+- **RBD — IMP-free pose scorer.** The actual docking optimiser is IMP-gated, but
+  there was no pure way to score a pose. Added `core.evaluate.score_bodies(bodies,
+  restraints)` — for each `DistanceRestraint` it takes `rmp = |global_position_a −
+  global_position_b|`, applies the transfer function (`get_effective_distance`) and
+  scores it with the asymmetric `core.distance.chi2_score`, mirroring the IMP
+  scorer. New `test/test_engine.py` (9 tests) covers it plus the previously-untested
+  `RigidBody` transforms, `DistanceRestraint.global_position_a/b` /
+  `get_effective_distance`, the three geometry evaluators (Euler/Translation/
+  MinDistance, incl. the `bodies=None` guard), and `chi2_score` asymmetric branches.
+- **Optimal FRET network — `select-pairs` CLI bug fix.** `cli/main.py` called
+  `write_pair_selection_report` with `initial_rmsd` and `output_path` **transposed**
+  (`open(<float>, "w")`), so every real run crashed. Fixed the argument order and
+  added a `CliRunner` test (stubbed compute helpers — no PDB/AV/IMP). Also added
+  greedy-selector correctness tests to `test_pair_selection.py`: `max_pairs`
+  capped to the pair count, `max_pairs<=0` → empty, `unique_only` has no repeats,
+  and precision-decay is non-increasing.
+
+Regression: the full headless fret suite (excluding GUI + external-data
+`test_examples`) = **73 passed, 16 deselected**. (The `test_examples.py` failures on
+this machine are missing external OLGA data at `/Users/tpeulen/dev/olga/...`, not
+code regressions.)
 
 # Goal
 Keep all computation in importable, GUI-free core modules so the plugin is a strict

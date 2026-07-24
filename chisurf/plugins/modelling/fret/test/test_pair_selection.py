@@ -107,6 +107,75 @@ def test_write_report_row0_is_initial_rmsd():
         os.unlink(path)
 
 
+def _toy_matrices():
+    effs = np.array([[0.1, 0.9, 0.5], [0.2, 0.8, 0.4], [0.9, 0.1, 0.6]], dtype=np.float32)
+    rmsds = np.array([[0.0, 5.0, 10.0], [5.0, 0.0, 5.0], [10.0, 5.0, 0.0]], dtype=np.float32)
+    return effs, rmsds  # 3 frames, 3 candidate pairs
+
+
+def test_select_max_pairs_caps_to_n_pairs():
+    """max_pairs larger than the number of candidate pairs is capped, not an error."""
+    effs, rmsds = _toy_matrices()
+    selected, decay = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=10)
+    assert len(selected) <= effs.shape[1]
+    assert len(decay) == len(selected)
+
+
+def test_select_max_pairs_zero_returns_empty():
+    """max_pairs <= 0 returns empty selection + decay arrays."""
+    effs, rmsds = _toy_matrices()
+    selected, decay = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=0)
+    assert len(selected) == 0
+    assert len(decay) == 0
+
+
+def test_select_unique_only_has_no_repeats():
+    """With unique_only, no pair is selected twice."""
+    effs, rmsds = _toy_matrices()
+    selected, _ = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=3, unique_only=True)
+    assert len(set(selected.tolist())) == len(selected)
+
+
+def test_select_precision_decay_non_increasing():
+    """Each added informative pair should not worsen the expected precision."""
+    effs, rmsds = _toy_matrices()
+    _, decay = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=3)
+    assert np.all(np.diff(np.asarray(decay, dtype=float)) <= 1e-4)
+
+
+def test_select_pairs_cli_writes_report(tmp_path, monkeypatch):
+    """The `select-pairs` CLI writes a valid report (guards the arg-order fix).
+
+    The data-loading + AV-compute helpers are stubbed so the command runs without
+    PDB files, an AV backend, or IMP — exercising the pure greedy selection + the
+    report writer wiring. Before the arg-order fix this command crashed in
+    ``open(<float>, "w")``.
+    """
+    from click.testing import CliRunner
+
+    from ..cli.main import main
+    from ..core import av, io
+    from ..core import pair_selection as ps
+
+    effs, rmsds = _toy_matrices()
+    monkeypatch.setattr(av, "select_backend", lambda *a, **k: None)
+    monkeypatch.setattr(io, "read_fps_json", lambda p: ({}, {}, None, None))
+    monkeypatch.setattr(ps, "compute_rmsd_matrix_from_pdb_dir",
+                        lambda *a, **k: (rmsds, ["f0", "f1", "f2"]))
+    monkeypatch.setattr(ps, "compute_efficiency_matrix_from_evaluators",
+                        lambda *a, **k: (effs, ["P1", "P2", "P3"]))
+
+    out = tmp_path / "report.txt"
+    res = CliRunner().invoke(main, [
+        "select-pairs", "--fps", "x.fps.json", "--pdb-dir", str(tmp_path),
+        "--output", str(out), "--max-pairs", "2",
+    ])
+    assert res.exit_code == 0, res.output
+    lines = out.read_text().splitlines()
+    assert lines[0].startswith("#\tPair_added")
+    assert lines[1].startswith("0\t--")  # the initial-RMSD row
+
+
 def test_trajectory_pair_selection():
     import mdtraj as md
     import tempfile
