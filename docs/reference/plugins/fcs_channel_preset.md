@@ -15,9 +15,15 @@ FCS channel definition plugin per detector setup
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Detector setup | `current_setup` | choice |  | choices: `setup_names` | Detector setup whose logical channels are paired for correlation. Detector setups are managed in the channel-definition wizard. |
+| Public | `is_public` | bool |  |  | When checked, this setup is visible to all users in the MMFDB. Only the owner can change this setting. |
 
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_channel_preset/`
 - Manifest: `chisurf/plugins/fcs/fcs_channel_preset/manifest.json`
+- UI spec: `chisurf/plugins/fcs/fcs_channel_preset/gui/fcs_channel_preset.view.json`
