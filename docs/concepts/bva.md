@@ -47,6 +47,14 @@ $$
 \boxed{\;\sigma_\text{sn}(E) = \sqrt{\dfrac{E\,(1-E)}{n}}\;}
 $$
 
+To put a number on it: with the common slice size $n = 5$ photons, a *perfectly
+static* molecule at $E = 0.5$ still shows
+$\sigma_\text{sn} = \sqrt{0.25/5} = 0.224$ — a scatter of more than $\pm0.2$ in
+apparent efficiency, from shot noise alone. At $n = 20$ it falls to $0.112$. This
+is the reason BVA compares against a computed floor instead of against zero: at
+realistic photon budgets the shot-noise scatter is *large*, and eyeballing
+"how much do the sub-efficiencies vary" is meaningless without it.
+
 Plotted against $E$ this is a **semicircle-like curve** — zero at $E=0$ and $E=1$
 (where the outcome is nearly deterministic) and largest at $E=\tfrac12$ — that
 narrows as the slice size $n$ grows. It is the **static line** (also "BVA line"):
@@ -91,6 +99,55 @@ the same $n$ must be used for the data points and for the static line so the two
 are directly comparable. ChiSurf can alternatively slice by a fixed **time
 window** instead of a fixed photon count, useful when the count rate varies
 strongly across the burst.
+
+## What else lifts bursts above the line
+
+"Above the static line" means *excess variance*, which is not the same as
+*conformational dynamics*. Everything below adds variance to the sub-burst
+efficiencies and will be read as dynamics if it is not excluded first:
+
+- **Acceptor blinking or bleaching.** A dye that goes dark partway through the
+  burst produces exactly the two-level signal BVA is designed to detect. This is
+  the single most common false positive. Bleaching is irreversible, so it biases
+  the *late* slices; a photon-by-photon check ({doc}`H2MM </guides/19_h2mm_hidden_markov>`)
+  or an ALEX stoichiometry filter separates it from genuine exchange.
+- **Donor–acceptor distance changes that are not the process of interest** —
+  linker dynamics, dye sticking to the biomolecule and releasing, or rotational
+  states with different quantum yields.
+- **Background and its drift.** Background photons are uncorrelated with the
+  molecule, so they push $\bar{E}$ toward the background ratio and inflate the
+  scatter, most severely in dim bursts. Because the static line is computed for
+  *pure* binomial sampling, an uncorrected background lifts the whole population
+  off it.
+- **Spectral crosstalk and direct excitation** compress the accessible $E$ range,
+  which changes where the population sits relative to the line even when the
+  variance is unchanged.
+- **Too few slices.** $s_E$ estimated from $m$ slices is itself a random
+  variable with relative uncertainty of order $1/\sqrt{2m}$; short bursts
+  (few slices) therefore scatter widely in *both* directions. Apply a minimum
+  photon count per burst, and read the population density rather than individual
+  points.
+- **Mixtures masquerading as dynamics.** Two static species of different $E$
+  that are *not* interconverting produce two separate spots on the line, not an
+  arch. An arch that connects them requires exchange within the burst — but a
+  slow drift in instrument alignment across a long measurement can imitate it.
+
+The practical consequence is that BVA is a **screen**, not a proof: it says
+"something here varies more than shot noise", and the photophysical explanations
+have to be excluded before the conformational one is accepted.
+
+## Sensitivity: which timescales BVA can see
+
+BVA is sensitive to exchange that happens **within a burst** — roughly between
+the slice duration and the burst duration. A typical burst lasts ~1 ms and a
+5-photon slice at 50 kHz spans ~100 µs, so the accessible window is roughly
+$10^{-4}$–$10^{-3}$ s. Exchange much *faster* than a slice averages inside every
+slice, so all slices look alike and the population returns to the static line;
+exchange much *slower* than a burst means each molecule is caught in one state,
+giving two static spots. Both limits look "static" in BVA, which is why a
+negative BVA result never rules out dynamics — it rules out dynamics *in that
+window*. Filtered-FCS and ns-FCS cover the faster decades; recurrence analysis
+and binned-trace HMMs cover the slower ones.
 
 ## See also
 

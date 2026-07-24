@@ -155,4 +155,3 @@ with the flexible dye-linker cloud handled by accessible volumes
   Fluoreszenz.* Ann. Phys. **437**, 55–75 (1948); Lakowicz, J. R. *Principles of
   Fluorescence Spectroscopy*, 3rd ed. (2006), FRET chapters; Clegg, R. M. Curr.
   Opin. Biotechnol. **6**, 103–110 (1995).
-</content>

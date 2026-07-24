@@ -141,6 +141,101 @@ FRET line**: every species falls on the same horizontal $S\approx0.5$, and $E$ i
 now accurate. It then maps to distance through Förster,
 $E = 1/[1+(R/R_0)^6]$, i.e. $R = R_0\,(1/E - 1)^{1/6}$.
 
+## How precise is one burst?
+
+A burst is a *small* photon sample, so even a perfectly static molecule gives a
+distribution of $E$, not a value. Treating the acceptor count as binomial, the
+shot-noise standard deviation of a single burst's efficiency is
+
+$$
+\sigma_E = \sqrt{\frac{E\,(1-E)}{N}},
+$$
+
+with $N = F_{dd}+F_{da}$ the burst size. For a typical $N = 50$ photons at
+$E = 0.5$ that is $\sigma_E = 0.071$ — so a **single burst** locates $E$ only to
+about $\pm0.07$, and a FRET histogram peak has an intrinsic width of roughly that
+even with no heterogeneity at all. Two states are therefore only resolvable as
+separate peaks when they differ by more than ~$2\sigma_E$; closer states merge
+into one broadened peak, which is exactly the situation that
+{doc}`BVA </guides/08_burst_variance_analysis>`,
+{doc}`PDA </guides/11_pda>` and {doc}`H2MM </guides/19_h2mm_hidden_markov>` exist
+to resolve. The *mean* of a population is far better determined — it improves as
+$\sigma_E/\sqrt{n_\text{bursts}}$ — which is why population centres are quoted,
+not individual bursts.
+
+The distance conversion is steeply non-linear, and that cuts both ways. From
+$R = R_0 (1/E - 1)^{1/6}$,
+
+$$
+\frac{\mathrm{d}R}{R} = -\frac{1}{6}\,\frac{\mathrm{d}E}{E\,(1-E)} .
+$$
+
+Near $E = 0.5$ the prefactor is smallest, so precision in $R$ is best there: a
+$\pm0.07$ uncertainty in $E$ maps to about $\pm5\%$ in distance. Near the ends it
+degrades sharply — at $E = 0.95$ the same $\pm0.07$ in $E$ is roughly $\pm25\%$ in
+$R$. In practice smFRET reports distances reliably only over roughly
+$0.5\,R_0$ to $1.5\,R_0$; with a typical $R_0 \approx 50$ Å that is about
+25–75 Å. Outside that window the measurement says "much closer than $R_0$" or
+"much further", and no amount of averaging fixes it.
+
+## Accuracy: what limits the absolute numbers
+
+Precision (above) and accuracy are different problems. The corrections make $E$
+comparable between instruments, but several systematic terms remain:
+
+- **$\gamma$ dominates the error budget.** It multiplies the donor channel
+  directly, so a 10 % error in $\gamma$ shifts $E$ by several hundredths — more
+  than the statistical error on a well-sampled population. It also depends on the
+  *acceptor* quantum yield, which can change with conformation, so a $\gamma$
+  determined on one state is not automatically right for another.
+- **$R_0$ carries its own uncertainty**, chiefly through the donor quantum yield,
+  the spectral overlap integral, and the orientation factor $\kappa^2$.
+  The usual $\kappa^2 = 2/3$ assumes both dyes rotate freely and isotropically on
+  the fluorescence timescale — check it with the dyes' anisotropies
+  ({ref}`concept-anisotropy`) rather than assuming it. Because $R \propto
+  R_0$, an error in $R_0$ scales *every* distance.
+- **Dye artefacts.** A dye that sticks to the biomolecule has a reduced,
+  position-dependent quantum yield and restricted mobility, violating both the
+  $\gamma$ and $\kappa^2$ assumptions at once. Acceptor blinking creates
+  apparent low-FRET states.
+- **What is actually measured is a dye-to-dye distance**, not a residue-to-residue
+  one — the linkers are long enough that the difference matters. Converting to a
+  structural restraint needs the accessible-volume treatment
+  ({ref}`concept-accessible-volume`).
+- **Averaging is non-linear.** A molecule exchanging between states during a burst
+  does not report the mean distance: because $E$ is a steep function of $R$, the
+  burst-averaged efficiency is weighted toward the *high-FRET* (brighter
+  acceptor, shorter distance) state. Reading a mid-range $E$ as "one conformation
+  at an intermediate distance" is the classic misinterpretation — this is why the
+  static/dynamic tests matter before any structural interpretation.
+
+The multi-laboratory benchmark study (Hellenkamp *et al.* 2018) puts numbers on
+this: with a carefully executed protocol, inter-laboratory agreement on
+$E$ is a few hundredths, corresponding to ~1 Å or better on well-behaved
+reference samples — but that is the *best* case, on standards chosen to avoid the
+dye artefacts above.
+
+## References
+
+- T. Förster, "Zwischenmolekulare Energiewanderung und Fluoreszenz", *Annalen der
+  Physik* (1948). *The $1/R^6$ mechanism itself.*
+- N. K. Lee, A. N. Kapanidis, Y. Wang, X. Michalet, J. Mukhopadhyay,
+  R. H. Ebright and S. Weiss, "Accurate FRET measurements within single diffusing
+  biomolecules using alternating-laser excitation", *Biophysical Journal* (2005).
+  *The ALEX correction scheme and the $1/S$-vs-$E$ construction used above.*
+- A. N. Kapanidis, N. K. Lee, T. A. Laurence, S. Doose, E. Margeat and S. Weiss,
+  "Fluorescence-aided molecule sorting: analysis of structure and interactions by
+  alternating-laser excitation of single molecules", *PNAS* (2004). *Where
+  stoichiometry-based sorting is introduced.*
+- B. Hellenkamp *et al.*, "Precision and accuracy of single-molecule FRET
+  measurements — a multi-laboratory benchmark study", *Nature Methods* (2018).
+  *The reference protocol, the correction conventions, and the achievable
+  accuracy.*
+- C. Eggeling, S. Berger, L. Brand, J. R. Fries, J. Schaffer, A. Volkmer and
+  C. A. M. Seidel, "Data registration and selective single-molecule analysis using
+  multi-parameter fluorescence detection", *Journal of Biotechnology* (2001).
+  *Burst selection and multi-parameter detection.*
+
 ## See also
 
 - Guides: {doc}`/guides/13_burst_identification` · {doc}`/guides/14_multiparameter_es`

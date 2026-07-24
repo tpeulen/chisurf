@@ -2,6 +2,101 @@
 
 ## 2026-07-24
 
+* **Concept pages: three had tool-call scaffolding in them.** `fret.md`,
+  `imaging_flim_phasor.md` and `tcspc_lifetime.md` ended with a literal
+  `</content>` line — `imaging_flim_phasor.md` with `</content>\n</invoke>` — i.e.
+  agent scaffolding that was written into the file and had been shipping in the
+  rendered HTML. Removed; a sweep for the other likely leak markers
+  (`<content>`, `</document>`, `[/INST]`) found none.
+  **Depth pass on the five thinnest pages**, aimed at the gaps a reader actually
+  hits rather than at length. `fcs_correlation.md` (635 → 1492 words) never
+  defined $G(\tau)$ at all — it opened with the factorised fit model — so it now
+  derives the correlation function, states the two normalisation conventions that
+  differ by exactly 1 (the reason amplitudes disagree between programs), shows
+  why $G(0)=1/N$ follows from Poisson occupancy, and carries a worked calibration
+  (Rhodamine 6G, $\tau_D=38$ µs → $w_{xy}\approx0.25$ µm → $V_\text{eff}\approx0.43$ fL
+  → 7.7 nM) plus an assumptions section. `bva.md` gained the confounder list —
+  acceptor blinking is the standard false positive, since a dye going dark
+  mid-burst produces exactly the two-level signal BVA detects — a worked
+  shot-noise number ($n=5$, $E=0.5$ → $\sigma_\text{sn}=0.224$, which is why the
+  floor must be computed rather than eyeballed), and the timescale window that
+  makes a negative result non-conclusive. `smfret_bursts.md` gained the
+  single-burst precision limit ($\sigma_E=\sqrt{E(1-E)/N}$; 0.071 at $N=50$,
+  $E=0.5$, so two states need >2σ separation to resolve as peaks), the
+  $\mathrm{d}R/R = -\tfrac16\,\mathrm{d}E/[E(1-E)]$ sensitivity that bounds
+  useful distances to ~0.5–1.5 $R_0$, and an accuracy section ($\gamma$ dominates
+  the error budget; $\kappa^2$; burst-averaging is non-linear and weights toward
+  high FRET). `recurrence.md` gained the point that the recurrence histogram is a
+  **mixture** — $H_\text{rec} = P_\text{same}H_\text{same} + (1-P_\text{same})H_\text{all}$
+  — and that omitting the subtraction makes every static sample look like it is
+  relaxing toward the bulk population, i.e. reports dynamics that are not there.
+  `tcspc_lifetime.md` gained a worked contrast of the two averages (equal
+  amplitudes of 0.5 and 4.0 ns → $\langle\tau\rangle_x=2.25$ vs
+  $\langle\tau\rangle_f=3.61$ ns, and $E=0.44$ vs a spurious $0.10$) and the
+  literature it was missing.
+  **Citation audit corrected mid-flight**: a first pass looked for a
+  `## References` heading, found none on any page, and flagged the concepts index
+  promise ("self-contained and cited") as unmet. That was a grep artifact — most
+  pages carry a "Key literature" bullet inside `See also`. Only `tcspc_lifetime.md`
+  genuinely had no citations. No mass restructuring was done; the house
+  convention was followed instead.
+
+* **Parameter error estimates were wrong by √2, and absent entirely for large
+  parameters.** Auditing the error-analysis code next to the MCMC fixes found three
+  defects in `chisurf/core/fitting/fit.py`. (1) `covariance_matrix` inverted
+  `0.5 * JᵀJ` instead of `JᵀJ`, so **every** covariance-derived
+  `error_estimate` in ChiSurf was inflated by exactly √2 ≈ 1.414 — the ½ in the
+  textbook definition relates the curvature matrix to the χ² Hessian and was being
+  applied a second time. (2) `approx_grad` used an *absolute* finite-difference
+  step (`1e-12`; `Fit.grad` passed the machine epsilon, `2.2e-16`), which for a
+  parameter of magnitude ≳10⁴ is lost to rounding: the perturbed model came back
+  bit-identical, the partial derivative evaluated to exactly zero, and the parameter
+  was **silently dropped** from the covariance with no error estimate at all — at
+  magnitude 10⁶ *every* parameter was dropped, and `Fit.grad` was identically zero
+  for any parameter ≥ 1. Count amplitudes of 10⁴–10⁷ are routine in TCSPC, so this
+  was hit constantly. Now a relative step, `epsilon · max(|p|, 1)` with
+  `√(machine ε)` as default, rounded to an exactly representable difference.
+  (3) The failure path built `np.zeros_like((n, n))` — a length-2 vector from the
+  shape tuple, not an n×n matrix. Errors now reproduce the analytic least-squares
+  covariance `σ²(XᵀX)⁻¹` **exactly** (rtol 1e-6) at every parameter magnitude from
+  1 to 10⁹, and agree with the sampled posterior
+  (`test/fitting/test_covariance_errors.py`, 9 tests). Concept:
+  [fitting](/subsystems/fitting.md).
+
+* **ndXplorer dialog crashes fixed after full feature test (submodule commit
+  `64d2f61`).** Testing every user-facing feature headlessly against real
+  `bh_spc132_sm_dna` burst data surfaced that the icon-glyph rollout imported a
+  module-level `label` helper into dialogs that also bind `label` as a loop
+  variable — Python's leaked loop variable rebound it to a string, so
+  `AxisControlDialog` (and any similarly-shadowed dialog) crashed on open with
+  "'str' object is not callable". Fixed by importing the helper as `glyph_label`
+  everywhere and renaming only the call sites. Two pre-existing (committed)
+  crashes were fixed in the same pass: `AxisControlDialog.load_current_state`
+  assumed `overlay_plot` exposes `axisEnabled` (it is now a `DrawingOverlayWidget`
+  with no axes → error box every open), and `ColumnSelectionDialog` called
+  `ensureWidgetVisible` during `__init__` before the dialog was shown (Qt backend
+  crash). Full feature exercise now passes 13/13 (load, axes, 2D + marginal
+  histograms, float32 mask, fast-histogram bit-identical to numpy, targeted
+  parameter recompute ~10 ms, all six reglyphed dialogs construct). The 21
+  remaining suite failures are pre-existing API-drift in files this work never
+  touched (histogram `compute_1d` return type, `CSVExporter` rename, scatter,
+  Windows path utils).
+* **German catalogue brought to ~90% coverage — [PRD-63](/prds/prd-63.md),
+  [i18n subsystem](/subsystems/i18n.md).** Extended the German `.ts` from the
+  ~400-string seed to **2218/2456 finished** in three non-destructive fill passes
+  (UI chrome/menus/wizards → data-driven view.json/manifest display-names,
+  descriptions and parameter tooltips → the long markdown help panels + remaining
+  simulator/PSF/docking tooltips). Filled entries were only the previously-
+  `unfinished` ones — existing translations untouched — via a minimal-diff
+  text applier so no reformatting churn. Terminology follows the established
+  glossary (Mikrozeit/Makrozeit, Detektor, Zerfall, Lebensdauer, Faltung,
+  Anisotropie, Anteil). The ~238 still-untranslated messages are
+  non-translatable by design (Qt signal/slot names, `Ctrl+…` shortcuts, math/
+  axis symbols, code identifiers, file names, URLs) and correctly fall back to
+  the English source. Verified end-to-end offscreen: a real `.ui` form renders
+  German at `uic.loadUi` time under its form context, and view.json/manifest
+  strings resolve via `tr()` under the `chisurf` context. Recompiled `de.qm`;
+  all 12 i18n/selector tests pass.
 * **Parameter error estimates were wrong by √2, and absent entirely for large
   parameters.** Auditing the error-analysis code next to the MCMC fixes found three
   defects in `chisurf/core/fitting/fit.py`. (1) `covariance_matrix` inverted

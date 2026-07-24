@@ -90,6 +90,58 @@ diffusion time), the ms–s window that intra-burst methods cannot see. Together
 three cover dynamics from sub-burst to seconds, and each conditions on the FRET
 value rather than only reporting a marginal histogram.
 
+## The recurrence histogram is a mixture
+
+$P_\text{same}$ is never 1, so the measured recurrence histogram is always a
+**mixture** of true recurrences and random coincidences:
+
+$$
+H_\text{rec}(E) = P_\text{same}\,H_\text{same}(E)
+                + \bigl(1-P_\text{same}\bigr)\,H_\text{all}(E),
+$$
+
+where $H_\text{all}$ is the ordinary (unconditioned) burst histogram, since a
+random coincidence is just a fresh molecule drawn from the bulk. The quantity of
+interest is $H_\text{same}$, recovered by subtracting the known random
+contribution:
+
+$$
+H_\text{same}(E) = \frac{H_\text{rec}(E) - (1-P_\text{same})\,H_\text{all}(E)}
+                        {P_\text{same}} .
+$$
+
+This subtraction is not a refinement — it is essential. Skipping it makes every
+recurrence histogram look like it is relaxing toward the overall population,
+which is precisely the signature of dynamics, so an uncorrected analysis reports
+exchange even for a perfectly static sample. The correction also explains why the
+usable window is bounded: as $P_\text{same}$ falls, the denominator shrinks and
+the noise in $H_\text{same}$ is amplified, so pushing to long recurrence times
+buys timescale at a steep cost in precision.
+
+## Assumptions and pitfalls
+
+- **Concentration is a trade-off, and it is the central experimental knob.**
+  $P_\text{same}$ is high only when fresh molecules are rare, i.e. at low
+  concentration — but low concentration also means few bursts and few
+  recurrences, so the statistics degrade. Too high, and random coincidences
+  swamp the conditioning.
+- **Photobleaching sets the real upper limit on the window.** A molecule that
+  bleaches between visits never recurs, which depletes long-lag recurrences and
+  biases the apparent kinetics toward faster relaxation. Worse, a molecule whose
+  *acceptor* alone bleaches recurs as a spurious low-FRET burst — this mimics
+  exchange into a low-FRET state. ALEX stoichiometry filtering of the recurring
+  bursts is the standard defence.
+- **The molecule must not leave for good.** RASP assumes free diffusion in and
+  out of a stationary volume; convection, flow, sticking to the coverslip, or
+  focus drift all change the recurrence statistics without any conformational
+  change.
+- **It measures the FRET value, not the conformation.** Anything that shifts $E$
+  between visits — dye photophysics, a change in quantum yield, acceptor
+  blinking — is read as a transition.
+- **The accessible window is bounded on both sides**: faster than the burst
+  duration is invisible (use BVA/2CDE/H2MM), slower than the time for a molecule
+  to diffuse away irreversibly is inaccessible at any concentration.
+
 ## In ChiSurf
 
 RASP in ChiSurf operates purely on the **per-burst table** (arrival time plus

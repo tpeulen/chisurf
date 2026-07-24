@@ -136,6 +136,23 @@ is $x_i=a_i/\sum_j a_j$, while the **intensity fraction** is
 $f_i=a_i\tau_i/\sum_j a_j\tau_j$. A dim, short-lifetime species can be a large
 mole fraction yet a small intensity fraction — always state which you mean.
 
+To see how far apart the two averages can be, take equal amplitudes
+($a_1=a_2$) of a 0.5 ns and a 4.0 ns species:
+
+$$
+\langle\tau\rangle_x = \frac{0.5+4.0}{2} = 2.25\;\text{ns},
+\qquad
+\langle\tau\rangle_f = \frac{0.5^2+4.0^2}{0.5+4.0} = \frac{16.25}{4.5}
+= 3.61\;\text{ns}.
+$$
+
+Half the *molecules* are short-lived, but they contribute only
+$f_1 = 0.5/4.5 = 11\%$ of the *photons*. Quoting $\langle\tau\rangle_f = 3.61$ ns
+where the FRET formula needs $\langle\tau\rangle_x = 2.25$ ns would understate the
+efficiency badly — with a 4.0 ns donor, $E = 1-2.25/4.0 = 0.44$ against a
+spurious $E = 1-3.61/4.0 = 0.10$. This single confusion is the most common
+error in reported lifetime-based FRET efficiencies.
+
 ```{note}
 Multi-exponential fits are only weakly identifiable: lifetimes closer than
 ~2× are strongly correlated, and discrete components can trade off against a
@@ -164,4 +181,16 @@ FRET distance distributions and anisotropy decays are resolved; see
   `chisurf/core/fluorescence/tcspc/irf.py`; lifetime models
   `chisurf/core/models/tcspc/`; Poisson-MLE facade
   `chisurf/core/fluorescence/mle/`.
-</content>
+- Key literature: D. V. O'Connor & D. Phillips, *Time-correlated Single Photon
+  Counting* (1984) — the standard treatment of reconvolution and the nuisance
+  terms; W. Becker, *Advanced Time-Correlated Single Photon Counting Techniques*
+  (2005) — the instrumentation, pile-up and differential non-linearity;
+  J. R. Lakowicz, *Principles of Fluorescence Spectroscopy* (3rd ed., 2006),
+  lifetime chapters — the two averages and their correct use; P. B. Coates,
+  *The correction for photon "pile-up" in the measurement of radiative lifetimes*,
+  J. Phys. E (1968) — the pile-up correction applied above;
+  M. Maus, M. Cotlet, J. Hofkens, T. Gensch, F. C. De Schryver, J. Schaffer &
+  C. A. M. Seidel, *An experimental comparison of the maximum likelihood
+  estimation and nonlinear least-squares fluorescence lifetime analysis of single
+  molecules*, Anal. Chem. (2001) — the $2I^*$ statistic used for burst- and
+  pixel-wise fits.

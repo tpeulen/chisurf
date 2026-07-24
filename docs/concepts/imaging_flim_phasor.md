@@ -179,5 +179,3 @@ fit the pixels that matter.
 - Malacrida L, Ranjit S, Jameson DM, Gratton E. *The phasor plot: a universal
   circle to advance fluorescence lifetime analysis and interpretation.*
   **Annu Rev Biophys** 50: 575–593 (2021).
-</content>
-</invoke>
