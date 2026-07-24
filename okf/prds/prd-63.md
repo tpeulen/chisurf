@@ -68,9 +68,15 @@ Implementation and architecture live in
       markdown help panels); the ~238 remaining are non-translatable by design
       (Qt signal/slot names, shortcuts, math symbols, identifiers, URLs) and fall
       back to source. Filled non-destructively; `de.qm` recompiled.
+- [x] **Second locale shipped — French (`fr`)** as a generalisation proof: the
+      selector now offers English / Deutsch / Français, and the app renders French
+      live. `chisurf_fr.ts` derived from the context-complete `de.ts`; UI chrome
+      translated (~285 strings), `fr` registered in the extractor `DEFAULT_LOCALES`
+      and `i18n-compile`, guarded by `test_language_selector`. Remaining French
+      strings fall back to English (per-string Qt fallback).
 - [ ] Follow-ups: imperative `setText`/`QMessageBox` wrapping (phased), menu-path
       `display_name`/`categories` localization at the nav seam, `.ui` terminology
-      convergence, and adding a **second** locale beyond German.
+      convergence, completing the French catalogue, and further locales.
 
 # Non-goals (this pass)
 

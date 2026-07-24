@@ -2,6 +2,20 @@
 
 ## 2026-07-24
 
+* **French shipped as a second locale — [PRD-63](/prds/prd-63.md),
+  [i18n subsystem](/subsystems/i18n.md).** Generalisation proof for the
+  translation kit: `chisurf_fr.ts` was derived from the context-complete `de.ts`
+  (identical sources + Qt contexts, translations blanked), then filled with
+  French for the high-visibility UI chrome (~285 strings: main-window
+  menus/actions, the detector/correlator/PIE wizards, the CSV/SPC file-open
+  widgets, the fitting widget, molview controls, common field labels, and the key
+  view.json/manifest display-names). `fr` was registered in the extractor
+  `DEFAULT_LOCALES` and the `i18n-compile` pixi task so a future `i18n-extract`
+  maintains it non-destructively. The Settings language selector now discovers and
+  offers **English / Deutsch / Français**; verified offscreen that a real `.ui`
+  form and view.json strings both render French and that de↔fr↔en switch cleanly.
+  Untranslated French strings fall back to the English source per-string.
+  `test_language_selector` guards that `fr` ships and is discovered.
 * **F-test calculator: the two directions contradict each other (BUG-05, logged
   not patched).** `_FTestModel.recompute_conf` and `recompute_chi2_2` are meant to
   be inverses, but the second carries a spurious `n₂/n₁`: entering a confidence of
