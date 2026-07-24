@@ -99,6 +99,28 @@ QToolBar QLabel {
 """
 
 
+_NORMAL_BTN_HEIGHT: int | None = None
+
+
+def _normal_toolbutton_height() -> int:
+    """Height (px) of a plain, unstyled ``QToolButton`` — the native toolbar height.
+
+    Applying *any* stylesheet switches a ``QToolButton`` from the native macOS
+    style to the CSS box model, whose padding/border make it taller than its
+    unstyled neighbours. Cap styled buttons to this so a whole toolbar is one
+    height. Cached (measured once, needs a ``QApplication``).
+    """
+    global _NORMAL_BTN_HEIGHT
+    if _NORMAL_BTN_HEIGHT is None:
+        try:
+            ref = QtWidgets.QToolButton()
+            ref.setText("Ag")
+            _NORMAL_BTN_HEIGHT = int(ref.sizeHint().height())
+        except Exception:
+            _NORMAL_BTN_HEIGHT = 0
+    return _NORMAL_BTN_HEIGHT or 0
+
+
 def button_style(kind: str = "default") -> str:
     """Return the combined base + per-kind stylesheet for a tool button."""
     return TOOLBAR_BUTTON_BASE + BTN_STYLES.get(kind, BTN_STYLES["default"])
@@ -137,6 +159,11 @@ def styled_tool_button(
         btn.setText(text)
     btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
     btn.setStyleSheet(button_style(kind))
+    # Cap to the native (unstyled) toolbar-button height so a stylesheet-styled
+    # button is no taller than its plain neighbours (Auto / Auto IRF / Opt).
+    ref_h = _normal_toolbutton_height()
+    if ref_h > 0:
+        btn.setMaximumHeight(ref_h)
     if tooltip:
         btn.setToolTip(tooltip)
     if checkable:

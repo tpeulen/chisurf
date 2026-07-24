@@ -828,25 +828,32 @@ class BVATool(QMainWindow):
         super().closeEvent(event)
 
     def _bias_plot_width(self) -> None:
-        """Bias the horizontal split so the Plot dock keeps most of the width.
+        """Force the Plot dock to keep most of the width.
 
-        A ``QSplitter`` redistributes a window resize by stretch factor; without
-        this the compact settings and the plot drift back toward 50/50 and the
-        plot looks cramped. Give every child but the last (the Plot, per the
-        default layout) zero stretch and seed a ~1/3 : 2/3 split.
+        A ``QSplitter`` redistributes a window resize by stretch factor and the
+        settings form's minimum width fights any seeded sizes, so the plot kept
+        drifting narrow. Identify the non-plot (settings) child of each horizontal
+        split and hard-cap its width; the plot child then absorbs everything else
+        (stretch=1, no cap). This holds regardless of layout timing.
         """
         try:
             from qtpy.QtWidgets import QSplitter
 
+            SETTINGS_MAX = 440
             for sp in self.dock_area.findChildren(QSplitter):
                 if sp.orientation() != Qt.Horizontal or sp.count() < 2:
                     continue
                 for i in range(sp.count()):
-                    sp.setStretchFactor(i, 0)
-                sp.setStretchFactor(sp.count() - 1, 1)
+                    child = sp.widget(i)
+                    holds_plot = child is self.plot_widget or child.isAncestorOf(self.plot_widget)
+                    if holds_plot:
+                        sp.setStretchFactor(i, 1)
+                        child.setMaximumWidth(16777215)
+                    else:
+                        sp.setStretchFactor(i, 0)
+                        child.setMaximumWidth(SETTINGS_MAX)
                 total = sp.width() or 1200
-                left = max(360, int(total * 0.32))
-                sp.setSizes([left, max(1, total - left)])
+                sp.setSizes([SETTINGS_MAX, max(1, total - SETTINGS_MAX)])
         except Exception:
             pass
 
