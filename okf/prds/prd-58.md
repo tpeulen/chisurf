@@ -30,8 +30,11 @@ original "awaiting approval, no code written" note is stale): the CLI
 `imp` subgroup with `dock`/`refine`/`errors`/…), the `evaluators/` subpackage, the
 OLGA pair-selection core, and the FPS output writers all exist. The requirements,
 phased plan, and acceptance criteria below remain the authoritative roadmap for the
-remaining work — chiefly the GUI wizard embed (R01–R07) and IMP-gated refine/errors
-coverage (R10/R11 have no IMP-free test).
+remaining work — chiefly the **GUI wizard embed (R01–R07)**. The docking/refine/errors
+path (R10/R11) is IMP-based but is **not** untestable: IMP + IMP.bff are present in the
+canonical `arm64` conda env, so `test_imp_engine.py` (`refine`, `estimate_errors`) and
+`test_dock_project.py` docking round-trips **run and pass** there (16 passed) — they
+only skip on a machine without IMP. See [testing](/workflows/testing.md).
 
 **Headless test-hardening + R15 fix (2026-07-24).** Much of the headless surface
 was implemented but untested; closed three of those gaps in

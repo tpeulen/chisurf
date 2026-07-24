@@ -2,6 +2,16 @@
 
 ## 2026-07-24
 
+* **Testing env documented — `arm64` conda has IMP.** Added an Environment section
+  to [testing](/workflows/testing.md): the `arm64` conda env is canonical (Qt,
+  compiled extensions, **IMP 2.24 + IMP.bff**, mdtraj), with the `PYTHONPATH` +
+  `-p no:cov -o addopts=""` recipe. Corrected a wrong claim in
+  [PRD-58](/prds/prd-58.md): the docking/`refine`/`errors` path (R10/R11) is
+  **not** untestable — with IMP present, `test_imp_engine.py` (`refine`,
+  `estimate_errors`) and `test_dock_project.py` docking round-trips run and pass in
+  arm64 (16 passed); a `skipif not has_imp()` test only skips on a machine without
+  IMP. Remaining PRD-58 work is now chiefly the Qt GUI wizard (R01–R07).
+
 * **PRD-58 — CLI contract R09 + R16.** Completed two `fret` CLI-flag requirements
   with real dispatch tests. **R16**: `evaluate` gained explicit `--pdb-dir` and
   `--top` flags via a pure `_resolve_evaluate_mode(pdb, pdb_dir, top, traj,
