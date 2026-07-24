@@ -2,6 +2,21 @@
 
 ## 2026-07-24
 
+* **Burst Browser converted to AutoForm (foldable boxes + chisurf docks).** Replaced the ~690-line hand-built `BurstBrowserWidget` with a Qt-free `BurstBrowserViewModel` (`view_model.py`: reads `.bur` + `…4` companions, derives E/S, holds gating state, computes mask + histogram) + custom AutoForm sections (`gui/sections.py`: `browser_source`, `browser_controls` with a foldable Gating box, `browser_table`, `browser_histogram`) laid out from `gui/burst_browser.view.json` (a persistent `dock_area`: Controls panel + Bursts table + Histogram as draggable docks). Custom sections observe the model's `data`/`gating`/`selection` events (no rebuild). `BurstBrowserWidget` is a thin AutoForm host; `load_folder`/`load_bur`/`_df` preserved for the workflow shell (AutoForm imported lazily). Verified on `bh_spc132_sm_dna` (2495 bursts). Background-plugin AutoForm conversion still pending.
+
+* **PRD-32 done — acquisition standard output folder.** Closed the last gap in
+  [PRD-32](/prds/prd-32.md): the acquisition output folder was read at runtime
+  (`_default_acquisition_output_path` in the acq tool: dock prefill, blank-field
+  resolution at run start, `mkdir` before write) but never declared, so it was
+  neither persisted with a default nor editable in Setup. Added
+  `gui.acquisition.output_path` (empty ⇒ fall back to `<working_path>/acquisition`)
+  to the default settings YAML, and taught the generic settings editor to render
+  folder-typed settings with a directory picker
+  (`SettingsDelegate._is_folder_setting` / `_create_folder_editor` /
+  `_browse_folder`, keyed on the setting path so an empty value still gets a
+  picker). Flipped status → done in the [prds index](/prds/index.md). Concept:
+  [PRD-32](/prds/prd-32.md).
+
 * **AutoForm fields auto-inherit parameter-registry tooltips.** Factored the
   `Parameter.__init__` description-lookup (registry_id → class-scoped
   `by_qualified_id` → non-ambiguous bare name/aliases) into the shared helper
