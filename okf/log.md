@@ -1,6 +1,24 @@
 # Update Log
 
 ## 2026-07-24
+
+* **All guide images converted to numbered `{figure}` directives.** 29 of the 44
+  guides embedded their figure as bare markdown (`![alt](figures/x.png)`), so
+  despite `numfig = True` in `docs/conf.py` those 31 images rendered with **no
+  caption, no figure number and no referenceable label** — only the five pages
+  written most recently used the `{figure}` directive, and the two conventions
+  had been drifting apart. Converted mechanically: each image becomes a
+  `{figure}` with `:name: fig-<png-stem>` (stems are unique, so the global
+  Sphinx labels do not collide — checked), `:width: 90%`, and the former alt text
+  as the caption. The guides now render **43 numbered figures** with captions,
+  and every figure has a label that `{numref}` can cite.
+  Two things the conversion had to get right: MyST needs a blank line **after**
+  the closing fence or the following `## See also` heading is swallowed into the
+  directive (31 inserted, one per figure); and the substitution was anchored to
+  `^!\[` so it could not touch images nested inside lists or admonitions.
+  Verified from the built HTML rather than by eye — every `<img src>` in
+  `guides/*.html` resolves to a real file in `_images/`, no `<figcaption>` is
+  empty, and figure numbering runs 1–43 across the section.
 * **`docs/reference/user_models.md` documented an API that does not exist.**
   Sections 1–6 of that page described a registry — `register_user_model`
   (decorator), `load_user_models()`, `iter_user_models_for_experiment()` on a

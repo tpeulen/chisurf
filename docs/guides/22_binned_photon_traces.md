@@ -37,7 +37,12 @@ directly from TTTR data.
 A 1 ms-binned green/red intensity trace (green up, red down); the coincident
 green+red spikes are single-molecule FRET bursts.
 
-![Binned photon trace (MCS)](figures/mcs.png)
+```{figure} figures/mcs.png
+:name: fig-mcs
+:width: 90%
+
+Binned photon trace (MCS).
+```
 
 ## See also
 

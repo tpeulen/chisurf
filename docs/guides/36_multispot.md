@@ -38,7 +38,12 @@ Per-spot FRET-efficiency histograms of an 8-spot measurement; the population
 positions (red line = high-FRET median) agree across spots, validating the
 parallel acquisition.
 
-![8-spot multispot smFRET](figures/multispot.png)
+```{figure} figures/multispot.png
+:name: fig-multispot
+:width: 90%
+
+8-spot multispot smFRET.
+```
 
 ## See also
 

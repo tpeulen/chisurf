@@ -74,7 +74,12 @@ d_FRET   = decay([0.6, 3.5, 0.4, 0.7])     # + a 0.7 ns FRET-quenched fraction
 falls off faster than the unquenched 3.5 ns donor. **Right:** anisotropy decays
 for three rotational correlation times.
 
-![Fluorescence lifetime and anisotropy decays](figures/lifetime_anisotropy.png)
+```{figure} figures/lifetime_anisotropy.png
+:name: fig-lifetime-anisotropy
+:width: 90%
+
+Fluorescence lifetime and anisotropy decays.
+```
 
 ## See also
 

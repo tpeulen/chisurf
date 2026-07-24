@@ -66,7 +66,12 @@ Two single-species PDA models at different mean efficiencies. Each is a *single*
 distance, yet produces a broad, shot-noise-limited proximity-ratio histogram —
 the width PDA models exactly and separates from real heterogeneity.
 
-![PDA shot-noise-limited E histograms](figures/pda.png)
+```{figure} figures/pda.png
+:name: fig-pda
+:width: 90%
+
+PDA shot-noise-limited E histograms.
+```
 
 ## See also
 

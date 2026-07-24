@@ -44,7 +44,12 @@ The `burst_h2mm` GUI presents six coupled panels; the four essential ones are:
   model.
 - **Per-state dwell-time distributions** — the residence times, giving the rates.
 
-![H2MM results dashboard](figures/h2mm_dashboard.png)
+```{figure} figures/h2mm_dashboard.png
+:name: fig-h2mm-dashboard
+:width: 90%
+
+H2MM results dashboard.
+```
 
 ## See also
 

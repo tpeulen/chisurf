@@ -49,7 +49,12 @@ Micro-time (TCSPC) histograms of a green and a red detector read from a TTTR
 file — the raw material for lifetime analysis, after the burst search, or for
 filtered FCS.
 
-![Micro-time histograms from a TTTR file](figures/tttr.png)
+```{figure} figures/tttr.png
+:name: fig-tttr
+:width: 90%
+
+Micro-time histograms from a TTTR file.
+```
 
 ## See also
 

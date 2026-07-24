@@ -43,7 +43,12 @@ A Poisson trace with injected short, correlated bursts. $g^{(3)}$ is strongly
 elevated at short $(\tau_1,\tau_2)$ — the three-photon bunching signature — and
 decays to ≈ 1 as either lag grows beyond the burst width.
 
-![Second-order correlation g^(3)](figures/g3.png)
+```{figure} figures/g3.png
+:name: fig-g3
+:width: 90%
+
+Second-order correlation g^(3).
+```
 
 ## See also
 

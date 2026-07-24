@@ -44,7 +44,12 @@ bootstrap error bars on the E–S and E–τ panels.
 correctly selecting the simulated two-state model. **Right:** the FRET
 efficiencies recovered by H2MM match the simulated values.
 
-![H2MM recovers the simulated states](figures/h2mm_recovery.png)
+```{figure} figures/h2mm_recovery.png
+:name: fig-h2mm-recovery
+:width: 90%
+
+H2MM recovers the simulated states.
+```
 
 ## See also
 

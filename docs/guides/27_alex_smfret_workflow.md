@@ -53,7 +53,12 @@ the donor-only ($S\to1$) and acceptor-only ($S\to0$) species that the
 stoichiometry gate removes. The marginal histograms are the projected $E$ and
 $S$ distributions.
 
-![µs-ALEX smFRET burst analysis](figures/alex_workflow.png)
+```{figure} figures/alex_workflow.png
+:name: fig-alex-workflow
+:width: 90%
+
+µs-ALEX smFRET burst analysis.
+```
 
 ## See also
 

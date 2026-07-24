@@ -53,7 +53,12 @@ Two accessible volumes (donor, acceptor) simulated on T4 lysozyme (PDB 148L) and
 the resulting inter-dye distance distribution $P(R_{DA})$ — the mean distance and
 mean FRET efficiency follow directly.
 
-![Accessible volumes and the inter-dye distance distribution](figures/av.png)
+```{figure} figures/av.png
+:name: fig-av
+:width: 90%
+
+Accessible volumes and the inter-dye distance distribution.
+```
 
 ## See also
 

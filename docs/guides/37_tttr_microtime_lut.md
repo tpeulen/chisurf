@@ -31,7 +31,12 @@ auto-detect), then press the bold **➡ Add to Detector setup**. Repeat for each
 channel and close the window — that's the whole workflow. Saving a LUT file is
 optional.
 
-![① Compute LUT — per-channel: routing-channel selector, draggable linear region on the raw TAC histogram, corrected preview below](figures/lut_tools_workspace.png)
+```{figure} figures/lut_tools_workspace.png
+:name: fig-lut-tools-workspace
+:width: 90%
+
+① Compute LUT — per-channel: routing-channel selector, draggable linear region on the raw TAC histogram, corrected preview below.
+```
 
 ### It lands in the detector setup
 
@@ -39,7 +44,12 @@ Back in the editor, the **LUT handling** box now lists the per-channel LUT you
 added. Tick **Apply TAC linearization (LUT) when reading** and the correction is
 applied to every read of that setup — hover a LUT to see its plot.
 
-![The LUT-handling box in the channel-definition editor](figures/lut_channel_box.png)
+```{figure} figures/lut_channel_box.png
+:name: fig-lut-channel-box
+:width: 90%
+
+The LUT-handling box in the channel-definition editor.
+```
 
 From then on, any reader that selects the setup linearizes photons at read time
 through the single `staging.open_tttr` seam, so previews and production reads are
@@ -73,7 +83,12 @@ integrates them into a cumulative table `NTAC_fract`. That table maps each raw
 channel onto a corrected, equal-width axis; applying it (with stochastic
 dithering, so no binning artifacts) flattens the histogram.
 
-![DNL and its LUT correction](figures/lut.png)
+```{figure} figures/lut.png
+:name: fig-lut
+:width: 90%
+
+DNL and its LUT correction.
+```
 
 **Left** — the same flat-light photons before (red, wavy from DNL) and after
 (blue, flat) linearization. **Right** — the cumulative LUT `NTAC_fract` departs

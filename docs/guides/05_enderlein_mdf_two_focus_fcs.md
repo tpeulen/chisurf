@@ -55,7 +55,12 @@ elongated along the optical axis. **Right:** the single-focus autocorrelation
 suppressed at short lag and peaks at a finite lag set by the transit time between
 the foci — the signature that fixes an absolute `D`.
 
-![Enderlein MDF and two-focus FCS](figures/mdf.png)
+```{figure} figures/mdf.png
+:name: fig-mdf
+:width: 90%
+
+Enderlein MDF and two-focus FCS.
+```
 
 ## See also
 

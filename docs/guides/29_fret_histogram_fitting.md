@@ -44,7 +44,12 @@ The FRET-efficiency histogram of the doubly-labelled bursts, fitted with a
 three-component Gaussian mixture; each component's centre is its population's
 mean FRET efficiency, and the black curve is their sum.
 
-![FRET-efficiency histogram fit](figures/e_hist_fit.png)
+```{figure} figures/e_hist_fit.png
+:name: fig-e-hist-fit
+:width: 90%
+
+FRET-efficiency histogram fit.
+```
 
 ## See also
 

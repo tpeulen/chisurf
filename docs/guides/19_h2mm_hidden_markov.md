@@ -40,7 +40,12 @@ A two-state Viterbi state path and the resulting per-dwell FRET-efficiency
 histogram — two states cleanly separated (dashed lines mark the true state
 efficiencies).
 
-![H2MM state path and dwell E histogram](figures/h2mm.png)
+```{figure} figures/h2mm.png
+:name: fig-h2mm
+:width: 90%
+
+H2MM state path and dwell E histogram.
+```
 
 ## See also
 

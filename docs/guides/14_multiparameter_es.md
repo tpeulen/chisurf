@@ -46,7 +46,12 @@ A simulated ALEX $E$–$S$ histogram: two FRET populations (low- and high-E) at
 mid stoichiometry, a donor-only band at high $S$ and an acceptor-only band at low
 $S$.
 
-![Multi-parameter E–S histogram](figures/es.png)
+```{figure} figures/es.png
+:name: fig-es
+:width: 90%
+
+Multi-parameter E–S histogram.
+```
 
 ## See also
 

@@ -41,7 +41,12 @@ A simulated photon stream (diffuse background with occasional bright transits)
 and its sliding-window count-rate trace; windows above the threshold (red) are
 the detected bursts.
 
-![Burst identification](figures/burst_search.png)
+```{figure} figures/burst_search.png
+:name: fig-burst-search
+:width: 90%
+
+Burst identification.
+```
 
 ## See also
 

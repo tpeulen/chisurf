@@ -45,7 +45,12 @@ loop for validation.
 long-lifetime filter up-weights late micro-time channels, the short-lifetime
 filter the early ones, so the filtered correlations separate the species.
 
-![Filtered FCS patterns and filters](figures/filtered_fcs.png)
+```{figure} figures/filtered_fcs.png
+:name: fig-filtered-fcs
+:width: 90%
+
+Filtered FCS patterns and filters.
+```
 
 ## See also
 

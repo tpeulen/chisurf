@@ -42,7 +42,12 @@ FRET-efficiency histograms of three technical repeats (outlines) and their
 combined histogram (filled) — the repeats agree, and pooling sharpens the two
 populations.
 
-![Combining technical repeats](figures/combining_repeats.png)
+```{figure} figures/combining_repeats.png
+:name: fig-combining-repeats
+:width: 90%
+
+Combining technical repeats.
+```
 
 ## See also
 

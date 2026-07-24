@@ -41,7 +41,12 @@ apparent $E$ but differ in lifetime. PIE/ALEX streams are prepared by the
 An E–τ plot: two static FRET populations on the $\tau_0(1-E)$ line and a dynamic
 population displaced above it.
 
-![ns-ALEX FRET–lifetime plot](figures/nsalex_etau.png)
+```{figure} figures/nsalex_etau.png
+:name: fig-nsalex-etau
+:width: 90%
+
+ns-ALEX FRET–lifetime plot.
+```
 
 ## See also
 

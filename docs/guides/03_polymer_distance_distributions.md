@@ -59,7 +59,12 @@ Both are wired into ChiSurf's fit stages as distance-distribution FRET models:
 compact folded state (green), through a broad mixed distribution at the midpoint
 (blue), to an expanded unfolded state (red).
 
-![Polymer distance distributions](figures/polymer.png)
+```{figure} figures/polymer.png
+:name: fig-polymer
+:width: 90%
+
+Polymer distance distributions.
+```
 
 ## See also
 

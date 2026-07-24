@@ -47,7 +47,12 @@ The correction matrix recovered for a 4-channel polarising-beam-splitter setup
 with mild inter-channel leakage. Off-diagonal elements encode the cross-talk the
 matrix removes; the block structure reflects the parallel/perpendicular split.
 
-![Routing-correction matrix from dye solutions](figures/rcm.png)
+```{figure} figures/rcm.png
+:name: fig-rcm
+:width: 90%
+
+Routing-correction matrix from dye solutions.
+```
 
 ## See also
 

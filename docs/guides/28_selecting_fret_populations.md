@@ -54,7 +54,12 @@ ratio = len(low) / len(high)
 FRET-efficiency histograms of the selected high- and low-FRET sub-populations,
 ready for comparison of their fractions and positions.
 
-![Selecting FRET populations](figures/population_selection.png)
+```{figure} figures/population_selection.png
+:name: fig-population-selection
+:width: 90%
+
+Selecting FRET populations.
+```
 
 ## See also
 

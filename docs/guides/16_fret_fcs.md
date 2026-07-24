@@ -40,7 +40,12 @@ Donor and acceptor auto-correlations (positive relaxation) and the
 donor–acceptor cross-correlation (anti-correlated dip) riding on the common
 diffusion decay — the FRET-FCS signature of conformational exchange.
 
-![FRET-FCS auto and cross correlations](figures/fret_fcs.png)
+```{figure} figures/fret_fcs.png
+:name: fig-fret-fcs
+:width: 90%
+
+FRET-FCS auto and cross correlations.
+```
 
 ## See also
 

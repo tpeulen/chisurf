@@ -51,7 +51,12 @@ Simulated static bursts (constant acceptor probability) fall on the shot-noise
 limit, while dynamic bursts (alternating high/low FRET within each burst) sit
 clearly above it.
 
-![Burst Variance Analysis](figures/bva.png)
+```{figure} figures/bva.png
+:name: fig-bva
+:width: 90%
+
+Burst Variance Analysis.
+```
 
 ## See also
 

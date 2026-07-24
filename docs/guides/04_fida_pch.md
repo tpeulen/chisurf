@@ -52,7 +52,12 @@ The FIDA forward model for a single bright species (blue) and a two-species
 mixture (red), against a Poisson distribution of the same mean (dashed). The
 extra width beyond Poisson is exactly the brightness information FIDA extracts.
 
-![FIDA photon-counting histograms](figures/fida.png)
+```{figure} figures/fida.png
+:name: fig-fida
+:width: 90%
+
+FIDA photon-counting histograms.
+```
 
 ## See also
 

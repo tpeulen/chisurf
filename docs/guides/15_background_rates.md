@@ -36,7 +36,12 @@ An inter-photon-time histogram (log–log): the short-gap peak is the bright bur
 the long-gap tail is the Poisson background, whose exponential slope gives the
 background rate.
 
-![Background from inter-photon times](figures/background.png)
+```{figure} figures/background.png
+:name: fig-background
+:width: 90%
+
+Background from inter-photon times.
+```
 
 ## See also
 

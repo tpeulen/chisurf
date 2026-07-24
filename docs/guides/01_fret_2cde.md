@@ -76,7 +76,12 @@ between low and high FRET within each burst) were simulated and their FRET-2CDE
 computed. The static population sits on the ≈ 10 baseline across all efficiencies;
 the dynamic population is clearly elevated.
 
-![FRET-2CDE separates static from dynamic bursts](figures/2cde.png)
+```{figure} figures/2cde.png
+:name: fig-2cde
+:width: 90%
+
+FRET-2CDE separates static from dynamic bursts.
+```
 
 ## See also
 

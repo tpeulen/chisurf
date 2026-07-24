@@ -61,7 +61,12 @@ burst is no longer the same molecule. **Right:** the recurrence histogram for th
 initial low-E population is dominated by the high-E state, directly showing the
 inter-conversion the single-burst histogram cannot resolve.
 
-![RASP: same-molecule probability and recurrence histogram](figures/rasp.png)
+```{figure} figures/rasp.png
+:name: fig-rasp
+:width: 90%
+
+RASP: same-molecule probability and recurrence histogram.
+```
 
 ## See also
 

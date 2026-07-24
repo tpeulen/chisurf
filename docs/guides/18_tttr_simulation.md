@@ -43,7 +43,12 @@ A simulated confocal intensity trace (molecules transiting the Gaussian spot) an
 its autocorrelation — the closed loop that lets every FCS/burst analysis be
 validated against a known input.
 
-![Simulated confocal trace and its correlation](figures/simulation.png)
+```{figure} figures/simulation.png
+:name: fig-simulation
+:width: 90%
+
+Simulated confocal trace and its correlation.
+```
 
 ## See also
 
