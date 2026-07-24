@@ -1680,6 +1680,24 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self._build_files_tab()
         self._build_parameters_tab()
         self.tabWidget.setCurrentIndex(0)
+        self._pin_action_toolbar()
+
+    def _pin_action_toolbar(self) -> None:
+        """Pin the action toolbar above the tab/dock area, so it is always visible.
+
+        The Run/Save actions are built inside the Burst-MLE page; left there they
+        live *inside* one tab (and, after the AutoForm dock-shell conversion,
+        inside one dock), so they vanish whenever another tab/dock is on top.
+        Hosting the toolbar in the top-level layout — above ``tabWidget`` / the
+        dock form — keeps the primary actions pinned on top like every other
+        plugin toolbar. The dock conversion re-inserts the dock area *below* it
+        (``insertWidget(max(0, index), form)`` at the tab's old index, which is
+        now 1).
+        """
+        bar = getattr(self, "toolBar_mle", None)
+        if bar is not None and self.verticalLayout.indexOf(bar) == -1:
+            bar.setParent(None)
+            self.verticalLayout.insertWidget(0, bar)
 
     def _build_files_tab(self):
         """Files page: burst / IRF / background file group boxes."""

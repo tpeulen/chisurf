@@ -402,6 +402,31 @@ def test_apply_context_to_2cde_sets_folder(tmp_path: Path) -> None:
     assert seen == [str(folder)]
 
 
+def test_mle_action_toolbar_is_pinned_above_the_dock_area(qapp) -> None:
+    """MLE's action toolbar sits above the tab/dock area, not inside one dock.
+
+    The Run/Save actions are built inside the Burst-MLE page; left there they hide
+    inside a single tab/dock. They are lifted into the top-level layout so they
+    stay visible whichever dock is on top — and survive the AutoForm dock-shell
+    conversion (toolbar at index 0, dock form below it).
+    """
+    from chisurf.plugins.burst.burst_mle_analysis.wizard import MLELifetimeAnalysisWizard
+
+    w = MLELifetimeAnalysisWizard()
+    try:
+        assert w.verticalLayout.indexOf(w.toolBar_mle) == 0
+        assert w.verticalLayout.indexOf(w.tabWidget) > 0
+        w._convert_tabs_to_dock_shell()
+        qapp.processEvents()
+        assert w.verticalLayout.indexOf(w.toolBar_mle) == 0
+        form = getattr(w, "_dock_form", None)
+        if form is not None:
+            assert w.verticalLayout.indexOf(form) > 0
+    finally:
+        w.close()
+        qapp.processEvents()
+
+
 def test_run_button_is_identical_across_plugins(qapp) -> None:
     """The primary 'run/process' action is the same button in every plugin.
 
