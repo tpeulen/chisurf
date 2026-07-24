@@ -55,11 +55,28 @@ def _grab_fcs_model_editor():
     _grab(editor, "fcs_model_editor.png")
 
 
+def _grab_tcspc_lifetime_editor():
+    """Grab the TCSPC multi-exponential lifetime model editor for the TCSPC guide."""
+    import numpy as np
+
+    import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.data import DataCurve
+    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+
+    x = np.linspace(0, 25, 256)  # ns
+    data = DataCurve(x=x, y=np.exp(-x / 4.0) + 1.0)
+    fit = fit_mod.Fit(model_class=LifetimeModel, data=data)
+    editor = build_model_editor(fit.model)
+    editor.resize(560, 760)
+    _grab(editor, "tcspc_lifetime_editor.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
 
-    for grab in (_grab_fcs_model_editor,):
+    for grab in (_grab_fcs_model_editor, _grab_tcspc_lifetime_editor):
         try:
             grab()
         except Exception as exc:  # keep going; report which grab failed
