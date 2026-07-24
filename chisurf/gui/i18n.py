@@ -34,10 +34,69 @@ I18N_DIR = pathlib.Path(__file__).parent / "i18n"
 #: Keeps installed translators alive for the lifetime of the application.
 _installed: list[QtCore.QTranslator] = []
 
+#: Human-readable, self-endonym display names for known locale codes. Codes not
+#: listed fall back to the bare code so a new ``.qm`` is still selectable.
+LANGUAGE_DISPLAY_NAMES = {
+    "en": "English",
+    "de": "Deutsch",
+    "fr": "Français",
+    "es": "Español",
+    "it": "Italiano",
+    "pt": "Português",
+    "nl": "Nederlands",
+    "ja": "日本語",
+    "zh": "中文",
+    "ru": "Русский",
+}
+
 
 def _qm_path(code: str) -> pathlib.Path:
     """Return the expected ``.qm`` catalogue path for a locale ``code``."""
     return I18N_DIR / f"chisurf_{code}.qm"
+
+
+def available_languages() -> list[str]:
+    """Return the selectable UI language codes.
+
+    Always includes the canonical source language ``en`` (which needs no
+    catalogue), plus every locale that ships a compiled ``chisurf_<code>.qm``
+    catalogue. Sorted with ``en`` first, then alphabetically.
+    """
+    codes = {"en"}
+    try:
+        for qm in I18N_DIR.glob("chisurf_*.qm"):
+            code = qm.stem.removeprefix("chisurf_").strip()
+            if code:
+                codes.add(code)
+    except Exception:  # pragma: no cover - defensive
+        pass
+    rest = sorted(c for c in codes if c != "en")
+    return ["en", *rest]
+
+
+def language_display_name(code: str) -> str:
+    """Return the human-readable name for a locale ``code`` (endonym if known)."""
+    code = str(code or "").strip()
+    return LANGUAGE_DISPLAY_NAMES.get(code, code or "English")
+
+
+def apply_language(code: str, app: QtWidgets.QApplication | None = None) -> str:
+    """Switch the active UI language *live*, removing any previous catalogue.
+
+    Newly created widgets/dialogs render in ``code`` immediately; already-open
+    windows only fully retranslate after a restart (Qt re-reads most static text
+    at build time). Does not persist the choice — use
+    :func:`chisurf.core.i18n.set_locale` for that. Returns the applied code
+    (``en`` when the requested catalogue is missing).
+    """
+    app = app or QtWidgets.QApplication.instance()
+    # Drop previously installed catalogues so switching back to English (or to a
+    # different language) does not leave stale translations installed.
+    if app is not None:
+        for tr in _installed:
+            app.removeTranslator(tr)
+    _installed.clear()
+    return install_translation(app, code)
 
 
 def install_translation(

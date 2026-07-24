@@ -327,6 +327,9 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             editor = self._create_theme_editor(parent, value, tooltip)
             return editor
 
+        if self._is_language_setting(setting_path):
+            return self._create_language_editor(parent, value, tooltip)
+
         if self._is_folder_setting(setting_path):
             return self._create_folder_editor(parent, value, tooltip)
 
@@ -410,20 +413,30 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             return editor
 
     def _get_setting_path(self, index):
-        """Get the full path of a setting in the tree."""
+        """Get the full dotted path of a setting in the tree.
+
+        Works from either the key (col 0) or value (col 1) index of a row: at
+        each level the row's key lives in column 0, so we read the col-0 sibling
+        rather than ``current`` itself. (Reading only col-0 indices dropped the
+        leaf key whenever the value column was passed — which is exactly what
+        ``createEditor`` does — so the per-setting editor dispatch never fired.)
+        """
         path_parts = []
         current = index
 
-        # Traverse up the tree to build the path
         while current.isValid():
-            if current.column() == 0:  # Only add key names
-                path_parts.insert(0, current.data())
+            key = current.sibling(current.row(), 0).data()
+            if key:
+                path_parts.insert(0, key)
             current = current.parent()
 
         return ".".join(path_parts)
 
     def _is_theme_setting(self, setting_path: str) -> bool:
         return setting_path == "gui.style_sheet"
+
+    def _is_language_setting(self, setting_path: str) -> bool:
+        return setting_path == "gui.language"
 
     # Settings that name a directory rather than a file. These get a folder
     # picker even when the stored value is empty (the generic path widget only
@@ -514,6 +527,33 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
 
         return combo
 
+    def _create_language_editor(self, parent, value, tooltip):
+        """Combo box of available UI languages (display name shown, code stored).
+
+        Options are discovered from the shipped ``.qm`` catalogues (plus the
+        canonical ``en``); each item carries its locale code as item data so the
+        stored setting value stays a code while the user sees an endonym.
+        """
+        from chisurf.gui import i18n as _i18n
+
+        current_code = ("" if value is None else str(value)).strip() or "en"
+        combo = QtWidgets.QComboBox(parent)
+        combo.setProperty("isLanguage", True)
+
+        for code in _i18n.available_languages():
+            combo.addItem(_i18n.language_display_name(code), code)
+
+        idx = combo.findData(current_code)
+        combo.setCurrentIndex(idx if idx >= 0 else 0)
+        combo.setToolTip(
+            tooltip
+            or "UI language. Applies to newly opened tools/dialogs immediately; "
+            "restart to fully retranslate open windows."
+        )
+        # Commit as soon as the user picks a language (mirrors the checkbox path).
+        combo.activated.connect(lambda _i: self.commitData.emit(combo))
+        return combo
+
     def _choose_color(self, button):
         """Open a color dialog and set the selected color."""
         current_color = QtGui.QColor(button.text())
@@ -536,6 +576,24 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
         if file_path:
             line_edit.setText(file_path)
 
+    def setEditorData(self, editor, index):
+        """Populate the editor from the model.
+
+        The language combo stores a locale *code* but displays an endonym, so the
+        default (``setCurrentText`` with the raw value) would fail to match — set
+        its index by item data instead. Everything else uses the base behaviour.
+        """
+        if index.isValid() and index.column() == 1 and isinstance(editor, QtWidgets.QComboBox):
+            if editor.property("isLanguage"):
+                value = index.data(QtCore.Qt.UserRole)
+                if value is None:
+                    value = index.data(QtCore.Qt.EditRole)
+                code = ("" if value is None else str(value)).strip() or "en"
+                idx = editor.findData(code)
+                editor.setCurrentIndex(idx if idx >= 0 else 0)
+                return
+        super().setEditorData(editor, index)
+
     def setModelData(self, editor, model, index):
         """Set the model data from the editor."""
         if not index.isValid() or index.column() != 1:
@@ -550,6 +608,22 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             new_value = editor.currentText()
             model.setData(index, new_value, QtCore.Qt.EditRole)
             model.setData(index, new_value, QtCore.Qt.UserRole)
+            return
+
+        if self._is_language_setting(setting_path) and isinstance(editor, QtWidgets.QComboBox):
+            code = editor.currentData() or "en"
+            model.setData(index, code, QtCore.Qt.EditRole)
+            model.setData(index, code, QtCore.Qt.UserRole)
+            # Persist immediately and switch live so newly opened tools/dialogs
+            # render in the chosen language without waiting for the tree save.
+            try:
+                from chisurf.core.i18n import set_locale
+                from chisurf.gui.i18n import apply_language
+
+                set_locale(code)
+                apply_language(code)
+            except Exception:
+                logging.getLogger(__name__).debug("live language switch failed", exc_info=True)
             return
 
         if self._is_folder_setting(setting_path):
