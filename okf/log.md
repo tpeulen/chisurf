@@ -2,6 +2,26 @@
 
 ## 2026-07-24
 
+* **PRD-64 — close the parity gaps (near-total pyqtgraph parity).** After the
+  honest "read-passthrough, not full parity" correction, closed the three real
+  gaps: (1) `chiplot.colormap` is now a **hybrid** — `cp.colormap("viridis")`
+  returns a chiplot `Colormap`, `cp.colormap.get("CET-L4")` proxies to
+  pyqtgraph's colormap module (fixes the shadow that bit burst_bva/burst_h2mm);
+  (2) **handle attribute assignment** forwards to the native item
+  (`_Item.__setattr__`), so `item.attr = x` behaves as in pyqtgraph;
+  (3) **handle container/dunder protocols** (`len`/`[]`/iter; `bool` always
+  True) forward to the native item. Two deliberate exceptions remain, hit by no
+  real call site: attribute *assignment on the `Plot`/`Grid`/`ImageView` widget
+  wrappers* is intentionally NOT forwarded — verified overriding `__setattr__`
+  on a live `QWidget` is unnecessary (pyqtgraph sets attrs on items, not the
+  widget) and the class identity of chiplot's own `Color`/`ImageView`. Added 3
+  parity regression tests; chiplot suite 19 passed. **Also flagged a separate
+  pre-existing test-env issue**: constructing `pg.ImageView` (loads
+  `scipy.ndimage`) in the same pytest process as a mdtraj/IMP-heavy plugin test
+  segfaults on native-lib load-order — but neither the `test` (`-k 'not gui'`)
+  nor `test-gui` (only `plugins/**/test`) task co-runs `test/gui/test_chiplot.py`
+  with such a test, so CI is unaffected. Concept: [PRD-64](/prds/prd-64.md).
+
 * **Testing env documented — `arm64` conda has IMP.** Added an Environment section
   to [testing](/workflows/testing.md): the `arm64` conda env is canonical (Qt,
   compiled extensions, **IMP 2.24 + IMP.bff**, mdtraj), with the `PYTHONPATH` +

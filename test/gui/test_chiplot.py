@@ -242,6 +242,36 @@ def test_handle_passthrough_parity(qapp):
     assert any(g.startswith("Curve.") for g in cp.passthrough_gaps())
 
 
+def test_colormap_hybrid_parity(qapp):
+    import pyqtgraph as pg
+
+    # chiplot API: returns a chiplot Colormap reference
+    assert isinstance(cp.colormap("viridis"), cp.Colormap)
+    # pyqtgraph parity: cp.colormap.get(...) proxies to pg.colormap.get(...)
+    cm = cp.colormap.get("CET-L4")
+    assert isinstance(cm, pg.ColorMap)
+
+
+def test_handle_setattr_forwards_to_native(qapp):
+    plot = cp.Plot()
+    c = plot.line([0, 1], [0, 1])
+    c.customFlag = 99  # arbitrary attr assignment
+    assert getattr(c.native, "customFlag", None) == 99  # landed on the native item
+    assert c.customFlag == 99  # and reads back
+
+
+def test_handle_truthiness_and_container_parity(qapp):
+    plot = cp.Plot()
+    c = plot.line([0, 1], [0, 1])
+    assert bool(c) is True  # a live handle is always truthy
+    if not c:  # exercises the truthiness path
+        raise AssertionError("handle should be truthy")
+    s = plot.scatter([0, 1, 2], [0, 1, 2])
+    # ScatterPlotItem isn't sized -> len forwards the native TypeError
+    with pytest.raises(TypeError):
+        len(s)
+
+
 def test_unknown_symbol_raises(qapp):
     with pytest.raises(AttributeError):
         cp.this_symbol_does_not_exist_anywhere

@@ -254,21 +254,57 @@ class Colormap:
     source: str = "matplotlib"
 
 
-def colormap(name: str, source: str = "matplotlib") -> Colormap:
-    """Return a :class:`Colormap` reference by name.
+class _ColormapProxy:
+    """``chiplot.colormap`` — callable *and* a pyqtgraph-parity module proxy.
 
-    Parameters
-    ----------
-    name : str
-        Colormap identifier.
-    source : str
-        Namespace hint for the backend.
-
-    Returns
-    -------
-    Colormap
+    - Called (``colormap("viridis")``) it returns a chiplot :class:`Colormap`
+      reference, the renderer-neutral chiplot API.
+    - Attribute access (``colormap.get(...)``, ``colormap.listMaps()``, …) is
+      proxied to the active backend's own ``colormap`` module, so pyqtgraph call
+      sites doing ``colormap.get("CET-L4")`` keep working at parity (this name is
+      one of the few chiplot shadows, so it can't fall through the module-level
+      ``__getattr__`` on its own).
     """
-    return Colormap(name=name, source=source)
+
+    def __call__(self, name: str, source: str = "matplotlib") -> Colormap:
+        """Return a :class:`Colormap` reference by name.
+
+        Parameters
+        ----------
+        name : str
+            Colormap identifier.
+        source : str
+            Namespace hint for the backend.
+
+        Returns
+        -------
+        Colormap
+        """
+        return Colormap(name=name, source=source)
+
+    def __getattr__(self, attr: str):
+        """Proxy attribute access to the backend's raw ``colormap`` module.
+
+        Parameters
+        ----------
+        attr : str
+            Attribute requested (``get``, ``listMaps``, …).
+
+        Raises
+        ------
+        AttributeError
+            If the backend has no raw ``colormap`` module or lacks ``attr``.
+        """
+        from chisurf.gui.chiplot.backends import get_backend
+
+        raw = get_backend().raw_module()
+        raw_cmap = getattr(raw, "colormap", None) if raw is not None else None
+        if raw_cmap is not None and hasattr(raw_cmap, attr):
+            return getattr(raw_cmap, attr)
+        raise AttributeError(f"colormap has no attribute {attr!r}")
+
+
+colormap = _ColormapProxy()
 
 
 def int_color(index: int, count: int = 9) -> Color:

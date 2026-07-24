@@ -15,25 +15,30 @@ Two levels:
   and every drawn **handle** proxy unknown attribute *reads* to their
   underlying backend object.
 
-**Scope and limits (this is NOT total parity — do not rely on a blind
-``import pyqtgraph as pg`` → ``import chisurf.gui.chiplot as pg`` swap).**
-Passthrough covers the common, high-value case: *reading or calling* any
-method/attribute/signal chiplot does not define natively (``.setData``,
-``.getViewBox``, ``.sigClicked``, …). It does **not** cover:
+**Coverage.** Passthrough is deliberately near-total for real pyqtgraph usage:
 
-1. **Shadowed names.** Names chiplot defines itself do not fall through:
-   ``colormap`` (chiplot's is a function, so ``cp.colormap.get(...)`` fails —
-   use ``cp.get_backend().raw_module().colormap`` instead), ``Color``, and
-   ``ImageView`` (chiplot's own class — ``isinstance(x, cp.ImageView)`` is not
-   ``pg.ImageView``).
-2. **Attribute assignment.** ``obj.foo = x`` sets on the chiplot wrapper, not
-   the native object (``__setattr__`` is not forwarded).
-3. **Dunder / container protocols.** ``len(handle)``, ``handle[i]``, iteration —
-   Python resolves these on the type, bypassing ``__getattr__``.
+- **Reads/calls** — any method/attribute/signal chiplot lacks natively
+  (``.setData``, ``.getViewBox``, ``.sigClicked``, …) forwards to the native
+  object.
+- **Attribute assignment on handles** — ``handle.foo = x`` forwards to the
+  native item (``_Item.__setattr__``), so ``item.attr = v`` behaves as in
+  pyqtgraph.
+- **Container/dunder protocols on handles** — ``len(handle)``, ``handle[i]``,
+  iteration forward to the native item; ``bool(handle)`` is always ``True``.
+- **``colormap``** — a shadowed name that can't fall through the module
+  ``__getattr__``, so ``chiplot.colormap`` is a hybrid: called it returns a
+  chiplot :class:`~chisurf.gui.chiplot.style.Colormap`; attribute access
+  (``colormap.get(...)``) proxies to the backend's raw ``colormap`` module.
 
-The intended migration path is therefore a *real port to the chiplot API* (with
-``.native`` for the rare pyqtgraph-specific bit), not a blind alias swap;
-passthrough is the safety net that keeps a partially-ported file running.
+Two deliberate, rarely-hit exceptions remain: attribute *assignment on the
+`Plot`/`Grid`/`ImageView` widget wrappers* is not forwarded (overriding
+``__setattr__`` on a live ``QWidget`` risks native-teardown crashes, and real
+pyqtgraph code sets attributes on *items*, not on the plot widget); and the
+class-identity of chiplot's own ``Color``/``ImageView`` differs from pyqtgraph's
+(no chisurf call site does ``isinstance(x, pg.Color/pg.ImageView)``). The
+intended migration path is still a real port to the chiplot API, with ``.native``
+for the rare pyqtgraph-specific bit; passthrough keeps a partially-ported file
+running at parity.
 
 Every fall-through emits a :class:`ChiplotPassthroughWarning` **once per symbol**
 and is recorded; :func:`passthrough_gaps` returns the set of everything that has

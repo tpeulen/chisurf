@@ -203,17 +203,21 @@ natively falls through to the backend's raw library — flagged**:
   unknown attribute *reads/calls* (`getViewBox`, `setLogMode`, `.setData`, …) to
   their underlying backend object.
 
-**Scope — read-passthrough, not total parity.** Passthrough covers *reading or
-calling* anything chiplot lacks natively, which is the vast majority of real
-usage. It does **not** cover: (1) names chiplot itself defines — `colormap`
-(use `cp.get_backend().raw_module().colormap`), `Color`, `ImageView` (so
-`isinstance(x, cp.ImageView)` ≠ `pg.ImageView`); (2) attribute *assignment*
-(`obj.foo = x` hits the wrapper, not the native — `__setattr__` is unforwarded);
-(3) dunder/container protocols (`len`, `[]`, iteration). So a **blind
-`import pyqtgraph as pg` → `import chisurf.gui.chiplot as pg` swap is not
-guaranteed to work** — the migration path is a real port to the chiplot API
-(with `.native` for the rare pyqtgraph-specific case), and passthrough is the
-safety net that keeps a partially-ported file running.
+**Coverage — near-total for real usage.** Passthrough forwards to the native
+object: (a) all *reads/calls* chiplot lacks natively (`.setData`, `.getViewBox`,
+`.sigClicked`, …); (b) *attribute assignment on handles* (`item.attr = x`);
+(c) *container/dunder protocols on handles* (`len`, `[]`, iteration; `bool` is
+always `True`). The one shadowed name that real code hits — `colormap` — is a
+**hybrid**: `cp.colormap("viridis")` returns a chiplot `Colormap` while
+`cp.colormap.get(...)` proxies to pyqtgraph. Two deliberate, unused-in-practice
+exceptions remain: attribute *assignment on the `Plot`/`Grid`/`ImageView` widget
+wrappers* is not forwarded (overriding `__setattr__` on a live `QWidget` risks
+native-teardown segfaults, and pyqtgraph code sets attributes on *items*, not
+the plot widget), and chiplot's own `Color`/`ImageView` class identity differs
+from pyqtgraph's (no call site does `isinstance(x, pg.Color/pg.ImageView)`). The
+migration path is still a real port to the chiplot API with `.native` for the
+rare pyqtgraph-specific case; passthrough keeps a partially-ported file running
+at parity.
 
 Every fall-through raises a `ChiplotPassthroughWarning` **once per symbol** and
 is recorded; `chiplot.passthrough_gaps()` returns the exact set of pyqtgraph

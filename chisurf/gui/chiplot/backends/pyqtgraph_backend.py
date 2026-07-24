@@ -206,6 +206,45 @@ class _Item:
             return getattr(native, name)
         raise AttributeError(name)
 
+    def __setattr__(self, name, value):
+        """Forward attribute *assignment* to the native item for parity.
+
+        Wrapper internals (``_native``/``_pi``) and chiplot's own properties stay
+        on the wrapper; a name the native item already exposes is set on the
+        native item (so ``item.attr = x`` behaves as in pyqtgraph); anything else
+        is set on the wrapper (consistent read-back via normal lookup).
+        """
+        if name.startswith("_") or isinstance(getattr(type(self), name, None), property):
+            object.__setattr__(self, name, value)
+            return
+        native = self.__dict__.get("_native")
+        if native is not None:
+            setattr(native, name, value)
+            return
+        object.__setattr__(self, name, value)
+
+    # -- transparent container/dunder forwarding (pyqtgraph parity) ---------
+    # ``__bool__`` returns True so truthiness (``if handle:``) never falls through
+    # to ``__len__`` on items that aren't sized. The rest forward to the native
+    # item and raise the native's own TypeError when it isn't supported.
+    def __bool__(self):
+        return True
+
+    def __len__(self):
+        return len(self._native)
+
+    def __getitem__(self, key):
+        return self._native[key]
+
+    def __setitem__(self, key, value):
+        self._native[key] = value
+
+    def __iter__(self):
+        return iter(self._native)
+
+    def __contains__(self, item):
+        return item in self._native
+
 
 class _Curve(_Item):
     """Handle for a pyqtgraph ``PlotDataItem`` / ``PlotCurveItem``."""
