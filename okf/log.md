@@ -2,6 +2,21 @@
 
 ## 2026-07-24
 
+* **chiplot Batch 8 (PRD-64 Phase 3 opener) — migrated 6 plugin/widget tools off
+  pyqtgraph onto the native chiplot API (allow-list 57 → 51).** Ported
+  `plugins/pch`, `plugins/fret_line`, `plugins/tttr/tttr_microtime_shifter`,
+  `plugins/tttr/tttr_time_windows`, `plugins/vv_vh_g_factor`, and
+  `widgets/models/tcspc/kappa2_helpers` from raw `pg.PlotWidget`/`mkPen`/
+  `LinearRegionItem`/`InfiniteLine`/`TextItem`/`intColor` to `cp.Plot` +
+  `line`/`scatter`/`region`/`vline`/`hline`/`text`/`int_color`/`set_log`/
+  `legend`/`grid`. No new native API was required — every call mapped onto
+  existing chiplot verbs. Marker/region interaction moved from
+  `sigPositionChanged` + `blockSignals` to `handle.on_change(..., final=…)`
+  (drag-only signalling removes the block-signals re-entrancy dance), and the
+  optional-pyqtgraph `pg is None` guards became backend-availability probes
+  (`cp.get_backend()`). Seam guard green (`test/test_pyqtgraph_seam.py`), chiplot
+  suite 19 passed, all 6 modules import-smoke clean, and the migrated plotting
+  paths were exercised headlessly. See [PRD-64](prds/prd-64.md).
 * **Guides refinement: stale paths, wrong API snippets, and seven missing
   `Result` sections.** An audit of all 44 `docs/guides/` pages against the page
   template (Theory admonition → What it does → In ChiSurf → Result + figure →

@@ -161,7 +161,7 @@
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="250"/>
         <source>Routing Chs: comma-separated integers (e.g. &quot;0, 1&quot;). Microtimes: microtime ranges per detector in start:end or start-end form; separate multiple ranges with &apos;;&apos; or &apos;,&apos;; negative values allowed.</source>
-        <translation type="unfinished"></translation>
+        <translation>Routing-Kanäle: kommagetrennte Ganzzahlen (z. B. "0, 1"). Mikrozeiten: Mikrozeit-Bereiche pro Detektor in der Form start:end oder start-end; mehrere Bereiche mit ';' oder ',' trennen; negative Werte erlaubt.</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_channeldefinition/detector_wizard_page.ui" line="269"/>
@@ -834,7 +834,7 @@
     <message>
         <location filename="../widgets/experiments/pda/pda_tttr.ui" line="73"/>
         <source>TW [ms]</source>
-        <translation type="unfinished"></translation>
+        <translation>ZF [ms]</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/pda/pda_tttr.ui" line="80"/>
@@ -844,7 +844,7 @@
     <message>
         <location filename="../widgets/experiments/pda/pda_tttr.ui" line="93"/>
         <source>Microtime ranges for Ch0: use start:end or start-end; separate multiple ranges with &apos;;&apos; or &apos;,&apos;; negative values allowed. New syntax: use &apos;:&apos; or &apos;-&apos; to separate start and end values, e.g. &apos;1:16000&apos; or &apos;1-16000&apos;. Range separators also support negatives, e.g. &apos;-1:16000&apos; or &apos;-1-16000&apos;.</source>
-        <translation type="unfinished"></translation>
+        <translation>Mikrozeit-Bereiche für Kanal0: start:end oder start-end verwenden; mehrere Bereiche mit ';' oder ',' trennen; negative Werte erlaubt. Neue Syntax: ':' oder '-' zum Trennen von Start- und Endwerten verwenden, z. B. '1:16000' oder '1-16000'. Bereichstrenner unterstützen auch negative Werte, z. B. '-1:16000' oder '-1-16000'.</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/pda/pda_tttr.ui" line="247"/>
@@ -904,7 +904,7 @@
     <message>
         <location filename="../widgets/experiments/pda/pda_tttr.ui" line="244"/>
         <source>Microtime ranges for Ch1: use start:end or start-end; separate multiple ranges with &apos;;&apos; or &apos;,&apos;; negative values allowed.</source>
-        <translation type="unfinished"></translation>
+        <translation>Mikrozeit-Bereiche für Kanal1: start:end oder start-end verwenden; mehrere Bereiche mit ';' oder ',' trennen; negative Werte erlaubt.</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/pda/pda_tttr.ui" line="260"/>
@@ -1725,7 +1725,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="164"/>
         <source>Microtime ranges for channel B: use start:end or start-end; separate multiple ranges with &apos;;&apos; or &apos;,&apos;; negative values allowed.</source>
-        <translation type="unfinished"></translation>
+        <translation>Mikrozeit-Bereiche für Kanal B: start:end oder start-end verwenden; mehrere Bereiche mit ';' oder ',' trennen; negative Werte erlaubt.</translation>
     </message>
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="200"/>
@@ -1740,7 +1740,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../widgets/wizard/tttr_correlator/tttr_correlator.ui" line="197"/>
         <source>Microtime ranges for channel A: use start:end or start-end; separate multiple ranges with &apos;;&apos; or &apos;,&apos;; negative values allowed.</source>
-        <translation type="unfinished"></translation>
+        <translation>Mikrozeit-Bereiche für Kanal A: start:end oder start-end verwenden; mehrere Bereiche mit ';' oder ',' trennen; negative Werte erlaubt.</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/tttr_correlate/tttr_correlate.ui" line="118"/>
@@ -3141,7 +3141,30 @@ The per-channel IRF comes from its **Detector settings** (normalized to unity). 
 Each labeling state is **one component** — the fFCS filters recover the populations, so no fractions are entered here.
 
 The preview overlays the ideal green/red/yellow decays live.</source>
-        <translation type="unfinished"></translation>
+        <translation># FRET-Spezies-Zerfall
+
+Ein Markierungszustand (nur Donor, FRET-Paar oder nur Akzeptor) erzeugt **gekoppelte, unterschiedliche** Zerfälle pro Detektionskanal:
+
+- **grün** (Donor-Emission, Donor-Anregung) — Donor-Zerfall, in einem DA-Paar FRET-gequencht.
+- **rot** (Akzeptor-Emission, Donor-Anregung) — der FRET-*sensibilisierte* Akzeptor (sein Anstieg wird durch den Donor-Zerfall geformt), plus Donor-Durchbluten (α) und direkt angeregter Akzeptor (δ).
+- **gelb** (Akzeptor-Emission, Akzeptor-Anregung) — der eigene Zerfall des Akzeptors.
+
+## FRET-Eingabe
+Entweder eine **Transfereffizienz E** oder ein **verteilter Abstand** (Gauß-Komponenten: Mittelwert R, σ, Anteil) + Förster-Radius R0 (κ²) — dasselbe Abstandsmodell wie die TCSPC-FRET-Fits. **x(nur D)** ist der Nur-Donor-Anteil innerhalb der DA-Population.
+
+## Übersprechen (α/β/γ/δ)
+Hellenkamp-Faktoren: α = Donor-Durchbluten nach Rot, δ = direkte Akzeptor-Anregung, γ = Detektions-/QA-Verhältnis, β = Anregungsfluss-Verhältnis. Diese steuern die vollständigen **Anregungs**- und **Emissions**-Matrizen, die die relativen Kanalamplituden festlegen. **Aus Kalibrierung initialisieren** füllt sie aus dem ausgewählten Detektoraufbau.
+
+## Anisotropie
+Pro Chromophor r(t) = (r0−r∞)·e^(−t/ρ)+r∞. Mit aktiviertem **Polarisiert** teilt sich jeder Kanal in ∥/⊥ (der G-Faktor korrigiert die ⊥-Detektion).
+
+## IRF &amp; Faltung
+Die kanalweise IRF stammt aus ihren **Detektoreinstellungen** (auf eins normiert). Die **Laserperiode** (periodische Faltung) und die **Farbverschiebung** sind komponentenweise.
+
+## Anteile
+Jeder Markierungszustand ist **eine Komponente** — die fFCS-Filter gewinnen die Populationen zurück, daher werden hier keine Anteile eingegeben.
+
+Die Vorschau überlagert die idealen grün/rot/gelb-Zerfälle live.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="24"/>
@@ -3167,7 +3190,28 @@ Each row is one exponential component: **Amplitude** (relative weight) and **Lif
 Enable **Poisson noise** to sample a finite-count observation from the given **Photons** and **Seed**; otherwise the ideal pattern is normalized to unit sum.
 
 The preview updates live as you edit.</source>
-        <translation type="unfinished"></translation>
+        <translation># Editor für synthetische Zerfälle
+
+Einen Fluoreszenzzerfall aus einem Amplituden-/Lebensdauerspektrum aufbauen oder ein gemessenes Muster laden.
+
+## Lebensdauerspektrum
+Jede Zeile ist eine exponentielle Komponente: **Amplitude** (relatives Gewicht) und **Lebensdauer** (ns). Rechtsklick auf die Spektrumstabelle oder ➕ / ➖ verwenden, um Komponenten hinzuzufügen oder zu entfernen.
+
+- **📂 Muster…** — ein gemessenes Zerfallshistogramm (Text / .npy) anstelle des Spektrums verwenden.
+- **📥 Fit…** — das Lebensdauerspektrum aus einem offenen ChiSurf-Fit kopieren.
+
+## IRF
+- **Experimentelle IRF** — eine gemessene Instrumentenantwort laden (überschreibt den synthetischen Gauß).
+- **Gauß-FWHM / Schiefe** — eine synthetische (optional schiefe) Gauß-IRF; Schiefe 0 = symmetrisch.
+- **Farbverschiebung (ns)** — periodische Sub-Bin-Zeitverschiebung der IRF.
+
+## Faltung
+- **Laserperiode (ns)** — für die periodische Faltung setzen (z. B. 12,5 ns bei 80 MHz); dies fügt den Interpuls-Schwanz früherer Pulse hinzu. 0 = aperiodisch.
+
+## Schrotrauschen
+**Poisson-Rauschen** aktivieren, um eine Beobachtung mit endlicher Zählrate aus den angegebenen **Photonen** und dem **Startwert** zu ziehen; andernfalls wird das ideale Muster auf die Summe eins normiert.
+
+Die Vorschau aktualisiert sich live während der Bearbeitung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="25"/>
@@ -3183,7 +3227,13 @@ Given the reduced χ² and degrees of freedom of a simpler model (χ²₁, n₁)
 The largest reduced χ² still compatible with the minimum χ² of a fit at the chosen confidence: `χ²max = χ²min·(1 + p/ν·F.isf(1−conf, p, ν))` with p parameters and ν degrees of freedom.
 
 Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight from any open fit.</source>
-        <translation type="unfinished"></translation>
+        <translation>**F-Test (zwei geschachtelte Modelle vergleichen).**
+Gegeben das reduzierte χ² und die Freiheitsgrade eines einfacheren Modells (χ²₁, n₁) und eines komplexeren (χ²₂, n₂), folgt die Konfidenz aus der F-Verteilung `conf = F.cdf(χ²₂/χ²₁, n₁, n₂)`. Wird stattdessen die Konfidenz bearbeitet, wird nach der χ²₂-Schwelle aufgelöst: `χ²₂ = χ²₁·(n₂/n₁)·F.isf(1−conf, n₁, n₂)`.
+
+**χ²-max (Obergrenze aus einem einzelnen Fit).**
+Das größte reduzierte χ², das beim gewählten Konfidenzniveau noch mit dem χ²-Minimum eines Fits verträglich ist: `χ²max = χ²min·(1 + p/ν·F.isf(1−conf, p, ν))` mit p Parametern und ν Freiheitsgraden.
+
+**Aus Fit ▾** in der Werkzeugleiste verwenden, um n_points, n_free und χ²r direkt aus einem offenen Fit zu übernehmen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="27"/>
@@ -3193,7 +3243,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
 - **G, l₁, l₂** — polarization calibration (G-factor detection ratio and the two mixing factors) used when *Pol* is on so anisotropy and lifetimes are fit together.
 - **R₀** — Förster radius (Å).
 - **Laser period** — enables periodic (wrap-around) convolution.</source>
-        <translation type="unfinished"></translation>
+        <translation>**Instrument- / Kalibrierparameter** werden aus dem ausgewählten Aufbau (die Aufbauauswahl oben) vorbelegt und vom Auto-Fit und den FRET-Spezies-Zerfällen verwendet.
+
+- **α, β, γ, δ** — die Hellenkamp-Übersprech-Faktoren (Durchbluten, direkte Anregung, Detektionskorrektur).
+- **G, l₁, l₂** — Polarisationskalibrierung (G-Faktor-Detektionsverhältnis und die zwei Mischfaktoren), verwendet bei aktivem *Pol*, sodass Anisotropie und Lebensdauern gemeinsam gefittet werden.
+- **R₀** — Förster-Radius (Å).
+- **Laserperiode** — aktiviert die periodische (umlaufende) Faltung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="28"/>
@@ -3498,12 +3553,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="92"/>
         <source>After docking, compute and export the full P(R_DA) distance distributions (real AV convolution) to distance_distributions.csv.</source>
-        <translation type="unfinished"></translation>
+        <translation>Nach dem Docking die vollständigen P(R_DA)-Abstandsverteilungen (echte AV-Faltung) berechnen und nach distance_distributions.csv exportieren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="93"/>
         <source>After resolving the lifetimes, compute the species-resolved (lifetime-filtered) correlation and fit the interconversion relaxation time + rate matrix.</source>
-        <translation type="unfinished"></translation>
+        <translation>Nach dem Auflösen der Lebensdauern die spezies-aufgelöste (lebensdauergefilterte) Korrelation berechnen und die Umwandlungs-Relaxationszeit + Ratenmatrix fitten.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="94"/>
@@ -3518,7 +3573,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="96"/>
         <source>Also build the 1D-FDC (zero-lag decay coincidence) and fit it with the explicit maximum-entropy method ported from the MATLAB toolbox, then decompose the distribution into Gaussian lifetime components.</source>
-        <translation type="unfinished"></translation>
+        <translation>Zusätzlich die 1D-FDC (Zerfallskoinzidenz bei Null-Lag) aufbauen und mit der expliziten Maximum-Entropie-Methode fitten, die aus der MATLAB-Toolbox portiert wurde, dann die Verteilung in Gauß-Lebensdauerkomponenten zerlegen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="97"/>
@@ -3708,7 +3763,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="135"/>
         <source>Axial (z) sample spacing of the numeric PSF file, in µm. Only used for PSF model = 'radial' when not supplied by the file itself (.npz).</source>
-        <translation type="unfinished"></translation>
+        <translation>Axialer (z-)Abtastabstand der numerischen PSF-Datei, in µm. Nur beim PSF-Modell = 'radial' verwendet, wenn nicht von der Datei selbst geliefert (.npz).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="136"/>
@@ -3723,7 +3778,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="138"/>
         <source>Axial half-extent of the box (µm, default 4), usually ~2× box_xy for a prolate confocal volume.</source>
-        <translation type="unfinished"></translation>
+        <translation>Axiale Halbausdehnung der Box (µm, Standard 4), üblicherweise ~2× box_xy für ein prolates konfokales Volumen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="140"/>
@@ -3733,17 +3788,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="141"/>
         <source>BOCPD cp prob</source>
-        <translation type="unfinished"></translation>
+        <translation>BOCPD-Wechselpunkt-Wahrsch.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="142"/>
         <source>BOCPD prior count</source>
-        <translation type="unfinished"></translation>
+        <translation>BOCPD-Prior-Anzahl</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="143"/>
         <source>BOCPD prior dur</source>
-        <translation type="unfinished"></translation>
+        <translation>BOCPD-Prior-Dauer</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="144"/>
@@ -3798,7 +3853,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="155"/>
         <source>Bead stack: use the z-slider to browse slices, click a bead to select+fit it. Green squares mark detected beads on the current slice; the yellow circle is the fitted lateral FWHM.</source>
-        <translation type="unfinished"></translation>
+        <translation>Kügelchen-Stapel: mit dem z-Regler durch die Schichten blättern, ein Kügelchen anklicken, um es auszuwählen und zu fitten. Grüne Quadrate markieren erkannte Kügelchen in der aktuellen Schicht; der gelbe Kreis ist die gefittete laterale FWHM.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="156"/>
@@ -3808,7 +3863,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="157"/>
         <source>Bearer token for the endpoint. Pasting a key auto-saves it and tests the connection. Not needed for most local servers.</source>
-        <translation type="unfinished"></translation>
+        <translation>Bearer-Token für den Endpunkt. Das Einfügen eines Schlüssels speichert ihn automatisch und testet die Verbindung. Für die meisten lokalen Server nicht erforderlich.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="158"/>
@@ -3843,12 +3898,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="164"/>
         <source>Bins at or below this count are zeroed before building the LUT (or drag the green line).</source>
-        <translation type="unfinished"></translation>
+        <translation>Bins mit einer Zählrate an oder unter diesem Wert werden vor dem Aufbau der LUT auf null gesetzt (oder die grüne Linie ziehen).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="165"/>
         <source>Bins the photon stream into counting intervals of bin_time_us and histograms the counts per bin into the photon counting histogram P(k). An optional micro-time window gates the photons before binning.</source>
-        <translation type="unfinished"></translation>
+        <translation>Teilt den Photonenstrom in Zählintervalle von bin_time_us und histogrammiert die Zählungen pro Bin in das Photon-Counting-Histogramm P(k). Ein optionales Mikrozeit-Fenster gattert die Photonen vor dem Binning.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="166"/>
@@ -3858,7 +3913,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="167"/>
         <source>Block-rebin the 2D-FDC down to this many bins before inversion (speed vs resolution).</source>
-        <translation type="unfinished"></translation>
+        <translation>Die 2D-FDC vor der Inversion blockweise auf diese Anzahl von Bins herunter-binnen (Geschwindigkeit vs. Auflösung).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="168"/>
@@ -3913,7 +3968,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="178"/>
         <source>Browse segmented molecules; the canvas marks the selected molecule and the panel shows its Fit23 result.</source>
-        <translation type="unfinished"></translation>
+        <translation>Segmentierte Moleküle durchsuchen; die Zeichenfläche markiert das ausgewählte Molekül und das Panel zeigt sein Fit23-Ergebnis.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="179"/>
@@ -3963,12 +4018,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="189"/>
         <source>Build 2D-FDCs at several lags and jointly invert them with one shared lifetime distribution (global multi-lag 2D-MEM). Advanced; state separation is ill-conditioned for equal-brightness data.</source>
-        <translation type="unfinished"></translation>
+        <translation>2D-FDCs bei mehreren Lags aufbauen und mit einer gemeinsamen Lebensdauerverteilung gemeinsam invertieren (globales Multi-Lag-2D-MEM). Fortgeschritten; die Zustandstrennung ist für gleich helle Daten schlecht konditioniert.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="190"/>
         <source>Build a 2D-FDC matrix from TTTR macro/micro times.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine 2D-FDC-Matrix aus TTTR-Makro-/Mikrozeiten aufbauen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="191"/>
@@ -4033,7 +4088,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="206"/>
         <source>By time joins the trajectories along the frame axis (same topology, frames appended). By atoms stacks the trajectories along the atom axis (same number of frames, topologies merged).</source>
-        <translation type="unfinished"></translation>
+        <translation>„Nach Zeit“ fügt die Trajektorien entlang der Bildachse zusammen (gleiche Topologie, Bilder angehängt). „Nach Atomen“ stapelt die Trajektorien entlang der Atomachse (gleiche Bildanzahl, Topologien zusammengeführt).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="207"/>
@@ -4048,7 +4103,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="209"/>
         <source>CLSM images built for the selected channels (+ to create, − to remove).</source>
-        <translation type="unfinished"></translation>
+        <translation>Für die ausgewählten Kanäle aufgebaute CLSM-Bilder (+ zum Erstellen, − zum Entfernen).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="210"/>
@@ -4058,22 +4113,22 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="211"/>
         <source>CUSUM alpha</source>
-        <translation type="unfinished"></translation>
+        <translation>CUSUM-Alpha</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="212"/>
         <source>CUSUM beta</source>
-        <translation type="unfinished"></translation>
+        <translation>CUSUM-Beta</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="213"/>
         <source>CUSUM bg rate</source>
-        <translation type="unfinished"></translation>
+        <translation>CUSUM-HG-Rate</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="214"/>
         <source>CUSUM s/b ratio</source>
-        <translation type="unfinished"></translation>
+        <translation>CUSUM-S/H-Verhältnis</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="215"/>
@@ -4208,7 +4263,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="244"/>
         <source>Characteristic anisotropy-decay time distribution: rotational depolarisation (rho) in parallel with energy-transfer depolarisation (2·k_FRET).</source>
-        <translation type="unfinished"></translation>
+        <translation>Charakteristische Anisotropie-Zerfallszeit-Verteilung: rotatorische Depolarisation (rho) parallel zur Energietransfer-Depolarisation (2·k_FRET).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="245"/>
@@ -4253,17 +4308,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="254"/>
         <source>Classic Breakout game with progressive difficulty, multiple brick types, mouse/keyboard control, and particle effects; contained in the Games hub.</source>
-        <translation type="unfinished"></translation>
+        <translation>Klassisches Breakout-Spiel mit ansteigender Schwierigkeit, mehreren Steintypen, Maus-/Tastatursteuerung und Partikeleffekten; enthalten im Spiele-Hub.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="255"/>
         <source>Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub.</source>
-        <translation type="unfinished"></translation>
+        <translation>Klassisches Pong-Spiel mit CPU-Gegner, Punktezählung und Partikeleffekten; enthalten im Spiele-Hub.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="256"/>
         <source>Classic Tetris game with line clearing, score tracking, and next-piece preview; contained in the Games hub.</source>
-        <translation type="unfinished"></translation>
+        <translation>Klassisches Tetris-Spiel mit Linienräumung, Punktezählung und Vorschau des nächsten Steins; enthalten im Spiele-Hub.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="258"/>
@@ -4293,7 +4348,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="266"/>
         <source>Coasting: a molecule far from BOTH the focus and the box surface skips its per-window diffusion/emission and is caught up EXACTLY on wake. Large speedup for dilute samples and statistically exact (±0.1%) — safe to leave on for FCS/smFRET. No effect during a scan.</source>
-        <translation type="unfinished"></translation>
+        <translation>Coasting: Ein Molekül, das sowohl vom Fokus als auch von der Boxoberfläche weit entfernt ist, überspringt seine fensterweise Diffusion/Emission und wird beim Aufwachen EXAKT nachgeholt. Große Beschleunigung für verdünnte Proben und statistisch exakt (±0,1 %) — für FCS/smFRET bedenkenlos aktiviert lassen. Kein Effekt während eines Scans.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="267"/>
@@ -4313,7 +4368,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="270"/>
         <source>Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools.</source>
-        <translation type="unfinished"></translation>
+        <translation>Kombinierter andockbarer Arbeitsbereich für Trajektorien-Ausrichtung, -Umwandlung, Energieberechnung, FRET, Zusammenführung, Kollisionsentfernung, Drehung/Verschiebung, Topologiespeicherung und Trajektorienenergie-Werkzeuge.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="271"/>
@@ -4323,27 +4378,27 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="272"/>
         <source>Comma or space-separated detector routing channels for channel A.</source>
-        <translation type="unfinished"></translation>
+        <translation>Komma- oder leerzeichengetrennte Detektor-Routing-Kanäle für Kanal A.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="273"/>
         <source>Comma or space-separated detector routing channels for channel B.</source>
-        <translation type="unfinished"></translation>
+        <translation>Komma- oder leerzeichengetrennte Detektor-Routing-Kanäle für Kanal B.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="274"/>
         <source>Comma-separated atom ids used as the reference set for the superposition. Leave empty to align on all atoms.</source>
-        <translation type="unfinished"></translation>
+        <translation>Kommagetrennte Atom-IDs, die als Referenzsatz für die Überlagerung verwendet werden. Leer lassen, um an allen Atomen auszurichten.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="275"/>
         <source>Comma-separated reference lifetimes (ns) drawn as the iso-lifetime grid and semicircle ticks.</source>
-        <translation type="unfinished"></translation>
+        <translation>Kommagetrennte Referenz-Lebensdauern (ns), die als Iso-Lebensdauer-Gitter und Halbkreis-Markierungen gezeichnet werden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="276"/>
         <source>Comma-separated structural files (PDB or bead coordinate files). Set with the 'Select files…' button.</source>
-        <translation type="unfinished"></translation>
+        <translation>Kommagetrennte Strukturdateien (PDB- oder Kügelchen-Koordinatendateien). Mit der Schaltfläche „Dateien auswählen…“ festlegen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="277"/>
@@ -4353,22 +4408,22 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="278"/>
         <source>Component 1 g.</source>
-        <translation type="unfinished"></translation>
+        <translation>Komponente 1 g.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="279"/>
         <source>Component 1 s.</source>
-        <translation type="unfinished"></translation>
+        <translation>Komponente 1 s.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="280"/>
         <source>Component 2 g.</source>
-        <translation type="unfinished"></translation>
+        <translation>Komponente 2 g.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="281"/>
         <source>Component 2 s.</source>
-        <translation type="unfinished"></translation>
+        <translation>Komponente 2 s.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="282"/>
@@ -4418,7 +4473,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="291"/>
         <source>Compute TTTR microtime LUTs and create channel LUT settings in one dockable workspace.</source>
-        <translation type="unfinished"></translation>
+        <translation>TTTR-Mikrozeit-LUTs berechnen und Kanal-LUT-Einstellungen in einem andockbaren Arbeitsbereich erstellen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="292"/>
@@ -4463,7 +4518,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="300"/>
         <source>Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndxplorer.</source>
-        <translation type="unfinished"></translation>
+        <translation>Statische, dynamische, WLC- und Misch-FRET-Linien für Parameterbereiche berechnen. Die Ergebnisse eignen sich zur Überlagerung auf smFRET-2D-Histogrammen in ndxplorer.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="301"/>
@@ -4478,12 +4533,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="304"/>
         <source>Computed FCS correlation curves, one per chunk.</source>
-        <translation type="unfinished"></translation>
+        <translation>Berechnete FCS-Korrelationskurven, eine pro Block.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="305"/>
         <source>Computed apparent lifetimes and mixing fractions for the reference geometry.</source>
-        <translation type="unfinished"></translation>
+        <translation>Berechnete scheinbare Lebensdauern und Mischanteile für die Referenzgeometrie.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="306"/>
@@ -4513,7 +4568,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="311"/>
         <source>Configure one endpoint per provider. Switching reloads that provider&apos;s saved values.</source>
-        <translation type="unfinished"></translation>
+        <translation>Einen Endpunkt pro Anbieter konfigurieren. Beim Wechsel werden die gespeicherten Werte dieses Anbieters neu geladen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="312"/>
@@ -4543,7 +4598,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="317"/>
         <source>Continue from the docked poses of the last run or the loaded project (skip the random shuffle) instead of starting fresh. Enabled automatically when a project with saved poses is loaded.</source>
-        <translation type="unfinished"></translation>
+        <translation>Von den gedockten Posen des letzten Laufs oder des geladenen Projekts fortsetzen (das zufällige Mischen überspringen), statt neu zu beginnen. Wird automatisch aktiviert, wenn ein Projekt mit gespeicherten Posen geladen ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="318"/>
@@ -4618,7 +4673,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="332"/>
         <source>Core database connector services for source/user database resolution, migration, backup, reset, repository access, and FLR CIF import/export.</source>
-        <translation type="unfinished"></translation>
+        <translation>Kern-Datenbankconnector-Dienste für Quell-/Benutzer-Datenbankauflösung, Migration, Sicherung, Zurücksetzen, Repository-Zugriff und FLR-CIF-Import/-Export.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="333"/>
@@ -4653,7 +4708,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="339"/>
         <source>Correlation list (left) and FCS plots (right) in draggable, resizable docks. Select a row to highlight its curve.</source>
-        <translation type="unfinished"></translation>
+        <translation>Korrelationsliste (links) und FCS-Diagramme (rechts) in ziehbaren, größenveränderbaren Andockfenstern. Eine Zeile auswählen, um ihre Kurve hervorzuheben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="340"/>
@@ -4888,12 +4943,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="387"/>
         <source>Describe the 2D-FLCS RPC namespace.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den 2D-FLCS-RPC-Namensraum beschreiben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="388"/>
         <source>Describe the ALEX Creator workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den Workflow-Vertrag des ALEX-Erstellers beschreiben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="389"/>
@@ -4933,12 +4988,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="396"/>
         <source>Detection-path polarization mixing for the PARALLEL channel (objective/optics depolarization). Small: ~0–0.05 (typical ~0.03).</source>
-        <translation type="unfinished"></translation>
+        <translation>Polarisationsmischung des Detektionswegs für den PARALLELEN Kanal (Objektiv-/Optik-Depolarisation). Klein: ~0–0,05 (typisch ~0,03).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="397"/>
         <source>Detection-path polarization mixing for the PERPENDICULAR channel. Small: ~0–0.05 (typical ~0.04).</source>
-        <translation type="unfinished"></translation>
+        <translation>Polarisationsmischung des Detektionswegs für den SENKRECHTEN Kanal. Klein: ~0–0,05 (typisch ~0,04).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="398"/>
@@ -5053,7 +5108,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="421"/>
         <source>Diffusion/integration window in the macro-time unit (ms ⇒ 0.001 = 1 µs; default 0.01). Sets the diffusion resolution — do NOT enlarge it for speed (it is sub-stepped internally, so it won't help; use the Performance knobs instead).</source>
-        <translation type="unfinished"></translation>
+        <translation>Diffusions-/Integrationsfenster in der Makrozeit-Einheit (ms ⇒ 0,001 = 1 µs; Standard 0,01). Legt die Diffusionsauflösung fest — zur Beschleunigung NICHT vergrößern (es wird intern unterteilt, hilft also nicht; stattdessen die Performance-Regler verwenden).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="422"/>
@@ -5073,7 +5128,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="425"/>
         <source>Directory for RMF trajectory, best-scoring PDBs and the score CSV.</source>
-        <translation type="unfinished"></translation>
+        <translation>Verzeichnis für die RMF-Trajektorie, die bestbewerteten PDBs und die Bewertungs-CSV.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="426"/>
@@ -5103,7 +5158,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="431"/>
         <source>Distance distribution around R_DA: Gaussian vs the non-negative chi distribution (active one solid).</source>
-        <translation type="unfinished"></translation>
+        <translation>Abstandsverteilung um R_DA: Gauß vs. die nicht-negative Chi-Verteilung (die aktive durchgezogen).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="432"/>
@@ -5133,7 +5188,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="437"/>
         <source>Docking engine: minimize = fast IMP conjugate-gradient energy minimisation (default); mc = replica-exchange Monte-Carlo sampling.</source>
-        <translation type="unfinished"></translation>
+        <translation>Docking-Engine: minimize = schnelle IMP-Konjugierte-Gradienten-Energieminimierung (Standard); mc = Replica-Exchange-Monte-Carlo-Sampling.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="438"/>
@@ -5178,12 +5233,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="446"/>
         <source>Donor lifetime in the presence of acceptor (D in DA). Editable input that back-computes the distance.</source>
-        <translation type="unfinished"></translation>
+        <translation>Donor-Lebensdauer in Gegenwart des Akzeptors (D in DA). Bearbeitbare Eingabe, die den Abstand zurückrechnet.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="447"/>
         <source>Donor rotational correlation time of this component.</source>
-        <translation type="unfinished"></translation>
+        <translation>Rotationskorrelationszeit des Donors für diese Komponente.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="448"/>
@@ -5193,17 +5248,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="449"/>
         <source>Donor-acceptor distance distribution: Gaussian vs the non-negative chi distribution (active one solid).</source>
-        <translation type="unfinished"></translation>
+        <translation>Donor-Akzeptor-Abstandsverteilung: Gauß vs. die nicht-negative Chi-Verteilung (die aktive durchgezogen).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="450"/>
         <source>Donor-acceptor distance implied by the homo-FRET rate. Editable input that back-maps to the anisotropy relaxation time.</source>
-        <translation type="unfinished"></translation>
+        <translation>Donor-Akzeptor-Abstand, der sich aus der Homo-FRET-Rate ergibt. Bearbeitbare Eingabe, die auf die Anisotropie-Relaxationszeit zurückabgebildet wird.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="451"/>
         <source>Donor-acceptor distance. Any of distance, lifetime, efficiency or rate may be entered; the others are recomputed.</source>
-        <translation type="unfinished"></translation>
+        <translation>Donor-Akzeptor-Abstand. Abstand, Lebensdauer, Effizienz oder Rate können eingegeben werden; die anderen werden neu berechnet.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="452"/>
@@ -5223,12 +5278,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="455"/>
         <source>Donor-only fraction within the DA population (no acceptor / no transfer).</source>
-        <translation type="unfinished"></translation>
+        <translation>Nur-Donor-Anteil innerhalb der DA-Population (kein Akzeptor / kein Transfer).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="456"/>
         <source>Donor-only lifetime for the FRET trajectory (tau_DA = tau_D0 * (1 - E)).</source>
-        <translation type="unfinished"></translation>
+        <translation>Nur-Donor-Lebensdauer für die FRET-Trajektorie (tau_DA = tau_D0 * (1 - E)).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="457"/>
@@ -5238,7 +5293,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="458"/>
         <source>Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources)</source>
-        <translation type="unfinished"></translation>
+        <translation>Spektren optischer Komponenten (Fluorophore, Filter, dichroitische Spiegel, Detektoren, Lichtquellen) herunterladen, durchsuchen und hochladen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="459"/>
@@ -5248,32 +5303,32 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="460"/>
         <source>Draw a circular gating-cursor outline at the position below.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine kreisförmige Gating-Cursor-Umrandung an der Position unten zeichnen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="461"/>
         <source>Draw a mixing line between the two component phasors below.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine Mischlinie zwischen den beiden Komponenten-Phasoren unten zeichnen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="462"/>
         <source>Draw a polar coordinate grid (concentric circles + angular spokes) for reading phase and modulation.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ein Polarkoordinaten-Gitter (konzentrische Kreise + Winkelspeichen) zum Ablesen von Phase und Modulation zeichnen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="463"/>
         <source>Draw iso-phase and iso-modulation lines for the reference lifetimes.</source>
-        <translation type="unfinished"></translation>
+        <translation>Iso-Phasen- und Iso-Modulationslinien für die Referenz-Lebensdauern zeichnen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="464"/>
         <source>Draw the quenched-donor FRET trajectory for the donor-only lifetime below.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die gequenchte-Donor-FRET-Trajektorie für die Nur-Donor-Lebensdauer unten zeichnen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="465"/>
         <source>Draw the two-component mixing geometry and the fraction-weighted mixture point (uses g1/s1, g2/s2 as the components).</source>
-        <translation type="unfinished"></translation>
+        <translation>Die Zweikomponenten-Mischgeometrie und den anteilsgewichteten Mischpunkt zeichnen (verwendet g1/s1, g2/s2 als Komponenten).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="467"/>
@@ -5283,7 +5338,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="468"/>
         <source>Drop the loaded pattern and return to the amplitude/lifetime spectrum.</source>
-        <translation type="unfinished"></translation>
+        <translation>Das geladene Muster verwerfen und zum Amplituden-/Lebensdauerspektrum zurückkehren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="470"/>
@@ -5298,12 +5353,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="472"/>
         <source>D₁ (µm²/ms)</source>
-        <translation type="unfinished"></translation>
+        <translation>D₁ (µm²/ms)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="473"/>
         <source>D₂ (µm²/ms)</source>
-        <translation type="unfinished"></translation>
+        <translation>D₂ (µm²/ms)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="474"/>
@@ -5323,7 +5378,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="477"/>
         <source>Effective confocal volume (read-only unless &apos;Fix Veff&apos;).</source>
-        <translation type="unfinished"></translation>
+        <translation>Effektives konfokales Volumen (schreibgeschützt, außer bei „Veff festhalten“).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="478"/>
@@ -5348,7 +5403,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="482"/>
         <source>Empirical-Bayes Gaussian hidden Markov model for binned single-molecule FRET time traces (ebFRET/vbFRET-style), with a state-count scan, per-state emission recovery, and Viterbi dwell/transition analysis. Complements the photon-by-photon H2MM plugin for TIRF-style intensity-vs-time data.</source>
-        <translation type="unfinished"></translation>
+        <translation>Empirisch-bayessches Gauß-Hidden-Markov-Modell für gebinnte Einzelmolekül-FRET-Zeitspuren (ebFRET/vbFRET-Stil), mit Zustandsanzahl-Scan, zustandsweiser Emissionsrückgewinnung und Viterbi-Verweildauer-/Übergangsanalyse. Ergänzt das Photon-für-Photon-H2MM-Plugin für TIRF-artige Intensität-gegen-Zeit-Daten.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="483"/>
@@ -5368,7 +5423,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="486"/>
         <source>Entropy prior model (mi) ported from TK_mi_ModelFunction: 0 flat (resolution-weighted), 1 self (current dist.), 2 blend, 3 Gaussian.</source>
-        <translation type="unfinished"></translation>
+        <translation>Entropie-Prior-Modell (mi), portiert aus TK_mi_ModelFunction: 0 flach (auflösungsgewichtet), 1 selbst (aktuelle Vert.), 2 Mischung, 3 Gauß.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="487"/>
@@ -5378,12 +5433,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="488"/>
         <source>Env floor</source>
-        <translation type="unfinished"></translation>
+        <translation>Hüllkurven-Untergrund</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="489"/>
         <source>Env scale</source>
-        <translation type="unfinished"></translation>
+        <translation>Hüllkurven-Skala</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="490"/>
@@ -5393,12 +5448,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="491"/>
         <source>Envelope compression applied to per-bin photon counts.</source>
-        <translation type="unfinished"></translation>
+        <translation>Hüllkurven-Kompression, angewendet auf die Photonenzählungen pro Bin.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="492"/>
         <source>Epsilon used when &apos;Mitigate wrap spike&apos; is on.</source>
-        <translation type="unfinished"></translation>
+        <translation>Epsilon, das verwendet wird, wenn „Umlaufspitze abschwächen“ aktiviert ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="493"/>
@@ -5413,7 +5468,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="495"/>
         <source>Evaluate the excitation Gaussian analytically instead of sampling a voxel grid: zero construction cost and memory, and exact — but for a GAUSSIAN focus only. Leave OFF to use the general voxel grid, which supports any measured / ISM / aberrated PSF. Turn on only when the focus is a clean 3D Gaussian.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den Anregungs-Gauß analytisch auswerten, statt ein Voxelgitter abzutasten: keine Konstruktionskosten und kein Speicher, und exakt — aber nur für einen GAUSS-Fokus. AUS lassen, um das allgemeine Voxelgitter zu verwenden, das jede gemessene / ISM- / aberrierte PSF unterstützt. Nur einschalten, wenn der Fokus ein sauberer 3D-Gauß ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="496"/>
@@ -5423,12 +5478,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="497"/>
         <source>Excitation Gaussian 1/e² radii [w0 (lateral), z0 (axial)] in µm (default [0.3, 2.0]). Confocal: w0 ~0.2–0.4, aspect z0/w0 ~3–6. Field I ∝ exp(-2((x²+y²)/w0² + z²/z0²)).</source>
-        <translation type="unfinished"></translation>
+        <translation>1/e²-Radien des Anregungs-Gauß [w0 (lateral), z0 (axial)] in µm (Standard [0,3, 2,0]). Konfokal: w0 ~0,2–0,4, Verhältnis z0/w0 ~3–6. Feld I ∝ exp(-2((x²+y²)/w0² + z²/z0²)).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="498"/>
         <source>Excluded-volume / clash penalty weight (FPS k_clash).</source>
-        <translation type="unfinished"></translation>
+        <translation>Ausschlussvolumen-/Kollisions-Straftermgewicht (FPS k_clash).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="499"/>
@@ -5443,12 +5498,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="502"/>
         <source>Expected bright pixels per frame; sets the adaptive quantile threshold for bead detection.</source>
-        <translation type="unfinished"></translation>
+        <translation>Erwartete helle Pixel pro Bild; legt die adaptive Quantilschwelle für die Kügelchenerkennung fest.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="503"/>
         <source>Expected integrated photons for Poisson sampling.</source>
-        <translation type="unfinished"></translation>
+        <translation>Erwartete integrierte Photonen für das Poisson-Sampling.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="504"/>
@@ -5458,12 +5513,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="505"/>
         <source>Experimental PCH probabilities P(k), same length as k_vals.</source>
-        <translation type="unfinished"></translation>
+        <translation>Experimentelle PCH-Wahrscheinlichkeiten P(k), gleiche Länge wie k_vals.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="506"/>
         <source>Experimental headless port of ebFRET&apos;s per-trace VBEM + empirical-Bayes hyperparameter loop. Validated for state recovery against ebFRET&apos;s own simulated-K04-N350 dataset; the single-prior (non-mixture) D=1 path only, and no GUI tool yet.</source>
-        <translation type="unfinished"></translation>
+        <translation>Experimenteller Headless-Port der ebFRET-VBEM-Schleife pro Spur + empirisch-bayesscher Hyperparameter. Für die Zustandsrückgewinnung gegen ebFRETs eigenen simulierten K04-N350-Datensatz validiert; nur der Einzel-Prior-(Nicht-Mischungs-)Pfad mit D=1 und noch kein GUI-Werkzeug.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="507"/>
@@ -5498,7 +5553,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="513"/>
         <source>Extract a per-detector IRF and background rate from the non-burst photons of a single-molecule measurement, and feed them to the burst MLE lifetime fit.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine detektorweise IRF und Hintergrundrate aus den Nicht-Burst-Photonen einer Einzelmolekülmessung extrahieren und dem Burst-MLE-Lebensdauer-Fit zuführen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="514"/>
@@ -5508,12 +5563,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="515"/>
         <source>F-test calculator: compare two nested model fits (confidence &lt;-&gt; chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits.</source>
-        <translation type="unfinished"></translation>
+        <translation>F-Test-Rechner: zwei geschachtelte Modell-Fits vergleichen (Konfidenz &lt;-&gt; chi2-Schwelle) und die chi2-max-Obergrenze eines einzelnen Fits bei einem Konfidenzniveau berechnen. Deklarative AutoForm-Ansicht; Werte werden aus offenen Fits geladen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="516"/>
         <source>F-test confidence level; recomputed from the χ² ratio, or drives the χ²(2) threshold when edited.</source>
-        <translation type="unfinished"></translation>
+        <translation>F-Test-Konfidenzniveau; wird aus dem χ²-Verhältnis neu berechnet oder steuert die χ²(2)-Schwelle, wenn es bearbeitet wird.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="517"/>
@@ -5558,7 +5613,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="526"/>
         <source>FPS-style refinement cycles after docking: re-compute the accessible volumes on the docked structure (real AV calc, accounting for inter-body occlusion) and re-minimise. 0 = none.</source>
-        <translation type="unfinished"></translation>
+        <translation>FPS-artige Verfeinerungszyklen nach dem Docking: die Accessible Volumes an der gedockten Struktur neu berechnen (echte AV-Berechnung unter Berücksichtigung der Verdeckung zwischen Körpern) und erneut minimieren. 0 = keine.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="527"/>
@@ -5583,7 +5638,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="531"/>
         <source>FRET efficiency. Editable input that back-computes the distance.</source>
-        <translation type="unfinished"></translation>
+        <translation>FRET-Effizienz. Bearbeitbare Eingabe, die den Abstand zurückrechnet.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="532"/>
@@ -5598,7 +5653,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="534"/>
         <source>FRET rate constant. Editable input that back-computes the distance.</source>
-        <translation type="unfinished"></translation>
+        <translation>FRET-Ratenkonstante. Bearbeitbare Eingabe, die den Abstand zurückrechnet.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="535"/>
@@ -5618,17 +5673,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="538"/>
         <source>FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012).</source>
-        <translation type="unfinished"></translation>
+        <translation>FRET-2CDE-/ALEX-2CDE-Dynamikmerkmal pro Burst (Tomov et al. 2012).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="539"/>
         <source>FRET-rate-constant distribution induced by the distance distribution.</source>
-        <translation type="unfinished"></translation>
+        <translation>FRET-Ratenkonstanten-Verteilung, induziert durch die Abstandsverteilung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="540"/>
         <source>FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation using IMP + IMP.bff accessible volumes (a thin shim around IMP.pmi).</source>
-        <translation type="unfinished"></translation>
+        <translation>FRET-eingeschränktes Starrkörper-Docking, Verfeinerung, Strukturbibliotheks-Screening und Fehlerschätzung mit IMP + IMP.bff-Accessible-Volumes (eine dünne Schicht um IMP.pmi).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="541"/>
@@ -5638,7 +5693,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="542"/>
         <source>False-alarm probability (CUSUM).</source>
-        <translation type="unfinished"></translation>
+        <translation>Fehlalarm-Wahrscheinlichkeit (CUSUM).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="543"/>
@@ -5758,7 +5813,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="566"/>
         <source>First photon index shown in the dT plot.</source>
-        <translation type="unfinished"></translation>
+        <translation>Erster Photonenindex, der im dT-Diagramm angezeigt wird.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="567"/>
@@ -5833,22 +5888,22 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="581"/>
         <source>Fit-window start on the binned micro-time axis.</source>
-        <translation type="unfinished"></translation>
+        <translation>Fit-Fenster-Start auf der gebinnten Mikrozeit-Achse.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="582"/>
         <source>Fit-window stop on the binned micro-time axis.</source>
-        <translation type="unfinished"></translation>
+        <translation>Fit-Fenster-Ende auf der gebinnten Mikrozeit-Achse.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="583"/>
         <source>Fits an n-component PCH model to an experimental P(k), yielding per-species molecular brightness (epsilon), mean occupancy (N) and amplitude fractions plus chi-square statistics. Restrict the fitted k range with fit_low/fit_high.</source>
-        <translation type="unfinished"></translation>
+        <translation>Fittet ein n-Komponenten-PCH-Modell an ein experimentelles P(k) und liefert die molekulare Helligkeit pro Spezies (epsilon), die mittlere Belegung (N) und Amplitudenanteile plus Chi-Quadrat-Statistik. Den gefitteten k-Bereich mit fit_low/fit_high einschränken.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="584"/>
         <source>Fitted single-pixel lifetime (τ) map of the selected file; the in-plot selector switches between analysed files and the z-slider scrubs frames.</source>
-        <translation type="unfinished"></translation>
+        <translation>Gefittete Einzelpixel-Lebensdauerkarte (τ) der ausgewählten Datei; der Auswähler im Diagramm wechselt zwischen analysierten Dateien und der z-Regler durchläuft die Bilder.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="585"/>
@@ -5873,7 +5928,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="589"/>
         <source>Fixed-DURATION stop: measurement duration = max_windows × dt (0 = unlimited, default 0). e.g. 10 min at dt = 1 µs ⇒ 6e8 windows. REQUIRED by Independent-molecule mode, which then ignores N_ph_max.</source>
-        <translation type="unfinished"></translation>
+        <translation>Stopp mit fester DAUER: Messdauer = max_windows × dt (0 = unbegrenzt, Standard 0). z. B. 10 min bei dt = 1 µs ⇒ 6e8 Fenster. ERFORDERLICH im Modus unabhängiger Moleküle, der dann N_ph_max ignoriert.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="590"/>
@@ -5953,7 +6008,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="605"/>
         <source>For burst-wise FCS and correlator tools, ChiSurf needs to know which detector channels (or channel pairs) belong to a correlation setup. Create at least one setup below and save it.</source>
-        <translation type="unfinished"></translation>
+        <translation>Für burst-weise FCS- und Korrelator-Werkzeuge muss ChiSurf wissen, welche Detektorkanäle (oder Kanalpaare) zu einem Korrelationsaufbau gehören. Unten mindestens einen Aufbau erstellen und speichern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="606"/>
@@ -5988,22 +6043,22 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="612"/>
         <source>Fraction of component 1 by projection onto the two-component line.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anteil von Komponente 1 durch Projektion auf die Zweikomponenten-Linie.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="613"/>
         <source>Fraction of peak excitation that defines the effective-focus bounding box shared by Coasting, the two-step lookup and the Active margin (default 1e-3). Smaller ⇒ a larger, more conservative focus box.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anteil der Spitzenanregung, der die effektive Fokus-Begrenzungsbox definiert, die von Coasting, der zweistufigen Suche und dem Aktivbereichs-Rand gemeinsam genutzt wird (Standard 1e-3). Kleiner ⇒ eine größere, konservativere Fokusbox.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="614"/>
         <source>Fraction of the IRF maximum below which bins are zeroed.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anteil des IRF-Maximums, unter dem Bins auf null gesetzt werden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="615"/>
         <source>Fractional intensity of component 1 (component 2 gets the remainder); sets the mixture point.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anteilige Intensität von Komponente 1 (Komponente 2 erhält den Rest); legt den Mischpunkt fest.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="616"/>
@@ -6083,7 +6138,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="631"/>
         <source>Fundamental (time-zero) fluorescence anisotropy (default 0 = anisotropy off). Physical range −0.2…0.4; organic dyes ~0.36–0.4. &gt;0 enables photoselection + rotational depolarization (needs a decay pattern and D_rot).</source>
-        <translation type="unfinished"></translation>
+        <translation>Fundamentale (Zeit-null-)Fluoreszenzanisotropie (Standard 0 = Anisotropie aus). Physikalischer Bereich −0,2…0,4; organische Farbstoffe ~0,36–0,4. &gt;0 aktiviert Photoselektion + rotatorische Depolarisation (benötigt ein Zerfallsmuster und D_rot).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="632"/>
@@ -6178,12 +6233,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="650"/>
         <source>Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s).</source>
-        <translation type="unfinished"></translation>
+        <translation>Ein synthetisches CLSM-Photonenbild aus einem Intensitätsbild + detektorweisen Lebensdauerkarte(n) erzeugen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="651"/>
         <source>Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI.</source>
-        <translation type="unfinished"></translation>
+        <translation>Synthetische TCSPC-Fluoreszenzzerfalls-Histogramme aus Lebensdauern/Spektren erzeugen (optionale IRF-Faltung und Poisson-Schrotrauschen) — der einzige kanonische Zerfallsgenerator, bereitgestellt als API/CLI/RPC/GUI.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="652"/>
@@ -6218,12 +6273,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="658"/>
         <source>Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic properties (e.g. translational diffusion coefficient) from atomic or bead-model structures.</source>
-        <translation type="unfinished"></translation>
+        <translation>Grafische Oberfläche zur HYDROPRO-/HYDRO++-Suite zur Berechnung hydrodynamischer Eigenschaften (z. B. Translations-Diffusionskoeffizient) aus atomaren oder Kügelchenmodell-Strukturen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="659"/>
         <source>Green / red / yellow (and ∥/⊥) decays for this labeling state.</source>
-        <translation type="unfinished"></translation>
+        <translation>Grün-/rot-/gelb- (und ∥/⊥-)Zerfälle für diesen Markierungszustand.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="660"/>
@@ -6233,7 +6288,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="661"/>
         <source>Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra.</source>
-        <translation type="unfinished"></translation>
+        <translation>Geführte Einrichtung eines verknüpften globalen zeitaufgelösten VV/VH-Anisotropie-Fits: polarisierte Zerfälle laden, die IRFs hintergrundkorrigieren, Instrumentkorrekturen setzen und Lebensdauer-/Rotationsspektren definieren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="662"/>
@@ -6278,7 +6333,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="671"/>
         <source>Histogram extraction: fast = vectorised C++, loop = exact bincount, auto = fast with bincount fallback on saturation.</source>
-        <translation type="unfinished"></translation>
+        <translation>Histogramm-Extraktion: fast = vektorisiertes C++, loop = exaktes bincount, auto = fast mit bincount-Rückfall bei Sättigung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="672"/>
@@ -6303,7 +6358,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="676"/>
         <source>Homo-FRET (energy-migration) rate constant (derived from t_RM / rho).</source>
-        <translation type="unfinished"></translation>
+        <translation>Homo-FRET-(Energiemigrations-)Ratenkonstante (abgeleitet aus t_RM / rho).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="677"/>
@@ -6313,7 +6368,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="678"/>
         <source>How conservative coasting is: a sleeper's per-step displacement std ≤ (distance-to-boundary) / coast_safety (default 3; 3–4 typical). Larger = safer but slower. Only used when Coasting is on.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wie konservativ das Coasting ist: die Verschiebungs-Standardabweichung eines Schläfers pro Schritt ≤ (Abstand zur Grenze) / coast_safety (Standard 3; 3–4 typisch). Größer = sicherer, aber langsamer. Nur verwendet, wenn Coasting aktiviert ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="679"/>
@@ -6323,32 +6378,32 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="680"/>
         <source>How the IRF used for lifetime deconvolution is obtained. Synthetic = Gaussian pulse; Detect = place a synthetic pulse at the decay's prompt rise; File = IRF opened via 📈 Open IRF; None = tail-fit without an IRF.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wie die zur Lebensdauer-Entfaltung verwendete IRF gewonnen wird. Synthetic = Gauß-Puls; Detect = einen synthetischen Puls am Prompt-Anstieg des Zerfalls platzieren; File = über 📈 IRF öffnen geladene IRF; None = Tail-Fit ohne IRF.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="681"/>
         <source>Hub that groups ChiSurf&apos;s FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view.</source>
-        <translation type="unfinished"></translation>
+        <translation>Hub, der die FRET-Linien-, FRET/homoFRET-, FCS- und Phasor-Diagramm-Rechner von ChiSurf gruppiert und den ausgewählten in einer Zweipanel-Ansicht einbettet.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="682"/>
         <source>Hub that lists ChiSurf&apos;s guided wizards and embeds the selected one in a two-panel view.</source>
-        <translation type="unfinished"></translation>
+        <translation>Hub, der die geführten Assistenten von ChiSurf auflistet und den ausgewählten in einer Zweipanel-Ansicht einbettet.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="683"/>
         <source>Hydrodynamic radius (read-only unless 'Fix rₕ').</source>
-        <translation type="unfinished"></translation>
+        <translation>Hydrodynamischer Radius (schreibgeschützt, außer bei „rₕ festhalten“).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="684"/>
         <source>Hydrodynamic radius of primary elements. Typical: 2.9 (mode 1), 4.8 (2), 6.1 (4).</source>
-        <translation type="unfinished"></translation>
+        <translation>Hydrodynamischer Radius der Primärelemente. Typisch: 2,9 (Modus 1), 4,8 (2), 6,1 (4).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="685"/>
         <source>IDIF=1: output the full 6×6 diffusion tensor and diffusion centre.</source>
-        <translation type="unfinished"></translation>
+        <translation>IDIF=1: den vollständigen 6×6-Diffusionstensor und das Diffusionszentrum ausgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="686"/>
@@ -6383,12 +6438,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="692"/>
         <source>IRF TTTR file(s) for this detector (summed); carried to Phasor + pixel-wise MLE. Drag-drop to add.</source>
-        <translation type="unfinished"></translation>
+        <translation>IRF-TTTR-Datei(en) für diesen Detektor (summiert); an Phasor + pixelweise MLE weitergereicht. Zum Hinzufügen per Drag-and-drop ablegen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="693"/>
         <source>IRF TTTR measurement (the first file is used).</source>
-        <translation type="unfinished"></translation>
+        <translation>IRF-TTTR-Messung (die erste Datei wird verwendet).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="694"/>
@@ -6413,7 +6468,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="698"/>
         <source>IRF files (this detector)</source>
-        <translation type="unfinished"></translation>
+        <translation>IRF-Dateien (dieser Detektor)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="699"/>
@@ -6433,12 +6488,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="702"/>
         <source>IRF window start (separate from the conv window). Drag the green region.</source>
-        <translation type="unfinished"></translation>
+        <translation>IRF-Fenster-Start (getrennt vom Faltungsfenster). Den grünen Bereich ziehen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="703"/>
         <source>IRF window stop (separate from the conv window). Drag the green region.</source>
-        <translation type="unfinished"></translation>
+        <translation>IRF-Fenster-Ende (getrennt vom Faltungsfenster). Den grünen Bereich ziehen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="704"/>
@@ -6448,12 +6503,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="705"/>
         <source>If enabled, the time-axis dt is multiplied by the y-rebin factor (set automatically for stacked VV/VH files).</source>
-        <translation type="unfinished"></translation>
+        <translation>Wenn aktiviert, wird das Zeitachsen-dt mit dem y-Rebin-Faktor multipliziert (bei gestapelten VV/VH-Dateien automatisch gesetzt).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="706"/>
         <source>If enabled, uses two atoms per fluorophore and computes the orientation factor kappa2; otherwise only the first atom of each dye defines the distance.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wenn aktiviert, werden zwei Atome pro Fluorophor verwendet und der Orientierungsfaktor kappa2 berechnet; andernfalls definiert nur das erste Atom jedes Farbstoffs den Abstand.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="707"/>
@@ -6468,7 +6523,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="709"/>
         <source>Image representations (+ to create from the current CLSM image).</source>
-        <translation type="unfinished"></translation>
+        <translation>Bilddarstellungen (+ zum Erstellen aus dem aktuellen CLSM-Bild).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="710"/>
@@ -6508,7 +6563,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="717"/>
         <source>Initial MEM regulator (RegulatorConst). Larger = smoother; the schedule relaxes it over outer iterations.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anfänglicher MEM-Regulator (RegulatorConst). Größer = glatter; der Plan lockert ihn über die äußeren Iterationen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="718"/>
@@ -6593,17 +6648,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="735"/>
         <source>Intensity along x through the fitted bead centre (data) with the Gaussian fit overlay.</source>
-        <translation type="unfinished"></translation>
+        <translation>Intensität entlang x durch das gefittete Kügelchenzentrum (Daten) mit überlagertem Gauß-Fit.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="736"/>
         <source>Intensity along y through the fitted bead centre (data) with the Gaussian fit overlay.</source>
-        <translation type="unfinished"></translation>
+        <translation>Intensität entlang y durch das gefittete Kügelchenzentrum (Daten) mit überlagertem Gauß-Fit.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="737"/>
         <source>Intensity along z through the fitted bead centre (data) with the Gaussian fit overlay.</source>
-        <translation type="unfinished"></translation>
+        <translation>Intensität entlang z durch das gefittete Kügelchenzentrum (Daten) mit überlagertem Gauß-Fit.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="738"/>
@@ -6638,17 +6693,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="746"/>
         <source>Intervals for the distance distribution p(r): 0 omit, -1 automatic, &gt;0 specify RMAX.</source>
-        <translation type="unfinished"></translation>
+        <translation>Intervalle für die Abstandsverteilung p(r): 0 weglassen, -1 automatisch, &gt;0 RMAX angeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="747"/>
         <source>Inverse occupancy G(0) = 1/N.</source>
-        <translation type="unfinished"></translation>
+        <translation>Inverse Belegung G(0) = 1/N.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="748"/>
         <source>Inverse-Laplace solver: Tikhonov (closed-form, fastest), NNLS (strict non-negativity, default), or maximum-entropy (faithful, slower).</source>
-        <translation type="unfinished"></translation>
+        <translation>Inverse-Laplace-Löser: Tikhonov (geschlossene Form, am schnellsten), NNLS (strikte Nicht-Negativität, Standard) oder Maximum-Entropie (originalgetreu, langsamer).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="749"/>
@@ -6658,7 +6713,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="750"/>
         <source>Inverted lifetime-lifetime distribution P (the 2D-FLCS map); its diagonal is the marginal lifetime spectrum, off-diagonals encode lifetime exchange.</source>
-        <translation type="unfinished"></translation>
+        <translation>Invertierte Lebensdauer-Lebensdauer-Verteilung P (die 2D-FLCS-Karte); ihre Diagonale ist das marginale Lebensdauerspektrum, die Nebendiagonalen kodieren den Lebensdaueraustausch.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="751"/>
@@ -6703,27 +6758,27 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="759"/>
         <source>Kalman Q</source>
-        <translation type="unfinished"></translation>
+        <translation>Kalman Q</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="760"/>
         <source>Kalman R scale</source>
-        <translation type="unfinished"></translation>
+        <translation>Kalman-R-Skala</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="761"/>
         <source>Kalman merge gap</source>
-        <translation type="unfinished"></translation>
+        <translation>Kalman-Verschmelzungslücke</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="762"/>
         <source>Kalman min len</source>
-        <translation type="unfinished"></translation>
+        <translation>Kalman-Mindestlänge</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="763"/>
         <source>Kalman z-thresh</source>
-        <translation type="unfinished"></translation>
+        <translation>Kalman-z-Schwelle</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="764"/>
@@ -6808,7 +6863,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="780"/>
         <source>Last photon index shown in the dT plot (0 = all).</source>
-        <translation type="unfinished"></translation>
+        <translation>Letzter Photonenindex, der im dT-Diagramm angezeigt wird (0 = alle).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="781"/>
@@ -6823,12 +6878,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="783"/>
         <source>Lateral half-extent of the ellipsoidal simulation box (µm, default 2). Must exceed the focus by a few diffusion lengths; larger = more dilute but slower. Prefer 'Active margin' (Performance) to auto-shrink around the focus instead of a tiny box.</source>
-        <translation type="unfinished"></translation>
+        <translation>Laterale Halbausdehnung der ellipsoiden Simulationsbox (µm, Standard 2). Muss den Fokus um einige Diffusionslängen überschreiten; größer = verdünnter, aber langsamer. Bevorzugt „Aktivbereichs-Rand“ (Performance), um automatisch um den Fokus zu schrumpfen, statt eine winzige Box zu verwenden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="784"/>
         <source>Latest single-bead fit report or batch summary.</source>
-        <translation type="unfinished"></translation>
+        <translation>Neuester Einzelkügelchen-Fit-Bericht oder Stapel-Zusammenfassung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="785"/>
@@ -6903,7 +6958,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="799"/>
         <source>Lifetime-filtered species auto- and cross-correlations; their relaxation encodes the interconversion.</source>
-        <translation type="unfinished"></translation>
+        <translation>Lebensdauergefilterte Spezies-Auto- und -Kreuzkorrelationen; ihre Relaxation kodiert die Umwandlung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="800"/>
@@ -6933,7 +6988,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="805"/>
         <source>Limited width (σ = p%·R)</source>
-        <translation type="unfinished"></translation>
+        <translation>Begrenzte Breite (σ = p%·R)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="806"/>
@@ -6998,12 +7053,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="818"/>
         <source>List saved light-path simulations from MMFDB.</source>
-        <translation type="unfinished"></translation>
+        <translation>Gespeicherte Lichtweg-Simulationen aus MMFDB auflisten.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="819"/>
         <source>Live JSON view of the full TTTR header with the edited tags.</source>
-        <translation type="unfinished"></translation>
+        <translation>Live-JSON-Ansicht des vollständigen TTTR-Kopfes mit den bearbeiteten Tags.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="820"/>
@@ -7023,7 +7078,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="823"/>
         <source>Load TTTR Image Browser ratings and annotations.</source>
-        <translation type="unfinished"></translation>
+        <translation>Bewertungen und Annotationen des TTTR-Bild-Browsers laden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="824"/>
@@ -7033,12 +7088,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="825"/>
         <source>Load Trace Browser ratings and annotations.</source>
-        <translation type="unfinished"></translation>
+        <translation>Bewertungen und Annotationen des Spur-Browsers laden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="826"/>
         <source>Load a TTTR CLSM file, or an imaging HDF5 (resolved to its source photon data via the stored back-reference); markers are auto-detected.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine TTTR-CLSM-Datei oder ein Bildgebungs-HDF5 laden (über die gespeicherte Rückreferenz zu seinen Quell-Photonendaten aufgelöst); Marker werden automatisch erkannt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="827"/>
@@ -7073,12 +7128,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="833"/>
         <source>Load binned image mosaic for preview.</source>
-        <translation type="unfinished"></translation>
+        <translation>Gebinntes Bildmosaik zur Vorschau laden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="834"/>
         <source>Load binned trace data for preview.</source>
-        <translation type="unfinished"></translation>
+        <translation>Gebinnte Spurdaten zur Vorschau laden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="835"/>
@@ -7088,7 +7143,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="836"/>
         <source>Load one saved light-path simulation from MMFDB.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine gespeicherte Lichtweg-Simulation aus MMFDB laden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="837"/>
@@ -7143,7 +7198,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="847"/>
         <source>Lower diffusion-time bound for the MaxEnt grid (0 = auto).</source>
-        <translation type="unfinished"></translation>
+        <translation>Untere Diffusionszeit-Grenze für das MaxEnt-Gitter (0 = auto).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="848"/>
@@ -7153,7 +7208,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="849"/>
         <source>Lower micro-time gate (channel index); no lower gate when omitted.</source>
-        <translation type="unfinished"></translation>
+        <translation>Untere Mikrozeit-Schwelle (Kanalindex); keine untere Schwelle, wenn weggelassen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="850"/>
@@ -7188,7 +7243,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="856"/>
         <source>MDF = Enderlein Gauss-Lorentz molecule-detection function (accurate absolute Veff/concentration). Gauss = classic single-focus 3D-Gaussian PSF approximation (the default). Two-focus = classic Dertinger dual-focus technique (same 3D-Gaussian term, known inter-focus distance yields an absolute D).</source>
-        <translation type="unfinished"></translation>
+        <translation>MDF = Enderlein-Gauß-Lorentz-Molekül-Detektionsfunktion (genaue absolute Veff/Konzentration). Gauß = klassische Einzelfokus-3D-Gauß-PSF-Näherung (Standard). Zweifokus = klassische Dertinger-Zweifokus-Technik (gleicher 3D-Gauß-Term, bekannter Zwischenfokus-Abstand ergibt ein absolutes D).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="857"/>
@@ -7203,12 +7258,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="859"/>
         <source>MMFDB password for the user below. Blank attempts a passwordless login.</source>
-        <translation type="unfinished"></translation>
+        <translation>MMFDB-Passwort für den Benutzer unten. Leer versucht eine passwortlose Anmeldung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="860"/>
         <source>MMFDB password. Not needed when the session user is already an administrator.</source>
-        <translation type="unfinished"></translation>
+        <translation>MMFDB-Passwort. Nicht erforderlich, wenn der Sitzungsbenutzer bereits Administrator ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="861"/>
@@ -7248,7 +7303,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="868"/>
         <source>Macro-time lag dT at which the 2D fluorescence-decay correlation is built. Pick a value within the dynamics timescale to see lifetime cross-peaks.</source>
-        <translation type="unfinished"></translation>
+        <translation>Makrozeit-Lag dT, bei dem die 2D-Fluoreszenzzerfalls-Korrelation aufgebaut wird. Einen Wert innerhalb der Dynamik-Zeitskala wählen, um Lebensdauer-Kreuzpeaks zu sehen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="869"/>
@@ -7318,7 +7373,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="882"/>
         <source>Maximum distance for p(r) (only when NS &gt; 0).</source>
-        <translation type="unfinished"></translation>
+        <translation>Maximaler Abstand für p(r) (nur bei NS &gt; 0).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="883"/>
@@ -7343,7 +7398,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="887"/>
         <source>Maximum minibead radius (shell modes 1/2 when NSIG ≠ -1).</source>
-        <translation type="unfinished"></translation>
+        <translation>Maximaler Minikügelchen-Radius (Schalenmodi 1/2 bei NSIG ≠ -1).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="888"/>
@@ -7403,7 +7458,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="900"/>
         <source>Merge selected segments separated by up to &apos;Max gap&apos; photons.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ausgewählte Segmente zusammenführen, die durch bis zu „Max. Lücke“ Photonen getrennt sind.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="901"/>
@@ -7478,12 +7533,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="916"/>
         <source>Micro-time channel width in NANOSECONDS (the TAC/TCSPC resolution; default ≈0.004 ns). Separate ns axis from the macro-time.</source>
-        <translation type="unfinished"></translation>
+        <translation>Mikrozeit-Kanalbreite in NANOSEKUNDEN (die TAC/TCSPC-Auflösung; Standard ≈0,004 ns). Von der Makrozeit getrennte ns-Achse.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="917"/>
         <source>Micro-time channel width; the excitation period is n_micro × dt.</source>
-        <translation type="unfinished"></translation>
+        <translation>Mikrozeit-Kanalbreite; die Anregungsperiode ist n_micro × dt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="918"/>
@@ -7493,17 +7548,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="919"/>
         <source>Micro-time coarsening (binning) factor: neighbouring micro-time bins are summed before histogramming.</source>
-        <translation type="unfinished"></translation>
+        <translation>Mikrozeit-Vergröberungs-(Binning-)Faktor: benachbarte Mikrozeit-Bins werden vor dem Histogrammieren summiert.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="920"/>
         <source>Micro-time coarsening for the MLE IRF/background patterns (match the burst-MLE binning).</source>
-        <translation type="unfinished"></translation>
+        <translation>Mikrozeit-Vergröberung für die MLE-IRF-/Hintergrundmuster (an das Burst-MLE-Binning anpassen).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="921"/>
         <source>Micro-time histogram after mapping the ALEX period/shift; updates live.</source>
-        <translation type="unfinished"></translation>
+        <translation>Mikrozeit-Histogramm nach der Abbildung der ALEX-Periode/-Verschiebung; aktualisiert sich live.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="922"/>
@@ -7523,7 +7578,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="925"/>
         <source>Min coast windows</source>
-        <translation type="unfinished"></translation>
+        <translation>Min. Coasting-Fenster</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="926"/>
@@ -7553,7 +7608,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="931"/>
         <source>Minimum allowed atom-atom distance (shown in Ångström). Frames with any selected atom pair closer than this (after a /10 conversion to the trajectory length unit) are removed.</source>
-        <translation type="unfinished"></translation>
+        <translation>Minimal erlaubter Atom-Atom-Abstand (in Ångström angezeigt). Bilder, in denen ein ausgewähltes Atompaar näher als dieser Wert ist (nach einer /10-Umrechnung in die Trajektorien-Längeneinheit), werden entfernt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="932"/>
@@ -7568,7 +7623,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="934"/>
         <source>Minimum minibead radius (shell modes 1/2 when NSIG ≠ -1).</source>
-        <translation type="unfinished"></translation>
+        <translation>Minimaler Minikügelchen-Radius (Schalenmodi 1/2 bei NSIG ≠ -1).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="935"/>
@@ -7588,7 +7643,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="938"/>
         <source>Missed-detection parameter (CUSUM).</source>
-        <translation type="unfinished"></translation>
+        <translation>Parameter für verpasste Detektion (CUSUM).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="939"/>
@@ -7598,7 +7653,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="940"/>
         <source>Mitigate wrap spike (floor + ε)</source>
-        <translation type="unfinished"></translation>
+        <translation>Umlaufspitze abschwächen (Untergrund + ε)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="941"/>
@@ -7633,12 +7688,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="947"/>
         <source>Model scattered excitation light (the IRF) as a nuisance component. Each detector&apos;s measured IRF file, or its synthetic-IRF Width/Skew, is set per row in the Detectors table below. Afterpulse and scatter/IRF are always absorbed by their filters and excluded from the correlation-facing output.</source>
-        <translation type="unfinished"></translation>
+        <translation>Gestreutes Anregungslicht (die IRF) als Störkomponente modellieren. Die gemessene IRF-Datei jedes Detektors oder seine synthetische IRF-Breite/-Schiefe wird zeilenweise in der Detektorentabelle unten gesetzt. Nachpuls und Streuung/IRF werden immer von ihren Filtern absorbiert und von der korrelationsseitigen Ausgabe ausgeschlossen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="948"/>
         <source>Model the finite laser repetition period: the previous pulse&apos;s decay tail wraps into the window (fixes the ramp/offset in the residuals).</source>
-        <translation type="unfinished"></translation>
+        <translation>Die endliche Laser-Wiederholperiode modellieren: der Zerfallsschwanz des vorherigen Pulses läuft in das Fenster hinein (behebt die Rampe/den Versatz in den Residuen).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="949"/>
@@ -7718,7 +7773,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="964"/>
         <source>Monte-Carlo trials for the covolume calculation (0 to omit; very time-consuming).</source>
-        <translation type="unfinished"></translation>
+        <translation>Monte-Carlo-Versuche für die Kovolumen-Berechnung (0 zum Weglassen; sehr zeitaufwändig).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="965"/>
@@ -7733,7 +7788,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="967"/>
         <source>Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data.</source>
-        <translation type="unfinished"></translation>
+        <translation>Werkzeug zur mehrdimensionalen Fluoreszenzdatenanalyse und -visualisierung. Unterstützt Burst-Analyse, Multiparameter-Fluoreszenzdetektion (MFD), FRET-Berechnungen und die interaktive Auswahl/Filterung von Burst-Ereignissen für Einzelmolekül- wie auch Bildspektroskopiedaten.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="968"/>
@@ -7783,12 +7838,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="977"/>
         <source>Named chi2 score set in the fps.json (empty = all distances).</source>
-        <translation type="unfinished"></translation>
+        <translation>Benannter chi2-Bewertungssatz in der fps.json (leer = alle Abstände).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="978"/>
         <source>Never sleep a molecule for fewer than this many windows (default 8) — avoids coasting overhead on short gaps. Only used when Coasting is on.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ein Molekül nie für weniger als diese Anzahl von Fenstern schlafen legen (Standard 8) — vermeidet Coasting-Overhead bei kurzen Lücken. Nur verwendet, wenn Coasting aktiviert ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="981"/>
@@ -7808,7 +7863,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="984"/>
         <source>Non-negative, sum-to-one fractions for N &gt;= 2 component phasors.</source>
-        <translation type="unfinished"></translation>
+        <translation>Nicht-negative, sich zu eins summierende Anteile für N ≥ 2 Komponenten-Phasoren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="985"/>
@@ -7833,7 +7888,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="989"/>
         <source>Normalize an fps.json payload through the core data model.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine fps.json-Nutzlast über das Kern-Datenmodell normalisieren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="990"/>
@@ -7843,7 +7898,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="991"/>
         <source>Nucleus-sampling probability mass.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wahrscheinlichkeitsmasse des Nucleus-Sampling.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="992"/>
@@ -7878,12 +7933,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="998"/>
         <source>Number of components in the staging database.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anzahl der Komponenten in der Staging-Datenbank.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="999"/>
         <source>Number of detection (routing) channels (default 2). 2 = donor/acceptor; 4 = 2-colour PIE or polarization-resolved; 6 = 3-colour, or colour×polarization.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anzahl der Detektions-(Routing-)Kanäle (Standard 2). 2 = Donor/Akzeptor; 4 = 2-Farben-PIE oder polarisationsaufgelöst; 6 = 3-Farben oder Farbe×Polarisation.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1000"/>
@@ -7893,7 +7948,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1001"/>
         <source>Number of independent docking runs from random starts (FPS n_trials). &gt;1 estimates the score spread; each run is plotted and listed in the results table and runs in parallel.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anzahl der unabhängigen Docking-Läufe von zufälligen Startpunkten (FPS n_trials). &gt;1 schätzt die Streuung der Bewertung; jeder Lauf wird dargestellt, in der Ergebnistabelle aufgeführt und läuft parallel.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1002"/>
@@ -7908,7 +7963,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1004"/>
         <source>Number of macro-time lags for the global multi-lag MEM / kinetics scan.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anzahl der Makrozeit-Lags für den globalen Multi-Lag-MEM-/Kinetik-Scan.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1005"/>
@@ -7928,17 +7983,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1008"/>
         <source>Number of micro-time (TCSPC/TAC) channels on the fluorescence-decay axis (default 4096; match the instrument, typically 1024–4096). N_tac × tac_dt should span one laser period.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anzahl der Mikrozeit-(TCSPC/TAC-)Kanäle auf der Fluoreszenzzerfalls-Achse (Standard 4096; an das Instrument anpassen, typisch 1024–4096). N_tac × tac_dt sollte eine Laserperiode umspannen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1009"/>
         <source>Number of minibead radii (&gt;2, typically 5–8). Use -1 for automatic SIGMIN/SIGMAX.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anzahl der Minikügelchen-Radien (&gt;2, typisch 5–8). -1 für automatisches SIGMIN/SIGMAX verwenden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1010"/>
         <source>Number of molecular / photophysical states (default 1). Brightness q, diffusion D and the N×N rate matrices are all sized by this. Use ≥2 for FRET states, species mixtures, or blinking (a bright + a dark state).</source>
-        <translation type="unfinished"></translation>
+        <translation>Anzahl der molekularen / photophysikalischen Zustände (Standard 1). Helligkeit q, Diffusion D und die N×N-Ratenmatrizen werden alle danach dimensioniert. ≥2 für FRET-Zustände, Speziesmischungen oder Blinken (ein heller + ein dunkler Zustand) verwenden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1011"/>
@@ -7968,12 +8023,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1016"/>
         <source>N×N row-major (i→j) SPONTANEOUS transition-rate matrix, per macro-time unit — blinking / conformational dynamics, independent of excitation. e.g. a two-state blinker uses k(bright→dark) and k(dark→bright). Length N_species².</source>
-        <translation type="unfinished"></translation>
+        <translation>N×N zeilenweise (i→j) SPONTANE Übergangsraten-Matrix, pro Makrozeit-Einheit — Blinken / Konformationsdynamik, unabhängig von der Anregung. z. B. verwendet ein Zweizustands-Blinker k(hell→dunkel) und k(dunkel→hell). Länge N_species².</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1017"/>
         <source>N×N row-major (i→j) transition-rate matrix SCALED by the local excitation intensity — photo-induced processes such as photobleaching — per macro-time unit. Length N_species². All-zero = no light-driven transitions (the common case).</source>
-        <translation type="unfinished"></translation>
+        <translation>N×N zeilenweise (i→j) Übergangsraten-Matrix, SKALIERT mit der lokalen Anregungsintensität — photoinduzierte Prozesse wie Photobleichen — pro Makrozeit-Einheit. Länge N_species². Alles null = keine lichtgetriebenen Übergänge (der übliche Fall).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1018"/>
@@ -7988,7 +8043,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1020"/>
         <source>Offset subtracted from corrected NTAC indices (or drag the red line).</source>
-        <translation type="unfinished"></translation>
+        <translation>Versatz, der von den korrigierten NTAC-Indizes subtrahiert wird (oder die rote Linie ziehen).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1021"/>
@@ -7998,12 +8053,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1022"/>
         <source>Only every Nth frame is scored; also seeds the emitted frame numbers.</source>
-        <translation type="unfinished"></translation>
+        <translation>Nur jedes N-te Bild wird bewertet; initialisiert auch die ausgegebenen Bildnummern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1023"/>
         <source>Only used when Method = mc; ignored by the default minimize docking.</source>
-        <translation type="unfinished"></translation>
+        <translation>Nur verwendet, wenn Methode = mc; wird vom Standard-minimize-Docking ignoriert.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1024"/>
@@ -8038,7 +8093,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1030"/>
         <source>Open-volume expected molecule count per species IN THE BOX (default [1.5]); with the box size this sets the concentration (= M / box volume). smFRET is dilute — on average ~1 molecule in the focus (single-digit to tens of pM).</source>
-        <translation type="unfinished"></translation>
+        <translation>Erwartete Molekülanzahl pro Spezies IN DER BOX für das offene Volumen (Standard [1,5]); zusammen mit der Boxgröße legt dies die Konzentration fest (= M / Boxvolumen). smFRET ist verdünnt — im Mittel ~1 Molekül im Fokus (einstellige bis einige zehn pM).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1031"/>
@@ -8053,7 +8108,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1033"/>
         <source>Opens a TTTR file with tttrlib and reports its metadata: available routing channels, total photon count, macro-time resolution and micro-time range. Call this first to discover which channels to select for pch.compute.</source>
-        <translation type="unfinished"></translation>
+        <translation>Öffnet eine TTTR-Datei mit tttrlib und meldet ihre Metadaten: verfügbare Routing-Kanäle, Gesamt-Photonenzahl, Makrozeit-Auflösung und Mikrozeit-Bereich. Dies zuerst aufrufen, um herauszufinden, welche Kanäle für pch.compute auszuwählen sind.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1034"/>
@@ -8088,7 +8143,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1040"/>
         <source>Optional [xy, z] half-extent of the excitation voxel grid, INDEPENDENT of the box (µm). Sizing it to the focus (e.g. [3, 5]) instead of the full box makes grid construction ~50× cheaper with IDENTICAL physics, since the field is ≈0 outside. Empty = span the whole box. Ignored when 'Analytic Gaussian focus' is on.</source>
-        <translation type="unfinished"></translation>
+        <translation>Optionale [xy, z]-Halbausdehnung des Anregungs-Voxelgitters, UNABHÄNGIG von der Box (µm). Es auf den Fokus zu dimensionieren (z. B. [3, 5]) statt auf die volle Box macht den Gitteraufbau ~50× günstiger bei IDENTISCHER Physik, da das Feld außerhalb ≈0 ist. Leer = die ganze Box umspannen. Ignoriert, wenn „Analytischer Gauß-Fokus“ aktiviert ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1041"/>
@@ -8158,7 +8213,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1056"/>
         <source>P(τ_D)</source>
-        <translation type="unfinished"></translation>
+        <translation>P(τ_D)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1057"/>
@@ -8203,17 +8258,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1065"/>
         <source>PTU/HT3 imaging file (or drop one onto the window); CLSM markers auto-detected.</source>
-        <translation type="unfinished"></translation>
+        <translation>PTU/HT3-Bildgebungsdatei (oder eine auf das Fenster ziehen); CLSM-Marker werden automatisch erkannt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1066"/>
         <source>PTU/HT3 imaging file; CLSM markers are auto-detected from the header.</source>
-        <translation type="unfinished"></translation>
+        <translation>PTU/HT3-Bildgebungsdatei; CLSM-Marker werden automatisch aus dem Kopf erkannt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1067"/>
         <source>PTU/HT3 imaging file; CLSM markers auto-detected.</source>
-        <translation type="unfinished"></translation>
+        <translation>PTU/HT3-Bildgebungsdatei; CLSM-Marker werden automatisch erkannt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1068"/>
@@ -8233,7 +8288,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1072"/>
         <source>Parallel-channel background subtracted from the VV IRF (0 = auto baseline).</source>
-        <translation type="unfinished"></translation>
+        <translation>Hintergrund des parallelen Kanals, subtrahiert von der VV-IRF (0 = automatische Grundlinie).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1073"/>
@@ -8263,7 +8318,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1078"/>
         <source>Parse a HYDRO *.res report for the translational diffusion coefficient.</source>
-        <translation type="unfinished"></translation>
+        <translation>Einen HYDRO-*.res-Bericht auf den Translations-Diffusionskoeffizienten hin auswerten.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1079"/>
@@ -8273,7 +8328,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1080"/>
         <source>Partial specific volume (proteins ≈ 0.73–0.75 cm³/g).</source>
-        <translation type="unfinished"></translation>
+        <translation>Partielles spezifisches Volumen (Proteine ≈ 0,73–0,75 cm³/g).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1081"/>
@@ -8298,7 +8353,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1085"/>
         <source>Path to a numeric/measured radially-symmetric PSF sampled on the (r, z) half-plane: .npy (2D [nz, nr] array), .npz ('rz' + steps), or .mat (PyBroMo). Only used when PSF model = 'radial'. The PSF is filled into the voxel grid by bilinear interpolation at r=√(x²+y²).</source>
-        <translation type="unfinished"></translation>
+        <translation>Pfad zu einer numerischen/gemessenen radialsymmetrischen PSF, abgetastet auf der (r, z)-Halbebene: .npy (2D-[nz, nr]-Array), .npz ('rz' + Schritte) oder .mat (PyBroMo). Nur beim PSF-Modell = 'radial' verwendet. Die PSF wird durch bilineare Interpolation bei r=√(x²+y²) in das Voxelgitter eingefüllt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1086"/>
@@ -8313,17 +8368,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1088"/>
         <source>Path to the HYDROPRO or HYDRO++ executable. The flavour is auto-detected from the filename.</source>
-        <translation type="unfinished"></translation>
+        <translation>Pfad zum HYDROPRO- oder HYDRO++-Programm. Die Variante wird automatisch aus dem Dateinamen erkannt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1089"/>
         <source>Path to the staging spectra database being summarised.</source>
-        <translation type="unfinished"></translation>
+        <translation>Pfad zur zusammengefassten Staging-Spektren-Datenbank.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1090"/>
         <source>Path to the written SPC / photon-stream file(s), if an output path was given (else null).</source>
-        <translation type="unfinished"></translation>
+        <translation>Pfad zu der/den geschriebenen SPC-/Photonenstrom-Datei(en), falls ein Ausgabepfad angegeben wurde (sonst null).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1091"/>
@@ -8333,7 +8388,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1092"/>
         <source>Peak molecular brightness per (species, channel): photons per macro-time unit at the focus centre (ms ⇒ kHz). Flattened species-major: [q(sp0,ch0), q(sp0,ch1), q(sp1,ch0), …]. Single-molecule peak brightness is typically ~20–100 kHz; the channel split encodes FRET efficiency / anisotropy.</source>
-        <translation type="unfinished"></translation>
+        <translation>Molekulare Spitzenhelligkeit pro (Spezies, Kanal): Photonen pro Makrozeit-Einheit im Fokuszentrum (ms ⇒ kHz). Flach, spezies-major: [q(sp0,ch0), q(sp0,ch1), q(sp1,ch0), …]. Die Einzelmolekül-Spitzenhelligkeit liegt typisch bei ~20–100 kHz; die Kanalaufteilung kodiert FRET-Effizienz / Anisotropie.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1093"/>
@@ -8353,22 +8408,22 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1096"/>
         <source>Per-detector IRF file and background (kHz) calibration; transferred to phasor and pixel-wise MLE. Optional (skippable) pipeline step.</source>
-        <translation type="unfinished"></translation>
+        <translation>Detektorweise IRF-Datei und Hintergrund-(kHz-)Kalibrierung; an Phasor und pixelweise MLE übertragen. Optionaler (überspringbarer) Pipeline-Schritt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1097"/>
         <source>Per-detector scatter-derived IRF from the non-burst photons (log y).</source>
-        <translation type="unfinished"></translation>
+        <translation>Detektorweise streuungsabgeleitete IRF aus den Nicht-Burst-Photonen (log y).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1098"/>
         <source>Per-detector-channel count rate (kHz) for each loaded file.</source>
-        <translation type="unfinished"></translation>
+        <translation>Zählrate pro Detektorkanal (kHz) für jede geladene Datei.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1099"/>
         <source>Per-frame phasor density animated over acquisition frames (play/loop/stop + frame slider).</source>
-        <translation type="unfinished"></translation>
+        <translation>Bildweise Phasor-Dichte, animiert über die Aufnahmebilder (Abspielen/Schleife/Stopp + Bildregler).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1100"/>
@@ -8383,12 +8438,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1102"/>
         <source>Per-pixel dwell time (simulator macro-time units).</source>
-        <translation type="unfinished"></translation>
+        <translation>Verweildauer pro Pixel (Simulator-Makrozeit-Einheiten).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1103"/>
         <source>Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference) that N&amp;B / phasor / MLE enrich.</source>
-        <translation type="unfinished"></translation>
+        <translation>Intensitätskarte pro Pixel; erzeugt das Standard-Bildgebungs-HDF5 (mit Quell-Rückreferenz), das N&amp;B / Phasor / MLE anreichern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1104"/>
@@ -8403,7 +8458,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1106"/>
         <source>Per-state brightness in counts per second (equal for both states).</source>
-        <translation type="unfinished"></translation>
+        <translation>Helligkeit pro Zustand in Zählungen pro Sekunde (für beide Zustände gleich).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1107"/>
@@ -8428,7 +8483,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1111"/>
         <source>Perpendicular-channel background subtracted from the VH IRF (0 = auto baseline).</source>
-        <translation type="unfinished"></translation>
+        <translation>Hintergrund des senkrechten Kanals, subtrahiert von der VH-IRF (0 = automatische Grundlinie).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1112"/>
@@ -8448,17 +8503,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1115"/>
         <source>Persist a light-path graph and simulated outputs as MMFDB artifacts.</source>
-        <translation type="unfinished"></translation>
+        <translation>Einen Lichtweg-Graphen und simulierte Ausgaben als MMFDB-Artefakte speichern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1116"/>
         <source>Persist the current provider&apos;s settings to ~/.chisurf/ai_api_settings.json.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die Einstellungen des aktuellen Anbieters in ~/.chisurf/ai_api_settings.json speichern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1117"/>
         <source>Phase shift of the ALEX period before the macro→micro mapping.</source>
-        <translation type="unfinished"></translation>
+        <translation>Phasenverschiebung der ALEX-Periode vor der Makro→Mikro-Abbildung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1118"/>
@@ -8473,7 +8528,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1120"/>
         <source>Phasor g movie</source>
-        <translation type="unfinished"></translation>
+        <translation>Phasor-g-Film</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1121"/>
@@ -8483,7 +8538,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1122"/>
         <source>Phasor plot movie</source>
-        <translation type="unfinished"></translation>
+        <translation>Phasor-Diagramm-Film</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1123"/>
@@ -8493,7 +8548,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1124"/>
         <source>Phasor s movie</source>
-        <translation type="unfinished"></translation>
+        <translation>Phasor-s-Film</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1125"/>
@@ -8508,12 +8563,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1127"/>
         <source>Photon budget. More photons = cleaner filtered correlations (and a slower simulation).</source>
-        <translation type="unfinished"></translation>
+        <translation>Photonenbudget. Mehr Photonen = sauberere gefilterte Korrelationen (und eine langsamere Simulation).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1128"/>
         <source>Photon time padding added around each burst before correlation.</source>
-        <translation type="unfinished"></translation>
+        <translation>Photonenzeit-Auffüllung, die vor der Korrelation um jeden Burst hinzugefügt wird.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1129"/>
@@ -8548,7 +8603,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1135"/>
         <source>Photons per output file (×1000) when 'Split into files' is on.</source>
-        <translation type="unfinished"></translation>
+        <translation>Photonen pro Ausgabedatei (×1000), wenn „In Dateien aufteilen“ aktiviert ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1136"/>
@@ -8573,7 +8628,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1140"/>
         <source>Pick a file to preview its detector-window intensity mosaic; rate ★ and annotate. Drop a folder to open it.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine Datei auswählen, um ihr Detektorfenster-Intensitätsmosaik vorzuschauen; mit ★ bewerten und annotieren. Einen Ordner ablegen, um ihn zu öffnen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1141"/>
@@ -8623,7 +8678,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1150"/>
         <source>Pixels with fewer photons than this are discriminated (set to 0); press Run to apply.</source>
-        <translation type="unfinished"></translation>
+        <translation>Pixel mit weniger Photonen als diesem Wert werden verworfen (auf 0 gesetzt); zum Anwenden Ausführen drücken.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1151"/>
@@ -8638,7 +8693,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1153"/>
         <source>Point-spread / molecule-detection function for the excitation focus. 'gaussian3d' = separable 3D Gaussian (waists [w0, z0]); 'analytic_gaussian3d' = same Gaussian evaluated grid-free (zero build cost, exact, Gaussian only — equivalent to 'Analytic Gaussian focus'); 'gaussian_lorentzian' = confocal MDF with a z-expanding waist w(z)²=w0²(1+(z/zR)²) (uses w0 and the Rayleigh range zR); 'radial' = a numeric/measured radially-symmetric PSF loaded from a file (see 'PSF file').</source>
-        <translation type="unfinished"></translation>
+        <translation>Punktverwaschungs- / Molekül-Detektionsfunktion für den Anregungsfokus. 'gaussian3d' = separierbarer 3D-Gauß (Taillen [w0, z0]); 'analytic_gaussian3d' = derselbe Gauß gitterfrei ausgewertet (keine Aufbaukosten, exakt, nur Gauß — entspricht „Analytischer Gauß-Fokus“); 'gaussian_lorentzian' = konfokale MDF mit einer sich in z ausdehnenden Taille w(z)²=w0²(1+(z/zR)²) (verwendet w0 und den Rayleigh-Bereich zR); 'radial' = eine numerische/gemessene radialsymmetrische PSF, aus einer Datei geladen (siehe „PSF-Datei“).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1154"/>
@@ -8648,7 +8703,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1155"/>
         <source>Poisson-sample a finite-count observation (uses Photons + Seed). Off = normalized ideal pattern.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine Beobachtung mit endlicher Zählrate per Poisson ziehen (verwendet Photonen + Startwert). Aus = normiertes ideales Muster.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1156"/>
@@ -8673,12 +8728,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1160"/>
         <source>Polarization channel(s) to read when multiple routing channels are selected.</source>
-        <translation type="unfinished"></translation>
+        <translation>Zu lesende(r) Polarisationskanal/-kanäle, wenn mehrere Routing-Kanäle ausgewählt sind.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1161"/>
         <source>Polarization channel(s) to read: magic-angle, parallel, perpendicular, or stacked VV,VH.</source>
-        <translation type="unfinished"></translation>
+        <translation>Zu lesende(r) Polarisationskanal/-kanäle: magischer Winkel, parallel, senkrecht oder gestapelt VV,VH.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1162"/>
@@ -8723,7 +8778,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1171"/>
         <source>Preview / tune THIS routing channel's histogram + region. ‘Add to Detector setup’ computes and assigns a LUT for ALL channels.</source>
-        <translation type="unfinished"></translation>
+        <translation>Histogramm + Bereich DIESES Routing-Kanals vorschauen / abstimmen. „Zum Detektoraufbau hinzufügen“ berechnet und weist eine LUT für ALLE Kanäle zu.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1172"/>
@@ -8738,12 +8793,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1177"/>
         <source>Prior photon count for the BOCPD Gamma prior.</source>
-        <translation type="unfinished"></translation>
+        <translation>Prior-Photonenzahl für den BOCPD-Gamma-Prior.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1178"/>
         <source>Probability of a burst start in any bin (BOCPD).</source>
-        <translation type="unfinished"></translation>
+        <translation>Wahrscheinlichkeit eines Burst-Beginns in einem beliebigen Bin (BOCPD).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1179"/>
@@ -8773,7 +8828,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1184"/>
         <source>Probe category (organic_dye, protein, nucleic_acid, ...).</source>
-        <translation type="unfinished"></translation>
+        <translation>Sondenkategorie (organic_dye, protein, nucleic_acid, …).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1185"/>
@@ -8793,7 +8848,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1188"/>
         <source>Process-noise parameter (Kalman).</source>
-        <translation type="unfinished"></translation>
+        <translation>Prozessrausch-Parameter (Kalman).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1192"/>
@@ -8803,7 +8858,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1193"/>
         <source>Provenance source (fpbase, atto, spectra_db, user, ...).</source>
-        <translation type="unfinished"></translation>
+        <translation>Provenienzquelle (fpbase, atto, spectra_db, user, …).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1194"/>
@@ -8823,12 +8878,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1198"/>
         <source>Pulsed-excitation repetition period in NANOSECONDS (default 13.596 ≈ 73.5 MHz). Micro-times wrap modulo this. Only relevant in Pulsed mode.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wiederholperiode der gepulsten Anregung in NANOSEKUNDEN (Standard 13,596 ≈ 73,5 MHz). Mikrozeiten laufen modulo diesem Wert um. Nur im gepulsten Modus relevant.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1199"/>
         <source>Purge the existing reference probes before importing (a backup is made for local files).</source>
-        <translation type="unfinished"></translation>
+        <translation>Die vorhandenen Referenzsonden vor dem Import löschen (für lokale Dateien wird eine Sicherung erstellt).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1200"/>
@@ -8858,7 +8913,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1205"/>
         <source>Quantile of the non-burst micro-time histogram taken as the flat dark-count floor, subtracted before normalising the IRF.</source>
-        <translation type="unfinished"></translation>
+        <translation>Quantil des Nicht-Burst-Mikrozeit-Histogramms, das als flacher Dunkelzählraten-Untergrund genommen und vor dem Normieren der IRF subtrahiert wird.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1206"/>
@@ -8873,7 +8928,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1208"/>
         <source>Query the endpoint&apos;s /models list and split it into text and image models.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die /models-Liste des Endpunkts abfragen und in Text- und Bildmodelle aufteilen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1209"/>
@@ -8923,12 +8978,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1218"/>
         <source>RNG seed for diffusion, geometry and state transitions. Fix it for reproducible traces; change it for independent replicates.</source>
-        <translation type="unfinished"></translation>
+        <translation>RNG-Startwert für Diffusion, Geometrie und Zustandsübergänge. Für reproduzierbare Spuren festhalten; für unabhängige Replikate ändern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1219"/>
         <source>RNG seed for emission, channel choice and background (independent of the diffusion seed).</source>
-        <translation type="unfinished"></translation>
+        <translation>RNG-Startwert für Emission, Kanalwahl und Hintergrund (unabhängig vom Diffusions-Startwert).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1220"/>
@@ -8953,7 +9008,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1224"/>
         <source>Radial (r) sample spacing of the numeric PSF file, in µm. Only used for PSF model = 'radial' when not supplied by the file itself (.npz).</source>
-        <translation type="unfinished"></translation>
+        <translation>Radialer (r-)Abtastabstand der numerischen PSF-Datei, in µm. Nur beim PSF-Modell = 'radial' verwendet, wenn nicht von der Datei selbst geliefert (.npz).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1225"/>
@@ -8988,7 +9043,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1232"/>
         <source>Rayleigh range zR (µm) for the Gaussian-Lorentzian PSF: the axial distance over which the beam waist expands by √2 (w(z)²=w0²(1+(z/zR)²)). Confocal ~0.5–1.5 µm. Only used when PSF model = 'gaussian_lorentzian'.</source>
-        <translation type="unfinished"></translation>
+        <translation>Rayleigh-Bereich zR (µm) für die Gauß-Lorentz-PSF: der axiale Abstand, über den sich die Strahltaille um √2 ausdehnt (w(z)²=w0²(1+(z/zR)²)). Konfokal ~0,5–1,5 µm. Nur beim PSF-Modell = 'gaussian_lorentzian' verwendet.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1233"/>
@@ -9003,7 +9058,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1235"/>
         <source>Re-sync experiment_configs.yaml from the packaged default so new fitting models (e.g. the AutoForm PDA models) show up. Requires a restart.</source>
-        <translation type="unfinished"></translation>
+        <translation>experiment_configs.yaml aus dem mitgelieferten Standard neu synchronisieren, damit neue Fit-Modelle (z. B. die AutoForm-PDA-Modelle) erscheinen. Erfordert einen Neustart.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1236"/>
@@ -9018,12 +9073,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1239"/>
         <source>Rebin factor along the x-axis: neighbouring channels are summed, e.g. a value of 2 turns &apos;1,2,3,4&apos; into &apos;3,7&apos;.</source>
-        <translation type="unfinished"></translation>
+        <translation>Rebin-Faktor entlang der x-Achse: benachbarte Kanäle werden summiert, z. B. macht ein Wert von 2 aus '1,2,3,4' '3,7'.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1240"/>
         <source>Rebin factor along the y-axis: neighbouring counts are summed, e.g. a value of 2 turns &apos;1,2,3,4&apos; into &apos;3,7&apos;.</source>
-        <translation type="unfinished"></translation>
+        <translation>Rebin-Faktor entlang der y-Achse: benachbarte Zählungen werden summiert, z. B. macht ein Wert von 2 aus '1,2,3,4' '3,7'.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1241"/>
@@ -9058,12 +9113,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1247"/>
         <source>Reference dye (D @ 25 °C, water)</source>
-        <translation type="unfinished"></translation>
+        <translation>Referenzfarbstoff (D bei 25 °C, Wasser)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1248"/>
         <source>Reference-geometry polylines (semicircle, lifetime grid/ticks, FRET, component line).</source>
-        <translation type="unfinished"></translation>
+        <translation>Referenzgeometrie-Polylinien (Halbkreis, Lebensdauer-Gitter/-Markierungen, FRET, Komponentenlinie).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1249"/>
@@ -9103,7 +9158,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1256"/>
         <source>Reject far-from-focus field queries with a cheap 6-comparison bounding-box test before the trilinear interpolation. Drops the sub-threshold field tail — a small, statistically unbiased approximation. Safe to leave on; biggest help with large voxel grids.</source>
-        <translation type="unfinished"></translation>
+        <translation>Feldabfragen weit vom Fokus mit einem günstigen 6-Vergleiche-Begrenzungsbox-Test vor der trilinearen Interpolation verwerfen. Lässt den unterschwelligen Feldschwanz weg — eine kleine, statistisch unverzerrte Näherung. Bedenkenlos aktiviert lassen; am hilfreichsten bei großen Voxelgittern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1257"/>
@@ -9178,7 +9233,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1273"/>
         <source>Reopen a saved molecule_data.tsv (or joint_output.tsv) from a previous analysis to browse its molecules.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine gespeicherte molecule_data.tsv (oder joint_output.tsv) aus einer früheren Analyse erneut öffnen, um ihre Moleküle zu durchsuchen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1274"/>
@@ -9188,7 +9243,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1275"/>
         <source>Repetition period for periodic convolution (e.g. 12.5 ns at 80 MHz); adds the inter-pulse tail from earlier pulses. 0 = aperiodic (linear) convolution.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wiederholperiode für die periodische Faltung (z. B. 12,5 ns bei 80 MHz); fügt den Interpuls-Schwanz früherer Pulse hinzu. 0 = aperiodische (lineare) Faltung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1276"/>
@@ -9218,7 +9273,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1281"/>
         <source>Reset the current provider&apos;s fields to defaults (not saved until you press Save).</source>
-        <translation type="unfinished"></translation>
+        <translation>Die Felder des aktuellen Anbieters auf die Standardwerte zurücksetzen (erst gespeichert, wenn Speichern gedrückt wird).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1282"/>
@@ -9228,62 +9283,62 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1283"/>
         <source>Residual anisotropy of FRET-sensitised acceptor.</source>
-        <translation type="unfinished"></translation>
+        <translation>Residuale Anisotropie des FRET-sensibilisierten Akzeptors.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1284"/>
         <source>Residual anisotropy of direct-excited acceptor.</source>
-        <translation type="unfinished"></translation>
+        <translation>Residuale Anisotropie des direkt angeregten Akzeptors.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1285"/>
         <source>Residual anisotropy of the donor without FRET.</source>
-        <translation type="unfinished"></translation>
+        <translation>Residuale Anisotropie des Donors ohne FRET.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1286"/>
         <source>Residual of the 2D inversion (data − model); should be structureless noise for a good fit.</source>
-        <translation type="unfinished"></translation>
+        <translation>Residuum der 2D-Inversion (Daten − Modell); sollte bei einem guten Fit strukturloses Rauschen sein.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1287"/>
         <source>Residual vs solution norm of the 1D lifetime inversion (log-log); the highlighted corner is the auto-selected regularization weight.</source>
-        <translation type="unfinished"></translation>
+        <translation>Residuum gegen Lösungsnorm der 1D-Lebensdauerinversion (log-log); die hervorgehobene Ecke ist das automatisch gewählte Regularisierungsgewicht.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1288"/>
         <source>Resolve 2CDE settings and folders from a burst workflow context.</source>
-        <translation type="unfinished"></translation>
+        <translation>2CDE-Einstellungen und -Ordner aus einem Burst-Workflow-Kontext auflösen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1289"/>
         <source>Resolve BVA settings and folders from workflow context.</source>
-        <translation type="unfinished"></translation>
+        <translation>BVA-Einstellungen und -Ordner aus dem Workflow-Kontext auflösen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1290"/>
         <source>Resolve H2MM settings and folders from a burst workflow context.</source>
-        <translation type="unfinished"></translation>
+        <translation>H2MM-Einstellungen und -Ordner aus einem Burst-Workflow-Kontext auflösen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1291"/>
         <source>Resolve MLE burst files and channel definitions from workflow context.</source>
-        <translation type="unfinished"></translation>
+        <translation>MLE-Burst-Dateien und Kanaldefinitionen aus dem Workflow-Kontext auflösen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1292"/>
         <source>Resolve a 1D lifetime spectrum from microtimes.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ein 1D-Lebensdauerspektrum aus Mikrozeiten auflösen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1293"/>
         <source>Resolved fluorescence-lifetime distribution; overlaid with the 1D-MEM and its Gaussian fit when enabled.</source>
-        <translation type="unfinished"></translation>
+        <translation>Aufgelöste Fluoreszenz-Lebensdauerverteilung; bei Aktivierung mit dem 1D-MEM und seinem Gauß-Fit überlagert.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1294"/>
         <source>Resulting χ² upper limit at the chosen confidence level.</source>
-        <translation type="unfinished"></translation>
+        <translation>Resultierende χ²-Obergrenze beim gewählten Konfidenzniveau.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1295"/>
@@ -9303,112 +9358,112 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1298"/>
         <source>Retrieve blob content by object UUID (returns base64-encoded data).</source>
-        <translation type="unfinished"></translation>
+        <translation>Blob-Inhalt anhand der Objekt-UUID abrufen (gibt base64-kodierte Daten zurück).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1299"/>
         <source>Retrieve object metadata by UUID.</source>
-        <translation type="unfinished"></translation>
+        <translation>Objekt-Metadaten anhand der UUID abrufen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1300"/>
         <source>Return phasor toolkit capabilities and defaults (frequency, harmonic, overlay sets, filters).</source>
-        <translation type="unfinished"></translation>
+        <translation>Fähigkeiten und Standardwerte des Phasor-Toolkits zurückgeben (Frequenz, Harmonische, Overlay-Sätze, Filter).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1301"/>
         <source>Return probe metadata used by the light-path simulator palette.</source>
-        <translation type="unfinished"></translation>
+        <translation>Sonden-Metadaten zurückgeben, die von der Lichtweg-Simulator-Palette verwendet werden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1302"/>
         <source>Return routing channels and n_mt for a file.</source>
-        <translation type="unfinished"></translation>
+        <translation>Routing-Kanäle und n_mt für eine Datei zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1303"/>
         <source>Return the 2CDE workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den 2CDE-Workflow-Vertrag zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1304"/>
         <source>Return the ALEX micro-time histogram of a file.</source>
-        <translation type="unfinished"></translation>
+        <translation>Das ALEX-Mikrozeit-Histogramm einer Datei zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1305"/>
         <source>Return the BVA workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den BVA-Workflow-Vertrag zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1306"/>
         <source>Return the Burst MLE workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den Burst-MLE-Workflow-Vertrag zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1307"/>
         <source>Return the Burst Selection workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den Burst-Auswahl-Workflow-Vertrag zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1308"/>
         <source>Return the FPS JSON Editor workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den Workflow-Vertrag des FPS-JSON-Editors zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1309"/>
         <source>Return the H2MM workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den H2MM-Workflow-Vertrag zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1310"/>
         <source>Return the Help plugin workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den Workflow-Vertrag des Hilfe-Plugins zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1311"/>
         <source>Return the IRF Estimator workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den Workflow-Vertrag des IRF-Schätzers zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1312"/>
         <source>Return the MaxEnt workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den MaxEnt-Workflow-Vertrag zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1313"/>
         <source>Return the Micro-time Shifter workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den Workflow-Vertrag des Mikrozeit-Verschiebers zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1314"/>
         <source>Return the RPC contract descriptor.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den RPC-Vertragsdeskriptor zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1315"/>
         <source>Return the RPC contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den RPC-Vertrag zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1316"/>
         <source>Return the TTTR Image Browser RPC contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den RPC-Vertrag des TTTR-Bild-Browsers zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1317"/>
         <source>Return the Time Window Bins workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den Workflow-Vertrag der Zeitfenster-Bins zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1318"/>
         <source>Return the Trace Browser RPC contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den RPC-Vertrag des Spur-Browsers zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1319"/>
         <source>Return the light-path simulator workflow contract.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den Workflow-Vertrag des Lichtweg-Simulators zurückgeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1320"/>
@@ -9418,27 +9473,27 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1321"/>
         <source>Reverse each read chunk of trajectory 1 in time before joining.</source>
-        <translation type="unfinished"></translation>
+        <translation>Jeden gelesenen Block von Trajektorie 1 vor dem Zusammenführen zeitlich umkehren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1322"/>
         <source>Reverse each read chunk of trajectory 2 in time before joining.</source>
-        <translation type="unfinished"></translation>
+        <translation>Jeden gelesenen Block von Trajektorie 2 vor dem Zusammenführen zeitlich umkehren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1323"/>
         <source>Reverse trajectory 1</source>
-        <translation type="unfinished"></translation>
+        <translation>Trajektorie 1 umkehren</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1324"/>
         <source>Reverse trajectory 2</source>
-        <translation type="unfinished"></translation>
+        <translation>Trajektorie 2 umkehren</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1325"/>
         <source>Review your user settings files; open the editor when needed.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ihre Benutzereinstellungsdateien überprüfen; bei Bedarf den Editor öffnen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1326"/>
@@ -9463,7 +9518,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1330"/>
         <source>Rotational diffusion coefficient, rad²/ns (default 0). Depolarizes emission over the fluorescence lifetime (Perrin). A protein with rotational correlation time of a few ns corresponds to D_rot ~0.05.</source>
-        <translation type="unfinished"></translation>
+        <translation>Rotationsdiffusionskoeffizient, rad²/ns (Standard 0). Depolarisiert die Emission über die Fluoreszenzlebensdauer (Perrin). Ein Protein mit einer Rotationskorrelationszeit von wenigen ns entspricht D_rot ~0,05.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1331"/>
@@ -9478,7 +9533,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1333"/>
         <source>Routing channels to restrict the metadata scan to; all channels when omitted.</source>
-        <translation type="unfinished"></translation>
+        <translation>Routing-Kanäle, auf die der Metadaten-Scan beschränkt wird; alle Kanäle, wenn weggelassen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1334"/>
@@ -9508,27 +9563,27 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1339"/>
         <source>Run MaxEnt FRET distance MEM on arrays.</source>
-        <translation type="unfinished"></translation>
+        <translation>MaxEnt-FRET-Abstands-MEM an Arrays ausführen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1340"/>
         <source>Run MaxEnt lifetime MEM on arrays.</source>
-        <translation type="unfinished"></translation>
+        <translation>MaxEnt-Lebensdauer-MEM an Arrays ausführen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1341"/>
         <source>Run Ruff fixes on an open editor document.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ruff-Korrekturen an einem offenen Editor-Dokument ausführen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1342"/>
         <source>Run Ruff on an open editor document.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ruff an einem offenen Editor-Dokument ausführen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1343"/>
         <source>Run a light-path simulation for a JSON graph.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine Lichtweg-Simulation für einen JSON-Graphen ausführen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1344"/>
@@ -9543,7 +9598,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1346"/>
         <source>Run photon filtering and burst finding for diagnostic plots.</source>
-        <translation type="unfinished"></translation>
+        <translation>Photonenfilterung und Burst-Suche für Diagnosediagramme ausführen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1347"/>
@@ -9558,7 +9613,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1349"/>
         <source>Run the tttrlib Sim* photon simulator: Brownian diffusion of fluorophores through a confocal excitation focus, with N-state photophysics/FRET, rotational anisotropy and CW/pulsed emission, returning (or writing) the photon stream (macro-time window, routing channel, micro-time/TAC channel). Every parameter maps onto tttrlib&apos;s SimSystem / SimSpecies / SimGrid / SimIntegrator; this per-parameter help is the single source of truth shared by the GUI tooltips, the CLI, the Python API and this RPC method. Diffusion/rate/brightness units share one abstract MACRO-time unit (ChiSurf/BurstNet convention: milliseconds, so a rate of 1.0 = 1 kHz); the micro-time / TAC axis is a separate axis in nanoseconds.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den tttrlib-Sim*-Photonensimulator ausführen: Brownsche Diffusion von Fluorophoren durch einen konfokalen Anregungsfokus, mit N-Zustands-Photophysik/FRET, rotatorischer Anisotropie und CW-/gepulster Emission, der den Photonenstrom zurückgibt (oder schreibt) (Makrozeit-Fenster, Routing-Kanal, Mikrozeit-/TAC-Kanal). Jeder Parameter bildet auf tttrlibs SimSystem / SimSpecies / SimGrid / SimIntegrator ab; diese Hilfe pro Parameter ist die einzige maßgebliche Quelle, die von den GUI-Tooltips, der CLI, der Python-API und dieser RPC-Methode gemeinsam genutzt wird. Diffusions-/Raten-/Helligkeits-Einheiten teilen sich eine abstrakte MAKRO-Zeit-Einheit (ChiSurf/BurstNet-Konvention: Millisekunden, sodass eine Rate von 1,0 = 1 kHz); die Mikrozeit-/TAC-Achse ist eine separate Achse in Nanosekunden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1350"/>
@@ -9598,7 +9653,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1357"/>
         <source>Sample a finite-count histogram; off = normalized ideal pattern.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ein Histogramm mit endlicher Zählrate ziehen; aus = normiertes ideales Muster.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1358"/>
@@ -9613,17 +9668,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1360"/>
         <source>Save AV points as an IMP-backed MRC density map.</source>
-        <translation type="unfinished"></translation>
+        <translation>AV-Punkte als IMP-gestützte MRC-Dichtekarte speichern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1361"/>
         <source>Save TTTR Image Browser ratings and annotations.</source>
-        <translation type="unfinished"></translation>
+        <translation>Bewertungen und Annotationen des TTTR-Bild-Browsers speichern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1362"/>
         <source>Save Trace Browser ratings and annotations.</source>
-        <translation type="unfinished"></translation>
+        <translation>Bewertungen und Annotationen des Spur-Browsers speichern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1363"/>
@@ -9638,7 +9693,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1367"/>
         <source>Save the docking trajectory (minimize) so the 3D preview can animate the docking path with the movie slider.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die Docking-Trajektorie (minimize) speichern, damit die 3D-Vorschau den Docking-Pfad mit dem Filmregler animieren kann.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1368"/>
@@ -9648,7 +9703,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1369"/>
         <source>Save the generated photon stream (.npz / .ptu / .spc / .ht3) + an intensity TIFF.</source>
-        <translation type="unfinished"></translation>
+        <translation>Den erzeugten Photonenstrom (.npz / .ptu / .spc / .ht3) + ein Intensitäts-TIFF speichern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1370"/>
@@ -9668,12 +9723,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1375"/>
         <source>Scattering q values: 0 omit, -1 automatic, &gt;0 specify QMAX.</source>
-        <translation type="unfinished"></translation>
+        <translation>Streu-q-Werte: 0 weglassen, -1 automatisch, &gt;0 QMAX angeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1376"/>
         <source>Scattering, distance distribution and covolume (HYDROPRO manual §3.c).</source>
-        <translation type="unfinished"></translation>
+        <translation>Streuung, Abstandsverteilung und Kovolumen (HYDROPRO-Handbuch §3.c).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1377"/>
@@ -9693,17 +9748,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1380"/>
         <source>Seed for the stochastic rebinning (reproducible previews).</source>
-        <translation type="unfinished"></translation>
+        <translation>Startwert für das stochastische Rebinning (reproduzierbare Vorschauen).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1381"/>
         <source>Segment and fit molecules in every selected file; writes molecule_data.tsv + joint_output.tsv.</source>
-        <translation type="unfinished"></translation>
+        <translation>Moleküle in jeder ausgewählten Datei segmentieren und fitten; schreibt molecule_data.tsv + joint_output.tsv.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1382"/>
         <source>Segment the first file with the current settings (no fitting) to tune the molecule count.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die erste Datei mit den aktuellen Einstellungen segmentieren (ohne Fit), um die Molekülanzahl abzustimmen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1383"/>
@@ -9713,7 +9768,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1387"/>
         <source>Select existing lifetime fits, add them with mixing fractions, and double-click a row to remove it.</source>
-        <translation type="unfinished"></translation>
+        <translation>Vorhandene Lebensdauer-Fits auswählen, mit Mischanteilen hinzufügen und eine Zeile per Doppelklick entfernen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1389"/>
@@ -9723,12 +9778,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1390"/>
         <source>Semicolon-separated microtime ranges for channel A: start-end;start-end.</source>
-        <translation type="unfinished"></translation>
+        <translation>Semikolongetrennte Mikrozeit-Bereiche für Kanal A: start-end;start-end.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1391"/>
         <source>Semicolon-separated microtime ranges for channel B: start-end;start-end.</source>
-        <translation type="unfinished"></translation>
+        <translation>Semikolongetrennte Mikrozeit-Bereiche für Kanal B: start-end;start-end.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1392"/>
@@ -9738,7 +9793,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1393"/>
         <source>Server-side file path to store.</source>
-        <translation type="unfinished"></translation>
+        <translation>Serverseitiger Dateipfad zum Speichern.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1394"/>
@@ -9758,7 +9813,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1397"/>
         <source>Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration.</source>
-        <translation type="unfinished"></translation>
+        <translation>Gemeinsamer Mehrdokument-Code-/Texteditor mit Projektnavigation, Symbolen, Diagnosen und optionaler Python-LSP-Integration.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1398"/>
@@ -9768,22 +9823,22 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1399"/>
         <source>Shift VH (⊥, ch)</source>
-        <translation type="unfinished"></translation>
+        <translation>VH verschieben (⊥, Kan.)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1400"/>
         <source>Shift VV (∥, ch)</source>
-        <translation type="unfinished"></translation>
+        <translation>VV verschieben (∥, Kan.)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1401"/>
         <source>Shift ∥</source>
-        <translation type="unfinished"></translation>
+        <translation>Verschiebung ∥</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1402"/>
         <source>Shift ⊥</source>
-        <translation type="unfinished"></translation>
+        <translation>Verschiebung ⊥</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1403"/>
@@ -9798,12 +9853,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1406"/>
         <source>Show only files at/above (or exactly at) a star rating.</source>
-        <translation type="unfinished"></translation>
+        <translation>Nur Dateien an/über (oder genau bei) einer Sternebewertung anzeigen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1407"/>
         <source>Shrink the simulated box to the focus AABB + this margin (µm), holding concentration fixed, so molecules that never reach the focus are never simulated (open-volume only; default 0 = off, ~7× faster at ~2 µm). Exact for diffusion/FCS. WARNING for INTERNAL KINETICS: the margin must exceed √(2·D / k_min) so a molecule reaches its stationary bright/dark distribution BEFORE entering the focus — too small biases brightness (measured up to +6% for a fast ~2–3 kHz blinker at 1.5 µm).</source>
-        <translation type="unfinished"></translation>
+        <translation>Die simulierte Box auf die Fokus-AABB + diesen Rand (µm) schrumpfen, bei fester Konzentration, sodass Moleküle, die den Fokus nie erreichen, nie simuliert werden (nur offenes Volumen; Standard 0 = aus, ~7× schneller bei ~2 µm). Exakt für Diffusion/FCS. WARNUNG bei INTERNER KINETIK: der Rand muss √(2·D / k_min) überschreiten, damit ein Molekül seine stationäre Hell-/Dunkel-Verteilung erreicht, BEVOR es in den Fokus eintritt — zu klein verzerrt die Helligkeit (gemessen bis +6 % für einen schnellen ~2–3-kHz-Blinker bei 1,5 µm).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1408"/>
@@ -9813,7 +9868,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1409"/>
         <source>Signal-to-background ratio (CUSUM).</source>
-        <translation type="unfinished"></translation>
+        <translation>Signal-zu-Hintergrund-Verhältnis (CUSUM).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1410"/>
@@ -9833,12 +9888,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1413"/>
         <source>Simulate each molecule's WHOLE timeline independently (coasting far, fine-stepping near the focus) and merge the streams — embarrassingly parallel across molecules (combine with worker threads). REQUIRES 'Max windows' &gt; 0 (fixed duration) and IGNORES N_ph_max. Big throughput win for dilute samples.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die GESAMTE Zeitachse jedes Moleküls unabhängig simulieren (weit entfernt coasten, nahe dem Fokus fein schrittweise) und die Ströme zusammenführen — trivial parallel über Moleküle (mit Arbeitsthreads kombinieren). ERFORDERT „Max. Fenster“ &gt; 0 (feste Dauer) und IGNORIERT N_ph_max. Großer Durchsatzgewinn für verdünnte Proben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1414"/>
         <source>Simulate the CLSM photon image from the loaded intensity + lifetime maps.</source>
-        <translation type="unfinished"></translation>
+        <translation>Das CLSM-Photonenbild aus den geladenen Intensitäts- + Lebensdauerkarten simulieren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1415"/>
@@ -9878,7 +9933,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1422"/>
         <source>Sliding photon window used by the burst search to estimate the local count rate.</source>
-        <translation type="unfinished"></translation>
+        <translation>Gleitendes Photonenfenster, das die Burst-Suche zur Schätzung der lokalen Zählrate verwendet.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1423"/>
@@ -9898,22 +9953,22 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1426"/>
         <source>Solution (≈ solvent) density in g/cm³.</source>
-        <translation type="unfinished"></translation>
+        <translation>Dichte der Lösung (≈ Lösungsmittel) in g/cm³.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1427"/>
         <source>Solution properties (HYDROPRO manual §3.b).</source>
-        <translation type="unfinished"></translation>
+        <translation>Lösungseigenschaften (HYDROPRO-Handbuch §3.b).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1428"/>
         <source>Solve for the linked l1=l2 mixing parameter.</source>
-        <translation type="unfinished"></translation>
+        <translation>Nach dem verknüpften Mischparameter l1=l2 auflösen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1429"/>
         <source>Solve the linked confocal-FCS quantities for one constraint.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die verknüpften konfokalen FCS-Größen für eine Nebenbedingung auflösen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1430"/>
@@ -9923,12 +9978,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1431"/>
         <source>Solvent viscosity in poises (water at 20 °C ≈ 0.01 P).</source>
-        <translation type="unfinished"></translation>
+        <translation>Lösungsmittelviskosität in Poise (Wasser bei 20 °C ≈ 0,01 P).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1432"/>
         <source>Solvent viscosity; computed from the water model when 'Use water η(T)' is enabled.</source>
-        <translation type="unfinished"></translation>
+        <translation>Lösungsmittelviskosität; aus dem Wassermodell berechnet, wenn „Wasser-η(T) verwenden“ aktiviert ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1433"/>
@@ -9953,17 +10008,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1437"/>
         <source>Space-separated routing channels forming the parallel (VV) detection.</source>
-        <translation type="unfinished"></translation>
+        <translation>Leerzeichengetrennte Routing-Kanäle, die die parallele (VV) Detektion bilden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1438"/>
         <source>Space-separated routing channels forming the perpendicular (VH) detection.</source>
-        <translation type="unfinished"></translation>
+        <translation>Leerzeichengetrennte Routing-Kanäle, die die senkrechte (VH) Detektion bilden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1439"/>
         <source>Space-separated routing channels; even = parallel (∥), odd = perpendicular (⊥).</source>
-        <translation type="unfinished"></translation>
+        <translation>Leerzeichengetrennte Routing-Kanäle; gerade = parallel (∥), ungerade = senkrecht (⊥).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1440"/>
@@ -9993,7 +10048,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1445"/>
         <source>Spline local variance (5 knots)</source>
-        <translation type="unfinished"></translation>
+        <translation>Spline-lokale Varianz (5 Knoten)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1446"/>
@@ -10013,12 +10068,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1449"/>
         <source>Split each channel into parallel/perpendicular using the anisotropy r(t) = Σ bᵢ·exp(-t/ρᵢ) + r∞.</source>
-        <translation type="unfinished"></translation>
+        <translation>Jeden Kanal mit der Anisotropie r(t) = Σ bᵢ·exp(-t/ρᵢ) + r∞ in parallel/senkrecht aufteilen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1450"/>
         <source>Split into chunks of N photons; off = a single output file.</source>
-        <translation type="unfinished"></translation>
+        <translation>In Blöcke von N Photonen aufteilen; aus = eine einzige Ausgabedatei.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1451"/>
@@ -10043,12 +10098,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1455"/>
         <source>Spontaneous rates k_nrad</source>
-        <translation type="unfinished"></translation>
+        <translation>Spontane Raten k_nrad</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1456"/>
         <source>Square footprint side for watershed-seed peak detection.</source>
-        <translation type="unfinished"></translation>
+        <translation>Seitenlänge des quadratischen Fußabdrucks für die Watershed-Seed-Maximumerkennung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1457"/>
@@ -10058,7 +10113,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1458"/>
         <source>Stack parallel and perpendicular detector-routing channels for anisotropy-aware filter computation.</source>
-        <translation type="unfinished"></translation>
+        <translation>Parallele und senkrechte Detektor-Routing-Kanäle für die anisotropiebewusste Filterberechnung stapeln.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1459"/>
@@ -10068,7 +10123,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1460"/>
         <source>Stamp imported components as approved instead of unverified.</source>
-        <translation type="unfinished"></translation>
+        <translation>Importierte Komponenten als genehmigt statt als nicht verifiziert kennzeichnen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1461"/>
@@ -10088,7 +10143,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1464"/>
         <source>Starting molecular brightness per species (counts per bin per molecule).</source>
-        <translation type="unfinished"></translation>
+        <translation>Anfängliche molekulare Helligkeit pro Spezies (Zählungen pro Bin pro Molekül).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1465"/>
@@ -10108,32 +10163,32 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1468"/>
         <source>State patch events for IRF estimator plugin</source>
-        <translation type="unfinished"></translation>
+        <translation>Zustands-Patch-Ereignisse für das IRF-Schätzer-Plugin</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1469"/>
         <source>State patch events for TTTR image browser plugin</source>
-        <translation type="unfinished"></translation>
+        <translation>Zustands-Patch-Ereignisse für das TTTR-Bild-Browser-Plugin</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1470"/>
         <source>State patch events for burst selection plugin</source>
-        <translation type="unfinished"></translation>
+        <translation>Zustands-Patch-Ereignisse für das Burst-Auswahl-Plugin</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1471"/>
         <source>State patch events for the FPS JSON Editor plugin</source>
-        <translation type="unfinished"></translation>
+        <translation>Zustands-Patch-Ereignisse für das FPS-JSON-Editor-Plugin</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1472"/>
         <source>State patch events for time window bins plugin</source>
-        <translation type="unfinished"></translation>
+        <translation>Zustands-Patch-Ereignisse für das Zeitfenster-Bins-Plugin</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1473"/>
         <source>State patch events for trace browser plugin</source>
-        <translation type="unfinished"></translation>
+        <translation>Zustands-Patch-Ereignisse für das Spur-Browser-Plugin</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1474"/>
@@ -10158,7 +10213,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1478"/>
         <source>Stop once this many photons are generated (fixed-COUNT mode, default 1e6; a training chunk is often ~1e5). For a fixed measurement DURATION set &apos;Max windows&apos; &gt; 0 instead (Independent-molecule mode requires that).</source>
-        <translation type="unfinished"></translation>
+        <translation>Anhalten, sobald diese Anzahl von Photonen erzeugt ist (Modus feste ANZAHL, Standard 1e6; ein Trainingsblock ist oft ~1e5). Für eine feste Mess-DAUER stattdessen „Max. Fenster“ &gt; 0 setzen (der Modus unabhängiger Moleküle erfordert das).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1479"/>
@@ -10168,7 +10223,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1480"/>
         <source>Store base64-encoded bytes in the object store.</source>
-        <translation type="unfinished"></translation>
+        <translation>Base64-kodierte Bytes im Objektspeicher ablegen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1481"/>
@@ -10193,17 +10248,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1485"/>
         <source>Sub-bin periodic IRF colour shift applied to every channel.</source>
-        <translation type="unfinished"></translation>
+        <translation>Periodische Sub-Bin-IRF-Farbverschiebung, angewendet auf jeden Kanal.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1486"/>
         <source>Sub-bin periodic time shift of the IRF (TCSPC colour shift); wraps over the window.</source>
-        <translation type="unfinished"></translation>
+        <translation>Periodische Sub-Bin-Zeitverschiebung der IRF (TCSPC-Farbverschiebung); läuft über das Fenster um.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1487"/>
         <source>Substring filter on original filename.</source>
-        <translation type="unfinished"></translation>
+        <translation>Teilstring-Filter auf den ursprünglichen Dateinamen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1488"/>
@@ -10238,7 +10293,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1495"/>
         <source>Symmetric species interconversion rate (0 = static species). Set the two diffusion coefficients equal to isolate the exchange in the cross-correlation.</source>
-        <translation type="unfinished"></translation>
+        <translation>Symmetrische Spezies-Umwandlungsrate (0 = statische Spezies). Die beiden Diffusionskoeffizienten gleichsetzen, um den Austausch in der Kreuzkorrelation zu isolieren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1496"/>
@@ -10248,7 +10303,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1497"/>
         <source>Synthetic Gaussian IRF width; 0 = ideal (no IRF) unless an experimental IRF is loaded.</source>
-        <translation type="unfinished"></translation>
+        <translation>Synthetische Gauß-IRF-Breite; 0 = ideal (keine IRF), sofern keine experimentelle IRF geladen ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1498"/>
@@ -10288,7 +10343,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1505"/>
         <source>TTTR CLSM file or imaging .h5 …</source>
-        <translation type="unfinished"></translation>
+        <translation>TTTR-CLSM-Datei oder Bildgebungs-.h5 …</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1506"/>
@@ -10298,7 +10353,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1508"/>
         <source>TTTR experiments (TCSPC/PIE) need a detector/channel definition. Define a setup once for your hardware below and save it — it is stored in your user settings.</source>
-        <translation type="unfinished"></translation>
+        <translation>TTTR-Experimente (TCSPC/PIE) benötigen eine Detektor-/Kanaldefinition. Unten einmal einen Aufbau für Ihre Hardware definieren und speichern — er wird in Ihren Benutzereinstellungen abgelegt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1509"/>
@@ -10318,12 +10373,12 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1512"/>
         <source>Target MMFDB SQLite path (local mode). Blank = the resolved live MMFDB.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ziel-MMFDB-SQLite-Pfad (lokaler Modus). Leer = die aufgelöste Live-MMFDB.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1513"/>
         <source>Target number of corrected NTAC bins (defaults to the input bin count).</source>
-        <translation type="unfinished"></translation>
+        <translation>Zielanzahl der korrigierten NTAC-Bins (Standard ist die Anzahl der Eingabe-Bins).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1514"/>
@@ -10358,17 +10413,17 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1520"/>
         <source>The active IRF (cyan) and the decay it deconvolves (yellow), both peak-normalized.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die aktive IRF (cyan) und der von ihr entfaltete Zerfall (gelb), beide maximumnormiert.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1521"/>
         <source>The compound fitting equation currently active, including any bunching terms.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die aktuell aktive zusammengesetzte Fit-Gleichung, einschließlich etwaiger Bunching-Terme.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1522"/>
         <source>The compound fitting equation currently active: the selected diffusion term times any active bunching/anticorrelation factors.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die aktuell aktive zusammengesetzte Fit-Gleichung: der ausgewählte Diffusionsterm mal etwaige aktive Bunching-/Antikorrelations-Faktoren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1523"/>
@@ -10378,7 +10433,7 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1524"/>
         <source>The per-channel IRF itself comes from the Detector settings; these set the periodic (laser-period) convolution and colour shift.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die kanalweise IRF selbst stammt aus den Detektoreinstellungen; diese legen die periodische (Laserperioden-)Faltung und die Farbverschiebung fest.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1525"/>
@@ -10397,7 +10452,11 @@ Use **From fit ▾** in the toolbar to pull n_points, n_free and χ²r straight 
 **Steps:** load the file(s) → **➡ Add all channels to setup**. A LUT is computed for every routing channel (region auto-detected each) and assigned. Use the **Preview channel** selector + the orange region only if you want to check or hand-tune a specific channel first.
 
 Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sharing a correction between machines.</source>
-        <translation type="unfinished"></translation>
+        <translation>Dies ist das Hauptwerkzeug. TAC-Linearisierungs-LUTs aus einer **gleichmäßig beleuchteten** (unkorreliertes Licht / Streuung) Messung aufbauen — Licht, das ein flaches TAC-Histogramm ergeben *sollte*. Echte TAC-Hardware (z. B. SPC-130) hat eine differentielle Nichtlinearität **pro Routing-Kanal**, daher wird eine LUT pro Kanal berechnet.
+
+**Schritte:** die Datei(en) laden → **➡ Alle Kanäle zum Aufbau hinzufügen**. Für jeden Routing-Kanal wird eine LUT berechnet (Bereich jeweils automatisch erkannt) und zugewiesen. Den **Vorschaukanal**-Auswähler + den orangen Bereich nur verwenden, wenn Sie zuerst einen bestimmten Kanal prüfen oder von Hand abstimmen möchten.
+
+Das Speichern einer LUT-Datei oder einer settings.tttr.json (Reiter ②) ist optional — nur zum Teilen einer Korrektur zwischen Maschinen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1528"/>
@@ -10407,7 +10466,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1529"/>
         <source>Three exchanging states with Gaussian distances (R, s) and a 3x3 rate scheme kIJ (state I to J, Hz). Kinetics are sampled by Gillespie Monte-Carlo over N_win observation windows of duration T_win; set unused rates to 0. Free only the rates in your scheme.</source>
-        <translation type="unfinished"></translation>
+        <translation>Drei austauschende Zustände mit Gauß-Abständen (R, s) und einem 3×3-Ratenschema kIJ (Zustand I nach J, Hz). Die Kinetik wird per Gillespie-Monte-Carlo über N_win Beobachtungsfenster der Dauer T_win abgetastet; ungenutzte Raten auf 0 setzen. Nur die Raten in Ihrem Schema freigeben.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1530"/>
@@ -10442,7 +10501,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1537"/>
         <source>Time window assumed for the BOCPD prior count.</source>
-        <translation type="unfinished"></translation>
+        <translation>Für die BOCPD-Prior-Anzahl angenommenes Zeitfenster.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1539"/>
@@ -10482,12 +10541,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1546"/>
         <source>Trajectories are read piecewise to save memory; the chunk size sets the number of frames per read.</source>
-        <translation type="unfinished"></translation>
+        <translation>Trajektorien werden stückweise gelesen, um Speicher zu sparen; die Blockgröße legt die Anzahl der Bilder pro Lesevorgang fest.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1547"/>
         <source>Transfer IRF / convolution-range / background to Phasor and MLE.</source>
-        <translation type="unfinished"></translation>
+        <translation>IRF / Faltungsbereich / Hintergrund an Phasor und MLE übertragen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1548"/>
@@ -10512,12 +10571,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1552"/>
         <source>Translational diffusion coefficient (read-only unless &apos;Fix D&apos;).</source>
-        <translation type="unfinished"></translation>
+        <translation>Translations-Diffusionskoeffizient (schreibgeschützt, außer bei „D festhalten“).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1553"/>
         <source>Translational diffusion coefficient of species 1. τ_D = w₀²/(4·D).</source>
-        <translation type="unfinished"></translation>
+        <translation>Translations-Diffusionskoeffizient von Spezies 1. τ_D = w₀²/(4·D).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1554"/>
@@ -10527,12 +10586,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1555"/>
         <source>Translational diffusion coefficient per species, µm² per macro-time unit (ms ⇒ µm²/ms). Typical: free dyes ~0.3–0.5, labelled proteins ~0.05–0.15; default 3.0 is a fast 'toy' value. 0 = immobile.</source>
-        <translation type="unfinished"></translation>
+        <translation>Translations-Diffusionskoeffizient pro Spezies, µm² pro Makrozeit-Einheit (ms ⇒ µm²/ms). Typisch: freie Farbstoffe ~0,3–0,5, markierte Proteine ~0,05–0,15; der Standard 3,0 ist ein schneller „Spielzeug“-Wert. 0 = immobil.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1556"/>
         <source>Treat the file as stacked VV/VH: the parallel and perpendicular detection channels are stored vertically one after another. Disables the header row and scales dt by the rebin factor.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die Datei als gestapeltes VV/VH behandeln: die parallelen und senkrechten Detektionskanäle sind vertikal nacheinander gespeichert. Deaktiviert die Kopfzeile und skaliert dt mit dem Rebin-Faktor.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1557"/>
@@ -10542,7 +10601,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1558"/>
         <source>Two exchanging states with Gaussian distances (R, s). x1 = steady-state occupancy of state 1; K_ex = mean transitions per observation window (0 = static two-state, large = fast averaging).</source>
-        <translation type="unfinished"></translation>
+        <translation>Zwei austauschende Zustände mit Gauß-Abständen (R, s). x1 = Gleichgewichtsbelegung von Zustand 1; K_ex = mittlere Übergänge pro Beobachtungsfenster (0 = statisches Zweizustandssystem, groß = schnelle Mittelung).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1559"/>
@@ -10552,7 +10611,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1560"/>
         <source>Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics.</source>
-        <translation type="unfinished"></translation>
+        <translation>Zweidimensionale Fluoreszenz-Lebensdauer-Korrelationsspektroskopie (2D-FLCS): 2D-Fluoreszenzzerfalls-Korrelationskarten aus TTTR-Photonenströmen aufbauen und Lebensdauer-Spezies sowie Austauschdynamik auflösen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1561"/>
@@ -10577,7 +10636,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1565"/>
         <source>Uncorrelated background (dark counts + scatter) per channel, photons per macro-time unit (ms ⇒ kHz). Typical confocal ~0.5–2 kHz per channel. Default 0.</source>
-        <translation type="unfinished"></translation>
+        <translation>Unkorrelierter Hintergrund (Dunkelzählungen + Streuung) pro Kanal, Photonen pro Makrozeit-Einheit (ms ⇒ kHz). Typisch konfokal ~0,5–2 kHz pro Kanal. Standard 0.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1566"/>
@@ -10592,17 +10651,17 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1568"/>
         <source>Unified converter hub: TTTR Split/Convert, TTTR→Time-Window BIDs and BID→Analysis.</source>
-        <translation type="unfinished"></translation>
+        <translation>Vereinheitlichter Konverter-Hub: TTTR Aufteilen/Umwandeln, TTTR→Zeitfenster-BIDs und BID→Analyse.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1569"/>
         <source>Unified imaging toolbox: Image Browser, CLSM Draw, Molecule-wise MLE, Pixel-wise MLE, PSF Determination.</source>
-        <translation type="unfinished"></translation>
+        <translation>Vereinheitlichte Bildgebungs-Werkzeugsammlung: Bild-Browser, CLSM-Zeichnen, molekülweise MLE, pixelweise MLE, PSF-Bestimmung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1570"/>
         <source>Unified structure toolbox: FPS JSON Editor, FRET Docking &amp; Screening, Kappa2 Distribution, QuEst, HydroPro and Trajectory Tools.</source>
-        <translation type="unfinished"></translation>
+        <translation>Vereinheitlichte Struktur-Werkzeugsammlung: FPS-JSON-Editor, FRET-Docking &amp; -Screening, Kappa2-Verteilung, QuEst, HydroPro und Trajektorien-Werkzeuge.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1571"/>
@@ -10612,7 +10671,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1572"/>
         <source>Universal semicircle with the selected reference-lifetime grid/ticks, FRET trajectory and two-component mixing line.</source>
-        <translation type="unfinished"></translation>
+        <translation>Universeller Halbkreis mit dem ausgewählten Referenz-Lebensdauer-Gitter/-Markierungen, der FRET-Trajektorie und der Zweikomponenten-Mischlinie.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1573"/>
@@ -10622,7 +10681,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1574"/>
         <source>Update checker/installer and conda package manager. Surfaced as panels inside the unified Settings dialog.</source>
-        <translation type="unfinished"></translation>
+        <translation>Aktualisierungsprüfer/-installer und conda-Paketmanager. Als Panels im vereinheitlichten Einstellungsdialog dargestellt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1575"/>
@@ -10637,7 +10696,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1577"/>
         <source>Upper diffusion-time bound for the MaxEnt grid (0 = auto).</source>
-        <translation type="unfinished"></translation>
+        <translation>Obere Diffusionszeit-Grenze für das MaxEnt-Gitter (0 = auto).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1578"/>
@@ -10647,12 +10706,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1579"/>
         <source>Upper limit of scattering variable q (only when NQ &gt; 0).</source>
-        <translation type="unfinished"></translation>
+        <translation>Obergrenze der Streuvariable q (nur bei NQ &gt; 0).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1580"/>
         <source>Upper micro-time gate (channel index); no upper gate when omitted.</source>
-        <translation type="unfinished"></translation>
+        <translation>Obere Mikrozeit-Schwelle (Kanalindex); keine obere Schwelle, wenn weggelassen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1581"/>
@@ -10662,12 +10721,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1582"/>
         <source>Use a 3D non-central chi distance distribution (non-negative, vanishes at contact) instead of a Gaussian.</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine 3D-nichtzentrale Chi-Abstandsverteilung (nicht-negativ, verschwindet bei Kontakt) anstelle eines Gauß verwenden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1583"/>
         <source>Use a 3D non-central chi distance distribution instead of a Gaussian. Distances are never Gaussian: a Gaussian assigns weight to negative / near-zero distances, while the chi distribution is non-negative and vanishes at contact (R=0).</source>
-        <translation type="unfinished"></translation>
+        <translation>Eine 3D-nichtzentrale Chi-Abstandsverteilung anstelle eines Gauß verwenden. Abstände sind nie gaußförmig: ein Gauß weist negativen / nahe-null-Abständen Gewicht zu, während die Chi-Verteilung nicht-negativ ist und bei Kontakt (R=0) verschwindet.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1584"/>
@@ -10682,7 +10741,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1586"/>
         <source>Use floor rounding + a small ε to avoid a spike at the wrap boundary.</source>
-        <translation type="unfinished"></translation>
+        <translation>Abrunden + ein kleines ε verwenden, um eine Spitze an der Umlaufgrenze zu vermeiden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1587"/>
@@ -10692,12 +10751,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1588"/>
         <source>Use the micro-time-resolved correlation grid.</source>
-        <translation type="unfinished"></translation>
+        <translation>Das mikrozeitaufgelöste Korrelationsgitter verwenden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1589"/>
         <source>Use the temperature-dependent viscosity of water (Kapusta 2010 app note).</source>
-        <translation type="unfinished"></translation>
+        <translation>Die temperaturabhängige Viskosität von Wasser verwenden (Kapusta 2010 Application Note).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1590"/>
@@ -10707,12 +10766,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1591"/>
         <source>Used for chat, code editing, explanations, and other text tasks. Type a model id or pick from fetched models.</source>
-        <translation type="unfinished"></translation>
+        <translation>Für Chat, Code-Bearbeitung, Erklärungen und andere Textaufgaben verwendet. Eine Modell-ID eingeben oder aus abgerufenen Modellen auswählen.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1592"/>
         <source>Used only for plugin icon and other image-generation tasks.</source>
-        <translation type="unfinished"></translation>
+        <translation>Nur für das Plugin-Symbol und andere Bilderzeugungsaufgaben verwendet.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1593"/>
@@ -10727,27 +10786,27 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1595"/>
         <source>User who approved/rejected this detector.</source>
-        <translation type="unfinished"></translation>
+        <translation>Benutzer, der diesen Detektor genehmigt/abgelehnt hat.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1596"/>
         <source>User who approved/rejected this dichroic.</source>
-        <translation type="unfinished"></translation>
+        <translation>Benutzer, der diesen dichroitischen Spiegel genehmigt/abgelehnt hat.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1597"/>
         <source>User who approved/rejected this filter.</source>
-        <translation type="unfinished"></translation>
+        <translation>Benutzer, der diesen Filter genehmigt/abgelehnt hat.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1598"/>
         <source>User who approved/rejected this light source.</source>
-        <translation type="unfinished"></translation>
+        <translation>Benutzer, der diese Lichtquelle genehmigt/abgelehnt hat.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1599"/>
         <source>User who approved/rejected this probe.</source>
-        <translation type="unfinished"></translation>
+        <translation>Benutzer, der diese Sonde genehmigt/abgelehnt hat.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1600"/>
@@ -10787,7 +10846,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1607"/>
         <source>VV/VH decay of the selected molecule with the fitted Fit23 model overlaid (semilog).</source>
-        <translation type="unfinished"></translation>
+        <translation>VV/VH-Zerfall des ausgewählten Moleküls mit überlagertem gefittetem Fit23-Modell (halblogarithmisch).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1608"/>
@@ -10807,7 +10866,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1611"/>
         <source>Verification status: unverified / needs_review / approved / rejected.</source>
-        <translation type="unfinished"></translation>
+        <translation>Verifizierungsstatus: nicht verifiziert / prüfbedürftig / genehmigt / abgelehnt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1612"/>
@@ -10877,27 +10936,27 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1626"/>
         <source>When checked, use the δ angle computed from residual anisotropies.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wenn aktiviert, den aus den residualen Anisotropien berechneten δ-Winkel verwenden.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1627"/>
         <source>When on, every *.pdb file in the chosen folder is processed instead of a single trajectory file.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wenn aktiviert, wird jede *.pdb-Datei im gewählten Ordner verarbeitet statt einer einzelnen Trajektoriendatei.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1628"/>
         <source>When running the 1D-MEM, scan the IRF rise position and average the distributions around the optimum (port of TK_MyMain_Search_RiseIRF_1DMEM); reduces the IRF-timing systematic.</source>
-        <translation type="unfinished"></translation>
+        <translation>Beim Ausführen des 1D-MEM die IRF-Anstiegsposition scannen und die Verteilungen um das Optimum mitteln (Port von TK_MyMain_Search_RiseIRF_1DMEM); reduziert die IRF-Timing-Systematik.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1629"/>
         <source>Where to add the staging components: a local MMFDB file, or a running MMFDB server.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wohin die Staging-Komponenten hinzugefügt werden: eine lokale MMFDB-Datei oder ein laufender MMFDB-Server.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1630"/>
         <source>Which labeling state this component represents.</source>
-        <translation type="unfinished"></translation>
+        <translation>Welchen Markierungszustand diese Komponente darstellt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1631"/>
@@ -10907,7 +10966,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1632"/>
         <source>Width of the distance distribution shown in the plot below.</source>
-        <translation type="unfinished"></translation>
+        <translation>Breite der im Diagramm unten gezeigten Abstandsverteilung.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1633"/>
@@ -10917,7 +10976,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1634"/>
         <source>Width of the mean-position transfer function (FPS distance distribution width).</source>
-        <translation type="unfinished"></translation>
+        <translation>Breite der Mittelpositions-Transferfunktion (FPS-Abstandsverteilungsbreite).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1635"/>
@@ -10927,12 +10986,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1636"/>
         <source>Wobbling-in-Cone, Diffusion-with-Traps, or isotropic orientation model.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wobbling-in-Cone-, Diffusion-with-Traps- oder isotropes Orientierungsmodell.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1637"/>
         <source>Write each frame to its own {filename}_%08d{ending} file instead of one combined file.</source>
-        <translation type="unfinished"></translation>
+        <translation>Jedes Bild in seine eigene {filename}_%08d{ending}-Datei schreiben statt in eine kombinierte Datei.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1638"/>
@@ -11002,12 +11061,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1651"/>
         <source>body_id kept fixed as the reference; the others are mobile.</source>
-        <translation type="unfinished"></translation>
+        <translation>body_id wird als Referenz festgehalten; die anderen sind beweglich.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1652"/>
         <source>burst / count-rate thresholding, or change-point burst detection (BOCPD / Kalman / CUSUM).</source>
-        <translation type="unfinished"></translation>
+        <translation>Burst-/Zählraten-Schwellenwertbildung oder Wechselpunkt-Burst-Erkennung (BOCPD / Kalman / CUSUM).</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1653"/>
@@ -11057,7 +11116,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1662"/>
         <source>dock = rigid-body docking; refine = CG minimisation; screen = rank a library; score = single structure.</source>
-        <translation type="unfinished"></translation>
+        <translation>dock = Starrkörper-Docking; refine = CG-Minimierung; screen = eine Bibliothek einstufen; score = einzelne Struktur.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1663"/>
@@ -11072,7 +11131,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1665"/>
         <source>e.g. 0, 1, 2, 3 (empty = all atoms)</source>
-        <translation type="unfinished"></translation>
+        <translation>z. B. 0, 1, 2, 3 (leer = alle Atome)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1666"/>
@@ -11092,7 +11151,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1669"/>
         <source>e.g. name CA and resSeq 1 to 256</source>
-        <translation type="unfinished"></translation>
+        <translation>z. B. name CA and resSeq 1 to 256</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1670"/>
@@ -11197,12 +11256,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1690"/>
         <source>k₁₂</source>
-        <translation type="unfinished"></translation>
+        <translation>k₁₂</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1691"/>
         <source>k₂₁</source>
-        <translation type="unfinished"></translation>
+        <translation>k₂₁</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1692"/>
@@ -11242,7 +11301,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1699"/>
         <source>leave blank for the resolved/connected MMFDB</source>
-        <translation type="unfinished"></translation>
+        <translation>für die aufgelöste/verbundene MMFDB leer lassen</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1700"/>
@@ -11267,12 +11326,12 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1704"/>
         <source>l₁ (polarization mixing)</source>
-        <translation type="unfinished"></translation>
+        <translation>l₁ (Polarisationsmischung)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1705"/>
         <source>l₂ (polarization mixing)</source>
-        <translation type="unfinished"></translation>
+        <translation>l₂ (Polarisationsmischung)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1706"/>
@@ -11282,7 +11341,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1707"/>
         <source>mdtraj atom-selection expression. The listed atoms&apos; pairwise distances are tested; a frame is dropped when any pair is closer than the minimum distance.</source>
-        <translation type="unfinished"></translation>
+        <translation>mdtraj-Atomauswahl-Ausdruck. Die paarweisen Abstände der aufgeführten Atome werden geprüft; ein Bild wird verworfen, wenn ein Paar näher als der Mindestabstand ist.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1708"/>
@@ -11332,7 +11391,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1717"/>
         <source>only needed if the session is not already authorized</source>
-        <translation type="unfinished"></translation>
+        <translation>nur nötig, wenn die Sitzung nicht bereits autorisiert ist</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1718"/>
@@ -11407,7 +11466,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1732"/>
         <source>r_AD known (use δ)</source>
-        <translation type="unfinished"></translation>
+        <translation>r_AD bekannt (δ verwenden)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1733"/>
@@ -11587,7 +11646,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1768"/>
         <source>use 'Select files…'</source>
-        <translation type="unfinished"></translation>
+        <translation>„Dateien auswählen…“ verwenden</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1769"/>
@@ -11612,7 +11671,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1773"/>
         <source>x(D-only)</source>
-        <translation type="unfinished"></translation>
+        <translation>x(nur D)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1774"/>
@@ -11887,7 +11946,7 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1828"/>
         <source>① Compute LUT — help</source>
-        <translation type="unfinished"></translation>
+        <translation>① LUT berechnen – Hilfe</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1829"/>
