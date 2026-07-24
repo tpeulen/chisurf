@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the general composable FCS model (GeneralFCSModel). PRD-62: pick a diffusion type (Gauss, MDF, or two-focus Gauss, each also taking bunching/anticorrelation relaxation terms). The diffusion_mode choice carries rebuild_on_change, so picking a mode schedules a deferred AutoForm.rebuild(); each diffusion panel's collapsed_when (not_equals its own mode) then re-folds live — only the active mode's panel stays expanded.",
+  "_comment": "Editor layout for the general composable FCS model (GeneralFCSModel). PRD-62: pick a diffusion type (Gauss, MDF, or two-focus Gauss, each also taking bunching/anticorrelation relaxation terms). The diffusion_mode choice carries rebuild_on_change, so picking a mode schedules a deferred AutoForm.rebuild(); each diffusion panel's hidden_when (not_equals its own mode) then hides the whole panel (header included) live — only the active mode's panel is even visible.",
   "sections": [
     {
       "type": "panel",
@@ -27,7 +27,7 @@
       "title": "MDF (Gauss-Lorentz)",
       "collapsible": true,
       "collapsed": false,
-      "collapsed_when": {"attr": "diffusion_mode", "not_equals": "mdf"},
+      "hidden_when": {"attr": "diffusion_mode", "not_equals": "mdf"},
       "sections": [
         {"type": "parameter_group_table", "target": "mdf_physical", "collapsible": false},
         {"type": "parameter_group_table", "target": "mdf_optics", "collapsible": false}
@@ -38,7 +38,7 @@
       "title": "3D Gaussian (single-focus)",
       "collapsible": true,
       "collapsed": false,
-      "collapsed_when": {"attr": "diffusion_mode", "not_equals": "gauss"},
+      "hidden_when": {"attr": "diffusion_mode", "not_equals": "gauss"},
       "sections": [
         {"type": "parameter_group_table", "target": "gauss", "collapsible": false}
       ]
@@ -48,7 +48,7 @@
       "title": "3D Gaussian (two-focus)",
       "collapsible": true,
       "collapsed": false,
-      "collapsed_when": {"attr": "diffusion_mode", "not_equals": "two_focus"},
+      "hidden_when": {"attr": "diffusion_mode", "not_equals": "two_focus"},
       "sections": [
         {"type": "parameter_group_table", "target": "two_focus", "collapsible": false}
       ]

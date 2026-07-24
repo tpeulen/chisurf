@@ -264,7 +264,10 @@ class AutoForm(QtWidgets.QWidget):
                 continue
             if widget is None:
                 continue
-            widget.setVisible(bool(section.visible))
+            visible = bool(section.visible) and not self._collapsed_when(
+                getattr(section, "hidden_when", None)
+            )
+            widget.setVisible(visible)
             # Default path for inline help: a section's ``description`` becomes
             # the widget's tooltip. Field widgets additionally set it on their
             # editor (Qt tooltips do not propagate to child widgets). Fold long
@@ -696,7 +699,12 @@ class AutoForm(QtWidgets.QWidget):
         return WizardWidget(section, pages, _is_complete)
 
     def _collapsed_when(self, cond) -> bool:
-        """Evaluate a ``{target, attr, equals|not_equals}`` fold condition against the model."""
+        """Evaluate a ``{target, attr, equals|not_equals}`` condition against the model.
+
+        Generic — used both for ``PanelSection.collapsed_when`` (fold) and
+        ``PanelSection.hidden_when`` (fully hide); the truth value means "this
+        condition is satisfied," the caller decides what that does.
+        """
         if not cond:
             return False
         try:
@@ -787,6 +795,7 @@ class AutoForm(QtWidgets.QWidget):
                     add_fn()
                 self._dispatch_fit_update()
                 table.set_params(_row_params())
+                self.refresh_plots()
 
             def on_del_table():
                 if len(_row_params()) // max(1, section.row_width) > section.min_rows:
@@ -795,6 +804,7 @@ class AutoForm(QtWidgets.QWidget):
                         del_fn()
                         self._dispatch_fit_update()
                         table.set_params(_row_params())
+                        self.refresh_plots()
 
             add_btn.clicked.connect(on_add_table)
             del_btn.clicked.connect(on_del_table)
@@ -860,6 +870,7 @@ class AutoForm(QtWidgets.QWidget):
                 add_fn()
             self._dispatch_fit_update()
             render_rows()
+            self.refresh_plots()
 
         def on_del():
             if len(_row_params()) // max(1, section.row_width) > section.min_rows:
@@ -868,6 +879,7 @@ class AutoForm(QtWidgets.QWidget):
                     del_fn()
                     self._dispatch_fit_update()
                     render_rows()
+                    self.refresh_plots()
 
         add_btn.clicked.connect(on_add)
         del_btn.clicked.connect(on_del)

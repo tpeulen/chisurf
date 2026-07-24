@@ -190,10 +190,31 @@ AutoForm host; generalizing it to the model editor is a candidate follow-up"):
   times each active bunching/anticorrelation factor, built from
   `BunchingTerms.equation_html()`/`AnticorrTerms.equation_html()` (new,
   mirroring their own `apply()` formula) so the text can never drift from
-  what's actually computed. Live via the existing `AUTOFORM_REFRESH` path (no
-  new wiring): `InfoWidget.refresh()` runs after any bound-control commit or
-  dynamic-group add/remove, and a `rebuild_on_change` mode switch rebuilds the
-  whole form (including this panel) anyway.
+  what's actually computed.
+- **Fixed: dynamic-group add/remove didn't refresh sibling `AUTOFORM_REFRESH`
+  widgets.** Adding the equation panel surfaced a real, general `AutoForm` gap
+  (not FCS-specific): `_build_dynamic_group`'s `on_add`/`on_del`/
+  `on_add_table`/`on_del_table` only rebuilt their *own*
+  `PairedParameterTableWidget`/row grid after dispatching the fit-update
+  action — nothing called `self.refresh_plots()`, so any other
+  `AUTOFORM_REFRESH` widget (the new equation panel, but also any status/info
+  panel elsewhere) went stale after clicking "add"/"del" until something else
+  forced a full rebuild. Fixed by adding `self.refresh_plots()` to all four
+  handlers. Regression test simulates the real click
+  (`test_clicking_add_bunching_button_refreshes_the_equation_panel`), not a
+  direct model mutation, so it only passes if the button's own handler does
+  the refresh.
+- **`hidden_when`: fully hide, not just fold.** Folding the irrelevant
+  diffusion panels (via `collapsed_when`) still left a header bar for each —
+  explicit follow-up ask: "really hide the irrelevant groups". Added
+  `PanelSection.hidden_when` (same `{target?, attr, equals|not_equals}` shape
+  as `collapsed_when`) evaluated centrally in `AutoForm._emit_sections`
+  (alongside the existing static `visible` field) rather than per section
+  builder, so `setVisible(False)` sticks instead of being clobbered by the
+  `widget.setVisible(bool(section.visible))` line that already ran there for
+  every section. `general.view.json`'s three diffusion panels now use
+  `hidden_when` instead of `collapsed_when` — only the active mode's panel is
+  even present, not merely expanded.
 - **Background-corrected outputs.** Baseline offset `b` default `0` → `1`
   (matches the typical normalized-ACF convention, e.g. Kristine data, where
   `G(∞) → 1`). Added a `bg` background-count-rate parameter (kHz, matching the

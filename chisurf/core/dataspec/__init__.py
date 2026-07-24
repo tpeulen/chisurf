@@ -230,15 +230,23 @@ class PanelSection(Section):
     panel *unless* the attribute has the given value (e.g. a diffusion-mode
     selector where each mode's panel should be the only one expanded); pair
     with a ``choice`` section that sets ``rebuild_on_change`` so switching the
-    mode live re-folds every panel bound to it.
+    mode live re-folds every panel bound to it. ``hidden_when`` (same
+    ``{target, attr, equals|not_equals}`` shape) goes further: the whole panel
+    — header included — is removed from the layout via ``setVisible(False)``
+    instead of just folding its body. Use it when an "irrelevant" panel should
+    disappear entirely rather than sit there collapsed (e.g. only the active
+    diffusion-mode panel should even be visible).
     """
 
     #: Whether the panel header can fold/unfold its contents.
     collapsible: bool = True
     #: Initial fold state (``True`` = start collapsed).
     collapsed: bool = False
-    #: Optional condition that folds the panel: ``{target, attr, equals}``.
+    #: Optional condition that folds the panel: ``{target, attr, equals|not_equals}``.
     collapsed_when: typing.Optional[typing.Mapping[str, typing.Any]] = None
+    #: Optional condition that fully hides the panel (header included):
+    #: ``{target, attr, equals|not_equals}`` — stronger than ``collapsed_when``.
+    hidden_when: typing.Optional[typing.Mapping[str, typing.Any]] = None
     #: How many label/field pairs to pack per row for the panel's simple fields
     #: (value/choice/toggle). ``None`` uses the renderer default; ``1`` gives a
     #: single-column form layout that saves horizontal space in narrow docks.

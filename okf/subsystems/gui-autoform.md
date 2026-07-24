@@ -79,16 +79,35 @@ A `panel`'s (or `parameter_group_table`'s / `dynamic_group`'s)
 `collapsed_when: {target?, attr, equals|not_equals}` folds it based on a bound
 attribute's current value at editor-build time; `not_equals` folds *unless*
 the attribute matches, the shape a mode selector wants (fold every panel
-except the active mode's). A `choice` section can additionally set
+except the active mode's). A `panel` can additionally (or instead) set
+`hidden_when` — same `{target?, attr, equals|not_equals}` shape, evaluated by
+the same generic condition check, but *fully* hides the panel (header
+included, via `setVisible(False)`) rather than just folding its body; use it
+when an irrelevant panel should disappear entirely, not sit there collapsed.
+Both conditions are evaluated centrally in `AutoForm._emit_sections` (the same
+place that honors a section's static `visible: false`), not by the individual
+section builder, so any section type gets `hidden_when` for free just by
+declaring the field — a section builder does not need to remember to call
+`setVisible` itself. A `choice` section can additionally set
 `rebuild_on_change: true` so picking a new value schedules a deferred
 `AutoForm.rebuild()` (`QTimer.singleShot(0, ...)`, generalizing the
 combo-driven rebuild pattern several tool-specific hosts already used, e.g. the
-PCH detector/setup combos) — this makes `collapsed_when` live instead of
-build-time-only, at the cost of a full form rebuild, so it is opt-in and scoped
-to `choice` sections only (never fires for a `value`/`toggle` edit, so a spin
-box drag never triggers a mid-edit rebuild). See the FCS general model's
-`diffusion_mode` selector (`chisurf/core/models/fcs/general.view.json`) for the
-worked example. **All tables** (log, `parameter_group_table`,
+PCH detector/setup combos) — this makes `collapsed_when`/`hidden_when` live
+instead of build-time-only, at the cost of a full form rebuild, so it is
+opt-in and scoped to `choice` sections only (never fires for a `value`/
+`toggle` edit, so a spin box drag never triggers a mid-edit rebuild). See the
+FCS general model's `diffusion_mode` selector
+(`chisurf/core/models/fcs/general.view.json`) for the worked example — each
+diffusion panel's `hidden_when` means only the active mode's panel is even
+visible, not just expanded.
+
+A `dynamic_group`'s add/remove buttons (`on_add`/`on_del`, and the
+`style:"table"` variants `on_add_table`/`on_del_table`) call
+`self.refresh_plots()` after dispatching the fit update, alongside rebuilding
+their own row widgets — so any other `AUTOFORM_REFRESH` widget elsewhere in
+the form (an `info` panel deriving text from the model, a plot, a status
+table) stays in sync with the component count too, not just the table that
+was clicked. **All tables** (log, `parameter_group_table`,
 `scalar_table`, AutoForm record `table`) share the central
 `chisurf.gui.widgets.general.table_font` — monospace by default (configurable via
 `gui.table`) so tables look like the log/console and numeric columns align. Sections take a `description` field mapped to widget

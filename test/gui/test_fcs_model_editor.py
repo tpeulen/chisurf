@@ -234,8 +234,12 @@ def test_general_model_gauss_reports_shape_and_brightness_outputs():
     assert np.isnan(model.gauss._brightness.value)
 
 
-def test_general_model_diffusion_panels_refold_on_mode_change(qapp):
-    """Live re-fold: switching diffusion_mode + AutoForm.rebuild() only expands the active panel."""
+def test_general_model_diffusion_panels_hide_on_mode_change(qapp):
+    """Live hide: switching diffusion_mode + AutoForm.rebuild() only shows the active panel.
+
+    Uses ``hidden_when`` (not just ``collapsed_when``) — the irrelevant
+    diffusion panels are fully hidden (header included), not merely folded.
+    """
     from chisurf.core.models.fcs.general import GeneralFCSModel
     from chisurf.gui.widgets.collapsible_box import CollapsibleBox
     from chisurf.gui.widgets.models.model_editor import build_model_editor
@@ -245,19 +249,25 @@ def test_general_model_diffusion_panels_refold_on_mode_change(qapp):
     editor = build_model_editor(model)   # AutoForm itself (AutoModelWidget is an alias)
     assert model.diffusion_mode == "gauss"
 
-    def _expanded(title):
+    def _visible(title):
+        # isVisible() reflects real on-screen visibility (false for everything in
+        # a headless test with no shown top-level window); isHidden() reflects
+        # whether setVisible(False) was called on this specific widget, which is
+        # what hidden_when actually does — the right check without a real show().
         for box in editor.findChildren(CollapsibleBox):
             if box.title() == title:
-                return box.is_expanded()
+                return not box.isHidden()
         return None
 
-    assert _expanded("3D Gaussian (single-focus)") is True
-    assert _expanded("MDF (Gauss-Lorentz)") is False
+    assert _visible("3D Gaussian (single-focus)") is True
+    assert _visible("MDF (Gauss-Lorentz)") is False
+    assert _visible("3D Gaussian (two-focus)") is False
 
     model.diffusion_mode = "mdf"
     editor.rebuild()
-    assert _expanded("3D Gaussian (single-focus)") is False
-    assert _expanded("MDF (Gauss-Lorentz)") is True
+    assert _visible("3D Gaussian (single-focus)") is False
+    assert _visible("MDF (Gauss-Lorentz)") is True
+    assert _visible("3D Gaussian (two-focus)") is False
 
 
 def test_general_model_equation_html_reflects_mode_and_terms():
@@ -319,3 +329,41 @@ def test_general_model_editor_renders_a_live_equation_info_widget(qapp):
     infos = editor.findChildren(InfoWidget)
     assert len(infos) == 1
     assert "MDF" in infos[0].toPlainText()
+
+
+def test_clicking_add_bunching_button_refreshes_the_equation_panel(qapp):
+    """Regression: dynamic_group add/remove must refresh_plots(), not just its own table.
+
+    Previously ``on_add_table``/``on_del_table`` (and the grid-style
+    ``on_add``/``on_del``) only updated their own ``PairedParameterTableWidget``
+    after dispatching the fit update — every other ``AUTOFORM_REFRESH`` widget
+    (e.g. the equation ``info`` panel) went stale until something else forced a
+    full ``rebuild()``. Simulates the real GUI action (clicking "add") instead
+    of mutating the model directly, so it only passes if the button's own
+    click handler does the refresh.
+    """
+    from chisurf.core.models.fcs.general import GeneralFCSModel
+    from chisurf.gui.autoform.sections.builtin import InfoWidget
+    from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+    from qtpy import QtWidgets
+
+    fit = _make_fcs_fit(GeneralFCSModel)
+    model = fit.model
+    editor = build_model_editor(model)
+
+    info = editor.findChildren(InfoWidget)[0]
+    before_text = info.toPlainText()
+
+    bunching_box = next(
+        b for b in editor.findChildren(CollapsibleBox) if b.title() == "Bunching terms"
+    )
+    add_btn = next(
+        btn for btn in bunching_box.findChildren(QtWidgets.QPushButton) if btn.text() == "add"
+    )
+    add_btn.click()
+
+    assert len(model.bunching) == 1
+    after_text = info.toPlainText()
+    assert after_text != before_text
+    assert "b1" in after_text   # the new term's a_b1/tau_b1 subscript
