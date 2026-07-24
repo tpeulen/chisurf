@@ -110,6 +110,19 @@ def test_handle_visibility_and_removal(qapp):
     plot.clear()
 
 
+def test_fill_between_band(qapp):
+    import numpy as np
+
+    plot = cp.Plot()
+    x = np.linspace(0, 1, 10)
+    lo = plot.line(x, x - 0.1)
+    hi = plot.line(x, x + 0.1)
+    band = plot.fill_between(lo, hi, brush=(47, 128, 237, 70))
+    assert isinstance(band, cp.handles.Handle)
+    band.visible = False
+    band.remove()
+
+
 def test_curve_get_data_roundtrip(qapp):
     import numpy as np
 

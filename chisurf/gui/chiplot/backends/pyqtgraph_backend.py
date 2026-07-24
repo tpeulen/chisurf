@@ -401,6 +401,12 @@ class _PgCanvas(base.Canvas):
         self._pi.addItem(item)
         return _Bars(item, self._pi)
 
+    def add_fill_between(self, lower, upper, *, brush) -> H.Handle:
+        """Fill the area between two curve handles."""
+        item = pg.FillBetweenItem(lower.native, upper.native, brush=_brush(brush))
+        self._pi.addItem(item)
+        return _Item(item, self._pi)
+
     def add_errorbars(self, x, y, *, height, top, bottom, pen) -> H.ErrorBars:
         """Draw error bars."""
         kw = {"x": np.asarray(x), "y": np.asarray(y), "pen": _pen(pen)}

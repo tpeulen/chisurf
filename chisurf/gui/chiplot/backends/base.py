@@ -77,6 +77,16 @@ class Canvas(abc.ABC):
         """Draw a bar graph and return its handle."""
 
     @abc.abstractmethod
+    def add_fill_between(
+        self,
+        lower: H.Curve,
+        upper: H.Curve,
+        *,
+        brush: S.Brush,
+    ) -> H.Handle:
+        """Fill the area between two existing curve handles; return its handle."""
+
+    @abc.abstractmethod
     def add_errorbars(
         self,
         x: np.ndarray,

@@ -195,6 +195,23 @@ class Plot(QtWidgets.QWidget):
             brush=S.to_brush(brush) if brush is not None else None,
         )
 
+    def fill_between(self, lower: H.Curve, upper: H.Curve, *, brush="w") -> H.Handle:
+        """Fill the area between two curves (e.g. a confidence band).
+
+        Parameters
+        ----------
+        lower, upper : handles.Curve
+            The two curve handles bounding the filled region. The fill tracks
+            them, so updating their data updates the band.
+        brush : brush-like
+            Fill color (typically translucent).
+
+        Returns
+        -------
+        handles.Handle
+        """
+        return self._canvas.add_fill_between(lower, upper, brush=S.to_brush(brush))
+
     def errorbars(self, x, y, *, height=None, top=None, bottom=None, pen="w") -> H.ErrorBars:
         """Draw error bars.
 

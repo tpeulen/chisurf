@@ -246,7 +246,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 62):*
+*Landed so far (allow-list 76 → 60):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -262,6 +262,14 @@ screenshot/qtbot verification after each cluster.
   and the micro-time `shift_dialog`. Grew the native API with handle
   `hide()`/`show()` and `Curve.get_data()` as those call sites needed them, and
   rewired MaxEnt's scene-click onto the `Plot.clicked(x, y)` signal.
+- **Batch 4** — migrated the `plots/deer_pr` P(r) confidence-band plot and the
+  TCSPC `anisotropy` decay dialog. Grew the native API with
+  `plot.fill_between(lower, upper, brush=…)` (confidence bands) for deer_pr.
+  Deferred (need chiplot API growth, not yet ported): `plots/distribution` +
+  `plots/lineplot` + `plots/residual_image` (shared draggable HTML text,
+  multi-panel PlotItems, `stepMode='right'`); `experiments/rics` (`ImageView` +
+  `RectROI` composites); `widgets/spectrum_view` (axis/legend theming);
+  `plots/parameter_scan` (`pyqtgraph.dockarea`).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

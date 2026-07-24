@@ -8,8 +8,8 @@ returns ``(r, p_best, p_lo, p_hi)``. Diagnostic only; recomputed on demand.
 """
 
 import numpy as np
-import pyqtgraph as pg
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
 
 
@@ -22,17 +22,14 @@ class DeerPrCIPlot(plotbase.Plot):
         """Build the P(r) plot with a fill-between confidence band."""
         super().__init__(fit=fit, **kwargs)
         self._n_boot = int(n_boot)
-        self._pw = pg.PlotWidget()
+        self._pw = cp.Plot()
         self.layout.addWidget(self._pw)
-        self._pw.setLabel("bottom", "r (Å)")
-        self._pw.setLabel("left", "P(r)")
-        self._pw.showGrid(x=True, y=True, alpha=0.3)
-        self._lo = self._pw.plot([], [], pen=pg.mkPen((47, 128, 237, 90)))
-        self._hi = self._pw.plot([], [], pen=pg.mkPen((47, 128, 237, 90)))
-        self._band = pg.FillBetweenItem(
-            self._lo, self._hi, brush=pg.mkBrush((47, 128, 237, 70)))
-        self._pw.addItem(self._band)
-        self._best = self._pw.plot([], [], pen=pg.mkPen("#2f80ed", width=2))
+        self._pw.set_labels(bottom="r (Å)", left="P(r)")
+        self._pw.grid(x=True, y=True, alpha=0.3)
+        self._lo = self._pw.line([], [], pen=(47, 128, 237, 90))
+        self._hi = self._pw.line([], [], pen=(47, 128, 237, 90))
+        self._band = self._pw.fill_between(self._lo, self._hi, brush=(47, 128, 237, 70))
+        self._best = self._pw.line([], [], pen=cp.to_pen("#2f80ed", width=2))
 
     def _model(self):
         """Return the selected fit's model, or ``None``."""
@@ -57,11 +54,11 @@ class DeerPrCIPlot(plotbase.Plot):
         except Exception:
             out = None
         if not out:
-            self._best.setData([], [])
-            self._lo.setData([], [])
-            self._hi.setData([], [])
+            self._best.set_data([], [])
+            self._lo.set_data([], [])
+            self._hi.set_data([], [])
             return
         r, best, lo, hi = (np.asarray(a, dtype=float) for a in out)
-        self._best.setData(r, best)
-        self._lo.setData(r, lo)
-        self._hi.setData(r, hi)
+        self._best.set_data(r, best)
+        self._lo.set_data(r, lo)
+        self._hi.set_data(r, hi)

@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import numpy as np
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
-from qtpy import QtWidgets, QtCore, QtGui
 import chisurf.gui.widgets.fitting
 from chisurf.core.fitting.parameter import FittingParameter
 
 try:
-    import pyqtgraph as pg
+    from chisurf.gui import chiplot as cp
 except Exception:  # pragma: no cover
-    pg = None
+    cp = None
 
 from chisurf.core.models.tcspc.anisotropy import Anisotropy
-
 
 ADD_BUTTON_STYLE = (
     "QPushButton { background-color: #1f7a1f; color: white; border: 1px solid #166016; "
@@ -94,11 +93,11 @@ class AnisotropyWidget(Anisotropy, QtWidgets.QGroupBox):
 
     def _show_anisotropy_decay_dialog(self) -> None:
         """Show a dialog with interactive anisotropy decay plots (data and model)."""
-        if pg is None:
+        if cp is None:
             QtWidgets.QMessageBox.warning(
                 self,
                 "Anisotropy decays",
-                "pyqtgraph is not available, cannot plot anisotropy decays.",
+                "The plotting backend is not available, cannot plot anisotropy decays.",
             )
             return
 
@@ -174,16 +173,19 @@ class AnisotropyWidget(Anisotropy, QtWidgets.QGroupBox):
         controls.addWidget(reset_btn, 2, 3, 1, 1)
         layout.addLayout(controls)
 
-        pw = pg.PlotWidget(dialog)
-        pw.showGrid(x=True, y=True, alpha=0.25)
-        pw.setLabel("bottom", "Time")
-        pw.setLabel("left", "r(t)")
-        pw.setYRange(0.0, 0.5, padding=0.0)
-        pw.addLegend()
-        c_data_unc = pw.plot([], [], pen=pg.mkPen((100, 116, 139), width=2), name="data raw")
-        c_data_cor = pw.plot([], [], pen=pg.mkPen((22, 163, 74), width=2), name="data corr")
-        c_model_unc = pw.plot([], [], pen=pg.mkPen((59, 130, 246), width=2, style=QtCore.Qt.DashLine), name="model raw")
-        c_model_cor = pw.plot([], [], pen=pg.mkPen((16, 185, 129), width=2, style=QtCore.Qt.DashLine), name="model corr")
+        pw = cp.Plot(dialog)
+        pw.grid(x=True, y=True, alpha=0.25)
+        pw.set_labels(bottom="Time", left="r(t)")
+        pw.set_ylim(0.0, 0.5, padding=0.0)
+        pw.legend()
+        c_data_unc = pw.line([], [], pen=cp.to_pen((100, 116, 139), width=2), name="data raw")
+        c_data_cor = pw.line([], [], pen=cp.to_pen((22, 163, 74), width=2), name="data corr")
+        c_model_unc = pw.line(
+            [], [], pen=cp.to_pen((59, 130, 246), width=2, style="dash"), name="model raw"
+        )
+        c_model_cor = pw.line(
+            [], [], pen=cp.to_pen((16, 185, 129), width=2, style="dash"), name="model corr"
+        )
         layout.addWidget(pw)
 
         t_model, vv_model_raw, vh_model_raw = self._extract_vv_vh_model_for_diag()
@@ -246,19 +248,19 @@ class AnisotropyWidget(Anisotropy, QtWidgets.QGroupBox):
             state['r_data_unc'] = r_unc
             state['r_data_cor'] = r_cor
             if tt is None or r_unc is None or r_cor is None:
-                c_data_unc.setData([], [])
-                c_data_cor.setData([], [])
+                c_data_unc.set_data([], [])
+                c_data_cor.set_data([], [])
             else:
-                c_data_unc.setData(tt, r_unc)
-                c_data_cor.setData(tt, r_cor)
+                c_data_unc.set_data(tt, r_unc)
+                c_data_cor.set_data(tt, r_cor)
 
             # Model curves (raw/corrected) with same control parameters.
             if t_model is None or vv_model_raw is None or vh_model_raw is None:
                 state['t_model'] = None
                 state['r_model_unc'] = None
                 state['r_model_cor'] = None
-                c_model_unc.setData([], [])
-                c_model_cor.setData([], [])
+                c_model_unc.set_data([], [])
+                c_model_cor.set_data([], [])
                 return
 
             tm = np.asarray(t_model, dtype=np.float64)
@@ -270,11 +272,11 @@ class AnisotropyWidget(Anisotropy, QtWidgets.QGroupBox):
             state['r_model_unc'] = rmu
             state['r_model_cor'] = rmc
             if ttm is None or rmu is None or rmc is None:
-                c_model_unc.setData([], [])
-                c_model_cor.setData([], [])
+                c_model_unc.set_data([], [])
+                c_model_cor.set_data([], [])
             else:
-                c_model_unc.setData(ttm, rmu)
-                c_model_cor.setData(ttm, rmc)
+                c_model_unc.set_data(ttm, rmu)
+                c_model_cor.set_data(ttm, rmc)
 
         def _sync_l2_from_l1():
             """Synchronise l2 value from l1 when the link checkbox is checked."""
@@ -1127,8 +1129,8 @@ class AnisotropyWidget(Anisotropy, QtWidgets.QGroupBox):
                 return
             if hasattr(self, '_chisurf_code_badge_installed'):
                 return
-            from chisurf.gui.widgets.code_badge import install_code_badge
             from chisurf.gui.devtools.source_jump import resolve_object_source
+            from chisurf.gui.widgets.code_badge import install_code_badge
             resolver = lambda: resolve_object_source(self)
             install_code_badge(self, resolver, corner='top-right', margin=4)
             self._chisurf_code_badge_installed = True

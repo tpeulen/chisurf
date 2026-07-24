@@ -2,6 +2,17 @@
 
 ## 2026-07-24
 
+* **PRD-64 — Phase-2 GUI migration batch 4 (allow-list 62 → 60).** Migrated the
+  `plots/deer_pr` P(r) confidence-band plot and the TCSPC `anisotropy` decay
+  dialog onto chiplot. Grew the native API with `plot.fill_between(lower, upper,
+  brush=…)` (confidence bands). Identified the next big cluster needing API
+  growth before it can be ported cleanly: the TCSPC line-plot family
+  (`plots/lineplot` + `distribution` + `residual_image` — shared draggable HTML
+  text, multi-panel PlotItems, `stepMode='right'`), plus `rics` (`ImageView` +
+  `RectROI`), `spectrum_view` (axis/legend theming), and `parameter_scan`
+  (`pyqtgraph.dockarea`). Seam guard + `test/gui/test_chiplot.py` (15 tests)
+  green; ported modules import-smoke clean. Concept: [PRD-64](/prds/prd-64.md).
+
 * **PRD-64 — Phase-2 GUI migration batch 3 (allow-list 64 → 62).** Migrated the
   FCS MaxEnt L-curve model widget (`maxent_widget`) and the micro-time
   `shift_dialog` onto the chiplot API. Grew the native surface as real call sites
