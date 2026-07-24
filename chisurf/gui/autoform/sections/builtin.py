@@ -469,13 +469,37 @@ class ChoiceWidget(_BoundControlMixin, QtWidgets.QWidget):
                 layout.addWidget(del_btn)
 
     def _resolve_opts(self) -> list:
+        """Return the option *values*.
+
+        A ``options_source`` may yield either a flat list of values or a list of
+        ``(value, label)`` pairs; in the latter case the display labels are kept
+        in ``self._dynamic_labels`` (consumed by :meth:`_labels`) so dynamic
+        combos can show a human-readable label while committing the raw value —
+        e.g. a foreign-key dropdown showing ``"3 — Alexa 488"`` but storing ``3``.
+        """
         section = self._section
+        self._dynamic_labels = None
         options = list(section.options)
         if not options and section.options_source:
-            options = _resolve_options_source(section.options_source, self._model)
+            resolved = _resolve_options_source(section.options_source, self._model)
+            values, labels, paired = [], [], False
+            for item in resolved:
+                if isinstance(item, (tuple, list)) and len(item) == 2:
+                    paired = True
+                    values.append(item[0])
+                    labels.append(item[1])
+                else:
+                    values.append(item)
+                    labels.append(item)
+            options = values
+            if paired:
+                self._dynamic_labels = [str(x) for x in labels]
         return options
 
     def _labels(self) -> list:
+        dyn = getattr(self, "_dynamic_labels", None)
+        if dyn and len(dyn) == len(self._options):
+            return dyn
         labels = list(getattr(self._section, "labels", ()))
         if labels and len(labels) == len(self._options):
             return [str(x) for x in labels]

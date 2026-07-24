@@ -273,7 +273,11 @@ class ChoiceSection(Section):
     ``target`` group (``setattr`` then a model update), or it dispatches
     ``set_action`` with ``{**action_fixed, value_key: <choice>, "fit_index": i}``.
     Options are listed inline, or sourced from a named list via
-    ``options_source`` (e.g. ``"window_function_types"``).
+    ``options_source`` (e.g. ``"window_function_types"``). A model-backed
+    ``options_source`` may return either a flat list of values or a list of
+    ``(value, label)`` pairs — the pair form lets a dynamic combo display a
+    human-readable label while committing the raw value (e.g. a foreign-key
+    dropdown showing ``"3 — Alexa 488"`` but storing ``3``).
     """
 
     label: str = "Choice"

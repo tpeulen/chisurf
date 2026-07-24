@@ -98,6 +98,65 @@ def test_json_fields_roundtrip(qapp):
     assert out["detector_channels"] == {"0": "green"}
 
 
+def _fk_combo(form):
+    """Return the FK ChoiceWidget's combo box (source name fk_opts_condition_id)."""
+    from chisurf.gui.autoform.sections.builtin import ChoiceWidget
+
+    for w in form.findChildren(ChoiceWidget):
+        if getattr(w._section, "options_source", "") == "fk_opts_condition_id":
+            return w.combo
+    raise AssertionError("FK combo not found")
+
+
+def test_fk_dropdown_shows_labels_not_ids(qapp):
+    """The FK combo displays the human-readable label while committing the id."""
+    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
+
+    fk = {"condition_id": lambda: [("c1", "c1 — A"), ("c2", "c2 — B")]}
+    f = EntityForm(_specs(), dropdown_providers=fk)
+    combo = _fk_combo(f)
+    shown = [combo.itemText(i) for i in range(combo.count())]
+    assert shown == ["c1 — A", "c2 — B"]  # labels, not bare ids
+
+
+def test_fk_dropdown_is_live_after_refresh(qapp):
+    """A target added while the form is open appears after refresh_dropdowns()."""
+    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
+
+    pairs = [("c1", "c1 — A")]
+    fk = {"condition_id": lambda: list(pairs)}
+    f = EntityForm(_specs(), dropdown_providers=fk)
+    assert _fk_combo(f).count() == 1
+
+    pairs.append(("c2", "c2 — B"))  # a new condition was created elsewhere
+    f.refresh_dropdowns()
+    combo = _fk_combo(f)
+    assert combo.count() == 2
+    assert combo.itemText(1) == "c2 — B"
+
+
+def test_fk_options_cached_between_loads(qapp):
+    """Repeated record loads reuse the cache; refresh_dropdowns() re-fetches."""
+    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
+
+    calls = {"n": 0}
+
+    def provider():
+        calls["n"] += 1
+        return [("c1", "c1 — A"), ("c2", "c2 — B")]
+
+    f = EntityForm(_specs(), dropdown_providers={"condition_id": provider})
+    built = calls["n"]  # fetched once while building the combo
+    assert built >= 1
+
+    f.set_data({"condition_id": "c1"})
+    f.set_data({"condition_id": "c2"})
+    assert calls["n"] == built  # no extra RPCs on record navigation
+
+    f.refresh_dropdowns()
+    assert calls["n"] == built + 1  # cache busted → exactly one re-fetch
+
+
 def test_empty_optional_strings_become_none(qapp):
     from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
 

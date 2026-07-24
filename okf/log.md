@@ -2,6 +2,19 @@
 
 ## 2026-07-24
 
+* **AutoForm `options_source` now accepts `(value, label)` pairs → live MMFDB FK
+  dropdowns.** Generalized `ChoiceWidget` (`gui/autoform/sections/builtin.py`) so
+  a model-backed `options_source` may return either a flat value list (unchanged)
+  or `(value, label)` pairs — the combo shows the label and commits the raw value.
+  Rewired the MMFDB-admin entity form (`mmfdb_admin/gui/autoform_entity_form.py`):
+  each foreign-key field now binds `options_source="fk_opts_<name>"` to a memoised
+  provider instead of freezing options at build time, and `refresh_dropdowns()`
+  (previously a no-op) busts the cache and re-`sync_fields()` so a target added
+  while the form is open appears. Backward-compatible (existing flat sources —
+  `window_function_types`, `input_format_options`, `fit_names`, … — untouched).
+  Tests: 3 new in `test_autoform_entity_form.py` (label display, live-after-
+  refresh, cache-between-loads); all AutoForm `options_source` consumers green.
+  Docstrings updated on `ChoiceSection` (dataspec) + `okf/subsystems/gui-autoform.md`.
 * **Parameter-table edits were discarded: the delegate read a stale spin-box
   value.** Typing a number into any AutoForm parameter table cell (value, Lo, Hi
   — plain *and* paired tables, so every model editor) and pressing Return, Tab,

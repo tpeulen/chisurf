@@ -37,18 +37,13 @@ def _section_for_field(
     read_only = bool(getattr(fs, "readonly", False))
     widget = getattr(fs, "widget", "str")
 
-    # Foreign-key field → dropdown whose options are fetched once at build time.
+    # Foreign-key field → dropdown backed by a live, refreshable options source.
+    # Options are resolved GUI-side via ``options_source`` (see EntityForm, which
+    # attaches ``fk_opts_<name>`` to the model) rather than frozen at build time,
+    # so a newly-added target entity shows up on the next form load / refresh.
     if getattr(fs, "fk_target", None) and name in dropdown_providers:
-        options: tuple[str, ...] = ()
-        labels: tuple[str, ...] = ()
-        try:
-            pairs = dropdown_providers[name]() or []
-            options = tuple(str(v) for v, _ in pairs)
-            labels = tuple(str(lbl) for _, lbl in pairs)
-        except Exception:
-            options, labels = (), ()
         return ds.ChoiceSection(
-            attr=name, label=label, options=options, labels=labels, description=tooltip
+            attr=name, label=label, options_source=f"fk_opts_{name}", description=tooltip
         )
 
     if widget == "choice":
@@ -129,11 +124,18 @@ class EntityForm(QtWidgets.QWidget):
         self._specs = list(field_specs)
         self._providers = dropdown_providers or {}
         self._spec_by_name = {fs.name: fs for fs in self._specs}
+        #: Memoised ``[(value, label), ...]`` per FK field so repeated record
+        #: loads don't re-hit the RPC; busted by :meth:`refresh_dropdowns`.
+        self._fk_cache: dict[str, list[tuple[str, str]]] = {}
 
         sections = tuple(_section_for_field(fs, self._providers) for fs in self._specs)
         view = ds.ModelView(sections=sections)
         initial = {fs.name: self._default_for(fs) for fs in self._specs}
         self._model = _EntityModel(initial, view, self._on_commit)
+        # Attach a live options resolver per FK field, matching the
+        # ``fk_opts_<name>`` source name emitted by ``_section_for_field``.
+        for fname in self._providers:
+            setattr(self._model, f"fk_opts_{fname}", self._make_fk_resolver(fname))
         self._form = AutoForm(self._model, parent=self)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -145,8 +147,29 @@ class EntityForm(QtWidgets.QWidget):
         self.dataChanged.emit()
         self.commitRequested.emit()
 
+    def _make_fk_resolver(self, name: str) -> Callable[[], list[tuple[str, str]]]:
+        """Zero-arg, memoised options provider bound to ``fk_opts_<name>``.
+
+        Returns ``(value, label)`` pairs; AutoForm's ChoiceWidget shows the label
+        and commits the value. Results are cached in ``self._fk_cache`` so
+        navigating records is cheap; :meth:`refresh_dropdowns` clears the cache.
+        """
+
+        def resolver() -> list[tuple[str, str]]:
+            if name not in self._fk_cache:
+                provider = self._providers.get(name)
+                try:
+                    self._fk_cache[name] = list(provider()) if provider else []
+                except Exception:
+                    self._fk_cache[name] = []
+            return self._fk_cache[name]
+
+        return resolver
+
     def refresh_dropdowns(self) -> None:
-        """No-op: FK options are fetched once at build time (see _section_for_field)."""
+        """Re-fetch FK options: bust the cache and re-sync the combo widgets."""
+        self._fk_cache.clear()
+        self._form.sync_fields()
 
     # -- data in/out -----------------------------------------------------
     def set_data(self, data: dict[str, Any]) -> None:

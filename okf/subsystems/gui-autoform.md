@@ -126,6 +126,18 @@ FCS general model's `diffusion_mode` selector
 diffusion panel's `hidden_when` means only the active mode's panel is even
 visible, not just expanded.
 
+A `choice` section's options are inline (`options`/`labels`) or resolved
+GUI-side from a model-backed `options_source` — a zero-arg method/attribute on
+the view-model returning the list, re-read on every `sync()` so the combo tracks
+live model state. That source may return either a flat list of values **or**
+`(value, label)` pairs; the pair form lets a dynamic combo display a
+human-readable label while committing the raw value, so a foreign-key dropdown
+can show `"3 — Alexa 488"` yet store `3`. The MMFDB-admin entity form
+(`autoform_entity_form.py`) uses this: each FK field binds
+`options_source="fk_opts_<name>"` to a memoised, refreshable provider, so a
+`refresh_dropdowns()` (cache-bust + `sync_fields()`) surfaces targets added while
+the form is open — replacing the previous build-time-frozen option snapshot.
+
 A `dynamic_group`'s add/remove buttons (`on_add`/`on_del`, and the
 `style:"table"` variants `on_add_table`/`on_del_table`) call
 `self.refresh_plots()` after dispatching the fit update, alongside rebuilding
