@@ -161,6 +161,13 @@ side by side and controls must stay narrow. Therefore, for **all** UI (AutoForm
   widget tooltip, [[viewspec-description-tooltip]]); in hand-built widgets call
   `setToolTip`. App-wide tooltip folding ([`chisurf/gui/tooltip.py`](/workflows/build-and-env.md))
   keeps long tooltips readable, so descriptions can be as complete as needed.
+  When a field section (`value`/`choice`/`toggle`) carries no explicit
+  `description`, `_BoundControlMixin._effective_description`
+  (`sections/builtin.py`) falls back to the shared parameter registry, keying
+  on the bound `attr` (scoped by the target group's class) via
+  `chisurf.core.settings.describe_parameter` — so any field bound to a
+  registered parameter gets inline help for free, matching the description its
+  fitting widget already shows (see [[parameters]]).
 - **Prefer vertical stacking over wide side-by-side rows** when horizontal space
   is tight (AutoForm panel `n_col: 1`); prefer compact controls (short spin-box
   widths, emoji `QToolButton`s over text buttons). Default to the layout that

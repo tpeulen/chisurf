@@ -430,6 +430,71 @@ def test_value_section_binds_scalar_attributes(qapp):
     assert m.grp.label == "bye"
 
 
+def test_field_tooltip_falls_back_to_parameter_registry(qtbot):
+    """A field with no explicit ``description`` picks up its tooltip from the
+    shared parameter registry, keyed on the bound ``attr`` name.
+
+    Authored view specs get inline help for free: whenever a bound attribute
+    matches a registered parameter, the AutoForm field, its editor, and its
+    label all show the registry description.
+    """
+    from types import SimpleNamespace
+
+    from chisurf.core import dataspec as ds
+    from chisurf.core import settings
+    from chisurf.gui.autoform.sections.builtin import ValueWidget
+
+    # Pick a real, unambiguous registry entry that actually has a description
+    # so the test tracks the shipped registry rather than a hand-crafted stub.
+    params = settings.parameter_registry.get("parameters", {})
+    name = next(
+        (k for k, v in params.items() if v.get("description") and not v.get("ambiguous")),
+        None,
+    )
+    assert name is not None, "registry has no unambiguous described parameter"
+    expected = params[name]["description"]
+
+    class _M:
+        def __init__(self):
+            self.grp = SimpleNamespace(**{name: 1.0})
+
+    m = _M()
+
+    # Resolution logic is Qt-free: exercise it through the bound-control mixin
+    # directly (no widget teardown), covering registry hit, explicit override
+    # and unknown attribute.
+    from chisurf.gui.autoform.sections.builtin import _BoundControlMixin
+
+    class _Probe(_BoundControlMixin):
+        def __init__(self, model, section):
+            self._model = model
+            self._section = section
+
+    hit = _Probe(m, ds.ValueSection(target="grp", attr=name, kind="float", label=name))
+    assert hit._effective_description() == expected
+
+    override = _Probe(
+        m,
+        ds.ValueSection(
+            target="grp", attr=name, kind="float", label=name, description="Explicit help"
+        ),
+    )
+    assert override._effective_description() == "Explicit help"
+
+    miss = _Probe(
+        m, ds.ValueSection(target="grp", attr="totally_unknown_zzz", kind="float", label="x")
+    )
+    assert miss._effective_description() == ""
+
+    # End-to-end: the resolved description is applied to both the container
+    # (which feeds the field's label tooltip) and the editor, since Qt does not
+    # propagate a parent's tooltip to its children.
+    w = ValueWidget(m, ds.ValueSection(target="grp", attr=name, kind="float", label=name))
+    qtbot.addWidget(w)
+    assert expected[:20] in w.toolTip()
+    assert expected[:20] in w.editor.toolTip()
+
+
 # ---- LifetimeMixtureNewModel (AutoForm-based lifetime mixer) ---------------
 
 @pytest.fixture

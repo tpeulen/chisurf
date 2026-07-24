@@ -74,6 +74,14 @@ is unchanged so existing bare-name consumers (e.g.
 `chisurf.core.project.mmfdb_adapter.resolve_parameter_name`, the flrCIF
 `flrcif_item_id` mapping) are unaffected.
 
+This three-step resolution is factored into the shared helper
+`chisurf.core.settings.describe_parameter(name, owner=None, registry_id=None)`,
+which takes the owning class name explicitly (rather than walking the call
+stack). `Parameter.__init__` calls it with `owner=_owning_class_name()`; the
+AutoForm renderer reuses the same helper (see
+[[gui-autoform]]) so a description shown in a fitting widget and one shown on an
+AutoForm field are resolved identically.
+
 # Groups
 
 `ParameterGroup` (`parameter.py`) is a Base-backed collection; attribute writes

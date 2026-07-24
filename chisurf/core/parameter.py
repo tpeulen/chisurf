@@ -558,45 +558,17 @@ class Parameter(chisurf.core.base.Base):
         desc = kwargs.pop('description', "")
         registry_id = kwargs.pop('registry_id', None)
         if not desc:
+            # Enrich from the shared parameter registry so the same description
+            # surfaces here and in AutoForm fields. The owning class scopes the
+            # lookup so two unrelated classes reusing a bare name (e.g. FRET's
+            # Forster-radius "R0" vs. an unrelated model's own "R0") never
+            # cross-contaminate.
             try:
-                meta = getattr(chisurf.core.settings, "parameter_registry", {})
-                params_meta = meta.get("parameters", meta) if isinstance(meta, dict) else {}
-                qualified_meta = meta.get("by_qualified_id", {}) if isinstance(meta, dict) else {}
-                entry = None
-                # 1) An explicit registry_id (e.g. "rics.D") always wins, checked
-                #    against the scoped index first, then the legacy bare-name one.
-                if registry_id is not None:
-                    if isinstance(qualified_meta, dict):
-                        entry = qualified_meta.get(registry_id)
-                    if entry is None and isinstance(params_meta, dict):
-                        entry = params_meta.get(registry_id)
-                # 2) Scope to the owning class ("<ClassName>.<name>") so two
-                #    unrelated classes reusing the same bare name (e.g. FRET's
-                #    Forster-radius "R0" vs. an unrelated model's own "R0")
-                #    never cross-contaminate descriptions.
-                if entry is None and isinstance(qualified_meta, dict):
-                    owner_cls = _owning_class_name()
-                    if owner_cls is not None:
-                        entry = qualified_meta.get(f"{owner_cls}.{self._name}")
-                # 3) Legacy bare-name fallback, but only when it is not flagged
-                #    ambiguous (i.e. more than one class contributed it) — an
-                #    ambiguous bare-name entry has no reliable single meaning.
-                if entry is None and isinstance(params_meta, dict):
-                    candidate = params_meta.get(self._name)
-                    if isinstance(candidate, dict) and not candidate.get("ambiguous"):
-                        entry = candidate
-                    if entry is None:
-                        for _key, _val in params_meta.items():
-                            if not isinstance(_val, dict) or _val.get("ambiguous"):
-                                continue
-                            aliases = _val.get("aliases") or []
-                            if isinstance(aliases, list) and self._name in aliases:
-                                entry = _val
-                                break
-                if isinstance(entry, dict):
-                    d_reg = entry.get("description")
-                    if isinstance(d_reg, str) and d_reg:
-                        desc = d_reg
+                desc = chisurf.core.settings.describe_parameter(
+                    self._name,
+                    owner=_owning_class_name(),
+                    registry_id=registry_id,
+                ) or desc
             except Exception:
                 pass
         self.description = desc
