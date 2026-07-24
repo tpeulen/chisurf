@@ -1,5 +1,12 @@
 # Recurrence analysis of single particles (RASP)
 
+:::{admonition} Theory
+:class: seealso
+The same-molecule recurrence probability, the conditional recurrence FRET
+histogram, and how RASP separates dynamics from static heterogeneity are
+explained in the concept page {ref}`concept-recurrence`.
+:::
+
 ## What it does
 
 A single burst lasts about a millisecond — too short to see slow (ms–s)

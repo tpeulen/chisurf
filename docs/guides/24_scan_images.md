@@ -1,5 +1,12 @@
 # Confocal scan images (CLSM)
 
+:::{admonition} Theory
+:class: seealso
+How CLSM images are reconstructed from a TTTR stream, per-pixel lifetime maps,
+and the phasor approach to fit-free FLIM (the universal semicircle, the lever
+rule) are explained in the concept page {ref}`concept-imaging-flim-phasor`.
+:::
+
 ## What it does
 
 A laser-scanning confocal microscope builds an **image** by rastering the focus

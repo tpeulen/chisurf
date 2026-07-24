@@ -110,7 +110,8 @@ def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
 
-    for grab in (_grab_fcs_model_editor, _grab_tcspc_lifetime_editor, _grab_pda_editor):
+    for grab in (_grab_fcs_model_editor, _grab_tcspc_lifetime_editor,
+                 _grab_pda_editor):
         try:
             grab()
         except Exception as exc:  # keep going; report which grab failed

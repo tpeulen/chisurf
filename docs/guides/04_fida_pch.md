@@ -1,5 +1,13 @@
 # FIDA — photon-counting histograms
 
+:::{admonition} Theory
+:class: seealso
+How the photon-count amplitude distribution separates molecular brightness
+$\epsilon$ from the number of molecules $N$ (independently of diffusion), the
+single- and multi-species PCH, and FIDA's generating-function formulation are in
+the concept page {ref}`concept-pch-fida`.
+:::
+
 ## What it does
 
 The **photon-counting histogram** — how often a time bin contains $k$ photons —
