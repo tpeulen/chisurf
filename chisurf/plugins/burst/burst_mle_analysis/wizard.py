@@ -129,17 +129,17 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         selected_stems = set(files_by_stem.keys())
 
         if result_df is None or result_df.empty:
-            QtWidgets.QMessageBox.information(self, "Done", "No burst-fit results to save.")
+            self._set_status("No burst-fit results to save.")
             return
         if not selected_stems:
-            QtWidgets.QMessageBox.information(self, "Done", "No files selected to save.")
+            self._set_status("No files selected to save.")
             return
 
         # Compute stems once; filter to selected stems; attach "First Stem" without double-mapping
         stems_series = result_df['First File'].map(lambda fn: Path(fn).stem)
         mask = stems_series.isin(selected_stems)
         if not mask.any():
-            QtWidgets.QMessageBox.information(self, "Done", "No burst-fit rows matched the selected files.")
+            self._set_status("No burst-fit rows matched the selected files.")
             return
         res = result_df.loc[mask].copy()
         res['First Stem'] = stems_series.loc[mask].values
@@ -185,7 +185,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 maybe_pump_ui(current_task)
                 if progress.wasCanceled():
                     progress.close()
-                    QtWidgets.QMessageBox.information(self, "Canceled", "Save operation was canceled.")
+                    self._set_status("Save operation was canceled.")
                     return
                 continue
 
@@ -198,7 +198,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 maybe_pump_ui(current_task)
                 if progress.wasCanceled():
                     progress.close()
-                    QtWidgets.QMessageBox.information(self, "Canceled", "Save operation was canceled.")
+                    self._set_status("Save operation was canceled.")
                     return
                 continue
 
@@ -229,12 +229,12 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             maybe_pump_ui(current_task)
             if progress.wasCanceled():
                 progress.close()
-                QtWidgets.QMessageBox.information(self, "Canceled", "Save operation was canceled.")
+                self._set_status("Save operation was canceled.")
                 return
 
         progress.close()
         folder_list = ", ".join(sorted(written_dirs)) if written_dirs else "(no data)"
-        QtWidgets.QMessageBox.information(self, "Done", f"Burst-fit results saved in folders: {folder_list}")
+        self._set_status(f"Burst-fit results saved in folders: {folder_list}")
 
     @property
     def scatter_count_rate(self) -> float:
@@ -2710,7 +2710,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         s = np.sum(data)
         r = s >= self.min_photons
         if not r and gui:
-            QtWidgets.QMessageBox.warning(self, f"Not Enough Photons: {int(s)} < {self.min_photons}")
+            self._set_status(f"Not Enough Photons: {int(s)} < {self.min_photons}")
         return r
 
     def update_decay_of_detector(self):
@@ -3694,7 +3694,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         return irf_cache, bg_cache
 
         if self.df_bursts is None or not self.tttrs:
-            QtWidgets.QMessageBox.warning(self, "No Data", "No burst data loaded.")
+            self._set_status("No burst data loaded.")
             return
 
         # Reset stop flag
@@ -3950,7 +3950,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         from chisurf.plugins.burst.burst_mle_analysis._mp_worker import process_one_file_worker
 
         if self.df_bursts is None or not self.tttrs:
-            QtWidgets.QMessageBox.warning(self, "No Data", "No burst data loaded.")
+            self._set_status("No burst data loaded.")
             return
 
         # The batch export runs every fit2x model (fit23/24/25) through the same
@@ -3959,12 +3959,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # not meaningful on low burst counts, so it stays preview-only.
         model = self.fit_model
         if model == "tail":
-            QtWidgets.QMessageBox.warning(
-                self, "Batch export",
-                "The tail fit (DecayFitNExp) can be inspected interactively but "
-                "is not exported per burst — a per-burst multi-exponential tail "
-                "fit is under-determined at burst photon counts. Use a fit2x "
-                "model (fit23/24/25) for batch export.",
+            self._set_status(
+                "Tail fit not exported per burst (under-determined at burst photon "
+                "counts) — use a fit2x model (fit23/24/25) for batch export."
             )
             return
 
@@ -4167,7 +4164,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                     pass
 
         if self.stop_processing or (processed < total_bursts and progress.wasCanceled()):
-            QtWidgets.QMessageBox.information(self, "Canceled", "Burst processing was canceled.")
+            self._set_status("Burst processing was canceled.")
             return
 
         result_df = pd.DataFrame(results)
@@ -4484,7 +4481,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # Get the current setup name
         setup_name = self.channel_definer.setup_combo.currentText()
         if not setup_name:
-            QMessageBox.warning(self, "Warning", "No setup selected. Please select a setup first.")
+            self._set_status("No setup selected. Please select a setup first.")
             return
 
         # Get the detector_setups.json file path
@@ -4495,7 +4492,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # Check if the setup exists
         if setup_name not in setups.get("setups", {}):
-            QMessageBox.warning(self, "Warning", f"Setup '{setup_name}' not found.")
+            self._set_status(f"Setup '{setup_name}' not found.")
             return
 
         # Get the parameters for the current detector
@@ -4527,7 +4524,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # Check if the detector exists in the setup
         if current_detector not in setup_data["detectors"]:
-            QMessageBox.warning(self, "Warning", f"Detector '{current_detector}' not found in setup '{setup_name}'.")
+            self._set_status(f"Detector '{current_detector}' not found in setup '{setup_name}'.")
             return
 
         # Add MLE settings to the detector
@@ -4543,7 +4540,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # Save the updated setups
         if save_detector_setups(setups, setups_file):
-            QMessageBox.information(self, "Saved", f"MLE settings for detector '{current_detector}' saved to setup '{setup_name}'.")
+            self._set_status(f"MLE settings for detector '{current_detector}' saved to setup '{setup_name}'.")
         else:
             QMessageBox.critical(self, "Error", f"Could not save MLE settings to setup '{setup_name}'.")
 
@@ -4598,7 +4595,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             json.dump(payload, f, indent=4, cls=NumpyEncoder)
 
         # show the file in both line edits
-        QMessageBox.information(self, "Saved", f"All settings saved to:\n{path}")
+        self._set_status(f"All settings saved to:\n{path}")
 
     def load_settings(self):
         """
@@ -4685,7 +4682,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.update_decay_of_detector()
         self.update_fit()
 
-        QMessageBox.information(self, "Loaded", f"All settings loaded from:\n{path}")
+        self._set_status(f"All settings loaded from:\n{path}")
 
 
 if __name__ == 'plugin':
