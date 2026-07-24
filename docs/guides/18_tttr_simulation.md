@@ -1,5 +1,13 @@
 # TTTR simulation of diffusing particles
 
+:::{admonition} Theory
+:class: seealso
+The ingredients of a single-molecule photon simulation — Brownian trajectories
+through the detection profile, Poisson emission, FRET channel partitioning,
+background and detector effects, and state kinetics — are explained in the
+concept page {ref}`concept-photophysics-simulation`.
+:::
+
 ## What it does
 
 Simulating single-molecule data with a **known ground truth** is the way to

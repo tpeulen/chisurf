@@ -1,5 +1,13 @@
 # Hidden Markov analysis of binned FRET traces (ebFRET)
 
+:::{admonition} Theory
+:class: seealso
+The Gaussian-emission HMM on binned traces, the empirical-Bayes shared prior,
+variational inference (the ELBO as the state-count score), and the trade-off
+against photon-by-photon H2MM are explained in the concept page
+{ref}`concept-ebfret`.
+:::
+
 ## What it does
 
 Wide-field / TIRF-camera FRET gives **binned intensity-vs-time** traces rather

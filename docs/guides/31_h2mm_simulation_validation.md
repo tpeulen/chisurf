@@ -1,5 +1,11 @@
 # H2MM: simulating and validating
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-photophysics-simulation` for how the ground-truth photon
+stream is generated and {ref}`concept-h2mm` for the model being validated.
+:::
+
 ## What it does
 
 Before trusting an H2MM result on real data you validate the whole chain on

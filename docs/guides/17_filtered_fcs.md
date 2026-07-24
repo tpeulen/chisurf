@@ -1,5 +1,13 @@
 # Filtered FCS (fFCS / 2D-FLCS)
 
+:::{admonition} Theory
+:class: seealso
+The micro-time filter construction (the weighted pseudo-inverse
+$F=(D^\mathsf{T}WD)^{-1}D^\mathsf{T}W$), afterpulse removal, species auto/cross
+correlations, and 2D-FLCS lifetime–lifetime maps are explained in the concept
+page {ref}`concept-filtered-fcs`.
+:::
+
 ## What it does
 
 When two species share the same diffusion time but differ in **fluorescence
