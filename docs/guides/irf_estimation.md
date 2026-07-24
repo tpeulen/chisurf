@@ -12,7 +12,7 @@ The **IRF Estimation** module provides blind instrument response function (IRF) 
 There are two main ways to use IRF estimation in ChiSurf:
 
 - **Programmatic API** via the `IRFEstimator` class (this module)
-- **GUI plugin** via the *IRF Estimator* plugin (`Fluorescence decay:IRF Estimator`), see `chisurf/plugins/irf_estimator/README.md`
+- **GUI plugin** via the *IRF Estimator* plugin (`Fluorescence decay:IRF Estimator`), see `chisurf/plugins/fluorescence_decay/irf_estimator/README.md`
 
 ### Reference
 
@@ -26,13 +26,13 @@ DOI: [10.1016/j.bpr.2024.100155](https://doi.org/10.1016/j.bpr.2024.100155)
 Core implementation:
 
 ```
-chisurf/fluorescence/tcspc/irf_estimation.py
+chisurf/core/fluorescence/tcspc/irf_estimation.py
 ```
 
 GUI plugin (front-end for this module):
 
 ```
-chisurf/plugins/irf_estimator/
+chisurf/plugins/fluorescence_decay/irf_estimator/
 ```
 
 ## Key Features
@@ -57,7 +57,7 @@ chisurf/plugins/irf_estimator/
 ### Basic Usage
 
 ```python
-from chisurf.fluorescence.tcspc import IRFEstimator
+from chisurf.core.fluorescence.tcspc import IRFEstimator
 import numpy as np
 
 # Load or create your decay data
@@ -77,7 +77,7 @@ print(f"Background offset: {estimator.params['C'][0]:.2f}")
 ### Step-by-Step Usage
 
 ```python
-from chisurf.fluorescence.tcspc import IRFEstimator
+from chisurf.core.fluorescence.tcspc import IRFEstimator
 
 # Create estimator
 estimator = IRFEstimator(data, dt=0.1)
@@ -171,20 +171,25 @@ Generate fitted exponential curves using estimated parameters.
 
 Build normalized deconvolution kernel from fitted exponential.
 
-##### `richardson_lucy_deconvolution(iterations=500, eps=1e-4, regularization=3)`
+##### `richardson_lucy_deconvolution(iterations=30, eps=1e-4, regularization=3)`
 
 Perform Richardson-Lucy deconvolution.
 
 **Parameters:**
-- `iterations` (int): Number of RL iterations (default: 500, range: 5-2000)
+- `iterations` (int): Number of RL iterations (default: 30 when the step is called
+  directly; `run()` passes 500 via its own `rl_iterations`)
 - `eps` (float): Small value to avoid division by zero
 - `regularization` (int): Median filter window size (default: 3, set to 1 to disable)
 
-##### `run(**kwargs)`
+##### `run(window_length=11, polyorder=3, persistence=5, threshold=0.05, fit_method='L-BFGS-B', fit_max_iter=1000, rl_iterations=500, regularization=3)`
 
-Execute full IRF estimation pipeline.
+Execute the full IRF estimation pipeline (boundaries → exponential fit → kernel →
+deconvolution).
 
-**Parameters:** Accepts all parameters from the individual methods above.
+**Parameters:** the boundary-detection and fitting arguments are forwarded to
+`find_t0_t1` and `fit_exponential`; note the renames — the optimizer is
+`fit_method` (not `method`), its iteration cap is `fit_max_iter` (not `max_iter`),
+and the deconvolution count is `rl_iterations` (not `iterations`).
 
 **Returns:** np.ndarray - Estimated IRF (shape: [n_time, n_channels])
 
@@ -256,14 +261,14 @@ Perform FFT-based convolution along specified axis.
 
 ## Examples
 
-See `test/test_irf_estimation.py` for a comprehensive, automated example suite including:
+See `test/tcspc/test_irf_estimation.py` for a comprehensive, automated example suite including:
 - Basic IRF estimation
 - Step-by-step pipeline tests
 - Multi-channel data
 
 For GUI-based IRF estimation inside ChiSurf, see the *IRF Estimator Plugin* documentation:
 
-- `chisurf/plugins/irf_estimator/README.md`
+- `chisurf/plugins/fluorescence_decay/irf_estimator/README.md`
 
 ## Implementation Notes
 
@@ -332,14 +337,25 @@ DOI: [10.1016/j.bpr.2024.100155](https://doi.org/10.1016/j.bpr.2024.100155)
 Run tests with:
 
 ```bash
-python test/test_irf_estimation.py
+python test/tcspc/test_irf_estimation.py
 ```
 
 Or with pytest:
 
 ```bash
-pytest test/test_irf_estimation.py -v
+pytest test/tcspc/test_irf_estimation.py -v
 ```
+
+## See also
+
+- Concept: {ref}`concept-tcspc-lifetime` — what the IRF is and how reconvolution
+  uses it.
+- Fitting decays once the IRF is known:
+  [lifetime & anisotropy fitting](10_lifetime_anisotropy_fitting.md).
+- Measuring the IRF and background from the data instead of inferring it:
+  [background rates](15_background_rates.md).
+- Micro-time axis quality, which limits any IRF estimate:
+  [TAC linearization](37_tttr_microtime_lut.md).
 
 ## Support
 

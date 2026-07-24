@@ -1,5 +1,11 @@
 # Combining measurements / technical repeats
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-smfret-bursts` for the per-burst observables being pooled and
+why each file must be background-corrected on its own rate first.
+:::
+
 ## What it does
 
 Single-molecule datasets are often split across several files — technical

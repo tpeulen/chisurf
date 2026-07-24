@@ -1,5 +1,11 @@
 # Exporting burst data
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-smfret-bursts` for the per-burst observables that make up the
+exported columns.
+:::
+
 ## What it does
 
 Analysed bursts are exported for downstream visualisation, sharing, or use in
@@ -37,6 +43,23 @@ The `bid_to_analysis` helper converts external Burst-ID files into a ChiSurf
 burstwise analysis folder (BUR/Info/MTI, optional HDF5/SL5) and back, for
 interoperability with companion multiparameter-fluorescence suites.
 
+## Result
+
+`build_tables` writes two tables whose column names are chosen so ndxplorer picks
+them up without any mapping — in particular the time axis is named
+`Mean Macro Time (s)`, which is the column ndX auto-selects.
+
+| table | one row per | columns |
+|---|---|---|
+| per-photon (`h2mm_photons.h5`) | photon | `Mean Macro Time (s)`, `Macro Time`, `Micro Time`, `Channel`, `Stream`, `State`, `Burst` |
+| per-burst (`h2mm_bursts.csv`) | burst | `Burst`, `Number of Photons`, `Mean Macro Time (s)`, `Mean Microtime (<stream>)`, `Proximity ratio`, `Dominant State`, `Number of Transitions`, `Mean FRET E` |
+
+`Mean Microtime (…)` is emitted once per photon stream and is in nanoseconds when
+the micro-time resolution is known — otherwise `NaN`. Colouring the per-photon
+scatter by `State` in ndX gives the recovered state trajectory directly.
+
 ## See also
 
 - `chisurf/plugins/burst/burst_h2mm/core/export.py`, `chisurf/plugins/burst/bid_to_analysis/`.
+- What the index ranges being exported mean: [timestamps and bursts](33_timestamps_and_bursts.md).
+- The analysis that produces the `State` column: [H2MM](19_h2mm_hidden_markov.md).

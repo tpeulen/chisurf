@@ -2,6 +2,60 @@
 
 ## 2026-07-24
 
+* **Guides refinement: stale paths, wrong API snippets, and seven missing
+  `Result` sections.** An audit of all 44 `docs/guides/` pages against the page
+  template (Theory admonition → What it does → In ChiSurf → Result + figure →
+  See also) found the template near-universal but with concentrated gaps, and
+  two of the code snippets did not match the code they document.
+  **Wrong APIs** (both verified against the live modules, not guessed): guide 20
+  called `burst_ebfret…analysis.analyze(traces, states=…)` — the function is
+  `analyse(traces, min_states=…, max_states=…)` (British spelling) returning
+  `EbfretAnalysis` with `n_states`/`states`/`transition_counts`/`dwells`/
+  `evidence`/`scan`, not `emission_means`/`transitions`. Guide 21 passed the IRF
+  and background to `Fit2x.fit()`; they are **constructor** arguments of
+  `Fit2xSettings` (they describe the setup and are reused across bursts), and
+  `fit()` takes `(data, initial_values, fixed=None)`. Also documented
+  `res.as_dict()` instead of `res.x`, since `x` is the full tttrlib vector whose
+  *trailing* entries are derived quantities (`x[6]`/`x[7]` = scatter/experimental
+  anisotropy for fit23) rather than the four named parameters.
+  **Stale paths**: `docs/guides/index.md` and `make_figures.py` still told
+  readers to run `docs/tutorials/make_figures.py` — the harness moved to
+  `docs/guides/`. `irf_estimation.md` carried nine stale references
+  (`chisurf.fluorescence.tcspc` → `chisurf.core.fluorescence.tcspc`,
+  `chisurf/plugins/irf_estimator/` → `chisurf/plugins/fluorescence_decay/irf_estimator/`,
+  `test/test_irf_estimation.py` → `test/tcspc/test_irf_estimation.py`) plus a
+  wrong default (`richardson_lucy_deconvolution(iterations=…)` is 30, not 500 —
+  500 is what `run()` passes as `rl_iterations`) and a `run(**kwargs)` signature
+  that hid three renamed keywords (`fit_method`, `fit_max_iter`, `rl_iterations`).
+  A sweep of every backticked `chisurf/…` path in guides+concepts found 63 of 64
+  correct, so the rot was localised rather than systemic.
+  **Six new figures** in `make_figures.py` (`fig_ebfret`, `fig_burst_lifetime`,
+  `fig_clsm`, `fig_rcm_alex`, `fig_2d_peak_fit`, `fig_timestamps`) close the
+  `Result` gap in guides 20/21/24/25/26/33; guide 34 gets a `Result` table of the
+  real exported column names read from `burst_h2mm/core/export.py` instead of an
+  invented figure. Two are driven by the **real** analysis code: `fig_ebfret`
+  runs the actual `analyse()` over 12 simulated 3-state traces and recovers
+  E = 0.25/0.55/0.80 with the evidence scan selecting K = 3, and `fig_rcm_alex`
+  corrects simulated ALEX data through the real `corrected_es`.
+  The E–τ panel plots the **dynamic FRET line** properly — E follows the
+  species-weighted lifetime while the decay reports the intensity-weighted one,
+  so the line bows right of the static line; the first draft had it crossing.
+  **Navigation**: added the missing Theory cross-links to guides 12/22/34/35/37
+  and `See also` sections to the three long-form pages (`fret_calibration`,
+  `h2mm`, `irf_estimation`), which were previously dead-ends.
+  **Build is warning-free again**: `chisurf.server` re-exports `SessionState`
+  from `chisurf.server.session` and both were autodoc'd with `:members:`, giving
+  the name two cross-reference targets; `:no-index:` on the package automodule
+  keeps the overview rendered while leaving one target per name.
+  **Not fixed, needs its own change**: `docs/reference/user_models.md` documents
+  a `chisurf.models.register_user_model` / `load_user_models` /
+  `iter_user_models_for_experiment` registry that **no longer exists anywhere in
+  the tree** — user models are now injected by `inject_user_models()` in
+  `chisurf/core/models/__init__.py` from `get_path('settings')/models`. Several
+  `docs/reference/` pages also still use pre-`core` module paths
+  (`chisurf.models.tcspc.fret`, `chisurf.fluorescence.tcspc.counting_noise`), and
+  `chisurf/core/models/pda/widgets.py` is referenced but absent.
+
 * **AutoForm `options_source` now accepts `(value, label)` pairs → live MMFDB FK
   dropdowns.** Generalized `ChoiceWidget` (`gui/autoform/sections/builtin.py`) so
   a model-backed `options_source` may return either a flat value list (unchanged)

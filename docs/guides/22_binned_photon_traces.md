@@ -1,5 +1,13 @@
 # Binned photon traces (MCS)
 
+:::{admonition} Theory
+:class: seealso
+Binning is the step that turns a photon stream into the intensity trace the
+burst search runs on ({ref}`concept-smfret-bursts`) and that camera-style HMMs
+model directly ({ref}`concept-ebfret`). The bin time sets which dynamics survive
+averaging.
+:::
+
 ## What it does
 
 Binning the photon stream into fixed time windows (multi-channel scaler, MCS,

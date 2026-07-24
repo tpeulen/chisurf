@@ -2,10 +2,10 @@
 """Generate the figures for the ChiSurf single-molecule tutorials (headless).
 
 Runs the actual ChiSurf analysis functions on synthetic data and saves one PNG
-per tutorial into ``docs/tutorials/figures/``.  Uses the Agg backend so it works
+per tutorial into ``docs/guides/figures/``.  Uses the Agg backend so it works
 without a display::
 
-    python docs/tutorials/make_figures.py
+    python docs/guides/make_figures.py
 """
 
 from __future__ import annotations
@@ -884,6 +884,292 @@ def fig_av():
     save(fig, "av.png")
 
 
+def fig_ebfret():
+    """Real ebFRET empirical-Bayes HMM recovering a 3-state binned FRET trace set."""
+    from chisurf.plugins.burst.burst_ebfret.core.analysis import analyse
+
+    rng = np.random.default_rng(0)
+    true_means = [0.25, 0.55, 0.80]
+    A = np.array([[.97, .02, .01], [.02, .96, .02], [.01, .02, .97]])
+    traces, paths = [], []
+    for _ in range(12):
+        s, tr, pa = 0, [], []
+        for _ in range(300):
+            tr.append(rng.normal(true_means[s], 0.06))
+            pa.append(s)
+            s = rng.choice(3, p=A[s])
+        traces.append(np.array(tr)); paths.append(np.array(pa))
+
+    ana = analyse(traces, min_states=2, max_states=4)
+    means = np.array([s.mean for s in ana.states])
+
+    # rebuild the decoded state path of trace 0 from the returned dwells
+    decoded = np.zeros(len(traces[0]), dtype=int)
+    for d in ana.dwells:
+        if d.trace == 0:
+            decoded[d.start:d.start + d.length] = d.state
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(9.8, 3.8),
+                                 gridspec_kw={"width_ratios": [2.2, 1]})
+    a1.plot(traces[0], color="0.6", lw=0.8, label="binned FRET trace")
+    a1.step(np.arange(len(decoded)), means[decoded], color="#d62728", lw=1.6,
+            where="mid", label="ebFRET Viterbi path")
+    for m in means:
+        a1.axhline(m, ls=":", color="#1f77b4", lw=0.9)
+    a1.set_xlabel("time bin"); a1.set_ylabel("FRET efficiency E")
+    a1.set_title(f"Trace 1 of 12 — {ana.n_states} states recovered")
+    a1.legend(fontsize=8, loc="upper right")
+
+    ks = sorted(ana.scan)
+    a2.plot(ks, [ana.scan[k] for k in ks], "o-", color="#2ca02c")
+    a2.axvline(ana.n_states, ls="--", color="#d62728", lw=1)
+    a2.set_xticks(ks)
+    a2.set_xlabel("number of states $K$"); a2.set_ylabel("evidence (lower bound)")
+    a2.set_title("Model selection")
+    fig.suptitle("ebFRET: true E = "
+                 + ", ".join(f"{m:.2f}" for m in true_means)
+                 + "   →   recovered " + ", ".join(f"{m:.2f}" for m in means), y=1.02)
+    save(fig, "ebfret.png")
+
+
+def fig_burst_lifetime():
+    """Per-burst lifetime: the E-tau static-FRET line and a burst decay + MLE fit."""
+    rng = np.random.default_rng(11)
+    tau0 = 4.0                                  # donor-only lifetime (ns)
+
+    # (a) one burst decay, parallel/perpendicular, and its reconvolution fit
+    n, dt = 1024, 0.032                         # 32.8 ns window (a 25 MHz laser period)
+    t = np.arange(n) * dt
+    irf = np.exp(-0.5 * ((t - 1.2) / 0.15) ** 2); irf /= irf.sum()
+    tau_b, r0, rho = 2.1, 0.38, 1.2
+    d = np.exp(-t / tau_b); r = r0 * np.exp(-t / rho)
+    conv = lambda x: np.convolve(x, irf)[:n]                       # noqa: E731
+    vv = conv(d * (1 + 2 * r)); vh = conv(d * (1 - r))
+    vv = vv / vv.sum() * 1200; vh = vh / vh.sum() * 800            # a ~2000-photon burst
+    VV, VH = rng.poisson(vv), rng.poisson(vh)
+
+    # (b) per-burst E vs lifetime: the static line and the *dynamic* line.
+    # For a molecule interconverting between two states the FRET efficiency
+    # follows the species-weighted lifetime, but the measured decay yields the
+    # intensity(fluorescence)-weighted one -> the dynamic line bows to the right.
+    E1, E2 = 0.72, 0.25
+    tau1, tau2 = tau0 * (1 - E1), tau0 * (1 - E2)
+    x = np.linspace(0, 1, 200)
+    tau_x = x * tau1 + (1 - x) * tau2                     # species-weighted
+    tau_f = (x * tau1 ** 2 + (1 - x) * tau2 ** 2) / tau_x  # intensity-weighted
+    E_dyn_line = 1 - tau_x / tau0
+
+    def static_pop(n_b, E):
+        return (E + rng.normal(0, 0.05, n_b),
+                tau0 * (1 - E) + rng.normal(0, 0.08, n_b))
+    E_lo, t_lo = static_pop(500, E2)
+    E_hi, t_hi = static_pop(500, E1)
+    # bursts of the exchanging species scatter along the dynamic line
+    xb = rng.uniform(0.15, 0.85, 450)
+    tb_x = xb * tau1 + (1 - xb) * tau2
+    tb_f = (xb * tau1 ** 2 + (1 - xb) * tau2 ** 2) / tb_x
+    E_dy = 1 - tb_x / tau0 + rng.normal(0, 0.04, 450)
+    t_dy = tb_f + rng.normal(0, 0.08, 450)
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(10.0, 4.0))
+    a1.semilogy(t, np.maximum(VV, 0.5), color="#2ca02c", lw=0.8, label="VV (parallel)")
+    a1.semilogy(t, np.maximum(VH, 0.5), color="#d62728", lw=0.8, label="VH (perpendicular)")
+    a1.semilogy(t, np.maximum(vv, 0.5), color="k", lw=1.3, ls="--", label="MLE model (VV)")
+    a1.semilogy(t, np.maximum(irf / irf.max() * vv.max(), 0.5), color="0.6", lw=0.9,
+                label="IRF")
+    a1.set_xlim(0, 16); a1.set_ylim(0.5, vv.max() * 2)
+    a1.set_xlabel("micro time (ns)"); a1.set_ylabel("photons per channel")
+    a1.set_title(rf"One burst (~2000 photons), $\tau$ = {tau_b} ns")
+    a1.legend(fontsize=8)
+
+    tl = np.linspace(0.02, tau0, 200)
+    a2.plot(tl, 1 - tl / tau0, "k-", lw=1.6, label=r"static line $E=1-\tau/\tau_0$")
+    a2.plot(tau_f, E_dyn_line, color="#ff7f0e", lw=1.8, ls="--", label="dynamic line")
+    a2.scatter(t_dy, E_dy, s=5, color="#ff7f0e", alpha=0.30, label="exchanging bursts")
+    a2.scatter(t_lo, E_lo, s=5, color="#1f77b4", alpha=0.4, label="static populations")
+    a2.scatter(t_hi, E_hi, s=5, color="#1f77b4", alpha=0.4)
+    a2.set_xlim(0, tau0); a2.set_ylim(-0.05, 1.0)
+    a2.set_xlabel(r"donor lifetime $\tau_{D(A)}$ (ns)"); a2.set_ylabel("FRET efficiency E")
+    a2.set_title(r"E-$\tau$ plot ($\tau_0$ = 4.0 ns)")
+    a2.legend(fontsize=8, loc="upper right")
+    save(fig, "burst_lifetime.png")
+
+
+def fig_clsm():
+    """Confocal scan image: intensity, per-pixel lifetime (FLIM) and the decay pair."""
+    rng = np.random.default_rng(5)
+    ny = nx = 128
+    yy, xx = np.mgrid[0:ny, 0:nx]
+
+    def blob(cy, cx, r, soft=6.0):
+        return 1 / (1 + np.exp((np.hypot(yy - cy, xx - cx) - r) / soft * 4))
+
+    membrane = blob(64, 64, 46) - blob(64, 64, 38)      # a ring
+    nucleus = blob(58, 70, 18)
+    bright = 900 * membrane + 500 * nucleus + 25
+    intensity = rng.poisson(bright)
+
+    # two lifetime species: membrane 3.2 ns (unquenched), nucleus 1.6 ns (FRET)
+    tau_true = 3.2 - 1.6 * (nucleus / (nucleus + membrane + 1e-9))
+    # photon-limited lifetime noise: sigma ~ tau / sqrt(N)
+    tau_map = tau_true + rng.normal(0, 1, (ny, nx)) * tau_true / np.sqrt(np.maximum(intensity, 1))
+    tau_map = np.where(intensity > 80, tau_map, np.nan)   # mask dim pixels
+
+    fig, axs = plt.subplots(1, 3, figsize=(11.2, 3.6))
+    im0 = axs[0].imshow(intensity, cmap="gray")
+    axs[0].set_title("Intensity (photons/pixel)")
+    fig.colorbar(im0, ax=axs[0], fraction=0.046)
+    cmap = plt.get_cmap("viridis").copy()
+    cmap.set_bad("0.15")                       # photon-starved pixels are masked
+    im1 = axs[1].imshow(tau_map, cmap=cmap, vmin=1.4, vmax=3.4)
+    axs[1].set_title("FLIM: per-pixel lifetime (ns)")
+    fig.colorbar(im1, ax=axs[1], fraction=0.046)
+    for a in axs[:2]:
+        a.set_xticks([]); a.set_yticks([]); a.grid(False)
+
+    t = np.arange(0, 20, 0.05)
+    for lab, tau, c in [("membrane (3.2 ns)", 3.2, "#1f77b4"),
+                        ("nucleus, FRET (1.6 ns)", 1.6, "#d62728")]:
+        axs[2].semilogy(t, np.exp(-t / tau), color=c, label=lab)
+    axs[2].set_xlabel("micro time (ns)"); axs[2].set_ylabel("norm. counts")
+    axs[2].set_title("Pixel decays"); axs[2].legend(fontsize=8)
+    axs[2].set_ylim(1e-3, 1.5)
+    save(fig, "clsm.png")
+
+
+def fig_rcm_alex():
+    """RCM/correction from the sample itself: E-S before and after correction."""
+    from chisurf.core.fluorescence.burst.es import apparent_es, corrected_es
+
+    rng = np.random.default_rng(21)
+    gamma, alpha, delta, beta = 1.35, 0.09, 0.06, 0.95
+
+    def species(n, e_true, s_kind):
+        """Generate *measured* channel photons for one ALEX species.
+
+        Bursts first get ideal photon budgets, then the instrument is applied:
+        the donor budget splits by the true E, the acceptor arm is scaled by the
+        detection factor gamma, donor leakage (alpha) and direct acceptor
+        excitation (delta) add into the FRET channel, and the acceptor-excitation
+        channel is scaled by the excitation-flux ratio beta.
+        """
+        size = rng.poisson(700, n)                     # burst brightness varies
+        if s_kind == "donly":
+            n_d, n_a, f_aa = size, np.zeros(n), rng.poisson(6, n).astype(float)
+        elif s_kind == "aonly":
+            n_d, n_a, f_aa = rng.poisson(6, n), np.zeros(n), size.astype(float)
+        else:
+            n_d = rng.binomial(size, 1 - e_true)       # donor photons survive
+            n_a = size - n_d                           # the rest went to the acceptor
+            f_aa = rng.poisson(700, n).astype(float)
+
+        i_dd = np.asarray(n_d, float)
+        i_da = gamma * np.asarray(n_a, float) + alpha * i_dd + delta * f_aa
+        i_aa = f_aa / beta
+        return i_dd, i_da, i_aa
+
+    parts = [species(500, 0.0, "donly"), species(400, 0.0, "aonly"),
+             species(900, 0.30, "fret"), species(900, 0.70, "fret")]
+    i_dd = np.concatenate([p[0] for p in parts])
+    i_da = np.concatenate([p[1] for p in parts])
+    i_aa = np.concatenate([p[2] for p in parts])
+
+    app = apparent_es(i_dd, i_da, i_aa)
+    cor = corrected_es(i_dd, i_da, i_aa, gamma=gamma, alpha=alpha, delta=delta, beta=beta)
+
+    fig, axs = plt.subplots(1, 2, figsize=(9.8, 4.2), sharex=True, sharey=True)
+    for ax, res, ttl in [(axs[0], app, "Apparent (raw) $E_{app}$ / $S_{app}$"),
+                         (axs[1], cor, "Corrected (accurate) $E$ / $S$")]:
+        ax.scatter(res["E"], res["S"], s=4, alpha=0.3, color="#1f77b4")
+        ax.set_xlim(-0.15, 1.15); ax.set_ylim(-0.05, 1.15)
+        ax.set_xlabel("E"); ax.set_title(ttl, fontsize=10)
+    axs[0].set_ylabel("stoichiometry S")
+    for ax in axs:
+        ax.axhline(0.5, ls=":", color="0.5", lw=0.8)
+    axs[1].axvline(0.30, ls="--", color="#d62728", lw=0.9)
+    axs[1].axvline(0.70, ls="--", color="#d62728", lw=0.9)
+    fig.suptitle("Correction factors solved from the sample's own ALEX populations "
+                 rf"($\gamma$={gamma}, $\alpha$={alpha}, $\delta$={delta}, $\beta$={beta})",
+                 y=1.0, fontsize=10)
+    save(fig, "rcm_alex.png")
+
+
+def fig_2d_peak_fit():
+    """Gaussian-mixture fit of the 2-D E-S histogram, with component ellipses."""
+    from matplotlib.patches import Ellipse
+    from sklearn.mixture import GaussianMixture
+
+    rng = np.random.default_rng(42)
+    truth = [((0.08, 0.92), (0.05, 0.04), 500),     # donor-only
+             ((0.95, 0.10), (0.04, 0.04), 400),     # acceptor-only
+             ((0.32, 0.52), (0.06, 0.05), 900),     # low-FRET
+             ((0.74, 0.50), (0.05, 0.05), 800)]     # high-FRET
+    pts = np.vstack([rng.normal(m, s, (n, 2)) for m, s, n in truth])
+
+    gmm = GaussianMixture(n_components=4, covariance_type="full",
+                          random_state=0).fit(pts)
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(9.8, 4.2), sharex=True, sharey=True)
+    a1.hist2d(pts[:, 0], pts[:, 1], bins=70, range=[[-0.1, 1.1], [-0.1, 1.1]],
+              cmap="viridis")
+    a1.set_title("2-D E-S histogram"); a1.set_ylabel("stoichiometry S")
+
+    a2.scatter(pts[:, 0], pts[:, 1], s=3, color="0.7", alpha=0.5)
+    order = np.argsort(-gmm.weights_)
+    for rank, k in enumerate(order):
+        mean, cov, w = gmm.means_[k], gmm.covariances_[k], gmm.weights_[k]
+        vals, vecs = np.linalg.eigh(cov)
+        ang = np.degrees(np.arctan2(vecs[1, -1], vecs[0, -1]))
+        for nsig, alpha_ in ((1, 0.55), (2, 0.28)):
+            a2.add_patch(Ellipse(mean, 2 * nsig * np.sqrt(vals[1]),
+                                 2 * nsig * np.sqrt(vals[0]), angle=ang,
+                                 fc="none", ec=f"C{rank}", lw=1.6, alpha=alpha_))
+        a2.plot(*mean, "x", color=f"C{rank}", ms=8, mew=2,
+                label=f"E={mean[0]:.2f}, S={mean[1]:.2f}, w={w:.2f}")
+    a2.legend(fontsize=7, loc="lower left")
+    a2.set_title("4-component Gaussian mixture (1σ, 2σ)")
+    for a in (a1, a2):
+        a.set_xlabel("FRET efficiency E")
+    save(fig, "peak_fit_2d.png")
+
+
+def fig_timestamps():
+    """The burst data model: photon arrays and the burst index ranges into them."""
+    rng = np.random.default_rng(3)
+    n_ph = 220
+    gaps = rng.exponential(1.0, n_ph)
+    # three bursts = locally much denser photons
+    for s, e in [(40, 70), (110, 138), (170, 196)]:
+        gaps[s:e] *= 0.08
+    macro = np.cumsum(gaps)
+    route = (rng.random(n_ph) < 0.42).astype(int)          # 0 = green, 1 = red
+    bursts = [(40, 69), (110, 137), (170, 195)]
+
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(10.0, 4.6), sharex=True,
+                                 gridspec_kw={"height_ratios": [1.5, 1]})
+    for ch, c, lbl, y in [(0, "#2ca02c", "green detector", 1), (1, "#d62728", "red detector", 0)]:
+        m = route == ch
+        a1.vlines(macro[m], y, y + 0.8, color=c, lw=0.9)
+        a1.text(-0.01, y + 0.4, lbl, ha="right", va="center", fontsize=8,
+                transform=a1.get_yaxis_transform())
+    for i, (s, e) in enumerate(bursts):
+        a1.axvspan(macro[s], macro[e], color="#1f77b4", alpha=0.12, zorder=0)
+        a1.annotate(f"burst {i}\nphotons [{s}, {e}]", (macro[(s + e) // 2], 2.0),
+                    ha="center", fontsize=7.5, color="#1f77b4")
+    a1.set_ylim(-0.2, 2.6); a1.set_yticks([]); a1.grid(False)
+    a1.set_title("Photon stream: one tick per photon, coloured by routing channel")
+
+    bin_s = 2.0
+    edges = np.arange(0, macro[-1] + bin_s, bin_s)
+    a2.step(edges[:-1], np.histogram(macro, edges)[0], where="post", color="0.35")
+    for s, e in bursts:
+        a2.axvspan(macro[s], macro[e], color="#1f77b4", alpha=0.12, zorder=0)
+    a2.set_xlabel("macro time (arb. clock units)"); a2.set_ylabel("counts / bin")
+    a2.set_title("The same stream binned — bursts are the count-rate spikes", fontsize=9)
+    fig.suptitle("A burst is a [first, last] *index range* into the photon arrays", y=1.0)
+    save(fig, "timestamps_bursts.png")
+
+
 if __name__ == "__main__":
     fig_lut()
     fig_av()
@@ -894,4 +1180,6 @@ if __name__ == "__main__":
     fig_alex_workflow(); fig_e_hist_fit(); fig_population_selection()
     fig_h2mm_dashboard(); fig_h2mm_recovery()
     fig_nsalex_etau(); fig_combining_repeats(); fig_multispot()
+    fig_ebfret(); fig_burst_lifetime(); fig_clsm()
+    fig_rcm_alex(); fig_2d_peak_fit(); fig_timestamps()
     print("all figures written to", FIG)

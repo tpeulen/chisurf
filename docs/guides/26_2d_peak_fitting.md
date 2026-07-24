@@ -32,6 +32,31 @@ The burst-selection GUI fits and overlays the mixture components on the 2-D
 histogram and lets the user gate bursts by component; the same features feed the
 downstream burst analyses.
 
+## Result
+
+Fitting the mixture returns each population's centre, covariance and weight as
+numbers rather than as an eyeballed gate — and the covariance ellipses show
+directly how much two populations overlap, which is what decides whether they can
+be separated at all.
+
+```{figure} figures/peak_fit_2d.png
+:name: fig-peak-fit-2d
+:width: 95%
+
+**Left:** the 2-D E–S histogram of four simulated populations (donor-only,
+acceptor-only and two FRET species). **Right:** the 4-component Gaussian mixture
+fitted to the same bursts, with 1σ and 2σ covariance ellipses and the recovered
+centre, stoichiometry and weight of each component.
+```
+
+Choose the component count deliberately: a mixture will happily fit whatever
+number of components you ask for. Compare candidate counts by BIC, and check that
+each component corresponds to a population you can justify physically (a
+donor-only corner, a known FRET state) rather than to a tail of the shot-noise
+distribution.
+
 ## See also
 
 - `chisurf/plugins/burst/burst_selection/api/features.py`; the E–S histogram it operates on ([multi-parameter E–S](14_multiparameter_es.md)).
+- Gating and comparing the resulting populations: [selecting FRET populations](28_selecting_fret_populations.md).
+- 1-D efficiency-histogram fitting: [FRET-histogram fitting](29_fret_histogram_fitting.md).

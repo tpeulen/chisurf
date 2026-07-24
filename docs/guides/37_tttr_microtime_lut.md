@@ -1,5 +1,12 @@
 # TAC linearization: microtime LUTs
 
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-tcspc-lifetime` for the micro-time axis this page linearizes —
+uneven TAC channel widths bias the decay histogram that every lifetime fit,
+filtered-FCS filter and PDA micro-time gate is built from.
+:::
+
 Some TCSPC hardware — notably Becker&Hickl **SPC-130** — records photon
 micro-times on a TAC (time-to-amplitude converter) axis with visible
 **differential non-linearity (DNL)**: the channels are not exactly equal in

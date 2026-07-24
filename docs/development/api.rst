@@ -33,10 +33,15 @@ Action Infrastructure
 Server Infrastructure
 ---------------------
 
+.. Members of ``chisurf.server`` are re-exports of the submodules documented
+.. below (e.g. ``SessionState`` from ``chisurf.server.session``).  ``:no-index:``
+.. keeps the package overview rendered while leaving each name with exactly one
+.. cross-reference target, in its defining submodule.
 .. automodule:: chisurf.server
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 .. automodule:: chisurf.server.app
    :members:

@@ -62,20 +62,20 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 ## Running
 
 ```bash
-pixi run -e docs python docs/tutorials/make_figures.py   # regenerate all figures
+pixi run -e docs python docs/guides/make_figures.py   # regenerate all figures
 ```
 
 GUI screenshots (e.g. tutorial 37) are regenerated separately from the real
 widgets under an offscreen Qt platform (needs the full GUI environment):
 
 ```bash
-QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/tutorials/make_screenshots.py
+QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py
 ```
 
 or, outside pixi, with the project on the path:
 
 ```bash
-PYTHONPATH=. python docs/tutorials/make_figures.py
+PYTHONPATH=. python docs/guides/make_figures.py
 ```
 
 All lengths in the polymer tutorials are in Ångström, FCS lag times in seconds

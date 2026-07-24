@@ -45,6 +45,25 @@ fused if separated by short gaps, or filtered by size/duration/background. The
 `burst_selection` plugin and the `BurstFeature` engines (`tttrlib.BVA`,
 `tttrlib.TwoCDE`) all consume exactly this index-range representation.
 
+## Result
+
+The key idea is that a burst is **not** a copy of any photons: it is a pair of
+indices into the per-photon arrays. Every burst observable is a reduction over
+that slice, which is why adding a new observable never requires re-reading the
+file.
+
+```{figure} figures/timestamps_bursts.png
+:name: fig-timestamps-bursts
+:width: 100%
+
+**Top:** the photon stream, one tick per photon, on two routing channels; the
+shaded spans are three bursts, labelled with their `[first, last]` photon
+indices. **Bottom:** the same stream binned into a count-rate trace — the bursts
+are the spikes the search flags.
+```
+
 ## See also
 
 - `tttrlib.TTTR`, `TTTR.burst_search`; [handling TTTR files](12_handling_tttr_files.md), [burst identification](13_burst_identification.md).
+- Binning the same stream: [binned photon traces](22_binned_photon_traces.md).
+- Getting the slices back out: [exporting burst data](34_exporting_burst_data.md).

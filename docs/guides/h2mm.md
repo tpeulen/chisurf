@@ -148,3 +148,14 @@ The plugin ships its own examples under
   python -m chisurf.plugins.burst.burst_h2mm.examples.generate_example_data --out ./h2mm_example
   h2mm compute ./h2mm_example --file-type auto
   ```
+
+## See also
+
+- Concept: {ref}`concept-h2mm`; the binned-trace counterpart: {ref}`concept-ebfret`.
+- Task guides: [photon-by-photon HMM](19_h2mm_hidden_markov.md),
+  [complete workflow & results](30_h2mm_workflow_results.md),
+  [simulating & validating](31_h2mm_simulation_validation.md).
+- The burst list H2MM consumes: [burst identification](13_burst_identification.md),
+  [timestamps and bursts](33_timestamps_and_bursts.md).
+- Exporting the per-photon state table: [exporting burst data](34_exporting_burst_data.md).
+- Source: `chisurf/plugins/burst/burst_h2mm/`.

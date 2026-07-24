@@ -1,5 +1,13 @@
 # Handling TTTR files (and Photon-HDF5)
 
+:::{admonition} Theory
+:class: seealso
+The photon stream this page reads is the raw input to every method in ChiSurf:
+{ref}`concept-tcspc-lifetime` explains what the micro-time axis means, and
+{ref}`concept-smfret-bursts` what the macro-time axis and the routing channels
+are used for.
+:::
+
 ## What it does
 
 Time-tagged time-resolved (TTTR) data records, for every photon, a **macro

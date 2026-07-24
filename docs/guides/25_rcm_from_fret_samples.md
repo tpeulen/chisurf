@@ -33,6 +33,26 @@ calib = cal.calibrate_from_samples(cal.CalibrationParameters(), fret,
                                    donor_only=..., acceptor_only=...)
 ```
 
+## Result
+
+Applying the factors recovered from the sample's own ALEX sub-populations moves
+each FRET population from its *apparent* efficiency to its *accurate* one. The
+donor-only and acceptor-only corners are what pin $\alpha$ and $\delta$; the two
+FRET populations pin $\gamma$ and $\beta$.
+
+```{figure} figures/rcm_alex.png
+:name: fig-rcm-alex
+:width: 95%
+
+Simulated PIE/ALEX data with a known instrument
+($\gamma=1.35$, $\alpha=0.09$, $\delta=0.06$, $\beta=0.95$). **Left:** the raw
+$E_\text{app}$/$S_\text{app}$ map. **Right:** after correction — the two FRET
+populations land on their true efficiencies (dashed lines at E = 0.30 and 0.70),
+computed with the real `corrected_es`.
+```
+
 ## See also
 
 - `chisurf/core/fluorescence/fret/calibration.py`, `.../burst/es.py`; the dye-solution route: [RCM calibration](07_rcm_calibration.md).
+- The full correction algebra and the general crosstalk-matrix form: [accurate FRET calibration](fret_calibration.md).
+- The E–S map these populations are read from: [multi-parameter E–S](14_multiparameter_es.md).

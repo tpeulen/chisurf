@@ -303,6 +303,20 @@ calibration can be checked against ground truth (simulate → select bursts →
 correct → recover the true efficiencies). See
 `test/plugins/burst/test_calibration_simulation.py` and the example notebook.
 
+## See also
+
+- Concepts: {ref}`concept-fret` (the Förster mechanism and $R_0$),
+  {ref}`concept-smfret-bursts` (the E/S observables being corrected).
+- Deriving the factors from reference dye solutions:
+  [RCM detection calibration](07_rcm_calibration.md); from the FRET sample
+  itself: [RCM from FRET-labelled samples](25_rcm_from_fret_samples.md).
+- Where E and S come from: [multi-parameter E–S](14_multiparameter_es.md);
+  the background rates the correction subtracts:
+  [background rates](15_background_rates.md).
+- Source: `chisurf/core/fluorescence/fret/calibration.py`,
+  `chisurf/core/fluorescence/burst/es.py`,
+  `chisurf/core/fluorescence/crosstalk.py`.
+
 ## References
 
 * B. Hellenkamp *et al.*, "Precision and accuracy of single-molecule FRET
