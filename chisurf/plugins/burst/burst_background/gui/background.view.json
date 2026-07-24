@@ -1,0 +1,40 @@
+{
+  "_comment": "Declarative AutoForm layout for Burst Background Estimation: a persistent dock area with the detector channel-definition page, the TTTR file list + Estimate action, the inter-photon-time distribution (points + fitted tail), the per-detector background-rate bars and the results table — each a draggable chisurf dock.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Burst Background",
+      "persist": "burst_background",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Channel Definition",
+          "sections": [{"type": "custom", "key": "bg_channels"}]
+        },
+        {
+          "type": "panel",
+          "title": "Files",
+          "sections": [
+            {"type": "custom", "key": "path_list", "target": "files",
+             "options": {"title": "TTTR files (drop files or folders)", "add_folders": true}},
+            {"type": "custom", "key": "bg_run"}
+          ]
+        },
+        {"type": "custom", "key": "bg_iht_plot", "title": "Inter-photon time"},
+        {"type": "custom", "key": "bg_rate_plot", "title": "Background rate"},
+        {
+          "type": "panel",
+          "title": "Results",
+          "sections": [
+            {"type": "table", "source": "results_rows",
+             "columns": [
+               {"key": "file", "label": "File"},
+               {"key": "detector", "label": "Detector"},
+               {"key": "rate_khz", "label": "Rate (kHz)"}
+             ]}
+          ]
+        }
+      ]
+    }
+  ]
+}
