@@ -2,6 +2,20 @@
 
 ## 2026-07-24
 
+* **PRD-55 done — phasor analysis toolkit; closed the CLI-smoke gap.** The four
+  pure ops (apparent lifetime, fractions/unmixing, filtering, cursor) + RPC were
+  already implemented and tested; the one open required-acceptance item was
+  "derived maps produced through `cli/main.py`". Added `core.derived_phasor_maps`
+  (pure: `g,s` + frequency → `tau_phi`/`tau_m` via the tested
+  `analysis.phasor_to_apparent_lifetime`), extended `core.add_phasor_to_hdf5` to
+  persist the derived maps, and wired `cli/main.py` to emit them when
+  `--frequency > 0` (the `g,s` auto-`-1` path is unchanged; header-based frequency
+  auto-resolution is a documented follow-up to avoid an unverifiable unit
+  conversion). New `test/test_cli.py` (4 tests, monkeypatched `compute_phasor` —
+  no imaging file needed); full plugin suite `test_cli/test_analysis/test_services`
+  = 43 passed. Status → done (optional GUI companion round-trip + view.json control
+  surfacing deferred as polish). Concept: [PRD-55](/prds/prd-55.md).
+
 * **PRD-31 done — headless ndXplorer CLI (verify-and-close).** All Definition-of-Done
   items were already met in the tree; the PRD status just lagged (the `image`
   MMFDB round trip was marked `[~]` "implemented but not yet tested"). Confirmed

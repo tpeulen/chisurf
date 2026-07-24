@@ -3,7 +3,7 @@ type: PRD
 prd: "55"
 title: "PRD-55: Phasor Analysis Toolkit (open-library parity)"
 description: Turn ChiSurf's phasor viewer into a phasor analysis toolkit by natively implementing apparent-lifetime readout, g,s filtering, component fraction/unmixing, and cursor masks, with no new dependencies.
-status: draft
+status: done
 phase: "unassigned"
 resource: chisurf/plugins/microscopy/img_pixel_phasor/
 tags: [prd, imaging]
@@ -14,7 +14,28 @@ timestamp: '2026-07-05T00:00:00Z'
 ChiSurf computes calibrated per-pixel phasor `g,s` maps and renders the universal semicircle, but does nothing analytical with the phasor after plotting it — it is a phasor viewer, not a phasor analysis toolkit. Taking an open-source phasor-analysis library as a read-only reference (no import, no new dependency), this PRD natively adds four standard operations: phasor → apparent lifetime (τ_φ, τ_M), median/gaussian filtering of `g,s` maps, component fraction / linear unmixing in phasor space, and cursor/ROI masks with pseudo-color. The pure-numpy functions live in a Qt-free, tttrlib-free `analysis.py` module extending the existing phasor imaging plugin in place. Rich interactive segmentation and clustering are deliberately delegated to the companion photon-data exploration tool by handing it the per-pixel point-cloud DataFrame, rather than reimplemented.
 
 # Status
-Draft / unassigned (STATUS TABLE authoritative). Extends the existing phasor imaging plugin; constraint is zero new dependencies (numpy + scipy only).
+Done — all required (headless) acceptance items are implemented and tested in
+`chisurf/plugins/microscopy/img_pixel_phasor/`, with zero new dependencies:
+
+- **Apparent lifetime, fractions/unmixing, filtering, cursor** — the four pure ops
+  live in `analysis.py` (`phasor_to_apparent_lifetime`, `phasor_component_fraction`
+  / `phasor_unmix`, `phasor_filter_median` / `_gaussian`, `mask_from_circular_cursor`
+  + elliptic/`pseudo_color`), covered by `test/test_analysis.py` against the
+  reference library's values, and exposed over RPC (`backend/services.py`,
+  `test/test_services.py`).
+- **CLI smoke (final gap, closed 2026-07-24)** — `cli/main.py` now produces the
+  derived apparent-lifetime maps: with `--frequency > 0` it emits `tau_phi` /
+  `tau_m` maps (via the new pure `core.derived_phasor_maps`) and persists them to
+  HDF5 (`core.add_phasor_to_hdf5` extended). Covered by `test/test_cli.py`
+  (4 tests, monkeypatched `compute_phasor` — no imaging file needed). The `g,s`
+  auto-frequency (`-1`) path is unchanged; deriving lifetime maps requires an
+  explicit modulation frequency (auto-resolving it from the TTTR header is a
+  documented follow-up, avoided here to sidestep an unverifiable unit conversion).
+
+Optional / deferred (not required for acceptance): the companion-tool round-trip
+(GUI) and surfacing the derived maps + filter/component controls in the plugin's
+`view.json` / `view_model` — plugin-surface polish tracked with the GUI work, not
+blocking the headless toolkit.
 
 Related: PRD-40 (declarative dataset editors), PRD-38 (model/view-spec split),
 PRD-28 (ndxplorer burst integration).
@@ -166,7 +187,9 @@ Per the repo rule *every feature needs a headless test path*, tests live in
   constant-τ stack while preserving the mean coordinate.
 - **Cursor.** `mask_from_circular_cursor` selects exactly the pixels whose `g,s` fall
   inside a known region.
-- **CLI smoke.** Derived maps are produced through the plugin's `cli/main.py`.
+- **CLI smoke.** ✅ Derived maps are produced through the plugin's `cli/main.py`
+  (`--frequency > 0` emits `tau_phi` / `tau_m` and writes them to HDF5); tested in
+  `test/test_cli.py`.
 - **Companion-tool round-trip (optional/GUI).** The phasor imaging HDF5 opens in the
   companion exploration tool and exposes the `g,s,tau_phi,…` columns for gating.
 

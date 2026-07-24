@@ -12,6 +12,11 @@ from chisurf.core.fluorescence.imaging import (
     phasor_maps,
 )
 
+from . import analysis
+
+#: Per-pixel derived-map field names produced by :func:`derived_phasor_maps`.
+DERIVED_MAP_FIELDS = ("tau_phi", "tau_m")
+
 
 def compute_phasor(
     filename: str,
@@ -51,12 +56,45 @@ def compute_phasor(
     return {"maps": maps, "shape": maps["g"].shape}
 
 
+def derived_phasor_maps(
+    maps: dict[str, np.ndarray],
+    frequency_mhz: float,
+) -> dict[str, np.ndarray]:
+    """Return ``maps`` augmented with per-pixel apparent-lifetime maps.
+
+    Adds ``tau_phi`` and ``tau_m`` (phase and modulation apparent lifetimes, ns)
+    computed from the ``g`` / ``s`` phasor coordinates at the given modulation
+    frequency via :func:`analysis.phasor_to_apparent_lifetime`. The input dict is
+    not mutated.
+
+    Parameters
+    ----------
+    maps : dict of numpy.ndarray
+        Per-pixel phasor maps; must contain ``g`` and ``s``.
+    frequency_mhz : float
+        Modulation frequency in MHz (must be > 0).
+
+    Returns
+    -------
+    dict of numpy.ndarray
+        A new dict: the original maps plus ``tau_phi`` and ``tau_m``.
+    """
+    if frequency_mhz <= 0.0:
+        raise ValueError("frequency_mhz must be > 0 to derive lifetime maps")
+    tau_phi, tau_m = analysis.phasor_to_apparent_lifetime(
+        maps["g"], maps["s"], frequency_mhz
+    )
+    return {**maps, "tau_phi": tau_phi, "tau_m": tau_m}
+
+
 def add_phasor_to_hdf5(maps: dict[str, np.ndarray], path: str) -> list[str]:
-    """Add the phasor g / s fields to a standard imaging HDF5 in place.
+    """Add the phasor fields to a standard imaging HDF5 in place.
 
     Merges the per-pixel phasor columns into the ``results`` table of an
-    existing imaging HDF5, or creates the file if it does not yet exist.
-    Returns the added column names.
+    existing imaging HDF5, or creates the file if it does not yet exist. Always
+    writes ``g`` / ``s``; also writes the derived ``tau_phi`` / ``tau_m`` maps
+    when present. Returns the added column names.
     """
-    keep = {k: maps[k] for k in ("g", "s") if k in maps}
+    fields = ("g", "s", *DERIVED_MAP_FIELDS)
+    keep = {k: maps[k] for k in fields if k in maps}
     return add_maps_to_hdf5(path, keep)

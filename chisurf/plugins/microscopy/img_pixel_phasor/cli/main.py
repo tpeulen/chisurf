@@ -26,6 +26,18 @@ def cli(filename, channel, frequency, irf, n_ph_min, output):
     ny, nx = result["shape"]
     m = maps.get("n_photons", np.ones_like(maps["g"])) > 0
     click.echo(f"{nx}x{ny} px | g mean={np.nanmean(maps['g'][m]):.3f} | s mean={np.nanmean(maps['s'][m]):.3f}")
+
+    # Derived apparent-lifetime maps require an explicit modulation frequency.
+    if frequency > 0.0:
+        maps = _core.derived_phasor_maps(maps, frequency)
+        click.echo(
+            f"derived @ {frequency:g} MHz | "
+            f"tau_phi mean={np.nanmean(maps['tau_phi'][m]):.3f} ns | "
+            f"tau_m mean={np.nanmean(maps['tau_m'][m]):.3f} ns"
+        )
+    else:
+        click.echo("(pass --frequency > 0 for apparent-lifetime maps)")
+
     if output:
         _core.add_phasor_to_hdf5(maps, output)
         click.echo(f"wrote {output}")
