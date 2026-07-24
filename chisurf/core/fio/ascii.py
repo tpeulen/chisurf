@@ -13,6 +13,21 @@ from chisurf import logging
 
 # ----------------------------- Utilities ---------------------------------
 
+def _verbose_default() -> bool:
+    """Resolve the ``verbose`` flag from settings at call time.
+
+    Reading the setting inside the function body (rather than binding it as a
+    module-level default argument) avoids touching :mod:`chisurf.core.settings`
+    while this module is being imported — settings is lazily bound, so an
+    eager module-level access raised ``AttributeError`` when ``ascii`` was
+    imported before settings had been materialized.
+    """
+    try:
+        return bool(cs.core.settings.cs_settings.get('verbose', False))
+    except Exception:
+        return False
+
+
 def _open_maybe_zipped(filename: str, mode: str = "r"):
     """
     Compatibility wrapper for zipped/plain I/O across cs versions.
@@ -280,13 +295,15 @@ def save_xy(
         filename: str,
         x: np.ndarray,
         y: np.ndarray,
-        verbose: bool = cs.core.settings.cs_settings['verbose'],
+        verbose: bool = None,
         fmt: str = "%.3f\t%.3f",
         header_string: str = None
 ) -> None:
     """
     Saves data x, y to file in format (csv/tsv). x and y should have the same length.
     """
+    if verbose is None:
+        verbose = _verbose_default()
     if verbose:
         logging.info("Writing histogram to file: %s" % filename)
         try:
@@ -305,7 +322,7 @@ def save_xy(
 
 def load_xy(
         filename: str,
-        verbose: bool = cs.core.settings.cs_settings['verbose'],
+        verbose: bool = None,
         usecols: typing.Tuple[int, int] = None,
         skiprows: int = 0,
         delimiter: str = "\t"
@@ -332,6 +349,8 @@ def load_xy(
     """
     if usecols is None:
         usecols = [0, 1]
+    if verbose is None:
+        verbose = _verbose_default()
     if verbose:
         logging.info(f"Loading file: {filename}")
         logging.debug(f"load_xy params: usecols={usecols}, skiprows={skiprows}, delimiter={repr(delimiter)}")
@@ -389,7 +408,7 @@ class Csv(object):
             error_x_on: bool = False,
             directory: str = '.',
             skiprows: int = 9,
-            verbose: bool = cs.core.settings.cs_settings['verbose'],
+            verbose: bool = None,
             file_type: str = 'csv',
             **kwargs
     ):
@@ -420,6 +439,8 @@ class Csv(object):
         file_type : str
             File type ('csv' or fixed-width).
         """
+        if verbose is None:
+            verbose = _verbose_default()
         self._filename = filename
         self.use_header = use_header
         self.x_on = x_on
@@ -468,7 +489,7 @@ class Csv(object):
             filename: str,
             skiprows: int = None,
             use_header: bool = None,
-            verbose: bool = cs.core.settings.cs_settings['verbose'],
+            verbose: bool = None,
             delimiter: str = None,
             file_type: str = None,
             infer_delimiter: bool = True,
@@ -490,6 +511,8 @@ class Csv(object):
         """
         if filename is None:
             return None
+        if verbose is None:
+            verbose = _verbose_default()
         if file_type is None:
             file_type = self.file_type
         if use_header is None:

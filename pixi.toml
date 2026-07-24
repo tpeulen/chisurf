@@ -181,6 +181,10 @@ typecheck = { cmd = "mypy chisurf/" }
 test-cov = { cmd = "pytest test --doctest-modules $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"] }
 test-linux = { cmd = "docker build -t chisurf-linux -f Dockerfile.linux . && docker run --rm chisurf-linux" }
 test-smoke = { cmd = "pytest test/test_basic.py -q", depends-on = ["build-extensions"] }
+# PRD-46: run the shipped example scripts + their public-API unit tests. These
+# also run as part of the default `test` task (they live under test/), so this is
+# a convenience entry point for iterating on the scripts alone.
+test-scripts = { cmd = "pytest test/scripts test/models/test_wlc_public_api.py -o addopts='' -q", depends-on = ["build-extensions"] }
 
 [build-dependencies]
 cmake-build-extension = ">=0.6.1,<0.7"

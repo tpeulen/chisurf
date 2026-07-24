@@ -3,7 +3,7 @@ type: PRD
 prd: "46"
 title: "PRD-46: Scripts as first-class citizens in the test pipeline"
 description: Brings shipped example scripts into the automated test suite by running headless/process scripts under a shebang-driven runner with numeric assertions, plus unit tests for the public model API they exercise.
-status: planned
+status: in-progress
 phase: "unassigned"
 resource: test/scripts/
 tags: [prd, core]
@@ -14,7 +14,36 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-46 brings ChiSurf's runnable example scripts, which exercise the core model API end-to-end but sit outside CI, into the automated test suite so regressions in the public model API are caught automatically. A parametrized pytest runner discovers `scripts/*.py` and runs each according to its shebang: process scripts as subprocesses with stdout and numeric-output assertions, and console/ipython scripts headlessly by exec against a thin `cs` namespace stub that provides the real core but no GUI. It also adds unit tests for the public model API surface (`chain_length`, `persistence_length`, mixture `fractions` setter) and wires a `test-scripts` task into the default test suite. Scripts stay runnable interactively without modification — the harness is a thin wrapper.
 
 # Status
-Planned (unassigned phase, STATUS TABLE authoritative). Runner design, headless stub, numeric assertions, unit tests, and CI integration with acceptance criteria are specified.
+In-progress. Landed (`test/scripts/test_scripts.py`, `test/models/test_wlc_public_api.py`,
+`pixi.toml`):
+
+- **Discovery + process runner** — `test/scripts/test_scripts.py` discovers every
+  `examples/scripts/*.py`, reads the `# !chisurf: <endpoint>` shebang, and runs
+  `process`/no-shebang scripts as a subprocess (asserting a clean exit). Each
+  script is copied to a tmp dir first so its output files stay out of the source
+  tree. Adding a script auto-adds a test node.
+- **Numeric assertions** — `protein_unfolding_fret_line.py`'s output files are
+  checked against model invariants (folded=high FRET, unfolded=lower, E
+  monotonically decreasing in unfolded fraction, and the folded f=0 FRET is
+  independent of the WLC parameters and matches across files). Note: the PRD's
+  originally-proposed "larger Lc lowers E at f=1" assertion is **false** — WLC
+  FRET is non-monotonic in Lc because it depends on both the contour length and
+  the ratio Lp/Lc — so a correct invariant replaced it.
+- **Public model API unit tests** — `WormLikeChainModel.chain_length` /
+  `.persistence_length` and the `LifetimeMixtureModel.fractions` setter.
+- **CI integration** — a `test-scripts` pixi task; the tests also run under the
+  default `test` task (they live under `test/`).
+- **Prerequisite bug fix** — `chisurf/core/fio/ascii.py` evaluated
+  `cs.core.settings.cs_settings['verbose']` as a module-level default argument,
+  which raised `AttributeError` (settings is lazily bound) and made the shipped
+  example script fail to import. Reworked to a `None` sentinel resolved at call
+  time via `_verbose_default()`.
+
+Deferred: **headless execution of `console`/`ipython` scripts** (goal 3). Those
+endpoints need the experiment registry and `cs.macros` bootstrapped without Qt,
+which does not exist yet — a bare `import chisurf` has an empty `cs.experiment`
+and no `cs.macros`. Interactive scripts are currently reported as skipped test
+nodes with that reason.
 
 # Problem
 ChiSurf ships runnable example scripts (e.g. `examples/scripts/protein_unfolding_fret_line.py`, `examples/scripts/protein_unfolding_gui.py`) that exercise the core model API end-to-end. They are currently **outside the automated test suite**: no CI job runs them, no assertion checks their output, and regressions in the public model API go undetected until a user manually runs a script and notices something is wrong.
