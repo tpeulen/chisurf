@@ -68,6 +68,18 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   `test_pda_gaussian_fit_recovers_distance` uses the model's own S1S2 histogram at a
   known mean as the data, fixes all but the mean, perturbs it, and asserts
   `fit.run()` recovers the true distance.
+- **1D-residual χ² fix + SPA error surfaces (2026-07-24).** Fixed two bugs in
+  `common.pda_1d_residuals_from_s1s2`: (1) the model S1S2 histogram (a normalised
+  probability distribution, sum ≈ 1) was **not scaled to the data's total counts**
+  before the Poisson residual, so the model term was ≈ 0 and χ² collapsed to a
+  flat, mean-independent `sum(data)` offset (χ²ᵣ ≈ 12 instead of ≈ 1); (2) the data
+  1D-histogram cache keyed on `id(pda_meta)` + size, so it did not invalidate when
+  the experimental S1S2 was replaced in place. With both fixed, PDA fits give a
+  proper Poisson χ²ᵣ ≈ 1 and a sharp minimum — this improves **all five** PDA
+  models (they share this residual), not just error surfaces. Support-plane error
+  surfaces now work: `test_pda_error_surface_ci_brackets_truth` runs
+  `Fit.adaptive_chi2_scan` on the mean and asserts the 99% F-test CI brackets the
+  true value (previously the surface was flat and the CI came back `(None, None)`).
 
 **Follow-ups (not yet done):**
 - GUI button wiring the live light-path plugin session to a selected PDA model
@@ -75,21 +87,10 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - Full time-binned dynamic PDA (an N-vs-observation-time grid, the number-of-E-bins /
   number-of-time-bins scheme) — the current dynamic models use a single
   dimensionless exchange parameter `K_ex`.
-- SPA/MCMC error surfaces wired specifically to PDA parameters. **Blocked by a
-  residual issue (diagnosed 2026-07-24), needs real work, not just a test:** on a
-  self-recovery fit (data = model at a known mean + Poisson noise, only the mean
-  free) the **1D** PDA residual (`pda_1d_residuals_from_s1s2`, the default
-  `residual_mode`) yields a badly-scaled, nearly-flat χ² surface — χ²ᵣ ≈ 12.5 at the
-  optimum (should be ≈ 1) and varying only ~0.16 across mean ∈ [30, 80] Å, so
-  `fit.run()` does not settle at the true minimum and the F-test threshold is never
-  crossed → `confidence_intervals_from_scan_result` returns `(None, None)`. The
-  **2D** residual mode (`residual_mode="2D"`) instead returns an *empty* residual
-  array (`leastsqbound`: "N=1 must not exceed M=(0,)") — a fit-range / zero-photon-bin
-  masking problem. So `Fit.adaptive_chi2_scan` + `sample.walk_mcmc` are generic and
-  ready, but neither PDA residual mode currently gives a valid statistical χ² for
-  them; fixing the 1D residual weighting (proper per-bin Poisson χ²) or the 2D
-  residual fit-range is the actual task.
 - Three-color tcPDA (later stage).
+- MCMC error surfaces (`sample.walk_mcmc`) specifically wired/validated on PDA
+  parameters — the SPA (support-plane) path now works (see Done); an equivalent
+  MCMC posterior-CI test is still to add.
 
 # Scope (staged)
 

@@ -463,6 +463,10 @@ def pda_1d_residuals_from_s1s2(
         hist_key = (
             id(pda_meta),
             int(s1s2_data.size),
+            # Content signature so the cached data histogram invalidates when the
+            # experimental S1S2 is replaced in place (id + size alone are stable
+            # across an in-place edit / a new dataset loaded into the same object).
+            hash(s1s2_data.tobytes()),
             eff_nmin,
             eff_nmax,
             int(kw_hist.get("n_bins", 81)),
@@ -501,6 +505,15 @@ def pda_1d_residuals_from_s1s2(
         my = np.asarray(model_y, dtype=float)
         if dy.shape != my.shape:
             return np.zeros(0, dtype=np.float64)
+        # The model S1S2 matrix is a normalised probability distribution (sum ~1)
+        # while the experimental data is in counts, so the model 1D histogram must
+        # be scaled to the data's total counts before forming the Poisson-weighted
+        # residual — otherwise the model term is ~0 and chi2 collapses to a
+        # mean-independent sum(data) offset (flat, mis-scaled surface). This mirrors
+        # the count-normalisation `update_model` applies to the display curve.
+        total_model = float(my.sum())
+        if total_model > 0.0:
+            my = my * (float(dy.sum()) / total_model)
         sigma = np.sqrt(np.maximum(dy, 1.0))
         wres = (dy - my) / sigma
         return wres

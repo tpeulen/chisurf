@@ -2,6 +2,20 @@
 
 ## 2026-07-24
 
+* **PRD-50 — fixed the PDA 1D-residual χ² (+ unblocked SPA error surfaces).**
+  Following yesterday's diagnosis, fixed two bugs in
+  `common.pda_1d_residuals_from_s1s2`: (1) the model S1S2 histogram (a normalised
+  probability distribution) was never scaled to the data's total counts before the
+  Poisson residual, so the model term was ~0 and χ² collapsed to a flat,
+  mean-independent `sum(data)` offset (χ²ᵣ≈12); (2) the data-histogram cache keyed on
+  `id(pda_meta)`+size didn't invalidate on an in-place S1S2 change. With both fixed,
+  PDA fits now give χ²ᵣ≈1 with a sharp minimum — **all five PDA models share this
+  residual**, so it improves PDA fitting generally, not just error surfaces. Added
+  `test_pda_error_surface_ci_brackets_truth`: `Fit.adaptive_chi2_scan` on the
+  Gaussian mean now yields a 99% F-test CI that brackets the true value (was
+  `(None,None)` on the flat surface). Full PDA suite = 15 passed. Supersedes
+  yesterday's "blocked" note. Concept: [PRD-50](/prds/prd-50.md).
+
 * **PRD-50 — diagnosed why SPA/MCMC error surfaces don't work on PDA yet.**
   Attempted the error-surface follow-up (support-plane CI on the Gaussian PDA mean).
   The generic machinery is ready (`Fit.adaptive_chi2_scan`,

@@ -359,3 +359,64 @@ def test_pda_gaussian_fit_recovers_distance(qapp):
     assert _chi2r() > 1.0, "perturbed start was not actually poor"
     fit.run()
     assert m.distances._means[0].value == pytest.approx(true_mean, abs=2.0)
+
+
+def _pda_noisy_truth_fit(true_mean=52.0, true_sigma=6.0, total=1500.0, seed=3):
+    """Return a Poisson-noisy self-recovery fit at ``true_mean``.
+
+    The data is a Poisson realisation of the Gaussian PDA model at ``true_mean``,
+    with every parameter fixed except that mean.
+    """
+    import chisurf.core.fluorescence.tcspc as tcspc
+
+    model_class = _resolve("chisurf.core.models.pda.pdagauss.PdaGaussianDistanceModel")
+    fit = _make_pda_fit(model_class)
+    m = fit.model
+    m.distances._means[0].value = true_mean
+    m.distances._sigmas[0].value = true_sigma
+    m.update()
+    _ = m.get_wres(fit)
+    s1s2 = np.asarray(m.pda.get_S1S2_matrix(), dtype=float)
+    ny, nx = fit.data.pda["shape"]
+    s1s2 = s1s2[:ny, :nx]
+    s1s2 = s1s2 / max(s1s2.sum(), 1e-12) * total
+    noisy = np.random.default_rng(seed).poisson(s1s2).astype(float)
+
+    fit.data.pda["s1s2"] = noisy
+    fit.data.y = noisy.ravel(order="C")
+    fit.data.ey = tcspc.counting_noise(fit.data.y)
+
+    for p in m.parameters_all:
+        p.fixed = True
+    mean_p = m.distances._means[0]
+    mean_p.bounds = (30.0, 80.0)
+    mean_p.bounds_on = True
+    mean_p.fixed = False
+    m.find_parameters()
+    return fit, m, mean_p
+
+
+def test_pda_error_surface_ci_brackets_truth(qapp):
+    """A support-plane (F-test) scan of the PDA mean yields a CI bracketing truth.
+
+    Depends on the 1D-residual count-normalisation + cache-invalidation fixes in
+    ``common.pda_1d_residuals_from_s1s2``: without them the chi2 surface is flat and
+    mis-scaled (chi2r ~ 12) and no F-test crossing is found (CI ``(None, None)``).
+    """
+    from chisurf.core.fitting.support_plane import confidence_intervals_from_scan_result
+
+    true_mean = 52.0
+    fit, m, mean_p = _pda_noisy_truth_fit(true_mean=true_mean, total=1500.0, seed=3)
+    fit.run()
+
+    # A proper Poisson chi2 (the fix): chi2r ~ 1, not ~12.
+    assert fit.chi2r < 3.0, f"chi2r={fit.chi2r:.2f}: 1D PDA residual is not a proper Poisson chi2"
+    assert mean_p.value == pytest.approx(true_mean, abs=2.0)
+
+    result = fit.adaptive_chi2_scan(mean_p.name, p_value=0.99)
+    cis = confidence_intervals_from_scan_result(result, p_values=(0.99,))
+    assert cis, "no confidence interval computed from the scan"
+    low, high = cis[0]["crossings"]
+    assert low is not None and high is not None, f"one-sided CI: {cis[0]['crossings']}"
+    assert low < high, "degenerate confidence interval"
+    assert low < true_mean < high, f"99% CI [{low:.2f}, {high:.2f}] does not bracket {true_mean}"
