@@ -2,6 +2,27 @@
 
 ## 2026-07-24
 
+* **Build/env consolidation onto a single tool (pixi).** Collapsed four
+  overlapping dependency/build systems down to pixi as the one tool for dev,
+  tests, and release packaging. Deleted the redundant `chisurf-env.yaml` conda
+  env file and moved its only pixi-missing dep (`latexify-py`, used by the LaTeX
+  expression renderer) into `pixi.toml [pypi-dependencies]` — fixing a latent gap
+  where the pixi env lacked it. Reduced the remaining dependency declarations to
+  three role-scoped, cross-referenced lists (pixi dev env / `pyproject.toml`
+  wheel metadata / `rattler-recipe/recipe.yaml` conda-package `run:`) and unified
+  numpy to 2.x across all of them to match the canonical env (which resolves numpy
+  2.4), removing the stale `<2.0` caps. Rewrote the `Build and Release` CI
+  (`.github/workflows/pixi-ci.yml`) to drive the whole packaging chain through a
+  single `pixi run -e build build-installer` step instead of hand-rolled
+  micromamba + rattler-build, so every CI workflow now uses pixi. Cleaned
+  vestigial `pixi.toml` cruft (dead ndxplorer CMake/Eigen args + nonexistent
+  input paths, empty trailing `[target.win-64.tasks]`). Documented detaching the
+  multi-GB pixi env out of the source tree via a global
+  `detached-environments = true` so the repo folder stays clean. Concept:
+  [Environment & Build](/workflows/build-and-env.md).
+
+* **ndXplorer interactive-redraw performance (submodule).** Removed a ~1 s-per-interaction stall: `extract_histogram_params` md5-hashed ~10 parameter rows of the full filtered `.values` array (≈80 MB for 2 M bursts) on *every* pan/zoom/selection/axis/bin change to build a cache key. Replaced with an O(1) monotonic `DataSource.data_version` counter (bumped in the `data` setter). Implemented the previously-empty `utils/fast_histogram.py` (uniform-bin `bincount` path, ~5× over NumPy, bit-identical, NumPy fallback for log bins) and wired it into the default `compute_histograms_sync` non-boost branch behind the existing `use_fast_histogram` flag; boost-histogram remains the fast default. Fixed a latent orientation bug where the boost 2D branch returned an un-transposed `(nx,ny)` matrix while the NumPy branch (and downstream `Histogram2D`) expect `(ny,nx)`. Added `test_fast_histogram.py` (15 cases). Work lives in `modules/ndxplorer`; committed there.
+
 * **Burst Browser converted to AutoForm (foldable boxes + chisurf docks).** Replaced the ~690-line hand-built `BurstBrowserWidget` with a Qt-free `BurstBrowserViewModel` (`view_model.py`: reads `.bur` + `…4` companions, derives E/S, holds gating state, computes mask + histogram) + custom AutoForm sections (`gui/sections.py`: `browser_source`, `browser_controls` with a foldable Gating box, `browser_table`, `browser_histogram`) laid out from `gui/burst_browser.view.json` (a persistent `dock_area`: Controls panel + Bursts table + Histogram as draggable docks). Custom sections observe the model's `data`/`gating`/`selection` events (no rebuild). `BurstBrowserWidget` is a thin AutoForm host; `load_folder`/`load_bur`/`_df` preserved for the workflow shell (AutoForm imported lazily). Verified on `bh_spc132_sm_dna` (2495 bursts). Background-plugin AutoForm conversion still pending.
 
 * **PRD-32 done — acquisition standard output folder.** Closed the last gap in
