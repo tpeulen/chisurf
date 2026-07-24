@@ -4130,6 +4130,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # Diagnostics: per-detector fit yield + photon-window stats, so an all-NaN
         # τ column (e.g. every green burst below min_photons in the fit window)
         # is explained in the log rather than appearing as silent NaNs downstream.
+        summary_bits = []
         try:
             for det in det_order:
                 color = det.lower()
@@ -4140,6 +4141,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 tau_vals = pd.to_numeric(result_df[tau_col], errors="coerce")
                 n_ok = int(tau_vals.notna().sum())
                 n_all = int(len(tau_vals))
+                summary_bits.append(f"{det} {n_ok}/{n_all}")
                 msg = f"MLE batch '{det}': {n_ok}/{n_all} bursts fitted (τ non-NaN)"
                 if nph_col in result_df.columns:
                     nph = pd.to_numeric(result_df[nph_col], errors="coerce")
@@ -4149,9 +4151,16 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                             f"{int(nph.min())}/{int(nph.median())}/{int(nph.max())}"
                             f", min_photons={int(settings_cache[det].get('min_photons', 0))}"
                         )
+                        summary_bits[-1] += (
+                            f" (ph {int(nph.min())}/{int(nph.median())}/{int(nph.max())})"
+                        )
                 (cs.logging.warning if n_ok == 0 and n_all else cs.logging.info)(msg)
         except Exception:
             pass
+        # Surface the per-detector yield on the status bar too — an all-NaN column
+        # (e.g. "green 0/938") is then visible without digging through the log.
+        if summary_bits:
+            self._set_status("MLE fitted τ: " + " · ".join(summary_bits))
 
         self._save_burst_results_fast(result_df)
 
