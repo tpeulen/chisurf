@@ -4,7 +4,7 @@ FRET Lines
 .. _fret_lines:
 
 Understanding FRET Lines
-=======================
+========================
 
 FRET lines are a fundamental tool in the analysis of Förster Resonance Energy Transfer (FRET) 
 experiments. They provide a visual and quantitative representation of the relationship between 
@@ -12,7 +12,7 @@ two key lifetime parameters: the **fluorescence-averaged lifetime** (:math:`\tau
 **species-averaged lifetime** (:math:`\tau_X`).
 
 What is a FRET Line?
--------------------
+--------------------
 
 A FRET line represents the functional relationship:
 
@@ -30,7 +30,7 @@ deviates from the 1:1 line in a characteristic manner that depends on the donor-
 distance distribution and the FRET efficiency.
 
 Types of FRET Lines
-------------------
+-------------------
 
 ChiSurf provides two main types of FRET lines:
 
@@ -95,7 +95,7 @@ For a two-state system with fractions :math:`x_1` and :math:`x_2 = 1 - x_1`, the
 where :math:`\tau_{X,i}` is the species-averaged lifetime of state :math:`i`.
 
 Key Parameters
--------------
+--------------
 
 Both static and dynamic FRET lines depend on several fundamental parameters:
 
@@ -282,7 +282,7 @@ For dynamic FRET lines, you can use a color gradient to show the transition:
    plt.show()
 
 Interpreting FRET Lines
-----------------------
+-----------------------
 
 **Static FRET Line Interpretation:**
 
@@ -303,7 +303,7 @@ Interpreting FRET Lines
 - **Color gradient**: Visualizes the continuous transition between states
 
 Practical Applications
----------------------
+----------------------
 
 1. **Model Validation**
    
@@ -414,7 +414,7 @@ FRET lines:
    print(f"  State 2: R = {dynamic_fl.mean_distance_2} Å, sigma = {dynamic_fl.sigma_2} Å")
 
 Theoretical Background
----------------------
+----------------------
 
 **FRET Efficiency and Distance:**
 
@@ -453,7 +453,7 @@ The fluorescence-averaged lifetime is:
 For multi-state systems, these averages are computed as weighted sums over all states.
 
 Troubleshooting
---------------
+---------------
 
 **Common Issues:**
 
@@ -499,10 +499,10 @@ For a detailed theoretical treatment of FRET and FRET lines, see:
 See Also
 --------
 
-- :ref:`Discrete FRET rate constants <discrete_fret_rate_constants>`
-- :ref:`Influence of FRET efficiency <influence_of_fret_efficiency>`
-- :ref:`Fluorescence Lifetime <fluorescence_lifetime>`
-- :ref:`Reference curves <reference_curves>`
+- :doc:`Discrete FRET rate constants <discrete_fret_rate_constants>`
+- :doc:`Influence of FRET efficiency <influence_of_fret_efficiency>`
+- :doc:`Fluorescence Lifetime <fluorescence_lifetime>`
+- :doc:`Reference curves <reference_curves>`
 
 .. _fret_lines_example:
 

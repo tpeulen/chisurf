@@ -34,10 +34,15 @@ single-molecule fluorescence data — time-correlated single-photon counting
 
 .. toctree::
    :maxdepth: 2
+   :caption: Fitting interface & worked examples
+
+   manual/index
+
+.. toctree::
+   :maxdepth: 2
    :caption: Reference
 
    reference/index
-   manual/index
 
 .. toctree::
    :maxdepth: 1

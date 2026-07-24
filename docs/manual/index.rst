@@ -1,5 +1,18 @@
-ChiSurf Manual
-==============
+Fitting interface & worked examples
+===================================
+
+This section teaches ChiSurf's **fitting interface** — importing data, creating a
+fit, the analysis dock, parameters and linking, global fits, nuisances, and plots
+— and walks through complete **worked examples** (a full FCS fit with detection-
+volume calibration, and a joint anisotropy analysis) using real screenshots of the
+application.
+
+It complements the two other layers: the :doc:`Concepts </concepts/index>` explain
+the *theory* (e.g. :ref:`FCS <concept-fcs-correlation>`,
+:ref:`TCSPC lifetimes <concept-tcspc-lifetime>`,
+:ref:`anisotropy <concept-anisotropy>`,
+:ref:`filtered FCS <concept-filtered-fcs>`), and the
+:doc:`Guides </guides/index>` cover specific single-molecule analyses.
 
 .. toctree::
    :maxdepth: 2
