@@ -3,7 +3,7 @@ type: PRD
 prd: "50"
 title: "PRD-50: Photon Distribution Analysis (PDA) Family"
 description: Wrap the existing PDA histogram engine in ChiSurf models and AutoForm view specs, covering static distance-distribution PDA, dynamic/N-state kinetic PDA, error surfaces, three-color PDA, and a kinetic consistency check.
-status: draft
+status: in-progress
 phase: "unassigned"
 resource: chisurf/core/models/pda/
 tags: [prd, fret]
@@ -55,18 +55,28 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - Qt-free distribution plot accessor `common.get_pda_distribution` (string-keyed
   axis) + generalized `resolve_distribution_options` to import dotted/`module:func`
   accessors, so the PDA E-histogram plot is authorable in JSON.
-- Headless coverage: `test/gui/test_pda_model_editor.py` (renders + computes for all
-  four models; dynamic-limit checks; correction-factor + light-path bridge tests).
+- Added a **three-state Gillespie/MC dynamic model** (`dynamic_mc.py` +
+  `PdaDynamicThreeStateModel` + `dynamic_mc.view.json`), verified against the
+  analytic equilibrium populations.
+- The **2D S1S2 weighted-residual image** is registered as a view-spec plot key:
+  `common.get_pda_residual_image` + `gui.plots.residual_image.Residual2DPlot`,
+  resolved from `pdagauss.view.json` (tested via `model_plot_specs`).
+- Headless coverage: `test/gui/test_pda_model_editor.py` — renders + computes for
+  all five PDA models; dynamic two-/three-state limit checks; correction-factor +
+  light-path bridge; P(R) + 2D-residual plot resolution; and (2026-07-24) a
+  **fit-recovery test** exercising the PRD's primary acceptance criterion:
+  `test_pda_gaussian_fit_recovers_distance` uses the model's own S1S2 histogram at a
+  known mean as the data, fixes all but the mean, perturbs it, and asserts
+  `fit.run()` recovers the true distance.
 
 **Follow-ups (not yet done):**
 - GUI button wiring the live light-path plugin session to a selected PDA model
   (the pure bridge API is done and tested; only the one-click GUI hook remains).
 - Full time-binned dynamic PDA (an N-vs-observation-time grid, the number-of-E-bins /
-  number-of-time-bins scheme) and a 3-state variant — the current model uses a
-  single dimensionless exchange parameter `K_ex`.
-- Port the 2D S1S2 residual image plot (`Residual2DPlot`) to a registered view-spec
-  plot key (currently only the 1D projection + residual panel are exposed).
+  number-of-time-bins scheme) — the current dynamic models use a single
+  dimensionless exchange parameter `K_ex`.
 - SPA/MCMC error surfaces wired specifically to PDA parameters.
+- Three-color tcPDA (later stage).
 
 # Scope (staged)
 

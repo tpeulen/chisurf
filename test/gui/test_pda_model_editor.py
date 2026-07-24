@@ -310,3 +310,52 @@ def test_pda_gaussian_correction_factors(qapp):
     n = model.nuisance
     for name in ("alpha", "gamma", "delta"):
         assert np.isfinite(getattr(n, name)), f"{name} not computed"
+
+
+def test_pda_gaussian_fit_recovers_distance(qapp):
+    """PRD-50 primary acceptance: a fit recovers a known Gaussian mean distance.
+
+    Self-recovery — the model's own S1S2 histogram at a known mean is used as the
+    experimental data (so the truth is the exact minimum), every parameter except
+    the mean is fixed, the mean is perturbed, and ``fit.run()`` must find it back.
+    """
+    import chisurf.core.fluorescence.tcspc as tcspc
+
+    model_class = _resolve("chisurf.core.models.pda.pdagauss.PdaGaussianDistanceModel")
+    fit = _make_pda_fit(model_class)
+    m = fit.model
+
+    true_mean = 52.0
+    m.distances._means[0].value = true_mean
+    m.distances._sigmas[0].value = 6.0
+    m.update()
+    _ = m.get_wres(fit)  # sets the histogram_function on m.pda
+    s1s2 = np.asarray(m.pda.get_S1S2_matrix(), dtype=float)
+    ny, nx = fit.data.pda["shape"]
+    s1s2 = s1s2[:ny, :nx]
+    s1s2 = s1s2 / max(s1s2.sum(), 1e-12) * 1e5  # scale to counts
+
+    # Use the truth histogram as the experimental data.
+    fit.data.pda["s1s2"] = s1s2
+    fit.data.y = s1s2.ravel(order="C")
+    fit.data.ey = tcspc.counting_noise(fit.data.y)
+
+    # Fix everything, free only the mean, and perturb it.
+    for p in m.parameters_all:
+        p.fixed = True
+    mean_p = m.distances._means[0]
+    mean_p.bounds = (20.0, 90.0)
+    mean_p.bounds_on = True
+    mean_p.fixed = False
+    mean_p.value = 44.0  # perturbed start
+    m.find_parameters()
+
+    def _chi2r():
+        m.update()
+        w = np.asarray(m.get_wres(fit), dtype=float)
+        w = w[np.isfinite(w)]
+        return float(np.sum(w ** 2) / max(len(w), 1))
+
+    assert _chi2r() > 1.0, "perturbed start was not actually poor"
+    fit.run()
+    assert m.distances._means[0].value == pytest.approx(true_mean, abs=2.0)

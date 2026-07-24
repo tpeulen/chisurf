@@ -2,6 +2,18 @@
 
 ## 2026-07-24
 
+* **PRD-50 — PDA fit-recovery test (primary acceptance) + status refresh.** Added
+  `test_pda_gaussian_fit_recovers_distance` to `test/gui/test_pda_model_editor.py`:
+  it uses the Gaussian PDA model's own S1S2 histogram at a known mean as the
+  experimental data (truth = exact minimum), fixes every parameter except the mean,
+  perturbs it (44 → truth 52 Å), and asserts `fit.run()` recovers it — the PRD's
+  primary acceptance criterion, previously untested (all prior tests only called
+  `model.update()`). Corrected the stale Progress section: the 2D S1S2 residual plot
+  (`common.get_pda_residual_image` + `Residual2DPlot`, view-spec-registered) and the
+  three-state Gillespie MC model are **done**, not follow-ups. Full PDA suite = 14
+  passed. Status ✏️ draft → 🚧 in-progress (time-binned dynamic PDA, SPA/MCMC error
+  surfaces, tcPDA remain). Concept: [PRD-50](/prds/prd-50.md).
+
 * **i18n language selector in Settings — [PRD-63](/prds/prd-63.md),
   [i18n subsystem](/subsystems/i18n.md).** `gui.language` now renders in the
   settings tree as an endonym combo box (English/Deutsch/…, discovered from the
