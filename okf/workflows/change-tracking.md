@@ -34,8 +34,9 @@ the same loop**. This is the process rule that the per-area
 5. **Commit** — a focused commit per file or small coherent batch, with a message
    that states the change, the verification (e.g. "suite: 420 passed"), and any
    audit-number delta. Commit **locally only — never push** (see
-   [[feedback-no-push]]). End commit messages with the
-   `Co-Authored-By: Claude Opus 4.8` trailer.
+   [[feedback-no-push]]). **No commit trailers of any kind** — no
+   `Co-Authored-By`, no "Generated with" / tool attribution. Commits are authored
+   by tpeulen only; the message body is plain text with no trailer block.
 
 ## Parallel instances — never destroy uncommitted work
 
