@@ -2,6 +2,20 @@
 
 ## 2026-07-24
 
+* **Global View — out-of-fit parameters, phase 1 (registry core).** Added
+  `chisurf/core/parameter_group_registry.py`: a process-global, weakref-backed
+  registry of `FittingParameterGroup`s that live **outside** `chisurf.fits` (e.g. a
+  plugin's working model), keyed by a stable `owner_id`. API:
+  `register_parameter_group` / `unregister_parameter_group` /
+  `iter_registered_parameter_groups` / `get_registered_parameter_group` /
+  `subscribe`. Re-registering an `owner_id` replaces; unregister breaks inbound and
+  outbound parameter links so no dangling follower is left. Exposed as
+  `chisurf.registered_parameter_groups()` and via `SessionState.registered_parameter_groups`
+  (mirroring how `chisurf.fits` is surfaced). This is the enumeration seam for the
+  upcoming Global-View AutoForm migration; identity/resolution reuses the existing
+  global `Base._uuid_index` / `find_by_uuid`. Tests:
+  `test/fitting/test_parameter_group_registry.py` (8, passing).
+
 * **Burst nav + ribbon regrouping.** (1) The Burst Analysis nav moved **Browser below the workflow separator** (a utility alongside Background / IRF & Background); the numbered pipeline is now 1..6 (Data Selection → H2MM). (2) Ribbon menu: elevated **FCS / Decay Analysis / Burst Analysis** to sit directly under a single **Spectroscopy** group (their hierarchical `display_name`/`name` shortened to `Spectroscopy:<Name>`); **hid the Synthetic Decay Generator** (`menu_hidden`); moved **Structure Tools** into the same ribbon group as ChiMOL (`Structure:Structure:…`). Test `test_burst_workflow_panel_order` updated; manifest validation passes. Still open (large, deferred): converting the **Burst Browser** and **Background** plugins to the modern AutoForm framework (foldable boxes + chisurf docks) — both are working, tightly-coupled Qt tools embedded in the workflow, so they warrant a focused conversion using the `burst_irf_bg` template rather than a rushed rewrite.
 * **Burst UX: MLE auto-populates plots on load; info/warning popups routed to the status bar.** (1) The Burst-MLE panel loaded with blank axes until the user clicked Auto/Run — it now, on the first burst-data load (deferred + once), runs "Auto" by default: with an IRF already present (loaded or sent from IRF & Background) it just refits, else it runs the one-click auto-binning + window + IRF-extraction + fit (`_auto_populate_plots` in `load_burst_data`). (2) Replaced the ~20 `QMessageBox.information`/`.warning` popups across the burst tools (MLE, H2MM, Browser, Background, IRF & Background, Selection) with status-bar output — MLE/H2MM via their `_status`, the rest via `logging` (the shell installs a handler on the `chisurf.plugins.burst` logger, so they surface in the shared status bar when embedded). Only `QMessageBox.critical` (genuine errors) stays modal. Also: canonical tool buttons capped to native `QToolButton` height (a stylesheet drops macOS native metrics, making styled buttons taller than plain neighbours — not an emoji issue); BVA plot widened by hard-capping the settings-side dock to 440 px so the Plot dock absorbs the rest; 2CDE gained a pinned top toolbar.
 

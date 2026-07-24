@@ -85,6 +85,21 @@ __version__ = chisurf.core.info.__version__
 
 fits: typing.List["chisurf.core.fitting.fit.FitGroup"] = list()
 imported_datasets: typing.List["chisurf.core.data.DataGroup"] = list()
+
+
+def registered_parameter_groups() -> typing.List[typing.Tuple[str, str, typing.Any]]:
+    """Return parameter groups registered outside ``fits`` (e.g. by plugins).
+
+    Thin re-export of
+    :func:`chisurf.core.parameter_group_registry.iter_registered_parameter_groups`
+    so the Global View can enumerate out-of-fit groups the same way it reaches
+    ``chisurf.fits``. Each item is ``(owner_id, label, group)``.
+    """
+    from chisurf.core.parameter_group_registry import (
+        iter_registered_parameter_groups,
+    )
+
+    return iter_registered_parameter_groups()
 run = lambda x: x   # This is replaced during initialization to execute commands via a command line interface
 cs = None         # The current instance of ChiSurf
 console = None
