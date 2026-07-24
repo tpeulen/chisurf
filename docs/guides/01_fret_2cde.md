@@ -45,6 +45,21 @@ eng.compute(burst_bounds, tau=40e-6, variant=tttrlib.TwoCDE.FRET_2CDE,
 fret_2cde = eng.two_cde          # one value per burst; NaN if a stream is empty
 ```
 
+The **FRET-2CDE tool** computes the score over a burst folder and plots it
+against the proximity ratio; the controls set the KDE variant, kernel and time
+constant $\tau$ and the donor/acceptor channels:
+
+```{figure} figures/burst_2cde_tool.png
+:name: fig-2cde-tool
+:width: 90%
+
+The FRET-2CDE tool. **Controls** select the `fret` variant, the `laplace` KDE
+kernel, $\tau=100\,\mu s$, and the donor/acceptor routing channels. The plot shows
+2CDE vs proximity ratio: two **static** populations sit on the $\approx10$
+baseline at low/high FRET, while a **dynamic** sub-population is clearly elevated —
+the separation the score is built to reveal (see {ref}`concept-burst-2cde`).
+```
+
 From the guided burst workflow:
 
 ```python

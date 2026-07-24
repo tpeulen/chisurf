@@ -126,12 +126,35 @@ def _grab_burst_browser():
     _grab(widget, "burst_browser.png")
 
 
+def _grab_2cde_tool():
+    """Grab the FRET-2CDE tool plot (dynamics score vs proximity ratio)."""
+    import numpy as np
+    import pandas as pd
+
+    from chisurf.plugins.burst.burst_2cde.core import computation as core
+    from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
+
+    rng = np.random.default_rng(0)
+    # two static populations (low FRET-2CDE ~ 10) + a dynamic bridge (elevated 2CDE)
+    pr = np.concatenate([rng.normal(0.15, 0.04, 400), rng.normal(0.75, 0.04, 400),
+                         rng.uniform(0.2, 0.7, 200)])
+    cde = np.concatenate([rng.normal(10, 1.5, 400), rng.normal(10, 1.5, 400),
+                          rng.normal(28, 6, 200)])
+    df = pd.DataFrame({"First File": ["f0"] * pr.size,
+                       "Proximity Ratio": np.clip(pr, 0, 1),
+                       core.COLUMN_FRET_2CDE: cde})
+    tool = BurstTwoCdeTool(embedded=True)
+    tool._draw(df, core.COLUMN_FRET_2CDE)
+    tool.resize(720, 520)
+    _grab(tool, "burst_2cde_tool.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
 
     for grab in (_grab_fcs_model_editor, _grab_tcspc_lifetime_editor,
-                 _grab_pda_editor, _grab_burst_browser):
+                 _grab_pda_editor, _grab_burst_browser, _grab_2cde_tool):
         try:
             grab()
         except Exception as exc:  # keep going; report which grab failed
