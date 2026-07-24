@@ -39,15 +39,23 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         self.setCentralWidget(central)
         layout = QtWidgets.QVBoxLayout(central)
 
+        # --- action toolbar (pinned on top, same as every plugin) -------------
+        toolbar = QtWidgets.QToolBar()
+        toolbar.setStyleSheet(TOOLBAR_STYLE)
+        self._run = action_button("run", tooltip="Compute 2CDE over all loaded data")
+        self._run.clicked.connect(self.run)
+        browse = action_button("folder", tooltip="Choose the burst analysis folder")
+        browse.clicked.connect(self._browse)
+        toolbar.addWidget(self._run)
+        toolbar.addWidget(browse)
+        layout.addWidget(toolbar)
+
         # --- folder row -------------------------------------------------------
         row = QtWidgets.QHBoxLayout()
         self._folder_edit = QtWidgets.QLineEdit()
         self._folder_edit.setPlaceholderText("Burstwise analysis folder …")
-        browse = action_button("folder", tooltip="Choose the burst analysis folder")
-        browse.clicked.connect(self._browse)
         row.addWidget(QtWidgets.QLabel("Folder"))
         row.addWidget(self._folder_edit, 1)
-        row.addWidget(browse)
         layout.addLayout(row)
 
         # --- settings form ----------------------------------------------------
@@ -71,11 +79,6 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         form.addRow("Acceptor ch.", self._acceptor)
         form.addRow("File type", self._file_type)
         layout.addLayout(form)
-
-        # --- run button (canonical Run action, same as every plugin) ----------
-        self._run = action_button("run", tooltip="Compute 2CDE over all loaded data")
-        self._run.clicked.connect(self.run)
-        layout.addWidget(self._run)
 
         # --- plot -------------------------------------------------------------
         self._plot = pg.PlotWidget()

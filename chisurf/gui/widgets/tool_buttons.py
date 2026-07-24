@@ -69,10 +69,12 @@ QToolButton:checked { background-color: #5a4a3a; border-color: #8a6a4a; }
 }
 
 #: Base rules applied to every styled tool button (before the per-kind accent).
+#: Keep the vertical padding small so a styled button is the same height as a
+#: plain toolbar QToolButton — the accent is a background colour, not extra size.
 TOOLBAR_BUTTON_BASE = """
 QToolButton {
     border-radius: 5px;
-    padding: 5px 10px;
+    padding: 4px 8px;
     margin: 0px;
     font-weight: bold;
     font-size: 12px;
