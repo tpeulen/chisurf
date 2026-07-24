@@ -572,7 +572,6 @@ def make_widget_from_yaml(
 ):
     """
     >>> import numbers
-    >>> import pyqtgraph as pg
     >>> import collections
     >>> import yaml
     >>> d = yaml.safe_load(open("./test_session.yaml"))['datasets']

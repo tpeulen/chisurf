@@ -2,6 +2,21 @@
 
 ## 2026-07-24
 
+* **PRD-42 done — pyqtgraph confined to plot-only widgets.** Verify-and-close: the
+  migration had already landed (`ScientificDoubleSpinBox` wired into every
+  spin-box call site; `QTreeWidget`-based `ParameterEditorWidget`). Confirmed all
+  grep success criteria are empty (`import pyqtgraph` under `widgets/fitting/`,
+  `widgets/parameter_editor/`, `widgets/general.py`; no `pg.SpinBox` /
+  `pg.parametertree` in `gui/*.py`) and removed the last residue — a stale
+  `>>> import pyqtgraph as pg` doctest line in `general.make_widget_from_yaml`.
+  Verified: `test/gui/test_scientific_spinbox.py` +
+  `test_spinbox_editing_finished.py` + `test_parameter_editor.py` = 25 passed
+  (offscreen). Status → done. Note: `/test-model-editor` surfaced two *pre-existing*
+  failures unrelated to this change — `chisurf/core/models/fcs/mdf.py:173` imports
+  `chisurf.gui.widgets.fitting.fitting_client` (a real core→GUI boundary violation,
+  FCS/PRD-62 area) and a tcspc model-name-resolution test. Concept:
+  [PRD-42](/prds/prd-42.md).
+
 * **PRD-64 (draft) — chiplot plotting seam + pyqtgraph replacement.** Authored
   [PRD-64](/prds/prd-64.md): confine all plotting behind one facade package
   `chisurf.gui.chiplot` (call sites go `import pyqtgraph as pg` →
