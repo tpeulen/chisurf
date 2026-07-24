@@ -3,7 +3,7 @@ type: PRD
 prd: "58"
 title: "PRD-58: FRET Plugin as a Strict FPS + OLGA Superset"
 description: Make the fret modelling plugin a strict superset of the legacy FRET-positioning (FPS) and optimal-label-selection (OLGA) tools — embedded fps.json editing with live AV preview, the full refine/bootstrap/sample/evaluate workflows, and integrated informative-pair selection.
-status: draft
+status: in-progress
 phase: "feature track"
 resource: chisurf/plugins/modelling/fret/
 tags: [prd, plugins, modelling, fret]
@@ -24,11 +24,32 @@ FPS workflows, and (3) adding the OLGA evaluator graph and informative pair
 selection. GUI and CLI stay thin; all computation lives in importable core modules.
 
 # Status
-Draft — the plan predates approval ("awaiting approval before any code is written",
-2026-06-07). Partially realized since: the `fret/evaluators/` subpackage has landed
-(base + positions/distance/fret_efficiency/chi2/residuals/geometry/av_metrics), and
-the plugin ships `TARGETS.md` and `CHANGELOG_FRET.md`. The requirements, phased plan,
-and acceptance criteria below remain the authoritative roadmap for the remaining work.
+In-progress. Substantial code has landed against the requirements below (the
+original "awaiting approval, no code written" note is stale): the CLI
+(`cli/main.py`: `info-backends`, `screen`, `evaluate`, `select-pairs`, and an
+`imp` subgroup with `dock`/`refine`/`errors`/…), the `evaluators/` subpackage, the
+OLGA pair-selection core, and the FPS output writers all exist. The requirements,
+phased plan, and acceptance criteria below remain the authoritative roadmap for the
+remaining work — chiefly the GUI wizard embed (R01–R07) and IMP-gated refine/errors
+coverage (R10/R11 have no IMP-free test).
+
+**Headless test-hardening + R15 fix (2026-07-24).** Much of the headless surface
+was implemented but untested; closed three of those gaps in
+`test/test_fps_outputs.py` (13 tests, pure numpy — no IMP/AV/external data):
+- **R13** — the three output writers (`results.write_pymol_pml` / `write_r_table` /
+  `write_chi2_table`) are now covered (header/row/chi²-sum assertions).
+- **R14** — `io.compute_rmsd` is covered including the optional Kabsch
+  superposition (recovers a known rigid transform to ~0) and the selection-mask path.
+- **R15** — `AVSizeEvaluator` was a bare alias of `PositionEvaluator`
+  (`av_metrics.py` `from .positions import PositionEvaluator as AVSizeEvaluator`);
+  replaced with a real, distinct evaluator returning the weight-aware **radius of
+  gyration** (Å) of the AV cloud, plus tests. The registry now exposes 14 genuinely
+  distinct evaluator classes with working JSON round-trip.
+
+Regression: the headless fret suite (`test_fps_outputs`, `test_evaluators`,
+`test_pair_selection`, `test_stat`, `test_pose_codec`, `test_dock_project`) = 43
+passed. (The six `test_examples.py` failures on this machine are missing external
+OLGA data at `/Users/tpeulen/dev/olga/...`, not code regressions.)
 
 # Goal
 Keep all computation in importable, GUI-free core modules so the plugin is a strict

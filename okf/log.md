@@ -2,6 +2,21 @@
 
 ## 2026-07-24
 
+* **PRD-58 advanced — headless test-hardening + a real AVSizeEvaluator.** Much of
+  the FRET plugin's headless surface was implemented but untested. Added
+  `chisurf/plugins/modelling/fret/test/test_fps_outputs.py` (13 tests, pure numpy —
+  no IMP/AV/external data) closing three gaps: **R13** the three output writers
+  (`results.write_pymol_pml`/`write_r_table`/`write_chi2_table`), **R14**
+  `io.compute_rmsd` incl. optional Kabsch superposition (recovers a known rigid
+  transform) + selection mask. **R15 fix**: `AVSizeEvaluator` was a bare alias of
+  `PositionEvaluator` (`av_metrics.py`); replaced with a real, distinct evaluator
+  returning the weight-aware radius of gyration (Å) of the AV cloud, with tests and
+  a verified JSON round-trip (registry now 14 distinct evaluator classes). Flipped
+  the stale ✏️ "awaiting approval, no code" status → 🚧 in-progress (CLI +
+  evaluators + pair-selection + writers already landed; GUI wizard R01–R07 and
+  IMP-gated R10/R11 coverage remain). Regression: headless fret suite = 43 passed.
+  Concept: [PRD-58](/prds/prd-58.md).
+
 * **OKF science-theory KB, batch 3: FRET theory, PCH/FIDA, recurrence (RASP), FLIM/phasor.** Four more internal KB concepts (authoring scaffolding for the user docs), each paired with a clean OKF-free `docs/concepts/` page grounded in the real chisurf implementation: [fret-theory](/references/fret-theory.md) (foundational R⁻⁶ transfer, E, R₀ from overlap integral/κ²/n, mapped to `forster.py` `overlap_integral`/`forster_radius` `_R0_PREFACTOR_NM=0.02108`; Förster 1948, Lakowicz, Clegg); [pch-fida-theory](/references/pch-fida-theory.md) (brightness ε + N from the count-amplitude distribution, single/multi-species PCH, FIDA PGF route, N&B moments, mapped to `core/models/pch` `compute_p1`/`fida_pch`; Chen 1999, Kask 1999); [recurrence-rasp-theory](/references/recurrence-rasp-theory.md) (same-molecule recurrence P=1−1/G(τ), conditional recurrence FRET histogram, mapped to `burst/recurrence.py`; Hoffmann/Nettels/Gopich/Schuler 2011, PCCP per the codebase); [imaging-flim-phasor-theory](/references/imaging-flim-phasor-theory.md) (CLSM/TTTR, phasor transform + universal semicircle + lever rule, mapped to `tcspc/phasor.py` + `img_pixel_phasor`, PRD-49/52; Digman 2008). Docs guides 02/04/24 gained `{ref}` theory cross-refs. Wired into [references/index.md](/references/index.md). This brings the science-theory layer to **13 concepts** (batches 1–3 + fcs-model-theory).
 * **PRD-64 — Phase-2 GUI migration batch 4 (allow-list 62 → 60).** Migrated the
   `plots/deer_pr` P(r) confidence-band plot and the TCSPC `anisotropy` decay
