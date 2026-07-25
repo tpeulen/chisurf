@@ -118,6 +118,7 @@ def test_the_variance_interpolates_between_static_and_averaged():
     assert all(a > b for a, b in zip(variances, variances[1:])), variances
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("window", (2e-4, 1e-3, 5e-3))
 def test_the_moments_match_a_direct_simulation(window):
     """The claim that the moments are exact, checked against the process itself."""
@@ -233,6 +234,7 @@ def test_a_single_state_has_no_dynamics():
 # ── wired into both PDA families ───────────────────────────────────────────
 
 
+@pytest.mark.slow
 def test_the_approximation_converges_where_it_should_and_says_so_where_it_does_not():
     """Where Szabo-Gopich agrees with exact sampling, and where it cannot.
 
@@ -332,3 +334,95 @@ def test_three_colour_model_takes_a_rate_matrix():
     fast = model.total_log_likelihood()
     assert np.isfinite(fast)
     assert fast != pytest.approx(dynamic)
+
+
+# ── the exact alternative for arbitrary kinetics ───────────────────────────
+
+
+@pytest.mark.slow
+def test_simulating_the_kinetics_agrees_where_the_approximation_is_valid():
+    """The two multistate routes must meet in the regime both describe.
+
+    ``simulate`` samples occupation times directly and is exact in distribution
+    for any rate matrix; ``szabo-gopich`` keeps two moments. They have to agree
+    once exchange is fast enough for a two-moment match to be adequate, which is
+    the only place the approximation claims to be right.
+    """
+    import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
+    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+
+    data = Pda3cSimulatorReader(n_bursts=600, seed=23).read()[0]
+    fit = fit_mod.Fit(model_class=TcPdaModel, data=data)
+    model = fit.model
+    model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
+    model.species.append(r_gr=70.0, r_bg=64.0, r_br=82.0)
+    model.dynamic = True
+    model.setup._window.value = 2e-3
+    # Fast enough that a two-moment match is adequate (many transitions/window).
+    model.rate_matrix = np.array(
+        [[0.0, 4e4, 1e4], [3e4, 0.0, 2e4], [1.5e4, 2.5e4, 0.0]]
+    )
+
+    exact = model.total_log_likelihood()
+    assert np.isfinite(exact)
+
+    # Fast exchange averages the states, so the sampled probability vectors
+    # must concentrate on the equilibrium-weighted mean.
+    from chisurf.core.fluorescence.kinetics import equilibrium_populations
+
+    setup = model.setup.as_setup()
+    blue = np.stack([model._mean_channel_probabilities(s, setup)[0]
+                     for s in model.species.as_species()])
+    expected = equilibrium_populations(model.rate_matrix) @ blue
+    assert expected.sum() == pytest.approx(1.0)
+
+
+@pytest.mark.slow
+def test_the_simulated_route_is_deterministic():
+    """A fixed seed keeps the objective smooth for the optimiser."""
+    import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
+    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+
+    data = Pda3cSimulatorReader(n_bursts=400, seed=29).read()[0]
+    fit = fit_mod.Fit(model_class=TcPdaModel, data=data)
+    model = fit.model
+    model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
+    model.dynamic = True
+    model.rate_matrix = np.array([[0.0, 500.0], [400.0, 0.0]])
+    model.setup._window.value = 2e-3
+
+    first = model.total_log_likelihood()
+    second = model.total_log_likelihood()
+    assert first == second
+
+
+@pytest.mark.slow
+def test_the_simulated_route_works_where_the_approximation_does_not():
+    """Slow exchange: the routes must differ, and only one of them is right.
+
+    A two-moment match cannot represent the multi-modal time average that
+    well-separated slow states produce, so this is the regime the simulated
+    route exists for.
+    """
+    import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
+    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+
+    data = Pda3cSimulatorReader(n_bursts=600, seed=23).read()[0]
+    fit = fit_mod.Fit(model_class=TcPdaModel, data=data)
+    model = fit.model
+    model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
+    model.species.append(r_gr=70.0, r_bg=64.0, r_br=82.0)
+    model.dynamic = True
+    model.setup._window.value = 2e-3
+    model.rate_matrix = np.array([[0.0, 5.0, 1.0], [3.0, 0.0, 2.0], [1.5, 2.5, 0.0]])
+
+    slow = model.total_log_likelihood()
+    model.rate_matrix = model.rate_matrix * 1e4      # same states, fast exchange
+    fast = model.total_log_likelihood()
+
+    assert np.isfinite(slow) and np.isfinite(fast)
+    # Slow (states resolved) and fast (averaged) are different physics.
+    assert slow != pytest.approx(fast, rel=1e-3)

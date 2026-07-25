@@ -273,6 +273,26 @@ of the members', links the shared distance (and confirms the follower is not
 offered to the optimiser twice), and recovers it from a displaced start. No
 tcPDA-specific global machinery was needed.
 
+**Multistate kinetics are sampled, not approximated (2026-07-25).** The
+Szabo–Gopich moment match is exact for a *scalar* observable — which is what the
+two-colour model averages — but a three-colour burst needs a whole probability
+vector, and building that from independently matched per-channel marginals
+imposes a dependence the moments say nothing about. Pairing channels by quantile
+makes them perfectly correlated where they are physically **anti**-correlated:
+time in a high-FRET state raises one channel and lowers another. The two routes
+agreed on the mean vector to 1e-4 and disagreed on the likelihood by 5%, which
+is the joint being wrong rather than the marginals. tcPDA's multistate path
+therefore samples occupation times with the Gillespie the two-colour three-state
+model already uses (fixed seed, so the objective stays deterministic), and the
+moment match is kept only where it is valid.
+
+**Upstream opportunity.** `tttrlib`'s simulation engine already evolves species
+state through the off-diagonal `k_nrad` matrix — chisurf's FCS simulator drives
+interconversion that way. If the engine exposed the **state trajectory** as an
+output, chisurf could drop its own Gillespie and consume that instead, and the
+same output would serve HMM ground truth and burst-wise validation. Worth
+raising against tttrlib.
+
 Remaining: a
 `docs/concepts` page and numbered guide, and the unresolved error-surface width
 discrepancy.

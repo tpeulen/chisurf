@@ -42,17 +42,26 @@ decide in absolute terms whether a model is adequate; for that, use a
 parametric bootstrap of the kind `chisurf.core.models.pda.consistency`
 performs for two colours.
 
-**Open question — the two error-surface routes disagree on width.** Both an
-MCMC credible interval and a support-plane F-test scan bracket the true value
-(tested), but their widths differ, and the disagreement *grows with dataset
-size*: MCMC/support-plane width ratios of 1.32, 2.05 and 2.86 at 1500, 2500 and
-5000 bursts, while `sqrt(chi2r)` stays at 1.5 throughout. A constant factor
-would be explained by the F-test rescaling by `chi2r` — appropriate for a
-least-squares problem with unknown variance, wrong for a likelihood deviance.
-An *n*-dependent factor is not explained by that, and the cause has not been
-established. Until it is, prefer the MCMC interval: it samples
-`exp(-deviance/2)`, which is the actual posterior for this objective, whereas
-the F-test carries a chi-square assumption the deviance does not satisfy.
+**The support-plane interval is too narrow on this objective; use MCMC.**
+Both routes bracket the true value, but their widths disagree and the gap grows
+with dataset size. Narrowed down as follows.
+
+*It is not an unconverged chain.* At 5000 bursts the MCMC width is 0.498, 0.486
+and 0.497 for 600, 3000 and 12 000 steps, with the effective sample size rising
+104 -> 1914, split-R-hat at 1.00 and acceptance ~0.35. The sampled width is
+real.
+
+*It is the scaling.* Going from 1500 to 5000 bursts — 3.33x the data — an
+interval should shrink by `sqrt(3.33) = 1.83`. The MCMC width shrinks by
+**1.81**; the support-plane width shrinks by **3.31**, i.e. like `1/n` rather
+than `1/sqrt(n)`. A likelihood interval cannot narrow faster than the square
+root of the data, so the support-plane scan is the one that is wrong here.
+
+This is a property of the *scan on a likelihood deviance*, not of tcPDA: the
+F-test threshold is a statement about a chi-square with an unknown variance,
+which a deviance with `chi2r ~ 2.3` is not. It likely affects any model whose
+`chi2r` sits far from one. Until it is fixed, **quote the MCMC interval** — it
+samples `exp(-deviance/2)`, the actual posterior for this objective.
 
 The displayed curve
 -------------------
@@ -384,8 +393,19 @@ class TcPdaModel(ModelCurve):
         #: [target, source]. Set it to use the multistate Szabo-Gopich
         #: route instead of the exact two-state occupation law.
         self.rate_matrix = None
-        #: Quadrature nodes over the time-averaged probability.
-        self.dynamic_nodes = 24
+        #: Trajectories drawn per evaluation by the multistate route. The
+        #: sampling cost grows with transitions per window, so fast exchange
+        #: is the expensive case -- but it is also where the time average
+        #: collapses onto its mean, so fewer trajectories suffice there.
+        self.dynamic_samples = 600
+        #: Above this many transitions per window the time average has
+        #: collapsed onto equilibrium, so sampling is skipped.
+        self.dynamic_max_transitions = 500.0
+        #: Occupancy grid the trajectories are collapsed onto, so the node
+        #: count stays bounded however many trajectories are drawn.
+        self.dynamic_resolution = 24
+        #: Seed for that sampling, so the objective stays deterministic.
+        self.dynamic_seed = 1
         self._counts_cache = None
 
     # -- data ------------------------------------------------------------
@@ -617,7 +637,6 @@ class TcPdaModel(ModelCurve):
         """
         from scipy.special import logsumexp
 
-        from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
         from chisurf.core.fluorescence.pda3c import burst_log_likelihood
 
         blue = np.stack([self._mean_channel_probabilities(s, setup)[0] for s in species])
@@ -625,27 +644,62 @@ class TcPdaModel(ModelCurve):
 
         rates = np.asarray(self.rate_matrix, dtype=float)
         window = self.setup.window
-        n_nodes = max(4, int(self.dynamic_nodes))
 
-        def averaged(per_state):
-            """Nodes over the time-averaged probability of each channel."""
-            columns = []
-            for channel in range(per_state.shape[1]):
-                nodes, weights = szabo_gopich_quadrature(
-                    rates, per_state[:, channel], window, n_nodes=n_nodes
-                )
-                columns.append(nodes)
-            grid = np.stack(columns, axis=1)
-            # Channels are averaged one at a time and then renormalised: the
-            # marginals are exact, the joint is not, and renormalising is what
-            # keeps every node a valid probability vector.
-            total = grid.sum(axis=1, keepdims=True)
-            return np.divide(grid, np.where(total > 0, total, 1.0),
-                             out=np.zeros_like(grid), where=total > 0), weights
+        # Sample the occupation times directly. Exact in distribution for any
+        # rate matrix, and reusing the Gillespie the two-colour three-state
+        # model already uses; the seed is fixed so the objective stays
+        # deterministic and an optimiser does not chase sampling scatter.
+        #
+        # The moment-matching route is deliberately NOT used here. It is exact
+        # for a *scalar* observable -- which is what the two-colour model
+        # averages -- but a three-colour burst needs a whole probability
+        # vector, and building that from independently matched per-channel
+        # marginals imposes a dependence the moments say nothing about.
+        # Pairing the channels by quantile makes them perfectly correlated,
+        # whereas they are physically anti-correlated: time spent in a
+        # high-FRET state raises one channel and lowers another. Both routes
+        # then agree on the mean vector to 1e-4 and disagree on the likelihood
+        # by 5%, which is the joint being wrong, not the marginals.
+        from chisurf.core.models.pda.dynamic_mc import (
+            equilibrium_populations,
+            gillespie_time_fractions,
+        )
 
-        p_blue, weights = averaged(blue)
-        p_green, _ = averaged(green)
+        # Sampling cost is unbounded in transitions per window, and at very
+        # fast exchange there is nothing left to sample: the time average has
+        # collapsed onto the equilibrium occupancy. Short-circuit there -- it is
+        # the exact answer in that limit, not an optimisation.
+        transitions = float(np.abs(rates).sum(axis=0).max()) * window
+        if transitions > self.dynamic_max_transitions:
+            fractions = equilibrium_populations(rates)[None, :]
+            weights = np.array([1.0])
+            p_blue = fractions @ blue
+            p_green = fractions @ green
+            node = burst_log_likelihood(
+                counts.blue, p_blue, self.setup.background_blue
+            ) + burst_log_likelihood(
+                counts.green, p_green, self.setup.background_green
+            )
+            return logsumexp(np.log(weights)[:, None] + node, axis=0)
 
+        fractions = gillespie_time_fractions(
+            rates, window, int(self.dynamic_samples), int(self.dynamic_seed)
+        )
+        # Every distinct trajectory would otherwise become a likelihood node,
+        # and the cost is (nodes x bursts). Rounding the occupancy vector onto a
+        # grid collapses the sample to a few hundred weighted nodes with no
+        # meaningful loss: the map from occupancy to channel probability is
+        # smooth, so trajectories that spent almost the same time in each state
+        # are interchangeable.
+        quantised = np.round(fractions * self.dynamic_resolution)
+        _, index, multiplicity = np.unique(
+            quantised, axis=0, return_index=True, return_counts=True
+        )
+        fractions = fractions[index]
+        weights = multiplicity / multiplicity.sum()
+
+        p_blue = fractions @ blue
+        p_green = fractions @ green
         node = burst_log_likelihood(
             counts.blue, p_blue, self.setup.background_blue
         ) + burst_log_likelihood(
