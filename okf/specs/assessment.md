@@ -48,7 +48,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [BUG-06](#bug-06) | S1 | BUG | Core | `vm_rt_to_vv_vh` strides an already-halved count, so every rotation component after the first is silently discarded | ✅ FIXED |
 | [BUG-07](#bug-07) | S1 | BUG | Packaging | `csc` console script points at a non-existent `chisurf.cli` module — every invocation fails at import | ✅ FIXED |
 | [BUG-08](#bug-08) | S2 | BUG | Plugins | No image ever rendered in the Help browser: relative sources passed to Qt unresolved (`setSearchPaths` missing) | ✅ FIXED |
-| [BUG-09](#bug-09) | S2 | BUG | Tests | `test_fcs` dead since NumPy removed `np.float`; `…calculcate_spectrum` asserts a stale mixing expectation (`-0.3` vs `-0.15`) | VERIFIED |
+| [BUG-09](#bug-09) | S2 | BUG | Tests | `test_fcs` dead since NumPy removed `np.float`; `…calculcate_spectrum` asserts a stale mixing expectation (`-0.3` vs `-0.15`) | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-01](#data-01) | S1 | DATA | Plugins | **3** manifests fail validation and are silently dropped by `load_manifest()` | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-02](#data-02) | S2 | DATA | MMFDB | `SCHEMA_VERSION = 40` is a stamp with no migration waterfall | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-03](#data-03) | S2 | DATA | MMFDB | Core `mmfdb_*` DDL is hand-written and defined twice (must be hand-synced) | ~~REPORTED~~ ✅ FIXED |
@@ -70,8 +70,8 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
 
-34 findings (20 FIXED): 5 VERIFIED, 6 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL.
-Of the 14 open: 0×S1, 6×S2, 8×S3.
+34 findings (21 FIXED): 4 VERIFIED, 6 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL.
+Of the 13 open: 0×S1, 5×S2, 8×S3.
 
 ---
 
@@ -272,9 +272,26 @@ The single largest source of non-uniformity across the codebase (see [core steer
   convention in `calculcate_spectrum` yields `-0.15` where the test wants `-0.3`. The
   in-code comments record a deliberate rework of exactly this mixing, so the test was
   most likely never updated with it.
-- Deliberately left open: the second one is a question about which mixing convention is
-  intended, and answering it changes fit semantics — an owner decision, not a typo fix.
-- Status: **VERIFIED** (both observed failing on 2026-07-25).
+- ✅ **FIXED** (2026-07-25). The mixing question is settled by the definition of the
+  anisotropy rather than by preference: `r = (I_VV − I_VH/g) / (I_VV + 2 I_VH/g)` only
+  inverts back to the `r(t)` that generated the pair if the perpendicular channel is
+  `g · f_VM · (1 − r)` — the shipped `−1·r` term — so the stale `−2·r` expectations
+  (`-0.3`, `-3.`, `-2.7`) encoded a VH model that is not invertible for any `g ≠ 1`.
+  The code was right; **no fit semantics changed**.
+  `test_fluorescence_anisotropy_decay_calculcate_spectrum` now compares the *decays*
+  the spectra stand for against the analytic definitions over four `(l1, l2)`
+  combinations, so it no longer depends on the term count or ordering of the spectrum
+  algebra; a new `test_calculcate_spectrum_recovers_anisotropy` pins the `g` placement
+  by round-tripping `r(t)` at `g ∈ {0.8, 1.0, 1.5}`. Verified to discriminate: the
+  `−2·r` convention fails it. `test_fcs` (revived earlier by restoring the `np.float`
+  alias) gained real assertions — it previously computed a correlation and asserted
+  nothing. The `calculcate_spectrum` docstring, which stated `f_VH = f_VM (1 − g r)`
+  against its own code, was corrected.
+- Follow-up, **not** part of this fix: the sibling `vm_rt_to_vv_vh` still computes
+  `vm · (1 − g·r)`, i.e. the non-invertible placement, and disagrees with
+  `calculcate_spectrum` for `g ≠ 1`. It has no production caller (only its own doctest,
+  which uses `g = 1`), so it is tracked in
+  [known issues](../references/known-issues.md) rather than changed here.
 
 ## Data / schema / manifest issues (DATA)
 

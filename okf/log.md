@@ -3843,6 +3843,44 @@
   guard green, both widgets construct headless and refresh cleanly. See
   [PRD-64](prds/prd-64.md).
 
+* **BUG-09 closed: the anisotropy test pinned a VH model that cannot be
+  inverted.** `test_fluorescence_anisotropy_decay_calculcate_spectrum` asserted
+  `−2·r` in the perpendicular channel (`-0.3`, `-3.`, `-2.7`) where
+  `calculcate_spectrum` produces `−1·r`, and the backlog left it open as "a
+  question about which mixing convention is intended — an owner decision". It is
+  not a matter of preference: the definition `r = (I_VV − I_VH/g) / (I_VV + 2
+  I_VH/g)` only returns the `r(t)` that generated the pair if the perpendicular
+  channel is `g · f_VM · (1 − r)`, i.e. the g-factor is a detection sensitivity
+  scaling the whole channel rather than only its depolarization term. The stale
+  expectation was therefore non-invertible for every `g ≠ 1`. **The code was
+  right; no fit semantics changed.**
+  The test now compares the *decays* the spectra stand for against the analytic
+  definitions across four `(l1, l2)` combinations, so it no longer depends on the
+  term count or ordering of the spectrum algebra — which is what the companion
+  known-issue "returns 16 terms where the test expects 8" was really about (the
+  union/concatenate mixing form, not a defect). A new
+  `test_calculcate_spectrum_recovers_anisotropy` pins the `g` placement directly
+  by round-tripping `r(t)` at `g ∈ {0.8, 1.0, 1.5}`. Verified to discriminate:
+  re-running the old `−2·r` convention through the new assertions fails them.
+  `test_fcs`, revived earlier by restoring the `np.float` alias, still asserted
+  **nothing** — it computed a correlation and dropped it — and now pins the
+  autocorrelation invariants (both channels see every photon, `B·nc` strictly
+  increasing lags, `normalize` rescaling in place and returning `min(N/Δt)`, the
+  zero-lag channel dominating). The `calculcate_spectrum` docstring, which stated
+  `f_VH = f_VM (1 − g r)` against its own code, was corrected to match.
+  Two follow-ups recorded in [known issues](references/known-issues.md) rather
+  than fixed here: the sibling `vm_rt_to_vv_vh` still uses the non-invertible
+  placement (no production caller; its doctest and test both run at `g = 1`, and
+  the same formula is repeated in two doc pages, so it wants its own change), and
+  `test_group_polarization_any_size.py` both fails collection (an argument with no
+  fixture) and `logger.error`s instead of asserting, so it could not fail even if
+  it ran. Fixed on the spot: `test_anisotropy_integrals.py` loaded its subject via
+  a hand-built path that rotted into `test/chisurf/...` at the `chisurf.core` move
+  and errored at collection — replaced with a normal import.
+  Suites: 6 + 2 doctests + 3 + 26 green; `test/fluorescence/` 84 passed with the
+  two known-issue failures (`test_pqres`, `test_labeled_structure`) unchanged.
+  See [BUG-09](specs/assessment.md#bug-09).
+
 ## 2026-07-24
 
 * **All guide images converted to numbered `{figure}` directives.** 29 of the 44

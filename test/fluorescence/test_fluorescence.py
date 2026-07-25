@@ -1,92 +1,111 @@
-import unittest
-import numpy as np
 import glob
+import unittest
+
+import numpy as np
 import scipy.stats
 
 import chisurf.core.fio
 import chisurf.core.fio.fluorescence
 import chisurf.core.fluorescence
-import chisurf.core.fluorescence.fret
-import chisurf.core.fluorescence.fcs
-import chisurf.core.fluorescence.tcspc
-import chisurf.core.fluorescence.general
 import chisurf.core.fluorescence.anisotropy
-
+import chisurf.core.fluorescence.fcs
+import chisurf.core.fluorescence.fret
+import chisurf.core.fluorescence.general
+import chisurf.core.fluorescence.tcspc
 from chisurf.core.fluorescence.anisotropy.decay import calculcate_spectrum
 from chisurf.core.fluorescence.tcspc.corrections import compute_linearization_table
 
 
 class Tests(unittest.TestCase):
+    """Tests for the fluorescence primitives: anisotropy, FCS, FRET and TCSPC."""
+
+    @staticmethod
+    def _decay_from_spectrum(
+            spectrum: np.ndarray,
+            time_axis: np.ndarray
+    ) -> np.ndarray:
+        """Evaluate an interleaved (amplitude, lifetime) spectrum on a time axis.
+
+        Parameters
+        ----------
+        spectrum : numpy.ndarray
+            Interleaved amplitudes and lifetimes.
+        time_axis : numpy.ndarray
+            Time axis the decay is evaluated on.
+
+        Returns
+        -------
+        numpy.ndarray
+            The un-normalised decay ``sum_i a_i * exp(-t / tau_i)``.
+        """
+        decay = np.zeros_like(time_axis)
+        for amplitude, lifetime in zip(spectrum[0::2], spectrum[1::2]):
+            decay += amplitude * np.exp(-time_axis / lifetime)
+        return decay
 
     def test_fluorescence_anisotropy_decay_calculcate_spectrum(self):
-        lifetime_spectrum = np.array([1.0, 4.0])
-        anisotropy_spectrum = np.array([1.0, 1.0])
+        """The joint spectrum must reproduce the polarized decays it stands for.
+
+        The reference is derived from the definitions rather than re-recorded
+        from the implementation: with ``r(t)`` the anisotropy and ``G`` the
+        detection-sensitivity ratio,
+
+            f_VV(t)   = f_VM(t) * (1 + 2 r(t))
+            f_VH(t)   = G * f_VM(t) * (1 - r(t))
+            f_VV,m(t) = (1 - l1) f_VV(t) + l1 f_VH(t)
+            f_VH,m(t) = l2 f_VV(t) + (1 - l2) f_VH(t)
+
+        ``G`` scales the whole VH channel because it is a detection efficiency,
+        not a property of the depolarization. That placement is what makes the
+        pair invertible — see :meth:`test_calculcate_spectrum_recovers_anisotropy`.
+        """
+        tau, rho, r0 = 4.0, 1.0, 1.0
+        lifetime_spectrum = np.array([1.0, tau])
+        anisotropy_spectrum = np.array([r0, rho])
         g_factor = 1.5
-        a = calculcate_spectrum(
-            lifetime_spectrum=lifetime_spectrum,
-            anisotropy_spectrum=anisotropy_spectrum,
-            polarization_type='VV',
-            g_factor=g_factor,
-            l1=0.0,
-            l2=0.0
-        )
-        self.assertEqual(
-            np.allclose(
-                a,
-                np.array([1., 4., 2., 0.8, 0., 4., -0., 0.8])
-            ),
-            True
-        )
+        times = np.linspace(0.0, 20.0, 64)
 
-        a = calculcate_spectrum(
-            lifetime_spectrum=lifetime_spectrum,
-            anisotropy_spectrum=anisotropy_spectrum,
-            polarization_type='VV',
-            g_factor=g_factor,
-            l1=0.1,
-            l2=0.0
-        )
-        self.assertEqual(
-            np.allclose(
-                a,
-                np.array([0.9, 4., 1.8, 0.8, 0.15, 4., -0.3, 0.8])
-            ),
-            True
-        )
+        vm = np.exp(-times / tau)
+        rt = r0 * np.exp(-times / rho)
+        vv = vm * (1.0 + 2.0 * rt)
+        vh = g_factor * vm * (1.0 - rt)
 
-        a = calculcate_spectrum(
-            lifetime_spectrum=lifetime_spectrum,
-            anisotropy_spectrum=anisotropy_spectrum,
-            polarization_type='VH',
-            g_factor=g_factor,
-            l1=0.0,
-            l2=0.0
-        )
-        self.assertEqual(
-            np.allclose(
-                a,
-                np.array([0., 4., 0., 0.8, 1.5, 4., -3., 0.8])
-            ),
-            True
-        )
+        for l1, l2 in [(0.0, 0.0), (0.1, 0.0), (0.0, 0.1), (0.1, 0.2)]:
+            kwargs = dict(
+                lifetime_spectrum=lifetime_spectrum,
+                anisotropy_spectrum=anisotropy_spectrum,
+                g_factor=g_factor,
+                l1=l1,
+                l2=l2
+            )
+            vv_spectrum = calculcate_spectrum(polarization_type='VV', **kwargs)
+            vh_spectrum = calculcate_spectrum(polarization_type='VH', **kwargs)
+            self.assertEqual(
+                np.allclose(
+                    self._decay_from_spectrum(vv_spectrum, times),
+                    (1.0 - l1) * vv + l1 * vh
+                ),
+                True,
+                msg=f"VV decay wrong for l1={l1}, l2={l2}"
+            )
+            self.assertEqual(
+                np.allclose(
+                    self._decay_from_spectrum(vh_spectrum, times),
+                    l2 * vv + (1.0 - l2) * vh
+                ),
+                True,
+                msg=f"VH decay wrong for l1={l1}, l2={l2}"
+            )
+            # 'VV/VH' is the two channels stacked for joint fitting, nothing else.
+            self.assertEqual(
+                np.allclose(
+                    calculcate_spectrum(polarization_type='VV/VH', **kwargs),
+                    np.hstack([vv_spectrum, vh_spectrum])
+                ),
+                True
+            )
 
-        a = calculcate_spectrum(
-            lifetime_spectrum=lifetime_spectrum,
-            anisotropy_spectrum=anisotropy_spectrum,
-            polarization_type='VH',
-            g_factor=g_factor,
-            l1=0.0,
-            l2=0.1
-        )
-
-        self.assertEqual(
-            np.allclose(
-                a,
-                np.array([0.1, 4., 0.2, 0.8, 1.35, 4., -2.7, 0.8])
-            ),
-            True
-        )
-
+        # The lifetime spectrum is passed through untouched for magic angle.
         self.assertEqual(
             np.allclose(
                 calculcate_spectrum(
@@ -101,6 +120,40 @@ class Tests(unittest.TestCase):
             ),
             True
         )
+
+    def test_calculcate_spectrum_recovers_anisotropy(self):
+        """Undoing G on the VH channel must return the anisotropy that went in.
+
+        ``r = (I_VV - G I_VH) / (I_VV + 2 G I_VH)`` is the definition of the
+        anisotropy, so with no channel mixing the generated pair has to invert
+        back to ``r(t)`` exactly. This is what pins the ``G`` placement: a VH
+        model of the form ``f_VM * (1 - G r)`` only satisfies it at ``G = 1``.
+        """
+        tau, rho, r0 = 4.0, 1.5, 0.38
+        lifetime_spectrum = np.array([1.0, tau])
+        anisotropy_spectrum = np.array([r0, rho])
+        times = np.linspace(0.0, 20.0, 64)
+        rt = r0 * np.exp(-times / rho)
+
+        for g_factor in [0.8, 1.0, 1.5]:
+            kwargs = dict(
+                lifetime_spectrum=lifetime_spectrum,
+                anisotropy_spectrum=anisotropy_spectrum,
+                g_factor=g_factor,
+                l1=0.0,
+                l2=0.0
+            )
+            vv = self._decay_from_spectrum(
+                calculcate_spectrum(polarization_type='VV', **kwargs), times
+            )
+            vh = self._decay_from_spectrum(
+                calculcate_spectrum(polarization_type='VH', **kwargs), times
+            ) / g_factor
+            self.assertEqual(
+                np.allclose((vv - vh) / (vv + 2.0 * vh), rt),
+                True,
+                msg=f"anisotropy not recovered for g={g_factor}"
+            )
 
     def test_vm_vv_vh(self):
         times = np.linspace(0, 50, 32)
@@ -166,13 +219,39 @@ class Tests(unittest.TestCase):
         dt_2 = results['measurement_time_ch2']
         tau = results['correlation_time_axis']
         corr = results['correlation_amplitude']
+
+        # Every photon enters both channels, so this is an autocorrelation.
+        self.assertEqual(np_1, photons.nPh)
+        self.assertEqual(np_2, photons.nPh)
+        self.assertEqual(dt_1, dt_2)
+        self.assertGreater(dt_1, 0)
+
+        # Multi-tau: points_per_decade lags per coarsening step, nc steps.
+        self.assertEqual(len(tau), points_per_decade * number_of_decades)
+        self.assertEqual(len(corr), len(tau))
+        self.assertEqual(tau[0], 0)
+        self.assertEqual(np.all(np.diff(tau.astype(np.float64)) > 0), True)
+
+        raw = corr.copy()
         cr = chisurf.core.fluorescence.fcs.correlate.normalize(
             np_1, np_2, dt_1, dt_2, tau, corr, points_per_decade
         )
+        # ``normalize`` rescales ``corr`` in place and returns the smaller of
+        # the two count rates.
+        self.assertEqual(np.array_equal(raw, corr), False)
+        self.assertEqual(np.all(np.isfinite(corr)), True)
+        self.assertEqual(np.all(corr > 0), True)
+        self.assertAlmostEqual(cr, min(np_1 / dt_1, np_2 / dt_2))
+        # The zero-lag channel carries the self-correlation and dominates.
+        self.assertEqual(corr[0], corr.max())
+
         cr /= photons.dt
         dur = float(min(dt_1, dt_2)) * photons.dt / 1000.  # seconds
         tau = tau.astype(np.float64)
         tau *= photons.dt
+        self.assertGreater(cr, 0.0)
+        self.assertGreater(dur, 0.0)
+        self.assertEqual(np.all(np.isfinite(tau)), True)
 
     def test_acceptor(self):
         times = np.linspace(0, 50, 1024)

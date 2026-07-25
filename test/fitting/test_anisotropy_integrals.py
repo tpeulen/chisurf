@@ -1,20 +1,13 @@
-import importlib.util
-from pathlib import Path
-import sys
-
 import pytest
 
-
-_MODULE_PATH = Path(__file__).resolve().parents[1] / "chisurf" / "fluorescence" / "anisotropy" / "integrals.py"
-_SPEC = importlib.util.spec_from_file_location("chisurf_fluorescence_anisotropy_integrals", _MODULE_PATH)
-_MOD = importlib.util.module_from_spec(_SPEC)
-assert _SPEC is not None and _SPEC.loader is not None
-sys.modules[_SPEC.name] = _MOD
-_SPEC.loader.exec_module(_MOD)
-
-anisotropy_from_integrals = _MOD.anisotropy_from_integrals
-compute_g_factor_perrin = _MOD.compute_g_factor_perrin
-perrin_steady_state_anisotropy = _MOD.perrin_steady_state_anisotropy
+# Imported by name rather than loaded from a hand-built path: the path form
+# silently rotted into a collection error when the module moved under
+# ``chisurf.core``, and ``integrals`` pulls in nothing but numpy anyway.
+from chisurf.core.fluorescence.anisotropy.integrals import (
+    anisotropy_from_integrals,
+    compute_g_factor_perrin,
+    perrin_steady_state_anisotropy,
+)
 
 
 def test_perrin_steady_state_anisotropy_monotonic() -> None:

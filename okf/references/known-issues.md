@@ -102,16 +102,10 @@ Three red tests, each pointing at real behaviour rather than a stale test alone.
 Left open because each needs a decision from the owner of code being actively
 worked in this tree; the fourth found alongside them (a `np.float` in
 `test_fluorescence`, removed in NumPy 1.24) and three stale imports of the
-retired `_dev/fluorophore_db` plugin were fixed on the spot.
+retired `_dev/fluorophore_db` plugin were fixed on the spot. The first of the
+three — the `calculcate_spectrum` term count — was resolved on 2026-07-25 and is
+recorded below.
 
-- **`calculcate_spectrum` returns 16 terms where the anisotropy test expects
-  8.** `test_fluorescence.py::test_fluorescence_anisotropy_decay_calculcate_spectrum`.
-  For a 2-term lifetime spectrum and a 2-term anisotropy spectrum, VV with
-  `l1=0.1` yields every rotation × lifetime cross-product rather than the
-  reduced form the test pins. Either the expectation predates a deliberate
-  change to the spectrum algebra, or the mixing corrections are being applied
-  per cross-term where they should collapse. `chisurf/core/models/tcspc/`
-  anisotropy is under active work, so the semantics call belongs there.
 - **A binary `.pqres` file is read with `np.loadtxt`.**
   `test_fluorescence/test_pqres.py::test_read_fcs_pqres` fails with
   `UnicodeDecodeError` on byte 0xff — the PicoQuant result format is binary
@@ -123,8 +117,49 @@ retired `_dev/fluorophore_db` plugin were fixed on the spot.
   framework, so this may be a test that outlived its subject rather than a
   live defect; confirm before either fixing or removing it.
 
+**Found 2026-07-25 while closing [BUG-09](/specs/assessment.md#bug-09).** Both sit
+in the anisotropy area; neither is reachable from a production call path today.
+
+- **`vm_rt_to_vv_vh` puts the g-factor in the one place that is not
+  invertible.** `chisurf/core/fluorescence/anisotropy/decay.py`. It computes
+  `vh = vm · (1 − g·r)`, while its sibling `calculcate_spectrum` — the one the
+  fitting models actually call — computes `g · vm · (1 − r)`. Only the latter
+  satisfies `r = (I_VV − I_VH/g) / (I_VV + 2 I_VH/g)`; a detection sensitivity
+  scales the whole perpendicular channel, not just its depolarization term, so
+  the two agree only at `g = 1`. Not changed on the spot because it is a
+  numerical change to a public helper and the same formula is repeated in
+  `docs/concepts/anisotropy.md` and
+  [anisotropy-theory](/references/anisotropy-theory.md); the fix is one line plus
+  those two doc updates plus a `g ≠ 1` test, and belongs in its own change.
+  Harmless meanwhile: the only in-tree callers are its doctest and
+  `test_vm_vv_vh`, both at the default `g = 1`.
+- **`test_group_polarization_any_size.py` never runs, and would pass even when
+  wrong.** `test_group_polarization_assignment(num_datasets)` takes an argument
+  with no fixture and no `parametrize`, so pytest errors at collection; the sizes
+  are only passed from a `__main__` block. Worse, the body `logger.error(...)`s
+  on a wrong polarization type instead of asserting, and ends with `return True`
+  — so even once collected it could not fail. Converting it needs the intended
+  semantics for odd group sizes (does a 3-fit group really alternate vv/vh/vv?),
+  which is an owner call.
+
 **Fixed 2026-07-25 — kept here because the *patterns* keep recurring**
 
+- **The anisotropy spectrum test pinned a VH model that cannot be inverted.**
+  The test asserted `−2·r` in the perpendicular channel where the code produces
+  `−1·r`, and the "16 terms vs 8" term-count mismatch it was filed under was the
+  union/concatenate mixing form, not a defect. The definition of `r` settles it:
+  only `g · f_VM · (1 − r)` round-trips back to the `r(t)` that generated the
+  pair. The test now compares the *decays* the spectra stand for against the
+  analytic definitions, so it is immune to the term count. **Pattern: a test
+  whose expectation was recorded from the implementation pins the bug as
+  hard as it pins the behaviour — derive references from the definitions.**
+- **A test loaded its subject from a hand-built file path and rotted silently.**
+  `test/fitting/test_anisotropy_integrals.py` built
+  `parents[1] / "chisurf" / "fluorescence" / ...` and `exec_module`d it; when the
+  module moved under `chisurf.core` the path pointed at `test/chisurf/...` and the
+  file errored at collection instead of failing loudly at a rename. Replaced with
+  a normal import (the module pulls in nothing but numpy). **Pattern: importing by
+  path defeats every tool that would have caught the move.**
 - **A GUI modal reported an error from the macro layer, so head-less loading
   hung forever.** `core_data.add_dataset` caught every read failure and built
   `MyMessageBox`, whose `__init__` calls `exec_()`. With a `QApplication` but

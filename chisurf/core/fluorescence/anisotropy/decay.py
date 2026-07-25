@@ -1,9 +1,10 @@
 from __future__ import annotations
-from chisurf import typing
 
-import numpy as np
 import numba as nb
+import numpy as np
+
 import chisurf.core.math
+from chisurf import typing
 
 
 @nb.jit(nopython=True)
@@ -16,7 +17,7 @@ def vm_rt_to_vv_vh(
         l2: float = 0.0
 ) -> typing.Tuple[np.array, np.array]:
     """
-    Computes the VV and VH decays from a VM decay given an anisotropy spectrum.
+    Compute the VV and VH decays from a VM decay given an anisotropy spectrum.
 
     The parallel (VV) and perpendicular (VH) decays are computed as
 
@@ -113,7 +114,7 @@ def calculcate_spectrum(
         l2: float = 0.0
 ) -> np.ndarray:
     """
-    Generates a joint spectrum from a lifetime and an anisotropy spectrum for a specified polarization.
+    Generate a joint spectrum from a lifetime and an anisotropy spectrum for a specified polarization.
 
     This function converts a lifetime spectrum and an anisotropy spectrum into a
     joint spectrum for either the 'VV', 'VH', or 'VV/VH' detection channels. The relative
@@ -123,11 +124,13 @@ def calculcate_spectrum(
     The unmixed decays for VV and VH are given by:
 
         f_VV(t) = f_VM(t) * (1 + 2 * r(t))
-        f_VH(t) = f_VM(t) * (1 - g * r(t))
+        f_VH(t) = g * f_VM(t) * (1 - r(t))
 
-    with anisotropy:
+    ``g`` is a detection sensitivity, so it scales the *whole* perpendicular
+    channel rather than only its depolarization term. That placement is what
+    makes the pair invert back to the anisotropy it was built from:
 
-        r(t) = (I_VV - G * I_VH) / (I_VV + 2 * G * I_VH)
+        r(t) = (f_VV - f_VH / g) / (f_VV + 2 * f_VH / g)
 
     The mixed decays are then computed as:
 
