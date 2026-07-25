@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 49):*
+*Landed so far (allow-list 76 → 45):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -345,6 +345,27 @@ screenshot/qtbot verification after each cluster.
   legend from a prior call before adding a fresh one, so the clear→legend→redraw
   refresh loop no longer stacks orphaned legend boxes in the scene (previously
   each tool had to `legend.close()` the old one by hand).
+- **Batch 10** (allow-list 49 → 45) — migrated the microtime-histogram wizard
+  (`plugins/tttr/microtime_histogram`) and the three FCS-correlator panels
+  (`plugins/fcs/fcs_correlator/{correlator,filter,merger}_panel`). The
+  histogram/merger tools follow the same `PlotWidget`→`cp.Plot` + `line`/
+  `set_log`/`legend` map as Batch 9; `merger_panel` also dropped its hand-rolled
+  `{solid,dash,dot}`→`Qt.PenStyle` table in favour of `plot.line(style="dash")`.
+  `correlator_panel` used pyqtgraph only for `intColor` to tag a series dict
+  consumed by the AutoForm `plot` section (still-passthrough `builtin.py`), so it
+  now emits `cp.int_color(...).as_tuple()` — a plain RGBA both `cp.to_pen` and the
+  legacy `pg.mkPen` renderer accept, decoupling it without touching the renderer.
+  Two native additions, both driven by real call sites: **`Plot.set_menu_enabled`**
+  (both filter/merger panels disabled the pyqtgraph viewbox menu via
+  `getPlotItem().getViewBox().setMenuEnabled` — now a first-class seam method over
+  the backend's existing `set_menu_enabled`), and **signal-safe programmatic
+  mutation** — `Region.set_bounds`/`Marker.set_value` now block the native item's
+  signals during the move, so `filter_panel`'s per-refresh region repositioning no
+  longer needs the manual `blockSignals` dance and cannot re-enter its own
+  `on_change` handler. New regression tests in `test/gui/test_chiplot.py`
+  (idempotent-legend refresh loop, `set_menu_enabled`, signal-safe
+  `set_bounds`/`set_value`, the union of migrated draw verbs, and import-clean of
+  all four modules).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

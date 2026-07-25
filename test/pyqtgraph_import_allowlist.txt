@@ -34,9 +34,6 @@ chisurf/plugins/core/acq/gui/windows.py
 chisurf/plugins/core/globalview/graphplotwidget.py
 chisurf/plugins/core/globalview/gui/tool.py
 chisurf/plugins/core/lightpath_simulator/gui/node_types.py
-chisurf/plugins/fcs/fcs_correlator/correlator_panel.py
-chisurf/plugins/fcs/fcs_correlator/filter_panel.py
-chisurf/plugins/fcs/fcs_correlator/merger_panel.py
 chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/main_window.py
 chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py
 chisurf/plugins/fcs/fcs_lfcs_sim/gui/tool.py
@@ -47,7 +44,6 @@ chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/irf_widget.py
 chisurf/plugins/modelling/fret/gui/dock_tool.py
 chisurf/plugins/modelling/fret/gui/pair_selection_wizard.py
 chisurf/plugins/tttr/intensity_trace/__init__.py
-chisurf/plugins/tttr/microtime_histogram/wizard.py
 chisurf/plugins/tttr/tttr_lut_tools/gui/sections.py
 chisurf/plugins/tttr/tttr_lut_tools/gui/settings_panel.py
 chisurf/plugins/vv_vh_anisotropy/__init__.py

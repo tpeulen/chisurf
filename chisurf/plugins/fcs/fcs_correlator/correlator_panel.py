@@ -128,7 +128,7 @@ class CorrelatorSettingsModel:
         }
 
     def correlation_series(self):
-        import pyqtgraph as pg
+        from chisurf.gui import chiplot as cp
 
         n = len(self._correlations)
         return [
@@ -136,7 +136,7 @@ class CorrelatorSettingsModel:
                 "x": c["x"],
                 "y": c["y"],
                 "name": c.get("name", f"chunk {i}"),
-                "color": pg.intColor(i, hues=max(n, 6)),
+                "color": cp.int_color(i, count=max(n, 6)).as_tuple(),
             }
             for i, c in enumerate(self._correlations)
         ]

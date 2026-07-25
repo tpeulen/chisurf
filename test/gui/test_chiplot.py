@@ -93,6 +93,107 @@ def test_region_and_marker_values(qapp):
     assert m.value == 6.5
 
 
+def test_legend_idempotent_refresh_loop(qapp):
+    """A clear -> legend -> redraw refresh loop must not stack legends.
+
+    Regression guard for PRD-64 Batch 9: the curve-viewer tools
+    (tttr_histogram / tttr_correlate / microtime_histogram / fcs merger) call
+    ``legend()`` on every refresh, so it must remove the prior legend rather
+    than orphan a new box each time.
+    """
+    plot = cp.Plot()
+    pi = plot.native  # the pyqtgraph PlotItem
+    for i in range(4):
+        plot.clear()
+        plot.legend()
+        plot.line([0, 1, 2], [i, i + 1, i], name=f"c{i}")
+    # Exactly one legend survives the repeated refresh.
+    assert pi.legend is not None
+    scene_legends = [
+        it for it in pi.scene().items()
+        if it.__class__.__name__ == "LegendItem"
+    ]
+    assert len(scene_legends) == 1
+
+
+def test_set_menu_enabled_returns_self(qapp):
+    """``set_menu_enabled`` toggles the native menu and chains (returns self)."""
+    plot = cp.Plot()
+    assert plot.set_menu_enabled(False) is plot
+    assert plot.set_menu_enabled(True) is plot
+
+
+def test_programmatic_set_bounds_is_signal_safe(qapp):
+    """A programmatic ``set_bounds`` must not re-enter the on_change callback.
+
+    Regression guard for PRD-64 Batch 9: filter_panel positions a draggable
+    region from the model on every refresh; that must not feed back into the
+    handler that writes the model (the old code hand-managed ``blockSignals``).
+    """
+    plot = cp.Plot()
+    reg = plot.region((1.0, 3.0), orientation="horizontal", movable=True)
+    seen = []
+    reg.on_change(lambda lo, hi: seen.append((lo, hi)), final=True)
+    reg.set_bounds(2.0, 5.0)  # programmatic move -> must stay silent
+    assert seen == []
+    assert reg.bounds == (2.0, 5.0)
+    # A genuine (native) drag still fires the callback.
+    reg.native.setRegion((0.5, 0.9))
+    assert seen and seen[-1] == (0.5, 0.9)
+
+
+def test_programmatic_set_value_is_signal_safe(qapp):
+    """A programmatic ``set_value`` must not re-enter the marker on_change."""
+    plot = cp.Plot()
+    m = plot.vline(4.0, movable=True)
+    seen = []
+    m.on_change(lambda pos: seen.append(pos), final=True)
+    m.set_value(6.5)  # programmatic move -> silent
+    assert seen == []
+    assert m.value == 6.5
+    # Simulate a user drag completing on the native item (setValue alone does
+    # not emit the finished signal; a real drag release does).
+    m.native.setValue(1.25)
+    m.native.sigPositionChangeFinished.emit(m.native)
+    assert seen and seen[-1] == 1.25
+
+
+def test_migrated_panel_draw_patterns(qapp):
+    """Exercise the exact draw verbs the PRD-64 Batch 9 panels rely on.
+
+    Covers: scatter(size/brush/pen), line(style="dash"), a horizontal region
+    with set_bounds, set_menu_enabled, and the legend refresh loop — the union
+    of calls made by fcs_correlator's filter/merger panels and the tttr
+    histogram/correlate tools.
+    """
+    plot = cp.Plot(title="panel")
+    plot.set_labels(bottom="t", left="G").set_log(x=True)
+    plot.set_menu_enabled(False)
+    plot.legend()
+    x = np.linspace(0, 1, 20)
+    plot.scatter(x, x, size=2, brush=(80, 180, 255, 200), pen=None, symbol="o", name="pts")
+    plot.line(x, x ** 2, pen="y", width=1, style="dash", name="dashed")
+    plot.line(x, x, pen=cp.int_color(0, count=6).as_tuple(), width=1, name="int-color")
+    reg = plot.region((0.1, 0.9), orientation="horizontal", brush=(80, 180, 255, 40), movable=True)
+    reg.set_bounds(0.2, 0.8)
+    assert reg.bounds == (0.2, 0.8)
+
+
+def test_migrated_modules_import(qapp):
+    """The migrated Batch 9 modules import cleanly (no pyqtgraph dependency)."""
+    import importlib
+
+    for name in (
+        "chisurf.plugins.tttr.tttr_histogram.gui",
+        "chisurf.plugins.tttr.tttr_correlate.gui",
+        "chisurf.plugins.tttr.microtime_histogram.wizard",
+        "chisurf.plugins.fcs.fcs_correlator.correlator_panel",
+        "chisurf.plugins.fcs.fcs_correlator.filter_panel",
+        "chisurf.plugins.fcs.fcs_correlator.merger_panel",
+    ):
+        assert importlib.import_module(name) is not None
+
+
 def test_handle_visibility_and_removal(qapp):
     plot = cp.Plot()
     c = plot.line([0, 1], [0, 1])

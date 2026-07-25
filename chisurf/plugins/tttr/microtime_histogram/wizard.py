@@ -1,7 +1,8 @@
 from pathlib import Path
 from qtpy import QtWidgets
-import pyqtgraph as pg
 import numpy as np
+
+from chisurf.gui import chiplot as cp
 
 import tttrlib
 import chisurf.gui.decorators
@@ -201,8 +202,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         # Clear the histogram plot as it's no longer valid for the new detector
         if hasattr(self, 'plotWidget'):
             self.plotWidget.clear()
-            if hasattr(self, 'plotWidget') and hasattr(self.plotWidget, 'addLegend'):
-                self.plotWidget.addLegend()  # Re-add legend after clearing
+            self.plotWidget.legend()  # Re-add legend after clearing
             chisurf.logging.info(f"Cleared histogram plot due to detector change to: {self.detector_selection_combobox.currentText()}")
         
         # Reset histogram data
@@ -514,12 +514,11 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         self.listWidget_BID.rejectedPaths.connect(self._warn_needs_type_selection)
         self.verticalLayout_5.addWidget(self.listWidget_BID)
 
-        self.plotWidget = pg.PlotWidget()
+        self.plotWidget = cp.Plot()
         self.verticalLayout.addWidget(self.plotWidget)
-        self.plotWidget.setLabel('bottom', 'Micro Time (ns)')
-        self.plotWidget.setLabel('left', 'Counts')
-        self.plotWidget.setLogMode(y=True)
-        self.plotWidget.addLegend()
+        self.plotWidget.set_labels(bottom='Micro Time (ns)', left='Counts')
+        self.plotWidget.set_log(y=True)
+        self.plotWidget.legend()
 
         self.populate_supported_types()
         self.toolButton.clicked.connect(self.browse_and_open_input_files)
@@ -885,7 +884,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         chisurf.logging.info("Clearing files and plot")
         self.listWidget.clear()  # Clear file list
         self.plotWidget.clear()  # Clear plot
-        self.plotWidget.addLegend()  # Re-add legend after clearing
+        self.plotWidget.legend()  # Re-add legend after clearing
         self.listWidget_BID.clear() # Clear bid files
         # Removed: self.comboBox.setCurrentIndex(0)  # Reset combobox to "Auto"
         
@@ -1204,7 +1203,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         chisurf.logging.info("Updating timeshifts...")
         self.plotWidget.clear()  # Clear plot before drawing new data
-        self.plotWidget.addLegend()  # Re-add legend after clearing
+        self.plotWidget.legend()  # Re-add legend after clearing
 
         # Get the current timeshift values
         vv_shift = self.timeshift_vv
@@ -1305,8 +1304,8 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             x_perpendicular = np.arange(len(cumulative_perpendicular)) * self.time_resolution
             
             # Plot cumulative parallel and perpendicular data
-            self.plotWidget.plot(x_parallel, cumulative_parallel, pen='r', name="Cumulative Parallel (VV)")
-            self.plotWidget.plot(x_perpendicular, cumulative_perpendicular, pen='g', name="Cumulative Perpendicular (VH)")
+            self.plotWidget.line(x_parallel, cumulative_parallel, pen='r', name="Cumulative Parallel (VV)")
+            self.plotWidget.line(x_perpendicular, cumulative_perpendicular, pen='g', name="Cumulative Perpendicular (VH)")
 
             # Calculate and display FWHM of VV + 2G*VH
             try:
@@ -1331,7 +1330,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
                 # Plot the combined histogram
                 x_combined = np.arange(len(combined_histogram)) * self.time_resolution
-                self.plotWidget.plot(x_combined, combined_histogram, pen='y', name="Combined (VV + 2G*VH)")
+                self.plotWidget.line(x_combined, combined_histogram, pen='y', name="Combined (VV + 2G*VH)")
 
             except Exception as e:
                 chisurf.logging.error(f"Failed to calculate FWHM: {str(e)}")
@@ -1363,7 +1362,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
     def compute_microtime_histogram(self):
         chisurf.logging.info("Computing microtime histogram...")
         self.plotWidget.clear()  # Clear plot before drawing new data
-        self.plotWidget.addLegend()  # Re-add legend after clearing
+        self.plotWidget.legend()  # Re-add legend after clearing
         self.cumulative_ps = None  # Reset cumulative_ps before computation
         self.original_histograms = {}  # Reset original histograms
 

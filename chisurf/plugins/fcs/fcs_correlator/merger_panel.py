@@ -354,43 +354,24 @@ class _CorrPlot(QtWidgets.QWidget):
 
     AUTOFORM_REFRESH = True
 
-    _STYLES = {
-        "solid": QtCore.Qt.SolidLine,
-        "dash": QtCore.Qt.DashLine,
-        "dot": QtCore.Qt.DotLine,
-    }
-
     def __init__(self, model, source: str, title: str, *, legend: bool = True):
         super().__init__()
-        import pyqtgraph as pg
+        from chisurf.gui import chiplot as cp
 
         self._model = model
         self._source = source
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.plot = pg.PlotWidget()
-        self.plot.setLabel("bottom", "Correlation time (ms)")
-        self.plot.setLabel("left", "G")
-        self.plot.setTitle(title)
-        try:
-            self.plot.setLogMode(True, False)
-        except Exception:
-            pass
+        self.plot = cp.Plot(title=title)
+        self.plot.set_labels(bottom="Correlation time (ms)", left="G")
+        self.plot.set_log(x=True)
         if legend:
-            try:
-                self.plot.addLegend()
-            except Exception:
-                pass
-        try:
-            self.plot.getPlotItem().getViewBox().setMenuEnabled(False)
-        except Exception:
-            pass
+            self.plot.legend()
+        self.plot.set_menu_enabled(False)
         layout.addWidget(self.plot)
         self.refresh()
 
     def refresh(self) -> None:
-        import pyqtgraph as pg
-
         source = getattr(self._model, self._source, None)
         if not callable(source):
             return
@@ -400,12 +381,13 @@ class _CorrPlot(QtWidgets.QWidget):
             return
         self.plot.clear()
         for s in series:
-            pen = pg.mkPen(
-                s.get("color", "y"),
+            self.plot.line(
+                s.get("x", []), s.get("y", []),
+                pen=s.get("color", "y"),
                 width=int(s.get("width", 1)),
-                style=self._STYLES.get(s.get("style", "solid"), QtCore.Qt.SolidLine),
+                style=s.get("style", "solid"),
+                name=s.get("name", ""),
             )
-            self.plot.plot(s.get("x", []), s.get("y", []), pen=pen, name=s.get("name", ""))
 
 
 @register_section("merger_workspace")

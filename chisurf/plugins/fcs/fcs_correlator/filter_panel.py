@@ -418,33 +418,24 @@ class _FilterPlot(QtWidgets.QWidget):
 
     def __init__(self, model, source, title, *, log_y=False, x_label="", y_label=""):
         super().__init__()
-        import pyqtgraph as pg
+        from chisurf.gui import chiplot as cp
 
         self._model = model
         self._source = source
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.plot = pg.PlotWidget()
-        self.plot.setTitle(title)
+        self.plot = cp.Plot(title=title)
         if x_label:
-            self.plot.setLabel("bottom", x_label)
+            self.plot.set_labels(bottom=x_label)
         if y_label:
-            self.plot.setLabel("left", y_label)
+            self.plot.set_labels(left=y_label)
         if log_y:
-            try:
-                self.plot.setLogMode(False, True)
-            except Exception:
-                pass
-        try:
-            self.plot.getPlotItem().getViewBox().setMenuEnabled(False)
-        except Exception:
-            pass
+            self.plot.set_log(y=True)
+        self.plot.set_menu_enabled(False)
         layout.addWidget(self.plot)
         self.refresh()
 
     def refresh(self):
-        import pyqtgraph as pg
-
         src = getattr(self._model, self._source, None)
         if not callable(src):
             return
@@ -458,12 +449,12 @@ class _FilterPlot(QtWidgets.QWidget):
             x = np.asarray(s.get("x", []))
             y = np.asarray(s.get("y", []))
             if scatter:
-                self.plot.plot(
-                    x, y, pen=None, symbol="o", symbolSize=2,
-                    symbolBrush=s.get("color", "w"), symbolPen=None, name=s.get("name", ""),
+                self.plot.scatter(
+                    x, y, size=2, brush=s.get("color", "w"), pen=None,
+                    symbol="o", name=s.get("name", ""),
                 )
             else:
-                self.plot.plot(x, y, pen=pg.mkPen(s.get("color", "w"), width=1), name=s.get("name", ""))
+                self.plot.line(x, y, pen=s.get("color", "w"), width=1, name=s.get("name", ""))
 
 
 @register_section("filter_dt_plot")
@@ -480,24 +471,23 @@ class _FilterDtPlot(_FilterPlot):
 
     def refresh(self):
         super().refresh()
-        import pyqtgraph as pg
 
         if self._region is None:
-            self._region = pg.LinearRegionItem(
-                orientation="horizontal", brush=(80, 180, 255, 40),
+            self._region = self.plot.region(
+                (0.0, 1.0), orientation="horizontal",
+                brush=(80, 180, 255, 40), movable=True,
             )
-            self._region.sigRegionChangeFinished.connect(self._on_region)
-        # ``clear()`` in the base refresh removed the region; re-add and position
-        # it from the model (log-y axis => region values are log10).
-        self.plot.addItem(self._region)
+            self._region.on_change(self._on_region, final=True)
+        else:
+            # ``clear()`` in the base refresh detached the region; re-add it.
+            self.plot.add(self._region)
+        # Position it from the model (log-y axis => region values are log10).
+        # ``set_bounds`` blocks signals, so this does not re-enter ``_on_region``.
         lo = max(float(self._model.min_dmt), 1e-12)
         hi = max(float(self._model.max_dmt), lo * (1.0 + 1e-6))
-        self._region.blockSignals(True)
-        self._region.setRegion((np.log10(lo), np.log10(hi)))
-        self._region.blockSignals(False)
+        self._region.set_bounds(np.log10(lo), np.log10(hi))
 
-    def _on_region(self):
-        lo, hi = self._region.getRegion()
+    def _on_region(self, lo, hi):
         a, b = 10.0 ** lo, 10.0 ** hi
         self._model.min_dmt = float(min(a, b))
         self._model.max_dmt = float(max(a, b))

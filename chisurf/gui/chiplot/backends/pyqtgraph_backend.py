@@ -320,8 +320,18 @@ class _Region(_Item):
         return tuple(self._native.getRegion())
 
     def set_bounds(self, low: float, high: float) -> None:
-        """Move the region to new ``(low, high)`` edges."""
-        self._native.setRegion((low, high))
+        """Move the region to new ``(low, high)`` edges.
+
+        Programmatic moves block the native item's signals so an ``on_change``
+        callback (meant for user drags) is not re-entered by code updating the
+        region — the method-based-mutation contract that replaces the old manual
+        ``blockSignals`` dance at call sites.
+        """
+        blocked = self._native.blockSignals(True)
+        try:
+            self._native.setRegion((low, high))
+        finally:
+            self._native.blockSignals(blocked)
 
     def on_change(self, callback, *, final: bool = True) -> None:
         """Fire ``callback(low, high)`` while/after the region is dragged."""
@@ -338,8 +348,18 @@ class _Marker(_Item):
         return float(self._native.value())
 
     def set_value(self, value: float) -> None:
-        """Move the marker to a new position."""
-        self._native.setValue(float(value))
+        """Move the marker to a new position.
+
+        Programmatic moves block the native item's signals so an ``on_change``
+        callback (meant for user drags) is not re-entered by code updating the
+        marker — the method-based-mutation contract that replaces the old manual
+        ``blockSignals`` dance at call sites.
+        """
+        blocked = self._native.blockSignals(True)
+        try:
+            self._native.setValue(float(value))
+        finally:
+            self._native.blockSignals(blocked)
 
     def on_change(self, callback, *, final: bool = True) -> None:
         """Fire ``callback(pos)`` while/after the marker is dragged."""

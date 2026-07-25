@@ -430,6 +430,15 @@ class Plot(QtWidgets.QWidget):
         self._context_menu_enabled = bool(enabled)
         return self
 
+    def set_menu_enabled(self, enabled: bool) -> Plot:
+        """Enable/disable the backend's own right-click menu. Returns ``self``.
+
+        For the pyqtgraph backend this toggles the native viewbox/plot menu;
+        backends without one treat it as a no-op.
+        """
+        self._canvas.set_menu_enabled(bool(enabled))
+        return self
+
     def add_menu_action(self, label: str, callback) -> Plot:
         """Add a custom entry to the right-click menu. Returns ``self``.
 

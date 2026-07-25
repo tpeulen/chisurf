@@ -109,6 +109,22 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot Batch 10 — microtime-histogram wizard + FCS-correlator panels off
+  pyqtgraph (allow-list 49 → 45).** Migrated `plugins/tttr/microtime_histogram`
+  and `plugins/fcs/fcs_correlator/{correlator,filter,merger}_panel` onto the
+  native API. `merger_panel` dropped its `{solid,dash,dot}`→`Qt.PenStyle` table
+  for `plot.line(style="dash")`; `correlator_panel` (which used pyqtgraph only to
+  `intColor`-tag a series dict rendered by the still-passthrough AutoForm
+  `builtin.py` plot section) now emits `cp.int_color(...).as_tuple()`, a plain
+  RGBA both `cp.to_pen` and legacy `pg.mkPen` accept — decoupling it without
+  touching the renderer. Two native additions from real call sites:
+  `Plot.set_menu_enabled` (both filter/merger disabled the pyqtgraph viewbox menu)
+  and **signal-safe programmatic mutation** — `Region.set_bounds`/`Marker.set_value`
+  now block the native item's signals during the move, so `filter_panel`'s
+  per-refresh region repositioning no longer needs a manual `blockSignals` dance
+  nor re-enters its own `on_change`. New regression tests in
+  `test/gui/test_chiplot.py` cover all of it. See [PRD-64](prds/prd-64.md).
+
 * **chiplot Batch 9 — migrated the two TTTR curve-viewer tools off pyqtgraph
   (allow-list 51 → 49).** Ported `plugins/tttr/tttr_histogram` and
   `plugins/tttr/tttr_correlate` from `pg.PlotWidget` + `getPlotItem()` +
