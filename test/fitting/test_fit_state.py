@@ -340,3 +340,77 @@ def test_pda_gaussian_distances_length_preserved_via_model_state():
 
     m2.set_state(state)
     assert len(m2.distances) == n1
+
+
+def test_fit_state_preserves_error_estimates():
+    """Fitted uncertainties must survive a save/load round trip.
+
+    The uncertainty is part of the result, not a display detail: without it a
+    reloaded project shows parameters with no error bars and the fit has to be
+    re-run to recover them. This affects both the ``.csp`` path and MMFDB
+    archival, since both serialize through ``fit_to_state``.
+    """
+    fit = _make_dummy_fit()
+    fit.model.p0.error_estimate = 0.125
+    fit.model.p1.error_estimate = 0.0625
+
+    state = fit_to_state(fit)
+    parameter_states = state["parameters"].values()
+    assert all("error_estimate" in p for p in parameter_states)
+
+    # Wipe, then restore from the serialized state.
+    fit.model.p0.error_estimate = 0.0
+    fit.model.p1.error_estimate = 0.0
+    apply_state_to_fit(fit, state)
+
+    assert fit.model.p0.error_estimate == 0.125
+    assert fit.model.p1.error_estimate == 0.0625
+
+
+def test_fit_state_without_error_estimates_still_loads():
+    """Projects saved before errors were serialized must keep loading."""
+    fit = _make_dummy_fit()
+    fit.model.p0.error_estimate = 0.5
+    state = fit_to_state(fit)
+
+    legacy = {
+        uid: {k: v for k, v in p.items() if k != "error_estimate"}
+        for uid, p in state["parameters"].items()
+    }
+    apply_state_to_fit(fit, {**state, "parameters": legacy})
+
+    # No key means "not recorded"; the live value is simply left alone.
+    assert fit.model.p0.error_estimate == 0.5
+
+
+def test_fit_state_error_estimate_survives_a_real_fit():
+    """The value written is the one a real fit actually produced.
+
+    ``_make_dummy_fit`` has no uncertainties and so no weighted residuals to
+    minimise; this builds a fittable curve instead, so the round trip is
+    checked against genuine covariance-derived errors rather than values
+    assigned by hand.
+    """
+    from chisurf.core.data import DataGroup
+    from chisurf.core.fitting.fit import FitGroup
+
+    rng = np.random.default_rng(1)
+    x = np.linspace(0.0, 5.0, 64)
+    sigma = 0.05
+    y = 1.0 + 2.0 * x + rng.normal(0.0, sigma, x.size)
+    data = DataCurve(x=x, y=y, ey=np.ones_like(y) * sigma)
+    fit = FitGroup(data=DataGroup([data]), model_class=DummyLinearModel)
+    fit.fit_range = 0, len(fit.model.y)
+    fit.run()
+    fit.update_error_estimates()
+
+    expected = {p.name: float(p.error_estimate) for p in fit.model.parameters}
+    assert any(v > 0.0 for v in expected.values()), "fit produced no error estimates"
+
+    state = fit_to_state(fit)
+    for p in fit.model.parameters:
+        p.error_estimate = 0.0
+    apply_state_to_fit(fit, state)
+
+    for p in fit.model.parameters:
+        assert float(p.error_estimate) == expected[p.name]

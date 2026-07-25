@@ -56,10 +56,19 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
         uid = str(getattr(p, "unique_identifier", "")) or str(uuid.uuid4())
         uid_to_obj[uid] = p
 
+        # The fitted uncertainty is part of the result, not a derived display
+        # value: without it a reloaded project shows parameters with no error
+        # bars and the user has to re-run the fit to get them back.
+        try:
+            error_estimate = float(getattr(p, "error_estimate", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            error_estimate = 0.0
+
         state = {
             "uid": uid,
             "name": name,
             "value": value,
+            "error_estimate": error_estimate,
             "fixed": bool(getattr(p, "fixed", False)),
             "bounds": [lb, ub],
             "bounds_on": bool(getattr(p, "bounds_on", False)),
@@ -223,6 +232,14 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
                 p.value = float(p_state["value"])
             except Exception:
                 # Ignore value assignment errors; model may compute value itself
+                pass
+
+        # Projects saved before error estimates were serialized simply have no
+        # key here, and keep whatever the freshly built model starts with.
+        if "error_estimate" in p_state:
+            try:
+                p.error_estimate = float(p_state["error_estimate"])
+            except Exception:
                 pass
 
         if "fixed" in p_state:
