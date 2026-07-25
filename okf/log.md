@@ -2,6 +2,28 @@
 
 ## 2026-07-25
 
+* **chimol: PyMOL's main menu bar.** Completes the GUI pass. PyMOL's bar is
+  File / Edit / Build / Movie / Display / Setting / Scene / Mouse / Wizard /
+  Plugin / Help (`pymol/_gui.py:get_menudata`), and a PyMOL user looks for things
+  by that grouping, so the menus chimol can fill keep PyMOL's name, position and
+  wording.
+  **Whole menus are omitted rather than shown empty** — Build, Movie, Scene,
+  Wizard and Plugin have no chimol equivalent at all, and an empty menu on the
+  bar is a promise with nothing behind it. That is the opposite call from the
+  per-object menus, where individual entries stay visible and disabled so the
+  menu keeps PyMOL's *shape*; a top-level menu has no shape to preserve. Both
+  rules are pinned by tests, as is the reason attached to each omission.
+  Display and Setting are wired to the settings layer built earlier, so the bar
+  is where the ambient occlusion, cartoon, rendering and perspective knobs became
+  reachable without typing: `Setting > Ambient Occlusion > Strong` issues
+  `set occlusion.darkness, 0.9`. Every entry runs through the command layer and
+  is echoed, so clicking teaches the command.
+  Three tests keep it honest: every wired verb must be a registered chimol
+  command, every `set <name>` must name a setting that resolves, and every
+  disabled entry must carry a reason. A fourth re-reads PyMOL's own bar from its
+  source so the reference list cannot drift.
+  Suite: 312 passed, 1 skipped (9 new).
+
 * **chimol: the object menus are per-molecule, and the panel looks like
   PyMOL's.** The first cut put one shared A/S/H/L/C row above the list, acting on
   whatever was selected. That is wrong in a way that matters: in PyMOL **the

@@ -70,6 +70,7 @@ from .sequence_dock import SequenceDock
 from .hierarchy_panel import HierarchyDock
 from .rmf_panel import RmfPanel
 from .config_editor import MolViewConfigEditor
+from .menu_bar import build_menu_bar
 from ..cmd import cmd as _cmd
 
 try:
@@ -398,6 +399,9 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             self.command_panel.commandEntered.connect(self._on_command_entered)
         except Exception:
             pass
+
+        # After the command layer is wired: every menu entry runs through it.
+        self._install_menu_bar()
 
         self._update_sequence_view()
         self._update_system_info()
@@ -1433,6 +1437,19 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
     # ------------------------------------------------------------------
     # Object management helpers
     # ------------------------------------------------------------------
+
+    def _install_menu_bar(self) -> None:
+        """Put PyMOL's menu bar on the window, as far as chimol can honour it."""
+        try:
+            build_menu_bar(
+                self,
+                self._run_object_menu_command,
+                special={"config": self.on_open_display_config},
+            )
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "Could not build the menu bar", exc_info=True
+            )
 
     def _run_object_menu_command(self, line: str) -> None:
         """Run a command from an object menu, echoing it like a typed one.
