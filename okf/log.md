@@ -2,6 +2,17 @@
 
 ## 2026-07-25
 
+
+* **chiplot Batch 26 — ProteinMC trace + FPS network off pyqtgraph (allow-list
+  25 → 24).** Migrated `gui/plots/proteinMC.py` (2 widgets): the 2×2
+  RMSD/dRMSD/Energy/FRET trace view (curves + per-panel frame `vline`) and the
+  FPS distance-network diagram (aspect-locked dark canvas, agreement-coloured
+  edges recoloured via `Curve.set_pen`, node `scatter` + `text` labels). Added a
+  clean `Plot.set_axis_visible(left=, bottom=, ...)` verb (replaces
+  `.native.hideAxis`); dropped `getPlotItem()`, `setRange`→`set_xlim`/`set_ylim`.
+  New `test_set_axis_visible_returns_self`; both widgets before/after
+  screenshot-verified. See [PRD-64](prds/prd-64.md).
+
 * **The FCS count rate is part of the fit, and two readers computed it wrong.**
   A correlation reader derives `correlation_amplitude_weights` from the
   acquisition time and the mean count rate, so an error there reweights every
