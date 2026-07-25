@@ -2,16 +2,123 @@
 
 ## 2026-07-25
 
+* **Diffusion/temperature physics centralised out of the FCS plugin, and
+  beam-waist calibration built on it (MIA `Calibration` port).** The
+  temperature–viscosity–Stokes-Einstein relations lived in
+  `plugins/fcs/fcs_calculator/core/algorithms.py`, where the imaging side could
+  not reach them — so image-correlation calibration would have grown a second
+  copy of "what is D of this dye at 23 °C". New
+  `chisurf/core/fluorescence/diffusion.py` holds them once: `water_viscosity`
+  (Vogel form, the same one the FCS calculator already used),
+  `stokes_einstein_diffusion`/`_radius`, `diffusion_at_temperature`,
+  `effective_volume`/`diffusion_from_volume` (FCS focus calibration),
+  `lateral_waist`/`diffusion_time` (`w = sqrt(4Dτ)`, the imaging form of the
+  same statement), `combined_waist` for a cross-correlation between two
+  differently-focused channels, and `reference_diffusion` joining it to the
+  MMFDB-backed dye table. A test asserts the centralised version reproduces the
+  plugin's numbers to 1e-12, so re-pointing the plugin at it cannot shift any
+  existing FCS result. **The `algorithms.py` shim is deliberately not written
+  yet** — that file is being edited by the in-flight dye-table extraction, so
+  the migration waits for it rather than racing it. **Calibration**
+  (`core/experiments/ics/calibration.py`): image a reference dye, fix `D` at its
+  literature value corrected to the bench temperature, and fit for `w_r`/`w_z`
+  instead; `cross_channel_calibration` combines two channels as
+  `sqrt((w_a²+w_b²)/2)`. Recovers the waists exactly from a synthetic map
+  (χ² ≈ 2e-34) and to ~2 % under 1 % noise. **A framing I had wrong and the
+  tests caught:** I assumed `D` and `w_r` were degenerate and that a wrong
+  reference would simply rescale the waist as `sqrt(D)`. They are degenerate
+  only when a *single* lag time is sampled. A raster scan spans microseconds
+  (fast axis) to milliseconds (slow axis), which separates them — so a 50 %
+  wrong reference does **not** rescale the waist, it fails to fit (χ² 2e-34 →
+  4e-4). That makes the calibration self-checking: a large residual means the
+  dye, the temperature or the scan timing is wrong. The module and tests now say
+  this instead of the degeneracy story. Tests: `test/core/test_diffusion.py`
+  (19) and `test/experiments/test_ics_calibration.py` (13), the last ending with
+  the end-to-end point — calibrate on a dye, then recover an unknown sample's
+  `D` with the waists pinned. See [image-correlation
+  theory](/references/image-correlation-theory.md).
 
-* **`pyqtgraph.dockarea` deprecated repo-wide → chisurf dock impl (PRD-64).**
-  Removed every `pyqtgraph.dockarea` `Dock`/`DockArea` usage in favour of
-  `chisurf.gui.widgets.dock_area.dock_area`: `plots/parameter_scan` +
-  `plots/av_plot` (single panel) → `DockArea.addTab`; `plots/lineplot`'s vertical
-  residuals/a-corr/data stack → `DockSplitter` (titles hidden by default, so it's
-  a pixel-faithful match). New `test_no_pyqtgraph_dockarea` guard forbids
-  reintroduction anywhere. Before/after screenshots confirmed identical layouts.
-  Those files still import pyqtgraph for their plots / `pyqtgraph.opengl`, so they
-  stay allow-listed — only the dock system moved. See [PRD-64](prds/prd-64.md).
+* **Dye properties live in MMFDB; FCS looks them up there.**
+  `core/fluorescence/dyes.py`, `plugins/fcs/fcs_calculator`, MMFDB
+  `queries/probes.py`. The reference diffusion coefficients used for confocal
+  calibration were a 16-entry Python dict inlined in the FCS calculator
+  (`DYE_DATA` in `core/algorithms.py`), imported by both the calculator wizard
+  and the dye-volume FCS model — a private table that no curation surface could
+  reach and that duplicated species MMFDB already catalogues with their spectra.
+  Diffusion is a property of the species, so it now lives on the MMFDB probe
+  next to quantum yield and extinction coefficient: the `d25` entry in
+  `optical_properties` (µm²/s at 25 °C in water, citations as JSON in
+  `details`), seeded from `data/reference_diffusion.json` by
+  `import_reference_diffusion` and read back by `get_diffusion_reference`
+  (RPCs `fluorophores.import_diffusion_reference` / `…diffusion_reference`).
+  The seed attaches to an existing catalogue probe when the name or an alias
+  matches — on the working database 8 of 16 species bound to probes that already
+  carried spectra (`Cy5™`, `Alexa Fluor 647™`, `Fluorescein`, …) instead of
+  creating look-alikes. ChiSurf reads it through one seam,
+  `chisurf.core.fluorescence.dyes` (cached, alias-tolerant so sessions saved
+  under the old labels still resolve, falling back to the shipped MMFDB table
+  when no database is reachable); `DYE_DATA` is gone. The value is now curated
+  in the MMFDB admin tool (`D₂₅` column + detail field) and reachable headless
+  via `csg_fcs_calculator --list-dyes` / `--dye NAME` and the
+  `fcs_calculator.reference_dyes` RPC.
+  Screenshots caught a **pre-existing** bug in the same panel: `1/N` was capped
+  at 1.0 in the view-spec, so it displayed 1.000 whenever N < 1 (N = 0.54 →
+  1/N shown as 1.0 instead of 1.85). Bound raised.
+  Tests: `test/fluorescence/test_reference_dyes.py` (6) and MMFDB
+  `tests/test_reference_diffusion.py` (6), plus the calculator suite (5) and the
+  FCS model-editor/resolve suites (21) green.
+
+* **Bead detection picks regions, not bright pixels.**
+  `plugins/microscopy/psf_determination`. The detector thresholded each sampled
+  z-slice and then walked every bright pixel brightest-first with a greedy
+  minimum-distance filter — thousands of pixels, quadratic in the accepted set,
+  and with two failure modes it could not see: a single hot camera pixel is
+  brighter than any bead and became one, and a real bead's candidate landed on
+  its brightest pixel rather than at its centre.
+  It now labels the connected bright pixels and measures them with
+  `regionprops`: candidates are the spots' intensity-weighted centres, ordered
+  by peak intensity, and `min_area` (default 2) is what separates a bead —
+  several pixels wide, because it is diffraction-limited — from a defect that
+  covers exactly one. The loop runs over dozens of regions instead of thousands
+  of pixels. Threaded through settings, RPC params, CLI (`--min-area`) and the
+  AutoForm panel; the plugin catalogue was regenerated. Test pins both halves:
+  a hot pixel added to the synthetic stack is ignored, every candidate sits on
+  the bead centre, and `min_area=1` brings the defect back.
+
+* **Dye properties and spectra now come from MMFDB, reached through dye
+  selection.** The quantum yields and the Förster radius are properties of the
+  dye pair, not of the measurement, yet they were typed in per analysis — so the
+  same pair could acquire a different R0 in every project.
+  `chisurf/core/fluorescence/fret/dyes.py` reads the curated fluorophore data and
+  computes what follows: R0 from the donor emission × acceptor absorption × ε_max
+  overlap, plus Φ_D/Φ_A and τ_D(0) when curated. Validated against the real
+  database — EGFP→mCherry 52.4 Å, ATTO 550→ATTO 643 65.0 Å, both matching the
+  literature. Three things the real data forced: the catalogue stores most shapes
+  as *excitation* rather than absorption (identical shape for a dye), so
+  absorption falls back to it; the stored curve is a normalized shape that must be
+  scaled by `ext_coeff` before it is ε(λ); and the catalogue is **incomplete**
+  (725 of 2157 probes carry ε, 672 carry QY, and there are *no* stored Förster
+  radii at all), so every quantity carries provenance and a gap leaves the user's
+  value untouched instead of defaulting to something plausible. In the tool this
+  is a *Dyes (database)* panel with κ² and the refractive index next to it; the
+  *setup* selector supplies the detection side, its windows both helping the
+  burst-table columns map themselves and naming the detectors for the optics
+  prior. **Also fixed: `np.trapz` was removed in NumPy 2**, so `fret/forster.py`,
+  `tcspc/phasor.py` and the light-path `crosstalk.py` all raised — R0-from-spectra
+  and the entire optical propagation were dead.
+* **General equation editor + safe expression engine.** Added
+  `chisurf/core/expressions.py` — a Qt-free, policy-driven AST-whitelist
+  expression engine (`validate_expression`/`compile_expression`/`evaluate_expression`,
+  `DEFAULT_POLICY` rich NumPy library, `NDX_POLICY` quoted-name burst convention),
+  replacing ad-hoc `eval`/`re.Scanner` parsing — and
+  `chisurf/gui/widgets/equation_editor.py::EquationTableEditor`, a general validated
+  `Output | Expression | ✓/✗` table with a names/functions reference, optional LaTeX
+  preview, `applied` signal, pluggable validator, and the `CodeEditor` surface. Exposed
+  as the `equation_editor` AutoForm section. ndXplorer's `EquationEditor` now delegates
+  to this widget when ChiSurf is importable (injecting its own `equation_graph` validator
+  so ✓/✗ matches its compute engine), with a local-table fallback otherwise. Tests:
+  `test/core/test_expressions.py`, `test/gui/test_equation_editor.py`. See
+  [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 
 * **"Loading takes minutes" was not slowness, and not tttrlib.** A ConfoCor3
   `.fcs` never reaches tttrlib — the format is text. Two independent defects
