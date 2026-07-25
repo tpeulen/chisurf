@@ -109,6 +109,33 @@
   Suite: 214 passed, 1 skipped (was 155) — 39 new settings tests, 18 view-state,
   2 for `dss`.
 
+* **PDA kinetic consistency check (PRD-50 scope item 5) + 29 dead module
+  docstrings.** New `chisurf/core/models/pda/consistency.py`. A PDA fit answers
+  "which parameters fit best"; it never answers "could this scheme have produced
+  the histogram at all". χ²ᵣ cannot answer the second question either, because
+  the 1D E-histogram bins are projections of a sparse S1S2 matrix and so are
+  neither independent nor Gaussian. `kinetic_consistency_check` answers it by
+  parametric bootstrap — `resample_s1s2` draws bursts from the *fitted*
+  spectrum, each resample is scored with the same Poisson statistic the fit
+  minimises, and the measured score is located in that empirical distribution,
+  so the p-value is calibrated without any distributional assumption. On the
+  dynamic two-state model the correct scheme gives p = 0.46 (measured 78.7
+  against a resample median of 76.7) and the static one p = 1/101, the floor.
+  Writing the resampler pinned a convention the engine API does not state:
+  **`pF` is the *signal* photon distribution, with background added on top**
+  rather than carved out of it (engine mean burst size =
+  `mean(pF) + bg1 + bg2`). My first version carved it out and sat at a
+  total-variation distance of 0.29 from the engine no matter how many bursts
+  were drawn — so the test asserts `1/sqrt(n)` convergence, which catches a
+  wrong convention where a fixed tolerance would not.
+  Separately: 29 modules across `core/models/{pda,deer,rics}`,
+  `core/experiments/deer`, `core/project`, `gui/plots`, `gui/widgets/node_editor`
+  and `gui/widgets/ribbon` put `from __future__ import annotations` *above* their
+  module docstring, which makes the string a no-op expression — `__doc__` was
+  `None`, so `help()` and Sphinx autodoc saw nothing. Moved the docstring to the
+  top in all of them (AST-verified equivalent apart from the moved statement);
+  this also clears 143 `E402` and 10 `I001` ruff findings.
+
 * **Concept pages: worked numbers and failure modes for the five thinnest.**
   Continued the docs refinement into `docs/concepts/`, taking the new bottom five
   (`fret`, `burst_2cde`, `filtered_fcs`, `pch_fida`, `anisotropy`) from
@@ -215,6 +242,18 @@
   confidence), which is what caught the orientation error. Also made
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
+
+* **chiplot Batch 11 — decay/anisotropy tools off pyqtgraph (allow-list 45 → 42).**
+  Migrated `plugins/fcs/fcs_lfcs_sim`, `plugins/fluorescence_decay/tr_anisotropy`
+  (IRF background-region selector) and `plugins/vv_vh_anisotropy` (dual decay +
+  r(t) plots with an r∞ region) onto the native API. Standard
+  `PlotWidget`→`cp.Plot` + `line`/`set_log`/`set_ylim`/`legend`/`grid`/`region`
+  verbs; both region tools drop their manual `blockSignals` dance now that
+  `set_bounds` is signal-safe, and their callbacks take `(lo, hi)` directly.
+  `fcs_lfcs_sim` keeps one flagged passthrough (`plot.native.getAxis(...)`
+  `.enableAutoSIPrefix(False)`) — an axis cosmetic chiplot has no native verb for
+  yet. Import-clean test extended; vv_vh_anisotropy constructed headless with its
+  full redraw + region-drag path exercised. See [PRD-64](prds/prd-64.md).
 
 * **chiplot Batch 10 — microtime-histogram wizard + FCS-correlator panels off
   pyqtgraph (allow-list 49 → 45).** Migrated `plugins/tttr/microtime_histogram`

@@ -134,6 +134,27 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   above. See [assessment BUG-05](/specs/assessment.md#bug-05) for why the convention
   was determined rather than guessed.
 
+- **Kinetic consistency check (2026-07-25, scope item 5).** New
+  `chisurf/core/models/pda/consistency.py`. A PDA fit only ever answers "which
+  parameters fit best", never "could this scheme have produced the histogram at
+  all" — and χ²ᵣ cannot answer the second question either, because the 1D
+  E-histogram bins are projections of a sparse S1S2 matrix and so are neither
+  independent nor Gaussian. `kinetic_consistency_check` answers it by
+  **parametric bootstrap**: `resample_s1s2` draws synthetic bursts from the
+  *fitted* spectrum, each resample is scored with the same Poisson statistic the
+  fit minimises, and the measured score is placed in that empirical
+  distribution. The resulting p-value needs no distributional assumption because
+  the reference distribution is simulated. On the dynamic model above: the
+  correct scheme gives p = 0.46 (measured 78.7 against a resample median of
+  76.7) and the static one p = 1/101, the bootstrap floor.
+  Building the resampler pinned down a convention that is not obvious from the
+  engine API: **`pF` is the *signal* photon-number distribution and background
+  is added on top of it**, not carved out — the engine's mean burst size is
+  `mean(pF) + background_ch1 + background_ch2`. Getting it backwards leaves a
+  total-variation discrepancy of ~0.29 against the engine that no amount of
+  sampling removes, so the test asserts `1/sqrt(n)` convergence rather than a
+  single tolerance.
+
 **Follow-ups (not yet done):**
 - GUI button wiring the live light-path plugin session to a selected PDA model
   (the pure bridge API is done and tested; only the one-click GUI hook remains).
@@ -157,7 +178,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
    with Bayesian priors — after (1)–(3) land.
 5. **Kinetic consistency check.** Resample burst data from a fitted kinetic scheme and
    compare to the measured histogram (the incumbent's "consistency check"); reuses the
-   dynamic-PDA simulator.
+   dynamic-PDA simulator. *(Done — `consistency.py`, parametric bootstrap p-value.)*
 
 # Design
 
