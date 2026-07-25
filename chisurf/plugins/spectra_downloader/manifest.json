@@ -8,7 +8,7 @@
   "icon": "🌈",
   "entrypoints": {
     "gui": "chisurf.plugins.spectra_downloader:get_db",
-    "cli": "chisurf.plugins.spectra_downloader.cli:cli"
+    "cli": "spectra-download=chisurf.plugins.spectra_downloader.cli:cli"
   },
   "experimental": true
 }

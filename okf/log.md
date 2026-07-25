@@ -2,6 +2,318 @@
 
 ## 2026-07-25
 
+* **Two more things a run cannot change: parameter values and class
+  properties.** Continuing down the same seam. (1) Most of a model's parameters
+  — instrument response, detection geometry, background, everything not being
+  optimised — hold the same value for an entire run and are re-read on every
+  evaluation. Inside a freeze a read is now memoised on the parameter and
+  dropped by the value setter, which is the *single* point at which a value
+  changes: models write through `Parameter.value`, never into the backing port
+  (verified), and these models have no computed chinet-node ports. Linked
+  parameters are deliberately never cached — a follower is written through its
+  *port* when its master moves, which never reaches the follower object, so a
+  cached follower would keep answering the old value; there is a test for
+  exactly that. (2) `Base.__setattr__` walked the whole MRO via
+  `getattr(self.__class__, key, None)` on **every** attribute write, and for a
+  key that is not a class attribute — ordinary instance state, i.e. most writes
+  — that walk runs to completion before failing. Memoised per
+  `(class, attribute)`, the same fix already applied to
+  `ParameterGroup.__setattr__`; verified against HEAD that the three `test/core`
+  failures it touches are pre-existing, since this one sits on the write path of
+  every `Base` subclass in the program.
+  Cumulative: a global objective sweep is **1.46 s → 0.45 s (3.2×)** with
+  3.84 M → 0.95 M calls, a decay model evaluation is **1.46–1.49×** faster under
+  a freeze with byte-identical residuals, and a two-exponential TCSPC fit runs in
+  ~37 ms. Further gains now need the model layer to read its parameters into
+  vectors once rather than one attribute at a time — invasive across many models
+  for a smaller return, so stopping here.
+
+* **Recovered nine log entries dropped by a stale-base commit.** `a87fa24a`
+  rewrote `okf/log.md` from a copy that predated nine entries (two chimol, one
+  agent, six fitting/sampling), removing them from history. They are restored
+  verbatim below, in their original relative order. The log is a shared,
+  append-mostly file in a tree several instances work at once: rebuild the index
+  blob from `git show HEAD:okf/log.md` immediately before staging, never from a
+  copy read earlier in a session.
+
+* **chimol: the "unattributed +0.700 A" was not padding -- `zoom` centres on the
+  centroid.** Closed, and the earlier inference was wrong twice over.
+  It looked like a constant pad over the reported extent. It is not constant: it
+  is **+0.700 A on globular 148L but +11.65 A on the long coiled coil of 1DG3**,
+  and exactly **zero** on symmetric pseudoatom pairs at *every* van-der-Waals
+  radius -- so the "vdW-related" reading from the earlier session was also wrong,
+  since a `vdw=5` pair shows no residual at all.
+  **The cause is the `weighted` flag** `ExecutiveWindowZoom` passes to
+  `ExecutiveGetExtent`. With it set, PyMOL averages the atom coordinates and
+  rebuilds the box **symmetric about that centroid**::
+
+      op2.v1 /= op2.i1;                  // centroid
+      f1 = op2.v1[a] - op.v1[a];  f2 = op.v2[a] - op2.v1[a];
+      fmx = max(f1, f2);
+      op.v1[a] = op2.v1[a] - fmx;  op.v2[a] = op2.v1[a] + fmx;
+
+  So the framing is centred on where the atoms *are*, not on the middle of their
+  bounding box, and the box grows to stay symmetric about it. A symmetric object
+  is unaffected -- which is exactly why the pseudoatom probes said zero and sent
+  the earlier diagnosis off course. `cmd.get_extent` reports the *unweighted*
+  box, which is what made the two disagree.
+  Both the radius **and the zoom centre** were wrong in chimol. Now
+  `view_state.framing_centre` returns the centroid and `framing_radius` measures
+  the centroid-symmetric half-width. Against PyMOL: 148L **24.4661 vs 24.4662**,
+  1DG3 **79.4825 vs 79.4825**, 148L `complete` **30.4871 vs 30.487** -- exact,
+  where before 1DG3 was off by 11.6 A.
+  6 new tests, including the lopsided-mass case that makes the rule visible.
+  Suite: 374 passed, 1 skipped.
+
+
+* **chimol: cast shadows in the interactive viewport.** Ambient occlusion says
+  how *enclosed* a point is; a cast shadow says whether anything stands between
+  it and the light. They are different cues, and PyMOL has the second only when
+  raytracing -- so this is the live view going further rather than matching.
+  `geometry/ambient.py:directional_occlusion` casts a ray from each vertex toward
+  the light and asks every nearby sphere how close it comes to that ray: one the
+  ray passes through blocks fully, one it grazes blocks partly, which gives a
+  soft edge instead of the stair-step a shadow map would show at this scale.
+  Occluders behind the vertex, or that it sits inside, are skipped. Baked per
+  rebuild like the ambient term, so it costs nothing per frame -- 20k vertices
+  against 4700 atoms in **0.175 s**, and the whole 148L cartoon rebuild goes
+  0.48 s -> 0.64 s.
+  **The light is deliberately off-axis.** A headlight casts almost nothing the
+  camera can see, so the default shadow direction is PyMOL's own `light`
+  (-0.4, -0.4, -1) negated, since that setting is the direction light *travels*
+  while the shadow ray runs toward the source. The shadow is also folded into the
+  occlusion channel the GL shader damps its non-surface lighting by, so a
+  shadowed crevice does not get its ambient and rim light handed back.
+  Effect on a cartoon is a subtle depth cue (148L lit-pixel contrast 34.5 ->
+  35.7); on space-filling, where a sphere actually blocks a ray, it is much
+  stronger. Tunables under `occlusion.shadow_*`.
+  10 new tests. Suite: 369 passed, 1 skipped.
+
+
+* **The agent can now produce a decay fit that is actually right, and knows
+  when it has not.** The harness landed the day before could drive the
+  session; it could not do fluorescence. On the sample donor decay a language
+  model reached `chi2r = 12.8`, reported it as a result, and stopped — because
+  nothing in the tool payload said otherwise. Three additions, in
+  `chisurf/core/agent/tools/decay.py`:
+  **The physics knobs as tools.** `set_irf` attaches an instrument-response
+  measurement to a decay fit (the measured decay is the true decay convolved
+  with the instrument response; fitting without it inflates the lifetimes),
+  and `set_components` sets how many exponentials the model has. On the sample
+  decay these take the reduced chi-square 8.5 (no IRF) → 12.8 (IRF, one
+  lifetime) → **1.37** (two) → **1.03** (three, Durbin-Watson 2.01). Component
+  groups are discovered from the model (an attribute supporting
+  `append`/`pop`/`len`), so this is not TCSPC-specific.
+  **A verdict in every result.** `assess_fit` classifies a fit `good` /
+  `acceptable` / `poor` and names the single most likely fix — no IRF, too few
+  components, or a suspect fit range — and `run_fit`, `fit_report` and
+  `auto_fit_decay` all carry it. This is the second time the same lesson has
+  paid: guidance that lives only in the system prompt is ignored, guidance in
+  the tool result is acted on. With the verdict attached, the same model that
+  stopped at 12.8 attaches the IRF, grows the model to three components and
+  lands at 1.03 unprompted. `load_data` likewise flags IRF-looking datasets so
+  they are used as references instead of being fitted as samples — the live
+  test that asserted "four files, four fits" now asserts that **no IRF is
+  fitted**, because that is the better behaviour.
+  **`auto_fit_decay`** packages the protocol into one call (attach the IRF,
+  add components until chi-square stops improving by more than 2 %, stop early
+  once it matches the noise) and returns the trace. The manual route costs
+  ~10 model turns and had been overrunning a 12-step budget.
+  Also new: `fit_report` (chi2r, degrees of freedom, Durbin-Watson, residual
+  statistics, IRF presence, component counts, parameters with uncertainties)
+  and `plot_fit`, which writes a PNG of data + fit on a log axis with the
+  weighted residuals underneath — the one artefact a user can judge at a
+  glance. 21 tools total.
+  **Fixed en route**: `chisurf.macros.model.change_irf` attached the IRF and
+  then wrote to `convolve.lineEdit` unconditionally — a *widget* attribute —
+  so it raised `AttributeError` for every Qt-free model and for every headless
+  caller. The presentation write is now guarded, as it already was in
+  `unload_irf`.
+  Tests: `test/agent/test_decay_tools.py` (24), including the headline
+  "IRF + a second component turn chi2r 8.5 into < 2" and the assessment
+  ladder; live suite extended with an end-to-end "fit this decay properly"
+  that asserts the model reaches a `good`/`acceptable` verdict on its own.
+  98 non-live agent tests, 47 panel tests, 5 live tests — all green.
+
+
+* **Linking reduces the dimension and makes sampling *harder* — so collapse it
+  instead (PRD-69).** Following the component decomposition to its conclusion:
+  the *coupled* case. Linking a parameter across datasets removes free
+  parameters, so the fit is genuinely smaller — and measured on six datasets it
+  took the dimension 12 → 7 and cost **~50×** in effective samples per model
+  evaluation, with the shared parameter's autocorrelation time going 1 → 20.
+  Dimension is the wrong difficulty measure; coupling is, and the factor graph
+  already reports it (components, separator, treewidth). `sample_marginal_shared`
+  (`method='collapsed'`) fixes it: at fixed shared parameters the datasets are
+  conditionally independent, so each one's *private* parameters are profiled and
+  integrated out by Laplace, leaving a target over the separator alone — one to
+  three dimensions however many datasets there are. Privates are then drawn from
+  their conditional Gaussian at each recorded state, so the output is still a
+  full joint (Rao-Blackwellised) sample. **Exact when the private parameters
+  enter linearly**, which covers amplitudes, offsets, scatter fractions and
+  scaling factors — most nuisance parameters in decay and FCS models.
+  The profile must be restricted to each local model's *private positions*: a
+  link master lives on one of the datasets, so optimising that model's whole free
+  list re-optimises the shared parameter and undoes every proposal. The first
+  implementation did exactly that — acceptance 1.000 and the chain diffused to
+  −4.6e7 — which is why the conditional curvature is now built from the Jacobian
+  of the *restricted* residuals rather than from `Fit.covariance_matrix` (the
+  marginal covariance over everything the local model varies). Measured with
+  three private parameters per dataset (25 dims): `collapsed` τ(shared) 4.9 /
+  minESS 411 / **1.154** ESS per 1000 evaluations against `blocked` 589 / 3.4 /
+  0.045 — 26×. Note the other column too: `blocked` reported the shared parameter
+  as 1.25069 ± 0.00682 against `collapsed`'s 1.24845 ± 0.03857, an error bar
+  **5.6× too small** from a chain with an effective sample size of 3.4 — a
+  confidently wrong answer that only the ESS diagnostic exposes. With a *single*
+  private parameter per dataset it is a wash (3–4× the ESS per draw for ~3.5× the
+  evaluations), so `blocked` stays right for that case and this is reported as
+  such rather than sold as a universal win. 8 tests.
+
+
+* **A finished sampling job is not a trustworthy one — now it says which
+  (PRD-69).** All of PRD-69's machinery was reachable only from Python. The GUI
+  assembled `optimization.sampling` into a `kw` dict and then dropped it, so the
+  configured backend never left the widget; the server ran `sample_fit` in a
+  thread and discarded its return value, so `fit.sample.status` reported
+  `completed` for a chain that never left its starting point exactly as for one
+  that explored the posterior; and nothing polled the job at all, so even a
+  *failed* run was invisible. `fit.sample.start` now merges its keyword arguments
+  over the settings (making `method` and `global_posterior` per-job selectable)
+  and keeps the convergence report; `fit.sample.status` carries `converged`,
+  `warnings` and the full `diagnostics` alongside `status`/`progress`. The fit
+  controller forwards the configured backend and polls the job, logging the
+  verdict — the warnings when the chain is unusable, a one-line all-clear
+  otherwise. `optimization.sampling.method` now defaults to `blocked`, since it
+  beat the previous default ~2.5x and the old `mcmc` walker ~160x on a collinear
+  posterior. 4 headless tests over the service layer, including one asserting
+  that a deliberately frozen chain completes *and* reports `converged: False`.
+  PRD-68 and PRD-69 are done.
+
+
+* **The model evaluation was 6 % of an objective evaluation; the rest was
+  bookkeeping.** Profiling a global-fit sweep: 2000 evaluations over 12 datasets
+  took 1.46 s, of which the actual model `eval` was 0.083 s. The rest went on
+  re-deriving, thousands of times per second, things that **cannot change during
+  a run** — 210 108 `is_linked` calls came from rebuilding the free-parameter
+  list, which costs three attribute reads per parameter with two of them
+  crossing into the backing chinet port. Now **0.53 s (2.8×)** and 3.84 M → 1.15 M
+  calls, with the model evaluation the top cost as it should be.
+  The main lever is `factorgraph.frozen_structure(...)`: nothing about a fit's
+  structure changes while it is optimised or sampled — that is what makes an
+  objective a function of the *values* alone — so the free-parameter list, names,
+  bounds and `n_free` are resolved once per run and served with no version check
+  and no allocation. It is re-entrant (a sampler calling a sampler does not
+  release the outer freeze) and self-checking: the structural and window
+  counters are compared on exit and a violation is logged rather than silently
+  returning stale lists. `Fit.run`, `FitGroup.run` and all five samplers use it.
+  Supporting changes: cached free-parameter lists keyed on `structure_version()`
+  for the unfrozen path (with `redundant` promoted to a property so it bumps the
+  counter like `fixed` and `link` — backed by its public dict key so the
+  serialised form is untouched); a second `window_version()` counter bumped by
+  the `xmin`/`xmax`/`fit_range`/`mask` setters, so `n_points` and the residual
+  cache stop reading every member's window back twice per evaluation; a
+  per-member residual cache invalidated by exactly the members `update_model`
+  recomputed — selective updating was otherwise half an optimisation, skipping
+  the models but recomputing their residuals anyway (24 000 → 7 054 calls); a
+  `parameter_values` setter that does not write a value a parameter already has;
+  `Parameter.value` testing its float compare before the port read; and a
+  memoised MRO property lookup in `ParameterGroup.__setattr__`. Caches are stored
+  as *tuples* because `find_objects` descends into lists — a list-valued cache
+  would make `find_parameters` rediscover parameters through the cache itself.
+  9 tests in `test/fitting/test_frozen_structure.py`.
+
+
+* **Three ways to ask the same question, now with one way to ask (PRD-70).**
+  The covariance at the optimum, a profile χ² scan and a sampled posterior all
+  answer "what does the data actually support for this parameter?", and all
+  three had a different calling convention, return shape and storage location:
+  error estimates on the parameter, a `scan_result` dict, a report on the fit.
+  `Fit.posterior_summary` papered over it by reaching into all three stores with
+  the precedence hard-coded, nothing could ask for a *joint* answer even though a
+  chain contains one, nothing could ask for the evidence, and "fix this
+  parameter and re-optimise the rest" — the operation a profile scan *is* — had
+  no name. New `chisurf/core/fitting/engine.py`: `condition` / `add_target` /
+  `add_joint_target` / `run` / `marginal` / `joint` / `log_evidence`, with
+  `LaplaceEngine`, `ProfileEngine`, `SamplingEngine`, `StoredEngine` and
+  `AutoEngine` behind it. Answers are `Marginal` / `Joint` dataclasses carrying
+  the method that produced them, so a report or a plot consumes one without
+  knowing its origin. Only declared targets are computed — a profile scan of one
+  parameter should not scan the other nine. Each engine still refuses to claim
+  more than it knows: a profile scan has no joint answer and no evidence because
+  it maximises rather than integrates, and a sampled marginal from a chain that
+  failed its own checks comes back as `none` rather than as a number.
+  `StoredEngine` exists because reading a summary must compute *nothing*, which
+  is a genuinely different operation from running an estimator;
+  `Fit.posterior_summary` is now a loop over it, output shape unchanged.
+  Threading `model=` through `approx_grad`, `covariance_matrix` and `walk_mcmc`
+  fell out of it: an engine over a group's global model otherwise silently got
+  the selected member's 2×2 covariance and reported `nan` for every other
+  parameter — the same `FitGroup.model`-is-one-member trap as before, third
+  occurrence. `ProfileEngine` also routes each scan to the member that owns the
+  parameter, since group names are prefixed and a member only knows its own.
+  16 tests. This completes the architecture borrowed from probabilistic
+  graphical-model toolkits: [PRD-68](/prds/prd-68.md) took the model,
+  [PRD-69](/prds/prd-69.md) the inference, this the query. See
+  [PRD-70](/prds/prd-70.md) and the [fitting subsystem](/subsystems/fitting.md).
+
+
+* **The posterior query reaches the API and the wire (PRD-70).** Applying the
+  lesson from [PRD-69](/prds/prd-69.md) immediately rather than a phase later:
+  machinery only Python can reach benefits nobody. The three estimators were
+  still exposed over RPC as three separate job protocols (`fit.sample.*`,
+  `fit.parameter_scan.*`, error estimates riding along on a fit) even though the
+  in-process fragmentation was gone. Added `fits.fit_posterior` +
+  the `fit.posterior` RPC and `ChiSurfAPI.posterior(...)`, carrying the whole
+  query vocabulary — `engine`, `targets`, `joint`, `condition`, `p_value`,
+  `global_posterior` — and returning a JSON-safe payload (marginals, joint
+  covariance and correlation, log evidence). `stored`/`laplace` answer
+  immediately; `profile`/`mcmc` block, so the job endpoints stay for polled
+  progress. Writing the smoke test exposed that **`condition` did not do what it
+  documented**: it pinned the value and computed the answer *there*, so the
+  reported marginal was the unconditioned one with a parameter overwritten — the
+  conditioned answer for a correlated pair was identical to the unconditioned
+  one, which is exactly what conditioning should never produce. The remaining
+  parameters are now re-fitted given the conditioned value (what a profile scan
+  does at each of its points), and a conditioned parameter leaves the free
+  vector entirely so it correctly has no marginal of its own. Pinning `c` at
+  +0.1 now moves `a` from 1.20086 to 1.19387, consistent with their −0.74
+  correlation. 8 tests in `test/fitting/test_posterior_api.py`, including one
+  asserting the RPC is actually registered — an unregistered service function is
+  unreachable however good it is.
+
+
+* **Autodiff would not help, and measuring that pointed at what does.** tttrlib
+  already carries forward-mode autodiff (`autodiff/forward/dual.hpp`, dual
+  numbers with an Eigen array derivative part) in `ImageLocalization.cpp`, so
+  applying it to the decay convolution was worth evaluating. Three measurements
+  say no. (1) The finite-difference residual Jacobian is *already* accurate:
+  median 6e-7 relative error per column against a central-difference reference,
+  and the resulting LM step direction agrees to `cos = 1.000000` both at the
+  optimum and 20 % away — the `DEFAULT_EPSFCN` change already fixed the
+  noise-dominated-Jacobian problem its comment describes. (2) Forward-mode
+  autodiff needs O(n) passes for an n-parameter Jacobian, exactly as finite
+  differences need n evaluations; it improves the constant and the accuracy, and
+  there is no accuracy left to recover. (3) `fconv_per_cs` — the function that
+  would be differentiated — is **4.5–15 %** of a `LifetimeModel` evaluation at
+  typical 1024–4096 channels (39.6 % only at 16 k channels with four
+  exponentials), so a free derivative of it leaves 85–95 % of the forward pass
+  untouched. Reverse-mode gradients would change the asymptotics for HMC/NUTS,
+  but that needs the *whole* path differentiable — parameter assembly,
+  amplitude normalisation, scaling, background — which is Python, not tttrlib;
+  differentiating the kernel yields the derivative of one middle link in a chain
+  whose other links are opaque. Written up with the numbers in
+  [references/autodiff-assessment.md](/references/autodiff-assessment.md),
+  including when to revisit.
+  What the profile *did* show is that `Parameter.value` costs roughly ten times
+  the convolution in a 1024-channel decay, so `frozen_structure` now stamps each
+  parameter's read-path flags too — linked? callable? bounded? — none of which
+  can change during a run. A read becomes one dict lookup and one port access
+  instead of six property dispatches: a further **1.36×** on decay evaluations
+  with byte-identical residuals, and a two-exponential fit at 1024 channels now
+  runs in ~42 ms. Two tests pin that the fast path reproduces clamping,
+  link-following and the write-back of a clamped value exactly.
+
+
 
 * **chiplot Batch 23 — legacy burst selector off pyqtgraph (allow-list
   28 → 27).** Migrated `plugins/burst/burst_selection/gui/legacy/burst_selector.py`

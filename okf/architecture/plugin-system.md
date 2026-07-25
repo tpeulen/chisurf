@@ -33,6 +33,20 @@ A cookiecutter template for new plugins lives at
 icons **without importing plugin code** — see
 [GUI Startup](/architecture/gui-startup.md) for why both matter.
 
+# Command line
+
+Plugin CLIs reach the `csc` command line through the **manifest**:
+`entrypoints.cli` (`"alias=module:attr"`) is the authoritative declaration, read
+by `chisurf/core/cli.py` in the same filesystem+AST scan that finds plugin names —
+still without importing any plugin. The older module-level `cli_entrypoint`
+assignment remains a fallback for plugins without a manifest, and when a plugin
+carries both they must agree (a guardrail test enforces it).
+
+Two consequences worth knowing: a manifest whose entry omits the `alias=` prefix
+registers under the plugin id instead of being dropped, and a plugin's command is
+imported only when it is actually invoked, so a broken plugin CLI cannot slow —
+or break — `csc --help`.
+
 # AutoForm
 
 GUI plugins increasingly declare their UI as data — a `*.view.json` scheme

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import json
 import logging
 import pathlib
 import sys
@@ -48,13 +49,23 @@ _LOG = logging.getLogger(__name__)
 _PLUGINS_REGISTERED = False
 
 
-def _parse_cli_entrypoint(entrypoint: str) -> Tuple[str, str, str]:
-    """Parse strings of the form ``alias=module:attr``."""
+def _parse_cli_entrypoint(entrypoint: str, default_alias: str | None = None) -> tuple[str, str, str]:
+    """Parse strings of the form ``alias=module:attr``.
+
+    A few manifests omit the ``alias=`` part and give only ``module:attr``; with a
+    *default_alias* (the plugin id) those still register, under that name, instead
+    of being dropped silently.
+    """
     spec = (entrypoint or "").strip()
-    if not spec or "=" not in spec:
+    if not spec:
         raise ValueError("Entry point must be in the form 'alias=module[:attr]'")
-    alias, target = spec.split("=", 1)
-    alias = alias.strip()
+    if "=" in spec:
+        alias, target = spec.split("=", 1)
+        alias = alias.strip()
+    elif default_alias:
+        alias, target = str(default_alias).strip(), spec
+    else:
+        raise ValueError("Entry point must be in the form 'alias=module[:attr]'")
     if not alias:
         raise ValueError("Alias (command name) is empty")
     module_path, _, attr = target.partition(":")
@@ -152,6 +163,35 @@ def _read_plugin_metadata(init_py: pathlib.Path) -> Tuple[Optional[str], Optiona
     return plugin_name, description, cli_entrypoint
 
 
+def _read_manifest_cli(plugin_dir: pathlib.Path) -> tuple[str | None, str | None, str | None]:
+    """Return ``(cli_entrypoint, plugin_id, display_name)`` from a plugin manifest.
+
+    ``manifest.json`` is the plugin contract, so its ``entrypoints.cli`` is the
+    authoritative CLI declaration; the module-level ``cli_entrypoint`` assignment
+    is the older, AST-scanned convention kept as a fallback. Reading the manifest
+    is a plain filesystem read — no plugin package is imported.
+    """
+    manifest_path = plugin_dir / "manifest.json"
+    if not manifest_path.exists():
+        return None, None, None
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        _LOG.warning("Plugin manifest is not readable JSON: %s", manifest_path)
+        return None, None, None
+    if not isinstance(manifest, dict):
+        return None, None, None
+    entrypoints = manifest.get("entrypoints") or {}
+    entry = entrypoints.get("cli") if isinstance(entrypoints, dict) else None
+    plugin_id = manifest.get("id")
+    display_name = manifest.get("display_name")
+    return (
+        entry.strip() if isinstance(entry, str) and entry.strip() else None,
+        str(plugin_id) if plugin_id else None,
+        str(display_name) if display_name else None,
+    )
+
+
 def _discover_plugin_metadata() -> Iterable[Dict[str, object]]:
     """Yield metadata for built-in and user plugins **without importing packages**.
 
@@ -190,6 +230,14 @@ def _discover_plugin_metadata() -> Iterable[Dict[str, object]]:
                 # Outside of the root we care about.
                 continue
 
+            # Skip template/scaffold trees (cookiecutter), caches and hidden dirs —
+            # they are not importable module paths.
+            if any(
+                part.startswith(".") or part == "__pycache__" or "{{" in part
+                for part in rel_dir.parts
+            ):
+                continue
+
             # Skip the root package itself (e.g. chisurf.plugins).
             if str(rel_dir) == ".":
                 continue
@@ -203,11 +251,24 @@ def _discover_plugin_metadata() -> Iterable[Dict[str, object]]:
                 continue
 
             plugin_name, description, cli_entrypoint = _read_plugin_metadata(init_py)
+            manifest_cli, plugin_id, display_name = _read_manifest_cli(init_py.parent)
+            if manifest_cli:
+                if cli_entrypoint and cli_entrypoint != manifest_cli:
+                    _LOG.warning(
+                        "Plugin '%s' declares two different CLI entry points "
+                        "(manifest %r, module %r); using the manifest.",
+                        module_path,
+                        manifest_cli,
+                        cli_entrypoint,
+                    )
+                cli_entrypoint = manifest_cli
+            plugin_name = plugin_name or display_name
 
             # For CLI purposes we only care about packages that either
             # advertise a human-readable plugin name or explicitly opt into
-            # the CLI via ``cli_entrypoint``. Plain namespace packages are
-            # skipped entirely so they are never touched during CLI startup.
+            # the CLI (manifest ``entrypoints.cli`` or a module-level
+            # ``cli_entrypoint``). Plain namespace packages are skipped
+            # entirely so they are never touched during CLI startup.
             if not plugin_name and not cli_entrypoint:
                 continue
 
@@ -221,6 +282,7 @@ def _discover_plugin_metadata() -> Iterable[Dict[str, object]]:
                 "plugin_name": plugin_name,
                 "description": description,
                 "cli_entrypoint": cli_entrypoint,
+                "plugin_id": plugin_id,
             }
 
 
@@ -247,7 +309,10 @@ def _register_plugin_clis() -> None:
         if not entry_spec:
             continue
         try:
-            command_name, module_path, attr_name = _parse_cli_entrypoint(entry_spec)
+            default_alias = str(metadata.get("plugin_id") or metadata.get("module_name") or "")
+            command_name, module_path, attr_name = _parse_cli_entrypoint(
+                entry_spec, default_alias.replace("_", "-") or None
+            )
         except ValueError as exc:
             _LOG.warning(
                 "Skipping CLI entrypoint for plugin '%s': %s",

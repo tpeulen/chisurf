@@ -11,6 +11,7 @@
 | ZMQ JSON-RPC server | Working transport, `ServiceDispatcher`, session state, event bus |
 | Core "namespace" RPC methods | `dataset.*`, `fit.*`, `parameter.*`, `project.*`, `session.*`, `model.*`, `graph.*` |
 | Plugin discovery | `iter_plugins()` walks `__path__` and parses AST for `name`/`cli_entrypoint` — works well |
+| CLI registration | `chisurf/core/cli.py` reads `manifest.json` `entrypoints.cli` first and falls back to the AST `cli_entrypoint`; both are scanned without importing plugin code |
 
 ### What needs to change
 
