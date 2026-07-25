@@ -51,7 +51,7 @@ EXPECTED_VIOLATIONS: Dict[str, int] = {
     "chisurf/gui/widgets/experiments/modelling/modelling.py": 2,
     "chisurf/gui/widgets/experiments/pch.py": 4,
     "chisurf/gui/widgets/experiments/pda/controller.py": 1,
-    "chisurf/gui/widgets/experiments/rics.py": 3,
+    "chisurf/gui/widgets/experiments/ics.py": 3,
     "chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py": 5,
     "chisurf/gui/widgets/experiments/tcspc/tcspc_simulator_setup_widget.py": 3,
     "chisurf/gui/widgets/experiments/tcspc/tcspc_tttr_reader_control_widget.py": 3,

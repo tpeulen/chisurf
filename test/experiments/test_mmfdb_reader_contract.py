@@ -11,7 +11,7 @@ from chisurf.core.experiments.core.reader import ExperimentReader
 from chisurf.core.experiments.deer.reader import DeerReader
 from chisurf.core.experiments.globalfit.reader import GlobalFitSetup
 from chisurf.core.experiments.modelling.reader import StructureReader
-from chisurf.core.experiments.rics import RICSReader
+from chisurf.core.experiments.ics import ICSReader
 from mmfdb.repository import MFDatabase
 
 
@@ -87,7 +87,7 @@ def test_uncovered_experiment_families_declare_stable_provenance_contracts() -> 
         "analysis",
         "analysis_result",
     )
-    assert (RICSReader.operation_type, RICSReader.artifact_kind_derived) == (
+    assert (ICSReader.operation_type, ICSReader.artifact_kind_derived) == (
         "image_analysis",
         "analysis_result",
     )

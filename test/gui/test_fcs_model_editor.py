@@ -1,6 +1,6 @@
 """Headless model-editor tests for the MDF and general composable FCS models (PRD-62).
 
-Mirrors ``test_rics_model_editor.py``: each pure model builds through the real
+Mirrors ``test_ics_model_editor.py``: each pure model builds through the real
 AutoForm seam (table-view parameter groups + dynamic bunching/anticorrelation
 groups render), and the model computes a finite correlation curve. A synthetic
 log-spaced lag grid (ms) avoids any file I/O.

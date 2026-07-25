@@ -12,8 +12,8 @@ experiment_types:
   pcf:
     name: PCF
     hidden: false
-  rics:
-    name: RICS
+  ics:
+    name: Image correlation
     hidden: false
   pch:
     name: PCH
@@ -217,23 +217,20 @@ pcf:
   models:
     - chisurf.gui.widgets.models.pcf.ParsePCFWidget
 
-rics:
+ics:
   readers:
-    - reader_class: chisurf.core.experiments.rics.RICSReader
+    - reader_class: chisurf.core.experiments.ics.ICSReader
       reader_params:
-        name: RICS (TTTR/ICS)
+        name: Image correlation (RICS/STICS/TICS/iMSD)
         reading_routine: PTU
         channel: 0
-      controller_class: chisurf.gui.widgets.experiments.rics.RICSController
+      controller_class: chisurf.gui.widgets.experiments.ics.ICSController
       controller_params: {}
   models:
-    # AutoForm-rendered pure models (PRD-38 model/view-spec split).
-    - chisurf.core.models.rics.rics.RicsSimpleModel
-    - chisurf.core.models.rics.rics.RicsTripletModel
-    - chisurf.core.models.rics.rics.RicsImmobileModel
-    - chisurf.core.models.rics.rics.RicsFlowModel
-    - chisurf.core.models.rics.rics.RicsFullModel
-    - chisurf.core.models.rics.rics.IcsGaussian2DModel
+    # One model over the spatiotemporal carpet G(xi, psi, Delta); RICS, STICS,
+    # TICS and iMSD are readings of it rather than separate models.
+    - chisurf.core.models.ics.ics.ImageCorrelationModel
+    - chisurf.core.models.ics.ics.IcsGaussian2DModel
 
 pch:
   readers:

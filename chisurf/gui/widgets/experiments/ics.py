@@ -13,7 +13,7 @@ from chisurf.gui import chiplot as cp
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 
 
-class _RicsDetectorWidget(QtWidgets.QWidget):
+class _IcsDetectorWidget(QtWidgets.QWidget):
     """Detector cascade: Setup → Detector → Routine + read-only routing channels."""
 
     changed = QtCore.Signal()
@@ -129,7 +129,7 @@ class _RicsDetectorWidget(QtWidgets.QWidget):
                     self._model.micro_time_ranges = self._micro_time_ranges
                 except Exception:
                     pass
-                # Push the setup's LUTs/shifts + master gate: the RICS read is
+                # Push the setup's LUTs/shifts + master gate: the ICS read is
                 # LUT-aware (auto-applied by the base reader's _open_tttr).
                 try:
                     self._model.channel_luts = {
@@ -186,7 +186,7 @@ class _RicsDetectorWidget(QtWidgets.QWidget):
         self.lineedit_channels.setText(", ".join(str(int(c)) for c in seq))
 
 
-class _RicsRoiWidget(QtWidgets.QWidget):
+class _IcsRoiWidget(QtWidgets.QWidget):
     """X/Y ROI range spinboxes in a compact 2×2 grid."""
 
     changed = QtCore.Signal()
@@ -279,13 +279,13 @@ class _RicsRoiWidget(QtWidgets.QWidget):
             self.spin_y1.setValue(max_y)
 
 
-def _register_rics_sections() -> None:
+def _register_ics_sections() -> None:
     from chisurf.gui.autoform.sections.registry import register_section
-    register_section("rics_detector")(_RicsDetectorWidget)
-    register_section("rics_roi")(_RicsRoiWidget)
+    register_section("ics_detector")(_IcsDetectorWidget)
+    register_section("ics_roi")(_IcsRoiWidget)
 
 
-class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
+class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
     def get_filename(self) -> pathlib.Path:
         try:
@@ -297,7 +297,7 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             return pathlib.Path(self._preview_filename)
 
         fn = cs.gui.widgets.open_files(
-            description='RICS TTTR/TIFF file',
+            description='Image stack: TTTR or TIFF',
             file_type='All files (*.*)',
             working_path=None,
         )
@@ -311,22 +311,22 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         return str(fn) if fn is not None else ""
 
     def __init__(self, *args, **kwargs):
-        _register_rics_sections()
+        _register_ics_sections()
         super().__init__(*args, **kwargs)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        label = QtWidgets.QLabel("RICS: Drop TTTR (PTU/HT3) or TIFF here.")
+        label = QtWidgets.QLabel("Image correlation: drop TTTR (PTU/HT3) or a TIFF stack here.")
         label.setWordWrap(True)
         layout.addWidget(label)
 
         # AutoForm for Detector and Acquisition settings
         reader_obj = getattr(self, "experiment_reader", None)
         self._settings_form = None
-        self._detector_widget: _RicsDetectorWidget | None = None
-        self._roi_widget: _RicsRoiWidget | None = None
+        self._detector_widget: _IcsDetectorWidget | None = None
+        self._roi_widget: _IcsRoiWidget | None = None
 
         # Stub spinboxes so ROI-sync methods never crash if AutoForm is absent
         self.spin_x0 = QtWidgets.QSpinBox()
@@ -345,12 +345,12 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             self._settings_form = AutoForm(reader_obj, parent=self)
             layout.addWidget(self._settings_form)
 
-            det_widgets = self._settings_form.findChildren(_RicsDetectorWidget)
+            det_widgets = self._settings_form.findChildren(_IcsDetectorWidget)
             if det_widgets:
                 self._detector_widget = det_widgets[0]
                 self._detector_widget.changed.connect(self.onParametersChanged)
 
-            roi_widgets = self._settings_form.findChildren(_RicsRoiWidget)
+            roi_widgets = self._settings_form.findChildren(_IcsRoiWidget)
             if roi_widgets:
                 self._roi_widget = roi_widgets[0]
                 self.spin_x0 = self._roi_widget.spin_x0
@@ -380,19 +380,19 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         mode_row.setContentsMargins(0, 0, 0, 0)
         mode_row.setSpacing(0)
         self.radio_preview_intensity = QtWidgets.QRadioButton("Intensity", preview_group)
-        self.radio_preview_rics = QtWidgets.QRadioButton("RICS", preview_group)
+        self.radio_preview_corr = QtWidgets.QRadioButton("Correlation", preview_group)
         try:
             self.radio_preview_intensity.setChecked(True)
         except Exception:
             pass
         mode_row.addWidget(self.radio_preview_intensity)
-        mode_row.addWidget(self.radio_preview_rics)
+        mode_row.addWidget(self.radio_preview_corr)
         mode_row.addStretch(1)
 
-        self.toolbtn_add_rics = QtWidgets.QToolButton(preview_group)
-        self.toolbtn_add_rics.setText("Add")
-        self.toolbtn_add_rics.setToolTip("Add RICS dataset for the current file")
-        mode_row.addWidget(self.toolbtn_add_rics)
+        self.toolbtn_add_ics = QtWidgets.QToolButton(preview_group)
+        self.toolbtn_add_ics.setText("Add")
+        self.toolbtn_add_ics.setToolTip("Add the correlation dataset for the current file")
+        mode_row.addWidget(self.toolbtn_add_ics)
 
         self.toolbtn_clear_preview = QtWidgets.QToolButton(preview_group)
         self.toolbtn_clear_preview.setText("Clear")
@@ -412,8 +412,8 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         layout.addWidget(preview_group, 1)
 
         self._preview_filename: pathlib.Path | None = None
-        self._preview_rics_dirty: bool = False
-        self._preview_rics_stack = None
+        self._preview_corr_dirty: bool = False
+        self._preview_corr_carpet = None
 
         self._micro_time_ranges = None
 
@@ -421,7 +421,7 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
         try:
             self.radio_preview_intensity.toggled.connect(self._on_preview_mode_changed)
-            self.radio_preview_rics.toggled.connect(self._on_preview_mode_changed)
+            self.radio_preview_corr.toggled.connect(self._on_preview_mode_changed)
         except Exception:
             pass
         try:
@@ -429,7 +429,7 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         except Exception:
             pass
         try:
-            self.toolbtn_add_rics.clicked.connect(self._on_add_rics_clicked)
+            self.toolbtn_add_ics.clicked.connect(self._on_add_ics_clicked)
         except Exception:
             pass
 
@@ -501,14 +501,12 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
         # AutoForm keeps these reader attrs live; read back for cs.run()
         subtract_token = getattr(setup, 'subtract_average', '') or ''
-        frame_shift = int(getattr(setup, 'frame_shift', 0) or 0)
+        max_frame_lag = int(getattr(setup, 'max_frame_lag', 0) or 0)
         fftshift_flag = bool(getattr(setup, 'fftshift', True))
-        framewise_flag = bool(getattr(setup, 'framewise_rics', False))
         pixel_dur_val = float(getattr(setup, 'pixel_duration', None) or 0.0)
         line_dur_val = float(getattr(setup, 'line_duration', None) or 0.0)
 
         fftshift_str = "True" if fftshift_flag else "False"
-        framewise_str = "True" if framewise_flag else "False"
         pixel_dur_expr = repr(pixel_dur_val) if pixel_dur_val > 0.0 else "None"
         line_dur_expr = repr(line_dur_val) if line_dur_val > 0.0 else "None"
 
@@ -535,12 +533,11 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
                     f"cs.current_setup.y_range = ({y0}, {y1})",
                     f"cs.current_setup.micro_time_ranges = {micro_time_ranges_expr}",
                     f"cs.current_setup.subtract_average = '{subtract_token}'",
-                    f"cs.current_setup.frame_shift = {frame_shift}",
+                    f"cs.current_setup.max_frame_lag = {max_frame_lag}",
                     f"cs.current_setup.fftshift = {fftshift_str}",
-                    f"cs.current_setup.framewise_rics = {framewise_str}",
                     f"cs.current_setup.pixel_duration = {pixel_dur_expr}",
                     f"cs.current_setup.line_duration = {line_dur_expr}",
-                    "cs.current_setup._cache_ics_stack = None",
+                    "cs.current_setup._cache_images = None",
                     "cs.current_setup._cache_filename = None",
                 ])
             )
@@ -555,7 +552,7 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
         try:
             if getattr(self, "_preview_filename", None) is not None:
-                self._preview_rics_dirty = True
+                self._preview_corr_dirty = True
         except Exception:
             pass
 
@@ -586,15 +583,15 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
     def _on_preview_mode_changed(self, _checked: bool) -> None:
         try:
             show_intensity = bool(self.radio_preview_intensity.isChecked())
-            show_rics = bool(self.radio_preview_rics.isChecked())
-            if not (show_intensity or show_rics):
+            show_corr = bool(self.radio_preview_corr.isChecked())
+            if not (show_intensity or show_corr):
                 return
         except Exception:
             self._refresh_preview_image()
             return
 
-        if show_rics and getattr(self, "_preview_filename", None) is not None:
-            if getattr(self, "_preview_rics_dirty", False):
+        if show_corr and getattr(self, "_preview_filename", None) is not None:
+            if getattr(self, "_preview_corr_dirty", False):
                 try:
                     self._load_preview_from_file(self._preview_filename)  # type: ignore[arg-type]
                     return
@@ -610,7 +607,7 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             pass
 
         for attr in ("_preview_intensity_stack", "_preview_intensity_mean",
-                     "_preview_rics_mean", "_preview_rics_stack"):
+                     "_preview_corr_map", "_preview_corr_carpet"):
             if hasattr(self, attr):
                 try:
                     setattr(self, attr, None)
@@ -622,7 +619,7 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         except Exception:
             pass
         try:
-            self._preview_rics_dirty = False
+            self._preview_corr_dirty = False
         except Exception:
             pass
 
@@ -680,7 +677,7 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         except Exception:
             pass
 
-    def _on_add_rics_clicked(self) -> None:
+    def _on_add_ics_clicked(self) -> None:
         try:
             path = getattr(self, "_preview_filename", None)
         except Exception:
@@ -740,16 +737,16 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             data_obj = group
 
         meta = getattr(data_obj, 'meta_data', {}) or {}
-        rics_meta = meta.get('rics', {}) or {}
+        ics_meta = meta.get('ics', {}) or {}
 
-        self._preview_intensity_stack = rics_meta.get('intensity_stack', None)
-        self._preview_intensity_mean = rics_meta.get('intensity_mean', None)
-        self._preview_rics_mean = rics_meta.get('ics_mean', None)
-        self._preview_rics_stack = rics_meta.get('ics_stack', None)
+        self._preview_intensity_stack = ics_meta.get('intensity_stack', None)
+        self._preview_intensity_mean = ics_meta.get('intensity_mean', None)
+        self._preview_corr_map = ics_meta.get('ics_mean', None)
+        self._preview_corr_carpet = ics_meta.get('correlation', None)
 
         # Update timing attrs on reader; AutoForm rebuild() will reflect them
-        pd = rics_meta.get('pixel_duration_us', None)
-        ld = rics_meta.get('line_duration_ms', None)
+        pd = ics_meta.get('pixel_duration_us', None)
+        ld = ics_meta.get('line_duration_ms', None)
         try:
             if isinstance(pd, (int, float)) and pd > 0.0:
                 reader_obj.pixel_duration_us = float(pd)
@@ -766,16 +763,16 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             except Exception:
                 pass
 
-        if self._preview_rics_mean is None and self._preview_intensity_stack is not None:
+        if self._preview_corr_map is None and self._preview_intensity_stack is not None:
             try:
                 arr = np.asarray(self._preview_intensity_stack, dtype=float)
                 if arr.ndim == 3:
-                    self._preview_rics_mean = arr.mean(axis=0)
+                    self._preview_corr_map = arr.mean(axis=0)
             except Exception:
                 pass
 
         try:
-            self._preview_rics_dirty = False
+            self._preview_corr_dirty = False
         except Exception:
             pass
 
@@ -786,12 +783,6 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             show_intensity = bool(self.radio_preview_intensity.isChecked())
         except Exception:
             show_intensity = True
-        try:
-            setup = getattr(self, "experiment_reader", None)
-            framewise = bool(getattr(setup, 'framewise_rics', False))
-        except Exception:
-            framewise = False
-
         arr = None
         if show_intensity:
             stack = getattr(self, '_preview_intensity_stack', None)
@@ -811,19 +802,24 @@ class RICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
                 except Exception:
                     arr = None
         else:
-            stack_rics = getattr(self, '_preview_rics_stack', None)
-            if framewise and stack_rics is not None:
+            # The correlation is a carpet over frame lags. Show the whole
+            # carpet when it has more than one lag so the preview can page
+            # through Delta; otherwise show the single zero-lag (RICS) map.
+            carpet = getattr(self, '_preview_corr_carpet', None)
+            if carpet is not None:
                 try:
-                    s = np.asarray(stack_rics, dtype=float)
-                    if s.ndim == 3 and s.size > 0:
-                        arr = s
+                    c = np.asarray(carpet, dtype=float)
+                    if c.ndim == 3 and c.shape[0] > 1:
+                        arr = c
+                    elif c.ndim == 3 and c.shape[0] == 1:
+                        arr = c[0]
                 except Exception:
                     arr = None
             if arr is None:
-                rics = getattr(self, '_preview_rics_mean', None)
-                if rics is not None:
+                corr_map = getattr(self, '_preview_corr_map', None)
+                if corr_map is not None:
                     try:
-                        m = np.asarray(rics, dtype=float)
+                        m = np.asarray(corr_map, dtype=float)
                         if m.ndim == 2:
                             arr = m
                     except Exception:

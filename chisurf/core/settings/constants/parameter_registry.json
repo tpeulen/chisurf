@@ -688,32 +688,6 @@
           "ub": null
         },
         {
-          "bounds_on": false,
-          "class": "RicsSimpleModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": false,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 1e-06,
-          "line": 213,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1000.0
-        },
-        {
-          "bounds_on": false,
-          "class": "RicsTripletModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": false,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 1e-06,
-          "line": 507,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1000.0
-        },
-        {
           "bounds_on": true,
           "class": "AVDecayModel",
           "description_in_code": null,
@@ -1011,21 +985,7 @@
       "flrcif_item_id": "_flr_chisurf_parameter.aT",
       "keywords": [],
       "label_texts": [],
-      "sources": [
-        {
-          "bounds_on": false,
-          "class": "RicsTripletModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": false,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 0.0,
-          "line": 579,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 0.99
-        }
-      ]
+      "sources": []
     },
     "alpha": {
       "aliases": [],
@@ -4074,6 +4034,21 @@
         }
       ]
     },
+    "ics.alpha": {
+      "aliases": [],
+      "ambiguous": false,
+      "description": "Anomalous diffusion exponent alpha in MSD(tau) = 4*D*tau^alpha. 1 is normal diffusion; below 1 is subdiffusion (crowding, transient binding), above 1 is directed transport. Releasing it turns an image-correlation fit into the anomalous/iMSD case.",
+      "flrcif_item_id": "_flr_chisurf_parameter.ics_alpha",
+      "keywords": [
+        "ICS",
+        "iMSD",
+        "anomalous diffusion",
+        "MSD"
+      ],
+      "label_texts": [],
+      "sources": [],
+      "symbol": "alpha"
+    },
     "ik": {
       "aliases": [],
       "ambiguous": false,
@@ -4414,34 +4389,7 @@
       "flrcif_item_id": "_flr_chisurf_parameter.line_dur",
       "keywords": [],
       "label_texts": [],
-      "sources": [
-        {
-          "bounds_on": false,
-          "class": "RicsSimpleModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": true,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 0.001,
-          "line": 242,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 10000.0
-        },
-        {
-          "bounds_on": false,
-          "class": "RicsTripletModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": true,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 0.001,
-          "line": 534,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 10000.0
-        }
-      ]
+      "sources": []
     },
     "lp": {
       "aliases": [],
@@ -4552,32 +4500,6 @@
       "keywords": [],
       "label_texts": [],
       "sources": [
-        {
-          "bounds_on": false,
-          "class": "RicsSimpleModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": false,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 1e-06,
-          "line": 204,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1000000000.0
-        },
-        {
-          "bounds_on": false,
-          "class": "RicsTripletModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": false,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 1e-06,
-          "line": 498,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1000000000.0
-        },
         {
           "bounds_on": null,
           "class": "MdfOptics",
@@ -4853,34 +4775,7 @@
       "flrcif_item_id": "_flr_chisurf_parameter.offset",
       "keywords": [],
       "label_texts": [],
-      "sources": [
-        {
-          "bounds_on": false,
-          "class": "RicsSimpleModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": false,
-          "function": "__init__",
-          "label_text": null,
-          "lb": null,
-          "line": 222,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1000.0
-        },
-        {
-          "bounds_on": false,
-          "class": "RicsTripletModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": false,
-          "function": "__init__",
-          "label_text": null,
-          "lb": null,
-          "line": 516,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1000.0
-        }
-      ]
+      "sources": []
     },
     "pinhole": {
       "aliases": [],
@@ -4966,34 +4861,7 @@
       "flrcif_item_id": "_flr_chisurf_parameter.pxl_dur",
       "keywords": [],
       "label_texts": [],
-      "sources": [
-        {
-          "bounds_on": false,
-          "class": "RicsSimpleModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": true,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 0.01,
-          "line": 233,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1000.0
-        },
-        {
-          "bounds_on": false,
-          "class": "RicsTripletModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": true,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 0.01,
-          "line": 525,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1000.0
-        }
-      ]
+      "sources": []
     },
     "pxl_size": {
       "aliases": [],
@@ -5002,34 +4870,7 @@
       "flrcif_item_id": "_flr_chisurf_parameter.pxl_size",
       "keywords": [],
       "label_texts": [],
-      "sources": [
-        {
-          "bounds_on": false,
-          "class": "RicsSimpleModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": true,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 1.0,
-          "line": 251,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 10000.0
-        },
-        {
-          "bounds_on": false,
-          "class": "RicsTripletModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": true,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 1.0,
-          "line": 543,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 10000.0
-        }
-      ]
+      "sources": []
     },
     "r0": {
       "aliases": [],
@@ -5287,6 +5128,22 @@
       "label_texts": [],
       "sources": [],
       "symbol": "aT"
+    },
+    "rics.frame_dur": {
+      "aliases": [],
+      "ambiguous": false,
+      "description": "Frame time t_frame in ms. Converts a frame lag Delta into a lag time via tau = |xi*t_pixel + psi*t_line + Delta*t_frame|, so it scales every diffusion coefficient derived from frame lags (STICS/TICS/iMSD).",
+      "flrcif_item_id": "_flr_chisurf_parameter.rics_frame_dur",
+      "keywords": [
+        "RICS",
+        "ICS",
+        "STICS",
+        "frame time",
+        "scan timing"
+      ],
+      "label_texts": [],
+      "sources": [],
+      "symbol": "t_frame"
     },
     "rics.line_dur": {
       "aliases": [
@@ -5767,21 +5624,7 @@
       "flrcif_item_id": "_flr_chisurf_parameter.tauT",
       "keywords": [],
       "label_texts": [],
-      "sources": [
-        {
-          "bounds_on": false,
-          "class": "RicsTripletModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": false,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 1e-06,
-          "line": 570,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1.0
-        }
-      ]
+      "sources": []
     },
     "tcspc.Ddye": {
       "aliases": [
@@ -6743,32 +6586,6 @@
       "label_texts": [],
       "sources": [
         {
-          "bounds_on": false,
-          "class": "RicsSimpleModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": true,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 0.001,
-          "line": 260,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 100.0
-        },
-        {
-          "bounds_on": false,
-          "class": "RicsTripletModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": true,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 0.001,
-          "line": 552,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 100.0
-        },
-        {
           "bounds_on": null,
           "class": "GaussDiffusion",
           "description_in_code": null,
@@ -6791,32 +6608,6 @@
       "keywords": [],
       "label_texts": [],
       "sources": [
-        {
-          "bounds_on": false,
-          "class": "RicsSimpleModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": true,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 0.001,
-          "line": 269,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1000.0
-        },
-        {
-          "bounds_on": false,
-          "class": "RicsTripletModel",
-          "description_in_code": null,
-          "file": "chisurf/gui/widgets/models/rics/widgets.py",
-          "fixed": true,
-          "function": "__init__",
-          "label_text": null,
-          "lb": 0.001,
-          "line": 561,
-          "module": "chisurf.gui.widgets.models.rics.widgets",
-          "ub": 1000.0
-        },
         {
           "bounds_on": null,
           "class": "GaussDiffusion",

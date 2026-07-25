@@ -32,10 +32,30 @@
     {
       "key": "residual2d",
       "options": {
-        "accessor": "chisurf.core.models.rics.rics:get_rics_residual_image",
-        "accessor_kwargs": {
-          "weighted": true
-        }
+        "sources": {
+          "Residual": {
+            "accessor": "chisurf.core.models.ics.ics:get_ics_residual_image",
+            "accessor_kwargs": {
+              "weighted": true,
+              "lag_index": 0
+            }
+          },
+          "Data": {
+            "accessor": "chisurf.core.models.ics.ics:get_ics_data_image",
+            "accessor_kwargs": {
+              "lag_index": 0
+            }
+          },
+          "Model": {
+            "accessor": "chisurf.core.models.ics.ics:get_ics_model_image",
+            "accessor_kwargs": {
+              "lag_index": 0
+            }
+          }
+        },
+        "frame_kw": "lag_index",
+        "max_frames_accessor": "chisurf.core.models.ics.ics:get_ics_n_lags",
+        "frame_label": "Frame lag Δ"
       }
     },
     {

@@ -31,6 +31,59 @@
   the reader's error and what was lost.
   Suite: 244 passed, 1 skipped (19 new).
 
+* **RICS generalized into one spatiotemporal image-correlation carpet; RICS,
+  STICS, TICS and iMSD are now one method, one correlator and one model.**
+  `chisurf/core/experiments/rics/` -> `.../ics/` and `chisurf/core/models/rics/`
+  -> `.../ics/`; experiment key `rics` -> `ics`, reader `RICSReader` ->
+  `ICSReader`, controller `RICSController` -> `ICSController`. **The unifying
+  identity** is `tau(xi, psi, Delta) = |xi*t_pixel + psi*t_line + Delta*t_frame|`
+  (`ics/data.py::lag_time`): a raster scanner visits pixels sequentially, so a
+  displacement in the correlation carpet *is* a delay, and the four named methods
+  are only which clock dominates — RICS reads `Delta = 0`, STICS reads
+  `Delta > 0`, TICS reads the `xi = psi = 0` column, iMSD reads the Gaussian
+  width of each slice against `tau`. **Correlator:** `compute_ics_carpet` returns
+  an `IcsCarpet` — `correlation (n_lags, ny, nx)`, per-lag standard error, both
+  spatial lag grids, the frame lags and an `IcsTiming` — with the named readings
+  as methods (`rics_map`, `stics_map`, `tics_curve`, `lag_time_grid`). The reader
+  gained `max_frame_lag` (0 = today's RICS-only behaviour, so the PAM cross-check
+  is unchanged), `frame_duration` and `pixel_size_nm`, and now flattens the whole
+  carpet as the fit vector; the single-shot `frame_shift`/`framewise_rics` hack it
+  replaces was retired. **Model:** the six model classes and six compute functions
+  collapsed to one `image_correlation(xi, psi, Delta, ...)` plus
+  `ImageCorrelationModel`, with `MSD(tau) = 4*D*tau^alpha` entering as
+  `exp(-(dx^2+dy^2)/(w_r^2 + MSD))` — so the iMSD width relation is the model's
+  own structure, not a separate analysis. Every optional term is written so its
+  neutral value switches it off (`alpha=1`, `a_T=0`, `N_imm=0`, zero velocities),
+  which is why one model replaces the catalogue: you choose physics by releasing
+  a parameter, not by picking an entry. `gamma` is now geometry-correct (`1/2` in
+  2D, `2^-3/2` in 3D) where the old code used the 3D value for both. **Plots:**
+  the 2D image plot gained a frame-lag slider (`frame_kw`/`max_frames_accessor`
+  resolution added to `model_plot_specs`, a `frame_label` so it reads "Frame lag
+  Δ" rather than "Frame index") and a Residual/Data/Model source selector. **Two
+  latent defects fixed while porting:** `rics_diffusion_triplet` normalised by
+  `(n + tauT_s)^2`, adding a *time* to a particle number; and the anisotropic
+  Gaussian used `(+xr*sin, +yr*cos)` for its second axis — a shear, not a
+  rotation (the same non-orthogonal form appears in PAM's `Standard_MIA`).
+  **Upstream bug found, worked around here:** `tttrlib 0.27`'s
+  `CLSMImage::compute_ics` allocates `calloc(pairs * pixels)` but sets
+  `*dim1 = nf` (input frame count), so for any lag > 0 the returned array
+  over-declares its first axis and touching the tail segfaults; `ics_core.py`
+  slices to `len(pairs)` before any data access (`src/CLSMImage.cpp:3774` needs
+  `*dim1 = frames_index_pairs.size()`). Non-contiguous ROI views are now
+  materialised before the backend reads the buffer. **Retired:** the dead
+  pre-PRD-38 `chisurf/gui/widgets/models/rics/` widget layer and the five
+  per-variant `rics_*.view.json` specs. Tests: new
+  `test/experiments/test_ics_unification.py` (15) pins the identities — lag-time
+  additivity, RICS map == the `Delta = 0` slice of a bigger carpet, TICS ==
+  the zero-spatial-lag column, slice width - `w_r^2` == `4*D*tau` (iMSD),
+  neutral values switching terms off, flow displacing the peak — plus
+  `test/gui/test_ics_model_editor.py` (7, rewritten) and
+  `test/experiments/test_ics_vs_pam.py` (2, still green against PAM's stored
+  correlation). Parameter-registry ids keep their historical `rics.*` prefix:
+  they are stable vocabulary keys, not module paths. See
+  [image-correlation theory](/references/image-correlation-theory.md) and
+  `docs/concepts/image_correlation.md`.
+
 * **Recorded this session's defects in the cleanup backlog
   ([specs/assessment.md](/specs/assessment.md)).** Six new findings in the house
   format, three fixed and three left open with evidence. **Fixed:** `BUG-06`

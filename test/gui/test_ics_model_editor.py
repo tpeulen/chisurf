@@ -1,9 +1,9 @@
-"""Headless model-editor tests for the AutoForm RICS models (PRD-38).
+"""Headless model-editor tests for the AutoForm image-correlation models.
 
-Mirror the PDA editor tests: each pure RICS model builds through the real
-AutoForm seam, every parameter-group section renders, the 2D residual plot
-resolves, and the model computes a finite surface. A synthetic RICS dataset
-(lag grid + ics_mean in ``meta_data['rics']``) avoids any file I/O.
+Mirror the PDA editor tests: each pure model builds through the real AutoForm
+seam, every parameter-group section renders, the 2D plot's lag-aware accessors
+resolve, and the model computes a finite carpet. A synthetic ICS dataset (lag
+grids + carpet in ``meta_data['ics']``) avoids any file I/O.
 """
 from __future__ import annotations
 
@@ -18,46 +18,62 @@ def qapp():
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
-def _make_rics_data():
-    """Return a DataCurve with a synthetic RICS lag grid + ics_mean map."""
-    from chisurf.core.data import DataCurve
-    from chisurf.core.models.rics.models import rics_simple
+def _make_ics_data(n_lags: int = 3):
+    """Return a DataCurve with a synthetic correlation carpet.
 
-    xi = np.arange(-8, 9)          # fast (pixel) lags
-    psi = np.arange(0, 16)         # slow (line) lags
-    pixel_shift, line_shift = np.meshgrid(xi, psi)
-    ics_mean = rics_simple(
-        line_shift=line_shift.astype(float), pixel_shift=pixel_shift.astype(float),
+    Parameters
+    ----------
+    n_lags : int
+        Number of frame lags in the carpet. ``1`` is a plain RICS map.
+
+    Returns
+    -------
+    chisurf.core.data.DataCurve
+        Curve whose ``y`` is the flattened carpet.
+    """
+    from chisurf.core.data import DataCurve
+    from chisurf.core.models.ics.models import image_correlation
+
+    xi_axis = np.arange(-8, 9, dtype=float)     # fast (pixel) lags
+    psi_axis = np.arange(0, 16, dtype=float)    # slow (line) lags
+    pixel_shift, line_shift = np.meshgrid(xi_axis, psi_axis)
+    frame_lags = np.arange(n_lags, dtype=float)
+
+    carpet = image_correlation(
+        pixel_shift[None, ...], line_shift[None, ...], frame_lags[:, None, None],
         n=2.0, diffusion_coefficient=1.5, offset=0.0,
-        pixel_duration=11.1, line_duration=3.33, pixel_size=50.0, w_r=0.25, w_z=1.0,
+        pixel_duration=11.1, line_duration=3.33, frame_duration=500.0,
+        pixel_size=50.0, w_r=0.25, w_z=1.0,
     )
-    y = ics_mean.ravel()
+    carpet = np.broadcast_to(carpet, (n_lags,) + pixel_shift.shape).copy()
+    y = carpet.ravel()
     meta = {
-        "rics": {
-            "line_shift": line_shift.astype(float),
-            "pixel_shift": pixel_shift.astype(float),
-            "ics_mean": ics_mean,
+        "ics": {
+            "correlation": carpet,
+            "pixel_shift": pixel_shift,
+            "line_shift": line_shift,
+            "frame_lags": frame_lags,
+            "ics_mean": carpet[0],
             "pixel_duration_us": 11.1,
             "line_duration_ms": 3.33,
+            "frame_duration_ms": 500.0,
+            "pixel_size_nm": 50.0,
         }
     }
-    return DataCurve(name="synthetic-rics", load_filename_on_init=False,
+    return DataCurve(name="synthetic-ics", load_filename_on_init=False,
                      y=y, x=np.arange(y.size, dtype=float), meta_data=meta)
 
 
-def _make_rics_fit(model_class):
+def _make_ics_fit(model_class, n_lags: int = 3):
+    """Return a Fit over synthetic ICS data for a model class."""
     import chisurf.core.fitting.fit as fit_mod
 
-    return fit_mod.Fit(model_class=model_class, data=_make_rics_data())
+    return fit_mod.Fit(model_class=model_class, data=_make_ics_data(n_lags))
 
 
-RICS_MODELS = [
-    "chisurf.core.models.rics.rics.RicsSimpleModel",
-    "chisurf.core.models.rics.rics.RicsTripletModel",
-    "chisurf.core.models.rics.rics.RicsImmobileModel",
-    "chisurf.core.models.rics.rics.RicsFlowModel",
-    "chisurf.core.models.rics.rics.RicsFullModel",
-    "chisurf.core.models.rics.rics.IcsGaussian2DModel",
+ICS_MODELS = [
+    "chisurf.core.models.ics.ics.ImageCorrelationModel",
+    "chisurf.core.models.ics.ics.IcsGaussian2DModel",
 ]
 
 
@@ -68,8 +84,8 @@ def _resolve(path):
     return getattr(importlib.import_module(mod), name)
 
 
-@pytest.mark.parametrize("model_path", RICS_MODELS)
-def test_rics_model_editor_renders_and_computes(qapp, model_path):
+@pytest.mark.parametrize("model_path", ICS_MODELS)
+def test_ics_model_editor_renders_and_computes(qapp, model_path):
     from qtpy import QtWidgets
 
     from chisurf.core.models import view_spec as vs
@@ -83,7 +99,7 @@ def test_rics_model_editor_renders_and_computes(qapp, model_path):
     model_class = _resolve(model_path)
     assert getattr(model_class, "view_spec_file", None), f"{model_path} has no view_spec_file"
 
-    fit = _make_rics_fit(model_class)
+    fit = _make_ics_fit(model_class)
     model = fit.model
 
     editor = build_model_editor(model)
@@ -101,87 +117,143 @@ def test_rics_model_editor_renders_and_computes(qapp, model_path):
                 group.find_parameters()
             assert list(group.parameters_all), f"group {section.target!r} has no parameters"
 
-    # 2D residual plot resolves with a callable accessor.
+    # The 2D plot resolves every named source plus the lag-count accessor.
     specs = model_plot_specs(model)
     res2d = [opts for cls, opts in specs if cls is Residual2DPlot]
-    assert res2d and callable(res2d[0].get("accessor")), "residual2d accessor not resolved"
+    assert res2d, "residual2d plot not declared"
+    opts = res2d[0]
+    assert set(opts["sources"]) == {"Residual", "Data", "Model"}
+    for spec_ in opts["sources"].values():
+        assert callable(spec_["accessor"]), "source accessor not resolved"
+    assert callable(opts["max_frames_accessor"]), "lag-count accessor not resolved"
+    assert opts["frame_kw"] == "lag_index"
 
-    # Model computes a finite 2D surface (and flattened 1D curve).
+    # Model computes a finite carpet (and its flattened 1D form).
     model.update()
     y = np.asarray(model.y)
     assert y.size > 0 and np.all(np.isfinite(y))
-    assert model.rics_model_2d is not None and model.rics_model_2d.ndim == 2
+    assert model.model_carpet is not None and model.model_carpet.ndim == 3
 
 
-def test_rics_compute_is_finite_for_adversarial_params():
-    """RICS compute functions stay finite for zero/negative optimizer excursions.
+def test_plot_accessors_follow_the_lag_slider(qapp):
+    """Each accessor returns the requested frame-lag slice, not always lag 0."""
+    from chisurf.core.models.ics.ics import (
+        ImageCorrelationModel,
+        get_ics_data_image,
+        get_ics_model_image,
+        get_ics_n_lags,
+        get_ics_residual_image,
+    )
+
+    fit = _make_ics_fit(ImageCorrelationModel, n_lags=3)
+    model = fit.model
+    model.update()
+
+    assert get_ics_n_lags(fit) == 3
+
+    first, _, _ = get_ics_data_image(fit, lag_index=0)
+    last, _, _ = get_ics_data_image(fit, lag_index=2)
+    assert first is not None and last is not None
+    assert not np.allclose(first, last), "the slider must change the shown slice"
+
+    # Out-of-range indices clamp instead of raising.
+    clamped, _, _ = get_ics_data_image(fit, lag_index=99)
+    np.testing.assert_allclose(clamped, last)
+
+    for accessor in (get_ics_model_image, get_ics_residual_image):
+        img, x, y = accessor(fit, lag_index=1)
+        assert img is not None and img.ndim == 2
+        assert x.size == img.shape[1] and y.size == img.shape[0]
+
+
+def test_model_matches_the_data_it_was_generated_from(qapp):
+    """Seeded with the generating parameters, the residual is numerically zero."""
+    from chisurf.core.models.ics.ics import ImageCorrelationModel
+
+    fit = _make_ics_fit(ImageCorrelationModel, n_lags=3)
+    model = fit.model
+    model.transport._n.value = 2.0
+    model.transport._D.value = 1.5
+    model.imaging._w_r.value = 0.25
+    model.imaging._w_z.value = 1.0
+    model.update()
+
+    np.testing.assert_allclose(
+        np.asarray(model.y), np.asarray(fit.data.y), rtol=1e-9, atol=1e-12
+    )
+
+
+def test_ics_compute_is_finite_for_adversarial_params():
+    """The model stays finite for zero/negative optimizer excursions.
 
     The fit divides by N and the beam waists, so unconstrained excursions to
     zero/negative values previously produced inf/nan and crashed leastsq. The
-    functions now take magnitudes / floor divisors (PAM |N|,|D| convention).
+    function takes magnitudes and floors divisors instead.
     """
-    from chisurf.core.models.rics.models import (
-        ics_gaussian_2d,
-        rics_diffusion_triplet,
-        rics_flow,
-        rics_full,
-        rics_immobile,
-        rics_simple,
-    )
+    from chisurf.core.models.ics.models import ics_gaussian_2d, image_correlation
 
-    xi = np.arange(-6, 7)
-    ps, ls = np.meshgrid(xi, xi)
-    ps = ps.astype(float)
-    ls = ls.astype(float)
+    axis = np.arange(-6, 7, dtype=float)
+    ps, ls = np.meshgrid(axis, axis)
     bad = [
         dict(n=0.0, diffusion_coefficient=1.0),
         dict(n=-5.0, diffusion_coefficient=-2.0),
         dict(n=1e-9, diffusion_coefficient=0.0, w_r=0.0, w_z=0.0),
     ]
+    extras = [
+        {},
+        {"n_immobile": -2.0, "w_immobile": 0.0, "shift_x": 30.0},
+        {"v_x": -50.0, "v_y": 1e4},
+        {"tau_triplet": -1.0, "a_triplet": 1.5},
+        {"n_immobile": -2.0, "two_d": True},
+        {"alpha": 0.0},
+        {"alpha": 2.0, "a_triplet": 0.999},
+    ]
     for kw in bad:
-        for fn, extra in [
-            (rics_simple, {}),
-            (rics_immobile, {"a_immobile": -3.0}),
-            (rics_flow, {"v_x": -50.0, "v_y": 1e4}),
-            (rics_diffusion_triplet, {"tauT": -1.0, "aT": 1.5}),
-            (rics_full, {"tauT": -1.0, "aT": 1.5, "n_immobile": -2.0, "w_immobile": 0.0, "shift_x": 30.0}),
-            (rics_full, {"n_immobile": -2.0, "two_d": True}),
-        ]:
-            out = fn(line_shift=ls, pixel_shift=ps, **{**kw, **extra})
-            assert np.all(np.isfinite(out)), f"{fn.__name__} not finite for {kw}"
+        for delta in (0.0, 3.0):
+            for extra in extras:
+                out = image_correlation(ps, ls, delta, **{**kw, **extra})
+                assert np.all(np.isfinite(out)), f"not finite for {kw} / {extra}"
+
     # anisotropic Gaussian with degenerate widths / angle
     g = ics_gaussian_2d(ls, ps, amplitude=-1.0, sigma_1=0.0, sigma_2=0.0, angle=9.0)
     assert np.all(np.isfinite(g))
 
 
-def test_rics_fit_is_stable(qapp):
-    """Each RICS model runs a real fit to completion with finite parameters."""
+def test_ics_fit_is_stable(qapp):
+    """Each model runs a real fit to completion with finite parameters."""
     import chisurf.core.fitting.fit as fit_mod
 
-    for path in RICS_MODELS:
-        fit = fit_mod.Fit(model_class=_resolve(path), data=_make_rics_data())
+    for path in ICS_MODELS:
+        fit = fit_mod.Fit(model_class=_resolve(path), data=_make_ics_data())
         m = fit.model
         fit.xmin, fit.xmax = 0, int(np.asarray(fit.data.y).size)
         m.update()
-        fit.run()  # must not raise (previously: "array must not contain infs or NaNs")
+        fit.run()  # must not raise ("array must not contain infs or NaNs")
         assert np.all(np.isfinite(np.asarray(m.y)))
-        assert np.isfinite(m.diffusion.n) and np.isfinite(m.diffusion.D)
 
 
-def test_rics_immobile_and_flow_change_the_surface(qapp):
-    """The immobile and flow terms actually perturb the RICS surface."""
-    from chisurf.core.models.rics.rics import RicsFlowModel, RicsImmobileModel
+def test_optional_terms_change_the_carpet(qapp):
+    """Releasing a term from its neutral value actually perturbs the model."""
+    from chisurf.core.models.ics.ics import ImageCorrelationModel
 
-    imm = _make_rics_fit(RicsImmobileModel).model
-    imm.update()
-    base = imm.rics_model_2d.copy()
-    imm.immobile._a_imm.value = 0.5
-    imm.update()
-    assert not np.allclose(base, imm.rics_model_2d), "immobile amplitude had no effect"
+    model = _make_ics_fit(ImageCorrelationModel).model
+    model.update()
+    base = model.model_carpet.copy()
 
-    flow = _make_rics_fit(RicsFlowModel).model
-    flow.update()
-    base_f = flow.rics_model_2d.copy()
-    flow.flow._vx.value = 200.0
-    flow.update()
-    assert not np.allclose(base_f, flow.rics_model_2d), "flow velocity had no effect"
+    for group, attr, value in (
+        ("immobile", "_n_imm", 0.5),
+        ("flow", "_vx", 200.0),
+        ("blinking", "_aT", 0.4),
+        ("transport", "_alpha", 0.6),
+    ):
+        model.update()
+        before = model.model_carpet.copy()
+        param = getattr(getattr(model, group), attr)
+        original = param.value
+        param.value = value
+        model.update()
+        assert not np.allclose(before, model.model_carpet), f"{group}.{attr} had no effect"
+        param.value = original
+
+    model.update()
+    np.testing.assert_allclose(base, model.model_carpet)

@@ -1,11 +1,12 @@
 {
+  "_comment": "Reader settings for the image-correlation carpet G(xi, psi, Delta). 'Max frame lag' is what turns a RICS map into a STICS/TICS/iMSD carpet.",
   "sections": [
     {
       "type": "panel",
       "title": "Detector",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "rics_detector"}
+        {"type": "custom", "key": "ics_detector"}
       ]
     },
     {
@@ -13,7 +14,7 @@
       "title": "Acquisition",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "rics_roi"},
+        {"type": "custom", "key": "ics_roi"},
         {
           "type": "choice",
           "attr": "subtract_average",
@@ -23,23 +24,24 @@
         },
         {
           "type": "value",
-          "attr": "frame_shift",
-          "label": "Frame shift",
+          "attr": "max_frame_lag",
+          "label": "Max frame lag Δ",
+          "description": "Largest frame lag to correlate. 0 gives the zero-lag map only (RICS); higher values extend the same carpet along time, which is what STICS, TICS and iMSD read. Cost grows linearly with the number of lags.",
           "kind": "int",
-          "minimum": -9999,
+          "minimum": 0,
           "maximum": 9999
         },
         {
           "type": "toggle_row",
           "items": [
-            {"attr": "fftshift", "label": "Center zero lag"},
-            {"attr": "framewise_rics", "label": "Framewise RICS"}
+            {"attr": "fftshift", "label": "Center zero lag"}
           ]
         },
         {
           "type": "value",
           "attr": "pixel_duration_us",
           "label": "Pixel dur [µs]",
+          "description": "Pixel dwell time. Sets the lag time of a one-pixel shift along the fast scan axis.",
           "kind": "float",
           "decimals": 3,
           "minimum": 0.0,
@@ -49,8 +51,28 @@
           "type": "value",
           "attr": "line_duration_ms",
           "label": "Line dur [ms]",
+          "description": "Line time. Sets the lag time of a one-line shift along the slow scan axis.",
           "kind": "float",
           "decimals": 3,
+          "minimum": 0.0,
+          "maximum": 1000000.0
+        },
+        {
+          "type": "value",
+          "attr": "frame_duration_ms",
+          "label": "Frame dur [ms]",
+          "description": "Frame time; sets the lag time of a one-frame shift. Leave at 0 to estimate it as (lines per frame) x (line time).",
+          "kind": "float",
+          "decimals": 3,
+          "minimum": 0.0,
+          "maximum": 1000000.0
+        },
+        {
+          "type": "value",
+          "attr": "pixel_size_nm",
+          "label": "Pixel size [nm]",
+          "kind": "float",
+          "decimals": 2,
           "minimum": 0.0,
           "maximum": 1000000.0
         }

@@ -23,6 +23,7 @@ ordering below runs from the physical fundamentals to the specific methods.
    :maxdepth: 1
 
    filtered_fcs
+   image_correlation
    pch_fida
 
 .. rubric:: Single-molecule FRET (bursts)

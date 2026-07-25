@@ -16,14 +16,14 @@
     "description": "PicoQuant unified TTTR file format",
     "tttrlib_container": "PTU",
     "reading_routine": "PTU",
-    "experiments": ["pda", "tcspc", "fcs", "pch", "rics"]
+    "experiments": ["pda", "tcspc", "fcs", "pch", "ics"]
   },
   ".ht3": {
     "name": "PicoQuant HT3",
     "description": "PicoQuant HydraHarp TTTR mode",
     "tttrlib_container": "HT3",
     "reading_routine": "HT3",
-    "experiments": ["pda", "tcspc", "fcs", "pch", "rics"]
+    "experiments": ["pda", "tcspc", "fcs", "pch", "ics"]
   },
   ".pt3": {
     "name": "PicoQuant PT3",
@@ -51,14 +51,14 @@
     "description": "Hierarchical Data Format, often Photon-HDF5",
     "tttrlib_container": "PHOTON-HDF5",
     "reading_routine": "PHOTON-HDF5",
-    "experiments": ["pda", "tcspc", "fcs", "pch", "rics"]
+    "experiments": ["pda", "tcspc", "fcs", "pch", "ics"]
   },
   ".hdf5": {
     "name": "HDF5 / Photon-HDF5",
     "description": "Hierarchical Data Format, often Photon-HDF5",
     "tttrlib_container": "PHOTON-HDF5",
     "reading_routine": "PHOTON-HDF5",
-    "experiments": ["pda", "tcspc", "fcs", "pch", "rics"]
+    "experiments": ["pda", "tcspc", "fcs", "pch", "ics"]
   },
   ".raw": {
     "name": "CZ-RAW",

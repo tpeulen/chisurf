@@ -250,6 +250,21 @@ class Residual2DPlotControl(QtWidgets.QWidget):
     def frame_index(self) -> int:
         return int(self.sb_frame.value())
 
+    def set_frame_label(self, text: str) -> None:
+        """Rename the stack slider.
+
+        Image stacks index frames, but a correlation carpet indexes frame lags,
+        so the caller names the axis (e.g. ``"Frame lag Δ"``).
+
+        Parameters
+        ----------
+        text : str
+            Label shown next to the slider.
+        """
+        lbl = getattr(self, "_lbl_frame", None)
+        if lbl is not None:
+            lbl.setText(str(text))
+
     def _on_levels_changed(self) -> None:
         if self._plot is not None:
             self._plot.apply_levels_from_controller()
@@ -306,6 +321,7 @@ class Residual2DPlot(plotbase.Plot):
         sources: dict | None = None,
         frame_kw: str | None = None,
         max_frames_accessor=None,
+        frame_label: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(fit=fit, *args, **kwargs)
@@ -389,6 +405,11 @@ class Residual2DPlot(plotbase.Plot):
         if self._sources is not None:
             try:
                 self.plot_controller.set_sources(list(self._sources.keys()))
+            except Exception:
+                pass
+        if frame_label:
+            try:
+                self.plot_controller.set_frame_label(frame_label)
             except Exception:
                 pass
         if self._max_frames_accessor is not None:

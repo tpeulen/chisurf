@@ -140,6 +140,22 @@ def model_plot_specs(model):
                     # other plots (e.g. residual2d) may name a top-level accessor
                     if isinstance(opts.get("accessor"), str):
                         opts["accessor"] = _resolve_accessor(opts["accessor"])
+                    # multi-source image plots name one accessor per source, and
+                    # optionally an accessor reporting how many frames/lags exist
+                    if isinstance(opts.get("sources"), dict):
+                        opts["sources"] = {
+                            key: (
+                                {**spec, "accessor": _resolve_accessor(spec["accessor"])}
+                                if isinstance(spec, dict)
+                                and isinstance(spec.get("accessor"), str)
+                                else spec
+                            )
+                            for key, spec in opts["sources"].items()
+                        }
+                    if isinstance(opts.get("max_frames_accessor"), str):
+                        opts["max_frames_accessor"] = _resolve_accessor(
+                            opts["max_frames_accessor"]
+                        )
                     resolved.append((cls, opts))
                 return resolved
         except Exception as exc:  # pragma: no cover - defensive

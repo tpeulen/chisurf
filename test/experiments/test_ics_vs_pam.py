@@ -1,4 +1,4 @@
-"""Cross-check ChiSurf RICS against PAM (Mia) on RICS_EGFPGFP.
+"""Cross-check ChiSurf image correlation against PAM (Mia) on RICS_EGFPGFP.
 
 PAM's Mia module computed the RICS auto-correlation of ``RICS_EGFPGFP.tif`` and
 stored it as a ``.miacor`` MATLAB file. Acquisition parameters (from the PAM
@@ -6,7 +6,8 @@ stored it as a ``.miacor`` MATLAB file. Acquisition parameters (from the PAM
 ROI 1,1,200,200, 50 frames, "Frame mean" correction.
 
 This test reads the same TIFF (validating the LZW multi-frame reader),
-computes ChiSurf's RICS correlation on the identical 200x200 ROI, and asserts
+computes the zero-frame-lag slice of ChiSurf's correlation carpet -- which *is*
+the RICS map -- on the identical 200x200 ROI, and asserts
 the baseline-subtracted correlation *decay* matches PAM's within tolerance.
 The correlation function is the quantity PAM stores (a fitted D is derived from
 it), so agreement here means both packages recover the same diffusion.
@@ -51,26 +52,28 @@ def _decay_profiles(corr: np.ndarray, k: int = 15):
     return fast[1:], slow[1:]  # drop lag 0
 
 
-def test_rics_reader_reads_lzw_stack():
-    """The RICS reader loads the LZW-compressed multi-frame TIFF as a stack."""
-    from chisurf.core.experiments.rics import RICSReader
+def test_ics_reader_reads_lzw_stack():
+    """The ICS reader loads the LZW-compressed multi-frame TIFF as a stack."""
+    from chisurf.core.experiments.ics import ICSReader
 
-    g = RICSReader(name="RICS", reading_routine="PTU", channel=0).read(filename=str(_TIF))
+    g = ICSReader(reading_routine="PTU", channel=0).read(filename=str(_TIF))
     assert g is not None and len(g) == 1
-    meta = g[0].meta_data["rics"]
+    meta = g[0].meta_data["ics"]
     assert np.asarray(meta["ics_mean"]).shape == (300, 300)
     assert int(meta.get("n_frames", 0)) == 50
+    # Default reader settings correlate the zero frame lag only, i.e. RICS.
+    assert np.asarray(meta["correlation"]).shape == (1, 300, 300)
 
 
-def test_rics_correlation_matches_pam():
+def test_ics_correlation_matches_pam():
     """ChiSurf's RICS correlation decay matches PAM's on the same 200x200 ROI."""
     import tifffile
 
-    from chisurf.core.experiments.rics.ics_core import compute_rics_from_images
+    from chisurf.core.experiments.ics.ics_core import compute_ics_carpet
 
     stack = np.asarray(tifffile.imread(str(_TIF)), dtype=float)
     cs = np.asarray(
-        compute_rics_from_images(stack[:, :200, :200], use_fftshift=True).ics_mean,
+        compute_ics_carpet(stack[:, :200, :200], use_fftshift=True).rics_map(),
         dtype=float,
     )
     pam = _pam_correlation()

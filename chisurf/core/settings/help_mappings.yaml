@@ -102,11 +102,11 @@ help:
       doc: "docs/PDA files.md"
       anchor: "pda-tttr"
 
-    # RICS TTTR/ICS reader
-    - experiment: "RICS"
-      setup: "RICS (TTTR/ICS)"
-      doc: "docs/RICS files.md"
-      anchor: "rics-tttr-ics"
+    # Image-correlation (RICS/STICS/TICS/iMSD) reader
+    - experiment: "Image correlation"
+      setup: "Image correlation (RICS/STICS/TICS/iMSD)"
+      doc: "docs/reference/file_formats/ics_files.md"
+      anchor: "ics-image-correlation"
 
     # PCH TTTR reader
     - experiment: "PCH"
