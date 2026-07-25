@@ -1528,8 +1528,56 @@ class Main(
                 cs.logging.info("Ribbon interface restored from settings")
         except Exception as e:
             cs.logging.warning(f"Failed to restore ribbon interface state: {e}")
-        
+
+        # Retranslate the live interface whenever the UI language changes (via the
+        # Settings selector, the ribbon flag dropdown, or anywhere else).
+        from chisurf.gui.i18n import language_notifier
+        language_notifier.language_changed.connect(self._on_language_changed)
+
         self.onExperimentChanged()
+
+    def _on_language_changed(self, _code: str) -> None:
+        """React to a live UI-language switch by retranslating the interface.
+
+        The switch is often triggered from inside a picker widget's own signal
+        handler (e.g. the ribbon flag dropdown), so the actual rebuild is deferred
+        to the next event-loop turn — rebuilding the ribbon destroys and recreates
+        that very picker, which must not happen while its handler is still on the
+        stack.
+        """
+        QtCore.QTimer.singleShot(0, self._retranslate_interface)
+
+    def _retranslate_interface(self) -> None:
+        """Rebuild the language-dependent chrome in the newly installed language.
+
+        The ribbon is built programmatically from action/manifest text, so tearing
+        it down and building it again re-reads every string through the freshly
+        installed translator — the whole top navigation (including the flag
+        dropdown) then renders in the new language without a restart. Open document
+        windows keep their old language until reopened (Qt binds most static
+        ``.ui`` text at build time).
+        """
+        try:
+            # 1. Refresh the main window's own menus/actions/labels/tooltips in
+            #    place (re-reads gui.ui through the freshly installed translator).
+            from chisurf.gui.retranslate import retranslate_from_ui
+
+            retranslate_from_ui(self, pathlib.Path(__file__).parent / "gui.ui")
+
+            # 2. Rebuild the ribbon so it reflects the now-retranslated actions.
+            #    The ribbon is built programmatically from those actions, so it
+            #    must be rebuilt *after* step 1.
+            if self._ribbon_integration is not None:
+                self.toggle_ribbon_interface(False)
+                self.toggle_ribbon_interface(True)
+
+            # 3. Nudge every other top-level widget to honour QEvent.LanguageChange.
+            for widget in QtWidgets.QApplication.instance().topLevelWidgets():
+                QtCore.QCoreApplication.sendEvent(
+                    widget, QtCore.QEvent(QtCore.QEvent.LanguageChange)
+                )
+        except Exception as e:  # pragma: no cover - defensive, must not crash the UI
+            cs.logging.warning(f"Failed to retranslate interface after language change: {e}")
 
     # ── ZMQ Server event handlers ──────────────────────────────────────
 
