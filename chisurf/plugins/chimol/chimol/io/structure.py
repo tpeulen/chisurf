@@ -259,6 +259,41 @@ def load_trajectory_frames(path: Path) -> np.ndarray:
     return arr
 
 
+def _read_full_model(structure_factory: Callable[..., object], path: Path) -> object:
+    """Build a structure that keeps waters, ligands and modified residues.
+
+    The core reader is tuned for modelling and drops solvent and non-standard
+    residues by default, which is wrong for a viewer: a deposited entry then
+    appears without the waters and ligands that PyMOL shows, and the atom counts
+    disagree with the file. Ask for the full model, and fall back to the plain
+    call for factories that predate the arguments (or are not the core reader at
+    all, as in standalone Chimol).
+
+    Parameters
+    ----------
+    structure_factory : callable
+        Factory taking a path and returning a structure object.
+    path : pathlib.Path
+        File to read.
+
+    Returns
+    -------
+    object
+        The structure the factory produced.
+    """
+    try:
+        return structure_factory(
+            str(path), keep_water=True, only_standard_residues=False
+        )
+    except TypeError:
+        logger.debug(
+            "Structure factory does not accept keep_water/only_standard_residues; "
+            "loading %s without solvent and hetero residues.",
+            path,
+        )
+        return structure_factory(str(path))
+
+
 def load_structure_payload(
     path: Path,
     *,
@@ -289,7 +324,7 @@ def load_structure_payload(
         )
     else:
         try:
-            structure = structure_factory(str(path))
+            structure = _read_full_model(structure_factory, path)
         except Exception:
             logger.warning(
                 "Structure reader failed for %s; falling back to the built-in "

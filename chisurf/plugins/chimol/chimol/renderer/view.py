@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from collections import OrderedDict
 from collections.abc import Sequence
 from contextlib import contextmanager
@@ -43,6 +44,8 @@ from .base import Renderer
 from .chimol_state import _MolViewObjectEntry, _MolViewObjectState, _StateField
 from .qtgl import QtGLRenderer
 from .scene import Geometry, Scene, SceneObject
+
+logger = logging.getLogger(__name__)
 
 # Default per-atom van-der-Waals radius (Angstrom) used for raw-coordinate
 # objects that carry no radii of their own. Sized to sit just below the real
@@ -1633,8 +1636,13 @@ class MolView(QtWidgets.QWidget):
             self._cartoon_mask = np.ones(n_res, dtype=bool)
 
             n_atoms = self._all_atom_coords.shape[0] if self._all_atom_coords is not None else 0
-            self._ball_mask = np.zeros(n_atoms, dtype=bool)
+            self._ball_mask = self._hetero_atom_mask(atoms, n_atoms)
             self._sticks_mask = np.zeros(n_atoms, dtype=bool)
+            if self._ball_mask.any():
+                # Waters and ligands are not part of any cartoon, so leaving them
+                # off means a deposited entry silently loses content the file
+                # carries. PyMOL shows them too (as nonbonded dots) until hidden.
+                self._show_atoms = True
 
             self._update_view()
             return
@@ -1912,6 +1920,20 @@ class MolView(QtWidgets.QWidget):
         except Exception:
             pass
 
+    def set_field_of_view(self, fov: float) -> None:
+        """Set the camera's vertical field of view in degrees.
+
+        Delegates to the renderer, which re-frames the scene so the molecule
+        keeps its on-screen size (see
+        :meth:`~.qtgl.QtGLRenderer.set_field_of_view`).
+        """
+        renderer = self._renderer
+        if renderer is None:
+            return
+        setter = getattr(renderer, "set_field_of_view", None)
+        if callable(setter):
+            setter(fov)
+
     def set_mouse_mode(self, mode: str) -> None:
         """Set the mouse interaction style.
 
@@ -1952,7 +1974,8 @@ class MolView(QtWidgets.QWidget):
         if radius <= 0.0:
             radius = float(getattr(self, "_radius", 10.0))
 
-        # Use defaults
+        # The distance is recomputed from the field of view by fit_to_radius
+        # immediately afterwards; this only establishes the orientation.
         self._renderer.reset_view(
             distance=max(radius * 3.0, 5.0),
             elevation=float(self._default_elevation),
@@ -2105,6 +2128,95 @@ class MolView(QtWidgets.QWidget):
 
         if changed:
             self._update_view()
+
+    def _hetero_atom_mask(self, atoms, n_atoms: int) -> np.ndarray:
+        """Mark the atoms that no cartoon or trace will draw.
+
+        An atom is "hetero" here if its residue never appears in the backbone
+        trace — waters, ions, ligands and sugars. Defining it by absence from the
+        trace rather than by a residue-name table means modified residues that do
+        get traced are correctly treated as polymer.
+
+        Parameters
+        ----------
+        atoms : numpy.ndarray or None
+            The structured atom array, needing ``res_id`` and (ideally) ``chain``.
+        n_atoms : int
+            Length of the returned mask.
+
+        Returns
+        -------
+        numpy.ndarray
+            Boolean mask of length ``n_atoms``; all-False when the residues
+            cannot be matched up.
+        """
+        mask = np.zeros(max(int(n_atoms), 0), dtype=bool)
+        if atoms is None or mask.size == 0 or self._residue_ids is None:
+            return mask
+        names = getattr(atoms, "dtype", None)
+        names = set(names.names or ()) if names is not None else set()
+        if "res_id" not in names or len(atoms) != mask.size:
+            return mask
+
+        def _keys(res_ids, chain_ids):
+            res = np.asarray(res_ids).astype(int, copy=False)
+            if chain_ids is None:
+                return [(None, int(r)) for r in res]
+            chains = np.asarray(chain_ids).astype(str, copy=False)
+            return [(str(c).strip(), int(r)) for c, r in zip(chains, res)]
+
+        try:
+            traced = set(_keys(
+                self._residue_ids,
+                getattr(self, "_residue_chain_ids", None) if "chain" in names else None,
+            ))
+            atom_keys = _keys(
+                atoms["res_id"],
+                atoms["chain"] if "chain" in names else None,
+            )
+        except Exception:
+            return mask
+
+        for i, key in enumerate(atom_keys):
+            if key not in traced:
+                mask[i] = True
+        return mask
+
+    def recompute_secondary_structure(self) -> int:
+        """Recompute the secondary structure from the coordinates (PyMOL ``dss``).
+
+        Discards whatever the object is currently annotated with — including a
+        depositor's ``HELIX``/``SHEET`` records — and derives H/E/C from the
+        backbone geometry instead. This is the escape hatch for structures whose
+        records are absent, stale, or disagree with the model, and for
+        trajectory frames where the conformation has moved on.
+
+        Returns
+        -------
+        int
+            Number of residues assigned, or 0 when there is nothing to work on.
+        """
+        atoms = getattr(self, "_atoms", None)
+        coords = getattr(self, "_coords", None)
+        if atoms is None or coords is None:
+            return 0
+        try:
+            n_res = int(coords.shape[0])
+        except Exception:
+            return 0
+        if n_res <= 0:
+            return 0
+
+        try:
+            codes = assign_ss_c3_from_atoms(atoms, n_res, verbose=False)
+        except Exception:
+            logger.warning("Secondary-structure assignment failed", exc_info=True)
+            return 0
+        if not codes:
+            return 0
+
+        self.set_secondary_structure_codes(codes)
+        return len(codes)
 
     def set_secondary_structure_codes(self, codes) -> None:
         """Set per-residue secondary-structure codes for coloring.
@@ -3009,9 +3121,18 @@ class MolView(QtWidgets.QWidget):
             return scene_objects
 
         used_all_atoms_for_balls = False
+        # The body below handles both a per-atom and a per-residue mask; this
+        # guard used to admit only the per-residue length, so a per-atom
+        # selection (which is what `show spheres, <sel>` and the hetero-atom
+        # default produce) fell through to the coarse per-CA sampling instead.
+        n_all_atoms = (
+            self._all_atom_coords.shape[0]
+            if self._all_atom_coords is not None
+            else -1
+        )
         if (
             self._ball_mask is not None
-            and len(self._ball_mask) == n_points
+            and len(self._ball_mask) in (n_points, n_all_atoms)
             and self._ball_mask.any()
             and self._atoms is not None
             and self._residue_ids is not None
@@ -3092,9 +3213,27 @@ class MolView(QtWidgets.QWidget):
                     else:
                         color_map = {}
 
+                    # Atoms the cartoon never colours -- waters, ions, ligands --
+                    # get their element's CPK colour instead of the flat base
+                    # colour, so a water oxygen reads as red the way it does in
+                    # every other viewer rather than as an anonymous grey ball.
                     sel_atom_res = atom_res_id[atom_mask]
+                    element_colors = None
+                    if "element" in fields_atoms:
+                        try:
+                            element_colors = _build_element_color_array(
+                                np.asarray(atoms["element"])[atom_mask], pts.shape[0]
+                            )
+                        except Exception:
+                            element_colors = None
                     for i_atom, rid in enumerate(sel_atom_res):
-                        base_col = color_map.get(rid, self._base_color_single)
+                        base_col = color_map.get(rid)
+                        if base_col is None:
+                            base_col = (
+                                element_colors[i_atom]
+                                if element_colors is not None
+                                else self._base_color_single
+                            )
                         colors[i_atom, :] = base_col
 
                     # Apply per-atom override if present.
@@ -3152,6 +3291,25 @@ class MolView(QtWidgets.QWidget):
                     if invalid_r.any():
                         radii_for_mesh[invalid_r] = base_global_radius
                     radii_for_mesh = np.maximum(radii_for_mesh, balls_min_size)
+
+                    # Non-polymer atoms are drawn at PyMOL's nonbonded size
+                    # rather than their van-der-Waals radius: a shell of
+                    # full-size water spheres buries the molecule it surrounds.
+                    nonbonded_scale = float(balls_cfg.get("nonbonded_size", 0.25))
+                    if 0.0 < nonbonded_scale < 1.0 and color_map:
+                        try:
+                            is_polymer = np.fromiter(
+                                (rid in color_map for rid in sel_atom_res),
+                                dtype=bool, count=sel_atom_res.shape[0],
+                            )
+                        except Exception:
+                            is_polymer = None
+                        if (
+                            is_polymer is not None
+                            and is_polymer.shape[0] == radii_for_mesh.shape[0]
+                            and not is_polymer.all()
+                        ):
+                            radii_for_mesh[~is_polymer] *= nonbonded_scale
 
                     # Render all balls for the current selection as a
                     # single merged mesh. This is much faster than

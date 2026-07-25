@@ -2,6 +2,41 @@
 
 ## 2026-07-25
 
+* **chimol: the deposited model arrives whole, and what no cartoon draws is
+  shown.** Prompted by a side-by-side against PyMOL on 1DG3: chimol's picture was
+  missing every water PyMOL rendered as a red dot.
+  **Root cause, in the core reader.** `read_coordinates` selects with
+  `NonWaterPDBSelector` and `convert_atoms` drops non-standard residues, so
+  waters, ions, ligands and sugars never reached the viewer at all — 1DG3 lost
+  341 atoms, 148L 63. Those defaults are right for the modelling code and are
+  **unchanged**; `read_coordinates`/`read`/`Structure` gained `keep_water` and
+  `only_standard_residues` keywords, and chimol's `_read_full_model` asks for the
+  whole model, falling back to the plain call on `TypeError` for factories that
+  predate the arguments. A test pins that the core default still drops them.
+  **Then show them.** `MolView._hetero_atom_mask` marks every atom whose residue
+  never enters the backbone trace and switches the atom representation on, which
+  is what PyMOL's `auto_show_nonbonded` (on by default, confirmed from its own
+  settings) does there. They are drawn at their element's CPK colour — so a water
+  oxygen reads red rather than as an anonymous grey ball — and scaled by a new
+  `nonbonded_size` setting (0.25, PyMOL's value) instead of their van-der-Waals
+  radius, because a shell of full-size water spheres buries the molecule inside
+  it. Defining the mask by absence from the trace rather than by a residue-name
+  table also catches incomplete polymer residues: 148L's chain E ends on a lone
+  backbone nitrogen (`ASN E 163`, no CA) that would otherwise be loaded and then
+  drawn by nothing.
+  **A per-atom mask never reached the mesh.** The ball-mesh builder's outer guard
+  admitted only a mask of *residue* length, while its body handled both, so any
+  per-atom selection silently fell through to a coarse every-tenth-CA sampling —
+  54 points instead of the selected atoms. Fixed to accept either length.
+  **Also measured while there** (not yet matched): PyMOL's `zoom` defaults to
+  `complete=0`, framing on the largest half-extent of the bounding box (148L:
+  implied R 24.47 vs max half-extent 23.77); `complete=1` frames on the bounding
+  sphere (30.49 vs 29.30). chimol frames on the bounding sphere, so its default
+  `zoom` behaves like PyMOL's `complete=1`.
+  Suite: 225 passed, 1 skipped (11 new). The `expectedFailure`
+  `test/fluorescence/test_structure.py::test_labeled_structure` reports
+  "unexpected success" — verified pre-existing in a clean worktree at HEAD.
+
 * **Concept depth batch 3 (pda, ebfret): detection limits rather than more
   theory.** Both pages already derived their models correctly and both cite files
   that all exist (verified `chisurf/core/models/pda/*` and

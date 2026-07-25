@@ -75,11 +75,33 @@ Implemented tiers:
   outlier-rejection Kabsch, with typed `cutoff`/`cycles` keyword args) are present.
 - **Object lifecycle** — `delete`/`reinitialize`/`copy`/`split_chains`, plus
   `set_name` (rename) and `count_atoms` (selection → atom count).
+- **Settings** — `set`/`get`/`unset`/`toggle`/`help_setting` over the registry in
+  `chimol/settings.py` (see below).
+- **Secondary structure** — `dss` recomputes H/E/C from the backbone, discarding
+  the deposited `HELIX`/`SHEET` annotation a PDB load adopts by default.
 
-Known remaining gaps (higher PyMOL tiers): boolean-rich per-object `set`/`get`
-coverage, chemistry-light editing (`bond`/`h_add`), volume/map objects, and the
-movie keyframe system (`mdo`/`mview` are stubbed). Keep unimplemented command
-names registered so the CLI emits a friendly "not yet implemented" message.
+Known remaining gaps (higher PyMOL tiers): chemistry-light editing
+(`bond`/`h_add`), volume/map objects, and the movie keyframe system
+(`mdo`/`mview` are stubbed). Keep unimplemented command names registered so the
+CLI emits a friendly "not yet implemented" message.
+
+## Settings (`chimol/settings.py`)
+
+PyMOL exposes one flat namespace (`cartoon_loop_radius`, `ray_shadow`,
+`field_of_view`); chimol stores its tunables nested by subsystem in
+`_DISPLAY_CONFIG`. `settings.py` is the single table mapping one onto the other,
+and `set`/`get`/`unset`/`toggle` resolve through it — exact name, unambiguous
+prefix (`cartoon_oval_w`), or a dotted config path (`metaball.alpha`) for entries
+with no PyMOL equivalent.
+
+Two invariants make the table trustworthy, both pinned by tests:
+
+1. **Every entry is live** — a setting is registered only if some code reads the
+   path it names, so an unknown or dead name is *reported* rather than silently
+   accepted. The config previously carried a second, flat copy of ~36 PyMOL names
+   that nothing read; it is gone, and a test keeps it from returning.
+2. **The config is the storage** — nothing is cached in the settings layer, so an
+   open viewer sees a change on its next redraw.
 
 # Renderer abstraction (design contract)
 
@@ -348,8 +370,24 @@ marker scene (+X red, +Y green, +Z blue) under a lopsided rotation, not with an
 identity view, which cannot tell the two readings apart. The rest of the layout
 matters too: slots 9-11 are the camera position in camera space `(0, 0, −distance)`
 (chimol's older tuples put a positive distance in slot 9, which is what makes the
-two unambiguous on input), and slot 17 is the field of view with a negative sign
-meaning orthoscopic. `ray` honours that field of view rather than assuming 45°.
+two unambiguous on input), and slot 17 is the field of view.
+
+**The sign of slot 17 reads backwards from the obvious guess.** PyMOL writes a
+**negative** field of view for its default *perspective* camera and a positive
+one when `orthoscopic` is on — measured from `cmd.get_view()` with the setting
+toggled both ways, and pinned by a test carrying a real PyMOL tuple. The older
+chimol layouts predate the flag and always wrote a positive value, so the sign
+is only honoured in the PyMOL branch. `ray` honours the field of view rather than
+assuming a fixed lens.
+
+**Framing follows the field of view.** `view_state.distance_for_radius` is
+PyMOL's rule, `d = radius / tan(fov / 2)` — verified against `cmd.zoom` for radii
+5/10/20 Å at 20° and 45°, agreeing to 5 significant figures. `fit_to_radius` uses
+it, so widening the lens pulls the camera in instead of shrinking the molecule.
+The default field of view is **20°**, PyMOL's, which is what makes a `set_view`
+tuple copied from PyMOL frame the molecule the same way here; it was previously a
+hardcoded 45° with a `distance = 3 × radius` framing rule that matched no lens in
+particular.
 
 **Navigation (`renderer/qtgl.py`).** The camera orientation is a **3×3
 world→camera rotation matrix** (a virtual trackball), not a turntable. Left-drag
@@ -369,6 +407,28 @@ internally).
 and, when that is unavailable or fails, parses the file itself via
 `_parse_pdb_backbone` into a `PdbBackbone` (all `ATOM`/`HETATM` coordinates plus
 the CA trace with its residue numbers, names and chain ids).
+
+**Ask the core reader for the whole model.** Its defaults are tuned for
+modelling: `read_coordinates` selects with `NonWaterPDBSelector` and
+`convert_atoms` drops non-standard residues, so waters, ions, ligands and sugars
+never arrive. For a viewer that is wrong — a deposited entry appears without
+content the file plainly carries and the atom count disagrees with the file
+(148L: 63 atoms short; 1DG3: 341). `_read_full_model` therefore calls the factory
+with `keep_water=True, only_standard_residues=False`, falling back to the plain
+one-argument call on `TypeError` so a factory that predates the arguments still
+works. The core **defaults are unchanged**, and a test pins that, because the
+modelling code depends on them.
+
+**What no cartoon draws, the atom representation shows.** `_hetero_atom_mask`
+marks every atom whose residue never enters the backbone trace and turns the atom
+representation on for them, so waters and ligands are visible on load the way
+PyMOL's `auto_show_nonbonded` (on by default, with `auto_show_lines`) makes them
+visible there. Those atoms are drawn at their element's CPK colour and scaled by
+`nonbonded_size` (0.25, PyMOL's value) rather than their van-der-Waals radius —
+a shell of full-size water spheres buries the molecule inside it. Defining the
+mask by *absence from the trace* rather than by a residue-name table also catches
+incomplete polymer residues: 148L's chain E ends on a lone backbone nitrogen
+(`ASN E 163`, no CA), which would otherwise be loaded and then drawn by nothing.
 
 **The residue metadata is load-bearing for rendering, not just for the info
 panel.** `_update_trace` and the cartoon builder derive segment boundaries from

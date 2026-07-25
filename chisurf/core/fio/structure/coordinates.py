@@ -456,42 +456,71 @@ def convert_atoms(
 
 
 def read_coordinates(
-    filename: str
+    filename: str,
+    *,
+    keep_water: bool = False,
+    only_standard_residues: bool = True,
 ) -> np.ndarray:
-    """
+    """Read atomic coordinates from a PDB or mmCIF file via IMP.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the coordinate file.
+    keep_water : bool
+        Keep water molecules. The default drops them, which is what the
+        modelling code wants; a viewer showing the deposited model wants them.
+    only_standard_residues : bool
+        Drop residues that are not standard amino acids or nucleotides
+        (ligands, sugars, modified residues). See :func:`_imp_keep_residue`.
+
+    Returns
+    -------
+    np.ndarray
+        Structured array with atom information.
 
     Examples
     --------
     >>> import cs as cs  # doctest: +SKIP
     >>> import cs.core.fio  # doctest: +SKIP
     >>> atoms = cs.fio.structure.read_coordinates('./test/data/1fat.cif')  # doctest: +SKIP
-
-    :param filename:
-    :return:
     """
     if not _HAS_IMP:
         raise ImportError("IMP is required to read coordinates. Try installing it.")
-        
+
     model = IMP.Model()
     if not os.path.isfile(filename):
         raise FileNotFoundError("The file %s could not be found." % filename)
-    if filename.upper().endswith('.PDB'):
-        mp = IMP.atom.read_pdb(filename, model, IMP.atom.NonWaterPDBSelector())
-        return convert_atoms(
-            IMP.atom.get_by_type(mp, IMP.atom.ATOM_TYPE)
-        )
-    if filename.upper().endswith('.CIF'):
-        print("Opening ci")
-        mp = IMP.atom.read_mmcif(filename, model, IMP.atom.NonWaterPDBSelector())
-        return convert_atoms(
-            IMP.atom.get_by_type(mp, IMP.atom.ATOM_TYPE)
-        )
+
+    # NonAlternative keeps everything but alternate locations; NonWater is the
+    # same minus solvent. Alternate locations are dropped either way, so a
+    # multi-conformer file does not yield overlapping copies of a residue.
+    selector = (
+        IMP.atom.NonAlternativePDBSelector()
+        if keep_water
+        else IMP.atom.NonWaterPDBSelector()
+    )
+
+    upper = filename.upper()
+    if upper.endswith(('.PDB', '.ENT')):
+        mp = IMP.atom.read_pdb(filename, model, selector)
+    elif upper.endswith('.CIF'):
+        mp = IMP.atom.read_mmcif(filename, model, selector)
+    else:
+        return np.zeros(0, dtype={'names': keys, 'formats': formats})
+
+    return convert_atoms(
+        IMP.atom.get_by_type(mp, IMP.atom.ATOM_TYPE),
+        only_standard_residues=only_standard_residues,
+    )
 
 
 def read(
         filename: str,
         assign_charge: bool = False,
         verbose: bool = None,
+        keep_water: bool = False,
+        only_standard_residues: bool = True,
         **kwargs
 ) -> np.ndarray:
     """Read atomic coordinates from a PDB/PQR/mmCIF file.
@@ -504,6 +533,13 @@ def read(
         If True, assign charges based on residue type.
     verbose : bool, optional
         If True, print progress.
+    keep_water : bool
+        Keep water molecules (PDB/mmCIF only). Off by default.
+    only_standard_residues : bool
+        Drop ligands, sugars and modified residues (PDB/mmCIF only). On by
+        default.
+    **kwargs
+        Forwarded to the PQR parser; ignored for PDB and mmCIF.
 
     Returns
     -------
@@ -542,7 +578,9 @@ def read(
                 atoms = parse_string_pqr(string, **kwargs)
             else:
                 atoms = read_coordinates(
-                    filename=filename
+                    filename=filename,
+                    keep_water=keep_water,
+                    only_standard_residues=only_standard_residues,
                 )
             return atoms
     else:

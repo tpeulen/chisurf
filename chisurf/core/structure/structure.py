@@ -100,9 +100,22 @@ class Structure(chisurf.core.base.Base):
             verbose: bool = False,
             pdb_id: str = None,
             protonate: bool = False,
+            keep_water: bool = False,
+            only_standard_residues: bool = True,
             **kwargs
     ):
-        """Initialize a :class:`Structure` from a PDB file, PDB id, or copy."""
+        """Initialize a :class:`Structure` from a PDB file, PDB id, or copy.
+
+        Parameters
+        ----------
+        keep_water : bool
+            Keep water molecules. The default drops them, which suits the
+            modelling code; a viewer that must show the deposited model as
+            deposited asks for them.
+        only_standard_residues : bool
+            Drop ligands, sugars and modified residues. On by default for the
+            same reason.
+        """
         super().__init__(*args, **kwargs)
         self.auto_update = auto_update
         self._filename = filename
@@ -132,7 +145,9 @@ class Structure(chisurf.core.base.Base):
             if os.path.isfile(p_object):
                 self._atoms = self.io.read(
                     p_object,
-                    verbose=self.verbose
+                    verbose=self.verbose,
+                    keep_water=keep_water,
+                    only_standard_residues=only_standard_residues,
                 )
                 self.filename = p_object
             elif len(p_object) == 4:
