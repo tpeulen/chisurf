@@ -51,6 +51,23 @@ class _LanguageNotifier(QtCore.QObject):
 #: construct). Import and connect to ``language_changed`` from any picker widget.
 language_notifier = _LanguageNotifier()
 
+
+def _live_notifier() -> "_LanguageNotifier":
+    """Return :data:`language_notifier`, recreating it if its C++ side was deleted.
+
+    A module-level ``QObject`` can outlive its underlying C++ object across
+    ``QApplication`` teardown/recreation (which happens between test modules; the
+    real app keeps a single ``QApplication`` for its lifetime, so this never
+    fires there). Reviving it keeps ``emit()``/``connect()`` from hitting a dead
+    wrapper.
+    """
+    global language_notifier
+    try:
+        language_notifier.signalsBlocked()  # cheap touch; raises if C++ is gone
+    except RuntimeError:
+        language_notifier = _LanguageNotifier()
+    return language_notifier
+
 #: Human-readable, self-endonym display names for known locale codes. Codes not
 #: listed fall back to the bare code so a new ``.qm`` is still selectable.
 LANGUAGE_DISPLAY_NAMES = {
@@ -279,7 +296,7 @@ def apply_language(code: str, app: QtWidgets.QApplication | None = None) -> str:
             app.removeTranslator(tr)
     _installed.clear()
     applied = install_translation(app, code)
-    language_notifier.language_changed.emit(applied)
+    _live_notifier().language_changed.emit(applied)
     return applied
 
 
