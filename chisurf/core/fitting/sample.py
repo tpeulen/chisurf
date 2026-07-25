@@ -195,7 +195,10 @@ def walk_mcmc(
         'lnprior': lnprior,
         'parameter_values': parameter,
         'parameter_names': fit.model.parameter_names,
-        'acceptance_rate': n_accepted / float(max(1, i_step))
+        'acceptance_rate': n_accepted / float(max(1, i_step)),
+        # One chain, with its per-draw structure kept so that the split R-hat
+        # and the autocorrelation time can be computed from it.
+        'chains': parameter[np.newaxis, :, :],
     }
 
 
@@ -360,8 +363,17 @@ def emcee_result(sampler, fit: cs.core.fitting.fit.Fit) -> dict:
     Returns
     -------
     dict
-        ``chi2r`` (data misfit only), ``lnprior``, ``parameter_values`` and
-        ``parameter_names``.
+        ``chi2r`` (data misfit only), ``lnprior``, ``parameter_values``,
+        ``parameter_names``, the per-walker ``chains`` and the
+        ``acceptance_rate``.
+
+    Notes
+    -----
+    ``chains`` is one entry per *walker*. An ensemble sampler's walkers are not
+    independent chains, so a split R-hat computed across them is optimistic --
+    see :mod:`chisurf.core.fitting.diagnostics`. It is still worth reporting
+    (a large value is conclusive) but the decisive comparison is across the
+    independent runs that :func:`chisurf.core.fitting.fit.sample_fit` performs.
     """
     model = fit.model
     dof = float(model.n_points - model.n_free - 1.0)
@@ -377,9 +389,22 @@ def emcee_result(sampler, fit: cs.core.fitting.fit.Fit) -> dict:
         blobs = np.asarray(blobs, dtype=np.float64).reshape(len(chain), -1)
         lnprior = blobs[:, 0]
         chi2 = blobs[:, 1]
+
+    # get_chain() is (n_steps, n_walkers, ndim); the diagnostics want one row
+    # per chain, so the walker axis comes first.
+    per_walker = np.asarray(sampler.get_chain(), dtype=np.float64)
+    per_walker = per_walker.transpose(1, 0, 2) if per_walker.ndim == 3 else None
+
+    try:
+        acceptance = float(np.mean(sampler.acceptance_fraction))
+    except Exception:
+        acceptance = float('nan')
+
     return {
         'chi2r': chi2 / dof,
         'lnprior': lnprior,
         'parameter_values': chain,
-        'parameter_names': model.parameter_names
+        'parameter_names': model.parameter_names,
+        'chains': per_walker,
+        'acceptance_rate': acceptance,
     }

@@ -321,9 +321,12 @@ class FitTests(unittest.TestCase):
             thin=10
         )
         # ``lnprior`` is reported next to ``chi2r`` so the data misfit and the
-        # prior stay separable in the stored chain (PRD-68).
-        self.assertSetEqual(
-            {'chi2r', 'lnprior', 'parameter_values', 'parameter_names'},
+        # prior stay separable in the stored chain (PRD-68); ``chains`` and
+        # ``acceptance_rate`` carry the convergence evidence (PRD-69). Asserted
+        # as a subset so adding further diagnostics is not a breaking change.
+        self.assertLessEqual(
+            {'chi2r', 'lnprior', 'parameter_values', 'parameter_names',
+             'chains', 'acceptance_rate'},
             set(r.keys())
         )
         self.assertEqual(
@@ -334,6 +337,9 @@ class FitTests(unittest.TestCase):
             len(r['lnprior']),
             len(r['chi2r'])
         )
+        # One chain per walker, each of the recorded length.
+        self.assertEqual(r['chains'].shape[0], 5)
+        self.assertEqual(r['chains'].shape[2], len(r['parameter_names']))
 
         # There is an alternative sampler that directly saves to files. It
         # creates a timestamped sub-directory holding the chains.

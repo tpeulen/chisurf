@@ -16,6 +16,7 @@ import chisurf.core.fio
 import chisurf.core.curve
 import chisurf.core.experiments
 import chisurf.core.data
+import chisurf.core.fitting.diagnostics
 import chisurf.core.fitting.parameter
 import chisurf.core.fitting.priors
 import chisurf.core.fitting.sample
@@ -688,11 +689,18 @@ class Fit(cs.core.base.Base):
                     interval, method = "n/a", "no estimate"
                 else:
                     interval = f"[{e['low']:.5g}, {e['high']:.5g}]"
-                    method = (
-                        f"chi2 scan, p={e['p_value']:g}" if e['method'] == 'profile'
-                        else f"covariance ±1σ, p≈{e['p_value']:g}"
-                    )
+                    method = {
+                        'mcmc': f"MCMC quantiles, p={e['p_value']:g}",
+                        'profile': f"chi2 scan, p={e['p_value']:g}",
+                    }.get(e['method'], f"covariance ±1σ, p≈{e['p_value']:g}")
                 lines.append(f"    {e['name']:<12s}  {e['value']:<11.5g}  {interval:<25s}  {method}")
+
+        warnings = ((getattr(self, 'sampling_diagnostics', None) or {})
+                    .get('warnings') or [])
+        if warnings:
+            lines.append("\n  Sampling did not converge")
+            for w in warnings:
+                lines.append(f"    {w}")
         return "\n".join(lines) + "\n"
 
     def prior_summary(self) -> typing.List[typing.Dict[str, typing.Any]]:
@@ -727,6 +735,51 @@ class Fit(cs.core.base.Base):
             })
         return out
 
+    def _mcmc_intervals(
+            self,
+            p_value: float
+    ) -> typing.Dict[str, typing.Tuple[float, float]]:
+        """Return credible intervals from the chain this fit was last sampled with.
+
+        :func:`sample_fit` leaves its convergence report on the fit as
+        ``sampling_diagnostics``; this reads the posterior quantiles out of it.
+        Parameters whose chain failed its convergence checks are **omitted**
+        rather than reported, because a quantile of an unconverged chain is a
+        number without a meaning -- the caller then falls back to the profile or
+        covariance estimate.
+
+        Parameters
+        ----------
+        p_value : float
+            Central credible mass, e.g. ``0.68``.
+
+        Returns
+        -------
+        dict
+            Parameter name -> ``(low, high)``. Empty when nothing was sampled.
+        """
+        report = getattr(self, 'sampling_diagnostics', None)
+        if not isinstance(report, dict):
+            return {}
+        entries = report.get('parameters') or []
+        lo_q = 0.5 - 0.5 * float(p_value)
+        hi_q = 0.5 + 0.5 * float(p_value)
+        out = {}
+        for e in entries:
+            quantiles = e.get('quantiles') or {}
+            low = _closest_quantile(quantiles, lo_q)
+            high = _closest_quantile(quantiles, hi_q)
+            if low is None or high is None:
+                continue
+            rhat = e.get('rhat', float('nan'))
+            ess = e.get('ess', 0.0)
+            if not np.isfinite(rhat) or rhat > cs.core.fitting.diagnostics.RHAT_THRESHOLD:
+                continue
+            if not np.isfinite(ess) or ess < cs.core.fitting.diagnostics.ESS_THRESHOLD:
+                continue
+            out[str(e.get('name'))] = (float(low), float(high))
+        return out
+
     def posterior_summary(
             self,
             p_value: float = 0.68
@@ -753,7 +806,15 @@ class Fit(cs.core.base.Base):
             One entry per free parameter with ``name``, ``value``, ``low``,
             ``high``, ``method`` and ``p_value``. ``low``/``high`` are NaN when
             no estimate is available.
+
+        Notes
+        -----
+        Three estimates are possible and the ``method`` key says which a row
+        carries, in decreasing order of fidelity: ``mcmc`` (posterior quantiles
+        from a chain left by :func:`sample_fit`, the only one that needs no
+        Gaussian or single-parameter assumption), ``profile`` and ``laplace``.
         """
+        chain_intervals = self._mcmc_intervals(p_value)
         out = []
         for name in sorted(self.model.parameters_all_dict.keys()):
             p = self.model.parameters_all_dict[name]
@@ -767,7 +828,12 @@ class Fit(cs.core.base.Base):
                 continue
             low = high = float('nan')
             method = 'none'
-            scan = getattr(p, 'scan_result', None)
+            # A chain describes the whole posterior, so it outranks a profile
+            # scan (one parameter at a time) and a covariance (Gaussian).
+            if str(p.name) in chain_intervals:
+                low, high = chain_intervals[str(p.name)]
+                method = 'mcmc'
+            scan = getattr(p, 'scan_result', None) if method == 'none' else None
             if isinstance(scan, dict):
                 try:
                     intervals = cs.core.fitting.support_plane.confidence_intervals_from_scan_result(
@@ -1801,11 +1867,26 @@ def sample_fit(
         Sampling configuration passed through to
         :mod:`cs.core.fitting.sample`.
 
+    Returns
+    -------
+    dict or None
+        The convergence report also written to ``diagnostics.json``: pooled
+        per-parameter statistics over the ``n_runs`` *independent* runs (mean,
+        sd, quantiles, effective sample size, split R-hat, autocorrelation time,
+        Monte-Carlo error) plus the list of ``warnings``. ``None`` when no run
+        produced a chain. See :mod:`chisurf.core.fitting.diagnostics`.
+
     Raises
     ------
     ValueError
         If ``fit.model`` is not a curve-based model (e.g. ProteinMC) and
         therefore cannot be sampled with the generic emcee backend.
+
+    Notes
+    -----
+    The stored chain files are never truncated. The recommended burn-in is
+    reported in ``diagnostics.json`` and applied to the summary statistics only,
+    so a reader who disagrees still has every draw.
     """
     model = getattr(fit, "model", None)
     if model is None or not hasattr(model, "__getitem__") or not hasattr(model, "n_points"):
@@ -1874,6 +1955,7 @@ def sample_fit(
 
     total_steps = int(n_runs * steps)
     done_steps = 0
+    run_results: typing.List[dict] = []
 
     success = True
     # Sanitize fit name for use in filenames
@@ -1938,20 +2020,134 @@ def sample_fit(
 
         if success:
             save_chain_to_file(r, fn_final)
-            
+            run_results.append(r)
+
             if os.path.exists(fn_partial):
                 try:
                     os.remove(fn_partial)
                 except Exception:
                     pass
-        
+
         done_steps += steps
         if progress_callback:
             progress_callback(done_steps, total_steps)
 
+    diagnostics = _write_sampling_diagnostics(
+        run_results, fit, os.path.join(sampling_dir, "diagnostics.json")
+    )
+    # Leave the report on the fit so ``posterior_summary`` can quote credible
+    # intervals from the chain instead of only the covariance or a profile scan.
+    # What was sampled is ``fit.model``, which for a group is the *selected*
+    # member's model -- so that member owns the report too, and shows it in the
+    # per-member text a group's ``__str__`` is assembled from.
+    fit.sampling_diagnostics = diagnostics
+    selected = getattr(fit, 'selected_fit', None)
+    if selected is not None and selected is not fit:
+        selected.sampling_diagnostics = diagnostics
+
     # restore initial parameter values
     fit.model.parameter_values = pv
     fit.model.update()
+    return diagnostics
+
+
+def pool_chains(
+        run_results: typing.Sequence[dict]
+) -> typing.Optional[np.ndarray]:
+    """Stack the chains of several independent sampling runs.
+
+    ``sample_fit`` performs ``n_runs`` independent runs and used to write each to
+    its own file and forget about them. Independent runs are exactly what a
+    cross-chain R-hat is computed from, so pooling them is what turns them from
+    redundant work into evidence.
+
+    Runs of unequal length (one was cancelled) are truncated to the shortest, so
+    every pooled chain covers the same number of draws.
+
+    Parameters
+    ----------
+    run_results : sequence of dict
+        Result dicts carrying a ``chains`` entry of shape
+        ``(n_chains, n_draws, n_parameters)``.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``(total_chains, n_draws, n_parameters)``, or ``None`` when no run
+        provided usable chains.
+    """
+    blocks = []
+    for r in run_results:
+        c = r.get('chains') if isinstance(r, dict) else None
+        if c is None:
+            continue
+        c = np.asarray(c, dtype=np.float64)
+        if c.ndim == 3 and c.shape[0] and c.shape[1]:
+            blocks.append(c)
+    if not blocks:
+        return None
+    n_draws = min(b.shape[1] for b in blocks)
+    n_par = min(b.shape[2] for b in blocks)
+    return np.concatenate(
+        [b[:, :n_draws, :n_par] for b in blocks], axis=0
+    )
+
+
+def _write_sampling_diagnostics(
+        run_results: typing.Sequence[dict],
+        fit: Fit,
+        path: str
+) -> typing.Optional[dict]:
+    """Summarise the pooled runs, write ``diagnostics.json`` and log the warnings.
+
+    Parameters
+    ----------
+    run_results : sequence of dict
+        The per-run result dicts.
+    fit : Fit
+        Fit that was sampled; supplies the parameter names.
+    path : str
+        Where to write the JSON report.
+
+    Returns
+    -------
+    dict or None
+        The report, or ``None`` when there were no chains to summarise.
+    """
+    chains = pool_chains(run_results)
+    if chains is None:
+        return None
+
+    names = list(fit.model.parameter_names)
+    summary = cs.core.fitting.diagnostics.summarize(chains, names=names)
+    warnings = cs.core.fitting.diagnostics.convergence_warnings(summary)
+    acceptance = [
+        float(r['acceptance_rate']) for r in run_results
+        if isinstance(r, dict) and np.isfinite(r.get('acceptance_rate', np.nan))
+    ]
+    report = {
+        'n_runs': len(run_results),
+        'n_chains': int(chains.shape[0]),
+        'n_draws': int(chains.shape[1]),
+        'burn_in': summary[0]['burn_in'] if summary else 0,
+        'acceptance_rate': float(np.mean(acceptance)) if acceptance else None,
+        'parameters': summary,
+        'warnings': warnings,
+    }
+    try:
+        with open(path, "w") as f:
+            json.dump(report, f, indent=4)
+    except OSError as e:
+        cs.logging.warning(f"could not write sampling diagnostics: {e}")
+
+    for message in warnings:
+        cs.logging.warning(f"sampling: {message}")
+    if not warnings:
+        cs.logging.info(
+            "sampling: no convergence problems detected "
+            f"({report['n_chains']} chains x {report['n_draws']} draws)"
+        )
+    return report
 
 
 #@nb.jit#(nopython=True)
@@ -2140,6 +2336,43 @@ def _apply_fit_mask(
     w_slice = m[xmin:xmax]
     wres *= w_slice
     return wres
+
+
+def _closest_quantile(
+        quantiles: typing.Dict[str, float],
+        target: float,
+        tolerance: float = 0.02
+) -> typing.Optional[float]:
+    """Return the stored quantile nearest ``target``, or ``None`` if none is close.
+
+    A summary carries a fixed ladder of quantiles (2.5/16/50/84/97.5 %), so a
+    request for a 68 % interval matches the 16/84 pair exactly while an unusual
+    coverage has no honest answer and returns ``None`` rather than an
+    interpolation the sample may not support.
+
+    Parameters
+    ----------
+    quantiles : dict
+        Mapping of probability (as a string) to value.
+    target : float
+        Requested probability.
+    tolerance : float, optional
+        Largest acceptable difference in probability.
+
+    Returns
+    -------
+    float or None
+        The value at the closest stored probability.
+    """
+    best, best_gap = None, tolerance
+    for key, value in quantiles.items():
+        try:
+            gap = abs(float(key) - target)
+        except (TypeError, ValueError):
+            continue
+        if gap <= best_gap:
+            best, best_gap = value, gap
+    return None if best is None else float(best)
 
 
 def _smooth_prior(parameter) -> typing.Optional[cs.core.fitting.priors.Prior]:
