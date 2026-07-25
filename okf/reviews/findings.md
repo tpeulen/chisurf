@@ -1294,3 +1294,54 @@ forms. Findings RF-098..RF-102.
 - **Location:** `chisurf/core/fitting/diagnostics.py:307-311` (`_split` returns the chains untouched when `n // 2 < 2`) with `:357-368` (`rank_normalized_rhat`) against `:431-433` (`split_rhat`, which returns `nan` instead)
 - **Finding:** For two or three draws per chain `_split` silently declines to split, and `rank_normalized_rhat` proceeds anyway — so `summarize` publishes a `rhat` that was never split under a docstring promising "``nan`` when the chains are too short" and a warning string that calls it "rank-normalised split R-hat". Verified: `m=2, n=2` → `rank_normalized_rhat` `1.932` while `split_rhat` is `nan`; `m=2, n=3` → `1.067` vs `nan`. Separately, `m=1` with `n < 4` reaches `_rhat_1d` with a single chain mean, so `np.var(means, ddof=1)` leaks `RuntimeWarning: Degrees of freedom <= 0 for slice` and `invalid value encountered in scalar divide` out of a diagnostics call before returning `nan`. Return `nan` when `_split` could not split (as `split_rhat` does), and guard the one-chain case rather than letting numpy warn.
 - **Fix note:**
+
+### Review 2026-07-26 (9) — the What-if conditional sweep
+
+Slice: `ab913c34e`, the newest landing — `GaussianEngine.conditional_scan`
+(`chisurf/core/fitting/engine.py:761-849`), its widget
+`chisurf/gui/plots/conditional_scan.py`, and the guide section it added.
+Reproduced in the `arm64` env, offscreen, on the guide's own parabola fit.
+
+What checks out, and is worth not re-reviewing: **the algebra is exact.** Against
+an independent Schur-complement reference computed from `form.covariance` — the
+conditional of the *full joint* given one variable, not a pairwise shortcut —
+the swept means agree to `2.2e-16` at every point and the conditional widths to
+`4.4e-16`; the per-target `sd = σ_j√(1−ρ²)` is precisely the diagonal of that
+Schur complement, so reporting it as a scalar independent of the held value is
+right, not an approximation. `held`/`held_z` span what the axis label claims, the
+targets come back in the form's own order, the 23 tests in
+`test/fitting/test_canonical_form.py` pass, and the marker really does move
+rather than accumulate (41 slider steps leave the plot item count at 4). The
+`np.clip(rho, -1, 1)` is unreachable defence, not a silent repair:
+`CanonicalForm.from_moments` Choleskys the covariance and `form()` catches the
+resulting `LinAlgError`, so an indefinite curvature never reaches the sweep.
+Findings RF-103..RF-106; the two that matter are in the widget and in the
+evidence contract, not in the math.
+
+### RF-103
+- **Status:** OPEN
+- **Severity:** S1 (fixing parameters leaves a full, confident-looking what-if analysis on screen that describes the *previous* posterior; the "not usable" message it was supposed to show is overwritten in the same call)
+- **Location:** `chisurf/gui/plots/conditional_scan.py:100-120` (the `len(form.names) < 2` branch, whose `self.parameter_box.clear()` at `:106` is **not** inside the `blockSignals` pair at `:112-119`) with `:122-132` (`_rebuild`, which then runs on the stale `self._engine` / `self._full_names`)
+- **Finding:** `update()` writes "needs a converged fit with at least two free parameters", clears the plot, and *then* clears the combo box outside the signal block. That emits `currentIndexChanged`, which is connected to `_rebuild`; `_full_names` and `_engine` still hold the previous update's values, `currentIndex()` is now `-1` and `max(0, -1)` turns it into `0`, so the widget immediately re-runs the sweep on the **old** engine and redraws. Verified offscreen on the guide's `c+a*x+b*x**2` fit: after `a` and `b` are fixed (leaving one free parameter), the panel is pixel-for-pixel the earlier one — title "Fixing c — what the rest become", both curves, and a table quoting `a = 2.07759 ± 0.00804`, `b = 0.476323 ± 0.00495`, "90% narrower" — for two parameters that are no longer free at all, while the *Fix* combo is visibly empty; `w._scan is None` is `False` and the intended message never survives the call. The same stale state is reachable through the `except` branch at `:95-99`, which does not clear the combo at all, so switching parameter there also draws from the dead engine. Clear `_scan`/`_full_names`/`_engine` (and block signals around the `clear()`) before returning. There is no widget test for this plot at all — a two-line construct-update-degrade test would pin it.
+- **Fix note:**
+
+### RF-104
+- **Status:** OPEN
+- **Severity:** S2 (the whole point of the design is that the answer is free; opening the tab once makes every later `fit.update()` pay a full numerical Hessian, forever, even while another tab is showing)
+- **Location:** `chisurf/gui/plots/conditional_scan.py:89-93` (`update()` unconditionally builds `GaussianEngine(...).add_all_targets().run()`), reached from `chisurf/gui/widgets/models/model_widget.py:47-49` (`update_plots` loops **every** created plot) via `chisurf/gui/widgets/fitting/fit_subwindow.py:198` (`fit.plots = self._created_plots`)
+- **Finding:** Plots are created lazily per tab, but once created they stay in `fit.plots` and `ModelWidget.update()` calls `update()` on all of them with no visibility test — so `ConditionalScanPlot` re-evaluates the curvature on every `fit.update()`, hidden or not. Verified by counting `model.update_model` calls across one `plot.update()`: **4 model evaluations** for a 3-free-parameter model (n+1, the forward-difference Jacobian), plus the matrix inverse; for a global TCSPC fit with 30 free parameters that is 31 full convolutions per model update, spent on a tab nobody is looking at. Contrast the sibling plots that already guard: `chisurf/gui/plots/deer_pr.py:46` and `chisurf/gui/plots/table_plot.py:340` both start with `if not self.isVisible(): return`. Add the same early-out (the visible-tab path, `fit_subwindow.refresh_current_plot`, already calls `update()` when the tab is shown, so nothing is lost). `PosteriorGraphPlot` has the identical exposure and is worth the same guard.
+- **Fix note:**
+
+### RF-105
+- **Status:** OPEN
+- **Severity:** S2 (a parameter the caller pinned with `condition()` is reported by the sweep as a free target, with a width and a value that moves — the same engine answers the same question two different ways)
+- **Location:** `chisurf/core/fitting/engine.py:805` (`conditional_scan` starts from `self.form()`, the *unconditioned* cached form) against `:683-685` (`GaussianEngine.run`, which does apply `self._evidence` — but to a local variable, never back to `self._form`); `conditional` at `:740` has the same gap
+- **Finding:** `PosteriorEngine.condition(name, value)` is the engine's evidence API, and `run()` honours it — the held parameter correctly comes back as an empty `Marginal`. `conditional_scan` does not: it reads the cached form, which `form()` built before the conditioning, so the sweep is taken in a posterior where the held parameter is still free *and lists it as one of the targets*. Verified on the guide's fit: after `eng.condition('1:a', 5.0); eng.run()`, `eng.marginal('1:a')` is `value=nan, sd=nan, method='none'` (correctly "held, no marginal of its own"), yet `eng.conditional_scan('1:c')` returns `1:a` as a target with `sd = 0.00804` and a mean sweeping around `2.0776` — the old optimum, not the 5.0 it was pinned at. `eng.conditional({})` on the same engine likewise returns all three unconditioned means. Nothing warns. Apply `self._evidence` in one shared helper that `run`, `conditional` and `conditional_scan` all start from, and drop held parameters from `targets`.
+- **Fix note:**
+
+### RF-106
+- **Status:** OPEN
+- **Severity:** S3 (the guide's headless recipe cannot run as printed — it returns `None` and the next line raises)
+- **Location:** `docs/guides/39_parameter_uncertainty.md:296-297` (`scan = eng.conditional_scan('tau1', points=61, span=3.0)` followed by `for t in scan['targets']`) against `chisurf/core/fitting/engine.py:805-807` (`if form is None or name not in form.names: return None`)
+- **Finding:** The engine's scope is `posterior_model(fit).parameter_names`, which for a `FitGroup` — the object the same guide builds at line 24, and what the GUI always holds — is prefixed with the member index. Verified: `eng.form().names` is `('1:c', '1:a', '1:b')`, and `eng.conditional_scan('a')` returns `None`, so the loop under it dies with `TypeError: 'NoneType' object is not subscriptable`. The name in the snippet is also `'tau1'`, which belongs to a lifetime model and not to the `c+a*x+b*x**2` fit the section is running. OKF already states the rule ([subsystems/fitting](/subsystems/fitting.md): "group names are prefixed (`3:tau`)"); the guide neither states it nor obeys it. Use a name taken from `eng.form().names` in the example and say in one clause that the sweep is keyed by the form's own (prefixed) names.
+- **Fix note:**
