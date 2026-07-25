@@ -237,3 +237,139 @@ def test_a_fit_from_the_gui_stack_recovers_the_simulated_distances(qapp):
     fit.run()
     recovered = [float(p.value) for p in means]
     assert np.allclose(recovered, truth, atol=2.5), recovered
+
+
+# ── stochastic labelling ───────────────────────────────────────────────────
+
+
+def test_swapped_labels_add_a_mirror_population(qapp):
+    """PAM's stochastic-labelling correction is a permutation, not a dropout.
+
+    When the two labelling sites are chemically equivalent, green and red land
+    on either one, so a fraction of molecules carries the mirror geometry:
+    R(BG) and R(BR) exchanged, R(GR) untouched — it is the distance *between*
+    the two swapped dyes. The correlations with GR trade places with each
+    other while the BG/BR correlation is unchanged, for the same reason.
+    """
+    fit = _simulated_fit(n_bursts=200)
+    model = fit.model
+    species = model.species
+    species.means_of(0)[0].value = 55.0   # R_GR
+    species.means_of(0)[1].value = 40.0   # R_BG
+    species.means_of(0)[2].value = 70.0   # R_BR
+    species.correlations_of(0)[0].value = 0.5   # rho(GR,BG)
+    species.correlations_of(0)[1].value = -0.2  # rho(GR,BR)
+    species.correlations_of(0)[2].value = 0.3   # rho(BG,BR)
+
+    assert len(species.as_species(1.0)) == 1
+
+    pair = species.as_species(0.7)
+    assert len(pair) == 2
+    normal, mirror = pair
+    assert normal.amplitude == pytest.approx(0.7)
+    assert mirror.amplitude == pytest.approx(0.3)
+
+    assert normal.means.tolist() == [55.0, 40.0, 70.0]
+    assert mirror.means.tolist() == [55.0, 70.0, 40.0]
+
+    def correlation(component, i, j):
+        c = component.covariance
+        return c[i, j] / np.sqrt(c[i, i] * c[j, j])
+
+    # rho(GR,BG) and rho(GR,BR) swap; rho(BG,BR) does not.
+    assert correlation(mirror, 0, 1) == pytest.approx(correlation(normal, 0, 2))
+    assert correlation(mirror, 0, 2) == pytest.approx(correlation(normal, 0, 1))
+    assert correlation(mirror, 1, 2) == pytest.approx(correlation(normal, 1, 2))
+
+
+def test_labelling_correction_is_off_by_default_and_free_to_enable(qapp):
+    fit = _simulated_fit(n_bursts=200)
+    model = fit.model
+    assert model.stochastic_labeling is False
+    assert model._labeling_weight() == 1.0
+
+    model.stochastic_labeling = True
+    model.setup._labeling_fraction.value = 0.6
+    assert model._labeling_weight() == pytest.approx(0.6)
+    model.update()
+    assert np.all(np.isfinite(model.y))
+
+
+def test_a_symmetric_swap_is_invisible(qapp):
+    """With R(BG) == R(BR) the mirror population is the same population.
+
+    A correction that changed the answer here would be changing something other
+    than what it claims to.
+    """
+    fit = _simulated_fit(n_bursts=400)
+    model = fit.model
+    for parameter, value in zip(model.species.means_of(0), (55.0, 50.0, 50.0)):
+        parameter.value = value
+
+    model.update()
+    without = np.array(model.y, copy=True)
+
+    model.stochastic_labeling = True
+    model.setup._labeling_fraction.value = 0.5
+    model.update()
+    assert np.allclose(without, model.y)
+
+
+# ── brightness ─────────────────────────────────────────────────────────────
+
+
+def test_relative_brightness_is_one_without_transfer():
+    """The reference case has to be exactly neutral, or every species shifts."""
+    from chisurf.core.fluorescence.pda3c import (
+        ThreeColorSetup,
+        distances_to_matrix,
+        relative_brightness,
+    )
+
+    setup = ThreeColorSetup.from_scalars(gamma_bg=0.7, gamma_br=1.4, crosstalk_gr=0.2)
+    far = distances_to_matrix([1e9, 1e9, 1e9])
+    for laser in (0, 1):
+        assert np.ravel(relative_brightness(far, setup, laser))[0] == pytest.approx(1.0)
+
+
+def test_transfer_towards_a_better_detected_dye_brightens():
+    """Brightness is a consequence of the detection matrix, not a free knob."""
+    from chisurf.core.fluorescence.pda3c import (
+        ThreeColorSetup,
+        distances_to_matrix,
+        relative_brightness,
+    )
+
+    bright_red = ThreeColorSetup.from_scalars(gamma_bg=1.0, gamma_br=2.0)
+    dim_red = ThreeColorSetup.from_scalars(gamma_bg=1.0, gamma_br=0.5)
+    close = distances_to_matrix([35.0, 35.0, 35.0])
+
+    assert np.ravel(relative_brightness(close, bright_red, 0))[0] > 1.0
+    assert np.ravel(relative_brightness(close, dim_red, 0))[0] < 1.0
+
+
+def test_scaling_a_photon_number_distribution_moves_its_mean():
+    from chisurf.core.models.pda3c.tcpda import scale_photon_number_pmf
+
+    counts = np.arange(200.0)
+    pmf = np.exp(-0.5 * ((counts - 60.0) / 12.0) ** 2)
+    pmf /= pmf.sum()
+
+    assert np.allclose(scale_photon_number_pmf(pmf, 1.0), pmf)
+    for factor in (0.5, 1.5):
+        scaled = scale_photon_number_pmf(pmf, factor)
+        assert scaled.sum() == pytest.approx(1.0)
+        assert (scaled @ counts) == pytest.approx(factor * (pmf @ counts), rel=0.02)
+
+
+def test_brightness_correction_is_off_by_default_and_changes_the_fit(qapp):
+    fit = _simulated_fit(n_bursts=600)
+    model = fit.model
+    assert model.brightness_correction is False
+
+    baseline = model.total_log_likelihood()
+    model.brightness_correction = True
+    corrected = model.total_log_likelihood()
+    assert np.isfinite(corrected)
+    # It reweights the species, so it must actually do something.
+    assert corrected != pytest.approx(baseline)

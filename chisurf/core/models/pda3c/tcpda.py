@@ -63,7 +63,8 @@ from chisurf.core.fluorescence.pda3c import (
     ThreeColorSetup,
     ThreeColorSpecies,
     covariance_from_statistics,
-    total_log_likelihood,
+    distances_to_matrix,
+    relative_brightness,
 )
 from chisurf.core.fluorescence.pda3c.likelihood import log_multinomial_pmf
 from chisurf.core.models.model import ModelCurve
@@ -173,8 +174,23 @@ class TcPdaSpecies(FittingParameterGroup):
         """Return the three pairwise correlations per species (``row_width = 3``)."""
         return list(self._correlations)
 
-    def as_species(self) -> list:
-        """Return the compute-core species for the current parameter values."""
+    def as_species(self, labeling_fraction: float = 1.0) -> list:
+        """Return the compute-core species for the current parameter values.
+
+        Parameters
+        ----------
+        labeling_fraction : float
+            Fraction of molecules carrying the *intended* dye assignment. Below
+            one, every population is accompanied by a mirror population in which
+            the green and red labels have swapped sites — see
+            :meth:`TcPdaModel.stochastic_labeling` for why that is the right
+            correction and not a missing-dye one.
+
+        Returns
+        -------
+        list of ThreeColorSpecies
+        """
+        labeling_fraction = float(np.clip(labeling_fraction, 0.0, 1.0))
         out = []
         for index, amplitude in enumerate(self._amplitudes):
             mu = np.array([float(p.value) for p in self.means_of(index)])
@@ -182,13 +198,29 @@ class TcPdaSpecies(FittingParameterGroup):
             rho = np.clip(
                 [float(p.value) for p in self.correlations_of(index)], -0.999, 0.999
             )
+            weight = max(float(amplitude.value), 0.0)
             out.append(
                 ThreeColorSpecies(
-                    amplitude=max(float(amplitude.value), 0.0),
+                    amplitude=weight * labeling_fraction,
                     means=mu,
                     covariance=covariance_from_statistics(sigma, rho),
                 )
             )
+            if labeling_fraction < 1.0:
+                # Swapping the green and red labels swaps which site each is on,
+                # so R_BG <-> R_BR (with their widths). R_GR is the distance
+                # *between* the two swapped dyes and is unchanged, as is their
+                # mutual correlation; the two correlations with GR trade places.
+                out.append(
+                    ThreeColorSpecies(
+                        amplitude=weight * (1.0 - labeling_fraction),
+                        means=np.array([mu[0], mu[2], mu[1]]),
+                        covariance=covariance_from_statistics(
+                            np.array([sigma[0], sigma[2], sigma[1]]),
+                            np.array([rho[1], rho[0], rho[2]]),
+                        ),
+                    )
+                )
         return out
 
 
@@ -230,6 +262,13 @@ class TcPdaSetup(FittingParameterGroup):
         self._bg_gg = fixed(0.0, "BG(gg)", "bg green|green", 0.0, 1e4)
         self._bg_gr = fixed(0.0, "BG(gr)", "bg green|red", 0.0, 1e4)
 
+        # Fraction of molecules carrying the intended dye assignment. Free this
+        # when the two labelling sites are chemically equivalent.
+        self._labeling_fraction = FittingParameter(
+            value=1.0, name="F(labeling)", label_text="F<sub>labeling</sub>",
+            lb=0.0, ub=1.0, bounds_on=True, fixed=True,
+        )
+
     def as_setup(self) -> ThreeColorSetup:
         """Return the compute-core setup for the current parameter values."""
         return ThreeColorSetup.from_scalars(
@@ -244,6 +283,11 @@ class TcPdaSetup(FittingParameterGroup):
             direct_excitation_blue=(float(self._de_bg.value), float(self._de_br.value)),
             direct_excitation_green=float(self._de_gr.value),
         )
+
+    @property
+    def labeling_fraction(self) -> float:
+        """Fraction of molecules with the intended green/red site assignment."""
+        return float(np.clip(self._labeling_fraction.value, 0.0, 1.0))
 
     @property
     def background_blue(self) -> np.ndarray:
@@ -289,6 +333,15 @@ class TcPdaModel(ModelCurve):
         self.n_nodes = 5
         #: Drop quadrature nodes below this normalised weight.
         self.truncate = 1e-6
+        #: Correct for green/red labels landing on either of two equivalent
+        #: sites. Off by default: it doubles the species count, and it is only
+        #: physical when the sites really are equivalent.
+        self.stochastic_labeling = False
+        #: Give each species its own photon-number distribution, scaled by
+        #: how bright energy transfer makes it. Off by default: it changes
+        #: the likelihood normalisation, so chi2r is not comparable across
+        #: the switch.
+        self.brightness_correction = False
         self._counts_cache = None
 
     # -- data ------------------------------------------------------------
@@ -331,6 +384,16 @@ class TcPdaModel(ModelCurve):
             total = total + log_multinomial_pmf(table, p)
         return total
 
+    def _labeling_weight(self) -> float:
+        """Return the labelling fraction to expand species with.
+
+        One when the correction is off, so the species list is untouched and
+        the model costs exactly what it did before.
+        """
+        if not getattr(self, "stochastic_labeling", False):
+            return 1.0
+        return self.setup.labeling_fraction
+
     @property
     def n_points(self) -> int:
         """Number of independent observations behind the objective.
@@ -366,6 +429,45 @@ class TcPdaModel(ModelCurve):
         deviance = 2.0 * (saturated - per_burst) * counts.multiplicity
         return np.sqrt(np.maximum(deviance, 0.0))
 
+    def _burst_size_pmfs(self, counts: BurstCounts):
+        """Return the measured burst-size distributions of the two periods."""
+        cached = getattr(self, "_pmf_cache", None)
+        if cached is not None:
+            return cached
+        out = []
+        for table in (counts.blue, counts.green):
+            sizes = table.sum(axis=1).astype(int)
+            pmf = np.bincount(sizes, weights=counts.multiplicity)
+            total = pmf.sum()
+            out.append(pmf / total if total > 0 else pmf)
+        self._pmf_cache = tuple(out)
+        return self._pmf_cache
+
+    def _species_photon_number_pmfs(self, counts: BurstCounts, component):
+        """Return this species' photon-number distributions, or ``(None, None)``.
+
+        A species whose transfer makes it dim produces smaller bursts. Ignoring
+        that over-weights it: it is credited the same amplitude while
+        contributing fewer photons. The correction stretches the measured
+        burst-size distribution by the species' relative brightness, which is a
+        by-product of the channel weights rather than a new parameter.
+        """
+        if not getattr(self, "brightness_correction", False):
+            return None, None
+        setup = self.setup.as_setup()
+        distances = distances_to_matrix(
+            np.array([component.means[1], component.means[2], component.means[0]])
+        )
+        reference_blue, reference_green = self._burst_size_pmfs(counts)
+        return (
+            scale_photon_number_pmf(
+                reference_blue, float(np.ravel(relative_brightness(distances, setup, 0))[0])
+            ),
+            scale_photon_number_pmf(
+                reference_green, float(np.ravel(relative_brightness(distances, setup, 1))[0])
+            ),
+        )
+
     def _per_burst_log_likelihood(self, counts: BurstCounts) -> np.ndarray:
         """Return the per-burst log likelihood under the current parameters."""
         from scipy.special import logsumexp
@@ -373,7 +475,7 @@ class TcPdaModel(ModelCurve):
         from chisurf.core.fluorescence.pda3c.model import _species_log_likelihood
 
         setup = self.setup.as_setup()
-        species = self.species.as_species()
+        species = self.species.as_species(self._labeling_weight())
         amplitudes = np.array([max(s.amplitude, 0.0) for s in species], dtype=float)
         if amplitudes.sum() <= 0.0:
             amplitudes = np.ones_like(amplitudes)
@@ -384,7 +486,8 @@ class TcPdaModel(ModelCurve):
                 _species_log_likelihood(
                     counts, s, setup,
                     self.setup.background_blue, self.setup.background_green,
-                    None, None, self.n_nodes, self.truncate,
+                    *self._species_photon_number_pmfs(counts, s),
+                    self.n_nodes, self.truncate,
                 )
                 for s in species
             ],
@@ -394,15 +497,18 @@ class TcPdaModel(ModelCurve):
             return logsumexp(np.log(amplitudes)[:, None] + per_species, axis=0)
 
     def total_log_likelihood(self) -> float:
-        """Return the total log likelihood of the dataset (diagnostic)."""
+        """Return the total log likelihood of the dataset.
+
+        Deliberately routed through the same per-burst evaluation the residual
+        uses, rather than the standalone core function: a diagnostic that can
+        disagree with the objective is worse than no diagnostic. (It did, once —
+        the standalone path silently ignored the brightness correction.)
+        """
         counts = self.burst_counts()
         if counts is None:
             return float("nan")
-        return total_log_likelihood(
-            counts, self.species.as_species(), self.setup.as_setup(),
-            self.setup.background_blue, self.setup.background_green,
-            n_nodes=self.n_nodes, truncate=self.truncate,
-        )
+        per_burst = self._per_burst_log_likelihood(counts)
+        return float(np.sum(counts.multiplicity * per_burst))
 
     # -- display ---------------------------------------------------------
 
@@ -419,7 +525,7 @@ class TcPdaModel(ModelCurve):
             self.d = np.vstack((np.arange(1), np.zeros(1)))
             return
         y = predicted_ratio_histograms(
-            counts, self.species.as_species(), self.setup.as_setup(),
+            counts, self.species.as_species(self._labeling_weight()), self.setup.as_setup(),
             n_nodes=self.n_nodes, truncate=self.truncate,
         )
         total = float(np.sum(counts.multiplicity))
@@ -575,7 +681,7 @@ def get_tcpda_ratio_curves(fit) -> list:
         return []
     observed = observed_ratio_histograms(counts)
     predicted = predicted_ratio_histograms(
-        counts, model.species.as_species(), model.setup.as_setup(),
+        counts, model.species.as_species(model._labeling_weight()), model.setup.as_setup(),
         n_nodes=model.n_nodes, truncate=model.truncate,
     )
     total = float(np.sum(counts.multiplicity))
@@ -606,10 +712,41 @@ def get_tcpda_distance_distributions(fit) -> list:
     curves = []
     for axis in range(3):
         density = np.zeros_like(r, dtype=float)
-        for component in model.species.as_species():
+        for component in model.species.as_species(model._labeling_weight()):
             mu = float(component.means[axis])
             sigma = float(np.sqrt(max(component.covariance[axis, axis], 1e-12)))
             density += component.amplitude * np.exp(-0.5 * ((r - mu) / sigma) ** 2)
         total = density.sum()
         curves.append([density / total if total > 0 else density, r])
     return curves
+
+
+def scale_photon_number_pmf(pmf, brightness: float) -> np.ndarray:
+    """Stretch a photon-number distribution by a relative brightness.
+
+    A molecule ``brightness`` times as bright produces bursts ``brightness``
+    times as large, so its distribution is the reference with the count axis
+    stretched: ``P_scaled(n) = P(n / brightness)``, resampled onto the integer
+    grid. Linear in the counts, which is the usual approximation.
+
+    Parameters
+    ----------
+    pmf : array_like
+        Reference photon-number distribution, indexed by count.
+    brightness : float
+        Relative brightness; ``1`` returns the reference unchanged.
+
+    Returns
+    -------
+    numpy.ndarray
+        Normalised distribution on the same grid.
+    """
+    pmf = np.asarray(pmf, dtype=float)
+    if not np.isfinite(brightness) or brightness <= 0.0 or pmf.size == 0:
+        return pmf
+    if abs(brightness - 1.0) < 1e-12:
+        return pmf
+    grid = np.arange(pmf.size, dtype=float)
+    scaled = np.interp(grid / brightness, grid, pmf, left=0.0, right=0.0)
+    total = scaled.sum()
+    return scaled / total if total > 0 else scaled

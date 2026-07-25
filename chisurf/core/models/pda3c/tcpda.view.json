@@ -45,6 +45,27 @@
     },
     {
       "type": "panel",
+      "title": "Corrections",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "Two effects that change what a species contributes without changing its distances. Swapped labels: when the two labelling sites are chemically equivalent, green and red land on either one, so each population has a mirror with R(BG) and R(BR) exchanged. Brightness: energy transfer moves photons between channels of different detection efficiency, so a species can be genuinely dimmer and produce smaller bursts.",
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "stochastic_labeling",
+          "label": "Correct for swapped labels",
+          "description": "Doubles the species count; only physical when the sites really are equivalent."
+        },
+        {
+          "type": "toggle",
+          "attr": "brightness_correction",
+          "label": "Correct for species brightness",
+          "description": "Gives each species its own burst-size distribution, stretched by a brightness derived from its distances (not a fitted parameter). Changes the likelihood normalisation, so chi2r is not comparable across the switch."
+        }
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Instrument / corrections",
       "collapsible": true,
       "collapsed": true,

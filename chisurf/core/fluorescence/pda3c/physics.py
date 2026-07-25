@@ -87,7 +87,9 @@ __all__ = [
     "ThreeColorSetup",
     "blue_channel_probabilities",
     "channel_probabilities",
+    "channel_weights",
     "green_channel_probabilities",
+    "relative_brightness",
     "transfer_efficiencies",
     "transfer_matrix",
 ]
@@ -366,6 +368,70 @@ def distances_to_matrix(pairs, n_dyes: int = 3) -> np.ndarray:
     out[..., rows, cols] = pairs
     out[..., cols, rows] = pairs
     return out
+
+
+def channel_weights(distances, setup: ThreeColorSetup, laser: int = 0) -> np.ndarray:
+    """Return un-normalised detected weight per channel.
+
+    The quantity :func:`channel_probabilities` normalises away. Its **sum** is
+    the molecule's detected brightness: energy transfer moves photons between
+    channels whose detection efficiencies differ, so a high-FRET molecule is
+    genuinely dimmer or brighter than a low-FRET one, and therefore produces
+    smaller or larger bursts. Keeping the denominator is all that is needed to
+    know by how much (see :func:`relative_brightness`).
+
+    Parameters
+    ----------
+    distances : array_like
+        ``(..., n_dyes, n_dyes)`` symmetric distances.
+    setup : ThreeColorSetup
+        Excitation, emission and Förster radii.
+    laser : int
+        Row of the excitation matrix to use.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(M, n_channels)`` un-normalised weights.
+    """
+    transfer = transfer_matrix(np.asarray(distances, dtype=float), setup)
+    emitting = np.einsum("d,...dj->...j", setup.excitation[laser], transfer)
+    weights = apply_mixing(setup.emission, emitting.reshape(-1, setup.n_dyes).T).T
+    return np.atleast_2d(weights)
+
+
+def relative_brightness(distances, setup: ThreeColorSetup, laser: int = 0) -> np.ndarray:
+    """Return detected brightness relative to the same molecule without FRET.
+
+    ``1`` means a molecule as bright as the no-transfer reference; below one it
+    contributes smaller bursts, above one larger. Used to give each species its
+    own photon-number distribution, since otherwise a dim species is
+    over-weighted — it appears at the same amplitude while contributing fewer
+    photons per burst.
+
+    Parameters
+    ----------
+    distances : array_like
+        ``(..., n_dyes, n_dyes)`` symmetric distances.
+    setup : ThreeColorSetup
+        Excitation, emission and Förster radii.
+    laser : int
+        Row of the excitation matrix to use.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(M,)`` relative brightness.
+    """
+    distances = np.asarray(distances, dtype=float)
+    weights = channel_weights(distances, setup, laser).sum(axis=-1)
+    # Reference: the same optics with every dye pair infinitely far apart, so
+    # no transfer happens and each laser's excitation is detected where it fell.
+    far = np.full(distances.shape[-2:], 1e12)
+    np.fill_diagonal(far, 0.0)
+    reference = channel_weights(far, setup, laser).sum(axis=-1)
+    reference = np.where(reference > 0.0, reference, 1.0)
+    return weights / reference
 
 
 def channel_probabilities(distances, setup: ThreeColorSetup, laser: int = 0) -> np.ndarray:
