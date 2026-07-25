@@ -732,6 +732,11 @@ class RenderingMixin(BaseCmd):
             cfg["style"] = "ribbon"
         elif mode in ("tube", "trace"):
             cfg["style"] = "tube"
+        elif mode == "putty":
+            # A tube whose thickness carries the b-factor -- or whatever was
+            # written into it, which is usually the point: an accessibility from
+            # `get_area`, a fitted lifetime, a per-residue efficiency.
+            cfg["style"] = "putty"
         else:
             self._emit_error(f"Unsupported cartoon type: {mode}")
             return

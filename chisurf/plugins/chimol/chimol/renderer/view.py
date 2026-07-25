@@ -3566,6 +3566,10 @@ class MolView(QtWidgets.QWidget):
                     seg_indices = idx_cartoon_arr[start:end]
                     seg_ss = ss_full_arr[seg_indices]
 
+                seg_putty = None
+                if str(config.get("style", "tube")).lower() == "putty":
+                    seg_putty = self._trace_bfactors(idx_cartoon_arr[start:end])
+
                 arrays = _generate_cartoon_tube_arrays(
                     seg_coords,
                     seg_colors,
@@ -3574,6 +3578,7 @@ class MolView(QtWidgets.QWidget):
                     style=str(config.get("style", "tube")),
                     ss_codes=seg_ss,
                     config={**config, "coordinate_scale": float(self._scale_factor)},
+                    putty_values=seg_putty,
                 )
 
                 if arrays is not None:
@@ -4211,6 +4216,49 @@ class MolView(QtWidgets.QWidget):
                 return pts[shown], colors_rgb[shown], radii_arr[shown]
 
         return pts, colors_rgb, radii_arr
+
+    def _trace_bfactors(self, residue_indices) -> np.ndarray | None:
+        """The b-factor of each traced residue, for a putty cartoon.
+
+        A putty tube's thickness is a *per-residue* number, so the per-atom
+        b-factors are reduced to one value per residue — the guide atom's, since
+        that is the atom the cartoon path runs through.
+
+        Parameters
+        ----------
+        residue_indices : sequence of int
+            Indices into the residue arrays for this cartoon segment.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            One value per residue, or ``None`` when the structure carries no
+            b-factors, which draws a uniform tube rather than failing.
+        """
+        atoms = self._atoms
+        if atoms is None or "bfactor" not in (atoms.dtype.names or ()):
+            return None
+        res_ids = self._all_atom_res_ids
+        residue_ids = self._residue_ids
+        if res_ids is None or residue_ids is None:
+            return None
+
+        try:
+            wanted = np.asarray(residue_ids)[np.asarray(residue_indices, dtype=int)]
+        except Exception:
+            return None
+
+        bfactor = np.asarray(atoms["bfactor"], dtype=float)
+        per_atom_res = np.asarray(res_ids)
+        # Mean over the residue's atoms: the guide atom alone would be noisier,
+        # and for a property written in by `alter` it is usually constant across
+        # the residue anyway.
+        out = np.zeros(len(wanted), dtype=float)
+        for position, residue in enumerate(wanted):
+            chosen = per_atom_res == residue
+            if np.any(chosen):
+                out[position] = float(bfactor[chosen].mean())
+        return out
 
     def sphere_visible_mask(self) -> np.ndarray | None:
         """Which atoms are currently drawn as something the ray tracer can trace.

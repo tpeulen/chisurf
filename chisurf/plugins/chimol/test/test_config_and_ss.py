@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import importlib
 from types import SimpleNamespace
 
@@ -10,6 +11,29 @@ import pytest
 
 from chisurf.plugins.chimol.chimol import config
 from chisurf.plugins.chimol.chimol.analysis.ss import assign_ss_c3_from_atoms
+
+
+@pytest.fixture(autouse=True)
+def _restore_display_config():
+    """Put the config dict back — the *same object*, not just the same contents.
+
+    Eight modules do ``from ..config import _DISPLAY_CONFIG`` at import time and
+    hold that dict for the life of the process. ``importlib.reload(config)``
+    rebinds the name to a **new** dict, so every one of those modules is left
+    reading an orphan while anything importing the name afresh reads the new one.
+    The renderer and the command layer then disagree about the configuration, and
+    the symptom appears in an unrelated test file: ``cartoon putty`` wrote a style
+    the renderer never saw, so the tube kept its old radius.
+
+    Restoring identity as well as contents is what makes these reload tests safe
+    to run alongside anything that reads the config.
+    """
+    original = config._DISPLAY_CONFIG
+    snapshot = copy.deepcopy(original)
+    yield
+    original.clear()
+    original.update(snapshot)
+    config._DISPLAY_CONFIG = original
 
 
 def _build_minimal_atoms(n_res: int) -> np.ndarray:

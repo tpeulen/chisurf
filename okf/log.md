@@ -2,6 +2,34 @@
 
 ## 2026-07-25
 
+* **Putty cartoons, and a cross-test config leak they exposed.** A putty tube's
+  thickness carries a per-residue number — for this group rarely a b-factor, more
+  often an accessibility from `get_area` or a fitted per-residue quantity written
+  in with `alter`. Scale factors transcribed from `ExtrudeComputeScaleFactors`
+  (`layer1/Extrude.cpp`), all nine transforms. Two details change the picture and
+  are pinned: the clamp is applied **after** the power, and the factors are
+  smoothed along the chain with a running window that leaves the ends alone —
+  without it one outlying residue beads the tube instead of bulging it. The
+  extrusion already took a per-point `vert_scale`; only the factors and the wiring
+  were missing.
+
+  Verified geometrically rather than visually, since the ray tracer cannot draw a
+  cartoon: the tube's ring radii are measured back out of the mesh. A uniform tube
+  is constant at 5.0; putty over a monotone property ranges 2.4–10.2, monotone,
+  with its thinnest point at exactly `radius × scale_min`. That pins two settings
+  and the transform at once, and beats eyeballing a picture.
+
+  **The leak:** the putty tests passed alone and failed in the full suite. Cause is
+  worth recording because it will bite anything config-dependent —
+  `test_config_and_ss` calls `importlib.reload(config)`, which **rebinds**
+  `_DISPLAY_CONFIG` to a new dict, while eight modules hold the old one from
+  `from ..config import _DISPLAY_CONFIG` at import time. The command layer (which
+  imports at call time) then wrote a style the renderer (holding the orphan) never
+  saw. Fixed with a fixture that restores the dict's **identity**, not just its
+  contents. Same failure mode as everything else this week: two copies of one
+  thing, and the drift is silent.
+
+
 * **GUI-tester: the Calculators hub.** Drove the sixth core workflow headlessly
   and recorded it as [FRET calculators](/usecases/fret-calculators.md) — the one
   core workflow that needs no data file, which makes it the natural smoke test

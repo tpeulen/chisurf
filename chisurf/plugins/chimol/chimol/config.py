@@ -99,6 +99,12 @@ def _load_display_config() -> dict:
             "full_height": True,
         },
         "cartoon": {
+            "putty_radius": 0.4,
+            "putty_scale_min": 0.6,
+            "putty_scale_max": 4.0,
+            "putty_scale_power": 1.5,
+            "putty_range": 2.0,
+            "putty_transform": "normalized_nonlinear",
             "radius_scale": 0.01,
             "min_radius": 0.5,
             "segments_circle": 18,

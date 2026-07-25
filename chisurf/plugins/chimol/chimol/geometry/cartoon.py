@@ -1427,6 +1427,60 @@ def _refine_orientations(
     return vo
 
 
+def _putty_vert_scale(
+    path: np.ndarray, cfg: dict, values: Optional[np.ndarray]
+) -> Optional[np.ndarray]:
+    """Per-path-point radius multipliers for a putty tube.
+
+    The values arrive per *residue* while the path is subdivided, so they are
+    resampled onto the path before smoothing — smoothing the residue-level
+    factors instead would blur over a different length scale depending on the
+    sampling, and the tube would change shape when ``cartoon_sampling`` changed.
+
+    Parameters
+    ----------
+    path : numpy.ndarray
+        ``(M, 3)`` spline points.
+    cfg : dict
+        The cartoon config, read for the ``putty_*`` settings.
+    values : numpy.ndarray or None
+        One number per residue. ``None`` gives a uniform tube rather than an
+        error: a structure with no b-factors is not a failure.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``(M,)`` multipliers, or ``None`` when there is nothing to scale by.
+    """
+    from ..analysis.putty import putty_scale_factors, smooth_scale_factors
+
+    if values is None:
+        return None
+    per_residue = np.asarray(values, dtype=float).ravel()
+    if per_residue.size == 0:
+        return None
+
+    m = int(path.shape[0])
+    if per_residue.size == 1:
+        resampled = np.full(m, per_residue[0], dtype=float)
+    else:
+        resampled = np.interp(
+            np.linspace(0.0, 1.0, m),
+            np.linspace(0.0, 1.0, per_residue.size),
+            per_residue,
+        )
+
+    scale = putty_scale_factors(
+        resampled,
+        transform=str(cfg.get("putty_transform", "normalized_nonlinear")),
+        scale_power=float(cfg.get("putty_scale_power", 1.5)),
+        scale_range=float(cfg.get("putty_range", 2.0)),
+        scale_min=float(cfg.get("putty_scale_min", 0.6)),
+        scale_max=float(cfg.get("putty_scale_max", 4.0)),
+    )
+    return smooth_scale_factors(scale, window=int(cfg.get("putty_window", 1)))
+
+
 def _generate_cartoon_tube_arrays(
     coords: np.ndarray,
     colors: Optional[np.ndarray],
@@ -1438,6 +1492,7 @@ def _generate_cartoon_tube_arrays(
     style: str = "tube",
     ss_codes: Optional[np.ndarray] = None,
     config: Optional[dict] = None,
+    putty_values: Optional[np.ndarray] = None,
 ) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray]]]:
     """Return (vertices, normals, faces, colors) for the cartoon mesh.
 
@@ -1590,13 +1645,24 @@ def _generate_cartoon_tube_arrays(
         up_vectors = _orthogonalise_ups(tangents, up_vectors)
     frames = _build_frames(tangents, up_vectors)
 
-    if style_l == "tube":
-        # Uniform tube
+    if style_l in ("tube", "putty"):
         segments = max(int(segments_circle), 6)
-        tube_radius = float(cfg.get("tube_radius", base_radius)) * coordinate_scale
+        if style_l == "putty":
+            # A putty tube is the same extrusion with a per-point radius, which
+            # is why `_extrude_shape` takes `vert_scale` at all.
+            tube_radius = (
+                float(cfg.get("putty_radius", 0.4)) * coordinate_scale
+            )
+            vert_scale = _putty_vert_scale(path, cfg, putty_values)
+        else:
+            tube_radius = (
+                float(cfg.get("tube_radius", base_radius)) * coordinate_scale
+            )
+            vert_scale = None
         sv, sn = _make_circle_shape(segments, tube_radius)
         return _extrude_shape(
             path, frames, sv, sn, path_colors, cap_ends=True,
+            vert_scale=vert_scale,
         )
 
     # -- Ribbon / PyMOL-style automatic --

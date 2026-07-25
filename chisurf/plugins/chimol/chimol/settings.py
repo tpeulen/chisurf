@@ -191,6 +191,25 @@ _SPECS: tuple[SettingSpec, ...] = (
     _spec("fog", "ray.fog_intensity", "float", 1.0,
           "Fog density."),
 
+    # -- Cartoon putty ------------------------------------------------------
+    # A tube whose thickness carries the b-factor. Defaults are PyMOL's, from
+    # layer1/SettingInfo.h; the transform maths is analysis/putty.py.
+    _spec("cartoon_putty_radius", "cartoon.putty_radius", "float", 0.4,
+          "Base radius of the putty tube, before the per-residue scale."),
+    _spec("cartoon_putty_scale_min", "cartoon.putty_scale_min", "float", 0.6,
+          "Lower clamp on the putty scale, applied after the power."),
+    _spec("cartoon_putty_scale_max", "cartoon.putty_scale_max", "float", 4.0,
+          "Upper clamp on the putty scale, applied after the power."),
+    _spec("cartoon_putty_scale_power", "cartoon.putty_scale_power", "float", 1.5,
+          "Exponent applied to the putty scale by the nonlinear transforms."),
+    _spec("cartoon_putty_range", "cartoon.putty_range", "float", 2.0,
+          "Width of the distribution the putty z-score is spread over."),
+    _spec("cartoon_putty_transform", "cartoon.putty_transform", "str",
+          "normalized_nonlinear",
+          "How the value becomes a radius: normalized (a z-score, the default "
+          "and unit-free), relative, scaled, absolute, or implied_rms; each "
+          "except the last in a linear and a nonlinear variant."),
+
     # -- Surface area -------------------------------------------------------
     # Read by `get_area`. Defaults are PyMOL's own, from layer1/SettingInfo.h.
     _spec("dot_solvent", "surface.dot_solvent", "bool", False,

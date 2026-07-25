@@ -25,7 +25,7 @@ from observation alone; see [the log](/log.md) for three cases where a measured
 | --- | --- | --- |
 | Code | 515 823 lines C++ + 52 154 Python | 29 442 Python |
 | Commands | 303 | 81 |
-| Settings | 769 | 47 registered |
+| Settings | 769 | 52 registered |
 | Representations | 16 | 11 |
 | Selection keywords | 85 canonical | 85 canonical, 169 spellings |
 
@@ -193,7 +193,7 @@ confusion is exactly what hid `resn`.
 # Tier 2 — routine, works around-able
 
 **Done:** `get_area`, `get_extent`, `get_chains`, `get_title`, `iterate_state`,
-`alter_state`, `spectrum` by property, `scene`, `pair_fit`.
+`alter_state`, `spectrum` by property, `scene`, `pair_fit`, `cartoon_putty`.
 
 **Remaining:** `get_bond`, `smooth`, `sort`, `protect`, `mask`, `bond`/`unbond`,
 `h_add`/`h_fill`, `cealign`, `matrix_copy`,
@@ -238,6 +238,29 @@ leave ambiguous can be pinned down by adding another.
 `intra_fit` and `intra_rms` fit the *states* of one object to each other; chimol
 holds a single coordinate set per object, so they have nothing to work on and are
 deliberately absent rather than stubbed.
+
+## Putty
+
+A tube whose thickness carries a number — one of the few representations that
+shows a quantity rather than a shape, and for this group the quantity is rarely a
+b-factor: an accessibility from `get_area`, a fitted lifetime, a per-residue
+efficiency, written in with `alter` and drawn.
+
+Scale factors transcribed from `ExtrudeComputeScaleFactors` (`layer1/Extrude.cpp`)
+— all nine transforms. Two details change the picture and are pinned by tests: the
+clamp is applied **after** the power, and the factors are smoothed along the chain
+with a running window that leaves the ends alone (without it, one outlying residue
+beads the tube instead of bulging it).
+
+The extrusion already accepted a per-point `vert_scale`; only the scale factors and
+the wiring were missing.
+
+**Verified geometrically rather than visually**, since the ray tracer cannot draw a
+cartoon: the tube's actual ring radii are measured back out of the mesh. A uniform
+tube is constant at 5.0; a putty tube over a monotone property ranges 2.4–10.2,
+monotone, with its thinnest point at exactly `radius x scale_min`. That pins two
+settings and the transform at once, and is a stronger check than looking at a
+picture.
 
 ## Scenes
 

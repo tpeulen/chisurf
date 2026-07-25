@@ -201,6 +201,40 @@ quantity from an analysis — a fitted lifetime, a FRET efficiency, a fluctuatio
 amplitude — reaches the structure the same way: write it into the b-factor with
 `alter`, then `spectrum b`.
 
+## Showing a quantity as thickness
+
+A **putty** cartoon is a tube whose radius carries the same number, which reads
+more directly than colour for a single quantity and combines with colour for two:
+
+```text
+alter polymer, b = 0.0             # start from something known
+get_area all, 1, 1                 # ...or fill b with accessibility
+cartoon putty
+show cartoon, polymer
+```
+
+The mapping follows PyMOL's settings. The default transform is a z-score, so it is
+unit-free and works whatever the property is:
+
+```text
+set cartoon_putty_radius, 0.4      # base radius, before the per-residue scale
+set cartoon_putty_scale_min, 0.6   # clamps, applied after the power
+set cartoon_putty_scale_max, 4.0
+set cartoon_putty_scale_power, 1.5 # exaggerates the spread
+set cartoon_putty_transform, normalized_nonlinear
+```
+
+Other transforms measure against the data's own range (`relative_*`), against the
+`cartoon_putty_range` setting (`scaled_*`), or take the value as a radius directly
+(`absolute_*`) — useful when two structures must share a thickness scale, which
+the default z-score deliberately does not do.
+
+:::{tip}
+The factors are smoothed along the chain, so one outlying residue produces a bulge
+rather than a bead. Set `cartoon_putty_range` larger to compress the spread if a
+single outlier still dominates.
+:::
+
 ## Getting data in and out
 
 `iterate` runs a Python statement per atom and accumulates into a persistent
