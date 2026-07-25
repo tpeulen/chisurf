@@ -90,6 +90,23 @@ the *Colocalized pixels* map and get their own Pearson/Manders values in the
 table, which is how you check whether a subpopulation (say, only the brightest
 puncta) behaves differently from the whole image.
 
+## Where the correlation lives, and in which direction
+
+* **PCC vs intensity** — PCC computed inside intensity bins (versus channel A,
+  channel B and the A/B ratio). Correlation only in the bright bins means real
+  structures on an uncorrelated background; correlation collapsing at the top of
+  the range means a saturating detector.
+* **CCF map (2-D)** — the full cross-correlation plane. Prefer it over the 1-D
+  profile for registration: a purely *vertical* offset leaves the horizontal
+  profile peaking at zero.
+
+## Analysing only part of the image
+
+Open **Region of interest**, pick a brush size and paint on the *Channel A* map.
+Background, thresholds, the null model, the profiles and every coefficient are
+then computed inside that region only, and its area fraction is reported.
+**🧽 Clear ROI** restores the whole image.
+
 ## Headless use
 
 Everything here is available without the GUI:

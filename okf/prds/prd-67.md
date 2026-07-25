@@ -30,10 +30,12 @@ how to read an image.
 
 # Status
 
-**Done.** Coefficients, image-source seam, plugin (core/CLI/GUI), the
-detector-setup workflow, six reusable AutoForm additions, the in-app `?` help,
-the concept + guide documentation pair, and 20 headless tests landed. Follow-ups
-are listed under [Deferred](#deferred).
+**Done — and audited feature-complete against both reference
+implementations** (see [Parity audit](#parity-audit)). Coefficients, image-source
+seam, plugin (core/CLI/GUI), the detector-setup workflow, painted ROI, 2-D
+cross-correlation plane, intensity-resolved PCC profiles, eight reusable AutoForm
+additions, the in-app `?` help, the concept + guide documentation pair, and 29
+headless tests landed. Follow-ups are listed under [Deferred](#deferred).
 
 Related: [PRD-40](prd-40.md) (AutoForm), [PRD-51](prd-51.md) (imaging
 correlation), [PRD-52](prd-52.md) (phasor imaging), [PRD-49](prd-49.md)
@@ -135,6 +137,9 @@ capability, authored in JSON and available to every plugin:
   leaving dead space below its rows.
 - **`info` section: `max_height`** — a short live status line can no longer grow
   into the panel's spare space.
+- **`image` section: painted-ROI reuse** — the existing brush option now backs a
+  spatial region of interest, so the analysis can be restricted to a hand-drawn
+  area without any bespoke Qt.
 - **`help` section: view-relative `resource`** — a relative help file is resolved
   next to the view spec that declares it (the model's `_view_json`, else the
   model's module directory), so a plugin ships its `?` modal text beside its
@@ -220,6 +225,36 @@ Verified on real data: a multi-detector confocal photon stream
 GUI with named `green`/`red` windows (PCC 0.988, CCF peak at shift 0), with the
 whole workspace, both channel maps, the mask, the gated scatter and the CCF
 rendered headlessly — the same grabs that produce the guide's figures.
+
+# Parity audit
+
+Both references were read line by line and every capability accounted for.
+
+| Capability | This suite's plugin | The multiparameter suite's image module | ChiSurf |
+| --- | --- | --- | --- |
+| Pearson PCC | ✅ | ✅ | ✅ |
+| Manders overlap (MOC) | ✅ | ✖ (branch commented out) | ✅ |
+| Manders split M1 / M2 | ✖ | ✖ (commented out) | ✅ |
+| Costes automatic thresholds | ✖ | ✖ (commented out) | ✅ |
+| Costes randomization significance | ✖ | ✖ | ✅ (seeded) |
+| Li ICQ | ✖ | ✖ (commented out) | ✅ |
+| Spearman rank | ✖ | ✖ | ✅ |
+| Background estimate (5 % quantile) | ✅ | ✅ (ROI/rate based) | ✅ |
+| Scatter gate + live pixel mask | ✅ | ✖ | ✅ |
+| Frame / all-frames selection | ✅ | ✅ | ✅ |
+| van Steensel shift profile (1-D) | ✖ | ✅ | ✅ |
+| **2-D cross-correlation plane** | ✖ | ✅ (FFT) | ✅ (FFT; central row reproduces the 1-D profile) |
+| **PCC versus intensity / ratio** | ✖ | ✅ | ✅ (three axes, with standard errors) |
+| **Spatial (hand-drawn) ROI** | ✖ | ✅ | ✅ (painted brush; thresholds, null model and profiles all honour it) |
+| Camera TIFF **and** photon-stream input | ✅ (image stacks) | ✅ | ✅ (one loader) |
+| Named detector windows as channels | ✖ | ✖ | ✅ |
+| Headless CLI / scripting API | ✖ | ✖ | ✅ |
+| Object-based colocalization | ✖ | ✖ (commented out) | ✖ (non-goal) |
+
+The three capabilities the multiparameter suite had and ChiSurf lacked — the
+hand-drawn ROI, the intensity-resolved profiles and the 2-D plane — were ported
+in the same PRD; the only remaining ✖ is object-based colocalization, which
+neither reference implements either and which needs a segmentation layer.
 
 # Non-goals
 

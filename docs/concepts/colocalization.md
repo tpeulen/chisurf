@@ -157,6 +157,44 @@ $$
 - Peak away from $0$ → a registration offset. Fix it before interpreting anything.
 - Flat → no spatial relation at any offset.
 
+## Where does the correlation live? Intensity-resolved PCC
+
+One coefficient is an average over every pixel, so it cannot say *where* the
+correlation comes from. Binning the pixels along an intensity axis and computing
+PCC inside each bin can:
+
+$$
+\rho(I) = \rho\bigl(\{G_i, R_i : I \le d_i < I + \Delta I\}\bigr),
+\qquad d_i \in \{G_i,\; R_i,\; G_i/R_i\}
+$$
+
+Each bin carries the standard error $(1-\rho^2)/\sqrt{n-3}$, so a noisy tail is
+visibly noisy rather than silently wrong. Three readings are common:
+
+- correlation that **rises with intensity** — real structures on an uncorrelated
+  background (the usual, healthy case);
+- correlation that **collapses at high intensity** — detector saturation or
+  bleaching in one channel;
+- correlation that depends on the **ratio** $G/R$ — a mixture of populations with
+  different stoichiometries rather than one uniform species.
+
+## Registration in two dimensions
+
+Van Steensel's profile shifts one channel horizontally. A microscope, however, is
+free to misregister in *any* direction, and a purely vertical offset leaves the
+horizontal profile peaking at zero — it looks perfectly registered while the
+channels are half a micrometre apart. The honest version is the full plane,
+
+$$
+\mathrm{CCF}(\Delta x, \Delta y)
+  = \rho\bigl(G(x, y),\, R(x + \Delta x,\, y + \Delta y)\bigr),
+$$
+
+computed for every displacement at once by FFT and normalised the same way
+(mean-subtracted product over the two standard deviations). The peak's position
+*is* the registration offset; its width reports the size of the structures the
+correlation comes from. The 1-D profile is the central row of this plane.
+
 ## The scatter plot is the raw data
 
 All of the above are single numbers extracted from one 2-D object: the joint
@@ -169,6 +207,15 @@ Reading it first, and gating a region of it to interrogate a subpopulation, tell
 you more than any coefficient — the coefficients are summaries of this picture,
 and a summary is only trustworthy once you have seen what it summarises.
 
+## Restricting the analysis: regions of interest
+
+Coefficients computed over a whole field of view mix everything in it — cells and
+empty medium, healthy cells and debris. Restricting the analysis to a drawn
+region is therefore not cosmetic: the background estimate, the Costes threshold
+search, the randomization null model and the coefficients must all see the *same*
+pixels, or the region changes the numbers twice over. Report the region alongside
+the coefficients, exactly like the thresholds.
+
 ## What to report
 
 A defensible colocalization result is not one number but a small set:
@@ -179,7 +226,8 @@ A defensible colocalization result is not one number but a small set:
 | $M_1$ and $M_2$ | the asymmetry PCC cannot express |
 | The thresholds, and how they were chosen (ideally Costes) | $M_1$/$M_2$ are meaningless without them |
 | Costes $p$-value with its block size | separates real colocalization from dense-staining chance |
-| van Steensel peak shift | shows the channels were registered |
+| van Steensel peak shift (or the 2-D CCF peak) | shows the channels were registered |
+| The region analysed, if not the whole image | the coefficients depend on it |
 
 ## References
 

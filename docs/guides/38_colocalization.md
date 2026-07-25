@@ -84,7 +84,26 @@ width in pixels, and read the *Costes p-value*: colocalization is conventionally
 called significant at $p > 0.95$. The **Seed** keeps the reported number
 reproducible.
 
-### 7. Gate a population in the scatter
+### 7. Look at *where* the correlation comes from
+
+The **PCC vs intensity** tab bins the pixels by channel-A intensity, by channel-B
+intensity and by the A/B ratio, and computes PCC inside each bin. Correlation
+that only appears in the bright bins means real structures on an uncorrelated
+background; correlation that collapses at the top of the range means a saturating
+detector. **Profile bins** trades resolution against error per point.
+
+The **CCF map (2-D)** tab is the full cross-correlation plane — use it rather than
+the 1-D profile when checking registration, because a purely *vertical* offset
+leaves the horizontal profile peaking at zero.
+
+### 8. Restrict to a region (optional)
+
+Open the **Region of interest** panel, set a **Brush (px)** size, and paint on the
+*Channel A* map. Everything — background, Costes thresholds, the null model, the
+profiles and the coefficients — is then computed inside that region only, and the
+table reports its area fraction. **🧽 Clear ROI** goes back to the whole image.
+
+### 9. Gate a population in the scatter
 
 The **Intensity scatter** tab is the joint histogram (A horizontal, B vertical).
 Drag the blue rectangle over a region — a dim background cloud, a bright punctate

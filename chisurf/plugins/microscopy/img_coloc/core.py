@@ -42,6 +42,10 @@ def compute_colocalization(
     costes_randomizations: int = 200,
     costes_seed: int = 0,
     ccf_max_shift: int = 0,
+    ccf_2d: bool = False,
+    profiles: bool = False,
+    profile_bins: int = 50,
+    roi=None,
 ) -> dict:
     """Compute colocalization coefficients for a channel pair of one image file.
 
@@ -78,6 +82,14 @@ def compute_colocalization(
         Parameters of that test.
     ccf_max_shift : int
         When > 0, also compute the van Steensel shift profile.
+    ccf_2d : bool
+        Also compute the full 2-D cross-correlation plane.
+    profiles : bool
+        Also compute intensity-resolved correlation profiles.
+    profile_bins : int
+        Number of bins in those profiles.
+    roi : array_like of bool, optional
+        Spatial region the analysis is restricted to.
 
     Returns
     -------
@@ -112,6 +124,10 @@ def compute_colocalization(
         costes_randomizations=costes_randomizations,
         costes_seed=costes_seed,
         ccf_max_shift=ccf_max_shift,
+        ccf_2d=ccf_2d,
+        profiles=profiles,
+        profile_bins=profile_bins,
+        roi=roi,
     )
     if result.metrics.get("n_pixels", 0) == 0:
         result.metrics["warning"] = (
@@ -152,6 +168,10 @@ METRIC_LABELS: tuple[tuple[str, str], ...] = (
     ("costes_r_random_mean", "Costes random PCC mean"),
     ("ccf_peak_shift", "van Steensel peak shift (px)"),
     ("ccf_peak", "van Steensel peak PCC"),
+    ("ccf2d_peak_dx", "2-D CCF peak Δx (px)"),
+    ("ccf2d_peak_dy", "2-D CCF peak Δy (px)"),
+    ("ccf2d_peak", "2-D CCF peak PCC"),
+    ("roi_area_fraction", "ROI area fraction"),
 )
 
 

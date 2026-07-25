@@ -36,6 +36,9 @@ def _channel(value: str):
 @click.option("--block", type=int, default=4, help="Costes scramble block size (PSF width, px).")
 @click.option("--seed", type=int, default=0, help="Random seed of the Costes test.")
 @click.option("--ccf-shift", type=int, default=0, help="van Steensel max shift (0 disables).")
+@click.option("--ccf-2d", is_flag=True, help="Also compute the 2-D cross-correlation plane.")
+@click.option("--profiles", is_flag=True, help="Also compute PCC-vs-intensity profiles.")
+@click.option("--profile-bins", type=int, default=30, help="Bins in those profiles.")
 @click.option("--json", "as_json", is_flag=True, help="Print the metrics as JSON.")
 @click.option(
     "--output", "-o", type=click.Path(), default=None, help="Write the metrics to a JSON file."
@@ -57,6 +60,9 @@ def cli(
     block,
     seed,
     ccf_shift,
+    ccf_2d,
+    profiles,
+    profile_bins,
     as_json,
     output,
 ):
@@ -82,6 +88,9 @@ def cli(
         costes_randomizations=randomizations,
         costes_seed=seed,
         ccf_max_shift=ccf_shift,
+        ccf_2d=ccf_2d,
+        profiles=profiles,
+        profile_bins=profile_bins,
     )
     metrics = {k: (list(v) if isinstance(v, tuple) else v) for k, v in result["metrics"].items()}
     if as_json:

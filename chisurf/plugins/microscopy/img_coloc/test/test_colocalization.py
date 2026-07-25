@@ -315,3 +315,113 @@ def test_data_source_section_is_used_for_the_input_file():
     assert options["call"] == "set_filename"
     assert options.get("mmfdb_kinds"), "the database picker must be offered"
     assert options.get("description")
+
+
+# --- 2-D CCF, intensity profiles, spatial ROI --------------------------------
+
+
+def test_cross_correlation_2d_finds_a_diagonal_offset():
+    """The 2-D plane peaks at the (dy, dx) that realigns a diagonally shifted channel."""
+    signal = _blob_image()
+    shifted = np.roll(signal, (5, -3), axis=(0, 1))
+    out = coloc.cross_correlation_2d(signal, shifted, max_shift=12)
+    assert (out["peak_dy"], out["peak_dx"]) == (5, -3)
+    # A purely vertical offset is invisible to the horizontal-only profile …
+    vertical = np.roll(signal, 4, axis=0)
+    assert coloc.van_steensel(signal, vertical, max_shift=12)["peak_shift"] == 0
+    # … but not to the plane.
+    assert coloc.cross_correlation_2d(signal, vertical, max_shift=12)["peak_dy"] == 4
+
+
+def test_cross_correlation_2d_agrees_with_the_1d_profile():
+    """The plane's central row reproduces the van Steensel profile."""
+    signal = _blob_image()
+    shifted = np.roll(signal, 6, axis=1)
+    plane = coloc.cross_correlation_2d(signal, shifted, max_shift=10)
+    profile = coloc.van_steensel(signal, shifted, max_shift=10)
+    assert plane["peak_dy"] == 0
+    assert plane["peak_dx"] == profile["peak_shift"]
+    assert plane["peak"] == pytest.approx(profile["peak_ccf"], abs=0.02)
+
+
+def test_pearson_profile_resolves_correlation_along_intensity():
+    """Correlation carried only by bright pixels shows up in the profile, not in one PCC."""
+    rng = np.random.default_rng(5)
+    signal = _blob_image()
+    a = signal + rng.normal(0.0, 3.0, signal.shape)
+    b = signal + rng.normal(0.0, 3.0, signal.shape)
+    profile = coloc.pearson_profile(a, b, bins=8, versus="a")
+    values = profile["pearson"]
+    counts = profile["counts"]
+    assert profile["x"].size == 8
+    assert counts.sum() <= a.size
+    assert np.isfinite(values).any()
+    # The dim bins are dominated by independent noise, the bright ones by signal.
+    finite = np.isfinite(values)
+    assert values[finite][0] < 0.5
+    assert np.nanmax(values) > values[finite][0]
+
+
+def test_pearson_profile_versus_ratio_is_supported():
+    """Binning by the A/B intensity ratio works and reports its axis."""
+    signal = _blob_image() + 1.0
+    profile = coloc.pearson_profile(signal, 0.5 * signal, bins=6, versus="ratio")
+    assert profile["versus"] == "ratio"
+    assert profile["x"].size == 6
+
+
+def test_roi_restricts_every_coefficient():
+    """A spatial ROI selects which pixels are analysed at all."""
+    rng = np.random.default_rng(6)
+    shape = (64, 64)
+    a = rng.random(shape) + 1.0
+    b = a.copy()
+    # Right half is anti-correlated with the left half's relation.
+    b[:, 32:] = 2.0 - a[:, 32:]
+    left = np.zeros(shape, dtype=bool)
+    left[:, :32] = True
+    right = ~left
+
+    whole = coloc.colocalization_metrics(a, b)
+    in_left = coloc.colocalization_metrics(a, b, roi=left)
+    in_right = coloc.colocalization_metrics(a, b, roi=right)
+
+    assert in_left.metrics["n_pixels_total"] == 32 * 64
+    assert in_left.metrics["roi_area_fraction"] == pytest.approx(0.5)
+    assert in_left.metrics["pearson"] == pytest.approx(1.0, abs=1e-6)
+    assert in_right.metrics["pearson"] == pytest.approx(-1.0, abs=1e-6)
+    # The whole image mixes both populations, so it sits between them.
+    assert in_right.metrics["pearson"] < whole.metrics["pearson"] < in_left.metrics["pearson"]
+
+
+def test_roi_is_reported_and_optional():
+    """An empty or absent ROI leaves the analysis on the whole image."""
+    signal = _blob_image()
+    empty = np.zeros_like(signal, dtype=bool)
+    result = coloc.colocalization_metrics(signal, signal, roi=empty)
+    assert result.roi is None
+    assert "roi_area_fraction" not in result.metrics
+    with pytest.raises(ValueError, match="same shape"):
+        coloc.colocalization_metrics(signal, signal, roi=np.zeros((3, 3), dtype=bool))
+
+
+def test_view_model_exposes_the_new_views(two_channel_tiff):
+    """The 2-D CCF map, the profiles and the ROI brush are reachable from the tool."""
+    from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
+
+    path, _, _ = two_channel_tiff
+    vm = ColocViewModel()
+    vm.ccf_max_shift = 8
+    vm.set_filename(str(path))
+    assert vm.compute() is True
+    assert vm.ccf_map_image() is not None
+    assert vm.profile_series()
+    # The brush paints into a mask of the image's shape …
+    assert np.asarray(vm.roi_mask).shape == vm.image_a().shape
+    assert vm.brush_kernel().shape == (vm.brush_size, vm.brush_size)
+    # … and painting restricts the analysed pixel count.
+    vm.roi_mask[:32, :] = 1.0
+    vm.on_roi_drawn()
+    assert vm._metrics["n_pixels_total"] == 32 * 64
+    vm.clear_roi()
+    assert vm._metrics["n_pixels_total"] == 64 * 64

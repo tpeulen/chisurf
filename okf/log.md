@@ -1081,6 +1081,26 @@
   from its parameter table. It now flattens those options into a documented row,
   so the [docs rule](/workflows/change-tracking.md) keeps holding as sections move
   from plain fields to custom ones.
+* **Colocalization audited against *both* reference implementations, and the last
+  three gaps closed — [PRD-67](/prds/prd-67.md) now carries a parity table.**
+  Reading the multiparameter suite's image module (`Do_Coloc.m`, `Do_2D_XCor.m`)
+  changed the answer to "are we complete?": its Manders/Costes/Li/object-based
+  branches are commented out as *not implemented*, so ChiSurf was already ahead on
+  coefficients — but it had three things we did not: a **hand-drawn ROI**, **PCC
+  resolved versus intensity and versus the channel ratio**, and a **2-D** van
+  Steensel plane rather than a horizontal profile. All three landed:
+  `cross_correlation_2d` (FFT, `conj(A)·B` so its central row reproduces the 1-D
+  profile exactly — verified in a test), `pearson_profile` (three axes, with the
+  $(1-r^2)/\sqrt{n-3}$ standard error per bin), and a painted ROI reusing the
+  `image` section's existing brush, honoured by the thresholds, the Costes null
+  model and the profiles alike (a region that changed only the coefficients would
+  bias them twice over).
+* **Why the 2-D plane matters and the 1-D profile is not enough**: a purely
+  *vertical* registration offset leaves the horizontal profile peaking at zero —
+  it looks perfectly registered while the channels are misaligned. The test
+  asserts exactly that failure mode. The catalogue, concept page, guide and in-app
+  help all gained the new sections, and the mining list's colocalization row is
+  crossed off as ✅ done with the audit recorded beside it.
 
 * **The LLM agent got a real harness: `chisurf/core/agent/`.** The old one
   (`code_editor/agent_runtime.py`) handed the model a bare list of 23 RPC

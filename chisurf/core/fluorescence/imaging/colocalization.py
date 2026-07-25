@@ -24,6 +24,7 @@ __all__ = [
     "colocalization_metrics",
     "costes_significance",
     "costes_threshold",
+    "cross_correlation_2d",
     "estimate_background",
     "joint_histogram",
     "li_icq",
@@ -31,6 +32,7 @@ __all__ = [
     "manders_overlap",
     "orthogonal_regression",
     "pearson",
+    "pearson_profile",
     "spearman",
     "van_steensel",
 ]
@@ -440,6 +442,137 @@ def van_steensel(image_a, image_b, *, max_shift: int = 20) -> dict:
     }
 
 
+def cross_correlation_2d(image_a, image_b, *, max_shift: int = 0) -> dict:
+    """Return the full 2-D cross-correlation map of two channels.
+
+    The plane version of :func:`van_steensel`: channel B is displaced by every
+    ``(dy, dx)`` at once (computed by FFT) and each displacement is scored by the
+    same normalisation Pearson uses — mean-subtracted product divided by the two
+    standard deviations. A registration offset therefore shows up as a peak away
+    from the centre in *either* direction, which a horizontal-only profile can
+    miss entirely (a purely vertical chromatic shift looks like "no
+    colocalization" in 1-D).
+
+    Parameters
+    ----------
+    image_a, image_b : array_like
+        The two channel images, both 2-D and of equal shape.
+    max_shift : int
+        When > 0, crop the returned map to ``±max_shift`` pixels around zero
+        shift; ``0`` returns the full plane.
+
+    Returns
+    -------
+    dict
+        ``{"map", "dx", "dy", "peak_dx", "peak_dy", "peak"}`` — the correlation
+        plane indexed ``[dy, dx]``, the shift axes, and the peak position/value.
+    """
+    a = np.asarray(image_a, dtype=float)
+    b = np.asarray(image_b, dtype=float)
+    if a.shape != b.shape or a.ndim != 2:
+        raise ValueError("the 2-D cross-correlation needs two 2-D images of equal shape")
+    ny, nx = a.shape
+    da = a - a.mean()
+    db = b - b.mean()
+    denom = float(a.std()) * float(b.std()) * a.size
+    if denom <= 0.0:
+        plane = np.full(a.shape, np.nan)
+    else:
+        # conj(A)·B — the same convention as the 1-D profile,
+        # ``plane[dy, dx] = corr(A(y, x), B(y + dy, x + dx))``.
+        plane = (
+            np.fft.fftshift(np.real(np.fft.ifft2(np.conj(np.fft.fft2(da)) * np.fft.fft2(db))))
+            / denom
+        )
+    dy = np.arange(ny) - ny // 2
+    dx = np.arange(nx) - nx // 2
+    if max_shift and max_shift > 0:
+        keep_y = np.abs(dy) <= int(max_shift)
+        keep_x = np.abs(dx) <= int(max_shift)
+        plane = plane[np.ix_(keep_y, keep_x)]
+        dy, dx = dy[keep_y], dx[keep_x]
+    if np.any(np.isfinite(plane)):
+        iy, ix = np.unravel_index(int(np.nanargmax(plane)), plane.shape)
+        peak_dy, peak_dx, peak = int(dy[iy]), int(dx[ix]), float(plane[iy, ix])
+    else:
+        peak_dy = peak_dx = 0
+        peak = float("nan")
+    return {
+        "map": plane,
+        "dx": dx,
+        "dy": dy,
+        "peak_dx": peak_dx,
+        "peak_dy": peak_dy,
+        "peak": peak,
+    }
+
+
+def pearson_profile(a, b, *, bins: int = 50, versus: str = "a", min_pixels: int = 16) -> dict:
+    """Return Pearson's coefficient resolved along an intensity axis.
+
+    A single PCC averages over everything, so it cannot say *where* the
+    correlation lives. Binning the pixels by brightness — or by the channel
+    ratio — and computing PCC inside each bin does: correlation that only appears
+    in bright pixels points at structures on an uncorrelated background, and
+    correlation that collapses at high intensity points at detector saturation.
+
+    Parameters
+    ----------
+    a, b : array_like
+        The two channels.
+    bins : int
+        Number of intensity bins.
+    versus : {"a", "b", "ratio"}
+        Bin by channel A, by channel B, or by the ``a / b`` intensity ratio.
+    min_pixels : int
+        Bins with fewer pixels report NaN instead of a meaningless coefficient.
+
+    Returns
+    -------
+    dict
+        ``{"x", "pearson", "error", "counts", "versus"}`` — bin centres, the
+        per-bin coefficient, its standard error ``(1 - r²)/√(n - 3)``, and the
+        pixel count per bin.
+    """
+    x, y = _pair(a, b)
+    if versus == "b":
+        driver = y
+    elif versus == "ratio":
+        with np.errstate(divide="ignore", invalid="ignore"):
+            driver = np.where(y != 0, x / y, np.nan)
+    else:
+        driver = x
+    good = np.isfinite(driver)
+    x, y, driver = x[good], y[good], driver[good]
+    n_bins = max(int(bins), 2)
+    empty = np.full(n_bins, np.nan)
+    if driver.size < min_pixels:
+        return {
+            "x": empty,
+            "pearson": empty.copy(),
+            "error": empty.copy(),
+            "counts": np.zeros(n_bins, dtype=int),
+            "versus": versus,
+        }
+    edges = np.linspace(float(driver.min()), float(driver.max()), n_bins + 1)
+    centres = 0.5 * (edges[:-1] + edges[1:])
+    values = np.full(n_bins, np.nan)
+    errors = np.full(n_bins, np.nan)
+    counts = np.zeros(n_bins, dtype=int)
+    index = np.clip(np.digitize(driver, edges) - 1, 0, n_bins - 1)
+    for i in range(n_bins):
+        sel = index == i
+        n = int(np.count_nonzero(sel))
+        counts[i] = n
+        if n < min_pixels:
+            continue
+        r = pearson(x[sel], y[sel])
+        values[i] = r
+        if np.isfinite(r) and n > 3:
+            errors[i] = (1.0 - r**2) / np.sqrt(n - 3)
+    return {"x": centres, "pearson": values, "error": errors, "counts": counts, "versus": versus}
+
+
 def joint_histogram(a, b, *, bins: int = 128, range_a=None, range_b=None) -> dict:
     """Return the 2-D intensity joint histogram (scatter density) of two channels.
 
@@ -498,6 +631,14 @@ class ColocalizationResult:
         The joint histogram (see :func:`joint_histogram`).
     ccf : dict
         The van Steensel shift profile, or an empty dict when not requested.
+    ccf_map : dict
+        The full 2-D cross-correlation plane (see :func:`cross_correlation_2d`),
+        or an empty dict when not requested.
+    profiles : dict
+        Intensity-resolved correlation profiles keyed ``"a"``, ``"b"`` and
+        ``"ratio"`` (see :func:`pearson_profile`), or empty when not requested.
+    roi : numpy.ndarray or None
+        The spatial region the analysis was restricted to, when one was given.
     """
 
     metrics: dict
@@ -507,6 +648,9 @@ class ColocalizationResult:
     coloc_mask: np.ndarray
     histogram: dict
     ccf: dict = dataclasses.field(default_factory=dict)
+    ccf_map: dict = dataclasses.field(default_factory=dict)
+    profiles: dict = dataclasses.field(default_factory=dict)
+    roi: np.ndarray | None = None
 
 
 def colocalization_metrics(
@@ -525,6 +669,10 @@ def colocalization_metrics(
     costes_randomizations: int = 200,
     costes_seed: int = 0,
     ccf_max_shift: int = 0,
+    ccf_2d: bool = False,
+    profiles: bool = False,
+    profile_bins: int = 50,
+    roi=None,
 ) -> ColocalizationResult:
     """Compute the full colocalization coefficient set for a channel pair.
 
@@ -555,6 +703,18 @@ def colocalization_metrics(
         Parameters of that test (see :func:`costes_significance`).
     ccf_max_shift : int
         When > 0, also compute the van Steensel shift profile up to this shift.
+    ccf_2d : bool
+        Also compute the full 2-D cross-correlation plane (cropped to
+        ``ccf_max_shift`` when that is set), which exposes vertical
+        misregistration the horizontal profile cannot see.
+    profiles : bool
+        Also compute intensity-resolved correlation profiles (versus channel A,
+        channel B and the A/B ratio).
+    profile_bins : int
+        Number of bins in those profiles.
+    roi : array_like of bool, optional
+        Spatial region to restrict the whole analysis to (a drawn/painted mask).
+        Pixels outside it are excluded from every coefficient.
 
     Returns
     -------
@@ -566,14 +726,30 @@ def colocalization_metrics(
     if a.shape != b.shape or a.ndim != 2:
         raise ValueError("colocalization needs two 2-D images of equal shape")
 
+    region = None
+    if roi is not None:
+        region = np.asarray(roi, dtype=bool)
+        if region.shape != a.shape:
+            raise ValueError("the ROI mask must have the same shape as the images")
+        if not region.any():
+            region = None
+
     metrics: dict = {
         "background_a": float(background_a),
         "background_b": float(background_b),
-        "n_pixels_total": int(a.size),
+        "n_pixels_total": int(a.size if region is None else np.count_nonzero(region)),
     }
+    if region is not None:
+        metrics["roi_area_fraction"] = float(np.count_nonzero(region) / region.size)
+
+    # Everything below is evaluated inside the ROI when one is given: the
+    # thresholds, the coefficients and the null model must all see the same
+    # pixels, or a hand-drawn region would change the numbers twice over.
+    roi_a = a if region is None else a[region]
+    roi_b = b if region is None else b[region]
 
     if auto_threshold:
-        costes = costes_threshold(a, b)
+        costes = costes_threshold(roi_a, roi_b)
         metrics.update(
             {
                 "costes_threshold_a": costes["threshold_a"],
@@ -589,20 +765,23 @@ def colocalization_metrics(
     metrics["threshold_b"] = float(threshold_b)
 
     mask = np.isfinite(a) & np.isfinite(b) & (a > threshold_a) & (b > threshold_b)
+    if region is not None:
+        mask &= region
     metrics["n_pixels"] = int(np.count_nonzero(mask))
     sel_a = a[mask]
     sel_b = b[mask]
 
     metrics["pearson"] = pearson(sel_a, sel_b)
-    metrics["pearson_all"] = pearson(a, b)
+    metrics["pearson_all"] = pearson(roi_a, roi_b)
     metrics["manders_overlap"] = manders_overlap(sel_a, sel_b)
-    m1, m2 = manders_fractions(a, b, threshold_a, threshold_b)
+    m1, m2 = manders_fractions(roi_a, roi_b, threshold_a, threshold_b)
     metrics["manders_m1"] = m1
     metrics["manders_m2"] = m2
     metrics["li_icq"] = li_icq(sel_a, sel_b)
     metrics["spearman"] = spearman(sel_a, sel_b)
     coloc_mask = mask
-    metrics["coloc_area_fraction"] = float(np.count_nonzero(coloc_mask) / coloc_mask.size)
+    area = coloc_mask.size if region is None else np.count_nonzero(region)
+    metrics["coloc_area_fraction"] = float(np.count_nonzero(coloc_mask) / max(area, 1))
 
     if gate is not None:
         a_min, a_max, b_min, b_max = (float(v) for v in gate)
@@ -623,6 +802,7 @@ def colocalization_metrics(
                     block=costes_block,
                     n_randomizations=costes_randomizations,
                     seed=costes_seed,
+                    mask=region,
                 ).items()
             }
         )
@@ -633,6 +813,20 @@ def colocalization_metrics(
         metrics["ccf_peak_shift"] = ccf["peak_shift"]
         metrics["ccf_peak"] = ccf["peak_ccf"]
 
+    ccf_plane: dict = {}
+    if ccf_2d:
+        ccf_plane = cross_correlation_2d(a, b, max_shift=int(ccf_max_shift or 0))
+        metrics["ccf2d_peak_dx"] = ccf_plane["peak_dx"]
+        metrics["ccf2d_peak_dy"] = ccf_plane["peak_dy"]
+        metrics["ccf2d_peak"] = ccf_plane["peak"]
+
+    profile_set: dict = {}
+    if profiles:
+        profile_set = {
+            key: pearson_profile(sel_a, sel_b, bins=int(profile_bins), versus=key)
+            for key in ("a", "b", "ratio")
+        }
+
     return ColocalizationResult(
         metrics=metrics,
         image_a=a,
@@ -641,4 +835,7 @@ def colocalization_metrics(
         coloc_mask=coloc_mask,
         histogram=joint_histogram(sel_a, sel_b, bins=bins),
         ccf=ccf,
+        ccf_map=ccf_plane,
+        profiles=profile_set,
+        roi=region,
     )

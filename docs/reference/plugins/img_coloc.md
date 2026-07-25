@@ -51,6 +51,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | B min | `gate_b_min` | float |  |  | Lower channel-B intensity of the gate rectangle. |
 | B max | `gate_b_max` | float |  |  | Upper channel-B intensity of the gate rectangle. |
 
+### Region of interest
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Brush (px) | `brush_size` | int |  | 1 … 64 | Edge length of the square brush used to paint the region of interest on the Channel A map. Painting restricts every coefficient — thresholds, the null model and the profiles — to that region, the way a hand-drawn cell outline should. |
+
 ### Significance / profile
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
@@ -60,6 +66,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Randomizations | `costes_randomizations` | int |  | 10 … 10000 | Size of the null distribution. 100–200 is enough for a p-value quoted to two decimals; more only sharpens the tail. |
 | Seed | `costes_seed` | int |  | 0 … 1000000 | Seed of the random generator, so the same image and settings always give the same p-value (a reported number stays reproducible). |
 | van Steensel shift (px) | `ccf_max_shift` | int |  | 0 … 200 | Largest horizontal shift of the cross-correlation profile; 0 disables it. The profile peaks at 0 for true colocalization and away from 0 when the channels are misregistered — the standard check for chromatic aberration before trusting any coefficient. |
+| Profile bins | `profile_bins` | int |  | 4 … 200 | Number of intensity bins in the 'PCC vs intensity' profiles. Fewer bins average more pixels per point (smaller error bars), more bins resolve where in the brightness range the correlation changes. |
 | Histogram bins | `bins` | int |  | 8 … 1024 | Bins per axis of the intensity scatter (joint histogram). More bins resolve fine structure in the cloud; fewer make sparse images look continuous. |
 | Log histogram | `log_histogram` | bool |  |  | Show the intensity scatter on a logarithmic count scale, so the sparse bright tail stays visible next to the dense background cloud. |
 

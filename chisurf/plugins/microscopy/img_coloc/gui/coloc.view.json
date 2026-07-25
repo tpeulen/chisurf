@@ -76,6 +76,20 @@
             },
             {
               "type": "panel",
+              "title": "Region of interest",
+              "collapsed": true,
+              "n_col": 1,
+              "sections": [
+                {"type": "value", "attr": "brush_size", "label": "Brush (px)", "kind": "int", "minimum": 1, "maximum": 64,
+                 "description": "Edge length of the square brush used to paint the region of interest on the Channel A map. Painting restricts every coefficient — thresholds, the null model and the profiles — to that region, the way a hand-drawn cell outline should."},
+                {"type": "button_row", "buttons": [
+                  {"label": "🧽 Clear ROI", "action": "clear_roi",
+                   "description": "Discard the painted region and analyse the whole image again."}
+                ]}
+              ]
+            },
+            {
+              "type": "panel",
               "title": "Significance / profile",
               "collapsed": true,
               "n_col": 1,
@@ -90,6 +104,8 @@
                  "description": "Seed of the random generator, so the same image and settings always give the same p-value (a reported number stays reproducible)."},
                 {"type": "value", "attr": "ccf_max_shift", "label": "van Steensel shift (px)", "kind": "int", "minimum": 0, "maximum": 200,
                  "description": "Largest horizontal shift of the cross-correlation profile; 0 disables it. The profile peaks at 0 for true colocalization and away from 0 when the channels are misregistered — the standard check for chromatic aberration before trusting any coefficient."},
+                {"type": "value", "attr": "profile_bins", "label": "Profile bins", "kind": "int", "minimum": 4, "maximum": 200,
+                 "description": "Number of intensity bins in the 'PCC vs intensity' profiles. Fewer bins average more pixels per point (smaller error bars), more bins resolve where in the brightness range the correlation changes."},
                 {"type": "value", "attr": "bins", "label": "Histogram bins", "kind": "int", "minimum": 8, "maximum": 1024,
                  "description": "Bins per axis of the intensity scatter (joint histogram). More bins resolve fine structure in the cloud; fewer make sparse images look continuous."},
                 {"type": "toggle", "attr": "log_histogram", "label": "Log histogram",
@@ -116,8 +132,10 @@
               "split": "horizontal",
               "sections": [
                 {"type": "custom", "key": "image", "target": "image_a", "title": "Channel A",
-                 "options": {"colormap": true, "colormap_attr": "colormap"},
-                 "description": "Background-subtracted map of channel A."},
+                 "options": {"colormap": true, "colormap_attr": "colormap",
+                             "selection_attr": "roi_mask", "brush_kernel_source": "brush_kernel",
+                             "on_draw": "on_roi_drawn"},
+                 "description": "Background-subtracted map of channel A. Paint on it to restrict the analysis to a region of interest."},
                 {"type": "custom", "key": "image", "target": "image_b", "title": "Channel B",
                  "options": {"colormap": true, "colormap_attr": "colormap"},
                  "description": "Background-subtracted map of channel B."}
@@ -131,7 +149,12 @@
                          "rect_roi_call": "set_gate_from_rect", "rect_roi_source": "gate_rect"},
              "description": "Joint histogram of the two channels (A horizontal, B vertical). Drag the blue rectangle to gate a pixel population."},
             {"type": "plot", "source": "ccf_series", "title": "van Steensel CCF",
-             "x_label": "shift / px", "y_label": "PCC", "height": 220}
+             "x_label": "shift / px", "y_label": "PCC"},
+            {"type": "custom", "key": "image", "target": "ccf_map_image", "title": "CCF map (2-D)",
+             "options": {"colormap": true, "colormap_attr": "colormap", "invert_y": false},
+             "description": "Full 2-D cross-correlation plane: the peak sits at the (Δx, Δy) that realigns the channels, so a vertical registration offset is visible too."},
+            {"type": "plot", "source": "profile_series", "title": "PCC vs intensity",
+             "x_label": "intensity / ratio", "y_label": "PCC"}
           ]
         }
       ]

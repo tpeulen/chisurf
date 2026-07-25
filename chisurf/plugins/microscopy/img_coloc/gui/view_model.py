@@ -54,10 +54,14 @@ class ColocViewModel:
         self.costes_randomizations: int = 200
         self.costes_seed: int = 0
         self.ccf_max_shift: int = 0
+        self.profile_bins: int = 30
+        self.brush_size: int = 9
         self.colormap: str = "magma"
         # ── detector windows from the selected setup ──
         #: ``{window: {"chs": [...], "micro_time_ranges": [...]}}`` (empty = raw channels).
         self.detectors: dict[str, dict] = {}
+        #: Painted region the analysis is restricted to (``None`` = whole image).
+        self.roi_mask = None
         # ── runtime state ──
         self._stack = None
         self._result = None
@@ -176,6 +180,29 @@ class ColocViewModel:
             return None
         return (self.gate_a_min, self.gate_a_max, self.gate_b_min, self.gate_b_max)
 
+    # ── spatial ROI (painted on the channel-A map) ──
+    def _roi(self):
+        """Return the painted ROI as a boolean mask, or ``None`` when unused."""
+        if self.roi_mask is None:
+            return None
+        mask = np.asarray(self.roi_mask) > 0
+        return mask if mask.any() else None
+
+    def brush_kernel(self):
+        """Return the paint kernel for the ROI brush (a square of ``brush_size``)."""
+        size = max(int(self.brush_size), 1)
+        return np.ones((size, size))
+
+    def on_roi_drawn(self) -> None:
+        """Recompute after the ROI brush stroke finished."""
+        self.compute()
+
+    def clear_roi(self) -> None:
+        """Drop the painted ROI and recompute over the whole image."""
+        if self.roi_mask is not None:
+            self.roi_mask = np.zeros_like(np.asarray(self.roi_mask))
+        self.compute()
+
     # ── compute ──
     def compute(self, progress: Callable[[float, str], None] | None = None) -> bool:
         """Load the image (if needed) and evaluate every colocalization coefficient.
@@ -219,6 +246,10 @@ class ColocViewModel:
                 costes_randomizations=int(self.costes_randomizations),
                 costes_seed=int(self.costes_seed),
                 ccf_max_shift=int(self.ccf_max_shift),
+                ccf_2d=bool(self.ccf_max_shift),
+                profiles=True,
+                profile_bins=int(self.profile_bins),
+                roi=self._roi(),
             )
         except Exception as exc:
             logger.debug("colocalization compute failed", exc_info=True)
@@ -230,6 +261,10 @@ class ColocViewModel:
         self._stack = out["stack"]
         self._result = out["result"]
         self._metrics = out["metrics"]
+        # The brush overlay needs a mask of the image's shape to paint into.
+        shape = np.asarray(out["image_a"]).shape
+        if self.roi_mask is None or np.asarray(self.roi_mask).shape != shape:
+            self.roi_mask = np.zeros(shape, dtype=float)
         names = self.channel_names()
         if names:
             self.channel_a = str(channel_a) if str(channel_a) in names else names[0]
@@ -308,6 +343,40 @@ class ColocViewModel:
         if hist is None:
             return None
         return np.log1p(hist) if self.log_histogram else hist
+
+    def ccf_map_image(self):
+        """Return the 2-D cross-correlation plane (or ``None``)."""
+        if self._result is None or not self._result.ccf_map:
+            return None
+        return self._result.ccf_map.get("map")
+
+    def profile_series(self) -> list[dict]:
+        """Return the intensity-resolved correlation profiles as plot series.
+
+        Three curves — Pearson versus channel A, versus channel B and versus the
+        A/B intensity ratio — so a correlation that only exists in bright pixels,
+        or that collapses at high intensity, is visible instead of averaged away.
+        """
+        if self._result is None or not self._result.profiles:
+            return []
+        labels = {"a": "vs channel A", "b": "vs channel B", "ratio": "vs A/B ratio"}
+        colours = {"a": "#2ca02c", "b": "#d62728", "ratio": "#7f7f7f"}
+        series = []
+        for key, profile in self._result.profiles.items():
+            x = np.asarray(profile["x"], dtype=float)
+            y = np.asarray(profile["pearson"], dtype=float)
+            good = np.isfinite(x) & np.isfinite(y)
+            if not good.any():
+                continue
+            series.append(
+                {
+                    "x": x[good],
+                    "y": y[good],
+                    "name": labels.get(key, key),
+                    "color": colours.get(key),
+                }
+            )
+        return series
 
     def ccf_series(self) -> list[dict]:
         """Return the van Steensel shift profile as an AutoForm plot series."""
