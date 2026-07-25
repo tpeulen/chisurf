@@ -315,7 +315,8 @@ space-efficient form by default and move detail into the tooltip.
 # Node editor widget
 
 `chisurf/gui/widgets/node_editor/` is a self-contained, dependency-light node
-editor (PyQt + optional `networkx`) with model/view/editor layering. It has a
+editor (PyQt + the in-tree [`chinet.graph`](/subsystems/graph.md) layer) with
+model/view/editor layering. It has a
 **versioned JSON graph schema** (`{version, nodes:[{id,type,title,inputs,outputs,
 config,pos,collapsed}], edges:[{source,source_port,target,target_port}]}`),
 validate-before-mutate loading (`NodeGraphValidationError`, no partial scene on

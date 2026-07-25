@@ -1,3 +1,4 @@
+from . import graph as graph
 from ._version import __version__ as __version__
 from .base import BaseObject as BaseObject
 from .node import Node as Node
@@ -30,6 +31,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "Session",
     "__version__",
+    "graph",
     "load_session",
     "node",
     "save_session",

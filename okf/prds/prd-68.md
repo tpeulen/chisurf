@@ -88,10 +88,12 @@ sum-product and do not transfer to a continuous fluorescence posterior; the
 *structural* machinery transfers exactly and is ~150 lines over the graph
 primitives already available in the environment.
 
-**No new dependency.** Implementation uses only `numpy`, `numba` and
-`networkx`. `networkx` is already imported in-tree (globalview plugin, node
-editor) and is present transitively via `scikit-image`; this PRD promotes it to
-a declared dependency rather than adding a new one to the environment.
+**No external dependency.** Implementation uses only `numpy`, `numba` and the
+in-tree graph layer `chinet.graph` (containers, connected components, spanning
+trees, layouts, GraphML). The external graph library this originally leaned on
+was removed from the environment; the same vocabulary now lives in the
+application's own runtime, alongside the globalview plugin and the node editor
+that share it.
 
 # Design
 
@@ -200,7 +202,8 @@ data and prior terms separately; `lnprob` remains their sum. Chains gain
       separately and `chi2r` is data-only; chain files carry the extra column.
 - [x] `factorgraph.py` with variable/factor nodes, builder, Markov graph,
       min-fill elimination, junction tree, treewidth, blocks, relevance queries.
-- [x] `networkx` declared in `pyproject.toml` and `pixi.toml`.
+- [x] Graph primitives come from the in-tree `chinet.graph`; no external graph
+      library is declared in `pyproject.toml`, `pixi.toml` or the conda recipe.
 - [x] `GlobalFitModel` caches a factor graph, arms dirty fits from the
       `parameter_values` setter, and recomputes only affected local fits.
 - [x] `STRUCTURE_VERSION` bumped from every seam that changes the graph.

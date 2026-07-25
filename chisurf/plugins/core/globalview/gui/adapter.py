@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-import networkx as nx
+from chinet import graph as cg
 
 from chisurf.plugins.core.globalview.api.graph import build_graph, GraphResult
 
@@ -44,9 +44,9 @@ def compute_node_types(
     return types
 
 
-def graph_result_to_networkx(result: GraphResult) -> nx.Graph:
-    """Convert a GraphResult to a networkx Graph for layout computation."""
-    G = nx.Graph()
+def graph_result_to_graph(result: GraphResult) -> cg.Graph:
+    """Convert a GraphResult to a :class:`chinet.graph.Graph` for layout."""
+    G = cg.Graph()
     for n in result.nodes:
         G.add_node(n.node_idx, **{
             "node.idx": n.node_idx,
@@ -65,17 +65,31 @@ def graph_result_to_networkx(result: GraphResult) -> nx.Graph:
     return G
 
 
-def compute_layout(G: nx.Graph, layout: str = "kamada_kawai", scale: float = 1.0) -> Dict[int, Any]:
-    """Compute node positions using the given layout algorithm."""
+def compute_layout(G: cg.Graph, layout: str = "kamada_kawai", scale: float = 1.0) -> Dict[int, Any]:
+    """Compute node positions using the given layout algorithm.
+
+    Parameters
+    ----------
+    G : chinet.graph.Graph
+        Graph to lay out.
+    layout : str, optional
+        One of ``kamada_kawai``, ``shell``, ``arf``, ``spectral``; anything else
+        falls back to a spring layout.
+    scale : float, optional
+        Half-width of the drawing.
+
+    Returns
+    -------
+    dict
+        Node index to ``(x, y)``.
+    """
     if layout == "shell":
-        return nx.shell_layout(G, scale=scale)
+        return cg.shell_layout(G, scale=scale)
     elif layout == "kamada_kawai":
-        return nx.kamada_kawai_layout(G, scale=scale)
-    elif layout == "planar":
-        return nx.planar_layout(G, scale=scale)
+        return cg.kamada_kawai_layout(G, scale=scale)
     elif layout == "arf":
-        return nx.arf_layout(G, etol=1e-9, dt=0.01)
+        return cg.arf_layout(G, etol=1e-9, dt=0.01, scale=scale)
     elif layout == "spectral":
-        return nx.spectral_layout(G, scale=scale)
+        return cg.spectral_layout(G, scale=scale)
     else:
-        return nx.spring_layout(G, iterations=500, scale=scale)
+        return cg.spring_layout(G, iterations=500, scale=scale)

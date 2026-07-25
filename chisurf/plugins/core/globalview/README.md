@@ -50,7 +50,7 @@ The GUI is an adapter over `GlobalViewClient`; graph behavior belongs in `api/` 
   - PyQt5
   - PyQtGraph
   - numpy
-  - networkx (for graph representation)
+  - chinet (`chinet.graph` — graph container, layouts and GraphML I/O)
 
 ## Usage
 

@@ -28,6 +28,70 @@
   and so always bond.
 
 
+* **The external graph library is gone; graphs are ours now (`chinet.graph`).**
+  Three subsystems needed the same handful of graph operations — the fit
+  [factor graph](/subsystems/fitting.md) (moralised Markov graph, components,
+  junction tree), the node editor (DAG test, topological layering, cycle
+  highlighting) and the global-parameter view (network drawing, GraphML
+  import/export) — and each imported `networkx` for them. That is a package in
+  every environment, recipe and wheel for containers and textbook algorithms,
+  and the part the user actually *sees* — the layouts — was not ours to tune.
+  New [graph layer](/subsystems/graph.md) under `modules/chinet/chinet/graph/`:
+  `Graph`/`DiGraph` with live node and edge attribute views; components,
+  Kahn topological sort, Johnson elementary circuits, Kruskal minimum/maximum
+  spanning forest, BFS/Dijkstra all-pairs distances; circular, shell, spectral,
+  Fruchterman-Reingold, Kamada-Kawai and ARF layouts; GraphML with typed
+  attribute keys. `numpy` is the only import, and only the layouts need it.
+
+  **Kamada-Kawai by stress majorization (SMACOF), not a generic optimiser.** The
+  reference implementation hands the stress function to L-BFGS and needs
+  `scipy`; SMACOF solves the same objective with a weighted least-squares step
+  that cannot increase the stress, in `numpy` alone, from a circular start —
+  which also makes it *deterministic*, and a redraw that reshuffles the picture
+  is unreadable. Measured against the old implementation on four standard graphs
+  (4×4 grid, balanced tree, path, Petersen), the stress is equal or lower on
+  three of the four (grid 41.0 vs 43.0, tree 48.5 vs 48.8, Petersen 5.85 vs
+  6.17; path 13.6 vs 13.4).
+
+  **Disconnected graphs, fixed rather than reproduced.** The old layout gave
+  unreachable pairs a target distance of 1e6, which is fine for a gradient
+  optimiser and catastrophic for an exact majorization step: every real
+  component collapsed to a point next to the "infinite" separation. Unreachable
+  pairs now get 1.5× the widest distance that does exist — the components read
+  as separate and still share the canvas.
+
+  Behaviour checked against the old library on randomised graphs before it was
+  removed: elementary circuits, DAG verdicts, topological orders, components,
+  maximum-spanning-tree weight and weighted all-pairs distances agree on 500
+  random graphs. The `planar` layout was dropped — it was unreachable from the
+  GUI (never in the layout list) and raises for any non-planar graph, which a
+  parameter network almost always is. `arf` now honours the graph-scale spin box
+  like every other layout.
+
+  Verified in the real GUI, not only in tests: the Global View rendered
+  headlessly for all five layouts on three linked fits (shared `tau` drawn as
+  the hub, labels legible), and the three posterior graph views drawn from a
+  linked three-dataset group. `spectral` still puts symmetric leaves on the same
+  point — the old library does exactly the same, it is a property of the
+  eigenvector, not a regression.
+
+  Removed from `pyproject.toml`, `pixi.toml` and the conda recipe, with a
+  guardrail test (`test/test_no_networkx_import.py`) that fails on a
+  reintroduced import *or* dependency declaration — it stays installed
+  transitively in dev environments, so an accidental import would pass locally
+  and fail in a packaged install. 70 new tests (62 in `test/core/`, plus a
+  standalone smoke suite for `pixi run test-chinet`), 176 passing across every
+  affected suite.
+
+  **Fixed in passing:** `test_cycle_detection` in the node editor indexed into
+  `QGraphicsScene.items()`, which returns stacking order, not insertion order —
+  it was testing Qt's z-order and raised `IndexError`. It now looks ports up by
+  name and asserts the cycle it claims to detect. The OKF concept for
+  [compiled modules](/subsystems/compiled-modules.md) still listed `chinet`
+  among the C++ extensions; it has been pure Python for some time.
+
+## 2026-07-25
+
 ## 2026-07-25
 
 

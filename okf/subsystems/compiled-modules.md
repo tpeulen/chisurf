@@ -9,9 +9,12 @@ timestamp: '2026-07-05T00:00:00Z'
 
 # Extensions
 
-The compiled extensions in `modules/` — `chinet`, `ndxplorer`, `clsmview`,
-`quest` — plus the burbulator C++ library must be built before the test
-suites run. `ndxplorer` and `quest` are git submodules (see `.gitmodules`).
+The compiled extensions in `modules/` — `ndxplorer`, `clsmview`, `quest` —
+plus the burbulator C++ library must be built before the test suites run.
+`ndxplorer` and `quest` are git submodules (see `.gitmodules`). `chinet` sits
+in the same folder and is installed by the same task, but is **pure Python**
+(runtime, schema, and the [graph layer](/subsystems/graph.md)) and needs no
+compilation.
 
 # Building
 

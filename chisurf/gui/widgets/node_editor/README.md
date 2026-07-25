@@ -12,7 +12,7 @@ A self-contained node-based editor for creating and editing computational graphs
 
 ## Installation
 
-This is part of the chisurf project. No additional installation required beyond PyQt5 and optional networkx for advanced features.
+This is part of the chisurf project. No additional installation required beyond PyQt5; graph analysis uses the in-tree `chinet.graph` module.
 
 ## Usage
 
@@ -74,7 +74,7 @@ Graphs are saved in a structured JSON format (see `json_schema.md` for details).
 
 - Edges are validated to prevent invalid connections.
 - Optional `enforce_acyclic` mode prevents cycle creation.
-- Cycle detection uses networkx for accurate graph analysis.
+- Cycle detection uses `chinet.graph` for accurate graph analysis.
 
 ## Testing
 
@@ -120,4 +120,4 @@ Graphs are saved in a versioned JSON format (see `json_schema.md`).
 
 - Automatic cycle detection and highlighting.
 - Optional `enforce_acyclic` mode prevents invalid connections.
-- Uses NetworkX for robust graph analysis.
+- Uses `chinet.graph` for robust graph analysis.

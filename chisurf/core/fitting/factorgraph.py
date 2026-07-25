@@ -38,8 +38,8 @@ The design follows the architecture of mature probabilistic graphical-model
 toolkits -- a model object separate from any inference engine, moralisation plus
 triangulation to expose blocks, and relevance pruning per query. Their discrete
 sum-product *kernels* do not transfer to a continuous fluorescence posterior;
-the structural machinery does, and it needs nothing beyond ``numpy`` and
-``networkx``.
+the structural machinery does, and it needs nothing beyond ``numpy`` and the
+in-tree graph layer :mod:`chinet.graph`.
 
 Notes
 -----
@@ -56,7 +56,7 @@ import functools
 import inspect
 import itertools
 
-import networkx as nx
+from chinet import graph as cg
 
 from chisurf import typing
 
@@ -515,7 +515,7 @@ class FactorGraph:
                     incidence[key].append(f.key)
         self._incidence = {k: tuple(v) for k, v in incidence.items()}
 
-        self._markov_graph: typing.Optional[nx.Graph] = None
+        self._markov_graph: typing.Optional[cg.Graph] = None
 
     # -- basic accessors --------------------------------------------------
 
@@ -558,7 +558,7 @@ class FactorGraph:
 
     # -- structure --------------------------------------------------------
 
-    def markov_graph(self) -> nx.Graph:
+    def markov_graph(self) -> cg.Graph:
         """Return the moralised undirected graph over the variables.
 
         Every factor contributes a clique over its scope, because a factor
@@ -568,12 +568,12 @@ class FactorGraph:
 
         Returns
         -------
-        networkx.Graph
+        chinet.graph.Graph
             Cached; call :meth:`invalidate` after mutating the graph.
         """
         if self._markov_graph is not None:
             return self._markov_graph
-        g = nx.Graph()
+        g = cg.Graph()
         g.add_nodes_from(self.variables.keys())
         for f in self.factors.values():
             scope = [k for k in f.scope if k in self.variables]
@@ -598,7 +598,7 @@ class FactorGraph:
         list of set of str
             One set of variable keys per component.
         """
-        comps = [set(c) for c in nx.connected_components(self.markov_graph())]
+        comps = [set(c) for c in cg.connected_components(self.markov_graph())]
         comps.sort(key=len, reverse=True)
         return comps
 
@@ -701,7 +701,7 @@ class FactorGraph:
     def junction_tree(
             self,
             order: typing.Sequence[str] = None
-    ) -> nx.Graph:
+    ) -> cg.Graph:
         """Return a junction (clique) tree of the fit.
 
         Nodes are the maximal cliques of :meth:`cliques` (as sorted tuples);
@@ -717,17 +717,17 @@ class FactorGraph:
 
         Returns
         -------
-        networkx.Graph
+        chinet.graph.Graph
             One node per maximal clique. Disconnected fits give a forest.
         """
         cliques = self.cliques(order)
-        complete = nx.Graph()
+        complete = cg.Graph()
         complete.add_nodes_from(cliques)
         for a, b in itertools.combinations(cliques, 2):
             shared = set(a) & set(b)
             if shared:
                 complete.add_edge(a, b, weight=len(shared))
-        tree = nx.maximum_spanning_tree(complete) if complete.number_of_edges() \
+        tree = cg.maximum_spanning_tree(complete) if complete.number_of_edges() \
             else complete
         for a, b in tree.edges():
             tree[a][b]["separator"] = tuple(sorted(set(a) & set(b)))

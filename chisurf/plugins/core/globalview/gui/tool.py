@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-import networkx as nx
+from chinet import graph as cg
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
@@ -22,7 +22,7 @@ from chisurf.plugins.core.globalview.gui.adapter import (
     NODE_COLORS,
     compute_layout,
     compute_node_types,
-    graph_result_to_networkx,
+    graph_result_to_graph,
 )
 from chisurf.plugins.core.globalview.gui.graphplotwidget import GraphPlotWidget
 from chisurf.plugins.core.globalview.parameters_model import GlobalViewParametersModel
@@ -357,25 +357,17 @@ class GraphWizard(QtWidgets.QMainWindow):
                 file_type="CS-GraphML (*.gml)",
             ),
         )
-        G = nx.read_graphml(path)
+        G = cg.read_graphml(path)
         self.link(G, **kwargs)
 
-    def write_graph(self, evt, G: nx.Graph = None):
+    def write_graph(self, evt, G: cg.Graph = None):
         if G is None:
             G = self.G
         path = cs.gui.widgets.save_file(
             description="ChiSurf-GraphML",
             file_type="CS-GraphML (*.gml)",
         )
-        nx.write_graphml(
-            G,
-            path,
-            encoding="utf-8",
-            prettyprint=True,
-            infer_numeric_types=False,
-            named_key_ids=False,
-            edge_id_from_attribute=None,
-        )
+        cg.write_graphml(G, path, encoding="utf-8", prettyprint=True)
 
     def callback_selection(self):
         cs.gui.widgets.general.clear_layout(self.parameter_layout)
@@ -498,7 +490,7 @@ class GraphWizard(QtWidgets.QMainWindow):
         )
 
     @staticmethod
-    def _node_param_address(G: nx.Graph, node: Any, param: Any) -> Dict[str, Any]:
+    def _node_param_address(G: cg.Graph, node: Any, param: Any) -> Dict[str, Any]:
         """Return the RPC address kwargs for a graph node's parameter.
 
         Fit parameters keep the fit-addressed path (``parameter_name`` +
@@ -515,7 +507,7 @@ class GraphWizard(QtWidgets.QMainWindow):
 
     def link(
         self,
-        G: nx.Graph,
+        G: cg.Graph,
         clear_fist: bool = False,
         **kwargs,
     ):
@@ -586,7 +578,7 @@ class GraphWizard(QtWidgets.QMainWindow):
         api_result = api_build_graph(
             fit_list, include_fixed, connect_fits, group_list=group_list,
         )
-        G = graph_result_to_networkx(api_result)
+        G = graph_result_to_graph(api_result)
 
         from chisurf.core.base import Base
 
@@ -671,7 +663,7 @@ class GraphWizard(QtWidgets.QMainWindow):
 
     def get_node_positions(
         self,
-        G: nx.Graph = None,
+        G: cg.Graph = None,
         graph_scale: float = None,
         graph_layout: str = None,
     ):
@@ -758,7 +750,7 @@ class GraphWizard(QtWidgets.QMainWindow):
         self.fit_list = fit_list
         self.parent = parent
 
-        self.G: nx.Graph = None
+        self.G: cg.Graph = None
         self.graph_widget = None
         self.node_objects: Dict[Any, Any] = {}
         self.node_data: Dict[str, Any] = {}

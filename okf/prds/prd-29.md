@@ -32,7 +32,7 @@ Three existing pieces merge into one workflow:
 ## What exists today
 **Node editor.** A full visual graph editor with:
 - Qt `QGraphicsScene`/`QGraphicsView` with dark theme, bezier edges, port snapping
-- DAG validation (cycle detection via networkx), undo/redo via full-graph snapshots
+- DAG validation (cycle detection via the in-tree graph layer), undo/redo via full-graph snapshots
 - Node registry (`NodeType` + `PortSpec`), JSON serialization (schema v1)
 - `chinet_eval.py` evaluates PT (parameter transform) nodes via chinet
 - Already used by the lightpath simulator (optical nodes) and provenance viewer (read-only)

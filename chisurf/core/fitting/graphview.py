@@ -28,17 +28,19 @@ headlessly and the same description can be drawn by any front end.
 
 Notes
 -----
-Layout uses `networkx`, already a dependency. The correlation view lays out with
-Kamada-Kawai on :math:`1 - |r|` distances, so strongly correlated parameters are
-placed close together and the geometry itself carries the message.
+Layout uses the in-tree graph layer :mod:`chinet.graph`. The correlation view
+lays out with Kamada-Kawai on :math:`1 - |r|` distances, so strongly correlated
+parameters are placed close together and the geometry itself carries the
+message.
 """
 from __future__ import annotations
 
 import dataclasses
 import math
 
-import networkx as nx
 import numpy as np
+
+from chinet import graph as cg
 
 from chisurf import typing
 
@@ -192,7 +194,7 @@ def short_labels(
     return out
 
 
-def _layout(graph: nx.Graph, seed: int = 0, **kw) -> typing.Dict[str, np.ndarray]:
+def _layout(graph: cg.Graph, seed: int = 0, **kw) -> typing.Dict[str, np.ndarray]:
     """Return positions for ``graph``, rescaled to ``[-1, 1]`` in both axes.
 
     Kamada-Kawai gives the most readable result for the small, sparse graphs a
@@ -202,7 +204,7 @@ def _layout(graph: nx.Graph, seed: int = 0, **kw) -> typing.Dict[str, np.ndarray
 
     Parameters
     ----------
-    graph : networkx.Graph
+    graph : chinet.graph.Graph
         Graph to lay out.
     seed : int, optional
         Seed for the fallback layout, so a redraw does not reshuffle the picture.
@@ -219,9 +221,9 @@ def _layout(graph: nx.Graph, seed: int = 0, **kw) -> typing.Dict[str, np.ndarray
     if graph.number_of_nodes() == 1:
         return {next(iter(graph.nodes)): np.zeros(2)}
     try:
-        pos = nx.kamada_kawai_layout(graph, **kw)
+        pos = cg.kamada_kawai_layout(graph, **kw)
     except Exception:
-        pos = nx.spring_layout(graph, seed=seed)
+        pos = cg.spring_layout(graph, seed=seed)
     return _rescale(_orient(pos))
 
 
@@ -409,7 +411,7 @@ def structure_view(fit, model=None) -> GraphView:
 
     nodes: typing.List[GraphNode] = []
     edges: typing.List[GraphEdge] = []
-    bipartite = nx.Graph()
+    bipartite = cg.Graph()
 
     for key, var in graph.variables.items():
         short = str(var.name).split(":")[-1]
@@ -605,7 +607,7 @@ def correlation_view(
 
     edges = []
     notes = []
-    graph = nx.Graph()
+    graph = cg.Graph()
     graph.add_nodes_from(str(n) for n in names)
     if corr is not None and corr.shape[0] == len(names):
         strong = []
@@ -652,7 +654,7 @@ def correlation_view(
         pos = _layout(graph, weight="weight")
     else:
         pos = _layout(
-            nx.complete_graph(list(graph.nodes))
+            cg.complete_graph(list(graph.nodes))
             if graph.number_of_nodes() > 1 else graph
         )
 
@@ -734,7 +736,7 @@ def junction_tree_view(fit, model=None) -> GraphView:
             weight=float(min(1.0, 0.3 + 0.2 * len(shared))),
         ))
 
-    relabelled = nx.Graph()
+    relabelled = cg.Graph()
     relabelled.add_nodes_from(n.key for n in nodes)
     relabelled.add_edges_from((e.source, e.target) for e in edges)
     pos = _layout(relabelled)

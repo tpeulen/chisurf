@@ -6,10 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-try:  # optional dependency
-    import networkx as nx  # type: ignore
-except Exception:  # pragma: no cover
-    nx = None  # type: ignore
+from chinet import graph as cg
 
 from .model import NodeModel, PortSpec
 from .port_item import NodePortGraphicsItem
@@ -1225,7 +1222,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
                 except Exception:
                     pass
 
-    # ----- Layout using networkx ------------------------------------------
+    # ----- Layout ---------------------------------------------------------
     def auto_layout(self):
         """Arrange nodes in a deterministic hierarchical layout with crossing minimisation.
 
@@ -1238,11 +1235,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
            deterministic and substantially reduces edge crossings.
         3. Stack nodes vertically inside each column, centering the column.
         """
-        if nx is None:
-            logger.warning("networkx is not available; auto layout disabled")
-            return
-
-        graphs = self._build_nx_graphs()
+        graphs = self._build_graphs()
         if graphs is None:
             return
 
@@ -1255,7 +1248,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         # 1. Assign levels via longest-path layering (deterministic for DAGs).
         levels: Dict[int, int] = {}
         try:
-            topo = list(nx.topological_sort(G_directed))
+            topo = list(cg.topological_sort(G_directed))
         except Exception:
             topo = None  # graph has cycles
 
@@ -1338,10 +1331,13 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         self.update()
 
-    def _build_nx_graphs(self):
-        if nx is None:
-            return None
+    def _build_graphs(self):
+        """Return ``(undirected, directed, index_by_node)``, or ``None`` if empty.
 
+        The two graphs hold one integer node per scene node -- the same index
+        ``NodeScene.to_dict`` uses -- and one edge per connection, oriented from
+        the output port to the input port.
+        """
         from .node_item import NodeGraphicsItem
 
         nodes: List[NodeGraphicsItem] = [
@@ -1352,8 +1348,8 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         index_by_node = {n: i for i, n in enumerate(nodes)}
 
-        G_undirected = nx.Graph()
-        G_directed = nx.DiGraph()
+        G_undirected = cg.Graph()
+        G_directed = cg.DiGraph()
         for i in index_by_node.values():
             G_undirected.add_node(i)
             G_directed.add_node(i)
@@ -1397,7 +1393,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         ``has_cycles`` and ``update_cycle_highlighting`` cannot diverge.
         """
 
-        graphs = self._build_nx_graphs()
+        graphs = self._build_graphs()
         if graphs is None:
             return None
         _, G_directed, index_by_node = graphs
@@ -1410,7 +1406,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         if result is None:
             return None
         G_directed, _ = result
-        return nx.is_directed_acyclic_graph(G_directed)
+        return cg.is_directed_acyclic_graph(G_directed)
 
     def has_cycles(self) -> bool:
         """Check if the scene contains cycles (convenience method)."""
@@ -1421,12 +1417,9 @@ class NodeScene(QtWidgets.QGraphicsScene):
         """Return a list of cycles as lists of node indices.
 
         The indices correspond to the integer node IDs used in the internal
-        NetworkX graphs and ``NodeScene.to_dict``. If NetworkX is not
-        available or the scene has no cycles, an empty list is returned.
+        graphs and ``NodeScene.to_dict``. If the scene has no cycles, an empty
+        list is returned.
         """
-
-        if nx is None:
-            return []
 
         result = self._get_directed_graph()
         if result is None:
@@ -1434,7 +1427,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         G_directed, _ = result
 
         try:
-            return [list(cyc) for cyc in nx.simple_cycles(G_directed)]
+            return [list(cyc) for cyc in cg.simple_cycles(G_directed)]
         except Exception:
             return []
 
@@ -1449,7 +1442,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
             e for e in self.items() if isinstance(e, EdgeGraphicsItem)
         ]
 
-        if nx is None or not self.edges:
+        if not self.edges:
             for e in self.edges:
                 e.set_cycle(False)
             return
@@ -1464,7 +1457,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         cycle_edge_pairs = set()
         try:
-            cycles = list(nx.simple_cycles(G_directed))
+            cycles = list(cg.simple_cycles(G_directed))
         except Exception:
             cycles = []
 

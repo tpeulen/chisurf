@@ -261,7 +261,7 @@ Adapter input is the result of `provenance.graph.export`.
 
 ### Layout rules
 
-- [x] Do not require `networkx`.
+- [x] Do not require an external graph library.
 - [x] Compute left-to-right dependency levels from directed edges.
 - [x] Unconnected nodes go to level 0.
 - [x] Position columns:

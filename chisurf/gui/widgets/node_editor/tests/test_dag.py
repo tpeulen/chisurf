@@ -3,16 +3,9 @@
 import pytest
 from qtpy import QtWidgets
 
-from chisurf.gui.widgets.node_editor import scene as scene_mod
 from chisurf.gui.widgets.node_editor.scene import NodeScene
 from chisurf.gui.widgets.node_editor.node_item import NodeGraphicsItem
 from chisurf.gui.widgets.node_editor.model import NodeModel, PortSpec
-
-
-pytestmark = pytest.mark.skipif(
-    getattr(scene_mod, "nx", None) is None,
-    reason="networkx is not available; DAG utilities are disabled",
-)
 
 
 class MockMouseEvent:
@@ -108,12 +101,26 @@ def test_linear_chain_dag(scene):
     assert scene.has_cycles() is False
 
 
+def _port(item, name):
+    """Return the port item called ``name`` on ``item``.
+
+    ``QGraphicsScene.items()`` returns items in stacking order, not the order
+    they were added, so a test that indexes into it is testing Qt's z-order
+    rather than the graph.
+    """
+    for port in item.port_items:
+        if port.spec.name == name:
+            return port
+    raise AssertionError(f"no port {name!r} on {item.model.title!r}")
+
+
 def test_cycle_detection(scene):
     """Test cycle detection."""
-    # Create two nodes
+    # Two nodes, each with one input and one output, so they can be wired into
+    # a two-node cycle: Node 1 out -> Node 2 in, Node 2 out -> Node 1 in.
     model1 = NodeModel(
         title="Node 1",
-        inputs=[],
+        inputs=[PortSpec(name="In", is_output=False)],
         outputs=[PortSpec(name="Out", is_output=True)],
         node_type="test",
         config={}
@@ -131,25 +138,18 @@ def test_cycle_detection(scene):
     scene.addItem(item1)
     scene.addItem(item2)
 
-    items = [it for it in scene.items() if isinstance(it, NodeGraphicsItem)]
-
-    # Connect 1 -> 2 -> 1 (cycle)
     from chisurf.gui.widgets.node_editor.edge_item import EdgeGraphicsItem
-    edge1 = EdgeGraphicsItem(items[0].port_items[0], items[1].port_items[0])
+    edge1 = EdgeGraphicsItem(_port(item1, "Out"), _port(item2, "In"))
     scene.addItem(edge1)
     scene.register_edge(edge1)
 
-    # Actually, to create cycle: Node1 output -> Node2 input, Node2 output -> Node1 input
-    # But Node1 has no input, so add input to Node1
-    model1.inputs = [PortSpec(name="In", is_output=False)]
-    item1._create_ports()  # Recreate ports
-
-    edge2 = EdgeGraphicsItem(items[1].port_items[1], items[0].port_items[0])
+    edge2 = EdgeGraphicsItem(_port(item2, "Out"), _port(item1, "In"))
     scene.addItem(edge2)
     scene.register_edge(edge2)
 
     assert scene.is_directed_acyclic() is False
     assert scene.has_cycles() is True
+    assert [sorted(c) for c in scene.find_cycles()] == [[0, 1]]
 
 
 def test_enforce_acyclic_flag(scene, monkeypatch):
