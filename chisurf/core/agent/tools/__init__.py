@@ -6,6 +6,9 @@ The catalogue is assembled from three groups:
     finding files on disk, loading them, describing experiments/readers/models
 ``fitting``
     creating fits, running them, editing parameters, exporting results
+``decay``
+    the knobs that decide whether a decay fit means anything: the instrument
+    response, the number of components, the quality report, and the plot
 ``scripting``
     running Python in the live session and reading/writing text files
 
@@ -16,9 +19,9 @@ plugin can extend the agent by merging its own registry into the default one.
 from __future__ import annotations
 
 from chisurf.core.agent.spec import ToolRegistry
-from chisurf.core.agent.tools import data, fitting, scripting
+from chisurf.core.agent.tools import data, decay, fitting, scripting
 
-__all__ = ["build_default_registry", "data", "fitting", "scripting"]
+__all__ = ["build_default_registry", "data", "decay", "fitting", "scripting"]
 
 
 def build_default_registry() -> ToolRegistry:
@@ -37,7 +40,7 @@ def build_default_registry() -> ToolRegistry:
     True
     """
     registry = ToolRegistry()
-    for group in (data.registry, fitting.registry, scripting.registry):
+    for group in (data.registry, fitting.registry, decay.registry, scripting.registry):
         for spec in group.tools.values():
             registry.register(spec)
     return registry

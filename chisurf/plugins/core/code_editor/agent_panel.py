@@ -1229,6 +1229,13 @@ updated: 2026-06-09
             return f"→ {result['n_loaded']} dataset(s)"
         if "n_created" in result:
             return f"→ {result['n_created']} fit(s)"
+        if "n_components" in result:
+            return f"→ {result['n_components']} component(s)"
+        if isinstance(result.get("irf"), dict):
+            return f"→ IRF: {result['irf'].get('name', '')}"
+        if isinstance(result.get("assessment"), dict):
+            assessment = result["assessment"]
+            return f"→ chi2r {assessment.get('chi2r')} ({assessment.get('quality')})"
         if "results" in result and isinstance(result["results"], list):
             values = [
                 str(entry.get("chi2r"))

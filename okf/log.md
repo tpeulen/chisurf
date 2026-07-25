@@ -2,6 +2,51 @@
 
 ## 2026-07-25
 
+* **The agent can now produce a decay fit that is actually right, and knows
+  when it has not.** The harness landed the day before could drive the
+  session; it could not do fluorescence. On the sample donor decay a language
+  model reached `chi2r = 12.8`, reported it as a result, and stopped — because
+  nothing in the tool payload said otherwise. Three additions, in
+  `chisurf/core/agent/tools/decay.py`:
+  **The physics knobs as tools.** `set_irf` attaches an instrument-response
+  measurement to a decay fit (the measured decay is the true decay convolved
+  with the instrument response; fitting without it inflates the lifetimes),
+  and `set_components` sets how many exponentials the model has. On the sample
+  decay these take the reduced chi-square 8.5 (no IRF) → 12.8 (IRF, one
+  lifetime) → **1.37** (two) → **1.03** (three, Durbin-Watson 2.01). Component
+  groups are discovered from the model (an attribute supporting
+  `append`/`pop`/`len`), so this is not TCSPC-specific.
+  **A verdict in every result.** `assess_fit` classifies a fit `good` /
+  `acceptable` / `poor` and names the single most likely fix — no IRF, too few
+  components, or a suspect fit range — and `run_fit`, `fit_report` and
+  `auto_fit_decay` all carry it. This is the second time the same lesson has
+  paid: guidance that lives only in the system prompt is ignored, guidance in
+  the tool result is acted on. With the verdict attached, the same model that
+  stopped at 12.8 attaches the IRF, grows the model to three components and
+  lands at 1.03 unprompted. `load_data` likewise flags IRF-looking datasets so
+  they are used as references instead of being fitted as samples — the live
+  test that asserted "four files, four fits" now asserts that **no IRF is
+  fitted**, because that is the better behaviour.
+  **`auto_fit_decay`** packages the protocol into one call (attach the IRF,
+  add components until chi-square stops improving by more than 2 %, stop early
+  once it matches the noise) and returns the trace. The manual route costs
+  ~10 model turns and had been overrunning a 12-step budget.
+  Also new: `fit_report` (chi2r, degrees of freedom, Durbin-Watson, residual
+  statistics, IRF presence, component counts, parameters with uncertainties)
+  and `plot_fit`, which writes a PNG of data + fit on a log axis with the
+  weighted residuals underneath — the one artefact a user can judge at a
+  glance. 21 tools total.
+  **Fixed en route**: `chisurf.macros.model.change_irf` attached the IRF and
+  then wrote to `convolve.lineEdit` unconditionally — a *widget* attribute —
+  so it raised `AttributeError` for every Qt-free model and for every headless
+  caller. The presentation write is now guarded, as it already was in
+  `unload_irf`.
+  Tests: `test/agent/test_decay_tools.py` (24), including the headline
+  "IRF + a second component turn chi2r 8.5 into < 2" and the assessment
+  ladder; live suite extended with an end-to-end "fit this decay properly"
+  that asserts the model reaches a `good`/`acceptable` verdict on its own.
+  98 non-live agent tests, 47 panel tests, 5 live tests — all green.
+
 * **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
   The posterior of a group already factorises over its datasets, but
   `GlobalFitModel` flattened every local model's free parameters plus the

@@ -18,7 +18,7 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setu
 
 from .fcs import FCSController
 from .pch import PCHController
-from .rics import RICSController
+from .ics import ICSController
 
 
 @chisurf.core.decorators.register

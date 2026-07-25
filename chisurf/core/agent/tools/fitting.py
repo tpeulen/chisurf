@@ -9,6 +9,7 @@ import chisurf as cs
 from chisurf.core.agent.context import AgentContext
 from chisurf.core.agent.spec import SAFETY_READ, SAFETY_WRITE, ToolError, ToolRegistry
 from chisurf.core.agent.tools._dto import chi2r, fit_summary, session_summary
+from chisurf.core.agent.tools.decay import assess_fit
 
 logger = logging.getLogger(__name__)
 
@@ -344,6 +345,8 @@ def run_fit(
             after = chi2r(fit_object)
             entry["chi2r"] = None if after is None else round(float(after), 4)
             entry["ok"] = True
+            # A bare number does not tell a model that its work is unfinished.
+            entry["assessment"] = assess_fit(fit_object)
         except Exception as error:
             entry["ok"] = False
             entry["error"] = f"{type(error).__name__}: {error}"
@@ -356,7 +359,19 @@ def run_fit(
         raise ToolError(
             "every fit run failed: " + "; ".join(str(entry.get("error")) for entry in results[:5])
         )
-    return {"ok": True, "n_run": len(succeeded), "results": results}
+    result: dict[str, Any] = {"ok": True, "n_run": len(succeeded), "results": results}
+    poor = [
+        entry["index"]
+        for entry in succeeded
+        if entry.get("assessment", {}).get("quality") == "poor"
+    ]
+    if poor:
+        result["next_step"] = (
+            f"Fits {poor} did not converge to an acceptable reduced chi2. "
+            f"Follow the 'next_step' in each assessment before reporting these "
+            f"numbers as a result."
+        )
+    return result
 
 
 @registry.add(

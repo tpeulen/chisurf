@@ -203,7 +203,12 @@ def change_irf(
 
     fit.update()
     for f in fit[fit.selected_fit_index:]:
-        f.model.convolve.lineEdit.setText(str(irf_name or getattr(irf_curve, "name", "")))
+        # Presentation only: pure (Qt-free) models have no line edit, and a
+        # missing one must not undo the IRF that was just attached above.
+        try:
+            f.model.convolve.lineEdit.setText(str(irf_name or getattr(irf_curve, "name", "")))
+        except AttributeError:
+            pass
 
 
 def unload_irf(

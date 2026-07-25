@@ -33,15 +33,15 @@ def live_session(context):
     return AgentSession(
         LLMClient(settings),
         context=context,
-        config=AgentConfig(max_steps=12, time_budget_s=300.0),
+        config=AgentConfig(max_steps=16, time_budget_s=300.0),
     )
 
 
 def test_the_model_loads_and_fits_a_folder(live_session):
-    """The headline request: 'fit everything in this folder'."""
+    """The headline request: 'fit the decays in this folder'."""
     result = live_session.ask(
-        f"Load every .dat file in the folder {TCSPC} and fit each one with the "
-        f"model 'Lifetime (new)'. Then report the reduced chi2 of each fit."
+        f"Load the .dat files in the folder {TCSPC} and fit the fluorescence "
+        f"decays with the model 'Lifetime (new)'. Report the reduced chi2."
     )
 
     assert result.ok, f"agent stopped early: {result.stop_reason} {result.error}"
@@ -50,7 +50,16 @@ def test_the_model_loads_and_fits_a_folder(live_session):
     assert "create_fit" in called
     assert "run_fit" in called, "the model must optimise, not just create fits"
     assert len(live_session.context.datasets) == 4
-    assert len(live_session.context.fits) == 4
+
+    fitted = [
+        str(getattr(getattr(fit, "data", None), "name", "")).lower()
+        for fit in live_session.context.fits
+    ]
+    assert len(fitted) >= 2, f"expected the two sample decays to be fitted, got {fitted}"
+    # The folder holds two decays and their two IRF measurements. An IRF is a
+    # reference, not a sample: fitting one is a mistake the tool results warn
+    # about, so it must not happen.
+    assert not any("irf" in name for name in fitted), f"an IRF was fitted: {fitted}"
 
 
 def test_the_model_recovers_from_a_wrong_path(live_session):
@@ -76,6 +85,26 @@ def test_the_model_uses_python_for_something_no_tool_covers(live_session):
     assert result.ok
     assert "run_python" in result.tool_names()
     assert "55" in result.text
+
+
+def test_the_model_reaches_a_good_decay_fit_on_its_own(live_session):
+    """The scientific end-to-end: a naive request must produce a usable fit.
+
+    Getting there needs the IRF attached and more than one lifetime; the tool
+    results say so, and the model has to act on that without being told.
+    """
+    result = live_session.ask(
+        f"I measured a fluorescence decay in {TCSPC}/215-268 D0.dat, and the "
+        f"instrument response is in the same folder. Fit it properly and tell "
+        f"me the lifetimes."
+    )
+    assert result.ok, f"agent stopped early: {result.stop_reason} {result.error}"
+    assert "set_irf" in result.tool_names(), "a decay fit without an IRF is wrong"
+
+    from chisurf.core.agent.tools.decay import assess_fit
+
+    verdict = assess_fit(live_session.context.fits[0])
+    assert verdict["quality"] in ("good", "acceptable"), verdict
 
 
 def test_the_model_reports_parameters_of_a_fit(live_session):

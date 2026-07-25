@@ -366,7 +366,25 @@ def load_data(
     }
     if failures:
         result["failures"] = failures
+    irf_like = [entry["index"] for entry in loaded if _looks_like_irf_name(entry.get("name", ""))]
+    if irf_like:
+        # An IRF loaded alongside samples is a reference measurement, not
+        # something to fit; saying so here stops the model from fitting it.
+        result["likely_irf_datasets"] = irf_like
+        result["hint"] = (
+            f"Datasets {irf_like} look like instrument-response (IRF) "
+            f"measurements, not samples. Do not fit them — attach one to a "
+            f"decay fit with set_irf instead."
+        )
     return result
+
+
+def _looks_like_irf_name(name: str) -> bool:
+    """Return whether a dataset name suggests an instrument-response file."""
+    from chisurf.core.agent.tools.decay import IRF_NAME_HINTS
+
+    lowered = str(name).lower()
+    return any(hint in lowered for hint in IRF_NAME_HINTS)
 
 
 @registry.add(

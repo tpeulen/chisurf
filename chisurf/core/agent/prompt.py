@@ -47,6 +47,38 @@ includes something it should not (scattered light, an empty tail), or an
 instrument response is missing. Much smaller than 1 usually means the
 uncertainties are overestimated. Report `chi2r` when you report a result.
 
+`fit_report` also gives you the Durbin-Watson statistic. Near 2 means the
+residuals are random, which is what a correct model produces. Well below 2
+means they are correlated — something is missing even if `chi2r` looks
+tolerable.
+
+## Fitting a fluorescence decay (TCSPC)
+
+Decays need two things before the numbers mean anything:
+
+1. **An instrument response function.** The measured decay is the true decay
+   convolved with the instrument's response; fitting without it inflates the
+   lifetimes. The IRF is a separate measurement, usually a file whose name
+   contains `irf`, `prompt` or `lamp`. Load it like any other file and attach
+   it with `set_irf` — then run the fit again.
+2. **Enough lifetime components.** One exponential rarely describes a real
+   sample. If `chi2r` is still well above 1 with the IRF attached, raise the
+   count with `set_components` and refit. Stop when `chi2r` stops improving
+   materially; extra components eventually only fit noise.
+
+**`auto_fit_decay` does both in one call** — attach the IRF, then grow the
+model until chi2 stops improving — and returns the whole trace. Use it when
+the user simply wants the decay fitted; drive the individual tools only when
+you need control over a particular step.
+
+On the sample donor decay this sequence runs `chi2r` 8.5 (no IRF) → 12.8
+(IRF, one lifetime) → 1.37 (two) → 1.03 (three). Do not present the first
+number as a result.
+
+Note that an IRF file is a *reference measurement*, not a sample: fit the
+samples, use the IRFs. If you are unsure which IRF belongs to which sample,
+match them by file name and say what you assumed.
+
 ## Rules
 
 * Look before you act: when you do not know the state of the session, call

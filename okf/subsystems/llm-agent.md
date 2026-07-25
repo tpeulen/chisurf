@@ -30,8 +30,10 @@ fix. Nothing is left to be guessed.
   ("the second fit", a file name, an index) to real session objects.
 * `tools/` — the catalogue: `data.py` (find files, load them, describe
   experiments/readers/models), `fitting.py` (create, run, inspect, edit,
-  export), `scripting.py` (`run_python` in the live session, read/write
-  files), `_dto.py` (compact summaries sized for a context window).
+  export), `decay.py` (the knobs that decide whether a decay fit means
+  anything: IRF, component count, quality report, plot, and the one-call
+  expert protocol), `scripting.py` (`run_python` in the live session,
+  read/write files), `_dto.py` (compact summaries sized for a context window).
 * `llm.py` — an OpenAI-compatible chat client with **native tool calling**,
   retries with backoff, and errors that say what to do (bad key, unknown
   model, rate limit).
@@ -57,12 +59,36 @@ A **failing tool does not end the run** — its error goes back to the model,
 which corrects itself. Only *repeated identical* failures stop the loop; that
 is the difference between an assistant that recovers and one that gives up.
 
+# Making the answer *correct*, not just produced
+
+Getting a model to call the right tools is the easy half. On a real TCSPC
+decay the reduced chi-square runs 8.5 (no IRF) → 12.8 (IRF, one lifetime) →
+1.37 (two) → 1.03 (three): an agent that stops at the first number produces a
+confident, wrong answer. Two mechanisms prevent that, and both live in the
+**tool results** rather than the system prompt, because that is what the
+model is actually reading when it decides to stop:
+
+* `assess_fit` attaches a verdict — `good` / `acceptable` / `poor`, the
+  reason, and a concrete `next_step` naming the single most likely fix — to
+  every result that carries a chi-square (`run_fit`, `fit_report`,
+  `auto_fit_decay`). Before this, a model reported `chi2r = 12.8` as a
+  finished result; after it, the same model attaches the IRF, grows the model
+  to three components and lands at 1.03 unprompted.
+* `load_data` flags datasets whose names look like instrument-response
+  measurements (`irf`, `prompt`, `lamp`) so they are used as references
+  rather than fitted as samples.
+
+`auto_fit_decay` packages the same protocol into one call — attach the IRF,
+add components until chi-square stops improving materially (2 %), stop early
+once the fit matches the noise — and returns the whole trace so the model can
+show its work. It turns roughly ten model turns into one.
+
 # Safety tiers
 
 | Tier | Contains | GUI mode |
 | --- | --- | --- |
-| `read` | listing files, experiments, datasets, fits, curves | — |
-| `write` | loading data, creating and running fits, editing parameters, exporting | *ChiSurf tools* |
+| `read` | listing files, experiments, datasets, fits, curves, `fit_report` | — |
+| `write` | loading data, creating/running/auto-fitting, IRF and component changes, parameters, plots, exports | *ChiSurf tools* |
 | `dangerous` | `run_python`, `write_file` | *Full control* (asks per call) |
 
 Destructive operations (clearing the session, removing fits or datasets) are
@@ -92,6 +118,9 @@ rather than raising when none exists.
   rather than reading the RPC services' cached-only helper.
 * Relative paths that repeat the working directory are de-duplicated, and
   "no such directory" errors list what the working directory actually holds.
+* `chisurf.macros.model.change_irf` used to attach the IRF and then poke
+  `convolve.lineEdit` unconditionally — a *widget* attribute — so it raised
+  for every Qt-free model. The presentation write is now guarded.
 
 # Testing
 

@@ -53,6 +53,9 @@ class TestAgentPanelWidget:
             ({"n_created": 2}, "2 fit(s)"),
             ({"results": [{"chi2r": 1.2}, {"chi2r": 3.4}]}, "chi2r 1.2, 3.4"),
             ({"path": "/tmp/out/results.csv"}, "results.csv"),
+            ({"n_components": 3}, "3 component(s)"),
+            ({"irf": {"name": "sample irf.dat"}}, "IRF: sample irf.dat"),
+            ({"assessment": {"chi2r": 1.03, "quality": "good"}}, "chi2r 1.03 (good)"),
             ({"ok": True}, ""),
         ],
     )
