@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 32):*
+*Landed so far (allow-list 76 → 31):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -447,6 +447,17 @@ screenshot/qtbot verification after each cluster.
   inspected: white curve on the themed dark background, foreground title/axes,
   subtle grid, correct 0–12 / ±0.5 ranges. New `test_pt_plot_widget_renders`
   (curve build + set_data/clear round-trip).
+- **Batch 19** (allow-list 32 → 31) — migrated the reusable
+  `gui/widgets/spectrum_view.py` (absorption/emission spectral overlay, also an
+  AutoForm `spectrum_view` section). Trace dicts map onto `line(pen=color,
+  width=, style=, name=)`; the `{solid,dash,dot,dashdot}` names now map to chiplot
+  pen styles (`dashdot`→`dash_dot`); the "no spectra" `pg.TextItem` becomes
+  `plot.text(...)`; `set_background(None)`, `legend()`, `grid`, units folded into
+  `set_labels`. The heavy pyqtgraph theming (per-axis pen/text-pen, SI-prefix off,
+  legend label colour) stays a flagged `.native`/`raw.mkPen` passthrough.
+  **GUI-screenshot verified** — three overlaid spectra rendered headless and
+  inspected: distinct solid/dash/dot lines, light-grey legend + axis labels, grid,
+  correct 400–700 nm / 0–1 ranges. New `test_spectrum_view_plots_traces`.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

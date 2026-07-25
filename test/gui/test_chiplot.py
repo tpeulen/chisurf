@@ -241,6 +241,26 @@ def test_pt_plot_widget_renders(qapp):
     assert gx is None or len(gx) == 0  # empty curve -> None or zero-length
 
 
+def test_spectrum_view_plots_traces(qapp):
+    """SpectrumView.plot_series draws one chiplot curve per trace + styles.
+
+    Regression guard for PRD-64 Batch 19: the reusable spectrum widget maps
+    trace dicts (color/style/width) onto chiplot ``line`` calls.
+    """
+    from chisurf.gui.widgets.spectrum_view import SpectrumView
+
+    v = SpectrumView()
+    wl = np.linspace(400, 700, 50)
+    v.plot_series([
+        {"name": "abs", "x": wl, "y": np.ones_like(wl), "color": (0, 100, 200), "style": "solid"},
+        {"name": "em", "x": wl, "y": np.ones_like(wl), "color": (200, 0, 0), "style": "dash"},
+        {"name": "dot", "x": wl, "y": np.ones_like(wl), "color": (145, 30, 180), "style": "dot"},
+    ])
+    assert len(v.plot._series) == 3
+    v.plot_series([])  # empty -> placeholder, no crash
+    assert v.plot._series == []
+
+
 def test_migrated_modules_import(qapp):
     """The migrated Batch 9 modules import cleanly (no pyqtgraph dependency)."""
     import importlib
@@ -273,6 +293,8 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.burst.burst_2cde.gui.tool",
         # Batch 18
         "chisurf.gui.widgets.node_editor.widgets.pt_plot_widget",
+        # Batch 19
+        "chisurf.gui.widgets.spectrum_view",
     ):
         assert importlib.import_module(name) is not None
 

@@ -36,9 +36,9 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-import pyqtgraph as pg
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform.sections.registry import register_section
 
 #: Default colour palette for traces that do not specify a colour.
@@ -77,19 +77,13 @@ _SPECTRUM_LABELS = {
     "reflectance": "Reflectance",
 }
 
+#: Map the widget's trace-style names to chiplot pen styles.
 _LINE_STYLES = {
-    "solid": QtCore.Qt.SolidLine,
-    "dash": QtCore.Qt.DashLine,
-    "dot": QtCore.Qt.DotLine,
-    "dashdot": QtCore.Qt.DashDotLine,
+    "solid": "solid",
+    "dash": "dash",
+    "dot": "dot",
+    "dashdot": "dash_dot",
 }
-
-_LINE_STYLE_CYCLE = [
-    QtCore.Qt.SolidLine,
-    QtCore.Qt.DashLine,
-    QtCore.Qt.DotLine,
-    QtCore.Qt.DashDotLine,
-]
 
 
 @register_section("spectrum_view")
@@ -124,23 +118,28 @@ class SpectrumView(QtWidgets.QWidget):
         self.setLayout(QtWidgets.QVBoxLayout(self))
         self.layout().setContentsMargins(0, 0, 0, 0)
 
-        self.plot = pg.PlotWidget()
-        self.plot.setBackground(None)
+        self.plot = cp.Plot(background=None)
+        # Axis lines/text theming + legend text colour are pyqtgraph-specific
+        # cosmetics reached via the backend escape hatch (chiplot has no native
+        # axis-pen / SI-prefix / legend-colour verbs yet; a migration gap).
         _axis = "#b0b0b0"
         _text = "#d0d0d0"
-        for _ax in ("left", "bottom"):
-            axis = self.plot.getAxis(_ax)
-            axis.setPen(pg.mkPen(_axis))
-            axis.setTextPen(pg.mkPen(_text))
-            axis.enableAutoSIPrefix(False)
-        legend = self.plot.addLegend()
         try:
-            legend.setLabelTextColor(_text)
+            raw = cp.get_backend().raw_module()
+            for _ax in ("left", "bottom"):
+                axis = self.plot.native.getAxis(_ax)
+                axis.setPen(raw.mkPen(_axis))
+                axis.setTextPen(raw.mkPen(_text))
+                axis.enableAutoSIPrefix(False)
         except Exception:
             pass
-        self.plot.setLabel("bottom", "Wavelength", units="nm", color=_text)
-        self.plot.setLabel("left", "Normalized Value", units="a.u.", color=_text)
-        self.plot.showGrid(x=True, y=True, alpha=0.3)
+        self.plot.legend()
+        try:
+            self.plot.native.getPlotItem().legend.setLabelTextColor(_text)
+        except Exception:
+            pass
+        self.plot.set_labels(bottom="Wavelength (nm)", left="Normalized Value (a.u.)")
+        self.plot.grid(x=True, y=True, alpha=0.3)
         self.layout().addWidget(self.plot)
 
         if self._model is not None and self._target:
@@ -204,19 +203,17 @@ class SpectrumView(QtWidgets.QWidget):
             name = tr.get("name", f"Trace {idx + 1}")
             color = tr.get("color") or _PROBE_COLORS[idx % len(_PROBE_COLORS)]
             style_name = tr.get("style", "solid")
-            style = _LINE_STYLES.get(style_name, QtCore.Qt.SolidLine)
+            style = _LINE_STYLES.get(style_name, "solid")
             width = int(tr.get("width", 2))
 
-            pen = pg.mkPen(color, width=width, style=style)
-            self.plot.plot(x, y, pen=pen, name=name)
+            self.plot.line(x, y, pen=color, width=width, style=style, name=name)
 
     def _show_empty(self) -> None:
         """Show a placeholder when no spectra are available."""
-        self.plot.addItem(pg.TextItem(
-            "No spectra data found.",
-            color=(150, 150, 150),
-            anchor=(0.5, 0.5),
-        ))
+        self.plot.text(
+            "No spectra data found.", (0.0, 0.0),
+            color=(150, 150, 150), anchor=(0.5, 0.5),
+        )
 
     # ------------------------------------------------------------------
     # Legacy mmfdb convenience API
