@@ -108,6 +108,35 @@ class ToolInvocation:
     error: str | None = None
 
 
+def last_failure(result: "AgentResult") -> str:
+    """Return why the last failing tool call failed.
+
+    A tool can fail two ways: by raising, which fills ``ToolInvocation.error``,
+    or by returning ``{"ok": False, "error": ...}``, which does not. Reading
+    only the first made a give-up message say "the last error was: unknown" —
+    the one moment the user most needs to be told what went wrong.
+
+    Parameters
+    ----------
+    result : AgentResult
+        The run to explain.
+
+    Returns
+    -------
+    str
+        The failure message, or a description of the call when it carried none.
+    """
+    for invocation in reversed(result.invocations):
+        if invocation.ok:
+            continue
+        payload = invocation.result if isinstance(invocation.result, dict) else {}
+        message = invocation.error or payload.get("error") or payload.get("hint")
+        if message:
+            return f"{invocation.name}: {message}"
+        return f"{invocation.name} failed without saying why"
+    return "unknown"
+
+
 @dataclass
 class AgentResult:
     """Outcome of one question put to the agent.
@@ -585,7 +614,7 @@ class AgentSession:
             "time_budget": "I stopped because this request took too long.",
             "repeated_failures": (
                 "I stopped because the same operation kept failing. The last "
-                "error was: " + (result.invocations[-1].error or "unknown")
+                "error was: " + last_failure(result)
                 if result.invocations
                 else "I stopped because an operation kept failing."
             ),

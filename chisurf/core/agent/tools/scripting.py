@@ -18,6 +18,7 @@ from __future__ import annotations
 import contextlib
 import io
 import logging
+import os
 import pathlib
 import time
 import traceback
@@ -71,6 +72,39 @@ def build_namespace(context: AgentContext) -> dict[str, Any]:
     return namespace
 
 
+@contextlib.contextmanager
+def working_directory(context: AgentContext):
+    """Run the body with the process directory set to the agent's.
+
+    Every other tool resolves paths against ``context.working_directory``, so
+    a snippet that does not is a trap: ``Path("analysis").glob("*.bur")`` finds
+    nothing, silently, because it looked wherever the *program* was started.
+    That happened to a real model — it wrote the recipe correctly, got "No
+    objects to concatenate" from an empty glob, and spent the rest of its
+    budget trying to work out why the files it had just listed did not exist.
+
+    Parameters
+    ----------
+    context : AgentContext
+        Supplies the directory.
+
+    Yields
+    ------
+    None
+    """
+    previous = os.getcwd()
+    try:
+        target = pathlib.Path(context.working_directory).expanduser()
+        if target.is_dir():
+            os.chdir(target)
+        yield
+    finally:
+        try:
+            os.chdir(previous)
+        except OSError:  # pragma: no cover - the old directory went away
+            logger.debug("could not restore the working directory", exc_info=True)
+
+
 @registry.add(
     name="run_python",
     description=(
@@ -116,7 +150,11 @@ def run_python(
     started = time.perf_counter()
     error: str | None = None
     try:
-        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        with (
+            working_directory(context),
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
             exec(compile(str(code), "<agent>", "exec"), namespace)  # noqa: S102
     except BaseException as exception:  # noqa: BLE001 - reported back to the model
         error = "".join(traceback.format_exception_only(type(exception), exception)).strip()
