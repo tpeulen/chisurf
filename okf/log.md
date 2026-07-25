@@ -2,6 +2,33 @@
 
 ## 2026-07-25
 
+* **chimol: PyMOL's cartoon curve, which is not a spline.** chimol interpolated
+  between guide residues with Catmull-Rom plus a tension knob. That is a
+  reasonable spline and it is *not* the curve PyMOL draws -- no tension reaches
+  it. From `CartoonGenerateSample`:
+  `P = f1*P0 + f0*P1 + f4*(f3*T0 - f2*T1)` with `f4 = cartoon_throw * |P1-P0| *
+  f2 * f3`, the `f` terms all passed through PyMOL's own easing
+  `smooth(x, p)` (`layer0/Vector.cpp`).
+  Two properties are what make it read as PyMOL, and neither is reachable with a
+  tension parameter: **the throw scales with the segment length**, so a long step
+  bulges proportionally more than a short one; and **the `f2*f3` envelope
+  vanishes at both ends**, so the curve passes exactly through every guide
+  position however hard the tangents throw it. New `geometry/spline.py`, wired in
+  wherever a guide frame exists -- which is also what makes the strand-tip
+  re-aiming visible, since the curve is thrown along those tangents. Catmull-Rom
+  stays as the fallback for raw-coordinate objects with no orientation data.
+  Defaults are PyMOL's, read from a running instance: `cartoon_power` 2,
+  `cartoon_power_b` 0.52, `cartoon_throw` 1.35.
+  **A test caught a real trap in the transcription.** The orientation blend
+  `f1*(O0*f2) + f0*(O1*f3)` **vanishes at both endpoints** -- at `u = 0` the pair
+  is `(1*0, 0*1)` -- which is why the C++ special-cases them with its two
+  `copy3f(... "starter...")` lines instead of evaluating the formula. Transcribed
+  literally it gives a zero ribbon normal at *every* residue; the endpoints now
+  take the raw guide orientations as PyMOL's do.
+  Colour is interpolated with the same eased parameter the geometry uses, so a
+  residue boundary lands in the same place for colour as for shape.
+  16 new tests. Suite: 359 passed, 1 skipped.
+
 * **ndXplorer's constants and the simulated optics are now fitting parameters in
   the Global View.** Both were numbers trapped in their own tool: ndX's
   correction constants in its parameter table, the light path's excitation and

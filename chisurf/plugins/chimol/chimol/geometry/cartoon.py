@@ -28,9 +28,11 @@ import numpy as np
 try:  # sibling modules in the geometry package
     from .ambient import _estimate_ambient_occlusion
     from .guide_frames import build_guide_frames
+    from .spline import sample_cartoon_curve
 except Exception:  # pragma: no cover - standalone/file-path loading (see tests)
     _estimate_ambient_occlusion = None  # type: ignore[assignment]
     build_guide_frames = None  # type: ignore[assignment]
+    sample_cartoon_curve = None  # type: ignore[assignment]
 
 
 # Two consecutive ribbon normals count as a genuine 180-degree flip (rather
@@ -1029,6 +1031,33 @@ def _unit(vectors: np.ndarray) -> np.ndarray:
                      where=lengths > 1e-12)
 
 
+def _interpolate_residue_colors(
+    colors: Optional[np.ndarray],
+    weights: np.ndarray,
+    sampling: int,
+    n_residues: int,
+) -> Optional[np.ndarray]:
+    """Blend per-residue colours along the sampled curve.
+
+    ``weights`` gives each sample's eased position between the two residues it
+    lies between, so the colour follows the same easing the geometry does and a
+    residue boundary does not land in a different place for colour than for
+    shape.
+    """
+    if colors is None:
+        return None
+    arr = np.asarray(colors, dtype=float)
+    if arr.shape[0] != n_residues or n_residues < 2:
+        return colors
+
+    m = weights.shape[0]
+    segment = np.minimum(np.arange(m) // max(int(sampling), 1), n_residues - 2)
+    lo = arr[segment]
+    hi = arr[segment + 1]
+    w = weights[:, None]
+    return (1.0 - w) * lo + w * hi
+
+
 def _orthogonalise_ups(
     tangents: np.ndarray, ups: np.ndarray
 ) -> np.ndarray:
@@ -1399,35 +1428,10 @@ def _generate_cartoon_tube_arrays(
             ups=ups_arr,
         )
 
-    # -- Stage 1: Sample path --
-    tension = float(cfg.get("spline_tension", 0.0))
-    try:
-        path, path_colors = _sample_path(
-            arr, col_arr, subdivisions=subdivisions, tension=tension
-        )
-    except Exception:
-        path = arr
-        path_colors = col_arr
-
-    m = path.shape[0]
-    if m < 2:
-        return None
-
-    # -- Round helices: lift the spline back onto the helix cylinder so the
-    #    ribbon does not pinch inward between residues (PyMOL's
-    #    ``cartoon_round_helices``, on by default) --
-    if ss_arr is not None and bool(cfg.get("round_helices", True)):
-        path = _round_helix_path(path, arr, ss_arr == "H", subdivisions)
-
-    # -- Per-residue guide frames, then densify along the spline --
-    #
-    # PyMOL conditions the frame *before* sampling: it refines the orientations
-    # against the tangents so the ribbon's face cannot flip between neighbours,
-    # and re-aims the tangent at each strand tip so the arrowhead points along
-    # the strand rather than into the loop it joins. Neither is expressible on a
-    # frame derived from the finished spline, which is why this stage exists.
-    ups_path: Optional[np.ndarray] = None
-    tangent_path: Optional[np.ndarray] = None
+    # -- Per-residue guide frames, computed before sampling because PyMOL's
+    #    curve is thrown along the *tangents* -- so the strand-tip re-aiming and
+    #    the orientation refinement feed through into the drawn shape --
+    guide = None
     if ups_arr is not None and build_guide_frames is not None:
         try:
             guide = build_guide_frames(
@@ -1438,15 +1442,58 @@ def _generate_cartoon_tube_arrays(
                 refine_normals_enabled=bool(cfg.get("refine_normals", True)),
                 refine_tips=float(cfg.get("refine_tips", 10.0)),
             )
-            ups_path = _sample_orientations(
-                guide.orientations, subdivisions=subdivisions
+        except Exception:
+            guide = None
+
+    # -- Stage 1: Sample path --
+    #
+    # PyMOL's curve is a linear blend with a tangent-driven throw whose size
+    # scales with the segment length, not a Catmull-Rom spline; see
+    # :mod:`.spline`. It is used whenever a guide frame is available, since the
+    # throw needs the per-residue tangents. Catmull-Rom remains the fallback for
+    # geometry that has no orientation data at all (raw coordinate objects).
+    path_colors = col_arr
+    ups_path: Optional[np.ndarray] = None
+    tangent_path: Optional[np.ndarray] = None
+    if guide is not None and sample_cartoon_curve is not None:
+        try:
+            path, ups_path, weights = sample_cartoon_curve(
+                arr,
+                guide.tangents,
+                sampling=subdivisions,
+                orientations=guide.orientations,
+                throw=float(cfg.get("throw", 1.35)),
+                power=float(cfg.get("power", 2.0)),
+                power_b=float(cfg.get("power_b", 0.52)),
+            )
+            path_colors = _interpolate_residue_colors(
+                col_arr, weights, subdivisions, arr.shape[0]
             )
             tangent_path = _sample_orientations(
                 guide.tangents, subdivisions=subdivisions
             )
         except Exception:
-            ups_path = None
-            tangent_path = None
+            guide = None
+
+    if guide is None or ups_path is None:
+        tension = float(cfg.get("spline_tension", 0.0))
+        try:
+            path, path_colors = _sample_path(
+                arr, col_arr, subdivisions=subdivisions, tension=tension
+            )
+        except Exception:
+            path = arr
+            path_colors = col_arr
+
+    m = path.shape[0]
+    if m < 2:
+        return None
+
+    # -- Round helices: lift the spline back onto the helix cylinder so the
+    #    ribbon does not pinch inward between residues (PyMOL's
+    #    ``cartoon_round_helices``, on by default) --
+    if ss_arr is not None and bool(cfg.get("round_helices", True)):
+        path = _round_helix_path(path, arr, ss_arr == "H", subdivisions)
 
     # -- Build frames --
     tangents, up_vectors = _propagate_ups(path, ups_path)

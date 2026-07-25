@@ -249,3 +249,121 @@ def test_a_chain_too_short_to_have_an_interior_is_handled(n):
     frames = build_guide_frames(pts, ups)
     assert frames.positions.shape[0] == n
     assert frames.tangents.shape == (n, 3)
+
+
+# --------------------------------------------------------------------------- #
+# PyMOL's curve, which is not a Catmull-Rom spline
+# --------------------------------------------------------------------------- #
+# CartoonGenerateSample (layer2/RepCartoon.cpp):
+#     f0 = smooth(b/sampling, power_a);  f1 = 1 - f0
+#     f2 = smooth(f0, power_b);          f3 = smooth(f1, power_b)
+#     f4 = dev * f2 * f3                 // dev = cartoon_throw * |P1 - P0|
+#     P  = f1*P0 + f0*P1 + f4*(f3*T0 - f2*T1)
+from chisurf.plugins.chimol.chimol.geometry.spline import (  # noqa: E402
+    DEFAULTS,
+    sample_cartoon_curve,
+    smooth,
+)
+
+
+@pytest.mark.parametrize(
+    "x, power, expected",
+    [
+        (0.0, 2.0, 0.0),
+        (0.25, 2.0, 0.125),    # 0.5 * (2*0.25)^2
+        (0.5, 2.0, 0.5),
+        (0.75, 2.0, 0.875),    # 1 - 0.5 * (2*0.25)^2
+        (1.0, 2.0, 1.0),
+        (-1.0, 2.0, 0.0),      # clamped
+        (2.0, 2.0, 1.0),
+    ],
+)
+def test_smooth_matches_pymols_easing(x, power, expected):
+    assert float(smooth(x, power)) == pytest.approx(expected)
+
+
+def test_the_defaults_are_pymols():
+    assert DEFAULTS == {"power": 2.0, "power_b": 0.52, "throw": 1.35}
+
+
+def test_the_curve_passes_through_every_guide_residue():
+    """The f2*f3 envelope vanishes at both ends, however hard the throw."""
+    pts = _chain(5)
+    tangents = np.tile([1.0, 0.0, 0.0], (5, 1))
+    sampling = 7
+    points, _, _ = sample_cartoon_curve(pts, tangents, sampling, throw=5.0)
+    for i in range(5):
+        assert np.allclose(points[i * sampling], pts[i], atol=1e-9)
+
+
+def test_the_sample_count_matches_the_old_spline():
+    """(n-1)*sampling + 1, with no duplicated vertex at a residue."""
+    pts = _chain(4)
+    tangents = np.tile([1.0, 0.0, 0.0], (4, 1))
+    points, _, _ = sample_cartoon_curve(pts, tangents, 7)
+    assert points.shape[0] == 3 * 7 + 1
+
+
+def test_a_straight_chain_stays_straight():
+    pts = _chain(5)
+    tangents = np.tile([1.0, 0.0, 0.0], (5, 1))
+    points, _, _ = sample_cartoon_curve(pts, tangents, 7)
+    assert np.abs(points[:, 1:]).max() < 1e-12
+
+
+def test_the_throw_scales_with_the_segment_length():
+    """`dev = throw * |P1 - P0|`, so a long step bulges proportionally more.
+
+    A spline with a fixed tension cannot reproduce this.
+    """
+    def bulge(rise):
+        pts = np.array([[0.0, 0.0, 0.0], [rise, 0.0, 0.0]])
+        tangents = np.array([[0.8, 0.6, 0.0], [0.8, -0.6, 0.0]])
+        points, _, _ = sample_cartoon_curve(pts, tangents, 8)
+        return np.abs(points[:, 1]).max()
+
+    assert bulge(6.0) > 1.9 * bulge(3.0)
+
+
+def test_zero_throw_gives_straight_segments():
+    pts = np.array([[0.0, 0.0, 0.0], [3.0, 0.0, 0.0], [3.0, 3.0, 0.0]])
+    tangents = np.array(
+        [[1.0, 0.0, 0.0], [0.7071, 0.7071, 0.0], [0.0, 1.0, 0.0]]
+    )
+    points, _, _ = sample_cartoon_curve(pts, tangents, 8, throw=0.0)
+    # Every sample lies on one of the two straight legs.
+    first_leg = points[:8]
+    assert np.abs(first_leg[:, 1]).max() < 1e-12
+
+
+def test_the_throw_rounds_a_turn():
+    pts = np.array([[0.0, 0.0, 0.0], [3.3, 0.0, 0.0], [3.3, 3.3, 0.0]])
+    tangents = np.array(
+        [[1.0, 0.0, 0.0], [0.7071, 0.7071, 0.0], [0.0, 1.0, 0.0]]
+    )
+    thrown, _, _ = sample_cartoon_curve(pts, tangents, 8)
+    straight, _, _ = sample_cartoon_curve(pts, tangents, 8, throw=0.0)
+    length = lambda p: np.linalg.norm(np.diff(p, axis=0), axis=1).sum()  # noqa: E731
+    assert length(thrown) > length(straight)
+
+
+def test_orientations_are_blended_and_renormalised():
+    pts = _chain(4)
+    tangents = np.tile([1.0, 0.0, 0.0], (4, 1))
+    ups = np.zeros((4, 3))
+    ups[:, 2] = 1.0
+    ups[2, 1] = 1.0
+    ups[2, 2] = 0.0
+    _, blended, _ = sample_cartoon_curve(pts, tangents, 7, orientations=ups)
+    assert blended is not None
+    assert np.allclose(np.linalg.norm(blended, axis=1), 1.0, atol=1e-9)
+
+
+def test_weights_track_the_eased_parameter():
+    """Colour follows the same easing as the geometry, so boundaries line up."""
+    pts = _chain(3)
+    tangents = np.tile([1.0, 0.0, 0.0], (3, 1))
+    _, _, weights = sample_cartoon_curve(pts, tangents, 4)
+    assert weights[0] == pytest.approx(0.0)
+    assert weights[-1] == pytest.approx(1.0)
+    assert weights[2] == pytest.approx(float(smooth(0.5, 2.0)))
