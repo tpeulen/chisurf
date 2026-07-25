@@ -113,6 +113,29 @@ add components until chi-square stops improving materially (2 %), stop early
 once the fit matches the noise — and returns the whole trace so the model can
 show its work. It turns roughly ten model turns into one.
 
+# Providers and data residency
+
+Every request carries the user's wording, file and dataset names, fitted
+parameters and tool results to whichever provider is configured — so the
+choice of provider is a data-processing decision, not a performance one.
+ChiSurf's users are largely European labs working with unpublished
+measurements, so the provider table is ordered by **where the data is
+processed**, and a fresh install starts on `mistral` (EU) rather than a
+third-country service. A saved choice is never overridden: changing the
+shipped default moves new installs only.
+
+Keys are read from the environment under any of the usual spellings
+(`MISTRAL_API_KEY`, `MISTRAL_KEY`, `MISTRAL_API_TOKEN`, `MISTRAL_TOKEN`, and
+likewise per provider) — a key that exists but is looked for under the wrong
+name is indistinguishable, to the user, from a provider that does not work.
+
+The conversation is echoed back to the provider each turn, and providers
+validate *input* more strictly than they format *output*: several emit
+`content: null` beside `tool_calls` and reject that same null on the way in.
+Assistant turns are therefore normalised to the fields every provider accepts
+before being re-sent, and `test/agent/test_provider_dialects.py` replays each
+provider's reply shape through the loop to keep that true.
+
 # Safety tiers
 
 | Tier | Contains | GUI mode |

@@ -14,17 +14,20 @@ your project.
 The assistant talks to a language-model provider over an OpenAI-compatible
 API. Configure one in **Settings → AI**: a provider, a model, and an API key.
 
-| Provider | Base URL | Key from |
-| --- | --- | --- |
-| OpenAI | `https://api.openai.com/v1` | platform.openai.com/api-keys |
-| OpenRouter | `https://openrouter.ai/api/v1` | openrouter.ai/keys |
-| Mistral | `https://api.mistral.ai/v1` | console.mistral.ai |
-| Local (Ollama, LM Studio) | `http://localhost:11434/v1` | no key needed |
+| Provider | Base URL | Processing location | Key from |
+| --- | --- | --- | --- |
+| Mistral | `https://api.mistral.ai/v1` | EU (France) | console.mistral.ai |
+| Local (Ollama, LM Studio) | `http://localhost:11434/v1` | your machine | no key needed |
+| OpenAI | `https://api.openai.com/v1` | US (unless zero-retention/EU terms) | platform.openai.com/api-keys |
+| OpenRouter | `https://openrouter.ai/api/v1` | routes to many, varies per model | openrouter.ai/keys |
 
-A key can also come from the environment (`OPENAI_API_KEY`,
-`OPENROUTER_API_KEY`, `MISTRAL_API_KEY`). Any model with tool-calling support
-works; models without it fall back to a text protocol and are noticeably less
-reliable.
+A key can also come from the environment. ChiSurf accepts the usual spellings,
+so `MISTRAL_API_KEY`, `MISTRAL_KEY`, `MISTRAL_API_TOKEN` and `MISTRAL_TOKEN`
+all work (and likewise for the other providers).
+
+Any model with tool-calling support works; models without it fall back to a
+text protocol and are noticeably less reliable. Good starting points are
+`mistral-small-latest`, `gpt-4o-mini`, or a local `llama3.2`.
 
 ## Using it in the GUI
 
@@ -121,9 +124,34 @@ It will tell you when a fit is poor rather than dressing it up — but it cannot
 know that your IRF was measured with the wrong filter, or that one sample was
 mislabelled. Those remain yours.
 
-## Privacy
+## What leaves your machine, and where it goes
 
-Your request, the names of your files and the numbers the assistant looks at
-are sent to whichever provider you configured. For sensitive data, use a local
-model (Ollama or LM Studio through the "Local" provider); nothing then leaves
-the machine.
+The assistant sends your request, the system prompt, the loaded skill, and
+every tool result to the provider you configured. Tool results are summaries,
+not raw data — file names and paths, dataset and model names, fitted
+parameters, reduced chi-squares — but `get_curve` sends down-sampled data
+points and `run_python` sends whatever your script prints. Measurement files
+themselves are never uploaded.
+
+That is still personal or confidential data in many settings, and under the
+GDPR the choice of provider is a processing decision you are accountable for:
+
+* **A local model keeps everything on the machine.** Run Ollama or LM Studio
+  and select the "Local" provider. Nothing leaves at all, so no transfer,
+  no processor agreement, no residency question. This is the right default
+  for unpublished or human-subject data.
+* **Mistral processes in the EU**, which keeps the data inside the EEA and
+  avoids a third-country transfer. It is the straightforward choice for an
+  EU-based lab that wants a hosted model.
+* **US-hosted providers** mean a third-country transfer. That is workable
+  under the EU–US Data Privacy Framework or standard contractual clauses, but
+  it is a decision to make deliberately — and check whether your institution
+  already has a position on it.
+* **OpenRouter routes to whichever provider serves the model**, so the
+  processing location depends on the model and can change. Prefer a named
+  provider when residency matters.
+
+Whatever you choose, check your provider's retention and training terms: a
+default consumer plan may retain prompts and use them for training, while
+business terms typically do not. None of this is legal advice — if your data
+is sensitive, the local model removes the question entirely.

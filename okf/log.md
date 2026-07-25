@@ -2,6 +2,35 @@
 
 ## 2026-07-25
 
+* **The agent defaults to an EU-hosted model, and finds the key you actually
+  exported.** Two provider-layer problems, both of which read to a user as
+  "the assistant does not work".
+  **Key lookup was single-name.** `PROVIDERS` declares one environment
+  variable per provider (`MISTRAL_API_KEY`), but a shell profile is just as
+  likely to hold `MISTRAL_KEY` or `OPENROUTER_API_TOKEN`. `provider_key_env_names`
+  now returns the declared name followed by the usual `_KEY`/`_API_TOKEN`/
+  `_TOKEN` variants, canonical first.
+  **The shipped default was a third-country service.** Every request carries
+  the user's wording, file and dataset names and fitted parameters to the
+  configured provider, so the choice is a data-processing decision. ChiSurf's
+  users are largely European labs working with unpublished measurements; the
+  provider list is now ordered by *where the data is processed* (Mistral EU,
+  local, then the rest) and `DEFAULT_PROVIDER` is `mistral`. A saved choice is
+  never overridden — the change moves new installs only, pinned by a test.
+  **Cross-provider conversation shape.** The agent echoes the provider's own
+  assistant message back each turn, and providers validate input more strictly
+  than they format output: several emit `content: null` beside `tool_calls`
+  and reject that null on the way in. Assistant turns are normalised to the
+  fields every provider accepts, and `test/agent/test_provider_dialects.py`
+  replays OpenAI-, Mistral- and empty-string-shaped replies through the loop.
+  Also: HTTP 402 now explains that the refused amount is the `max_tokens`
+  reservation, not necessarily an empty account — the failure we actually hit,
+  where a 4096-token reservation was refused while the answer would have cost
+  a fraction of that. The live suite takes `CHISURF_AGENT_TEST_PROVIDER`, so
+  the same end-to-end tests can be run against any provider.
+  Docs: `docs/guides/40_ai_assistant.md` gains a data-residency table and a
+  "what leaves your machine" section covering the GDPR choice.
+
 * **chimol: `hide water` does what you meant, and `solvent`/`polymer`/`hetatm`
   mean what they say.** `hide water` reported "Unsupported representation".
   **PyMOL rejects it too** -- `hide water` there is `Error: unknown

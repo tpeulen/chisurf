@@ -1,4 +1,4 @@
-"""End-to-end agent tests against a real language model.
+r"""End-to-end agent tests against a real language model.
 
 These are the only tests that prove the *whole* harness works: prompt, tool
 schemas, provider protocol, tool execution and the model's ability to pick
@@ -7,7 +7,17 @@ API key is configured::
 
     OPENROUTER_API_KEY=... pytest test/agent/test_live_llm.py -m live_llm
 
-Set ``CHISURF_AGENT_TEST_MODEL`` to try a different model.
+**Any provider can drive them.** Tool calling is the part most likely to
+differ between providers, so running the same suite against a second one is
+the cheapest way to find a dialect problem::
+
+    CHISURF_AGENT_TEST_PROVIDER=mistral \
+    CHISURF_AGENT_TEST_MODEL=mistral-small-latest \
+        pytest test/agent/test_live_llm.py -m live_llm
+
+The key is taken from the provider's environment variable (see
+:func:`chisurf.core.settings.ai_settings.provider_key_env_names`), and the
+suite skips when none is set.
 """
 
 from __future__ import annotations
@@ -20,21 +30,38 @@ from chisurf.core.agent import AgentConfig, AgentSession, LLMClient, LLMSettings
 
 pytestmark = pytest.mark.live_llm
 
-MODEL = os.environ.get("CHISURF_AGENT_TEST_MODEL", "openai/gpt-4o-mini")
+#: Provider and model under test; override to exercise another provider.
+PROVIDER = os.environ.get("CHISURF_AGENT_TEST_PROVIDER", "openrouter")
+DEFAULT_MODELS = {
+    "openrouter": "openai/gpt-4o-mini",
+    "openai": "gpt-4o-mini",
+    "mistral": "mistral-small-latest",
+}
+MODEL = os.environ.get("CHISURF_AGENT_TEST_MODEL") or DEFAULT_MODELS.get(PROVIDER, "")
 TCSPC = "tcspc/EasyTau300"
 
 
 @pytest.fixture()
 def live_session(context):
-    """Return an agent session wired to OpenRouter, or skip without a key."""
-    settings = LLMSettings.from_provider("openrouter", model=MODEL)
+    """Return an agent session wired to the configured provider, or skip."""
+    from chisurf.core.settings.ai_settings import provider_key_env_names
+
+    settings = LLMSettings.from_provider(PROVIDER, model=MODEL or None)
     if not settings.api_key:
-        pytest.skip("OPENROUTER_API_KEY is not set")
+        pytest.skip(
+            f"no API key for provider {PROVIDER!r} (looked in {provider_key_env_names(PROVIDER)})"
+        )
     return AgentSession(
         LLMClient(settings),
         context=context,
         config=AgentConfig(max_steps=16, time_budget_s=300.0),
     )
+
+
+def test_the_provider_is_configured_for_tool_calling(live_session):
+    """A provider that cannot be reached fails every other test confusingly."""
+    assert live_session.llm.settings.model, f"no model configured for {PROVIDER!r}"
+    assert live_session.native_tools
 
 
 def test_the_model_loads_and_fits_a_folder(live_session):

@@ -389,6 +389,16 @@ class LLMClient:
                 f"model {self.settings.model!r} is not available at "
                 f"{self.settings.base_url} (HTTP 404). {body}"
             )
+        if status == 402:
+            # Providers reserve `max_tokens` up front, so a large reservation
+            # is refused on a low balance even when the answer would be
+            # short. Lowering it is the lever the user has in ChiSurf.
+            return (
+                f"the provider refused the request for lack of credit "
+                f"(HTTP 402). The reservation is your max_tokens setting "
+                f"({self.settings.max_tokens}); lower it in Settings → AI, or "
+                f"top up the account. {body}"
+            )
         if status == 429:
             return f"the provider is rate-limiting this key (HTTP 429). {body}"
         return f"model request failed with HTTP {status}: {body}"

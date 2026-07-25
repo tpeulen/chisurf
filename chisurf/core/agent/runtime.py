@@ -327,16 +327,49 @@ class AgentSession:
         """Return the assistant's prose answer and record it in the conversation."""
         if self.native_tools:
             text = response.text
-            self.messages.append(response.raw_message or {"role": "assistant", "content": text})
+            self.messages.append(
+                self._portable_assistant_message(response.raw_message)
+                if response.raw_message
+                else {"role": "assistant", "content": text}
+            )
         else:
             text = parse_text_protocol(response.text).get("answer", response.text)
             self.messages.append({"role": "assistant", "content": response.text})
         return text
 
+    @staticmethod
+    def _portable_assistant_message(message: dict[str, Any]) -> dict[str, Any]:
+        """Return an assistant turn every provider will accept back.
+
+        The message is echoed into the next request, so it has to satisfy the
+        provider's *input* validation, which is stricter than its output.
+        Some providers emit ``content: null`` alongside ``tool_calls`` but
+        reject that same null on the way in, and some drop reasoning fields
+        that are only meaningful in a response.
+
+        Parameters
+        ----------
+        message : dict
+            The provider's assistant message.
+
+        Returns
+        -------
+        dict
+            A copy that is safe to send back.
+        """
+        portable = {
+            key: value
+            for key, value in message.items()
+            if key in ("role", "content", "tool_calls", "name")
+        }
+        if portable.get("content") is None:
+            portable["content"] = ""
+        return portable
+
     def _append_assistant(self, response: LLMResponse, calls: Sequence[ToolCall]) -> None:
         """Append the assistant turn that requested *calls*."""
         if self.native_tools and response.raw_message:
-            self.messages.append(response.raw_message)
+            self.messages.append(self._portable_assistant_message(response.raw_message))
             return
         self.messages.append(
             {

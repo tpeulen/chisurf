@@ -10,11 +10,17 @@ from chisurf.core.settings.path_utils import get_path
 _LOG = logging.getLogger(__name__)
 
 # Provider definitions: display_name -> (key, default_base_url, api_key_url, env_var)
+#
+# Ordered by where the data is processed, not by market share. ChiSurf's users
+# are largely European labs working with unpublished measurements, so the
+# providers that keep the data in the EEA — or on the machine — come first;
+# sending it to a third country should be a deliberate choice, not the one a
+# user lands on by default.
 PROVIDERS: dict[str, tuple[str, str, str, str]] = {
+    "Mistral (EU)": ("mistral", "https://api.mistral.ai/v1", "https://console.mistral.ai/api-keys/", "MISTRAL_API_KEY"),
+    "Local (Ollama, LMStudio, ...)": ("local", "http://localhost:11434/v1", "", ""),
     "OpenAI (ChatGPT)": ("openai", "https://api.openai.com/v1", "https://platform.openai.com/api-keys", "OPENAI_API_KEY"),
     "OpenRouter": ("openrouter", "https://openrouter.ai/api/v1", "https://openrouter.ai/keys", "OPENROUTER_API_KEY"),
-    "Mistral": ("mistral", "https://api.mistral.ai/v1", "https://console.mistral.ai/api-keys/", "MISTRAL_API_KEY"),
-    "Local (Ollama, LMStudio, ...)": ("local", "http://localhost:11434/v1", "", ""),
     "Custom (OpenAI-compatible)": ("custom", "", "", ""),
 }
 
@@ -78,16 +84,21 @@ DEFAULT_PROVIDER_SETTINGS = {
     },
 }
 
+#: Provider a fresh install starts on.  Mistral processes in the EU, so the
+#: out-of-the-box configuration keeps measurements inside the EEA; anything
+#: else is one choice away in Settings -> AI.
+DEFAULT_PROVIDER = "mistral"
+
 DEFAULT_SETTINGS = {
-    "provider": "openai",
-    **DEFAULT_PROVIDER_SETTINGS["openai"],
+    "provider": DEFAULT_PROVIDER,
+    **DEFAULT_PROVIDER_SETTINGS[DEFAULT_PROVIDER],
 }
 
 
 def normalize_provider_key(provider: str | None) -> str:
     """Return the canonical provider key for saved or legacy settings."""
     if not provider:
-        return "openai"
+        return DEFAULT_PROVIDER
     return LEGACY_PROVIDER_KEYS.get(provider, provider)
 
 
@@ -133,8 +144,8 @@ def get_api_settings(provider: str | None = None) -> dict:
 
     # Determine which provider to get settings for
     if provider is None:
-        # Get currently selected provider from settings or default to openai
-        provider = all_settings.get('selected_provider', 'openai')
+        # Get the selected provider, or the shipped default (EU-hosted).
+        provider = all_settings.get('selected_provider', DEFAULT_PROVIDER)
     provider = normalize_provider_key(provider)
 
     # Get settings for the specified provider, falling back to defaults
@@ -179,7 +190,7 @@ def save_api_settings(settings: dict, provider: str | None = None) -> bool:
 
     # Determine which provider to save settings for
     if provider is None:
-        provider = settings.get('provider', 'openai')
+        provider = settings.get('provider', DEFAULT_PROVIDER)
     provider = normalize_provider_key(provider)
 
     text_model = str(settings.get('text_model') or settings.get('model') or '').strip()
@@ -202,8 +213,62 @@ def save_api_settings(settings: dict, provider: str | None = None) -> bool:
         return False
 
 
+#: Suffixes people actually use when exporting a provider key. The table
+#: above names one canonical variable per provider, but a shell profile is
+#: just as likely to hold ``MISTRAL_KEY`` or ``OPENAI_API_TOKEN`` — and a key
+#: that is present but looked for under the wrong name reads to the user as
+#: "the provider does not work".
+_KEY_ENV_SUFFIXES = ('_API_KEY', '_KEY', '_API_TOKEN', '_TOKEN')
+
+
+def provider_key_env_names(provider: str) -> list[str]:
+    """Return the environment variables that may hold a provider's API key.
+
+    The provider's declared variable comes first, followed by the usual
+    variations on its name.
+
+    Parameters
+    ----------
+    provider : str
+        Canonical provider key, e.g. ``"mistral"``.
+
+    Returns
+    -------
+    list of str
+        Candidate variable names, most canonical first, without duplicates.
+
+    Examples
+    --------
+    >>> provider_key_env_names('mistral')[:2]
+    ['MISTRAL_API_KEY', 'MISTRAL_KEY']
+    """
+    provider = normalize_provider_key(provider)
+    declared = ''
+    for _display, (key, _url, _api_url, env_var) in PROVIDERS.items():
+        if key == provider:
+            declared = env_var
+            break
+    if not declared and provider in ('local', 'custom'):
+        return []
+
+    stem = declared
+    for suffix in _KEY_ENV_SUFFIXES:
+        if stem.endswith(suffix):
+            stem = stem[: -len(suffix)]
+            break
+    if not stem:
+        stem = provider.upper()
+
+    names = [declared] if declared else []
+    for suffix in _KEY_ENV_SUFFIXES:
+        candidate = f'{stem}{suffix}'
+        if candidate not in names:
+            names.append(candidate)
+    return names
+
+
 def get_provider_api_key(provider: str) -> str:
-    """Return the environment-variable API key for a provider key.
+    """Return the API key found in the environment for a provider.
 
     Parameters
     ----------
@@ -213,12 +278,12 @@ def get_provider_api_key(provider: str) -> str:
     Returns
     -------
     str
-        The key found in the provider's environment variable, or ``""``.
+        The first non-empty candidate variable's value, or ``""``.
     """
-    provider = normalize_provider_key(provider)
-    for _display, (key, _url, _api_url, env_var) in PROVIDERS.items():
-        if key == provider and env_var:
-            return os.environ.get(env_var, '').strip()
+    for name in provider_key_env_names(provider):
+        value = os.environ.get(name, '').strip()
+        if value:
+            return value
     return ''
 
 
@@ -249,7 +314,7 @@ def get_image_model() -> str:
     """Get image generation model name."""
     settings = get_api_settings()
     model = settings.get('image_model', '').strip()
-    provider = settings.get('provider', 'openai')
+    provider = settings.get('provider', DEFAULT_PROVIDER)
     if model and (provider != 'openai' or _looks_like_image_model(model)):
         return model
     if provider == 'openai':
@@ -363,7 +428,7 @@ def get_max_tokens() -> int:
 def get_provider() -> str:
     """Get the LLM provider key."""
     settings = get_api_settings()
-    return settings.get('provider', 'openai')
+    return settings.get('provider', DEFAULT_PROVIDER)
 
 
 def get_available_providers() -> list[str]:
@@ -378,7 +443,7 @@ def get_available_providers() -> list[str]:
             if isinstance(data, dict):
                 # Return providers that have settings plus the selected one
                 providers = set(data.keys()) - {'selected_provider'}
-                selected = data.get('selected_provider', 'openai')
+                selected = data.get('selected_provider', DEFAULT_PROVIDER)
                 providers.add(selected)
                 return list(providers)
     except Exception:
