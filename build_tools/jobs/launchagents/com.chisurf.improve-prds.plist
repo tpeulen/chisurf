@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ChiSurf: self-improvement job (roadmap-driven).
+  Runs claude_job.sh every 30 minutes (StartInterval 1800s) to make ONE small,
+  tested increment against the PRD roadmap / cleanup backlog, then commit only the
+  files it changed. The mkdir lock in claude_job.sh makes an over-30-min run skip
+  the next tick rather than overlap. RunAtLoad is false so loading it does not kick
+  off a run immediately (first run ~30 min after load). Install: build_tools/jobs/README.md.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.chisurf.improve-prds</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/claude_job.sh</string>
+        <string>improve-prds</string>
+        <string>build_tools/jobs/prompts/improve_prds.md</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/tpeulen/dev/chisurf</string>
+
+    <key>StartInterval</key>
+    <integer>1800</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/improve-prds.launchd.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/improve-prds.launchd.err</string>
+</dict>
+</plist>
