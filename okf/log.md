@@ -2,6 +2,33 @@
 
 ## 2026-07-25
 
+* **PRD-03 (result registry) closed — and MMFDB was silently losing NaN
+  parameter values.** Auditing PRD-03 against the code found it complete: the
+  payload codecs it was blocked on had landed, `_store_data`/`read_result` use
+  them, and Task 6 asked for one reference integration where there are now six.
+  Two pieces of its text were actively **wrong** rather than merely stale, so
+  they are corrected in place: (1) the DoD promised `register_result` "never
+  raises into plugin flow", but the uniform fail-loud decision (PRD-25)
+  superseded that — an invalid `parent_artifact_id`/`sample_id` now raises
+  `LinkValidationError` with *nothing* persisted, and the call-site fleet matches
+  by letting it propagate inside `db.transaction()`; only a genuinely absent
+  database still returns `""`. (2) Task 3 said to add vocabulary "to the tuple in
+  `models.py`", but `ARTIFACT_KINDS`/`OPERATION_TYPES` are generated from the
+  `.dic` files now (PRD-19) — every Task 3 value is present, in the dictionary.
+  The audit also turned up a real silent-data-loss bug one layer down, fixed in
+  the mmfdb repo (`c1cf6a0`). **SQLite coerces NaN to NULL when inserting into a
+  REAL column** (±Inf round-trip fine), and all seven numeric
+  `mmfdb_parameter` columns were exposed. The damaging case is
+  `standard_error = NaN`, which is precisely what a singular covariance matrix
+  produces: it landed as NULL and became indistinguishable from "no error was
+  computed", so an over-parameterised fit archives looking cleanly fitted with
+  its uncertainty merely unfilled. The column must stay NULL (REAL cannot hold
+  NaN), so `record_parameter` now flags the NaN fields under a reserved
+  `metadata_json` key and `get_parameter` restores them — lossless through the
+  API. Fixed at the repository choke point, so the project archiver and every
+  plugin writing parameters benefit. 14 tests, including a direct assertion of
+  the SQLite premise so the workaround can be deleted if that ever changes.
+
 * **i18n — `tttr_image_browser` made translatable.** Wrapped the TTTR Image
   Browser shell (`plugins/tttr/tttr_image_browser/gui/tool.py`, 17 `i18n.tr`
   calls) — window title, the Images dock tab, toolbar action labels

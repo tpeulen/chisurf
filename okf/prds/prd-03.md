@@ -3,9 +3,9 @@ type: PRD
 prd: "03"
 title: "PRD-03: Result Registry"
 description: A single register_result() API so any plugin can archive output to MMFDB with full provenance
-status: in-progress
+status: done
 phase: "0"
-resource: chisurf/core/mmfdb/result_registry.py
+resource: modules/mmfdb/src/mmfdb/provenance/result_registry.py
 tags: [prd, mmfdb, plugins]
 timestamp: '2026-07-05T00:00:00Z'
 ---
@@ -22,9 +22,41 @@ both calling the same repository primitives, and it serializes exclusively
 through the payload codecs rather than ad-hoc JSON.
 
 # Status
-In progress. Blocked on and built against the payload codec layer; the verified
-repository API signatures are pinned below, and a code review is on record (see
-Review outcomes).
+**Done (2026-07-25).** The registry lives at
+`modules/mmfdb/src/mmfdb/provenance/result_registry.py` (not the
+`chisurf/core/mmfdb/` path this PRD originally cited — MMFDB was extracted), the
+payload codecs it was blocked on have landed and are used by `_store_data` /
+`read_result`, and `test/fio/test_result_registry.py` passes (36 cases). Task 6
+asked for *one* reference integration; there are now six or more
+(`burst_selection`, `tttr_microtime_shifter`, `vv_vh_g_factor`, `ndxplorer`,
+`imaging_tools`/`imaging_common`, plus the calibration path).
+
+**Two contract changes this PRD's older text contradicts — the code is right:**
+
+1. **The registry is fail-loud, not exception-swallowing.** Task 1 and the
+   Definition of Done said the body is wrapped so any exception is logged and
+   `""` returned, and that it must "never raise into a plugin's normal flow".
+   That was superseded by the uniform fail-loud decision (PRD-25): an invalid
+   `parent_artifact_id` or `sample_id` now raises `LinkValidationError` and
+   **nothing is persisted** — no artifact, operation, link or object row — rather
+   than silently dropping data into a half-written provenance record. The call
+   sites match: they wrap the call in `db.transaction()` and let it propagate.
+   Only the genuinely-absent-database case still returns `""`.
+2. **Vocabulary is dictionary-generated, not a hand-edited tuple.** Task 3 said
+   to add new values "to the tuple in `models.py`". `ARTIFACT_KINDS` and
+   `OPERATION_TYPES` are now derived from the `.dic` files
+   (`_enums.get("artifact_kind", …)`), per PRD-19. All the Task 3 values are
+   present (`calibration_data`, `trace_data`, `image_data`, `background_data`;
+   `calibration`, `background_correction`, `image_analysis`,
+   `population_selection`) — they just live in the dictionary. Add new vocabulary
+   there, never by editing the generated tuple.
+
+Auditing the DoD also turned up a silent data-loss bug one layer down, now fixed
+in the mmfdb repo (`c1cf6a0`): SQLite coerces NaN to NULL in a REAL column, so a
+parameter written with `standard_error = NaN` — what a singular covariance
+matrix produces — was stored as NULL and became indistinguishable from "no error
+was computed". `record_parameter` now flags NaN fields in `metadata_json` and
+`get_parameter` restores them.
 
 # Goal
 Create a single function that any plugin can call to register its output in MMFDB.
@@ -46,8 +78,8 @@ weakness this design is meant to remove. PRD-03's `_store_data()` and any
 
 # Verified repository API
 The registry is written against the real `MFDatabase` method signatures in
-`chisurf/core/mmfdb/repository.py` (an earlier draft used invented method names —
-these are the actual ones):
+`modules/mmfdb/src/mmfdb/repository.py` (an earlier draft used invented method
+names — these are the actual ones):
 
 | Purpose | Real method | Key arguments |
 |---------|-------------|---------------|
@@ -60,7 +92,8 @@ these are the actual ones):
 | Connection handle | `db.conn` (property) | There is **no** `db.con`. |
 | Transactions | Every `record_*`/`register_*`/`add_*` wraps itself in `self._transaction()` and commits. | **Do not** call `db.conn.commit()` yourself. |
 
-Relevant vocabulary (from `models.py`):
+Relevant vocabulary (exposed by `models.py`, but **generated from the `.dic`
+dictionaries** — see Status note 2; do not hand-edit the tuples):
 - `ARTIFACT_KINDS`: `raw_measurement`, `processed_data`, `analysis_result`,
   `fit_result`, `fcs_correlation`, `irf_curve`, `spectra`, `burst_table`,
   `tcspc_decay`, `pda_histogram`, `anisotropy_curve`, `selection_mask`,
@@ -78,7 +111,7 @@ Relevant vocabulary (from `models.py`):
 # Design and tasks
 
 ## Task 1 — the result registry module
-Create `chisurf/core/mmfdb/result_registry.py` with the public entry point
+Create `modules/mmfdb/src/mmfdb/provenance/result_registry.py` with the public entry point
 `register_result(kind, data=None, sample_id="", parent_artifact_id="",
 operation_type="", parameters=None, metadata=None, data_format="", db=None) -> str`.
 It returns the created `artifact_id` (or `""` if no DB). Behavior:
@@ -178,22 +211,25 @@ reference integration is payload-only provenance.
   pass an explicit `db=`.
 
 # Definition of Done
-- Payload codec registry exists; `_store_data()` and the read path use the codecs
+- [x] Payload codec registry exists; `_store_data()` and the read path use the codecs
   (msgpack), not `to_json()`/`json.dumps()`.
-- `result_registry.py` exists with `register_result()` + 4 convenience wrappers.
-- All calls use the verified repository methods with correct argument names; no
+- [x] `result_registry.py` exists with `register_result()` + 4 convenience wrappers.
+- [x] All calls use the verified repository methods with correct argument names; no
   invented methods, no `db.con`, no manual `commit()`.
-- `_get_global_db()` resolves explicit override → connector handle → fresh user
+- [x] `_get_global_db()` resolves explicit override → connector handle → fresh user
   DB; `set_global_db()` override exists.
-- Object payloads stored via `put_object` with content-addressed dedup working.
-- Provenance correct: `derived_from` edge + `input` operation link for parents;
+- [x] Object payloads stored via `put_object` with content-addressed dedup working.
+- [x] Provenance correct: `derived_from` edge + `input` operation link for parents;
   `measured_sample` edge for samples; `output` link for the result.
-- Parameters written to `mmfdb_parameter` with `name`/`value` columns.
-- Vocabulary reconciled (Task 3): existing names reused; genuinely new values
-  added to `models.py` and any `schema.py` CHECK lists.
-- `register_result` never raises into plugin flow; returns `""` when no DB.
-- One real plugin wired as the reference integration.
-- All tests in `test/fio/test_result_registry.py` pass.
+- [x] Parameters written to `mmfdb_parameter` with `name`/`value` columns, and NaN
+  fields survive the round trip (see Status).
+- [x] Vocabulary reconciled (Task 3): existing names reused; genuinely new values
+  declared in the dictionary (**not** `models.py` — that tuple is generated).
+- [x] ~~`register_result` never raises into plugin flow~~ — **superseded**:
+  fail-loud per PRD-25. Invalid links raise and persist nothing; `""` is returned
+  only when there is no database.
+- [x] One real plugin wired as the reference integration (six or more now).
+- [x] All tests in `test/fio/test_result_registry.py` pass (36 cases).
 
 # Review outcomes
 A focused code review of the registry + payload-codec scope **approved** the

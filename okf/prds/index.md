@@ -16,7 +16,7 @@ Status: ✅ done · 🚧 in-progress · ✏️ draft · 🌱 stub · 📋 planne
 # Phase 0 — Current line (result registry + burst pipeline)
 
 * ✅ [PRD-01: Fix MMFDB Project Round-Trip](prd-01.md) — Make archiving a project to MMFDB and restoring it produce an identical project.
-* 🚧 [PRD-03: Result Registry](prd-03.md) — A single register_result() API so any plugin can archive output to MMFDB with full provenance.
+* ✅ [PRD-03: Result Registry](prd-03.md) — A single register_result() API so any plugin can archive output to MMFDB with full provenance.
 * 🚧 [PRD-04: Stable Burst Pipeline MMFDB Integration](prd-04.md) — Register burst-selection results in MMFDB with stable, queryable provenance across all callers.
 * ✅ [PRD-09: Microtime Shifter — Workflow Plugin + MMFDB Provenance](prd-09.md) — Convert the microtime-shifter tool into a layered api/backend/cli/gui workflow plugin with RPC and full MMFDB provenance.
 * 🚧 [PRD-10: MMFDB Dataset Browser Widget](prd-10.md) — A reusable Qt widget to pick a registered MMFDB dataset; file-group membership remains open.
