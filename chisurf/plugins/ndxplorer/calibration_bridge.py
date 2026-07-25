@@ -1,12 +1,20 @@
-"""Push a data-optimized smFRET calibration into an in-process ndxplorer window.
+"""Data-optimized smFRET calibration for an in-process ndxplorer window.
 
 ndxplorer computes its derived FRET columns (efficiency, stoichiometry, R_FRET,
 …) from a small set of scalar constants that are normally typed by hand. This
-bridge writes the **posterior** calibration factors (from
-``chisurf.core.fluorescence.fret.calibration``) into those constants and triggers
-a recompute, so ndx shows accurate, data-optimized FRET instead of guessed
-constants. ndx runs in the same process as ChiSurf, so this is a direct in-memory
-update — no RPC needed.
+bridge closes that loop against the measurement ndx has open:
+
+* :func:`optimize_calibration_from_ndx` — the whole workflow in one call. Read
+  the burst columns out of the window, start from the constants it already
+  carries, determine the correction factors from that data
+  (:func:`~chisurf.core.fluorescence.fret.accurate.auto_calibrate`), write the
+  posterior back and inject the accurate per-burst columns.
+* :func:`push_calibration_to_ndx` — write factors calibrated elsewhere.
+* :func:`push_unmixed_columns_to_ndx` — inject spectrally un-mixed photon columns
+  for setups the scalar constants cannot describe.
+
+ndx runs in the same process as ChiSurf, so these are direct in-memory updates —
+no RPC needed.
 """
 
 from __future__ import annotations
@@ -15,7 +23,13 @@ import numpy as np
 
 from chisurf.core.fluorescence.fret.calibration import calibration_to_ndx_constants
 
-__all__ = ["push_calibration_to_ndx", "push_unmixed_columns_to_ndx", "find_ndx_windows"]
+__all__ = [
+    "push_calibration_to_ndx",
+    "push_unmixed_columns_to_ndx",
+    "optimize_calibration_from_ndx",
+    "refresh_column_selectors",
+    "find_ndx_windows",
+]
 
 
 def push_calibration_to_ndx(ndx, calibration, *, recompute: bool = True) -> dict:
@@ -111,6 +125,183 @@ def find_ndx_windows() -> list:
         if looks_like_ndx:
             windows.append(widget)
     return windows
+
+
+def optimize_calibration_from_ndx(
+    ndx,
+    *,
+    columns: dict | None = None,
+    donor_lifetime: float | None = None,
+    linker_sigma: float = 6.0,
+    gamma_source: str = "auto",
+    n_bootstrap: int = 50,
+    lightpath: dict | None = None,
+    use_priors: bool = True,
+    inject_columns: bool = True,
+    recompute: bool = True,
+) -> dict:
+    """Optimize ndxplorer's correction constants against the data it has loaded.
+
+    The end of the workflow: ndxplorer loads a burst measurement, and its
+    correction constants — normally typed by hand — should follow from *that*
+    measurement. This reads the per-burst channel columns out of the open window,
+    starts from the constants the window already carries (so backgrounds, quantum
+    yields, Förster radius and tau_D(0) are the user's own settings, not
+    defaults), runs the automatic calibration
+    (:func:`chisurf.core.fluorescence.fret.accurate.auto_calibrate` — populations
+    found by a Gaussian mixture, alpha/delta from the reference populations,
+    gamma/beta from the E-S fit or the static FRET line), and writes the
+    posterior back into ``ndx.constants``.
+
+    It also injects the **accurate** per-burst columns. This is not redundant:
+    ndxplorer's own efficiency equation corrects leakage but has no
+    direct-excitation term, so pushing the constants alone cannot make its native
+    ``FRET efficiency`` column accurate. The injected columns are new names —
+    ndx's own columns and equations are untouched, nothing is corrected twice.
+
+    Parameters
+    ----------
+    ndx : object
+        In-process ndXplorer window (needs ``data_source.data`` and
+        ``constants``).
+    columns : dict, optional
+        Explicit ``{role: column_name}`` overrides for ``i_dd``/``i_da``/
+        ``i_aa``/``tau_f``; the rest are recognised automatically
+        (:func:`chisurf.core.fluorescence.burst.table.guess_columns`).
+    donor_lifetime : float, optional
+        Donor-only lifetime tau_D(0) in ns for the FRET lines; taken from the
+        window's ``tauD0`` constant when omitted.
+    linker_sigma : float, optional
+        Linker width (Å) shaping the static FRET line.
+    gamma_source : str, optional
+        ``"auto"``, ``"es"``, ``"lifetime"`` or ``"combined"``.
+    n_bootstrap : int, optional
+        Bootstrap resamples for the factor uncertainties.
+    lightpath : dict, optional
+        Optics prior (see
+        :func:`chisurf.plugins.burst.accurate_fret.core.lightpath_prior`).
+    use_priors : bool, optional
+        Combine the data estimates with the optics priors.
+    inject_columns : bool, optional
+        Also write the accurate per-burst ``E``/``S``/``R_DA``/population columns.
+    recompute : bool, optional
+        Recompute ndx's derived columns and refresh its plots afterwards.
+
+    Returns
+    -------
+    dict
+        ``{"ok", "constants", "before", "factors", "uncertainties", "report",
+        "columns", "injected", "populations"}``, or ``{"ok": False, "error": …}``
+        when the window carries no usable burst columns.
+    """
+    from chisurf.core.fluorescence.burst.table import columns_from_data, guess_columns
+    from chisurf.core.fluorescence.fret.accurate import accurate_fret, auto_calibrate
+    from chisurf.core.fluorescence.fret.calibration import calibration_from_ndx_constants
+    from chisurf.core.fluorescence.fret.lines import static_fret_line
+
+    data_source = getattr(ndx, "data_source", None)
+    data = getattr(data_source, "data", None)
+    table = columns_from_data(data)
+    if not table:
+        return {"ok": False, "error": "the ndXplorer window holds no burst columns"}
+
+    mapping = {**guess_columns(table), **{k: v for k, v in (columns or {}).items() if v}}
+    for role in ("i_dd", "i_da"):
+        if mapping.get(role) not in table:
+            return {
+                "ok": False,
+                "error": (f"could not identify the {role} column among "
+                          f"{', '.join(list(table)[:12])}…; pass it explicitly"),
+            }
+
+    def pick(role):
+        name = mapping.get(role)
+        return table[name] if name in table else None
+
+    constants = dict(getattr(ndx, "constants", {}) or {})
+    calib = calibration_from_ndx_constants(constants)
+    tau_d0 = donor_lifetime
+    if tau_d0 is None:
+        tau_d0 = float(constants.get("tauD0", 4.0) or 4.0)
+
+    tau_f = pick("tau_f")
+    line = None
+    if tau_f is not None:
+        line = static_fret_line(float(tau_d0), r0=float(calib.r0), sigma=float(linker_sigma))
+
+    result = auto_calibrate(
+        pick("i_dd"), pick("i_da"), pick("i_aa"), calibration=calib, lightpath=lightpath,
+        tau_f=tau_f, line=line, donor_lifetime=float(tau_d0), linker_sigma=float(linker_sigma),
+        gamma_source=gamma_source, n_bootstrap=int(n_bootstrap), use_priors=use_priors,
+    )
+
+    injected: list[str] = []
+    if inject_columns and data is not None:
+        split = result.split
+        labels = np.zeros(np.asarray(pick("i_dd")).shape, dtype=int)
+        if split is not None:
+            labels = np.where(split.fret, split.fret_labels, -1)
+            labels = np.where(split.acceptor_only, -2, labels)
+        accurate = accurate_fret(
+            pick("i_dd"), pick("i_da"), pick("i_aa"), calibration=calib, tau_f=tau_f,
+            line=line, uncertainties=result.uncertainties, labels=labels,
+        )
+        data["FRET efficiency (accurate)"] = np.asarray(accurate["E"], dtype=float)
+        injected.append("FRET efficiency (accurate)")
+        if accurate["S"] is not None:
+            data["Stoichiometry (accurate)"] = np.asarray(accurate["S"], dtype=float)
+            injected.append("Stoichiometry (accurate)")
+        data["R_DA (accurate)"] = np.asarray(accurate["distance"], dtype=float)
+        injected.append("R_DA (accurate)")
+        data["Population"] = labels.astype(float)
+        injected.append("Population")
+        if accurate["deviation"] is not None:
+            data["Off static FRET line"] = np.asarray(accurate["deviation"], dtype=float)
+            injected.append("Off static FRET line")
+        refresh_column_selectors(ndx)
+
+    applied = push_calibration_to_ndx(ndx, calib, recompute=recompute)
+    return {
+        "ok": True,
+        "constants": applied,
+        "before": {k: constants.get(k) for k in applied},
+        "factors": result.factors,
+        "uncertainties": result.uncertainties,
+        "report": result.report(),
+        "columns": mapping,
+        "injected": injected,
+        "populations": result.populations,
+    }
+
+
+def refresh_column_selectors(ndx) -> None:
+    """Make newly injected columns selectable in ndxplorer's axis pickers.
+
+    Writing a column into ``data_source.data`` does not tell the window about it,
+    so an injected column would exist but be unplottable until the next reload.
+    Best-effort and silent: a window that does not expose the hook simply keeps
+    its current selectors.
+
+    Parameters
+    ----------
+    ndx : object
+        In-process ndXplorer window.
+    """
+    data_source = getattr(ndx, "data_source", None)
+    for name in ("update_parameter_names", "refresh_axis_comboboxes_preserving_selection"):
+        hook = getattr(ndx, name, None)
+        if callable(hook):
+            try:
+                hook()
+            except Exception:
+                pass
+    # Some builds cache the names on the data source itself.
+    refresh = getattr(data_source, "update_parameter_names", None)
+    if callable(refresh):
+        try:
+            refresh()
+        except Exception:
+            pass
 
 
 def _column(data, name):
@@ -246,6 +437,7 @@ def push_unmixed_columns_to_ndx(
                 data[rcol] = src[k] * per_photon_rate
                 injected[rcol] = "rate"
 
+    refresh_column_selectors(ndx)
     if recompute:
         if data_source is not None and hasattr(data_source, "compute_columns"):
             try:

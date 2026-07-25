@@ -110,6 +110,47 @@ if __name__ == "plugin":
     except Exception:
         pass  # MMFDB not available — skip toolbar button
 
+    # Calibrate the loaded measurement: the correction constants ndx applies
+    # should follow from the data in the window, not from typed-in guesses.
+    try:
+        from qtpy import QtWidgets
+
+        from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
+
+        def _optimize_calibration() -> None:
+            """Determine alpha/beta/gamma/delta from the loaded bursts and apply them."""
+            result = optimize_calibration_from_ndx(ndx)
+            if not result.get("ok"):
+                QtWidgets.QMessageBox.warning(
+                    ndx, "Accurate FRET", str(result.get("error", "calibration failed"))
+                )
+                return
+            before = result["before"]
+            lines = [result["report"], "", "ndXplorer constants:"]
+            lines += [
+                f"  {name}: {before.get(name)!s} → {value:.4f}"
+                for name, value in result["constants"].items()
+            ]
+            if result["injected"]:
+                lines += ["", "New columns: " + ", ".join(result["injected"])]
+            box = QtWidgets.QMessageBox(ndx)
+            box.setWindowTitle("Accurate FRET — calibration applied")
+            box.setText("The correction factors were optimized against the loaded data.")
+            box.setDetailedText("\n".join(lines))
+            box.exec_() if hasattr(box, "exec_") else box.exec()
+
+        calibration_toolbar = ndx.addToolBar("Accurate FRET")
+        calibration_toolbar.setObjectName("ndxplorerAccurateFretToolbar")
+        calibrate_action = calibration_toolbar.addAction("🎯 Optimize FRET calibration")
+        calibrate_action.setToolTip(
+            "Find the donor-only / acceptor-only / FRET populations in the loaded "
+            "bursts, determine alpha, beta, gamma and delta from them, apply them "
+            "to this window and add the accurate E / S / R_DA columns."
+        )
+        calibrate_action.triggered.connect(_optimize_calibration)
+    except Exception:
+        log("Could not add the accurate-FRET toolbar to ndXplorer")
+
 
 cli_entrypoint = "ndxplorer=chisurf.plugins.ndxplorer.cli:cli"
 

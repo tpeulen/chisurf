@@ -2,6 +2,28 @@
 
 ## 2026-07-25
 
+* **ndXplorer calibrates itself against the measurement it has open.** The
+  accurate-FRET machinery existed but ndX still needed constants typed in by
+  hand (or a round trip through the ChiSurf tool).
+  `calibration_bridge.optimize_calibration_from_ndx(ndx)` does the whole thing in
+  one call — read the burst columns out of the window, **seed the calibration
+  from the window's own constants** (`calibration_from_ndx_constants`, the new
+  inverse mapping, so backgrounds/QYs/R0/`tauD0` stay the user's settings and
+  only what the data can improve changes), run `auto_calibrate`, write the
+  posterior back, recompute — and it is wired to a **🎯 Optimize FRET
+  calibration** toolbar action on the ndX window. Two things the mapping got
+  wrong or missed: ndX's `r` constant is `1/beta_Hellenkamp` and was never
+  written, and pushing constants **cannot** make ndX's native `FRET efficiency`
+  accurate because its equation has no direct-excitation term
+  (`Fr = Sr − Br − alpha·Sg`) — so the accurate per-burst columns are injected
+  alongside (`FRET efficiency (accurate)`, `Stoichiometry (accurate)`,
+  `R_DA (accurate)`, `Off static FRET line`, `Population`), plus
+  `refresh_column_selectors` so they are actually selectable instead of only
+  existing until the next reload. Burst-table column conventions moved to
+  `chisurf/core/fluorescence/burst/table.py` so the plugin and the bridge stop
+  guessing separately. Verified against ndX's **real** DataSource and equation
+  files (factors recovered from simulated bursts; ndX's own efficiency column
+  moves) and in a real offscreen ndX window.
 * **Accurate FRET (Hellenkamp) determines its own correction factors, and the
   optics are the prior.** The calibration machinery could *apply* α/β/γ/δ and
   hold them as prior-regularized fitting parameters, but finding them still meant

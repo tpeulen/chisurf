@@ -145,6 +145,56 @@ offset.
 * **💾 Export CSV** writes the per-burst $E$, $S$, lifetime and distance with the
   calibration report in the file header, so the numbers stay traceable.
 
+## Doing it entirely inside ndXplorer
+
+If the bursts are already open in ndXplorer, the round trip through this tool is
+unnecessary. ndXplorer's own toolbar carries **🎯 Optimize FRET calibration**,
+which does the whole thing in one click on the loaded measurement:
+
+1. it reads the burst columns out of the window;
+2. it **starts from the constants that window already has** — backgrounds,
+   quantum yields, Förster radius and `tauD0` stay yours; only what the data can
+   improve is changed;
+3. it runs the same automatic calibration and writes the posterior back into
+   ndXplorer's MFD constants (`gG/gR`, `alpha`, `beta`, `r`, …), recomputing its
+   derived columns;
+4. it adds the accurate per-burst columns — `FRET efficiency (accurate)`,
+   `Stoichiometry (accurate)`, `R_DA (accurate)`, `Off static FRET line` and
+   `Population` — so they can be plotted and gated like any other column.
+
+Step 4 is not redundant. ndXplorer's own efficiency equation corrects donor
+leakage but has **no direct-excitation term**, so pushing constants alone cannot
+make its native `FRET efficiency` column accurate; the injected column is the
+fully corrected one. ndXplorer's own columns and equations are left untouched, so
+nothing is corrected twice.
+
+A dialog reports what changed — every constant with its old and new value, the
+factors with their uncertainties, and the populations that were found.
+
+Head-less, the same call is:
+
+```python
+from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
+
+result = optimize_calibration_from_ndx(ndx)     # ndx = the open window
+print(result["report"])
+print(result["constants"])                      # what was written
+```
+
+### Naming differences to watch
+
+ndXplorer's constants do not use Hellenkamp's letters:
+
+| ndXplorer | meaning | Hellenkamp |
+|---|---|---|
+| `alpha` | donor leakage | $\alpha$ |
+| `beta` | direct excitation | $\delta$ |
+| `r` | scales $F_{AA}$ in the stoichiometry | $1/\beta$ |
+| `gG/gR`, `PhiA`, `PhiD` | detection · quantum yield | $\gamma = (\Phi_A/\Phi_D)/(g_G/g_R)$ |
+
+The bridge translates in both directions, so the numbers in the tool and in
+ndXplorer always mean the same thing.
+
 ## Head-less
 
 ```bash

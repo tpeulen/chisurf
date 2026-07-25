@@ -216,6 +216,31 @@ back to the physically-motivated light-path prior.
   `csc accurate-fret`, RPC `accurate_fret.calibrate{,_file}`. Light paths saved by
   the light-path simulator are listed as prior sources (`lightpath_prior` reads
   their stored `crosstalk_matrices` artifact).
+- **Calibrating from inside ndX (the end of the workflow)** —
+  `calibration_bridge.optimize_calibration_from_ndx(ndx)` is the one call that
+  turns "ndX has a measurement open" into "ndX's constants follow from that
+  measurement": it reads the burst columns out of the window, **seeds a
+  `CalibrationParameters` from the window's own constants**
+  (`calibration_from_ndx_constants`, the new inverse of
+  `calibration_to_ndx_constants`, so backgrounds / QYs / R0 / `tauD0` stay the
+  user's), runs `auto_calibrate`, pushes the posterior back and recomputes.
+  Exposed as a **🎯 Optimize FRET calibration** toolbar action added to the ndX
+  window by the ndxplorer plugin. It also injects the accurate per-burst columns
+  (`FRET efficiency (accurate)`, `Stoichiometry (accurate)`, `R_DA (accurate)`,
+  `Off static FRET line`, `Population`) — **not redundant**: ndX's own efficiency
+  equation has *no direct-excitation term* (`Fr = Sr − Br − alpha·Sg`), so pushed
+  constants alone cannot make its native column accurate. `refresh_column_selectors`
+  makes injected columns appear in ndX's axis pickers (they were plottable only
+  after a reload before). **Naming**: ndX's `beta` is δ and its `r` is `1/beta`
+  (the `r` mapping was missing and is now written too). Covered by
+  `test_calibration_ndx_bridge.py` (stub) and `test_ndxplorer_unmix_headless.py`
+  (ndX's **real** DataSource + real equation/constant files: the factors are
+  recovered from simulated bursts and ndX's own `FRET efficiency` column changes).
+- **Shared burst-table conventions** — `chisurf/core/fluorescence/burst/table.py`
+  (`COLUMN_HINTS`, `guess_columns`, `read_burst_table`, `columns_from_data`) is
+  the single source of truth for which column is which channel (ndX / `.bur` /
+  API spellings); the plugin and the ndX bridge both use it instead of guessing
+  separately.
 - **ndX window locator** — `calibration_bridge.find_ndx_windows()` finds the
   in-process ndXplorer windows among the top-level Qt widgets (empty head-less),
   which is what the tool's push/pull buttons use.
@@ -225,10 +250,10 @@ back to the physically-motivated light-path prior.
 
 ## What is missing (later phases)
 
-- **ndx toolbar push button** — resolved: the `accurate_fret` tool's
-  *📤 To ndXplorer* action (plus `find_ndx_windows`) is the one-click push. A
-  button inside ndX's own toolbar is still absent; editor-tree sync inside the
-  push stays best-effort (derived columns already update via `ndx.constants`).
+- **ndx toolbar push button** — resolved twice over: the `accurate_fret` tool's
+  *📤 To ndXplorer* action, and ndX's own *🎯 Optimize FRET calibration* toolbar
+  button (`optimize_calibration_from_ndx`). Editor-tree sync inside the push stays
+  best-effort (derived columns already update via `ndx.constants`).
 - **Multi-acceptor cross-leakage** — resolved: `corrected_es_general` un-mixes
   the emission crosstalk matrix (including acceptor↔acceptor bleed) as the first
   step of the correction. `corrected_es_matrix` remains the scalar fast path for

@@ -147,3 +147,86 @@ def test_injected_shuffle_columns_are_integer_and_count_preserving():
     raw = (out["Number of Photons (green)"] + out["Number of Photons (red)"]).to_numpy()
     assert np.array_equal(donor + acceptor, raw)        # exact photon-count preservation
     assert np.array_equal(donor, np.rint(donor))         # integer
+
+
+# ---------------------------------------------------------------------------
+# optimizing the constants against the loaded measurement (real engine)
+# ---------------------------------------------------------------------------
+
+
+def _alex_burst_df(seed=3):
+    """Build simulated ALEX bursts with known factors, in ndx's column names."""
+    from chisurf.core.fluorescence.fret.lines import static_fret_line
+
+    gamma, alpha, beta, delta = 0.65, 0.08, 1.4, 0.06
+    line = static_fret_line(4.0, r0=52.0, sigma=6.0)
+    rng = np.random.default_rng(seed)
+    dd, da, aa, tau = [], [], [], []
+    for efficiency, n in ((0.3, 900), (0.75, 900)):
+        photons = rng.poisson(400, n).astype(float)
+        dd.append(rng.poisson((1 - efficiency) * photons))
+        aa.append(rng.poisson(beta * gamma * photons))
+        da.append(rng.poisson(gamma * efficiency * photons
+                              + alpha * (1 - efficiency) * photons
+                              + delta * beta * gamma * photons))
+        tau.append(rng.normal(float(line.lifetime_at(efficiency)), 0.12, n))
+    photons = rng.poisson(400, 300).astype(float)
+    dd.append(rng.poisson(photons))
+    da.append(rng.poisson(alpha * photons))
+    aa.append(rng.poisson(2.0, 300))
+    tau.append(rng.normal(4.0, 0.12, 300))
+    photons = rng.poisson(400, 300).astype(float)
+    dd.append(rng.poisson(2.0, 300))
+    aa.append(rng.poisson(beta * gamma * photons))
+    da.append(rng.poisson(delta * beta * gamma * photons))
+    tau.append(np.full(300, np.nan))
+    return pd.DataFrame({
+        "Green Count Rate (KHz)": np.concatenate(dd).astype(float),
+        "Red Count Rate (KHz)": np.concatenate(da).astype(float),
+        "S delayed yellow (kHz)": np.concatenate(aa).astype(float),
+        "Tau (green)": np.concatenate(tau),
+    }), {"gamma": gamma, "alpha": alpha, "beta": beta, "delta": delta}
+
+
+def test_optimize_from_loaded_data_drives_the_real_engine():
+    """Calibrating the loaded bursts changes what ndx's own equations compute.
+
+    The end of the workflow the bridge exists for: ndx has data open, the
+    constants are optimized against exactly that data, and ndx's derived FRET
+    columns follow.
+    """
+    from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
+
+    equations, constants = _real_equations_and_constants()
+    df, truth = _alex_burst_df()
+    ndx = _RealNdx(df, constants, equations)
+    ndx.data_source.compute_columns(constants=ndx.constants, equations=equations)
+    before = float(np.nanmean(ndx.data_source.data["FRET efficiency"]))
+
+    result = optimize_calibration_from_ndx(ndx, n_bootstrap=0)
+    assert result["ok"], result.get("error")
+    for factor, expected in truth.items():
+        assert result["factors"][factor] == pytest.approx(expected, rel=0.06, abs=0.006)
+
+    after = float(np.nanmean(ndx.data_source.data["FRET efficiency"]))
+    assert np.isfinite(after) and abs(after - before) > 1e-3
+    assert ndx.updated == 1
+
+
+def test_injected_accurate_columns_are_computable_by_real_engine():
+    """The accurate columns are real dataframe columns ndx can compute over."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
+
+    equations, constants = _real_equations_and_constants()
+    df, _ = _alex_burst_df()
+    ndx = _RealNdx(df, constants, equations)
+    optimize_calibration_from_ndx(ndx, n_bootstrap=0)
+
+    data = ndx.data_source.data
+    assert "FRET efficiency (accurate)" in data.columns
+    assert "R_DA (accurate)" in data.columns
+
+    extra = [{"1-E (accurate)": "1.0 - 'FRET efficiency (accurate)'"}]
+    ndx.data_source.compute_columns(constants=ndx.constants, equations=extra)
+    values = ndx.data_source.data["1-E (accurate)"].to_numpy()
+    assert np.isfinite(values).any()

@@ -22,36 +22,31 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from chisurf.core.fluorescence.burst.table import (
+    COLUMN_HINTS,
+    columns_from_data,
+    guess_columns,
+    read_burst_table,
+)
 from chisurf.core.fluorescence.fret.accurate import AutoCalibration, accurate_fret, auto_calibrate
 from chisurf.core.fluorescence.fret.calibration import CalibrationParameters
 from chisurf.core.fluorescence.fret.lines import dynamic_fret_line, static_fret_line
 
 logger = logging.getLogger(__name__)
 
+# The burst-table conventions (which column is which channel) are shared with the
+# live ndXplorer bridge, so they live in the core and are re-exported here.
 __all__ = [
     "CalibrationResult",
     "COLUMN_HINTS",
     "read_burst_table",
     "guess_columns",
+    "columns_from_data",
     "calibrate",
     "list_lightpaths",
     "lightpath_prior",
     "export_csv",
 ]
-
-#: Column-name fragments (lower case) identifying each channel in a burst table.
-#: Covers the ChiSurf/ndXplorer names, the Seidel-style ``.bur`` headers and the
-#: plain ``i_dd``/``i_da``/``i_aa`` spelling of the API.
-COLUMN_HINTS: dict[str, tuple[str, ...]] = {
-    "i_dd": ("i_dd", "i11", "green count rate", "f_dexc_dem", "sg", "number of photons (green)",
-             "ngreen", "n green", "donor donor"),
-    "i_da": ("i_da", "i12", "red count rate", "f_dexc_aem", "sr", "number of photons (red)",
-             "nred", "n red", "donor acceptor"),
-    "i_aa": ("i_aa", "i22", "delayed yellow", "yellow count rate", "f_aexc_aem", "sy",
-             "number of photons (yellow)", "nyellow", "n yellow", "acceptor acceptor"),
-    "tau_f": ("tau_f", "tau (green)", "taud(a)", "lifetime green", "green lifetime",
-              "donor lifetime", "tau green"),
-}
 
 
 @dataclass
@@ -128,76 +123,6 @@ class CalibrationResult:
                 "off_line": f"{p['deviation']:+.4f}" if "deviation" in p else "—",
             })
         return rows
-
-
-# ---------------------------------------------------------------------------
-# reading burst tables
-# ---------------------------------------------------------------------------
-
-
-def read_burst_table(path: str | pathlib.Path) -> dict[str, np.ndarray]:
-    """Read a burst table into ``{column: array}``.
-
-    Any delimited text file (``.csv``, ``.tsv``, ``.txt``, ``.bur``) is read with
-    an auto-detected separator; ``.npz`` archives are read directly.
-
-    Parameters
-    ----------
-    path : str or pathlib.Path
-        The burst table.
-
-    Returns
-    -------
-    dict
-        Numeric columns keyed by their header name.
-
-    Raises
-    ------
-    ValueError
-        If the file holds no numeric column.
-    """
-    path = pathlib.Path(path)
-    if path.suffix.lower() == ".npz":
-        with np.load(path) as data:
-            return {k: np.asarray(data[k], dtype=float).ravel() for k in data.files}
-
-    import pandas as pd
-
-    frame = pd.read_csv(path, sep=None, engine="python", comment="#")
-    columns = {}
-    for name in frame.columns:
-        values = pd.to_numeric(frame[name], errors="coerce").to_numpy(dtype=float)
-        if np.any(np.isfinite(values)):
-            columns[str(name).strip()] = values
-    if not columns:
-        raise ValueError(f"no numeric columns found in {path}")
-    return columns
-
-
-def guess_columns(names) -> dict[str, str]:
-    """Map channel roles onto column names by matching known naming conventions.
-
-    Parameters
-    ----------
-    names : iterable of str
-        Column names of the burst table.
-
-    Returns
-    -------
-    dict
-        ``{"i_dd": name, "i_da": name, "i_aa": name, "tau_f": name}`` with the
-        roles that could not be matched left out.
-    """
-    out: dict[str, str] = {}
-    lowered = [(str(n), str(n).strip().lower()) for n in names]
-    for role, hints in COLUMN_HINTS.items():
-        for hint in hints:
-            match = next((original for original, low in lowered
-                          if low == hint or hint in low), None)
-            if match is not None and match not in out.values():
-                out[role] = match
-                break
-    return out
 
 
 # ---------------------------------------------------------------------------

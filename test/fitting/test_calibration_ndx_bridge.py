@@ -171,3 +171,133 @@ def test_inject_returns_empty_when_columns_absent():
         source_labels=["donor", "acceptor"],
     )
     assert out == {}
+
+
+# ---------------------------------------------------------------------------
+# optimizing the constants against the data the window has loaded
+# ---------------------------------------------------------------------------
+
+
+GAMMA, ALPHA, BETA, DELTA = 0.65, 0.08, 1.4, 0.06
+TAU_D0 = 4.0
+
+
+def _simulated_burst_columns(seed: int = 2):
+    """ndXplorer-named burst columns with known correction factors."""
+    import numpy as np
+
+    from chisurf.core.fluorescence.fret.lines import static_fret_line
+
+    line = static_fret_line(TAU_D0, r0=52.0, sigma=6.0)
+    rng = np.random.default_rng(seed)
+    dd, da, aa, tau = [], [], [], []
+    for efficiency, n in ((0.3, 900), (0.75, 900)):
+        photons = rng.poisson(400, n).astype(float)
+        dd.append(rng.poisson((1 - efficiency) * photons))
+        aa.append(rng.poisson(BETA * GAMMA * photons))
+        da.append(rng.poisson(GAMMA * efficiency * photons
+                              + ALPHA * (1 - efficiency) * photons
+                              + DELTA * BETA * GAMMA * photons))
+        tau.append(rng.normal(float(line.lifetime_at(efficiency)), 0.12, n))
+    photons = rng.poisson(400, 300).astype(float)          # donor-only
+    dd.append(rng.poisson(photons))
+    da.append(rng.poisson(ALPHA * photons))
+    aa.append(rng.poisson(2.0, 300))
+    tau.append(rng.normal(TAU_D0, 0.12, 300))
+    photons = rng.poisson(400, 300).astype(float)          # acceptor-only
+    dd.append(rng.poisson(2.0, 300))
+    aa.append(rng.poisson(BETA * GAMMA * photons))
+    da.append(rng.poisson(DELTA * BETA * GAMMA * photons))
+    tau.append(np.full(300, np.nan))
+    return {
+        "Green Count Rate (KHz)": np.concatenate(dd).astype(float),
+        "Red Count Rate (KHz)": np.concatenate(da).astype(float),
+        "S delayed yellow (kHz)": np.concatenate(aa).astype(float),
+        "Tau (green)": np.concatenate(tau),
+    }
+
+
+class _LoadedNdx(_StubNdx):
+    """A stub window that has burst data loaded, as after opening a file."""
+
+    def __init__(self):
+        super().__init__()
+        self.constants.update({"PhiA": 0.32, "PhiD": 0.8, "forster_radius": 52.0,
+                               "Bg": 0.0, "Br": 0.0, "By": 0.0, "r": 1.0})
+        self.data_source.data = _simulated_burst_columns()
+
+
+def test_optimize_recovers_the_factors_from_the_loaded_data():
+    """The constants ndx applies are optimized against the bursts it has open."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
+
+    ndx = _LoadedNdx()
+    before_gg_gr = ndx.constants["gG/gR"]
+    result = optimize_calibration_from_ndx(ndx, n_bootstrap=0)
+
+    assert result["ok"], result.get("error")
+    assert result["factors"]["gamma"] == pytest.approx(GAMMA, rel=0.05)
+    assert result["factors"]["alpha"] == pytest.approx(ALPHA, abs=0.006)
+    assert result["factors"]["delta"] == pytest.approx(DELTA, abs=0.006)
+    assert result["factors"]["beta"] == pytest.approx(BETA, rel=0.05)
+    # written into the window with ndx's own naming, and recomputed
+    assert ndx.constants["gG/gR"] != before_gg_gr
+    assert (ndx.constants["PhiA"] / ndx.constants["PhiD"]) / ndx.constants["gG/gR"] == \
+        pytest.approx(result["factors"]["gamma"])
+    assert ndx.constants["beta"] == pytest.approx(result["factors"]["delta"])
+    assert ndx.constants["r"] == pytest.approx(1.0 / result["factors"]["beta"])
+    assert ndx.updated == 1
+    assert result["before"]["gG/gR"] == pytest.approx(before_gg_gr)
+    # the columns were recognised by their ndx names
+    assert result["columns"]["i_dd"] == "Green Count Rate (KHz)"
+    assert result["columns"]["tau_f"] == "Tau (green)"
+
+
+def test_optimize_starts_from_the_windows_own_settings():
+    """Settings the data cannot improve are taken from the window, not defaults."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
+
+    ndx = _LoadedNdx()
+    ndx.constants.update({"forster_radius": 60.0, "PhiA": 0.5, "PhiD": 0.9, "Bg": 1.5})
+    result = optimize_calibration_from_ndx(ndx, n_bootstrap=0)
+    assert result["ok"]
+    assert ndx.constants["forster_radius"] == pytest.approx(60.0)
+    assert ndx.constants["PhiA"] == pytest.approx(0.5)
+    assert ndx.constants["Bg"] == pytest.approx(1.5)
+
+
+def test_optimize_injects_accurate_columns():
+    """Accurate per-burst columns are added; ndx's own columns stay untouched.
+
+    ndx's native efficiency equation has no direct-excitation term, so pushing
+    the constants alone cannot make its ``FRET efficiency`` column accurate.
+    """
+    import numpy as np
+
+    from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
+
+    ndx = _LoadedNdx()
+    original = set(ndx.data_source.data)
+    result = optimize_calibration_from_ndx(ndx, n_bootstrap=0)
+
+    assert "FRET efficiency (accurate)" in result["injected"]
+    assert "Stoichiometry (accurate)" in result["injected"]
+    assert "Off static FRET line" in result["injected"]
+    assert original <= set(ndx.data_source.data)          # nothing overwritten
+    fret = ndx.data_source.data["Population"] >= 0
+    e = ndx.data_source.data["FRET efficiency (accurate)"][fret]
+    assert 0.2 < float(np.mean(e)) < 0.8
+    # the two simulated populations come back at their true efficiencies
+    populations = sorted(p["E"] for p in result["populations"])
+    assert populations[0] == pytest.approx(0.3, abs=0.02)
+    assert populations[1] == pytest.approx(0.75, abs=0.02)
+
+
+def test_optimize_reports_unusable_data():
+    """A window without recognisable channels reports why, without raising."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
+
+    ndx = _StubNdx()
+    ndx.data_source.data = {"foo": [1.0, 2.0], "bar": [3.0, 4.0]}
+    result = optimize_calibration_from_ndx(ndx)
+    assert not result["ok"] and "i_dd" in result["error"]

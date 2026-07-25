@@ -43,6 +43,7 @@ __all__ = [
     "unregister_calibration",
     "link_to_calibration",
     "calibration_to_ndx_constants",
+    "calibration_from_ndx_constants",
     "leakage_from_donor_only",
     "direct_excitation_from_acceptor_only",
     "calibrate_from_samples",
@@ -720,13 +721,16 @@ def calibration_to_ndx_constants(calibration) -> dict:
     phi_a = float(calib.phi_a)
     phi_d = float(calib.phi_d)
     gamma = float(calib.gamma)
+    beta = float(calib.beta)
     gg_gr = (phi_a / phi_d) / gamma if gamma != 0 else 1.0
-    # ndxplorer's constant it calls "beta" is the direct-excitation coefficient
-    # (Hellenkamp delta); its equations have no slot for the excitation-flux ratio.
+    # Names differ from Hellenkamp's: ndxplorer's "beta" is the direct-excitation
+    # coefficient (Hellenkamp delta), and its "r" scales the acceptor-excitation
+    # signal in the stoichiometry denominator, i.e. r = 1/beta_Hellenkamp.
     return {
         "gG/gR": gg_gr,
         "alpha": float(calib.alpha),
         "beta": float(calib.delta),
+        "r": (1.0 / beta) if beta else 1.0,
         "Bg": float(calib.bg_dd),
         "Br": float(calib.bg_da),
         "By": float(calib.bg_aa),
@@ -734,6 +738,49 @@ def calibration_to_ndx_constants(calibration) -> dict:
         "PhiD": phi_d,
         "forster_radius": float(calib.r0),
     }
+
+
+def calibration_from_ndx_constants(constants: dict, calib=None):
+    """Read ndxplorer's MFD constants back into a calibration group.
+
+    The inverse of :func:`calibration_to_ndx_constants` — it lets an
+    optimization *start from the settings the user already has in ndxplorer*
+    (backgrounds, quantum yields, Förster radius, donor lifetime) instead of from
+    defaults, so only what the data can improve is changed.
+
+    Parameters
+    ----------
+    constants : dict
+        ndxplorer's constants mapping (``gG/gR``, ``alpha``, ``beta``, ``r``,
+        ``Bg``/``Br``/``By``, ``PhiA``/``PhiD``, ``forster_radius``, ``tauD0``).
+        Missing entries keep the group's current value.
+    calib : CalibrationParameters, optional
+        Group to fill in place; a fresh one is created when omitted.
+
+    Returns
+    -------
+    CalibrationParameters
+        The calibration group.
+    """
+    calib = calib if calib is not None else CalibrationParameters()
+    get = lambda key: constants.get(key) if isinstance(constants, dict) else None  # noqa: E731
+
+    for key, setter in (("PhiA", "phi_a"), ("PhiD", "phi_d"), ("alpha", "alpha"),
+                        ("Bg", "bg_dd"), ("Br", "bg_da"), ("By", "bg_aa"),
+                        ("forster_radius", "r0")):
+        value = get(key)
+        if value is not None and np.isfinite(float(value)):
+            setattr(calib, setter, float(value))
+    delta = get("beta")           # ndx "beta" == direct excitation
+    if delta is not None and np.isfinite(float(delta)):
+        calib.delta = float(np.clip(float(delta), 0.0, 1.0))
+    r = get("r")                  # ndx "r" == 1 / beta_Hellenkamp
+    if r is not None and float(r) > 0:
+        calib.beta = float(1.0 / float(r))
+    gg_gr = get("gG/gR")
+    if gg_gr is not None and float(gg_gr) != 0:
+        calib.gamma = float(np.clip((calib.phi_a / calib.phi_d) / float(gg_gr), 0.05, 20.0))
+    return calib
 
 
 def leakage_from_donor_only(i_dd, i_da, *, bg_dd=0.0, bg_da=0.0) -> float:
