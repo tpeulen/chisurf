@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Nuisance and background parameter groups for PDA FRET analysis.
 
 This module defines small :class:`FittingParameterGroup` subclasses used by
@@ -13,6 +11,8 @@ instantiate without any external data files. They are intended to be
 combined with higher-level PDA models such as
 ``chisurf.core.models.pda.simple.PdaGaussianDistanceModel``.
 """
+
+from __future__ import annotations
 
 
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup

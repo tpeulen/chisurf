@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Maximum-entropy (MaxEnt) model-free distance-distribution inversion for DEER.
 
 An alternative to Tikhonov regularisation: recover a non-negative ``P(r)`` from
@@ -15,6 +13,8 @@ reusing :func:`chisurf.core.math.regularization.discrete_lcurve_corner`.
 
 Self-contained (numpy/scipy only).
 """
+
+from __future__ import annotations
 
 import numpy as np
 

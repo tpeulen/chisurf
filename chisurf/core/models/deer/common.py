@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """Qt-free plot accessors for the DEER models (referenced from ``*.view.json``).
 
 Each accessor takes a fit (or fit group) and returns plain arrays the GUI plot
 widgets consume; no Qt imports here.
 """
+
+from __future__ import annotations
 
 import numpy as np
 

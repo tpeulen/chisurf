@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """Lightweight Python syntax highlighter used by the node editor.
 
 This is intentionally self-contained so that the ``node_editor`` package can be
 run as ``python -m node_editor`` without importing the full chisurf GUI stack.
 """
+
+from __future__ import annotations
 
 from qtpy import QtCore, QtGui, QtWidgets
 

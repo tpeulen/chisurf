@@ -1,12 +1,12 @@
-from __future__ import annotations
-import chisurf as cs
-
 """Utilities for serializing and restoring fit/model parameter state.
 
 These helpers are intentionally GUI‑independent and operate purely on the
 core fitting objects (:class:`cs.core.fitting.fit.Fit` and its models).
 They are meant to be used by higher‑level project save/load code.
 """
+
+from __future__ import annotations
+import chisurf as cs
 
 import uuid
 from typing import Any, Dict, Optional, TYPE_CHECKING

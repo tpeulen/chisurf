@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """SAW-ν polymer-distance PDA model.
 
 Photon-distribution analysis with a self-avoiding-walk (SAW-ν) inter-dye
@@ -10,6 +8,8 @@ disordered/unfolded chains (see
 (tttrlib ``Pda`` S1S2 histogram, FRET/nuisance corrections, 1-D residuals) and
 only swaps the distance-distribution source.
 """
+
+from __future__ import annotations
 
 import numpy as np
 

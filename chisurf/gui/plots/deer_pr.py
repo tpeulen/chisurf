@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """P(r) distance-distribution plot with a bootstrap confidence band (DEER).
 
 Draws the fitted distance distribution ``P(r)`` as a line with a shaded
 pointwise confidence band, for a model exposing ``compute_uncertainty()`` that
 returns ``(r, p_best, p_lo, p_hi)``. Diagnostic only; recomputed on demand.
 """
+
+from __future__ import annotations
 
 import numpy as np
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Pure-numpy Bruker BES3T (.DSC/.DTA) EPR/DEER loader.
 
 Returns plain NumPy arrays so it can be used inside the ChiSurf ``DeerReader``
@@ -8,6 +6,8 @@ is needed; higher-dimensional datasets are squeezed.
 
 Reference: Bruker BES3T format, version 1.2 (Xepr >= 2.1).
 """
+
+from __future__ import annotations
 
 import os
 import re

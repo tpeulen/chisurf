@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Native Tikhonov (model-free) distance-distribution inversion for DEER.
 
 Solves the non-negatively constrained, smoothness-regularised least-squares
@@ -14,6 +12,8 @@ the (unconstrained) Tikhonov influence matrix as a robust, cheap heuristic.
 
 Self-contained (numpy/scipy only).
 """
+
+from __future__ import annotations
 
 import numpy as np
 from scipy.optimize import nnls

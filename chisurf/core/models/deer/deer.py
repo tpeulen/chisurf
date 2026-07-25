@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Qt-free DEER/PELDOR fitting models (PRD-38 model/view-spec split).
 
 Native, self-contained reimplementation (numpy/scipy only) of 4-pulse DEER analysis.
@@ -15,6 +13,8 @@ Models
 * :class:`DeerRiceModel` — a single 3D-Rice distance component.
 * :class:`DeerTikhonovModel` — model-free (Tikhonov-regularised) ``P(r)``.
 """
+
+from __future__ import annotations
 
 import numpy as np
 

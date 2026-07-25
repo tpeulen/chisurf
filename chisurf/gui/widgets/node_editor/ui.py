@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Convenience re-exports for node editor UI widgets.
 
 Historically all small widgets lived in this module; they have now been
 split into dedicated files for clarity. Importing from ``ui`` remains
 supported for compatibility.
 """
+
+from __future__ import annotations
 
 from .widgets import (
     InlineLabeledSlider,

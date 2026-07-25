@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Common helpers for burst-wise FCS plugins.
 
 This module centralizes small utilities that are shared between the
@@ -9,6 +7,8 @@ analysis plugin.
 The helpers here are intentionally lightweight and have no GUI
 dependencies so that they can be used from both GUI and CLI contexts.
 """
+
+from __future__ import annotations
 
 import json
 import pathlib

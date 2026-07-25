@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Tests for chisurf.plugins.core.code_editor.agent_runtime."""
+
+from __future__ import annotations
 
 import json
 from unittest.mock import MagicMock

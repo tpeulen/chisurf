@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Read-only L-curve plot for regularised model-free fits (e.g. DEER).
 
 Plots the discrete L-curve — residual norm ``||K P - F||`` versus solution
@@ -8,6 +6,8 @@ roughness ``||L P||`` in log-log space — for a model that exposes a
 The automatically selected corner is highlighted. Purely diagnostic: it does
 not modify the fit.
 """
+
+from __future__ import annotations
 
 import numpy as np
 

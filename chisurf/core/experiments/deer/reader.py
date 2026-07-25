@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """DEER/PELDOR experiment reader.
 
 Loads a dipolar time-domain trace ``V(t)`` from Bruker BES3T (``.DSC``/``.DTA``)
@@ -7,6 +5,8 @@ or CSV/text files and wraps it into a
 :class:`chisurf.core.data.DataCurve` with a ``meta_data['deer']`` payload that
 the DEER models consume. Self-contained (numpy/scipy only).
 """
+
+from __future__ import annotations
 
 import pathlib
 

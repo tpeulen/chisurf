@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Photon distribution analysis (PDA) experiment utilities.
 
 This module provides helper functions and the :class:`PdaReader` used
@@ -16,6 +14,8 @@ The central pieces are:
 The examples in this module avoid touching real TTTR files; all
 heavy I/O and :mod:`tttrlib` calls are only shown in skipped doctests.
 """
+
+from __future__ import annotations
 
 import pathlib
 import numpy as np

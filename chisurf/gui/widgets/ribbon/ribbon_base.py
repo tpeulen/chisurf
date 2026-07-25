@@ -1,9 +1,6 @@
-import chisurf as cs
-# -*- coding: utf-8 -*-
-"""
-ChiSurf Ribbon Integration - Base Module
+"""ChiSurf ribbon integration -- base module.
 
-This module contains the core ChiSurfRibbonIntegration class and basic setup functionality.
+Holds the core ``ChiSurfRibbonIntegration`` class and its basic setup.
 """
 
 import os
@@ -15,6 +12,8 @@ from math import ceil
 
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import QObject
+
+import chisurf as cs
 
 from .ribbonbar import RibbonBar
 from .constants import RibbonStyle

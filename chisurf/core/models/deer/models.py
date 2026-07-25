@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Thin compute wrappers for the DEER models (Qt-free).
 
 These build the distance distribution and the time-domain signal from plain
@@ -8,6 +6,8 @@ numbers, delegating the physics to :mod:`chisurf.core.models.deer.kernel` and
 ``FittingParameterGroup``/``ModelCurve`` glue in ``deer.py``) mirrors the
 RICS/PDA split and makes the math independently unit-testable.
 """
+
+from __future__ import annotations
 
 import numpy as np
 

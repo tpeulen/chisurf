@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """UI widgets used by the node editor (view layer).
 
 This submodule groups lightweight Qt widgets that are embedded inside node
@@ -11,6 +9,8 @@ clearer:
 - :mod:`node_item`, :mod:`scene`     -> view/controller
 - :mod:`widgets`                     -> small view widgets
 """
+
+from __future__ import annotations
 
 from ..inline_slider import InlineLabeledSlider
 from ..vector_widget import Vector1DWidget

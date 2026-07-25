@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Minimal GUI controller for the DEER experiment reader.
 
 Provides file selection for Bruker BES3T (``.DSC``/``.DTA``), CSV and text DEER
 traces and renders the reader's AutoForm settings (phase correction,
 normalisation, experiment type) when available.
 """
+
+from __future__ import annotations
 
 import pathlib
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Qt-free RICS fitting models (PRD-38 model/view-spec split).
 
 Raster Image Correlation Spectroscopy models operating on the 2D scan-lag grid
@@ -17,6 +15,8 @@ Models
 * :class:`RicsFlowModel` — 3D diffusion + uniform flow (PAM
   ``2D_Gaussian_Cor_Flow``).
 """
+
+from __future__ import annotations
 
 import numpy as np
 

@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """CSV / whitespace-delimited DEER trace loader (numpy-only).
 
 Accepts two- or three-column text files ``t, V_real[, V_imag]`` (comma,
 semicolon, tab or whitespace separated), skipping comment/header lines, plus
 plain ASCII exports. Time is converted to microseconds from an inferred unit.
 """
+
+from __future__ import annotations
 
 import re
 

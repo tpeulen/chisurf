@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Native DEER/PELDOR dipolar physics (Qt-free, numpy/scipy only).
 
 This is a self-contained reimplementation of the small subset of the dipolar
@@ -20,6 +18,8 @@ The intramolecular kernel for a powder-averaged spin pair is
 
 which has the closed Fresnel form implemented in :func:`dipolar_kernel`.
 """
+
+from __future__ import annotations
 
 import numpy as np
 from scipy import special
