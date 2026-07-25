@@ -2,57 +2,29 @@
 
 ## 2026-07-25
 
-* **chimol: the "unattributed +0.700 A" was not padding -- `zoom` centres on the
-  centroid.** Closed, and the earlier inference was wrong twice over.
-  It looked like a constant pad over the reported extent. It is not constant: it
-  is **+0.700 A on globular 148L but +11.65 A on the long coiled coil of 1DG3**,
-  and exactly **zero** on symmetric pseudoatom pairs at *every* van-der-Waals
-  radius -- so the "vdW-related" reading from the earlier session was also wrong,
-  since a `vdw=5` pair shows no residual at all.
-  **The cause is the `weighted` flag** `ExecutiveWindowZoom` passes to
-  `ExecutiveGetExtent`. With it set, PyMOL averages the atom coordinates and
-  rebuilds the box **symmetric about that centroid**::
-
-      op2.v1 /= op2.i1;                  // centroid
-      f1 = op2.v1[a] - op.v1[a];  f2 = op.v2[a] - op2.v1[a];
-      fmx = max(f1, f2);
-      op.v1[a] = op2.v1[a] - fmx;  op.v2[a] = op2.v1[a] + fmx;
-
-  So the framing is centred on where the atoms *are*, not on the middle of their
-  bounding box, and the box grows to stay symmetric about it. A symmetric object
-  is unaffected -- which is exactly why the pseudoatom probes said zero and sent
-  the earlier diagnosis off course. `cmd.get_extent` reports the *unweighted*
-  box, which is what made the two disagree.
-  Both the radius **and the zoom centre** were wrong in chimol. Now
-  `view_state.framing_centre` returns the centroid and `framing_radius` measures
-  the centroid-symmetric half-width. Against PyMOL: 148L **24.4661 vs 24.4662**,
-  1DG3 **79.4825 vs 79.4825**, 148L `complete` **30.4871 vs 30.487** -- exact,
-  where before 1DG3 was off by 11.6 A.
-  6 new tests, including the lopsided-mass case that makes the rule visible.
-  Suite: 374 passed, 1 skipped.
-
-* **chimol: cast shadows in the interactive viewport.** Ambient occlusion says
-  how *enclosed* a point is; a cast shadow says whether anything stands between
-  it and the light. They are different cues, and PyMOL has the second only when
-  raytracing -- so this is the live view going further rather than matching.
-  `geometry/ambient.py:directional_occlusion` casts a ray from each vertex toward
-  the light and asks every nearby sphere how close it comes to that ray: one the
-  ray passes through blocks fully, one it grazes blocks partly, which gives a
-  soft edge instead of the stair-step a shadow map would show at this scale.
-  Occluders behind the vertex, or that it sits inside, are skipped. Baked per
-  rebuild like the ambient term, so it costs nothing per frame -- 20k vertices
-  against 4700 atoms in **0.175 s**, and the whole 148L cartoon rebuild goes
-  0.48 s -> 0.64 s.
-  **The light is deliberately off-axis.** A headlight casts almost nothing the
-  camera can see, so the default shadow direction is PyMOL's own `light`
-  (-0.4, -0.4, -1) negated, since that setting is the direction light *travels*
-  while the shadow ray runs toward the source. The shadow is also folded into the
-  occlusion channel the GL shader damps its non-surface lighting by, so a
-  shadowed crevice does not get its ambient and rim light handed back.
-  Effect on a cartoon is a subtle depth cue (148L lit-pixel contrast 34.5 ->
-  35.7); on space-filling, where a sphere actually blocks a ray, it is much
-  stronger. Tunables under `occlusion.shadow_*`.
-  10 new tests. Suite: 369 passed, 1 skipped.
+* **The correlation path, verified rather than assumed.** The FCS reader
+  became usable again after the schema fix, so the `fit-correlation` skill
+  could finally be checked against the software instead of against memory —
+  and it was wrong. It implied adding components and attaching a response, but
+  the correlation models are closed-form: no IRF, no component groups, and
+  `set_components` fails on them by design. What actually decides a
+  correlation fit is *which parameters are free*, and the shape of the
+  observation volume (`w0`, `wem`, `w_r`, `w_z`) arrives **free** in a fresh
+  fit — fitting it together with `D` makes both meaningless, because a wider
+  volume and slower diffusion produce the same curve. The skill now says that,
+  with the real parameter names.
+  **Grouped datasets had no usable name.** The FCS reader wraps its curve in
+  an `ExperimentDataCurveGroup` whose own `name` is the class name and whose
+  `filename` is unset, so every correlation dataset appeared to the user (and
+  the model) as "ExperimentDataCurveGroup". `dataset_label` now falls back to
+  the child curve's identity, and a literal `"None"` string is treated as
+  empty.
+  Covered by `test/agent/test_fcs_tools.py` (10), including that the decay
+  machinery refuses correlation models with a clear message and that the
+  quality verdict does not advise `set_irf`/`set_components` for a model that
+  has neither. Live against Mistral the agent fitted the curve, judged it
+  poor, tried a second model, and **asked what to do instead of presenting the
+  number** — which is the behaviour the assessment exists to produce.
 
 * **The photon library's Python extension never linked OpenMP; fixed there, so
   ChiSurf's build task stops patching around it.** Root cause found while
@@ -146,6 +118,22 @@
   residue boundary lands in the same place for colour as for shape.
   16 new tests. Suite: 359 passed, 1 skipped.
 
+* **i18n (PRD-63): live interface retranslation + `.ui` flagged as prototyping-only.**
+  Switching the UI language now retranslates the running interface, not just
+  newly-opened windows. `apply_language` emits the app-wide `language_notifier`;
+  the main window subscribes and (deferred one event-loop turn, so the ribbon flag
+  dropdown that triggered the switch isn't destroyed mid-signal) re-applies the
+  translation to its live menus/actions/labels via the new reusable
+  `chisurf/gui/retranslate.py:retranslate_from_ui` (parses the `.ui` XML,
+  re-translates through the installed translator, writes back onto live widgets by
+  `objectName` — no re-instantiation, state/connections preserved), then rebuilds
+  the ribbon. Hardened `language_notifier` against C++-object deletion across
+  QApplication churn (`_live_notifier`). Tests: `test/gui/test_retranslate.py`.
+  This shim exists only because of the 43 runtime `.ui` forms, so **flagged the
+  `.ui` layer as prototyping-only tech debt** ([INC-13](/specs/assessment.md#inc-13)):
+  AutoForm `view.json` is the one intended UI mechanism and retranslates for free;
+  target end-state is zero runtime `.ui`. Recorded in
+  [GUI & AutoForm](/subsystems/gui-autoform.md) and [i18n](/subsystems/i18n.md).
 * **ndXplorer's constants and the simulated optics are now fitting parameters in
   the Global View.** Both were numbers trapped in their own tool: ndX's
   correction constants in its parameter table, the light path's excitation and
@@ -169,22 +157,6 @@
   instead — nothing optimizes a registered group until something links to it —
   and only the three derived optical factors stay fixed, because
   `update_factors` overwrites them.
-* **i18n (PRD-63): live interface retranslation + `.ui` flagged as prototyping-only.**
-  Switching the UI language now retranslates the running interface, not just
-  newly-opened windows. `apply_language` emits the app-wide `language_notifier`;
-  the main window subscribes and (deferred one event-loop turn, so the ribbon flag
-  dropdown that triggered the switch isn't destroyed mid-signal) re-applies the
-  translation to its live menus/actions/labels via the new reusable
-  `chisurf/gui/retranslate.py:retranslate_from_ui` (parses the `.ui` XML,
-  re-translates through the installed translator, writes back onto live widgets by
-  `objectName` — no re-instantiation, state/connections preserved), then rebuilds
-  the ribbon. Hardened `language_notifier` against C++-object deletion across
-  QApplication churn (`_live_notifier`). Tests: `test/gui/test_retranslate.py`.
-  This shim exists only because of the 43 runtime `.ui` forms, so **flagged the
-  `.ui` layer as prototyping-only tech debt** ([INC-13](/specs/assessment.md#inc-13)):
-  AutoForm `view.json` is the one intended UI mechanism and retranslates for free;
-  target end-state is zero runtime `.ui`. Recorded in
-  [GUI & AutoForm](/subsystems/gui-autoform.md) and [i18n](/subsystems/i18n.md).
 * **chimol: the cartoon gets PyMOL's per-residue guide-frame stage.** The two
   conditioning steps PyMOL runs before any sampling could not be patched in --
   chimol derived its tangents from the *finished spline*, so there was nowhere to
@@ -214,6 +186,59 @@
   20 new tests, one per pass, plus the degenerate cases PyMOL guards (a zero-length
   step copies the previous direction; a segment break zeroes it).
   Suite: 343 passed, 1 skipped.
+
+* **tcPDA reaches PAM parity on the model layer — and the two-state occupation
+  law turned out to be wrong (PRD-65, PRD-50).** Four commits closing the
+  three-colour port's model features, all as enhancements to the existing model
+  rather than new ones. **Corrections:** stochastic labelling is a *permutation*
+  — chemically equivalent sites mean green and red land on either one, so each
+  population gains a mirror with R(BG)/R(BR) exchanged, R(GR) untouched (it is
+  the distance *between* the swapped dyes) and the two correlations with GR
+  traded; brightness falls out of physics already computed, since the
+  un-normalised channel-weight sum `channel_probabilities` discards **is** the
+  relative brightness, and each species then gets its own burst-size
+  distribution stretched by it. **Priors/posteriors:** nothing built — PRD-61
+  already supplies them; what was added is evidence they work on a likelihood
+  deviance. Both error-surface routes bracket the truth but **disagree on
+  width**, growing with dataset size (1.32/2.05/2.86 at 1500/2500/5000 bursts
+  while sqrt(chi2r) stays 1.5); a constant factor would be the F-test's
+  chi-square rescaling, an n-dependent one is not, cause **unresolved**, MCMC
+  preferred meanwhile. **Dynamics:** a toggle treating the first two species as
+  exchanging states (species 3+ static, the incumbent's convention), reusing the
+  two-colour occupation-time law; it nests the static model exactly because the
+  boundary atoms — molecules that never switched — get the full distance
+  integral while only the mixed interior uses the averaged-probability
+  simplification (with the interior treatment applied throughout, the static
+  limit was off by 36%).
+  **The defect:** checking that shared law against a direct simulation showed
+  `two_state_time_fraction_pdf` is not a probability distribution away from
+  equal populations — total 1.36 at x1=0.2, K=8 — with a shape error that
+  mirrors under x1→1−x1 and **vanishes exactly at x1=0.5**. PRD-50's own dynamic
+  acceptance test recovered x1=0.503, essentially the one population where the
+  error is invisible, so `PdaDynamicTwoStateModel` is biased at unequal
+  occupancy. I could not establish the correct closed form (the obvious swap is
+  not it), so `two_state_occupation_quadrature` computes the law exactly from
+  the Feynman–Kac characteristic function instead — inverted by FFT with the
+  boundary atoms subtracted first, the 2×2 matrix exponential expanded in closed
+  form and vectorised (0.11 ms), and written through `exp(mu±delta)` because
+  `exp(mu)·cosh(delta)` returns **nan** at fast exchange. Verified three ways:
+  sum=1 and E[f]=x1 to 1e-5 for every population and rate, correct static and
+  fast limits, and total variation 0.002 against simulation. The two-colour
+  model is **deliberately not switched over** — that changes published results.
+  **Now switched over (same day, on request):** `PdaDynamicTwoStateModel`
+  integrates the exact law and the broken density is deleted, with `n_grid`
+  raised 41 → 512 since it is now a Fourier grid rather than a density sampling.
+  **What it cost, measured on one dataset fitted both ways** (truth `x1 = 0.25`,
+  `K_ex = 2.0`): exact law → `x1 = 0.249`, `K_ex = 1.997`; old closed form →
+  `x1 = 0.175`, `K_ex = 1.639`, i.e. the occupancy **30% low** and the rate 18%
+  low. Dynamic two-colour results at unequal occupancy should be re-run. A new
+  acceptance test covers `x1 = 0.25`, the regime the original one (`x1 = 0.503`)
+  structurally could not.
+  Also fixed `fluorescence/burst/bva.py`, which sliced these same ranges
+  `[start:stop]` and so dropped the last photon of every time window — a uniform
+  downward bias in exactly the per-slice counts the proximity-ratio variance is
+  computed from.
+  See [prds/prd-65.md](/prds/prd-65.md), [prds/prd-50.md](/prds/prd-50.md).
 
 * **A photon-level simulation found three defects the count-level tests could
   not.** `chisurf/core/fluorescence/burst/simulate.py` simulates a whole ALEX
@@ -362,6 +387,40 @@
   guessing separately. Verified against ndX's **real** DataSource and equation
   files (factors recovered from simulated bursts; ndX's own efficiency column
   moves) and in a real offscreen ndX window.
+* **chimol: PyMOL's object-panel A/S/H/L/C menus, transcribed 1:1.** The object
+  panel is how most people actually drive PyMOL, so the five per-molecule menus
+  are now reproduced entry for entry in `app/object_menus.py` -- same entries,
+  same order, same separators, same labels, including the ones with a stray
+  trailing space (`"by ss  "`) or odd abbreviation (`"assign sec. struc."`).
+  **Taken from PyMOL's source, not from a screenshot.** (`screencapture` is
+  blocked without macOS Screen Recording permission, which turned out not to
+  matter.) `pymol/menu.py`'s own builders `mol_action`/`mol_show`/`mol_hide`/
+  `mol_labels`/`mol_color` were *called* and their nested tables dumped, so the
+  transcription is mechanical. A test re-dumps them from a live PyMOL when it is
+  importable and asserts the labels and order still match, so the copy cannot
+  drift; when PyMOL is absent it compares against the transcription instead.
+  **Unsupported entries are shown, disabled, and explained** rather than dropped.
+  Dropping them would change the menu's shape and hide the gap; wiring them to
+  something approximate would lie about what happened. So `drag matrix`, `clean`,
+  `flag ignore`, `valence`, `cell` and the whole `L` menu are greyed out with a
+  tooltip saying what is missing, and a test fails if any disabled entry has no
+  reason. 12 of the Action menu's 24 entries are live, including `zoom`/`orient`/
+  `center`, `assign sec. struc.`, `rename object`, `copy to object`,
+  `delete object`, `remove waters` and a `preset` submenu.
+  **Every entry runs a chimol command through the same layer the command line
+  uses**, and is echoed to the command panel as `> hide everything, solvent and
+  1dg3`, which is how a user gets from clicking to scripting. A test asserts every
+  wired command's verb is actually registered, so there can be no dead buttons.
+  **Two selection-grammar bugs fell out of scoping the menus to their object.**
+  Every entry targets `... and <object>`, and (1) a PDB-style name lexed as a
+  number followed by an identifier -- `1dg3` gave "Unexpected token INT '1'" --
+  and (2) a bare object name selected *nothing*, because `_get_ident_mask` was a
+  stub returning the empty mask. Both fixed: the tokenizer accepts a digit-led
+  identifier that contains at least one letter (with `INT` guarded by a negative
+  lookahead so `resi 10-20` still lexes as numbers), and an identifier naming an
+  object selects that object's atoms.
+  Suite: 301 passed, 1 skipped (21 new).
+
 * **Accurate FRET (Hellenkamp) determines its own correction factors, and the
   optics are the prior.** The calibration machinery could *apply* α/β/γ/δ and
   hold them as prior-regularized fitting parameters, but finding them still meant
@@ -400,40 +459,6 @@
   (real screenshots + figure), `docs/guides/fret_calibration.md` updated;
   [FRET calibration reference](/references/fret-calibration.md) and
   [burst plugins](/plugins/burst.md) updated.
-
-* **chimol: PyMOL's object-panel A/S/H/L/C menus, transcribed 1:1.** The object
-  panel is how most people actually drive PyMOL, so the five per-molecule menus
-  are now reproduced entry for entry in `app/object_menus.py` -- same entries,
-  same order, same separators, same labels, including the ones with a stray
-  trailing space (`"by ss  "`) or odd abbreviation (`"assign sec. struc."`).
-  **Taken from PyMOL's source, not from a screenshot.** (`screencapture` is
-  blocked without macOS Screen Recording permission, which turned out not to
-  matter.) `pymol/menu.py`'s own builders `mol_action`/`mol_show`/`mol_hide`/
-  `mol_labels`/`mol_color` were *called* and their nested tables dumped, so the
-  transcription is mechanical. A test re-dumps them from a live PyMOL when it is
-  importable and asserts the labels and order still match, so the copy cannot
-  drift; when PyMOL is absent it compares against the transcription instead.
-  **Unsupported entries are shown, disabled, and explained** rather than dropped.
-  Dropping them would change the menu's shape and hide the gap; wiring them to
-  something approximate would lie about what happened. So `drag matrix`, `clean`,
-  `flag ignore`, `valence`, `cell` and the whole `L` menu are greyed out with a
-  tooltip saying what is missing, and a test fails if any disabled entry has no
-  reason. 12 of the Action menu's 24 entries are live, including `zoom`/`orient`/
-  `center`, `assign sec. struc.`, `rename object`, `copy to object`,
-  `delete object`, `remove waters` and a `preset` submenu.
-  **Every entry runs a chimol command through the same layer the command line
-  uses**, and is echoed to the command panel as `> hide everything, solvent and
-  1dg3`, which is how a user gets from clicking to scripting. A test asserts every
-  wired command's verb is actually registered, so there can be no dead buttons.
-  **Two selection-grammar bugs fell out of scoping the menus to their object.**
-  Every entry targets `... and <object>`, and (1) a PDB-style name lexed as a
-  number followed by an identifier -- `1dg3` gave "Unexpected token INT '1'" --
-  and (2) a bare object name selected *nothing*, because `_get_ident_mask` was a
-  stub returning the empty mask. Both fixed: the tokenizer accepts a digit-led
-  identifier that contains at least one letter (with `INT` guarded by a negative
-  lookahead so `resi 10-20` still lexes as numbers), and an identifier naming an
-  object selects that object's atoms.
-  Suite: 301 passed, 1 skipped (21 new).
 
 * **The agent defaults to an EU-hosted model, and finds the key you actually
   exported.** Two provider-layer problems, both of which read to a user as
@@ -637,7 +662,133 @@
   write it, so a mis-click cannot discard a tuned config.
   Suite: 271 passed, 1 skipped (3 new).
 
-* **The agent can now produce a decay fit that is actually right, and knows
+* **tcPDA A/B against the incumbent suite — and it found a real bug (PRD-65).**
+  New `test/models/test_pda3c_pam_ab.py` transcribes the incumbent's MATLAB
+  expressions verbatim and asserts equality against ChiSurf's three-colour
+  physics over randomised distances and correction sets, following the
+  [fcs-pam-port](/references/fcs-pam-port.md) / `test_fcs_pam_ab.py` precedent.
+  Agreement is **1e-12 on PBB/PBG/PBR and PGR across 500 random parameter
+  sets**, and the burst likelihood matches the incumbent's C kernel term for
+  term.
+  **The bug:** ChiSurf added direct excitation of G and R as *extra* emission
+  weight while leaving the blue dye's share at 1; the incumbent scales every
+  blue-excitation pathway by `pe_b = 1 - de_bg - de_br`. A laser pulse excites
+  exactly one dye, so the direct-excitation probabilities **partition** the
+  excitation — they do not top it up. Since the channel probabilities are
+  normalised afterwards, the error was invisible at zero direct excitation and
+  grew with it: a silent bias in precisely the correction meant to remove one.
+  Fixed; the regression test also asserts the un-partitioned variant gives a
+  *different* answer, so it actually discriminates.
+  **Confirmed identical:** the incumbent builds pairwise Förster efficiencies and
+  combines them as `E1(1-E2)/(1-E1·E2)` where ChiSurf goes straight to
+  `x_bg/(1+x_bg+x_br)` — substituting `E = x/(1+x)` collapses one onto the other,
+  now pinned numerically because the identity is not obvious by inspection. The
+  incumbent's loose `cr_*`/`gamma_*` scalars are exactly a lower-triangular
+  detection matrix, and the single-matrix form enforces
+  `gamma_bg = gamma_br/gamma_gr` structurally instead of storing two and deriving
+  the third. The kernel carries **no photon-number weight**, confirming from
+  source (not inference) the convention behind ChiSurf's default
+  `photon_number_pmf=None`.
+  **A difference that is not a bug:** the incumbent's *simulator* carves
+  background out of a fixed total burst size, ChiSurf's adds it on top of a drawn
+  signal (matching `tttrlib`'s two-colour convention). The likelihoods agree —
+  this only concerns what the burst-size distribution means, and each is
+  self-consistent.
+  **Then the reference's own C kernel was executed, not just transcribed.** The
+  surrounding MATLAB has no callable entry point and the shipped MEX binaries are
+  x86_64 MATLAB-ABI objects, but the kernel itself is a self-contained MEX
+  function with a plain numeric signature — so Octave's `mkoctfile` compiles it
+  from source on arm64 and it can be driven directly.
+  `test/models/test_pda3c_octave_ab.py` does that and finds ChiSurf's factorised
+  likelihood agrees with the reference's nested-sum C to a **maximum relative
+  difference of 1.7e-14** — machine precision, between two genuinely different
+  algorithms for the same quantity. It skips cleanly without Octave or the
+  reference checkout. The two A/B files now cover both halves: the transcription
+  checks the *expressions* (where the excitation-partition bug was), the compiled
+  kernel checks the *arithmetic* (where a mistake shared between source and
+  transcription would have hidden).
+  **Physics rewritten as three matrices** in the `(sources, detectors)`
+  orientation the rest of ChiSurf already uses
+  (`chisurf/core/fluorescence/crosstalk.py`, `apply_mixing`):
+  `excitation` (lasers × dyes, **rows sum to one** — direct excitation is an
+  off-diagonal and the partition is now structural rather than a special case),
+  `transfer` (dyes × dyes, from the distances, upper-triangular, accumulating
+  relays), `emission` (dyes × channels, folding quantum yield, filters, detector
+  efficiency and bleed-through). The first and third are **exactly** the two
+  matrices the light-path simulator's `get_crosstalk_matrices()` already emits,
+  so `ThreeColorSetup.from_crosstalk_matrices()` ingests a simulated optical path
+  directly — the bridge PRD-50 built for two colours, reused rather than
+  re-invented — while `from_scalars()` keeps the familiar
+  `cr_*`/`gamma_*`/`de_*` vocabulary. Writing transfer as a matrix also drops the
+  three-colour hard-coding: it is a downhill recursion over any number of dyes,
+  so four colours need no new algebra. The A/B is what proves the refactor
+  changed nothing — it still reproduces the incumbent's scalar model to 1e-12.
+  Also made the channel-probability API shape-stable (always 2-D).
+  See [prds/prd-65.md](/prds/prd-65.md).
+
+* **The GUI log handler was quadratic; a data load spent seconds logging.**
+  `QTextEditLogger` is installed on the *root* logger (status bar + log console),
+  so every record from every subsystem paid its cost. Beyond the thread-safety
+  and filter-debounce fix already landed, three per-record costs remained:
+  one queued signal *per record*, one table insert plus `scrollToBottom` *per
+  record*, and — because the debounced pass still walked every row — an O(rows)
+  filter over a console that grew without bound.
+  **Records are now buffered and applied in batches.** `emit()` appends to a
+  lock-guarded deque and wakes the GUI thread once per batch, not once per
+  record; the GUI side flushes immediately when idle (no added latency for an
+  isolated message) and otherwise at most every 50 ms. `set` mode applies only
+  the newest message — a status bar cannot show the other 399. `LogListWidget`
+  gained `add_entries()` (updates disabled, one `scrollToBottom` for the whole
+  batch) and a `max_rows` cap (5000, oldest trimmed), so filter and style passes
+  stay bounded no matter how long the session runs.
+  **The remaining O(rows) walk is skipped when it cannot do anything.** With no
+  filter text and hiding off there is nothing to highlight and the previous idle
+  pass already cleared leftover styling, so `filter_log_content` returns early —
+  the common case, and the one that made a burst quadratic. Also cached the
+  filter-owner lookup (it walked the parent chain per record), the level
+  QBrushes, and replaced a `strptime`/`strftime` round trip per record with a
+  string slice.
+  **Measured** headlessly with 400 records logged from a worker thread into a
+  real console (`test/gui`-style offscreen Qt, so paint cost is *understated*):
+  empty console 1454 ms -> 17 ms; with 500 rows already present 4278 ms -> 15 ms
+  (the ~290x is the quadratic term disappearing). Covered by
+  `test/gui/test_log_handler_gui.py` (500 records arrive in <=5 widget updates;
+  a status-bar burst ends on the newest message in <=5 `setText` calls) and
+  `test/gui/settings/test_log_filter.py` (row cap keeps the newest rows; a second
+  idle filter pass does no row walk, a real filter still applies). 15 passed.
+
+* **chimol: real ambient occlusion, in the interactive viewport, without
+  raytracing.** PyMOL has no ambient occlusion at all, so this is the first place
+  chimol is deliberately ahead rather than at parity.
+  **What was there measured the wrong thing.** `_estimate_ambient_occlusion`
+  counts neighbours inside a radius and never looks at the surface normal, so it
+  reports *crowding*, not *concavity* — a bulge in the middle of a crowd came out
+  as dark as the pit beside it, which is why cartoons read flat.
+  **New `occlusion_from_spheres`** accumulates, per vertex, the fraction of its
+  hemisphere blocked by nearby spheres: `1 - cos(alpha)` with
+  `sin(alpha) = r/d`, weighted by `cos(theta)` against the vertex normal, and
+  combined as `1 - exp(-strength * sum)` so a dense neighbourhood deepens without
+  ever saturating to black. Numba cell list over the occluders plus a chunked
+  NumPy fallback; the two agree to 1e-12. Validated against hand-computed cases:
+  the analytic single-occluder solid angle, zero behind the normal, zero on the
+  horizon, a ring darker than one overhang, and a vertex inside an occluder not
+  shadowing itself.
+  **Baked into vertex colours at build time**, so the live GL viewport gets it
+  with no raytrace, no framebuffer object and no second shader pass — and, since
+  the occlusion of a rigid molecule does not depend on the camera, it costs
+  nothing while the view moves and cannot shimmer the way a screen-space estimate
+  does. Rebuild on 1DG3 (540 residues, ~67k cartoon vertices): 0.139 s -> 0.25 s.
+  **Occluding with the right set matters more than the estimator.** A first
+  attempt shading the cartoon against all 4698 atoms buried the molecule in
+  shadow: a ribbon threads through its own side chains, which are not drawn.
+  `occlusion.occluders` defaults to `"residues"` (backbone trace, residue-sized
+  radius), which darkens the grooves between helices as it should; space-filling
+  spheres pass `"atoms"` explicitly, because there the atoms are the picture.
+  Tunables under `occlusion.*`, reachable as `set occlusion.strength, 2.0`. With
+  it on, the old per-residue shading in `_update_cartoon` is skipped so the
+  cartoon is not darkened twice.
+  Suite: 268 passed, 1 skipped (24 new).
+\n* **The agent can now produce a decay fit that is actually right, and knows
   when it has not.** The harness landed the day before could drive the
   session; it could not do fluorescence. On the sample donor decay a language
   model reached `chi2r = 12.8`, reported it as a result, and stopped — because
@@ -740,178 +891,6 @@
   targets the group's joint posterior instead of the selected member's model,
   which is what makes any of this reachable for a `FitGroup`; the default is
   unchanged. 11 tests.
-
-* **Linking reduces the dimension and makes sampling *harder* — so collapse it
-  instead (PRD-69).** Following the component decomposition to its conclusion:
-  the *coupled* case. Linking a parameter across datasets removes free
-  parameters, so the fit is genuinely smaller — and measured on six datasets it
-  took the dimension 12 → 7 and cost **~50×** in effective samples per model
-  evaluation, with the shared parameter's autocorrelation time going 1 → 20.
-  Dimension is the wrong difficulty measure; coupling is, and the factor graph
-  already reports it (components, separator, treewidth). `sample_marginal_shared`
-  (`method='collapsed'`) fixes it: at fixed shared parameters the datasets are
-  conditionally independent, so each one's *private* parameters are profiled and
-  integrated out by Laplace, leaving a target over the separator alone — one to
-  three dimensions however many datasets there are. Privates are then drawn from
-  their conditional Gaussian at each recorded state, so the output is still a
-  full joint (Rao-Blackwellised) sample. **Exact when the private parameters
-  enter linearly**, which covers amplitudes, offsets, scatter fractions and
-  scaling factors — most nuisance parameters in decay and FCS models.
-  The profile must be restricted to each local model's *private positions*: a
-  link master lives on one of the datasets, so optimising that model's whole free
-  list re-optimises the shared parameter and undoes every proposal. The first
-  implementation did exactly that — acceptance 1.000 and the chain diffused to
-  −4.6e7 — which is why the conditional curvature is now built from the Jacobian
-  of the *restricted* residuals rather than from `Fit.covariance_matrix` (the
-  marginal covariance over everything the local model varies). Measured with
-  three private parameters per dataset (25 dims): `collapsed` τ(shared) 4.9 /
-  minESS 411 / **1.154** ESS per 1000 evaluations against `blocked` 589 / 3.4 /
-  0.045 — 26×. Note the other column too: `blocked` reported the shared parameter
-  as 1.25069 ± 0.00682 against `collapsed`'s 1.24845 ± 0.03857, an error bar
-  **5.6× too small** from a chain with an effective sample size of 3.4 — a
-  confidently wrong answer that only the ESS diagnostic exposes. With a *single*
-  private parameter per dataset it is a wash (3–4× the ESS per draw for ~3.5× the
-  evaluations), so `blocked` stays right for that case and this is reported as
-  such rather than sold as a universal win. 8 tests.
-
-* **A finished sampling job is not a trustworthy one — now it says which
-  (PRD-69).** All of PRD-69's machinery was reachable only from Python. The GUI
-  assembled `optimization.sampling` into a `kw` dict and then dropped it, so the
-  configured backend never left the widget; the server ran `sample_fit` in a
-  thread and discarded its return value, so `fit.sample.status` reported
-  `completed` for a chain that never left its starting point exactly as for one
-  that explored the posterior; and nothing polled the job at all, so even a
-  *failed* run was invisible. `fit.sample.start` now merges its keyword arguments
-  over the settings (making `method` and `global_posterior` per-job selectable)
-  and keeps the convergence report; `fit.sample.status` carries `converged`,
-  `warnings` and the full `diagnostics` alongside `status`/`progress`. The fit
-  controller forwards the configured backend and polls the job, logging the
-  verdict — the warnings when the chain is unusable, a one-line all-clear
-  otherwise. `optimization.sampling.method` now defaults to `blocked`, since it
-  beat the previous default ~2.5x and the old `mcmc` walker ~160x on a collinear
-  posterior. 4 headless tests over the service layer, including one asserting
-  that a deliberately frozen chain completes *and* reports `converged: False`.
-  PRD-68 and PRD-69 are done.
-
-* **The model evaluation was 6 % of an objective evaluation; the rest was
-  bookkeeping.** Profiling a global-fit sweep: 2000 evaluations over 12 datasets
-  took 1.46 s, of which the actual model `eval` was 0.083 s. The rest went on
-  re-deriving, thousands of times per second, things that **cannot change during
-  a run** — 210 108 `is_linked` calls came from rebuilding the free-parameter
-  list, which costs three attribute reads per parameter with two of them
-  crossing into the backing chinet port. Now **0.53 s (2.8×)** and 3.84 M → 1.15 M
-  calls, with the model evaluation the top cost as it should be.
-  The main lever is `factorgraph.frozen_structure(...)`: nothing about a fit's
-  structure changes while it is optimised or sampled — that is what makes an
-  objective a function of the *values* alone — so the free-parameter list, names,
-  bounds and `n_free` are resolved once per run and served with no version check
-  and no allocation. It is re-entrant (a sampler calling a sampler does not
-  release the outer freeze) and self-checking: the structural and window
-  counters are compared on exit and a violation is logged rather than silently
-  returning stale lists. `Fit.run`, `FitGroup.run` and all five samplers use it.
-  Supporting changes: cached free-parameter lists keyed on `structure_version()`
-  for the unfrozen path (with `redundant` promoted to a property so it bumps the
-  counter like `fixed` and `link` — backed by its public dict key so the
-  serialised form is untouched); a second `window_version()` counter bumped by
-  the `xmin`/`xmax`/`fit_range`/`mask` setters, so `n_points` and the residual
-  cache stop reading every member's window back twice per evaluation; a
-  per-member residual cache invalidated by exactly the members `update_model`
-  recomputed — selective updating was otherwise half an optimisation, skipping
-  the models but recomputing their residuals anyway (24 000 → 7 054 calls); a
-  `parameter_values` setter that does not write a value a parameter already has;
-  `Parameter.value` testing its float compare before the port read; and a
-  memoised MRO property lookup in `ParameterGroup.__setattr__`. Caches are stored
-  as *tuples* because `find_objects` descends into lists — a list-valued cache
-  would make `find_parameters` rediscover parameters through the cache itself.
-  9 tests in `test/fitting/test_frozen_structure.py`.
-
-* **Three ways to ask the same question, now with one way to ask (PRD-70).**
-  The covariance at the optimum, a profile χ² scan and a sampled posterior all
-  answer "what does the data actually support for this parameter?", and all
-  three had a different calling convention, return shape and storage location:
-  error estimates on the parameter, a `scan_result` dict, a report on the fit.
-  `Fit.posterior_summary` papered over it by reaching into all three stores with
-  the precedence hard-coded, nothing could ask for a *joint* answer even though a
-  chain contains one, nothing could ask for the evidence, and "fix this
-  parameter and re-optimise the rest" — the operation a profile scan *is* — had
-  no name. New `chisurf/core/fitting/engine.py`: `condition` / `add_target` /
-  `add_joint_target` / `run` / `marginal` / `joint` / `log_evidence`, with
-  `LaplaceEngine`, `ProfileEngine`, `SamplingEngine`, `StoredEngine` and
-  `AutoEngine` behind it. Answers are `Marginal` / `Joint` dataclasses carrying
-  the method that produced them, so a report or a plot consumes one without
-  knowing its origin. Only declared targets are computed — a profile scan of one
-  parameter should not scan the other nine. Each engine still refuses to claim
-  more than it knows: a profile scan has no joint answer and no evidence because
-  it maximises rather than integrates, and a sampled marginal from a chain that
-  failed its own checks comes back as `none` rather than as a number.
-  `StoredEngine` exists because reading a summary must compute *nothing*, which
-  is a genuinely different operation from running an estimator;
-  `Fit.posterior_summary` is now a loop over it, output shape unchanged.
-  Threading `model=` through `approx_grad`, `covariance_matrix` and `walk_mcmc`
-  fell out of it: an engine over a group's global model otherwise silently got
-  the selected member's 2×2 covariance and reported `nan` for every other
-  parameter — the same `FitGroup.model`-is-one-member trap as before, third
-  occurrence. `ProfileEngine` also routes each scan to the member that owns the
-  parameter, since group names are prefixed and a member only knows its own.
-  16 tests. This completes the architecture borrowed from probabilistic
-  graphical-model toolkits: [PRD-68](/prds/prd-68.md) took the model,
-  [PRD-69](/prds/prd-69.md) the inference, this the query. See
-  [PRD-70](/prds/prd-70.md) and the [fitting subsystem](/subsystems/fitting.md).
-
-* **The posterior query reaches the API and the wire (PRD-70).** Applying the
-  lesson from [PRD-69](/prds/prd-69.md) immediately rather than a phase later:
-  machinery only Python can reach benefits nobody. The three estimators were
-  still exposed over RPC as three separate job protocols (`fit.sample.*`,
-  `fit.parameter_scan.*`, error estimates riding along on a fit) even though the
-  in-process fragmentation was gone. Added `fits.fit_posterior` +
-  the `fit.posterior` RPC and `ChiSurfAPI.posterior(...)`, carrying the whole
-  query vocabulary — `engine`, `targets`, `joint`, `condition`, `p_value`,
-  `global_posterior` — and returning a JSON-safe payload (marginals, joint
-  covariance and correlation, log evidence). `stored`/`laplace` answer
-  immediately; `profile`/`mcmc` block, so the job endpoints stay for polled
-  progress. Writing the smoke test exposed that **`condition` did not do what it
-  documented**: it pinned the value and computed the answer *there*, so the
-  reported marginal was the unconditioned one with a parameter overwritten — the
-  conditioned answer for a correlated pair was identical to the unconditioned
-  one, which is exactly what conditioning should never produce. The remaining
-  parameters are now re-fitted given the conditioned value (what a profile scan
-  does at each of its points), and a conditioned parameter leaves the free
-  vector entirely so it correctly has no marginal of its own. Pinning `c` at
-  +0.1 now moves `a` from 1.20086 to 1.19387, consistent with their −0.74
-  correlation. 8 tests in `test/fitting/test_posterior_api.py`, including one
-  asserting the RPC is actually registered — an unregistered service function is
-  unreachable however good it is.
-
-* **Autodiff would not help, and measuring that pointed at what does.** tttrlib
-  already carries forward-mode autodiff (`autodiff/forward/dual.hpp`, dual
-  numbers with an Eigen array derivative part) in `ImageLocalization.cpp`, so
-  applying it to the decay convolution was worth evaluating. Three measurements
-  say no. (1) The finite-difference residual Jacobian is *already* accurate:
-  median 6e-7 relative error per column against a central-difference reference,
-  and the resulting LM step direction agrees to `cos = 1.000000` both at the
-  optimum and 20 % away — the `DEFAULT_EPSFCN` change already fixed the
-  noise-dominated-Jacobian problem its comment describes. (2) Forward-mode
-  autodiff needs O(n) passes for an n-parameter Jacobian, exactly as finite
-  differences need n evaluations; it improves the constant and the accuracy, and
-  there is no accuracy left to recover. (3) `fconv_per_cs` — the function that
-  would be differentiated — is **4.5–15 %** of a `LifetimeModel` evaluation at
-  typical 1024–4096 channels (39.6 % only at 16 k channels with four
-  exponentials), so a free derivative of it leaves 85–95 % of the forward pass
-  untouched. Reverse-mode gradients would change the asymptotics for HMC/NUTS,
-  but that needs the *whole* path differentiable — parameter assembly,
-  amplitude normalisation, scaling, background — which is Python, not tttrlib;
-  differentiating the kernel yields the derivative of one middle link in a chain
-  whose other links are opaque. Written up with the numbers in
-  [references/autodiff-assessment.md](/references/autodiff-assessment.md),
-  including when to revisit.
-  What the profile *did* show is that `Parameter.value` costs roughly ten times
-  the convolution in a 1024-channel decay, so `frozen_structure` now stamps each
-  parameter's read-path flags too — linked? callable? bounded? — none of which
-  can change during a run. A read becomes one dict lookup and one port access
-  instead of six property dispatches: a further **1.36×** on decay evaluations
-  with byte-identical residuals, and a two-exponential fit at 1024 channels now
-  runs in ~42 ms. Two tests pin that the fast path reproduces clamping,
-  link-following and the write-back of a clamped value exactly.
 
 * **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
   The posterior of a group already factorises over its datasets, but

@@ -55,6 +55,52 @@ def _round(value: Any, digits: int = 6) -> float | None:
     return None if number is None else round(number, digits)
 
 
+def dataset_label(dataset: Any) -> tuple[str, str]:
+    """Return a meaningful ``(name, filename)`` for a dataset or group.
+
+    Some readers wrap their result in a group whose own ``name`` is the class
+    name (``"ExperimentDataCurveGroup"``) and whose ``filename`` is unset,
+    while the curve inside carries the real identity. A user asked to pick
+    between two datasets both called "ExperimentDataCurveGroup" cannot, so the
+    child's identity is used when the group has none of its own.
+
+    Parameters
+    ----------
+    dataset : object
+        Dataset or dataset group.
+
+    Returns
+    -------
+    tuple of str
+        The display name and the filename, either possibly empty.
+    """
+
+    def _text(value: Any) -> str:
+        """Return a stripped string, treating a literal "None" as empty."""
+        text = str(value or "").strip()
+        return "" if text == "None" else text
+
+    name = _text(getattr(dataset, "name", ""))
+    filename = _text(getattr(dataset, "filename", ""))
+    if name and name != type(dataset).__name__ and filename:
+        return name, filename
+
+    child = None
+    try:
+        for candidate in dataset:
+            child = candidate
+            break
+    except TypeError:
+        child = None
+    if child is not None:
+        child_name = _text(getattr(child, "name", ""))
+        child_file = _text(getattr(child, "filename", ""))
+        if not name or name == type(dataset).__name__:
+            name = child_name or name
+        filename = filename or child_file
+    return name, filename
+
+
 def dataset_summary(dataset: Any, index: int) -> dict[str, Any]:
     """Return a one-line summary of a loaded dataset.
 
@@ -69,11 +115,11 @@ def dataset_summary(dataset: Any, index: int) -> dict[str, Any]:
     -------
     dict
     """
-    filename = str(getattr(dataset, "filename", "") or "")
+    name, filename = dataset_label(dataset)
     experiment = getattr(dataset, "experiment", None)
     summary: dict[str, Any] = {
         "index": index,
-        "name": str(getattr(dataset, "name", "") or ""),
+        "name": name,
         "type": type(dataset).__name__,
         "experiment": str(getattr(experiment, "name", "") or experiment or ""),
     }
@@ -137,7 +183,7 @@ def fit_summary(fit: Any, index: int, detailed: bool = False) -> dict[str, Any]:
         "index": index,
         "name": str(getattr(fit, "name", "") or ""),
         "model": str(getattr(getattr(fit, "model", None), "name", "") or ""),
-        "dataset": str(getattr(data, "name", "") or ""),
+        "dataset": dataset_label(data)[0] if data is not None else "",
         "chi2r": _round(chi2r(fit), 4),
     }
     if detailed:
