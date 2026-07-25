@@ -173,6 +173,30 @@ class MoleculeMleResult:
         """Number of segmented and fitted molecules."""
         return int(len(self.dataframe))
 
+    def molecule_rois(self, crop: bool = True) -> list:
+        """Return each segmented molecule as a region of interest.
+
+        The watershed labels are ChiSurf's other notion of a region, so this
+        exposes them as the shared :class:`chisurf.core.roi.ROI` type. A
+        molecule can then be gated against, combined with other regions,
+        rasterised onto a different image, or stored — the same operations any
+        drawn region supports.
+
+        Parameters
+        ----------
+        crop : bool
+            Store each region cropped to its bounding box (cheap for many small
+            molecules) rather than as a full-frame mask.
+
+        Returns
+        -------
+        list of chisurf.core.roi.MaskROI
+            One region per molecule, named after its label value.
+        """
+        from chisurf.core.roi import labels_to_rois
+
+        return labels_to_rois(self.label_image, crop=crop)
+
 
 # ---------------------------------------------------------------------------
 # Segmentation

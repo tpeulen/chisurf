@@ -16,10 +16,11 @@ import tttrlib
 
 import chisurf.core.data
 from chisurf.core.experiments.core.reader import ExperimentReader
+from chisurf.core.fluorescence.imaging.drift import correct_drift
+from chisurf.core.roi import ROI, roi_from_dict
 from .data import IcsCarpet, IcsSettings, IcsTiming, lag_time
 from .ics_core import compute_ics_carpet, frame_pairs, normalise_ics
 from .tttr_loader import load_clsm_from_tttr
-from .masks import make_rect_mask, make_intensity_threshold_mask, combine_masks
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "ics.view.json"
 
@@ -93,6 +94,8 @@ class ICSReader(ExperimentReader):
             subtract_average: str = "frame",
             max_frame_lag: int = 0,
             fftshift: bool = True,
+            roi=None,
+            drift_correction: str = "",
             micro_time_ranges=None,
             *args,
             **kwargs
@@ -130,6 +133,17 @@ class ICSReader(ExperimentReader):
             the carpet along time so STICS/TICS/iMSD become readable from it.
         fftshift : bool
             Whether to centre the zero-lag pixel in each spatial map.
+        roi : ROI or dict, optional
+            Region to restrict the correlation to — any
+            :class:`chisurf.core.roi.ROI` or its serialised form. Pixels
+            outside it are zeroed before correlating.
+        drift_correction : str
+            Empty to leave the stack alone, otherwise the reference mode
+            (``'first'``, ``'previous'`` or ``'mean'``) used to estimate and
+            remove inter-frame drift. Worth enabling whenever frame lags are
+            used: a translation between frames is indistinguishable from
+            diffusive decorrelation, so uncorrected drift inflates the fitted
+            diffusion coefficient at exactly the long lags.
         micro_time_ranges : list, optional
             Micro-time ranges for photon selection.
         """
@@ -156,6 +170,8 @@ class ICSReader(ExperimentReader):
         self.subtract_average = subtract_average
         self.max_frame_lag = int(max_frame_lag)
         self.fftshift = bool(fftshift)
+        self.roi = roi
+        self.drift_correction = str(drift_correction or "")
 
         # Optional internal cache to reuse the most recently loaded image stack
         # for previews and data loading. Keyed by filename + selection.
@@ -217,6 +233,27 @@ class ICSReader(ExperimentReader):
         """Return the declarative editor spec for ICS reader settings."""
         from chisurf.core.dataspec import load_view_spec
         return load_view_spec(_VIEW_JSON)
+
+    def _resolve_roi(self) -> "ROI | None":
+        """Return the configured region as an :class:`ROI`, or ``None``.
+
+        Accepts either a live ROI object or its serialised dictionary, so a
+        region restored from a project needs no special handling here.
+
+        Returns
+        -------
+        ROI or None
+            The region, or ``None`` when unset or unreadable.
+        """
+        roi = getattr(self, "roi", None)
+        if roi is None or isinstance(roi, ROI):
+            return roi
+        if isinstance(roi, dict):
+            try:
+                return roi_from_dict(roi)
+            except Exception:
+                return None
+        return None
 
     def _seed_timing_from_header(self, tttr_all) -> None:
         """Refine pixel/line durations from a TTTR header when possible.
@@ -396,6 +433,15 @@ class ICSReader(ExperimentReader):
         if not isinstance(y_range, (list, tuple)) or len(y_range) < 2:
             y_range = (0, -1)
 
+        # Drift correction runs before correlation: a translation between frames
+        # is indistinguishable from diffusive decorrelation, so leaving it in
+        # inflates the diffusion coefficient fitted from long frame lags.
+        roi = self._resolve_roi()
+        drift_shifts = None
+        drift_mode = str(getattr(self, "drift_correction", "") or "")
+        if drift_mode:
+            images, drift_shifts = correct_drift(images, reference=drift_mode, roi=roi)
+
         max_lag = max(0, int(getattr(self, "max_frame_lag", 0) or 0))
         timing = IcsTiming(
             pixel_duration_us=self.pixel_duration_us or 11.1,
@@ -412,7 +458,7 @@ class ICSReader(ExperimentReader):
         )
 
         carpet = compute_ics_carpet(
-            images, settings=settings, use_fftshift=bool(self.fftshift)
+            images, settings=settings, mask=roi, use_fftshift=bool(self.fftshift)
         )
 
         y = carpet.ravel()
@@ -430,6 +476,11 @@ class ICSReader(ExperimentReader):
             "micro_time_ranges": mtr_norm,
             "intensity_stack": images,
             "intensity_mean": intensity_mean,
+            "roi": roi.to_dict() if roi is not None else None,
+            "drift_correction": drift_mode or None,
+            # Keeping the shifts makes the correction auditable: a drift larger
+            # than the beam waist means the long lags were compromised.
+            "drift_shifts": drift_shifts,
         })
 
         n_lags, ny, nx = carpet.shape

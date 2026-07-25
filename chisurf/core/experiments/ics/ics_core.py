@@ -19,6 +19,8 @@ try:
 except Exception:  # pragma: no cover - optional at import time
     tttrlib = None  # type: ignore[assignment]
 
+from chisurf.core.roi import ROI
+
 from .data import IcsCarpet, IcsSettings, IcsTiming
 
 
@@ -161,9 +163,11 @@ def compute_ics_carpet(
     settings : IcsSettings, optional
         Region of interest, frame lags, background handling and scanner timing.
         Defaults to a full-field, zero-frame-lag (RICS) correlation.
-    mask : numpy.ndarray, optional
-        Binary mask ``(ny, nx)``; pixels outside it are zeroed before
-        correlating.
+    mask : ROI or numpy.ndarray, optional
+        Region to restrict the correlation to: any
+        :class:`chisurf.core.roi.ROI` (rasterised against the frame shape and
+        the stack, so intensity-dependent regions work) or a ready-made boolean
+        array ``(ny, nx)``. Pixels outside it are zeroed before correlating.
     use_fftshift : bool
         Centre the zero lag in each spatial map.
     **kwargs
@@ -191,7 +195,10 @@ def compute_ics_carpet(
     n_frames, ny, nx = stack.shape
 
     if mask is not None:
-        m = np.asarray(mask, dtype=bool)
+        if isinstance(mask, ROI):
+            m = mask.to_mask((ny, nx), image=stack)
+        else:
+            m = np.asarray(mask, dtype=bool)
         if m.shape != (ny, nx):
             raise ValueError(
                 f"Mask shape {m.shape} does not match image shape {(ny, nx)}"

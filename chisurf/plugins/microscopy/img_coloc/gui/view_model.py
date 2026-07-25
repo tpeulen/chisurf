@@ -187,11 +187,20 @@ class ColocViewModel:
 
     # ── spatial ROI (painted on the channel-A map) ──
     def _roi(self):
-        """Return the painted ROI as a boolean mask, or ``None`` when unused."""
+        """Return the painted region as a :class:`MaskROI`, or ``None``.
+
+        Returning a ROI rather than a bare array means the painted region
+        composes with the other selections (``roi & ThresholdROI(...)``) and
+        serialises, like every other region in ChiSurf.
+        """
         if self.roi_mask is None:
             return None
         mask = np.asarray(self.roi_mask) > 0
-        return mask if mask.any() else None
+        if not mask.any():
+            return None
+        from chisurf.core.roi import MaskROI
+
+        return MaskROI(mask, name="painted")
 
     def brush_kernel(self):
         """Return the paint kernel for the ROI brush (a square of ``brush_size``)."""

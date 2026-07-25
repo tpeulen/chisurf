@@ -722,9 +722,11 @@ def colocalization_metrics(
         channel B and the A/B ratio).
     profile_bins : int
         Number of bins in those profiles.
-    roi : array_like of bool, optional
-        Spatial region to restrict the whole analysis to (a drawn/painted mask).
-        Pixels outside it are excluded from every coefficient.
+    roi : ROI or array_like of bool, optional
+        Spatial region to restrict the whole analysis to: any
+        :class:`chisurf.core.roi.ROI` (so a painted mask, a polygon, or
+        "inside this shape and above this intensity" all work) or a ready-made
+        boolean mask. Pixels outside it are excluded from every coefficient.
     object_analysis : bool
         Also segment both channels into discrete objects and score their
         coincidence — the right regime for punctate signal, where the
@@ -747,7 +749,12 @@ def colocalization_metrics(
 
     region = None
     if roi is not None:
-        region = np.asarray(roi, dtype=bool)
+        from chisurf.core.roi import ROI
+
+        if isinstance(roi, ROI):
+            region = roi.to_mask(a.shape, image=a)
+        else:
+            region = np.asarray(roi, dtype=bool)
         if region.shape != a.shape:
             raise ValueError("the ROI mask must have the same shape as the images")
         if not region.any():

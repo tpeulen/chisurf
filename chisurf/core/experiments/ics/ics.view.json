@@ -32,6 +32,14 @@
           "maximum": 9999
         },
         {
+          "type": "choice",
+          "attr": "drift_correction",
+          "label": "Drift correction",
+          "description": "Estimate and remove inter-frame sample drift before correlating. A translation between frames is indistinguishable from diffusive decorrelation, so uncorrected drift inflates the diffusion coefficient fitted from frame lags. 'First frame' compares every frame with frame 0 (best for slow monotonic drift); 'Previous frame' chains consecutive frames (tracks wander, accumulates error); 'Stack mean' compares against the average.",
+          "options": ["", "first", "previous", "mean"],
+          "labels": ["Off", "First frame", "Previous frame", "Stack mean"]
+        },
+        {
           "type": "toggle_row",
           "items": [
             {"attr": "fftshift", "label": "Center zero lag"}

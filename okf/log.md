@@ -2,6 +2,55 @@
 
 ## 2026-07-25
 
+* **One ROI class replaces seven ad-hoc notions of "region"; MIA's drift
+  correction ported on top of it.** ChiSurf had at least seven unrelated
+  regions — index ranges in the image correlator (`ics/masks.py`), a painted
+  boolean array in colocalization, a rectangle on the AutoForm `image` section,
+  another on the 2-D residual plot, watershed labels in molecule MLE, and ndX's
+  `DataSelection` gates — none of which composed, serialised, or moved between
+  tools. New Qt-free `chisurf/core/roi/`. **The insight it is built on** is that
+  a region answers two questions that follow from the same geometry: *is this
+  point inside* (`contains`, for gating scattered data) and *which pixels are
+  inside* (`to_mask`, for images). Axes are supplied at call time via an
+  `extent` rather than baked into the shape, so **one `RectangleROI` is both** a
+  gate on an E-vs-S histogram and a region on a CLSM frame. Shapes:
+  `RectangleROI` (half-open, so abutting regions tile; `from_slices` converts
+  array slice bounds), `EllipseROI` (rotated; covers circles and the 2-D
+  Gaussian gates), `PolygonROI` (**freehand is not a separate type** — a drawn
+  contour is a polygon with many vertices), `MaskROI` (painted strokes,
+  segmentation labels, imported maps; croppable with an offset), `ThresholdROI`
+  (absolute or percentile; image-dependent, so it answers only the pixel
+  question and raises on `contains`), and `CompositeROI` via the `&`/`|`/`^`/
+  `-`/`~` operators — which is where the split pays off, since *"bright pixels
+  inside this polygon"* is `polygon & ThresholdROI(low=…)` and composites
+  delegate per operand so intensity-dependent regions can take part. JSON
+  round-trip through `to_dict`/`roi_from_dict` (nested composites included), and
+  `labels_to_rois`/`rois_to_labels` bridge segmentation output into and out of
+  the type. **Migrated:** `ics/masks.py` retired, the ICS reader takes a `roi`
+  (live object or its serialised dict) and records it in metadata;
+  `colocalization/pixelwise.py` accepts a ROI or a bare mask and img_coloc's
+  painted region is now a `MaskROI`; `MoleculeMleResult.molecule_rois()` exposes
+  watershed labels. **Not yet migrated** (recorded in the concept): the AutoForm
+  `image` rect-ROI seam, the 2-D residual plot's rectangle, and ndX's
+  `DataSelection` (separate package, dependency direction needs thought).
+  **Drift correction** (`core/fluorescence/imaging/drift.py`, PAM `MIA_Drift`
+  ported in spirit): FFT cross-correlation against a reference frame, Gaussian-
+  smoothed before the peak search so a noise-driven tie between neighbouring
+  pixels cannot flip the answer, with `first`/`previous`/`mean` references,
+  optional sub-pixel parabolic refinement, estimation restricted to a ROI (as
+  PAM does), and `wrap` (PAM's `circshift`, conserves every photon) or
+  `constant` application. `estimate_drift` returns the **measured displacement**
+  rather than the correction — the first cut had the sign backwards, which made
+  the returned numbers uninterpretable. Wired into the ICS reader as a
+  `drift_correction` setting with the shifts kept in metadata, because a
+  translation between frames is indistinguishable from diffusive decorrelation
+  and so inflates the `D` fitted from long frame lags — exactly the region the
+  new carpet exposes. Tests: `test/core/test_roi.py` (29) and
+  `test/core/test_drift.py` (12), the last of which pins the physics rather than
+  the mechanics: a *static* sample that merely translates shows a decaying
+  frame-lag correlation before correction and a flat one after. Full touched-area
+  run 109 + 15 pass. See [regions of interest](/subsystems/roi.md).
+
 * **chimol: `lines` and `nonbonded`, the two representations PyMOL shows by
   default -- and a parity tracker for the rest.** Scope changed from "match the
   cartoon" to "replace PyMOL", so the gap was measured rather than guessed:
