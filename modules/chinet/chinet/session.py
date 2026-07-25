@@ -95,6 +95,23 @@ class Session(BaseObject):
                 return True
         return False
 
+    def clear(self):
+        """Drop every node from this session.
+
+        The counterpart of :meth:`add_node`, and what a caller needs before
+        restoring a saved session: without it the loaded nodes would be merged
+        into whatever the process already held. The nodes stay registered in the
+        object database — they may still be referenced elsewhere — only this
+        session lets go of them.
+
+        Without this method ``session.clear()`` resolved through
+        ``BaseObject.__getattr__`` to ``None`` and failed as
+        ``TypeError: 'NoneType' object is not callable``, which says nothing
+        about what is actually missing.
+        """
+        self.nodes.clear()
+        self._document["nodes"] = {}
+
     def update(self):
         for node in self.nodes.values(): node.update()
 

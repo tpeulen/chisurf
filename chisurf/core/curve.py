@@ -132,8 +132,8 @@ class Curve(NCurve):
 
     @x.setter
     def x(self, v):
-        """Set the curve's x-values (broadcast into the existing storage)."""
-        self.d[0] = v
+        """Set the curve's x-values, resizing the storage when the length changes."""
+        self._set_axis(0, v)
 
     @property
     def y(self) -> np.ndarray:
@@ -142,8 +142,38 @@ class Curve(NCurve):
 
     @y.setter
     def y(self, v):
-        """Set the curve's y-values (broadcast into the existing storage)."""
-        self.d[1] = v
+        """Set the curve's y-values, resizing the storage when the length changes."""
+        self._set_axis(1, v)
+
+    def _set_axis(self, index: int, values) -> None:
+        """Write one axis of the 2×N storage, growing or shrinking it as needed.
+
+        Assigning into the existing array is the fast path and covers the common
+        case of replacing values on a fixed grid. It cannot serve the equally
+        ordinary case of filling an empty curve — ``c = Curve(); c.x = x; c.y = y``
+        — where the new length simply differs, and a plain broadcast raises
+        instead. The other axis keeps whatever still fits and is zero-padded
+        beyond that.
+
+        Parameters
+        ----------
+        index : int
+            ``0`` for x, ``1`` for y.
+        values : array_like
+            The new values for that axis.
+        """
+        values = np.atleast_1d(np.asarray(values, dtype=np.float64))
+        storage = self.d
+        if storage.ndim == 2 and storage.shape[0] == 2 and storage.shape[1] == values.size:
+            storage[index] = values
+            return
+        other = np.zeros(values.size, dtype=np.float64)
+        if storage.ndim == 2 and storage.shape[0] == 2:
+            previous = np.asarray(storage[1 - index], dtype=np.float64)
+            kept = min(previous.size, values.size)
+            other[:kept] = previous[:kept]
+        rows = [values, other] if index == 0 else [other, values]
+        self.d = np.vstack(rows)
 
     @property
     def dx(self) -> np.ndarray:
@@ -211,17 +241,22 @@ class Curve(NCurve):
             self,
             remove_protected: bool = True,
             copy_values: bool = True,
-            convert_values_to_elementary: bool = False
+            convert_values_to_elementary: bool = False,
+            skip_qt_widgets: bool = False
     ) -> typing.Dict:
         """Serialize the curve to a dictionary.
 
         Depending on ``convert_values_to_elementary`` the arrays are stored
-        as plain Python lists or NumPy arrays.
+        as plain Python lists or NumPy arrays. ``skip_qt_widgets`` is part of
+        :meth:`chisurf.core.base.Base.to_dict`'s contract and must be accepted
+        here too — an override that drops it turns every caller that serializes
+        a curve without its widgets into a ``TypeError``.
         """
         d = super().to_dict(
             remove_protected=remove_protected,
             copy_values=copy_values,
-            convert_values_to_elementary=convert_values_to_elementary
+            convert_values_to_elementary=convert_values_to_elementary,
+            skip_qt_widgets=skip_qt_widgets
         )
         if convert_values_to_elementary:
             d['x'] = self.x.tolist()
@@ -254,10 +289,35 @@ class Curve(NCurve):
 
         Parameters
         ----------
-        x, y : array_like
-            Arrays of identical length defining the abscissa and
-            ordinate of the curve.
+        x, y : array_like, optional
+            Arrays of identical length defining the abscissa and ordinate of
+            the curve. Omitting one fills it with zeros; omitting both gives an
+            empty curve.
+
+        Notes
+        -----
+        The arrays are coerced to ``float64`` here. ``np.vstack([None, None])``
+        yields ``array([[None], [None]], dtype=object)``, so a default-built
+        curve used to carry an object array holding ``None`` — which propagates
+        silently until some arithmetic far away fails or, worse, quietly returns
+        an object array.
+
+        A curve always **owns** its storage. ``copy_array=False`` is a
+        copy-avoidance hint honoured by :class:`NCurve` when it is handed a ready
+        2×N array; it cannot be honoured for two separate ``x`` and ``y`` arrays,
+        because a single 2×N block cannot alias two independent buffers. Writing
+        to a curve therefore never writes through to the arrays it was built
+        from.
         """
+        x = np.array([], dtype=np.float64) if x is None else np.atleast_1d(
+            np.asarray(x, dtype=np.float64))
+        y = np.array([], dtype=np.float64) if y is None else np.atleast_1d(
+            np.asarray(y, dtype=np.float64))
+        if x.size != y.size:
+            if x.size == 0:
+                x = np.zeros_like(y)
+            elif y.size == 0:
+                y = np.zeros_like(x)
         d = np.vstack([x, y])
         super().__init__(*args, d=d, **kwargs)
 

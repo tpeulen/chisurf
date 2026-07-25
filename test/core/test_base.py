@@ -86,10 +86,15 @@ class Tests(unittest.TestCase):
     def test_base_copy(self):
         b1 = chisurf.core.base.Base(name='B')
         b2 = copy.copy(b1)
-        self.assertNotEqual(
+        # A copy keeps the identifier: identity is the *logical* object, so a
+        # copy compares and hashes equal to its original. The full contract --
+        # including that the copy then replaces the original in the global index
+        # -- is specified in test_uid_identity.py.
+        self.assertEqual(
             b1.unique_identifier,
             b2.unique_identifier,
         )
+        self.assertEqual(b1, b2)
         b1.unique_identifier = b2.unique_identifier
         self.assertDictEqual(
             b1.to_dict(),

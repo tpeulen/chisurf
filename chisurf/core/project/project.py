@@ -179,11 +179,45 @@ class Project:
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 session_path = archive.extract_entry_to(SESSION_FILENAME, tmpdir)
-                chinet.session.load(str(session_path))
+                _restore_chinet_session(chinet, session_path)
         except (ImportError, AttributeError, KeyError):
             pass
 
         return project
+
+
+def _restore_chinet_session(chinet, session_path) -> bool:
+    """Load a saved node graph into the process-level chinet session.
+
+    ``Session.load`` is a *classmethod*: it builds and returns a new session.
+    Calling it as ``chinet.session.load(path)`` therefore restored the graph into
+    an object that was immediately discarded, so opening a project silently
+    brought back no nodes at all.
+
+    The restored nodes are moved into the existing ``chinet.session`` instead of
+    rebinding the module attribute, so references held elsewhere keep pointing at
+    the live session.
+
+    Parameters
+    ----------
+    chinet : module
+        The imported ``chinet`` module.
+    session_path : str or pathlib.Path
+        The extracted ``session.jsonl``.
+
+    Returns
+    -------
+    bool
+        Whether a session was restored.
+    """
+    restored = chinet.Session.load(str(session_path))
+    if restored is None:
+        return False
+    session = chinet.session
+    session.clear()
+    for name, node in restored.get_nodes().items():
+        session.add_node(name, node)
+    return True
 
 
 def save_project(project: Project, target_path: PathLike) -> pathlib.Path:

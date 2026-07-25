@@ -506,6 +506,57 @@
   feed and a real newline, so the rendered maths read `x^st_i = ... + arepsilon`,
   `rac{2.38}` and a formula broken across three lines.
 
+* **All of it fixed: `test/core` and `test/models` now run clean, and most of it
+  was the code.** The entry below recorded a hang plus six failures as needing an
+  owner's decision. Working through them, only *one* turned out to be a stale
+  test.
+  *The hang* was a real deadlock-shaped defect: `sqlite3`'s `conn.backup()`
+  retries a busy source **forever**, and the schema migration snapshotted while
+  holding an open write transaction. Committing first fixes it; landed in the
+  MMFDB repository (`38973c5`) with a regression test, since that is where the
+  root cause lives. `pytest test/core` completes for the first time: 498 passed,
+  3 skipped, ~11 s.
+  *Three of the four "API drift" files were code defects.* `Curve.__init__` did
+  not coerce `None` axes to empty arrays and `to_dict` had lost its
+  `skip_qt_widgets` escape; `DataGroup.name` had lost its setter. The third is
+  the one that mattered: `Session.load` is a **classmethod**, so
+  `chinet.session.load(path)` built a session and threw it away — **opening a
+  project restored no node graph at all**, silently, and nothing noticed because
+  the values still looked right until something downstream changed. `Session`
+  also had no `clear()`, which a restore needs so the saved graph replaces the
+  current one instead of merging into it. Both fixed, and
+  `test_chinet_session.py` now asserts the *link* survives the round-trip, not
+  just the numbers. Only `test_base.py` was a stale test: one incidental
+  assertion contradicted the dedicated UUID spec file, and the specific
+  documented spec wins over the drive-by.
+  *`test_fret_line.py` was quietly corrupting other tests.* It asserted frozen
+  coefficient strings and lifetime arrays computed on
+  `np.logspace(np.log(1), np.log(500))` — `logspace` takes **base-10** exponents,
+  so that "1–500 Å" distance axis actually ran to ~1.6 million Å. The axis is a
+  module global and nothing put it back, so those tests changed the grid for
+  every test that ran afterwards, with any resulting failure pointing anywhere
+  but at them. Rewritten to assert the relations that *define* a FRET line
+  (`E = 1 − ⟨τ⟩_x/τ_D(0)`, `⟨τ⟩_F ≥ ⟨τ⟩_x` by Cauchy–Schwarz, monotonicity under
+  distance, agreement with the independent analytic implementation), with
+  setUp/tearDown restoring the global. The `KeyError`s were real and are now
+  fixed at the source: fixed model constants (`R0`, `t0`, `s(G,n)`) live in
+  `parameters_all_dict`; `parameter_dict` holds only what a fit would vary, and
+  the `sigma` accessors were reading the wrong one.
+  *`test_user_models.py` was not API drift at all.* It tested a registry —
+  `register_user_model`, `load_user_models`, `iter_user_models_for_experiment`,
+  `_user_model_registry` — that **has never existed**: `git log -S` across the
+  entire history finds no commit that added or removed any of them, and the
+  documentation page describing the same registry was rewritten against reality
+  in `43e60f7f3` a day earlier. So it needed no subsystem-owner decision; it was
+  asserting an imagined API and failing on `AttributeError` before reaching an
+  assertion. Rewritten against the mechanism that does exist —
+  `inject_user_models()` exec'ing `<dotted.module>__override__<timestamp>.py`
+  into the namespace of the module it names — including that a plain `.py`
+  dropped in that folder does nothing (the common misreading), that the newest
+  timestamp wins, and that a broken user file is logged rather than propagated,
+  which matters because the injection runs at import and an escaping exception
+  would make chisurf unimportable until the user deleted the file by hand.
+  `test/models`: 246 passed. See [known issues](/references/known-issues.md).
 
 * **The test suite has a hang and five API-drift failures, now written down.**
   Verifying an unrelated change meant running `pytest test/core`, which never

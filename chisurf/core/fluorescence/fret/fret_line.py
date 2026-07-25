@@ -347,12 +347,12 @@ class StaticFRETLine(
         """
         Width of the DA-distance distribution within the state
         """
-        return self.model.parameter_dict['s(G,1)'].value
+        return self.model.parameters_all_dict['s(G,1)'].value
 
     @sigma.setter
     def sigma(self, v):
         """Set the width of the DA-distance distribution."""
-        self.model.parameter_dict['s(G,1)'].value = v
+        self.model.parameters_all_dict['s(G,1)'].value = v
 
     def __init__(self, **kwargs):
         """Initialize a StaticFRETLine with a default Gaussian model.
@@ -548,31 +548,31 @@ class DynamicFRETLine(FRETLineGenerator):
         """
         Width of first limiting state
        """
-        return self.model.parameter_dict['s(G,1)'].value
+        return self.model.parameters_all_dict['s(G,1)'].value
 
     @sigma_1.setter
     def sigma_1(self, v):
         """Set the width of first limiting state."""
-        self.model.parameter_dict['s(G,1)'].value = v
+        self.model.parameters_all_dict['s(G,1)'].value = v
 
     @property
     def sigma_2(self):
         """
         Width of second limiting state
        """
-        return self.model.parameter_dict['s(G,2)'].value
+        return self.model.parameters_all_dict['s(G,2)'].value
 
     @sigma_2.setter
     def sigma_2(self, v):
         """Set the width of second limiting state."""
-        self.model.parameter_dict['s(G,2)'].value = v
+        self.model.parameters_all_dict['s(G,2)'].value = v
 
     @property
     def sigma(self):
         """
         The width of both sigmas
        """
-        return self.model.parameter_dict['s(G,1)'].value, self.model.parameter_dict['s(G,2)'].value
+        return self.model.parameters_all_dict['s(G,1)'].value, self.model.parameters_all_dict['s(G,2)'].value
 
     @sigma.setter
     def sigma(self, v):
@@ -584,11 +584,11 @@ class DynamicFRETLine(FRETLineGenerator):
             If float, both states get the same width. If tuple, (sigma_1, sigma_2).
         """
         try:
-            self.model.parameter_dict['s(G,1)'].value = v[0]
-            self.model.parameter_dict['s(G,2)'].value = v[1]
+            self.model.parameters_all_dict['s(G,1)'].value = v[0]
+            self.model.parameters_all_dict['s(G,2)'].value = v[1]
         except TypeError:
-            self.model.parameter_dict['s(G,1)'].value = v
-            self.model.parameter_dict['s(G,2)'].value = v
+            self.model.parameters_all_dict['s(G,1)'].value = v
+            self.model.parameters_all_dict['s(G,2)'].value = v
 
     def update(
             self,

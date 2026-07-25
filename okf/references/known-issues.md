@@ -235,36 +235,42 @@ in the anisotropy area; neither is reachable from a production call path today.
 
 **Tests**
 
-Found while verifying an unrelated change (2026-07-25); each is reproducible on
-its own and none is caused by the change that found them. `pytest test/core`
-cannot complete at all until the first item is dealt with.
+Found while verifying an unrelated change (2026-07-25) and **all resolved on
+2026-07-25**; `pytest test/core` and `pytest test/models` both run clean (498
+passed / 3 skipped, and 246 passed). Kept as a record of what each turned out to
+be, because three of them were defects in the code rather than in the tests.
 
-- `test/core/test_mmfdb_schema_migration.py` **does not finish**: the first of its
-  9 tests was still running after four minutes. This is what makes a full
-  `pytest test/core` run appear to hang. Needs a look at the migration waterfall
-  in the MMFDB repository (fix belongs there, not chisurf-side).
-- `test/core/test_rename.py` fails at **collection** on a hard-coded Windows path
-  (`e:\dev\chisurf\test\data\clsm\Leica_SP8.ptu`), so it takes the whole
-  directory down with it when collected.
-- Four test/core files fail on API drift — the test describes an interface the
-  code no longer has, so each needs a decision (was the test left behind, or did
-  the code regress?): `test_curve.py` (`Curve.to_dict()` has no
-  `skip_qt_widgets`; `chisurf.core.data` no longer exposes `Curve`),
-  `test_base.py` (two objects share a UUID where the test expects distinct ones),
-  `test_chinet_session.py` (`TypeError: 'NoneType' object is not callable`),
-  `test_grouping.py` (`AttributeError: can't set attribute` — a property lost its
-  setter).
-- `test/models/test_fret_line.py` fails on `KeyError: 'R0'` — the model's
-  `parameter_dict` no longer carries that key on the `StaticFRETLine` path — plus
-  two lifetime mismatches.
-- `test/models/test_user_models.py` tests an API that no longer exists:
-  `chisurf.core.models._user_model_registry`, `_user_models_loaded`,
-  `register_user_model` and `iter_user_models_for_experiment`. The module now
-  offers only `inject_user_models()`, an exec-based override mechanism, so the
-  registry-based user-model API was replaced and the test left behind. Needs a
-  decision from the subsystem owner — restore the registry API, or rewrite the
-  test against the override mechanism — rather than a guess, which is why it is
-  recorded instead of patched.
+- `test/core/test_mmfdb_schema_migration.py` **did not finish** — this is what
+  made a full `pytest test/core` run look like a hang. `sqlite3`'s `conn.backup()`
+  retries a busy source forever, and the migration held an open write transaction
+  while snapshotting. Fixed in the MMFDB repository (commit `38973c5`) by
+  committing before the backup, with a regression test.
+- `test/core/test_rename.py` failed at **collection** on a hard-coded Windows path
+  (`e:\dev\chisurf\test\data\clsm\Leica_SP8.ptu`), taking the whole directory down
+  with it. Rewritten against the repo's own test data.
+- Of the four API-drift files, three were **code** defects, not stale tests:
+  `Curve.__init__` did not coerce `None` axes and `to_dict` had lost
+  `skip_qt_widgets`; `DataGroup.name` had lost its setter; and
+  `Project.load` called the classmethod `Session.load` as if it mutated the live
+  session, so opening a project restored no chinet nodes at all (`Session.clear()`
+  was missing too). Only `test_base.py` was a stale test — one incidental
+  assertion contradicted the dedicated UUID spec, and the spec wins.
+- `test/models/test_fret_line.py` asserted frozen coefficient strings and lifetime
+  arrays computed on `np.logspace(np.log(1), np.log(500))` — base-10 exponents, so
+  that "1–500 Å" axis really ran to ~1.6 million Å. Worse, the axis is a module
+  global that nothing restored, so those tests silently changed the distance grid
+  for every test that ran afterwards. Rewritten to assert the relations that
+  define a FRET line, with setUp/tearDown restoring the global. The `KeyError`s
+  were real: fixed model constants (`R0`, `t0`, `s(G,n)`) live in
+  `parameters_all_dict`, not `parameter_dict`, which holds only free parameters.
+- `test/models/test_user_models.py` tested a registry —
+  `register_user_model`, `load_user_models`, `iter_user_models_for_experiment`,
+  `_user_model_registry` — that **has never existed**: `git log -S` across the
+  whole history finds no commit adding or removing any of them, and the
+  documentation page describing the same registry was rewritten against the real
+  mechanism in `43e60f7f3`. So this was not API drift and needed no owner
+  decision. Rewritten against what the code does offer: the
+  `<dotted.module>__override__<timestamp>.py` exec-into-the-module injection.
 
 **Environment**
 - Built-in Jupyter/notebook integration is disabled/broken; the notebook menu is

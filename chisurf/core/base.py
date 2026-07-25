@@ -770,7 +770,14 @@ class Base(object):
         Base._uuid_index[str(self.unique_identifier)] = self
 
     def __copy__(self) -> typing.Type[Base]:
-        """Return a shallow copy with a deep copy of metadata."""
+        """Return a shallow copy with a deep copy of metadata.
+
+        The copy keeps the original's ``unique_identifier``: identity here is
+        the *logical* object, so ``copy(x) == x`` and both hash alike (see
+        ``test/core/test_uid_identity.py``, which specifies this). The
+        consequence is that the copy replaces the original in the global index,
+        so :meth:`find_by_uuid` afterwards returns the copy.
+        """
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = copy.copy(self.__dict__)
         c.__dict__['meta_data'] = copy.deepcopy(self.__dict__.get('meta_data', {}))
@@ -778,7 +785,10 @@ class Base(object):
         return c
 
     def __deepcopy__(self, memodict=None):
-        """Return a deep copy of this instance."""
+        """Return a deep copy of this instance, keeping its identity.
+
+        See :meth:`__copy__` for what "identity" means here.
+        """
         if memodict is None:
             memodict = {}
         c = self.__class__.__new__(self.__class__)

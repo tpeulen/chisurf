@@ -90,7 +90,8 @@ class ExperimentalData(chisurf.core.base.Data):
             self,
             remove_protected: bool = True,
             copy_values: bool = True,
-            convert_values_to_elementary: bool = False
+            convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False
     ):
         """Serialize this dataset, including its reader and experiment, to a dict.
 
@@ -111,7 +112,8 @@ class ExperimentalData(chisurf.core.base.Data):
         d = super().to_dict(
             remove_protected=remove_protected,
             copy_values=copy_values,
-            convert_values_to_elementary=convert_values_to_elementary
+            convert_values_to_elementary=convert_values_to_elementary,
+            skip_qt_widgets=skip_qt_widgets
         )
         try:
             d['data_reader'] = self.data_reader.to_dict(
@@ -289,7 +291,8 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
             self,
             remove_protected: bool = False,
             copy_values: bool = True,
-            convert_values_to_elementary: bool = False
+            convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False
     ) -> typing.Dict:
         """Serialize the curve to a dict, including error arrays and mask.
 
@@ -311,7 +314,8 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
         d = super().to_dict(
             remove_protected=remove_protected,
             copy_values=copy_values,
-            convert_values_to_elementary=convert_values_to_elementary
+            convert_values_to_elementary=convert_values_to_elementary,
+            skip_qt_widgets=skip_qt_widgets
         )
         d['ex'] = self.ex.tolist()
         d['ey'] = self.ey.tolist()
@@ -558,6 +562,17 @@ class DataGroup(list, chisurf.core.base.Base):
             if len(self) == 0:
                 return "Empty group"
             return self.names[self._current_dataset]
+
+    @name.setter
+    def name(self, v: str) -> None:
+        """Name the group explicitly, overriding the fallback.
+
+        The getter reads ``self.__dict__['name']`` first, so a group is meant to
+        carry a name of its own; without a setter nothing could ever put one
+        there and ``group.name = ...`` raised ``AttributeError: can't set
+        attribute`` — which is what grouping datasets does.
+        """
+        self.__dict__['name'] = str(v)
 
     @property
     def filename(self) -> str:

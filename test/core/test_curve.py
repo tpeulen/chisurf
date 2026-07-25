@@ -67,7 +67,10 @@ class Tests(unittest.TestCase):
                     c3_dict[k]
                 )
 
-        # test no copy option
+        # A curve owns its storage. copy_array=False is a copy-avoidance hint
+        # that cannot be honoured for two separate arrays -- one 2xN block
+        # cannot alias two independent buffers -- so writing to the curve must
+        # not write through to the arrays it was built from.
         x = np.linspace(0, 2.0 * np.pi, 20)
         y = np.sin(x)
         c4 = chisurf.core.curve.Curve(
@@ -76,10 +79,8 @@ class Tests(unittest.TestCase):
             copy_array=False
         )
         c4.x[0] = 11
-        self.assertEqual(
-            x[0],
-            11
-        )
+        self.assertEqual(c4.x[0], 11)
+        self.assertEqual(x[0], 0.0)
 
         # test curve shift
         c5 = c4 << 1.0
