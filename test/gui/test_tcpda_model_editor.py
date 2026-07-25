@@ -373,3 +373,122 @@ def test_brightness_correction_is_off_by_default_and_changes_the_fit(qapp):
     assert np.isfinite(corrected)
     # It reweights the species, so it must actually do something.
     assert corrected != pytest.approx(baseline)
+
+
+# ── priors and error surfaces ──────────────────────────────────────────────
+
+
+def _fit_one_distance(n_bursts=2500, seed=13, start=48.0):
+    """Return a fit with only R(GR) free, started away from the truth.
+
+    The other two distances are seeded at the simulated truth rather than left
+    at the model's defaults. They are not nuisance constants: the B->G and B->R
+    pathways compete for the same excited donor, so holding a neighbour at the
+    wrong value biases R(GR) — with the defaults it lands at 52.5 instead of
+    52.0, which is several standard errors at this burst count.
+    """
+    fit = _simulated_fit(n_bursts=n_bursts, seed=seed)
+    model = fit.model
+    model.find_parameters()
+    for parameter in model.parameters_all:
+        parameter.fixed = True
+    for parameter, truth in zip(model.species.means_of(0), (52.0, 46.0, 68.0)):
+        parameter.value = truth
+    mean = model.species.means_of(0)[0]
+    mean.fixed = False
+    mean.value = start
+    model.find_parameters()
+    return fit, model, mean
+
+
+def test_a_prior_pulls_the_fit_and_is_reported(qapp):
+    """PRD-61 priors work on this model without anything tcPDA-specific.
+
+    The prior framework is general, so the check is that tcPDA parameters are
+    ordinary enough to use it — not that a new mechanism was built.
+    """
+    from chisurf.core.fitting.priors import NormalPrior
+
+    fit, model, mean = _fit_one_distance()
+    fit.run()
+    unbiased = float(mean.value)
+    assert unbiased == pytest.approx(52.0, abs=2.0)
+
+    def fit_with(sigma):
+        mean.value = 48.0
+        mean.prior = NormalPrior(mu=40.0, sigma=sigma)
+        fit.run()
+        return float(mean.value)
+
+    # A prior centred below the truth pulls the estimate down, and a tighter one
+    # pulls harder. The *amount* is set by precision weighting against a very
+    # sharp likelihood (2500 bursts give this distance a ~0.1 A standard error),
+    # so asserting monotonicity is the honest test; asserting a fixed shift
+    # would only be asserting the burst count.
+    loose = fit_with(50.0)   # effectively flat
+    tight = fit_with(0.5)
+    assert tight < loose, (loose, tight)
+    assert tight < unbiased - 0.2, (unbiased, tight)
+    # `loose` is not asserted to differ from `unbiased`: a 50 A prior against a
+    # ~0.1 A standard error is flat, and the difference is optimiser noise.
+
+    # chi2 stays a data-misfit statistic: priors move the optimum, they do not
+    # enter the reported goodness of fit (fit.get_wres(..., include_priors)).
+    mean.value = unbiased
+    mean.prior = None
+    model.update()
+    without = fit.chi2r
+    mean.prior = NormalPrior(mu=40.0, sigma=0.5)
+    model.update()
+    assert fit.chi2r == pytest.approx(without)
+
+    mean.prior = None
+
+
+@pytest.mark.slow
+def test_both_error_surface_routes_bracket_the_truth(qapp):
+    """MCMC and the support plane must agree on a tcPDA parameter too.
+
+    Same requirement PRD-50 placed on two-colour PDA. It matters more here: the
+    objective is a likelihood deviance rather than a histogram chi-square, so
+    the machinery is being asked to work on a statistic it was not written for.
+    """
+    try:
+        import chisurf.core.fitting.sample
+    except (ImportError, AttributeError) as exc:  # pragma: no cover - shared tree
+        pytest.skip(f"sampler unavailable: {exc}")
+    from chisurf.core.fitting.support_plane import confidence_intervals_from_scan_result
+
+    truth = 52.0
+    fit, model, mean = _fit_one_distance(n_bursts=2500, seed=13)
+    fit.run()
+    assert float(mean.value) == pytest.approx(truth, abs=2.0)
+
+    np.random.seed(0)
+    chain = chisurf.core.fitting.sample.walk_mcmc(
+        fit=fit, steps=600, step_size=0.01, temp=1.0, thin=1
+    )
+    assert list(chain["parameter_names"]) == [mean.name]
+    assert chain["acceptance_rate"] > 0.05, "chain is stuck"
+
+    samples = np.asarray(chain["parameter_values"], dtype=float)[:, 0]
+    samples = samples[len(samples) // 5:]
+    low, high = np.percentile(samples, [0.5, 99.5])
+    assert low < truth < high, f"99% credible interval [{low:.2f}, {high:.2f}] misses {truth}"
+
+    mean.value = truth
+    fit.run()
+    scan = fit.adaptive_chi2_scan(mean.name, p_value=0.99)
+    spa_low, spa_high = confidence_intervals_from_scan_result(
+        scan, p_values=(0.99,)
+    )[0]["crossings"]
+    assert spa_low is not None and spa_low < truth < spa_high
+
+    # The two widths are NOT asserted to agree, and that is deliberate: they
+    # do not, and the disagreement grows with dataset size (measured MCMC/SPA
+    # width ratios 1.32 / 2.05 / 2.86 at 1500 / 2500 / 5000 bursts, while
+    # sqrt(chi2r) stays at 1.5). A constant factor would point at the F-test's
+    # chi-square rescaling; an n-dependent one does not, and the cause is not
+    # yet established. Both routes bracketing the truth is the property PRD-65
+    # requires and the property pinned here; see the model docstring.
+    assert (high - low) > 0 and (spa_high - spa_low) > 0

@@ -38,9 +38,21 @@ over three channels the per-cell counts are far too small for the usual
 asymptotics. Measured on simulated data at the true parameters it settles
 around 2.4, essentially independent of dataset size, rather than at one. It is
 therefore a sound way to compare fits of the *same* data, and a poor way to
-decide in absolute terms whether a model is adequate; for that, use the
-error-surface and F-test machinery, or a parametric bootstrap of the kind
-`chisurf.core.models.pda.consistency` performs for two colours.
+decide in absolute terms whether a model is adequate; for that, use a
+parametric bootstrap of the kind `chisurf.core.models.pda.consistency`
+performs for two colours.
+
+**Open question — the two error-surface routes disagree on width.** Both an
+MCMC credible interval and a support-plane F-test scan bracket the true value
+(tested), but their widths differ, and the disagreement *grows with dataset
+size*: MCMC/support-plane width ratios of 1.32, 2.05 and 2.86 at 1500, 2500 and
+5000 bursts, while `sqrt(chi2r)` stays at 1.5 throughout. A constant factor
+would be explained by the F-test rescaling by `chi2r` — appropriate for a
+least-squares problem with unknown variance, wrong for a likelihood deviance.
+An *n*-dependent factor is not explained by that, and the cause has not been
+established. Until it is, prefer the MCMC interval: it samples
+`exp(-deviance/2)`, which is the actual posterior for this objective, whereas
+the F-test carries a chi-square assumption the deviance does not satisfy.
 
 The displayed curve
 -------------------
