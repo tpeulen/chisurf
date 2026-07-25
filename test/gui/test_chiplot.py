@@ -179,6 +179,37 @@ def test_migrated_panel_draw_patterns(qapp):
     assert reg.bounds == (0.2, 0.8)
 
 
+def test_grid_panel_region_and_markers(qapp):
+    """A Grid panel supports region/vline/hline + signal-safe redraw syncs.
+
+    Regression guard for PRD-64 Batch 12 (tttr_lut_tools compute section): the
+    draggable items live on a ``PanelPlot`` inside a ``Grid``, and a redraw
+    repositions them via ``set_bounds``/``set_value`` without re-entering the
+    drag handlers.
+    """
+    grid = cp.Grid()
+    panel = grid.add_plot(row=0, col=0, title="raw")
+    reg = panel.region((10.0, 40.0), brush=(255, 165, 0, 60), movable=True)
+    vline = panel.vline(5.0, movable=True, pen=cp.to_pen((200, 0, 0), width=2))
+    hline = panel.hline(20.0, movable=True, pen=cp.to_pen((0, 180, 0), width=2))
+    fired = []
+    reg.on_change(lambda lo, hi: fired.append(("r", lo, hi)), final=True)
+    vline.on_change(lambda p: fired.append(("v", p)), final=True)
+    hline.on_change(lambda p: fired.append(("h", p)), final=True)
+    # Programmatic redraw-style sync: all silent.
+    reg.set_bounds(12.0, 35.0)
+    vline.set_value(7.0)
+    hline.set_value(22.0)
+    assert fired == []
+    assert reg.bounds == (12.0, 35.0)
+    assert vline.value == 7.0 and hline.value == 22.0
+    # Replace-only-the-curve pattern: draw, remove, redraw keeps the items.
+    curve = panel.line([0, 1, 2], [1, 2, 1], pen=cp.to_pen((255, 204, 0), width=1.5))
+    panel.remove(curve)
+    panel.line([0, 1, 2], [2, 1, 2], pen=cp.to_pen((255, 204, 0), width=1.5))
+    assert reg.bounds == (12.0, 35.0)  # region survived the curve churn
+
+
 def test_migrated_modules_import(qapp):
     """The migrated Batch 9 modules import cleanly (no pyqtgraph dependency)."""
     import importlib
@@ -194,6 +225,8 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.fcs.fcs_lfcs_sim.gui.tool",
         "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.irf_widget",
         "chisurf.plugins.vv_vh_anisotropy",
+        # Batch 12
+        "chisurf.plugins.tttr.tttr_lut_tools.gui.sections",
     ):
         assert importlib.import_module(name) is not None
 

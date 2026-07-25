@@ -42,5 +42,4 @@ chisurf/plugins/fluorescence_decay/maxent_decay/gui/qt_stack.py
 chisurf/plugins/modelling/fret/gui/dock_tool.py
 chisurf/plugins/modelling/fret/gui/pair_selection_wizard.py
 chisurf/plugins/tttr/intensity_trace/__init__.py
-chisurf/plugins/tttr/tttr_lut_tools/gui/sections.py
 chisurf/plugins/tttr/tttr_lut_tools/gui/settings_panel.py

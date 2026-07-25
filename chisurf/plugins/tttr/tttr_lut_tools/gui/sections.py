@@ -1,7 +1,7 @@
 """Custom AutoForm sections for the ① Compute LUT panel.
 
 The interactive raw/after TAC plots with the draggable linear-region and
-offset/threshold lines are a bespoke pyqtgraph widget registered here; the
+offset/threshold lines are a bespoke chiplot widget registered here; the
 parameters are plain declarative ``value``/``toggle`` sections in
 ``lut_compute.view.json``. The widget owns only Qt concerns and drives the
 Qt-free :class:`~..view_model.LutComputeViewModel`. Imported (and registered) by
@@ -11,9 +11,9 @@ Qt-free :class:`~..view_model.LutComputeViewModel`. Imported (and registered) by
 from __future__ import annotations
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform.sections.registry import register_section
 
 
@@ -23,7 +23,7 @@ def lut_compute_plot(model, target=None, **options):
     return _ComputePlotSection(model)
 
 
-class _ComputePlotSection(pg.GraphicsLayoutWidget):
+class _ComputePlotSection(cp.Grid):
     """Raw TAC histogram (draggable region) + corrected-preview histogram."""
 
     is_form_field = False
@@ -31,58 +31,55 @@ class _ComputePlotSection(pg.GraphicsLayoutWidget):
     def __init__(self, model, parent=None):
         super().__init__(parent)
         self._model = model
-        self._syncing = False
+        self._raw_curve = None
+        self._after_curve = None
         self.setMinimumHeight(360)
 
-        self.plt_raw = self.addPlot(row=0, col=0)
-        self.plt_raw.setTitle("Raw TAC histogram — drag the orange region to pick the linear plateau")
-        self.plt_raw.setLabel("left", "Counts")
-        self.plt_raw.setLabel("bottom", "TAC bin")
-        self.plt_after = self.addPlot(row=1, col=0)
-        self.plt_after.setTitle("After linearization (corrected preview)")
-        self.plt_after.setLabel("left", "Counts")
-        self.plt_after.setLabel("bottom", "Equal-width NTAC bin")
+        self.plt_raw = self.add_plot(
+            row=0, col=0,
+            title="Raw TAC histogram — drag the orange region to pick the linear plateau",
+        )
+        self.plt_raw.set_labels(left="Counts", bottom="TAC bin")
+        self.plt_after = self.add_plot(
+            row=1, col=0, title="After linearization (corrected preview)",
+        )
+        self.plt_after.set_labels(left="Counts", bottom="Equal-width NTAC bin")
 
-        self.region = pg.LinearRegionItem(
-            values=[model.linear_start, model.linear_stop],
+        self.region = self.plt_raw.region(
+            (model.linear_start, model.linear_stop),
             brush=(255, 165, 0, 60), movable=True,
         )
-        self.offset_line = pg.InfiniteLine(angle=90, movable=True, pos=model.noffset,
-                                           pen=pg.mkPen((200, 0, 0), width=2))
-        self.thresh_line = pg.InfiniteLine(angle=0, movable=True, pos=model.threshold,
-                                           pen=pg.mkPen((0, 180, 0), width=2))
-        self.plt_raw.addItem(self.region)
-        self.plt_raw.addItem(self.offset_line)
-        self.plt_raw.addItem(self.thresh_line)
+        self.offset_line = self.plt_raw.vline(
+            model.noffset, movable=True, pen=cp.to_pen((200, 0, 0), width=2),
+        )
+        self.thresh_line = self.plt_raw.hline(
+            model.threshold, movable=True, pen=cp.to_pen((0, 180, 0), width=2),
+        )
 
-        self.region.sigRegionChangeFinished.connect(self._on_region)
-        self.offset_line.sigPositionChangeFinished.connect(self._on_offset)
-        self.thresh_line.sigPositionChangeFinished.connect(self._on_thresh)
+        # ``set_bounds``/``set_value`` are signal-safe, so programmatic syncs in
+        # ``_redraw`` do not re-enter these handlers.
+        self.region.on_change(self._on_region, final=True)
+        self.offset_line.on_change(self._on_offset, final=True)
+        self.thresh_line.on_change(self._on_thresh, final=True)
 
         model.add_observer(self._on_model_event)
         self._redraw()
 
     # ── plot-item → model ───────────────────────────────────────────────
-    def _on_region(self):
-        if self._syncing:
-            return
-        start, stop = (int(v) for v in self.region.getRegion())
+    def _on_region(self, lo, hi):
+        start, stop = int(lo), int(hi)
         self._model.linear_start = min(start, stop)
         self._model.linear_stop = max(start, stop) + (1 if start == stop else 0)
         self._model.compute()
         self._model.notify("fields")  # tool re-syncs the value fields
 
-    def _on_offset(self):
-        if self._syncing:
-            return
-        self._model.noffset = max(0, int(round(self.offset_line.value())))
+    def _on_offset(self, pos):
+        self._model.noffset = max(0, int(round(pos)))
         self._model.compute()
         self._model.notify("fields")
 
-    def _on_thresh(self):
-        if self._syncing:
-            return
-        self._model.threshold = float(self.thresh_line.value())
+    def _on_thresh(self, pos):
+        self._model.threshold = float(pos)
         self._model.compute()
         self._model.notify("fields")
 
@@ -92,18 +89,15 @@ class _ComputePlotSection(pg.GraphicsLayoutWidget):
 
     def _redraw(self):
         model = self._model
-        # Move the draggable items to match the model without re-emitting.
-        self._syncing = True
-        try:
-            self.region.setRegion([model.linear_start, model.linear_stop])
-            self.offset_line.setValue(model.noffset)
-            self.thresh_line.setValue(model.threshold)
-        finally:
-            self._syncing = False
+        # Move the draggable items to match the model (signal-safe: no re-emit).
+        self.region.set_bounds(model.linear_start, model.linear_stop)
+        self.offset_line.set_value(model.noffset)
+        self.thresh_line.set_value(model.threshold)
 
-        # Raw histogram.
-        for item in list(self.plt_raw.listDataItems()):
-            self.plt_raw.removeItem(item)
+        # Raw histogram — replace only the data curve, keep the draggable items.
+        if self._raw_curve is not None:
+            self.plt_raw.remove(self._raw_curve)
+            self._raw_curve = None
         counts = model.counts_effective()
         if counts is not None:
             x = np.arange(model.n_bins)
@@ -111,20 +105,21 @@ class _ComputePlotSection(pg.GraphicsLayoutWidget):
                 region = counts[int(model.linear_start):int(model.linear_stop)]
                 mean = float(region.mean()) if region.size else 1.0
                 y = counts / (mean if mean > 0 else 1.0)
-                self.plt_raw.setLabel("left", "Counts / ⟨region⟩")
+                self.plt_raw.set_labels(left="Counts / ⟨region⟩")
             else:
                 y = counts.astype(float)
-                self.plt_raw.setLabel("left", "Counts")
-            self.plt_raw.plot(x, y, pen=pg.mkPen((255, 204, 0), width=1.5))
+                self.plt_raw.set_labels(left="Counts")
+            self._raw_curve = self.plt_raw.line(x, y, pen=cp.to_pen((255, 204, 0), width=1.5))
 
         # Corrected preview.
-        for item in list(self.plt_after.listDataItems()):
-            self.plt_after.removeItem(item)
+        if self._after_curve is not None:
+            self.plt_after.remove(self._after_curve)
+            self._after_curve = None
         after = model.corrected_after_hist()
         if after is not None:
             xa, ya = after
-            self.plt_after.plot(xa, ya, pen=pg.mkPen((80, 200, 255), width=1.5))
-            self.plt_after.setXRange(0, int(model.ntac_required), padding=0)
+            self._after_curve = self.plt_after.line(xa, ya, pen=cp.to_pen((80, 200, 255), width=1.5))
+            self.plt_after.set_xlim(0, int(model.ntac_required), padding=0)
 
 
 @register_section("lut_compute_actions")

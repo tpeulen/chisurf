@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 42):*
+*Landed so far (allow-list 76 → 41):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -379,6 +379,19 @@ screenshot/qtbot verification after each cluster.
   when a second call site appears). Import-clean test extended to all three;
   vv_vh_anisotropy constructed headless with its full redraw + region-drag path
   exercised.
+- **Batch 12** (allow-list 42 → 41) — migrated the ① Compute-LUT interactive
+  section (`plugins/tttr/tttr_lut_tools/gui/sections.py`). Its
+  `_ComputePlotSection` subclassed `pg.GraphicsLayoutWidget` with two stacked
+  plots + a draggable region and offset/threshold `InfiniteLine`s; it now
+  subclasses **`cp.Grid`** and builds the panels with `add_plot(...)`, the region
+  via `panel.region(...)`, and the two lines via `panel.vline`/`panel.hline`.
+  Redraw replaces only the tracked data curve (`remove` + re-`line`) so the
+  draggable items survive, and the model→plot sync uses signal-safe
+  `set_bounds`/`set_value` — the bespoke `_syncing` re-entrancy guard is gone. New
+  `test_grid_panel_region_and_markers` covers region/marker-on-panel + the
+  curve-churn-keeps-items pattern; import-clean test extended. `settings_panel.py`
+  (the other tttr_lut_tools file) is a separate, larger migration left for its own
+  batch.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,
