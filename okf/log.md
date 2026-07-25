@@ -1567,6 +1567,13 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot Batch 21 — burst browser histogram off pyqtgraph (allow-list
+  30 → 29).** Migrated `plugins/burst/burst_browser/gui/sections.py` (per-column
+  burst histogram). `pg.PlotWidget`→`cp.Plot`; `pg.BarGraphItem`→`plot.bars(...)`.
+  Screenshot-verified (blue Gaussian FRET-E histogram). Deferred the acq cluster
+  (windows + 3000-line tool.py driving shared curves) for a dedicated pass. See
+  [PRD-64](prds/prd-64.md).
+
 * **chiplot Batch 20 — burst background sections off pyqtgraph + log-aware
   scatter fix (allow-list 31 → 30).** Migrated
   `plugins/burst/burst_background/gui/sections.py` (log-log inter-photon-time
