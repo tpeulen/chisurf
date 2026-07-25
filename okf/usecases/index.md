@@ -51,6 +51,11 @@ The workflows a first pass should cover — expand as the tester discovers more:
   pick a detector setup, find and filter bursts, read the proximity-ratio
   histogram, then carry the burst folder into BVA, 2CDE, burst-MLE and the
   Burst Browser. *(last driven 2026-07-25; RF-052..RF-056)*
+- [FRET calculators](/usecases/fret-calculators.md) — open the Calculators hub,
+  convert a measured efficiency into a donor–acceptor distance, bound the κ²
+  orientation error, and generate a static FRET line to overlay on an smFRET
+  histogram. The one core workflow that needs no data file.
+  *(last driven 2026-07-25; RF-070..RF-077)*
 
 ## Per-workflow file format
 

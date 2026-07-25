@@ -899,3 +899,67 @@ Findings RF-064..RF-069.
 - **Location:** `chisurf/core/fitting/sample.py:228` (`_seed_block_covariances(...) -> list[np.ndarray]`) against `:305` (`return out, from_curvature`)
 - **Finding:** The function returns a 2-tuple — its own Returns section says so ("``(covariances, from_curvature)``") and the sole caller unpacks two values at `:831` — but the annotation claims a bare list. `pixi run typecheck` runs mypy over `chisurf/`, so this is a live annotation error rather than a cosmetic one. Change it to `tuple[list[np.ndarray], list[bool]]`.
 - **Fix note:**
+
+## GUI-tester run — Calculators hub (2026-07-25)
+
+Driven headlessly through the real Qt widgets (`CalculatorHub` walked row by row,
+then `FretCalculatorTool`, `Kappa2Dist` and `FRETLineTool` driven directly with
+committed `editingFinished` edits, button clicks and tab switches; modal dialogs
+captured with a polling `QTimer`). Use case:
+[FRET calculators](/usecases/fret-calculators.md). Findings RF-070..RF-077.
+
+### RF-070
+- **Status:** OPEN
+- **Severity:** S2 (drawing a line silently rewrites the user's model)
+- **Location:** `chisurf/plugins/fret_line/gui/tool.py:552-577` (`_add_fret_line`) → `chisurf/plugins/fret_line/core/algorithms.py` (`compute_fret_line_for_models`)
+- **Finding:** Computing a FRET line sets the swept parameter on the live model for each of the `n_pts` samples and never restores its original value, so the model is left parked at the last point of the sweep. Verified on a fresh `FRETLineTool`: `R(G,1)` reads `50.0` before, and after a single **+ Add FRET line** over Min 20 → Max 90 it reads **90.0** — the *Editor* panel now shows 90 Å where the user typed 50. Every subsequent line is computed from the mutated model, which is how a sequential walk of the nine sweep targets produced eight consecutive `division by zero` dialogs while each target driven from a fresh widget succeeded. Snapshot the swept parameter's value (and restore it in a `finally`) around the sweep, as `sample_differential_evolution` already does for the sampler; pin it with a test asserting the parameter is unchanged after `_add_fret_line`.
+- **Fix note:**
+
+### RF-071
+- **Status:** OPEN
+- **Severity:** S2 (a shipped default that makes the tool's only action fail)
+- **Location:** `chisurf/plugins/fret_line/gui/tool.py:282-285` (`_min_spin`, never given a `setValue`) and `:552-575` (`_add_fret_line`'s bare `except` → message box)
+- **Finding:** `_max_spin` is initialised to `100.0` but `_min_spin` is not, so the sweep range starts at exactly **0** out of the box. The sweep then evaluates the model at 0, which for the lifetime-valued targets `t0` and `tL1` is a zero lifetime: the computation raises `ZeroDivisionError` and aborts the whole line. It surfaces as a `QMessageBox` with an **empty window title** whose entire body is the raw exception string `division by zero` — no mention of which parameter, which sample, or that the range is at fault — and no line is added. Verified with a fresh widget per trial: `t0` and `tL1` fail at `[0, 100]` and both return 100 distinct points (`E` 0.069–0.830 and 0.153–0.822) at `[1, 100]`; `R0`, `k2`, `R(G,1)`, `s(G,1)`, `k(G,1)` survive 0 unharmed. Seed Min/Max from the selected parameter's own bounds (which would also fix RF-072), and make a non-finite sample yield `NaN` for that point instead of discarding the entire line.
+- **Fix note:**
+
+### RF-072
+- **Status:** OPEN
+- **Severity:** S2 (shipped defaults produce a silently degenerate result)
+- **Location:** `chisurf/plugins/fret_line/gui/tool.py:453-478` (`_refresh_sweep_targets`, which selects index 0) and `chisurf/plugins/fret_line/core/algorithms.py` (`sweep_targets_for_models`, whose first entry is `xL1`)
+- **Finding:** The sweep-target combo defaults to its first entry, `C0 [FRET: FD (Gaussian)] · xL1` — the amplitude of the *only* lifetime component. Amplitudes are normalised (`lifetime.py:66`, `vs /= abs(vs.sum())`), so a lone component's amplitude is exactly scale-invariant and cannot change the result. Clicking **+ Add FRET line** with everything as shipped therefore returns 100 identical samples (`E = 0.5799`, `τ_F = 1.92613 ns`, `τ_X = 1.68039 ns`, plus a `NaN` at the 0 sample), which pyqtgraph auto-ranges into a **blank-looking plot** while the *FRET lines* list and the legend both show a confident "Line 1". `x(G,1)` is degenerate in the same way. Nothing warns the user. Default the combo to a parameter that moves the line (`R(G,1)`, the mean donor–acceptor distance, is the canonical static-FRET-line sweep) and warn when a completed sweep yields a constant `E`.
+- **Fix note:**
+
+### RF-073
+- **Status:** OPEN
+- **Severity:** S2 (a failed conversion leaves contradictory numbers on screen)
+- **Location:** `chisurf/plugins/calculator/fret_calculator/gui/tool.py:294-300` (`_on_E_changed`), `:302-308` (`_on_kFRET_changed`), `:277-285` (`_on_tau_changed`) — each `if r.get("ok"):` with no `else`
+- **Finding:** All three inverse handlers ignore a failed backend call entirely: no dialog, no status line, no reset of the dependent fields. The backend fails for exactly the inputs that mean "I measured no transfer" — `compute_fret_from_efficiency(E=0)` → `{'ok': False, 'error': 'division by zero'}`, `compute_fret_from_rate(kFRET=0)` → `'0.0 cannot be raised to a negative power'`, `compute_fret_from_lifetime(tau_DA=tau0)` → `'division by zero'` — and the spin-box ranges (`E ∈ [0, 1]`, `kFRET ∈ [0, 9999]`) allow every one of them. Driven in the GUI, typing `E = 0` leaves the panel showing **Efficiency 0.000000 beside Distance DA 0.10 Å, Lifetime DA 0.0000 ns and kFRET 9999.000000** — zero transfer displayed together with maximum transfer, with no indication the calculation never ran. Either report the failure in the panel and blank the derived fields, or handle the no-transfer limit explicitly (`R → ∞`).
+- **Fix note:**
+
+### RF-074
+- **Status:** OPEN
+- **Severity:** S2 (the same panel converts in two mutually inconsistent conventions)
+- **Location:** `chisurf/plugins/calculator/fret_calculator/gui/tool.py:262-275` (`_compute`, passes `sigma=` and `distribution=`) against `:277-308` (the three inverse handlers, which pass neither)
+- **Finding:** The forward direction averages the transfer efficiency over the distance distribution of width `Sigma`, while all three inverse directions call single-distance Förster inverses — their results echo `sigma: 0.0` regardless of what the *Sigma* box shows. The pair of fields is therefore not self-consistent: at the default `σ = 6 Å`, typing `R = 60 Å` yields `E = 0.309307`, and typing that identical efficiency straight back yields **`R = 59.450 Å`** — a 0.55 Å shift with nothing changed and no explanation. Setting `σ = 0.1 Å` collapses the drift to 0.010 Å (spin-box rounding), confirming `Sigma` as the cause. A user who types an experimental `E` gets a distance computed as if σ were 0 while the panel displays σ = 6. Thread `sigma`/`distribution` through the inverse RPCs (numerically inverting `⟨E⟩(R)`), or state in the UI that the inverses are single-distance.
+- **Fix note:**
+
+### RF-075
+- **Status:** OPEN
+- **Severity:** S3 (the selected item's label is invisible)
+- **Location:** `chisurf/plugins/calculator/hub/gui/tool.py:71-86` (the `QListWidget` stylesheet, which has no `::item:selected` rule)
+- **Finding:** The stylesheet restyles `QListWidget::item` (height, padding, radius, margin, bold 14 px) but never gives `:selected` a background, so the selected row keeps the white `Base` while Qt still paints its text with `HighlightedText` — which is `#ffffff` on this palette. The selected calculator's name is white on white. Confirmed by sampling the text area of every row: the selected row contains **no** `#000000` pixels (only the emoji's own colours) while every unselected row contains hundreds, so the selected entry reads as a bare "🎯" or "📉". Reproduced on all six rows. Add `QListWidget::item:selected { background: palette(highlight); color: palette(highlighted-text); }` — the rule is missing entirely, so the list also has no selection affordance beyond a faint focus rectangle.
+- **Fix note:**
+
+### RF-076
+- **Status:** OPEN
+- **Severity:** S3 (an empty collapsible header renders above the first control)
+- **Location:** `chisurf/plugins/calculator/kappa2_dist/k2dist.view.json` (first section, `"title": ""`)
+- **Finding:** The first section of the κ² view spec has an empty title, and AutoForm renders it as a full-width grey collapsible header containing a `▼` and nothing else, directly above the *Model* radio row — it reads as a broken or unlabelled group. Confirmed both visually and by enumerating the panel's buttons, where it appears as `('QPushButton', '▼  ')` alongside the correctly titled `'▼  Anisotropy Parameters'`, `'▼  Calculation Options'` and `'▼  Results'`. Either give the section a title (it holds the model selector, so "Model" fits) or make AutoForm render a titleless section as a plain container with no header bar.
+- **Fix note:**
+
+### RF-077
+- **Status:** OPEN
+- **Severity:** S3 (a dimensionless bounded axis labelled with an SI multiplier)
+- **Location:** `chisurf/plugins/calculator/phasor_calculator/gui/tool.py` (the phasor plot's left axis)
+- **Finding:** The phasor plot's `s` axis is handed to pyqtgraph's automatic SI scaling, so it renders as `s (x0.001)` with ticks running 0…600 — the apex of the universal semicircle, `s = 0.5`, displays as "500". `s = Im(phasor)` is dimensionless and bounded above by 0.5 by construction, and the `g` axis beside it is correctly 0…1.0, so the two axes of a semicircle are drawn on scales that differ by 1000×. Disable the auto-multiplier (`axis.enableAutoSIPrefix(False)`) for both phasor axes and fix the range to `g ∈ [0, 1]`, `s ∈ [0, 0.5]`. The same auto-multiplier appears on the FRET calculator's distribution plots (`p(R) (x0.001)`, and `p(k) (x0.` clipped mid-label).
+- **Fix note:**

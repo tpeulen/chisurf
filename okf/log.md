@@ -2,6 +2,27 @@
 
 ## 2026-07-25
 
+* **GUI-tester: the Calculators hub.** Drove the sixth core workflow headlessly
+  and recorded it as [FRET calculators](/usecases/fret-calculators.md) — the one
+  core workflow that needs no data file, which makes it the natural smoke test
+  for a fresh install. All six calculators in the hub build, and the physics is
+  right (the 80 MHz 2 ns phasor tick lands on the semicircle apex; FCS occupancy
+  is exactly `c·N_A·V`; the three κ² models give distinct distributions). The
+  failures are in the seams around them, and every one needed a *picture* or a
+  round-trip rather than an assertion: the hub paints the **selected** item's
+  label white on white, so the calculator you are looking at is the one with no
+  name (RF-075); the FRET calculator's three inverse paths ignore `ok: False` and
+  leave `E = 0` on screen beside `k_FRET = 9999` (RF-073) and ignore the
+  displayed `Sigma`, so `R → E → R` drifts 60.000 → 59.450 Å (RF-074); and the
+  FRET Line Generator cannot draw a usable line from its shipped defaults —
+  `Min` is never initialised so the sweep starts at 0 and `t0`/`tL1` abort with an
+  untitled "division by zero" box (RF-071), while the default target `xL1` is a
+  scale-invariant amplitude that yields 100 identical points and a blank-looking
+  plot under a confident legend (RF-072). A sweep also leaves the model parked at
+  its last value (RF-070), which is what turned one bad default into eight
+  consecutive failures when the targets were walked in sequence. Findings
+  RF-070..RF-077 in the [findings queue](/reviews/findings.md).
+
 * **The posterior's structure is now a picture, not a paragraph.** `describe()`
   reported the factor graph as text, which is the worst medium for the questions
   it answers: which dataset constrains which parameter, whether the fit
