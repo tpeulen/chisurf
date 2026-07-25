@@ -90,6 +90,19 @@ class CategoryMethodsMixin:
         except Exception as e:
             self.logger.warning(f"Failed to setup quick access bar: {e}")
 
+    def _setup_language_switcher(self):
+        """Add the flag-dropdown UI-language switcher to the ribbon's right corner."""
+        try:
+            from chisurf.gui.widgets.language_selector import LanguageFlagSwitcher
+
+            switcher = LanguageFlagSwitcher()
+            self.ribbon_bar.addRightToolButton(switcher)
+            # Keep a reference so it is not garbage-collected.
+            self._language_switcher = switcher
+            self.logger.debug("Language switcher added to ribbon right toolbar")
+        except Exception as e:
+            self.logger.warning(f"Failed to setup language switcher: {e}")
+
     def _create_main_category(self):
         """Create Main category with all actions from main window toolbar and setup/help plugins"""
         category = self.ribbon_bar.addCategory('Main')

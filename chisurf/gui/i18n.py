@@ -49,6 +49,27 @@ LANGUAGE_DISPLAY_NAMES = {
     "ru": "Русский",
 }
 
+#: Flag emoji per locale, for the compact flag-dropdown switchers. English maps
+#: to the Union Jack (🇬🇧) rather than the US flag — ChiSurf's UI English follows
+#: British conventions. Locales without an entry fall back to a globe (🌐).
+LANGUAGE_FLAGS = {
+    "en": "🇬🇧",
+    "de": "🇩🇪",
+    "fr": "🇫🇷",
+    "es": "🇪🇸",
+    "it": "🇮🇹",
+    "pt": "🇵🇹",
+    "nl": "🇳🇱",
+    "ja": "🇯🇵",
+    "zh": "🇨🇳",
+    "ru": "🇷🇺",
+}
+
+
+def language_flag(code: str) -> str:
+    """Return the flag emoji for a locale ``code`` (globe 🌐 when unknown)."""
+    return LANGUAGE_FLAGS.get(str(code or "").strip(), "🌐")
+
 
 def _qm_path(code: str) -> pathlib.Path:
     """Return the expected ``.qm`` catalogue path for a locale ``code``."""

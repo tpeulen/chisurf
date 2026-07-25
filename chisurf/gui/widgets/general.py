@@ -214,11 +214,22 @@ def table_row_height() -> int:
     return max(12, int(row_height))
 
 
-def apply_compact_table_style(table) -> None:
-    """Apply compact styling to a table-like widget."""
+def apply_compact_table_style(table, *, sortable: bool = False) -> None:
+    """Apply compact styling to a table-like widget.
+
+    Parameters
+    ----------
+    table : QtWidgets.QTableWidget or QtWidgets.QTableView
+        The widget to style.
+    sortable : bool
+        Leave sorting and header clicks enabled. The compact style disables both
+        by default because most ChiSurf tables are fixed-order record lists; a
+        sortable table (chitable) must opt in or its headers become inert.
+    """
     table.setFont(table_font())
     table.setAlternatingRowColors(True)
-    table.setSortingEnabled(False)
+    if not sortable:
+        table.setSortingEnabled(False)
 
     if hasattr(table, "verticalHeader"):
         table.verticalHeader().setDefaultSectionSize(table_row_height())
@@ -228,7 +239,7 @@ def apply_compact_table_style(table) -> None:
         header = table.horizontalHeader()
         header.setDefaultSectionSize(table_header_height())
         header.setStretchLastSection(True)
-        header.setSectionsClickable(False)
+        header.setSectionsClickable(sortable)
         header.setHighlightSections(False)
 
 

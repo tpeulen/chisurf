@@ -300,6 +300,9 @@ class ChiSurfRibbonIntegration(QObject):
             # Setup quick access bar
             self._setup_quick_access_bar()
 
+            # Mount the flag-dropdown language switcher in the top-right corner
+            self._setup_language_switcher()
+
             # Create ribbon categories
             self.categories = {}
             # Create File category first (as the first tab)

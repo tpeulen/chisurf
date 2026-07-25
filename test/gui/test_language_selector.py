@@ -54,6 +54,86 @@ def test_live_apply_and_remove(qapp):
         ci18n.set_translation_backend(None)
 
 
+def test_language_selector_widget_populates_and_applies(qapp, monkeypatch):
+    """The reusable LanguageSelector lists shipped locales and applies a pick.
+
+    Persistence and the live switch are captured so the test never touches the
+    real user settings file or the running catalogue.
+    """
+    from chisurf.core.settings import settings_utils
+    from chisurf.gui import i18n as gi18n
+    from chisurf.gui.widgets.language_selector import LanguageSelector
+
+    persisted, applied = {}, {}
+    monkeypatch.setattr(settings_utils, "set_language", lambda c: persisted.setdefault("code", c) or True)
+    monkeypatch.setattr(gi18n, "apply_language", lambda c, app=None: applied.setdefault("code", c) or c)
+
+    sel = LanguageSelector()
+    codes = {sel.combo.itemData(i) for i in range(sel.combo.count())}
+    assert {"en", "de", "fr"} <= codes  # shipped catalogues discovered
+    assert sel.combo.itemText(0) == "English"  # endonym display, en first
+
+    seen = {}
+    sel.languageChanged.connect(lambda c: seen.setdefault("code", c))
+    sel.combo.setCurrentIndex(sel.combo.findData("de"))
+    sel._on_activated(0)
+
+    assert sel.current_code() == "de"
+    assert persisted.get("code") == "de"  # persisted via set_language
+    assert applied.get("code") == "de"  # live-applied
+    assert seen.get("code") == "de"  # languageChanged emitted
+
+
+def test_language_flag_switcher_uk_english_and_applies(qapp, monkeypatch):
+    """The ribbon flag dropdown uses the UK flag for English and switches live."""
+    from chisurf.core.settings import settings_utils
+    from chisurf.gui import i18n as gi18n
+    from chisurf.gui.widgets.language_selector import LanguageFlagSwitcher
+
+    assert gi18n.language_flag("en") == "🇬🇧"  # Union Jack, not US flag
+    assert gi18n.language_flag("de") == "🇩🇪"
+    assert gi18n.language_flag("xx") == "🌐"  # unknown → globe
+
+    persisted, applied = {}, {}
+    monkeypatch.setattr(settings_utils, "set_language", lambda c: persisted.setdefault("code", c) or True)
+    monkeypatch.setattr(gi18n, "apply_language", lambda c, app=None: applied.setdefault("code", c) or c)
+
+    sw = LanguageFlagSwitcher()
+    entries = {a.data(): a.text() for a in sw._menu.actions()}
+    assert {"en", "de", "fr"} <= set(entries)
+    assert entries["en"].startswith("🇬🇧")  # flag + endonym
+
+    seen = {}
+    sw.languageChanged.connect(lambda c: seen.setdefault("code", c))
+    sw._select("fr")
+    assert persisted.get("code") == "fr"
+    assert applied.get("code") == "fr"
+    assert seen.get("code") == "fr"
+
+
+def test_settings_editor_top_selector_syncs_tree_row(qapp, monkeypatch):
+    """The prominent top selector mirrors its choice into the buried tree row."""
+    import chisurf as cs
+    from chisurf.core.settings import settings_utils
+    from chisurf.gui import i18n as gi18n
+    from chisurf.gui.widgets.settings_editor import SettingsEditor
+
+    monkeypatch.setattr(settings_utils, "set_language", lambda c: True)
+    monkeypatch.setattr(gi18n, "apply_language", lambda c, app=None: c)
+
+    src = pathlib.Path(cs.__file__).parent / "core" / "settings" / "settings_chisurf.yaml"
+    tmp = pathlib.Path(tempfile.mkdtemp()) / "settings_chisurf.yaml"
+    shutil.copyfile(src, tmp)
+    ed = SettingsEditor(filename=str(tmp))
+
+    assert ed.language_selector is not None  # prominent selector exists
+    ed.language_selector.combo.setCurrentIndex(ed.language_selector.combo.findData("fr"))
+    ed.language_selector._on_activated(0)
+
+    idx = ed._find_value_index("gui.language")
+    assert idx is not None and idx.data(QtCore.Qt.UserRole) == "fr"  # tree row synced
+
+
 def _find_value_index(model, delegate, target_path):
     def walk(item):
         for r in range(item.rowCount()):

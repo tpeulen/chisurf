@@ -1011,6 +1011,18 @@ class SettingsEditor(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
 
+        # Prominent UI-language selector at the very top. The same choice is also
+        # reachable as the buried ``gui.language`` tree row below; both write the
+        # same setting, so a change here re-syncs the tree on save/reload.
+        from chisurf.gui.widgets.language_selector import LanguageSelector
+
+        language_layout = QtWidgets.QHBoxLayout()
+        self.language_selector = LanguageSelector(self)
+        self.language_selector.languageChanged.connect(self._on_language_changed)
+        language_layout.addWidget(self.language_selector)
+        language_layout.addStretch(1)
+        layout.addLayout(language_layout)
+
         # Create search bar
         search_layout = QtWidgets.QHBoxLayout()
         search_label = QtWidgets.QLabel("Search:")
@@ -1067,6 +1079,42 @@ class SettingsEditor(QtWidgets.QWidget):
         # Set window properties
         self.setWindowTitle(self.window_title)
         self.resize(800, 600)
+
+    def _on_language_changed(self, code: str):
+        """Sync the buried ``gui.language`` tree row after the top selector fires.
+
+        The selector already persisted and live-applied the choice; here we only
+        mirror it into the in-memory tree model so a subsequent Save does not
+        write the stale value back over it.
+        """
+        idx = self._find_value_index("gui.language")
+        if idx is not None and idx.isValid():
+            self.model.setData(idx, code, QtCore.Qt.EditRole)
+            self.model.setData(idx, code, QtCore.Qt.UserRole)
+
+    def _find_value_index(self, target_path: str):
+        """Return the column-1 model index whose dotted setting path matches.
+
+        Walks the settings tree comparing each value cell's resolved path via the
+        delegate; returns ``None`` when the path is absent.
+        """
+        def walk(item):
+            for r in range(item.rowCount()):
+                key_item = item.child(r, 0)
+                val_item = item.child(r, 1)
+                if key_item is None:
+                    continue
+                if val_item is not None:
+                    vidx = self.model.indexFromItem(val_item)
+                    if self.delegate._get_setting_path(vidx) == target_path:
+                        return vidx
+                if key_item.hasChildren():
+                    got = walk(key_item)
+                    if got is not None:
+                        return got
+            return None
+
+        return walk(self.model.invisibleRootItem())
 
     def create_model(self):
         """

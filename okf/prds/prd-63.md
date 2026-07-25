@@ -68,15 +68,24 @@ Implementation and architecture live in
       markdown help panels); the ~238 remaining are non-translatable by design
       (Qt signal/slot names, shortcuts, math symbols, identifiers, URLs) and fall
       back to source. Filled non-destructively; `de.qm` recompiled.
-- [x] **Second locale shipped — French (`fr`)** as a generalisation proof: the
-      selector now offers English / Deutsch / Français, and the app renders French
-      live. `chisurf_fr.ts` derived from the context-complete `de.ts`; UI chrome
-      translated (~285 strings), `fr` registered in the extractor `DEFAULT_LOCALES`
-      and `i18n-compile`, guarded by `test_language_selector`. Remaining French
-      strings fall back to English (per-string Qt fallback).
+- [x] **Second locale shipped — French (`fr`)**, now brought to parity with
+      German: 2065/2483 messages finished (~83%; the ~418 remaining are
+      non-translatable identifiers/symbols/units that fall back to source). UI
+      chrome, the data-driven view.json/manifest display-names + tooltips and the
+      long help panels are translated; `fr` is registered in the extractor
+      `DEFAULT_LOCALES` and `i18n-compile`, guarded by `test_language_selector`.
+- [x] **Discoverable language pickers.** A reusable `LanguageFlagSwitcher`
+      (flag-dropdown QToolButton; 🇬🇧 for English, not the US flag) and a reusable
+      `LanguageSelector` (endonym combo) live in
+      `gui/widgets/language_selector.py`, both backed by the Qt-free core locale
+      seam. The flag switcher is mounted in the **ribbon top-right corner**
+      (`ribbon_categories._setup_language_switcher`), and the combo sits as a
+      **prominent header row atop the Settings editor** (above the buried
+      `gui.language` tree row, which it keeps in sync). Flag map + `language_flag`
+      added to `gui/i18n.py`. Guarded by `test/gui/test_language_selector.py`.
 - [ ] Follow-ups: imperative `setText`/`QMessageBox` wrapping (phased), menu-path
       `display_name`/`categories` localization at the nav seam, `.ui` terminology
-      convergence, completing the French catalogue, and further locales.
+      convergence, the final ~15% of both catalogues, and further locales.
 
 # Non-goals (this pass)
 

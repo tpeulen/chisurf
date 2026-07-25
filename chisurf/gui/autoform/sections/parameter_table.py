@@ -25,6 +25,12 @@ from qtpy import QtCore, QtGui, QtWidgets
 from chisurf import typing
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.chitable.delegates import (
+    BooleanToggleDelegate,
+    FloatEditDelegate,
+    RichTextDelegate,
+    RichTextHeaderView,
+)
 
 # ── column enumeration ──────────────────────────────────────────────────
 
@@ -116,152 +122,16 @@ def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) ->
     return True
 
 
-# ── rich-text (HTML) delegate ───────────────────────────────────────────
+# ── delegates ───────────────────────────────────────────────────────────
+#
+# These live in :mod:`chisurf.gui.widgets.chitable.delegates` — they are table
+# furniture, not parameter furniture, and every ChiSurf table now shares them.
+# The underscore-prefixed aliases below keep this module's historic API (several
+# call sites, including the Global View table, import them from here).
 
-
-class _RichTextDelegate(QtWidgets.QStyledItemDelegate):
-    """Render a cell's display text as HTML so parameter labels keep their
-    sub/superscripts (e.g. ``n<sub>0</sub>`` → n₀, ``&tau;<sub>0</sub>`` → τ₀)."""
-
-    def paint(self, painter, option, index):
-        text = index.data(QtCore.Qt.DisplayRole)
-        if not text or "<" not in str(text):
-            return super().paint(painter, option, index)
-        opt = QtWidgets.QStyleOptionViewItem(option)
-        self.initStyleOption(opt, index)
-        html = opt.text
-        opt.text = ""
-        style = opt.widget.style() if opt.widget else QtWidgets.QApplication.style()
-        style.drawControl(QtWidgets.QStyle.CE_ItemViewItem, opt, painter, opt.widget)
-
-        doc = QtGui.QTextDocument()
-        doc.setDefaultFont(opt.font)
-        doc.setDocumentMargin(0)
-        doc.setHtml(html)
-        selected = bool(opt.state & QtWidgets.QStyle.State_Selected)
-        role = QtGui.QPalette.HighlightedText if selected else QtGui.QPalette.Text
-        ctx = QtGui.QAbstractTextDocumentLayout.PaintContext()
-        ctx.palette.setColor(QtGui.QPalette.Text, opt.palette.color(role))
-        rect = style.subElementRect(QtWidgets.QStyle.SE_ItemViewItemText, opt, opt.widget)
-        painter.save()
-        painter.translate(rect.left() + 2, rect.top() + max(0, (rect.height() - doc.size().height()) / 2))
-        ctx.clip = QtCore.QRectF(0, 0, rect.width(), rect.height())
-        doc.documentLayout().draw(painter, ctx)
-        painter.restore()
-
-
-# ── boolean checkbox delegate ───────────────────────────────────────────
-
-
-class _BooleanToggleDelegate(QtWidgets.QStyledItemDelegate):
-    """Click-to-toggle checkbox rendered centered in the cell."""
-
-    def _is_checked(self, value) -> bool:
-        try:
-            if isinstance(value, (bool,)) or value is None:
-                return bool(value) if value is not None else False
-            if isinstance(value, str):
-                return value.strip().lower() in ("true", "1", "yes", "on")
-            return bool(int(value))
-        except Exception:
-            return False
-
-    def _toggle(self, value) -> bool:
-        return not self._is_checked(value)
-
-    def _checkbox_rect(self, option: QtWidgets.QStyleOptionViewItem) -> QtCore.QRect:
-        rect = option.rect
-        size = 16
-        x = rect.x() + (rect.width() - size) // 2
-        y = rect.y() + (rect.height() - size) // 2
-        return QtCore.QRect(x, y, size, size)
-
-    def paint(
-        self,
-        painter: QtGui.QPainter,
-        option: QtWidgets.QStyleOptionViewItem,
-        index: QtCore.QModelIndex,
-    ) -> None:
-        checked = self._is_checked(index.data(QtCore.Qt.DisplayRole))
-        style = (
-            QtWidgets.QApplication.style()
-            if QtWidgets.QApplication.instance()
-            else option.widget.style()
-        )
-        cb_opt = QtWidgets.QStyleOptionButton()
-        cb_opt.state = QtWidgets.QStyle.State_Enabled | (
-            QtWidgets.QStyle.State_On if checked else QtWidgets.QStyle.State_Off
-        )
-        cb_opt.rect = self._checkbox_rect(option)
-        style.drawControl(QtWidgets.QStyle.CE_CheckBox, cb_opt, painter)
-
-    def createEditor(self, parent, option, index):
-        return None
-
-    def editorEvent(
-        self,
-        event: QtCore.QEvent,
-        model: QtCore.QAbstractItemModel,
-        option: QtWidgets.QStyleOptionViewItem,
-        index: QtCore.QModelIndex,
-    ) -> bool:
-        # A read-only cell must not toggle, and only the *left* button edits:
-        # every other button reached here too, so right-clicking a Fixed cell to
-        # open the link / copy context menu silently flipped the flag first.
-        if not (index.flags() & QtCore.Qt.ItemIsEditable):
-            return False
-        et = event.type()
-        if et in (QtCore.QEvent.MouseButtonRelease, QtCore.QEvent.MouseButtonDblClick):
-            if getattr(event, "button", None) and event.button() != QtCore.Qt.LeftButton:
-                return False
-            new_val = self._toggle(index.data(QtCore.Qt.DisplayRole))
-            return model.setData(index, str(new_val), QtCore.Qt.EditRole)
-        if et == QtCore.QEvent.KeyPress:
-            if isinstance(event, QtGui.QKeyEvent) and event.key() in (
-                QtCore.Qt.Key_Space,
-                QtCore.Qt.Key_Return,
-                QtCore.Qt.Key_Enter,
-            ):
-                new_val = self._toggle(index.data(QtCore.Qt.DisplayRole))
-                return model.setData(index, str(new_val), QtCore.Qt.EditRole)
-        return False
-
-
-class _FloatEditDelegate(QtWidgets.QStyledItemDelegate):
-    """Float-column editor using :class:`ScientificDoubleSpinBox`.
-
-    Qt's default item-editor factory maps a plain ``float`` EditRole value to a
-    stock ``QDoubleSpinBox``, which defaults to 2 decimal places and a 0-99.99
-    range — silently truncating (displaying ``0.00``) and un-enterable outside
-    that range for the small/large values these tables routinely hold (e.g. a
-    bunching time constant of 0.001 ms). This delegate swaps in the same
-    adaptive-significant-figures, unbounded editor the standalone parameter
-    widgets already use (:mod:`chisurf.gui.widgets.fitting.parameter_widgets`).
-    """
-
-    def createEditor(self, parent, option, index):
-        from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
-
-        return ScientificDoubleSpinBox(parent, decimals=6, finite=False)
-
-    def setEditorData(self, editor, index) -> None:
-        value = index.data(QtCore.Qt.EditRole)
-        try:
-            editor.setValue(float(value))
-        except Exception:
-            pass
-
-    def setModelData(self, editor, model, index) -> None:
-        # A spin box only turns typed text into a value when the entry is
-        # committed, and the delegate's commit runs *before* the editor sees the
-        # Return / focus-out that would do it -- so ``value()`` would still hold
-        # the pre-edit number and the cell snapped straight back. Interpreting
-        # the text here is what Qt's own item delegate does for spin-box editors.
-        editor.interpretText()
-        model.setData(index, editor.value(), QtCore.Qt.EditRole)
-
-    def updateEditorGeometry(self, editor, option, index) -> None:
-        editor.setGeometry(option.rect)
+_RichTextDelegate = RichTextDelegate
+_BooleanToggleDelegate = BooleanToggleDelegate
+_FloatEditDelegate = FloatEditDelegate
 
 
 # ── table model ─────────────────────────────────────────────────────────
@@ -889,62 +759,8 @@ def _group_header_label(label_text: str) -> str:
     return re.sub(r"<sub>(.*?)</sub>", _strip, str(label_text))
 
 
-class _RichTextHeaderView(QtWidgets.QHeaderView):
-    """Horizontal header that renders its labels as HTML (sub/superscripts).
-
-    ``QHeaderView`` shows the raw ``x<sub>l</sub>`` markup otherwise; this paints
-    the header chrome without text and overlays a rendered ``QTextDocument`` so
-    the paired-table column titles read ``xₗ`` / ``τₗ`` like the parameter row
-    widgets.
-    """
-
-    def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None):
-        super().__init__(QtCore.Qt.Horizontal, parent)
-        self.setDefaultAlignment(QtCore.Qt.AlignCenter)
-
-    def paintSection(self, painter, rect, logicalIndex):  # noqa: N802 (Qt override)
-        model = self.model()
-        text = ""
-        if model is not None:
-            data = model.headerData(logicalIndex, QtCore.Qt.Horizontal, QtCore.Qt.DisplayRole)
-            text = "" if data is None else str(data)
-        # Render as HTML for markup (``x<sub>l</sub>``) *and* bare entities
-        # (``&rho;`` → ρ); the default header would print the raw entity text.
-        if "<" not in text and "&" not in text:
-            super().paintSection(painter, rect, logicalIndex)
-            return
-        # Header chrome (background/borders) without its text, then the HTML overlay.
-        painter.save()
-        try:
-            opt = QtWidgets.QStyleOptionHeader()
-            opt.rect = rect
-            opt.section = logicalIndex
-            opt.text = ""
-            opt.orientation = QtCore.Qt.Horizontal
-            opt.palette = self.palette()
-            opt.state = QtWidgets.QStyle.State_Enabled | QtWidgets.QStyle.State_Horizontal
-            opt.position = QtWidgets.QStyleOptionHeader.Middle
-            self.style().drawControl(QtWidgets.QStyle.CE_Header, opt, painter, self)
-        except Exception:
-            painter.restore()
-            super().paintSection(painter, rect, logicalIndex)
-            return
-        painter.restore()
-
-        doc = QtGui.QTextDocument()
-        doc.setDefaultFont(self.font())
-        doc.setDocumentMargin(0)
-        doc.setHtml(text)
-        color = self.palette().color(QtGui.QPalette.ButtonText)
-        painter.save()
-        painter.translate(
-            rect.left() + max(0.0, (rect.width() - doc.idealWidth()) / 2.0),
-            rect.top() + max(0.0, (rect.height() - doc.size().height()) / 2.0),
-        )
-        ctx = QtGui.QAbstractTextDocumentLayout.PaintContext()
-        ctx.palette.setColor(QtGui.QPalette.Text, color)
-        doc.documentLayout().draw(painter, ctx)
-        painter.restore()
+#: Rich-text header view — canonical implementation lives in chitable.
+_RichTextHeaderView = RichTextHeaderView
 
 
 class PairedParameterTableModel(QtCore.QAbstractTableModel):
