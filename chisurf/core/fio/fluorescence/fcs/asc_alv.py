@@ -14,8 +14,13 @@ from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
 
 
-class LoadALVError(BaseException):
-    pass
+class LoadALVError(Exception):
+    """Raised when an ALV .ASC file cannot be interpreted.
+
+    Derives from :class:`Exception` — a malformed file is an ordinary IO
+    failure that generic ``except Exception`` handlers in the import path must
+    be able to catch, unlike the interpreter-level `BaseException` conditions.
+    """
 
 
 def openASC(path, filename=None):
@@ -719,37 +724,3 @@ def read_asc(
             corr
         )
     return correlations
-
-
-def write_asc(
-        filename: str,
-        correlation_amplitudes: typing.Tuple[np.ndarray],
-        correlation_times: typing.Tuple[np.ndarray],
-        time_traces: typing.Tuple[np.ndarray],
-        mean_countrates: typing.Tuple[float],
-        meta_data: typing.Dict,
-        acquisition_time: float,
-        verbose: bool = True
-) -> None:
-    """Write FCS data to an ALV .asc file.
-
-    Parameters
-    ----------
-    filename : str
-        Output file path.
-    correlation_amplitudes : tuple of np.ndarray
-        Correlation amplitudes.
-    correlation_times : tuple of np.ndarray
-        Correlation lag times.
-    time_traces : tuple of np.ndarray
-        Intensity traces.
-    mean_countrates : tuple of float
-        Mean count rates.
-    meta_data : dict
-        Metadata to include.
-    acquisition_time : float
-        Acquisition time in seconds.
-    verbose : bool
-        If True, print progress.
-    """
-    pass

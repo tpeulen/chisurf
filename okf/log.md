@@ -2,6 +2,23 @@
 
 ## 2026-07-25
 
+* **An unreadable ALV file failed like a `KeyboardInterrupt`, and the ALV
+  writer wrote nothing (RF-050, RF-051).** `LoadALVError` derived from
+  `BaseException`, so the five malformed-file conditions `openASC_ALV_7004`
+  reports passed straight through every `except Exception` in the import path
+  — while the `NotImplementedError` raised a few lines further down in the same
+  function was caught normally, so two failures of the same kind behaved
+  differently for callers. Now an `Exception`, with a docstring saying why.
+  Beside it, `write_asc` carried a full NumPy-style docstring for eight
+  parameters over a body of `pass`; ALV is a vendor acquisition format ChiSurf
+  reads and never produces (`write_fcs` knows only `kristine` and `yaml`, and
+  nothing tree-wide called it), so the stub is deleted rather than implemented
+  — a writer that silently succeeds is the worst failure mode to leave in an IO
+  module. `test/fio/test_asc_alv_error_contract.py` pins both, driving the
+  error through the real parser by stripping the `Mode` header off the
+  committed `ALV-7004USB_ac3.ASC`; confirmed discriminating (2 of the 3 tests
+  fail on the old base class). Suites: 3 + 11 (+8 skipped) passed.
+
 * **The blocked sampler's warm-up was costing more than it bought (~2x).** Stan's
   windowed adaptation was the last unharvested item from that review, and taking
   it required measuring which of its pieces actually transfer to a random walk.

@@ -666,15 +666,28 @@ another instance); the symbol names are given so they stay findable.
 - **Fix note:**
 
 ### RF-050
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (an exception generic handlers cannot catch)
 - **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:17` (`class LoadALVError(BaseException)`)
 - **Finding:** The reader's own error type derives from `BaseException`, not `Exception`, so it passes straight through every `except Exception` in the import path and through `pytest.raises(Exception)` — the same class of escape as a `KeyboardInterrupt`. It is raised four times in `openASC_ALV_7004` (`:471, :478, :506, …`) for ordinary malformed-file conditions, right next to a `NotImplementedError` at `:549` that *is* an `Exception`, so two failures of the same kind in the same function behave differently for callers. Change the base to `Exception` (or to a shared `chisurf` IO error).
-- **Fix note:**
+- **Fix note:** Base changed to `Exception`, with a docstring saying why (a
+  malformed file is an ordinary IO failure, not an interpreter-level
+  condition). A shared chisurf IO base was *not* introduced — there is none
+  today, and inventing one here would be a wider change than the finding.
+  Pinned by `test/fio/test_asc_alv_error_contract.py`: `issubclass(...,
+  Exception)`, plus an end-to-end case that strips the `Mode` header off the
+  committed `ALV-7004USB_ac3.ASC` and asserts a generic `except Exception`
+  actually sees the failure. Confirmed discriminating — 2 of the 3 tests fail
+  on the old base class, all 3 pass with it.
 
 ### RF-051
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (documented writer that writes nothing)
 - **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:724-755` (`write_asc`)
 - **Finding:** `write_asc` carries a full NumPy-style docstring describing eight parameters and an output file, and its body is `pass`. It has no callers tree-wide (`write_fcs` only knows `kristine` and `yaml`), so nothing breaks today — but a stub that silently succeeds is the worst failure mode to leave in an IO module, and the docstring makes it look implemented. Either implement it against the `openASC_ALV_7004` format that `read_asc` parses (with a round-trip test) or delete it and drop ALV from the writer surface.
-- **Fix note:**
+- **Fix note:** Deleted. ALV is a vendor acquisition format ChiSurf reads and
+  never produces — `write_fcs` offers only `kristine` and `yaml`, and no caller
+  tree-wide asked for `write_asc` — so implementing a writer would add a
+  round-trip surface nobody needs, where removing the stub costs nothing.
+  `test/fio/test_asc_alv_error_contract.py::test_alv_writer_stub_is_gone` keeps
+  it from coming back.
