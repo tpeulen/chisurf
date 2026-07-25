@@ -148,6 +148,19 @@ biased in both directions, so `circularity` can exceed 1 (a 7x7 square scores
   `extract_decay` resolves `--mask` / `--threshold` to a `MaskROI` /
   `ThresholdROI`. `imaging.selection_array` is the single seam where a region
   becomes the `uint8` array tttrlib wants.
+* **Phasor cursors** (`plugins/microscopy/img_pixel_phasor`) — a cursor gating
+  the `(g, s)` plane is an `EllipseROI`; `cursor_roi` builds it and
+  `mask_from_cursor(g, s, roi)` is the general form, so a cluster that is
+  neither a circle nor an ellipse can be enclosed by a polygon and a ring is
+  `outer - inner`. The `phasor.cursor_mask` RPC takes a serialised region and
+  returns the one it used, so a gate replays on the next measurement.
+* **PSF determination** (`plugins/microscopy/psf_determination`) — bead
+  detection groups the bright pixels of each sampled slice into connected
+  regions and seeds the 3-D Gaussian fit with each region's intensity-weighted
+  centre. Two things follow from measuring regions rather than picking pixels:
+  a `min_area` of 2 rejects hot camera pixels (a bead covers several pixels, a
+  defect covers one), and the seed sits at the centre of the spot rather than
+  on its brightest pixel.
 * **Scatter gates** — `pixelwise.colocalization_metrics(gate=...)` takes a ROI
   as readily as the `(a_min, a_max, b_min, b_max)` tuple, evaluated with
   `contains` on each pixel's `(a, b)` value pair. That is the axis-free claim

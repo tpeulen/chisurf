@@ -2,6 +2,20 @@
 
 ## 2026-07-25
 
+* **Phasor cursors are regions now — so a cluster that is not an ellipse can be
+  gated.** `plugins/microscopy/img_pixel_phasor`. The plugin had
+  `mask_from_circular_cursor` and `mask_from_elliptic_cursor`, each
+  re-implementing an inside-test that the ROI system already answers, and
+  offering exactly the two shapes phasorpy offers. `cursor_roi` builds the
+  cursor as an `EllipseROI` and `mask_from_cursor(g, s, roi)` is the general
+  form: the `(g, s)` plane is a pair of axes like any other, so a polygon drawn
+  round a species cluster gates it, and a ring is `outer - inner`. The two old
+  functions survive as one-line wrappers, bit-identical (the rotation
+  convention matched already). The `phasor.cursor_mask` RPC takes a serialised
+  region in place of `center`/`kind` and returns the region it used, so a gate
+  drawn once replays on the next measurement.
+
+
 
 * **chiplot Batch 25 — parameter-scan χ²-surface off pyqtgraph (allow-list
   26 → 25).** Finished `gui/plots/parameter_scan` (dockarea already moved).

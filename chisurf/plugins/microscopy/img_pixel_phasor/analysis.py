@@ -28,6 +28,8 @@ __all__ = [
     "phasor_filter_gaussian",
     "phasor_component_fraction",
     "phasor_unmix",
+    "cursor_roi",
+    "mask_from_cursor",
     "mask_from_circular_cursor",
     "mask_from_elliptic_cursor",
     "pseudo_color",
@@ -265,6 +267,88 @@ def phasor_unmix(
 # --------------------------------------------------------------------------------------
 # Cursors / pseudo-color
 # --------------------------------------------------------------------------------------
+def cursor_roi(
+    center: Sequence[float],
+    kind: str = "circular",
+    radius: float = 0.05,
+    radii: Sequence[float] | None = None,
+    angle: float = 0.0,
+    name: str = "cursor",
+):
+    """Build a gating cursor as a region of interest.
+
+    A phasor cursor selects the pixels whose ``(g, s)`` lands inside a shape —
+    which is what every region in ChiSurf does, on whatever axes the caller
+    supplies. Building the cursor as a :class:`chisurf.core.roi.ROI` means it
+    serialises with a project, composes with other cursors (``a | b``, ``a - b``
+    for a ring), and can be handed to any tool that speaks regions.
+
+    Parameters
+    ----------
+    center : sequence of float
+        Cursor centre ``(g, s)``.
+    kind : str
+        ``"circular"`` or ``"elliptic"``.
+    radius : float
+        Radius of a circular cursor.
+    radii : sequence of float, optional
+        Semi-axes ``(rg, rs)`` of an elliptic cursor; required for that kind.
+    angle : float
+        Rotation of an elliptic cursor, in radians.
+    name : str
+        Label carried on the region.
+
+    Returns
+    -------
+    chisurf.core.roi.EllipseROI
+        The cursor.
+
+    Raises
+    ------
+    ValueError
+        For an unknown *kind*, or an elliptic cursor without usable radii.
+    """
+    from chisurf.core.roi import EllipseROI
+
+    cg, cs = float(center[0]), float(center[1])
+    if kind == "circular":
+        return EllipseROI(cg, cs, float(radius), name=name)
+    if kind == "elliptic":
+        if radii is None:
+            raise ValueError("elliptic cursor requires 'radii'")
+        rg, rs = float(radii[0]), float(radii[1])
+        if rg == 0.0 or rs == 0.0:
+            raise ValueError("elliptic cursor radii must be non-zero")
+        return EllipseROI(cg, cs, rg, rs, angle=float(angle), name=name)
+    raise ValueError(f"unknown cursor kind: {kind!r}")
+
+
+def mask_from_cursor(g: np.ndarray, s: np.ndarray, roi) -> np.ndarray:
+    """Boolean mask of the pixels a region selects in the phasor plane.
+
+    The general form of the cursor masks: *roi* is any
+    :class:`chisurf.core.roi.ROI`, so a species can be gated with a polygon
+    drawn round its cluster, or with two cursors combined, and not only with
+    the circle and ellipse the classic phasor tools offer.
+
+    Parameters
+    ----------
+    g, s : numpy.ndarray
+        Phasor coordinates, of any matching shape.
+    roi : chisurf.core.roi.ROI
+        The gating region, in ``(g, s)`` coordinates.
+
+    Returns
+    -------
+    numpy.ndarray
+        Boolean mask shaped like *g*.
+    """
+    g = np.asarray(g, dtype=np.float64)
+    s = np.asarray(s, dtype=np.float64)
+    points = np.column_stack([g.ravel(), s.ravel()])
+    return roi.contains(points).reshape(g.shape)
+
+
 def mask_from_circular_cursor(
     g: np.ndarray,
     s: np.ndarray,
@@ -272,10 +356,7 @@ def mask_from_circular_cursor(
     radius: float,
 ) -> np.ndarray:
     """Boolean mask of pixels whose ``(g, s)`` fall within a circular cursor."""
-    g = np.asarray(g, dtype=np.float64)
-    s = np.asarray(s, dtype=np.float64)
-    cg, cs = float(center[0]), float(center[1])
-    return (g - cg) ** 2 + (s - cs) ** 2 <= float(radius) ** 2
+    return mask_from_cursor(g, s, cursor_roi(center, "circular", radius=radius))
 
 
 def mask_from_elliptic_cursor(
@@ -286,17 +367,9 @@ def mask_from_elliptic_cursor(
     angle: float = 0.0,
 ) -> np.ndarray:
     """Boolean mask of pixels within an elliptic cursor (``angle`` in radians)."""
-    g = np.asarray(g, dtype=np.float64)
-    s = np.asarray(s, dtype=np.float64)
-    cg, cs = float(center[0]), float(center[1])
-    rg, rs = float(radii[0]), float(radii[1])
-    if rg == 0.0 or rs == 0.0:
-        raise ValueError("elliptic cursor radii must be non-zero")
-    cos_a, sin_a = math.cos(angle), math.sin(angle)
-    dg, ds = g - cg, s - cs
-    u = dg * cos_a + ds * sin_a
-    v = -dg * sin_a + ds * cos_a
-    return (u / rg) ** 2 + (v / rs) ** 2 <= 1.0
+    return mask_from_cursor(
+        g, s, cursor_roi(center, "elliptic", radii=radii, angle=angle)
+    )
 
 
 def pseudo_color(

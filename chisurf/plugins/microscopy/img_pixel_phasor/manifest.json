@@ -80,19 +80,20 @@
     },
     {
       "name": "phasor.cursor_mask",
-      "summary": "Boolean mask of pixels within a circular or elliptic phasor cursor.",
+      "summary": "Boolean mask of the pixels a phasor cursor selects (circle, ellipse, or any region).",
       "params_schema": {
         "type": "object",
         "properties": {
           "g": {"type": "array"},
           "s": {"type": "array"},
-          "center": {"type": "array"},
+          "center": {"type": "array", "description": "Cursor centre (g, s)."},
           "kind": {"type": "string", "enum": ["circular", "elliptic"]},
-          "radius": {"type": "number"},
-          "radii": {"type": "array"},
-          "angle": {"type": "number"}
+          "radius": {"type": "number", "description": "Radius of a circular cursor."},
+          "radii": {"type": "array", "description": "Semi-axes (rg, rs) of an elliptic cursor."},
+          "angle": {"type": "number", "description": "Rotation of an elliptic cursor, in radians."},
+          "roi": {"type": "object", "description": "A serialised region gating the phasor plane — a polygon round a cluster, or a combination of cursors. Replaces center/kind."}
         },
-        "required": ["g", "s", "center"]
+        "required": ["g", "s"]
       }
     },
     {

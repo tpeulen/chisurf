@@ -138,25 +138,35 @@ def _unmix_handler(
 def _cursor_mask_handler(
     g: Any,
     s: Any,
-    center: Any,
+    center: Any = None,
     kind: str = "circular",
     radius: float = 0.05,
     radii: Any = None,
     angle: float = 0.0,
+    roi: Any = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     try:
         g_arr = np.asarray(g, dtype=float)
         s_arr = np.asarray(s, dtype=float)
-        if kind == "circular":
-            mask = analysis.mask_from_circular_cursor(g_arr, s_arr, center, float(radius))
-        elif kind == "elliptic":
-            if radii is None:
-                raise ValueError("elliptic cursor requires 'radii'")
-            mask = analysis.mask_from_elliptic_cursor(g_arr, s_arr, center, radii, float(angle))
+        if roi is not None:
+            # Any serialised region gates the phasor plane, not only the two
+            # classic cursor shapes.
+            from chisurf.core.roi import roi_from_dict
+
+            region = roi_from_dict(roi)
+        elif center is not None:
+            region = analysis.cursor_roi(
+                center, kind, radius=float(radius), radii=radii, angle=float(angle)
+            )
         else:
-            raise ValueError(f"unknown cursor kind: {kind!r}")
-        return _ok({"mask": mask.tolist(), "n_selected": int(mask.sum())})
+            raise ValueError("a cursor needs either 'center' or a serialised 'roi'")
+        mask = analysis.mask_from_cursor(g_arr, s_arr, region)
+        return _ok({
+            "mask": mask.tolist(),
+            "n_selected": int(mask.sum()),
+            "roi": region.to_dict(),
+        })
     except Exception as exc:
         return _fail(exc, "cursor_mask")
 

@@ -142,6 +142,14 @@ computation:
   shares a photophysical state, so distinct environments separate as distinct
   clouds.
 
+  A cursor is a {ref}`region <concept-region-properties>` on the $(g, s)$ plane,
+  the same object that selects pixels on a frame — only the axes differ. The
+  classic circle and ellipse are the common cases, but a cluster that is neither
+  can be enclosed by a polygon, and two cursors combine (a ring is
+  `outer - inner`) without anything special. Cursors serialise with the project
+  and travel over RPC, so a gate drawn once can be replayed on the next
+  measurement.
+
 - **FRET as a trajectory.** FRET shortens the donor lifetime, so as transfer
   efficiency rises the donor phasor moves **off** its unquenched position on the
   circle **toward shorter lifetime**, along a predictable **FRET trajectory**. A

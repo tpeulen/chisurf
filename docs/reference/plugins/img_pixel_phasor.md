@@ -33,7 +33,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `phasor.filter` | no | NaN-safe median or gaussian filtering of g, s phasor maps. |
 | `phasor.component_fraction` | no | Fraction of component 1 by projection onto the two-component line. |
 | `phasor.unmix` | no | Non-negative, sum-to-one fractions for N >= 2 component phasors. |
-| `phasor.cursor_mask` | no | Boolean mask of pixels within a circular or elliptic phasor cursor. |
+| `phasor.cursor_mask` | no | Boolean mask of the pixels a phasor cursor selects (circle, ellipse, or any region). |
 | `phasor.pseudo_color` | no | Colorize a stack of boolean masks into an RGB label image. |
 | `phasor.overlays` | no | Reference-geometry polylines (semicircle, lifetime grid/ticks, FRET, component line). |
 

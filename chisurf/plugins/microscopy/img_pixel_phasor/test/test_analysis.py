@@ -121,6 +121,46 @@ def test_elliptic_cursor_axis_aligned():
     np.testing.assert_array_equal(mask, [True, True, False])
 
 
+def test_a_cursor_is_a_region_and_any_region_can_gate():
+    """Cursors are ROIs, so gating is not limited to the two classic shapes.
+
+    The phasor plane is a pair of axes like any other, so the same region type
+    that masks an image selects pixels here — which means a species can be
+    gated with a polygon round its cluster, or with two cursors combined into a
+    ring, without new machinery.
+    """
+    from chisurf.core.roi import PolygonROI, roi_from_dict
+
+    g = np.array([[0.10, 0.50], [0.51, 0.90]])
+    s = np.array([[0.10, 0.50], [0.49, 0.10]])
+
+    roi = analysis.cursor_roi((0.5, 0.5), "circular", radius=0.05)
+    np.testing.assert_array_equal(
+        analysis.mask_from_cursor(g, s, roi),
+        analysis.mask_from_circular_cursor(g, s, center=(0.5, 0.5), radius=0.05),
+    )
+
+    # ... and it survives serialisation, so a gate can be stored with a project.
+    np.testing.assert_array_equal(
+        analysis.mask_from_cursor(g, s, roi_from_dict(roi.to_dict())),
+        analysis.mask_from_cursor(g, s, roi),
+    )
+
+    box = PolygonROI([(0.45, 0.45), (0.55, 0.45), (0.55, 0.55), (0.45, 0.55)])
+    np.testing.assert_array_equal(
+        analysis.mask_from_cursor(g, s, box), [[False, True], [True, False]]
+    )
+
+    # A ring: inside the outer cursor but outside the inner one. The two
+    # near-centre pixels drop out, the two far ones stay.
+    ring = analysis.cursor_roi((0.5, 0.5), radius=0.6) - analysis.cursor_roi(
+        (0.5, 0.5), radius=0.05
+    )
+    np.testing.assert_array_equal(
+        analysis.mask_from_cursor(g, s, ring), [[True, False], [False, True]]
+    )
+
+
 def test_pseudo_color_shapes_and_colors():
     m0 = np.array([[True, False], [False, False]])
     m1 = np.array([[False, True], [True, False]])
