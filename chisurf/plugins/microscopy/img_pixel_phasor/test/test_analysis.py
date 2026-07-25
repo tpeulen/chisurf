@@ -161,6 +161,39 @@ def test_a_cursor_is_a_region_and_any_region_can_gate():
     )
 
 
+def test_a_painted_cursor_gates_the_pixels_under_the_paint():
+    """Phasor clusters are not ellipses; painting one selects it exactly.
+
+    The density plot is a 2-D histogram, so a painted gate is a mask over
+    bins — and the bin edges are what turn it back into the ``(g, s)`` values
+    the pixels carry.
+    """
+    g = np.array([[0.10, 0.80], [0.55, 0.90]])
+    s = np.array([[0.10, 0.80], [0.55, 0.10]])
+
+    edges = np.linspace(0.0, 1.0, 5)
+    painted = np.zeros((4, 4), dtype=bool)
+    painted[2:, 2:] = True  # the upper-right quadrant of the plane
+
+    cursor = analysis.cursor_from_painted_mask(painted, edges, edges)
+    np.testing.assert_array_equal(
+        analysis.mask_from_cursor(g, s, cursor),
+        [[False, True], [True, False]],
+    )
+
+    # It composes and serialises like the analytic cursors.
+    from chisurf.core.roi import roi_from_dict
+
+    trimmed = cursor - analysis.cursor_roi((0.8, 0.8), radius=0.05)
+    np.testing.assert_array_equal(
+        analysis.mask_from_cursor(g, s, trimmed), [[False, False], [True, False]]
+    )
+    np.testing.assert_array_equal(
+        analysis.mask_from_cursor(g, s, roi_from_dict(cursor.to_dict())),
+        analysis.mask_from_cursor(g, s, cursor),
+    )
+
+
 def test_pseudo_color_shapes_and_colors():
     m0 = np.array([[True, False], [False, False]])
     m1 = np.array([[False, True], [True, False]])

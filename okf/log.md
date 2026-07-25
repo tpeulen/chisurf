@@ -2,6 +2,24 @@
 
 ## 2026-07-25
 
+* **A painted gate can finally mean values, not pixels.** `chisurf/core/roi`.
+  `MaskROI` assumed pixel indices, so every bitmap selection drawn on a *plot*
+  — a cluster painted on a phasor plane, a band painted on an intensity scatter
+  — fell outside the ROI system: there was no way for a mask to say which
+  values its cells covered. It now takes an optional `extent`, and
+  `MaskROI.from_histogram(mask, edges_x, edges_y)` builds one straight from a
+  2-D histogram's bin edges. `contains` maps values to bins (half-open, as
+  histogram bins are), `to_mask` resamples onto whatever grid the caller has,
+  `bounds` reports the box in value space, and the extent round-trips through
+  the JSON form.
+  Two consumers immediately: the **colocalization scatter gate** grew a brush —
+  paint the population and the painted bins become the gate, taking precedence
+  over the dragged rectangle while it lasts (a real population is a band along
+  the diagonal, not a box) — and the phasor plugin gained
+  `cursor_from_painted_mask`, since a phasor cluster is whatever the
+  photophysics produced rather than the circle or ellipse the classic tools
+  offer. Both compose and serialise like any other region.
+
 * **chimol can measure solvent accessibility — the first Tier-2 work.** `get_area`,
   with `get_extent`, `get_chains` and `get_title` alongside. Accessibility decides
   where a dye can be attached and how freely it moves, so this is one of the few

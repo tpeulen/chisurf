@@ -156,6 +156,13 @@ look unrelated:
   result is a region, so the objects a segmentation found can be gated,
   measured and stored like a hand-drawn one.
 
+A **painted** gate works on either kind of axis too. Paint on an image and the
+brush strokes are pixels; paint on a 2-D histogram and they are *bins*, so the
+region carries the bin edges and tests values instead of indices. That is what
+lets a population be selected as the cloud it actually is — a phasor cluster, a
+diagonal band in an intensity scatter — rather than as the box or ellipse that
+approximates it.
+
 Regions save as JSON — geometry, name, and nested boolean combinations — which
 survives a project save, an RPC hop or another tool; a mask image is the export
 for programs that read nothing else.

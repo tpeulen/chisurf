@@ -238,6 +238,35 @@ def test_view_model_runs_headless(two_channel_tiff):
     assert vm.gate_region() is not None
 
 
+def test_a_painted_population_gates_the_scatter(two_channel_tiff):
+    """A cloud in an intensity scatter is not a box, so it can be painted.
+
+    The brush writes into a buffer over the histogram bins; adopting the stroke
+    reads the intensities those bins stand for off the edges and gates exactly
+    those pixels — and painting beats the dragged rectangle while it lasts.
+    """
+    from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
+
+    path, _, _ = two_channel_tiff
+    vm = ColocViewModel()
+    vm.set_filename(str(path))
+    assert vm.compute() is True
+    assert vm.gate_paint is not None  # allocated to the histogram's shape
+
+    vm.gate_paint[vm.bins // 2:, vm.bins // 2:] = 1.0  # the bright quadrant
+    vm.on_gate_painted()
+    assert vm.gate_enabled is True
+    gate = vm._gate()
+    assert gate.type_name == "mask"
+    assert vm._metrics["n_pixels_gated"] > 0
+    # The gate covers only the bright corner of the plane, not everything.
+    assert vm._metrics["n_pixels_gated"] < vm._metrics["n_pixels"]
+
+    vm.clear_gate()
+    assert vm._gate() is None
+    assert not (np.asarray(vm.gate_paint) > 0).any()
+
+
 # --- detector setup + view spec ----------------------------------------------
 
 

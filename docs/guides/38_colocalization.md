@@ -156,6 +156,15 @@ pixel population gets its own coefficients.
 Type the bounds into the **Scatter gate** panel for an exactly reproducible gate,
 or press **🧹 Clear gate** to go back to all thresholded pixels.
 
+A population is rarely a rectangle, though — a real one is a band along the
+diagonal, or a cloud off it. **Paint it instead**: brush directly on the
+histogram and the painted bins become the gate, exactly as drawn. Painting takes
+precedence over the rectangle while it lasts, and **🧹 Clear gate** resets both.
+Under the hood the paint is the same kind of region as a mask drawn on an image
+— only its axes are intensities rather than pixels
+({ref}`concept-region-properties`) — so it can be combined with another region
+or stored with the analysis.
+
 ## Headless / CLI
 
 Everything the GUI does is available without it:

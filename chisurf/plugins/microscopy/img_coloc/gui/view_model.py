@@ -178,19 +178,27 @@ class ColocViewModel:
         return {"auto": None, "first axis": 0}.get(self.channel_axis_mode, None)
 
     def _gate(self):
-        """Return the scatter-plane gate rectangle, or ``None`` when disabled.
+        """Return the scatter-plane gate, or ``None`` when disabled.
 
-        A plain tuple, not a region: the rectangle drawn here is inclusive at
-        both ends, so a gate dragged onto the brightest pixel keeps it, where a
-        half-open :class:`~chisurf.core.roi.RectangleROI` would not. The
-        analysis accepts either, so a shaped gate can be passed straight
-        through when one is ever drawn.
+        A painted gate wins when there is one — a population in an intensity
+        scatter is rarely a rectangle. Otherwise the dragged rectangle is passed
+        as a plain tuple rather than a region, because it is inclusive at both
+        ends where a half-open :class:`~chisurf.core.roi.RectangleROI` is not,
+        and that difference is exactly the brightest pixel.
         """
+        if self.gate_enabled and self._painted_gate is not None:
+            return self._painted_gate
         if not self.gate_enabled:
             return None
         if self.gate_a_max <= self.gate_a_min or self.gate_b_max <= self.gate_b_min:
             return None
         return (self.gate_a_min, self.gate_a_max, self.gate_b_min, self.gate_b_max)
+
+    # ── scatter gate painted on the joint histogram ──
+    #: Paint buffer over the histogram bins; the brush writes into it.
+    gate_paint = None
+    #: The painted bins as a region, once a stroke has been adopted.
+    _painted_gate = None
 
     # ── spatial ROI (painted on the channel-A map) ──
     def _roi(self):
@@ -291,6 +299,11 @@ class ColocViewModel:
         shape = np.asarray(out["image_a"]).shape
         if self.roi_mask is None or np.asarray(self.roi_mask).shape != shape:
             self.roi_mask = np.zeros(shape, dtype=float)
+        # ... and the scatter gate needs one shaped like the joint histogram.
+        hist = self._result.histogram.get("histogram")
+        if hist is not None:
+            if self.gate_paint is None or np.asarray(self.gate_paint).shape != hist.shape:
+                self.gate_paint = np.zeros(hist.shape, dtype=float)
         names = self.channel_names()
         if names:
             self.channel_a = str(channel_a) if str(channel_a) in names else names[0]
@@ -330,9 +343,43 @@ class ColocViewModel:
         self.compute()
 
     def clear_gate(self) -> None:
-        """Disable the scatter gate and recompute."""
+        """Disable the scatter gate — rectangle and paint alike — and recompute."""
         self.gate_enabled = False
+        self._painted_gate = None
+        if self.gate_paint is not None:
+            self.gate_paint = np.zeros_like(np.asarray(self.gate_paint))
         self.compute()
+
+    def on_gate_painted(self) -> None:
+        """Adopt the painted histogram bins as the gate and recompute.
+
+        A population in an intensity scatter is a cloud, not a box: this takes
+        the bins the user painted, reads the intensities they stand for off the
+        histogram edges, and gates on exactly those. Painting nothing (or
+        erasing everything) falls back to the rectangle.
+        """
+        if self._result is None or self.gate_paint is None:
+            return
+        edges_a = self._result.histogram.get("edges_a")
+        edges_b = self._result.histogram.get("edges_b")
+        painted = np.asarray(self.gate_paint) > 0
+        if edges_a is None or edges_b is None or not painted.any():
+            self._painted_gate = None
+        else:
+            from chisurf.core.roi import MaskROI
+
+            # The histogram is indexed [a_bin, b_bin] and drawn with A
+            # horizontal, so the region — which wants rows along y — takes the
+            # transpose.
+            self._painted_gate = MaskROI.from_histogram(
+                painted.T, edges_a, edges_b, name="painted gate"
+            )
+            self.gate_enabled = True
+        self.compute()
+
+    def gate_brush_kernel(self):
+        """Return the paint kernel for the scatter-gate brush."""
+        return self.brush_kernel()
 
     # ── AutoForm accessors ──
     # (:attr:`results_text` is shown in the host's status bar, not in a panel.)
@@ -463,9 +510,12 @@ class ColocViewModel:
         -------
         chisurf.core.roi.RectangleROI or None
             Where to draw the rectangle on the joint histogram; ``None`` when
-            gating is off or no result has been computed yet.
+            gating is off, a painted gate has superseded it, or no result has
+            been computed yet.
         """
         if self._result is None or not self.gate_enabled:
+            return None
+        if self._painted_gate is not None:
             return None
         edges_a = self._result.histogram.get("edges_a")
         edges_b = self._result.histogram.get("edges_b")

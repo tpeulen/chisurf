@@ -40,7 +40,7 @@ region drawn on an image are the same `RectangleROI`.
 | `RectangleROI` | index ranges, drawn boxes, histogram gates. Half-open, so abutting rectangles tile without overlap; `from_slices` converts array slice bounds |
 | `EllipseROI` | circles (beads, spots) and rotated ellipses; the 2-D Gaussian gates on parameter histograms |
 | `PolygonROI` | arbitrary regions **and** freehand outlines — a hand-drawn contour is just a polygon with many vertices, so there is no separate freehand type |
-| `MaskROI` | anything not analytic: a painted brush stroke, one label of a segmentation, an imported classification map. Optionally cropped to a bounding box with an offset |
+| `MaskROI` | anything not analytic: a painted brush stroke, one label of a segmentation, an imported classification map. Optionally cropped to a bounding box with an offset, or given an `extent` so its cells span **values** rather than pixel indices — `from_histogram(mask, edges_x, edges_y)` is how a region painted on a 2-D histogram gates the data behind it |
 | `ThresholdROI` | intensity selection, absolute or percentile. Image-dependent, so it answers only the pixel question and raises on `contains` |
 | `CompositeROI` | boolean combinations, built through the `&`, `|`, `^`, `-`, `~` operators |
 
@@ -167,6 +167,11 @@ biased in both directions, so `circularity` can exceed 1 (a 7x7 square scores
   a `min_area` of 2 rejects hot camera pixels (a bead covers several pixels, a
   defect covers one), and the seed sits at the centre of the spot rather than
   on its brightest pixel.
+* **Painted gates** — the colocalization scatter and the phasor plane both take
+  a brush now: the strokes land in a buffer over the histogram bins,
+  `MaskROI.from_histogram` turns them into a region on the value axes, and it
+  gates like any other. A population is rarely a rectangle or an ellipse, and
+  before this the paint could only ever mean pixels.
 * **Scatter gates** — `pixelwise.colocalization_metrics(gate=...)` takes a ROI
   as readily as the `(a_min, a_max, b_min, b_max)` tuple, evaluated with
   `contains` on each pixel's `(a, b)` value pair. That is the axis-free claim

@@ -29,6 +29,7 @@ __all__ = [
     "phasor_component_fraction",
     "phasor_unmix",
     "cursor_roi",
+    "cursor_from_painted_mask",
     "mask_from_cursor",
     "mask_from_circular_cursor",
     "mask_from_elliptic_cursor",
@@ -321,6 +322,39 @@ def cursor_roi(
             raise ValueError("elliptic cursor radii must be non-zero")
         return EllipseROI(cg, cs, rg, rs, angle=float(angle), name=name)
     raise ValueError(f"unknown cursor kind: {kind!r}")
+
+
+def cursor_from_painted_mask(
+    mask: np.ndarray,
+    g_edges: Sequence[float],
+    s_edges: Sequence[float],
+    name: str = "painted cursor",
+):
+    """Turn a region painted on the phasor histogram into a cursor.
+
+    The shape phasor clusters actually have is neither a circle nor an ellipse —
+    it is whatever the photophysics produced. Painting the cluster on the
+    density plot and gating exactly those bins is the honest way to select it,
+    and this is what makes the paint a region like any other.
+
+    Parameters
+    ----------
+    mask : numpy.ndarray
+        Boolean mask over the histogram bins, indexed ``[s_bin, g_bin]``.
+    g_edges, s_edges : sequence of float
+        Bin edges of the two phasor axes.
+    name : str
+        Label carried on the region.
+
+    Returns
+    -------
+    chisurf.core.roi.MaskROI
+        A cursor on the ``(g, s)`` value axes, usable anywhere the analytic
+        cursors are.
+    """
+    from chisurf.core.roi import MaskROI
+
+    return MaskROI.from_histogram(mask, g_edges, s_edges, name=name)
 
 
 def mask_from_cursor(g: np.ndarray, s: np.ndarray, roi) -> np.ndarray:

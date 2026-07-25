@@ -490,12 +490,16 @@ class PolygonROI(ROI):
 
 
 class MaskROI(ROI):
-    """A region given directly as a boolean pixel mask.
+    """A region given directly as a boolean mask.
 
     This is the home for anything that is not analytic geometry: a painted
     brush stroke, one label of a segmentation, an imported classification map.
-    The mask lives in pixel-index coordinates, optionally offset within a
-    larger image.
+
+    The mask lives in **pixel-index coordinates**, optionally offset within a
+    larger image — unless it is given an ``extent``, in which case its cells
+    span that value range instead. That is what lets a region *painted on a 2-D
+    histogram* gate the scattered data behind it: the paint is a bitmap, but the
+    axes are parameter values, not pixels. See :meth:`from_histogram`.
     """
 
     type_name = "mask"
@@ -505,21 +509,103 @@ class MaskROI(ROI):
         mask: np.ndarray,
         offset: Tuple[int, int] = (0, 0),
         name: str = "",
+        extent: Extent = None,
     ) -> None:
-        """Initialize from a 2-D boolean array and its ``(row, col)`` offset."""
+        """Initialize from a 2-D boolean array.
+
+        Parameters
+        ----------
+        mask : numpy.ndarray
+            The 2-D boolean mask.
+        offset : tuple of int
+            ``(row, col)`` position within a larger image. Pixel-index masks
+            only; ignored when *extent* is given.
+        name : str
+            Free-form label.
+        extent : tuple of float, optional
+            Value span ``(x0, x1, y0, y1)`` the mask covers. Supplying it makes
+            the mask live on value axes rather than on pixel indices.
+        """
         super().__init__(name=name)
         m = np.asarray(mask)
         if m.ndim != 2:
             raise ValueError(f"a mask ROI needs a 2-D array; got shape {m.shape}")
         self.mask = m.astype(bool)
         self.offset = (int(offset[0]), int(offset[1]))
+        self.extent = None if extent is None else tuple(float(v) for v in extent)
+
+    @classmethod
+    def from_histogram(
+        cls,
+        mask: np.ndarray,
+        edges_x: Sequence[float],
+        edges_y: Sequence[float],
+        name: str = "",
+    ) -> MaskROI:
+        """Build a region from a mask painted on a 2-D histogram.
+
+        The bridge between a bitmap gate and the data under it: a region drawn
+        on a joint histogram (an E–S plot, a phasor plane, an intensity
+        scatter) selects *values*, and the bin edges are what say which.
+
+        Parameters
+        ----------
+        mask : numpy.ndarray
+            Boolean mask over the histogram bins, indexed ``[y_bin, x_bin]``.
+        edges_x, edges_y : sequence of float
+            Bin edges of the two axes, as :func:`numpy.histogram2d` returns
+            them (``len(edges) == n_bins + 1``).
+        name : str
+            Free-form label.
+
+        Returns
+        -------
+        MaskROI
+            A region on the histogram's value axes.
+
+        Raises
+        ------
+        ValueError
+            If the edges do not match the mask shape.
+
+        Examples
+        --------
+        >>> bins = np.zeros((4, 4), dtype=bool)
+        >>> bins[2:, 2:] = True                      # the upper-right quadrant
+        >>> edges = np.linspace(0.0, 1.0, 5)
+        >>> gate = MaskROI.from_histogram(bins, edges, edges)
+        >>> gate.contains(np.array([[0.8, 0.8], [0.1, 0.9]])).tolist()
+        [True, False]
+        """
+        m = np.asarray(mask, dtype=bool)
+        ex = np.asarray(edges_x, dtype=float)
+        ey = np.asarray(edges_y, dtype=float)
+        if m.ndim != 2:
+            raise ValueError(f"a histogram mask must be 2-D; got shape {m.shape}")
+        if len(ex) != m.shape[1] + 1 or len(ey) != m.shape[0] + 1:
+            raise ValueError(
+                f"edges do not match the mask: mask {m.shape} needs "
+                f"{m.shape[1] + 1} x-edges and {m.shape[0] + 1} y-edges, got "
+                f"{len(ex)} and {len(ey)}"
+            )
+        return cls(m, name=name, extent=(ex[0], ex[-1], ey[0], ey[-1]))
 
     def contains(self, points: np.ndarray) -> np.ndarray:
-        """Return which points fall on a set pixel of the mask."""
+        """Return which points fall on a set cell of the mask."""
         p = _as_points(points)
-        col = np.rint(p[:, 0]).astype(int) - self.offset[1]
-        row = np.rint(p[:, 1]).astype(int) - self.offset[0]
         ny, nx = self.mask.shape
+        if self.extent is None:
+            col = np.rint(p[:, 0]).astype(int) - self.offset[1]
+            row = np.rint(p[:, 1]).astype(int) - self.offset[0]
+        else:
+            x0, x1, y0, y1 = self.extent
+            width, height = x1 - x0, y1 - y0
+            if width == 0 or height == 0:
+                return np.zeros(len(p), dtype=bool)
+            # Half-open cells, as histogram bins are: a value on an inner edge
+            # belongs to the upper cell.
+            col = np.floor((p[:, 0] - x0) / width * nx).astype(int)
+            row = np.floor((p[:, 1] - y0) / height * ny).astype(int)
         ok = (row >= 0) & (row < ny) & (col >= 0) & (col < nx)
         out = np.zeros(len(p), dtype=bool)
         out[ok] = self.mask[row[ok], col[ok]]
@@ -531,8 +617,12 @@ class MaskROI(ROI):
         extent: Extent = None,
         image: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """Return the stored mask placed into an array of the requested shape."""
-        if extent is not None:
+        """Return the stored mask placed into an array of the requested shape.
+
+        A mask on value axes is resampled onto the target grid; a pixel-index
+        mask is copied in at its offset.
+        """
+        if extent is not None or self.extent is not None:
             return super().to_mask(shape, extent, image)
         ny, nx = int(shape[0]), int(shape[1])
         out = np.zeros((ny, nx), dtype=bool)
@@ -547,9 +637,35 @@ class MaskROI(ROI):
             ]
         return out
 
+    def bounds(
+        self,
+        shape: Optional[Sequence[int]] = None,
+        extent: Extent = None,
+        image: Optional[np.ndarray] = None,
+    ) -> Optional[Tuple[float, float, float, float]]:
+        """Return the value-space box of the set cells, when the mask has axes."""
+        if self.extent is None:
+            return super().bounds(shape, extent, image)
+        rows = np.flatnonzero(self.mask.any(axis=1))
+        cols = np.flatnonzero(self.mask.any(axis=0))
+        if rows.size == 0 or cols.size == 0:
+            return None
+        x0, x1, y0, y1 = self.extent
+        ny, nx = self.mask.shape
+        dx, dy = (x1 - x0) / nx, (y1 - y0) / ny
+        return (
+            x0 + cols[0] * dx, y0 + rows[0] * dy,
+            x0 + (cols[-1] + 1) * dx, y0 + (rows[-1] + 1) * dy,
+        )
+
     def _params(self) -> Dict[str, Any]:
-        """Return the mask as nested lists plus its offset."""
-        return {"mask": self.mask.astype(np.uint8).tolist(), "offset": list(self.offset)}
+        """Return the mask as nested lists, plus its offset or its extent."""
+        out: Dict[str, Any] = {"mask": self.mask.astype(np.uint8).tolist()}
+        if self.extent is None:
+            out["offset"] = list(self.offset)
+        else:
+            out["extent"] = list(self.extent)
+        return out
 
 
 class ThresholdROI(ROI):
@@ -762,9 +878,11 @@ def roi_from_dict(data: Dict[str, Any]) -> ROI:
         return PolygonROI(np.asarray(params["vertices"], dtype=float),
                           name=params.get("name", ""))
     if cls is MaskROI:
+        stored_extent = params.get("extent")
         return MaskROI(np.asarray(params["mask"], dtype=bool),
                        offset=tuple(params.get("offset", (0, 0))),
-                       name=params.get("name", ""))
+                       name=params.get("name", ""),
+                       extent=None if stored_extent is None else tuple(stored_extent))
     return cls(**params)
 
 

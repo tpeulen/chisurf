@@ -280,6 +280,66 @@ def test_segmented_regions_gate_molecule_positions():
     np.testing.assert_array_equal(roi.contains(positions), [True, False, True])
 
 
+def test_a_mask_painted_on_a_histogram_gates_the_data_behind_it():
+    """A bitmap gate needs axes, or it can only ever select pixels.
+
+    Painting a cluster on an E-S plot, a phasor plane or an intensity scatter
+    produces a mask over *bins*; what the user means is the data those bins
+    hold. Without an extent the mask has no way to say which values it covers,
+    which is why every painted gate before this lived outside the ROI system.
+    """
+    counts = np.zeros((4, 4), dtype=bool)
+    counts[2:, 2:] = True                       # the upper-right quadrant
+    edges = np.linspace(0.0, 1.0, 5)
+    gate = MaskROI.from_histogram(counts, edges, edges, name="cluster")
+
+    points = np.array([[0.8, 0.8], [0.1, 0.9], [0.6, 0.55], [0.49, 0.99]])
+    np.testing.assert_array_equal(gate.contains(points), [True, False, True, False])
+
+    # Bins are half-open, as histogram bins are: a value on the inner edge
+    # belongs to the upper bin.
+    np.testing.assert_array_equal(
+        gate.contains(np.array([[0.5, 0.5], [0.4999, 0.5]])), [True, False]
+    )
+
+    # It knows where it is in value space, and it survives serialisation.
+    np.testing.assert_allclose(gate.bounds(), (0.5, 0.5, 1.0, 1.0))
+    restored = roi_from_dict(gate.to_dict())
+    np.testing.assert_array_equal(restored.contains(points), gate.contains(points))
+    assert restored.name == "cluster"
+
+
+def test_a_value_space_mask_rasterises_onto_a_frame_that_shares_its_axes():
+    """The other direction: the gate drawn on a plot masks an image of it."""
+    counts = np.zeros((4, 4), dtype=bool)
+    counts[2:, 2:] = True
+    edges = np.linspace(0.0, 1.0, 5)
+    gate = MaskROI.from_histogram(counts, edges, edges)
+
+    # An 8x8 rendering of the same plane: the quadrant is a quarter of it.
+    mask = gate.to_mask((8, 8), extent=(0.0, 1.0, 0.0, 1.0))
+    assert mask.sum() == 16
+    assert mask[4:, 4:].all()
+
+
+def test_a_pixel_mask_still_means_pixels():
+    """The default is unchanged: no extent, no axes, plain pixel indices."""
+    m = MaskROI(np.array([[False, True], [False, True]]), offset=(3, 5))
+    assert m.extent is None
+    np.testing.assert_array_equal(m.contains(np.array([[6.0, 3.0], [5.0, 3.0]])),
+                                  [True, False])
+    np.testing.assert_array_equal(m.to_mask((6, 8))[3:5, 5:7],
+                                  [[False, True], [False, True]])
+    assert roi_from_dict(m.to_dict()).offset == (3, 5)
+
+
+def test_histogram_edges_must_match_the_mask():
+    """A silent off-by-one here would shift every gate by a bin."""
+    with pytest.raises(ValueError, match="edges do not match"):
+        MaskROI.from_histogram(np.zeros((4, 4), dtype=bool),
+                               np.linspace(0, 1, 4), np.linspace(0, 1, 5))
+
+
 def test_analytic_regions_bound_themselves_without_a_grid():
     """``bounds`` is exact where it can be, so a drawn handle does not creep.
 
