@@ -76,6 +76,20 @@ def _run_burst_search(
     n = len(tttr)
     used_filter = BurstFilterMode(settings.used_filter)
 
+    # A registry-driven tttrlib search needs the tttrlib burst-search registry.
+    # When the installed tttrlib does not publish it, fall back to the built-in
+    # sliding-window burst search instead of aborting the whole analysis (which
+    # would leave every downstream plot empty). Warn once so the substitution is
+    # visible; the user can upgrade tttrlib or pick a built-in mode explicitly.
+    if used_filter == BurstFilterMode.TTTRLIB and not tttrlib_search.is_available():
+        import chisurf
+        chisurf.logging.warning(
+            "burst_selection: the installed tttrlib publishes no burst-search "
+            "registry; falling back to the built-in sliding-window burst search. "
+            "Upgrade tttrlib or choose a built-in filter mode to silence this."
+        )
+        used_filter = BurstFilterMode.BURST
+
     if used_filter == BurstFilterMode.COUNT_RATE:
         count_rate_settings = settings.count_rate_filter
         selection = count_rate_filter(
@@ -180,12 +194,8 @@ def _run_burst_search(
     if used_filter == BurstFilterMode.TTTRLIB:
         # The algorithm and its parameters come from tttrlib's registry, so this
         # one branch covers every search tttrlib offers, present and future.
-        if not tttrlib_search.is_available():
-            raise RuntimeError(
-                "the installed tttrlib publishes no burst-search registry, "
-                "so registry-driven searches are unavailable; upgrade tttrlib "
-                "or choose one of the built-in filter modes"
-            )
+        # (Unavailable-registry is handled by the fallback above, so reaching
+        # here means the registry is present.)
         tttrlib_settings = settings.tttrlib_search
         selection = tttrlib_burst_filter(
             tttr=tttr,

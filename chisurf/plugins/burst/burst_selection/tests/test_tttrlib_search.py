@@ -353,8 +353,15 @@ def test_bocpd_mode_is_reported_as_removed(photons):
         apply_photon_filters(photons, settings)
 
 
-def test_tttrlib_mode_without_a_registry_explains_itself(photons, monkeypatch):
-    """The registry-only mode says what is missing rather than failing deeper."""
+def test_tttrlib_mode_without_a_registry_falls_back(photons, monkeypatch):
+    """Registry-only mode falls back to the built-in search instead of aborting.
+
+    When tttrlib publishes no burst-search registry the analysis must still
+    produce bursts (otherwise every downstream plot is empty); it falls back to
+    the built-in sliding-window search and warns rather than raising.
+    """
+    import numpy as np
+
     from chisurf.plugins.burst.burst_selection.api import selection as selection_mod
 
     monkeypatch.setattr(selection_mod.tttrlib_search, "is_available", lambda: False)
@@ -362,5 +369,8 @@ def test_tttrlib_mode_without_a_registry_explains_itself(photons, monkeypatch):
         used_filter=BurstFilterMode.TTTRLIB,
         tttrlib_search=TttrlibSearchSettings(algorithm="maxtree"),
     )
-    with pytest.raises(RuntimeError, match="no burst-search registry"):
-        selection_mod.apply_photon_filters(photons, settings)
+    # Does not raise, and returns a per-photon 0/1 mask (fell back to BURST).
+    mask = selection_mod.apply_photon_filters(photons, settings)
+    mask = np.asarray(mask)
+    assert mask.shape[0] == len(photons)
+    assert set(np.unique(mask).tolist()) <= {0, 1}
