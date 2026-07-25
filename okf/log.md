@@ -2,6 +2,50 @@
 
 ## 2026-07-25
 
+* **i18n — `tttr_microtime_shifter` made translatable (dock-tool `i18n.tr`
+  path).** Wrapped every static UI string in the Micro-time Shifter tool
+  (`plugins/tttr/tttr_microtime_shifter/gui/tool.py`, 48 `i18n.tr` calls): window
+  title, the four dock tabs, panel headers, toolbar (Save/Show Trigger/Log Y/Auto
+  Align + Level:/Pos: labels), the save-mode message box (MMFDB register vs
+  file/folder) with its buttons, file-dialog captions, plot titles/axis labels,
+  and static status strings; interpolated log/exception lines stay English. The
+  tool hard-codes a default dock layout, so its `widget_key`/`tab_name`/`tab_text`
+  strings now use the same `i18n.tr(...)` calls as `addTab` — otherwise the
+  default layout fails to resolve under a non-English locale. Filled German (27)
+  and French (32) terms; verified the tool renders fully in both locales offscreen
+  (*Mikrozeit-Verschieber* / *Décaleur de micro-temps*, tabs and status included).
+  Second reference for the dock-tool wrapping path alongside `tttr_time_windows`
+  — see [i18n subsystem](subsystems/i18n.md).
+
+* **PRD-50 dynamic-PDA criterion met, and the F-test calculator it needed was
+  broken (BUG-05, now fixed).** Closed the last dynamic acceptance criterion of
+  [PRD-50](/prds/prd-50.md): a Poisson realisation of the two-state model at
+  `K_ex = 2` is fitted back to `K_ex = 1.99`, `R1 = 40.1`, `R2 = 62.0`,
+  `x1 = 0.503` at `chi2r = 1.04` from a perturbed start. The static alternative
+  is the *nested* `K_ex = 0` limit given the same freedom in both distances and
+  the occupancy, so only the exchange parameter separates the two: it drags the
+  distances together (40/62 → 42.6/56.9) trying to imitate dynamic averaging and
+  still only reaches `chi2r = 150.9`.
+  Reaching for the `f_test` plugin to score that comparison exposed
+  [BUG-05](/specs/assessment.md#bug-05): its two directions were not inverses
+  (95% confidence in → a χ² the tool itself scored at 0.09%), and it divided
+  complex by simple, so reported confidence *fell* as the extra parameters became
+  more justified — a 10% χ² drop over ~900 points scored 0.077 instead of 0.923.
+  The convention turned out not to be open after all: `FTestTool._load_fit` is
+  the only thing that fills these fields from real data, and it writes `chi2r`
+  plus `n_points - n_free` into *both* slots, which pins the statistic to the
+  classical variance-ratio test on two reduced χ². (The dof-order "contradiction"
+  with the χ²-max panel was a false alarm — that panel computes the support-plane
+  threshold, a different statistic.) The maths moved to
+  `chisurf.core.math.statistics` as `f_test_confidence` / `f_test_chi2r`, shared
+  by the plugin and the PDA test; help text, the `n₂` description and the defaults
+  were corrected. The plugin's old test had asserted equality with the shipped
+  formulas and so had locked the bug in — it is rewritten around the defining
+  properties (round-trip inversion, 0.5 for equally good models, monotone
+  confidence), which is what caught the orientation error. Also made
+  `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
+  `float`s as annotated, fixing two stale NumPy-2 repr doctests.
+
 * **chiplot Batch 9 — migrated the two TTTR curve-viewer tools off pyqtgraph
   (allow-list 51 → 49).** Ported `plugins/tttr/tttr_histogram` and
   `plugins/tttr/tttr_correlate` from `pg.PlotWidget` + `getPlotItem()` +

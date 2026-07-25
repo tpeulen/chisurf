@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.core import i18n
 from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 from chisurf.gui.glyphs import Glyphs
@@ -57,7 +58,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
         **kwargs: object,
     ) -> None:
         super().__init__(*args, **kwargs)
-        self.setWindowTitle("Micro-time Shifter")
+        self.setWindowTitle(i18n.tr("Micro-time Shifter"))
         self.resize(1000, 500)
         self._mmfdb_client = mmfdb_client
         self._mmfdb_db: Any = None
@@ -92,8 +93,8 @@ class MicrotimeShifterTool(ChisurfDockTool):
     def _create_widgets(self) -> None:
         """Create plot, control, and files list widgets."""
         self.plot = cp.Plot()
-        self.plot.set_labels(bottom="Micro-time bin", left="Counts")
-        self.plot.set_title("Micro-time Histograms")
+        self.plot.set_labels(bottom=i18n.tr("Micro-time bin"), left=i18n.tr("Counts"))
+        self.plot.set_title(i18n.tr("Micro-time Histograms"))
 
         # Create trigger lines (initially visible, movable). A horizontal line
         # marks the count trigger level; a vertical line marks the bin position.
@@ -116,7 +117,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self.controls_layout.setContentsMargins(2, 2, 2, 2)
         self.controls_layout.setSpacing(2)
 
-        controls_header = QtWidgets.QLabel("Micro-time Shift")
+        controls_header = QtWidgets.QLabel(i18n.tr("Micro-time Shift"))
         controls_header.setObjectName("microtimeShiftHeader")
         controls_header.setStyleSheet(
             "font-weight: bold; font-size: 13px; padding: 4px;"
@@ -146,7 +147,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self.plot_panel = QtWidgets.QWidget()
         self.plot_layout = QtWidgets.QVBoxLayout(self.plot_panel)
         self.plot_layout.setContentsMargins(0, 0, 0, 0)
-        plot_header = QtWidgets.QLabel("Histogram")
+        plot_header = QtWidgets.QLabel(i18n.tr("Histogram"))
         plot_header.setObjectName("histogramHeader")
         plot_header.setStyleSheet(
             "font-weight: bold; font-size: 13px; padding: 4px;"
@@ -157,7 +158,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self.status_panel = QtWidgets.QWidget()
         self.status_layout = QtWidgets.QVBoxLayout(self.status_panel)
         self.status_layout.setContentsMargins(2, 2, 2, 2)
-        self.status_label = QtWidgets.QLabel("No file loaded.")
+        self.status_label = QtWidgets.QLabel(i18n.tr("No file loaded."))
         self.status_label.setWordWrap(True)
         self.status_layout.addWidget(self.status_label)
         self.status_layout.addStretch()
@@ -167,7 +168,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self.files_layout.setContentsMargins(2, 2, 2, 2)
         self.files_layout.setSpacing(4)
 
-        files_header = QtWidgets.QLabel("Files")
+        files_header = QtWidgets.QLabel(i18n.tr("Files"))
         files_header.setObjectName("filesHeader")
         files_header.setStyleSheet(
             "font-weight: bold; font-size: 13px; padding: 4px;"
@@ -205,10 +206,10 @@ class MicrotimeShifterTool(ChisurfDockTool):
         self.dock_area.setCloseTabCallback(self._on_dock_tab_close_requested)
         self.dock_area.setContextMenuCallback(self._add_dock_context_menu_actions)
 
-        self.dock_area.addTab(self.files_panel, "Files")
-        self.dock_area.addTab(self.controls_panel, "Micro-time Shift")
-        self.dock_area.addTab(self.plot_panel, "Histogram")
-        self.dock_area.addTab(self.status_panel, "Status")
+        self.dock_area.addTab(self.files_panel, i18n.tr("Files"))
+        self.dock_area.addTab(self.controls_panel, i18n.tr("Micro-time Shift"))
+        self.dock_area.addTab(self.plot_panel, i18n.tr("Histogram"))
+        self.dock_area.addTab(self.status_panel, i18n.tr("Status"))
         layout.addWidget(self.dock_area, 1)
 
         self.dock_area.layoutChanged.connect(self._save_dock_layout)
@@ -270,7 +271,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
 
         # File loading (local + MMFDB) is handled by the unified file list's
         # ➕ Files / 📁 Folder / 🗄️ Database buttons, so no separate Load action.
-        self.save_action = QtWidgets.QAction(f"{Glyphs.SAVE} Save...", self)
+        self.save_action = QtWidgets.QAction(f"{Glyphs.SAVE} {i18n.tr('Save...')}", self)
         self.save_action.setObjectName("microtimeShifterSave")
         self.save_action.setEnabled(False)
         self.save_action.triggered.connect(self._open_save_dialog)
@@ -278,13 +279,13 @@ class MicrotimeShifterTool(ChisurfDockTool):
 
         tb.addSeparator()
 
-        self.show_trigger_action = QtWidgets.QAction(f"{Glyphs.TARGET} Show Trigger", self, checkable=True)
+        self.show_trigger_action = QtWidgets.QAction(f"{Glyphs.TARGET} {i18n.tr('Show Trigger')}", self, checkable=True)
         self.show_trigger_action.setObjectName("microtimeShifterShowTrigger")
         self.show_trigger_action.setChecked(True)
         self.show_trigger_action.toggled.connect(self._on_toggle_trigger_lines)
         tb.addAction(self.show_trigger_action)
 
-        self.logy_action = QtWidgets.QAction(f"{Glyphs.CHART_UP} Log Y", self, checkable=True)
+        self.logy_action = QtWidgets.QAction(f"{Glyphs.CHART_UP} {i18n.tr('Log Y')}", self, checkable=True)
         self.logy_action.setObjectName("microtimeShifterLogY")
         self.logy_action.setChecked(False)
         self.logy_action.toggled.connect(self._on_toggle_logy)
@@ -292,23 +293,23 @@ class MicrotimeShifterTool(ChisurfDockTool):
 
         tb.addSeparator()
 
-        lbl_level = QtWidgets.QLabel("Level:")
+        lbl_level = QtWidgets.QLabel(i18n.tr("Level:"))
         tb.addWidget(lbl_level)
         tb.addWidget(self.trigger_level_spin)
 
-        lbl_pos = QtWidgets.QLabel("Pos:")
+        lbl_pos = QtWidgets.QLabel(i18n.tr("Pos:"))
         tb.addWidget(lbl_pos)
         tb.addWidget(self.trigger_pos_spin)
 
         tb.addSeparator()
 
-        self.auto_align_action = QtWidgets.QAction("⚡ Auto Align", self)
+        self.auto_align_action = QtWidgets.QAction(f"⚡ {i18n.tr('Auto Align')}", self)
         self.auto_align_action.setObjectName("microtimeShifterAutoAlign")
         self.auto_align_action.triggered.connect(self.auto_align)
         tb.addAction(self.auto_align_action)
 
     def _setup_statusbar(self) -> None:
-        self.statusBar().showMessage("Ready")
+        self.statusBar().showMessage(i18n.tr("Ready"))
 
     # ── file list (unified PathListWidget) ─────────────────────────
 
@@ -380,7 +381,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
             self.statusBar().showMessage(f"Loaded: {self._current_path}")
         except Exception as exc:
             QtWidgets.QMessageBox.critical(
-                self, "Error", f"Cannot load file:\n{exc}"
+                self, i18n.tr("Error"), f"{i18n.tr('Cannot load file:')}\n{exc}"
             )
 
     def _identify_file(self) -> None:
@@ -393,9 +394,9 @@ class MicrotimeShifterTool(ChisurfDockTool):
                     f"Identified (artifact: {info.get('artifact_id', '?')[:8]})"
                 )
             else:
-                self._mmfdb_status = "New file (not in MMFDB)"
+                self._mmfdb_status = i18n.tr("New file (not in MMFDB)")
         except Exception:
-            self._mmfdb_status = "MMFDB check unavailable"
+            self._mmfdb_status = i18n.tr("MMFDB check unavailable")
         self._update_status()
 
     def _update_status(self) -> None:
@@ -405,7 +406,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
         if self._mmfdb_status:
             parts.append(f"MMFDB: {self._mmfdb_status}")
         if not self._current_path:
-            parts.append("No file loaded.")
+            parts.append(i18n.tr("No file loaded."))
         self.status_label.setText("\n".join(parts))
 
     # ── shift controls ─────────────────────────────────────────────
@@ -512,7 +513,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
             )
         except Exception:
             self.plot.clear()
-            self.plot.set_title("Cannot load files for preview")
+            self.plot.set_title(i18n.tr("Cannot load files for preview"))
             return
 
         self.plot.clear()
@@ -541,7 +542,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
             self.plot.legend()
         except Exception:
             pass
-        self.plot.set_title("Micro-time Histograms (preview)")
+        self.plot.set_title(i18n.tr("Micro-time Histograms (preview)"))
 
     def auto_align(self) -> None:
         if not self._file_paths or self._n_mt < 1:
@@ -686,13 +687,13 @@ class MicrotimeShifterTool(ChisurfDockTool):
         mode = "file"
         if has_mmfdb:
             msg_box = QtWidgets.QMessageBox(self)
-            msg_box.setWindowTitle("Save Shifted Files")
-            msg_box.setText("An active MMFDB database connection was found.")
-            msg_box.setInformativeText("Would you like to register the shifted files in the database, or save them to a local file/folder?")
-            
-            btn_register = msg_box.addButton("Register in DB", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
-            btn_save = msg_box.addButton("Save to File/Folder...", QtWidgets.QMessageBox.ButtonRole.ApplyRole)
-            btn_cancel = msg_box.addButton("Cancel", QtWidgets.QMessageBox.ButtonRole.RejectRole)
+            msg_box.setWindowTitle(i18n.tr("Save Shifted Files"))
+            msg_box.setText(i18n.tr("An active MMFDB database connection was found."))
+            msg_box.setInformativeText(i18n.tr("Would you like to register the shifted files in the database, or save them to a local file/folder?"))
+
+            btn_register = msg_box.addButton(i18n.tr("Register in DB"), QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+            btn_save = msg_box.addButton(i18n.tr("Save to File/Folder..."), QtWidgets.QMessageBox.ButtonRole.ApplyRole)
+            btn_cancel = msg_box.addButton(i18n.tr("Cancel"), QtWidgets.QMessageBox.ButtonRole.RejectRole)
             
             msg_box.exec_()
             clicked = msg_box.clickedButton()
@@ -726,12 +727,12 @@ class MicrotimeShifterTool(ChisurfDockTool):
                 warnings = result.get("warnings", [])
                 warn_str = "\nWarnings:\n" + "\n".join(warnings) if warnings else ""
                 QtWidgets.QMessageBox.information(
-                    self, "Success", f"Successfully registered {len(paths_to_shift)} file(s) in MMFDB.{warn_str}"
+                    self, i18n.tr("Success"), f"Successfully registered {len(paths_to_shift)} file(s) in MMFDB.{warn_str}"
                 )
                 self.statusBar().showMessage(f"Registered in MMFDB: {len(paths_to_shift)} file(s)")
             except Exception as exc:
                 QtWidgets.QMessageBox.critical(
-                    self, "Error", f"Failed to register in MMFDB:\n{exc}"
+                    self, i18n.tr("Error"), f"Failed to register in MMFDB:\n{exc}"
                 )
 
         else:  # mode == "file"
@@ -740,7 +741,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
                 d = path.parent
                 f = path.name
                 sp, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    self, "Save shifted TTTR file", str(d / f), "TTTR Files (*.*)"
+                    self, i18n.tr("Save shifted TTTR file"), str(d / f), i18n.tr("TTTR Files (*.*)")
                 )
                 if not sp:
                     return
@@ -765,15 +766,15 @@ class MicrotimeShifterTool(ChisurfDockTool):
                             saved_path = shifted_generated
                     self.statusBar().showMessage(f"Saved to: {saved_path}")
                     QtWidgets.QMessageBox.information(
-                        self, "Saved", f"Saved to:\n{saved_path}"
+                        self, i18n.tr("Saved"), f"Saved to:\n{saved_path}"
                     )
                 except Exception as exc:
                     QtWidgets.QMessageBox.critical(
-                        self, "Error", f"Cannot save:\n{exc}"
+                        self, i18n.tr("Error"), f"Cannot save:\n{exc}"
                     )
             else:
                 output_dir = QtWidgets.QFileDialog.getExistingDirectory(
-                    self, "Select Output Directory", ""
+                    self, i18n.tr("Select Output Directory"), ""
                 )
                 if not output_dir:
                     return
@@ -787,11 +788,11 @@ class MicrotimeShifterTool(ChisurfDockTool):
                     )
                     self.statusBar().showMessage(f"Saved {len(paths_to_shift)} file(s) to: {output_dir}")
                     QtWidgets.QMessageBox.information(
-                        self, "Saved", f"Saved {len(paths_to_shift)} file(s) to:\n{output_dir}"
+                        self, i18n.tr("Saved"), f"Saved {len(paths_to_shift)} file(s) to:\n{output_dir}"
                     )
                 except Exception as exc:
                     QtWidgets.QMessageBox.critical(
-                        self, "Error", f"Cannot save:\n{exc}"
+                        self, i18n.tr("Error"), f"Cannot save:\n{exc}"
                     )
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
@@ -864,14 +865,14 @@ class MicrotimeShifterTool(ChisurfDockTool):
                             "current_index": 0,
                             "tabs": [
                                 {
-                                    "widget_key": "Micro-time Shift",
-                                    "tab_name": "Micro-time Shift",
-                                    "tab_text": "Micro-time Shift"
+                                    "widget_key": i18n.tr("Micro-time Shift"),
+                                    "tab_name": i18n.tr("Micro-time Shift"),
+                                    "tab_text": i18n.tr("Micro-time Shift")
                                 },
                                 {
-                                    "widget_key": "Status",
-                                    "tab_name": "Status",
-                                    "tab_text": "Status"
+                                    "widget_key": i18n.tr("Status"),
+                                    "tab_name": i18n.tr("Status"),
+                                    "tab_text": i18n.tr("Status")
                                 }
                             ]
                         },
@@ -880,9 +881,9 @@ class MicrotimeShifterTool(ChisurfDockTool):
                             "current_index": 0,
                             "tabs": [
                                 {
-                                    "widget_key": "Histogram",
-                                    "tab_name": "Histogram",
-                                    "tab_text": "Histogram"
+                                    "widget_key": i18n.tr("Histogram"),
+                                    "tab_name": i18n.tr("Histogram"),
+                                    "tab_text": i18n.tr("Histogram")
                                 }
                             ]
                         }
@@ -909,7 +910,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
 
         if hidden_names:
             menu.addSeparator()
-            show_menu = menu.addMenu("Reopen closed docks")
+            show_menu = menu.addMenu(i18n.tr("Reopen closed docks"))
             for name, widget in hidden_names:
                 action = show_menu.addAction(name)
                 action.triggered.connect(
