@@ -42,7 +42,10 @@
                  "description": "Expected bright pixels per frame; sets the adaptive quantile threshold for bead detection."},
                 {"type": "value", "attr": "min_distance", "label": "Min dist (px)", "kind": "float",
                  "decimals": 1, "minimum": 1.0, "maximum": 1000.0, "step": 1.0,
-                 "description": "Minimum lateral distance between accepted beads (pixels); rejects clustered candidates."}
+                 "description": "Minimum lateral distance between accepted beads (pixels); rejects clustered candidates."},
+                {"type": "value", "attr": "min_area", "label": "Min area (px)", "kind": "int",
+                 "minimum": 1, "maximum": 10000,
+                 "description": "Smallest connected bright region that can be a bead. A bead covers several pixels; a single one is a hot camera pixel. Set to 1 to keep every speck."}
               ]
             }
           ]

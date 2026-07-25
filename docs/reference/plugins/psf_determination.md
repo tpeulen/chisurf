@@ -33,6 +33,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Px/frame | `pixels_per_frame` | int |  | 1 … 100000 | Expected bright pixels per frame; sets the adaptive quantile threshold for bead detection. |
 | Min dist (px) | `min_distance` | float |  | 1.0 … 1000.0 (step 1.0) | Minimum lateral distance between accepted beads (pixels); rejects clustered candidates. |
+| Min area (px) | `min_area` | int |  | 1 … 10000 | Smallest connected bright region that can be a bead. A bead covers several pixels; a single one is a hot camera pixel. Set to 1 to keep every speck. |
 
 ### Fit Results
 

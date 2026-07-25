@@ -53,6 +53,10 @@
           },
           "min_distance": {
             "type": "number"
+          },
+          "min_area": {
+            "type": "integer",
+            "description": "Smallest connected bright region that can be a bead (1 keeps single pixels, which are camera defects)."
           }
         }
       },

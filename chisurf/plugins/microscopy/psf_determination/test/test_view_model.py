@@ -17,6 +17,30 @@ def _synthetic_stack(nz=21, ny=40, nx=40, sigma_xy=2.0, sigma_z=4.0):
     return (bead + 5.0).astype(np.float32)
 
 
+def test_detection_finds_the_bead_centre_and_ignores_a_hot_pixel():
+    """Candidates are regions, which is what separates a bead from a dead pixel.
+
+    A bead covers several pixels and its candidate should sit at the centre of
+    that spot; a single blazing pixel is a camera defect and must not become a
+    bead, however bright it is.
+    """
+    from chisurf.plugins.microscopy.psf_determination.api.psf import detect_beads
+
+    stack = _synthetic_stack()
+    stack[:, 8, 30] = 5000.0  # a hot pixel column, brighter than the bead
+
+    beads = detect_beads(stack, roi_xy=15, roi_z=15, pixels_per_frame=40)
+    assert beads
+    for _, y, x in beads:
+        assert (y, x) != (8, 30)
+        # every candidate sits on the bead, whose centre is (20, 20)
+        assert abs(y - 20) <= 1 and abs(x - 20) <= 1
+
+    # ... and asking for single-pixel spots brings the defect back.
+    permissive = detect_beads(stack, roi_xy=15, roi_z=15, pixels_per_frame=40, min_area=1)
+    assert any((y, x) == (8, 30) for _, y, x in permissive)
+
+
 def test_load_detect_fit_roundtrip():
     model = PsfViewModel()
     events: list[str] = []

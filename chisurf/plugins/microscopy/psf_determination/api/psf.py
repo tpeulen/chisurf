@@ -197,11 +197,20 @@ def detect_beads(
     roi_z: int = 15,
     pixels_per_frame: int = 20,
     min_distance: float = 5.0,
+    min_area: int = 2,
 ) -> list[tuple[int, int, int]]:
     """Detect candidate bead positions in a 3-D image stack.
 
-    Uses an adaptive quantile threshold per z-slice and filters by minimum
-    lateral distance between candidates.
+    Thresholds each sampled z-slice at an adaptive quantile, groups the bright
+    pixels into connected regions, and takes each region's intensity-weighted
+    centre as a candidate. Regions are considered brightest-first and one is
+    dropped when it falls within *min_distance* of an already accepted one.
+
+    Working with regions rather than with individual bright pixels is what
+    distinguishes a bead from a hot pixel: a diffraction-limited bead covers
+    several pixels, a dead or hot camera pixel covers exactly one. It also puts
+    the candidate at the centre of the spot instead of on its brightest pixel,
+    which is a better starting point for the Gaussian fit that follows.
 
     Parameters
     ----------
@@ -215,12 +224,20 @@ def detect_beads(
         Expected number of bright pixels per frame (used to derive quantile).
     min_distance:
         Minimum lateral distance (pixels) between accepted candidates.
+    min_area:
+        Smallest number of connected bright pixels that can be a bead. The
+        default of 2 rejects single-pixel noise; set it to 1 to keep every
+        bright speck.
 
     Returns
     -------
     list of (z, y, x) tuples
-        Detected bead positions.
+        Detected bead positions, rounded to the nearest pixel.
     """
+    from scipy import ndimage as ndi
+
+    from chisurf.core.roi import regionprops
+
     nz, ny, nx = stack.shape
     half_xy = roi_xy // 2
     half_z = roi_z // 2
@@ -238,32 +255,27 @@ def detect_beads(
             continue
 
         q = np.quantile(frame, q_level)
-        mask = frame >= q
-        ys, xs = np.nonzero(mask)
-        if len(xs) == 0:
+        labels, n_labels = ndi.label(frame >= q)
+        if n_labels == 0:
             continue
 
-        intensities = frame[ys, xs]
-        order = np.argsort(intensities)[::-1]
-        ys, xs = ys[order], xs[order]
+        spots = [p for p in regionprops(labels, frame) if p.area >= int(min_area)]
+        spots.sort(key=lambda p: p.intensity_max, reverse=True)
 
-        accepted: list[tuple[int, int]] = []
-        for y, x in zip(ys.tolist(), xs.tolist()):
-            if accepted:
-                dy = np.array([y - ay for ay, _ in accepted], dtype=float)
-                dx = np.array([x - ax for _, ax in accepted], dtype=float)
-                if not np.all(dx * dx + dy * dy >= min_distance * min_distance):
-                    continue
-            accepted.append((y, x))
-
-        for y, x in accepted:
-            if x < half_xy or x >= nx - half_xy:
+        accepted: list[tuple[float, float]] = []
+        for spot in spots:
+            y, x = spot.centroid_weighted
+            if any((y - ay) ** 2 + (x - ax) ** 2 < min_distance ** 2 for ay, ax in accepted):
                 continue
-            if y < half_xy or y >= ny - half_xy:
+            accepted.append((y, x))
+            row, col = int(round(y)), int(round(x))
+            if col < half_xy or col >= nx - half_xy:
+                continue
+            if row < half_xy or row >= ny - half_xy:
                 continue
             if z < half_z or z >= nz - half_z:
                 continue
-            beads.append((z, int(y), int(x)))
+            beads.append((z, row, col))
 
     return beads
 

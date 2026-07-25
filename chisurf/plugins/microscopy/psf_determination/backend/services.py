@@ -32,6 +32,7 @@ def _handle_fit(params: dict[str, Any]) -> dict[str, Any]:
         roi_z = int(params.get("roi_z", 15))
         pixels_per_frame = int(params.get("pixels_per_frame", 20))
         min_distance = float(params.get("min_distance", 5.0))
+        min_area = int(params.get("min_area", 2))
 
         from ..api.psf import detect_beads, fit_all_beads, load_stack
 
@@ -43,6 +44,7 @@ def _handle_fit(params: dict[str, Any]) -> dict[str, Any]:
             roi_z=roi_z,
             pixels_per_frame=pixels_per_frame,
             min_distance=min_distance,
+            min_area=min_area,
         )
         results = fit_all_beads(arr, beads, roi_xy, roi_z, pixel_nm, z_step_nm)
 

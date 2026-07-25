@@ -49,6 +49,13 @@ def cli() -> None:
     show_default=True,
     help="Minimum lateral distance between detected beads (pixels).",
 )
+@click.option(
+    "--min-area",
+    default=2,
+    type=int,
+    show_default=True,
+    help="Smallest connected bright region that can be a bead (1 keeps single pixels).",
+)
 @click.option("--json", "json_output", is_flag=True, help="Print results as JSON.")
 @click.option(
     "--csv", "csv_output", type=click.Path(), default=None, help="Save results to CSV file."
@@ -61,6 +68,7 @@ def fit_stack(
     roi_z: int,
     pixels_per_frame: int,
     min_distance: float,
+    min_area: int,
     json_output: bool,
     csv_output: str | None,
 ) -> None:
@@ -77,6 +85,7 @@ def fit_stack(
             "roi_z": roi_z,
             "pixels_per_frame": pixels_per_frame,
             "min_distance": min_distance,
+            "min_area": min_area,
         }
     )
 

@@ -15,6 +15,9 @@ class PsfSettings:
     roi_z: int = 15
     pixels_per_frame: int = 20
     min_distance: float = 5.0
+    #: Smallest connected bright region that can be a bead; 1 keeps single
+    #: pixels, which are camera defects rather than beads.
+    min_area: int = 2
 
 
 @dataclass

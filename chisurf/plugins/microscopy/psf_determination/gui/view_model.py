@@ -47,6 +47,7 @@ class PsfViewModel:
         self.roi_z = defaults.roi_z
         self.pixels_per_frame = defaults.pixels_per_frame
         self.min_distance = defaults.min_distance
+        self.min_area = defaults.min_area
         self.colormap = "magma"
 
         # ── runtime state ──────────────────────────────────────────────
@@ -169,6 +170,7 @@ class PsfViewModel:
             roi_z=int(self.roi_z),
             pixels_per_frame=int(self.pixels_per_frame),
             min_distance=float(self.min_distance),
+            min_area=int(self.min_area),
         )
         n = len(self.detected_beads)
         if n:
