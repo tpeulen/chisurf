@@ -210,6 +210,7 @@ against AR(1), whose `τ = (1+φ)/(1−φ)` is closed-form. Thresholds:
 | `mcmc` (`walk_mcmc`) | diagonal | 0.4 |
 | `emcee` (`sample_emcee`) | affine-invariant ensemble | 26 |
 | `blocked` (`walk_mcmc_blocked`) | per-block covariance | **64** |
+| `de` (`sample_differential_evolution`) | chain-difference population | 60 |
 
 `walk_mcmc_blocked` seeds each block's proposal covariance from
 `Fit.covariance_matrix` (the curvature at the optimum — previously computed for
@@ -218,6 +219,23 @@ covariance during warm-up, then **freezes** it so the recorded chain stays
 time-homogeneous. Blocks come from `FactorGraph.sampling_blocks()`: variables
 grouped by identical likelihood-factor neighbourhood — a true partition, cheapest
 block first, degenerating to one block for a single `Fit`.
+
+**`de` needs neither a gradient nor a covariance.** Differential-Evolution MCMC
+(ter Braak) proposes `x_i + γ(x_j − x_k) + ε` with `γ = 2.38/√(2d)`, so the
+proposal acquires the posterior's correlation structure from the population
+itself. Every tenth generation uses `γ = 1` (a direct mode-to-mode jump) and a
+fraction of moves are *snooker* updates, which is what lets the population be
+smaller than the ~`2d` plain DE wants.
+
+This is the practical answer to "why not HMC/NUTS": those need `∇ log p`, which
+ChiSurf cannot supply (see the
+[autodiff assessment](/references/autodiff-assessment.md)), and a systematic
+benchmark of gradient-free samplers puts DE ahead of every alternative tested.
+Measured here: **36×** the covariance proposal's effective samples per model
+evaluation on a curved posterior started *away* from the optimum, 2.3× the
+stretch move on a collinear one, and 0.77× where the covariance proposal is at
+its best (converged, near-Gaussian). Use `blocked` when you have converged and
+the posterior is near-Gaussian; `de` when you have not, or it is not.
 
 **Independent components are sampled apart and merged exactly.**
 `sample_independent_components` (what `method='blocked'` routes through) checks

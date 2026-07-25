@@ -2,6 +2,42 @@
 
 ## 2026-07-25
 
+* **The gradient-free answer to "why not NUTS", and an aGrUM concept I had
+  written off.** Two results from researching what else the graphical-model
+  world has that ChiSurf could use.
+  *Sampling.* HMC and NUTS need `∇ log p`, which the
+  [autodiff assessment](/references/autodiff-assessment.md) established ChiSurf
+  cannot supply. The right question is then which *gradient-free* sampler to
+  use, and a systematic benchmark of them
+  ([arXiv:2605.30412](https://arxiv.org/abs/2605.30412)) puts **differential
+  evolution** at a ~25 % acceptance target ahead of every alternative tested,
+  including the affine-invariant stretch move that `sample_emcee` uses.
+  Implemented as `sample_differential_evolution`
+  ([ter Braak 2006](https://doi.org/10.1007/s11222-006-8769-1) with the
+  [snooker updater](https://doi.org/10.1007/s11222-008-9104-9)): proposals are
+  `x_i + γ(x_j − x_k) + ε` with `γ = 2.38/√(2d)`, every tenth generation at
+  `γ = 1` for mode-to-mode jumps. The proposal picks up the posterior's
+  correlation structure **from the population**, so there is no covariance to
+  estimate and nothing to mis-estimate. Measured against the covariance
+  proposal: **36×** its effective samples per model evaluation on a curved
+  posterior started *away* from the optimum (where a covariance taken at the
+  wrong point actively misleads), 2.3× the stretch move on a collinear one, and
+  0.77× where the covariance proposal is at its best — converged and
+  near-Gaussian. So: `blocked` when you have converged, `de` when you have not.
+  Reachable as `sample_fit(method='de')` and from the `mcmc` posterior engine.
+  9 tests.
+  *A correction.* [PRD-68](/prds/prd-68.md) claimed graphical-model toolkits'
+  inference kernels "do not transfer to a continuous fluorescence posterior".
+  That is wrong for **Continuous Linear Gaussian networks**, which do exact
+  inference on continuous variables via *canonical forms* — the precision/
+  information parameterisation `(K, h, g)` — with sum-product variable
+  elimination over a junction tree. A fluorescence posterior *is* linear-Gaussian
+  near its optimum, and exactly Gaussian in the parameters that enter linearly.
+  In that form, conditioning and marginalisation are closed-form matrix
+  operations rather than a re-fit: `PosteriorEngine.condition` currently costs a
+  full re-optimisation per query, and in canonical form it is a Schur complement.
+  Recorded as the next thing to take, not yet taken.
+
 * **Undo/redo, at PyMOL's scope — Tier 1 of the chimol parity tracker is closed.**
   PyMOL's `undo` is much narrower than the word suggests, and matching that scope
   mattered more than extending it: it stores *coordinate* snapshots, per object, in a

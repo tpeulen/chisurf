@@ -646,8 +646,9 @@ class SamplingEngine(PosteriorEngine):
         ----------
         **options
             ``steps`` (default 3000), ``n_runs`` (default 2), ``p_value``
-            (default 0.68), ``method`` (default ``blocked``), plus anything the
-            chosen sampler accepts.
+            (default 0.68), ``method`` (default ``blocked``; ``de`` needs
+            neither a gradient nor a covariance and is the robust choice away
+            from the optimum), plus anything the chosen sampler accepts.
 
         Returns
         -------
@@ -665,6 +666,7 @@ class SamplingEngine(PosteriorEngine):
         sampler = {
             "blocked": cs.core.fitting.sample.sample_independent_components,
             "collapsed": cs.core.fitting.sample.sample_marginal_shared,
+            "de": cs.core.fitting.sample.sample_differential_evolution,
             "mcmc": cs.core.fitting.sample.walk_mcmc,
         }.get(backend)
         if sampler is None:

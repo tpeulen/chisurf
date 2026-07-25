@@ -318,6 +318,237 @@ def _cholesky_or_diagonal(cov: np.ndarray) -> np.ndarray:
 
 
 @cs.core.fitting.factorgraph.frozen('fit', 'model')
+def sample_differential_evolution(
+        fit: cs.core.fitting.fit.Fit,
+        steps: int,
+        n_chains: int = None,
+        thin: int = 1,
+        chi2max: float = np.inf,
+        temp: float = 1.0,
+        callback: typing.Callable = None,
+        check_cancel: typing.Callable = None,
+        n_adapt: int = None,
+        jitter: float = 1e-4,
+        snooker: float = 0.1,
+        model: cs.core.models.Model = None,
+        seed: int = None
+) -> dict:
+    r"""Sample with Differential-Evolution MCMC (ter Braak).
+
+    A population of chains proposes moves from the *differences between other
+    chains*:
+
+    .. math::
+
+        x^st_i = x_i + \gamma\,(x_j - x_k) + arepsilon ,
+        \qquad \gamma = rac{2.38}{\sqrt{2d}} ,
+
+    with :math:`j 
+    e k 
+    e i` drawn from the population and :math:`arepsilon`
+    a small Gaussian jitter that keeps the chain irreducible. Because the
+    difference vectors are themselves distributed like the target, the proposal
+    acquires the posterior's correlation structure **for free** -- no covariance
+    to estimate, no per-parameter scale to tune, and no gradient.
+
+    That is the practical answer to "why not Hamiltonian Monte Carlo": HMC and
+    NUTS need :math:`
+    abla \log p`, which ChiSurf cannot supply (see the
+    [autodiff assessment](/references/autodiff-assessment.md)), and a systematic
+    benchmark of gradient-free samplers found differential evolution at a ~25 %
+    acceptance target to outperform every alternative tested -- including the
+    affine-invariant stretch move that :func:`sample_emcee` uses.
+
+    Two refinements from the literature are included. Every tenth generation
+    uses :math:`\gamma = 1`, which turns the difference vector into a direct
+    mode-to-mode jump and is what lets the population escape a local optimum.
+    And a fraction of moves are **snooker** updates, which propose along the line
+    joining the current state to another chain and scale by a random factor --
+    this is what extends the method past the roughly ``2d`` chains plain DE
+    otherwise wants.
+
+    Parameters
+    ----------
+    fit : chisurf.core.fitting.fit.Fit
+        Fit whose free parameters are sampled.
+    steps : int
+        Recorded generations. Each generation moves every chain once, so the
+        returned sample holds ``steps * n_chains`` draws.
+    n_chains : int, optional
+        Population size. Defaults to ``max(8, 2*d)``; the snooker updates make
+        smaller populations workable.
+    thin : int, optional
+        Record every ``thin`` generations.
+    chi2max : float, optional
+        Hard cutoff on chi².
+    temp : float, optional
+        Sampling temperature.
+    callback : callable, optional
+        Called as ``callback(recorded, total)``.
+    check_cancel : callable, optional
+        Polled per generation; stops early when it returns ``True``.
+    n_adapt : int, optional
+        Warm-up generations, discarded. The proposal is not tuned during them --
+        DE has nothing to tune -- they simply let the population spread out.
+    jitter : float, optional
+        Relative width of the additive noise.
+    snooker : float, optional
+        Fraction of proposals that use a snooker update.
+    model : chisurf.core.models.Model, optional
+        Model to sample; defaults to ``fit.model``.
+    seed : int, optional
+        Seed for the sampler's own generator.
+
+    Returns
+    -------
+    dict
+        ``chi2r``, ``lnprior``, ``parameter_values``, ``parameter_names``,
+        ``chains`` (one per population member) and ``acceptance_rate``.
+
+    Notes
+    -----
+    The population is a valid Markov chain on the *product* space, so the
+    per-member chains are correlated with one another and their cross-chain
+    R-hat is optimistic in the same way an ensemble sampler's is. Use
+    independent runs for the decisive convergence check.
+    """
+    if model is None:
+        model = fit.model
+    rng = np.random.default_rng(seed)
+    dim = model.n_free
+    thin = max(1, int(thin))
+    n_samples = max(1, int(steps) // thin)
+    bounds = model.parameter_bounds
+    start = np.asarray(model.parameter_values, dtype=np.float64)
+
+    if n_chains is None:
+        n_chains = max(8, 2 * dim)
+    n_chains = max(4, int(n_chains))
+
+    def _lnprob(vector):
+        """Return ``(lnpost, lnprior, chi2)`` of a parameter vector."""
+        lnlike, lnpr, c2 = cs.core.fitting.fit.lnprob_parts(
+            parameter_values=list(vector), fit=fit, chi2max=chi2max,
+            bounds=bounds, model=model
+        )
+        return lnlike + lnpr, lnpr, c2
+
+    # Seed the population around the current point. The spread has to be big
+    # enough that the initial difference vectors are meaningful -- a population
+    # started at a single point can never move, since every difference is zero.
+    scale = np.abs(start) * max(jitter, 1e-3) * 10.0
+    scale[scale < 1e-12] = max(jitter, 1e-3)
+    population = start + rng.normal(0.0, 1.0, (n_chains, dim)) * scale
+    population[0] = start
+    for c in range(n_chains):
+        for j in range(dim):
+            lo, hi = bounds[j]
+            if lo is not None and np.isfinite(lo):
+                population[c, j] = max(population[c, j], lo)
+            if hi is not None and np.isfinite(hi):
+                population[c, j] = min(population[c, j], hi)
+
+    parts = [_lnprob(population[c]) for c in range(n_chains)]
+    gamma0 = 2.38 / math.sqrt(2.0 * max(1, dim))
+    noise = np.abs(start) * jitter
+    noise[noise < 1e-15] = jitter
+
+    n_accepted = 0
+    n_proposed = 0
+
+    def _generation(generation_index):
+        """Move every chain once."""
+        nonlocal n_accepted, n_proposed
+        # Every tenth generation jumps with gamma = 1: the difference between
+        # two chains then becomes a direct mode-to-mode move, which is how the
+        # population crosses between separated optima.
+        gamma = 1.0 if (generation_index % 10 == 9) else gamma0
+        order = rng.permutation(n_chains)
+        for c in order:
+            others = [o for o in range(n_chains) if o != c]
+            if rng.random() < snooker and n_chains >= 4:
+                z, j, k = rng.choice(others, size=3, replace=False)
+                direction = population[c] - population[z]
+                norm = float(direction @ direction)
+                if norm <= 0.0:
+                    continue
+                # Project the two helper chains onto the line through z and
+                # scale along it; the Jacobian of that map enters the
+                # acceptance ratio below.
+                proj = ((population[j] - population[k]) @ direction) / norm
+                step = rng.uniform(1.2, 2.2) * proj * direction
+                proposal = population[c] + step
+                new_norm = float((proposal - population[z]) @ (proposal - population[z]))
+                if new_norm <= 0.0:
+                    continue
+                log_jacobian = 0.5 * (dim - 1) * (math.log(new_norm) - math.log(norm))
+            else:
+                j, k = rng.choice(others, size=2, replace=False)
+                proposal = (population[c] + gamma * (population[j] - population[k])
+                            + rng.normal(0.0, 1.0, dim) * noise)
+                log_jacobian = 0.0
+
+            candidate = _lnprob(proposal)
+            n_proposed += 1
+            if not np.isfinite(candidate[0]):
+                continue
+            delta = (candidate[0] - parts[c][0]) / temp + log_jacobian
+            if delta > math.log(rng.random()):
+                population[c] = proposal
+                parts[c] = candidate
+                n_accepted += 1
+
+    cancelled = False
+    if n_adapt is None:
+        n_adapt = min(500, max(50, (n_samples * thin) // 4))
+    for g in range(max(0, int(n_adapt))):
+        _generation(g)
+        if check_cancel and check_cancel():
+            cancelled = True
+            break
+    n_accepted = 0
+    n_proposed = 0
+
+    recorded = np.empty((n_samples, n_chains, dim))
+    lnprior = np.empty((n_samples, n_chains))
+    chi2 = np.empty((n_samples, n_chains))
+    n_recorded = 0
+    for g in range(1, n_samples * thin + 1):
+        if cancelled:
+            break
+        _generation(g)
+        if g % thin == 0:
+            recorded[n_recorded] = population
+            for c in range(n_chains):
+                lnprior[n_recorded, c] = parts[c][1]
+                chi2[n_recorded, c] = parts[c][2]
+            n_recorded += 1
+            if callback:
+                callback(n_recorded, n_samples)
+        if check_cancel and check_cancel():
+            break
+
+    recorded = recorded[:n_recorded]
+    lnprior = lnprior[:n_recorded]
+    chi2 = chi2[:n_recorded]
+    model.parameter_values = list(start)
+    model.update_model()
+
+    dof = float(model.n_points - model.n_free - 1.0)
+    # ``chains`` is one row per population member; the flat view stacks them.
+    chains = recorded.transpose(1, 0, 2) if n_recorded else recorded.reshape(0, 0, dim)
+    return {
+        'chi2r': chi2.reshape(-1) / dof,
+        'lnprior': lnprior.reshape(-1),
+        'parameter_values': recorded.reshape(-1, dim),
+        'parameter_names': model.parameter_names,
+        'chains': chains,
+        'acceptance_rate': n_accepted / float(max(1, n_proposed)),
+        'n_chains': n_chains,
+    }
+
+
+@cs.core.fitting.factorgraph.frozen('fit', 'model')
 def walk_mcmc_blocked(
         fit: cs.core.fitting.fit.Fit,
         steps: int,

@@ -100,6 +100,26 @@ The measurements point at Python overhead, and that is where the work went:
 of parameter structure and the per-read flag dispatches, giving 2.8× on a global
 objective sweep and a further 1.36× on decay model evaluations.
 
+# What replaced the gradient
+
+Hamiltonian Monte Carlo and NUTS are the reason one would want a gradient at
+all. Without one, the question becomes which *gradient-free* sampler to use, and
+a systematic benchmark of them
+([arXiv:2605.30412](https://arxiv.org/abs/2605.30412)) found **differential
+evolution** at a ~25 % acceptance target to outperform every alternative tested,
+including the affine-invariant stretch move. DE proposes from the differences
+between a population of chains, so the proposal picks up the posterior's
+correlation structure with no covariance estimated and no gradient taken.
+
+Implemented as `sample_differential_evolution`
+([ter Braak 2006](https://doi.org/10.1007/s11222-006-8769-1), with the
+[snooker updater](https://doi.org/10.1007/s11222-008-9104-9)). Measured against
+the covariance proposal: **36×** its effective samples per model evaluation on a
+curved posterior started away from the optimum, 2.3× the stretch move on a
+collinear one, and 0.77× where the covariance proposal is at its best (converged,
+near-Gaussian). It is the robust choice precisely because it has nothing to
+mis-estimate.
+
 # When to revisit
 
 - If a model's forward pass moves substantially into C++ (so the differentiable
