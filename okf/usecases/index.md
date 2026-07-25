@@ -38,6 +38,10 @@ The workflows a first pass should cover — expand as the tester discovers more:
 - [TCSPC lifetime fit](/usecases/tcspc-lifetime-fit.md) — load a decay and its
   prompt, create a `Lifetime` fit, assign the IRF, fit, read χ²ᵣ and the
   lifetimes. *(last driven 2026-07-25; RF-012..RF-017)*
+- [FCS diffusion fit](/usecases/fcs-diffusion-fit.md) — load a `.cor`
+  correlation curve, create a `Parse-Model` fit, pick the 3D-Gauss equation,
+  restrict the lag range, fit, read `N`, `t_d` and χ²ᵣ.
+  *(last driven 2026-07-25; RF-018..RF-025)*
 
 ## Per-workflow file format
 

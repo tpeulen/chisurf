@@ -2,62 +2,6 @@
 
 ## 2026-07-25
 
-* **A round focus crashed the RICS precision predictor (RF-008).** The
-  dwell-time brightness correction in `rics_precision` follows the reference in
-  writing `sqrt(1 - beta)` (with `beta = (w_r/w_z)²`) both inside an `atanh` and
-  as the divisor of the whole expression. Taken literally that is a division by
-  zero for a spherical focus (`w_z == w_r`) and a `math domain error` for a
-  squat one — yet neither is a singularity of the *function*: the two occurrences
-  cancel, and the correction is smooth right through `alpha = 1`. Factoring the
-  root out leaves `atanh(z)/z` with a purely real `z²`, which the new
-  `_atanh_over_argument` evaluates on three branches — `atanh(z)/z` above,
-  `atan(y)/y` below (the continuation through the imaginary axis, where the
-  `1/root` prefactor cancels the `i`) and the series `1 + z²/3 + z⁴/5` through
-  the removable singularity. Identical to the old expression wherever the old one
-  ran (rel. 1.6e-14 at the shipped `alpha = 5`), and now continuous across it.
-  A round or oblate detection volume is an ordinary confocal geometry, so this
-  was a crash on valid input, reported as a bare arithmetic error the docstring
-  did not mention. Pinned by
-  `test_ics_precision.py::test_a_focus_that_is_not_elongated_is_an_ordinary_acquisition`;
-  `test/experiments/` green (60).
-
-* **The docs build is warning-free again (INC-12).** Two published development
-  pages carried links that could never resolve, and both were load-bearing for
-  the "a clean docs build means something" signal. The ChiMOL render plan pointed
-  at `okf/plugins/profiles/chimol.md` — but `okf/` is deliberately excluded from
-  the user-facing Sphinx build, so every build emitted `Unknown source document`,
-  and the user-facing docs are not supposed to reach into the knowledge bundle at
-  all. Rather than repoint it, the material it was borrowing is now stated where
-  the reader needs it: the parity metric is the symmetric mean surface distance
-  between chimol's and PyMOL's cartoon meshes, both programs must be fed the
-  *same* secondary structure first, and on the full RCSB 148L that distance is
-  0.428 Å with cross-sections agreeing to ~0.1 Å. Removing it exposed a second
-  warning it had been sharing the build with: `plugin_architecture.md` had a
-  placeholder `[GUI startup](#)` link (empty MyST target) left over from a
-  section that was never written, replaced by the prose it stood for.
-  `sphinx-build -E -b html docs …` now finishes with **zero** warnings, which
-  makes a `-W` strict-docs guardrail a real option rather than an aspiration.
-  Assessment INC-12 closed and its count line corrected — the finding claimed to
-  be the *only* warning; it was one of two.
-
-* **A zero-radius region selected everything (RF-001).** `EllipseROI.contains`
-  substituted `np.inf` for a zero radius to keep the division finite, which
-  quietly turned the degenerate case into an *unbounded* one: `(dx/inf)**2 +
-  (dy/inf)**2 == 0 <= 1` is true for every point, so a phasor cursor wound down
-  to `radius = 0` gated the whole `(g, s)` plane and fed a whole-plane mask into
-  `pseudo_color` and the fraction maps — where the pre-region implementation had
-  selected essentially nothing. A collapsed axis has *no* extent, so `contains`
-  now adds the exact-equality constraint the `inf` washes out (`dx == 0` /
-  `dy == 0`): a zero-radius circle is its centre, one zero semi-axis is a
-  segment. The fix is in the shared geometry, so every consumer (gating,
-  `to_mask`, `regionprops`) is degenerate-safe, not just the phasor cursors. On
-  top of that, `cursor_roi` now refuses a zero *radius* on the circular path with
-  the same `ValueError` the elliptic path already raised — the inconsistency that
-  let `phasor.cursor_mask` accept `radius: 0` from an RPC client in the first
-  place. Pinned by `test/core/test_roi.py::test_ellipse_with_a_zero_radius_has_no_extent`
-  and `img_pixel_phasor/test/test_analysis.py::test_a_zero_radius_cursor_is_refused`;
-  every ROI-consumer suite green (284: ROI, regionprops, ROI-io, phasor,
-  colocalization, CLSM, pixel/molecule MLE, ratio-FRET, FRAP, drift).
 * **A finished chain now answers for priors it was not run under (PSIS).** The
   standing answer to "what if I had assumed a tighter lifetime prior?" was to
   sample again — a few hundred thousand model evaluations for a change that
@@ -109,24 +53,6 @@
   Recorded in [autodiff-assessment](/references/autodiff-assessment.md).
 
 
-* **The help browser stopped presenting agent scratch as user documentation
-  (INC-11).** The "Core" category `rglob`-ed the whole project root and
-  deny-listed exactly two paths (`docs/`, anything containing `plugins`), so the
-  browser offered **576** pages of which 331 came from `junk/`, 151 from the
-  internal `okf/` knowledge bundle, 41 from `.opencode/` and 16 from `.claude/`.
-  The GUI tree held a *second copy* of that deny-list, so the branch the user
-  actually sees was filtered independently of the document index. Both now read
-  one allow-list, `help/api/io.py::core_doc_paths()` — the project-root files
-  worth showing (`README.md`, `CHANGELOG.md`) plus the `examples/` and
-  `modules/` roots, skipping dot-directories and plugin pages, which the
-  "Plugins" category owns. Result: **12** entries, every one genuine
-  documentation (changelog, readme, the two example projects, the companion
-  modules' manuals); `search_docs`, which re-reads every discovered file, no
-  longer greps scratch space either. Verified by a hermetic `core_doc_paths`
-  test over a synthetic tree, a widget test asserting the rendered branch holds
-  no scratch/bundle/dot-directory page, and a headless screenshot of the
-  expanded branch. Tracked in [assessment INC-11](/specs/assessment.md#inc-11).
-
 * **A canonical form refuses a duplicated variable name (RF-003).**
   `CanonicalForm` addresses its scope by name — `marginal`, `condition` and
   `__mul__` all build `{name: index}` — but nothing enforced that the names were
@@ -145,51 +71,17 @@
   factor-graph, collapsed-sampler and covariance suites green alongside.
   Concept: [fitting](/subsystems/fitting.md).
 
-* **RICSPE ported: how precisely will this scan measure D, before you run it.**
-  `chisurf/core/experiments/ics/precision.py`. Computes the **full covariance of
-  the RICS correlation estimator** analytically (correlation values at different
-  lags share pixels, so it is a matrix, not per-lag variances — ignoring the
-  off-diagonal terms understates the error), draws noise from it, refits each
-  realisation for `D`, and reports the spread as a relative error. Includes the
-  three-point correlation that the shot-noise term needs, since the variance of
-  a correlation depends on the *third* moment of the intensity and a
-  "variance = signal" estimate is simply wrong. **Made tractable:** the
-  reference recomputes the two-point correlation inside the innermost of four
-  nested loops; every one of those evaluations is the same function at a shifted
-  integer lag, so it is computed once on a master grid and sliced, and the
-  pair-count weighting has a closed form (`n − |d|`) instead of an O(n²)
-  meshgrid-unique. A prediction now takes ~0.1 s. `nearest_spd` uses eigenvalue
-  clipping rather than the reference's Higham iteration, which produced matrices
-  that passed its own Cholesky check yet were rejected by the sampler. **The
-  physics comes out:** error falls as 1/√frames (0.115 at 20 frames → 0.050 at
-  100, predicted 0.051); brighter samples measure better; and there is an
-  **interior optimum in dwell time** — for D = 10 µm²/s on a 64×64 scan the
-  error runs 0.272 (0.5 µs) → 0.022 (16 µs) → 0.037 (64 µs). Too fast and the
-  molecule has not moved between pixels; too slow and it has decorrelated.
-  **A claim I had to walk back:** I first asserted that the optimal dwell shifts
-  monotonically with `D`, having seen it at one parameter set. It does not
-  survive a change of image size — at nx=64 the argmin jumped to the far end of
-  the scan, because the returned error is itself a Monte-Carlo quantity
-  (~10 % uncertainty at the default repeat count) and the curve is flat there.
-  The real, stable statement is a *ratio*: a slow sample is penalised 5–6× by
-  scanning fast, a fast one only ~1.5×, reproducible across seeds. The test
-  asserts that, and the module now documents that the minimum's position is not
-  resolved to one step of a scan. Tests:
-  `test/experiments/test_ics_precision.py` (16).
-
-
-* **fix: burst-analysis pipeline produced empty plots — two root causes.**
-  (1) The registry-driven "tttrlib" burst-search mode raised when the installed
-  tttrlib publishes no burst-search registry, aborting
-  `burst_selection.jobs.analyze_files` so no bursts (hence empty plots) reached
-  any downstream panel; `_run_burst_search` now falls back to the built-in
-  sliding-window search with a warning (verified: 226k burst photons on real
-  FRET data with the registry forced off). (2) `mmfdb.objects.put` rejects
-  server-side paths ("send base64 data"); the mmfdb_admin client, the
-  burst-analysis data import, and vv_vh_g_factor now read the file and upload
-  base64 bytes. Neither was a chiplot-migration regression — the migrated burst
-  panels render correctly (browser verified on 2980 real bursts). Commits
-  e33999639, c46a4e39c.
+* **The 2-D residual rectangle was the last in-tree region on its own.**
+  `gui/plots/residual_image.py` mapped its lag-window rectangle to a fit range
+  with hand-rolled `iy0 * nx + ix0` arithmetic — the one place that knew the
+  data vector is the lag map flattened row-major. `ROI.to_indices(shape)` makes
+  that a primitive of the subsystem ("which entries of the flattened array does
+  this region select"), and the plot uses it. Verified numerically against the
+  old formula on three rectangles, including the clamped full-frame case: same
+  ranges, to the index. What remains outside is ndX's `DataSelection`, in a
+  separate package and with the opposite mask convention (`True` = excluded);
+  both of its 2-D shapes are now expressible (`EllipseROI`,
+  `MaskROI.from_histogram`), so a bridge on the ChiSurf side has what it needs.
 
 * **A painted gate can finally mean values, not pixels.** `chisurf/core/roi`.
   `MaskROI` assumed pixel indices, so every bitmap selection drawn on a *plot*
@@ -250,6 +142,25 @@
   **Gap recorded, not closed:** chimol still has no numbered user guide, which the
   documentation rule requires for a plugin. Noted in the tracker.
 
+* **A SWIG type-table collision that had been misread as a build quirk (BUG-11).**
+  Benchmarking the occupancy sampler turned up a `TypeError` naming the exact type
+  the argument had: `tttrlib.VectorDouble` rejected as
+  `std::vector<double>`. The trigger is import *order*, not the build — `import
+  IMP, tttrlib` fails, `import tttrlib, IMP` succeeds. SWIG extensions share one
+  process-global runtime type table, so whichever registers a common type first
+  owns the entry, and the loser's proxies stop matching by-value arguments of it.
+  Member setters take a pointer and go through a different check, so they keep
+  working, which is what made it look arbitrary. It fires every time in
+  development because `modules/imp-tricks/src/sitecustomize.py` imports IMP at
+  interpreter start and `CLAUDE.md` documents that directory on `PYTHONPATH`.
+  Fixed upstream in one line (tttrlib `bd01dbc9`): build the Python module with
+  `SWIG_TYPE_TABLE=tttrlib`. Nothing in tttrlib is meant to be exchanged with
+  another SWIG module, so a private table costs nothing and fixes every consumer
+  instead of each call site. A prior workaround in
+  `plugins/core/acq/.../algorithms.py` blamed "some builds"; the comment now
+  records the real cause. Regression test lives in chisurf, where IMP is
+  importable. Filed and closed as BUG-11 in the
+  [assessment backlog](/specs/assessment.md).
 
 * **NumPy 2 removed `np.trapz` and friends; fixed by shim, not by rewrite.**
   Three call sites in this tree were dead — the Förster overlap integral
@@ -272,26 +183,41 @@
   breakage found while doing something else is fixed in the same change, at its
   root, with a guardrail test — or recorded in known-issues with the reason,
   never only in the chat.
-* **Becker & Hickl SDT reading was broken; fixed, plus the two registry ids I
-  had invented.** Chasing MIA's `Read_SDT` (which turns out to be a thin
-  BioFormats wrapper, while ChiSurf has its own native reader) showed the native
-  reader **could not open any SDT at all**: `measure_info` entries are shape-(1,)
-  record arrays, so every field reads back as a one-element array, and modern
-  NumPy refuses those where a scalar is required — `np.arange(mi.adc_re)` raised
-  `TypeError`. One line already indexed `[0]`; the rest did not. Fields are now
-  unwrapped once per block. Verified on the repository's own
-  `BH_SDT/140507p.sdt`: 3 blocks x 1024 channels, 0–20 ns axis, counts present.
-  New `test/fio/test_sdtfile.py` (5) opens the real file and checks the decay
-  and its time axis agree, the axis is monotonic and nanosecond-scale, and the
-  blocks carry counts; the old expression was re-run against the real metadata
-  to confirm it still raises, so the fix is load-bearing rather than incidental.
-  **Also fixed a break I introduced earlier:** the two parameter-registry entries
-  added with the image-correlation work carried `flrcif_item_id`s
-  (`ics_alpha`, `rics_frame_dur`) that existed in no dictionary, failing
-  `test_all_registry_ids_mapped_to_dic_items`. Since the `.dic` is the schema
-  authority, the items were added to `mmfdb_flr_ext.dic` (committed in the
-  metadata-store repo) rather than the ids dropped here. `test/fio` is now
-  262 passed / 12 skipped.
+* **One occupancy sampler, and it lives in the simulation engine.** Dynamic PDA
+  beyond two states needs the distribution of the *time-averaged* state, and where
+  the Szabo–Gopich moment match is not valid (slow exchange, multimodal) the only
+  route is to sample the kinetics. Three copies of that sampling had accumulated:
+  a Gillespie loop in `chisurf/core/models/pda/dynamic_mc.py`, the same loop
+  imported by the tcPDA multistate path, and a duplicate `equilibrium_populations`
+  beside the one in `kinetics.py`. Upstream, `tttrlib`'s `SimEngine` already
+  evolved species state through the off-diagonal `k_nrad` matrix but could only
+  *report* it on a fixed stride — and a stride cannot represent a state entered
+  and left between two samples, which is exactly the fast-exchange regime that
+  motivates simulating at all. At 625 transitions per unit against a bin of 1.0
+  every strided sample reads as one pure state, while the true occupancy of each
+  bin is near 0.5.
+  So the engine gained an **event-based state trajectory** (tttrlib commit
+  `ffd9cdfc`): `set_state_log(True)`, one row per transition carrying window,
+  time, molecule, from and to, with a birth (`from == -1`) holding the initial
+  state and a death (`to == -1`) marking a molecule leaving the box, so the log
+  needs no external context. Transitions are captured on every path that can make
+  them, including a coasting molecule caught up on waking — dated to the windows
+  in which they happened, not to the wake-up — and independent-molecule mode.
+  `state_occupancy()` reduces it to per-bin occupancy fractions, splitting
+  intervals with a difference array so a dwell spanning a thousand bins costs
+  O(1). Validated against the analytic two-state process: dwell means
+  0.02494 / 0.04001 against 1/k of 0.02500 / 0.04000, whole-run occupancy 0.3840
+  against the equilibrium 0.3846.
+  chisurf consumes it through
+  `chisurf.core.fluorescence.kinetics.occupation_time_fractions` — one immobile,
+  dark molecule per observation window started from equilibrium, which is PAM's
+  independent-window scheme — replacing both Gillespie copies and the duplicate
+  populations helper. The Python loop is kept as
+  `occupation_time_fractions_reference`: the readable definition, the fallback for
+  an engine predating the state log, and what the fast path is tested against (KS
+  agreement at 1e2/1e3/1e4 Hz). Measured speedup 8x at 6 transitions per window,
+  13x at 60, 11x at 600.
+  Concepts updated: [PRD-50](/prds/prd-50.md), [PRD-65](/prds/prd-65.md).
 
 * **One file is not one curve: grouped datasets are no longer reported as a
   single measurement.** A Zeiss ConfoCor `.fcs` is a measurement archive — the
@@ -318,38 +244,6 @@
   agent suite 417 passing. Also: the live-LLM tests now *skip* on provider
   unavailability (HTTP 402/429/5xx, credit, rate limit) rather than failing, as
   the example-prompt tests already did.
-
-* **Finite-difference HMC: measured, and the folklore is half wrong — but it
-  still does not ship.** The standing answer to "can we not just use a numerical
-  gradient?" was an argument rather than a number, so it was measured on a
-  collinear polynomial posterior with the mass matrix taken from the curvature
-  at the optimum. Effective samples per 1000 model evaluations:
-  **3 parameters — HMC 83 (hand-tuned), `de` 73, `blocked` 53**;
-  5 — HMC 19, `de` 30, `blocked` 40;
-  8 — HMC **0.09 at zero acceptance**, `de` 4, `blocked` 18.
-  At three parameters it produced *independent* draws (τ = 1.0) and beat
-  everything, which does contradict the received wisdom. It is still not
-  shippable. Dual averaging — Stan's step-size adaptation, noted earlier as
-  worth taking — actively **degrades** it: it reads finite-difference-induced
-  rejections as "step too big" and shrinks ε, but shrinking ε does not reduce
-  the *noise* contribution, so it shrinks without limit. Adapted, HMC managed 68
-  at three parameters, i.e. below `de`; the 83 was one lucky configuration
-  (two leapfrog steps, ε ≈ 0.8) that an exhaustive sweep found and no adaptive
-  scheme reproduces. It collapses with dimension for two compounding reasons —
-  the gradient costs *d* extra evaluations while no other sampler pays that, and
-  finite-difference error accumulates along a trajectory until the leapfrog
-  stops conserving energy — and the failure is quiet, since zero acceptance
-  looks like a short converged chain. Two leapfrog steps is barely Hamiltonian
-  anyway; it is essentially MALA. So a gradient buys, in the one regime where it
-  works, nothing `de` does not already provide without one. The implementation
-  was written, benchmarked and **removed** rather than kept as an option that
-  could only mislead. Recorded with the numbers in
-  [references/autodiff-assessment.md](/references/autodiff-assessment.md),
-  including the one thing that would change the answer: a decay model is
-  *linear in its amplitudes*, so those Jacobian columns are convolutions the
-  forward pass already computes — exact and free rather than *d* extra
-  evaluations, no new dependency, but a model-layer hook rather than a sampler
-  change.
 
 * **Ratiometric FRET ported (MIA `Do_FRET`): the A/D trace and the A/D map.**
   `chisurf/core/fluorescence/imaging/ratio_fret.py`. The reference does two
@@ -389,45 +283,6 @@
   JSON, load it here. An unreadable file reports in the status line rather than
   raising.
 
-* **What Stan has that works without a gradient, and confirmation that aGrUM's
-  inference core is harvested.** Cloned both into `junk/` and read the source
-  rather than the docs.
-  *Stan.* Every one of its algorithms — NUTS, ADVI, Pathfinder, L-BFGS — needs
-  the gradient ChiSurf cannot supply. Its **post-processing** needs nothing, and
-  is better than what was here: `analyze/mcmc/rank_normalization.hpp`,
-  `split_rank_normalized_rhat.hpp`, `split_rank_normalized_ess.hpp`
-  ([Vehtari et al. 2021](https://doi.org/10.1214/20-BA1221)). Harvested.
-  `rank_normalize` maps draws onto normal scores of pooled average ranks (ties
-  averaged), which is what makes R̂ and ESS *defined* on a heavy-tailed target —
-  both are built from variances, so on a Cauchy the plain versions are not
-  imprecise but undefined, and report a comfortable number regardless. There is
-  a test on Cauchy chains. `rank_normalized_rhat` returns `max(bulk, tail)` with
-  *tail* the statistic of `|x − median|`: two chains sharing a centre but not a
-  spread agree perfectly on their mean, so location-based R̂ is blind to them —
-  also tested, and the plain statistic does miss it (1.02 vs 1.05+).
-  `bulk_tail_ess` splits the effective sample size governing the posterior
-  *mean* from the one governing the *quantiles a credible interval is made of*;
-  the warnings now name which failed, because "ESS is low" is not actionable.
-  Both robust and plain values are reported so a disagreement stays visible.
-  Not yet taken from Stan: windowed adaptation with dual averaging (applies to
-  the blocked warm-up) and Pareto-smoothed importance sampling (would make
-  reweighting a stored chain under a different prior reliable, and reports the
-  Pareto-`k` that says when it is not — the chain already stores `lnprior`
-  separately, so PSIS is the missing half).
-  *aGrUM.* Read `src/agrum` and `wrappers/pyagrum/pyLibs/clg`. The inference core
-  **is** harvested: model/engine separation, moralisation + triangulation +
-  junction tree + separators + treewidth, relevance pruning, targets, evidence,
-  elimination orders, incremental caching, and now canonical forms — whose
-  `marginalize`/`reduce`/`__mul__` formulas match
-  [the ones just implemented](/subsystems/fitting.md) exactly, independently
-  arrived at (ChiSurf uses `solve`/`slogdet` where aGrUM uses `inv`/`det`, which
-  is numerically better). What remains is superseded (Gibbs/importance/weighted
-  sampling — DE and the collapsed sampler are better here), not applicable
-  (structure learning, PRM, FMDP — ChiSurf's structure comes from the user's
-  linking, not from data), or a new feature rather than a port (influence
-  diagrams for experiment design; credal networks for prior-robustness
-  intervals, partially covered already by storing `lnprior` apart).
-
 * **FCS calculator re-pointed at the centralised diffusion physics; the
   duplication is now actually gone.** Completes the previous entry, whose shim
   was deferred while `algorithms.py` was being edited by the dye-table
@@ -443,6 +298,7 @@
   (viscosity, D) pairs *measured from the pre-shim implementation*, so a future
   change to the shared physics that would move an existing FCS result fails
   loudly. Plugin suite 5 pass, diffusion suite 24, calibration 13.
+
 * **Six chimol commands were reporting success while doing nothing.** Closing
   Tier 1 of the parity tracker turned up four "implemented but silent" defects in a
   row, so rather than start Tier 2 the whole registered command surface was run
@@ -490,7 +346,6 @@
 
   Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md).
 
-
 * **Phasor cursors are regions now — so a cluster that is not an ellipse can be
   gated.** `plugins/microscopy/img_pixel_phasor`. The plugin had
   `mask_from_circular_cursor` and `mask_from_elliptic_cursor`, each
@@ -503,30 +358,6 @@
   convention matched already). The `phasor.cursor_mask` RPC takes a serialised
   region in place of `center`/`kind` and returns the region it used, so a gate
   drawn once replays on the next measurement.
-
-
-* **Phasor cursors are regions now — so a cluster that is not an ellipse can be
-  gated.** `plugins/microscopy/img_pixel_phasor`. The plugin had
-  `mask_from_circular_cursor` and `mask_from_elliptic_cursor`, each
-  re-implementing an inside-test that the ROI system already answers, and
-  offering exactly the two shapes phasorpy offers. `cursor_roi` builds the
-  cursor as an `EllipseROI` and `mask_from_cursor(g, s, roi)` is the general
-  form: the `(g, s)` plane is a pair of axes like any other, so a polygon drawn
-  round a species cluster gates it, and a ring is `outer - inner`. The two old
-  functions survive as one-line wrappers, bit-identical (the rotation
-  convention matched already). The `phasor.cursor_mask` RPC takes a serialised
-  region in place of `center`/`kind` and returns the region it used, so a gate
-  drawn once replays on the next measurement.
-
-
-
-* **chiplot Batch 25 — parameter-scan χ²-surface off pyqtgraph (allow-list
-  26 → 25).** Finished `gui/plots/parameter_scan` (dockarea already moved).
-  `pg.PlotWidget`→`cp.Plot`; χ²-curve → `line`/`set_data`; confidence-interval
-  overlays (threshold `hline` + crossing `vline`s, dashed/dash-dot, labelled) via
-  module-level `cp.to_pen`; overlay add/remove via handles. `labelOpts` position
-  hints dropped (no chiplot equivalent; labels still render). Screenshot-verified.
-  See [PRD-64](prds/prd-64.md).
 
 * **Diffusion/temperature physics centralised out of the FCS plugin, and
   beam-waist calibration built on it (MIA `Calibration` port).** The
@@ -3665,6 +3496,14 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot Batch 25 — parameter-scan χ²-surface off pyqtgraph (allow-list
+  26 → 25).** Finished `gui/plots/parameter_scan` (dockarea already moved).
+  `pg.PlotWidget`→`cp.Plot`; χ²-curve → `line`/`set_data`; confidence-interval
+  overlays (threshold `hline` + crossing `vline`s, dashed/dash-dot, labelled) via
+  module-level `cp.to_pen`; overlay add/remove via handles. `labelOpts` position
+  hints dropped (no chiplot equivalent; labels still render). Screenshot-verified.
+  See [PRD-64](prds/prd-64.md).
+
 * **`pyqtgraph.dockarea` deprecated repo-wide → chisurf dock impl (PRD-64).**
   Removed every `pyqtgraph.dockarea` `Dock`/`DockArea` usage in favour of
   `chisurf.gui.widgets.dock_area.dock_area`: `plots/parameter_scan` +
@@ -3842,44 +3681,6 @@
   adding a fresh one — so call sites just do `clear()` then `legend()`. Seam
   guard green, both widgets construct headless and refresh cleanly. See
   [PRD-64](prds/prd-64.md).
-
-* **BUG-09 closed: the anisotropy test pinned a VH model that cannot be
-  inverted.** `test_fluorescence_anisotropy_decay_calculcate_spectrum` asserted
-  `−2·r` in the perpendicular channel (`-0.3`, `-3.`, `-2.7`) where
-  `calculcate_spectrum` produces `−1·r`, and the backlog left it open as "a
-  question about which mixing convention is intended — an owner decision". It is
-  not a matter of preference: the definition `r = (I_VV − I_VH/g) / (I_VV + 2
-  I_VH/g)` only returns the `r(t)` that generated the pair if the perpendicular
-  channel is `g · f_VM · (1 − r)`, i.e. the g-factor is a detection sensitivity
-  scaling the whole channel rather than only its depolarization term. The stale
-  expectation was therefore non-invertible for every `g ≠ 1`. **The code was
-  right; no fit semantics changed.**
-  The test now compares the *decays* the spectra stand for against the analytic
-  definitions across four `(l1, l2)` combinations, so it no longer depends on the
-  term count or ordering of the spectrum algebra — which is what the companion
-  known-issue "returns 16 terms where the test expects 8" was really about (the
-  union/concatenate mixing form, not a defect). A new
-  `test_calculcate_spectrum_recovers_anisotropy` pins the `g` placement directly
-  by round-tripping `r(t)` at `g ∈ {0.8, 1.0, 1.5}`. Verified to discriminate:
-  re-running the old `−2·r` convention through the new assertions fails them.
-  `test_fcs`, revived earlier by restoring the `np.float` alias, still asserted
-  **nothing** — it computed a correlation and dropped it — and now pins the
-  autocorrelation invariants (both channels see every photon, `B·nc` strictly
-  increasing lags, `normalize` rescaling in place and returning `min(N/Δt)`, the
-  zero-lag channel dominating). The `calculcate_spectrum` docstring, which stated
-  `f_VH = f_VM (1 − g r)` against its own code, was corrected to match.
-  Two follow-ups recorded in [known issues](references/known-issues.md) rather
-  than fixed here: the sibling `vm_rt_to_vv_vh` still uses the non-invertible
-  placement (no production caller; its doctest and test both run at `g = 1`, and
-  the same formula is repeated in two doc pages, so it wants its own change), and
-  `test_group_polarization_any_size.py` both fails collection (an argument with no
-  fixture) and `logger.error`s instead of asserting, so it could not fail even if
-  it ran. Fixed on the spot: `test_anisotropy_integrals.py` loaded its subject via
-  a hand-built path that rotted into `test/chisurf/...` at the `chisurf.core` move
-  and errored at collection — replaced with a normal import.
-  Suites: 6 + 2 doctests + 3 + 26 green; `test/fluorescence/` 84 passed with the
-  two known-issue failures (`test_pqres`, `test_labeled_structure`) unchanged.
-  See [BUG-09](specs/assessment.md#bug-09).
 
 ## 2026-07-24
 
