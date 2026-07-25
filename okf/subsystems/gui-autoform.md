@@ -167,6 +167,12 @@ icons) — the space-efficient default for tool actions. Editable `table` sectio
 refresh the hosting form on a cell edit (the same walk-up to
 `sync_fields`+`refresh_plots` that value/toggle/button sections use), so a
 table-driven preview or derived field updates live without extra wiring.
+The AutoForm `table` section stays item-based on purpose — it is the right tool
+for small fixed-order record tables. Anything data-sized (a burst frame, a fit's
+curves, every parameter across every fit) uses the model/view
+[chitable](/subsystems/gui-tables.md) family instead, which is also where the
+boolean/float/rich-text delegates and the rich-text header view now live;
+`parameter_table` re-exports them under their historic names.
 
 **Help behind a `?` modal (general UI rule).** Keep forms uncluttered — short
 labels, detail in tooltips, and *longer* explanations behind a small `?` button

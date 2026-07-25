@@ -9,6 +9,7 @@
 * [MLE lifetime fitting (fit2x)](mle-lifetime-fitting.md) - The tttrlib Fit23/24/25/26 Poisson-MLE engine and the dt/period/background/gamma input contract shared by burst and imaging fits.
 * [Parameters](parameters.md) - Scalar parameters, bounds, links, dependency graph, and fit degrees of freedom.
 * [GUI & AutoForm](gui-autoform.md) - The Qt application and the data-driven AutoForm UI framework.
+* [Tables (chitable)](gui-tables.md) - The shared model/view table family: sources, vectorised filtering, value colouring, column hiding and export.
 * [Internationalisation](i18n.md) - The Qt-free translation seam, QTranslator bootstrap, string-extraction kit, and view.json/manifest/.ui localization.
 * [Operation history](history.md) - Append-only action history, headless replay, and MMFDB event-log projection.
 * [Macros, CLI & scripting](macros-cli.md) - Macros, `csc`, GUI scripts, and the recording QtConsole.

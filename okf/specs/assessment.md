@@ -58,6 +58,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-07](#inc-07) | S3 | INC | Plugins | `categories` drifts from directory group & `display_name`; demo games mixed in | REPORTED |
 | [INC-08](#inc-08) | S3 | INC | Server | Generic `JobManager` bypassed by the only real long-running jobs | REPORTED |
 | [INC-09](#inc-09) | S3 | INC | MMFDB | MMFDB is packaged standalone but a chisurf-free client is missing; the only RPC client + example facade live in chisurf | VERIFIED |
+| [INC-10](#inc-10) | S3 | INC | GUI | Ad-hoc tables everywhere: a third-party `DataFrameEditor` patched at runtime by three proxies/delegates, ~40 hand-rolled `QTableWidget`s, a duplicated checkbox delegate, and no shared sorting/filtering/column-hiding/colouring/export | ~~VERIFIED~~ ✅ FIXED (PRD-66) |
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 
 25 findings (13 FIXED): 4 VERIFIED, 7 REPORTED, 1 PARTIAL. 0×S1, 4×S2, 7×S3.
@@ -262,6 +263,25 @@ The single largest source of non-uniformity across the codebase (see [core steer
 ---
 
 ## Internationalisation (I18N)
+
+### INC-10
+
+**Ad-hoc tables everywhere.** Tabular UI was a third-party `DataFrameEditor`
+plus roughly forty hand-rolled `QTableWidget`s. The editor supplied
+value-scaled backgrounds, per-column formatting and a context menu that nothing
+in-tree had, so the Data-table plot imported it and then fought it —
+`NoBackgroundProxy` to strip its colouring, `ReadOnlyColumnProxy` to lock a
+column, a duplicate checkbox delegate, and ~45 lines walking the dialog's
+children to install all three. No `QSortFilterProxyModel`, colour-by-value
+delegate, CSV export or reusable column picker existed anywhere in either
+repository, and ndXplorer's item-based editor — the richest table of the lot —
+crashed on nullable pandas dtypes and wrote filtered edits to the wrong row.
+
+**Fixed** by [PRD-66](/prds/prd-66.md): the
+[chitable](/subsystems/gui-tables.md) family is now the shared implementation,
+the delegates are consolidated, both `DataFrameEditor` call sites are gone and
+`guidata` is dropped from every packaging file with a guardrail test. Migrating
+the remaining hand-rolled plugin tables stays open under that PRD.
 
 ### I18N-01
 **S3 · i18n coverage gaps after the first pass.** [PRD-63](../prds/prd-63.md)
