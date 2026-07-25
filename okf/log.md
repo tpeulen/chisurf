@@ -143,6 +143,30 @@
 
 ## 2026-07-25
 
+* **The ROI subsystem's own cleanup pass: three coercions, one loader, one
+  `find_objects`.** Migrating nine consumers onto the subsystem left the same
+  small pieces copied around, and copies drift.
+  *Coercions.* Four consumers (ICS reader, molecule MLE, pixel MLE, drift) each
+  wrote out "a `ROI`, its serialised dict, or `None`" by hand, handling the
+  `None` case slightly differently; several more wrote "a `ROI` or a raw array →
+  mask". Now `as_roi`, `as_mask` and `union_of`. `as_mask` carries the rule the
+  copies disagreed on: in a numeric array only **positive** entries are inside,
+  because a paint buffer marks erased pixels with a negative and the obvious
+  `!= 0` selects exactly what the erase brush removed.
+  *Loading.* I had written the same extension dispatch in three places — and all
+  three shared a defect: a label image sent to the mask reader comes back as
+  **one merged region** instead of one per object, silently, because a label
+  image is also a valid mask. `io.load_regions(path)` / `load_region(path)`
+  decide from the file's content instead, and are the entry point consumers use.
+  *Speed.* `regionprops` compared the whole frame against every label in turn.
+  It now locates all of them with one `find_objects` pass and cuts each from its
+  own box: measuring 1521 molecules on a 512² frame — every property object
+  built — takes 16 ms, where merely *locating* them the old way took 53 ms. The
+  ascending-label order the docstring promises survives a non-zero `background`
+  (the swap that makes the fast path work would otherwise reorder them), and a
+  negative label now raises instead of being silently dropped.
+
+
 ## 2026-07-25
 
 

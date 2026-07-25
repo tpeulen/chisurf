@@ -102,6 +102,31 @@ def test_negative_labels_are_refused_rather_than_dropped():
         regionprops(labels)
 
 
+def test_a_float_label_image_is_refused():
+    """Casting it silently would merge or split objects, depending on rounding."""
+    labels = np.zeros((4, 4), dtype=float)
+    labels[0, 0] = 1.0
+    with pytest.raises(ValueError, match="integer dtype"):
+        regionprops(labels)
+
+
+def test_an_unsigned_label_image_measures_like_any_other(blobs):
+    """The import path produces uint16: a TIFF from a segmentation tool.
+
+    The fast path casts labels for ``find_objects``; an unsigned dtype must
+    survive that unchanged rather than wrapping or being rejected.
+    """
+    labels, intensity = blobs
+    as_uint = labels.astype(np.uint16)
+    theirs = skimage_measure.regionprops(as_uint, intensity_image=intensity)
+    ours = regionprops(as_uint, intensity)
+    assert [p.label for p in ours] == [p.label for p in theirs]
+    np.testing.assert_allclose([p.area for p in ours], [p.area for p in theirs])
+    np.testing.assert_allclose(
+        [p.intensity_mean for p in ours], [p.intensity_mean for p in theirs]
+    )
+
+
 def test_rois_are_measured_in_the_order_given():
     """Several ROIs give several property sets, labelled 1..n and named."""
     rois = [RectangleROI(0, 0, 3, 3, name="a"), RectangleROI(5, 5, 9, 8, name="b")]

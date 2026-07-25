@@ -800,6 +800,14 @@ def regionprops(
     # segmentation holds thousands of molecules.
     from scipy import ndimage as ndi
 
+    if not np.issubdtype(labels.dtype, np.integer):
+        # A float label image is ambiguous — 1.0 and 1.0000001 are different
+        # objects or the same one depending on who you ask — and casting it
+        # silently would merge or split regions. scikit-image refuses it too.
+        raise ValueError(
+            f"a label image must have an integer dtype; got {labels.dtype}. "
+            "Pass a boolean mask for a single region, or round the labels."
+        )
     if labels.min() < 0:
         raise ValueError(
             "label images must not hold negative values; got "

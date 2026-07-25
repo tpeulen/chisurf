@@ -209,8 +209,10 @@ def selection_array(
     Parameters
     ----------
     mask : chisurf.core.roi.ROI or numpy.ndarray
-        The region. An array is taken as-is (non-zero pixels selected); a ROI is
-        rasterised onto *shape*.
+        The region. A ROI is rasterised onto *shape*; an array is taken as the
+        paint buffer it is, where only **positive** entries are selected — the
+        erase brush writes negatives, and counting those as "inside" would
+        select exactly what the user rubbed out.
     shape : tuple of int
         Frame shape ``(n_lines, n_pixel)`` to rasterise onto.
     image : numpy.ndarray, optional
