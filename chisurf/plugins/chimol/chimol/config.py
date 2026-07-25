@@ -342,6 +342,11 @@ def _load_display_config() -> dict:
             # -1) is the direction it travels, so this is its negation.
             "shadow_direction": [0.4, 0.4, 1.0],
         },
+        "label": {
+            # PyMOL draws labels in the foreground colour, white on black.
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "size": 14.0,
+        },
         "lighting": {
             "light_direction": [0.0, 0.0, 1.0],
             "ambient_strength": 0.45,

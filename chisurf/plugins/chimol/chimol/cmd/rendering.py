@@ -75,8 +75,8 @@ class RenderingMixin(BaseCmd):
         self._emit_error(f"Unsupported representation for 'as': {rep}")
 
     #: Every representation ``everything`` stands for, in the order applied.
-    _ALL_REPRESENTATIONS = ("cartoon", "trace", "lines", "nonbonded", "atoms",
-                            "sticks", "dots", "surface", "metaball")
+    _ALL_REPRESENTATIONS = ("cartoon", "trace", "lines", "nonbonded", "labels",
+                            "atoms", "sticks", "dots", "surface", "metaball")
 
     def _toggle_representation(self, rep: str, sel: str, *, visible: bool) -> None:
         rep_target = (rep or "").strip().lower()
@@ -100,7 +100,7 @@ class RenderingMixin(BaseCmd):
         if rep_target not in self._ALL_REPRESENTATIONS and rep_target not in (
             "everything", "all", "*", "ribbon", "ca_trace", "ribbon_trace",
             "spheres", "balls", "ball", "bonds", "points", "surf", "metaballs",
-            "mesh", "plane", "grid", "wire", "wireframe", "nb_spheres",
+            "mesh", "plane", "grid", "wire", "wireframe", "nb_spheres", "label",
         ):
             if selection is None and self._names_a_selection(viewer, rep_target):
                 self._emit_message(
@@ -193,6 +193,10 @@ class RenderingMixin(BaseCmd):
                 viewer.set_lines_visible(vis)
             elif rep_target in ("nonbonded", "nb_spheres"):
                 viewer.set_nonbonded_visible(vis)
+            elif rep_target in ("label", "labels"):
+                # Hiding labels keeps the text, as PyMOL's does: you turn them
+                # off to read the structure, not to lose what you annotated.
+                viewer.set_labels_visible(vis)
             elif rep_target in ("atoms", "spheres", "balls", "ball"):
                 viewer.set_atoms_visible_all(vis)
             elif rep_target in ("sticks", "bonds"):

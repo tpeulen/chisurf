@@ -191,6 +191,8 @@ class MolView(QtWidgets.QWidget):
     _show_sticks = _StateField("show_sticks")
     _show_lines = _StateField("show_lines")
     _show_nonbonded = _StateField("show_nonbonded")
+    _labels = _StateField("labels")
+    _show_labels = _StateField("show_labels")
     _sidechains_visible = _StateField("sidechains_visible")
     _show_atom_gaussians = _StateField("show_atom_gaussians")
     _cartoon_mask = _StateField("cartoon_mask")
@@ -4109,6 +4111,86 @@ class MolView(QtWidgets.QWidget):
         return [SceneObject(id="atom_gaussians", geometry=geom, render_mode=render_mode)]
 
 
+    def set_labels(self, indices, texts, *, object_id: str | None = None) -> int:
+        """Attach label text to atoms (PyMOL ``label``).
+
+        Passing no indices clears every label, which is what
+        ``cmd.label(sel, "")`` does.
+
+        Parameters
+        ----------
+        indices : sequence of int
+            Atom indices to label.
+        texts : sequence of str
+            Text per index; an empty string removes that atom's label.
+        object_id : str, optional
+            Object to label; defaults to the active one.
+
+        Returns
+        -------
+        int
+            Number of labels now attached to the object.
+        """
+        with self._activate_object(object_id):
+            current = dict(self._labels or {})
+            for index, text in zip(indices, texts):
+                key = int(index)
+                if text:
+                    current[key] = str(text)
+                else:
+                    current.pop(key, None)
+            self._labels = current
+            self._update_view()
+            return len(current)
+
+    def clear_labels(self, *, object_id: str | None = None) -> None:
+        """Remove every label from an object."""
+        with self._activate_object(object_id):
+            self._labels = {}
+            self._update_view()
+
+    def set_labels_visible(self, visible: bool) -> None:
+        """Show or hide the label representation without discarding the text."""
+        self._show_labels = bool(visible)
+        self._update_view()
+
+    def _update_labels(self) -> list[SceneObject]:
+        """Text at the labelled atoms, drawn as an overlay.
+
+        One SceneObject per label rather than one for all of them: the backends
+        render ``kind="text"`` a label at a time anyway, and keeping them separate
+        means a label can be removed without rebuilding the rest.
+        """
+        labels = self._labels or {}
+        if not labels or not self._show_labels:
+            return []
+        if self._all_atom_coords is None:
+            return []
+
+        cfg = _DISPLAY_CONFIG.get("label", {})
+        colour = np.asarray(
+            cfg.get("color", [1.0, 1.0, 1.0, 1.0]), dtype=float
+        ).reshape(1, 4)
+        n_atoms = self._all_atom_coords.shape[0]
+
+        out: list[SceneObject] = []
+        for index, text in sorted(labels.items()):
+            if not (0 <= int(index) < n_atoms):
+                continue
+            out.append(
+                SceneObject(
+                    id=f"label:{int(index)}",
+                    geometry=Geometry(
+                        kind="text",
+                        positions=self._all_atom_coords[int(index)].reshape(1, 3),
+                        colors=colour,
+                        meta={"labels": [str(text)]},
+                    ),
+                    render_mode="overlay",
+                )
+            )
+        return out
+
     def _update_lines(self, colors: np.ndarray | None) -> list[SceneObject]:
         """Draw PyMOL's ``lines``: one segment per bond, split at the midpoint.
 
@@ -5356,6 +5438,7 @@ class MolView(QtWidgets.QWidget):
         scene_objects += self._update_sticks(sticks_cfg, self._colors_per_ca) or []
         scene_objects += self._update_lines(self._colors_per_ca)
         scene_objects += self._update_nonbonded(self._colors_per_ca)
+        scene_objects += self._update_labels()
         scene_objects += self._update_surface(coords, surface_cfg, self._colors_per_ca) or []
 
         metaball_cfg = _DISPLAY_CONFIG.get("metaball", {})

@@ -228,6 +228,10 @@
     "shadow_strength": 1.0,
     "shadow_direction": [0.4, 0.4, 1.0]
   },
+  "label": {
+    "color": [1.0, 1.0, 1.0, 1.0],
+    "size": 14.0
+  },
   "lighting": {
     "light_direction": [0.0, 0.0, 1.0],
     "ambient_strength": 0.45,

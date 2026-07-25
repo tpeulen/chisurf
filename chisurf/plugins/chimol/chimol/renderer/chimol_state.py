@@ -79,6 +79,9 @@ class _MolViewObjectState:
     # atoms that draw no bond (auto_show_lines / auto_show_nonbonded).
     show_lines: bool = False
     show_nonbonded: bool = False
+    #: {atom index: text} for the label representation.
+    labels: dict = field(default_factory=dict)
+    show_labels: bool = True
     sidechains_visible: bool = True
     show_atom_gaussians: bool = False
     cartoon_mask: Optional[np.ndarray] = None

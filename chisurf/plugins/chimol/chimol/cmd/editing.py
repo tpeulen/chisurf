@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ..analysis.labels import evaluate_labels
 from .base import BaseCmd
 from .registry import command
 
@@ -140,6 +141,67 @@ class EditingMixin(BaseCmd):
                   viewer.set_structure(entry.state)
 
         self._emit_message(f"Created pseudoatom {name} at {pos}")
+
+
+    @command("label", mode="raw1")
+    def label(self, selection: str = "", expression: str = "") -> None:
+        """Label atoms with a Python expression (PyMOL ``label sel, expr``).
+
+        The second argument is an **expression**, not a template: it is evaluated
+        once per atom with that atom's properties in scope, so
+        ``label name CA, "%s-%s" % (resn, resi)`` works exactly as it does in
+        PyMOL. An empty expression clears, matching ``cmd.label(sel, "")``.
+
+        Available names are PyMOL's: ``name``, ``resn``, ``resi``, ``chain``,
+        ``segi``, ``elem``, ``b``, ``q``, ``vdw``, ``index``, ``oneletter`` and
+        ``x``/``y``/``z``.
+        """
+        if not selection:
+            self._emit_error('Usage: label <selection>, <expression>')
+            return
+
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        try:
+            obj_id, _, atom_mask = self._resolve_selection_to_atom_mask(
+                viewer, selection
+            )
+        except Exception as exc:
+            self._emit_error(f"label: {exc}")
+            return
+
+        entry = viewer._objects.get(obj_id)
+        state = getattr(entry, "state", None) if entry is not None else None
+        atoms = getattr(state, "atoms", None)
+        coords = getattr(state, "all_atom_coords", None)
+        if atoms is None:
+            self._emit_error("label: the object has no atoms")
+            return
+
+        expr = (expression or "").strip().strip('"').strip("'") \
+            if (expression or "").strip() in ('""', "''") else (expression or "")
+        if not expr.strip():
+            viewer.clear_labels(object_id=obj_id)
+            self._emit_message("Cleared labels")
+            return
+
+        try:
+            indices, texts = evaluate_labels(atoms, coords, expr, atom_mask)
+        except SyntaxError as exc:
+            self._emit_error(f"label: could not parse {expr!r}: {exc}")
+            return
+
+        if not len(indices):
+            self._emit_error(
+                f"label: '{expr}' produced no labels "
+                "(the expression may not apply to these atoms)"
+            )
+            return
+
+        total = viewer.set_labels(indices, texts, object_id=obj_id)
+        self._emit_message(f"Labelled {len(indices)} atoms ({total} in total)")
 
     @command("iterate", mode="raw1")
     def iterate(self, selection: str = "", expression: str = "") -> None:

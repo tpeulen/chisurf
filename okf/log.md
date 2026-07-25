@@ -2,6 +2,33 @@
 
 ## 2026-07-25
 
+* **chimol: `label`, with PyMOL's expression language rather than templates.**
+  The whole `L` menu was greyed out because chimol had no labels at all.
+  **The important part is that `cmd.label` does not take a template string** -- it
+  takes a **Python expression** evaluated once per atom with that atom's
+  properties in scope, which is why PyMOL's own Label menu is full of entries like
+  `"%s-%s" % (resn, resi)` and `'%1.2f' % b`. A template engine would not be the
+  same feature: half the usefulness of labels is *computing* them. So
+  `analysis/labels.py` implements the expression namespace with PyMOL's names
+  (`name`, `resn`, `resi`, `chain`, `segi`, `elem`, `b`, `q`, `vdw`, `index`,
+  `oneletter`, `x`/`y`/`z`), and the fifteen menu expressions are transcribed
+  verbatim from `pymol/menu.py:mol_labels` so menu and command language cannot
+  drift apart.
+  **Deliberately sandboxed.** A label expression arrives from a menu, a script or
+  a text box, so it is evaluated with `__builtins__` replaced by a short list of
+  formatting helpers -- `open` and `__import__` resolve to nothing. Two tests pin
+  that.
+  Three judgement calls worth naming: a missing field still **resolves** (`b` on a
+  structure with no B-factors gives 0.0) rather than failing every expression that
+  mentions it; one atom whose expression raises is **skipped** rather than
+  aborting the other thousand; but a **syntax error is raised**, because that is
+  wrong for every atom rather than one. `resi` is a string, as in PyMOL, because
+  insertion codes exist and `oneletter + resi` depends on it.
+  Labels render as `kind="text"` overlays so they survive depth-testing against
+  the geometry they annotate, and `hide labels` keeps the text -- you turn labels
+  off to read the structure, not to lose what you annotated.
+  37 new tests. Suite: 464 passed, 1 skipped.
+
 
 * **chiplot Batch 24 — IRF estimator off pyqtgraph (allow-list 27 → 26).**
   Migrated the self-contained `plugins/fluorescence_decay/irf_estimator/gui/tool.py`

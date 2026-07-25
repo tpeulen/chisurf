@@ -24,9 +24,9 @@ from observation alone; see [the log](/log.md) for three cases where a measured
 | | PyMOL | ChiMOL |
 | --- | --- | --- |
 | Code | 515 823 lines C++ + 52 154 Python | 29 442 Python |
-| Commands | 303 | 79 |
+| Commands | 303 | 81 |
 | Settings | 769 | 44 registered |
-| Representations | 16 | 8 |
+| Representations | 16 | 11 |
 
 ChiMOL is roughly **5 % of PyMOL by volume**. Most of that difference is not
 missing features but PyMOL's own scale: shaders, pickers, movie machinery, CGO,
@@ -46,7 +46,7 @@ bearing for this group's work**, and those are tiered below.
 | Menu bar | **done** | PyMOL's grouping |
 | Selection algebra | partial | No `bymol`, `bychain`, `gap`, `pepseq`, `rep`, `flag` |
 | `save` (PDB/mmCIF export) | **done** | Writes what the viewer holds, not the source file |
-| `label` | **missing** | Whole representation; `L` menu is disabled because of it |
+| `label` | **done** | Expression language, not templates; `L` menu now live |
 | `create` / `extract` | **missing** | No way to split a selection into an object |
 | `origin` | **missing** | Rotation about a chosen point |
 | Undo / redo | **missing** | No edit history at all |
