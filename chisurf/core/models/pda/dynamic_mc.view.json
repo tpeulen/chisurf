@@ -22,7 +22,7 @@
       "sections": [
         {
           "type": "info",
-          "text": "Three exchanging states with Gaussian distances (R, s) and a 3x3 rate scheme kIJ (state I to J, Hz). Kinetics are sampled by Gillespie Monte-Carlo over N_win observation windows of duration T_win; set unused rates to 0. Free only the rates in your scheme."
+          "text": "Three exchanging states with Gaussian distances (R, s) and a 3x3 rate scheme kIJ (state I to J, Hz). The observation time comes from the dataset — it is how the data was segmented, not a setting — so the rates are absolute and a global fit over several time-bin widths shares them. Set unused rates to 0 and free only the ones in your scheme. N_win is the sample size of the Monte-Carlo route; the default analytic route does not use it."
         },
         {
           "type": "parameter_group_table",

@@ -11,14 +11,14 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histogram of single-molecule bursts to recover inter-dye distance distributions and, in its dynamic form, kinetic exchange between conformational states. The `tttrlib.Pda` C++ engine already computes the histograms, but no ChiSurf model, `view.json`, or plugin wraps it. This PRD adds the model + schema + AutoForm UI + fit integration in staged scope: static (single/multi-Gaussian, Lorentzian) PDA, dynamic/N-state kinetic PDA, Support-Plane/MCMC error surfaces, and a kinetic consistency check; three-color PDA is split out into PRD-65. Dual-color models are already ported to the PRD-38 model/view-spec split with headless coverage, both error-surface routes (support-plane and MCMC) are validated against each other, and the dynamic two-state criterion is met end to end (exchange rate recovered, nested static model rejected by F-test); time-binned dynamic PDA remains, and three-color tcPDA is now [PRD-65](prd-65.md).
+Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histogram of single-molecule bursts to recover inter-dye distance distributions and, in its dynamic form, kinetic exchange between conformational states. The `tttrlib.Pda` C++ engine already computes the histograms, but no ChiSurf model, `view.json`, or plugin wraps it. This PRD adds the model + schema + AutoForm UI + fit integration in staged scope: static (single/multi-Gaussian, Lorentzian) PDA, dynamic/N-state kinetic PDA, Support-Plane/MCMC error surfaces, and a kinetic consistency check; three-color PDA is split out into PRD-65. Dual-color models are already ported to the PRD-38 model/view-spec split with headless coverage, both error-surface routes (support-plane and MCMC) are validated against each other, the dynamic two-state criterion is met end to end (exchange rate recovered, nested static model rejected by F-test), and time-binned dynamic PDA is in: the reader can cut fixed-width bins, the models take their observation time from the data, and the exchange parameter is an absolute rate that a global fit shares across bin widths. Three-color tcPDA is now [PRD-65](prd-65.md).
 
 # Status
 Draft / unassigned (STATUS TABLE authoritative). Dual-color static plus a dynamic
 two-state model done under AutoForm; error surfaces work via both support-plane and
 MCMC; the dynamic acceptance criterion (rate recovery + F-test rejection of the static
-model) is met. Follow-ups (GUI light-path hook, time-binned dynamic PDA) open; tcPDA split out
-into [PRD-65](prd-65.md).
+model) is met. Follow-ups (GUI light-path hook, consistency-check GUI surface) open; tcPDA split
+out into [PRD-65](prd-65.md).
 
 Parent: [PRD-49](prd-49.md) (Phase 1, first target). Related: PRD-38
 (model/view-spec split), PRD-40 (declarative editors), PRD-04 (burst pipeline),
@@ -251,12 +251,37 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   the engine's existing strided reporter because a stride cannot represent a state
   entered and left between two samples, which is exactly fast exchange.
 
+- **Time-binned dynamic PDA (2026-07-25).** The dynamic models carried a
+  dimensionless `K_ex`, so a fit reported transitions-per-observation and nothing
+  more. Three things changed.
+  *The reader can cut fixed bins.* `PdaReader(segmentation="time-bins")` splits
+  the whole stream into abutting windows of exactly the requested length
+  (`time_binned_histograms`), instead of the burst search whose durations vary
+  with the local flux — a dynamic model needs a known constant observation time,
+  and a burst search only bounds it below. The payload gains `observation_time`
+  and `segmentation`; a fixed-bin dataset's mean photon count is the count rate
+  times the bin width, by construction.
+  *The models read the observation time from the data.* Shared helper
+  `common.pda_observation_time`, with `model.observation_time` and
+  `model.transitions_per_window` on the two-state model. The three-state model's
+  free-floating `T_win` **spinner is gone** — it was a setting that could silently
+  disagree with how the data was segmented and rescale every rate.
+  *The fitted parameter is a rate.* `k_ex` is now `k1 + k2` in Hz and the model
+  forms `K = k_ex * T` itself, so a global fit over several bin widths shares one
+  absolute rate.
+  **What that buys is a test, not just a number.** A single histogram is fit by
+  *some* `K` whether or not two-state exchange is right, so one time window cannot
+  falsify a kinetic model. Measured on synthetic data: one rate across bin widths
+  differing by 4x is recovered at chi2r < 1; windows generated from *different*
+  rates each fit alone (chi2r 0.92 and 1.01) and are rejected jointly at
+  chi2r ≈ 490. Covered by `test/models/test_pda_time_binned.py` (9 tests,
+  including the degeneracy itself and the reader's binning), and the acceptance
+  test now asserts `transitions_per_window` since that is what one dataset
+  determines.
+
 **Follow-ups (not yet done):**
 - GUI button wiring the live light-path plugin session to a selected PDA model
   (the pure bridge API is done and tested; only the one-click GUI hook remains).
-- Full time-binned dynamic PDA (an N-vs-observation-time grid, the number-of-E-bins /
-  number-of-time-bins scheme) — the current dynamic models use a single
-  dimensionless exchange parameter `K_ex`.
 - Three-color tcPDA — **split out into [PRD-65](prd-65.md)**; it shares neither
   the engine (`tttrlib.Pda` is two-channel by construction) nor the data object
   (burst table, not S1S2 matrix) nor the fit objective (burst likelihood, not a

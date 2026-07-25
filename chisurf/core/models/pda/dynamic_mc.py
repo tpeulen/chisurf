@@ -45,6 +45,7 @@ from chisurf.core.models.pda.common import (
     green_probability_from_efficiency,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
+    pda_observation_time,
     resolve_fit_settings,
 )
 from chisurf.core.models.pda.nusiance import PdaFretNuisance
@@ -75,10 +76,10 @@ class PdaDynamicThreeStates(FittingParameterGroup):
                 self._rates[(i, j)] = FittingParameter(
                     value=100.0, name=f"k{i}{j}", lb=0.0, ub=1e9, bounds_on=True,
                     fixed=True, label_text=f"k<sub>{i}{j}</sub>")
-        # Monte-Carlo controls (fixed, output-only spinners).
-        self._sim_time = FittingParameter(
-            value=2.0, name="sim_time", lb=0.01, ub=1e4, bounds_on=True, fixed=True,
-            label_text="T<sub>win</sub>[ms]")
+        # Monte-Carlo controls (fixed, output-only spinners). The observation
+        # time is deliberately NOT one of them: it is a property of the data,
+        # and a spinner that disagrees with how the data was segmented silently
+        # rescales every rate. The model reads it from the dataset instead.
         self._n_windows = FittingParameter(
             value=2000, name="n_windows", lb=100, ub=200000, bounds_on=True, fixed=True,
             label_text="N<sub>win</sub>")
@@ -100,11 +101,6 @@ class PdaDynamicThreeStates(FittingParameterGroup):
             # kIJ is rate I->J, so target=j, source=i (0-based indices).
             K[j - 1, i - 1] = max(0.0, float(p.value))
         return K
-
-    @property
-    def sim_time_s(self) -> float:
-        """Observation-window duration in seconds."""
-        return float(self._sim_time.value) * 1e-3
 
     @property
     def n_windows(self) -> int:
@@ -179,10 +175,20 @@ class PdaDynamicThreeStateModel(ModelCurve):
         self.fit_settings = resolve_fit_settings(None, None)
         self.residual_mode = "1D"
 
+    @property
+    def observation_time(self) -> float:
+        """Return the dataset's observation time in seconds.
+
+        See :func:`chisurf.core.models.pda.common.pda_observation_time`. The
+        rates in the scheme are absolute (Hz), so this is what turns them into
+        the transitions-per-window the occupation-time distribution depends on.
+        """
+        return pda_observation_time(self.fit)
+
     def _time_fractions(self) -> np.ndarray:
         """Return cached Monte-Carlo time-fractions, re-simulating only on change."""
         K = self.states.rate_matrix()
-        sim_time = self.states.sim_time_s
+        sim_time = self.observation_time
         n_windows = self.states.n_windows
         key = (K.tobytes(), float(sim_time), int(n_windows), int(self.seed))
         if key != self._mc_cache_key or self._mc_fractions is None:
@@ -219,7 +225,7 @@ class PdaDynamicThreeStateModel(ModelCurve):
             from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
 
             centers, weights = szabo_gopich_quadrature(
-                self.states.rate_matrix(), pG_states, self.states.sim_time_s,
+                self.states.rate_matrix(), pG_states, self.observation_time,
                 n_nodes=self.n_hist,
             )
         else:

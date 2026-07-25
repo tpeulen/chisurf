@@ -93,6 +93,7 @@ class PdaReader(ExperimentReader):
             minimum_time_window_length: float = 2e-3,
             tw_configs=None,
             n_colors: int = None,
+            segmentation: str = "burst",
             *args,
             **kwargs
     ):
@@ -121,6 +122,22 @@ class PdaReader(ExperimentReader):
             Number of colours, 2 or 3. Defaults to the number of channel
             groups, so a three-colour detection setup produces three-colour
             data without being told twice.
+        segmentation : str
+            How the photon stream is cut into observations.
+
+            ``"burst"`` (default) runs a burst search: windows are found where
+            the photon flux is high enough, so their durations *vary* and
+            ``minimum_time_window_length`` is a lower bound rather than the
+            observation time.
+
+            ``"time-bins"`` cuts the whole stream into consecutive windows of
+            **exactly** ``minimum_time_window_length``, keeping those within the
+            photon-count limits. This is the segmentation classic PDA assumes,
+            and the one a dynamic model needs: exchange enters through the
+            number of transitions per observation, so the observation time has
+            to be a known constant rather than a distribution. Reading the same
+            file at several bin widths and fitting them together is what turns
+            the dimensionless exchange parameter into an absolute rate.
         """
         super().__init__(*args, **kwargs)
         self.reading_routine = reading_routine
@@ -131,6 +148,7 @@ class PdaReader(ExperimentReader):
         self.tw_configs = tw_configs
         self.channels = channels
         self.n_colors = int(n_colors) if n_colors else len(channels)
+        self.segmentation = str(segmentation)
 
     # -- three-colour path ------------------------------------------------
 
@@ -287,6 +305,82 @@ class PdaReader(ExperimentReader):
             # silently loses the last photon of every burst.)
             counts[:, index] = cumulative[stops + 1] - cumulative[starts]
         return counts
+
+    def time_binned_histograms(self, tttr_data, channels_1, channels_2,
+                               window_length: float,
+                               minimum_number_of_photons: int,
+                               maximum_number_of_photons: int):
+        """Return the S1S2 histogram of consecutive fixed-width time bins.
+
+        The segmentation classic PDA is defined on: the whole photon stream is
+        cut into abutting windows of *exactly* ``window_length``, and each
+        surviving window contributes one ``(S1, S2)`` pair to the histogram. A
+        burst search cannot substitute for this in a dynamic analysis — it
+        returns windows whose durations vary with the local photon flux, so the
+        observation time that exchange is measured against is a distribution
+        rather than a number, and the recovered rate absorbs whatever that
+        distribution happened to be.
+
+        Empty and under-filled bins are dropped rather than counted at the
+        origin: a window with no molecule in it carries no information about
+        exchange, and at typical duty cycles they would otherwise dominate.
+
+        Parameters
+        ----------
+        tttr_data : tttrlib.TTTR
+            Photon stream.
+        channels_1, channels_2 : list of int
+            Routing channels of the two detection colours.
+        window_length : float
+            Bin width in seconds. This *is* the observation time.
+        minimum_number_of_photons, maximum_number_of_photons : int
+            Windows outside this total-count range are discarded; the histogram
+            support is ``maximum_number_of_photons`` in each channel.
+
+        Returns
+        -------
+        s1s2 : numpy.ndarray
+            ``(n_max + 1, n_max + 1)`` counts, rows channel 1, columns channel 2
+            — the orientation the model's matrix uses.
+        ps : numpy.ndarray
+            Photon-number distribution: the fraction of kept windows with each
+            total photon count, which is what the model needs to weight its
+            per-``N`` binomials.
+        indices : numpy.ndarray
+            First photon index of each kept window, for provenance.
+        """
+        macro = np.asarray(tttr_data.macro_times, dtype=np.float64)
+        if macro.size == 0:
+            n_max = int(maximum_number_of_photons)
+            return (np.zeros((n_max + 1, n_max + 1)), np.zeros(n_max + 1),
+                    np.zeros(0, dtype=np.int64))
+        resolution = float(tttr_data.header.macro_time_resolution)
+        bin_width = float(window_length) / resolution          # in macro-time ticks
+        routing = np.asarray(tttr_data.routing_channels)
+
+        # Bin index of every photon. Consecutive and abutting by construction,
+        # so no window is missed and none overlaps.
+        index = ((macro - macro[0]) / bin_width).astype(np.int64)
+        n_bins = int(index[-1]) + 1
+
+        in_1 = np.isin(routing, np.asarray(channels_1))
+        in_2 = np.isin(routing, np.asarray(channels_2))
+        s1 = np.bincount(index[in_1], minlength=n_bins)
+        s2 = np.bincount(index[in_2], minlength=n_bins)
+
+        total = s1 + s2
+        n_max = int(maximum_number_of_photons)
+        keep = (total >= int(minimum_number_of_photons)) & (total <= n_max)
+        s1, s2 = s1[keep], s2[keep]
+
+        s1s2 = np.zeros((n_max + 1, n_max + 1), dtype=float)
+        np.add.at(s1s2, (s1, s2), 1.0)
+
+        counts = np.bincount(s1 + s2, minlength=n_max + 1)[: n_max + 1].astype(float)
+        ps = counts / counts.sum() if counts.sum() > 0 else counts
+
+        first = np.searchsorted(index, np.flatnonzero(keep))
+        return s1s2, ps, first.astype(np.int64)
 
     def view_spec(self):
         """Return the declarative editor spec for PDA reader settings."""
@@ -569,14 +663,23 @@ class PdaReader(ExperimentReader):
                     )
                 except Exception:
                     pass
-                s1s2_e, ps, tttr_indices = tttrlib.Pda.compute_experimental_histograms(
-                    tttr_data=t,
-                    channels_1=channels_1,
-                    channels_2=channels_2,
-                    maximum_number_of_photons=self.maximum_number_of_photons,
-                    minimum_number_of_photons=n_ph_cfg,
-                    minimum_time_window_length=tw_len_cfg
-                )
+                time_binned = str(getattr(self, "segmentation", "burst")) == "time-bins"
+                if time_binned:
+                    s1s2_e, ps, tttr_indices = self.time_binned_histograms(
+                        t, channels_1, channels_2,
+                        window_length=tw_len_cfg,
+                        minimum_number_of_photons=n_ph_cfg,
+                        maximum_number_of_photons=self.maximum_number_of_photons,
+                    )
+                else:
+                    s1s2_e, ps, tttr_indices = tttrlib.Pda.compute_experimental_histograms(
+                        tttr_data=t,
+                        channels_1=channels_1,
+                        channels_2=channels_2,
+                        maximum_number_of_photons=self.maximum_number_of_photons,
+                        minimum_number_of_photons=n_ph_cfg,
+                        minimum_time_window_length=tw_len_cfg
+                    )
 
                 # Align experimental S1S2 orientation with the theoretical model.
                 #
@@ -587,10 +690,13 @@ class PdaReader(ExperimentReader):
                 # columns to channel 1. For consistent comparison (2D residuals and
                 # 1D projections), we transpose the experimental matrix here so that
                 # both share the same (green,row; red,col) convention.
+                #
+                # The time-binned path builds the matrix itself and already uses
+                # the model orientation, so it must not be transposed again.
                 try:
                     import numpy as _np
                     s1s2_e = _np.asarray(s1s2_e)
-                    if s1s2_e.ndim == 2:
+                    if s1s2_e.ndim == 2 and not time_binned:
                         s1s2_e = s1s2_e.T
                 except Exception:
                     pass
@@ -617,6 +723,13 @@ class PdaReader(ExperimentReader):
                     'maximum_number_of_photons': self.maximum_number_of_photons,
                     'minimum_number_of_photons': n_ph_cfg,
                     'minimum_time_window_length': tw_len_cfg,
+                    # How long each observation lasted, which is what a dynamic
+                    # model converts an exchange rate into transitions-per-window
+                    # with. Exact under fixed-width binning; under a burst search
+                    # the durations vary and this is only their lower bound, so
+                    # the segmentation is recorded alongside it.
+                    'segmentation': 'time-bins' if time_binned else 'burst',
+                    'observation_time': float(tw_len_cfg),
                     'channels': self.channels,
                     's1s2': s1s2_e,
                     'ps': ps,

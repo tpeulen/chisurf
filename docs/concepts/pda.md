@@ -144,6 +144,19 @@ timescale, and its shape yields the interconversion rates. ChiSurf provides
 two- and three-state dynamic models, and a polarization-resolved variant for
 anisotropy PDA.
 
+**One histogram measures $K$, not $k$.** Exchange enters only through
+$K = (k_1+k_2)T$, so a single dataset cannot separate a fast rate watched briefly
+from a slow one watched for longer — the two give an identical histogram. Given
+the observation time the rate follows, but the more important consequence is that
+one time window cannot *test* the kinetic model: some $K$ fits it either way.
+
+Cutting the same measurement into several fixed-width time bins and fitting them
+with one shared rate turns that into a constraint the data can fail. Windows that
+imply different rates each fit alone and are rejected jointly. This requires the
+bins to have a known, constant duration, which is why the reader offers
+fixed-width segmentation alongside the burst search — under a burst search the
+durations vary with the local photon flux and $T$ is only a lower bound.
+
 **Two states have a closed form; more do not.** The two-state occupation-time
 distribution above is exact, boundary atoms included. Beyond two states the
 three-state model offers a choice. The default keeps the first two moments of

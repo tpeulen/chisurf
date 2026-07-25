@@ -60,6 +60,46 @@ list of Gaussian components (mean $R_{P}$, width $s_{P}$, fraction $x_{P}$);
 $\gamma$. These map onto the forward model in {ref}`concept-pda`.
 ```
 
+## Measuring an exchange rate: several time bins, one rate
+
+A dynamic PDA histogram responds to exchange only through the number of
+transitions per observation, $K = (k_1 + k_2)\,T$. That has a consequence worth
+being explicit about: **one histogram cannot test a kinetic model.** Some $K$
+will fit it whether or not two-state exchange is the right description, so a
+good $\chi^2_r$ from a single time window is not evidence.
+
+Requiring one rate to reproduce *several* bin widths is a constraint the data
+can fail. In ChiSurf:
+
+1. In the reader, set **Segmentation** to *Fixed time bins*. A burst search
+   returns windows whose durations vary with the local flux, so the observation
+   time is only a lower bound; fixed bins cut the stream into abutting windows of
+   exactly the requested length, which is what makes $T$ a known constant.
+2. Give the reader several time-window configurations. Each produces its own
+   dataset, named by its bin width.
+3. Add a dynamic model to each, then link the exchange rate `k_ex` across them
+   (it is a rate in Hz — each model multiplies it by *its own* dataset's
+   observation time) and fit the group globally.
+
+```python
+from chisurf.core.experiments.pda.reader import PdaReader
+
+reader = PdaReader(
+    channels=([0], [1]),
+    micro_time_ranges=[(0, 2**15)],
+    segmentation="time-bins",
+    tw_configs=[(5, 1e-3), (5, 2e-3), (5, 4e-3)],   # (min photons, bin width s)
+)
+datasets = reader.read(["measurement.ptu"])
+```
+
+On synthetic data generated from a single rate at bin widths differing by 4×, the
+global fit returns that rate with $\chi^2_r < 1$. On data whose windows imply
+*different* rates, each window still fits on its own ($\chi^2_r$ of 0.92 and 1.01)
+while the joint fit is rejected at $\chi^2_r \approx 490$ — a factor of 500. That
+contrast is the whole reason for reading a measurement at more than one bin
+width.
+
 ## Result
 
 Two single-species PDA models at different mean efficiencies. Each is a *single*

@@ -15,8 +15,8 @@
             3
           ],
           "labels": [
-            "2 — PDA (S1S2 histogram)",
-            "3 — tcPDA (burst table)"
+            "2 \u2014 PDA (S1S2 histogram)",
+            "3 \u2014 tcPDA (burst table)"
           ],
           "description": "Defaults to the number of configured detection-channel groups, so a three-colour setup selects tcPDA on its own.",
           "rebuild_on_change": true
@@ -31,6 +31,27 @@
         {
           "type": "custom",
           "key": "pda_detector"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Segmentation",
+      "collapsed": false,
+      "description": "How the photon stream is cut into observations. A burst search finds windows where the flux is high enough, so their durations vary and the time-window setting is only a lower bound. Fixed bins cut the whole stream into abutting windows of exactly that length \u2014 the segmentation classic PDA assumes, and the one a dynamic model needs, because exchange is measured in transitions per observation and that requires a known observation time. Read the same file at several bin widths to fit them together for an absolute rate.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "segmentation",
+          "label": "Segmentation",
+          "options": [
+            "burst",
+            "time-bins"
+          ],
+          "labels": [
+            "Burst search (variable duration)",
+            "Fixed time bins (constant duration)"
+          ]
         }
       ]
     },

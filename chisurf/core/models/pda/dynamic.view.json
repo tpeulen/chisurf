@@ -22,7 +22,7 @@
       "sections": [
         {
           "type": "info",
-          "text": "Two exchanging states with Gaussian distances (R, s). x1 = steady-state occupancy of state 1; K_ex = mean transitions per observation window (0 = static two-state, large = fast averaging)."
+          "text": "Two exchanging states with Gaussian distances (R, s). x1 = steady-state occupancy of state 1; k_ex = total exchange rate k1+k2 in Hz. What the shape depends on is k_ex × T (transitions per observation): 0 leaves two static populations, large averages them into one. A single dataset fixes only that product — read the same file at several time-bin widths and fit them together to pin the rate itself."
         },
         {
           "type": "parameter_group_table",

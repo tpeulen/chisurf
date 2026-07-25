@@ -27,6 +27,23 @@ an interior density expressed through modified Bessel functions:
 with steady-state occupancy ``p1`` of state 1 and a single dimensionless
 exchange parameter ``K = (k1 + k2) T`` (mean number of transitions per window).
 
+Rate, not shape parameter
+-------------------------
+Only ``K`` enters the distribution, so a single dataset cannot separate the rate
+from the observation time: fast exchange watched briefly and slow exchange
+watched for longer give the same histogram. The fitted parameter is nevertheless
+the **rate** ``k_ex = k1 + k2`` in Hz, and the model multiplies it by its own
+dataset's observation time (:attr:`observation_time`). That costs nothing on one
+dataset and buys the thing that was missing: read the same file at several
+fixed-width time bins (``PdaReader(segmentation="time-bins")`` with several
+``tw_configs``) and fit them together with ``k_ex`` linked, and one rate now has
+to explain every bin width at once. That is the time-binned dynamic analysis, and
+it is where the rate becomes a measurement rather than a shape parameter.
+
+Under a burst search the window durations vary, so the observation time is only
+their lower bound and the rate inherits that approximation — fixed-width binning
+is what makes it exact.
+
 The time-averaged per-photon green probability for a molecule with time
 fraction ``f`` is ``pG(f) = f pG1 + (1 - f) pG2`` (equal-brightness
 assumption). The resulting amplitude/probability spectrum is handed to
@@ -56,6 +73,7 @@ from chisurf.core.models.pda.common import (
     green_probability_from_efficiency,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
+    pda_observation_time,
     resolve_fit_settings,
 )
 from chisurf.core.models.pda.nusiance import PdaFretNuisance
@@ -77,9 +95,13 @@ class PdaDynamicStates(FittingParameterGroup):
                                     label_text="s<sub>2</sub>")
         self._x1 = FittingParameter(value=0.5, name="x1", lb=0.0, ub=1.0, bounds_on=True,
                                     label_text="x<sub>1</sub>")
-        # Dimensionless exchange K = (k1+k2)*T_window (mean transitions/window).
-        self._kex = FittingParameter(value=1.0, name="k_ex", lb=0.0, ub=1e4, bounds_on=True,
-                                     label_text="K<sub>ex</sub>")
+        # Total exchange rate k1 + k2, in Hz. The model converts it to the
+        # dimensionless K = (k1+k2)*T with the dataset's observation time, so a
+        # global fit over several time-bin widths shares one absolute rate --
+        # which is the only way the rate is identifiable at all. A single
+        # dataset determines only the product.
+        self._kex = FittingParameter(value=500.0, name="k_ex", lb=0.0, ub=1e9,
+                                     bounds_on=True, label_text="k<sub>ex</sub>[Hz]")
 
     R1 = property(lambda s: s._R1.value)
     s1 = property(lambda s: s._s1.value)
@@ -224,6 +246,26 @@ class PdaDynamicTwoStateModel(ModelCurve):
         self.residual_mode = "1D"
 
     # -- helpers ------------------------------------------------------------
+    @property
+    def observation_time(self) -> float:
+        """Return the dataset's observation time in seconds.
+
+        See :func:`chisurf.core.models.pda.common.pda_observation_time`.
+        """
+        return pda_observation_time(self.fit)
+
+    @property
+    def transitions_per_window(self) -> float:
+        """Return the dimensionless exchange ``K = (k1 + k2) * T``.
+
+        The quantity the occupation-time distribution actually depends on, and
+        the only one a *single* dataset can determine: the same shape results
+        from a fast rate in a short window and a slow one in a long window.
+        Fitting several bin widths together breaks that degeneracy, because one
+        rate has to explain all of them.
+        """
+        return self.states.k_ex * self.observation_time
+
     def _mean_green_probability(self, R: float, sigma: float, r, E, pG) -> float:
         """Return the state's Gaussian-averaged per-photon green probability."""
         if sigma <= 0.0:
@@ -247,7 +289,7 @@ class PdaDynamicTwoStateModel(ModelCurve):
         pG2 = self._mean_green_probability(st.R2, st.s2, r, E, pG)
 
         p1 = st.x1
-        K = st.k_ex
+        K = self.transitions_per_window
 
         # Time-fraction distribution, including the two boundary atoms (a
         # molecule that never switched). Computed exactly rather than from the

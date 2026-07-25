@@ -259,6 +259,40 @@ PDA_AXIS_RANGES = {
 PDA_STATISTICS = ("poisson", "neyman", "pearson")
 
 
+def pda_observation_time(fit) -> float:
+    """Return a PDA dataset's observation time in seconds.
+
+    The duration a single entry of the S1S2 histogram was accumulated over.
+    Dynamic models need it because exchange enters their distributions only
+    through the number of transitions per observation, ``(k1 + k2) * T`` — so
+    without it a rate is not a rate, only a shape parameter.
+
+    It is exact when the reader used fixed-width binning (``segmentation ==
+    "time-bins"``). Under a burst search the durations vary with the local
+    photon flux and this returns their lower bound, which makes any rate read
+    off a single burst-mode dataset an estimate rather than a measurement. Data
+    read before the field existed falls back to the same lower bound.
+
+    Parameters
+    ----------
+    fit : chisurf.core.fitting.fit.Fit
+        Fit whose ``data.pda`` payload carries the segmentation metadata.
+
+    Returns
+    -------
+    float
+        Observation time in seconds, never zero.
+    """
+    payload = getattr(getattr(fit, "data", None), "pda", None) or {}
+    value = payload.get("observation_time")
+    if value is None:
+        value = payload.get("minimum_time_window_length", 1.0)
+    try:
+        return max(float(value), 1e-12)
+    except (TypeError, ValueError):
+        return 1.0
+
+
 def build_pda_histogram_function(model, axis: str):
     """Return the ``tttrlib.Pda.histogram_function`` for a named PDA axis.
 

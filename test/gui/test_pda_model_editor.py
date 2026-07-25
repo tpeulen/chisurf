@@ -48,6 +48,8 @@ def _make_pda_data(nmax: int = 60, nmin: int = 5):
         "maximum_number_of_photons": nmax,
         "minimum_number_of_photons": nmin,
         "minimum_time_window_length": 2e-3,
+        "segmentation": "time-bins",
+        "observation_time": 2e-3,
         "channels": ([0], [1]),
         "s1s2": s1s2,
         "ps": ps,
@@ -192,6 +194,10 @@ def test_dynamic_two_state_matches_static_in_slow_limit(qapp):
 def _dynamic_two_state_fit(true_kex, free_kex, total=2e5, seed=1):
     """Build a dynamic-PDA self-recovery fit and run it.
 
+    ``true_kex`` is the *dimensionless* exchange ``K = (k1 + k2) * T`` -- the
+    only thing a single dataset determines -- and is converted to the rate the
+    model actually carries using the dataset's observation time.
+
     The data is a Poisson realisation of the two-state dynamic model at
     ``true_kex``. Both candidate fits are given the same structural freedom --
     the two distances and the occupancy -- so the *only* thing that
@@ -212,7 +218,7 @@ def _dynamic_two_state_fit(true_kex, free_kex, total=2e5, seed=1):
     st = m.states
     st._R1.value, st._s1.value = 40.0, 4.0
     st._R2.value, st._s2.value = 62.0, 4.0
-    st._x1.value, st._kex.value = 0.5, true_kex
+    st._x1.value, st._kex.value = 0.5, true_kex / m.observation_time
     m.update()
     _ = m.get_wres(fit)
 
@@ -233,7 +239,7 @@ def _dynamic_two_state_fit(true_kex, free_kex, total=2e5, seed=1):
     # Perturbed start, so recovery is not the trivial identity.
     st._x1.value, st._R1.value, st._R2.value = 0.42, 43.0, 58.0
     st._kex.fixed = not free_kex
-    st._kex.value = true_kex * 4.0 if free_kex else 0.0
+    st._kex.value = (true_kex * 4.0 / m.observation_time) if free_kex else 0.0
 
     m.find_parameters()
     fit.run()
@@ -256,8 +262,11 @@ def test_dynamic_pda_recovers_exchange_and_rejects_the_static_model(qapp):
     fit_dyn, m_dyn = _dynamic_two_state_fit(true_kex, free_kex=True)
     st = m_dyn.states
 
-    # (1) the exchange rate -- and the state structure -- come back.
-    assert st.k_ex == pytest.approx(true_kex, rel=0.1)
+    # (1) the exchange rate -- and the state structure -- come back. The model
+    # carries a rate in Hz; what the data determines is the product with the
+    # observation time, so that is what is checked.
+    assert m_dyn.transitions_per_window == pytest.approx(true_kex, rel=0.1)
+    assert st.k_ex == pytest.approx(true_kex / m_dyn.observation_time, rel=0.1)
     assert st.R1 == pytest.approx(40.0, abs=1.0)
     assert st.R2 == pytest.approx(62.0, abs=1.0)
     assert st.x1 == pytest.approx(0.5, abs=0.05)
@@ -580,11 +589,12 @@ def test_dynamic_pda_recovers_exchange_at_unequal_populations(qapp):
     fit = _make_pda_fit(model_class)
     m = fit.model
 
+    # k_ex is the dimensionless K = (k1 + k2) * T; the model carries the rate.
     truth = {"R1": 40.0, "R2": 62.0, "x1": 0.25, "k_ex": 2.0}
     m.states._R1.value = truth["R1"]
     m.states._R2.value = truth["R2"]
     m.states._x1.value = truth["x1"]
-    m.states._kex.value = truth["k_ex"]
+    m.states._kex.value = truth["k_ex"] / m.observation_time
     m.update()
 
     s1s2 = np.asarray(m.pda.get_S1S2_matrix(), dtype=float)
@@ -599,11 +609,12 @@ def test_dynamic_pda_recovers_exchange_at_unequal_populations(qapp):
     m.find_parameters()
     for p in m.parameters_all:
         p.fixed = True
-    for parameter, start in ((m.states._x1, 0.5), (m.states._kex, 0.7)):
+    for parameter, start in ((m.states._x1, 0.5),
+                             (m.states._kex, 0.7 / m.observation_time)):
         parameter.fixed = False
         parameter.value = start
     m.find_parameters()
     fit.run()
 
     assert float(m.states._x1.value) == pytest.approx(truth["x1"], abs=0.06)
-    assert float(m.states._kex.value) == pytest.approx(truth["k_ex"], rel=0.35)
+    assert m.transitions_per_window == pytest.approx(truth["k_ex"], rel=0.35)
