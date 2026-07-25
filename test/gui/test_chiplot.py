@@ -227,6 +227,8 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.vv_vh_anisotropy",
         # Batch 12
         "chisurf.plugins.tttr.tttr_lut_tools.gui.sections",
+        # Batch 13
+        "chisurf.plugins.tttr.tttr_lut_tools.gui.settings_panel",
     ):
         assert importlib.import_module(name) is not None
 
@@ -259,6 +261,22 @@ def test_fill_between_band(qapp):
     assert isinstance(band, cp.handles.Handle)
     band.visible = False
     band.remove()
+
+
+def test_curve_set_pen_restyles(qapp):
+    """Curve.set_pen restyles a live curve (accepts Pen or pen-like).
+
+    Regression guard for PRD-64 Batch 13 (tttr_lut_tools settings panel), which
+    re-colours and emphasises per-channel curves via set_pen.
+    """
+    plot = cp.Plot()
+    c = plot.line([0, 1, 2], [0, 1, 0], pen="w")
+    c.set_pen(cp.to_pen((255, 0, 0), width=4))  # Pen object
+    c.set_pen("g")  # pen-like string
+    c.set_pen((0, 0, 255))  # rgb tuple
+    # z-order is settable (used for emphasis)
+    c.z = 10
+    assert c.z == 10
 
 
 def test_curve_get_data_roundtrip(qapp):

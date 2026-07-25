@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 41):*
+*Landed so far (allow-list 76 → 40):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -392,6 +392,19 @@ screenshot/qtbot verification after each cluster.
   curve-churn-keeps-items pattern; import-clean test extended. `settings_panel.py`
   (the other tttr_lut_tools file) is a separate, larger migration left for its own
   batch.
+- **Batch 13** (allow-list 41 → 40) — migrated the other tttr_lut_tools file,
+  `gui/settings_panel.py` (the LUT-settings dock: a microtime histogram with
+  per-channel curves + two LUT-preview plots). `nice_pen` now returns a chiplot
+  `Pen`; the three `pg.PlotWidget`s become `cp.Plot`s; per-channel curves are
+  tracked handles updated with `set_data`/`set_pen`/`.z` and removed with
+  `remove`; the "No LUT" `pg.TextItem` becomes `plot.text(...)`. Grew the handle
+  contract with **`Curve.set_pen`** (real call site: the panel re-colours and
+  emphasises the active channel), coercing any pen-like via `to_pen`. The
+  pyqtgraph render optimisations `setDownsampling`/`setClipToView` (plot- and
+  curve-level) have no chiplot verb yet and stay as flagged `.native`
+  passthroughs. New `test_curve_set_pen_restyles`; import-clean extended; panel
+  constructed headless with the LUT-preview redraw exercised. tttr_lut_tools now
+  fully off pyqtgraph.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

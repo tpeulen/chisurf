@@ -7,10 +7,10 @@ import os
 from pathlib import Path
 
 import numpy as np
-import pyqtgraph as pg
 import tttrlib
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 
 VALID_EXTS = {".spc", ".ht3", ".ptu", ".phu", ".photonhdf5"}
@@ -63,8 +63,8 @@ def load_lut_file(path: str) -> np.ndarray:
 
 
 def nice_pen(color, width: int = 2):
-    """Create a pyqtgraph pen."""
-    return pg.mkPen(color=color, width=width)
+    """Create a chiplot pen."""
+    return cp.to_pen(color, width=width)
 
 
 def json_safe(obj: object) -> object:
@@ -371,27 +371,27 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         self.use_native_log_axis = True
 
         plot_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        self.hist_plot = pg.PlotWidget()
-        self.hist_plot.setLabel("bottom", "Microtime (bins)")
+        self.hist_plot = cp.Plot()
+        self.hist_plot.set_labels(bottom="Microtime (bins)")
         self._set_y_label()
-        self.hist_plot.showGrid(x=True, y=True, alpha=0.3)
+        self.hist_plot.grid(x=True, y=True, alpha=0.3)
         self._apply_log_mode()
-        self.hist_plot.setDownsampling(auto=True)
-        self.hist_plot.setClipToView(True)
+        # pyqtgraph render optimisations for large histograms — reached via the
+        # backend escape hatch (no chiplot native verb yet; a migration gap).
+        self.hist_plot.native.setDownsampling(auto=True)
+        self.hist_plot.native.setClipToView(True)
         plot_splitter.addWidget(self.hist_plot)
 
         self.lut_container = QtWidgets.QWidget()
         lut_layout = QtWidgets.QVBoxLayout(self.lut_container)
         lut_layout.setContentsMargins(0, 0, 0, 0)
         lut_layout.setSpacing(0)
-        self.lut_plot_cum = pg.PlotWidget()
-        self.lut_plot_delta = pg.PlotWidget()
+        self.lut_plot_cum = cp.Plot()
+        self.lut_plot_delta = cp.Plot()
         for plot in (self.lut_plot_cum, self.lut_plot_delta):
-            plot.showGrid(x=True, y=True, alpha=0.3)
-        self.lut_plot_cum.setLabel("bottom", "Bin index")
-        self.lut_plot_cum.setLabel("left", "Cumulative NTAC")
-        self.lut_plot_delta.setLabel("bottom", "Bin index")
-        self.lut_plot_delta.setLabel("left", "ΔNTAC / bin")
+            plot.grid(x=True, y=True, alpha=0.3)
+        self.lut_plot_cum.set_labels(bottom="Bin index", left="Cumulative NTAC")
+        self.lut_plot_delta.set_labels(bottom="Bin index", left="ΔNTAC / bin")
         lut_layout.addWidget(QtWidgets.QLabel("Selected channel LUT"))
         lut_layout.addWidget(self.lut_plot_cum, 2)
         lut_layout.addWidget(self.lut_plot_delta, 2)
@@ -609,11 +609,11 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
 
     def _set_y_label(self) -> None:
         """Set the histogram y-axis label."""
-        self.hist_plot.setLabel("left", "Counts (log)")
+        self.hist_plot.set_labels(left="Counts (log)")
 
     def _apply_log_mode(self) -> None:
         """Apply native log mode to the histogram."""
-        self.hist_plot.setLogMode(x=False, y=self.use_native_log_axis)
+        self.hist_plot.set_log(x=False, y=self.use_native_log_axis)
 
     def _files_changed(self) -> None:
         """Reload files when the file list changes."""
@@ -799,7 +799,7 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         """Remove all histogram curves."""
         for item in self.curves.values():
             try:
-                self.hist_plot.removeItem(item)
+                self.hist_plot.remove(item)
             except Exception:
                 pass
         self.curves.clear()
@@ -822,7 +822,7 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         for channel in list(self.curves.keys()):
             if channel not in draw:
                 try:
-                    self.hist_plot.removeItem(self.curves[channel])
+                    self.hist_plot.remove(self.curves[channel])
                 except Exception:
                     pass
                 self.curves.pop(channel, None)
@@ -840,13 +840,14 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
             any_points = any_points or np.any(np.isfinite(y_display))
 
             if channel in self.curves:
-                self.curves[channel].setData(x_values, y_display)
-                self.curves[channel].setPen(nice_pen(color, width=2))
+                self.curves[channel].set_data(x_values, y_display)
+                self.curves[channel].set_pen(nice_pen(color, width=2))
             else:
-                item = self.hist_plot.plot(x_values, y_display, pen=nice_pen(color, width=2))
-                item.setZValue(0)
-                item.setDownsampling(auto=True)
-                item.setClipToView(True)
+                item = self.hist_plot.line(x_values, y_display, pen=nice_pen(color, width=2))
+                item.z = 0
+                # pyqtgraph render optimisations (migration gap; via escape hatch).
+                item.native.setDownsampling(auto=True)
+                item.native.setClipToView(True)
                 self.curves[channel] = item
 
         self._emphasize_active_curve()
@@ -859,7 +860,7 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         x_values_list = []
         y_values_list = []
         for item in self.curves.values():
-            data = item.getData()
+            data = item.get_data()
             if not data:
                 continue
             x_values, y_values = data
@@ -889,20 +890,20 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
 
         x_range = x_max - x_min
         y_range = y_max - y_min
-        self.hist_plot.setXRange(x_min - 0.02 * x_range, x_max + 0.02 * x_range, padding=0)
-        self.hist_plot.setYRange(y_min - 0.05 * y_range, y_max + 0.05 * y_range, padding=0)
+        self.hist_plot.set_xlim(x_min - 0.02 * x_range, x_max + 0.02 * x_range, padding=0)
+        self.hist_plot.set_ylim(y_min - 0.05 * y_range, y_max + 0.05 * y_range, padding=0)
 
     def _emphasize_active_curve(self) -> None:
         """Emphasize the active channel curve."""
         channel = self._active_channel()
         for curve_channel, item in self.curves.items():
             color = self.curve_colors.get(curve_channel, (100, 100, 100))
-            item.setPen(nice_pen(color, width=2))
-            item.setZValue(0)
+            item.set_pen(nice_pen(color, width=2))
+            item.z = 0
         if channel in self.curves:
             color = self.curve_colors.get(channel, (0, 0, 0))
-            self.curves[channel].setPen(nice_pen(color, width=4))
-            self.curves[channel].setZValue(10)
+            self.curves[channel].set_pen(nice_pen(color, width=4))
+            self.curves[channel].z = 10
 
     def _active_channel(self) -> int | None:
         """Return the active channel."""
@@ -953,7 +954,7 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
             x_values, y_values = self._get_base_xy(channel)
             shift = int(value)
             y_display = np.roll(y_values, shift) if shift and len(y_values) > 0 else y_values
-            item.setData(x_values, y_display)
+            item.set_data(x_values, y_display)
             self._emphasize_active_curve()
             self._force_range_from_visible()
 
@@ -969,12 +970,12 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
             return
         lut = self.channel_luts.get(int(channel))
         if lut is None or len(lut) == 0:
-            self.lut_plot_cum.addItem(pg.TextItem("No LUT for this channel", anchor=(0, 0)))
+            self.lut_plot_cum.text("No LUT for this channel", (0, 0), anchor=(0, 0))
             return
         x_values = np.arange(len(lut), dtype=np.float32)
-        self.lut_plot_cum.plot(x_values, f32(lut), pen=nice_pen((70, 70, 200), 2))
+        self.lut_plot_cum.line(x_values, f32(lut), pen=nice_pen((70, 70, 200), 2))
         delta = np.diff(np.concatenate(([0.0], lut)))
-        self.lut_plot_delta.plot(x_values, f32(delta), pen=nice_pen((200, 70, 70), 2))
+        self.lut_plot_delta.line(x_values, f32(delta), pen=nice_pen((200, 70, 70), 2))
 
     def _current_settings_dict(self) -> dict[str, object]:
         """Return the current settings dictionary."""

@@ -102,6 +102,16 @@ class Curve(Handle, Protocol):
         """
         ...
 
+    def set_pen(self, pen) -> None:
+        """Restyle the curve's line.
+
+        Parameters
+        ----------
+        pen : pen-like
+            A colour/style spec or :class:`style.Pen` (coerced via ``to_pen``).
+        """
+        ...
+
 
 @runtime_checkable
 class Scatter(Handle, Protocol):

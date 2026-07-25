@@ -257,6 +257,10 @@ class _Curve(_Item):
         """Return the curve's current ``(x, y)`` samples."""
         return self._native.getData()
 
+    def set_pen(self, pen) -> None:
+        """Restyle the curve's line (accepts a Pen or any pen-like spec)."""
+        self._native.setPen(_pen(pen if isinstance(pen, S.Pen) else S.to_pen(pen)))
+
 
 class _Scatter(_Item):
     """Handle for a pyqtgraph ``ScatterPlotItem``."""
