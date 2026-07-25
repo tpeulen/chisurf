@@ -238,6 +238,19 @@ def launch_jupyter_process(
     return jupyter_proc
 
 
+class _LogRelay(QtCore.QObject):
+    """GUI-thread relay for :class:`QTextEditLogger`.
+
+    ``logging.Handler.emit`` can be called from any thread (e.g. a background
+    data-load worker). Writing to a Qt widget or starting a QTimer off the GUI
+    thread is undefined behaviour (``QBasicTimer`` warnings, crashes). This
+    QObject lives on the GUI thread, so emitting its signal with a queued
+    connection marshals every record onto the GUI thread.
+    """
+
+    record = QtCore.Signal(str, object)
+
+
 class QTextEditLogger(logging.Handler):
 
     def __init__(
@@ -253,8 +266,29 @@ class QTextEditLogger(logging.Handler):
         self.setFormatter(logging.Formatter(log_string))
         self.setLevel(level=level)
 
+        # Marshal records onto the GUI thread. The relay is created here, during
+        # GUI setup, so it has GUI-thread affinity; a queued connection then
+        # hands every record — including ones logged from worker threads — to the
+        # GUI thread before it touches the widget.
+        self._relay = _LogRelay()
+        self._relay.record.connect(self._handle_record, QtCore.Qt.QueuedConnection)
+
+        # The log-console filter is O(rows) per call; a burst of records (a data
+        # load logs hundreds) would make it O(rows^2). Coalesce into one filter
+        # pass after the burst settles. The timer is created lazily on the GUI
+        # thread inside _handle_record.
+        self._filter_timer = None
+
     def emit(self, record):
-        msg = self.format(record)
+        try:
+            msg = self.format(record)
+        except Exception:  # pragma: no cover - formatting must never raise here
+            return
+        # Thread-safe: hop to the GUI thread before any widget access.
+        self._relay.record.emit(msg, record)
+
+    def _handle_record(self, msg, record):
+        """Runs on the GUI thread (queued from :meth:`emit`)."""
         if self.mode == "set":
             # Support label-like widgets and QStatusBar
             if hasattr(self.widget, 'setText') and callable(getattr(self.widget, 'setText')):
@@ -279,10 +313,28 @@ class QTextEditLogger(logging.Handler):
                 # QPlainTextEdit
                 self.widget.appendPlainText(msg)
 
-            # If this is the log widget, ask the nearest owner to update filtering.
-            owner = self._find_log_filter_owner()
-            if owner is not None and hasattr(owner, 'update_log_filter'):
+            # Debounce the (O(rows)) filter refresh so a burst refilters once.
+            self._schedule_filter_update()
+
+    def _schedule_filter_update(self):
+        owner = self._find_log_filter_owner()
+        if owner is None or not hasattr(owner, 'update_log_filter'):
+            return
+        if self._filter_timer is None:
+            self._filter_timer = QtCore.QTimer()
+            self._filter_timer.setSingleShot(True)
+            self._filter_timer.setInterval(150)
+            self._filter_timer.timeout.connect(self._run_filter_update)
+        self._filter_owner = owner
+        self._filter_timer.start()  # restart coalesces rapid bursts
+
+    def _run_filter_update(self):
+        owner = getattr(self, "_filter_owner", None)
+        if owner is not None and hasattr(owner, 'update_log_filter'):
+            try:
                 owner.update_log_filter()
+            except Exception:  # pragma: no cover - filtering is best-effort
+                pass
 
     def _find_log_filter_owner(self):
         parent = self.widget.parent()
