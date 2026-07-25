@@ -15,7 +15,8 @@ import numpy as np
 import pytest
 
 POPULATIONS = (0.2, 0.3, 0.5, 0.7, 0.8)
-EXCHANGE = (0.0, 0.5, 2.0, 8.0, 50.0)
+EXCHANGE = (0.0, 0.5, 2.0, 8.0, 50.0, 5000.0)  # incl. fast exchange, where a
+# naive exp(mu)*cosh(delta) overflows to nan
 
 
 def _simulate(p1, k_ex, n=60000, seed=1):

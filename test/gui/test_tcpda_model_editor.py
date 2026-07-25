@@ -492,3 +492,93 @@ def test_both_error_surface_routes_bracket_the_truth(qapp):
     # yet established. Both routes bracketing the truth is the property PRD-65
     # requires and the property pinned here; see the model docstring.
     assert (high - low) > 0 and (spa_high - spa_low) > 0
+
+
+# ── dynamic exchange ───────────────────────────────────────────────────────
+
+
+def _two_state_fit(k_ex=0.0, n_bursts=800):
+    """Return a fit with two distinct species, optionally exchanging."""
+    fit = _simulated_fit(n_bursts=n_bursts, seed=21)
+    model = fit.model
+    model.species.append(r_gr=64.0, r_bg=58.0, r_br=78.0)
+    for parameter, value in zip(model.species.means_of(0), (46.0, 42.0, 60.0)):
+        parameter.value = value
+    model.species._amplitudes[0].value = 0.4
+    model.species._amplitudes[1].value = 0.6
+    model.setup._k_ex.value = k_ex
+    return fit, model
+
+
+def test_no_exchange_reproduces_the_static_mixture(qapp):
+    """The dynamic model must nest the static one at K_ex = 0.
+
+    Without exchange every molecule stays in one state for the whole burst, so
+    the answer has to be exactly the static two-species mixture. A dynamic model
+    that fails this is not measuring exchange, it is measuring its own
+    approximations.
+    """
+    fit, model = _two_state_fit(k_ex=0.0)
+    model.dynamic = False
+    static = model.total_log_likelihood()
+
+    model.dynamic = True
+    dynamic = model.total_log_likelihood()
+    assert dynamic == pytest.approx(static, rel=2e-3), (static, dynamic)
+
+
+def test_fast_exchange_collapses_to_one_averaged_population(qapp):
+    """At very fast exchange every molecule sees the same time-averaged state."""
+    fit, model = _two_state_fit(k_ex=1e6)   # a true limit: at 5e3 the residual
+    model.dynamic = True                   # spread in f is still worth 0.15%
+    fast = model.total_log_likelihood()
+
+    # A single species at the occupancy-weighted average probability is the
+    # same physical statement; compare through the model's own machinery.
+    setup = model.setup.as_setup()
+    species = model.species.as_species()
+    blue_1, green_1 = model._mean_channel_probabilities(species[0], setup)
+    blue_2, green_2 = model._mean_channel_probabilities(species[1], setup)
+    x1 = species[0].amplitude / (species[0].amplitude + species[1].amplitude)
+
+    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+
+    counts = model.burst_counts()
+    averaged = burst_log_likelihood(
+        counts.blue, (x1 * blue_1 + (1 - x1) * blue_2)[None, :],
+        model.setup.background_blue,
+    ) + burst_log_likelihood(
+        counts.green, (x1 * green_1 + (1 - x1) * green_2)[None, :],
+        model.setup.background_green,
+    )
+    expected = float(np.sum(counts.multiplicity * averaged[0]))
+    assert fast == pytest.approx(expected, rel=1e-3), (fast, expected)
+
+
+def test_exchange_fills_in_between_the_two_populations(qapp):
+    """Intermediate exchange must differ from both limits — that is the signal.
+
+    Dynamic PDA works because partially-averaged molecules land between the two
+    static peaks, where neither limit puts anything.
+    """
+    fit, model = _two_state_fit(k_ex=0.0)
+    model.dynamic = True
+    static = model.total_log_likelihood()
+
+    model.setup._k_ex.value = 2.0
+    intermediate = model.total_log_likelihood()
+    model.setup._k_ex.value = 1e6
+    fast = model.total_log_likelihood()
+
+    assert intermediate != pytest.approx(static, rel=1e-3)
+    assert intermediate != pytest.approx(fast, rel=1e-3)
+
+
+def test_dynamic_leaves_a_third_species_static(qapp):
+    """The incumbent's convention: only the first two states exchange."""
+    fit, model = _two_state_fit(k_ex=2.0)
+    model.species.append(r_gr=90.0, r_bg=90.0, r_br=90.0)
+    model.dynamic = True
+    model.update()
+    assert np.all(np.isfinite(model.y))
+    assert np.isfinite(model.total_log_likelihood())

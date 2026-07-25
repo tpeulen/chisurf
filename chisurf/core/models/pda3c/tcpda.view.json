@@ -66,6 +66,21 @@
     },
     {
       "type": "panel",
+      "title": "Exchange (dynamic)",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "Treat the first two species as two conformational states that interconvert during the burst, rather than a static mixture. Species three onward stay static. K_ex is the mean number of transitions per observation window: zero is the static limit, so the dynamic model nests the static one.",
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "dynamic",
+          "label": "Two exchanging states",
+          "description": "Needs at least two species. Their amplitudes become the steady-state occupancies."
+        }
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Instrument / corrections",
       "collapsible": true,
       "collapsed": true,

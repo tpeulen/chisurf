@@ -276,6 +276,12 @@ class TcPdaSetup(FittingParameterGroup):
 
         # Fraction of molecules carrying the intended dye assignment. Free this
         # when the two labelling sites are chemically equivalent.
+        # Mean number of state transitions per observation window. Zero is
+        # the static limit, so the dynamic model nests the static one.
+        self._k_ex = FittingParameter(
+            value=1.0, name="K(ex)", label_text="K<sub>ex</sub>",
+            lb=0.0, ub=1e4, bounds_on=True, fixed=True,
+        )
         self._labeling_fraction = FittingParameter(
             value=1.0, name="F(labeling)", label_text="F<sub>labeling</sub>",
             lb=0.0, ub=1.0, bounds_on=True, fixed=True,
@@ -295,6 +301,11 @@ class TcPdaSetup(FittingParameterGroup):
             direct_excitation_blue=(float(self._de_bg.value), float(self._de_br.value)),
             direct_excitation_green=float(self._de_gr.value),
         )
+
+    @property
+    def k_ex(self) -> float:
+        """Mean number of state transitions per observation window."""
+        return max(float(self._k_ex.value), 0.0)
 
     @property
     def labeling_fraction(self) -> float:
@@ -354,6 +365,10 @@ class TcPdaModel(ModelCurve):
         #: the likelihood normalisation, so chi2r is not comparable across
         #: the switch.
         self.brightness_correction = False
+        #: Treat the first two species as two exchanging conformational
+        #: states rather than a static mixture. Species three onward stay
+        #: static, which is the convention the incumbent uses.
+        self.dynamic = False
         self._counts_cache = None
 
     # -- data ------------------------------------------------------------
@@ -480,6 +495,99 @@ class TcPdaModel(ModelCurve):
             ),
         )
 
+    def _mean_channel_probabilities(self, component, setup):
+        """Return a species' distance-averaged channel probabilities.
+
+        Collapses the distance distribution to one probability vector per
+        excitation period. Dynamic averaging then happens over those vectors,
+        which is the same equal-brightness simplification the two-colour
+        dynamic model makes: a molecule switching mid-burst is described by its
+        time-averaged per-photon probability, not by an averaged distance.
+        """
+        from chisurf.core.fluorescence.pda3c import (
+            blue_channel_probabilities,
+            green_channel_probabilities,
+        )
+
+        points, weights = component.quadrature(n_nodes=self.n_nodes,
+                                               truncate=self.truncate)
+        blue = weights @ blue_channel_probabilities(
+            points[:, 1], points[:, 2], points[:, 0], setup
+        )
+        green = weights @ green_channel_probabilities(points[:, 0], setup)
+        return blue, green
+
+    def _dynamic_log_likelihood(self, counts: BurstCounts, states, setup) -> np.ndarray:
+        """Per-burst log likelihood of two states exchanging within the burst.
+
+        The observable is the fraction of the window spent in state 1, whose
+        distribution comes from
+        :func:`~chisurf.core.models.pda.dynamic.two_state_occupation_quadrature`
+        — shared with the two-colour dynamic model rather than re-derived. At
+        each fraction the per-photon probabilities are the time-weighted average
+        of the two states, and the burst likelihood is averaged over the
+        fraction.
+        """
+        from scipy.special import logsumexp
+
+        from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+        from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
+
+        first, second = states
+        weight = first.amplitude + second.amplitude
+        occupancy = first.amplitude / weight if weight > 0 else 0.5
+
+        blue_1, green_1 = self._mean_channel_probabilities(first, setup)
+        blue_2, green_2 = self._mean_channel_probabilities(second, setup)
+
+        fractions, fraction_weights = two_state_occupation_quadrature(
+            occupancy, self.setup.k_ex
+        )
+
+        # The two boundary atoms are molecules that never switched, i.e. pure
+        # states — so they get the full distance integral rather than the
+        # averaged-probability treatment the interior needs. That is what makes
+        # the static limit exact: at K_ex = 0 all the weight is on the atoms and
+        # this reduces to the static mixture, term for term.
+        from chisurf.core.fluorescence.pda3c.model import _species_log_likelihood
+
+        pieces, weights = [], []
+        for component, weight in ((second, fraction_weights[0]),
+                                  (first, fraction_weights[-1])):
+            if weight <= 1e-12:
+                continue
+            pieces.append(
+                _species_log_likelihood(
+                    counts, component, setup,
+                    self.setup.background_blue, self.setup.background_green,
+                    *self._species_photon_number_pmfs(counts, component),
+                    self.n_nodes, self.truncate,
+                )
+            )
+            weights.append(weight)
+
+        interior = fractions[1:-1]
+        interior_weights = fraction_weights[1:-1]
+        keep = interior_weights > 1e-10
+        if np.any(keep):
+            f = interior[keep][:, None]
+            p_blue = f * blue_1[None, :] + (1.0 - f) * blue_2[None, :]
+            p_green = f * green_1[None, :] + (1.0 - f) * green_2[None, :]
+            node = burst_log_likelihood(
+                counts.blue, p_blue, self.setup.background_blue
+            ) + burst_log_likelihood(
+                counts.green, p_green, self.setup.background_green
+            )
+            pieces.extend(node)
+            weights.extend(interior_weights[keep])
+
+        weights = np.asarray(weights, dtype=float)
+        weights = weights / weights.sum()
+        with np.errstate(divide="ignore"):
+            return logsumexp(
+                np.log(weights)[:, None] + np.stack(pieces, axis=0), axis=0
+            )
+
     def _per_burst_log_likelihood(self, counts: BurstCounts) -> np.ndarray:
         """Return the per-burst log likelihood under the current parameters."""
         from scipy.special import logsumexp
@@ -488,6 +596,29 @@ class TcPdaModel(ModelCurve):
 
         setup = self.setup.as_setup()
         species = self.species.as_species(self._labeling_weight())
+
+        if getattr(self, "dynamic", False) and len(species) >= 2:
+            exchanging, static = species[:2], species[2:]
+            pieces = [self._dynamic_log_likelihood(counts, exchanging, setup)]
+            weights = [exchanging[0].amplitude + exchanging[1].amplitude]
+            for component in static:
+                pieces.append(
+                    _species_log_likelihood(
+                        counts, component, setup,
+                        self.setup.background_blue, self.setup.background_green,
+                        *self._species_photon_number_pmfs(counts, component),
+                        self.n_nodes, self.truncate,
+                    )
+                )
+                weights.append(component.amplitude)
+            weights = np.array(weights, dtype=float)
+            total = weights.sum()
+            weights = weights / total if total > 0 else np.ones_like(weights)
+            with np.errstate(divide="ignore"):
+                return logsumexp(
+                    np.log(weights)[:, None] + np.stack(pieces, axis=0), axis=0
+                )
+
         amplitudes = np.array([max(s.amplitude, 0.0) for s in species], dtype=float)
         if amplitudes.sum() <= 0.0:
             amplitudes = np.ones_like(amplitudes)

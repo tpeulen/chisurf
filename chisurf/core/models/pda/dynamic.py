@@ -188,10 +188,13 @@ def two_state_occupation_quadrature(p1: float, k_ex: float, n_nodes: int = 1024)
     # using  pi^T M 1 = i w p1  and  pi^T 1 = 1.
     mu = 0.5 * (-(a + b) + 1j * omega)
     delta = np.sqrt(mu * mu + 1j * omega * b)
-    with np.errstate(invalid="ignore", divide="ignore"):
-        sinch = np.where(np.abs(delta) < 1e-12, 1.0, np.sinh(delta) / np.where(
-            np.abs(delta) < 1e-12, 1.0, delta))
-    phi = np.exp(mu) * (np.cosh(delta) + sinch * (1j * omega * p1 - mu))
+    # Written through exp(mu +- delta) rather than exp(mu)*cosh(delta): at fast
+    # exchange |delta| ~ |mu| ~ k_ex/2, so cosh overflows to inf while exp(mu)
+    # underflows to 0 and the product is nan. Re(mu +- delta) stays bounded.
+    plus, minus = np.exp(mu + delta), np.exp(mu - delta)
+    safe = np.where(np.abs(delta) < 1e-12, 1.0, delta)
+    ratio = np.where(np.abs(delta) < 1e-12, np.exp(mu), 0.5 * (plus - minus) / safe)
+    phi = 0.5 * (plus + minus) + ratio * (1j * omega * p1 - mu)
     phi -= mass_1 * np.exp(1j * omega) + mass_0
 
     density = np.maximum(np.real(np.fft.fft(phi)), 0.0)
