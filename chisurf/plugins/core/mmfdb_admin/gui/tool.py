@@ -5972,7 +5972,7 @@ class MMFDBWidget(NavigationPanelTool):
 
         try:
             import ndxplorer.io.reader as ndx_reader
-            from ndxplorer.plot_main import NDXplorer
+            from ndxplorer import NDXplorer
 
             if path.is_dir():
                 ds = ndx_reader.read_burst_analysis(str(path))

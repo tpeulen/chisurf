@@ -47,7 +47,7 @@ def test_display_single_probe(qapp):
 
     sv = SpectrumView()
     sv.display(_probe_data(1, "Cy3B"))
-    assert sv.plot.plotItem.listDataItems()
+    assert sv.plot.native.listDataItems()
 
 
 def test_display_no_spectra_shows_empty(qapp):
@@ -55,7 +55,7 @@ def test_display_no_spectra_shows_empty(qapp):
 
     sv = SpectrumView()
     sv.display({"probe": {"probe_id": 1, "chromophore_name": "X"}, "spectra": []})
-    assert not sv.plot.plotItem.listDataItems()
+    assert not sv.plot.native.listDataItems()
 
 
 def test_display_multiple_probes(qapp):
@@ -65,7 +65,7 @@ def test_display_multiple_probes(qapp):
     p1 = _probe_data(1, "Cy3B")
     p2 = _probe_data(2, "ATTO647N")
     sv.display_multiple([p1, p2])
-    data_items = sv.plot.plotItem.listDataItems()
+    data_items = sv.plot.native.listDataItems()
     assert len(data_items) == 4
 
 
@@ -74,9 +74,9 @@ def test_clear_removes_all_curves(qapp):
 
     sv = SpectrumView()
     sv.display(_probe_data(1, "Cy3B"))
-    assert sv.plot.plotItem.listDataItems()
+    assert sv.plot.native.listDataItems()
     sv.clear()
-    assert not sv.plot.plotItem.listDataItems()
+    assert not sv.plot.native.listDataItems()
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +91,7 @@ def test_refresh_from_model_single(qapp):
         spectra_data = _probe_data(1, "Cy3B")
 
     sv = SpectrumView(model=FakeModel(), target="spectra_data")
-    data_items = sv.plot.plotItem.listDataItems()
+    data_items = sv.plot.native.listDataItems()
     assert len(data_items) == 2
 
 
@@ -105,7 +105,7 @@ def test_refresh_from_model_list(qapp):
         ]
 
     sv = SpectrumView(model=FakeModel(), target="spectra_data")
-    data_items = sv.plot.plotItem.listDataItems()
+    data_items = sv.plot.native.listDataItems()
     assert len(data_items) == 4
 
 
@@ -113,7 +113,7 @@ def test_refresh_after_construction(qapp):
     from chisurf.gui.widgets.spectrum_view import SpectrumView
 
     sv = SpectrumView()
-    assert not sv.plot.plotItem.listDataItems()
+    assert not sv.plot.native.listDataItems()
 
     class FakeModel:
         spectra_data = _probe_data(1, "Cy3B")
@@ -121,7 +121,7 @@ def test_refresh_after_construction(qapp):
     sv._model = FakeModel()
     sv._target = "spectra_data"
     sv.refresh()
-    assert sv.plot.plotItem.listDataItems()
+    assert sv.plot.native.listDataItems()
 
 
 # ---------------------------------------------------------------------------
@@ -144,4 +144,4 @@ def test_custom_section_creates_widget(qapp):
 
     widget = factory(model=FakeModel(), target="spectra_data")
     assert isinstance(widget, SpectrumView)
-    assert widget.plot.plotItem.listDataItems()
+    assert widget.plot.native.listDataItems()
