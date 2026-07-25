@@ -141,6 +141,29 @@ distance d1, resi 10 and name CA, resi 20 and name CA
 rms polymer, other_object and polymer
 ```
 
+## Bonds
+
+Bonds are inferred from the coordinates, using PyMOL's rule: two atoms are bonded
+when their separation, less the mean of their van der Waals radii, is within
+`connect_cutoff`. Sulfur is allowed a little more reach and hydrogen a little
+less, and two hydrogens are never bonded.
+
+```text
+set connect_cutoff, 0.35     # the default; larger is more permissive
+count_atoms bonded
+count_atoms bound_to resn NAG
+count_atoms bymol resn NAG   # the whole bonded molecule
+count_atoms resn NAG extend 2
+```
+
+:::{note}
+Element-aware radii matter more than they sound. A single distance cutoff has to
+be wide enough for the longest real bond — a disulfide is 2.05 Å — which makes it
+wide enough for a *contact* between two heavier atoms, and for one hydrogen to
+"bond" to another across a hydrogen bond. Since `bymol`, `bound_to` and `extend`
+all walk the bond graph, a false bond propagates into every one of them.
+:::
+
 ## Superposing structures
 
 `align` finds its own correspondence between two objects and fits them:

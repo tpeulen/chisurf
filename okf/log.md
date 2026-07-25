@@ -1,5 +1,33 @@
 # Update Log
 
+## 2026-07-26
+
+* **chimol inferred bonds from one distance, and it showed.** A single 1.9 Å cutoff
+  for every pair of atoms. Such a cutoff has to be wide enough for the longest real
+  bond, which makes it wide enough for a mere *contact* between heavier atoms — and
+  too narrow for the longest. Both errors were live:
+
+  - **every disulfide was missed.** S–S is 2.05 Å, past the cutoff, so no structure
+    ever drew one;
+  - on a model *with* hydrogens the old rule produced 2278 bonds the new one does
+    not, of which **2138 are hydrogen-to-hydrogen** — pairs that are never bonded —
+    and most of the rest are hydrogen bonds at ~1.65 Å drawn as covalent.
+
+  Every bond-based feature inherited those: sticks and lines drew them, and
+  `bymol`, `bound_to` and `extend` walked across them, so a hydrogen bond merged two
+  molecules.
+
+  Now transcribed from `is_distance_bonded` (`layer2/ObjectMolecule2.cpp`):
+  `|v1−v2| − (vdw1+vdw2)/2 ≤ connect_cutoff + adjustment`, with 0.35 as the cutoff,
+  +0.2 for sulfur, −0.2 for hydrogen and never between two hydrogens. The radii come
+  from the atom array, so this needed no new data — only reading PyMOL's rule instead
+  of guessing a number.
+
+  A test caught one omission from the first transcription: PyMOL's `R_SMALL4` guard,
+  without which two atoms at the same coordinates are the *shortest* distance of all
+  and so always bond.
+
+
 ## 2026-07-25
 
 * **Whether a chain can be believed, as a picture (Stan/ArviZ display side).**

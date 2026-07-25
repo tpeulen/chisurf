@@ -243,6 +243,7 @@ def _load_display_config() -> dict:
             "surface_max_neighbors": 20,
         },
         "sticks": {
+            "connect_cutoff": 0.35,
             "width": 2.0,
             "radius": 0.15,
             "segments_circle": 12,

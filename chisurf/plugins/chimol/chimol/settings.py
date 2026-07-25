@@ -210,6 +210,11 @@ _SPECS: tuple[SettingSpec, ...] = (
           "and unit-free), relative, scaled, absolute, or implied_rms; each "
           "except the last in a linear and a nonlinear variant."),
 
+    # -- Connectivity -------------------------------------------------------
+    _spec("connect_cutoff", "sticks.connect_cutoff", "float", 0.35,
+          "How far beyond the mean of two van der Waals radii two atoms may sit "
+          "and still be bonded. Sulfur gets +0.2 and hydrogen -0.2, as in PyMOL."),
+
     # -- Surface area -------------------------------------------------------
     # Read by `get_area`. Defaults are PyMOL's own, from layer1/SettingInfo.h.
     _spec("dot_solvent", "surface.dot_solvent", "bool", False,

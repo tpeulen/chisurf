@@ -18,7 +18,7 @@ from .cartoon import (
     _generate_trace_arrays,
 )
 from .trace import _extract_ca_trace
-from .bonds import _build_bond_pairs
+from .bonds import _build_bond_pairs, build_bond_pairs_by_element
 from .neighbors import shade_from_atoms
 from .surface import (
     _generate_surface_mesh_from_gaussians,
@@ -41,6 +41,7 @@ __all__ = [
     "_build_trace_ups",
     "_extract_ca_trace",
     "_build_bond_pairs",
+    "build_bond_pairs_by_element",
     "_generate_cartoon_tube_arrays",
     "_generate_nucleic_cartoon_arrays",
     "_generate_trace_arrays",

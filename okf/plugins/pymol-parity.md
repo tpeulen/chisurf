@@ -25,7 +25,7 @@ from observation alone; see [the log](/log.md) for three cases where a measured
 | --- | --- | --- |
 | Code | 515 823 lines C++ + 52 154 Python | 29 442 Python |
 | Commands | 303 | 81 |
-| Settings | 769 | 52 registered |
+| Settings | 769 | 53 registered |
 | Representations | 16 | 11 |
 | Selection keywords | 85 canonical | 85 canonical, 169 spellings |
 
@@ -238,6 +238,30 @@ leave ambiguous can be pinned down by adding another.
 `intra_fit` and `intra_rms` fit the *states* of one object to each other; chimol
 holds a single coordinate set per object, so they have nothing to work on and are
 deliberately absent rather than stubbed.
+
+## Bonds were inferred from one distance
+
+chimol used a single 1.9 Å cutoff for every pair of atoms. A single cutoff has to
+be wide enough for the longest real bond, which makes it wide enough for a mere
+*contact* between heavier atoms — and too narrow for the longest. Both errors were
+live:
+
+* **every disulfide was missed.** S–S is 2.05 Å, past the cutoff, so no structure
+  ever showed one;
+* on a model *with* hydrogens the old rule produced 2278 bonds the new one does
+  not, of which **2138 are hydrogen-to-hydrogen** — pairs that are never bonded —
+  and most of the rest are hydrogen bonds at ~1.65 Å drawn as covalent.
+
+Every bond-based feature inherited those: sticks and lines drew them, and `bymol`,
+`bound_to` and `extend` walked across them.
+
+Now transcribed from `is_distance_bonded` (`layer2/ObjectMolecule2.cpp`):
+`|v1−v2| − (vdw1+vdw2)/2 ≤ connect_cutoff + adjustment`, with 0.35 as the cutoff,
++0.2 for sulfur, −0.2 for hydrogen, never between two hydrogens, and a coincident
+guard at `R_SMALL4` — which the first transcription omitted, so duplicate atom
+records bonded to themselves.
+
+The radii come from the atom array, so this needed no new data.
 
 ## Putty
 

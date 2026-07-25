@@ -25,6 +25,7 @@ from ..io.structure import parse_pdb_secondary_structure
 from ..geometry import (
     bond_line_segments,
     _build_bond_pairs,
+    build_bond_pairs_by_element,
     _build_sphere_mesh,
     _build_stick_mesh,
     _build_trace_ups,
@@ -1818,12 +1819,7 @@ class MolView(QtWidgets.QWidget):
             # Pre-compute simple covalent bonds for sticks representation
             # using a distance cutoff in *raw* (unscaled) coordinates so the
             # list is independent of the global scaling we apply for viewing.
-            sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
-            max_bond_len = float(sticks_cfg.get("bond_max_length", 1.9))
-            if coords_all_raw is not None and np.isfinite(max_bond_len) and max_bond_len > 0.0:
-                self._bond_pairs = _build_bond_pairs(coords_all_raw, max_bond_len)
-            else:
-                self._bond_pairs = None
+            self._bond_pairs = self._infer_bonds(coords_all_raw, atoms)
 
             coords, res_ids, res_names, chain_ids = _extract_ca_trace(atoms)
             if coords is None:
@@ -1978,19 +1974,7 @@ class MolView(QtWidgets.QWidget):
             arr.shape[0], _DEFAULT_ATOM_RADIUS_A * scale, dtype=float
         )
 
-        sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
-        max_bond_len = float(sticks_cfg.get("bond_max_length", 1.9))
-        if np.isfinite(max_bond_len) and max_bond_len > 0.0:
-            self._bond_pairs = _build_bond_pairs(raw_all, max_bond_len)
-        else:
-            self._bond_pairs = None
-
-        sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
-        max_bond_len = float(sticks_cfg.get("bond_max_length", 1.9))
-        if np.isfinite(max_bond_len) and max_bond_len > 0.0:
-            self._bond_pairs = _build_bond_pairs(raw_all, max_bond_len)
-        else:
-            self._bond_pairs = None
+        self._bond_pairs = self._infer_bonds(raw_all, self._atoms)
 
         trace_arr = None
         if trace_coords is not None:
@@ -4259,6 +4243,41 @@ class MolView(QtWidgets.QWidget):
             if np.any(chosen):
                 out[position] = float(bfactor[chosen].mean())
         return out
+
+    def _infer_bonds(self, coords, atoms) -> np.ndarray | None:
+        """Infer covalent bonds from radii, as PyMOL does.
+
+        A single global distance cutoff has to be wide enough for the longest real
+        bond, which makes it wide enough for a mere *contact* between two heavier
+        atoms -- and every bond-based selection inherits the false bonds that
+        follow. Per-element radii fix that at the source.
+
+        Falls back to the old global cutoff when the structure carries no radii,
+        since some coordinate-only objects do not.
+        """
+        if coords is None:
+            return None
+        raw = np.asarray(coords, dtype=float)
+
+        names = (atoms.dtype.names or ()) if atoms is not None else ()
+        if atoms is not None and "radius" in names and len(atoms) == raw.shape[0]:
+            radii = np.asarray(atoms["radius"], dtype=float)
+            if np.any(radii > 0):
+                elements = (
+                    atoms["element"] if "element" in names
+                    else np.full(len(atoms), "C")
+                )
+                sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
+                return build_bond_pairs_by_element(
+                    raw, radii, elements,
+                    cutoff=float(sticks_cfg.get("connect_cutoff", 0.35)),
+                )
+
+        sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
+        max_bond_len = float(sticks_cfg.get("bond_max_length", 1.9))
+        if np.isfinite(max_bond_len) and max_bond_len > 0.0:
+            return _build_bond_pairs(raw, max_bond_len)
+        return None
 
     def sphere_visible_mask(self) -> np.ndarray | None:
         """Which atoms are currently drawn as something the ray tracer can trace.
