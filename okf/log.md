@@ -2,6 +2,27 @@
 
 ## 2026-07-25
 
+* **Becker & Hickl SDT reading was broken; fixed, plus the two registry ids I
+  had invented.** Chasing MIA's `Read_SDT` (which turns out to be a thin
+  BioFormats wrapper, while ChiSurf has its own native reader) showed the native
+  reader **could not open any SDT at all**: `measure_info` entries are shape-(1,)
+  record arrays, so every field reads back as a one-element array, and modern
+  NumPy refuses those where a scalar is required — `np.arange(mi.adc_re)` raised
+  `TypeError`. One line already indexed `[0]`; the rest did not. Fields are now
+  unwrapped once per block. Verified on the repository's own
+  `BH_SDT/140507p.sdt`: 3 blocks x 1024 channels, 0–20 ns axis, counts present.
+  New `test/fio/test_sdtfile.py` (5) opens the real file and checks the decay
+  and its time axis agree, the axis is monotonic and nanosecond-scale, and the
+  blocks carry counts; the old expression was re-run against the real metadata
+  to confirm it still raises, so the fix is load-bearing rather than incidental.
+  **Also fixed a break I introduced earlier:** the two parameter-registry entries
+  added with the image-correlation work carried `flrcif_item_id`s
+  (`ics_alpha`, `rics_frame_dur`) that existed in no dictionary, failing
+  `test_all_registry_ids_mapped_to_dic_items`. Since the `.dic` is the schema
+  authority, the items were added to `mmfdb_flr_ext.dic` (committed in the
+  metadata-store repo) rather than the ids dropped here. `test/fio` is now
+  262 passed / 12 skipped.
+
 * **One file is not one curve: grouped datasets are no longer reported as a
   single measurement.** A Zeiss ConfoCor `.fcs` is a measurement archive — the
   sample in `test/data` holds sixteen correlation curves, four repeats each of

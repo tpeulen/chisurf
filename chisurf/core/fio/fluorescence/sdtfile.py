@@ -210,16 +210,29 @@ class SdtFile(object):
             dtype = BlockType(bh.block_type).dtype
             dsize = bh.block_length // dtype.itemsize
             data = np.fromfile(fh, dtype=dtype, count=dsize)
-            if dsize == mi.scan_x * mi.scan_y * mi.adc_re:
-                data = data.reshape(mi.scan_x, mi.scan_y, mi.adc_re)
-            elif dsize == mi.image_x * mi.image_y * mi.adc_re:
-                data = data.reshape(mi.image_x, mi.image_y, mi.adc_re)
+            # ``measure_info`` entries are shape-(1,) record arrays, so every
+            # field reads back as a 1-element array rather than a number. NumPy
+            # no longer accepts those where a scalar is required (``np.arange``
+            # raises), so they are unwrapped once here instead of at each use.
+            def _scalar(field):
+                return int(np.asarray(field).ravel()[0])
+
+            adc_re = _scalar(mi.adc_re)
+            scan_x, scan_y = _scalar(mi.scan_x), _scalar(mi.scan_y)
+            image_x, image_y = _scalar(mi.image_x), _scalar(mi.image_y)
+
+            if dsize == scan_x * scan_y * adc_re:
+                data = data.reshape(scan_x, scan_y, adc_re)
+            elif dsize == image_x * image_y * adc_re:
+                data = data.reshape(image_x, image_y, adc_re)
             else:
-                data = data.reshape(-1, mi.adc_re[0])
+                data = data.reshape(-1, adc_re)
             self.data.append(data)
             # generate time axis
-            t = np.arange(mi.adc_re, dtype=np.float64)
-            t *= mi.tac_r / float(mi.tac_g * mi.adc_re)
+            t = np.arange(adc_re, dtype=np.float64)
+            t *= float(np.asarray(mi.tac_r).ravel()[0]) / (
+                float(np.asarray(mi.tac_g).ravel()[0]) * adc_re
+            )
             self.times.append(t)
             offset = bh.next_block_offs
 
