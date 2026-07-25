@@ -1394,9 +1394,22 @@ class MMFDBClient:
                 token=self._token,
             )
 
-        params: dict[str, Any] = {}
+        # RPC transport: the server cannot read the client's filesystem, so a
+        # server-side ``path`` is rejected ("send base64 data"). Read the file
+        # here and upload its bytes instead.
         if path is not None:
-            params["path"] = path
+            source_path = Path(path)
+            if not source_path.is_file():
+                raise FileNotFoundError(source_path)
+            encoded = base64.b64encode(source_path.read_bytes()).decode("ascii")
+            return self.put_object_bytes(
+                data=encoded,
+                filename=filename or source_path.name,
+                mime_type=mime_type,
+                metadata=metadata,
+            )
+
+        params: dict[str, Any] = {}
         if data is not None:
             params["data"] = data
         if filename is not None:

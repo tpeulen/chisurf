@@ -137,11 +137,16 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
     def _import_path_to_mmfdb(self, path: Path) -> None:
         """Import a local file into MMFDB object store and raw-data registry."""
         try:
+            import base64
+
             client = self._client()
+            # The RPC object store cannot read the client's filesystem, so send
+            # the file's bytes as base64 rather than a server-side path.
+            encoded = base64.b64encode(path.read_bytes()).decode("ascii")
             object_result = client.call(
                 "mmfdb.objects.put",
                 {
-                    "path": str(path),
+                    "data": encoded,
                     "filename": path.name,
                     "metadata": {"source": "burst_analysis.data_selection"},
                 },

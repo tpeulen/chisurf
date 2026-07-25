@@ -26,8 +26,16 @@ class VvVhGFactorClient:
 
     def put_object(self, path: str) -> dict[str, Any]:
         """Upload a file to the MMFDB object store via ZMQ RPC."""
+        import base64
+        import pathlib
+
         logger.debug("VvVhGFactorClient: put_object path=%s", path)
-        result = self._client.call("mmfdb.objects.put", {"path": path})
+        # The RPC object store cannot use server-side paths; send base64 bytes.
+        p = pathlib.Path(path)
+        encoded = base64.b64encode(p.read_bytes()).decode("ascii")
+        result = self._client.call(
+            "mmfdb.objects.put", {"data": encoded, "filename": p.name}
+        )
         if isinstance(result, dict) and not result.get("ok", True):
             raise RuntimeError(result.get("error", "Unknown error in mmfdb.objects.put RPC call"))
         res = result.get("result", result)
