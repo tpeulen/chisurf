@@ -236,6 +236,38 @@ per 1000 model evaluations — 7.8× the ESS for 40% fewer evaluations. A group
 whose datasets share a parameter is one component and falls back to a single
 joint chain.
 
+# Cost of an objective evaluation
+
+Profiling a global-fit sweep found the model evaluation itself was **6 %** of
+the time; the rest was Python overhead re-deriving things that cannot change
+during a run. 2000 evaluations over 12 datasets went **1.46 s → 0.53 s (2.8×)**
+and 3.84 M → 1.15 M calls, after which the model evaluation is the top cost.
+
+- **`factorgraph.frozen_structure(...)`** — nothing about a fit's structure
+  changes while it is optimised or sampled, so the free-parameter list, names,
+  bounds and `n_free` are resolved once per run and served with no version check
+  and no per-access allocation. Re-entrant (a sampler calling a sampler does not
+  release the outer freeze) and self-checking: the structural and window
+  counters are compared on exit and a violation is logged. Applied by `Fit.run`,
+  `FitGroup.run` and every sampler (via the `@frozen` decorator).
+- **Cached free-parameter lists** for the unfrozen path, keyed on
+  `structure_version()`. Deciding freedom costs three attribute reads per
+  parameter, two crossing into the chinet port; this was the single largest cost
+  of a run. `redundant` became a property so it bumps the counter like `fixed`
+  and `link` (backed by its public dict key, so the serialised form is
+  unchanged).
+- **`window_version()`** — a second counter bumped by the `xmin`/`xmax`/
+  `fit_range`/`mask` setters. `n_points` and the residual cache key on it
+  instead of reading every member's window back twice per evaluation.
+- **Per-member residual cache** in `GlobalFitModel.weighted_residuals`, invalidated
+  by exactly the members `update_model` recomputed. Selective updating was
+  otherwise half an optimisation: the models were skipped but their residuals
+  were recomputed anyway (24 000 → 7 054 calls).
+- **`parameter_values` setter** skips writing a value a parameter already has,
+  and `Parameter.value` tests the float compare before the port read.
+- **`ParameterGroup.__setattr__`** memoises its MRO property lookup per
+  `(class, attribute)`.
+
 **The verdict reaches the caller.** `fit.sample.start` merges its keyword
 arguments over `optimization.sampling` (so `method` and `global_posterior` are
 per-job selectable) and keeps the report `sample_fit` returns;

@@ -15,6 +15,7 @@ import chisurf.core.fitting
 FINITE_DIFF = float(np.sqrt(np.finfo(float).eps))
 
 
+@cs.core.fitting.factorgraph.frozen('fit', 'model')
 def walk_mcmc(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -306,6 +307,7 @@ def _cholesky_or_diagonal(cov: np.ndarray) -> np.ndarray:
     return np.diag(np.sqrt(np.maximum(np.diag(cov), 1e-30)))
 
 
+@cs.core.fitting.factorgraph.frozen('fit', 'model')
 def walk_mcmc_blocked(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -509,6 +511,7 @@ def walk_mcmc_blocked(
     }
 
 
+@cs.core.fitting.factorgraph.frozen('fit', 'model')
 def sample_independent_components(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -809,6 +812,7 @@ def _profile_locals(groups, model, include_priors: bool = True):
     return total, draws
 
 
+@cs.core.fitting.factorgraph.frozen('fit', 'model')
 def sample_marginal_shared(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -1174,6 +1178,7 @@ def _default_blocks(
     return [np.arange(dim, dtype=int)]
 
 
+@cs.core.fitting.factorgraph.frozen('fit', 'model')
 def sample_emcee(
         fit: cs.core.fitting.fit.Fit,
         steps: int,

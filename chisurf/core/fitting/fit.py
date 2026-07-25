@@ -128,6 +128,7 @@ class Fit(cs.core.base.Base):
             Lower bound. Clamped to zero if negative.
         """
         self._xmin = max(0, v)
+        cs.core.fitting.factorgraph.bump_window_version()
 
     @property
     def xmax(self) -> int:
@@ -153,6 +154,7 @@ class Fit(cs.core.base.Base):
             self._xmax = min(len(self.data.y) - 1, v)
         except AttributeError:
             self._xmax = v
+        cs.core.fitting.factorgraph.bump_window_version()
 
     @property
     def data(self) -> cs.core.data.DataCurve:
@@ -430,6 +432,7 @@ class Fit(cs.core.base.Base):
             1D array of weights or boolean inclusion flags. ``None``
             clears the mask.
         """
+        cs.core.fitting.factorgraph.bump_window_version()
         if v is None:
             self._mask = None
             return
@@ -515,6 +518,7 @@ class Fit(cs.core.base.Base):
         self._data = data
         self.plots = list()
         self._xmin, self._xmax = xmin, xmax
+        cs.core.fitting.factorgraph.bump_window_version()
         if model_kw is None:
             model_kw = {}
         self._model_kw = model_kw
@@ -1008,14 +1012,18 @@ class Fit(cs.core.base.Base):
         progress_callback = kwargs.get("progress_callback")
         cancelled = False
         try:
-            cs.core.math.optimization.leastsqbound(
-                get_wres,
-                self.model.parameter_values,
-                args=(self.model, True),
-                bounds=self.model.parameter_bounds,
-                progress_callback=progress_callback,
-                **fitting_options
-            )
+            # The structure is fixed for the whole optimisation -- parameters
+            # are not linked, freed or rediscovered between two evaluations --
+            # so resolve the free-parameter list and the bounds once.
+            with cs.core.fitting.factorgraph.frozen_structure(self):
+                cs.core.math.optimization.leastsqbound(
+                    get_wres,
+                    self.model.parameter_values,
+                    args=(self.model, True),
+                    bounds=self.model.parameter_bounds,
+                    progress_callback=progress_callback,
+                    **fitting_options
+                )
         except OptimizationCancelled:
             cancelled = True
         self._last_run_cancelled = cancelled
@@ -1687,14 +1695,17 @@ class FitGroup(Fit):
             fitting_options = _leastsq_options(cs.core.settings.optimization['leastsq'])
             bounds = [pi.bounds for pi in fit._model.parameters]
             progress_callback = kwargs.get("progress_callback")
-            cs.core.math.optimization.leastsqbound(
-                func=get_wres,
-                x0=fit._model.parameter_values,
-                args=(fit._model, True),
-                bounds=bounds,
-                progress_callback=progress_callback,
-                **fitting_options
-            )
+            # Nothing about the structure changes while the optimiser runs, so
+            # the free-parameter lists are resolved once instead of per call.
+            with cs.core.fitting.factorgraph.frozen_structure(fit):
+                cs.core.math.optimization.leastsqbound(
+                    func=get_wres,
+                    x0=fit._model.parameter_values,
+                    args=(fit._model, True),
+                    bounds=bounds,
+                    progress_callback=progress_callback,
+                    **fitting_options
+                )
         except OptimizationCancelled:
             cancelled = True
         self._last_run_cancelled = cancelled

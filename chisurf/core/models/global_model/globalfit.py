@@ -24,18 +24,38 @@ class GlobalFitModel(model.Model, Curve):
     def weighted_residuals(self) -> np.ndarray:
         """Concatenated weighted residuals from all local fits.
 
+        Only the members whose model was actually recomputed are re-evaluated:
+        the rest are served from the per-member cache that
+        :meth:`update_model` invalidates. Without this the selective update was
+        half an optimisation -- the models were skipped but their residuals were
+        recomputed anyway, which is where the remaining per-evaluation cost sat.
+
         Returns
         -------
         np.ndarray
             1-D array of weighted residuals, or empty.
         """
-        if len(self.fits) > 0:
-            re = list()
-            for f in self.fits:
-                re.append(f.model.weighted_residuals.flatten())
-            return np.concatenate(re)
-        else:
+        n = len(self.fits)
+        if n == 0:
             return np.array([], dtype=np.float64)
+
+        token = self._window_token()
+        cache = self.__dict__.get("_residual_cache")
+        if cache is None or cache[0] != token or len(cache[1]) != n:
+            # A window changed (or the group did): nothing cached still applies.
+            cache = (token, [None] * n)
+            self._residual_dirty = set(range(n))
+        dirty = getattr(self, "_residual_dirty", None)
+        if dirty is None:
+            dirty = set(range(n))
+
+        pieces = cache[1]
+        for i, f in enumerate(self.fits):
+            if i in dirty or pieces[i] is None:
+                pieces[i] = f.model.weighted_residuals.flatten()
+        self.__dict__["_residual_cache"] = (token, pieces)
+        self._residual_dirty = set()
+        return np.concatenate(pieces)
 
     @property
     def fit_names(self) -> typing.List[str]:
@@ -44,11 +64,32 @@ class GlobalFitModel(model.Model, Curve):
 
     @property
     def n_points(self) -> int:
-        """Total number of data points across all local fits."""
+        """Total number of data points across all local fits.
+
+        Cached against the fit windows, which are what it actually depends on.
+        Every objective evaluation asks for the degrees of freedom, and summing
+        this over the members re-derived each member's masked window length.
+        """
+        token = self._window_token()
+        cache = self.__dict__.get("_n_points_cache")
+        if cache is not None and cache[0] == token:
+            return cache[1]
         nbr_points = 0
         for f in self.fits:
             nbr_points += f.model.n_points
+        self.__dict__["_n_points_cache"] = (token, nbr_points)
         return nbr_points
+
+    def _window_token(self) -> tuple:
+        """Return a cheap token identifying every member's current fit window.
+
+        Residual length and point count depend on each member's ``[xmin, xmax)``
+        window and mask, which no structure-version bump covers. Rather than
+        read those back per call -- this runs twice per objective evaluation --
+        the window setters bump a counter, so the token is two integers.
+        """
+        from chisurf.core.fitting import factorgraph
+        return (factorgraph.window_version(), len(self.fits))
 
     @property
     def global_parameters_all(self) -> typing.List[cs.core.fitting.parameter.FittingParameter]:
@@ -77,11 +118,27 @@ class GlobalFitModel(model.Model, Curve):
 
     @property
     def parameters(self) -> typing.List[cs.core.fitting.parameter.FittingParameter]:
-        """All fitting parameters (local variable + global variable)."""
+        """All fitting parameters (local variable + global variable).
+
+        Cached against the structure version, like the per-model list it
+        concatenates: this is consulted several times per objective evaluation
+        and rebuilding it walked every local model's parameters each time. The
+        cache is a tuple so that :func:`chisurf.core.base.find_objects` does not
+        descend into it; a fresh list is returned.
+        """
+        frozen = self.__dict__.get("_frozen_structure")
+        if frozen is not None:
+            return frozen["parameters"]
+        from chisurf.core.fitting import factorgraph
+        version = factorgraph.structure_version()
+        cache = self.__dict__.get("_free_parameter_cache")
+        if cache is not None and cache[0] == version and cache[1] == len(self.fits):
+            return list(cache[2])
         p = list()
         for f in self.fits:
             p += f.model.parameters
         p += self.global_parameters
+        self.__dict__["_free_parameter_cache"] = (version, len(self.fits), tuple(p))
         return p
 
     @property
@@ -90,6 +147,9 @@ class GlobalFitModel(model.Model, Curve):
 
         Each local parameter is prefixed with its fit index, e.g. ``1:N``.
         """
+        frozen = self.__dict__.get("_frozen_structure")
+        if frozen is not None:
+            return frozen["parameter_names"]
         try:
             re = list()
             for i, f in enumerate(self.fits):
@@ -205,6 +265,8 @@ class GlobalFitModel(model.Model, Curve):
         # model was last brought up to date; selective updating is admissible
         # exactly while it still matches the current one.
         self._current_at_version = None
+        #: Members whose cached weighted residuals are stale. ``None`` means all.
+        self._residual_dirty = None
         super().__init__(fit, *args, **kwargs)
 
     # -- posterior structure ----------------------------------------------
@@ -259,6 +321,12 @@ class GlobalFitModel(model.Model, Curve):
                 before = float(p.value)
             except (TypeError, ValueError):
                 before = None
+            # Writing a value it already has costs two port round-trips and
+            # tells us nothing, and most proposals move one parameter out of
+            # many. Reading is unavoidable -- a value may have been set
+            # elsewhere -- but writing and reading back are not.
+            if before is not None and before == v:
+                continue
             p.value = v
             # Compare the *readback*, not the requested value: a bound or a
             # transform can leave the effective value where it was, and a
@@ -330,6 +398,10 @@ class GlobalFitModel(model.Model, Curve):
         self._factor_graph = None
         self._pending_dirty_fits = None
         self._current_at_version = None
+        self.__dict__.pop("_residual_cache", None)
+        self.__dict__.pop("_n_points_cache", None)
+        self.__dict__.pop("_free_parameter_cache", None)
+        self._residual_dirty = None
         factorgraph.bump_structure_version()
 
     def structure_report(self) -> str:
@@ -565,9 +637,11 @@ class GlobalFitModel(model.Model, Curve):
         for f in self.fits:
             f.model.update()
         # Every local model has just been rebuilt from its current parameters,
-        # so selective updating is admissible again.
+        # so selective updating is admissible again -- and every cached residual
+        # is stale, because every model was recomputed.
         from chisurf.core.fitting import factorgraph
         self._current_at_version = factorgraph.structure_version()
+        self._residual_dirty = set(range(len(self.fits)))
 
     def update_model(self, **kwargs) -> None:
         """Recompute the local-fit models, optionally in parallel threads.
@@ -591,11 +665,18 @@ class GlobalFitModel(model.Model, Curve):
 
         if dirty is None:
             targets = list(self.fits)
+            indices = range(len(self.fits))
             # A full pass re-establishes the invariant the selective path needs.
             from chisurf.core.fitting import factorgraph
             self._current_at_version = factorgraph.structure_version()
         else:
-            targets = [self.fits[i] for i in dirty if 0 <= i < len(self.fits)]
+            indices = [i for i in dirty if 0 <= i < len(self.fits)]
+            targets = [self.fits[i] for i in indices]
+        # Whatever is recomputed here is what the residual cache must drop.
+        stale = getattr(self, "_residual_dirty", None)
+        if stale is None:
+            stale = set()
+        self._residual_dirty = stale | set(indices)
         if not targets:
             # Nothing moved, so every local model is already current.
             return

@@ -38,6 +38,9 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         This is a thin wrapper around :attr:`parameters` provided by
         :class:`chisurf.core.fitting.parameter.FittingParameterGroup`.
         """
+        frozen = self.__dict__.get("_frozen_structure")
+        if frozen is not None:
+            return frozen["n_free"]
         return len(self.parameters)
 
     @property

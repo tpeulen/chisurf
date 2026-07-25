@@ -50,7 +50,10 @@ Structure appears with :class:`~chisurf.core.fitting.fit.FitGroup`.
 """
 from __future__ import annotations
 
+import contextlib
 import dataclasses
+import functools
+import inspect
 import itertools
 
 import networkx as nx
@@ -64,6 +67,10 @@ __all__ = [
     "build_factor_graph",
     "structure_version",
     "bump_structure_version",
+    "window_version",
+    "bump_window_version",
+    "frozen_structure",
+    "frozen",
     "LIKELIHOOD",
     "PRIOR",
 ]
@@ -95,6 +102,41 @@ def structure_version() -> int:
     return _STRUCTURE_VERSION
 
 
+#: Monotonic counter bumped whenever a fit *window* changes -- ``xmin``,
+#: ``xmax``, ``fit_range`` or ``mask``. Residual lengths and point counts depend
+#: on these but the parameter structure does not, so they get their own counter:
+#: bumping the structural one would needlessly rebuild every factor graph.
+_WINDOW_VERSION = 0
+
+
+def window_version() -> int:
+    """Return the current fit-window version counter.
+
+    Returns
+    -------
+    int
+        The counter's present value. Caches of anything derived from the fit
+        windows (residual arrays, point counts) are valid while it is unchanged.
+    """
+    return _WINDOW_VERSION
+
+
+def bump_window_version() -> int:
+    """Invalidate caches derived from the fit windows.
+
+    Called from the ``xmin`` / ``xmax`` / ``fit_range`` / ``mask`` setters of
+    :class:`~chisurf.core.fitting.fit.Fit`.
+
+    Returns
+    -------
+    int
+        The new counter value.
+    """
+    global _WINDOW_VERSION
+    _WINDOW_VERSION += 1
+    return _WINDOW_VERSION
+
+
 def bump_structure_version() -> int:
     """Invalidate every cached factor graph.
 
@@ -113,6 +155,147 @@ def bump_structure_version() -> int:
     global _STRUCTURE_VERSION
     _STRUCTURE_VERSION += 1
     return _STRUCTURE_VERSION
+
+
+@contextlib.contextmanager
+def frozen_structure(*targets):
+    """Hold the parameter structure fixed for the duration of a run.
+
+    **Nothing about a fit's structure changes while it is being optimised or
+    sampled.** Parameters are not linked, freed, fixed or rediscovered between
+    two objective evaluations -- the whole point of an objective is that it is a
+    function of the *values* alone. Yet deciding which parameters are free costs
+    three attribute reads each, two of them crossing into the underlying chinet
+    port, and that decision was being re-derived several times per evaluation.
+
+    Inside this context each model's free-parameter list, bounds and parameter
+    names are computed once and served directly, with no version check and no
+    per-access allocation. On exit the structural and window counters are
+    compared against their values on entry, so a run that *did* change the
+    structure is reported rather than silently returning stale lists.
+
+    Parameters
+    ----------
+    *targets : object
+        Fits, fit groups or models to freeze. A group freezes its global model
+        and every member model; a fit freezes its model.
+
+    Re-entrant: a model already frozen by an enclosing context is left alone,
+    so a sampler that internally calls another sampler does not release the
+    outer freeze.
+
+    Yields
+    ------
+    None
+
+    Warns
+    -----
+    The structure changing inside the context is a contract violation and is
+    logged; the frozen views are dropped on exit either way.
+
+    Examples
+    --------
+    >>> from chisurf.core.fitting import factorgraph
+    >>> with factorgraph.frozen_structure():   # nothing to freeze
+    ...     pass
+    """
+    models = []
+    for target in targets:
+        for model in _models_of(target):
+            if model is not None and model not in models:
+                models.append(model)
+
+    entered = []
+    structure_at_entry = structure_version()
+    window_at_entry = window_version()
+    try:
+        for model in models:
+            if model.__dict__.get("_frozen_structure") is not None:
+                # Already frozen by an enclosing run. Freezing again would be a
+                # no-op, but *releasing* it on exit would break the outer
+                # context, so leave it entirely to whoever froze it.
+                continue
+            try:
+                free = list(model.parameters)
+                names = list(model.parameter_names)
+                bounds = list(model.parameter_bounds)
+            except Exception:
+                continue
+            model.__dict__["_frozen_structure"] = {
+                "parameters": free,
+                "parameter_names": names,
+                "parameter_bounds": bounds,
+                "n_free": len(free),
+            }
+            entered.append(model)
+        yield
+    finally:
+        for model in entered:
+            model.__dict__.pop("_frozen_structure", None)
+        if structure_version() != structure_at_entry:
+            import chisurf.logging
+            chisurf.logging.warning(
+                "frozen_structure: the parameter structure changed during a "
+                "run that declared it fixed; cached parameter lists were stale."
+            )
+        if window_version() != window_at_entry:
+            import chisurf.logging
+            chisurf.logging.warning(
+                "frozen_structure: a fit window changed during a run that "
+                "declared it fixed."
+            )
+
+
+def frozen(*argument_names):
+    """Decorate a function so its run holds the parameter structure fixed.
+
+    Parameters
+    ----------
+    *argument_names : str
+        Names of the decorated function's arguments that identify what to
+        freeze (a fit, a group, or a model).
+
+    Returns
+    -------
+    callable
+        The decorator.
+    """
+    def decorate(function):
+        @functools.wraps(function)
+        def wrapper(*args, **kwargs):
+            bound = inspect.signature(function).bind_partial(*args, **kwargs)
+            targets = [bound.arguments.get(name) for name in argument_names]
+            with frozen_structure(*[t for t in targets if t is not None]):
+                return function(*args, **kwargs)
+        return wrapper
+    return decorate
+
+
+def _models_of(target) -> typing.List:
+    """Return the models a freeze target covers (global model plus members)."""
+    if target is None:
+        return []
+    out = []
+    model = getattr(target, "model", None)
+    global_model = getattr(target, "_model", None)
+    if global_model is not None and getattr(global_model, "fits", None) is not None:
+        out.append(global_model)
+        for local in list(getattr(global_model, "fits", []) or []):
+            local_model = getattr(local, "model", None)
+            if local_model is not None:
+                out.append(local_model)
+    elif getattr(target, "fits", None) is not None:
+        # A global model was passed directly.
+        out.append(target)
+        for local in list(getattr(target, "fits", []) or []):
+            local_model = getattr(local, "model", None)
+            if local_model is not None:
+                out.append(local_model)
+    elif model is not None:
+        out.append(model)
+    elif hasattr(target, "parameters"):
+        out.append(target)
+    return out
 
 
 def parameter_key(parameter) -> str:

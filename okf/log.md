@@ -527,6 +527,38 @@
   that a deliberately frozen chain completes *and* reports `converged: False`.
   PRD-68 and PRD-69 are done.
 
+* **The model evaluation was 6 % of an objective evaluation; the rest was
+  bookkeeping.** Profiling a global-fit sweep: 2000 evaluations over 12 datasets
+  took 1.46 s, of which the actual model `eval` was 0.083 s. The rest went on
+  re-deriving, thousands of times per second, things that **cannot change during
+  a run** — 210 108 `is_linked` calls came from rebuilding the free-parameter
+  list, which costs three attribute reads per parameter with two of them
+  crossing into the backing chinet port. Now **0.53 s (2.8×)** and 3.84 M → 1.15 M
+  calls, with the model evaluation the top cost as it should be.
+  The main lever is `factorgraph.frozen_structure(...)`: nothing about a fit's
+  structure changes while it is optimised or sampled — that is what makes an
+  objective a function of the *values* alone — so the free-parameter list, names,
+  bounds and `n_free` are resolved once per run and served with no version check
+  and no allocation. It is re-entrant (a sampler calling a sampler does not
+  release the outer freeze) and self-checking: the structural and window
+  counters are compared on exit and a violation is logged rather than silently
+  returning stale lists. `Fit.run`, `FitGroup.run` and all five samplers use it.
+  Supporting changes: cached free-parameter lists keyed on `structure_version()`
+  for the unfrozen path (with `redundant` promoted to a property so it bumps the
+  counter like `fixed` and `link` — backed by its public dict key so the
+  serialised form is untouched); a second `window_version()` counter bumped by
+  the `xmin`/`xmax`/`fit_range`/`mask` setters, so `n_points` and the residual
+  cache stop reading every member's window back twice per evaluation; a
+  per-member residual cache invalidated by exactly the members `update_model`
+  recomputed — selective updating was otherwise half an optimisation, skipping
+  the models but recomputing their residuals anyway (24 000 → 7 054 calls); a
+  `parameter_values` setter that does not write a value a parameter already has;
+  `Parameter.value` testing its float compare before the port read; and a
+  memoised MRO property lookup in `ParameterGroup.__setattr__`. Caches are stored
+  as *tuples* because `find_objects` descends into lists — a list-valued cache
+  would make `find_parameters` rediscover parameters through the cache itself.
+  9 tests in `test/fitting/test_frozen_structure.py`.
+
 * **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
   The posterior of a group already factorises over its datasets, but
   `GlobalFitModel` flattened every local model's free parameters plus the

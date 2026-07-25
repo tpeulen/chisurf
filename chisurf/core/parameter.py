@@ -257,7 +257,10 @@ class Parameter(chisurf.core.base.Base):
         # write made every parameter *read* invalidate the node graph. In a fit
         # this dominated: reads outnumber writes by orders of magnitude and the
         # value is unchanged unless a bound actually clamped it.
-        if not self.fixed and v != raw:
+        # ``v != raw`` is a float compare; ``self.fixed`` crosses into the port.
+        # Testing the cheap one first skips the port read entirely whenever no
+        # bound clamped the value, which is nearly every read.
+        if v != raw and not self.fixed:
             f = self._port.fixed
             self._port.fixed = False
             self._port.value = v
@@ -707,6 +710,15 @@ class Parameter(chisurf.core.base.Base):
             pass
 
 
+#: Sentinel distinguishing "not looked up yet" from "looked up, not a property".
+_UNRESOLVED = object()
+
+#: ``(class, attribute) -> property or None`` for
+#: :meth:`ParameterGroup.__setattr__`, which would otherwise walk the whole MRO
+#: on every attribute write.
+_SETATTR_PROPERTY_CACHE: typing.Dict[typing.Tuple[type, str], typing.Any] = {}
+
+
 class ParameterGroup(chisurf.core.base.Base):
     """Container for a list of :class:`Parameter` objects.
 
@@ -792,16 +804,28 @@ class ParameterGroup(chisurf.core.base.Base):
             existing.value = v
             return
 
-        # Check MRO for class-level properties / descriptors
-        for cls in type(self).__mro__:
-            if k in cls.__dict__:
-                desc = cls.__dict__[k]
-                if isinstance(desc, property):
-                    if desc.fset is None:
-                        raise AttributeError("can't set attribute")
-                    desc.fset(self, v)
-                    return
-                break  # found but not a property — treat as normal attribute
+        # Check MRO for class-level properties / descriptors. The lookup is
+        # memoised per (class, attribute): the walk is over a deep MRO and this
+        # runs on every attribute write, including the bookkeeping a global
+        # fit's objective does thousands of times per sampling run. Classes and
+        # their properties do not change at runtime, so the answer is stable.
+        cls_type = type(self)
+        key = (cls_type, k)
+        descriptor = _SETATTR_PROPERTY_CACHE.get(key, _UNRESOLVED)
+        if descriptor is _UNRESOLVED:
+            descriptor = None
+            for cls in cls_type.__mro__:
+                if k in cls.__dict__:
+                    found = cls.__dict__[k]
+                    if isinstance(found, property):
+                        descriptor = found
+                    break  # found but not a property — treat as normal attribute
+            _SETATTR_PROPERTY_CACHE[key] = descriptor
+        if descriptor is not None:
+            if descriptor.fset is None:
+                raise AttributeError("can't set attribute")
+            descriptor.fset(self, v)
+            return
 
         try:
             super().__setattr__(k, v)

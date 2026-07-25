@@ -73,17 +73,41 @@ class FittingParameter(chisurf.core.parameter.Parameter):
             **kwargs
         )
         self.fixed = fixed
-        #: Set when the parameter is fully determined by its siblings, so it
-        #: carries no degree of freedom of its own and must be kept out of the
-        #: optimiser. Distinct from ``fixed``: a redundant parameter is still
-        #: *written* (its value follows from the others), it simply is not
-        #: varied. See :meth:`chisurf.core.models.tcspc.lifetime.Lifetime.
-        #: _update_redundant_amplitude`.
-        self.redundant = False
+        # Stored under its public name so the serialised form is unchanged: a
+        # property is a data descriptor and wins over the instance dict, so the
+        # accessors below still run while ``to_dict``/``__getstate__`` continue
+        # to see a plain ``redundant`` entry as they always did.
+        self.__dict__["redundant"] = False
         self._error_estimate = None
         self._chi2s = None
         self._values = None
         self._scan_result = None
+
+    @property
+    def redundant(self) -> bool:
+        """Whether this parameter is fully determined by its siblings.
+
+        A redundant parameter carries no degree of freedom of its own and is
+        kept out of the optimiser. Distinct from :attr:`fixed`: a redundant
+        parameter is still *written* -- its value follows from the others -- it
+        simply is not varied. See
+        :meth:`chisurf.core.models.tcspc.lifetime.Lifetime._update_redundant_amplitude`.
+        """
+        return self.__dict__.get("redundant", False)
+
+    @redundant.setter
+    def redundant(self, v: bool):
+        """Set the redundancy flag, invalidating cached free-parameter lists.
+
+        Redundancy is one of the three tests that decide whether a parameter is
+        free, so changing it changes the parameter vector -- exactly what the
+        cached lists and the factor graph are keyed on.
+        """
+        was = bool(self.__dict__.get("redundant", False))
+        self.__dict__["redundant"] = bool(v)
+        if was != bool(v):
+            from chisurf.core.fitting import factorgraph
+            factorgraph.bump_structure_version()
 
     @property
     def parameter_scan(self) -> typing.Tuple[np.array, np.array]:
@@ -220,6 +244,9 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         typing.Tuple[float, float]
     ]:
         """List of ``(lb, ub)`` bounds of all parameters (including fixed)."""
+        frozen = self.__dict__.get("_frozen_structure")
+        if frozen is not None:
+            return frozen["parameter_bounds"]
         return [
             pi.bounds if getattr(pi, "bounds_on", True) else (float("-inf"), float("inf"))
             for pi in self.parameters
@@ -236,11 +263,38 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
     def parameters(self) -> typing.List[
         chisurf.core.fitting.parameter.FittingParameter
     ]:
-        """List of *free* fitting parameters (not fixed, linked or redundant)."""
-        return [
+        """List of *free* fitting parameters (not fixed, linked or redundant).
+
+        Cached against the structure version. Deciding freedom costs three
+        attribute reads per parameter, two of which cross into the underlying
+        chinet port, and this property is consulted several times per objective
+        evaluation -- it was the single largest cost of a sampling run, above
+        the model evaluation itself. Every input to the filter (``fixed``,
+        ``link``, ``redundant``, and rediscovery) bumps
+        :func:`chisurf.core.fitting.factorgraph.structure_version`, so the cache
+        cannot go stale.
+
+        The cache is stored as a *tuple*, which
+        :func:`chisurf.core.base.find_objects` does not descend into -- a list
+        would make :meth:`find_parameters` rediscover these parameters through
+        the cache itself. A fresh list is returned so callers may mutate it.
+        """
+        frozen = self.__dict__.get("_frozen_structure")
+        if frozen is not None:
+            # Inside a fit or sampling run the structure is fixed by contract
+            # (see factorgraph.frozen_structure), so there is nothing to check.
+            return frozen["parameters"]
+        from chisurf.core.fitting import factorgraph
+        version = factorgraph.structure_version()
+        cache = self.__dict__.get("_free_parameter_cache")
+        if cache is not None and cache[0] == version and cache[1] is self._parameters:
+            return list(cache[2])
+        free = tuple(
             p for p in self.parameters_all
             if not (p.fixed or p.is_linked or getattr(p, "redundant", False))
-        ]
+        )
+        self.__dict__["_free_parameter_cache"] = (version, self._parameters, free)
+        return list(free)
 
     @property
     def parameters_all_dict(self) -> typing.Dict[str, chisurf.core.fitting.parameter.FittingParameter]:
@@ -277,6 +331,9 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
     @property
     def parameter_names(self) -> typing.List[str]:
         """Names of all free fitting parameters."""
+        frozen = self.__dict__.get("_frozen_structure")
+        if frozen is not None:
+            return frozen["parameter_names"]
         return [p.name for p in self.parameters]
 
     @property
