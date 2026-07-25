@@ -7,9 +7,9 @@ fluorescence bursts in TTTR data.
 
 from pathlib import Path
 
-import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.chitable import edit_dataframe
 
@@ -423,10 +423,9 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         )
         self.verticalLayout_2.addWidget(self.burst_finder)
 
-        # Create a pyqtgraph PlotWidget for the histogram.
-        self.plotWidget = pg.PlotWidget()
-        self.plotWidget.setLabel('bottom', 'Value')
-        self.plotWidget.setLabel('left', 'Frequency')
+        # Create a chiplot Plot for the histogram.
+        self.plotWidget = cp.Plot()
+        self.plotWidget.set_labels(bottom='Value', left='Frequency')
         while self.verticalLayout_4.count():
             child = self.verticalLayout_4.takeAt(0)
             if child.widget():
@@ -641,9 +640,8 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         self.plotWidget.clear()
 
         # Set labels
-        self.plotWidget.setTitle(f"Histogram of {selected_feature}")
-        self.plotWidget.setLabel('bottom', selected_feature)
-        self.plotWidget.setLabel('left', 'Frequency')
+        self.plotWidget.set_title(f"Histogram of {selected_feature}")
+        self.plotWidget.set_labels(bottom=selected_feature, left='Frequency')
 
         # Calculate histogram
         filtered_data = data.dropna()[1::2].values
@@ -679,9 +677,8 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         width = (x[1] - x[0])
         x_centers = (x[:-1] + x[1:]) / 2
 
-        # Create histogram using BarGraphItem
-        bargraph = pg.BarGraphItem(x=x_centers, height=y, width=width, brush='b', pen='k', alpha=0.7)
-        self.plotWidget.addItem(bargraph)
+        # Create histogram bars (blue at ~0.7 alpha, black outline).
+        self.plotWidget.bars(x_centers, y, width=width, brush=(0, 0, 255, 178), pen='k')
 
         # Prepare data for GMM - reshape to 2D array required by sklearn
         data_for_gmm = filtered_data.reshape(-1, 1)
@@ -742,7 +739,7 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
                 y_fit = y_fit_probs * scale_factor
 
                 # Plot sum of all Gaussians
-                self.plotWidget.plot(x_fit.ravel(), y_fit, pen=pg.mkPen('r', width=2), name='GMM Fit')
+                self.plotWidget.line(x_fit.ravel(), y_fit, pen='r', width=2, name='GMM Fit')
 
                 # Plot individual Gaussian components
                 for i in range(k):
@@ -750,16 +747,18 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
                     y_gauss_i = component_probs[i] * scale_factor
 
                     # Plot individual Gaussian
-                    color = pg.intColor(i, hues=k)
-                    self.plotWidget.plot(
+                    color = cp.int_color(i, count=k)
+                    self.plotWidget.line(
                         x_fit.ravel(),
                         y_gauss_i,
-                        pen=pg.mkPen(color, width=1, style=QtCore.Qt.DashLine),
-                        name=f'Gaussian {i + 1}'
+                        pen=color,
+                        width=1,
+                        style='dash',
+                        name=f'Gaussian {i + 1}',
                     )
 
                 # Add legend
-                self.plotWidget.addLegend()
+                self.plotWidget.legend()
 
                 # Build a results table
                 header = ["Gaussian #", "Weight", "Mean", "Std. Dev."]

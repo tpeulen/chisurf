@@ -340,6 +340,8 @@ def test_migrated_modules_import(qapp):
         # it imports IMP, which segfaults when loaded alongside the other heavy
         # extensions in this shared test process. It is verified to import
         # standalone + screenshot-checked instead.
+        # Batch 23
+        "chisurf.plugins.burst.burst_selection.gui.legacy.burst_selector",
     ):
         assert importlib.import_module(name) is not None
 

@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 28):*
+*Landed so far (allow-list 76 → 27):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -494,6 +494,14 @@ screenshot/qtbot verification after each cluster.
   (The wizard imports IMP, which segfaults alongside the other heavy extensions in
   the shared chiplot test process, so it is verified standalone, not in the
   import-clean sweep.)
+- **Batch 23** (allow-list 28 → 27) — migrated the legacy burst selector
+  `plugins/burst/burst_selection/gui/legacy/burst_selector.py` (a per-feature
+  histogram with an overlaid GMM fit). `pg.PlotWidget`→`cp.Plot`; the
+  `pg.BarGraphItem(alpha=0.7)` becomes `bars(..., brush=(0,0,255,178))` (alpha
+  folded into the brush); the GMM sum + dashed per-component lines use
+  `line(..., style="dash")` with `cp.int_color`; `set_title`/`set_labels`/
+  `legend`. Screenshot-verified (bimodal blue histogram, red GMM fit, dashed
+  component curves, legend).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,
