@@ -84,6 +84,56 @@ def _ids(view) -> dict:
     return {str(o["name"]): str(o["id"]) for o in view.list_objects()}
 
 
+def _ca_mask(view, object_id) -> np.ndarray:
+    """Boolean mask of the atoms the renderer keeps a trace coordinate for."""
+    atoms = view._objects[object_id].state.atoms
+    return np.char.strip(atoms["atom_name"].astype(str)) == "CA"
+
+
+def _jiggle(view, object_id, sigma: float, seed: int) -> None:
+    """Displace every atom of an object by isotropic Gaussian noise, in Angstrom.
+
+    A rigid displacement is invisible to a unit error — the fit removes it and
+    the answer is 0.000 in either unit. Noise leaves a residual, and for many
+    atoms the best-fit transform is essentially the identity, so the RMSD comes
+    out at ``sqrt(3) * sigma`` Angstrom.
+
+    Both coordinate arrays are moved together, in their own units: the atom
+    array is Angstrom, the renderer's arrays are Angstrom times ``_scale_factor``.
+
+    Parameters
+    ----------
+    view : MolView
+        Viewer holding the object.
+    object_id : str
+        Object to displace.
+    sigma : float
+        Standard deviation of the per-coordinate noise, in Angstrom.
+    seed : int
+        Seed for the noise, so the expected RMSD is reproducible.
+    """
+    state = view._objects[object_id].state
+    scale = float(view._scale_factor)
+    noise = np.random.default_rng(seed).normal(0.0, sigma, size=state.atoms.shape + (3,))
+
+    state.atoms["xyz"] += noise
+    state.all_atom_coords = np.asarray(state.all_atom_coords, dtype=float) + noise * scale
+    ca = _ca_mask(view, object_id)
+    assert np.asarray(state.coords).shape[0] == int(ca.sum())
+    state.coords = np.asarray(state.coords, dtype=float) + noise[ca] * scale
+
+
+def _reported_rmsd(message: str) -> float:
+    """Pull the number out of ``... (RMSD: 0.866 Å)``."""
+    return float(message.rsplit("RMSD:", 1)[1].split()[0])
+
+
+def _used_atoms(message: str) -> tuple[int, int]:
+    """Pull ``N``/``M`` out of ``... using N/M atoms ...``."""
+    used, _, total = message.split(" using ", 1)[1].split()[0].partition("/")
+    return int(used), int(total)
+
+
 # --------------------------------------------------------------------------- #
 # The two arrays move together
 # --------------------------------------------------------------------------- #
@@ -200,6 +250,63 @@ def test_rms_and_align_agree_after_aligning(session):
     cmd.do("align mob, ref")
     cmd.do("rms mob, ref")
     assert float(messages[-1].split(":")[-1].split()[0]) == pytest.approx(0.0, abs=1e-3)
+
+
+def test_align_reports_angstrom(session):
+    """`align` fits the renderer's coordinates, so its RMSD needs converting too.
+
+    The sibling of the `rms` unit bug, left behind when that one was fixed: the
+    fit reads scene units and the number was printed with an Angstrom sign on it,
+    ten times too large and ten times what `rms` says about the same pair.
+    """
+    from chisurf.plugins.chimol.chimol.analysis.metrics import compute_kabsch
+
+    cmd, view, messages, _ = session
+    cmd.do("copy mob, ref")
+    ids = _ids(view)
+    sigma = 0.5
+    _jiggle(view, ids["mob"], sigma=sigma, seed=20260726)
+
+    # The same best fit, taken from the Angstrom array instead of the renderer's.
+    ca = _ca_mask(view, ids["mob"])
+    _, _, truth = compute_kabsch(_xyz(view, ids["mob"])[ca], _xyz(view, ids["ref"])[ca])
+    assert truth == pytest.approx(np.sqrt(3.0) * sigma, rel=0.1)
+
+    cmd.do("align mob, ref, cutoff=100")
+    assert _reported_rmsd(messages[-1]) == pytest.approx(truth, abs=1e-3)
+
+
+def test_align_and_rms_agree_on_a_noisy_copy(session):
+    """The two commands read different arrays; on noise they must still agree."""
+    cmd, view, messages, _ = session
+    cmd.do("copy mob, ref")
+    ids = _ids(view)
+    _jiggle(view, ids["mob"], sigma=0.5, seed=20260726)
+
+    cmd.do("align mob, ref, cutoff=100")
+    from_align = _reported_rmsd(messages[-1])
+    cmd.do("rms mob and name CA, ref and name CA")
+    from_rms = float(messages[-1].split(":")[-1].split()[0])
+
+    assert from_align == pytest.approx(from_rms, abs=1e-3)
+
+
+def test_align_cutoff_is_in_angstrom(session):
+    """The outlier cutoff is a distance the user types, so it is Angstrom too.
+
+    Measured against scene units the default ``cutoff=2.0`` meant 0.2 A, which
+    rejects an ordinary structure wholesale — the loop then fell through to its
+    "keep the best half" guard and fitted half the molecule.
+    """
+    cmd, view, messages, _ = session
+    cmd.do("copy mob, ref")
+    ids = _ids(view)
+    _jiggle(view, ids["mob"], sigma=0.5, seed=20260726)
+
+    cmd.do("align mob, ref, cutoff=2.0")
+    used, total = _used_atoms(messages[-1])
+    # Every residue sits about 0.87 A off, comfortably inside a 2 A cutoff.
+    assert used == total
 
 
 def test_a_transform_reaches_the_distance_selections(session):

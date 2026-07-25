@@ -73,6 +73,11 @@ Implemented tiers:
   3D overlays (dashed lines + floating value labels) via a `SceneObject`
   `kind="text"` geometry; `rms`/`rms_cur` and `align`/`super` (iterative
   outlier-rejection Kabsch, with typed `cutoff`/`cycles` keyword args) are present.
+  Every one of them fits the *renderer's* coordinates, which are Angstrom times
+  `_scale_factor`, so each converts at that boundary: `align`/`super` divide both
+  coordinate sets by the scale up front — the rejection `cutoff` and the reported
+  RMSD are then the Angstrom the user typed and expects — and scale the fitted
+  translation back for `apply_transform_to_object`, which takes scene units.
 - **Object lifecycle** — `delete`/`reinitialize`/`copy`/`split_chains`, plus
   `set_name` (rename) and `count_atoms` (selection → atom count).
 - **Settings** — `set`/`get`/`unset`/`toggle`/`help_setting` over the registry in

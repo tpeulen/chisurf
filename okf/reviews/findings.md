@@ -1036,11 +1036,32 @@ Findings RF-078..RF-082.
 - **Fix note:**
 
 ### RF-079
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (`align`/`super` print a length ten times too large with an Angstrom sign on it)
 - **Location:** `chisurf/plugins/chimol/chimol/cmd/measurements.py:708` (`f"(RMSD: {final_rmsd:.3f} Å)"`) against `:426-432` (the identical bug fixed in `rms` by the same commit)
 - **Finding:** `_align_or_super` measures `get_residue_positions`, which returns `state.coords` in **scene units**, and prints the Kabsch RMSD straight out labelled Å — exactly the defect `119a63e46` corrected 280 lines above in `rms`, left untouched in the sibling command the guide presents beside it (`docs/guides/44_molecular_viewer.md:141-149`). Verified: a copy of 148L carrying 0.5 Å Gaussian noise on its CA coordinates (true CA RMSD 0.87 Å) is reported by `align mob, ref, cutoff=100` as **8.728 Å** — `_scale_factor` (10) times too large, and ten times what `rms` and `pair_fit` say about the same pair. Divide by `_scale_factor` as `rms` now does. No test can catch this today: `test_transform_sync.py` only aligns a *rigidly displaced* copy, where the answer is 0.000 in either unit.
-- **Fix note:**
+- **Fix note:** Confirmed, and the same unit boundary was wrong twice in that
+  function: besides the printed RMSD, the outlier `cutoff` — a distance the user
+  types in Angstrom — was compared against distances in scene units, so the
+  default `cutoff=2.0` really meant 0.2 Å. On 148L jiggled by 0.5 Å of noise the
+  rejection loop ran itself down to `using 3/165 atoms`, superposing the whole
+  molecule on three residues and announcing it as a 0.100 Å fit. Rather than
+  convert the two results separately, `_align_or_super` now divides **both**
+  coordinate sets by `_scale_factor` on the way in, so the fit runs in Angstrom
+  throughout and only the fitted translation is scaled back for
+  `apply_transform_to_object` (which takes scene units) — the conversion
+  `pair_fit` already did. Dividing both sets by one scalar leaves the Kabsch
+  rotation untouched and scales its translation exactly, so nothing inside the
+  loop changed. The same case now reports `165/165` and 0.866 Å.
+  Pinned by three tests in `chisurf/plugins/chimol/test/test_transform_sync.py`,
+  all on a *jiggled* copy — the existing tests use a rigid displacement, which no
+  unit error can survive being visible in, because the fit removes it and the
+  answer is 0.000 either way: `test_align_reports_angstrom` (against an
+  independent Kabsch over the Angstrom atom array),
+  `test_align_and_rms_agree_on_a_noisy_copy`, and
+  `test_align_cutoff_is_in_angstrom` (no residue rejected at `cutoff=2.0`).
+  Docs: the `align`/`super` section of `docs/guides/44_molecular_viewer.md` now
+  states the units of `cutoff` and of the reported RMSD.
 
 ### RF-080
 - **Status:** OPEN

@@ -2,6 +2,34 @@
 
 ## 2026-07-26
 
+* **`align`/`super` fitted scene units and called them Angstrom (RF-079).** The
+  sibling of the `rms` unit bug that `119a63e46` fixed 280 lines above it, left
+  behind in the command the [guide](../docs/guides/44_molecular_viewer.md) presents
+  beside it. `get_residue_positions` returns the renderer's coordinates — Angstrom
+  times `_scale_factor` (10) — and `_align_or_super` ran the whole fit on them, so
+  **two** user-facing quantities were off by that factor: the printed RMSD, ten
+  times too large with an Angstrom sign on it and ten times what `rms` and
+  `pair_fit` said about the same pair; and the outlier `cutoff`, a distance the
+  user types in Angstrom but compared against scene units, so the default
+  `cutoff=2.0` really meant 0.2 Å. That rejects an ordinary structure wholesale:
+  on 148L jiggled by 0.5 Å of noise the rejection loop ran itself down to
+  `using 3/165 atoms` — a whole molecule superposed on three residues, announced
+  as a 0.100 Å fit — where it now reports `165/165` and 0.866 Å.
+  Rather than convert the two results separately, both coordinate sets are now
+  divided by the scale on the way in, so the fit runs in Angstrom throughout and
+  only the fitted translation is scaled back for `apply_transform_to_object`
+  (which takes scene units) — the same conversion `pair_fit` already did.
+  Dividing both sets by one scalar leaves the Kabsch rotation untouched and scales
+  its translation exactly, so nothing inside the loop changed.
+  Pinned by three tests in `chisurf/plugins/chimol/test/test_transform_sync.py`,
+  all on 148L jiggled by 0.5 Å of Gaussian noise — a *rigid* displacement, which
+  is what the existing tests used, is invisible to a unit error because the fit
+  removes it and the answer is 0.000 in either unit. The RMSD now matches an
+  independent Kabsch over the Angstrom atom array, matches what `rms` reports for
+  the same pair, and `cutoff=2.0` keeps every residue.
+  Suites: 14 (`test_transform_sync.py`) + 52 (with the alignment, `pair_fit` and
+  object-menu tests) and 890 passed, 1 skipped for the whole chimol suite.
+
 * **chimol inferred bonds from one distance, and it showed.** A single 1.9 Å cutoff
   for every pair of atoms. Such a cutoff has to be wide enough for the longest real
   bond, which makes it wide enough for a mere *contact* between heavier atoms — and

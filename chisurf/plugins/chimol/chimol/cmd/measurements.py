@@ -645,9 +645,17 @@ class MeasurementMixin(BaseCmd):
             self._emit_error(f"{cmd} requires at least three residues in each selection")
             return
 
+        # `get_residue_positions` returns the renderer's coordinates, which are
+        # Angstrom times ``_scale_factor``. Both the cutoff the user types and the
+        # RMSD reported below are lengths in Angstrom, so the fit runs in Angstrom
+        # and the translation is scaled back on the way out. Dividing both sets by
+        # the same scalar leaves the Kabsch rotation untouched and scales its
+        # translation exactly, so nothing else in the loop has to change.
+        scale = float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
+
         # Subset to matching count
-        m_coords = mob_coords[:count]
-        t_coords = tgt_coords[:count]
+        m_coords = mob_coords[:count] / scale
+        t_coords = tgt_coords[:count] / scale
 
         # Iterative outlier rejection
         current_mask = np.ones(count, dtype=bool)
@@ -698,7 +706,7 @@ class MeasurementMixin(BaseCmd):
                 break
 
         try:
-            viewer.apply_transform_to_object(final_rot.T, final_trans, object_id=mob_obj)
+            viewer.apply_transform_to_object(final_rot.T, final_trans * scale, object_id=mob_obj)
         except Exception as exc:
             self._emit_error(f"Failed to apply {cmd} transform: {exc}")
             return

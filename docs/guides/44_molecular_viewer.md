@@ -170,8 +170,14 @@ all walk the bond graph, a false bond propagates into every one of them.
 
 ```text
 align mobile, reference
-super mobile, reference           # sequence-independent
+super mobile, reference                       # sequence-independent
+align mobile, reference, cutoff=2.0, cycles=5
 ```
+
+Both fit and then re-fit, dropping the pairs that stayed further apart than
+`cutoff` — so a flexible loop or a displaced domain does not drag the rest of the
+superposition with it. `cutoff` is a distance in Angstrom, and so is the RMSD
+reported at the end, over the pairs that survived (`using 158/162 atoms`).
 
 When you already know which atoms should match — because the two are not the same
 sequence, or because only a domain or a ligand should drive the fit — state the
