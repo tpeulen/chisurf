@@ -60,8 +60,21 @@ from .simulate import (
     simulate_clsm_molecules,
 )
 
+from .frap import (
+    FrapResult,
+    fit_rfrap,
+    normalise_frap_stack,
+    recovery_curve,
+    rfrap_model,
+)
+
 __all__ = [
     "ColocalizationResult",
+    "FrapResult",
+    "fit_rfrap",
+    "normalise_frap_stack",
+    "recovery_curve",
+    "rfrap_model",
     "ImageStack",
     "ObjectSet",
     "colocalization_metrics",

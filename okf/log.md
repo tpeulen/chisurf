@@ -2,6 +2,38 @@
 
 ## 2026-07-25
 
+* **Rectangle FRAP ported: recovery fitted in space *and* time, not as a curve.**
+  `chisurf/core/fluorescence/imaging/frap.py`. **Correcting an earlier claim in
+  this log's MIA audit:** FRAP is not one remaining function but a ~1900-line
+  subsystem (`Do_FRAP`, `FRAP_leastsquare`, `FRAP_MEM`, `FRAP_MEM_integral_TB`,
+  `rFrapFit`, `rFRAP_formula_1comp`, `varianceF`), and `RICSPE` — a RICS
+  *precision estimator* that predicts the error on a fitted D from the
+  acquisition settings, via the full covariance matrix of the correlation
+  estimator — was missed entirely. Both are larger than the "three small items"
+  the earlier summary implied. **What landed here** is the closed-form rFRAP
+  model and its fit: a bleached rectangle convolved with a Gaussian gives a
+  difference of two error functions per axis, and diffusion widens that Gaussian
+  as `N(t) = sqrt(4Dt + r²)`. The significant part is that it fits the **whole
+  bleach profile at every frame** rather than one averaged intensity per frame,
+  which is what makes `D`, the bleach depth `K0`, the mobile fraction `k` and
+  the edge blur `r` **separately identifiable** — a single recovery curve
+  entangles them. Verified by round-tripping the model through the fit: all four
+  parameters recovered to 1e-4 relative on noiseless data (χ² ≈ 6e-30), to
+  within 5 % at 2 % added noise, and from a starting `D` an order of magnitude
+  out. `normalise_frap_stack` ports the preprocessing in the reference's order —
+  per-frame background division (a decaying lamp otherwise looks exactly like a
+  sample that fails to recover) then pixel-wise division by the median-filtered
+  pre-bleach average (without the filter, reference shot noise is divided *into*
+  every later frame). `recovery_curve` keeps the classic averaged readout,
+  because a curve that never rises tells you at a glance that the fit will not
+  converge. Tests: `test/core/test_frap.py` (19), including that `D` scales with
+  the square of the pixel size, that a fixed mobile fraction does not drift, and
+  that the preprocessing actually flattens a 50 % illumination gradient.
+  **Still open from MIA:** the FRAP maximum-entropy variant (a distribution of
+  diffusion coefficients rather than one), `RICSPE`, `Read_CZI`/`Read_SDT`
+  image readers, `Do_FRET` (a ratiometric acceptor/donor *time trace* — small,
+  ~49 lines), and `Calibration`. See [imaging plugins](/plugins/imaging.md).
+
 * **chimol: `label`, with PyMOL's expression language rather than templates.**
   The whole `L` menu was greyed out because chimol had no labels at all.
   **The important part is that `cmd.label` does not take a template string** -- it
