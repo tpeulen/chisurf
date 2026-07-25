@@ -40,6 +40,13 @@ The prompts read at runtime, so editing a prompt changes the next run's behaviou
 | `com.chisurf.translate-ui` | daily 03:17 | `i18n-extract` → translate untranslated `de`/`fr` (glossary-consistent, skipping identifiers/symbols/units) → recompile `.qm` → commit the catalogues. Pairs with [PRD-63](/prds/prd-63.md) / [i18n](/subsystems/i18n.md). |
 | `com.chisurf.build-docs` | daily 03:47 | detect where `docs/` **and** `okf/` drifted from the source, update them to match the code (with `okf/log.md` tracking), then the warning-free Sphinx rebuild. |
 | `com.chisurf.improve-prds` | every 30 min | pick ONE small roadmap item (`okf/prds/` + [assessment backlog](/specs/assessment.md)), implement it, run the **mandatory test + lint gate**, and commit **only if green** — else a knowledge-only update or a no-op. |
+| `com.chisurf.review-code` | every 30 min (:00/:30) | critically review a focused code slice and append verified findings to [`okf/reviews/findings.md`](/reviews/findings.md) (OPEN). **Reviews only — never edits source.** |
+| `com.chisurf.fix-issues` | every 30 min (:15/:45) | fix ONE OPEN finding from the queue behind the **test + lint gate**, flip it FIXED, and commit only if green. |
+
+The last two form a **review → fix pipeline**: `review-code` *produces* findings
+into the queue at :00/:30, `fix-issues` *consumes* them one at a time 15 min later
+at :15/:45. The queue file `okf/reviews/findings.md` is the hand-off, keeping the
+two decoupled and distinct from the human-curated [cleanup backlog](/specs/assessment.md).
 
 ## Rules the jobs inherit
 

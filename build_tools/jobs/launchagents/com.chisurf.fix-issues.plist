@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ChiSurf: fix job. Every 30 minutes (:15 and :45 — i.e. 15 min AFTER each review
+  run) it fixes one OPEN finding from okf/reviews/findings.md behind a mandatory
+  test+lint gate, flips it to FIXED, and commits only if green. The mkdir lock in
+  claude_job.sh skips a tick rather than overlapping a long run.
+  Install: build_tools/jobs/README.md.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.chisurf.fix-issues</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/claude_job.sh</string>
+        <string>fix-issues</string>
+        <string>build_tools/jobs/prompts/fix_issues.md</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/tpeulen/dev/chisurf</string>
+
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Minute</key><integer>45</integer></dict>
+    </array>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/fix-issues.launchd.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/fix-issues.launchd.err</string>
+</dict>
+</plist>

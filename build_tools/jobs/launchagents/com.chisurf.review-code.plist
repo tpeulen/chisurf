@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ChiSurf: code-review job. Every 30 minutes (:00 and :30) it critically reviews a
+  focused slice of the code and appends verified findings to okf/reviews/findings.md
+  (OPEN). It does NOT change source. The fix job (com.chisurf.fix-issues) runs 15
+  minutes later (:15/:45) to consume those findings. Install: build_tools/jobs/README.md.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.chisurf.review-code</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/claude_job.sh</string>
+        <string>review-code</string>
+        <string>build_tools/jobs/prompts/review_code.md</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/tpeulen/dev/chisurf</string>
+
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Minute</key><integer>30</integer></dict>
+    </array>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/review-code.launchd.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/review-code.launchd.err</string>
+</dict>
+</plist>
