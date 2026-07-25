@@ -19,7 +19,7 @@ def qapp():
 
 
 def _staging_db():
-    from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import FluorophoreDatabase
+    from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 
     path = os.path.join(tempfile.mkdtemp(), "staging.db")
     db = FluorophoreDatabase(path)

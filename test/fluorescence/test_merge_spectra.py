@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.plugins._dev.fluorophore_db.mmfdb_adapter import FluorophoreDatabase
+from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 from chisurf.plugins.spectra_downloader.download.merge import merge_all
 
 
