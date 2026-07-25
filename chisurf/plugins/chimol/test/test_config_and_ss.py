@@ -151,7 +151,7 @@ def test_dss_recomputes_and_reports(tmp_path):
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
 
-    oid = viewer._create_object(name="m")
+    oid = viewer._create_object(name="m").object_id
     viewer.set_active_object(oid)
     viewer._objects[oid].state.atoms = _build_minimal_atoms(5)
 

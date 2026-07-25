@@ -1,18 +1,107 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ..analysis.labels import evaluate_labels
+from ..analysis.labels import (
+    ATOM_PROPERTIES,
+    DERIVED_PROPERTIES,
+    atom_namespace,
+    evaluate_labels,
+)
 from .base import BaseCmd
 from .registry import command
 
 if TYPE_CHECKING:
     pass
 
+
+#: The atom dtype every chisurf reader produces (``keys_formats`` in
+#: ``chisurf/core/fio/structure/coordinates.py``). A pseudoatom has to match it,
+#: or the object it creates is incompatible with everything that reads atoms.
+PSEUDOATOM_DTYPE = np.dtype([
+    ("i", "i4"),
+    ("chain", "|U1"),
+    ("res_id", "i4"),
+    ("res_name", "|U5"),
+    ("atom_id", "i4"),
+    ("atom_name", "|U5"),
+    ("element", "|U1"),
+    ("xyz", "3f8"),
+    ("charge", "f8"),
+    ("radius", "f8"),
+    ("bfactor", "f8"),
+    ("mass", "f8"),
+])
+
+
+def _fmt(pos) -> str:
+    """Format a position for a message."""
+    return "(" + ", ".join(f"{float(v):.3f}" for v in pos) + ")"
+
+
+def _pseudoatom_array(
+    dtype: np.dtype,
+    pos,
+    bfactor: float,
+    occupancy: float,
+    res_id: int,
+) -> np.ndarray:
+    """Build a one-atom array in ``dtype``, filling only fields it has.
+
+    Taking the dtype from the object being appended to, rather than assuming one,
+    is what lets a pseudoatom join a structure read by any reader.
+    """
+    atom = np.zeros(1, dtype=dtype)
+    values = {
+        "xyz": np.asarray(pos, dtype=float),
+        "atom_name": "PS1",
+        "res_name": "PSD",
+        "res_id": int(res_id),
+        "chain": "P",
+        "element": "P",
+        "bfactor": float(bfactor),
+        "occupancy": float(occupancy),
+        "radius": 1.0,
+        "mass": 0.0,
+        "charge": 0.0,
+    }
+    for field_name, value in values.items():
+        if field_name in (dtype.names or ()):
+            atom[field_name][0] = value
+    return atom
+
+
+def _coerce_field(dtype: np.dtype, value: object):
+    """Cast a value assigned in an expression to the atom field's own type.
+
+    A structured array silently truncates or raises depending on the field, so the
+    cast is done here where a bad assignment can be reported against the property
+    the user actually named.
+    """
+    if dtype.kind in ("U", "S"):
+        text = str(value)
+        return text.encode() if dtype.kind == "S" else text
+    if dtype.kind in ("i", "u"):
+        return int(round(float(value)))
+    return value
+
+
 class EditingMixin(BaseCmd):
+    """Commands that change what a structure *is*, rather than how it looks."""
+
+    #: Namespace persisting across commands, so results can be accumulated the way
+    #: PyMOL's ``pymol.stored`` is used: ``iterate name CA, stored.setdefault(...)``.
+    #: Without somewhere to put them, ``iterate`` can only print.
+    @property
+    def _stored(self) -> dict:
+        store = getattr(self, "_stored_namespace", None)
+        if store is None:
+            store = {}
+            self._stored_namespace = store
+        return store
+
     @command("pseudoatom")
     def pseudoatom(
         self,
@@ -62,85 +151,53 @@ class EditingMixin(BaseCmd):
              except Exception:
                   pass
 
+        # One atom array shape, matching what every reader produces. This used to
+        # build its own dtype naming `chain_id`, `b_factor` and `occupancy` -- none
+        # of which are fields -- so the resulting object was incompatible with
+        # everything downstream and the command crashed before it finished.
         if not pos:
-             pos = [0.0, 0.0, 0.0]
-
-        # In ChiMol, we often want to add this to a new object or an existing one.
-        # PyMOL adds it to 'name' object. If 'name' exists, it appends an atom.
+            pos = [0.0, 0.0, 0.0]
 
         obj_info = self._find_object_by_name(viewer, name)
         if obj_info is None:
-             # Create new object with one atom
-             @dataclass
-             class DummyStructure:
-                  atoms: np.ndarray
-                  xyz: np.ndarray
+            atoms = _pseudoatom_array(PSEUDOATOM_DTYPE, pos, b_factor, occupancy, 1)
 
-             atom_dtype = [
-                 ('xyz', 'f4', (3,)),
-                 ('atom_name', 'S10'),
-                 ('res_id', 'i4'),
-                 ('res_name', 'S10'),
-                 ('chain_id', 'S4'),
-                 ('element', 'S2'),
-                 ('b_factor', 'f4'),
-                 ('occupancy', 'f4')
-             ]
+            class _Pseudo:
+                """The shape :meth:`set_structure` reads."""
 
-             data = np.zeros(1, dtype=atom_dtype)
-             data[0]['xyz'] = pos
-             data[0]['atom_name'] = b'PS1'
-             data[0]['res_id'] = 1
-             data[0]['res_name'] = b'PSD'
-             data[0]['chain_id'] = b' '
-             data[0]['element'] = b'Ps'
-             data[0]['b_factor'] = b_factor
-             data[0]['occupancy'] = occupancy
+            structure = _Pseudo()
+            structure.atoms = atoms
+            structure.xyz = np.asarray(atoms["xyz"], dtype=float)
+            structure.n_atoms = 1
 
-             struct = DummyStructure(atoms=data, xyz=data['xyz'])
+            entry = viewer._create_object(name=name)
+            viewer.set_active_object(entry.object_id)
+            viewer.set_structure(structure)
+            if window is not None and hasattr(window, "_refresh_objects_from_viewer"):
+                window._refresh_objects_from_viewer()
+            self._emit_message(f"pseudoatom: created {name} at {_fmt(pos)}")
+            return
 
-             # Need to create object via window if possible to get registry/etc.
-             if window is not None and hasattr(window, "_load_structure_from_path"):
-                  # This is a bit hacky, but MolView doesn't easily create objects from memory via commands yet.
-                  # Let's use viewer directly and hope the window refreshes.
-                  oid = viewer._create_object(name=name)
-                  viewer.set_active_object(oid)
-                  viewer.set_structure(struct)
-                  window._refresh_objects_from_viewer()
-             else:
-                  oid = viewer._create_object(name=name)
-                  viewer.set_active_object(oid)
-                  viewer.set_structure(struct)
-        else:
-             # Append to existing object
-             oid = str(obj_info['id'])
-             entry = viewer._objects.get(oid)
-             if entry and entry.state.atoms is not None:
-                  old_atoms = entry.state.atoms
-                  new_atom = np.zeros(1, dtype=old_atoms.dtype)
-                  for f in old_atoms.dtype.names:
-                       if f == 'xyz': new_atom[0][f] = pos
-                       elif f == 'atom_name': new_atom[0][f] = b'PS1'
-                       elif f == 'res_id':
-                            if len(old_atoms) > 0:
-                                 new_atom[0][f] = np.max(old_atoms['res_id']) + 1
-                            else:
-                                 new_atom[0][f] = 1
-                       elif f == 'res_name': new_atom[0][f] = b'PSD'
-                       elif f == 'b_factor': new_atom[0][f] = b_factor
-                       elif f == 'occupancy': new_atom[0][f] = occupancy
-                       else:
-                            # default to what's in first atom or zero/empty
-                            if len(old_atoms) > 0:
-                                 new_atom[0][f] = old_atoms[0][f]
+        object_id = str(obj_info["id"])
+        entry = viewer._objects.get(object_id)
+        existing = getattr(getattr(entry, "state", None), "atoms", None)
+        if existing is None:
+            self._emit_error(f"pseudoatom: {name} carries no atoms to append to")
+            return
 
-                  entry.state.atoms = np.concatenate([old_atoms, new_atom])
-                  entry.state.all_atom_coords = entry.state.atoms['xyz'].copy()
+        next_res = int(np.max(existing["res_id"])) + 1 if len(existing) else 1
+        addition = _pseudoatom_array(
+            existing.dtype, pos, b_factor, occupancy, next_res
+        )
+        entry.state.atoms = np.concatenate([existing, addition])
+        self._rebuild_after_coordinate_change(viewer, object_id)
+        if window is not None and hasattr(window, "_refresh_objects_from_viewer"):
+            window._refresh_objects_from_viewer()
+        self._emit_message(
+            f"pseudoatom: appended to {name} at {_fmt(pos)}"
+        )
+        return
 
-                  # Re-run set_structure logic to update trace/masks
-                  viewer.set_structure(entry.state)
-
-        self._emit_message(f"Created pseudoatom {name} at {pos}")
 
 
     @command("label", mode="raw1")
@@ -205,23 +262,112 @@ class EditingMixin(BaseCmd):
 
     @command("iterate", mode="raw1")
     def iterate(self, selection: str = "", expression: str = "") -> None:
-        """Evaluate a read-only Python expression per selected atom."""
-        self._alter_or_iterate(selection, expression, read_only=True)
+        """Run a read-only Python statement per selected atom (PyMOL ``iterate``).
+
+        The atom's properties are in scope under PyMOL's names -- ``name``,
+        ``resn``, ``resi``, ``chain``, ``segi``, ``elem``, ``b``, ``q``, ``vdw``,
+        ``index``, ``oneletter`` -- so published snippets work unchanged.
+        Coordinates are **not** in scope; that is ``iterate_state``, as in PyMOL.
+
+        A persistent ``stored`` namespace is available for accumulating results,
+        which is what makes the command useful for pulling data out::
+
+            iterate name CA, stored.setdefault('b', []).append(b)
+        """
+        self._alter_or_iterate(selection, expression, write=False, coordinates=False)
 
     @command("alter", mode="raw1")
     def alter(self, selection: str = "", expression: str = "") -> None:
-        """Evaluate a Python expression per selected atom, writing changes back."""
-        self._alter_or_iterate(selection, expression, read_only=False)
+        """Change atom properties per selected atom (PyMOL ``alter``).
+
+        Assigning to a property name writes it back: ``alter chain E, b=42``.
+        Coordinates cannot be changed here -- PyMOL keeps that in ``alter_state``,
+        because moving atoms invalidates geometry that properties do not.
+        """
+        self._alter_or_iterate(selection, expression, write=True, coordinates=False)
+
+    @command("iterate_state", mode="raw2")
+    def iterate_state(
+        self, state: str = "", selection: str = "", expression: str = ""
+    ) -> None:
+        """Run a read-only statement per atom, with coordinates in scope.
+
+        ``iterate_state 1, name CA, stored.setdefault('xs', []).append(x)``.
+        chimol holds one coordinate set per object, so the state argument is
+        accepted for compatibility and only ``1`` (or ``0``, meaning "all") is
+        meaningful.
+        """
+        if not self._check_state(state, "iterate_state"):
+            return
+        self._alter_or_iterate(selection, expression, write=False, coordinates=True)
+
+    @command("alter_state", mode="raw2")
+    def alter_state(
+        self, state: str = "", selection: str = "", expression: str = ""
+    ) -> None:
+        """Change atom coordinates per selected atom (PyMOL ``alter_state``).
+
+        ``alter_state 1, all, x = x + 10`` moves the selection ten Angstrom.
+        Coordinates are in Angstrom in the structure's own frame; the render-space
+        arrays are rebuilt afterwards, which is the step that makes this differ
+        from ``alter``.
+        """
+        if not self._check_state(state, "alter_state"):
+            return
+        self._alter_or_iterate(selection, expression, write=True, coordinates=True)
+
+    def _check_state(self, state: str, label: str) -> bool:
+        """Accept PyMOL's state argument, which chimol has only one of."""
+        text = str(state).strip()
+        if not text:
+            self._emit_error(f"Usage: {label} state, selection, expression")
+            return False
+        try:
+            index = int(float(text))
+        except ValueError:
+            self._emit_error(f"{label}: state must be a number, got {state!r}")
+            return False
+        if index not in (0, 1, -1):
+            self._emit_error(
+                f"{label}: this object has one coordinate set, so state "
+                f"{index} does not exist"
+            )
+            return False
+        return True
 
     def _alter_or_iterate(
-        self, sele_expr: str, python_expr: str, read_only: bool
+        self,
+        sele_expr: str,
+        python_expr: str,
+        *,
+        write: bool,
+        coordinates: bool,
     ) -> None:
-        cmd = "iterate" if read_only else "alter"
+        """Run a Python statement once per selected atom.
+
+        The four commands are one routine over two flags: ``write`` distinguishes
+        ``alter`` from ``iterate``, ``coordinates`` distinguishes the ``_state``
+        pair from the plain one. That split is PyMOL's, and it is not cosmetic --
+        changing coordinates invalidates every array derived from them, and
+        changing a b-factor does not.
+
+        Parameters
+        ----------
+        sele_expr : str
+            Selection expression.
+        python_expr : str
+            Python statement evaluated per atom.
+        write : bool
+            Persist assignments back to the atom array.
+        coordinates : bool
+            Put ``x``/``y``/``z`` in scope, and persist them when ``write``.
+        """
+        label = ("alter" if write else "iterate") + ("_state" if coordinates else "")
         if not sele_expr or not python_expr:
-            self._emit_error(f"Usage: {cmd} selection, expression")
+            self._emit_error(f"Usage: {label} selection, expression")
             return
 
-        window, viewer = self._require_window_and_viewer()
+        _, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
@@ -230,95 +376,145 @@ class EditingMixin(BaseCmd):
                 viewer, sele_expr
             )
         except Exception as exc:
-            self._emit_error(str(exc))
+            self._emit_error(f"{label}: {exc}")
             return
 
         entry = viewer._objects.get(obj_id)
-        if entry is None or entry.state.atoms is None:
-            self._emit_error(f"Object {obj_name} has no atoms")
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None:
+            self._emit_error(f"{label}: object {obj_name} has no atoms")
             return
 
-        atoms = entry.state.atoms
-        indices = np.nonzero(atom_mask)[0]
+        indices = np.nonzero(np.asarray(atom_mask, dtype=bool))[0]
         if indices.size == 0:
+            self._emit_error(f"{label}: '{sele_expr}' matched no atoms")
             return
 
-        # Prepare namespace
-        # We need to map field names to friendly names
-        field_map = {
-            "atom_name": "name",
-            "res_name": "resn",
-            "res_id": "resi",
-            "chain_id": "chain",
-            "element": "elem",
-            "b_factor": "b",
-            "occupancy": "q",
+        # Only fields this structure actually carries, so an assignment to one it
+        # lacks is reported rather than silently dropped.
+        fields = set(atoms.dtype.names or ())
+        writable = {
+            name: field
+            for name, field in ATOM_PROPERTIES.items()
+            if field in fields
         }
 
-        # Reverse map for alter
-        reverse_map = {v: k for k, v in field_map.items()}
-
-        count = 0
         try:
-            # Compiled expression for speed if many atoms
-            code = compile(python_expr, "<string>", "exec")
-
-            for idx in indices:
-                atom = atoms[idx]
-                namespace = {}
-
-                # Load current values
-                for f, alias in field_map.items():
-                    if f in atoms.dtype.names:
-                        val = atom[f]
-                        if isinstance(val, (bytes, np.bytes_)):
-                             val = val.decode()
-                        namespace[alias] = val
-
-                xyz = atom["xyz"]
-                namespace["x"] = float(xyz[0])
-                namespace["y"] = float(xyz[1])
-                namespace["z"] = float(xyz[2])
-
-                exec(code, {}, namespace)
-
-                if not read_only:
-                    # Save changed values
-                    for alias, f in reverse_map.items():
-                        if alias in namespace and f in atoms.dtype.names:
-                            val = namespace[alias]
-                            # Handle types (int, float, string)
-                            target_dtype = atoms.dtype[f]
-                            if target_dtype.kind in ('S', 'U'):
-                                if isinstance(val, str):
-                                    atom[f] = val.encode() if target_dtype.kind == 'S' else val
-                            else:
-                                atom[f] = val
-
-                    # Coordinates
-                    new_x = namespace.get("x", xyz[0])
-                    new_y = namespace.get("y", xyz[1])
-                    new_z = namespace.get("z", xyz[2])
-                    atom["xyz"] = [new_x, new_y, new_z]
-
-                count += 1
-
-        except Exception as exc:
-            self._emit_error(f"Error during execution: {exc}")
+            code = compile(python_expr, "<chimol>", "exec")
+        except SyntaxError as exc:
+            self._emit_error(f"{label}: could not parse {python_expr!r}: {exc}")
             return
 
-        if not read_only:
-            # If we altered, we need to notify the viewer to rebuild
-            # Actually, the 'atoms' array in state might be the same object
-            # but we should re-trigger updates.
-            # We might also need to update all_atom_coords if that was cached separately
-            if "xyz" in atoms.dtype.names:
-                 entry.state.all_atom_coords = atoms["xyz"].copy()
+        xyz = np.asarray(atoms["xyz"], dtype=float) if "xyz" in fields else None
+        globals_ = {"stored": self._stored, "np": np}
+        changed_fields: set[str] = set()
+        moved = False
+        ignored: set[str] = set()
+        count = 0
 
+        try:
+            for index in indices:
+                namespace = atom_namespace(
+                    atoms, int(index), xyz if coordinates else None
+                )
+                before = dict(namespace)
+
+                exec(code, globals_, namespace)  # noqa: S102 -- PyMOL's API is Python
+                count += 1
+
+                if not write:
+                    continue
+
+                for name, value in namespace.items():
+                    if name not in before or value == before[name]:
+                        continue
+                    if coordinates and name in ("x", "y", "z"):
+                        xyz[index, "xyz".index(name)] = float(value)
+                        moved = True
+                        continue
+                    field = writable.get(name)
+                    if field is None:
+                        # Either a derived name, or one this structure lacks.
+                        if name in DERIVED_PROPERTIES or name in ATOM_PROPERTIES:
+                            ignored.add(name)
+                        continue
+                    atoms[field][index] = _coerce_field(atoms.dtype[field], value)
+                    changed_fields.add(field)
+        except NameError as exc:
+            # The commonest mistake is reaching for a coordinate from `alter`,
+            # where PyMOL does not put one in scope. Say which command does.
+            if not coordinates and any(
+                f"'{axis}'" in str(exc) for axis in ("x", "y", "z")
+            ):
+                self._emit_error(
+                    f"{label}: coordinates are not in scope here -- use "
+                    f"{'alter_state' if write else 'iterate_state'}, as in PyMOL"
+                )
+            else:
+                self._emit_error(f"{label}: {exc}")
+            return
+        except Exception as exc:
+            self._emit_error(f"{label}: {type(exc).__name__} at atom {count}: {exc}")
+            return
+
+        if write and moved:
+            atoms["xyz"] = xyz
+            self._rebuild_after_coordinate_change(viewer, obj_id)
+        elif write and changed_fields:
+            # Properties only: the geometry is untouched, so nothing derived from
+            # coordinates may be recomputed. Assigning raw Angstrom into the
+            # render-space array here shrank the molecule tenfold and moved it off
+            # centre on every `alter`, however innocent.
             viewer._update_view()
 
-        verb = "Iterated over" if read_only else "Altered"
-        self._emit_message(f"{verb} {count} atoms")
+        if ignored:
+            self._emit_error(
+                f"{label}: cannot write {', '.join(sorted(ignored))} -- "
+                + (
+                    "coordinates need alter_state"
+                    if ignored & {"x", "y", "z"}
+                    else "this structure has no such field"
+                )
+            )
+
+        verb = "Iterated over" if not write else "Altered"
+        detail = ""
+        if write:
+            parts = sorted(changed_fields) + (["coordinates"] if moved else [])
+            detail = f" ({', '.join(parts)})" if parts else " (nothing changed)"
+        self._emit_message(f"{verb} {count} atoms{detail}")
+
+    def _rebuild_after_coordinate_change(self, viewer, object_id: str) -> None:
+        """Re-derive everything that depends on coordinates, after moving atoms.
+
+        The render-space positions, the backbone trace, the bond list and the
+        bounding sphere are all functions of the coordinates, so a moved atom
+        invalidates them together. ``set_structure`` is the one path that rebuilds
+        the lot; the secondary structure is carried across it by hand, since which
+        residue is a helix does not depend on where the molecule sits.
+        """
+        entry = viewer._objects.get(object_id)
+        state = getattr(entry, "state", None)
+        if state is None:
+            return
+        secondary = getattr(state, "secondary_structure", None)
+
+        # A detached holder, not the live state: `set_structure` begins by
+        # clearing the active object's arrays, so handing it that same object
+        # nulls the atoms it is about to read and it reports an unsupported type.
+        class _Rebuilt:
+            """The shape :meth:`set_structure` reads: an atoms array."""
+
+        rebuilt = _Rebuilt()
+        rebuilt.atoms = state.atoms
+        rebuilt.xyz = np.asarray(state.atoms["xyz"], dtype=float)
+        rebuilt.n_atoms = int(len(state.atoms))
+
+        with viewer._activate_object(object_id):
+            viewer.set_structure(rebuilt)
+            if secondary is not None:
+                viewer._secondary_structure = secondary
+        viewer._update_view()
 
     @command("remove", aliases=("rm",))
     def remove(self, selection: str = "") -> None:

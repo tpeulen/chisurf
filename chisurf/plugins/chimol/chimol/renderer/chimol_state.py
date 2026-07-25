@@ -105,6 +105,35 @@ class _MolViewObjectState:
     _ca_indices: Optional[np.ndarray] = None
 
 
+def copy_state(state: "_MolViewObjectState") -> "_MolViewObjectState":
+    """Return an independent copy of an object's render state.
+
+    Every array is copied rather than shared, which is the whole point: a copied
+    object that aliased its source's coordinates would move when the original was
+    transformed, and the two would be indistinguishable until someone edited one.
+
+    Parameters
+    ----------
+    state : _MolViewObjectState
+        The state to duplicate.
+
+    Returns
+    -------
+    _MolViewObjectState
+        A new state sharing nothing mutable with the original.
+    """
+    duplicate = _MolViewObjectState()
+    for name in state.__dataclass_fields__:
+        value = getattr(state, name, None)
+        if isinstance(value, np.ndarray):
+            setattr(duplicate, name, value.copy())
+        elif isinstance(value, (list, dict, set)):
+            setattr(duplicate, name, copy.deepcopy(value))
+        else:
+            setattr(duplicate, name, value)
+    return duplicate
+
+
 @dataclass
 class _MolViewObjectEntry:
     object_id: str

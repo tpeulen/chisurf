@@ -16,7 +16,7 @@ def _cmd_with_object():
     viewer = MockViewer()
     window = MockWindow(viewer)
     cmd = Cmd(window)
-    oid = viewer._create_object(name="m")
+    oid = viewer._create_object(name="m").object_id
     atoms = np.zeros(3, dtype=[("xyz", float, 3)])
     atoms["xyz"] = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
     viewer._objects[oid].state.atoms = atoms

@@ -41,13 +41,27 @@ class MockViewer(_get_qobject_base()):
             self.frames = None
             self.frames_raw = None
             self.active_frame = 0
+            self.colors_per_atom_override = None
+            self.secondary_structure = None
+            self.bond_pairs = None
+            self.labels = None
 
     class MockEntry:
+        """Stands in for ``_MolViewObjectEntry``, and must match its shape.
+
+        The field is ``object_id``, not ``id``: while the double disagreed,
+        ``copy_object`` was written against *this* class, used ``copied.id``, and
+        raised AttributeError against the real viewer every time -- a bug no test
+        could see, because the tests only ever met the double.
+        """
+
         def __init__(self, oid, name):
-            self.id = oid
+            self.object_id = oid
             self.name = name
             self.state = MockViewer.MockState()
             self.visible = True
+            self.placeholder = False
+            self.source_path = None
 
     def __init__(self):
         super().__init__()
@@ -122,15 +136,17 @@ class MockViewer(_get_qobject_base()):
              if "res_id" in dtype.names:
                   entry.state.all_atom_res_ids = entry.state.atoms["res_id"]
                   entry.state.residue_ids = np.unique(entry.state.all_atom_res_ids)
-             if "chain_id" in dtype.names:
-                  entry.state.all_atom_chain_ids = entry.state.atoms["chain_id"]
+             # `chain`, as every reader writes it -- the double used to look for
+             # `chain_id`, so this never populated on a real atom array.
+             if "chain" in dtype.names:
+                  entry.state.all_atom_chain_ids = entry.state.atoms["chain"]
                   entry.state.residue_chain_ids = np.array([b"A"] * len(entry.state.residue_ids)) # Mock
         self._update_view()
 
     def add_structure(self, structure: Any, *, name: str | None = None, source_path: str | None = None):
-        oid = self._create_object(name=name)
+        entry = self._create_object(name=name)
         self.set_structure(structure)
-        return oid
+        return entry.object_id
 
     def add_coordinates(
         self,
@@ -143,8 +159,8 @@ class MockViewer(_get_qobject_base()):
         res_names=None,
         chain_ids=None,
     ):
-        oid = self._create_object(name=name)
-        entry = self._objects[oid]
+        entry = self._create_object(name=name)
+        oid = entry.object_id
         entry.state.all_atom_coords = np.asarray(coords, dtype=float)
         entry.state.residue_ids = res_ids
         entry.state.residue_names = res_names
@@ -154,7 +170,7 @@ class MockViewer(_get_qobject_base()):
     def set_frames(self, frames, *, object_id=None):
         oid = object_id or self._active_object_id
         if not oid or oid not in self._objects:
-            oid = self._create_object()
+            oid = self._create_object().object_id
         arr = np.asarray(frames, dtype=float)
         self._objects[oid].state.frames = arr
         self._objects[oid].state.frames_raw = arr
@@ -164,7 +180,7 @@ class MockViewer(_get_qobject_base()):
     def append_frame(self, frame, *, object_id=None):
         oid = object_id or self._active_object_id
         if not oid or oid not in self._objects:
-            oid = self._create_object()
+            oid = self._create_object().object_id
         arr = np.asarray(frame, dtype=float)
         state = self._objects[oid].state
         if state.frames_raw is None:
@@ -197,17 +213,21 @@ class MockViewer(_get_qobject_base()):
         if object_id in self._objects:
             self._active_object_id = object_id
 
-    def _create_object(self, name: str | None = None) -> str:
+    def _create_object(self, name: str | None = None, source_path: str | None = None,
+                       *, placeholder: bool = False):
+        """Return the *entry*, as ``MolView._create_object`` does."""
         idx = len(self._objects) + 1
         oid = f"obj{idx}"
-        oname = name or oid
-        self._add_mock_object(oid, oname)
-        return oid
+        entry = self._add_mock_object(oid, name or oid)
+        entry.source_path = source_path
+        entry.placeholder = placeholder
+        return entry
 
     def _add_mock_object(self, object_id: str, name: str):
         entry = MockViewer.MockEntry(object_id, name)
         self._objects[object_id] = entry
         self._active_object_id = object_id
+        return entry
 
     def remove_object(self, object_id: str) -> bool:
         if object_id in self._objects:
@@ -221,7 +241,7 @@ class MockViewer(_get_qobject_base()):
         if object_id not in self._objects:
             return None
         old = self._objects[object_id]
-        new_id = self._create_object(name=name or f"{old.name}_copy")
+        new_id = self._create_object(name=name or f"{old.name}_copy").object_id
         new = self._objects[new_id]
         new.state = copy.deepcopy(old.state)
         new.visible = old.visible
@@ -231,6 +251,26 @@ class MockViewer(_get_qobject_base()):
     def set_object_visible(self, object_id: str, visible: bool):
         if object_id in self._objects:
             self._objects[object_id].visible = bool(visible)
+
+    def set_atom_color_override(self, indices, colors, *, object_id=None) -> bool:
+        """Mirror ``MolView.set_atom_color_override``: colour some atoms only."""
+        entry = self._objects.get(object_id or self._active_object_id or "")
+        if entry is None or entry.state.atoms is None:
+            return False
+        n_atoms = int(len(entry.state.atoms))
+        base = entry.state.colors_per_atom_override
+        if base is None or len(base) != n_atoms:
+            base = np.ones((n_atoms, 4), dtype=float)
+        else:
+            base = np.asarray(base, dtype=float).copy()
+        arr = np.asarray(colors, dtype=float)
+        if arr.ndim != 2 or arr.shape[1] < 3:
+            return False
+        if arr.shape[1] == 3:
+            arr = np.column_stack([arr, np.ones(arr.shape[0])])
+        base[np.asarray(indices, dtype=int)] = arr[:, :4]
+        entry.state.colors_per_atom_override = base
+        return True
 
     def set_color_mode(self, mode: str):
         self._color_mode = str(mode)
@@ -258,7 +298,9 @@ class MockViewer(_get_qobject_base()):
                     ch_str = ch.decode('utf-8', errors='ignore') if isinstance(ch, bytes) else str(ch)
                 except Exception:
                     ch_str = str(ch)
-                new_id = self._create_object(name=f"{prefix or entry.name}_{ch_str}")
+                new_id = self._create_object(
+                    name=f"{prefix or entry.name}_{ch_str}"
+                ).object_id
                 sub_atoms = atoms[chains == ch].copy()
                 self._objects[new_id].state.atoms = sub_atoms
             entry.visible = False

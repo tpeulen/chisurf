@@ -55,6 +55,40 @@ bearing for this group's work**, and those are tiered below.
 **Tier 1 is closed.** Everything a day's work touches is present. What follows is
 Tier 2, which is real but has workarounds.
 
+## Sweep the surface before extending it
+
+Closing Tier 1 turned up four "implemented but silent" defects in a row, so before
+starting Tier 2 the whole registered command surface was run against a real
+structure and the *data* checked rather than the message. Six more commands were
+answering cheerfully while doing nothing or crashing:
+
+| Command | What it did | Cause |
+| --- | --- | --- |
+| `alter` | reported "Altered 1299 atoms", wrote none | own property map naming `chain_id`, `b_factor`, `occupancy` — no such fields |
+| `alter` | shrank the molecule 10× on every call | assigned raw Angstrom into the render-space array |
+| `spectrum` | ignored expression, palette **and** selection | body was `self.color("spectrum")` |
+| `pseudoatom` | crashed, leaving a broken active object | invented a fifth atom dtype |
+| `copy` | `NameError`, then a broken fallback object | called an undefined `_copy_state`, and `entry.id` |
+| `as` | rejected `as cartoon, polymer` | no selection parameter |
+
+All six are fixed, with `iterate_state`/`alter_state` and a persistent `stored`
+namespace added alongside — without somewhere to put results, `iterate` can only
+print.
+
+### The test double was causing the bugs
+
+`copy_object` used `copied.id` because `MockEntry` had `.id` while the real entry
+has `.object_id`; the `alter` fixture declared `chain_id`/`b_factor` because
+`alter` looked for those names. **Both halves were wrong together, so the tests
+passed and the application was broken.** The double now matches the real viewer's
+shape — `object_id`, an entry returned from `_create_object`, the `chain` field,
+`set_atom_color_override` — and that is the standing rule: a divergence in the
+double is a bug waiting to be written, not a convenience.
+
+Two counts of the same lesson as the `resn` bug, which makes it the dominant
+failure mode in this codebase: **a second copy of a table always drifts, and the
+drift is silent because the feature keeps answering.**
+
 ## Undo is narrower than the word
 
 PyMOL's `undo` is not a command history and matching that scope mattered more than

@@ -40,10 +40,24 @@ class RenderingMixin(BaseCmd):
         self._toggle_representation(str(rep), str(sel), visible=False)
 
     @command("as", aliases=("show_as",))
-    def show_as(self, rep: str) -> None:
-        """Set the primary representation mode (cartoon/lines/sticks/spheres)."""
+    def show_as(self, rep: str, sel: Selection = "") -> None:
+        """Show one representation and hide the rest (PyMOL ``as rep [, sel]``).
+
+        PyMOL's ``as`` takes a selection, and rejecting one made every
+        ``as cartoon, polymer`` in a script a syntax error rather than a
+        narrowing. The selection scopes which atoms end up shown.
+        """
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
+            return
+
+        selection = str(sel).strip()
+        if selection:
+            # `as` is "show this, hide everything else", so with a selection it is
+            # the pair of commands that already know how to scope themselves.
+            self._toggle_representation("everything", selection, visible=False)
+            self._toggle_representation(str(rep).strip().lower(), selection,
+                                        visible=True)
             return
 
         rep = str(rep).strip().lower()
@@ -772,9 +786,105 @@ class RenderingMixin(BaseCmd):
             self._update_sequence_view_safe(window)
 
     @command("spectrum")
-    def spectrum(self, expression: str = "", palette: str = "", sel: Selection = "") -> None:
-        """Color by a spectrum (rainbow). PyMOL ``spectrum`` (mode part only)."""
-        self.color("spectrum")
+    def spectrum(
+        self,
+        expression: str = "count",
+        palette: str = "rainbow",
+        sel: Selection = "",
+        minimum: str = "",
+        maximum: str = "",
+    ) -> None:
+        """Colour atoms by a property (PyMOL ``spectrum``).
+
+        ``spectrum b, blue_white_red, polymer`` ramps b-factor across the palette
+        over the selection only. The range is taken from the data unless given.
+
+        Parameters
+        ----------
+        expression : str, optional
+            Per-atom property: ``count`` (position in the selection), ``b``,
+            ``q``, ``resi``, ``index``, ``pc``/``partial_charge``,
+            ``fc``/``formal_charge``, or any other name ``iterate`` understands.
+            Non-numeric values are enumerated, so ``spectrum resn`` works.
+        palette : str, optional
+            A named palette, or colour names joined by underscores such as
+            ``blue_white_red``.
+        sel : str, optional
+            Atoms to colour; the rest keep their colours.
+        minimum, maximum : str, optional
+            Range ends. Taken from the data when omitted.
+        """
+        from ..analysis.labels import atom_namespace
+        from ..analysis.spectrum import (
+            EXPRESSION_ALIASES,
+            palette_colors,
+            spectrum_colors,
+        )
+
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        selection = str(sel).strip() or "all"
+        try:
+            object_id, _, mask = self._resolve_selection_to_atom_mask(
+                viewer, selection
+            )
+        except Exception as exc:
+            self._emit_error(f"spectrum: {exc}")
+            return
+
+        entry = getattr(viewer, "_objects", {}).get(object_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None:
+            self._emit_error("spectrum: that object has no atoms to colour")
+            return
+
+        chosen = np.nonzero(np.asarray(mask, dtype=bool))[0]
+        if chosen.size == 0:
+            self._emit_error(f"spectrum: '{selection}' matched no atoms")
+            return
+
+        try:
+            names = palette_colors(palette)
+            colors = np.array([self._parse_color_spec(n) for n in names], dtype=float)
+        except (ValueError, KeyError) as exc:
+            self._emit_error(f"spectrum: {exc}")
+            return
+
+        prop = EXPRESSION_ALIASES.get(str(expression).strip().lower(),
+                                      str(expression).strip().lower())
+        if prop in ("", "count"):
+            values = list(range(chosen.size))
+        else:
+            try:
+                values = [
+                    atom_namespace(atoms, int(i), None)[prop] for i in chosen
+                ]
+            except KeyError:
+                self._emit_error(
+                    f"spectrum: '{expression}' is not a per-atom property"
+                )
+                return
+
+        try:
+            ramped, lo, hi = spectrum_colors(
+                values,
+                colors,
+                float(minimum) if str(minimum).strip() else None,
+                float(maximum) if str(maximum).strip() else None,
+            )
+        except ValueError as exc:
+            self._emit_error(f"spectrum: {exc}")
+            return
+
+        if not viewer.set_atom_color_override(chosen, ramped, object_id=object_id):
+            self._emit_error("spectrum: this object cannot carry per-atom colours")
+            return
+        self._emit_message(
+            f"spectrum: {chosen.size} atoms by {prop or 'count'} "
+            f"over {lo:.4g} to {hi:.4g}"
+        )
 
     @command("set_color", mode="raw1")
     def set_color(self, name: str, color: str) -> None:

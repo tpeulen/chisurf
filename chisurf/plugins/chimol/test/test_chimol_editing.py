@@ -22,23 +22,27 @@ def editing_context():
     window = MockWindow(viewer)
     cmd = Cmd(window)
     
+    # The field names every chisurf reader produces. This fixture used to invent
+    # its own -- `chain_id`, `b_factor` -- which happened to match the names
+    # `alter` looked for, so both were wrong together and the test passed while
+    # `alter sele, b=42` did nothing at all on a real structure.
     atom_dtype = [
         ('xyz', 'f4', (3,)),
-        ('atom_name', 'S10'),
+        ('atom_name', 'U5'),
         ('res_id', 'i4'),
-        ('res_name', 'S10'),
-        ('chain_id', 'S4'),
-        ('b_factor', 'f4')
+        ('res_name', 'U5'),
+        ('chain', 'U1'),
+        ('bfactor', 'f4'),
     ]
-    
+
     data = np.zeros(10, dtype=atom_dtype)
     data['xyz'] = np.random.rand(10, 3)
-    data['atom_name'] = [f'A{i}'.encode() for i in range(10)]
+    data['atom_name'] = [f'A{i}' for i in range(10)]
     data['res_id'] = np.arange(10)
-    data['res_name'] = b'ALA'
-    data['chain_id'] = b'A'
-    data['b_factor'] = 10.0
-    
+    data['res_name'] = 'ALA'
+    data['chain'] = 'A'
+    data['bfactor'] = 10.0
+
     struct = Structure(atoms=data, xyz=data['xyz'])
     viewer.set_structure(struct)
     return viewer, cmd
@@ -46,10 +50,35 @@ def editing_context():
 def test_chimol_editing_alter(editing_context):
     viewer, cmd = editing_context
     cmd.do("alter resi 0-4, b = 50.0")
-    
+
     atoms = viewer.get_active_state().atoms
-    assert np.all(atoms['b_factor'][:5] == 50.0)
-    assert np.all(atoms['b_factor'][5:] == 10.0)
+    assert np.all(atoms['bfactor'][:5] == 50.0)
+    assert np.all(atoms['bfactor'][5:] == 10.0)
+
+
+def test_alter_writes_the_field_it_names(editing_context):
+    """`b` must reach `bfactor`, which is the mapping that had drifted.
+
+    `alter` carried its own property table naming `b_factor`, `chain_id` and
+    `occupancy` -- none of which are fields -- so it reported how many atoms it
+    had altered while writing nothing at all.
+    """
+    viewer, cmd = editing_context
+    messages = []
+    cmd.set_message_callback(messages.append)
+
+    cmd.do("alter all, b = 99.0")
+    assert np.all(viewer.get_active_state().atoms['bfactor'] == 99.0)
+    # And it says which field it wrote, so a no-op cannot read as a success.
+    assert 'bfactor' in messages[-1]
+
+
+def test_alter_that_changes_nothing_says_so(editing_context):
+    viewer, cmd = editing_context
+    messages = []
+    cmd.set_message_callback(messages.append)
+    cmd.do("alter all, pass")
+    assert 'nothing changed' in messages[-1]
 
 def test_chimol_editing_remove(editing_context):
     viewer, cmd = editing_context
@@ -164,8 +193,15 @@ def test_chimol_cmd_cartoon_spectrum_settings(editing_context):
     errors = []
     cmd.set_error_callback(errors.append)
 
+    # `spectrum` used to set a global colour mode and discard its expression,
+    # palette and selection -- all three arguments. It now ramps the property
+    # across the palette and writes per-atom colours, so what it did is visible
+    # in the colours rather than in a mode flag.
     cmd.do("spectrum count, rainbow")
-    assert viewer._color_mode == "spectrum"
+    colors = viewer.get_active_state().colors_per_atom_override
+    assert colors is not None
+    assert len(colors) == len(viewer.get_active_state().atoms)
+    assert np.asarray(colors)[:, :3].std() > 0.0   # a ramp, not one colour
 
     cmd.do("cartoon tube")
     from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
@@ -766,8 +802,8 @@ def test_chimol_split_chains(editing_context):
     viewer, cmd = editing_context
     state = viewer.get_active_state()
     atoms = state.atoms
-    atoms['chain_id'][:5] = b'A'
-    atoms['chain_id'][5:] = b'B'
+    atoms['chain'][:5] = 'A'
+    atoms['chain'][5:] = 'B'
 
     messages = []
     errors = []

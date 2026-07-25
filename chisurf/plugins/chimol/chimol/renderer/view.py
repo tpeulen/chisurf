@@ -46,7 +46,12 @@ from ..geometry import (
     unbonded_mask,
 )
 from .base import Renderer
-from .chimol_state import _MolViewObjectEntry, _MolViewObjectState, _StateField
+from .chimol_state import (
+    _MolViewObjectEntry,
+    _MolViewObjectState,
+    _StateField,
+    copy_state,
+)
 from .qtgl import QtGLRenderer
 from .scene import Geometry, Scene, SceneObject
 from .undo import UndoRing
@@ -422,6 +427,74 @@ class MolView(QtWidgets.QWidget):
             self._colors_per_atom_override = arr
         if self._coords is not None:
             self._update_view()
+
+    def set_atom_color_override(
+        self,
+        indices: np.ndarray,
+        colors: np.ndarray,
+        *,
+        object_id: str | None = None,
+    ) -> bool:
+        """Colour some atoms without disturbing the rest.
+
+        :meth:`set_atom_colors` replaces the whole array, so it cannot express
+        "colour this selection": everything outside it would have to be supplied
+        too, and would be lost if it were not. Commands that colour a selection --
+        ``spectrum``, ``color`` -- need this instead.
+
+        Parameters
+        ----------
+        indices : numpy.ndarray
+            Atom indices to set.
+        colors : numpy.ndarray
+            ``(len(indices), 3)`` or ``(len(indices), 4)`` colours.
+        object_id : str, optional
+            Object to colour; defaults to the active one.
+
+        Returns
+        -------
+        bool
+            False when the object carries no per-atom coordinates to colour.
+        """
+        with self._activate_object(object_id):
+            coords = self._all_atom_coords
+            if coords is None:
+                return False
+            n_atoms = int(np.asarray(coords).shape[0])
+
+            current = self._colors_per_atom_override
+            if current is None or np.asarray(current).shape[0] != n_atoms:
+                # Start from whatever the object is currently drawn with, so
+                # colouring a selection does not blank everything else.
+                base = self._atom_rgba_array(n_atoms)
+            else:
+                base = np.asarray(current, dtype=float).copy()
+
+            arr = np.asarray(colors, dtype=float)
+            if arr.ndim != 2 or arr.shape[1] < 3:
+                return False
+            if arr.shape[1] == 3:
+                arr = np.column_stack([arr, np.ones(arr.shape[0])])
+
+            picked = np.asarray(indices, dtype=int)
+            base[picked] = arr[:, :4]
+            self._colors_per_atom_override = base
+
+        self._update_view()
+        return True
+
+    def _atom_rgba_array(self, n_atoms: int) -> np.ndarray:
+        """Per-atom colours as currently drawn, as an ``(n, 4)`` array."""
+        try:
+            rgba = self._atom_rgba(self._colors_per_ca)
+            arr = np.asarray(rgba, dtype=float)
+            if arr.ndim == 2 and arr.shape[0] == n_atoms:
+                if arr.shape[1] == 3:
+                    return np.column_stack([arr, np.ones(n_atoms)])
+                return arr[:, :4].copy()
+        except Exception:
+            pass
+        return np.ones((n_atoms, 4), dtype=float)
 
     def set_residue_colors(self, colors: np.ndarray | None) -> None:
         if colors is None:
@@ -811,11 +884,14 @@ class MolView(QtWidgets.QWidget):
             source_path=entry.source_path,
             placeholder=entry.placeholder,
         )
-        copied.state = _copy_state(entry.state)
+        copied.state = copy_state(entry.state)
         copied.visible = bool(entry.visible)
-        self._active_object_id = copied.id
+        # `object_id`, not `id`: the entry has no `id`, so this raised
+        # AttributeError, which the `copy` command caught as "no such method" and
+        # answered with a fallback that left a second, broken object behind.
+        self._active_object_id = copied.object_id
         self._update_view()
-        return copied.id
+        return copied.object_id
 
     # ------------------------------------------------------------------
     # Animation API

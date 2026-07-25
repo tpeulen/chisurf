@@ -1,6 +1,67 @@
 # Update Log
 
 ## 2026-07-25
+* **Six chimol commands were reporting success while doing nothing.** Closing
+  Tier 1 of the parity tracker turned up four "implemented but silent" defects in a
+  row, so rather than start Tier 2 the whole registered command surface was run
+  against a real structure with the *data* checked instead of the message. That
+  found six more:
+
+  - **`alter` wrote nothing.** It carried its own property map naming `chain_id`,
+    `b_factor` and `occupancy` — none of which are fields — so `alter chain E, b=42`
+    reported "Altered 1299 atoms" and changed not one. Now uses `ATOM_PROPERTIES`,
+    the same table `label` reads.
+  - **`alter` corrupted the geometry.** It assigned raw Angstrom into
+    `all_atom_coords`, which is scaled by ten and centred, so *every* `alter` —
+    even one that only touched a b-factor — shrank the molecule tenfold and moved
+    it off centre. Properties and coordinates are now separated as PyMOL separates
+    them, which is what `alter` versus `alter_state` is for.
+  - **`spectrum` discarded all three of its arguments.** The body was
+    `self.color("spectrum")`: expression, palette and selection ignored, a global
+    colour mode set instead. Now ramps the property across the palette per
+    `spectrumany`, honours the selection, takes an explicit range, and enumerates
+    non-numeric values so `spectrum resn` works. New `analysis/spectrum.py` carries
+    PyMOL's palette table.
+  - **`pseudoatom` crashed** and left a half-built object active, breaking every
+    later selection — it invented a fifth atom dtype incompatible with every
+    reader.
+  - **`copy` raised `NameError`** on an undefined `_copy_state`, then fell into a
+    fallback that left a second broken object behind.
+  - **`as` rejected a selection**, making every `as cartoon, polymer` in a script a
+    syntax error.
+
+  Added alongside: `iterate_state`/`alter_state`, and a persistent `stored`
+  namespace — without somewhere to put results, `iterate` can only print.
+
+* **The test double was causing the bugs it hid.** `copy_object` used `copied.id`
+  because `MockEntry` had `.id` while the real entry has `.object_id`; the `alter`
+  fixture declared `chain_id`/`b_factor` because `alter` looked for those names.
+  Both halves were wrong together, so the tests passed and the application was
+  broken. `MockViewer` now matches `MolView`'s shape — `object_id`, an entry
+  returned from `_create_object`, the `chain` field, `set_atom_color_override` — and
+  that is the standing rule: a divergence in the double is a bug waiting to be
+  written.
+
+  Together with the `resn` parser bug this is now the dominant failure mode here:
+  **a second copy of a table always drifts, and the drift is silent because the
+  feature keeps answering.**
+
+  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md).
+
+
+* **Phasor cursors are regions now — so a cluster that is not an ellipse can be
+  gated.** `plugins/microscopy/img_pixel_phasor`. The plugin had
+  `mask_from_circular_cursor` and `mask_from_elliptic_cursor`, each
+  re-implementing an inside-test that the ROI system already answers, and
+  offering exactly the two shapes phasorpy offers. `cursor_roi` builds the
+  cursor as an `EllipseROI` and `mask_from_cursor(g, s, roi)` is the general
+  form: the `(g, s)` plane is a pair of axes like any other, so a polygon drawn
+  round a species cluster gates it, and a ring is `outer - inner`. The two old
+  functions survive as one-line wrappers, bit-identical (the rotation
+  convention matched already). The `phasor.cursor_mask` RPC takes a serialised
+  region in place of `center`/`kind` and returns the region it used, so a gate
+  drawn once replays on the next measurement.
+
 
 * **Phasor cursors are regions now — so a cluster that is not an ellipse can be
   gated.** `plugins/microscopy/img_pixel_phasor`. The plugin had

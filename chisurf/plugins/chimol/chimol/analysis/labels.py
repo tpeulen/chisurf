@@ -20,9 +20,20 @@ from __future__ import annotations
 
 import numpy as np
 
-__all__ = ["ATOM_PROPERTIES", "label_expression", "evaluate_labels"]
+__all__ = [
+    "ATOM_PROPERTIES",
+    "atom_namespace",
+    "label_expression",
+    "evaluate_labels",
+]
 
 #: PyMOL property name -> the field it reads in chimol's atom array.
+#:
+#: This is the one mapping between PyMOL's vocabulary and the atom dtype, and it
+#: is shared by ``label``, ``iterate`` and ``alter``. It has to be: ``alter`` used
+#: to carry a second, hand-written copy naming ``chain_id``, ``b_factor`` and
+#: ``occupancy`` -- none of which are fields -- so ``alter sele, b=42`` wrote
+#: nothing at all while reporting how many atoms it had altered.
 ATOM_PROPERTIES: dict[str, str] = {
     "name": "atom_name",
     "resn": "res_name",
@@ -35,7 +46,16 @@ ATOM_PROPERTIES: dict[str, str] = {
     "q": "occupancy",
     "vdw": "radius",
     "index": "i",
+    "formal_charge": "charge",
+    "partial_charge": "charge",
+    "mass": "mass",
 }
+
+#: Names that exist in the namespace but are computed, not stored, so writing to
+#: them cannot be persisted. ``alter`` reports an attempt rather than dropping it.
+DERIVED_PROPERTIES: frozenset[str] = frozenset(
+    {"oneletter", "x", "y", "z", "rank"}
+)
 
 #: What a label expression is allowed to call. No builtins, no imports.
 _SAFE_BUILTINS: dict[str, object] = {
@@ -101,6 +121,31 @@ _MENU_EXPRESSIONS: dict[str, str] = {
     "occupancy": "'%1.2f' % q",
     "vdw radius": "'%1.2f' % vdw",
 }
+
+
+def atom_namespace(
+    atoms: np.ndarray, index: int, coords: np.ndarray | None = None
+) -> dict:
+    """Build the PyMOL property namespace for one atom.
+
+    Shared by ``label``, ``iterate`` and ``alter`` so the three cannot disagree
+    about what ``b`` or ``chain`` means.
+
+    Parameters
+    ----------
+    atoms : numpy.ndarray
+        Structured atom array.
+    index : int
+        Atom to describe.
+    coords : numpy.ndarray, optional
+        ``(N, 3)`` positions supplying ``x``/``y``/``z``.
+
+    Returns
+    -------
+    dict
+        PyMOL's property names bound to this atom's values.
+    """
+    return _properties_for(atoms, index, coords)
 
 
 def _properties_for(atoms: np.ndarray, index: int, coords: np.ndarray) -> dict:

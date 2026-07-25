@@ -204,10 +204,20 @@ class LifecycleMixin(BaseCmd):
             self._emit_error(f"Unknown source object: {source}")
             return
 
+        # Only a *missing* method falls back. Catching AttributeError around the
+        # whole call meant any attribute slip inside `copy_object` was read as
+        # "this viewer cannot copy", and the fallback then left a second, broken
+        # object behind instead of reporting the bug.
         try:
-            new_id = viewer.copy_object(src_id, name=target)
+            copy_object = viewer.copy_object
         except AttributeError:
-            new_id = self._copy_object_fallback(viewer, src_id, target)
+            copy_object = None
+
+        try:
+            if copy_object is None:
+                new_id = self._copy_object_fallback(viewer, src_id, target)
+            else:
+                new_id = copy_object(src_id, name=target)
         except Exception as exc:
             self._emit_error(f"Failed to copy {source}: {exc}")
             return
