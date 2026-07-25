@@ -72,10 +72,14 @@ def vm_rt_to_vv_vh(
     ...     vm,
     ...     anisotropy_spectrum
     ... )
-    >>> vv[0]  # doctest: +ELLIPSIS
-    1.2...
-    >>> vh[0]  # doctest: +ELLIPSIS
-    0.9...
+
+    Both rotation components contribute, so ``r(0)`` equals their amplitude
+    sum ``r0 = 0.38``: VV starts at ``1 + 2*r0`` and VH at ``1 - r0``.
+
+    >>> float(vv[0])
+    1.76
+    >>> float(vh[0])
+    0.62
 
     Notes
     -----
@@ -89,9 +93,9 @@ def vm_rt_to_vv_vh(
     """
     rt = np.zeros_like(vm)
     n_anisotropies = int(anisotropy_spectrum.shape[0] // 2)
-    for i in range(0, n_anisotropies, 2):
-        b = anisotropy_spectrum[i]
-        rho = anisotropy_spectrum[i + 1]
+    for i in range(n_anisotropies):
+        b = anisotropy_spectrum[2 * i]
+        rho = anisotropy_spectrum[2 * i + 1]
         rt += b * np.exp(-times / rho)
     vv = vm * (1 + 2.0 * rt)
     vh = vm * (1. - g_factor * rt)

@@ -104,7 +104,7 @@ class Tests(unittest.TestCase):
 
     def test_vm_vv_vh(self):
         times = np.linspace(0, 50, 32)
-        lifetime_spectrum = np.array([1., 4], dtype=np.float)
+        lifetime_spectrum = np.array([1., 4], dtype=float)
         times, vm = chisurf.core.fluorescence.general.calculate_fluorescence_decay(
             lifetime_spectrum=lifetime_spectrum,
             time_axis=times
@@ -115,26 +115,15 @@ class Tests(unittest.TestCase):
             vm,
             anisotropy_spectrum
         )
-        vv_ref = np.array(
-            [1.20000000e+00, 6.77248886e-01, 4.46852328e-01, 2.98312250e-01,
-             1.99308989e-01, 1.33170004e-01, 8.89790065e-02, 5.94523193e-02,
-             3.97237334e-02, 2.65418577e-02, 1.77342397e-02, 1.18493310e-02,
-             7.91726329e-03, 5.29000820e-03, 3.53457826e-03, 2.36166808e-03,
-             1.57797499e-03, 1.05434168e-03, 7.04470208e-04, 4.70699664e-04,
-             3.14503256e-04, 2.10138875e-04, 1.40406645e-04, 9.38142731e-05,
-             6.26830580e-05, 4.18823877e-05, 2.79841867e-05, 1.86979480e-05,
-             1.24932435e-05, 8.34750065e-06, 5.57747611e-06, 3.72665317e-06]
+        # Reference computed analytically, independent of the implementation:
+        # every (beta_i, rho_i) pair of the interleaved rotation spectrum
+        # contributes, so r(0) = sum(beta_i) = r0 = 0.38.
+        rt_ref = (
+            0.1 * np.exp(-times / 0.6) + (0.38 - 0.1) * np.exp(-times / 10.0)
         )
-        vh_ref = np.array(
-            [9.00000000e-01, 6.63617368e-01, 4.46232934e-01, 2.98284106e-01,
-             1.99307711e-01, 1.33169946e-01, 8.89790039e-02, 5.94523192e-02,
-             3.97237334e-02, 2.65418577e-02, 1.77342397e-02, 1.18493310e-02,
-             7.91726329e-03, 5.29000820e-03, 3.53457826e-03, 2.36166808e-03,
-             1.57797499e-03, 1.05434168e-03, 7.04470208e-04, 4.70699664e-04,
-             3.14503256e-04, 2.10138875e-04, 1.40406645e-04, 9.38142731e-05,
-             6.26830580e-05, 4.18823877e-05, 2.79841867e-05, 1.86979480e-05,
-             1.24932435e-05, 8.34750065e-06, 5.57747611e-06, 3.72665317e-06]
-        )
+        vv_ref = vm * (1. + 2. * rt_ref)
+        vh_ref = vm * (1. - rt_ref)
+        self.assertAlmostEqual(float(rt_ref[0]), 0.38)
         self.assertEqual(
             np.allclose(
                 vv_ref,

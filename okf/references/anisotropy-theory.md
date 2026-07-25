@@ -89,6 +89,13 @@ $[\beta_1,\rho_1,\dots]$ — the exact analogue of the lifetime spectrum. A
 $r(t) = (r_0 - r_\infty)e^{-t/\rho} + r_\infty$, whose $r_\infty/r_0$ gives the
 restricted-cone order parameter.
 
+All interleaved pairs contribute. `vm_rt_to_vv_vh` previously strode the flat
+spectrum with `range(0, n_anisotropies, 2)` where `n_anisotropies` was already
+`len//2`, so only $(\beta_1,\rho_1)$ was ever read and every further rotation
+component was silently dropped; fixed to iterate all `n_anisotropies` pairs. Only
+this time-domain helper was affected — `calculcate_spectrum` (the fitting path)
+composes spectra through `elte2`/`e1tn` and always handled every component.
+
 # Perrin equation: rho, volume, viscosity
 
 For a spherical rotor,

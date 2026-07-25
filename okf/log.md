@@ -2,6 +2,32 @@
 
 ## 2026-07-25
 
+* **Anisotropy: `vm_rt_to_vv_vh` silently dropped every rotation component after
+  the first.** The time-domain VV/VH helper computed
+  `n_anisotropies = len(spectrum)//2` and then iterated
+  `range(0, n_anisotropies, 2)` — striding an already-halved count — so for the
+  documented interleaved spectrum `[b1, rho1, b2, rho2, ...]` only the first
+  `(b, rho)` pair was ever read. A two-component rotation returned bit-identical
+  output to a one-component one. Fixed to iterate all `n_anisotropies` pairs, so
+  `r(0)` again equals the amplitude sum `r0`. **Blast radius is limited to this
+  simulation helper**: the fitting path (`calculcate_spectrum` →
+  `Anisotropy.get_decay`) composes spectra via `elte2`/`e1tn` and always honoured
+  every component. The bug survived because its only test,
+  `test/fluorescence/test_fluorescence.py::test_vm_vv_vh`, has been erroring out
+  on the NumPy-2 removal of `np.float` — and its hard-coded reference arrays had
+  been generated from the buggy code, even though the test's own spectrum
+  `[0.1, 0.6, 0.38-0.1, 10.0]` is written so the amplitudes sum to `r0 = 0.38`.
+  Rewrote that test to build its expectation **analytically** (independent of the
+  implementation) and assert `r(0) == 0.38`; the module doctest, dead for the same
+  NumPy-2 reason (`np.float64(...)` repr), now uses `float(...)` and shows the
+  corrected `vv[0] = 1 + 2*r0 = 1.76`, `vh[0] = 1 - r0 = 0.62`. Updated
+  [references/anisotropy-theory.md](/references/anisotropy-theory.md).
+  *Pre-existing and left alone (not caused by this change):*
+  `test_fcs` still dies on `np.float`, and
+  `test_fluorescence_anisotropy_decay_calculcate_spectrum` asserts a stale mixing
+  expectation (`-0.3` where the current union/concatenate convention yields
+  `-0.15`) — that one is a semantic question about which convention is intended.
+
 * **i18n — `tttr_microtime_shifter` made translatable (dock-tool `i18n.tr`
   path).** Wrapped every static UI string in the Micro-time Shifter tool
   (`plugins/tttr/tttr_microtime_shifter/gui/tool.py`, 48 `i18n.tr` calls): window
