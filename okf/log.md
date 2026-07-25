@@ -2,6 +2,17 @@
 
 ## 2026-07-25
 
+
+* **`pyqtgraph.dockarea` deprecated repo-wide → chisurf dock impl (PRD-64).**
+  Removed every `pyqtgraph.dockarea` `Dock`/`DockArea` usage in favour of
+  `chisurf.gui.widgets.dock_area.dock_area`: `plots/parameter_scan` +
+  `plots/av_plot` (single panel) → `DockArea.addTab`; `plots/lineplot`'s vertical
+  residuals/a-corr/data stack → `DockSplitter` (titles hidden by default, so it's
+  a pixel-faithful match). New `test_no_pyqtgraph_dockarea` guard forbids
+  reintroduction anywhere. Before/after screenshots confirmed identical layouts.
+  Those files still import pyqtgraph for their plots / `pyqtgraph.opengl`, so they
+  stay allow-listed — only the dock system moved. See [PRD-64](prds/prd-64.md).
+
 * **"Loading takes minutes" was not slowness, and not tttrlib.** A ConfoCor3
   `.fcs` never reaches tttrlib — the format is text. Two independent defects
   in sequence produced the symptom.
