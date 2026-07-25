@@ -670,9 +670,9 @@ class TcPdaModel(ModelCurve):
         # high-FRET state raises one channel and lowers another. Both routes
         # then agree on the mean vector to 1e-4 and disagree on the likelihood
         # by 5%, which is the joint being wrong, not the marginals.
-        from chisurf.core.models.pda.dynamic_mc import (
+        from chisurf.core.fluorescence.kinetics import (
             equilibrium_populations,
-            gillespie_time_fractions,
+            occupation_time_fractions,
         )
 
         # Sampling cost is unbounded in transitions per window, and at very
@@ -692,7 +692,7 @@ class TcPdaModel(ModelCurve):
             )
             return logsumexp(np.log(weights)[:, None] + node, axis=0)
 
-        fractions = gillespie_time_fractions(
+        fractions = occupation_time_fractions(
             rates, window, int(self.dynamic_samples), int(self.dynamic_seed)
         )
         # Every distinct trajectory would otherwise become a likelihood node,

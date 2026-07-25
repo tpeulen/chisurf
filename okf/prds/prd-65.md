@@ -286,12 +286,30 @@ therefore samples occupation times with the Gillespie the two-colour three-state
 model already uses (fixed seed, so the objective stays deterministic), and the
 moment match is kept only where it is valid.
 
-**Upstream opportunity.** `tttrlib`'s simulation engine already evolves species
-state through the off-diagonal `k_nrad` matrix — chisurf's FCS simulator drives
-interconversion that way. If the engine exposed the **state trajectory** as an
-output, chisurf could drop its own Gillespie and consume that instead, and the
-same output would serve HMM ground truth and burst-wise validation. Worth
-raising against tttrlib.
+**Upstream, done.** `tttrlib`'s simulation engine already evolved species state
+through the off-diagonal `k_nrad` matrix; it now also **records** it.
+`SimEngine::set_state_log(True)` writes one row per transition — window, time,
+molecule, from, to — with a birth (`from == -1`) carrying the initial state and a
+death (`to == -1`) marking a molecule leaving the box, so the log is
+self-contained. It is event-based rather than strided on purpose: the existing
+`set_trajectory_reporter(stride)` cannot represent a state entered and left
+between two samples, which is precisely the fast-exchange regime dynamic PDA
+exists to measure. Transitions are captured on all three paths that can produce
+them, including a coasting molecule caught up on waking (dated to the windows in
+which they happened, not to the wake-up) and independent-molecule mode.
+`state_occupancy()` reduces the log to per-bin occupancy fractions, splitting
+intervals across bins with a difference array so a dwell spanning a thousand bins
+costs O(1).
+
+chisurf consumes it through
+`chisurf.core.fluorescence.kinetics.occupation_time_fractions`, which replaces the
+Python Gillespie in both the two-colour three-state model and the tcPDA multistate
+path — one sampler, not three. Each window is one immobile, dark molecule started
+from the equilibrium populations, so rows are independent draws, matching PAM's
+scheme. Measured against the retained Python reference
+(`occupation_time_fractions_reference`, also the fallback for an engine that
+predates the state log): distributions agree by KS at 1e2/1e3/1e4 Hz, and the
+engine is 8x faster at 6 transitions per window, 13x at 60, 11x at 600.
 
 Remaining: a
 `docs/concepts` page and numbered guide, and the unresolved error-surface width

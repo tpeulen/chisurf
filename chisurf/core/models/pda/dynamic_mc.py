@@ -15,8 +15,11 @@ a mean per-photon green probability ``pG_i`` (see
 :func:`chisurf.core.models.pda.common.green_probability_from_efficiency`). A
 rate matrix ``K`` (Hz) with ``K[target, source]`` = rate ``source -> target``
 governs the kinetics. For ``n_windows`` observation windows of length
-``sim_time`` we Gillespie-simulate the trajectory and record the fraction of
-time spent in each state. The time-averaged green probability of a window is
+``sim_time`` we sample the trajectory and record the fraction of time spent in
+each state — via
+:func:`chisurf.core.fluorescence.kinetics.occupation_time_fractions`, which runs
+the photon simulator's kinetics rather than keeping a second Gillespie loop
+here. The time-averaged green probability of a window is
 ``pG(f) = f1 pG1 + f2 pG2 + f3 pG3`` (equal-brightness assumption); the
 histogram of ``pG`` over all windows becomes the amplitude/probability spectrum
 handed to :class:`tttrlib.Pda`.
@@ -35,6 +38,7 @@ import chisurf as cs
 import chisurf.core.models.tcspc.fret
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fluorescence.general import distance_to_fret_efficiency
+from chisurf.core.fluorescence.kinetics import occupation_time_fractions
 from chisurf.core.math.functions.distributions import normal_distribution
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.pda.common import (
@@ -44,79 +48,6 @@ from chisurf.core.models.pda.common import (
     resolve_fit_settings,
 )
 from chisurf.core.models.pda.nusiance import PdaFretNuisance
-
-
-def equilibrium_populations(rate_matrix: np.ndarray) -> np.ndarray:
-    """Return the steady-state populations of a CTMC generator.
-
-    ``rate_matrix[target, source]`` is the rate ``source -> target`` (Hz); the
-    diagonal is ignored and recomputed as ``-sum(column)``. Solves ``Q p = 0``
-    with ``sum(p) = 1`` (PAM's approach).
-    """
-    K = np.array(rate_matrix, dtype=float)
-    n = K.shape[0]
-    np.fill_diagonal(K, 0.0)
-    Q = K.copy()
-    for i in range(n):
-        Q[i, i] = -np.sum(K[:, i])
-    A = np.vstack([Q, np.ones(n)])
-    b = np.zeros(n + 1)
-    b[-1] = 1.0
-    p, *_ = np.linalg.lstsq(A, b, rcond=None)
-    p = np.clip(p, 0.0, None)
-    s = p.sum()
-    return p / s if s > 0 else np.full(n, 1.0 / n)
-
-
-def gillespie_time_fractions(
-    rate_matrix: np.ndarray,
-    sim_time: float,
-    n_windows: int,
-    seed: int = 1,
-) -> np.ndarray:
-    """Simulate time-fractions per state via the Gillespie algorithm.
-
-    Ports ``dyn_sim_arbitrary_states_gillespie.m``. For each of ``n_windows``
-    windows of duration ``sim_time`` (s), draws exponential dwell times and
-    Markov transitions from ``rate_matrix`` (Hz, ``K[target, source]``) and
-    returns the fraction of time spent in each state.
-
-    Returns
-    -------
-    numpy.ndarray
-        Array of shape ``(n_windows, n_states)`` whose rows sum to 1.
-    """
-    K = np.array(rate_matrix, dtype=float)
-    np.fill_diagonal(K, 0.0)
-    n = K.shape[0]
-    exit_rates = K.sum(axis=0)  # column sums: total exit rate from each state
-    p_eq = equilibrium_populations(K)
-
-    rng = np.random.default_rng(int(seed))
-    initial = rng.choice(n, size=int(n_windows), p=p_eq)
-    out = np.zeros((int(n_windows), n), dtype=float)
-
-    for w in range(int(n_windows)):
-        state = int(initial[w])
-        t = 0.0
-        while t < sim_time:
-            rate = exit_rates[state]
-            if rate <= 0.0:
-                out[w, state] += sim_time - t
-                break
-            dwell = rng.exponential(1.0 / rate)
-            if t + dwell >= sim_time:
-                out[w, state] += sim_time - t
-                break
-            out[w, state] += dwell
-            t += dwell
-            # choose the next state ~ K[:, state] / exit_rate
-            probs = K[:, state] / rate
-            state = int(rng.choice(n, p=probs))
-
-    totals = out.sum(axis=1, keepdims=True)
-    totals[totals == 0.0] = 1.0
-    return out / totals
 
 
 class PdaDynamicThreeStates(FittingParameterGroup):
@@ -255,7 +186,7 @@ class PdaDynamicThreeStateModel(ModelCurve):
         n_windows = self.states.n_windows
         key = (K.tobytes(), float(sim_time), int(n_windows), int(self.seed))
         if key != self._mc_cache_key or self._mc_fractions is None:
-            self._mc_fractions = gillespie_time_fractions(K, sim_time, n_windows, self.seed)
+            self._mc_fractions = occupation_time_fractions(K, sim_time, n_windows, self.seed)
             self._mc_cache_key = key
         return self._mc_fractions
 

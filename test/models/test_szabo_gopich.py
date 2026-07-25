@@ -426,3 +426,79 @@ def test_the_simulated_route_works_where_the_approximation_does_not():
     assert np.isfinite(slow) and np.isfinite(fast)
     # Slow (states resolved) and fast (averaged) are different physics.
     assert slow != pytest.approx(fast, rel=1e-3)
+
+
+# --- sampled occupancy: the engine path against the reference it replaces -----------
+
+
+def _kolmogorov_smirnov(a, b):
+    """Two-sample KS statistic, without pulling in scipy for one number."""
+    grid = np.union1d(a, b)
+    ca = np.searchsorted(np.sort(a), grid, side="right") / a.size
+    cb = np.searchsorted(np.sort(b), grid, side="right") / b.size
+    return float(np.max(np.abs(ca - cb)))
+
+
+@pytest.mark.parametrize("rate", [1e2, 1e3, 1e4])
+def test_the_engine_and_the_reference_sample_the_same_occupancy_law(rate):
+    from chisurf.core.fluorescence.kinetics import (
+        occupation_time_fractions,
+        occupation_time_fractions_reference,
+    )
+
+    K = np.array([[0.0, rate, rate / 2], [rate, 0.0, rate], [rate / 2, rate, 0.0]])
+    window, n = 2e-3, 4000
+    fast = occupation_time_fractions(K, window, n, seed=5)
+    slow = occupation_time_fractions_reference(K, window, n, seed=5)
+
+    assert fast.shape == slow.shape == (n, 3)
+    assert np.allclose(fast.sum(axis=1), 1.0, atol=1e-9)
+    # Independent samplers with independent streams, so compare distributions,
+    # not draws: the observable a dynamic PDA actually consumes is a projection
+    # of the occupancy onto per-state probabilities.
+    projection = np.array([0.8, 0.5, 0.2])
+    assert _kolmogorov_smirnov(fast @ projection, slow @ projection) < 0.05
+    assert np.allclose(fast.mean(axis=0), slow.mean(axis=0), atol=0.02)
+    assert np.allclose(fast.std(axis=0), slow.std(axis=0), atol=0.02)
+
+
+def test_sampled_occupancy_recovers_the_equilibrium_populations():
+    from chisurf.core.fluorescence.kinetics import (
+        equilibrium_populations,
+        occupation_time_fractions,
+    )
+
+    K = np.array([[0.0, 200.0, 50.0], [150.0, 0.0, 300.0], [100.0, 250.0, 0.0]])
+    # A window far longer than the relaxation time: every window self-averages.
+    fractions = occupation_time_fractions(K, window=2.0, n_samples=1500, seed=3)
+    assert np.allclose(fractions.mean(axis=0), equilibrium_populations(K), atol=0.02)
+
+
+def test_sampled_occupancy_is_deterministic_for_a_fixed_seed():
+    from chisurf.core.fluorescence.kinetics import occupation_time_fractions
+
+    K = np.array([[0.0, 5e3, 1e3], [3e3, 0.0, 2e3], [1e3, 4e3, 0.0]])
+    a = occupation_time_fractions(K, 1e-3, 500, seed=11)
+    b = occupation_time_fractions(K, 1e-3, 500, seed=11)
+    c = occupation_time_fractions(K, 1e-3, 500, seed=12)
+    assert np.array_equal(a, b)          # a fit objective must not wander
+    assert not np.array_equal(a, c)
+
+
+def test_an_absorbing_state_holds_the_whole_window():
+    from chisurf.core.fluorescence.kinetics import occupation_time_fractions
+
+    # State 2 is entered but never left; state 0 and 1 exchange.
+    K = np.array([[0.0, 1e3, 0.0], [1e3, 0.0, 0.0], [1e2, 1e2, 0.0]])
+    fractions = occupation_time_fractions(K, 5e-3, 400, seed=2)
+    assert np.allclose(fractions.sum(axis=1), 1.0, atol=1e-9)
+    # Equilibrium is the absorbing state, so almost every window ends up there.
+    assert fractions[:, 2].mean() > 0.9
+
+
+def test_a_single_state_occupies_itself_completely():
+    from chisurf.core.fluorescence.kinetics import occupation_time_fractions
+
+    fractions = occupation_time_fractions(np.zeros((1, 1)), 1e-3, 20, seed=1)
+    assert fractions.shape == (20, 1)
+    assert np.allclose(fractions, 1.0)

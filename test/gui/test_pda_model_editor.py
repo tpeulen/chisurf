@@ -280,10 +280,10 @@ def test_dynamic_pda_recovers_exchange_and_rejects_the_static_model(qapp):
 
 
 def test_three_state_mc_gillespie_equilibrium():
-    """The Gillespie MC recovers the analytic equilibrium populations."""
-    from chisurf.core.models.pda.dynamic_mc import (
+    """The sampled occupancies recover the analytic equilibrium populations."""
+    from chisurf.core.fluorescence.kinetics import (
         equilibrium_populations,
-        gillespie_time_fractions,
+        occupation_time_fractions,
     )
 
     # K[target, source]; symmetric-ish 3-state scheme.
@@ -296,7 +296,7 @@ def test_three_state_mc_gillespie_equilibrium():
     assert abs(p_eq.sum() - 1.0) < 1e-9 and np.all(p_eq >= 0)
 
     # Long windows -> mean time-fraction converges to equilibrium populations.
-    fr = gillespie_time_fractions(K, sim_time=2.0, n_windows=1500, seed=3)
+    fr = occupation_time_fractions(K, window=2.0, n_samples=1500, seed=3)
     assert fr.shape == (1500, 3)
     assert np.allclose(fr.sum(axis=1), 1.0, atol=1e-9)
     assert np.allclose(fr.mean(axis=0), p_eq, atol=0.05)

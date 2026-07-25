@@ -230,6 +230,27 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   `exp(Qt)` is not symmetric, so the wrong placement understated the variance by
   26%; the three-state simulation check had passed with it.
 
+- **One occupancy sampler, in the simulation engine (2026-07-25).** Where the
+  moment match is not valid — slow exchange, where the distribution is multimodal
+  and no two-parameter shape has three peaks — the answer is to sample the
+  kinetics. That sampling now runs in the photon simulator rather than in a
+  Python loop here: `tttrlib`'s `SimEngine` gained a **state-trajectory log**
+  (one row per transition, plus births and deaths, so it is self-contained) and a
+  `state_occupancy()` reducer, and
+  `chisurf.core.fluorescence.kinetics.occupation_time_fractions` drives it —
+  one immobile, dark molecule per observation window, started from the
+  equilibrium populations, which is PAM's independent-window scheme. It replaces
+  the Gillespie loop in `dynamic_mc.py` **and** the copy the tcPDA multistate path
+  was using, and absorbs the duplicate `equilibrium_populations` that had grown in
+  `dynamic_mc.py` alongside the one in `kinetics.py`.
+  The Python loop survives as `occupation_time_fractions_reference`: the readable
+  definition, the fallback for an engine that predates the state log, and the
+  thing the engine is tested against (KS agreement at 1e2/1e3/1e4 Hz). The engine
+  is 8x faster at 6 transitions per observation window, 13x at 60 and 11x at 600 —
+  the regime where sampling is needed at all. The event log matters rather than
+  the engine's existing strided reporter because a stride cannot represent a state
+  entered and left between two samples, which is exactly fast exchange.
+
 **Follow-ups (not yet done):**
 - GUI button wiring the live light-path plugin session to a selected PDA model
   (the pure bridge API is done and tested; only the one-click GUI hook remains).
