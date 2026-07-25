@@ -186,9 +186,18 @@ biased in both directions, so `circularity` can exceed 1 (a 7x7 square scores
   own extent snaps the handles to pixel edges, and doing that on every redraw
   makes an interactive gate creep.
 
-Still on their own implementations, and the natural next migrations: the 2-D
-residual plot's rectangle, and ndX's `DataSelection` hierarchy (which lives in a
-separate package and would need the dependency direction thought through).
+* **2-D residual plot** (`gui/plots/residual_image.py`) — the rectangle that
+  picks a lag window maps to the fit range through `ROI.to_indices`, the
+  primitive for "a region on a 2-D map → entries of the flattened data vector"
+  an image correlation fits. Verified to reproduce the previous hand-rolled
+  `iy0 * nx + ix0` arithmetic exactly.
+
+The last one still on its own is ndX's `DataSelection` hierarchy — a
+Gaussian/Mahalanobis ellipse, a 1-D interval and a histogram bitmap, with the
+opposite mask convention (`True` = excluded). It lives in a separate package,
+so a bridge belongs on the ChiSurf side; `MaskROI.from_histogram` and
+`EllipseROI` now cover both of its 2-D shapes, which is what such a bridge would
+need.
 
 # Citations
 

@@ -8,6 +8,7 @@ from qtpy import QtWidgets, QtCore
 import chisurf.core.fitting
 from chisurf.gui.plots import plotbase
 from chisurf.core.actions import record_action
+from chisurf.core.roi import RectangleROI
 
 
 class _DraggableTextItem(pg.TextItem):
@@ -777,12 +778,12 @@ class Residual2DPlot(plotbase.Plot):
         ix1 = max(ix0 + 1, min(ix1, nx))
         iy1 = max(iy0 + 1, min(iy1, ny))
 
-        # Map symmetric 2D rectangle to a contiguous 1D index range in
-        # row-major order.
-        xmin_idx = iy0 * nx + ix0
-        xmax_idx = (iy1 - 1) * nx + (ix1 - 1)
-        if xmax_idx < xmin_idx:
-            xmin_idx, xmax_idx = xmax_idx, xmin_idx
+        # The 1-D data vector is this map flattened row-major, so the selected
+        # pixels *are* a set of data indices — the shared region says which.
+        selected = RectangleROI.from_slices((iy0, iy1), (ix0, ix1)).to_indices((ny, nx))
+        if selected.size == 0:
+            return
+        xmin_idx, xmax_idx = int(selected[0]), int(selected[-1])
 
         # Propagate to the current fit's range using the same mechanism as
         # LinePlot so downstream widgets and macros stay in sync.

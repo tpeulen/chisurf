@@ -280,6 +280,23 @@ def test_segmented_regions_gate_molecule_positions():
     np.testing.assert_array_equal(roi.contains(positions), [True, False, True])
 
 
+def test_a_region_addresses_the_flattened_data_vector():
+    """A fit holds a 1-D vector; a region on the map says which entries it means.
+
+    An image correlation flattens its lag map row-major before fitting, so the
+    2-D residual plot's rectangle has to become data indices. Doing that
+    arithmetic by hand in the plot is how the two conventions drift apart.
+    """
+    roi = RectangleROI.from_slices((1, 3), (2, 4))
+    np.testing.assert_array_equal(roi.to_indices((4, 5)), [7, 8, 12, 13])
+
+    # First and last index bracket the contiguous range a fit range needs.
+    indices = roi.to_indices((4, 5))
+    assert (int(indices[0]), int(indices[-1])) == (7, 13)
+
+    assert RectangleROI(50, 50, 60, 60).to_indices((4, 5)).size == 0
+
+
 def test_a_mask_painted_on_a_histogram_gates_the_data_behind_it():
     """A bitmap gate needs axes, or it can only ever select pixels.
 

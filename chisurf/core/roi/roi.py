@@ -195,6 +195,41 @@ class ROI(abc.ABC):
             return None
         return (int(rows[0]), int(cols[0]), int(rows[-1]) + 1, int(cols[-1]) + 1)
 
+    def to_indices(
+        self,
+        shape: Sequence[int],
+        extent: Extent = None,
+        image: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Return the positions of the selected pixels in the flattened array.
+
+        The bridge from a region on a 2-D map to the 1-D data vector an analysis
+        actually holds: an image correlation flattens its lag map row-major
+        before fitting it, so "the pixels inside this box" has to become "these
+        entries of the data vector".
+
+        Parameters
+        ----------
+        shape : sequence of int
+            Array shape ``(ny, nx)`` the region is rasterised onto.
+        extent : tuple of float, optional
+            Value span ``(x0, x1, y0, y1)``; omit for pixel-index coordinates.
+        image : numpy.ndarray, optional
+            Image for intensity-dependent regions.
+
+        Returns
+        -------
+        numpy.ndarray
+            Sorted indices into ``array.ravel()``; empty when nothing is
+            selected.
+
+        Examples
+        --------
+        >>> RectangleROI(0.5, -0.5, 2.5, 1.5).to_indices((3, 3)).tolist()
+        [1, 2, 4, 5]
+        """
+        return np.flatnonzero(self.to_mask(shape, extent, image).ravel())
+
     def bounds(
         self,
         shape: Optional[Sequence[int]] = None,
