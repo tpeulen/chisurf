@@ -2,6 +2,18 @@
 
 ## 2026-07-25
 
+* **RF-030 fixed: the CLSM mean-micro-time map was scaled by *Min #Ph*, not
+  filtered by it.** `imaging.representation` called
+  `get_mean_micro_time(tttr, n_ph_min, False)` against a tttrlib signature whose
+  second argument is `microtime_resolution`, so *Min #Ph* multiplied the whole
+  image (max 2000 → 10 000 → 100 000 at 1 / 5 / 50 on `Leica_SP5.ptu`) and no
+  pixel was ever discriminated — which is why the map read as noise. The call is
+  now the 4-argument form used everywhere else in the tree, routed through new
+  `imaging.mean_micro_time` / `imaging.micro_time_resolution_ns` helpers; the map
+  is in nanoseconds (mean 8.2 ns) and discriminated pixels come back as `0.0`
+  instead of `-1 × resolution`. Pinned by
+  `test_mean_micro_time_is_in_ns_and_discriminates`. Frame reduction on top of it
+  (RF-031) is still open.
 * **chimol is documented — and making the figure found two more defects.** The
   plugin had no user documentation at all; `docs/` carried only development notes.
   Now `docs/guides/44_molecular_viewer.md` covers loading, selecting, drawing,

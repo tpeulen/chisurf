@@ -94,6 +94,48 @@ def test_core_image_representation_decay_frc():
     assert density.shape == bins.shape
 
 
+def test_mean_micro_time_is_in_ns_and_discriminates():
+    """The mean-micro-time map is in ns and *Min #Ph* discards pixels.
+
+    Pins RF-030: the ``get_mean_micro_time`` call used to pass ``n_ph_min`` into
+    ``microtime_resolution``, which scaled the whole image by *Min #Ph* and
+    discriminated nothing.
+    """
+    _require_data()
+    import tttrlib
+
+    from chisurf.plugins.microscopy.clsm.api.models import ClsmSetup
+    from chisurf.plugins.microscopy.clsm.core import imaging, setups
+
+    tttr = tttrlib.TTTR(str(SP5), "PTU")
+    preset = setups.builtin_setups()["Leica SP5"]
+    detected = setups.read_clsm_markers(tttr)
+    setup = ClsmSetup.from_preset(preset, channels=[0, 1])
+    if detected.get("pixel_per_line"):
+        setup.pixel_per_line = detected["pixel_per_line"]
+    clsm = imaging.build_clsm_image(tttr, setup)
+
+    res_ns = imaging.micro_time_resolution_ns(tttr)
+    assert 0.0 < res_ns < 1.0  # a TCSPC channel is sub-nanosecond
+    span_ns = res_ns * tttr.get_header().number_of_micro_time_channels
+
+    low = imaging.representation(clsm, tttr, "Mean micro time", 1)
+    high = imaging.representation(clsm, tttr, "Mean micro time", 20)
+    assert low.ndim == high.ndim == 3
+
+    # A mean arrival time lies inside the micro-time window, and discriminated
+    # pixels come back as 0.0 rather than as a negative resolution multiple.
+    for image in (low, high):
+        assert image.min() >= 0.0
+        assert image.max() <= span_ns
+
+    # Raising *Min #Ph* must discard pixels, not rescale the image.
+    n_low = int((low > 0.0).sum())
+    n_high = int((high > 0.0).sum())
+    assert n_high < n_low
+    assert not np.allclose(high.max(), low.max() * 20.0)
+
+
 def test_api_orchestration_and_save(tmp_path):
     _require_data()
     from chisurf.plugins.microscopy.clsm import api
@@ -201,7 +243,7 @@ def test_view_model_workflow():
 
 
 def _painted_view_model():
-    """A view model with a synthetic image and a painted selection."""
+    """Build a view model with a synthetic image and a painted selection."""
     from chisurf.plugins.microscopy.clsm.gui.view_model import ClsmViewModel
 
     vm = ClsmViewModel()

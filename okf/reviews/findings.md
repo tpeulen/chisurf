@@ -495,11 +495,26 @@ are the mean-micro-time representation and four controls that do not do what
 they say. Findings RF-030..RF-035.
 
 ### RF-030
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (wrong numbers, and a control that silently does the opposite of its label)
 - **Location:** `chisurf/plugins/microscopy/clsm/core/imaging.py:111` and `:116` (`representation`)
 - **Finding:** Both calls read `clsm_image.get_mean_micro_time(tttr, n_ph_min, False)`, but the installed tttrlib (0.27.0) signature is `get_mean_micro_time(tttr_data, microtime_resolution=-1.0, minimum_number_of_photons=2, stack_frames=False, correct_irf_offset=False)`. So `n_ph_min` lands in **`microtime_resolution`** and `False` (=0) in `minimum_number_of_photons`. Verified on `test/data/clsm/Leica_SP5.ptu`: the returned value is `mean_micro_time_channel × microtime_resolution`, so driving the GUI's *Min #Ph* spin box from 1 → 5 → 50 multiplies the whole image (max 57 648 → 288 240 → 2 882 406) while leaving it visually identical, and no pixel is ever discriminated (`(image < 0).sum() == 0`, `(image == 0).sum() == 5` at every setting), which is why the mean-micro-time background is pure noise. The correct 4-argument form is already used at every other call site in the tree — `chisurf/core/fluorescence/imaging/pixel_maps.py:327,334` and `chisurf/plugins/microscopy/img_pixel_micro_time/core.py:49`, `gui/view_model.py:73` all pass `(tttr, res_ns, n_ph, stack)`. Note that discriminated pixels come back as `-1 × resolution`, not zero (the tttrlib docstring says zeros), so whatever consumes the fixed call has to mask negatives before display. `test_core_image_representation_decay_frc` (`chisurf/plugins/microscopy/clsm/test/test_clsm.py:83`) only asserts `image.ndim == 3`, so nothing pins the values.
-- **Fix note:**
+- **Fix note:** `representation` now routes the mean micro time through a new
+  `imaging.mean_micro_time`, which calls the 4-argument form
+  `get_mean_micro_time(tttr, micro_time_resolution_ns(tttr), n_ph_min, False)` —
+  so the map is in nanoseconds and *Min #Ph* discriminates instead of scaling.
+  Discriminated pixels (`-1 × resolution`) are mapped to `0.0` so the stack stays
+  arithmetically reducible; the new helper `imaging.micro_time_resolution_ns`
+  resolves the header resolution (s → ns) with tttrlib's `-1.0` sentinel as the
+  fallback, mirroring `core/fluorescence/imaging/pixel_maps.py`. Pinned by
+  `test_mean_micro_time_is_in_ns_and_discriminates`
+  (`chisurf/plugins/microscopy/clsm/test/test_clsm.py`), which asserts the map
+  lies inside the micro-time window, that raising *Min #Ph* drops pixel count,
+  and that it does **not** rescale the maximum — all three fail on the old call.
+  Verified on `test/data/clsm/Leica_SP5.ptu` (max 2000 / 10000 / 100000 at
+  *Min #Ph* 1 / 5 / 50 before, valid-pixel count 1 875 925 / 99 663 / 4 and mean
+  8.2 ns after) and by a headless grab of the **Image** tab, which now shows the
+  cell rather than noise. The frame reduction on top of it is RF-031, still open.
 
 ### RF-031
 - **Status:** OPEN

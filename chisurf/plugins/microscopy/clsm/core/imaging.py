@@ -83,6 +83,53 @@ def build_clsm_image(tttr: Any, setup: Any) -> Any:
     return clsm_image
 
 
+def micro_time_resolution_ns(tttr: Any) -> float:
+    """Return the micro-time resolution of a TTTR dataset in nanoseconds.
+
+    Parameters
+    ----------
+    tttr : tttrlib.TTTR
+        The TTTR dataset.
+
+    Returns
+    -------
+    float
+        Resolution in nanoseconds, or ``-1.0`` when the header does not carry
+        one — the sentinel that keeps ``tttrlib`` in units of the micro-time
+        channel.
+    """
+    res_s = float(getattr(tttr.get_header(), "micro_time_resolution", 0.0) or 0.0)
+    return res_s * 1e9 if res_s > 0.0 else -1.0
+
+
+def mean_micro_time(clsm_image: Any, tttr: Any, n_ph_min: int = 1) -> np.ndarray:
+    """Compute the per-frame mean micro time in nanoseconds.
+
+    ``tttrlib`` fills pixels that hold fewer than *n_ph_min* photons with
+    ``-1 × microtime_resolution``; those are mapped to ``0.0`` here so the
+    stack can be reduced and displayed arithmetically.
+
+    Parameters
+    ----------
+    clsm_image : tttrlib.CLSMImage
+        A filled CLSM image.
+    tttr : tttrlib.TTTR
+        The TTTR dataset the image was built from.
+    n_ph_min : int
+        Minimum photons per pixel; pixels below it are discriminated.
+
+    Returns
+    -------
+    numpy.ndarray
+        3-D ``float64`` ``(frames, lines, pixel)`` stack in nanoseconds.
+    """
+    data = np.asarray(
+        clsm_image.get_mean_micro_time(tttr, micro_time_resolution_ns(tttr), int(n_ph_min), False),
+        dtype=np.float64,
+    )
+    return np.where(data < 0.0, 0.0, data)
+
+
 def representation(
     clsm_image: Any,
     tttr: Any,
@@ -107,14 +154,13 @@ def representation(
     numpy.ndarray
         3-D ``float64`` image stack.
     """
-    if image_type == "Mean micro time":
-        data = clsm_image.get_mean_micro_time(tttr, n_ph_min, False)
-        return data.astype(np.float64)
     if image_type == "Intensity":
         return clsm_image.intensity.astype(np.float64)
+    mmt = mean_micro_time(clsm_image, tttr, n_ph_min)
+    if image_type == "Mean micro time":
+        return mmt
     # default: intensity-weighted mean micro time
-    mean_micro_time = clsm_image.get_mean_micro_time(tttr, n_ph_min, False)
-    return mean_micro_time.astype(np.float64) * clsm_image.intensity.astype(np.float64)
+    return mmt * clsm_image.intensity.astype(np.float64)
 
 
 def reduce_frames(
