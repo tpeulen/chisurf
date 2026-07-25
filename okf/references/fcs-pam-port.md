@@ -105,13 +105,46 @@ lag-time identity.
 | `Do_Coloc` | `img_coloc` (PRD-67) |
 | `Do_Gaussian`, `Fit_Gaussian` | `IcsGaussian2DModel`, `psf_determination` |
 | `Do_FLIM` and friends | `img_pixel_phasor`, `img_pixel_mle`, `sm_image_mle` |
+| `MIA_Drift` | `img_drift` — and photon streams are corrected photon-by-photon |
+| freehand / arbitrary-region / Cellpose ROI | `core/roi/` (`arbitrary_region`, `rois_from_cellpose`) |
+| `RICSPE` | `core/experiments/ics/precision.py` + the `img_precision` planner |
+| `rFRAP` | `core/fluorescence/imaging/frap.py` |
+| `Do_FRET` (ratiometric) | `core/fluorescence/imaging/ratio_fret.py` |
 
-What MIA still has and ChiSurf does not is **not correlation science** — it is
-acquisition-adjacent I/O and ROI ergonomics: `MIA_Drift` (inter-frame drift
-correction), freehand / arbitrary-region / Cellpose ROI import (ChiSurf has
-rectangular and intensity-threshold masks only), `Read_CZI`, and FRAP. `Do_FRET`
-(ratiometric pixel FRET) is half-built: the crosstalk inversion core exists
-(`core/fluorescence/crosstalk.py`) but no `img_pixel_rfret` consumer.
+`Read_CZI` is **deliberately skipped**, and `FRAP_MEM` (the maximum-entropy FRAP
+variant) is deferred; `rFRAP`'s closed form covers the ordinary case.
+
+### RICSPE parity — verified to double precision, with one deliberate deviation
+
+The precision predictor was A/B'd against the unmodified reference kernels run
+in Octave, with every intermediate frozen into
+`test/data/rics/pam_ricspe_reference.npz` (the generating script is archived
+beside it, so the fixture can be regenerated against any PAM checkout).
+
+The scalar block — shape factors, volume, the dwell-time brightness correction
+with its `sqrt(1-beta)` singularity refactored as `atanh(z)/z`, the mean count
+rate — the ideal correlation grid, and **all 256 entries of the estimator
+covariance** agree to ~5e-13, i.e. the round trip through text. That covers the
+master-grid slicing that replaced the reference's four nested loops, the
+closed-form pair counts, the placement of the shot term, and the symmetrisation.
+
+Exactly one kernel deviates on purpose: **`g3.m` carries a unit bug**. It opens
+by converting the lag vectors to microns in place (`rho1 = rho1 .* S`) and then
+forms the time lag from the *converted* vector, so every `tau` it uses is
+multiplied by the pixel size in microns. The reference's own two-point function,
+built a few lines away in `res_covariance.m`, forms `tau` from the raw lag — so
+within the reference the two disagree about what `tau` means. The consequence
+shows up in a limit: shrink the pixel size while holding the line lag fixed and
+the reference's three-point correlation tends to 1, i.e. two time points many
+diffusion times apart correlate perfectly. ChiSurf forms `tau` from the raw lag
+and uses the scaled vector only for the spatial norms.
+
+The practical effect is small — `g3` enters one of three additive terms on the
+covariance diagonal, moving the predicted error by well under its own
+Monte-Carlo uncertainty and leaving the recommended dwell time unchanged — but
+it is the reason a naive diff against PAM shows a ~0.3 % covariance difference.
+Both the parity and the deviation are pinned by
+`test/experiments/test_ics_precision_vs_pam.py`.
 
 ## What is missing (not implemented)
 

@@ -2,6 +2,57 @@
 
 ## 2026-07-25
 
+* **A/B'd the RICS precision predictor against the reference in Octave — full
+  double-precision parity, and a unit bug in the reference.** The reference
+  kernels were run unmodified and every intermediate frozen into
+  `test/data/rics/pam_ricspe_reference.npz`, with the generating script archived
+  beside it so the fixture regenerates against any checkout. The scalar block
+  (shape factors, volume, the dwell-time brightness correction with its
+  `sqrt(1-beta)` singularity refactored as `atanh(z)/z`, the mean count rate),
+  the ideal correlation grid, and **all 256 entries of the estimator
+  covariance** agree to ~5e-13 — the round trip through text. That covers the
+  master-grid slicing that replaced the reference's four nested loops, the
+  closed-form pair counts, the placement of the shot term (the reference finds
+  it with a `max()` hack, we index it exactly — they coincide here, checked),
+  term2, term3 and the symmetrisation.
+
+  **The one deviation is a bug in the reference, not in the port.** `g3.m`
+  opens with `rho1 = rho1 .* S`, converting the lag vectors to microns in
+  place, and then forms the time lag from the *converted* vector — so every
+  `tau` it uses is multiplied by the pixel size in microns. The reference's own
+  two-point function, built a few lines away in `res_covariance.m`, forms `tau`
+  from the raw lag, so within one implementation the two functions disagree
+  about what `tau` means. The decisive check is a limit: shrink the pixel size
+  while holding the line lag fixed and the reference's three-point correlation
+  tends to **1.0** — two time points 13 diffusion times apart correlating
+  perfectly — while its own `g1` at the same lag has already fallen to 0.60.
+  Reproducing the reference's rule in Python matches Octave to 7e-15, which is
+  what identifies the mechanism rather than merely the symptom.
+
+  Impact quantified rather than asserted: `g3` enters one of three additive
+  terms and only on the covariance diagonal, so the diagonal moves by ≤0.3 %,
+  the predicted error by ~0.5 % relative (15.99 % vs 15.90 %), and the
+  recommended dwell time not at all. Feeding the Octave covariance through our
+  own sampler and fitter reproduces the reference number exactly, which
+  isolates the difference to `g3` and clears the Monte-Carlo stage.
+
+  Method note: the first comparison run showed *eleven* mismatches and was
+  wrong — `save -ascii` truncates to 8 digits (coarser than the differences
+  being hunted), and the reference stores lag grids transposed relative to ours
+  because it transposes its meshgrid. Both are harness artefacts; the flattened
+  vectors agree, which is what the covariance indexing actually uses. Worth
+  recording because a sloppier harness would have "found" a dozen phantom
+  discrepancies and buried the one real one.
+
+  Pinned by `test/experiments/test_ics_precision_vs_pam.py` (8 tests): parity
+  of the scalars, the grid and the covariance; the deviation itself; that the
+  bug-compatible helper is a faithful transcription (so the parity test cannot
+  pass for the wrong reason); the physical argument as two limit tests; and
+  that the advice the tool gives is unchanged. Documented in
+  `triple_correlation`'s docstring, the concept page and
+  [the PAM port tracker](/references/fcs-pam-port.md), whose MIA table also now
+  records drift, ROI, RICSPE, rFRAP and ratio-FRET as landed.
+
 * **GUI-tester: the Burst Analysis workflow, end to end, on real SPC data.** Drove
   the integrated burst window headlessly on
   `burst_selection/tests/data/bh_spc132_sm_dna/m000-m002.spc` (533 699 photons →

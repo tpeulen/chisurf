@@ -79,6 +79,24 @@ three steps:
 Reading a single number off this is straightforward: below about 5 % relative
 error the acquisition is good, 5–20 % usable, above 50 % not worth recording.
 
+### Agreement with the reference implementation
+
+This is a port of an established implementation, and it is checked against it
+numerically: the shape factors, the dwell-time brightness correction, the ideal
+correlation grid and **every entry of the estimator covariance** agree with the
+reference to about $5\times10^{-13}$ — double precision.
+
+One kernel deviates on purpose. The reference's three-point correlation
+converts its lag vectors to microns before forming the time lag, so its $\tau$
+carries a factor of the pixel size; the two-point function built a few lines
+away in the same reference file does not. The two therefore disagree about what
+$\tau$ means, and the consequence is visible in a limit: shrink the pixel size
+at a fixed line lag and the reference's three-point correlation tends to 1, so
+two time points many diffusion times apart would correlate perfectly. ChiSurf
+forms $\tau$ from the raw lag. The difference moves the predicted error by well
+under its own Monte-Carlo uncertainty and does not change which dwell time is
+recommended.
+
 ## The honest caveats
 
 **The prediction is itself a Monte-Carlo quantity.** With $N$ realisations it

@@ -190,7 +190,7 @@ def triple_correlation(
     line_time: float,
     pixel_size: float,
 ) -> float:
-    """Return the three-point correlation entering the shot-noise variance.
+    r"""Return the three-point correlation entering the shot-noise variance.
 
     The variance of a correlation estimate depends on the *third* moment of the
     intensity, not only the second — which is why a full noise model needs this
@@ -207,6 +207,30 @@ def triple_correlation(
     -------
     float
         The three-point correlation value.
+
+    Notes
+    -----
+    **This is the one place the port deliberately departs from the reference.**
+    The reference's ``g3.m`` opens by converting the lag vectors to microns in
+    place (``rho1 = rho1 .* S``) and then forms the time lag from the
+    *converted* vector, so every :math:`\tau` it uses carries a factor of the
+    pixel size in microns. Here the lag enters :math:`\tau` raw, and the scaled
+    vector is used only for the spatial norms, where it belongs.
+
+    That is not a matter of taste. The reference's own two-point function --
+    built a few lines away in ``res_covariance.m`` -- forms :math:`\tau` from
+    the raw lag, so within the reference itself the two functions disagree
+    about what :math:`\tau` means. The consequence is visible in a limit:
+    shrink the pixel size while holding the line lag fixed and the reference's
+    three-point correlation tends to 1, i.e. two time points many diffusion
+    times apart correlate perfectly. No diffusing sample does that.
+
+    Everything else in this module matches the reference to ~5e-13; see
+    ``test/experiments/test_ics_precision_vs_pam.py``, which pins both the
+    parity and this deviation. The practical effect is small -- ``g3`` enters
+    one of three additive terms on the covariance diagonal, moving the
+    predicted error by well under its own Monte-Carlo uncertainty and leaving
+    the recommended dwell time unchanged.
     """
     r1 = np.asarray(rho1, dtype=float) * pixel_size
     r2 = np.asarray(rho2, dtype=float) * pixel_size
