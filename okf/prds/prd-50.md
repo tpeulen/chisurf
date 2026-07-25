@@ -194,10 +194,19 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   Feynman–Kac characteristic function (no closed form required), agrees with
   simulation to a total variation of 0.002, gives `sum(w) = 1` and `E[f] = x1`
   to ~1e-5 for every population and exchange rate tested, and costs 0.11 ms.
-  The model is **deliberately left unswitched**: it changes published two-colour
-  results and that is not a decision to take as a side effect of three-colour
-  work. `test/models/test_two_state_occupation.py` asserts both the correct law
-  and the defect, so the record cannot go stale silently.
+  **Switched (2026-07-25, on request).** `PdaDynamicTwoStateModel` now
+  integrates the exact law, and the broken density has been **deleted** rather
+  than left available to be picked up again. `n_grid` went from 41 to 512: it is
+  now the Fourier grid of the inversion, and the old value was sized for a direct
+  density evaluation.
+
+  **What the defect cost.** Fitting one synthetic dataset generated at
+  `x1 = 0.25`, `K_ex = 2.0` *both ways*: the exact law recovers
+  `x1 = 0.249`, `K_ex = 1.997`; the old closed form returns `x1 = 0.175` and
+  `K_ex = 1.639` — the occupancy 30% low and the exchange rate 18% low. Any
+  dynamic two-colour result at unequal occupancy should be re-run.
+  `test_dynamic_pda_recovers_exchange_at_unequal_populations` now covers that
+  regime, which the original acceptance test (at `x1 = 0.503`) could not.
 
 **Follow-ups (not yet done):**
 - GUI button wiring the live light-path plugin session to a selected PDA model

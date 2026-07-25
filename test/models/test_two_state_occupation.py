@@ -101,37 +101,22 @@ def test_the_quadrature_reproduces_a_direct_simulation(p1, k_ex):
     assert total_variation < 0.02, total_variation
 
 
-# ── the defect in the closed form ──────────────────────────────────────────
+# ── what the old closed form got wrong ────────────────────────────────────
 
 
-def test_the_closed_form_density_is_wrong_away_from_equal_populations():
-    """Regression record for a defect in ``two_state_time_fraction_pdf``.
+def test_unequal_populations_are_where_the_old_density_failed():
+    """Guard on the regime the removed closed form could not describe.
 
-    Combined with the standard boundary masses it is not a probability
-    distribution: the total exceeds one by up to a third at strongly unequal
-    populations, and its shape disagrees with a direct simulation. It *is*
-    correct at ``p1 = 0.5``, which is why it went unnoticed — the dynamic
-    two-state acceptance test in PRD-50 recovered ``x1 = 0.503``, essentially
-    the one population where the error vanishes.
-
-    This test asserts the defect rather than the fix, so it fails loudly if the
-    closed form is ever corrected and this note becomes stale. New code should
-    use :func:`two_state_occupation_quadrature`.
+    ``two_state_time_fraction_pdf`` was a probability distribution only at
+    ``p1 = 0.5``; away from it the total mass reached 1.36 and the shape was
+    tilted. Its error vanished exactly at equal populations, which is why it
+    survived an acceptance test that happened to fit ``x1 = 0.503``. This pins
+    the property it violated, at the populations where it violated it.
     """
-    from chisurf.core.models.pda.dynamic import two_state_time_fraction_pdf
+    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
 
-    nodes, quad_weights = np.polynomial.legendre.leggauss(2000)
-    fractions = 0.5 * (nodes + 1.0)
-    weights = 0.5 * quad_weights
-
-    def total_mass(p1, k_ex):
-        p2 = 1.0 - p1
-        a, b = k_ex * p2, k_ex * p1
-        interior = float(two_state_time_fraction_pdf(fractions, p1, k_ex) @ weights)
-        return interior + p1 * np.exp(-a) + p2 * np.exp(-b)
-
-    # Exact where the populations are equal ...
-    assert total_mass(0.5, 2.0) == pytest.approx(1.0, abs=1e-6)
-    # ... and demonstrably not a distribution otherwise.
-    assert total_mass(0.3, 2.0) > 1.10
-    assert total_mass(0.2, 8.0) > 1.10
+    for p1 in (0.05, 0.2, 0.35, 0.65, 0.8, 0.95):
+        for k_ex in (0.5, 2.0, 8.0):
+            fractions, weights = two_state_occupation_quadrature(p1, k_ex)
+            assert weights.sum() == pytest.approx(1.0, abs=1e-9), (p1, k_ex)
+            assert float(weights @ fractions) == pytest.approx(p1, abs=1e-3), (p1, k_ex)

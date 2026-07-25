@@ -45,7 +45,6 @@ from __future__ import annotations
 
 import numpy as np
 import tttrlib
-from scipy.special import i0, i1
 
 import chisurf as cs
 import chisurf.core.models.tcspc.fret
@@ -88,39 +87,6 @@ class PdaDynamicStates(FittingParameterGroup):
     s2 = property(lambda s: s._s2.value)
     x1 = property(lambda s: float(np.clip(s._x1.value, 0.0, 1.0)))
     k_ex = property(lambda s: max(0.0, float(s._kex.value)))
-
-
-def two_state_time_fraction_pdf(f: np.ndarray, p1: float, K: float) -> np.ndarray:
-    """Interior occupation-time-fraction density of a two-state Markov process.
-
-    Parameters
-    ----------
-    f : numpy.ndarray
-        Time fractions in ``(0, 1)`` spent in state 1.
-    p1 : float
-        Steady-state occupancy of state 1.
-    K : float
-        Dimensionless exchange rate ``(k1 + k2) * T``.
-
-    Returns
-    -------
-    numpy.ndarray
-        Unnormalized interior density ``w(f)`` (boundary masses handled
-        separately by the caller).
-    """
-    f = np.asarray(f, dtype=float)
-    p2 = 1.0 - p1
-    a = K * p2  # k1 * T  (exit rate out of state 1)
-    b = K * p1  # k2 * T  (exit rate out of state 2)
-    fm = np.clip(f, 1e-9, 1.0 - 1e-9)
-    fp = fm
-    fn = 1.0 - fm
-    z = 2.0 * np.sqrt(a * b * fp * fn)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        term0 = (p1 * b + p2 * a) * i0(z)
-        term1 = np.sqrt(a * b / (fp * fn)) * (p1 * fn + p2 * fp) * i1(z)
-    w = np.exp(-a * fp - b * fn) * (term0 + term1)
-    return np.nan_to_num(w, nan=0.0, posinf=0.0, neginf=0.0)
 
 
 def two_state_occupation_quadrature(p1: float, k_ex: float, n_nodes: int = 1024):
@@ -231,7 +197,11 @@ class PdaDynamicTwoStateModel(ModelCurve):
         states : PdaDynamicStates, optional
             Two-state distance / occupancy / exchange group.
         n_grid : int
-            Number of interior time-fraction grid points.
+            Grid size of the time-fraction distribution's Fourier inversion.
+            Its error falls as ``1/n_grid``; 512 is accurate to ~1e-4 in the
+            mean occupancy even at fast exchange. The previous default of 41
+            was sized for a direct density evaluation and is far too coarse
+            here.
         **kwargs
             Forwarded to the parent constructor.
         """
@@ -277,28 +247,14 @@ class PdaDynamicTwoStateModel(ModelCurve):
         pG2 = self._mean_green_probability(st.R2, st.s2, r, E, pG)
 
         p1 = st.x1
-        p2 = 1.0 - p1
         K = st.k_ex
 
-        # Interior time-fraction grid + exact two-state occupation density.
-        f = np.linspace(1e-4, 1.0 - 1e-4, max(3, self.n_grid))
-        w = two_state_time_fraction_pdf(f, p1, K)
-        df = f[1] - f[0]
-        interior_w = w * df
-        interior_pG = f * pG1 + (1.0 - f) * pG2
-
-        # Boundary masses: entire window spent in one state.
-        a = K * p2
-        b = K * p1
-        mass_f1 = p1 * float(np.exp(-a))  # f = 1 -> pG1
-        mass_f0 = p2 * float(np.exp(-b))  # f = 0 -> pG2
-
-        amps = np.concatenate(([mass_f0], interior_w, [mass_f1]))
-        pch1 = np.concatenate(([pG2], interior_pG, [pG1]))
-
-        total = float(np.sum(amps))
-        if total > 0.0:
-            amps = amps / total
+        # Time-fraction distribution, including the two boundary atoms (a
+        # molecule that never switched). Computed exactly rather than from the
+        # closed-form density, which is not a distribution away from x1 = 0.5 --
+        # see two_state_occupation_quadrature.
+        f, amps = two_state_occupation_quadrature(p1, K, n_nodes=self.n_grid)
+        pch1 = f * pG1 + (1.0 - f) * pG2
 
         # Optional donor-only fraction (shares the Gaussian model's semantics).
         xD0 = float(np.clip(self.fret_parameters.xDOnly, 0.0, 1.0))

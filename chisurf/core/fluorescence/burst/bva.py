@@ -131,7 +131,13 @@ def compute_bva(
             burst_tws = burst_tttr.get_ranges_by_time_window(minimum_window_length,
                                                              macro_time_calibration=time_calibration)
             burst_tws = burst_tws.reshape((len(burst_tws) // 2, 2))
-            burst_tws_tttr = [burst_tttr[start:stop] for start, stop in burst_tws]
+            # get_ranges_by_time_window returns an INCLUSIVE [start, stop]:
+            # measured on real data, a window reaches the requested duration only
+            # when its stop photon is counted, and none of them do when it is
+            # dropped. Slicing [start:stop] loses the last photon of every slice
+            # -- a small, uniform downward bias in every slice's photon count,
+            # which is exactly what the proximity-ratio variance is computed from.
+            burst_tws_tttr = [burst_tttr[start:stop + 1] for start, stop in burst_tws]
         else:
             # Split bursts into chunks with a fixed number of photons
             chunk_size = number_of_photons_per_slice

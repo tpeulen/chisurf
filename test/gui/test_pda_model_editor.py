@@ -144,26 +144,31 @@ def test_pda_model_editor_renders_and_computes(qapp, model_path):
 
 
 def test_dynamic_two_state_limits():
-    """The two-state occupation-time density reduces correctly in both limits.
+    """The two-state occupation-time law reduces correctly in both limits.
 
     Slow exchange (K->0): mass concentrates at the boundaries f in {0, 1}.
     Fast exchange (K->inf): mass concentrates near f = p1 (steady occupancy).
+
+    Checked against ``two_state_occupation_quadrature``, which replaced the
+    closed-form Bessel density this test used to exercise — that density was
+    not a distribution away from ``p1 = 0.5``. Fuller coverage, including a
+    comparison against a direct simulation of the telegraph process, lives in
+    ``test/models/test_two_state_occupation.py``.
     """
-    from chisurf.core.models.pda.dynamic import two_state_time_fraction_pdf
+    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
 
     p1 = 0.3
-    f = np.linspace(1e-4, 1 - 1e-4, 400)
 
-    # Slow: interior density is negligible compared with the boundary masses.
-    w_slow = two_state_time_fraction_pdf(f, p1, K=1e-3)
-    interior_mass = float(np.sum(w_slow) * (f[1] - f[0]))
-    boundary_mass = p1 * np.exp(-(1 - p1) * 1e-3) + (1 - p1) * np.exp(-p1 * 1e-3)
-    assert interior_mass < 0.05 * boundary_mass
+    # Slow: essentially everything sits on the two boundary atoms.
+    f_slow, w_slow = two_state_occupation_quadrature(p1, 1e-3)
+    assert (w_slow[0] + w_slow[-1]) > 0.99
+    assert w_slow[-1] == pytest.approx(p1, abs=1e-3)
 
-    # Fast: the interior density peaks at the steady-state occupancy p1.
-    w_fast = two_state_time_fraction_pdf(f, p1, K=500.0)
-    f_peak = float(f[int(np.argmax(w_fast))])
-    assert abs(f_peak - p1) < 0.05
+    # Fast: the distribution collapses onto the steady-state occupancy.
+    f_fast, w_fast = two_state_occupation_quadrature(p1, 500.0)
+    assert float(w_fast @ f_fast) == pytest.approx(p1, abs=1e-3)
+    assert np.sqrt(w_fast @ (f_fast - p1) ** 2) < 0.05
+    assert (w_fast[0] + w_fast[-1]) < 1e-6
 
 
 def test_dynamic_two_state_matches_static_in_slow_limit(qapp):
@@ -556,3 +561,49 @@ def test_pda_mcmc_posterior_brackets_truth_and_agrees_with_support_plane(qapp):
         result, p_values=(0.99,)
     )[0]["crossings"]
     assert (mcmc_high - mcmc_low) == pytest.approx(spa_high - spa_low, rel=0.5)
+
+
+def test_dynamic_pda_recovers_exchange_at_unequal_populations(qapp):
+    """The regime the old occupation-time density could not fit.
+
+    PRD-50's original dynamic acceptance test recovered ``x1 = 0.503`` — the one
+    occupancy at which the closed-form Bessel density happened to be correct.
+    Away from it that density was not even a probability distribution, so the
+    model was biased exactly where a two-state system is most informative (an
+    unequal split says something about the free-energy difference). This fits a
+    synthetic set generated at ``x1 = 0.25`` and requires both the occupancy and
+    the exchange rate back.
+    """
+    import chisurf.core.fluorescence.tcspc as tcspc
+
+    model_class = _resolve("chisurf.core.models.pda.dynamic.PdaDynamicTwoStateModel")
+    fit = _make_pda_fit(model_class)
+    m = fit.model
+
+    truth = {"R1": 40.0, "R2": 62.0, "x1": 0.25, "k_ex": 2.0}
+    m.states._R1.value = truth["R1"]
+    m.states._R2.value = truth["R2"]
+    m.states._x1.value = truth["x1"]
+    m.states._kex.value = truth["k_ex"]
+    m.update()
+
+    s1s2 = np.asarray(m.pda.get_S1S2_matrix(), dtype=float)
+    ny, nx = fit.data.pda["shape"]
+    s1s2 = s1s2[:ny, :nx]
+    s1s2 = s1s2 / max(s1s2.sum(), 1e-12) * 2e5
+    noisy = np.random.default_rng(5).poisson(s1s2).astype(float)
+    fit.data.pda["s1s2"] = noisy
+    fit.data.y = noisy.ravel(order="C")
+    fit.data.ey = tcspc.counting_noise(fit.data.y)
+
+    m.find_parameters()
+    for p in m.parameters_all:
+        p.fixed = True
+    for parameter, start in ((m.states._x1, 0.5), (m.states._kex, 0.7)):
+        parameter.fixed = False
+        parameter.value = start
+    m.find_parameters()
+    fit.run()
+
+    assert float(m.states._x1.value) == pytest.approx(truth["x1"], abs=0.06)
+    assert float(m.states._kex.value) == pytest.approx(truth["k_ex"], rel=0.35)
