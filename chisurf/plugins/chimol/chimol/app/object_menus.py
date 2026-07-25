@@ -44,6 +44,10 @@ class MenuEntry:
         ``(title, question)`` when the command needs a value first.
     children : tuple of MenuEntry
         Submenu entries.
+    color : str or None
+        ``#rrggbb`` for entries PyMOL tints. It marks the destructive ones with
+        an RGB (9, 3, 3) escape on its 0-9 scale, and that warning is worth
+        keeping.
     """
 
     label: str
@@ -51,6 +55,7 @@ class MenuEntry:
     note: str = ""
     prompt: tuple[str, str] | None = None
     children: tuple["MenuEntry", ...] = field(default_factory=tuple)
+    color: str | None = None
 
     @property
     def is_separator(self) -> bool:
@@ -64,6 +69,15 @@ class MenuEntry:
 
 
 SEP = MenuEntry("")
+
+
+def _pymol_color(escape: str) -> str:
+    """Convert a PyMOL colour escape such as ``933`` into ``#rrggbb``."""
+    return "#" + "".join(f"{round(int(d) / 9 * 255):02x}" for d in escape)
+
+
+#: PyMOL's `del_col`/`rem_col`, the tint it puts on destructive entries.
+DESTRUCTIVE = _pymol_color("933")
 
 _NO_LABELS = "Chimol has no label representation yet."
 _NO_EDIT = "Chimol has no structure editing yet."
@@ -112,13 +126,14 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("copy to object", "copy {sele}, {text}",
               prompt=("Copy to object", "Name of the copy:")),
     MenuEntry("group", None, "Chimol has no object groups yet."),
-    MenuEntry("delete object", "delete {sele}"),
+    MenuEntry("delete object", "delete {sele}", color=DESTRUCTIVE),
     SEP,
     MenuEntry("hydrogens", None, "", children=(
         MenuEntry("add", None, _NO_EDIT),
-        MenuEntry("remove", "remove elem H and {sele}"),
+        MenuEntry("remove", "remove elem H and {sele}", color=DESTRUCTIVE),
     )),
-    MenuEntry("remove waters", "remove solvent and {sele}"),
+    MenuEntry("remove waters", "remove solvent and {sele}",
+              color=DESTRUCTIVE),
     SEP,
     MenuEntry("state", None, "Chimol frames are driven by the timeline panel."),
     MenuEntry("masking", None, "Chimol has no atom masking yet."),
@@ -304,4 +319,5 @@ __all__ = [
     "LABEL_MENU",
     "COLOR_MENU",
     "OBJECT_MENUS",
+    "DESTRUCTIVE",
 ]

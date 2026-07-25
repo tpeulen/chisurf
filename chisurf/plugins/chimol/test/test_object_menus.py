@@ -15,6 +15,8 @@ so the check still runs in an environment without PyMOL.
 
 from __future__ import annotations
 
+import pathlib
+
 import pytest
 
 from chisurf.plugins.chimol.chimol.app.object_menus import (
@@ -295,23 +297,63 @@ def test_an_object_name_scopes_a_selection(window):
 
 
 def test_a_menu_entry_reaches_the_viewer(window):
-    """End to end: the H menu's `waters` equivalent must change the display."""
+    """End to end: an entry on a molecule's own row must change the display."""
     import numpy as np
 
     dock = window.objects
-    assert dock.current_object_name() == "1abc"
+    row = next(iter(dock._rows.values()))
+    assert row._name == "1abc"
 
-    hide_menu = dock._menu_buttons["H"].menu()
-    action = next(a for a in hide_menu.actions() if a.text() == "spheres")
+    action = next(
+        a for a in row.buttons["H"].menu().actions() if a.text() == "spheres"
+    )
     before = int(np.count_nonzero(window.viewer._ball_mask))
     assert before > 0
     action.trigger()
     assert int(np.count_nonzero(window.viewer._ball_mask)) == 0
 
 
+def test_every_molecule_has_its_own_buttons(window):
+    """The buttons belong to the row, not to the panel.
+
+    A single shared row would silently retarget every action at whatever is
+    selected, which is the one thing a PyMOL user would never expect.
+    """
+    dock = window.objects
+    assert dock._rows, "no object rows"
+    for row in dock._rows.values():
+        assert list(row.buttons) == list("ASHLC")
+    # And the `all` row above them acts on everything.
+    assert list(dock.all_buttons) == list("ASHLC")
+
+
+def test_a_rows_menu_targets_that_row(window, monkeypatch):
+    """Two molecules, and each row's menu must name its own."""
+    import shutil
+
+    src = next(iter(window._object_store.values()))["path"]
+    second = window.objects.object_list
+    other = shutil.copyfile(src, str(src).replace("1abc", "2xyz"))
+    window._load_structure_from_path(pathlib.Path(other), name="2xyz")
+
+    issued: list[str] = []
+    monkeypatch.setattr(window, "_run_object_menu_command", issued.append)
+    window.objects.set_run_command(issued.append)
+
+    for row in window.objects._rows.values():
+        issued.clear()
+        action = next(
+            a for a in row.buttons["A"].menu().actions() if a.text() == "zoom"
+        )
+        action.trigger()
+        assert issued == [f"zoom {row._name}"], issued
+    assert second.count() == 2
+
+
 def test_unsupported_entries_are_greyed_out_in_the_built_menu(window):
     """The disabled rows must survive into the real QMenu, with their reason."""
-    action_menu = window.objects._menu_buttons["A"].menu()
+    row = next(iter(window.objects._rows.values()))
+    action_menu = row.buttons["A"].menu()
     by_label = {a.text(): a for a in action_menu.actions()}
     assert by_label["drag matrix"].isEnabled() is False
     assert by_label["drag matrix"].toolTip()

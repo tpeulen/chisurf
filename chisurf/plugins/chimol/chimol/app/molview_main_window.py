@@ -1772,6 +1772,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         try:
             self.object_list.blockSignals(True)
             self.object_list.clear()
+            self.objects.clear_rows()
         finally:
             self.object_list.blockSignals(False)
 
@@ -1833,6 +1834,8 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             self._block_object_list_signals = False
 
         self.object_list.addItem(item)
+        # The row widget can only be hosted once the item exists in the list.
+        self.objects.attach_row(item, object_id, entry)
         entry["item"] = item
 
     def _select_object_in_ui(self, object_id: Optional[str]) -> None:

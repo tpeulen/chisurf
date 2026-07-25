@@ -2,6 +2,29 @@
 
 ## 2026-07-25
 
+* **chimol: the object menus are per-molecule, and the panel looks like
+  PyMOL's.** The first cut put one shared A/S/H/L/C row above the list, acting on
+  whatever was selected. That is wrong in a way that matters: in PyMOL **the
+  buttons live on the row**, so they act on *that* molecule, and a shared row
+  silently retargets every action. Rebuilt as PyMOL has it — a permanent grey
+  `all` header row whose buttons act on everything, then one row per molecule
+  carrying its own five buttons, its visibility box, its name, and PyMOL's
+  `current/total` state counter.
+  Implemented as a Qt item widget per list row, so the item keeps its check state
+  and every existing handler (`itemChanged`, selection, delete) still fires;
+  Qt's own check indicator is hidden and the item's text blanked, or both would
+  render underneath the row widget.
+  **The look follows PyMOL too**, since being recognisable at a glance is the
+  whole point: black panel, monospace, enabled names in green and disabled ones
+  greyed, the grey `all` header, periwinkle buttons with a rainbow `C`, dark
+  menus. Destructive entries carry PyMOL's own tint, computed from its escape
+  rather than guessed: `del_col`/`rem_col` are `\933`, i.e. RGB (9,3,3) on a 0-9
+  scale, which is `#ff5555`.
+  Tests now assert every molecule has its own five buttons, that a row's menu
+  names *that* row's molecule (two objects loaded, each checked separately), and
+  that disabled entries stay disabled with their reason.
+  Suite: 303 passed, 1 skipped.
+
 * **ndXplorer calibrates itself against the measurement it has open.** The
   accurate-FRET machinery existed but ndX still needed constants typed in by
   hand (or a round trip through the ChiSurf tool).
