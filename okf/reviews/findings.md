@@ -804,11 +804,23 @@ docstring) was checked numerically and is sound. Findings RF-057..RF-063.
 - **Fix note:**
 
 ### RF-060
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (invalid JSON and a success exit code on a total failure)
 - **Location:** `chisurf/plugins/microscopy/img_precision/cli/main.py:88-96` (the `as_json` branch returns before the realisability check)
 - **Finding:** The `--json` branch emits `sweep.to_dict()` and returns *above* the "no dwell time is realisable" guard, so a configuration in which every point failed exits **0** with `"relative_error": [NaN, NaN, NaN]`, `"best_dwell_s": NaN`. Verified with `--w-r 0`: exit 0 and a payload that a strict parser rejects (`json.loads(..., parse_constant=raise)` → `bare NaN`), while the identical invocation without `--json` correctly exits 1 with `Error: no dwell time is realisable …`. The scripting path is the one that most needs the non-zero exit. Move the check above the branch and emit the failure as JSON (`{"error": …}`) with a non-zero exit.
-- **Fix note:**
+- **Fix note:** The realisability test is now computed once above both output
+  branches (`cli/main.py`, `realisable` / `nothing_works`), and the `--json`
+  branch emits `{"error": …}` and `ctx.exit(1)` when nothing is realisable, so
+  the two modes agree on the exit status and the human-readable path keeps its
+  `ClickException`. The NaN half was fixed at the source rather than in the
+  branch: `PrecisionSweep.to_dict` maps every non-finite entry (the swept
+  errors and both `best_*` scalars) to `None` via a new `_or_none` helper, so a
+  *partially* unrealisable sweep is strict JSON too — not just the total
+  failure. Pinned by
+  `test_cli_json_reports_a_total_failure_instead_of_a_curve_of_nulls` (exit 1
+  from both output modes, error object parsed with a `parse_constant` that
+  raises) and by `test_summary_is_json_friendly`, now sweeping a zero dwell and
+  asserting that entry is null under the same strict reader.
 
 ### RF-061
 - **Status:** OPEN

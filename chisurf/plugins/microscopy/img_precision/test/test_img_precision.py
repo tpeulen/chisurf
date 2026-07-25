@@ -20,6 +20,11 @@ from chisurf.plugins.microscopy.img_precision import core
 _FAST = dict(n_lags=3, n_repeats=40, n_images=50, ny=32, seed=1)
 
 
+def _reject(constant: str):
+    """Fail a JSON parse on ``NaN``/``Infinity``, which are not JSON at all."""
+    raise AssertionError(f"payload carries the non-JSON constant {constant!r}")
+
+
 # --- the sweep -------------------------------------------------------------
 def test_the_error_curve_has_an_interior_minimum():
     """Both extremes of dwell time are worse than somewhere in the middle.
@@ -102,16 +107,22 @@ def test_the_estimator_rejects_unphysical_settings():
 
 
 def test_summary_is_json_friendly():
-    """``to_dict`` survives a round trip through JSON (used by the CLI)."""
+    """``to_dict`` survives a round trip through a *strict* JSON reader.
+
+    The CLI prints this payload for other programs to read, and bare ``NaN`` --
+    what a dwell time the estimator cannot evaluate leaves behind -- is a Python
+    extension that a strict parser in another language rejects. Such a point is
+    reported as a null instead.
+    """
     import json
 
     sweep = core.sweep_dwell(
-        10.0, core.default_dwell_range(4), nx=32, pixel_size=0.05,
+        10.0, [0.0, *core.default_dwell_range(3)], nx=32, pixel_size=0.05,
         current_dwell=8e-6, **_FAST,
     )
-    text = json.dumps(sweep.to_dict())
-    back = json.loads(text)
+    back = json.loads(json.dumps(sweep.to_dict()), parse_constant=_reject)
     assert len(back["dwell_s"]) == 4
+    assert back["relative_error"][0] is None, "the impossible dwell must be null"
     assert back["current"] is not None
 
 
@@ -240,8 +251,33 @@ def test_cli_json_is_machine_readable(tmp_path):
         "--n-lags", "3", "--repeats", "20", "--json",
     ])
     assert result.exit_code == 0, result.output
-    payload = _json.loads(result.output)
+    payload = _json.loads(result.output, parse_constant=_reject)
     assert len(payload["dwell_s"]) == 3
+
+
+def test_cli_json_reports_a_total_failure_instead_of_a_curve_of_nulls():
+    """Settings nothing can be predicted for exit non-zero, in both output modes.
+
+    The scripting path is the one that most needs this: a zero exit code
+    carrying nulls where the errors should be reads as a result, and the same
+    invocation without ``--json`` has always failed loudly. Both must agree.
+    """
+    import json as _json
+
+    from click.testing import CliRunner
+
+    from chisurf.plugins.microscopy.img_precision.cli import cli
+
+    # no focus at all, so every point in the sweep is unevaluable
+    args = ["10", "--points", "3", "--nx", "32", "--ny", "32", "--frames", "50",
+            "--n-lags", "3", "--repeats", "20", "--w-r", "0"]
+
+    result = CliRunner().invoke(cli, [*args, "--json"])
+    assert result.exit_code == 1, result.output
+    payload = _json.loads(result.output, parse_constant=_reject)
+    assert "realisable" in payload["error"]
+
+    assert CliRunner().invoke(cli, args).exit_code == 1
 
 
 # --- toolbox integration ---------------------------------------------------

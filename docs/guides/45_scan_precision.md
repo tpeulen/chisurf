@@ -114,6 +114,12 @@ It prints the swept table, the best dwell and where your own setting sits;
 `--json` emits the whole sweep for a script to consume. All of the compute is
 Qt-free, so it needs no display.
 
+A dwell time the estimator cannot evaluate is a `null` in the JSON (and an empty
+field in the CSV) rather than a `NaN`, so the payload parses under a strict
+reader. If *no* dwell time is realisable — the usual cause is a waist or pixel
+size that cannot be right — the command exits non-zero in both modes, with
+`--json` reporting `{"error": …}` instead of a curve of nulls.
+
 ## Using it well
 
 Sweep **D**, not just the dwell. Since $D$ is an input, the honest procedure is

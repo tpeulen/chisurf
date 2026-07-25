@@ -77,6 +77,12 @@ def cli(diffusion_coefficient, pixel_time, pixel_size, w_r, w_z, n_particles,
         seed=int(seed),
     )
 
+    realisable = bool(np.isfinite(np.asarray(sweep.relative_error, dtype=float)).any())
+    nothing_works = (
+        "no dwell time is realisable with these settings — check the waists, "
+        "the pixel size and D"
+    )
+
     if out_csv:
         lines = ["dwell_us,line_ms,frame_ms,error_percent"]
         for dwell, line, err in zip(sweep.dwell, sweep.line_time, sweep.relative_error):
@@ -86,14 +92,17 @@ def cli(diffusion_coefficient, pixel_time, pixel_size, w_r, w_z, n_particles,
             fh.write("\n".join(lines) + "\n")
 
     if as_json:
+        # A caller reading this payload has no other channel: a total failure has
+        # to arrive as an error object and a non-zero status, not as a curve of
+        # nulls under exit 0.
+        if not realisable:
+            click.echo(json.dumps({"error": nothing_works}, indent=2))
+            click.get_current_context().exit(1)
         click.echo(json.dumps(sweep.to_dict(), indent=2))
         return
 
-    if not np.isfinite(np.asarray(sweep.relative_error, dtype=float)).any():
-        raise click.ClickException(
-            "no dwell time is realisable with these settings — check the waists, "
-            "the pixel size and D"
-        )
+    if not realisable:
+        raise click.ClickException(nothing_works)
 
     click.echo(f"D = {diffusion_coefficient:g} µm²/s, {nx}x{ny} px, {frames} frames")
     click.echo(f"{'dwell / µs':>12}{'frame / ms':>12}{'error / %':>12}")

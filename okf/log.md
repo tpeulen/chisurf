@@ -2,6 +2,22 @@
 
 ## 2026-07-25
 
+* **`--json` reported a total failure as success, and NaN is not JSON (RF-060).**
+  The scan-precision CLI's `--json` branch returned *above* the "no dwell time is
+  realisable" guard, so settings nothing could be predicted for exited **0**
+  carrying `"relative_error": [NaN, NaN, NaN]` — and bare `NaN` is a Python
+  extension that a strict parser in another language rejects, emitted by the one
+  output mode whose entire purpose is to be read by another program. The guard
+  now runs above both branches and `--json` emits `{"error": …}` with a non-zero
+  exit, so the two modes agree on what failure looks like. The NaN half was
+  fixed at its source rather than in the branch: `PrecisionSweep.to_dict` maps
+  every non-finite entry — the swept errors and both `best_*` scalars — to
+  `None`, so a *partially* unrealisable sweep parses strictly too, not only the
+  total failure. Tests assert the non-zero exit from both output modes and read
+  every payload with a `parse_constant` that raises;
+  `docs/guides/45_scan_precision.md` documents the null and the exit code.
+  Finding [RF-060](/reviews/findings.md).
+
 * **The kristine writer could not produce a file its own reader can read
   (RF-046).** `write_kristine` transposed the uncertainty branch twice, so
   `np.savetxt` wrote `n_columns` rows of `n_points` values: a saved 20-point

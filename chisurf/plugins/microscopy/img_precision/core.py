@@ -17,6 +17,17 @@ import numpy as np
 from chisurf.core.experiments.ics.precision import RicsPrecision, rics_precision
 
 
+def _or_none(value: float) -> float | None:
+    """Return ``value`` as a float, or ``None`` when it is not finite.
+
+    JSON has no NaN: emitting one yields a payload that a strict reader in
+    another language rejects, so a dwell time the estimator could not evaluate
+    is reported as a null instead.
+    """
+    number = float(value)
+    return number if np.isfinite(number) else None
+
+
 @dataclasses.dataclass
 class PrecisionSweep:
     """Predicted precision across a range of pixel dwell times.
@@ -60,12 +71,18 @@ class PrecisionSweep:
         return float(e.min()) if e.size else float("nan")
 
     def to_dict(self) -> dict:
-        """Return the sweep as a JSON-friendly dictionary."""
+        """Return the sweep as a JSON-friendly dictionary.
+
+        Points the estimator could not evaluate come back as ``None`` rather
+        than NaN, so the payload parses under a strict JSON reader.
+        """
         return {
             "dwell_s": np.asarray(self.dwell, dtype=float).tolist(),
-            "relative_error": np.asarray(self.relative_error, dtype=float).tolist(),
-            "best_dwell_s": float(self.best_dwell),
-            "best_error": float(self.best_error),
+            "relative_error": [
+                _or_none(e) for e in np.asarray(self.relative_error, dtype=float)
+            ],
+            "best_dwell_s": _or_none(self.best_dwell),
+            "best_error": _or_none(self.best_error),
             "current": self.current.to_dict() if self.current is not None else None,
         }
 
