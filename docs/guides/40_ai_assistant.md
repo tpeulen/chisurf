@@ -107,7 +107,10 @@ even sees it, so the right method is in play from the first turn.
 | --- | --- |
 | `fit-decay` | decays, lifetimes, TCSPC, IRFs |
 | `fret-from-decays` | FRET, donor-only/DA pairs, efficiencies, distances |
-| `fret-from-bursts` | single-molecule bursts, proximity ratio, sub-ensemble TCSPC |
+| `burst-search` | a photon stream, a `.bur` analysis, how many molecules |
+| `burst-selection` | proximity ratio, PR histogram, picking a population |
+| `sub-ensemble-decay` | a decay built from selected bursts, seTCSPC |
+| `fret-from-bursts` | a distance or efficiency from single-molecule bursts |
 | `global-fitting` | global or simultaneous analysis, linking parameters |
 | `fit-correlation` | FCS, correlation curves, diffusion |
 | `batch-fitting` | a whole folder, a series, comparing samples |
@@ -122,6 +125,26 @@ even sees it, so the right method is in play from the first turn.
 
 `python -m chisurf.core.agent --list-skills` prints them with the phrases that
 trigger each one.
+
+**Skills compose.** A skill can declare the smaller ones it is built out of,
+and they are loaded with it. Asking for a distance from single-molecule bursts
+loads `fret-from-bursts`, which is only the four paragraphs about how the
+pieces fit together — and with it come `burst-search`, `burst-selection`,
+`sub-ensemble-decay` and `fret-from-decays`, which do the actual work. Each of
+those is equally useful on its own: ask only for a PR histogram and you get
+only the selection procedure and the burst search it needs.
+
+That is why a multi-step analysis does not need a giant skill. It also means
+your own skill can build on the shipped ones instead of copying them:
+
+```yaml
+---
+name: our-fret-protocol
+description: The lab protocol for smFRET distances.
+uses: [burst-selection, sub-ensemble-decay]
+triggers: [our protocol, lab protocol]
+---
+```
 
 Behind the skills sits the assistant's own **knowledge base** — a small set of
 concepts about fluorescence analysis and about what ChiSurf's objects mean

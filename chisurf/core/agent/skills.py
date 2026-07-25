@@ -47,8 +47,11 @@ SKILL_FILENAME = "SKILL.md"
 #: Score a skill must reach before it is auto-loaded for a question.
 MATCH_THRESHOLD = 2.0
 
-#: How many skills are injected into one request at most.
-MAX_AUTO_SKILLS = 2
+#: How many skills are injected into one request at most. Skills a matched
+#: skill is composed of do not count against this — they are pulled in by
+#: :meth:`SkillLibrary.compose` after the cut, so decomposing a procedure into
+#: reusable parts never costs it a slot.
+MAX_AUTO_SKILLS = 3
 
 
 #: How many words may sit between the words of a multi-word trigger.
@@ -120,6 +123,10 @@ class Skill:
         that type makes the skill relevant even when the wording does not.
     tools : list of str
         Tools the procedure uses. Informational — it does not grant access.
+    uses : list of str
+        Names of skills this procedure is built out of. They are loaded with
+        it, transitively, so a skill can be a composition of smaller ones
+        instead of repeating them.
     source : str
         Where the skill was read from.
     """
@@ -130,6 +137,7 @@ class Skill:
     triggers: list[str] = field(default_factory=list)
     experiments: list[str] = field(default_factory=list)
     tools: list[str] = field(default_factory=list)
+    uses: list[str] = field(default_factory=list)
     source: str = ""
 
     def catalogue_line(self) -> str:
@@ -223,6 +231,7 @@ def parse_skill(text: str, source: str = "") -> Skill | None:
         triggers=_as_list(metadata.get("triggers")),
         experiments=_as_list(metadata.get("experiments")),
         tools=_as_list(metadata.get("tools")),
+        uses=_as_list(metadata.get("uses")),
         source=source,
     )
 
@@ -383,7 +392,52 @@ class SkillLibrary:
         scored = [(skill.score(question, experiments), skill) for skill in self.skills.values()]
         relevant = [(score, skill) for score, skill in scored if score >= threshold]
         relevant.sort(key=lambda item: (-item[0], item[1].name))
-        return [skill for _, skill in relevant[: max(0, int(limit))]]
+        chosen = [skill for _, skill in relevant[: max(0, int(limit))]]
+        # A composed skill is not usable without its parts, so they come along
+        # rather than competing with it for the limited slots.
+        return self.compose(chosen)
+
+    def compose(self, skills: Iterable[Skill]) -> list[Skill]:
+        """Return *skills* followed by everything they are built out of.
+
+        A skill declares the smaller procedures it composes in its ``uses``
+        frontmatter. Those are loaded transitively: asking for a distance from
+        single-molecule bursts pulls in burst selection and sub-ensemble decay
+        construction, because the composed procedure only says how they fit
+        together.
+
+        Parameters
+        ----------
+        skills : iterable of Skill
+            The skills selected for a request.
+
+        Returns
+        -------
+        list of Skill
+            The selected skills first, then their dependencies in the order
+            they were reached. Each appears once; cycles terminate.
+        """
+        ordered: list[Skill] = []
+        seen: set[str] = set()
+
+        def visit(skill: Skill) -> None:
+            """Add *skill*, then the skills it uses."""
+            if skill.name in seen:
+                return
+            seen.add(skill.name)
+            ordered.append(skill)
+            for name in skill.uses:
+                dependency = self.skills.get(str(name).strip())
+                if dependency is None:
+                    logger.warning(
+                        "skill %r uses unknown skill %r", skill.name, name
+                    )
+                    continue
+                visit(dependency)
+
+        for skill in skills:
+            visit(skill)
+        return ordered
 
 
 def session_experiments(datasets: Iterable[Any]) -> list[str]:

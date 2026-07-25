@@ -2,6 +2,29 @@
 
 ## 2026-07-25
 
+* **Skills compose, and smFRET became a family rather than a monolith.** The
+  burst-to-distance procedure landed earlier the same day as one large skill,
+  which was the wrong shape twice over: none of its steps could be reached on
+  their own ("just show me the PR histogram"), and any other workflow needing
+  burst selection would have had to copy it. Skills now declare a `uses:` list
+  and `SkillLibrary.compose` pulls dependencies in transitively — cycle-safe,
+  each skill once, resolved **after** the match cut so decomposing a procedure
+  never costs it a routing slot (`MAX_AUTO_SKILLS` 2 → 3 for the top-level
+  matches). The smFRET workflow split into `burst-search` (bursts, plus the
+  verification that the `.bur` photon indices and detector roles are what they
+  are assumed to be), `burst-selection` (proximity ratio, populations, and the
+  donor-only reference taken whether or not it was asked for),
+  `sub-ensemble-decay` (pooled micro-time histogram, IRF from the non-burst
+  photons, the photon-count table saying what a decay can support) and
+  `fret-from-bursts`, which is now only what is genuinely its own: why the
+  donor-only population is not optional, species- versus intensity-weighted
+  lifetimes, and the check that lifetime-E must agree with the proximity ratio
+  it was selected on. Each part routes independently, and a lab can write a
+  protocol skill that `uses:` the shipped ones instead of copying them. 13
+  tests (`test/agent/test_skill_composition.py`) cover transitivity, diamonds,
+  cycles, unknown parts, the routing-slot rule, and that the shipped chain
+  resolves.
+
 * **chimol kept coordinates twice and they had drifted apart.** The worst defect
   in this plugin so far, because it made commands disagree about where the
   molecule *is*. Coordinates live in `atoms["xyz"]` (Angstrom) and in the

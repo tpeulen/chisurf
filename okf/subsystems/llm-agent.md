@@ -83,19 +83,34 @@ the conversation, so a follow-up does not silently lose the procedure. This
 happens *before* the first model call, which makes routing testable without a
 model in the loop. `load_skill` remains for what the matcher cannot see.
 
-The built-in library: `fit-decay`, `fret-from-decays`, `fret-from-bursts`,
-`global-fitting`, `fit-correlation`, `fit-series`, `batch-fitting`,
-`diagnose-fit`, `estimate-uncertainty`, `explore-data`, `report-results`,
-`write-analysis-script`, `use-the-computer`, `program-chisurf`.
+The built-in library: `fit-decay`, `fret-from-decays`, `global-fitting`,
+`fit-correlation`, `fit-series`, `batch-fitting`, `diagnose-fit`,
+`estimate-uncertainty`, `explore-data`, `report-results`,
+`write-analysis-script`, `use-the-computer`, `program-chisurf`, and the smFRET
+family `burst-search`, `burst-selection`, `sub-ensemble-decay`,
+`fret-from-bursts`.
 
-**A skill can compose a whole analysis, not just one step.** `fret-from-bursts`
-chains single-molecule burst data through proximity-ratio selection, a
-sub-ensemble decay built from the selected bursts' photons, an instrument
-response taken from the same measurement's non-burst photons, and a lifetime
-fit, to a distance — a chain no single tool performs and none needed to be
-added for. It is the demonstration that capability scales through written
-procedure over general primitives (`run_python` plus the fitting tools) rather
-than through more tools.
+# Skills compose
+
+A skill declares in its `uses:` frontmatter the smaller procedures it is built
+out of, and `SkillLibrary.compose` pulls those in **transitively** when it is
+loaded (cycle-safe, each skill once). Dependencies are resolved *after* the
+match cut, so decomposing a procedure never costs it a slot.
+
+This is what lets a multi-method analysis exist without a monolith.
+`fret-from-bursts` is only the part that is genuinely its own — why the
+donor-only population is not optional, species- versus intensity-weighted
+lifetimes, and the check that the lifetime efficiency must agree with the
+proximity ratio it was selected on. The work is in `burst-search` (bursts,
+photon-index and detector-role verification), `burst-selection` (proximity
+ratio, populations), `sub-ensemble-decay` (pooled micro-time histogram, IRF
+from non-burst photons) and `fret-from-decays`.
+
+The parts are independently routable — "show me the PR histogram" loads
+`burst-selection` and the burst search it needs, nothing else — and a lab can
+write its own protocol skill that `uses:` the shipped ones rather than copying
+them. The whole chain runs on `run_python` plus the ordinary fitting tools: no
+tool was added for any of it.
 
 **Skills are written against the software, not from memory.** Every claim in
 one is checked against a real fit first — the `fit-correlation` skill was
