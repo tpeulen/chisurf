@@ -52,7 +52,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [DATA-01](#data-01) | S1 | DATA | Plugins | **3** manifests fail validation and are silently dropped by `load_manifest()` | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-02](#data-02) | S2 | DATA | MMFDB | `SCHEMA_VERSION = 40` is a stamp with no migration waterfall | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-03](#data-03) | S2 | DATA | MMFDB | Core `mmfdb_*` DDL is hand-written and defined twice (must be hand-synced) | ~~REPORTED~~ ✅ FIXED |
-| [DATA-04](#data-04) | S2 | DATA | MMFDB | `add_processing_run` partial-write; MD5 mislabeled as checksum | REPORTED |
+| [DATA-04](#data-04) | S2 | DATA | MMFDB | `add_processing_run` partial-write; MD5 mislabeled as checksum | ~~REPORTED~~ ✅ FIXED |
 | [DATA-05](#data-05) | S2 | DATA | MMFDB | External-tool runs not first-class in provenance (no `command_line`/`exit_code` cols, no `external_tool` op type, inconsistent op_type validators) | VERIFIED |
 | [DATA-06](#data-06) | S3 | DATA | MMFDB | Deposition is one-way: `archive.zip.export` exists but no importer; bundler reads `file_path` not object store; mmCIF export is FLR-only | VERIFIED |
 | [INC-01](#inc-01) | S2 | INC | Core | Three overlapping instance registries with different lifetimes | REPORTED |
@@ -70,8 +70,8 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
 
-34 findings (21 FIXED): 4 VERIFIED, 6 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL.
-Of the 13 open: 0×S1, 5×S2, 8×S3.
+36 findings (23 FIXED): 4 VERIFIED, 5 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL, 1 OPEN.
+Of the 13 open: 1×S1 (BUG-10), 4×S2, 8×S3.
 
 ---
 
@@ -325,8 +325,9 @@ The single largest source of non-uniformity across the codebase (see [core steer
 ### DATA-04
 **S2 · `add_processing_run` partial write; MD5 mislabeled.** [mmfdb steering](mmfdb.md#steering-notes).
 
-- Location: `chisurf/core/mmfdb/repository.py:6385` (`add_processing_run`). The documented partial-write path can leave an operation without its artifacts/edges, and an MD5 digest is stored/labeled as a generic "checksum".
-- Fix: wrap the run insertion in a single transaction (see `transactions.py`) and label the digest algorithm explicitly.
+- Location: `modules/mmfdb/src/mmfdb/queries/artifacts.py:1338` (`add_processing_run`); the finding was filed against the retired `chisurf/core/mmfdb/repository.py` path. The documented partial-write path can leave an operation without its artifacts/edges, and an MD5 digest is stored/labeled as a generic "checksum".
+- Fix: wrap the run insertion in a single transaction (see `store/transactions.py`) and label the digest algorithm explicitly.
+- ✅ **FIXED** (2026-07-25): both halves already hold in the standalone package and are now pinned. `add_processing_run` validates its input artifacts, then does the operation row, the `mmfdb_operation_artifact` input links and the audit-log entry inside one `_transaction()` savepoint; `add_artifact` sets `checksum_algorithm = "md5"` when handed an MD5 and leaves it `NULL` when handed no digest, rather than defaulting to the sha256 label. 4 guardrail tests in `modules/mmfdb/tests/test_processing_run_atomicity.py`, including a forced failure *after* the operation row is written (the input check alone never reaches the rollback path).
 
 ### DATA-05
 **S2 · External-tool runs can't be first-class provenance operations.** [mmfdb steering](mmfdb.md#steering-notes). An external CLI/script *can* be recorded via `mmfdb.v1.operations.record_with_artifacts` — tool → `software_package`, version, timestamps, typed parameters, checksummed input/output artifacts, queryable lineage (verified end-to-end in `modules/mmfdb/examples/mmfdb_06_external_tool_provenance.ipynb`, which records both a vanilla-`tttrlib` CLI subprocess and FRETBursts against one raw artifact). But the schema has **no dedicated column for the command line / argv or a numeric exit code** — both must be buried in free-form `settings_json`, so they are unqueryable — **no generic `external_tool`/`cli` value** in the constrained `operation_type` vocabulary (the example reuses `burst_selection`), **no software-vs-human actor** distinction (`operator_user_id` is a human-user FK), and **no container/environment** schema (image + digest). The two record paths also validate `operation_type` inconsistently: `record_operation` uses the extensible DB vocab while `record_operation_with_artifacts` uses the static `.dic` enum (`queries/artifacts.py:885` vs `:1226`) — arguably a bug. → Add `command_line`/`exit_code` columns, an `external_tool` operation type + actor-kind flag, and reconcile the two validators.

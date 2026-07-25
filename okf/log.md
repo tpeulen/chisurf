@@ -2,6 +2,22 @@
 
 ## 2026-07-25
 
+* **Two suspected provenance defects were already gone; now they cannot come
+  back.** The cleanup backlog's DATA-04 said `add_processing_run` could write an
+  operation without its artifacts and that an MD5 was stored as a generic
+  "checksum" — filed against `chisurf/core/mmfdb/repository.py`, a path that has
+  since been retired. Reading the code where it actually lives
+  (`modules/mmfdb/src/mmfdb/queries/artifacts.py`) showed both halves fixed:
+  the operation row, the `mmfdb_operation_artifact` input links and the audit-log
+  entry all sit inside one `_transaction()` savepoint, and `add_artifact` labels
+  an MD5 as `md5` and leaves the algorithm `NULL` when there is no digest at all.
+  Unpinned, though — so four guardrail tests now hold it, the interesting one
+  forcing a failure *after* the operation row is inserted, since the input-id
+  check runs first and by itself never reaches the rollback path. The backlog row
+  is marked fixed and its stale location corrected; the table's own tally was two
+  findings behind reality and is recounted. See
+  [assessment DATA-04](assessment.md#data-04).
+
 * **Skills compose, and smFRET became a family rather than a monolith.** The
   burst-to-distance procedure landed earlier the same day as one large skill,
   which was the wrong shape twice over: none of its steps could be reached on
