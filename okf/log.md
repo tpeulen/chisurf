@@ -2,6 +2,23 @@
 
 ## 2026-07-25
 
+* **`pair_fit`, and superposition now actually moves things.** `align` finds its own
+  correspondence between two structures; `pair_fit` takes one you state, matching
+  atoms *in order* within each pair — which is what you need when the two are not
+  the same sequence, or when only a domain or a ligand should drive the fit.
+  Several pairs feed one least-squares fit, so a superposition a single stretch
+  would leave ambiguous can be pinned down by adding another, and the fit moves the
+  whole mobile object rather than the atoms named in it.
+
+  Worth noting that this only became testable once the coordinate arrays were back
+  in sync: before that, `align` read the untouched atom array, and no superposition
+  command could see a displacement at all.
+
+  `intra_fit`/`intra_rms` fit the *states* of one object; chimol holds one
+  coordinate set per object, so they are deliberately absent rather than stubbed
+  into something that always errors.
+
+
 * **Two suspected provenance defects were already gone; now they cannot come
   back.** The cleanup backlog's DATA-04 said `add_processing_run` could write an
   operation without its artifacts and that an MD5 was stored as a generic

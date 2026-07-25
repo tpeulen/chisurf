@@ -141,6 +141,39 @@ distance d1, resi 10 and name CA, resi 20 and name CA
 rms polymer, other_object and polymer
 ```
 
+## Superposing structures
+
+`align` finds its own correspondence between two objects and fits them:
+
+```text
+align mobile, reference
+super mobile, reference           # sequence-independent
+```
+
+When you already know which atoms should match — because the two are not the same
+sequence, or because only a domain or a ligand should drive the fit — state the
+correspondence instead. `pair_fit` matches atoms **in order** within each pair:
+
+```text
+pair_fit mob and resi 10-25 and name CA, ref and resi 22-37 and name CA
+```
+
+Several pairs contribute to one least-squares fit, so a superposition that one
+stretch would leave ambiguous can be pinned down by adding another:
+
+```text
+pair_fit mob and resi 10-25 and name CA, ref and resi 10-25 and name CA, \
+         mob and resi 60-75 and name CA, ref and resi 60-75 and name CA
+```
+
+The fit moves the whole mobile object, not only the atoms named in it.
+
+:::{note}
+`intra_fit` and `intra_rms` fit the *states* of one object to each other. chimol
+holds a single coordinate set per object, so they have nothing to work on and are
+not implemented.
+:::
+
 ## Colouring by a computed quantity
 
 `spectrum` ramps any per-atom property across a palette. Combined with `get_area`

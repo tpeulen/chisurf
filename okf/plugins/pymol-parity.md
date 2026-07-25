@@ -193,10 +193,10 @@ confusion is exactly what hid `resn`.
 # Tier 2 — routine, works around-able
 
 **Done:** `get_area`, `get_extent`, `get_chains`, `get_title`, `iterate_state`,
-`alter_state`, `spectrum` by property, `scene`.
+`alter_state`, `spectrum` by property, `scene`, `pair_fit`.
 
 **Remaining:** `get_bond`, `smooth`, `sort`, `protect`, `mask`, `bond`/`unbond`,
-`h_add`/`h_fill`, `cealign`, `pair_fit`, `intra_fit`, `matrix_copy`,
+`h_add`/`h_fill`, `cealign`, `matrix_copy`,
 `symexp`/`symmetry`, `group`/`ungroup`/`order`, `ramp_new`, `cartoon_putty`,
 `cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
 
@@ -226,6 +226,18 @@ array *disagreed* by exactly the translation) and now asserts they agree.
 molecule samples its own surface slightly differently — a few percent at the
 default density. Pure translation is exact. Documented in the concept page; worth
 knowing before comparing two structures' areas.
+
+## `pair_fit`
+
+`align` finds its own correspondence; `pair_fit` takes one you state, matching
+atoms in order within each pair. That is what you need when the two structures are
+not the same sequence, or when only a domain or a ligand should drive the fit.
+Several pairs feed **one** least-squares fit, so a superposition one stretch would
+leave ambiguous can be pinned down by adding another.
+
+`intra_fit` and `intra_rms` fit the *states* of one object to each other; chimol
+holds a single coordinate set per object, so they have nothing to work on and are
+deliberately absent rather than stubbed.
 
 ## Scenes
 

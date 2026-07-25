@@ -450,6 +450,131 @@ class MeasurementMixin(BaseCmd):
         """Superpose ``mobile`` onto ``target`` with iterative outlier rejection."""
         self._align_or_super(mobile, target, cutoff, cycles, cmd="align")
 
+    @command("pair_fit")
+    def pair_fit(self, *selections: str) -> None:
+        """Superpose on explicitly matched atom pairs (PyMOL ``pair_fit``).
+
+        ``pair_fit mobile_sel, target_sel [, mobile_sel, target_sel ...]`` fits the
+        first selection of each pair onto the second, matching atoms **in order**
+        within each pair. That is the difference from ``align``, which finds its
+        own correspondence: here you state it, which is what you want when the two
+        structures are not the same sequence, or when only a few atoms should
+        drive the fit.
+
+        Every selection contributes to one least-squares fit, so several pairs can
+        be given to pin down a superposition that one would leave ambiguous.
+
+        Examples
+        --------
+        ``pair_fit mobile and resi 10-25 and name CA, ref and resi 22-37 and name CA``
+        """
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        expressions = [str(s).strip() for s in selections if str(s).strip()]
+        if len(expressions) < 2:
+            self._emit_error(
+                "Usage: pair_fit mobile_sel, target_sel [, mobile_sel, target_sel ...]"
+            )
+            return
+        if len(expressions) % 2:
+            self._emit_error(
+                "pair_fit: selections come in pairs, so an even number is needed "
+                f"(got {len(expressions)})"
+            )
+            return
+
+        mobile_object: str | None = None
+        mobile_points: list[np.ndarray] = []
+        target_points: list[np.ndarray] = []
+
+        for index in range(0, len(expressions), 2):
+            mobile_expr, target_expr = expressions[index], expressions[index + 1]
+            try:
+                mob_id, mob_xyz = self._selection_coordinates(viewer, mobile_expr)
+                _, tgt_xyz = self._selection_coordinates(viewer, target_expr)
+            except ValueError as exc:
+                self._emit_error(f"pair_fit: {exc}")
+                return
+
+            if mob_xyz.shape[0] != tgt_xyz.shape[0]:
+                self._emit_error(
+                    f"pair_fit: '{mobile_expr}' has {mob_xyz.shape[0]} atoms but "
+                    f"'{target_expr}' has {tgt_xyz.shape[0]} -- pairs are matched "
+                    "in order, so the counts must agree"
+                )
+                return
+
+            if mobile_object is None:
+                mobile_object = mob_id
+            elif mob_id != mobile_object:
+                # All the mobile selections move together, so they must name one
+                # object; otherwise the fit would be applied to only one of them.
+                self._emit_error(
+                    "pair_fit: every mobile selection must be in the same object"
+                )
+                return
+
+            mobile_points.append(mob_xyz)
+            target_points.append(tgt_xyz)
+
+        mobile = np.vstack(mobile_points)
+        target = np.vstack(target_points)
+        if mobile.shape[0] < 3:
+            self._emit_error(
+                f"pair_fit: at least three atom pairs are needed to fix an "
+                f"orientation (got {mobile.shape[0]})"
+            )
+            return
+
+        try:
+            rot, trans, rmsd = compute_kabsch(mobile, target)
+        except ValueError as exc:
+            self._emit_error(f"pair_fit: {exc}")
+            return
+
+        # Those coordinates are the atom array's, in Angstrom, while
+        # `apply_transform_to_object` takes its translation in scene units.
+        scale = float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
+        try:
+            viewer.apply_transform_to_object(
+                rot.T, trans * scale, object_id=mobile_object
+            )
+        except Exception as exc:
+            self._emit_error(f"pair_fit: could not apply the transform: {exc}")
+            return
+
+        self._emit_message(
+            f"pair_fit: fitted on {mobile.shape[0]} atom pairs "
+            f"(RMSD: {rmsd:.3f} Å)"
+        )
+
+    def _selection_coordinates(
+        self, viewer, expression: str
+    ) -> tuple[str, np.ndarray]:
+        """Resolve a selection to ``(object_id, coordinates)`` in Angstrom, in order.
+
+        Order matters here in a way it does not elsewhere: ``pair_fit`` matches
+        atoms by position within the selection, so the coordinates come back in
+        atom-array order rather than as an unordered set.
+
+        Raises
+        ------
+        ValueError
+            If the selection does not resolve, matches nothing, or the object
+            carries no coordinates.
+        """
+        object_id, _, mask = self._resolve_selection_to_atom_mask(viewer, expression)
+        entry = getattr(viewer, "_objects", {}).get(object_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None or "xyz" not in (atoms.dtype.names or ()):
+            raise ValueError(f"'{expression}' is in an object with no coordinates")
+        chosen = np.asarray(mask, dtype=bool)
+        if not chosen.any():
+            raise ValueError(f"'{expression}' matched no atoms")
+        return object_id, np.asarray(atoms["xyz"], dtype=float)[chosen]
+
     @command("super")
     def super(
         self, mobile: str = "", target: str = "", cutoff: float = 2.0, cycles: int = 5
