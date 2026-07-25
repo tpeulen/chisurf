@@ -87,6 +87,12 @@ class MoleculeMleSettings:
     min_photons : int, optional
         Molecules with fewer than this many photons in the fit window are not
         fitted (they yield NaN parameters).
+    roi : ROI or dict, optional
+        Region of the frame to look for molecules in — a
+        :class:`chisurf.core.roi.ROI` or its serialised form (so it survives the
+        trip through RPC). Everything outside is neither segmented nor counted
+        as background, which is what confines an analysis to one cell, one
+        illuminated patch, or a field with the bright edge cropped off.
     """
 
     detector_chs: Sequence[int] = (0, 1)
@@ -123,6 +129,22 @@ class MoleculeMleSettings:
     peak_footprint_size: int = 6
     min_area: int = 1
     min_photons: int = 1
+    roi: Any = None
+
+    def analysis_roi(self):
+        """Return :attr:`roi` as a :class:`chisurf.core.roi.ROI`, or ``None``.
+
+        Returns
+        -------
+        chisurf.core.roi.ROI or None
+            The region, rebuilt from its serialised form when the settings came
+            over RPC.
+        """
+        from chisurf.core.roi import ROI, roi_from_dict
+
+        if self.roi is None or isinstance(self.roi, ROI):
+            return self.roi
+        return roi_from_dict(self.roi)
 
     @property
     def window(self) -> int:
@@ -167,6 +189,8 @@ class MoleculeMleResult:
     centroids: np.ndarray
     vv_vh_vectors: list[np.ndarray] = dataclasses.field(default_factory=list)
     model_curves: list[np.ndarray] = dataclasses.field(default_factory=list)
+    #: The analysis region the molecules were searched in, if one was set.
+    analysis_roi: Any = None
 
     @property
     def n_molecules(self) -> int:
@@ -197,6 +221,90 @@ class MoleculeMleResult:
 
         return labels_to_rois(self.label_image, crop=crop)
 
+    def foreground_roi(self):
+        """Return every segmented molecule as one region.
+
+        Returns
+        -------
+        chisurf.core.roi.MaskROI
+            The union of all labels — the signal-bearing part of the frame.
+        """
+        from chisurf.core.roi import MaskROI
+
+        return MaskROI(self.label_image > 0, name="foreground")
+
+    def background_roi(self, margin: int = 2):
+        """Return the part of the frame that holds no molecule.
+
+        The complement of the foreground is not a usable background: the pixels
+        just outside a molecule still carry its point-spread-function tail, and
+        including them biases the background rate upward. *margin* dilates the
+        foreground before taking the complement, which is the standard local-
+        background construction (and what PAM's MIA does with its rings).
+
+        Parameters
+        ----------
+        margin : int
+            Pixels of clearance to leave around every molecule. ``0`` takes the
+            plain complement.
+
+        Returns
+        -------
+        chisurf.core.roi.MaskROI
+            The background region, further restricted to the analysis region
+            when one was set.
+        """
+        from scipy import ndimage as ndi
+
+        from chisurf.core.roi import MaskROI
+
+        occupied = self.label_image > 0
+        if margin > 0:
+            occupied = ndi.binary_dilation(occupied, iterations=int(margin))
+        background = ~occupied
+        if self.analysis_roi is not None:
+            background &= self.analysis_roi.to_mask(
+                self.intensity_image.shape, image=self.intensity_image
+            )
+        return MaskROI(background, name="background")
+
+    def background_rate(self, margin: int = 2) -> float:
+        """Return the mean photon count per background pixel.
+
+        The number to compare a molecule's brightness against, and the one that
+        says whether a segmentation threshold was set sensibly.
+
+        Parameters
+        ----------
+        margin : int
+            Clearance around each molecule, as for :meth:`background_roi`.
+
+        Returns
+        -------
+        float
+            Mean intensity over the background region; ``nan`` if there is none.
+        """
+        props = self.background_roi(margin).properties(
+            self.intensity_image.shape, image=self.intensity_image
+        )
+        return float("nan") if props is None else props.intensity_mean
+
+    def region_properties(self):
+        """Return the full region measurements of every molecule.
+
+        The per-molecule table carries the handful of shape columns the fit
+        report needs; this gives the complete set (hull, moments, Euler number,
+        intensity statistics) for anything else.
+
+        Returns
+        -------
+        list of chisurf.core.roi.RegionProperties
+            One measurement set per molecule, in label order.
+        """
+        from chisurf.core.roi import regionprops
+
+        return regionprops(self.label_image, self.intensity_image)
+
 
 # ---------------------------------------------------------------------------
 # Segmentation
@@ -208,6 +316,7 @@ def segment_molecules(
     seg_threshold: float = -1.0,
     peak_footprint_size: int = 6,
     min_area: int = 1,
+    roi: Any = None,
 ) -> np.ndarray:
     """Segment single molecules from a 2-D intensity image by watershed.
 
@@ -227,6 +336,11 @@ def segment_molecules(
         Side length of the square footprint for the local-maxima seeds.
     min_area : int, optional
         Labels smaller than this many pixels are removed.
+    roi : chisurf.core.roi.ROI, optional
+        Confine the search to this region. It is applied *before* the
+        threshold, so an Otsu level is computed from the region's own pixels —
+        the point of restricting an analysis to one cell is that the rest of
+        the frame should not set its threshold.
 
     Returns
     -------
@@ -242,8 +356,19 @@ def segment_molecules(
     if smoothed.max() <= 0:
         return np.zeros(intensity.shape, dtype=np.int32)
 
-    thresh = seg_threshold if seg_threshold > 0 else filters.threshold_otsu(smoothed)
+    inside = None
+    if roi is not None:
+        inside = roi.to_mask(intensity.shape, image=intensity)
+        if not inside.any():
+            return np.zeros(intensity.shape, dtype=np.int32)
+
+    if seg_threshold > 0:
+        thresh = seg_threshold
+    else:
+        thresh = filters.threshold_otsu(smoothed if inside is None else smoothed[inside])
     binary = clear_border(smoothed > thresh)
+    if inside is not None:
+        binary &= inside
     if not binary.any():
         return np.zeros(intensity.shape, dtype=np.int32)
 
@@ -261,6 +386,82 @@ def segment_molecules(
             if lab != 0 and count < min_area:
                 labels[labels == lab] = 0
     return labels.astype(np.int32)
+
+
+def _shape_columns(prop) -> dict:
+    """Return the per-molecule shape columns of the result table.
+
+    Parameters
+    ----------
+    prop : chisurf.core.roi.RegionProperties
+        Measurements of one segmented molecule.
+
+    Returns
+    -------
+    dict
+        The morphology and brightness columns, shared by the fitted table and
+        the un-fitted segmentation preview so the two stay in step.
+    """
+    row, col = prop.centroid
+    columns = {
+        "label": int(prop.label),
+        "centroid_row": float(row),
+        "centroid_col": float(col),
+        "area": int(prop.area),
+        "perimeter": float(prop.perimeter),
+        "circularity": float(prop.circularity),
+        "eccentricity": float(prop.eccentricity),
+        "solidity": float(prop.solidity),
+    }
+    if prop.image_intensity is not None:
+        columns["intensity_mean"] = float(prop.intensity_mean)
+        columns["intensity_max"] = float(prop.intensity_max)
+    return columns
+
+
+def segmentation_preview(
+    intensity: np.ndarray, settings: MoleculeMleSettings
+) -> MoleculeMleResult:
+    """Segment an image without fitting it.
+
+    The cheap half of :func:`fit_molecules`, for tuning the segmentation
+    parameters against the molecule count and the background rate before
+    committing to a full MLE run.
+
+    Parameters
+    ----------
+    intensity : numpy.ndarray
+        2-D total-intensity image.
+    settings : MoleculeMleSettings
+        Segmentation settings; the estimator settings are ignored.
+
+    Returns
+    -------
+    MoleculeMleResult
+        A result with the labels, the region measurements and a ``tau`` column
+        of NaN, browsable exactly like a fitted one.
+    """
+    from chisurf.core.roi import regionprops
+
+    analysis_roi = settings.analysis_roi()
+    labels = segment_molecules(
+        intensity,
+        seg_sigma=settings.seg_sigma,
+        seg_threshold=settings.seg_threshold,
+        peak_footprint_size=settings.peak_footprint_size,
+        min_area=settings.min_area,
+        roi=analysis_roi,
+    )
+    props = regionprops(labels, intensity)
+    rows = [{**_shape_columns(p), "tau": float("nan")} for p in props]
+    centroids = [p.centroid for p in props]
+    return MoleculeMleResult(
+        dataframe=pd.DataFrame(rows),
+        intensity_image=intensity,
+        label_image=labels,
+        centroids=np.asarray(centroids, dtype=float).reshape(-1, 2),
+        analysis_roi=analysis_roi,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -455,7 +656,8 @@ def fit_molecules(
     MoleculeMleResult
     """
     import tttrlib
-    from skimage import measure
+
+    from chisurf.core.roi import regionprops
 
     if settings.irf is None:
         raise ValueError("settings.irf must be set (VV/VH IRF); use fit_molecules_from_files")
@@ -491,18 +693,20 @@ def fit_molecules(
         clsm = tttrlib.CLSMImage(tttr, channels=list(settings.detector_chs), fill=True)
     intensity = np.asarray(clsm.intensity).sum(axis=0)
 
+    analysis_roi = settings.analysis_roi()
     labels = segment_molecules(
         intensity,
         seg_sigma=settings.seg_sigma,
         seg_threshold=settings.seg_threshold,
         peak_footprint_size=settings.peak_footprint_size,
         min_area=settings.min_area,
+        roi=analysis_roi,
     )
 
     micro_times = tttr.micro_times
     routing = tttr.routing_channels
 
-    props = measure.regionprops(labels)
+    props = regionprops(labels, intensity)
     n_props = len(props)
 
     # Pass 1: build each molecule's VV/VH histogram; drop sub-threshold molecules.
@@ -543,20 +747,13 @@ def fit_molecules(
             model_curve = res.model_curve
 
         cy, cx = prop.centroid
-        perimeter = float(prop.perimeter)
-        area = int(prop.area)
-        circularity = (4 * np.pi * area / perimeter**2) if perimeter > 0 else 0.0
+        wy, wx = prop.centroid_weighted
 
         rows.append(
             {
-                "label": int(prop.label),
-                "centroid_row": float(cy),
-                "centroid_col": float(cx),
-                "area": area,
-                "perimeter": perimeter,
-                "circularity": circularity,
-                "eccentricity": float(prop.eccentricity),
-                "solidity": float(prop.solidity),
+                **_shape_columns(prop),
+                "centroid_weighted_row": float(wy),
+                "centroid_weighted_col": float(wx),
                 "n_photons_total": n_p + n_s,
                 "n_photons_parallel": n_p,
                 "n_photons_perpendicular": n_s,
@@ -582,6 +779,7 @@ def fit_molecules(
         centroids=np.asarray(centroids, dtype=float).reshape(-1, 2),
         vv_vh_vectors=vv_vhs,
         model_curves=curves,
+        analysis_roi=analysis_roi,
     )
 
 

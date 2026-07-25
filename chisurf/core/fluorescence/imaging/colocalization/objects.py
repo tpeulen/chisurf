@@ -49,12 +49,17 @@ class ObjectSet:
         Pixel area of each object.
     intensities : numpy.ndarray
         Integrated intensity of each object.
+    properties : list of chisurf.core.roi.RegionProperties
+        The full measurements of each object — shape, hull, moments, intensity
+        statistics — from which the arrays above are the four most-used
+        columns. Empty when the set was built without them.
     """
 
     labels: np.ndarray
     centroids: np.ndarray
     areas: np.ndarray
     intensities: np.ndarray
+    properties: list = dataclasses.field(default_factory=list)
 
     @property
     def count(self) -> int:
@@ -65,6 +70,19 @@ class ObjectSet:
     def mask(self) -> np.ndarray:
         """Return the boolean footprint of all objects."""
         return self.labels > 0
+
+    def rois(self) -> list:
+        """Return each object as a region of interest.
+
+        Returns
+        -------
+        list of chisurf.core.roi.MaskROI
+            One region per object, ready to gate, combine or store — the same
+            type a hand-drawn selection produces.
+        """
+        from chisurf.core.roi import labels_to_rois
+
+        return labels_to_rois(self.labels)
 
 
 def segment_objects(
@@ -142,14 +160,21 @@ def segment_objects(
     remap = np.zeros(labels.max() + 1, dtype=int)
     remap[keep] = np.arange(1, keep.size + 1)
     labels = remap[labels]
-    index = np.arange(1, keep.size + 1)
 
-    positive = np.clip(data, 0.0, None)
-    centroids = np.asarray(ndimage.center_of_mass(positive, labels, index), dtype=float)
-    centroids = centroids.reshape(-1, 2)
-    areas = np.asarray(ndimage.sum(np.ones_like(data), labels, index), dtype=float)
-    intensities = np.asarray(ndimage.sum(positive, labels, index), dtype=float)
-    return ObjectSet(labels=labels, centroids=centroids, areas=areas, intensities=intensities)
+    # One pass of the shared region measurements, rather than one ndimage
+    # reduction per quantity: the same numbers every other imaging tool reports.
+    # Negative pixels (a background-subtracted image has them) are clipped, or
+    # they would pull an object's centre of mass away from its own signal.
+    from chisurf.core.roi import regionprops
+
+    props = regionprops(labels, np.clip(data, 0.0, None))
+    return ObjectSet(
+        labels=labels,
+        centroids=np.asarray([p.centroid_weighted for p in props], dtype=float).reshape(-1, 2),
+        areas=np.asarray([p.area for p in props], dtype=float),
+        intensities=np.asarray([p.intensity_sum for p in props], dtype=float),
+        properties=props,
+    )
 
 
 def _watershed_split(binary: np.ndarray) -> np.ndarray:

@@ -164,6 +164,64 @@ class ROI(abc.ABC):
         pts = np.column_stack([gx.ravel(), gy.ravel()])
         return self.contains(pts).reshape(gx.shape)
 
+    def bounding_box(
+        self,
+        shape: Sequence[int],
+        extent: Extent = None,
+        image: Optional[np.ndarray] = None,
+    ) -> Optional[Tuple[int, int, int, int]]:
+        """Return the smallest box of pixels containing the region.
+
+        Parameters
+        ----------
+        shape : sequence of int
+            Array shape ``(ny, nx)`` the region is rasterised onto.
+        extent : tuple of float, optional
+            Value span ``(x0, x1, y0, y1)``; omit for pixel-index coordinates.
+        image : numpy.ndarray, optional
+            Image for intensity-dependent regions.
+
+        Returns
+        -------
+        tuple of int or None
+            ``(row0, col0, row1, col1)`` with the upper bounds exclusive, so
+            ``img[row0:row1, col0:col1]`` is the crop; ``None`` when the region
+            covers no pixel.
+        """
+        mask = self.to_mask(shape, extent, image)
+        rows = np.flatnonzero(mask.any(axis=1))
+        cols = np.flatnonzero(mask.any(axis=0))
+        if rows.size == 0 or cols.size == 0:
+            return None
+        return (int(rows[0]), int(cols[0]), int(rows[-1]) + 1, int(cols[-1]) + 1)
+
+    def properties(
+        self,
+        shape: Sequence[int],
+        extent: Extent = None,
+        image: Optional[np.ndarray] = None,
+    ) -> Optional[Any]:
+        """Measure the region: area, centroid, shape and intensity statistics.
+
+        Parameters
+        ----------
+        shape : sequence of int
+            Array shape ``(ny, nx)`` the region is rasterised onto.
+        extent : tuple of float, optional
+            Value span ``(x0, x1, y0, y1)``; omit for pixel-index coordinates.
+        image : numpy.ndarray, optional
+            Intensity image; supplying it adds the intensity properties.
+
+        Returns
+        -------
+        chisurf.core.roi.props.RegionProperties or None
+            The measurements, or ``None`` when the region covers no pixel.
+        """
+        from .props import regionprops
+
+        found = regionprops(self, image, shape=shape, extent=extent)
+        return found[0] if found else None
+
     # --- composition -------------------------------------------------------
     def __and__(self, other: "ROI") -> "CompositeROI":
         """Return the intersection of two regions."""

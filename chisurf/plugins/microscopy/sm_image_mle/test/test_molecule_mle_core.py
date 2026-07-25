@@ -109,3 +109,99 @@ def test_irf_length_mismatch_raises():
     bad = _settings(sim, irf=np.zeros(10))
     with pytest.raises(ValueError):
         fit_molecules(sim.tttr, bad, clsm=sim.clsm, dt=sim.dt, period=sim.laser_period)
+
+
+# --- foreground and background as regions -----------------------------------
+def test_an_analysis_roi_confines_the_search():
+    """A drawn region restricts which molecules are looked for at all.
+
+    The frame holds two molecules; a rectangle around one of them must find
+    exactly that one — this is how a single cell, or one illuminated patch, is
+    analysed without the rest of the field taking part.
+    """
+    from chisurf.core.roi import RectangleROI
+
+    sim = _sim()
+    # (x0, y0, x1, y1) around the molecule at (row 8, col 8) only.
+    around_first = RectangleROI(0, 0, 16, 16, name="patch")
+    result = fit_molecules(
+        sim.tttr, _settings(sim, roi=around_first), clsm=sim.clsm,
+        dt=sim.dt, period=sim.laser_period,
+    )
+    assert result.n_molecules == 1
+    row, col = result.centroids[0]
+    assert row < 16 and col < 16
+    assert result.dataframe["tau"].to_numpy()[0] == pytest.approx(MOLECULES[0][2], abs=0.6)
+
+
+def test_a_serialised_roi_survives_the_trip_through_settings():
+    """Settings cross an RPC boundary as plain data, so the region must too."""
+    from chisurf.core.roi import RectangleROI
+
+    sim = _sim()
+    as_dict = RectangleROI(0, 0, 16, 16).to_dict()
+    result = fit_molecules(
+        sim.tttr, _settings(sim, roi=as_dict), clsm=sim.clsm,
+        dt=sim.dt, period=sim.laser_period,
+    )
+    assert result.n_molecules == 1
+    assert result.analysis_roi is not None
+
+
+def test_foreground_and_background_partition_the_frame():
+    """The molecules and the region used to judge them are both ROIs.
+
+    Background is not simply "not a molecule": the pixels touching a molecule
+    still carry its PSF tail, so the margin has to push them out, or the
+    background rate reads high and every molecule looks dimmer than it is.
+    """
+    sim = _sim()
+    result = fit_molecules(
+        sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period
+    )
+    shape = result.intensity_image.shape
+
+    foreground = result.foreground_roi().to_mask(shape)
+    background = result.background_roi(margin=2).to_mask(shape)
+    assert not (foreground & background).any()
+    assert foreground.sum() > 0
+    assert background.sum() > foreground.sum()
+
+    # A wider margin can only shrink the background.
+    assert result.background_roi(margin=4).to_mask(shape).sum() <= background.sum()
+
+    # ... and the molecules are far brighter than what is left over.
+    assert result.background_rate() < result.dataframe["intensity_mean"].min()
+
+
+def test_the_result_exposes_full_region_measurements():
+    """Every molecule is measurable with the shared region properties."""
+    sim = _sim()
+    result = fit_molecules(
+        sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period
+    )
+    props = result.region_properties()
+    assert len(props) == result.n_molecules
+    for prop, (_, _, _) in zip(props, MOLECULES):
+        assert prop.area > 0
+        assert 0.0 <= prop.solidity <= 1.0
+        assert prop.intensity_max > 0
+    # The table's shape columns are those measurements, not a second opinion.
+    np.testing.assert_allclose(
+        result.dataframe["area"].to_numpy(), [p.area for p in props]
+    )
+
+
+def test_segmentation_preview_matches_the_fitted_segmentation():
+    """The GUI's preview and the real run segment identically — same code path."""
+    from chisurf.plugins.microscopy.sm_image_mle.core.molecule_mle import segmentation_preview
+
+    sim = _sim()
+    settings = _settings(sim)
+    preview = segmentation_preview(sim.intensity, settings)
+    fitted = fit_molecules(
+        sim.tttr, settings, clsm=sim.clsm, dt=sim.dt, period=sim.laser_period
+    )
+    assert preview.n_molecules == fitted.n_molecules
+    np.testing.assert_array_equal(preview.label_image, fitted.label_image)
+    assert preview.dataframe["tau"].isna().all()

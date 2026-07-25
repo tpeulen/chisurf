@@ -1,0 +1,380 @@
+"""Region properties: measuring a region, whatever produced it.
+
+Segmentation is only half of an imaging analysis — the other half is asking what
+each region *is*, and every consumer used to answer that on its own (the
+molecule-MLE plugin through ``skimage.measure.regionprops``, object
+colocalization through hand-rolled ``scipy.ndimage`` reductions). These tests
+pin the two things the shared implementation has to get right: it measures a
+drawn ROI exactly as it measures a segmentation label, and its numbers are the
+established ones — checked against ``skimage.measure.regionprops`` where that is
+installed, and against closed-form geometry where it is not.
+"""
+from __future__ import annotations
+
+import math
+
+import numpy as np
+import pytest
+
+from chisurf.core.roi import (
+    EllipseROI,
+    MaskROI,
+    PolygonROI,
+    RectangleROI,
+    RegionProperties,
+    ThresholdROI,
+    regionprops,
+    regionprops_table,
+)
+
+skimage_measure = pytest.importorskip("skimage.measure", reason="scikit-image not installed")
+
+
+@pytest.fixture
+def blobs() -> tuple[np.ndarray, np.ndarray]:
+    """Return a few irregular labelled blobs and the intensity they came from."""
+    from scipy import ndimage as ndi
+
+    rng = np.random.default_rng(3)
+    raw = rng.random((64, 64))
+    labels, _ = ndi.label(ndi.gaussian_filter(raw, 2) > 0.55)
+    intensity = ndi.gaussian_filter(raw, 1) * 100.0
+    return labels.astype(np.int32), intensity
+
+
+# --- one region, many sources ----------------------------------------------
+def test_a_drawn_region_measures_like_a_segmented_one():
+    """A polygon and the label image it rasterises to give the same numbers.
+
+    This is the point of the module: region properties are a property of the
+    region, not of the pipeline that produced it.
+    """
+    poly = PolygonROI([[2, 2], [18, 2], [18, 10], [2, 10]], name="box")
+    drawn = regionprops(poly, shape=(21, 21))[0]
+
+    labels = np.zeros((21, 21), dtype=int)
+    labels[poly.to_mask((21, 21))] = 1
+    segmented = regionprops(labels)[0]
+
+    assert drawn.area == segmented.area
+    assert drawn.centroid == segmented.centroid
+    assert drawn.perimeter == segmented.perimeter
+    assert drawn.eccentricity == pytest.approx(segmented.eccentricity)
+
+
+def test_a_boolean_mask_is_one_region():
+    """A bare mask needs no labelling to be measured."""
+    mask = np.zeros((10, 10), dtype=bool)
+    mask[2:5, 3:9] = True
+    prop = regionprops(mask)[0]
+    assert prop.area == 18
+    assert prop.bbox == (2, 3, 5, 9)
+    assert prop.extent == 1.0
+
+
+def test_rois_are_measured_in_the_order_given():
+    """Several ROIs give several property sets, labelled 1..n and named."""
+    rois = [RectangleROI(0, 0, 3, 3, name="a"), RectangleROI(5, 5, 9, 8, name="b")]
+    props = regionprops(rois, shape=(10, 10))
+    assert [p.label for p in props] == [1, 2]
+    assert [p.name for p in props] == ["a", "b"]
+    assert [p.area for p in props] == [9, 12]
+
+
+def test_empty_regions_are_dropped_not_reported_as_zero_area():
+    """A region that covers no pixel is absent, rather than a row of NaNs."""
+    assert regionprops(RectangleROI(50, 50, 60, 60), shape=(10, 10)) == []
+    assert regionprops(np.zeros((8, 8), dtype=int)) == []
+
+
+def test_an_intensity_dependent_region_can_be_measured():
+    """A threshold region needs the image to rasterise, and gets it."""
+    image = np.zeros((8, 8))
+    image[3:6, 2:7] = 5.0
+    prop = regionprops(ThresholdROI(low=1.0), image)[0]
+    assert prop.area == 15
+    assert prop.intensity_mean == 5.0
+
+
+def test_measuring_a_roi_without_a_frame_is_an_error():
+    """Rasterising needs a grid; asking without one says so."""
+    with pytest.raises(ValueError, match="shape"):
+        regionprops(RectangleROI(0, 0, 2, 2))
+
+
+# --- the numbers themselves -------------------------------------------------
+def test_geometry_of_a_known_rectangle():
+    """Closed-form checks that do not depend on scikit-image being installed."""
+    prop = regionprops(RectangleROI(1, 2, 9, 6, name="r"), shape=(12, 12))[0]
+    assert prop.area == 8 * 4
+    assert prop.bbox == (2, 1, 6, 9)
+    assert prop.centroid == (3.5, 4.5)
+    assert prop.extent == 1.0
+    assert prop.solidity == 1.0
+    # A filled convex shape covers its own hull exactly.
+    assert prop.area_convex == prop.area
+    # 8 x 4 rectangle: major axis of the equivalent ellipse is the longer side.
+    assert prop.axis_major_length > prop.axis_minor_length
+    assert prop.equivalent_diameter_area == pytest.approx(math.sqrt(4 * 32 / math.pi))
+
+
+def test_a_disc_is_round_and_a_bar_is_not():
+    """Eccentricity and circularity behave the way their names promise."""
+    disc = regionprops(EllipseROI(15, 15, 10), shape=(31, 31))[0]
+    assert disc.eccentricity == pytest.approx(0.0, abs=1e-2)
+    assert disc.circularity == pytest.approx(1.0, abs=0.1)
+
+    bar = np.zeros((13, 21), dtype=bool)
+    bar[5:8, 2:19] = True
+    stick = regionprops(bar)[0]
+    assert stick.eccentricity > 0.98
+    assert stick.circularity < 0.6
+
+
+def test_solidity_falls_when_a_region_is_concave():
+    """A ring fills far less of its convex hull than a disc does."""
+    disc = EllipseROI(15, 15, 12)
+    ring = regionprops(disc - EllipseROI(15, 15, 8), shape=(31, 31))[0]
+    assert regionprops(disc, shape=(31, 31))[0].solidity > 0.9
+    assert ring.solidity < 0.6
+
+
+def test_orientation_follows_the_long_axis():
+    """A horizontal bar and a vertical bar are a quarter turn apart."""
+    horizontal = np.zeros((9, 9), dtype=bool)
+    horizontal[4, 1:8] = True
+    vertical = horizontal.T.copy()
+    a = regionprops(horizontal)[0].orientation
+    b = regionprops(vertical)[0].orientation
+    assert abs(abs(a - b) - math.pi / 2) < 1e-12
+
+
+def test_perimeter_weights_diagonal_steps():
+    """A 45-degree boundary counts as ``sqrt(2)`` per pixel, not 1.
+
+    Counting border pixels — the obvious implementation — underestimates a
+    diagonal edge by 29 %, which is exactly the regime single molecules and
+    puncta live in. The neighbourhood weighting is what makes circularity and
+    perimeter usable for anything not axis-aligned.
+    """
+    from scipy import ndimage as ndi
+
+    rr, cc = np.mgrid[:13, :13]
+    diamond = (np.abs(rr - 6) + np.abs(cc - 6)) <= 4
+    border = diamond & ~ndi.binary_erosion(
+        diamond, ndi.generate_binary_structure(2, 1), border_value=0
+    )
+    measured = regionprops(diamond)[0].perimeter
+    assert measured == pytest.approx(math.sqrt(2) * border.sum())
+    # ... and that is within ~11 % of the true boundary of the continuous
+    # diamond it samples, where the naive count is out by 37 %.
+    true_length = 4.0 * math.sqrt(2) * 4.5
+    assert abs(measured - true_length) / true_length < 0.12
+
+
+# --- intensity --------------------------------------------------------------
+def test_intensity_statistics_use_only_the_region():
+    """Intensity properties ignore everything outside the mask."""
+    image = np.zeros((10, 10))
+    image[2:4, 2:4] = 10.0
+    image[6:8, 6:8] = 1000.0  # a bright blob elsewhere, must not leak in
+    prop = regionprops(RectangleROI(1, 1, 5, 5), image)[0]
+    assert prop.intensity_max == 10.0
+    assert prop.intensity_sum == 40.0
+    assert prop.intensity_mean == pytest.approx(40.0 / 16)
+
+
+def test_weighted_centroid_follows_the_photons():
+    """The intensity-weighted centre sits on the bright side of the region."""
+    image = np.zeros((10, 10))
+    image[3, 6] = 100.0
+    prop = regionprops(RectangleROI(1, 1, 9, 9), image)[0]
+    assert prop.centroid == (4.5, 4.5)
+    assert prop.centroid_weighted == (3.0, 6.0)
+
+
+def test_negative_pixels_do_not_pull_the_weighted_centroid_outward():
+    """Background subtraction leaves negative pixels; they are clipped, not used.
+
+    An unclipped weighted mean can place the centre outside the region, or blow
+    up when the weights sum to zero.
+    """
+    image = np.full((9, 9), -5.0)
+    image[4, 7] = 50.0
+    prop = regionprops(RectangleROI(0, 0, 9, 9), image)[0]
+    assert prop.centroid_weighted == (4.0, 7.0)
+
+
+def test_intensity_properties_need_an_intensity_image():
+    """Asking for brightness without an image is a clear error, not a crash."""
+    prop = regionprops(np.ones((4, 4), dtype=bool))[0]
+    with pytest.raises(ValueError, match="intensity image"):
+        _ = prop.intensity_mean
+
+
+def test_a_stack_is_summed_over_frames():
+    """An image stack measures like the frame-summed image it stands for."""
+    stack = np.ones((5, 6, 6))
+    prop = regionprops(np.ones((6, 6), dtype=bool), stack)[0]
+    assert prop.intensity_mean == 5.0
+
+
+# --- interoperability -------------------------------------------------------
+def test_a_measured_region_is_a_region_again():
+    """``to_roi`` closes the loop back to the geometry side of the subsystem."""
+    labels = np.zeros((12, 12), dtype=int)
+    labels[3:7, 4:9] = 7
+    prop = regionprops(labels)[0]
+    roi = prop.to_roi()
+    assert isinstance(roi, MaskROI)
+    assert roi.name == "7"
+    np.testing.assert_array_equal(roi.to_mask((12, 12)), labels == 7)
+    # ... and measuring it again is a fixed point.
+    assert regionprops(roi, shape=(12, 12))[0].area == prop.area
+
+
+def test_the_table_has_one_column_per_scalar():
+    """``regionprops_table`` returns columns, exactly as scikit-image's does."""
+    labels = np.array([[1, 1, 0], [1, 1, 0], [0, 0, 2]])
+    table = regionprops_table(labels)
+    assert list(table["label"]) == [1, 2]
+    assert list(table["area"]) == [4, 1]
+    assert "intensity_mean" not in table
+
+    with_intensity = regionprops_table(labels, np.ones((3, 3)) * 3.0)
+    assert list(with_intensity["intensity_mean"]) == [3.0, 3.0]
+
+
+def test_multi_component_properties_are_split_like_skimage(blobs):
+    """``centroid`` becomes ``centroid-0``/``centroid-1``, separator and all."""
+    labels, intensity = blobs
+    ours = regionprops_table(labels, intensity, ["label", "centroid", "area"])
+    theirs = skimage_measure.regionprops_table(
+        labels, intensity, ("label", "centroid", "area")
+    )
+    assert list(ours) == list(theirs)
+    for key in theirs:
+        np.testing.assert_allclose(ours[key], theirs[key])
+
+    underscored = regionprops_table(labels, properties=["centroid"], separator="_")
+    assert list(underscored) == ["centroid_0", "centroid_1"]
+
+
+def test_the_table_keeps_its_columns_when_there_is_nothing_to_report():
+    """An empty result is still a table, so downstream code needs no special case."""
+    table = regionprops_table(np.zeros((5, 5), dtype=int), properties=["label", "area"])
+    assert list(table) == ["label", "area"]
+    assert len(table["area"]) == 0
+
+
+def test_selected_properties_only():
+    """A caller that wants two columns pays for two columns."""
+    row = regionprops(np.ones((3, 3), dtype=bool))[0].to_dict(["area", "circularity"])
+    assert set(row) == {"area", "circularity"}
+
+
+def test_extra_properties_are_measured_too():
+    """``extra_properties`` is scikit-image's extension point, and it works here."""
+
+    def photon_density(mask, intensity):
+        """Photons per pixel, as a user-supplied measurement."""
+        return float(intensity[mask].sum() / mask.sum())
+
+    image = np.full((6, 6), 4.0)
+    props = regionprops(np.ones((6, 6), dtype=bool), image,
+                        extra_properties=[photon_density])
+    assert props[0].photon_density == 4.0
+    table = regionprops_table(np.ones((6, 6), dtype=bool), image,
+                              ["label", "photon_density"],
+                              extra_properties=[photon_density])
+    assert table["photon_density"].tolist() == [4.0]
+
+
+def test_item_access_matches_skimage():
+    """``prop['area']`` works, because scikit-image's region objects allow it."""
+    prop = regionprops(np.ones((3, 3), dtype=bool))[0]
+    assert prop["area"] == prop.area
+    with pytest.raises(KeyError):
+        _ = prop["not_a_property"]
+
+
+def test_roi_properties_shortcut_and_bounding_box():
+    """The convenience seam on ROI itself, used by drift and imaging tools."""
+    roi = RectangleROI(2, 1, 6, 4)
+    assert roi.bounding_box((10, 10)) == (1, 2, 4, 6)
+    assert roi.properties((10, 10)).area == 12
+    assert RectangleROI(50, 50, 60, 60).bounding_box((10, 10)) is None
+    assert RectangleROI(50, 50, 60, 60).properties((10, 10)) is None
+
+
+# --- agreement with the established implementation --------------------------
+@pytest.mark.parametrize(
+    "name",
+    [
+        "area", "area_bbox", "area_convex", "area_filled", "bbox", "centroid",
+        "centroid_local", "centroid_weighted", "eccentricity",
+        "equivalent_diameter_area", "euler_number", "extent",
+        "axis_major_length", "axis_minor_length", "inertia_tensor",
+        "inertia_tensor_eigvals", "intensity_max", "intensity_mean",
+        "intensity_min", "intensity_std", "moments", "moments_central",
+        "num_pixels", "orientation", "perimeter", "perimeter_crofton", "solidity",
+    ],
+)
+def test_matches_skimage_regionprops(blobs, name):
+    """Every shared property agrees with ``skimage.measure.regionprops``.
+
+    The names are only worth borrowing if the numbers come with them. Where an
+    algorithm has a choice — the border-weighted perimeter, the Crofton
+    weights, the half-pixel-offset convex hull, the inertia-tensor axes, the
+    sign convention of ``orientation``, the Euler coefficients — this pins that
+    the same choice is made, so a value read here means what it means anywhere
+    else in imaging.
+    """
+    labels, intensity = blobs
+    theirs = skimage_measure.regionprops(labels, intensity_image=intensity)
+    ours = regionprops(labels, intensity)
+    assert len(theirs) == len(ours) > 5
+
+    for a, b in zip(theirs, ours):
+        expected = np.asarray(getattr(a, name), dtype=float)
+        np.testing.assert_allclose(np.asarray(getattr(b, name), dtype=float), expected,
+                                   rtol=1e-9, atol=1e-9)
+
+
+def test_feret_diameter_is_close_to_skimages(blobs):
+    """The longest caliper, measured on the hull vertices rather than a contour.
+
+    scikit-image traces the padded hull with marching squares; taking the hull
+    vertices directly is the same measurement without the contour tracer, and
+    lands within a fraction of a pixel.
+    """
+    labels, _ = blobs
+    theirs = [p.feret_diameter_max for p in skimage_measure.regionprops(labels)]
+    ours = [p.feret_diameter_max for p in regionprops(labels)]
+    np.testing.assert_allclose(ours, theirs, atol=0.75)
+
+
+def test_degenerate_shapes_match_skimage():
+    """Single pixels, lines and squares — where the axis formulae go singular."""
+    shapes = {
+        "point": np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]]),
+        "hline": np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]]),
+        "vline": np.array([[0, 1, 0], [0, 1, 0], [0, 1, 0]]),
+        "diagonal": np.eye(3, dtype=int),
+        "square": np.ones((3, 3), dtype=int),
+    }
+    for name, mask in shapes.items():
+        theirs = skimage_measure.regionprops(mask)[0]
+        ours = regionprops(mask)[0]
+        assert ours.orientation == pytest.approx(theirs.orientation), name
+        assert ours.eccentricity == pytest.approx(theirs.eccentricity), name
+        assert ours.solidity == pytest.approx(theirs.solidity), name
+        assert ours.perimeter == pytest.approx(theirs.perimeter), name
+
+
+def test_properties_are_computed_once():
+    """Measuring thousands of molecules must not re-walk the mask per access."""
+    prop = RegionProperties(np.ones((4, 4), dtype=bool))
+    assert prop.area == 16
+    prop.image[:] = False  # invalidating the source must not change a cached answer
+    assert prop.area == 16

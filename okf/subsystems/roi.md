@@ -1,7 +1,7 @@
 ---
 type: Subsystem
 title: "Regions of interest"
-description: The shared ROI geometry in chisurf/core/roi — one class answering both point membership (gating) and pixel rasterisation (imaging), with boolean composition, JSON persistence and a segmentation bridge.
+description: The shared ROI geometry in chisurf/core/roi — one class answering both point membership (gating) and pixel rasterisation (imaging), plus scikit-image-compatible region properties, with boolean composition, JSON persistence and a segmentation bridge.
 resource: chisurf/core/roi/
 tags: [subsystems, roi, imaging, gating, segmentation]
 timestamp: '2026-07-25T00:00:00Z'
@@ -91,16 +91,50 @@ reason.
 * **label images and binary masks**, both directions, for tools that know
   nothing about ChiSurf's own format.
 
+## Measuring a region
+
+`props.py` answers the third question — *what is it?* — with
+`regionprops(label_image | mask | ROI | [ROI], intensity_image)` and
+`regionprops_table(...)`, deliberately mirroring `skimage.measure.regionprops`:
+same signature, same property names (`area_bbox`, `axis_major_length`,
+`centroid_weighted`, `intensity_mean`, ...), same algorithms, and therefore the
+same numbers — the border-weighted perimeter, the Crofton variant, the
+half-pixel-offset convex hull, the inertia-tensor axes, the orientation sign
+convention and the Euler coefficients all match, property by property, under
+test. Borrowing the interface means habits and code transfer both ways and a
+reported number is comparable with any other imaging pipeline.
+
+Three things extend it: a **drawn region or a bare mask measures like a label**,
+so a hand-drawn selection and a watershed output are directly comparable;
+`RegionProperties.to_roi()` converts a measurement back into a region, closing
+the loop between measuring and selecting; and `circularity` / `intensity_sum`
+are reported because the imaging plugins here need them.
+
+The pay-off is that the measurements stop being re-derived. Molecule MLE used
+`skimage.measure.regionprops` directly and object colocalization used a pile of
+per-quantity `scipy.ndimage` reductions; both now read one property set.
+
+Caveat worth carrying: on regions a few pixels across the discrete perimeter is
+biased in both directions, so `circularity` can exceed 1 (a 7x7 square scores
+1.07). It sorts single molecules; it does not measure them.
+
 ## Consumers
 
 * **Image correlation** (`core/experiments/ics/`) — the reader takes a `roi`
   and passes it to the correlator; it replaced the ad-hoc `masks.py` helpers.
-* **Colocalization** (`core/fluorescence/imaging/colocalization/pixelwise.py`)
-  — accepts a ROI or a bare mask; the painted brush region is now a `MaskROI`.
-* **Molecule MLE** (`plugins/microscopy/sm_image_mle`) —
-  `MoleculeMleResult.molecule_rois()` exposes the watershed labels as regions.
+* **Colocalization** — `pixelwise.py` accepts a ROI or a bare mask (the painted
+  brush region is a `MaskROI`); `objects.py` measures its segmented objects with
+  `regionprops` and exposes them through `ObjectSet.properties` / `.rois()`.
+* **Molecule MLE** (`plugins/microscopy/sm_image_mle`) — the whole foreground /
+  background split is regions: `MoleculeMleSettings.roi` confines the search
+  (applied *before* the Otsu threshold, so the region sets its own level),
+  `molecule_rois()` / `foreground_roi()` / `background_roi(margin)` partition the
+  frame, `background_rate()` reads the mean photon rate outside the molecules,
+  and the per-molecule table's shape columns come from `regionprops`. The
+  background is the *dilated* foreground's complement — the pixels touching a
+  molecule still carry its PSF tail.
 * **Drift correction** (`core/fluorescence/imaging/drift.py`) — estimates
-  within a region, as PAM's MIA does.
+  within a region, as PAM's MIA does, cropping to `ROI.bounding_box`.
 
 Still on their own implementations, and the natural next migrations: the
 AutoForm `image` section's `rect_roi_call`/`rect_roi_source` seam, the 2-D

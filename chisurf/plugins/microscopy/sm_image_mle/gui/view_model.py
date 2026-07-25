@@ -337,9 +337,8 @@ class MoleculeMleViewModel(MleObserverMixin):
         BLOCKING — call from a worker thread.
         """
         import tttrlib
-        from skimage import measure
 
-        from ..core.molecule_mle import segment_molecules
+        from ..core.molecule_mle import segmentation_preview
 
         if not self.files:
             self.status_text = "No imaging files selected."
@@ -357,35 +356,14 @@ class MoleculeMleViewModel(MleObserverMixin):
             self.notify("done")
             return
 
-        labels = segment_molecules(
-            intensity,
-            seg_sigma=self.settings.seg_sigma,
-            seg_threshold=self.settings.seg_threshold,
-            peak_footprint_size=self.settings.peak_footprint_size,
-            min_area=self.settings.min_area,
-        )
-        rows, centroids = [], []
-        for prop in measure.regionprops(labels):
-            cy, cx = prop.centroid
-            rows.append({
-                "label": int(prop.label),
-                "centroid_row": float(cy),
-                "centroid_col": float(cx),
-                "area": int(prop.area),
-                "tau": float("nan"),
-            })
-            centroids.append((float(cy), float(cx)))
-
-        import pandas as pd
-
-        self.results = [MoleculeMleResult(
-            dataframe=pd.DataFrame(rows),
-            intensity_image=intensity,
-            label_image=labels,
-            centroids=np.asarray(centroids, dtype=float).reshape(-1, 2),
-        )]
+        result = segmentation_preview(intensity, self.settings)
+        self.results = [result]
         self.current_molecule = 0
-        self.status_text = f"Preview: {len(rows)} molecule(s) segmented — press Run to fit."
+        background = result.background_rate()
+        self.status_text = (
+            f"Preview: {result.n_molecules} molecule(s) segmented, background "
+            f"{background:.2f} photons/pixel — press Run to fit."
+        )
         self.notify("done")
 
     def run(self) -> None:

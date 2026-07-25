@@ -142,11 +142,10 @@ def estimate_drift(
         return np.zeros((n_frames, 2), dtype=float)
 
     if roi is not None:
-        mask = roi.to_mask(stack.shape[1:], image=stack)
-        rows = np.flatnonzero(mask.any(axis=1))
-        cols = np.flatnonzero(mask.any(axis=0))
-        if rows.size and cols.size:
-            stack = stack[:, rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1]
+        box = roi.bounding_box(stack.shape[1:], image=stack)
+        if box is not None:
+            r0, c0, r1, c1 = box
+            stack = stack[:, r0:r1, c0:c1]
 
     refs = _reference_stack(stack, reference)
 
