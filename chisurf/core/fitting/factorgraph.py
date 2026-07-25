@@ -206,6 +206,7 @@ def frozen_structure(*targets):
                 models.append(model)
 
     entered = []
+    frozen_parameters = []
     structure_at_entry = structure_version()
     window_at_entry = window_version()
     try:
@@ -228,10 +229,29 @@ def frozen_structure(*targets):
                 "n_free": len(free),
             }
             entered.append(model)
+            # Reading a parameter costs six property dispatches, three of them
+            # into the backing port, purely to decide how to read it -- and none
+            # of those answers can change during the run either. Stamp them so a
+            # read is one dict lookup and one port access.
+            for q in _freezable_parameters(model):
+                try:
+                    lb, ub = q.bounds if q.bounds_on else (float("nan"), float("nan"))
+                    q.__dict__["_frozen_flags"] = (
+                        bool(q.is_linked),
+                        getattr(q, "_callable", None),
+                        bool(q.bounds_on),
+                        float(lb) if lb is not None else float("nan"),
+                        float(ub) if ub is not None else float("nan"),
+                    )
+                    frozen_parameters.append(q)
+                except Exception:
+                    continue
         yield
     finally:
         for model in entered:
             model.__dict__.pop("_frozen_structure", None)
+        for q in frozen_parameters:
+            q.__dict__.pop("_frozen_flags", None)
         if structure_version() != structure_at_entry:
             import chisurf.logging
             chisurf.logging.warning(
@@ -244,6 +264,19 @@ def frozen_structure(*targets):
                 "frozen_structure: a fit window changed during a run that "
                 "declared it fixed."
             )
+
+
+def _freezable_parameters(model) -> typing.List:
+    """Return every parameter of a model whose read-path flags can be frozen.
+
+    All of them, not just the free ones: a fixed or linked parameter is still
+    *read* on every model evaluation (its value feeds the forward model), it
+    simply is not varied.
+    """
+    out = list(getattr(model, "parameters_all", None) or [])
+    if not out:
+        out = list(getattr(model, "parameters", None) or [])
+    return out
 
 
 def frozen(*argument_names):

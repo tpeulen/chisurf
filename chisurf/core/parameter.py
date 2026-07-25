@@ -218,6 +218,35 @@ class Parameter(chisurf.core.base.Base):
         If the parameter is linked to another :class:`Parameter`, the link
         takes precedence and the callable is ignored.
         """
+        # Inside a fit or sampling run every flag consulted below is fixed by
+        # contract (see factorgraph.frozen_structure), so the six property
+        # dispatches -- three at this level, three more into the port -- that a
+        # read otherwise costs collapse to one dict lookup. Reads outnumber
+        # writes by orders of magnitude and this is the single largest cost of a
+        # decay model evaluation, above the convolution itself.
+        frozen = self.__dict__.get("_frozen_flags")
+        if frozen is not None:
+            linked, callable_, bounded, lb, ub = frozen
+            if linked:
+                pv = self._port.value
+                return pv if type(pv) is float else float(np.atleast_1d(pv)[0])
+            if callable_ is None:
+                pv = self._port.value
+                v = pv if type(pv) is float else float(np.atleast_1d(pv)[0])
+                if not bounded:
+                    return v
+                raw = v
+                if lb == lb and v < lb:
+                    v = lb
+                if ub == ub and v > ub:
+                    v = ub
+                if v != raw and not self.fixed:
+                    f = self._port.fixed
+                    self._port.fixed = False
+                    self._port.value = v
+                    self._port.fixed = f
+                return v
+
         # If linked, defer entirely to linked parameter's port value.
         if self.is_linked:
             pv = self._port.value

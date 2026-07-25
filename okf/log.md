@@ -765,6 +765,37 @@
   asserting the RPC is actually registered — an unregistered service function is
   unreachable however good it is.
 
+* **Autodiff would not help, and measuring that pointed at what does.** tttrlib
+  already carries forward-mode autodiff (`autodiff/forward/dual.hpp`, dual
+  numbers with an Eigen array derivative part) in `ImageLocalization.cpp`, so
+  applying it to the decay convolution was worth evaluating. Three measurements
+  say no. (1) The finite-difference residual Jacobian is *already* accurate:
+  median 6e-7 relative error per column against a central-difference reference,
+  and the resulting LM step direction agrees to `cos = 1.000000` both at the
+  optimum and 20 % away — the `DEFAULT_EPSFCN` change already fixed the
+  noise-dominated-Jacobian problem its comment describes. (2) Forward-mode
+  autodiff needs O(n) passes for an n-parameter Jacobian, exactly as finite
+  differences need n evaluations; it improves the constant and the accuracy, and
+  there is no accuracy left to recover. (3) `fconv_per_cs` — the function that
+  would be differentiated — is **4.5–15 %** of a `LifetimeModel` evaluation at
+  typical 1024–4096 channels (39.6 % only at 16 k channels with four
+  exponentials), so a free derivative of it leaves 85–95 % of the forward pass
+  untouched. Reverse-mode gradients would change the asymptotics for HMC/NUTS,
+  but that needs the *whole* path differentiable — parameter assembly,
+  amplitude normalisation, scaling, background — which is Python, not tttrlib;
+  differentiating the kernel yields the derivative of one middle link in a chain
+  whose other links are opaque. Written up with the numbers in
+  [references/autodiff-assessment.md](/references/autodiff-assessment.md),
+  including when to revisit.
+  What the profile *did* show is that `Parameter.value` costs roughly ten times
+  the convolution in a 1024-channel decay, so `frozen_structure` now stamps each
+  parameter's read-path flags too — linked? callable? bounded? — none of which
+  can change during a run. A read becomes one dict lookup and one port access
+  instead of six property dispatches: a further **1.36×** on decay evaluations
+  with byte-identical residuals, and a two-exponential fit at 1024 channels now
+  runs in ~42 ms. Two tests pin that the fast path reproduces clamping,
+  link-following and the write-back of a clamped value exactly.
+
 * **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
   The posterior of a group already factorises over its datasets, but
   `GlobalFitModel` flattened every local model's free parameters plus the

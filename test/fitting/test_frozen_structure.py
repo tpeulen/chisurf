@@ -158,3 +158,83 @@ def test_a_fit_run_inside_a_freeze_still_converges():
         assert float(c.value) == pytest.approx(1.2, abs=0.05)
     # The freeze must have been released.
     assert fit._model.__dict__.get("_frozen_structure") is None
+
+
+def test_frozen_parameter_reads_are_identical_to_unfrozen_ones():
+    """The read fast path must be a shortcut, not a different rule.
+
+    Reading a parameter costs six property dispatches purely to decide *how* to
+    read it -- linked? callable? bounded? -- and none of those answers can change
+    during a run. The freeze stamps them, so the fast path has to reproduce
+    clamping, link-following and callables exactly.
+    """
+    from chisurf.core.fitting.parameter import FittingParameter
+
+    plain = FittingParameter(name="plain", value=2.5)
+
+    bounded = FittingParameter(name="bounded", value=2.5)
+    bounded.bounds = (0.0, 1.0)
+    bounded.bounds_on = True
+
+    below = FittingParameter(name="below", value=-3.0)
+    below.bounds = (0.0, 1.0)
+    below.bounds_on = True
+
+    master = FittingParameter(name="master", value=7.25)
+    follower = FittingParameter(name="follower", value=0.0)
+    follower.link = master
+
+    fixed = FittingParameter(name="fixed", value=4.0)
+    fixed.bounds = (0.0, 1.0)
+    fixed.bounds_on = True
+    fixed.fixed = True
+
+    class _Model:
+        """Minimal carrier so the freeze has something to walk."""
+
+        parameters_all = [plain, bounded, below, master, follower, fixed]
+        parameters = parameters_all
+        parameter_names = [p.name for p in parameters_all]
+        parameter_bounds = [p.bounds for p in parameters_all]
+
+    model = _Model()
+    before = [float(p.value) for p in model.parameters_all]
+    with factorgraph.frozen_structure(model):
+        during = [float(p.value) for p in model.parameters_all]
+        # The flags really were stamped.
+        assert all(p.__dict__.get("_frozen_flags") is not None
+                   for p in model.parameters_all)
+    after = [float(p.value) for p in model.parameters_all]
+
+    assert during == before == after
+    # And the individual rules still hold.
+    named = dict(zip(model.parameter_names, during))
+    assert named['plain'] == 2.5
+    assert named['bounded'] == 1.0        # clamped to the upper bound
+    assert named['below'] == 0.0          # clamped to the lower bound
+    assert named['follower'] == 7.25      # follows its master
+    assert named['fixed'] == 1.0          # clamped on read, but never written
+    # Released afterwards.
+    assert all(p.__dict__.get("_frozen_flags") is None
+               for p in model.parameters_all)
+
+
+def test_a_frozen_read_still_writes_a_clamped_value_back():
+    """Clamping on read writes back, and the fast path must do it too."""
+    from chisurf.core.fitting.parameter import FittingParameter
+
+    p = FittingParameter(name="p", value=5.0)
+    p.bounds = (0.0, 1.0)
+    p.bounds_on = True
+
+    class _Model:
+        parameters_all = [p]
+        parameters = parameters_all
+        parameter_names = ['p']
+        parameter_bounds = [p.bounds]
+
+    with factorgraph.frozen_structure(_Model()):
+        assert float(p.value) == 1.0
+        # Persisted, so repeated reads agree and match the unfrozen rule.
+        assert float(p.value) == 1.0
+    assert float(p.value) == 1.0

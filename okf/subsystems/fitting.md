@@ -287,6 +287,14 @@ the time; the rest was Python overhead re-deriving things that cannot change
 during a run. 2000 evaluations over 12 datasets went **1.46 s → 0.53 s (2.8×)**
 and 3.84 M → 1.15 M calls, after which the model evaluation is the top cost.
 
+- **Frozen parameter flags.** Reading a parameter costs six property dispatches
+  -- three at the `Parameter` level, three more into the port -- purely to decide
+  *how* to read it (linked? callable? bounded?), and none of those answers can
+  change during a run either. The freeze stamps them, so a read is one dict
+  lookup and one port access: a further **1.36×** on decay model evaluations,
+  with byte-identical residuals. This matters because `Parameter.value` costs
+  roughly ten times what the C++ convolution does in a 1024-channel decay --
+  see the [autodiff assessment](/references/autodiff-assessment.md).
 - **`factorgraph.frozen_structure(...)`** — nothing about a fit's structure
   changes while it is optimised or sampled, so the free-parameter list, names,
   bounds and `n_free` are resolved once per run and served with no version check
