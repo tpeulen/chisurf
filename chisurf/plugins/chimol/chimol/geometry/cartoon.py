@@ -1020,25 +1020,41 @@ def _helix_cylinder_radii(
     return radii
 
 
+def _unit(vectors: np.ndarray) -> np.ndarray:
+    """Row-wise unit vectors, leaving degenerate rows unchanged."""
+    lengths = np.linalg.norm(vectors, axis=1, keepdims=True)
+    return np.divide(vectors, lengths, out=np.array(vectors, dtype=float),
+                     where=lengths > 1e-12)
+
+
 def _flatten_sheet_path(
     ca: np.ndarray,
     is_sheet: np.ndarray,
     cycles: int = 4,
-) -> np.ndarray:
-    """De-pleat the backbone through beta strands (PyMOL flat sheets).
+    ups: Optional[np.ndarray] = None,
+) -> tuple[np.ndarray, Optional[np.ndarray]]:
+    """De-pleat the backbone through beta strands (PyMOL ``cartoon_flat_sheets``).
 
     A beta strand's CAs zig-zag by ~1.9 A about the strand axis. Splining
-    straight through them gives a ribbon that has to writhe to follow the
-    pleat, which is why chimol's strands rolled from face-on to edge-on along
-    their length while PyMOL's stay flat.
+    straight through them gives a ribbon that has to writhe to follow the pleat,
+    which is why chimol's strands rolled from face-on to edge-on along their
+    length while PyMOL's stay flat.
 
-    PyMOL's ``cartoon_flat_sheets`` (on by default) smooths those positions
-    before drawing: measured on 148L its strand ribbon runs 1.3 A away from the
-    CAs with the setting on and 0.4 A away with it off. This applies the same
-    kind of correction — ``cycles`` passes of the 3-point weighted average
-    ``(p[i-1] + 2 p[i] + p[i+1]) / 4`` over strand residues only, with residues
-    outside the strand left in place so the joins to the flanking loops do not
-    move.
+    This follows ``RepCartoonFlattenSheets`` (``layer2/RepCartoon.cpp``) rather
+    than approximating it. Per strand run, for ``cartoon_flat_cycles`` passes:
+
+    1. replace each interior position by the **uniform** average of itself and
+       its two neighbours -- PyMOL's ``scale3f(t0, 1/(f*2+1))`` with ``f = 1``,
+       not a weighted kernel;
+    2. average the **orientation vectors** the same way, which an earlier version
+       here omitted -- smoothing the path while leaving the ribbon's up-vectors
+       pleated keeps half the twist;
+    3. re-orthogonalise each orientation against the local tangent
+       ``normalize(p[b+1] - p[b-1])`` and renormalise, so the ribbon's face stays
+       perpendicular to the path it now follows.
+
+    Residues outside a strand are left in place, so the joins to the flanking
+    loops do not move.
 
     Parameters
     ----------
@@ -1047,29 +1063,44 @@ def _flatten_sheet_path(
     is_sheet : np.ndarray
         Boolean mask of strand residues, shape ``(N,)``.
     cycles : int, optional
-        Number of smoothing passes; PyMOL's ``cartoon_flat_cycles`` is 4.
+        Number of passes; PyMOL's ``cartoon_flat_cycles`` default is 4.
+    ups : np.ndarray, optional
+        Per-residue ribbon up-vectors, shape ``(N, 3)``, smoothed alongside.
 
     Returns
     -------
-    np.ndarray
-        The smoothed control points, shape ``(N, 3)``.
+    tuple
+        The smoothed control points and up-vectors (the latter ``None`` when
+        none were given).
     """
     n = ca.shape[0]
-    if n < 3 or cycles <= 0 or not np.any(is_sheet):
-        return ca
-
     out = np.array(ca, dtype=float, copy=True)
-    interior = np.zeros(n, dtype=bool)
-    interior[1:-1] = is_sheet[1:-1]
-    if not np.any(interior):
-        return out
+    out_ups = None if ups is None else np.array(ups, dtype=float, copy=True)
+    if n < 3 or cycles <= 0 or not np.any(is_sheet):
+        return out, out_ups
 
-    for _ in range(int(cycles)):
-        prev = out
-        smoothed = 0.25 * prev[:-2] + 0.5 * prev[1:-1] + 0.25 * prev[2:]
-        out = prev.copy()
-        out[1:-1][interior[1:-1]] = smoothed[interior[1:-1]]
-    return out
+    for start, stop in _contiguous_runs(np.asarray(is_sheet, dtype=bool)):
+        # PyMOL smooths first+f .. last-f with f = 1, so a run's own end points
+        # are anchors and a run shorter than three residues cannot move.
+        lo, hi = start + 1, stop - 1
+        if hi - lo < 1:
+            continue
+        for _ in range(int(cycles)):
+            out[lo:hi] = (
+                out[lo - 1:hi - 1] + out[lo:hi] + out[lo + 1:hi + 1]
+            ) / 3.0
+            if out_ups is None:
+                continue
+            out_ups[lo:hi] = (
+                out_ups[lo - 1:hi - 1] + out_ups[lo:hi] + out_ups[lo + 1:hi + 1]
+            ) / 3.0
+            # Re-orthogonalise against the path the points now follow.
+            tangent = _unit(out[lo + 1:hi + 1] - out[lo - 1:hi - 1])
+            along = np.einsum("ij,ij->i", out_ups[lo:hi], tangent)
+            out_ups[lo:hi] = _unit(
+                out_ups[lo:hi] - along[:, None] * tangent
+            )
+    return out, out_ups
 
 
 def _path_parameterisation(
@@ -1327,14 +1358,26 @@ def _generate_cartoon_tube_arrays(
         except Exception:
             ss_arr = None
 
+    # -- Per-residue orientations, read before flattening so the strand pass can
+    #    smooth them alongside the path, as PyMOL does --
+    ups_arr: Optional[np.ndarray] = None
+    if trace_ups is not None:
+        try:
+            candidate_ups = np.asarray(trace_ups, dtype=float)
+            if candidate_ups.shape[0] == n:
+                ups_arr = candidate_ups
+        except Exception:
+            ups_arr = None
+
     # -- Flat sheets: smooth the beta-strand backbone before anything is
     #    derived from it, so both the ribbon path and its tangents come from the
     #    de-pleated trace (PyMOL's ``cartoon_flat_sheets``) --
     if ss_arr is not None and bool(cfg.get("flat_sheets", True)):
-        arr = _flatten_sheet_path(
+        arr, ups_arr = _flatten_sheet_path(
             arr,
             np.isin(ss_arr, ["S", "E"]),
             cycles=int(cfg.get("flat_cycles", 4)),
+            ups=ups_arr,
         )
 
     # -- Stage 1: Sample path --
@@ -1360,14 +1403,10 @@ def _generate_cartoon_tube_arrays(
     # -- Refine per-residue orientations (PyMOL round-helix / flat-sheet /
     #    anti-twist), then densify along the spline --
     ups_path: Optional[np.ndarray] = None
-    if trace_ups is not None:
+    if ups_arr is not None:
         try:
-            ups_arr = np.asarray(trace_ups, dtype=float)
-            if ups_arr.shape[0] == n:
-                ups_arr = _refine_orientations(arr, ups_arr, ss_codes)
-                ups_path = _sample_orientations(
-                    ups_arr, subdivisions=subdivisions
-                )
+            refined = _refine_orientations(arr, ups_arr, ss_codes)
+            ups_path = _sample_orientations(refined, subdivisions=subdivisions)
         except Exception:
             ups_path = None
 

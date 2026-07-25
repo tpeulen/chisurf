@@ -329,7 +329,7 @@ class TestFlatSheets:
         ca = self.pleated_strand()
         is_sheet = np.ones(ca.shape[0], dtype=bool)
         before = np.abs(ca[1:-1, 1] - 0.5 * (ca[:-2, 1] + ca[2:, 1])).mean()
-        out = _flatten_sheet_path(ca, is_sheet, cycles=4)
+        out, _ = _flatten_sheet_path(ca, is_sheet, cycles=4)
         after = np.abs(out[1:-1, 1] - 0.5 * (out[:-2, 1] + out[2:, 1])).mean()
         assert after < 0.25 * before
 
@@ -337,14 +337,56 @@ class TestFlatSheets:
         ca = self.pleated_strand(n=8)
         is_sheet = np.zeros(ca.shape[0], dtype=bool)
         is_sheet[2:6] = True
-        out = _flatten_sheet_path(ca, is_sheet, cycles=4)
-        assert np.array_equal(out[:2], ca[:2])
-        assert np.array_equal(out[6:], ca[6:])
+        out, _ = _flatten_sheet_path(ca, is_sheet, cycles=4)
+        # The run's own end points anchor it too, per PyMOL's first+f..last-f.
+        assert np.array_equal(out[:3], ca[:3])
+        assert np.array_equal(out[5:], ca[5:])
 
     def test_no_op_without_strands(self):
         ca = self.pleated_strand()
-        out = _flatten_sheet_path(ca, np.zeros(ca.shape[0], dtype=bool), cycles=4)
+        out, ups = _flatten_sheet_path(
+            ca, np.zeros(ca.shape[0], dtype=bool), cycles=4
+        )
         assert np.array_equal(out, ca)
+        assert ups is None
+
+
+    def test_it_uses_pymols_uniform_average(self):
+        """``RepCartoonFlattenSheets`` averages a point with its two neighbours.
+
+        A weighted kernel such as (1, 2, 1)/4 looks similar but converges more
+        slowly, leaving a visible pleat after the four cycles PyMOL runs.
+        """
+        ca = self.pleated_strand(n=7)
+        is_sheet = np.ones(ca.shape[0], dtype=bool)
+        out, _ = _flatten_sheet_path(ca, is_sheet, cycles=1)
+        expected = (ca[0:5, 1] + ca[1:6, 1] + ca[2:7, 1]) / 3.0
+        assert np.allclose(out[1:6, 1], expected)
+
+    def test_up_vectors_are_smoothed_with_the_path(self):
+        """Smoothing the path but not the ribbon's face keeps half the twist."""
+        ca = self.pleated_strand(n=7)
+        is_sheet = np.ones(ca.shape[0], dtype=bool)
+        ups = np.zeros_like(ca)
+        ups[:, 1] = (-1.0) ** np.arange(ca.shape[0])   # pleated up-vectors
+        _, out_ups = _flatten_sheet_path(ca, is_sheet, cycles=4, ups=ups)
+        assert out_ups is not None
+        # The alternation is gone from the interior...
+        interior = out_ups[1:-1]
+        assert np.abs(np.diff(interior[:, 1])).max() < 0.5
+        # ...and every smoothed vector is still unit length.
+        assert np.allclose(np.linalg.norm(interior, axis=1), 1.0, atol=1e-9)
+
+    def test_up_vectors_stay_perpendicular_to_the_path(self):
+        """PyMOL re-orthogonalises against normalize(p[b+1] - p[b-1])."""
+        ca = self.pleated_strand(n=7)
+        is_sheet = np.ones(ca.shape[0], dtype=bool)
+        ups = np.tile(np.array([0.4, 0.9, 0.2]), (ca.shape[0], 1))
+        out, out_ups = _flatten_sheet_path(ca, is_sheet, cycles=4, ups=ups)
+        tangent = out[2:-1] - out[0:-3]
+        tangent /= np.linalg.norm(tangent, axis=1, keepdims=True)
+        along = np.einsum("ij,ij->i", out_ups[1:-2], tangent)
+        assert np.abs(along).max() < 1e-9
 
 
 class TestOrientationSampling:

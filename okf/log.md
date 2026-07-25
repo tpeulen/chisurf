@@ -2,6 +2,32 @@
 
 ## 2026-07-25
 
+* **chimol: flat sheets ported from `RepCartoonFlattenSheets`, and the cartoon
+  pipeline mapped.** With PyMOL's source to hand the cartoon can be compared step
+  for step instead of by matching rendered meshes.
+  **The flat-sheet pass was approximated three ways.** PyMOL averages a strand
+  position with its two neighbours **uniformly** (`scale3f(t0, 1/(f*2+1))` with
+  `f = 1`); chimol used a weighted `(1, 2, 1)/4` kernel, which converges more
+  slowly and leaves a visible pleat after the four cycles PyMOL runs. PyMOL
+  smooths the **orientation vectors** in the same loop; chimol smoothed only the
+  path, so half the pleat survived as ribbon twist. And PyMOL then
+  **re-orthogonalises** each orientation against `normalize(p[b+1] - p[b-1])`, so
+  the ribbon's face stays perpendicular to the path it now follows. All three
+  fixed, with the run's own end points anchored as PyMOL anchors them
+  (`first+f .. last-f`), and each pinned by a test.
+  **The pipeline is now written down** in the profile with its settings and
+  defaults, along with the two remaining divergences and why they are not
+  one-line fixes: `cartoon_refine_tips` (default **10**, on) biases the *tangent*
+  at strand tips toward the inward neighbour -- aiming the arrowhead -- and
+  `cartoon_refine` likewise works per residue, whereas chimol derives tangents
+  from the sampled spline. Note the `/* normal */` comment in `RefineTips` is
+  stale: `tv` is written by `RepCartoonComputeTangents`. `cartoon_smooth_loops`
+  is off by default, so its absence costs nothing.
+  Measured on 148L, mean distance from the strand ribbon to its strand CAs:
+  PyMOL 1.56 A, chimol 1.66 A -- not exactly comparable, since PyMOL's `dss`
+  calls 12 residues strand there where the deposited records call 14.
+  Suite: 323 passed, 1 skipped (3 new).
+
 * **chimol: the framing rule confirmed against PyMOL's C++, and two gaps it
   exposed.** With the source checkout available (`junk/pymol-open-source`) the
   camera rules could be *read* rather than inferred, and the ones derived

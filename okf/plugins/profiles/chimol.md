@@ -138,6 +138,43 @@ against PyMOL's own tables (re-read from a live PyMOL when it is importable),
 that every wired verb is a registered command, that every `set <name>` resolves
 to a real setting, and that no disabled entry lacks a reason.
 
+# Cartoon geometry: PyMOL's pipeline, and where chimol diverges
+
+With PyMOL's source available, the cartoon pipeline can be compared step for step
+rather than by matching rendered meshes. `RepCartoonGeneratePoints`
+(`layer2/RepCartoon.cpp:~4255`) runs, in order:
+
+1. `RepCartoonRefineNormals` — `cartoon_refine` (default **5**)
+2. `RepCartoonFlattenSheets` — `cartoon_flat_sheets` (**on**),
+   `cartoon_flat_cycles` (**4**)
+3. `RepCartoonSmoothLoops` — `cartoon_smooth_loops` (**off** by default)
+4. recompute differences and normals from the smoothed positions
+5. recompute tangents into `tv`
+6. `RepCartoonFlattenSheetsRefineTips` — `cartoon_refine_tips` (default **10**)
+
+**Ported faithfully: flat sheets.** Per strand run, `cartoon_flat_cycles` passes
+of a *uniform* three-point average — PyMOL's `scale3f(t0, 1/(f*2+1))` with
+`f = 1`, not a weighted kernel — applied to the positions **and** the orientation
+vectors, followed by re-orthogonalising each orientation against
+`normalize(p[b+1] - p[b-1])`. Smoothing the path while leaving the up-vectors
+pleated keeps half the twist, which is what an earlier weighted-kernel version
+here did. A run's own end points are anchors (`first+f .. last-f`).
+
+**Known divergences**, all with a source reference so they can be closed:
+
+- `cartoon_refine_tips` (10, on) biases the **tangent** at each strand tip toward
+  its inward neighbour — the `/* normal */` comment in `RefineTips` is stale;
+  `tv` is written by `RepCartoonComputeTangents`. It aims the arrowhead. chimol
+  derives tangents from the sampled spline rather than per residue, so porting it
+  needs the per-residue tangent stage PyMOL has.
+- `cartoon_refine` / `RepCartoonRefineNormals` is likewise per-residue.
+- `cartoon_smooth_loops` is off by default, so its absence costs nothing.
+
+Measured on 148L, mean distance from the strand ribbon to its strand CAs:
+PyMOL **1.56 Å**, chimol **1.66 Å** — not exactly comparable, since PyMOL's `dss`
+calls 12 residues strand there where the deposited records (which chimol honours)
+call 14.
+
 # Renderer abstraction (design contract)
 
 `chisurf/plugins/chimol/chimol/renderer/` separates a Qt-free scene/controller
