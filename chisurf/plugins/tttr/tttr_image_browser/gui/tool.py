@@ -15,6 +15,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from chisurf.core import i18n
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.plugins.tttr.tttr_image_browser import TTTRImageBrowser
@@ -43,11 +44,11 @@ class TTTRImageBrowserTool(QMainWindow):
             The parent widget, by default None.
         """
         super().__init__(parent)
-        self.setWindowTitle("🖼 TTTR Image Browser")
+        self.setWindowTitle(f"🖼 {i18n.tr('TTTR Image Browser')}")
         self._workspace = TTTRImageBrowser(self)
         self.client = TTTRImageBrowserClient()
         self._dock_area = DockArea(self)
-        self._dock_area.addTab(self._workspace, f"{Glyphs.CHART_UP} Images")
+        self._dock_area.addTab(self._workspace, f"{Glyphs.CHART_UP} {i18n.tr('Images')}")
         self.setCentralWidget(self._dock_area)
         self._setup_toolbar()
         # When embedded in Image Tools, selecting an image proactively warms the
@@ -129,15 +130,15 @@ class TTTRImageBrowserTool(QMainWindow):
 
     def _setup_toolbar(self) -> None:
         """Create emoji toolbar actions backed by the workspace."""
-        toolbar = QToolBar(f"{Glyphs.TOOLBOX} TTTR Image Browser", self)
+        toolbar = QToolBar(f"{Glyphs.TOOLBOX} {i18n.tr('TTTR Image Browser')}", self)
         toolbar.setObjectName("tttrImageBrowserMainToolbar")
         actions = [
-            (f"{Glyphs.OPEN} Open", self._workspace._on_pick_folder, "Pick a folder with TTTR images"),
-            (f"{Glyphs.CLEAR} Clear", self._workspace._on_clear, "Clear the file list"),
-            (f"{Glyphs.RESET} Caches", self._workspace._on_clear_caches, "Clear image caches"),
-            (f"{Glyphs.EXPORT} Export", self._workspace._on_export, "Export selected image files"),
-            ("TIFF", self._workspace._on_save_tiff, "Save intensity images as TIFF stacks"),
-            ("DOCX", self._workspace._on_export_docx, "Export selected images as DOCX"),
+            (f"{Glyphs.OPEN} {i18n.tr('Open')}", self._workspace._on_pick_folder, i18n.tr("Pick a folder with TTTR images")),
+            (f"{Glyphs.CLEAR} {i18n.tr('Clear')}", self._workspace._on_clear, i18n.tr("Clear the file list")),
+            (f"{Glyphs.RESET} {i18n.tr('Caches')}", self._workspace._on_clear_caches, i18n.tr("Clear image caches")),
+            (f"{Glyphs.EXPORT} {i18n.tr('Export')}", self._workspace._on_export, i18n.tr("Export selected image files")),
+            ("TIFF", self._workspace._on_save_tiff, i18n.tr("Save intensity images as TIFF stacks")),
+            ("DOCX", self._workspace._on_export_docx, i18n.tr("Export selected images as DOCX")),
         ]
         for text, slot, tooltip in actions:
             action = QAction(text, self)
@@ -148,14 +149,14 @@ class TTTRImageBrowserTool(QMainWindow):
         # Hand the browsed image off to the imaging pipeline (when embedded in
         # the Image Tools shell). Steps remain freely navigable on the left.
         toolbar.addSeparator()
-        next_action = QAction("Next ▶ Intensity", self)
-        next_action.setToolTip("Send the current image to the imaging pipeline (Intensity step).")
+        next_action = QAction(f"{i18n.tr('Next')} ▶ {i18n.tr('Intensity')}", self)
+        next_action.setToolTip(i18n.tr("Send the current image to the imaging pipeline (Intensity step)."))
         next_action.triggered.connect(self._on_next_step)
         toolbar.addAction(next_action)
 
-        chk_subfolders = QCheckBox("Subfolders", self)
+        chk_subfolders = QCheckBox(i18n.tr("Subfolders"), self)
         chk_subfolders.setChecked(self._workspace.model.recursive)
-        chk_subfolders.setToolTip("Include subfolders when opening a folder")
+        chk_subfolders.setToolTip(i18n.tr("Include subfolders when opening a folder"))
         chk_subfolders.toggled.connect(self._workspace._on_subfolders_toggled)
         toolbar.addWidget(chk_subfolders)
         toolbar.addSeparator()
@@ -164,8 +165,8 @@ class TTTRImageBrowserTool(QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         toolbar.addWidget(spacer)
 
-        help_action = QAction("❔ Help", self)
-        help_action.setToolTip("Show what TTTR Image Browser does, how the toolbar works, and how to use the CLI")
+        help_action = QAction(f"❔ {i18n.tr('Help')}", self)
+        help_action.setToolTip(i18n.tr("Show what TTTR Image Browser does, how the toolbar works, and how to use the CLI"))
         help_action.triggered.connect(self._show_help)
         toolbar.addAction(help_action)
         self.addToolBar(toolbar)
@@ -173,27 +174,29 @@ class TTTRImageBrowserTool(QMainWindow):
     def _show_help(self) -> None:
         """Show TTTR Image Browser usage and CLI help."""
         dialog = QDialog(self)
-        dialog.setWindowTitle("TTTR Image Browser Help")
+        dialog.setWindowTitle(i18n.tr("TTTR Image Browser Help"))
         dialog.resize(760, 520)
         layout = QVBoxLayout(dialog)
         text = QPlainTextEdit(dialog)
         text.setReadOnly(True)
         text.setPlainText(
-            "TTTR Image Browser\n\n"
-            "Browse TTTR files in a folder and preview intensity images for all DetectorWizard-defined "
-            "detector windows. The toolbar replaces the old inline buttons:\n\n"
-            "• 📂 Open: choose a folder containing TTTR images\n"
-            "• 🧹 Clear: clear the current file list\n"
-            "• ♻️ Caches: clear in-memory and on-disk image caches\n"
-            "• 📤 Export: copy selected raw image files\n"
-            "• TIFF: export intensity images as TIFF stacks\n"
-            "• DOCX: export selected images and annotations as a DOCX report\n\n"
-            "The GUI talks to the TTTR Image Browser backend through RPC for file listing, metadata, "
-            "and image loading. The command line interface uses Click:\n\n"
-            "  tttr-image-browser list FOLDER [--recursive]\n"
-            "  tttr-image-browser load FILE [--max-side 512]\n"
-            "  tttr-image-browser export-tiff FILE [FILE ...] --output-dir DIR\n"
-            "  tttr-image-browser contract\n"
+            i18n.tr(
+                "TTTR Image Browser\n\n"
+                "Browse TTTR files in a folder and preview intensity images for all DetectorWizard-defined "
+                "detector windows. The toolbar replaces the old inline buttons:\n\n"
+                "• 📂 Open: choose a folder containing TTTR images\n"
+                "• 🧹 Clear: clear the current file list\n"
+                "• ♻️ Caches: clear in-memory and on-disk image caches\n"
+                "• 📤 Export: copy selected raw image files\n"
+                "• TIFF: export intensity images as TIFF stacks\n"
+                "• DOCX: export selected images and annotations as a DOCX report\n\n"
+                "The GUI talks to the TTTR Image Browser backend through RPC for file listing, metadata, "
+                "and image loading. The command line interface uses Click:\n\n"
+                "  tttr-image-browser list FOLDER [--recursive]\n"
+                "  tttr-image-browser load FILE [--max-side 512]\n"
+                "  tttr-image-browser export-tiff FILE [FILE ...] --output-dir DIR\n"
+                "  tttr-image-browser contract\n"
+            )
         )
         layout.addWidget(text)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok, dialog)

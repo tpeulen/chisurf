@@ -2,6 +2,16 @@
 
 ## 2026-07-25
 
+* **i18n — `tttr_image_browser` made translatable.** Wrapped the TTTR Image
+  Browser shell (`plugins/tttr/tttr_image_browser/gui/tool.py`, 17 `i18n.tr`
+  calls) — window title, the Images dock tab, toolbar action labels
+  (Open/Clear/Caches/Export + Next ▶ Intensity/Help) and every action/checkbox
+  tooltip, plus the help-dialog title. Format-code buttons (TIFF/DOCX) and the
+  long-form CLI help block fall through to English (deferred to domain review).
+  Filled 16 German + 16 French chrome terms; verified both locales render fully
+  offscreen (*TTTR-Bildbrowser* / *Navigateur d’images TTTR*, toolbar included).
+  See [i18n subsystem](subsystems/i18n.md).
+
 * **Manual review gating + the Help browser can finally read the manual
   (`core/help`).** Much of `docs/manual` is machine-drafted, and it ships: it sits
   in the `docs/index.rst` toctree. Two gaps closed. **(1) The browser could not
