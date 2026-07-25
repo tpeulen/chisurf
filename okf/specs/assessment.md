@@ -44,6 +44,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [BUG-04](#bug-04) | S2 | BUG | Core | `@abc.abstractmethod` not enforced: `Base(object)` has no `ABCMeta` | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-05](#bug-05) | S1 | BUG | Plugins | F-test calculator's two directions are not inverses (asking for 95% returns a χ² whose confidence is 0.09%) | ✅ FIXED |
 | [BUG-10](#bug-10) | S1 | BUG | Fitting | Support-plane intervals wrong on likelihood objectives: F-test threshold rescales by χ²ᵣ, and the adaptive scan reports its own grid edge instead of a crossing | 📋 OPEN |
+| [BUG-11](#bug-11) | S2 | BUG | Core | Importing IMP before tttrlib silently breaks every tttrlib API taking a `std::vector<double>` by value — shared SWIG type table, and the documented `PYTHONPATH` guarantees that order | ✅ FIXED |
 | [BUG-06](#bug-06) | S1 | BUG | Core | `vm_rt_to_vv_vh` strides an already-halved count, so every rotation component after the first is silently discarded | ✅ FIXED |
 | [BUG-07](#bug-07) | S1 | BUG | Packaging | `csc` console script points at a non-existent `chisurf.cli` module — every invocation fails at import | ✅ FIXED |
 | [BUG-08](#bug-08) | S2 | BUG | Plugins | No image ever rendered in the Help browser: relative sources passed to Qt unresolved (`setSearchPaths` missing) | ✅ FIXED |
@@ -458,6 +459,46 @@ form on the `retranslate_from_ui` path so language switching keeps working meanw
 2. Add the guardrails that would have caught them: manifest validation in discovery (DATA-01), a duplicate-handler-name test (BUG-02), a "no `chisurf.gui` import under `chisurf/server/`" import-lint (SV-01), and a published-vs-declared event-topic assertion (SV-05). — ✅ **DATA-01/BUG-02/SV-01 guardrails in place; SV-05 remaining**
 3. Then take the **S2** structural items (SV-02/03, INC-04, DATA-02/03) as scoped refactors, each closing out the corresponding spec steering-notes entry.
 4. As each finding is fixed, strike its row here and remove it from the owning spec's steering notes; when a subsystem has no findings left here, it has reached its spec.
+
+### BUG-11
+**S2 · `import IMP` before `import tttrlib` breaks tttrlib's `std::vector<double>` arguments.**
+
+- Reproduction, complete:
+  ```python
+  import IMP, tttrlib
+  s = tttrlib.SimSystem()
+  s.set_rate_matrices(tttrlib.VectorDouble([0.] * 9), tttrlib.VectorDouble([1.] * 9))
+  # TypeError: in method 'SimSystem_set_rate_matrices',
+  #            argument 2 of type 'std::vector< double,std::allocator< double > >'
+  ```
+  Swap the two imports and it succeeds. It is the import *order* that matters,
+  not the build.
+- Cause: SWIG extensions share one process-global type table
+  (`__SWIG_TYPE_TABLE`). Whichever module registers `std::vector<double>` first
+  owns the entry, and a proxy created by the loser no longer matches a by-value
+  argument of that type. Member setters (`species.q`) take a pointer and go
+  through a different check, so they keep working — which is why the failure
+  looks arbitrary.
+- Why it always fires in practice: `modules/imp-tricks/src/sitecustomize.py`
+  does `import IMP` at interpreter start, and `CLAUDE.md` documents exactly that
+  directory on `PYTHONPATH` for running chisurf outside pixi. So in the
+  documented development configuration, IMP is *always* first.
+- Impact today is small and already worked around, but the workaround was
+  misattributed: `chisurf/plugins/core/acq/tcspc_devices/simulation/core/algorithms.py`
+  carried a comment blaming "some builds". Corrected in place; plain Python
+  sequences convert through a different path and are unaffected, so passing
+  lists rather than `VectorDouble` is the reliable form for by-value arguments.
+- **Fixed upstream** (tttrlib `bd01dbc9`): the Python module is built with
+  `SWIG_TYPE_TABLE=tttrlib`, the supported SWIG mechanism for exactly this.
+  Nothing in tttrlib is meant to be exchanged with another SWIG module, so a
+  private table costs nothing, and it fixes every consumer rather than each call
+  site. Regression covered by
+  `test/models/test_szabo_gopich.py::test_the_engine_is_usable_after_another_swig_extension_loads_first`,
+  which lives here rather than in tttrlib because IMP is importable here.
+  Requires a rebuilt tttrlib (`pixi run build-extensions`); the workaround of
+  passing plain sequences stays correct either way.
+- Found while benchmarking the occupancy sampler against the simulation engine
+  (see [PRD-50](/prds/prd-50.md)).
 
 ### BUG-10
 **S1 · Support-plane confidence intervals are wrong on likelihood objectives, twice over.**

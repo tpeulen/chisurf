@@ -502,3 +502,25 @@ def test_a_single_state_occupies_itself_completely():
     fractions = occupation_time_fractions(np.zeros((1, 1)), 1e-3, 20, seed=1)
     assert fractions.shape == (20, 1)
     assert np.allclose(fractions, 1.0)
+
+
+def test_the_engine_is_usable_after_another_swig_extension_loads_first():
+    """Regression: SWIG modules share a type table unless one is asked not to.
+
+    IMP registers ``std::vector<double>`` when it loads, and the documented
+    development ``PYTHONPATH`` imports IMP at interpreter start, so it always
+    loads first here. Before tttrlib was built with a private type table that
+    made every by-value vector argument raise a TypeError naming the type the
+    object plainly had -- including the rate matrices this module hands the
+    simulation engine.
+    """
+    IMP = pytest.importorskip("IMP")
+    assert IMP is not None
+    tttrlib = pytest.importorskip("tttrlib")
+    if not hasattr(getattr(tttrlib, "SimEngine", None), "set_state_log"):
+        pytest.skip("installed simulation engine predates the state log")
+
+    system = tttrlib.SimSystem()
+    system.set_rate_matrices(tttrlib.VectorDouble([0.0] * 9),
+                             tttrlib.VectorDouble([1.0] * 9))
+    assert len(system.k_nrad()) == 9

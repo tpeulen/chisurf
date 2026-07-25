@@ -220,8 +220,14 @@ def build_engine(params: Dict[str, Any]):
 
     k_rad = _sized(params.get("k_rad", [0.0] * (ns * ns)), ns * ns, 0.0)
     k_nrad = _sized(params.get("k_nrad", [0.0] * (ns * ns)), ns * ns, 0.0)
-    # tttrlib 0.27.0's SWIG binding accepts Python sequences for these two
-    # setters, while explicit VectorDouble proxies are rejected on some builds.
+    # Plain sequences, not tttrlib.VectorDouble. SWIG extensions share one global
+    # type table, so whichever registers ``std::vector<double>`` first owns the
+    # entry; when IMP is imported before tttrlib -- which the documented
+    # PYTHONPATH does, since imp-tricks ships a sitecustomize that imports IMP at
+    # interpreter start -- a VectorDouble proxy no longer matches a by-value
+    # ``std::vector<double>`` argument and raises TypeError. Sequences convert
+    # through a different path and are unaffected. Member setters (``species.q``)
+    # take a pointer and still need the proxy.
     sample.set_rate_matrices(k_rad, k_nrad)
     sample.set_background(_sized(params.get("q_bg", [0.0] * nc), nc, 0.0))
     sample.set_box(box_xy, box_z)
