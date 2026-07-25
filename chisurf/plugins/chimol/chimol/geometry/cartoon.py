@@ -25,10 +25,12 @@ import math
 
 import numpy as np
 
-try:  # sibling module in the geometry package
+try:  # sibling modules in the geometry package
     from .ambient import _estimate_ambient_occlusion
+    from .guide_frames import build_guide_frames
 except Exception:  # pragma: no cover - standalone/file-path loading (see tests)
     _estimate_ambient_occlusion = None  # type: ignore[assignment]
+    build_guide_frames = None  # type: ignore[assignment]
 
 
 # Two consecutive ribbon normals count as a genuine 180-degree flip (rather
@@ -1027,6 +1029,23 @@ def _unit(vectors: np.ndarray) -> np.ndarray:
                      where=lengths > 1e-12)
 
 
+def _orthogonalise_ups(
+    tangents: np.ndarray, ups: np.ndarray
+) -> np.ndarray:
+    """Re-square the up-vectors against tangents that have since changed.
+
+    Replacing a spline tangent with a guide-frame one (at a strand tip) leaves
+    the ribbon's face no longer perpendicular to it, which shears the profile.
+    """
+    axis = _unit(tangents)
+    along = np.einsum("ij,ij->i", ups, axis)
+    out = _unit(ups - along[:, None] * axis)
+    # Where the two were parallel the projection collapses; keep the original.
+    degenerate = np.linalg.norm(out, axis=1) < 1e-6
+    out[degenerate] = ups[degenerate]
+    return out
+
+
 def _flatten_sheet_path(
     ca: np.ndarray,
     is_sheet: np.ndarray,
@@ -1400,18 +1419,44 @@ def _generate_cartoon_tube_arrays(
     if ss_arr is not None and bool(cfg.get("round_helices", True)):
         path = _round_helix_path(path, arr, ss_arr == "H", subdivisions)
 
-    # -- Refine per-residue orientations (PyMOL round-helix / flat-sheet /
-    #    anti-twist), then densify along the spline --
+    # -- Per-residue guide frames, then densify along the spline --
+    #
+    # PyMOL conditions the frame *before* sampling: it refines the orientations
+    # against the tangents so the ribbon's face cannot flip between neighbours,
+    # and re-aims the tangent at each strand tip so the arrowhead points along
+    # the strand rather than into the loop it joins. Neither is expressible on a
+    # frame derived from the finished spline, which is why this stage exists.
     ups_path: Optional[np.ndarray] = None
-    if ups_arr is not None:
+    tangent_path: Optional[np.ndarray] = None
+    if ups_arr is not None and build_guide_frames is not None:
         try:
-            refined = _refine_orientations(arr, ups_arr, ss_codes)
-            ups_path = _sample_orientations(refined, subdivisions=subdivisions)
+            guide = build_guide_frames(
+                arr,
+                _refine_orientations(arr, ups_arr, ss_codes),
+                is_helix=None if ss_arr is None else (ss_arr == "H"),
+                is_sheet=None if ss_arr is None else np.isin(ss_arr, ["S", "E"]),
+                refine_normals_enabled=bool(cfg.get("refine_normals", True)),
+                refine_tips=float(cfg.get("refine_tips", 10.0)),
+            )
+            ups_path = _sample_orientations(
+                guide.orientations, subdivisions=subdivisions
+            )
+            tangent_path = _sample_orientations(
+                guide.tangents, subdivisions=subdivisions
+            )
         except Exception:
             ups_path = None
+            tangent_path = None
 
     # -- Build frames --
     tangents, up_vectors = _propagate_ups(path, ups_path)
+    if tangent_path is not None and tangent_path.shape[0] == tangents.shape[0]:
+        # Blend the per-residue tangents in where they are defined: the spline's
+        # own tangent is smooth and correct in the interior, but it knows nothing
+        # about the strand-tip aiming, which only the guide frame carries.
+        valid = np.linalg.norm(tangent_path, axis=1) > 1e-9
+        tangents[valid] = tangent_path[valid]
+        up_vectors = _orthogonalise_ups(tangents, up_vectors)
     frames = _build_frames(tangents, up_vectors)
 
     if style_l == "tube":

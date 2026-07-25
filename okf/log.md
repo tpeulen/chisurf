@@ -2,6 +2,36 @@
 
 ## 2026-07-25
 
+* **chimol: the cartoon gets PyMOL's per-residue guide-frame stage.** The two
+  conditioning steps PyMOL runs before any sampling could not be patched in --
+  chimol derived its tangents from the *finished spline*, so there was nowhere to
+  put them. New `geometry/guide_frames.py` is that stage, transcribing
+  `RepCartoonComputeDifferencesAndNormals`, `RepCartoonComputeTangents`,
+  `RepCartoonRefineNormals` and `RepCartoonFlattenSheetsRefineTips` and running
+  them in `RepCartoonGeneratePoints`' order.
+  **Two distinctions that are easy to lose.** `nv[a]` is the unit direction from
+  residue *a* to *a+1* -- a segment direction -- while `tv[a]` is the tangent *at*
+  residue *a*, the normalised **head-to-tail sum** of the two meeting there. And
+  `cartoon_refine_tips` acts on the **tangents**: the `/* normal */` comment in
+  the C++ is stale, since `tv` is written by `RepCartoonComputeTangents`.
+  **What it buys.** `refine_tips` (default **10**) re-aims the tangent at each
+  strand tip toward its inward neighbour, so the arrowhead points along the strand
+  instead of into the loop it joins; on a strand running +x into a loop peeling
+  into +y the tip tangent's stray component drops **0.36 -> 0.03**.
+  `refine_normals` runs four passes -- orthogonalise against the tangent; offer
+  the vector and its inverse as candidates *except in a helix*, where inverting
+  would confuse inside and outside; sweep forward taking whichever agrees with the
+  neighbour already decided, which is what stops the ribbon flipping face; then
+  soften kinks where a residue disagrees with **both** neighbours
+  (`dot(v,v+)*dot(v,v-) < -0.1`). Alternating up-vectors (neighbour dot -1.0) come
+  out agreeing at 1.00, while a helix's own twist is deliberately left alone.
+  The sampled spline still supplies the smooth interior tangent; the guide frame
+  overrides it where it is defined, and the up-vectors are re-squared against the
+  result so the profile is not sheared.
+  20 new tests, one per pass, plus the degenerate cases PyMOL guards (a zero-length
+  step copies the previous direction; a segment break zeroes it).
+  Suite: 343 passed, 1 skipped.
+
 * **A photon-level simulation found three defects the count-level tests could
   not.** `chisurf/core/fluorescence/burst/simulate.py` simulates a whole ALEX
   smFRET experiment with tttrlib from declared parameters — diffusing molecules,

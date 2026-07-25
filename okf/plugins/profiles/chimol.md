@@ -160,15 +160,39 @@ vectors, followed by re-orthogonalising each orientation against
 pleated keeps half the twist, which is what an earlier weighted-kernel version
 here did. A run's own end points are anchors (`first+f .. last-f`).
 
-**Known divergences**, all with a source reference so they can be closed:
+**The per-residue stage is `geometry/guide_frames.py`.** chimol used to derive
+tangents from the *sampled spline*, which works but leaves nowhere to put the two
+conditioning steps PyMOL runs before any sampling — so they could not be patched
+in, and the stage had to exist. It transcribes four functions:
 
-- `cartoon_refine_tips` (10, on) biases the **tangent** at each strand tip toward
-  its inward neighbour — the `/* normal */` comment in `RefineTips` is stale;
-  `tv` is written by `RepCartoonComputeTangents`. It aims the arrowhead. chimol
-  derives tangents from the sampled spline rather than per residue, so porting it
-  needs the per-residue tangent stage PyMOL has.
-- `cartoon_refine` / `RepCartoonRefineNormals` is likewise per-residue.
-- `cartoon_smooth_loops` is off by default, so its absence costs nothing.
+| PyMOL | here |
+| --- | --- |
+| `RepCartoonComputeDifferencesAndNormals` | `differences_and_normals` |
+| `RepCartoonComputeTangents` | `tangents_from_normals` |
+| `RepCartoonRefineNormals` | `refine_normals` |
+| `RepCartoonFlattenSheetsRefineTips` | `refine_sheet_tips` |
+
+Two distinctions are easy to lose and load-bearing:
+
+1. **`nv` is not `tv`.** `nv[a]` is the unit direction from residue `a` to `a+1`
+   (a segment direction, `n−1` of them); `tv[a]` is the tangent *at* residue `a`,
+   the normalised **head-to-tail sum** of the two directions meeting there.
+2. **`refine_tips` acts on the tangents.** The `/* normal */` comment in the C++
+   is stale — `tv` is written by `RepCartoonComputeTangents`. With the default
+   weight of **10** the neighbour dominates, which is the point: a strand tip
+   otherwise takes its direction from the loop it joins and the arrowhead points
+   off the strand axis. Measured on a strand running +x into a loop peeling into
+   +y, the tip tangent's stray component drops from 0.36 to 0.03.
+
+`refine_normals` (on for single-state objects) runs four passes: orthogonalise
+against the tangent; offer the vector and its inverse as candidates, **except in
+a helix**, where inverting would confuse inside and outside; sweep forward taking
+whichever candidate agrees with the neighbour already decided, which is what
+stops the ribbon flipping face; then soften kinks where a residue disagrees with
+*both* neighbours (`dot(v,v₊)·dot(v,v₋) < −0.1`).
+
+Still absent: `cartoon_smooth_loops`, which is off by default, so it costs
+nothing.
 
 Measured on 148L, mean distance from the strand ribbon to its strand CAs:
 PyMOL **1.56 Å**, chimol **1.66 Å** — not exactly comparable, since PyMOL's `dss`
