@@ -53,7 +53,13 @@ class RenderingMixin(BaseCmd):
             except Exception as exc:
                 self._emit_error(f"Failed to set representation: {exc}")
             return
-        if rep in ("lines", "trace", "ca_trace"):
+        if rep in ("lines", "wire", "wireframe"):
+            try:
+                viewer.set_representation("lines")
+            except Exception as exc:
+                self._emit_error(f"Failed to set representation: {exc}")
+            return
+        if rep in ("trace", "ca_trace", "ribbon_trace"):
             try:
                 viewer.set_representation("ca_trace")
             except Exception as exc:
@@ -69,8 +75,8 @@ class RenderingMixin(BaseCmd):
         self._emit_error(f"Unsupported representation for 'as': {rep}")
 
     #: Every representation ``everything`` stands for, in the order applied.
-    _ALL_REPRESENTATIONS = ("cartoon", "trace", "atoms", "sticks", "dots",
-                            "surface", "metaball")
+    _ALL_REPRESENTATIONS = ("cartoon", "trace", "lines", "nonbonded", "atoms",
+                            "sticks", "dots", "surface", "metaball")
 
     def _toggle_representation(self, rep: str, sel: str, *, visible: bool) -> None:
         rep_target = (rep or "").strip().lower()
@@ -92,9 +98,9 @@ class RenderingMixin(BaseCmd):
         # `everything, <selection>` and say what was assumed, so the PyMOL
         # spelling is still learned.
         if rep_target not in self._ALL_REPRESENTATIONS and rep_target not in (
-            "everything", "all", "*", "ribbon", "ca_trace", "lines", "spheres",
-            "balls", "ball", "bonds", "points", "surf", "metaballs", "mesh",
-            "plane", "grid",
+            "everything", "all", "*", "ribbon", "ca_trace", "ribbon_trace",
+            "spheres", "balls", "ball", "bonds", "points", "surf", "metaballs",
+            "mesh", "plane", "grid", "wire", "wireframe", "nb_spheres",
         ):
             if selection is None and self._names_a_selection(viewer, rep_target):
                 self._emit_message(
@@ -180,8 +186,13 @@ class RenderingMixin(BaseCmd):
         try:
             if rep_target in ("cartoon", "ribbon"):
                 viewer.set_cartoon_visible(vis)
-            elif rep_target in ("trace", "ca_trace", "lines"):
+            elif rep_target in ("trace", "ca_trace", "ribbon_trace"):
                 viewer.set_trace_visible(vis)
+            elif rep_target in ("lines", "wire", "wireframe"):
+                # PyMOL's `lines` is the per-bond wireframe, not the CA trace.
+                viewer.set_lines_visible(vis)
+            elif rep_target in ("nonbonded", "nb_spheres"):
+                viewer.set_nonbonded_visible(vis)
             elif rep_target in ("atoms", "spheres", "balls", "ball"):
                 viewer.set_atoms_visible_all(vis)
             elif rep_target in ("sticks", "bonds"):

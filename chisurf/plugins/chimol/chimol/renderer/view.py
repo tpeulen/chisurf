@@ -23,6 +23,7 @@ from ..colors import (
 from ..config import _DISPLAY_CONFIG, register_update_listener, unregister_update_listener
 from ..io.structure import parse_pdb_secondary_structure
 from ..geometry import (
+    bond_line_segments,
     _build_bond_pairs,
     _build_sphere_mesh,
     _build_stick_mesh,
@@ -40,7 +41,9 @@ from ..geometry import (
     _generate_surface_mesh_from_points,
     _generate_trace_arrays,
     _get_surface_atom_mask,
+    nonbonded_crosses,
     shade_from_atoms,
+    unbonded_mask,
 )
 from .base import Renderer
 from .chimol_state import _MolViewObjectEntry, _MolViewObjectState, _StateField
@@ -186,6 +189,8 @@ class MolView(QtWidgets.QWidget):
     _show_atoms = _StateField("show_atoms")
     _show_dots = _StateField("show_dots")
     _show_sticks = _StateField("show_sticks")
+    _show_lines = _StateField("show_lines")
+    _show_nonbonded = _StateField("show_nonbonded")
     _sidechains_visible = _StateField("sidechains_visible")
     _show_atom_gaussians = _StateField("show_atom_gaussians")
     _cartoon_mask = _StateField("cartoon_mask")
@@ -2393,7 +2398,7 @@ class MolView(QtWidgets.QWidget):
         per-residue ball mask, then refreshes the view.
         """
         mode_l = str(mode).lower()
-        if mode_l not in ("cartoon", "ca_trace", "atoms"):
+        if mode_l not in ("cartoon", "ca_trace", "atoms", "lines"):
             return
         with self._activate_object(object_id):
             self._representation_mode = mode_l
@@ -2403,6 +2408,22 @@ class MolView(QtWidgets.QWidget):
             n = self._coords.shape[0]
             if n <= 0:
                 return
+
+            # `lines` is exclusive like the others: PyMOL's `as` replaces the
+            # representation rather than adding to it. It brings the nonbonded
+            # crosses with it, as PyMOL pairs the two.
+            if mode_l == "lines":
+                self._show_cartoon = False
+                self._show_trace = False
+                self._show_atoms = False
+                self._show_sticks = False
+                self._show_lines = True
+                self._show_nonbonded = True
+                self._update_view()
+                return
+
+            self._show_lines = False
+            self._show_nonbonded = False
 
             if mode_l == "cartoon":
                 self._show_cartoon = True
@@ -2487,6 +2508,16 @@ class MolView(QtWidgets.QWidget):
         else:
             if not visible:
                 state.ball_mask = None
+
+    def set_lines_visible(self, visible: bool) -> None:
+        """Show or hide the per-bond wireframe (PyMOL ``lines``)."""
+        self._show_lines = bool(visible)
+        self._update_view()
+
+    def set_nonbonded_visible(self, visible: bool) -> None:
+        """Show or hide crosses on the atoms that draw no bond."""
+        self._show_nonbonded = bool(visible)
+        self._update_view()
 
     def set_sticks_visible(self, visible: bool) -> None:
         """Enable or disable the sticks (bond) representation globally."""
@@ -4077,6 +4108,125 @@ class MolView(QtWidgets.QWidget):
         render_mode = "transparent" if np.any(colors[:, 3] < 0.999) else "opaque"
         return [SceneObject(id="atom_gaussians", geometry=geom, render_mode=render_mode)]
 
+
+    def _update_lines(self, colors: np.ndarray | None) -> list[SceneObject]:
+        """Draw PyMOL's ``lines``: one segment per bond, split at the midpoint.
+
+        Each half takes its own atom's colour, which is how element identity is
+        read off a wireframe. This is what PyMOL shows by default, and it is deliberately *not* the
+        alpha-carbon trace chimol used to draw under the same name.
+        """
+        if not self._show_lines:
+            return []
+        if self._bond_pairs is None or self._all_atom_coords is None:
+            return []
+
+        sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
+        bonds = np.asarray(self._bond_pairs, dtype=int)
+        if self._sticks_mask is not None and bonds.size:
+            n_atoms = self._all_atom_coords.shape[0]
+            if len(self._sticks_mask) == n_atoms and self._sticks_mask.any():
+                keep = (
+                    self._sticks_mask[bonds[:, 0]] & self._sticks_mask[bonds[:, 1]]
+                )
+                bonds = bonds[keep]
+
+        verts, cols = bond_line_segments(
+            self._all_atom_coords, bonds, self._atom_rgba(colors)
+        )
+        if verts.shape[0] == 0:
+            return []
+        return [
+            SceneObject(
+                id="lines",
+                geometry=Geometry(
+                    kind="line",
+                    positions=verts,
+                    colors=cols,
+                    meta={"width": float(sticks_cfg.get("width", 2.0))},
+                ),
+                render_mode="opaque",
+            )
+        ]
+
+    def _update_nonbonded(self, colors: np.ndarray | None) -> list[SceneObject]:
+        """PyMOL's ``nonbonded``: crosses on atoms that draw no bond line.
+
+        Without it, waters and ions disappear from a wireframe view, which is why
+        PyMOL enables it alongside ``lines``.
+        """
+        if not self._show_nonbonded or self._all_atom_coords is None:
+            return []
+
+        mask = unbonded_mask(self._all_atom_coords.shape[0], self._bond_pairs)
+        if not mask.any():
+            return []
+
+        rgba = self._atom_rgba(colors)
+        balls_cfg = _DISPLAY_CONFIG.get("balls", {})
+        scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
+        verts, cols = nonbonded_crosses(
+            self._all_atom_coords[mask],
+            None if rgba is None else rgba[mask],
+            size=float(balls_cfg.get("nonbonded_size", 0.25)) * scale,
+        )
+        if verts.shape[0] == 0:
+            return []
+        return [
+            SceneObject(
+                id="nonbonded",
+                geometry=Geometry(
+                    kind="line", positions=verts, colors=cols,
+                    meta={"width": 1.5},
+                ),
+                render_mode="opaque",
+            )
+        ]
+
+    def _atom_rgba(self, colors_per_ca: np.ndarray | None) -> np.ndarray | None:
+        """Per-atom RGBA, expanded from the per-residue colours when needed."""
+        if self._all_atom_coords is None:
+            return None
+        n_atoms = self._all_atom_coords.shape[0]
+
+        override = getattr(self, "_colors_per_atom_override", None)
+        if override is not None:
+            arr = np.asarray(override, dtype=float)
+            if arr.ndim == 2 and arr.shape[0] == n_atoms:
+                return arr
+
+        atoms = self._atoms
+        if (
+            colors_per_ca is not None
+            and atoms is not None
+            and self._residue_ids is not None
+            and "res_id" in (atoms.dtype.names or ())
+        ):
+            try:
+                lookup = {
+                    int(rid): colors_per_ca[i]
+                    for i, rid in enumerate(np.asarray(self._residue_ids))
+                    if i < len(colors_per_ca)
+                }
+                base = np.asarray(self._base_color_single, dtype=float)
+                return np.array(
+                    [lookup.get(int(r), base) for r in np.asarray(atoms["res_id"])],
+                    dtype=float,
+                )
+            except Exception:
+                pass
+
+        # Element colours are the useful fallback for a wireframe: it is how you
+        # read atom identity when there is no shading to go on.
+        if atoms is not None and "element" in (atoms.dtype.names or ()):
+            try:
+                return _build_element_color_array(
+                    np.asarray(atoms["element"]), n_atoms
+                )
+            except Exception:
+                pass
+        return None
+
     def _update_sticks(self, sticks_cfg: dict, colors_per_ca: np.ndarray | None) -> list[SceneObject] | None:
         if not self._show_sticks:
             return None
@@ -5204,6 +5354,8 @@ class MolView(QtWidgets.QWidget):
                 gaussian_cfg = {}
             scene_objects += self._update_atom_gaussians(gaussian_cfg) or []
         scene_objects += self._update_sticks(sticks_cfg, self._colors_per_ca) or []
+        scene_objects += self._update_lines(self._colors_per_ca)
+        scene_objects += self._update_nonbonded(self._colors_per_ca)
         scene_objects += self._update_surface(coords, surface_cfg, self._colors_per_ca) or []
 
         metaball_cfg = _DISPLAY_CONFIG.get("metaball", {})

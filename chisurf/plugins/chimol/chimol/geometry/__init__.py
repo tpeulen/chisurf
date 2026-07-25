@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 from .primitives import _compute_center_radius, _build_sphere_mesh, _build_stick_mesh
+from .wireframe import (
+    bond_line_segments,
+    nonbonded_crosses,
+    unbonded_mask,
+)
 from .ambient import (
     _estimate_ambient_occlusion,
     directional_occlusion,
@@ -28,6 +33,9 @@ __all__ = [
     "_estimate_ambient_occlusion",
     "occlusion_from_spheres",
     "directional_occlusion",
+    "bond_line_segments",
+    "nonbonded_crosses",
+    "unbonded_mask",
     "_build_sphere_mesh",
     "_build_stick_mesh",
     "_build_trace_ups",

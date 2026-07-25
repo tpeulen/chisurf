@@ -2,6 +2,33 @@
 
 ## 2026-07-25
 
+* **chimol: `lines` and `nonbonded`, the two representations PyMOL shows by
+  default -- and a parity tracker for the rest.** Scope changed from "match the
+  cartoon" to "replace PyMOL", so the gap was measured rather than guessed:
+  PyMOL is **515 823 lines of C++ plus 52 154 of Python, 303 commands, 769
+  settings, 16 representations**; chimol is 29 442 lines, 79 commands, 44
+  registered settings, 8 representations -- about **5 % by volume**. New
+  [parity tracker](/plugins/pymol-parity.md) records that, tiers the remaining
+  work by whether it actually blocks replacing PyMOL, and states the working
+  rules that keep coming up (read the C++ first; transcribe rather than
+  approximate; pin it with a test that names the function).
+  **`lines` was not just missing, it was wrong.** chimol mapped `lines` to the
+  alpha-carbon trace, so `show lines` gave a smoothed backbone where a PyMOL user
+  expects every bond. Now `geometry/wireframe.py` implements `RepWireBond`
+  properly: one segment per bond **split at the midpoint**, so each half carries
+  its own atom's colour -- a red-to-blue bond is half red and half blue, which is
+  how element identity is read off a wireframe. `trace`/`ca_trace`/`ribbon_trace`
+  keep the old behaviour under their own names.
+  **`nonbonded`** (`RepNonbonded`) marks atoms in no bond with a small three-axis
+  cross at `nonbonded_size`: a lone water draws no line and would otherwise be
+  invisible in a wireframe, which is exactly why PyMOL pairs `auto_show_nonbonded`
+  with `auto_show_lines`. `as lines` brings both, and replaces the other
+  representations rather than adding to them, as PyMOL's `as` does. On 1DG3:
+  17 712 line vertices for 4428 bonds plus 2046 for the 341 waters.
+  Both are flat primitives, not meshes -- which is the point of them, since they
+  are what you switch to when a surface is too heavy to rotate.
+  14 new tests. Suite: 393 passed, 1 skipped.
+
 * **Two more things a run cannot change: parameter values and class
   properties.** (1) Most of a model's parameters — instrument response,
   detection geometry, background, everything not being optimised — hold the same

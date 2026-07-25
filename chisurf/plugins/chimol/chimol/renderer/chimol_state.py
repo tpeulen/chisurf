@@ -75,6 +75,10 @@ class _MolViewObjectState:
     show_atoms: bool = False
     show_dots: bool = False
     show_sticks: bool = False
+    # PyMOL's default pair: per-bond wireframe plus crosses on the
+    # atoms that draw no bond (auto_show_lines / auto_show_nonbonded).
+    show_lines: bool = False
+    show_nonbonded: bool = False
     sidechains_visible: bool = True
     show_atom_gaussians: bool = False
     cartoon_mask: Optional[np.ndarray] = None
