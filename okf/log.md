@@ -2,6 +2,16 @@
 
 ## 2026-07-25
 
+* **A test was permanently replacing a module global, and later tests paid for
+  it.** `test/models/test_fret_line_overlays.py` pinned
+  `chisurf.core.models.tcspc.fret.rda_axis` to a 50-point axis in an autouse
+  fixture and never restored it. Every distance distribution in the process is
+  built on that global, so `test_pda_saw_nu` saw 50 grid points where the
+  settings say 96 — and only when run as part of the suite, which is the worst
+  kind of failure to chase: green in isolation, red together, and pointing at
+  the wrong file. The fixture now restores the original axis in a `finally`.
+  Found while verifying an unrelated change; fixed under the new "fix breakage
+  the moment you find it" rule.
 * **A finished chain now answers for priors it was not run under (PSIS).** The
   standing answer to "what if I had assumed a tighter lifetime prior?" was to
   sample again — a few hundred thousand model evaluations for a change that

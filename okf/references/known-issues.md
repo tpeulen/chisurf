@@ -233,6 +233,16 @@ in the anisotropy area; neither is reachable from a production call path today.
   correctness).
 - mmfdb-admin: cancelling the password prompt still opens the UI.
 
+**Tests**
+- `test/models/test_user_models.py` tests an API that no longer exists:
+  `chisurf.core.models._user_model_registry`, `_user_models_loaded`,
+  `register_user_model` and `iter_user_models_for_experiment`. The module now
+  offers only `inject_user_models()`, an exec-based override mechanism, so the
+  registry-based user-model API was replaced and the test left behind. Needs a
+  decision from the subsystem owner — restore the registry API, or rewrite the
+  test against the override mechanism — rather than a guess, which is why it is
+  recorded instead of patched.
+
 **Environment**
 - Built-in Jupyter/notebook integration is disabled/broken; the notebook menu is
   missing from the ribbon.
