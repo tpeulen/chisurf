@@ -40,7 +40,7 @@ from chisurf.core.agent.prompt import (
     parse_text_protocol,
     text_protocol_prompt,
 )
-from chisurf.core.agent.skills import SkillLibrary, session_experiments
+from chisurf.core.agent.skills import MAX_AUTO_SKILLS, SkillLibrary, session_experiments
 from chisurf.core.agent.spec import (
     SAFETY_DANGEROUS,
     ToolError,
@@ -90,7 +90,9 @@ class AgentConfig:
     max_safety: str = SAFETY_DANGEROUS
     max_history_messages: int = 80
     auto_load_skills: bool = True
-    max_active_skills: int = 2
+    #: Skills that may match one request on its wording. The smaller skills a
+    #: match is composed of are loaded on top of this, not counted against it.
+    max_active_skills: int = MAX_AUTO_SKILLS
     skill_match_threshold: float = 2.0
 
 
@@ -433,12 +435,15 @@ class AgentSession:
             limit=self.config.max_active_skills,
             threshold=self.config.skill_match_threshold,
         )
+        # ``match`` has already applied the limit to the skills that matched
+        # the wording, and then added the smaller skills those are composed of.
+        # Truncating again here would drop the parts of a composed procedure
+        # and leave the model with a summary of a method whose steps it was
+        # never given.
         added: list[str] = []
         for skill in matched:
             if skill.name in active:
                 continue
-            if len(active) >= self.config.max_active_skills:
-                break
             active.append(skill.name)
             added.append(skill.name)
             self.context.emit("skill.loaded", {"skill": skill.name, "trigger": "auto"})
