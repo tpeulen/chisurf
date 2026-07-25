@@ -28,6 +28,22 @@
   (`analyse()` scans min_states=2..max_states=4 from a fixed `seed`, so
   reproducibility across runs is determinism, not evidence of a global optimum).
 
+* **i18n (PRD-63): French brought to parity + discoverable language pickers.**
+  Translated ~1700 additional French strings (`chisurf_fr.ts` now 2065/2483
+  finished, ~83%; the ~418 remaining are non-translatable identifiers/symbols/
+  units) covering the `.ui` chrome, the data-driven view.json/manifest
+  display-names + tooltips and the long help panels; recompiled `chisurf_fr.qm`.
+  Added two reusable, core-backed language pickers in
+  `gui/widgets/language_selector.py`: `LanguageSelector` (endonym combo) mounted
+  as a **prominent header row atop the Settings editor** (it keeps the buried
+  `gui.language` tree row in sync), and `LanguageFlagSwitcher` (flag-dropdown
+  QToolButton — 🇬🇧 for English, not the US flag) mounted in the **ribbon
+  top-right corner** via `ribbon_categories._setup_language_switcher`. Added a
+  `LANGUAGE_FLAGS` map + `language_flag()` to `gui/i18n.py`. Guarded by
+  `test/gui/test_language_selector.py` (7 tests). The extractor was **not** run
+  (another instance holds uncommitted `de.ts`/`en.ts` edits); the new
+  `i18n.tr("Language")` label strings fall back to English until the next
+  `pixi run i18n-extract`. Updated PRD-63 DoD.
 * **Parameter tables: three more edit-path defects (found while auditing the
   stale-spin-box fix).** (1) *Any* mouse button toggled a `fixed` / `bounds_on`
   checkbox cell, because `_BooleanToggleDelegate.editorEvent` acted on every
