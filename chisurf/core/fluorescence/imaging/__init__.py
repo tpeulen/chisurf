@@ -60,6 +60,7 @@ from .simulate import (
     simulate_clsm_molecules,
 )
 
+from .ratio_fret import RatioTrace, ratio_image, ratio_trace
 from .frap import (
     FrapResult,
     fit_rfrap,
@@ -71,6 +72,9 @@ from .frap import (
 __all__ = [
     "ColocalizationResult",
     "FrapResult",
+    "RatioTrace",
+    "ratio_image",
+    "ratio_trace",
     "fit_rfrap",
     "normalise_frap_stack",
     "recovery_curve",

@@ -2,6 +2,29 @@
 
 ## 2026-07-25
 
+* **Ratiometric FRET ported (MIA `Do_FRET`): the A/D trace and the A/D map.**
+  `chisurf/core/fluorescence/imaging/ratio_fret.py`. The reference does two
+  things, not one: a per-frame acceptor/donor ratio over a region, normalised to
+  a baseline frame window, and a per-pixel ratio *map* from an averaged frame
+  range. Both are ported. **The framing that matters is that A/D is not E** —
+  it cannot be converted to an efficiency without the leakage,
+  direct-excitation and detection corrections, and reading it as one gives a
+  number wrong by a factor nobody can reconstruct later. What it is good for is
+  *change*, which is why the trace normalises to rest by default and reports
+  fold-change: a test shows two sensors with resting ratios differing by 15×
+  give an identical normalised trace, because the absolute ratio encodes
+  expression level and detector gain rather than biology. Both source channels
+  are kept on the result, since a ratio that moves is ambiguous until you know
+  which channel moved. **The map's filtering is not cosmetic:** the variance of
+  a ratio diverges as the denominator approaches zero, so each channel is median
+  filtered before the division and the map after it, negative pixels (from
+  over-subtracted background) are clipped rather than allowed to flip the ratio
+  sign, and dim-donor pixels yield NaN instead of a division. That denoising has
+  a real cost, which a test pins rather than hides: a 4×4 feature **disappears
+  entirely** under the default 5×5 ratio filter, so a small structure reading no
+  signal may be a filtering artefact. Tests: `test/core/test_ratio_fret.py`
+  (17). See [imaging plugins](/plugins/imaging.md).
+
 * **A per-pixel FLIM fit can now be confined to a region — and the region comes
   from the tool next door.** `plugins/microscopy/img_pixel_mle`. The per-pixel
   MLE selected its pixels by photon count alone, so a frame that is mostly
