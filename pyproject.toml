@@ -100,7 +100,7 @@ Repository = "https://github.com/Fluorescence-Tools/chisurf"
 "Bug Tracker" = "https://github.com/Fluorescence-Tools/chisurf/issues"
 
 [project.scripts]
-csc = "chisurf.cli:cli"
+csc = "chisurf.core.cli:cli"
 chimol-cli = "chisurf.plugins.chimol.chimol.app.cli:main"
 
 [project.gui-scripts]
