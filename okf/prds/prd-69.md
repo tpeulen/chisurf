@@ -145,6 +145,29 @@ effective samples per 1000 local-model evaluations:
 | `emcee` | affine-invariant ensemble | 39 | 26 |
 | `blocked` | per-block covariance | 12 | **64** |
 
+### Independent components
+
+If the factor graph falls into several connected components the posterior
+factorises **exactly** — no dataset likelihood and no prior links them — so
+sampling them in one chain is waste. `sample_independent_components` samples each
+from a common reference state (the others' datasets then contribute a constant
+that cancels in the Metropolis ratio) and merges analytically:
+
+- draws are shuffled independently per component, since independence makes any
+  pairing a valid joint draw; without the shuffle, chain ordering would appear
+  as a correlation the posterior does not have;
+- `χ²(θ) = Σ_c χ²_run,c − (C−1)·χ²₀`, and the same identity for the log-prior,
+  both being sums over datasets / parameters — exact, at no extra evaluation.
+
+8 unlinked datasets (16 parameters), equal recorded draws: **72.6 vs 5.6**
+effective samples per 1000 model evaluations — 7.8× the ESS for 40% fewer
+evaluations. `method='blocked'` routes through this and falls back to one joint
+chain when there is a single component.
+
+`sample_fit(..., global_posterior=True)` targets the group's joint posterior
+rather than the selected member's model, which is what makes any of this
+reachable for a `FitGroup`.
+
 The historical diagonal walker returned **4** effective samples out of 8000
 draws — the case this PRD exists for. The win is the *covariance*, not the
 blocking: on a 6-dataset star-linked global fit the block partition gave 2.6×

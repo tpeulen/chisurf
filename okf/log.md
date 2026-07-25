@@ -233,6 +233,30 @@
   `docs/guides/39_parameter_uncertainty.md` (every snippet executed). 28 tests.
   See [PRD-69](/prds/prd-69.md) and the [fitting subsystem](/subsystems/fitting.md).
 
+* **Independent sub-problems are sampled apart and merged analytically
+  (PRD-69).** Sampling was still the brute-force answer even where the structure
+  said it need not be. When the factor graph falls into several connected
+  components the posterior factorises *exactly* — no dataset likelihood and no
+  prior links them — so one joint chain is pure waste: a random walk's cost for a
+  given ESS grows with the square of the dimension it moves in, and in a group
+  every joint proposal re-evaluates every dataset. `sample_independent_components`
+  samples each component on its own from a common reference state, where the
+  other components' datasets contribute a constant that cancels in the Metropolis
+  ratio, so each chain is exactly its own marginal. The merge costs no extra
+  model evaluation: draws are shuffled independently per component (independence
+  makes any pairing a valid joint draw — and without the shuffle the chains'
+  ordering shows up as a correlation the posterior does not have), and both the
+  misfit and the prior are reconstructed in closed form as
+  `Σ_c X_run,c − (C−1)·X₀`, since χ² is a sum over datasets, ln π a sum over
+  parameters, and every run shares θ⁰. Verified against direct re-evaluation at
+  1e-9. Measured on 8 unlinked datasets (16 parameters), equal recorded draws:
+  **72.6 vs 5.6 effective samples per 1000 model evaluations** — 7.8× the ESS for
+  40% fewer evaluations. `method='blocked'` routes through it and falls back to
+  one joint chain for a single component. `sample_fit(..., global_posterior=True)`
+  targets the group's joint posterior instead of the selected member's model,
+  which is what makes any of this reachable for a `FitGroup`; the default is
+  unchanged. 11 tests.
+
 * **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
   The posterior of a group already factorises over its datasets, but
   `GlobalFitModel` flattened every local model's free parameters plus the

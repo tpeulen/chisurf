@@ -17,6 +17,7 @@ import chisurf.core.curve
 import chisurf.core.experiments
 import chisurf.core.data
 import chisurf.core.fitting.diagnostics
+import chisurf.core.fitting.factorgraph
 import chisurf.core.fitting.parameter
 import chisurf.core.fitting.priors
 import chisurf.core.fitting.sample
@@ -1842,6 +1843,7 @@ def sample_fit(
         fit: Fit,
         target_directory: str,
         method: str = 'emcee',
+        global_posterior: bool = False,
         steps: int = 1000,
         thin: int = 1,
         chi2max: float = float("inf"),
@@ -1870,6 +1872,12 @@ def sample_fit(
         1000 model evaluations against ~26 for ``emcee`` and ~0.4 for ``mcmc``,
         whose diagonal proposal produced 4 effective samples out of 8000 draws.
         ``mcmc`` is the historical diagonal random walk.
+    global_posterior : bool, optional
+        Sample the *joint* posterior of a :class:`FitGroup` rather than the
+        selected member's. ``fit.model`` is that member's model, so the default
+        (*False*) samples one dataset. Requires ``method='blocked'``, and the
+        reported parameter names are then the group's prefixed ones (``1:c``),
+        which :meth:`Fit.posterior_summary` does not map back onto members.
     steps, thin, chi2max, n_runs, step_size, temp : float or int, optional
         Sampling configuration passed through to
         :mod:`cs.core.fitting.sample`.
@@ -1902,8 +1910,21 @@ def sample_fit(
             "Use the model-specific sampling workflow (e.g. ProteinMC's own sampling button)."
         )
 
+    # ``fit.model`` is the *selected member's* model for a group, so sampling a
+    # FitGroup samples that one dataset unless the joint posterior is asked for
+    # explicitly. The default keeps the historical behaviour.
+    sample_model = fit.model
+    if global_posterior:
+        sample_model = cs.core.fitting.factorgraph.posterior_model(fit)
+        if method != 'blocked':
+            raise ValueError(
+                "global_posterior=True requires method='blocked'; the emcee and "
+                "mcmc backends sample fit.model only."
+            )
+        sample_model.update_model()
+
     # save initial parameter values
-    pv = fit.model.parameter_values
+    pv = sample_model.parameter_values
     
     # Create timestamped directory
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -2002,14 +2023,17 @@ def sample_fit(
                 progress_callback(current_total_done, total_steps)
 
         if method == 'blocked':
-            r = cs.core.fitting.sample.walk_mcmc_blocked(
+            # Independent sub-problems are sampled apart and merged exactly;
+            # with a single component this is the plain blocked walk.
+            r = cs.core.fitting.sample.sample_independent_components(
                 fit=fit,
                 steps=steps,
                 thin=thin,
                 chi2max=chi2max,
                 step_size=step_size,
                 temp=temp,
-                check_cancel=check_cancel
+                check_cancel=check_cancel,
+                model=sample_model
             )
         elif method == 'mcmc':
             r = cs.core.fitting.sample.walk_mcmc(
@@ -2050,7 +2074,7 @@ def sample_fit(
             progress_callback(done_steps, total_steps)
 
     diagnostics = _write_sampling_diagnostics(
-        run_results, fit, os.path.join(sampling_dir, "diagnostics.json")
+        run_results, sample_model, os.path.join(sampling_dir, "diagnostics.json")
     )
     # Leave the report on the fit so ``posterior_summary`` can quote credible
     # intervals from the chain instead of only the covariance or a profile scan.
@@ -2063,8 +2087,8 @@ def sample_fit(
         selected.sampling_diagnostics = diagnostics
 
     # restore initial parameter values
-    fit.model.parameter_values = pv
-    fit.model.update()
+    sample_model.parameter_values = pv
+    sample_model.update()
     return diagnostics
 
 
@@ -2112,7 +2136,7 @@ def pool_chains(
 
 def _write_sampling_diagnostics(
         run_results: typing.Sequence[dict],
-        fit: Fit,
+        model: cs.core.models.Model,
         path: str
 ) -> typing.Optional[dict]:
     """Summarise the pooled runs, write ``diagnostics.json`` and log the warnings.
@@ -2121,8 +2145,8 @@ def _write_sampling_diagnostics(
     ----------
     run_results : sequence of dict
         The per-run result dicts.
-    fit : Fit
-        Fit that was sampled; supplies the parameter names.
+    model : chisurf.core.models.Model
+        Model that was sampled; supplies the parameter names.
     path : str
         Where to write the JSON report.
 
@@ -2135,7 +2159,7 @@ def _write_sampling_diagnostics(
     if chains is None:
         return None
 
-    names = list(fit.model.parameter_names)
+    names = list(model.parameter_names)
     summary = cs.core.fitting.diagnostics.summarize(chains, names=names)
     warnings = cs.core.fitting.diagnostics.convergence_warnings(summary)
     acceptance = [

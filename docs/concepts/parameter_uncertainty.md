@@ -136,6 +136,47 @@ The same graph tells you something about the *fit* rather than the sampler: its
 parameters that, once fixed, make the datasets independent of one another. That
 last one is the identifiability statement a global fit exists to make.
 
+## Don't sample what doesn't need sampling together
+
+If the graph falls into several **connected components**, no factor links them:
+no dataset likelihood, no prior. The posterior then factorises *exactly*,
+
+$$p(\theta \mid D) = \prod_c p_c(\theta_c),$$
+
+and sampling all of them in one chain is pure waste. A random walk's cost for a
+given effective sample size grows roughly with the square of the dimension it
+moves in, and in a group every joint proposal re-evaluates every dataset. Two
+independent 2-parameter problems are far cheaper than one 4-parameter problem,
+and the gap widens with every dataset added.
+
+ChiSurf therefore samples each component on its own — holding the others at a
+common reference, whose datasets then contribute a constant that cancels in the
+Metropolis ratio — and merges afterwards. **The merge is analytic, not a second
+approximation:**
+
+- *Draws.* Independence means any pairing of draws from different components is
+  itself a draw from the joint. The components' chains are shuffled
+  independently and stacked side by side. (The shuffle matters: without it the
+  ordering of the chains would appear as a correlation between components that
+  the posterior does not have.)
+- *Objective.* $\chi^2$ is a sum over datasets and each dataset belongs to
+  exactly one component, so run $c$ reports
+  $\chi^2_{\text{run},c} = \chi^2_c(\theta_c) + [\chi^2_0 - \chi^2_c(\theta^0_c)]$.
+  Summing over the $C$ components and cancelling the shared reference gives
+  $$\chi^2(\theta) = \sum_c \chi^2_{\text{run},c} - (C-1)\,\chi^2_0 ,$$
+  and the log-prior, being a sum over parameters, obeys the same identity. Both
+  are exact and cost no extra model evaluation.
+
+Measured on 8 independent datasets (16 parameters), for the same number of
+recorded draws: **72.6 effective samples per 1000 model evaluations against 5.6**
+for one joint chain — 7.8× the effective sample size for 40% fewer evaluations.
+
+A group whose datasets *do* share a parameter is a single component and cannot
+be decomposed this way; that is what the shared parameter means. The
+`components` line of the structure report says which case you are in — and
+`components > 1` in something called a "global fit" means nothing is actually
+being shared.
+
 ## Adaptation and validity
 
 Both random-walk samplers tune their proposal during a **warm-up** phase and

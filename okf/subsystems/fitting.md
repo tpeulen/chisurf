@@ -219,10 +219,29 @@ time-homogeneous. Blocks come from `FactorGraph.sampling_blocks()`: variables
 grouped by identical likelihood-factor neighbourhood — a true partition, cheapest
 block first, degenerating to one block for a single `Fit`.
 
-**Sampling a group samples one member.** `lnprior`/`lnprob`/`lnprob_parts` and
-`walk_mcmc_blocked` take an optional `model=`; without it they use `fit.model`,
-which for a `FitGroup` is the *selected member's* model. Pass
-`factorgraph.posterior_model(fit)` to sample the joint posterior.
+**Independent components are sampled apart and merged exactly.**
+`sample_independent_components` (what `method='blocked'` routes through) checks
+`FactorGraph.connected_components()`. Components share no factor, so the
+posterior factorises exactly and each is sampled on its own from a common
+reference state — the others' datasets then contribute a constant that cancels
+in the Metropolis ratio. The merge needs no extra model evaluation:
+
+- draws are shuffled independently per component before being stacked (without
+  the shuffle, chain ordering shows up as a correlation the posterior lacks);
+- `χ²(θ) = Σ_c χ²_run,c − (C−1)·χ²₀` and the same identity for the log-prior,
+  since both are sums over datasets / parameters and the runs share `θ⁰`.
+
+Measured on 8 unlinked datasets (16 parameters): 72.6 vs 5.6 effective samples
+per 1000 model evaluations — 7.8× the ESS for 40% fewer evaluations. A group
+whose datasets share a parameter is one component and falls back to a single
+joint chain.
+
+**Sampling a group samples one member.** `lnprior`/`lnprob`/`lnprob_parts`,
+`walk_mcmc_blocked` and `sample_independent_components` take an optional
+`model=`; without it they use `fit.model`, which for a `FitGroup` is the
+*selected member's* model. `sample_fit(..., global_posterior=True)` (requires
+`method='blocked'`) targets `factorgraph.posterior_model(fit)` instead; the
+reported names are then the prefixed group ones.
 
 # Fitting a bare array through the real models
 

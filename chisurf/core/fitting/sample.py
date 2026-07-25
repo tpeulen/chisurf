@@ -206,7 +206,8 @@ def _seed_block_covariances(
         fit: cs.core.fitting.fit.Fit,
         blocks: list[np.ndarray],
         state: np.ndarray,
-        step_size: float
+        step_size: float,
+        model: cs.core.models.Model = None
 ) -> list[np.ndarray]:
     """Return an initial proposal covariance for each block.
 
@@ -227,6 +228,12 @@ def _seed_block_covariances(
         Current parameter vector, used for the fallback scale.
     step_size : float
         Relative proposal width used by the fallback.
+    model : chisurf.core.models.Model, optional
+        Model being sampled. ``fit.covariance_matrix`` is defined over
+        ``fit.model``, so its indices only mean anything when that is what is
+        being sampled; for any other model (e.g. a group's global model) the
+        curvature seed is skipped and warm-up adaptation supplies the
+        covariance instead.
 
     Returns
     -------
@@ -235,6 +242,8 @@ def _seed_block_covariances(
     """
     full = None
     try:
+        if model is not None and model is not fit.model:
+            raise ValueError("covariance indices belong to a different model")
         cov, used = fit.covariance_matrix
         cov = np.asarray(cov, dtype=np.float64)
         used = list(used)
@@ -390,7 +399,7 @@ def walk_mcmc_blocked(
         )
         return lnlike + lnpr, lnpr, c2
 
-    cov = _seed_block_covariances(fit, block_idx, state, step_size)
+    cov = _seed_block_covariances(fit, block_idx, state, step_size, model)
     factor = [_cholesky_or_diagonal(c) for c in cov]
     # The optimal scaling of a random-walk Metropolis falls with the dimension
     # of the move, so each block gets the target appropriate to its own size.
@@ -491,6 +500,236 @@ def walk_mcmc_blocked(
         'acceptance_rate': float(accepted.sum() / max(1, proposed.sum())),
         'block_acceptance': per_block,
         'block_sizes': [int(idx.size) for idx in block_idx],
+    }
+
+
+def sample_independent_components(
+        fit: cs.core.fitting.fit.Fit,
+        steps: int,
+        step_size: float = 0.1,
+        temp: float = 1.0,
+        thin: int = 1,
+        chi2max: float = np.inf,
+        callback: typing.Callable = None,
+        check_cancel: typing.Callable = None,
+        n_adapt: int = None,
+        model: cs.core.models.Model = None,
+        seed: int = None
+) -> dict:
+    r"""Sample each independent sub-problem separately and merge them exactly.
+
+    When a fit's factor graph falls into several connected components, the
+    posterior factorises **exactly**:
+
+    .. math::
+
+        p(\theta \mid D) \;=\; \prod_c p_c(\theta_c),
+
+    because no factor -- no dataset likelihood, no prior -- links a parameter in
+    one component to a parameter in another. Sampling all of them jointly is
+    then pure waste: a random walk's cost for a given effective sample size
+    grows roughly with the square of the dimension it moves in, and in a global
+    fit every joint proposal re-evaluates every dataset. Sampling each component
+    on its own replaces one :math:`D`-dimensional problem with several
+    :math:`d_c`-dimensional ones, each touching only its own data.
+
+    The merge is analytic, not a further approximation. Independence means any
+    pairing of draws from different components is itself a draw from the joint,
+    so the components' chains are shuffled independently and stacked side by
+    side. The data misfit and the log-prior are additive over components, which
+    lets both be reconstructed in closed form from the per-component runs (see
+    Notes) without a single extra model evaluation.
+
+    Parameters
+    ----------
+    fit : chisurf.core.fitting.fit.Fit
+        Fit whose free parameters are sampled.
+    steps : int
+        Recorded sweeps per component.
+    step_size : float
+        Relative proposal width used when no usable covariance is available.
+    temp : float, optional
+        Sampling temperature.
+    thin : int, optional
+        Record only every ``thin`` sweeps.
+    chi2max : float, optional
+        Hard cutoff on chi².
+    callback : callable, optional
+        Called as ``callback(done, total)`` over the whole run.
+    check_cancel : callable, optional
+        Polled during sampling; stops early when it returns ``True``.
+    n_adapt : int, optional
+        Warm-up sweeps per component.
+    model : chisurf.core.models.Model, optional
+        Model to sample; defaults to ``fit.model``. Pass
+        :func:`chisurf.core.fitting.factorgraph.posterior_model` for a group's
+        joint posterior, which is where components normally appear.
+    seed : int, optional
+        Seed for the independent shuffle used to merge the components.
+
+    Returns
+    -------
+    dict
+        The same keys as :func:`walk_mcmc_blocked`, plus ``n_components`` and
+        ``component_sizes``. Falls back to :func:`walk_mcmc_blocked` when there
+        is only one component, since there is then nothing to decompose.
+
+    Notes
+    -----
+    Each component is sampled from the *same* reference state
+    :math:`\theta^0`, with the other components held there. Their datasets
+    contribute a constant to :math:`\chi^2`, which cancels in the Metropolis
+    ratio, so each component's chain is exactly its own marginal posterior.
+
+    Because :math:`\chi^2` is a sum over datasets and each dataset belongs to
+    exactly one component, run *c* reports
+    :math:`\chi^2_{\mathrm{run},c} = \chi^2_c(\theta_c) + [\chi^2_0 - \chi^2_c(\theta^0_c)]`.
+    Summing over the :math:`C` components and cancelling gives the joint value
+    for a merged draw,
+
+    .. math::
+
+        \chi^2(\theta) \;=\; \sum_c \chi^2_{\mathrm{run},c} \;-\; (C-1)\,\chi^2_0 ,
+
+    and the log-prior, being a sum over parameters, obeys the same identity.
+    Both are therefore exact, not reconstructed by re-evaluation.
+    """
+    if model is None:
+        model = fit.model
+
+    components = _component_blocks(fit, model)
+    if len(components) < 2:
+        return walk_mcmc_blocked(
+            fit=fit, steps=steps, step_size=step_size, temp=temp, thin=thin,
+            chi2max=chi2max, callback=callback, check_cancel=check_cancel,
+            n_adapt=n_adapt, model=model,
+        )
+
+    reference = np.asarray(model.parameter_values, dtype=np.float64)
+    lnlike_0, lnprior_0, chi2_0 = cs.core.fitting.fit.lnprob_parts(
+        parameter_values=list(reference), fit=fit, chi2max=np.inf,
+        bounds=model.parameter_bounds, model=model
+    )
+
+    results = []
+    n_total = len(components)
+    for c, (indices, blocks) in enumerate(components):
+        # Every component starts from the same reference, so the constant the
+        # other components contribute is identical across runs -- which is what
+        # makes the closed-form merge below exact.
+        model.parameter_values = list(reference)
+        model.update_model()
+        r = walk_mcmc_blocked(
+            fit=fit, steps=steps, step_size=step_size, temp=temp, thin=thin,
+            chi2max=chi2max, check_cancel=check_cancel, n_adapt=n_adapt,
+            model=model, blocks=blocks,
+        )
+        results.append((indices, r))
+        if callback:
+            callback(c + 1, n_total)
+        if check_cancel and check_cancel():
+            break
+
+    model.parameter_values = list(reference)
+    model.update_model()
+
+    return _merge_components(
+        results, reference, chi2_0, lnprior_0, model, seed=seed
+    )
+
+
+def _component_blocks(
+        fit: cs.core.fitting.fit.Fit,
+        model: cs.core.models.Model
+) -> list:
+    """Return ``(indices, blocks)`` per independent component of the fit.
+
+    ``indices`` are the component's positions in the free-parameter vector and
+    ``blocks`` its sampling blocks, both as index arrays, so each component can
+    be handed straight to :func:`walk_mcmc_blocked`.
+    """
+    try:
+        from chisurf.core.fitting import factorgraph
+        graph = factorgraph.build_factor_graph(fit, model=model)
+        components = graph.connected_components()
+        if len(components) < 2:
+            return []
+        blocks_all = graph.sampling_blocks()
+        out = []
+        for component in components:
+            indices = sorted(
+                i for i in (graph.index_of(k) for k in component)
+                if i is not None
+            )
+            blocks = [
+                [graph.index_of(k) for k in b]
+                for b in blocks_all if set(b) <= component
+            ]
+            blocks = [[i for i in b if i is not None] for b in blocks]
+            blocks = [b for b in blocks if b]
+            covered = sorted(i for b in blocks for i in b)
+            if not indices or covered != indices:
+                # A block straddling components would break the independence
+                # argument the merge rests on; refuse rather than approximate.
+                return []
+            out.append((np.array(indices, dtype=int), blocks))
+        return out
+    except Exception as e:
+        cs.logging.warning(f"independent-component sampling unavailable ({e})")
+        return []
+
+
+def _merge_components(
+        results: list,
+        reference: np.ndarray,
+        chi2_0: float,
+        lnprior_0: float,
+        model: cs.core.models.Model,
+        seed: int = None
+) -> dict:
+    """Stack per-component chains into one joint chain.
+
+    Draws from independent components may be paired arbitrarily, so each
+    component's chain is shuffled independently before being stacked -- without
+    that, the ordering of the chains would show up as a spurious correlation
+    between components that the posterior does not have.
+    """
+    rng = np.random.default_rng(seed)
+    n_draws = min(r['parameter_values'].shape[0] for _, r in results)
+    joint = np.tile(reference, (n_draws, 1))
+    chi2 = np.zeros(n_draws, dtype=np.float64)
+    lnprior = np.zeros(n_draws, dtype=np.float64)
+    acceptance, sizes, block_sizes, block_acceptance = [], [], [], []
+
+    dof = float(model.n_points - model.n_free - 1.0)
+    for indices, r in results:
+        order = rng.permutation(n_draws)
+        joint[:, indices] = np.asarray(
+            r['parameter_values'], dtype=np.float64
+        )[:n_draws][order][:, indices]
+        chi2 += np.asarray(r['chi2r'], dtype=np.float64)[:n_draws][order] * dof
+        lnprior += np.asarray(r['lnprior'], dtype=np.float64)[:n_draws][order]
+        acceptance.append(float(r['acceptance_rate']))
+        sizes.append(int(indices.size))
+        block_sizes.extend(r.get('block_sizes', []))
+        block_acceptance.extend(np.atleast_1d(r.get('block_acceptance', [])))
+
+    # Undo the (C-1)-fold double counting of the shared reference state.
+    overlap = len(results) - 1
+    chi2 -= overlap * float(chi2_0)
+    lnprior -= overlap * float(lnprior_0)
+
+    return {
+        'chi2r': chi2 / dof,
+        'lnprior': lnprior,
+        'parameter_values': joint,
+        'parameter_names': model.parameter_names,
+        'chains': joint[np.newaxis, :, :],
+        'acceptance_rate': float(np.mean(acceptance)) if acceptance else float('nan'),
+        'block_sizes': block_sizes,
+        'block_acceptance': np.asarray(block_acceptance, dtype=float),
+        'n_components': len(results),
+        'component_sizes': sizes,
     }
 
 

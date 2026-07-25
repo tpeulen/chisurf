@@ -135,8 +135,30 @@ compatibility, not recommended.
 ## 6. Global fits
 
 `FitGroup.model` is the **selected member's** model, so `sample_fit` on a group
-samples that member. To sample the joint posterior of all datasets, pass the
-global model explicitly:
+samples that member. To sample the joint posterior of every dataset, ask for it:
+
+```python
+report = chisurf.core.fitting.fit.sample_fit(
+    fit=group_fit,
+    target_directory='./sampling',
+    method='blocked',          # required for global_posterior
+    steps=5000,
+    n_runs=2,
+    global_posterior=True,     # the joint posterior, not one member
+)
+```
+
+Parameter names are then the group's prefixed ones (`1:c`, `1:a`, `2:c`, …).
+
+With `method='blocked'` ChiSurf first checks whether the fit splits into
+**independent components** — datasets sharing no parameter. If it does, each
+component is sampled on its own and the results merged analytically (see the
+[concept page](../concepts/parameter_uncertainty.md#dont-sample-what-doesnt-need-sampling-together)).
+On 8 unlinked datasets this gave 7.8× the effective sample size for 40% fewer
+model evaluations. If every dataset shares a parameter, there is one component
+and one joint chain — nothing is lost, nothing is gained.
+
+For finer control, drive the sampler directly:
 
 ```python
 from chisurf.core.fitting import factorgraph
