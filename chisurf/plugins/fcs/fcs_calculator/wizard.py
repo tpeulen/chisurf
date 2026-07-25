@@ -17,7 +17,7 @@ except ImportError:
     persist_plugin_state = lambda n: lambda c: c
 
 from .core.algorithms import *  # noqa: F401,F403
-from .core.algorithms import compute_confocal, DYE_DATA, N_PER_nM_fL
+from .core.algorithms import compute_confocal, dye_names, get_dye, N_PER_nM_fL
 
 
 # ========= GUI =========
@@ -76,7 +76,11 @@ class _DyeSection(QWidget):
     def __init__(self, model, target=None, parent=None, **kwargs):
         super().__init__(parent)
         self.dye_combo = QComboBox()
-        self.dye_combo.addItems(list(DYE_DATA.keys()))
+        self.dye_combo.addItems(dye_names())
+        self.dye_combo.setToolTip(
+            "Reference species from MMFDB carrying a diffusion coefficient "
+            "D(25 °C, water); curate them in the MMFDB admin tool."
+        )
         self.btn_apply_dref = QPushButton("Apply Dref")
         self.scale_dref = QRadioButton("Apply with Temp/η scaling")
         self.scale_dref.setChecked(True)
@@ -383,10 +387,12 @@ class ConfocalCalcWidget(QWidget):
     def _apply_dref_to_D(self):
         """Apply the selected reference dye's ``D_25`` (with optional T/η scaling) to the ``D`` field."""
         name = self.dye_combo.currentText()
-        info = DYE_DATA.get(name)
+        info = get_dye(name)
         if not info:
             return
-        D_use = float(info.get("D25_um2_s", float("nan")))
+        D_use = float(info.get("d25_um2_s", float("nan")))
+        if not math.isfinite(D_use) or D_use <= 0.0:
+            return
         if self.scale_dref.isChecked():
             T_K = self.temp_C.value() + 273.15
             eta = self._current_eta_Pa_s()
@@ -518,8 +524,11 @@ class ConfocalCalcWidget(QWidget):
             elif fix_mode == "V":
                 self.rb_fix_V.setChecked(True)
             dye = data.get("dye")
-            if dye and dye in DYE_DATA:
-                idx = self.dye_combo.findText(dye)
+            if dye:
+                # Sessions saved before the table moved into MMFDB may name a
+                # species by an alias (e.g. "Rhodamine 6G (Rh6G)").
+                entry = get_dye(dye)
+                idx = self.dye_combo.findText(entry["name"] if entry else dye)
                 if idx >= 0:
                     self.dye_combo.setCurrentIndex(idx)
             if "scale_dref" in data:

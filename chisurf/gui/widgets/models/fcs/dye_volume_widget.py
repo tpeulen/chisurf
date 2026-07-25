@@ -15,9 +15,9 @@ from chisurf.gui import plots
 import chisurf.gui.widgets.fitting.widgets as fitting_widgets
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
-# Reuse dye database and physical helpers from the FCS calculator plugin
-from chisurf.plugins.fcs.fcs_calculator.wizard import (
-    DYE_DATA,
+# Dye properties come from MMFDB; physical helpers from the FCS calculator core
+from chisurf.core.fluorescence.dyes import diffusion_coefficient_25C, dye_names
+from chisurf.plugins.fcs.fcs_calculator.core.algorithms import (
     water_viscosity_Pa_s,
     stokes_einstein_D,
     stokes_einstein_rh,
@@ -28,18 +28,11 @@ from chisurf.plugins.fcs.fcs_calculator.wizard import (
 def _dye_diffusion_m2_s(dye_name: str, temperature_K: float) -> float:
     """Return diffusion coefficient D(T) in m^2/s for a reference dye.
 
-    Uses the dye's reference diffusion coefficient at 25 b0C in water
-    (D25_um2_s) from :data:`DYE_DATA` and applies Einstein-Stokes scaling via
-    an intermediate hydrodynamic radius r_h.
+    Reads the dye's diffusion coefficient at 25 °C in water from MMFDB (the
+    ``d25`` probe property) and applies Einstein-Stokes scaling via an
+    intermediate hydrodynamic radius r_h.
     """
-    info = DYE_DATA.get(dye_name)
-    if not info:
-        return float("nan")
-
-    try:
-        D25_um2_s = float(info.get("D25_um2_s", float("nan")))
-    except Exception:
-        return float("nan")
+    D25_um2_s = diffusion_coefficient_25C(dye_name)
     if not math.isfinite(D25_um2_s) or D25_um2_s <= 0.0:
         return float("nan")
 
@@ -221,17 +214,18 @@ class DyeShapeFCSModel(ModelCurve):
         # Register parameters
         self.find_parameters()
 
-        # Current dye name from database
+        # Current dye name from MMFDB
         self._dye_name: str = ""
-        if DYE_DATA:
-            try:
-                self._dye_name = list(DYE_DATA.keys())[0]
-            except Exception:
-                self._dye_name = ""
+        try:
+            names = dye_names()
+        except Exception:
+            names = []
+        if names:
+            self._dye_name = names[0]
 
     @property
     def dye_name(self) -> str:
-        """Current dye name from the FCS calculator database."""
+        """Current dye name from MMFDB."""
         return self._dye_name
 
     @dye_name.setter
@@ -241,7 +235,7 @@ class DyeShapeFCSModel(ModelCurve):
         Parameters
         ----------
         name : str
-            Dye name matching a key in ``DYE_DATA``.
+            Name of an MMFDB species carrying a diffusion coefficient.
         """
         self._dye_name = str(name)
 
@@ -470,12 +464,15 @@ class DyeShapeFCSWidget(ModelWidget, DyeShapeFCSModel):
         params_layout.setContentsMargins(0, 0, 0, 0)
         params_layout.setSpacing(0)
 
-        # Dye selection from the FCS calculator database (placed on top and
-        # expanding horizontally).
+        # Dye selection from MMFDB (placed on top and expanding horizontally).
         dye_layout = QtWidgets.QHBoxLayout()
         dye_label = QtWidgets.QLabel("Dye")
         self._dye_combo = QtWidgets.QComboBox()
-        self._dye_combo.addItems(list(DYE_DATA.keys()))
+        self._dye_combo.addItems(dye_names())
+        self._dye_combo.setToolTip(
+            "Reference species from MMFDB carrying a diffusion coefficient "
+            "D(25 °C, water); curate them in the MMFDB admin tool."
+        )
 
         # Initialize combobox to current dye_name if possible
         if self.dye_name:

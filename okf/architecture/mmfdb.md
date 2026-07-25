@@ -198,6 +198,22 @@ with their optical properties and absorption/emission curves. The import is
 idempotent (existing `chisurf_default` probes are refreshed, not duplicated), so
 a standalone/served database can carry the same defaults available in local mode.
 
+**Diffusion is a dye property.** Translational diffusion belongs to the species,
+so `D(25 °C, water)` is stored per probe in `optical_properties` under the `d25`
+property name (µm²/s, literature sources as JSON in `details`) — beside quantum
+yield and extinction coefficient, not in a separate table. A curated reference
+set (calibration dyes plus BSA/sucrose/RNase A) ships as
+`data/reference_diffusion.json` and is seeded by
+`ProbeMixin.import_reference_diffusion`, which attaches the coefficient to an
+existing catalogue probe when the name or one of its aliases matches and only
+creates a probe for an unknown species. `ProbeMixin.get_diffusion_reference`
+reads it back (seeding a fresh database on first use); both are exposed as the
+`fluorophores.import_diffusion_reference` / `fluorophores.diffusion_reference`
+RPC methods and as the `D₂₅` column/field of the fluorophore views. ChiSurf's
+FCS tools hold no private dye table: they read this through
+`chisurf.core.fluorescence.dyes` (see
+[fluorescence domain](/subsystems/fluorescence-domain.md)).
+
 # Object store & provenance-aware readers
 
 MMFDB has a content-addressed **object store** (`object_store.py`): blobs are

@@ -11,6 +11,7 @@
       ["Abs max", "abs_max"],
       ["Em max", "em_max"],
       ["QY", "qy"],
+      ["D₂₅", "d25"],
       ["Status", "verification_status"],
       ["Quality", "quality"],
       ["Source", "source"]

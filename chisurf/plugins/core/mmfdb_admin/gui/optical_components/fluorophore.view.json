@@ -74,6 +74,14 @@
     },
     {
       "type": "value",
+      "attr": "d25",
+      "label": "D₂₅",
+      "kind": "str",
+      "read_only": true,
+      "description": "Translational diffusion coefficient in water at 25 °C (µm²/s); used by the FCS diffusion/volume calculator."
+    },
+    {
+      "type": "value",
       "attr": "verification_status",
       "label": "Status",
       "kind": "str",

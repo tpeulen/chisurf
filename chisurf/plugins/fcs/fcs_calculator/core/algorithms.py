@@ -318,170 +318,47 @@ def diffusion_cylinder(T_K: float, eta_Pa_s: float, L_m: float, d_m: float) -> f
     return m2s_to_um2s(D)
 
 
-# ========= Dyes (inline dict; accurate refs from Kapusta 2010) =========
-# Units: D25_um2_s in µm²/s (10^-6 cm²/s)
-DYE_DATA: Dict[str, Dict] = {
-    "Rhodamine 6G (Rh6G)": {
-        "D25_um2_s": 414,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) Absolute Diffusion Coefficients, PicoQuant App Note — Table",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["2fFCS", "PFG-NMR", "PB/CF"]
-            }
-        ]
-    },
-    "Rhodamine B": {
-        "D25_um2_s": 427,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (PB/CF 4.27 ± 0.04; PFG-NMR also listed)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["PB/CF", "PFG-NMR"]
-            }
-        ]
-    },
-    "Rhodamine 123": {
-        "D25_um2_s": 460,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (PFG-NMR)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["PFG-NMR"]
-            }
-        ]
-    },
-    "Rhodamine 110": {
-        "D25_um2_s": 470,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (PFG-NMR)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["PFG-NMR"]
-            }
-        ]
-    },
-    "Fluorescein": {
-        "D25_um2_s": 425,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (PB/CF 4.25 ± 0.01)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["PB/CF"]
-            }
-        ]
-    },
-    "Oregon Green 488": {
-        "D25_um2_s": 411,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (2fFCS ~4.11)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["2fFCS"]
-            }
-        ]
-    },
-    "ATTO 488 (COOH)": {
-        "D25_um2_s": 400,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (2fFCS 4.0 ± 0.1)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["2fFCS"]
-            }
-        ]
-    },
-    "ATTO 655 (COOH)": {
-        "D25_um2_s": 426,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (2fFCS/PFG-NMR)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["2fFCS", "PFG-NMR"]
-            }
-        ]
-    },
-    "ATTO 655 (maleimide)": {
-        "D25_um2_s": 407,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (2fFCS/PFG-NMR/pmFCS)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["2fFCS", "PFG-NMR", "pmFCS"]
-            }
-        ]
-    },
-    "ATTO 655 (NHS)": {
-        "D25_um2_s": 425,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (2fFCS)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["2fFCS"]
-            }
-        ]
-    },
-    "Cy5": {
-        "D25_um2_s": 360,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (2fFCS 3.6 ± 0.1)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["2fFCS"]
-            }
-        ]
-    },
-    "Alexa 647": {
-        "D25_um2_s": 330,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (2fFCS 3.3 ± 0.1)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["2fFCS"]
-            }
-        ]
-    },
-    "Alexa 633": {
-        "D25_um2_s": 340,
-        "sources": [
-            {
-                "citation": "Kapusta (2010) App Note — Table (2fFCS 3.4 ± 0.1)",
-                "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
-                "methods": ["2fFCS"]
-            }
-        ]
-    },
-    "Bovine Serum Albumin (BSA)": {
-        "D25_um2_s": 59.9,
-        "sources": [
-            {
-                "citation": "Meechai et al. (1999) Translational diffusion coefficients of bovine serum albumin in aqueous solution at high ionic strength",
-                "url": "",
-                "methods": ["DLS"]
-            }
-        ]
-    },
-    "Sucrose": {
-        "D25_um2_s": 458.6,
-        "sources": [
-            {
-                "citation": "Atkins (2002) Atkins' physical chemistry",
-                "url": "",
-                "methods": ["?"]
-            }
-        ]
-    },
-    "Ribonuclease A (RNase)": {
-        "D25_um2_s": 119,
-        "sources": [
-            {
-                "citation": "Atkins (2002) Atkins' physical chemistry",
-                "url": "",
-                "methods": ["?"]
-            }
-        ]
-    }
-}
+# ========= Reference dyes (looked up in MMFDB) =========
+# Diffusion is a dye property: D(25 °C, water) lives on the MMFDB probe next to
+# quantum yield and extinction coefficient. ChiSurf keeps no private table.
+def reference_dyes(refresh: bool = False) -> Dict[str, Dict]:
+    """Return the MMFDB reference species that carry a diffusion coefficient.
+
+    Parameters
+    ----------
+    refresh : bool, optional
+        Re-read MMFDB instead of using the cached lookup. Default False.
+
+    Returns
+    -------
+    dict
+        Mapping of species name to its MMFDB entry (``d25_um2_s``, ``sources``,
+        ``category``, ``probe_id``).
+    """
+    from chisurf.core.fluorescence.dyes import reference_dyes as _reference_dyes
+
+    return _reference_dyes(refresh=refresh)
+
+
+def dye_names(refresh: bool = False) -> List[str]:
+    """Return the sorted names of the MMFDB reference species."""
+    from chisurf.core.fluorescence.dyes import dye_names as _dye_names
+
+    return _dye_names(refresh=refresh)
+
+
+def dye_diffusion_25C(name: str) -> float:
+    """Return ``D(25 °C, water)`` in µm²/s for an MMFDB species (NaN if unknown)."""
+    from chisurf.core.fluorescence.dyes import diffusion_coefficient_25C
+
+    return diffusion_coefficient_25C(name)
+
+
+def get_dye(name: str) -> Dict | None:
+    """Return the MMFDB entry for a species name or alias (``None`` if unknown)."""
+    from chisurf.core.fluorescence.dyes import get_dye as _get_dye
+
+    return _get_dye(name)
 
 
 # ========= High-level solver =========

@@ -25,6 +25,9 @@ _PROPERTY_MAP = {
     "Center Wavelength (nm)": "center_wavelength",
     "Bandwidth (nm)": "bandwidth",
     "Optical Density": "optical_density",
+    "d25_um2_s": "d25",
+    "D25_um2_s": "d25",
+    "diffusion_coefficient": "d25",
 }
 
 

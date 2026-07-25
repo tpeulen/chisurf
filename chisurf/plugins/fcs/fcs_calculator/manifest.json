@@ -23,7 +23,8 @@
   },
   "rpc_methods": [
     {"name": "fcs_calculator.compute", "summary": "Solve the linked confocal-FCS quantities for one constraint.", "params_schema": {}, "result_schema": {}, "long_running": false, "cancelable": false},
-    {"name": "fcs_calculator.water_viscosity", "summary": "Water viscosity (mPa·s) at a temperature.", "params_schema": {}, "result_schema": {}, "long_running": false, "cancelable": false}
+    {"name": "fcs_calculator.water_viscosity", "summary": "Water viscosity (mPa·s) at a temperature.", "params_schema": {}, "result_schema": {}, "long_running": false, "cancelable": false},
+    {"name": "fcs_calculator.reference_dyes", "summary": "MMFDB reference species with a diffusion coefficient D(25 °C, water).", "params_schema": {"type": "object", "properties": {"refresh": {"type": "boolean", "description": "Re-read MMFDB instead of using the cached lookup."}}}, "result_schema": {}, "long_running": false, "cancelable": false}
   ],
   "events": [],
   "dependencies": {},

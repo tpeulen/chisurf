@@ -43,6 +43,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | QY | `qy` | str |  |  | Fluorescence quantum yield. |
 | Extinction | `ext_coeff` | str |  |  | Molar extinction coefficient (M^-1 cm^-1). |
 | Lifetime | `lifetime` | str |  |  | Fluorescence lifetime (ns). |
+| D₂₅ | `d25` | str |  |  | Translational diffusion coefficient in water at 25 °C (µm²/s); used by the FCS diffusion/volume calculator. |
 | Quality | `quality` | str |  |  | Quality grade: unknown / low / medium / high. |
 
 ### Advanced — user & connection

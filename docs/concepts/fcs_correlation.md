@@ -170,6 +170,23 @@ $c = N/(N_A V_\text{eff}) \approx 2.0/(6.022\times10^{23} \times 4.3\times10^{-1
 $w_{xy}$, which is why the calibration must be repeated whenever the alignment,
 objective correction collar, or refractive index of the buffer changes.
 
+### Where the reference $D$ comes from
+
+Diffusion is a property of the species, not of the experiment, so ChiSurf keeps
+no private dye table: $D(25\,°\text{C}, \text{water})$ is stored in the
+metadata database next to the dye's quantum yield and extinction coefficient
+(the `d25` probe property, in µm²/s, with its literature citation). The FCS
+diffusion/volume calculator and the dye-volume model read the list from there,
+and the values are curated in the **MMFDB admin** tool (*Spectra* →
+*Fluorophores* → **D₂₅**), so correcting a coefficient once corrects it
+everywhere. The shipped set covers the common calibration dyes (rhodamines,
+fluorescein, Oregon Green, ATTO, Alexa, Cy5 — mostly from the PicoQuant
+absolute-diffusion compilation) plus BSA, sucrose and RNase A.
+
+Values are tabulated at 25 °C; at the measurement temperature they are scaled
+with $D \propto T/\eta(T)$, so record the sample temperature and the buffer
+viscosity rather than reusing the tabulated number directly.
+
 ## Assumptions, and when they break
 
 The 3-D Gaussian model is a convenient approximation, not the true confocal

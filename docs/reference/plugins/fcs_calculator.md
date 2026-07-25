@@ -35,7 +35,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| 1/N | `invN` | float |  | 0.0 … 1.0 | Inverse occupancy G(0) = 1/N. |
+| 1/N | `invN` | float |  | 0.0 … 1000000000.0 | Inverse occupancy G(0) = 1/N; exceeds 1 for sub-single-molecule occupancy. |
 | N | `num_mols` | float |  | 0.0 … 1000000000000.0 (step 0.1) | Average number of molecules in Veff. |
 | Conc (nM) | `conc_nM` | float |  | 0.0 … 1000000000.0 (step 0.01) | Concentration; N = 0.602214 × c_nM × Veff_fL. |
 
@@ -45,6 +45,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- |
 | `fcs_calculator.compute` | no | Solve the linked confocal-FCS quantities for one constraint. |
 | `fcs_calculator.water_viscosity` | no | Water viscosity (mPa·s) at a temperature. |
+| `fcs_calculator.reference_dyes` | no | MMFDB reference species with a diffusion coefficient D(25 °C, water). |
 
 ## Source
 

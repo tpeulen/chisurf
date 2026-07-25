@@ -23,6 +23,7 @@ results, while this package implements the numerical operations.
 | `anisotropy/` | Anisotropy decays/integrals and orientation-factor calculations. |
 | `imaging/` | Shared pixel-map helpers for intensity, Number & Brightness, micro-time histograms, and phasor maps. |
 | `curation/` | Fluorescence curation helpers, including AI-assisted triage. |
+| `dyes.py` | The one seam through which tools read reference-dye properties (diffusion coefficient `D(25 °C, water)`) from [MMFDB](/architecture/mmfdb.md); cached, alias-tolerant, with the shipped MMFDB table as fallback. No dye data is duplicated in ChiSurf. |
 
 # Reuse pattern
 

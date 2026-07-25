@@ -44,8 +44,8 @@
       "collapsed": false,
       "sections": [
         {"type": "value", "attr": "invN", "label": "1/N", "kind": "float",
-         "decimals": 9, "minimum": 0.0, "maximum": 1.0,
-         "description": "Inverse occupancy G(0) = 1/N."},
+         "decimals": 9, "minimum": 0.0, "maximum": 1000000000.0,
+         "description": "Inverse occupancy G(0) = 1/N; exceeds 1 for sub-single-molecule occupancy."},
         {"type": "value", "attr": "num_mols", "label": "N", "kind": "float",
          "decimals": 3, "minimum": 0.0, "maximum": 1000000000000.0, "step": 0.1,
          "description": "Average number of molecules in Veff."},
