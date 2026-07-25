@@ -582,3 +582,45 @@ def test_dynamic_leaves_a_third_species_static(qapp):
     model.update()
     assert np.all(np.isfinite(model.y))
     assert np.isfinite(model.total_log_likelihood())
+
+
+# ── the documented example ─────────────────────────────────────────────────
+
+
+@pytest.mark.slow
+def test_the_guide_worked_example_still_produces_its_documented_numbers(qapp):
+    """docs/guides/42_tcpda.md prints numbers; they have to stay true.
+
+    A guide whose output has drifted is worse than no guide — it teaches the
+    reader to distrust the page. This runs the published snippet verbatim.
+    """
+    import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
+    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+
+    reader = Pda3cSimulatorReader(
+        n_bursts=6000, r_gr=52.0, r_bg=46.0, r_br=68.0,
+        sigma=6.0, correlation=0.8, photons_blue=40.0, photons_green=35.0, seed=11,
+    )
+    fit = fit_mod.Fit(model_class=TcPdaModel, data=reader.read()[0])
+    model = fit.model
+
+    model.find_parameters()
+    for parameter in model.parameters_all:
+        parameter.fixed = True
+    for parameter, start in zip(model.species.means_of(0), (48.0, 50.0, 62.0)):
+        parameter.fixed = False
+        parameter.value = start
+    model.find_parameters()
+    fit.run()
+
+    recovered = [round(float(p.value), 2) for p in model.species.means_of(0)]
+    assert recovered == pytest.approx([52.10, 46.14, 66.60], abs=0.05), recovered
+
+    # ... and the correlation the guide quotes.
+    rho = model.species.correlations_of(0)[0]
+    rho.fixed = False
+    rho.value = 0.0
+    model.find_parameters()
+    fit.run()
+    assert float(rho.value) == pytest.approx(0.767, abs=0.02)

@@ -59,8 +59,10 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 36 | [Multispot (8-spot) smFRET](36_multispot.md) | per-channel burst analysis |
 | 37 | [TAC linearization: microtime LUTs](37_tttr_microtime_lut.md) | `tttr_lut_tools` plugin, `staging.open_tttr` |
 | 38 | [Two-channel colocalization](38_colocalization.md) | `img_coloc` plugin, `imaging.colocalization` |
-| 41 | [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `fret.accurate`, `fret.lines` |
 | 39 | [Parameter uncertainty: priors, sampling, convergence](39_parameter_uncertainty.md) | `fitting.priors`, `fitting.sample`, `fitting.diagnostics` |
+| 40 | [The AI assistant: operating ChiSurf in plain language](40_ai_assistant.md) | `chisurf.core.agent`, agent skills |
+| 41 | [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `fret.accurate`, `fret.lines` |
+| 42 | [Three-colour PDA (tcPDA)](42_tcpda.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |
 
 ## Running
 

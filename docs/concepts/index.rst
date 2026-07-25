@@ -38,6 +38,7 @@ ordering below runs from the physical fundamentals to the specific methods.
    bva
    recurrence
    pda
+   tcpda
 
 .. rubric:: Dynamics (hidden Markov)
 
