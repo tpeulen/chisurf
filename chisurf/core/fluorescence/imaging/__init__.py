@@ -1,5 +1,21 @@
-"""Per-pixel imaging analyses (N&B, phasor) shared by the imaging plugins."""
+"""Per-pixel imaging analyses (N&B, phasor, colocalization) shared by the imaging plugins."""
 
+from .colocalization import (
+    ColocalizationResult,
+    colocalization_metrics,
+    costes_significance,
+    costes_threshold,
+    estimate_background,
+    joint_histogram,
+    li_icq,
+    manders_fractions,
+    manders_overlap,
+    orthogonal_regression,
+    pearson,
+    spearman,
+    van_steensel,
+)
+from .image_source import ImageStack, is_photon_stream, load_image_stack
 from .pixel_maps import (
     add_maps_to_hdf5,
     build_clsm,
@@ -39,6 +55,22 @@ from .simulate import (
 )
 
 __all__ = [
+    "ColocalizationResult",
+    "ImageStack",
+    "colocalization_metrics",
+    "costes_significance",
+    "costes_threshold",
+    "estimate_background",
+    "is_photon_stream",
+    "joint_histogram",
+    "li_icq",
+    "load_image_stack",
+    "manders_fractions",
+    "manders_overlap",
+    "orthogonal_regression",
+    "pearson",
+    "spearman",
+    "van_steensel",
     "Molecule",
     "SimulatedImage",
     "have_simulator",

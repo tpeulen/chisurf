@@ -39,7 +39,7 @@ Every surveyed QuickFit3 plugin directory, mapped to topic, chisurf equivalent (
 | `plugins/photoncounts` | Single-photon counting histograms | `chisurf/plugins/microscopy/img_pixel_intensity/` | Partial-gap (~80% covered; missing: photon-by-photon stats, dead-time, drift QC) | 2 |
 | `plugins/qfevalbeadscanpsf` | PSF fitting from bead scans | `chisurf/plugins/microscopy/psf_determination/` | Partial-gap (basic PSF covered; missing: 1D slice-by-slice analysis, beam-width profiling) | 2.5 |
 | `plugins/qfevalcameracalibration` | Camera gain, offset, QE correction | — | **CLEAR-GAP** (per-pixel gain maps, noise-weighted thresholding, excess-noise modeling) | **4** |
-| `plugins/qfevalcolocalization` | Colocalization (Pearson PCC, Manders MOC) | — | **CLEAR-GAP** (no correlation metrics, scatter-plot UI, automatic thresholding) | **4** |
+| `plugins/qfevalcolocalization` | Colocalization (Pearson PCC, Manders MOC) | `chisurf/plugins/microscopy/img_coloc/` | **PORTED + SURPASSED** ([PRD-67](/prds/prd-67.md): adds Manders M1/M2, Costes thresholds + randomization test, Li ICQ, Spearman, van Steensel CCF) | **4** |
 | `plugins/qfe_alexeval` | ALEX burst analysis, S-vs-E 2D | `chisurf/plugins/burst/*` | Partial-gap (has BVA; missing: S-vs-E 2D density, GMM mixture fitting, explicit stoichiometry UI) | **4** |
 | `plugins/qfe_fcssimulator` | FCS correlation-curve simulator (external diffusion4) | `chisurf/plugins/fcs/fcs_lfcs_sim/` | Different paradigm (correlation vs. single-photon stochastic); skip | 2 |
 | `plugins/qfe_alexcontrol` | ALEX hardware control (NI DAQmx) | — | **EXCLUDED** (hardware-dependent; chisurf is software-only) | — |
@@ -152,11 +152,16 @@ Every surveyed QuickFit3 plugin directory, mapped to topic, chisurf equivalent (
     - **Effort**: 1 week (algorithm is simple aggregation; no fitting)
     - **Why**: Essential for quantitative microscopy; enables downstream intensity corrections
 
-11. **Colocalization metrics** (`qfevalcolocalization`)
+11. **Colocalization metrics** (`qfevalcolocalization`) — **DONE, [PRD-67](/prds/prd-67.md)**
     - **What**: Pearson correlation coefficient (PCC), Manders overlap coefficient (MOC); automatic background subtraction (5% quantile); interactive ROI selection via scatter plot.
     - **Key formulas**: `plugins/qfevalcolocalization/qfevalcolocalization_item.cpp` (PCC, MOC equations)
-    - **Where to land**: New `chisurf/plugins/microscopy/colocalization/` plugin (backend RPC + AutoForm UI)
-    - **Effort**: 1 week (algorithms ~50 lines; UI ~300 lines)
+    - **Landed in**: `chisurf/plugins/microscopy/img_coloc/` (Qt-free coefficients in
+      `core/fluorescence/imaging/colocalization.py`, AutoForm GUI, `img-coloc` CLI). The
+      reference's interaction (5 %-quantile background, rectangle gate on the scatter,
+      live pixel mask) was reproduced; the coefficient set goes beyond it with Manders
+      M1/M2, Costes automatic thresholds + randomization significance, Li's ICQ, Spearman
+      and van Steensel's shift profile, per Dunn et al. 2011. Reading camera **TIFF stacks**
+      alongside photon streams required the new `image_source.py` seam.
     - **Why**: Standard for multi-color validation; high utility for multi-channel workflows
 
 12. **Robust statistics library** (`lib/qfmathtools.h`)

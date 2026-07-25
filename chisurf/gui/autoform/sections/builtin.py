@@ -1498,6 +1498,22 @@ class ImageMapWidget(QtWidgets.QWidget):
     * ``roi_source`` (str) — model method returning ``{"x", "y", "r", "z"}`` (or
       ``None``); draws a non-interactive yellow circle of radius ``r`` at ``(x, y)``
       when the current slice matches ``z``.
+
+    Rectangle-gate ``options`` add a *draggable, resizable* rectangle on the image
+    (e.g. gating a population in a 2-D intensity histogram):
+
+    * ``rect_roi_call`` (str) — model method called ``fn(x0, y0, x1, y1)`` with the
+      rectangle in image index coordinates whenever the user finishes moving or
+      resizing it. Setting this option is what enables the rectangle.
+    * ``rect_roi_source`` (str) — model method returning ``(x0, y0, x1, y1)`` (or
+      ``None``) used to place the rectangle; without it the rectangle starts on
+      the central quarter of the image.
+
+    Axis ``options``:
+
+    * ``invert_y`` (bool) — keep the image convention with the origin at the top
+      left (default ``True``). Set ``False`` for images that are really plots
+      (e.g. a 2-D intensity histogram), so the second axis grows upwards.
     """
 
     #: marker so :meth:`AutoForm.refresh_plots` re-reads this widget.
@@ -1526,6 +1542,9 @@ class ImageMapWidget(QtWidgets.QWidget):
         markers_source: str | None = None,
         labels_source: str | None = None,
         roi_source: str | None = None,
+        rect_roi_call: str | None = None,
+        rect_roi_source: str | None = None,
+        invert_y: bool = True,
         **options,
     ):
         super().__init__()
@@ -1569,6 +1588,11 @@ class ImageMapWidget(QtWidgets.QWidget):
         self._marker_items = []
         self._label_items = []
         self._roi_item = None
+        # interactive rectangle gate
+        self._rect_roi_call = rect_roi_call
+        self._rect_roi_source = rect_roi_source
+        self._rect_roi = None
+        self._rect_placed = False
         self._ndim = 2
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -1581,11 +1605,16 @@ class ImageMapWidget(QtWidgets.QWidget):
             self._image = pg.ImageView()
             self._image.ui.roiBtn.hide()
             self._image.ui.menuBtn.hide()
+            if not invert_y:
+                # Plot-like images (2-D histograms) read bottom-up, not top-down.
+                self._image.getView().invertY(False)
             lay.addWidget(self._image, 1)
             if self._selection_attr:
                 self._setup_brush(pg)
             if self._select_attr or self._on_pick:
                 self._image.getView().scene().sigMouseClicked.connect(self._on_clicked)
+            if self._rect_roi_call:
+                self._setup_rect_roi(pg)
             if self._markers_source or self._roi_source or self._labels_source:
                 self._connect_slice_changed()
         except Exception:  # pragma: no cover - pyqtgraph optional
@@ -1976,6 +2005,56 @@ class ImageMapWidget(QtWidgets.QWidget):
                     self._roi_item = None
 
     # ── refresh ────────────────────────────────────────────────────────
+    # ── interactive rectangle gate ────────────────────────────────────
+    def _setup_rect_roi(self, pg) -> None:
+        """Add the draggable/resizable rectangle used as an image gate."""
+        pen = pg.mkPen((80, 170, 255), width=2)
+        roi = pg.RectROI([0, 0], [1, 1], pen=pen, hoverPen=pg.mkPen((120, 200, 255), width=3))
+        roi.addScaleHandle([1, 1], [0, 0])
+        roi.addScaleHandle([0, 0], [1, 1])
+        roi.setZValue(20)
+        self._image.getView().addItem(roi)
+        roi.sigRegionChangeFinished.connect(self._on_rect_roi)
+        self._rect_roi = roi
+
+    def _on_rect_roi(self) -> None:
+        """Report the rectangle (image index coordinates) to the model."""
+        if self._rect_roi is None or not self._rect_roi_call:
+            return
+        fn = getattr(self._model, self._rect_roi_call, None)
+        if not callable(fn):
+            return
+        pos = self._rect_roi.pos()
+        size = self._rect_roi.size()
+        x0, y0 = float(pos.x()), float(pos.y())
+        try:
+            fn(x0, y0, x0 + float(size.x()), y0 + float(size.y()))
+        except Exception:
+            logging.debug("rect ROI callback failed", exc_info=True)
+
+    def _place_rect_roi(self, data) -> None:
+        """Place the rectangle from the model source, or on the image centre once."""
+        if self._rect_roi is None:
+            return
+        rect = None
+        if self._rect_roi_source:
+            src = getattr(self._model, self._rect_roi_source, None)
+            try:
+                rect = src() if callable(src) else src
+            except Exception:
+                rect = None
+        if rect is None:
+            if self._rect_placed:
+                return
+            nx, ny = float(data.shape[0]), float(data.shape[1])
+            rect = (0.25 * nx, 0.25 * ny, 0.75 * nx, 0.75 * ny)
+        x0, y0, x1, y1 = (float(v) for v in rect)
+        self._rect_roi.blockSignals(True)
+        self._rect_roi.setPos(x0, y0)
+        self._rect_roi.setSize((max(x1 - x0, 1e-9), max(y1 - y0, 1e-9)))
+        self._rect_roi.blockSignals(False)
+        self._rect_placed = True
+
     def refresh(self) -> None:
         """Re-read the model image (and selection) and redraw with the colormap."""
         if self._image is None:
@@ -2026,6 +2105,8 @@ class ImageMapWidget(QtWidgets.QWidget):
                 else np.asarray(sel)
             )
             self._overlay.setImage(sel)
+        if self._rect_roi is not None and data.ndim == 2:
+            self._place_rect_roi(data)
         if self._markers_source or self._roi_source or self._select_attr or self._labels_source:
             self._redraw_overlays()
 

@@ -2,6 +2,44 @@
 
 ## 2026-07-25
 
+* **Colocalization landed as an imaging plugin ([PRD-67](/prds/prd-67.md)),
+  `chisurf/plugins/microscopy/img_coloc/`.** The last standard multi-colour
+  imaging question ChiSurf could not answer. The reference suite's plugin
+  ([quickfit3-mining](/references/quickfit3-mining.md) item 11) offers only PCC +
+  MOC, a 5 %-quantile background and a rectangle gate on the intensity scatter;
+  the interaction was worth copying, the coefficient set was not — raw PCC/MOC are
+  background- and threshold-dependent and therefore not comparable between images.
+  So `core/fluorescence/imaging/colocalization.py` (Qt-free NumPy) implements the
+  reporting set Dunn et al. 2011 treats as the minimum: **Manders M1/M2**,
+  **Costes automatic thresholds** (orthogonal regression + descending scan,
+  bisection-refined, to where the below-threshold pixels stop correlating) and the
+  **Costes block-scramble randomization test** (seeded, so the p-value is
+  reproducible), plus **Li's ICQ**, **Spearman** and **van Steensel's shift
+  profile** — the last one being what distinguishes true colocalization from a
+  chromatic/registration offset.
+* **The feature exposed a structural gap: imaging could only read photon
+  streams.** Image loading was fused into the per-pixel CLSM pipeline, but
+  colocalization is routinely done on camera images. New seam
+  `core/fluorescence/imaging/image_source.py`: `load_image_stack(path)` returns the
+  same `(frame, channel, y, x)` `ImageStack` for a **TIFF hyperstack** (axis order
+  read from the file's ImageJ/series metadata rather than guessed; one unlabelled
+  axis resolved by a documented, overridable heuristic) and for a **photon stream**
+  (`.ptu`/`.ht3`/…, one image per routing channel or per named detector window,
+  reusing the cached CLSM fills). Any later multi-channel pixel analysis reuses it.
+* **Two general options on the shared AutoForm `image` section**, authored in
+  JSON and available to every plugin: `rect_roi_call`/`rect_roi_source` (a
+  draggable/resizable rectangle reporting its bounds to the model — the
+  colocalization scatter gate, and anything else needing a 2-D region) and
+  `invert_y` (images that are really plots, e.g. a 2-D histogram, read bottom-up).
+  The gate stays a *model* concept: the widget reports bin coordinates, the
+  view-model maps them to intensities, so the same gate is settable headlessly.
+  Plugin surface: `core.py` shared by GUI/CLI/tests, an `img-coloc` CLI, and an
+  AutoForm `coloc.view.json` over a Qt-free `ColocViewModel`. 16 headless tests
+  (coefficient limits, Costes thresholds between background and signal, p > 0.95
+  for real vs < 0.95 for independent noise, CCF peak at a known offset, TIFF axis
+  handling); verified end-to-end on a real confocal photon stream and headlessly
+  rendered.
+
 * **PRD-03 (result registry) closed — and MMFDB was silently losing NaN
   parameter values.** Auditing PRD-03 against the code found it complete: the
   payload codecs it was blocked on had landed, `_store_data`/`read_result` use

@@ -89,6 +89,7 @@ These are smaller, older, or lower-risk GUI tools missing a README.
 | `microscopy/img_pixel_intensity` | Standard image-HDF5 creation. |
 | `microscopy/img_pixel_micro_time` | Mean micro-time map workflow. |
 | `microscopy/img_pixel_nb` | Number-and-brightness map workflow. |
+| `microscopy/img_coloc` | Colocalization workflow: channel pair, background/thresholds, scatter gate, which coefficient answers which question. |
 | `misc/games/breakout` | Optional/demo status and why it ships. |
 | `modelling/structure_tools` | Aggregator shell and included modelling tools. |
 | `tttr/tttr_toolbox` | Aggregator shell and included TTTR tools. |

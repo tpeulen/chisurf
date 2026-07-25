@@ -1,0 +1,116 @@
+{
+  "_comment": "Two-channel colocalization tool. AutoForm over ColocViewModel: a Settings dock (source, channels, background/threshold, gate, options), a Coefficients dock (metric table), the two channel maps, the colocalized-pixel mask, and the intensity joint histogram whose rectangle ROI is the scatter gate. Run / export live in the host toolbar.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Colocalization",
+      "split": "horizontal",
+      "persist": "img_coloc",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Settings",
+          "collapsed": false,
+          "sections": [
+            {"type": "value", "attr": "filename", "label": "Image", "kind": "file", "call": "set_filename",
+             "description": "TIFF stack (or any readable image), or a photon-stream file (PTU/HT3/…) that is reconstructed into a confocal-scan image."},
+            {"type": "choice", "attr": "channel_a", "label": "Channel A", "options_source": "channel_names", "call": "refresh_display",
+             "description": "First channel of the pair (populated after the first run)."},
+            {"type": "choice", "attr": "channel_b", "label": "Channel B", "options_source": "channel_names", "call": "refresh_display",
+             "description": "Second channel of the pair."},
+            {"type": "value", "attr": "frame", "label": "Frame", "kind": "int", "minimum": -1, "maximum": 100000, "step": 1,
+             "description": "Frame to analyse; -1 sums every frame of the stack."},
+            {"type": "choice", "attr": "channel_axis_mode", "label": "Axis order", "options": ["auto", "first axis"],
+             "description": "Images with unlabelled axes: 'auto' treats a short leading axis as channels; 'first axis' forces it."},
+            {
+              "type": "panel",
+              "title": "Background / thresholds",
+              "collapsed": false,
+              "sections": [
+                {"type": "toggle", "attr": "auto_background", "label": "Auto background",
+                 "description": "Estimate each channel's background as a low intensity quantile."},
+                {"type": "value", "attr": "background_quantile", "label": "Quantile", "kind": "float", "minimum": 0.0, "maximum": 0.5, "step": 0.01, "decimals": 3,
+                 "description": "Quantile used for the background estimate (0.05 = lower 5 %)."},
+                {"type": "value", "attr": "background_a", "label": "Background A", "kind": "float", "decimals": 4},
+                {"type": "value", "attr": "background_b", "label": "Background B", "kind": "float", "decimals": 4},
+                {"type": "toggle", "attr": "auto_threshold", "label": "Costes thresholds",
+                 "description": "Derive both thresholds automatically from the orthogonal regression instead of setting them by hand."},
+                {"type": "value", "attr": "threshold_a", "label": "Threshold A", "kind": "float", "decimals": 4,
+                 "description": "Pixels must exceed this (background-subtracted) intensity in channel A."},
+                {"type": "value", "attr": "threshold_b", "label": "Threshold B", "kind": "float", "decimals": 4,
+                 "description": "Pixels must exceed this (background-subtracted) intensity in channel B."}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Scatter gate",
+              "collapsed": true,
+              "sections": [
+                {"type": "toggle", "attr": "gate_enabled", "label": "Gate active",
+                 "description": "Restrict the gated coefficients to the rectangle drawn on the joint histogram."},
+                {"type": "value", "attr": "gate_a_min", "label": "A min", "kind": "float", "decimals": 4},
+                {"type": "value", "attr": "gate_a_max", "label": "A max", "kind": "float", "decimals": 4},
+                {"type": "value", "attr": "gate_b_min", "label": "B min", "kind": "float", "decimals": 4},
+                {"type": "value", "attr": "gate_b_max", "label": "B max", "kind": "float", "decimals": 4},
+                {"type": "button_row", "buttons": [
+                  {"label": "🧹 Clear gate", "action": "clear_gate", "description": "Disable the gate and recompute."}
+                ]}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Significance / profile",
+              "collapsed": true,
+              "sections": [
+                {"type": "toggle", "attr": "costes_test", "label": "Costes randomization test",
+                 "description": "Scramble one channel in PSF-sized blocks repeatedly and compare the observed correlation against that null distribution."},
+                {"type": "value", "attr": "costes_block", "label": "Block (px)", "kind": "int", "minimum": 1, "maximum": 64,
+                 "description": "Edge length of the scrambled blocks; use the PSF width."},
+                {"type": "value", "attr": "costes_randomizations", "label": "Randomizations", "kind": "int", "minimum": 10, "maximum": 10000,
+                 "description": "Size of the null distribution."},
+                {"type": "value", "attr": "costes_seed", "label": "Seed", "kind": "int", "minimum": 0, "maximum": 1000000,
+                 "description": "Random seed, so the p-value is reproducible."},
+                {"type": "value", "attr": "ccf_max_shift", "label": "van Steensel shift (px)", "kind": "int", "minimum": 0, "maximum": 200,
+                 "description": "Largest pixel shift of the cross-correlation profile; 0 disables it."},
+                {"type": "value", "attr": "bins", "label": "Histogram bins", "kind": "int", "minimum": 8, "maximum": 1024},
+                {"type": "toggle", "attr": "log_histogram", "label": "Log histogram",
+                 "description": "Show the joint histogram on a logarithmic intensity scale."}
+              ]
+            },
+            {"type": "info", "source": "results_html", "height": 60}
+          ]
+        },
+        {
+          "type": "dock_area",
+          "title": "Views",
+          "persist": "img_coloc_views",
+          "sections": [
+            {
+              "type": "panel",
+              "title": "Coefficients",
+              "collapsed": false,
+              "sections": [
+                {"type": "table", "source": "metric_rows", "height": 320,
+                 "columns": [
+                   {"key": "name", "label": "Coefficient", "width": 240},
+                   {"key": "value", "label": "Value", "width": 140}
+                 ]}
+              ]
+            },
+            {"type": "custom", "key": "image", "target": "image_a", "title": "Channel A",
+             "options": {"colormap": true, "colormap_attr": "colormap"}},
+            {"type": "custom", "key": "image", "target": "image_b", "title": "Channel B",
+             "options": {"colormap": true, "colormap_attr": "colormap"}},
+            {"type": "custom", "key": "image", "target": "coloc_mask_image", "title": "Colocalized pixels",
+             "options": {"colormap": true, "colormap_attr": "colormap"}},
+            {"type": "custom", "key": "image", "target": "histogram_image", "title": "Intensity scatter",
+             "options": {"colormap": true, "colormap_attr": "colormap", "invert_y": false,
+                         "rect_roi_call": "set_gate_from_rect", "rect_roi_source": "gate_rect"}},
+            {"type": "plot", "source": "ccf_series", "title": "van Steensel CCF",
+             "x_label": "shift / px", "y_label": "PCC", "height": 220}
+          ]
+        }
+      ]
+    }
+  ]
+}

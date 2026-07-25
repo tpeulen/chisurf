@@ -1,0 +1,15 @@
+{
+  "id": "img_coloc",
+  "version": "1.0.0",
+  "display_name": "Imaging:Colocalization",
+  "description": "Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and photon-stream images, with an interactive intensity scatter gate.",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Imaging"],
+  "icon": "🔬",
+  "state_namespace": "img_coloc",
+  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+  "entrypoints": {
+    "gui": "chisurf.plugins.microscopy.img_coloc.gui.tool:ImgColocTool",
+    "cli": "img-coloc=chisurf.plugins.microscopy.img_coloc.cli:cli"
+  }
+}
