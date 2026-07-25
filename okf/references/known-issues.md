@@ -64,6 +64,16 @@ These are the patterns; each caused more than one bug.
 - **Keep hot-path logging at DEBUG.** Logging a full DataFrame repr / per-redraw
   traces at INFO on every recompute was itself a major interactive slowdown.
   `resizeEvent` should rescale cached data (debounced), never re-bin/recompute.
+- **A GUI log handler must batch, be bounded, and never touch the widget per
+  record.** `QTextEditLogger` sits on the root logger, so *any* subsystem's
+  logging pays its cost. Writing to the widget from the logging thread is
+  undefined behaviour (`QBasicTimer` warnings, crashes); inserting one row per
+  record pays a relayout plus `scrollToBottom` each; and running the O(rows)
+  console filter per record makes a burst O(rows^2) — a data load logging a few
+  hundred records took seconds. Records are queued and applied in batches on the
+  GUI thread (one wake-up per batch, ~50 ms rate limit, newest-only for the
+  status bar), the console is capped at `LogListWidget.max_rows`, and the filter
+  pass is debounced and skipped entirely while no filter is active.
 - **File-save dialogs seed from the data location.** Default the save dir to the
   loaded data file's folder / `cs.working_path` (not Qt's last-used dir) and
   update `cs.working_path` after save. `chisurf/gui/main.py` "Save Fit" is the
@@ -86,6 +96,29 @@ These are the patterns; each caused more than one bug.
 # Open functional issues (re-verify against current tree)
 
 Grouped by area; captured June 2026.
+
+**Fixed 2026-07-25 — kept here because the *patterns* keep recurring**
+
+- **A GUI modal reported an error from the macro layer, so head-less loading
+  hung forever.** `core_data.add_dataset` caught every read failure and built
+  `MyMessageBox`, whose `__init__` calls `exec_()`. With a `QApplication` but
+  no user — CLI, script, test, the assistant — that blocks indefinitely; with
+  no `QApplication` at all Qt *aborts the process*. A file that could not be
+  read therefore looked like "loading is very slow". Errors are now re-raised
+  when there is no GUI. **Pattern: never report from core/macro code with a
+  modal; the caller cannot always click.**
+- **`np.float` and `np.float_` were still used in 7 modules**, and NumPy
+  removed them (1.24 and 2.0). Three FCS readers — ConfoCor3, ALV `.ASC` and
+  PyCorrFit — raised `AttributeError` on the first data line they parsed, so
+  those formats simply did not load. Fixed to `float`/`np.float64`, with a
+  guardrail test that scans for the removed aliases. **Pattern: a removed
+  alias only fails when its code path runs, so it hides in readers for
+  formats nobody exercised recently.**
+- **`GeneralFCSModel` exposed all three diffusion presets to the optimiser**
+  while computing with one, so a fit reported its untouched defaults
+  (`N = 1.0`, `D = 300.0`) as results and `n_free` was 15 instead of 5.
+  **Pattern: when a model holds alternative parameter groups, the parameter
+  list has to follow the active one.**
 
 **Qt teardown in test suites**
 - `chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py` aborts with

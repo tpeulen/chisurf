@@ -66,12 +66,12 @@ class DyeDistributionNormal(distribution.LabelDistribution):
         pos[:, :, :, 1] = yv
         pos[:, :, :, 2] = zv
         normal = scipy.stats.multivariate_normal(
-            mean=np.array([0.0, 0.0, 0.0], dtype=np.float),
+            mean=np.array([0.0, 0.0, 0.0], dtype=float),
             cov=self._covariance
         )
         self._density = normal.pdf(pos)
         density_threshold = (1. - self._density_threshold) * np.max(self._density)
-        r = np.empty((nx * ny * nz, 4), dtype=np.float)
+        r = np.empty((nx * ny * nz, 4), dtype=float)
         n, points = chisurf.core.structure.label.functions.density2points(
             r=r,
             nx=nx, ny=ny, nz=nz, dg=self.simulation_grid_resolution,

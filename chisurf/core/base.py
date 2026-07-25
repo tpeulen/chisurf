@@ -112,7 +112,7 @@ def to_elementary(
                 skip_qt_widgets=skip_qt_widgets
             )
         return re
-    # Check numpy types first, as np.float also is a python float instance
+    # Check numpy types first, as float also is a python float instance
     elif isinstance(obj, np.floating):
         logging.debug("to_elementary: Converting numpy float to python.")
         if verbose:

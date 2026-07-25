@@ -151,7 +151,7 @@ class LabelDistribution(abc.ABC):
         :return: interleaved spectrum of donor lifetimes in the presence of FRET
         """
         return chisurf.decay.compute_donor_lifetime_spectrum_with_fret(
-            donor_lifetime_spectrum=np.array(donor_lifetime_spectrum, dtype=np.float),
+            donor_lifetime_spectrum=np.array(donor_lifetime_spectrum, dtype=float),
             **kwargs
         )
 

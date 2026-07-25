@@ -679,9 +679,16 @@ def add_dataset(
         )
 
     except Exception as e:
-        # Capture the full error trace
         error_trace = traceback.format_exc()
-        # Show the error popup
+        cs.logging.error("add_dataset: could not read %s: %s", primary_filename, e)
+        if gui is None:
+            # A modal dialog needs someone to close it. Raised head-lessly —
+            # from the CLI, a script, a test or the assistant — `MyMessageBox`
+            # calls `exec_()` and blocks forever, and with no QApplication at
+            # all Qt aborts the process outright. Neither is a way to report
+            # that a file could not be read: without a GUI the caller is the
+            # one that must hear about it.
+            raise
         cs.gui.widgets.msg_box = cs.gui.widgets.MyMessageBox(
             label="Error",
             info="Error reading data. Check Reading settings and file.",

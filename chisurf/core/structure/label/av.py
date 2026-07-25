@@ -244,7 +244,7 @@ class LabelDistributionAV(distribution.LabelDistribution):
                 simulation_grid_resolution
             )
         self._atoms = atoms
-        self._density = np.array(av.grid, dtype=np.float).reshape(av.shape)
+        self._density = np.array(av.grid, dtype=float).reshape(av.shape)
         self._av = av
 
     @property
