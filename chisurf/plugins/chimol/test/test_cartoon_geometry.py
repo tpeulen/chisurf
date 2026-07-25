@@ -423,3 +423,66 @@ class TestOrientationSampling:
         # Away from the run's ends, where the tangent is only a chord estimate,
         # each normal is the outward radial to within a degree or so.
         assert (dots[1:-1] > 0.99).all(), dots
+
+
+class TestSmoothLoops:
+    """``cartoon_smooth_loops`` -- ``RepCartoonSmoothLoops``.
+
+    Off by default in PyMOL and here, because rounding the coil pulls it away
+    from the real backbone. Implemented so the setting is not a lie.
+    """
+
+    @staticmethod
+    def kinked_loop(n: int = 11):
+        ca = np.zeros((n, 3))
+        ca[:, 0] = np.arange(n) * 3.3
+        ca[4:7, 1] = [3.0, -3.0, 3.0]        # a zig-zag in the coil
+        loop = np.zeros(n, dtype=bool)
+        loop[3:8] = True
+        return ca, loop
+
+    def test_it_rounds_the_coil(self):
+        from chisurf.plugins.chimol.chimol.geometry.cartoon import _smooth_loop_path
+
+        ca, loop = self.kinked_loop()
+        out, _ = _smooth_loop_path(ca, loop, cycles=2)
+        rough = np.abs(np.diff(ca[3:8, 1], 2)).sum()
+        smooth = np.abs(np.diff(out[3:8, 1], 2)).sum()
+        assert smooth < 0.2 * rough
+
+    def test_the_flanking_elements_are_not_dragged_along(self):
+        """The run widens by one residue, no further."""
+        from chisurf.plugins.chimol.chimol.geometry.cartoon import _smooth_loop_path
+
+        ca, loop = self.kinked_loop()
+        out, _ = _smooth_loop_path(ca, loop, cycles=2)
+        assert np.allclose(out[:2], ca[:2])
+        assert np.allclose(out[9:], ca[9:])
+
+    def test_up_vectors_are_smoothed_and_stay_unit(self):
+        from chisurf.plugins.chimol.chimol.geometry.cartoon import _smooth_loop_path
+
+        ca, loop = self.kinked_loop()
+        ups = np.zeros_like(ca)
+        ups[:, 2] = 1.0
+        ups[5, 2] = 0.0
+        ups[5, 1] = 1.0
+        _, out_ups = _smooth_loop_path(ca, loop, cycles=2, ups=ups)
+        assert out_ups is not None
+        assert np.allclose(np.linalg.norm(out_ups, axis=1), 1.0)
+
+    def test_zero_cycles_and_no_loops_are_both_no_ops(self):
+        from chisurf.plugins.chimol.chimol.geometry.cartoon import _smooth_loop_path
+
+        ca, loop = self.kinked_loop()
+        assert np.allclose(_smooth_loop_path(ca, loop, cycles=0)[0], ca)
+        assert np.allclose(
+            _smooth_loop_path(ca, np.zeros(ca.shape[0], dtype=bool), cycles=2)[0],
+            ca,
+        )
+
+    def test_it_is_off_by_default(self):
+        """PyMOL ships it off; a rounder loop is further from the truth."""
+        from chisurf.plugins.chimol.chimol import settings
+
+        assert settings.get_setting("cartoon_smooth_loops") is False

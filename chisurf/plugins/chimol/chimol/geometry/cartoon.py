@@ -1151,6 +1151,78 @@ def _flatten_sheet_path(
     return out, out_ups
 
 
+def _smooth_loop_path(
+    ca: np.ndarray,
+    is_loop: np.ndarray,
+    cycles: int = 2,
+    first: int = 1,
+    last: int = 1,
+    ups: Optional[np.ndarray] = None,
+) -> tuple[np.ndarray, Optional[np.ndarray]]:
+    """Round off the coil between elements (PyMOL ``cartoon_smooth_loops``).
+
+    ``RepCartoonSmoothLoops``. The same uniform box average as the sheet pass,
+    but over **loop** runs, and with two differences that matter:
+
+    * the run is **widened by one residue at each end**, into the helix or strand
+      it joins, so the smoothing does not stop dead at the junction and leave a
+      crease there;
+    * the orientations are renormalised but **not** re-orthogonalised against the
+      tangent, unlike the sheet pass -- a loop has no face to keep flat.
+
+    PyMOL runs it for each window width from ``cartoon_smooth_first`` to
+    ``cartoon_smooth_last`` (both 1 by default, so one width), ``smooth_cycles``
+    times each. It is **off** by default there, and off here.
+
+    Parameters
+    ----------
+    ca : np.ndarray
+        Control points, shape ``(N, 3)``; not modified in place.
+    is_loop : np.ndarray
+        Boolean mask of coil residues.
+    cycles : int, optional
+        ``cartoon_smooth_cycles``.
+    first, last : int, optional
+        ``cartoon_smooth_first`` / ``cartoon_smooth_last``: the range of
+        half-window widths to sweep.
+    ups : np.ndarray, optional
+        Per-residue up-vectors, smoothed alongside.
+
+    Returns
+    -------
+    tuple
+        The smoothed control points and up-vectors.
+    """
+    n = ca.shape[0]
+    out = np.array(ca, dtype=float, copy=True)
+    out_ups = None if ups is None else np.array(ups, dtype=float, copy=True)
+    if n < 3 or cycles <= 0 or not np.any(is_loop):
+        return out, out_ups
+
+    mask = np.asarray(is_loop, dtype=bool)
+    for start, stop in _contiguous_runs(mask):
+        # Widen into the flanking element, as PyMOL does, so the join is smooth.
+        run_start = max(start - 1, 0)
+        run_stop = min(stop + 1, n - 1)
+        for f in range(max(int(first), 1), max(int(last), int(first)) + 1):
+            lo, hi = run_start + f, run_stop - f
+            if hi - lo < 1:
+                continue
+            width = 2 * f + 1
+            for _ in range(int(cycles)):
+                window = sum(
+                    out[lo + e:hi + e] for e in range(-f, f + 1)
+                )
+                out[lo:hi] = window / float(width)
+                if out_ups is None:
+                    continue
+                window_ups = sum(
+                    out_ups[lo + e:hi + e] for e in range(-f, f + 1)
+                )
+                out_ups[lo:hi] = _unit(window_ups / float(width))
+    return out, out_ups
+
+
 def _path_parameterisation(
     n: int,
     subdivisions: int,
@@ -1406,8 +1478,8 @@ def _generate_cartoon_tube_arrays(
         except Exception:
             ss_arr = None
 
-    # -- Per-residue orientations, read before flattening so the strand pass can
-    #    smooth them alongside the path, as PyMOL does --
+    # -- Per-residue orientations, read before the smoothing passes so they can
+    #    be smoothed alongside the path, as PyMOL does --
     ups_arr: Optional[np.ndarray] = None
     if trace_ups is not None:
         try:
@@ -1416,6 +1488,18 @@ def _generate_cartoon_tube_arrays(
                 ups_arr = candidate_ups
         except Exception:
             ups_arr = None
+
+    # -- Smooth loops: PyMOL's ``cartoon_smooth_loops``, off by default, and run
+    #    before the sheet pass as in RepCartoonGeneratePoints --
+    if ss_arr is not None and bool(cfg.get("smooth_loops", False)):
+        arr, ups_arr = _smooth_loop_path(
+            arr,
+            ~np.isin(ss_arr, ["H", "S", "E"]),
+            cycles=int(cfg.get("smooth_cycles", 2)),
+            first=int(cfg.get("smooth_first", 1)),
+            last=int(cfg.get("smooth_last", 1)),
+            ups=ups_arr,
+        )
 
     # -- Flat sheets: smooth the beta-strand backbone before anything is
     #    derived from it, so both the ribbon path and its tangents come from the

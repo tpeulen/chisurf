@@ -191,8 +191,17 @@ whichever candidate agrees with the neighbour already decided, which is what
 stops the ribbon flipping face; then soften kinks where a residue disagrees with
 *both* neighbours (`dot(v,v₊)·dot(v,v₋) < −0.1`).
 
-Still absent: `cartoon_smooth_loops`, which is off by default, so it costs
-nothing.
+`cartoon_smooth_loops` (`RepCartoonSmoothLoops`) is implemented too, so the
+setting is not a lie, and **off by default as in PyMOL** — rounding the coil
+pulls it away from the real backbone. It differs from the sheet pass in two ways:
+the run is widened by one residue into the flanking element, so the smoothing
+does not stop dead at the junction and crease there; and the orientations are
+renormalised but *not* re-orthogonalised, since a loop has no face to keep flat.
+
+**Every PyMOL setting the pipeline reads is now registered** — `cartoon_throw`,
+`cartoon_power`, `cartoon_power_b`, `cartoon_refine_tips`,
+`cartoon_refine_normals`, `cartoon_smooth_loops`, `cartoon_smooth_cycles` — so
+they are reachable as `set cartoon_throw, 2.0` and not only by dotted path.
 
 Measured on 148L, mean distance from the strand ribbon to its strand CAs:
 PyMOL **1.56 Å**, chimol **1.66 Å** — not exactly comparable, since PyMOL's `dss`

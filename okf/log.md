@@ -2,6 +2,25 @@
 
 ## 2026-07-25
 
+* **chimol: `cartoon_smooth_loops` implemented, and the whole curve exposed as
+  settings.** The last unimplemented step of PyMOL's cartoon pipeline is in, so
+  nothing in the chain is missing now. It is **off by default as in PyMOL** --
+  rounding the coil pulls it away from the real backbone -- but a setting that
+  silently does nothing is worse than one that is off.
+  Two details separate it from the sheet pass, both from `RepCartoonSmoothLoops`:
+  the run is **widened by one residue into the flanking element**, so smoothing
+  does not stop dead at the junction and crease there; and the orientations are
+  renormalised but **not** re-orthogonalised against the tangent, since a loop
+  has no face to keep flat. Verified on a kinked coil between two helices: second
+  difference along the loop 30.0 -> 2.0, with both helices untouched.
+  **Seven more PyMOL settings registered** -- `cartoon_throw`, `cartoon_power`,
+  `cartoon_power_b`, `cartoon_refine_tips`, `cartoon_refine_normals`,
+  `cartoon_smooth_loops`, `cartoon_smooth_cycles` -- so the curve and the
+  guide-frame conditioning are reachable as `set cartoon_throw, 2.0` rather than
+  only by dotted path. The "every entry is live" test covers them, so each one
+  had to name a config path the builder actually reads.
+  Suite: 379 passed, 1 skipped.
+
 * **The correlation path, verified rather than assumed.** The FCS reader
   became usable again after the schema fix, so the `fit-correlation` skill
   could finally be checked against the software instead of against memory —

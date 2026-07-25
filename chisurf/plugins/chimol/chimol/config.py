@@ -122,11 +122,23 @@ def _load_display_config() -> dict:
             "oval_length": 1.35,
             "oval_quality": 20,
             "arrow_sampling": 2,
+            # PyMOL's inter-residue curve (see geometry/spline.py).
+            "throw": 1.35,
+            "power": 2.0,
+            "power_b": 0.52,
+            "refine_tips": 10.0,
+            "refine_normals": True,
             # Guide-path conditioning, matching the PyMOL settings of the same
             # name (cartoon_flat_sheets / cartoon_round_helices).
             "flat_sheets": True,
             "flat_cycles": 4,
             "round_helices": True,
+            # PyMOL's cartoon_smooth_loops family. Off by default there and
+            # here: it rounds the coil but pulls it away from the real backbone.
+            "smooth_loops": False,
+            "smooth_cycles": 2,
+            "smooth_first": 1,
+            "smooth_last": 1,
             # Legacy ss_shapes kept for backward compatibility
             "ss_shapes": {
                 "helix": {"width": 0.5, "thickness": 1.35, "profile_power": 1.6},
