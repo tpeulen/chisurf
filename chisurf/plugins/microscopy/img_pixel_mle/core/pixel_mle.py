@@ -80,6 +80,11 @@ class PixelMleSettings:
     min_photons : int, optional
         Pixels with fewer than this many photons (parallel + perpendicular in
         the fit window) are not fitted and yield NaN parameters.
+    roi : ROI or dict, optional
+        Region of the frame to fit — a :class:`chisurf.core.roi.ROI` or its
+        serialised form. Pixels outside it are left unfitted, so a per-pixel
+        FLIM fit can be confined to one cell instead of paying for the empty
+        field around it.
     stack_frames : bool, optional
         Sum all frames into one before fitting.
     tau, gamma, r0, rho : float
@@ -139,6 +144,25 @@ class PixelMleSettings:
     soft_bifl_scatter: bool = False
     engine: str = "auto"
     n_workers: int | None = None
+    #: Region of the frame to fit — a :class:`chisurf.core.roi.ROI` or its
+    #: serialised form (so it survives the trip through RPC). Pixels outside it
+    #: are left unfitted, exactly as if they were below ``min_photons``.
+    roi: Any = None
+
+    def analysis_roi(self):
+        """Return :attr:`roi` as a :class:`chisurf.core.roi.ROI`, or ``None``.
+
+        Returns
+        -------
+        chisurf.core.roi.ROI or None
+            The region, rebuilt from its serialised form when the settings
+            arrived over RPC.
+        """
+        from chisurf.core.roi import ROI, roi_from_dict
+
+        if self.roi is None or isinstance(self.roi, ROI):
+            return self.roi
+        return roi_from_dict(self.roi)
 
 
 @dataclasses.dataclass
@@ -351,6 +375,16 @@ def fit_pixel_lifetimes(
 
     totals = vv_vh.sum(axis=1)
     fit_rows = np.where(totals >= settings.min_photons)[0]
+
+    roi = settings.analysis_roi()
+    if roi is not None:
+        # Restrict to a region — one cell, one illuminated patch. Photon counts
+        # act as the intensity image so an intensity-dependent region (a
+        # threshold) works here too. The mask is per-pixel, so it repeats across
+        # frames, which is how the rows are laid out.
+        photons = totals.reshape(n_frames, n_lines, n_pixel).sum(axis=0)
+        inside = roi.to_mask((n_lines, n_pixel), image=photons).ravel()
+        fit_rows = fit_rows[np.tile(inside, n_frames)[fit_rows]]
 
     # Run the fits (serial or across processes).
     model = Fit2xModel(settings.fit_model)

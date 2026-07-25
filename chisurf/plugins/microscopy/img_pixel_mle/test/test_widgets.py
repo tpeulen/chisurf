@@ -102,6 +102,34 @@ def test_view_spec_loads():
     assert spec.sections
 
 
+def test_a_region_file_confines_the_fit(tmp_path):
+    """A region saved elsewhere (CLSM Draw, Cellpose) restricts this fit.
+
+    The path field is the whole interface: setting it loads the region, an
+    unreadable file says so in the status line instead of raising, and clearing
+    it goes back to the whole frame.
+    """
+    from chisurf.core.roi import RectangleROI
+    from chisurf.core.roi.io import save_rois
+    from chisurf.plugins.microscopy.img_pixel_mle.gui.view_model import PixelMleViewModel
+
+    vm = PixelMleViewModel()
+    assert vm.roi is None
+
+    path = tmp_path / "cell.json"
+    save_rois([RectangleROI(0, 0, 10, 10, name="cell")], str(path))
+    vm.roi_path = str(path)
+    assert vm.roi is not None
+    assert vm.roi.to_mask((20, 20)).sum() == 100
+
+    vm.roi_path = ""
+    assert vm.roi is None
+
+    vm.roi_path = str(tmp_path / "missing.json")
+    assert vm.roi is None
+    assert "Could not read region" in vm.status_text
+
+
 def _param_value_attrs(spec):
     """Return the ``attr`` of every value row inside the injected fit-parameter panel."""
     attrs = []

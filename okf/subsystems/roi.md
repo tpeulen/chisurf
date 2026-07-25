@@ -148,6 +148,12 @@ biased in both directions, so `circularity` can exceed 1 (a 7x7 square scores
   `extract_decay` resolves `--mask` / `--threshold` to a `MaskROI` /
   `ThresholdROI`. `imaging.selection_array` is the single seam where a region
   becomes the `uint8` array tttrlib wants.
+* **Per-pixel FLIM MLE** (`plugins/microscopy/img_pixel_mle`) —
+  `PixelMleSettings.roi` confines the fit to part of the frame, so a per-pixel
+  lifetime fit costs one cell instead of the empty field around it; the rows
+  outside come back unfitted, as if below `min_photons`. The GUI's **Region**
+  field reads whatever `roi/io.py` reads, which makes the hand-off concrete:
+  paint a region in CLSM Draw, save it as JSON, load it here.
 * **Phasor cursors** (`plugins/microscopy/img_pixel_phasor`) — a cursor gating
   the `(g, s)` plane is an `EllipseROI`; `cursor_roi` builds it and
   `mask_from_cursor(g, s, roi)` is the general form, so a cluster that is

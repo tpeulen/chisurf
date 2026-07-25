@@ -86,6 +86,10 @@ class PixelMleViewModel(MleObserverMixin):
         self.result_names: list[str] = []
         #: Name of the result whose map is shown (in-plot channel combo).
         self.current_result_name: str = ""
+        #: Path of a stored region confining the fit ("" = the whole frame).
+        self._roi_path: str = ""
+        #: The loaded region itself (:class:`chisurf.core.roi.ROI` or ``None``).
+        self.roi = None
         self._observers: list[Callable[[str], None]] = []
 
     def view_spec(self):
@@ -314,6 +318,47 @@ class PixelMleViewModel(MleObserverMixin):
     shift_sp = scalar("shift_sp", float, "Parallel IRF sub-bin shift.")
     shift_ss = scalar("shift_ss", float, "Perpendicular IRF sub-bin shift.")
     min_photons = scalar("min_photons", int, "Minimum photons per pixel to fit.")
+
+    @property
+    def roi_path(self) -> str:
+        """Path of the region the fit is confined to (empty = whole frame)."""
+        return self._roi_path
+
+    @roi_path.setter
+    def roi_path(self, value) -> None:
+        """Load a stored region, or clear it when the path is empty.
+
+        Reads whatever :mod:`chisurf.core.roi.io` reads — the native JSON, a
+        Cellpose segmentation, a label image, a binary mask — so a region drawn
+        in CLSM Draw and saved there restricts the fit here. Several regions in
+        one file are combined into their union.
+        """
+        path = str(value or "")
+        self._roi_path = path
+        if not path:
+            self.roi = None
+            self.notify("roi")
+            return
+        from chisurf.core.roi.io import load_rois, roi_from_mask_file, rois_from_cellpose
+
+        try:
+            lowered = path.lower()
+            if lowered.endswith(".json"):
+                regions = load_rois(path)
+            elif lowered.endswith("_seg.npy"):
+                regions = rois_from_cellpose(path)
+            else:
+                regions = [roi_from_mask_file(path)]
+            roi = regions[0]
+            for other in regions[1:]:
+                roi = roi | other
+            self.roi = roi
+            self.status_text = f"Region loaded: {len(regions)} region(s) from {path}"
+        except Exception as exc:  # noqa: BLE001 - surfaced in the status line
+            logger.debug("could not read region %s", path, exc_info=True)
+            self.roi = None
+            self.status_text = f"Could not read region: {exc}"
+        self.notify("roi")
     tau = scalar("tau", float, "Initial lifetime (ns).")
     gamma = scalar("gamma", float, "Initial scatter fraction.")
     r0 = scalar("r0", float, "Initial fundamental anisotropy.")
@@ -473,6 +518,7 @@ class PixelMleViewModel(MleObserverMixin):
                     l1=s.l1,
                     l2=s.l2,
                     min_photons=s.min_photons,
+                    roi=self.roi,
                     fit_model=self._fit_model,
                     initial_values=list(x0),
                     fixed_flags=list(fixed),

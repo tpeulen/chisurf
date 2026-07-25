@@ -28,6 +28,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Fit stop | `micro_time_stop` | int |  | 1 … 1000000 | Fit-window stop on the binned micro-time axis. |
 | Micro-time binning | `micro_time_binning` | int |  | 1 … 100000 | Integer down-binning of the micro-time axis before fitting. |
 | Min photons | `min_photons` | int |  | 1 … 10000000 | Pixels with fewer photons in the fit window are not fitted. |
+| Region | `roi_path` | file |  |  | Optional region confining the fit to part of the frame — regions saved in CLSM Draw (.json), a Cellpose segmentation (_seg.npy), a label image or a binary mask. Leave empty to fit the whole frame. |
 
 ### IRF preparation
 

@@ -57,6 +57,12 @@ clsm.extract_decay("image.ptu", mask_path="cell.json")   # a stored region
 clsm.extract_decay("image.ptu", threshold=0.2)           # brightest pixels
 ```
 
+A saved region is not only for decays. Point the **Region** field of the
+per-pixel MLE tool at the same `.json` and the FLIM fit runs inside it only —
+one cell instead of the empty field around it, which is most of the compute in
+a typical frame. The pixels outside come back unfitted, exactly as if they were
+below the photon threshold.
+
 The theory — what a region is, and the measurements reported for it — is in
 {ref}`concept-region-properties`.
 

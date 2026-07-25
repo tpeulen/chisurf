@@ -81,6 +81,38 @@ def test_core_fits_flim_image_headlessly():
     assert int((result.tau > 0).sum()) == result.n_pixels_fit
 
 
+def test_a_region_confines_the_fit_to_part_of_the_frame():
+    """Fitting every pixel of an empty field is wasted work.
+
+    A region restricts the fit to the pixels that matter — one cell, one
+    illuminated patch — and the pixels outside it come back unfitted while
+    those inside are unchanged from the full-frame run.
+    """
+    from chisurf.core.roi import RectangleROI
+
+    full = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings())
+    # (x0, y0, x1, y1) — the top-left quadrant of the 50x50 image.
+    quadrant = RectangleROI(0, 0, 25, 25, name="patch")
+    gated = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(roi=quadrant))
+
+    assert 0 < gated.n_pixels_fit < full.n_pixels_fit
+    outside = gated.tau[:, 25:, :]
+    assert not np.any(outside > 0)  # nothing beyond the region was fitted
+
+    # Inside the region the numbers are identical: the region selects, it does
+    # not change the fit.
+    inside = slice(0, 25)
+    np.testing.assert_allclose(
+        gated.tau[:, inside, inside], full.tau[:, inside, inside]
+    )
+
+    # The serialised form travels through RPC and means the same thing.
+    as_dict = fit_pixel_lifetimes_from_file(
+        str(_FLIM_PTU), _settings(roi=quadrant.to_dict())
+    )
+    assert as_dict.n_pixels_fit == gated.n_pixels_fit
+
+
 @pytest.mark.parametrize(
     "model, init, fixed, extra_cols",
     [

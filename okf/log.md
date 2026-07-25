@@ -2,6 +2,21 @@
 
 ## 2026-07-25
 
+* **A per-pixel FLIM fit can now be confined to a region — and the region comes
+  from the tool next door.** `plugins/microscopy/img_pixel_mle`. The per-pixel
+  MLE selected its pixels by photon count alone, so a frame that is mostly
+  empty field still paid for every pixel in it. `PixelMleSettings.roi` (a `ROI`
+  or its serialised form) filters the fit rows after the `min_photons`
+  threshold; pixels outside come back unfitted, exactly as if they were below
+  it, and the photon totals double as the intensity image so an intensity-
+  dependent region works too. Verified on the real beads FLIM image: the
+  numbers inside a quadrant are identical to the full-frame run, nothing
+  outside it is fitted, and the serialised form means the same thing.
+  The GUI gained a **Region** file field reading whatever `roi/io.py` reads,
+  which makes the hand-off concrete: paint a region in CLSM Draw, save it as
+  JSON, load it here. An unreadable file reports in the status line rather than
+  raising.
+
 * **What Stan has that works without a gradient, and confirmation that aGrUM's
   inference core is harvested.** Cloned both into `junk/` and read the source
   rather than the docs.

@@ -30,6 +30,8 @@
              "description": "Integer down-binning of the micro-time axis before fitting."},
             {"type": "value", "attr": "min_photons", "kind": "int", "label": "Min photons", "minimum": 1, "maximum": 10000000,
              "description": "Pixels with fewer photons in the fit window are not fitted."},
+            {"type": "value", "attr": "roi_path", "kind": "file", "label": "Region",
+             "description": "Optional region confining the fit to part of the frame — regions saved in CLSM Draw (.json), a Cellpose segmentation (_seg.npy), a label image or a binary mask. Leave empty to fit the whole frame."},
             {"type": "panel", "title": "IRF preparation", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "irf_threshold", "kind": "float", "label": "Threshold", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
                "description": "Fraction of the IRF maximum below which bins are zeroed."},
