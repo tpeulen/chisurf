@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 33):*
+*Landed so far (allow-list 76 → 32):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -436,6 +436,17 @@ screenshot/qtbot verification after each cluster.
   (2CDE-vs-E scatter / histogram fallback). Plain `PlotWidget`→`cp.Plot`; the
   `plot(pen=None, symbol="o")` scatter becomes `scatter(...)` and the histogram
   `plot(stepMode=False)` becomes `line(...)`. Import-clean extended.
+- **Batch 18** (allow-list 33 → 32) — migrated the node-editor
+  `gui/widgets/node_editor/widgets/pt_plot_widget.py` (a small themed PT preview
+  plot, an optional-pyqtgraph widget). The `pg is None` guard became a
+  `_plotting_available()` backend probe; viewbox background uses
+  `set_background(to_color(bg).with_alpha(a))`; grid/line/set_data map natively;
+  the themed axis pens (foreground colour on bottom/left) stay a flagged `.native`
+  axis-theming passthrough. **First batch verified by GUI screenshot** — the
+  widget was rendered headless (offscreen `grab()`) with a damped sine and
+  inspected: white curve on the themed dark background, foreground title/axes,
+  subtle grid, correct 0–12 / ±0.5 ranges. New `test_pt_plot_widget_renders`
+  (curve build + set_data/clear round-trip).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

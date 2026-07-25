@@ -4,20 +4,26 @@ from typing import Sequence
 
 from qtpy import QtCore, QtWidgets
 
-try:  # optional dependency
-    import pyqtgraph as pg  # type: ignore
-except Exception:  # pragma: no cover - fallback when pyqtgraph is missing
-    pg = None  # type: ignore
+from chisurf.gui import chiplot as cp
 
 from ..theme import color as theme_color, metric as theme_metric
 
 
+def _plotting_available() -> bool:
+    """Whether a chiplot backend is usable (pyqtgraph installed)."""
+    try:
+        cp.get_backend()
+        return True
+    except Exception:  # pragma: no cover - fallback when the backend is missing
+        return False
+
+
 class PtPlotWidget(QtWidgets.QWidget):
-    """Small 2D plot widget for PT graphs using pyqtgraph when available.
+    """Small 2D plot widget for PT graphs, drawn through chiplot when available.
 
     The surrounding node is expected to call :meth:`set_data` with matching
-    x/y sequences. When pyqtgraph is not installed, a simple text placeholder
-    is shown instead so the node editor still functions.
+    x/y sequences. When no plotting backend is available, a simple text
+    placeholder is shown instead so the node editor still functions.
     """
 
     def __init__(self, title: str = "Damped sine", parent: QtWidgets.QWidget | None = None) -> None:
@@ -34,21 +40,13 @@ class PtPlotWidget(QtWidgets.QWidget):
         self._plot_widget = None
         self._curve = None
 
-        if pg is not None:
-            w = pg.PlotWidget(self)
+        if _plotting_available():
+            w = cp.Plot(self)
 
             # Make the widget itself transparent so only the plot area draws.
             try:
                 w.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
                 w.setAutoFillBackground(False)
-            except Exception:
-                pass
-            try:
-                w.setFrameStyle(0)
-            except Exception:
-                pass
-            try:
-                w.setStyleSheet("background: transparent; border: 0px;")
             except Exception:
                 pass
 
@@ -61,13 +59,11 @@ class PtPlotWidget(QtWidgets.QWidget):
             except Exception:
                 opacity = 0.0
 
-            # Use an explicit RGBA color with configurable alpha so the
-            # QGraphicsView background can be fully transparent when desired.
+            # Inner plot background: an explicit RGBA with configurable alpha so
+            # the plot area can be fully transparent over the node background.
             try:
                 alpha_bg = int(max(0.0, min(1.0, opacity)) * 255.0)
-                bg_color_view = pg.mkColor(bg_base)
-                bg_color_view.setAlpha(alpha_bg)
-                w.setBackground(bg_color_view)
+                w.set_background(cp.to_color(bg_base).with_alpha(alpha_bg))
             except Exception:
                 pass
 
@@ -80,57 +76,28 @@ class PtPlotWidget(QtWidgets.QWidget):
                 line_width = 1.0
 
             try:
-                plot_item = w.getPlotItem()
+                w.grid(x=True, y=True, alpha=0.2)
             except Exception:
-                plot_item = None
+                pass
 
-            if plot_item is not None:
-                # Configure the inner ViewBox background using the theme,
-                # keeping it fully transparent by default.
-                try:
-                    vb = plot_item.getViewBox()
-                    alpha = int(max(0.0, min(1.0, opacity)) * 255.0)
-                    bg_color = pg.mkColor(bg_base)
-                    bg_color.setAlpha(alpha)
-                    vb.setBackgroundColor(bg_color)
-                except Exception:
-                    pass
+            self._curve = w.line([], [], pen=fg, width=line_width)
 
-                try:
-                    # Grid with subtle alpha over the node background.
-                    plot_item.showGrid(x=True, y=True, alpha=0.2)
-                except Exception:
-                    pass
-
-                pen = pg.mkPen(fg, width=line_width)
-                self._curve = plot_item.plot([], [], pen=pen)
-
-                # Axis lines and tick labels in the same foreground color.
-                axis_pen = pg.mkPen(fg)
+            # Axis lines and tick labels in the same foreground color — a
+            # pyqtgraph-specific axis-theming detail reached via the backend
+            # escape hatch (chiplot has no native axis-pen verb yet).
+            try:
+                axis_pen = cp.get_backend().raw_module().mkPen(fg)
                 for name in ("bottom", "left"):
-                    try:
-                        ax = plot_item.getAxis(name)
-                        ax.setPen(axis_pen)
-                        ax.setTextPen(axis_pen)
-                    except Exception:
-                        continue
-            else:
-                # Fallback if getPlotItem() is unavailable; style at
-                # PlotWidget level and use a simple curve.
-                try:
-                    w.showGrid(x=True, y=True, alpha=0.2)
-                except Exception:
-                    pass
-                try:
-                    pen = pg.mkPen(fg, width=line_width)
-                    self._curve = w.plot([], [], pen=pen)
-                except Exception:
-                    self._curve = w.plot([], [])
+                    ax = w.native.getAxis(name)
+                    ax.setPen(axis_pen)
+                    ax.setTextPen(axis_pen)
+            except Exception:
+                pass
 
             self._plot_widget = w
             layout.addWidget(w, 1)
         else:
-            placeholder = QtWidgets.QLabel("pyqtgraph not available", self)
+            placeholder = QtWidgets.QLabel("plotting backend not available", self)
             placeholder.setAlignment(QtCore.Qt.AlignCenter)
             layout.addWidget(placeholder, 1)
 
@@ -142,7 +109,7 @@ class PtPlotWidget(QtWidgets.QWidget):
         if self._curve is None or x is None or y is None:
             return
         try:
-            self._curve.setData(list(x), list(y))
+            self._curve.set_data(list(x), list(y))
         except Exception:
             pass
 
@@ -150,6 +117,6 @@ class PtPlotWidget(QtWidgets.QWidget):
         if self._curve is None:
             return
         try:
-            self._curve.setData([], [])
+            self._curve.set_data([], [])
         except Exception:
             pass
