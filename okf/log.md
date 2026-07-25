@@ -2,6 +2,23 @@
 
 ## 2026-07-26
 
+* **A non-finite draw no longer reads as a perfect chain (RF-100).** One `nan`
+  or `inf` anywhere in a parameter's draws contaminates the FFT autocovariance,
+  so `_ess_1d`'s "constant parameter" fallthrough fired and returned the *raw*
+  draw count: `summarize` reported `ess = 4000`, `tau = 1` — perfectly
+  independent draws — beside the `nan` that `rhat`, `ess_bulk`, `ess_tail` and
+  the MCSE correctly gave for the same column, on the live
+  `sample_fit` → `diagnostics.json` path. `_ess_1d` now gates on
+  `np.all(np.isfinite(chains))` first, the same refusal `rank_normalized_rhat`
+  and `bulk_tail_ess` already make, and `autocorrelation_time`/`mcse` propagate
+  that `nan` rather than folding it into their `ess <= 0` branch — `inf` there
+  means "infinitely correlated" / "the mean is pure noise", both claims about a
+  chain that is *known*. The constant-parameter branch (RF-099) is untouched.
+  Pinned by `test_a_non_finite_draw_leaves_the_sample_size_undefined_not_maximal`
+  over `nan`/`+inf`/`-inf`; contract recorded in
+  [subsystems/fitting.md](/subsystems/fitting.md).
+  Tests: `test/fitting` sampling + diagnostics suites, 130 passed.
+
 * **One spelling per plugin category, enforced (INC-07, partial).** Plugin
   `categories` turns out to be read by nobody at runtime — but it is printed
   verbatim into the generated plugin catalogue, so every drift is user-visible.

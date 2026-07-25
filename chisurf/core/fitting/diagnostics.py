@@ -147,9 +147,18 @@ def _pooled_variance(
 
 
 def _ess_1d(chains: np.ndarray) -> float:
-    """Effective sample size of one parameter, given ``(n_chains, n_draws)``."""
+    """Effective sample size of one parameter, given ``(n_chains, n_draws)``.
+
+    Returns ``nan`` when any draw is non-finite: a single ``nan``/``inf``
+    contaminates the whole autocovariance, so the effective sample size is
+    *unknown* rather than maximal. :func:`rank_normalized_rhat` and
+    :func:`bulk_tail_ess` refuse the same input, and returning the raw draw
+    count here would read as perfectly independent draws beside their ``nan``.
+    """
     m, n = chains.shape
     total = float(m * n)
+    if not np.all(np.isfinite(chains)):
+        return float("nan")
     if n < 4:
         return total
 
@@ -195,7 +204,8 @@ def effective_sample_size(samples: np.ndarray) -> np.ndarray:
     Returns
     -------
     numpy.ndarray
-        One effective sample size per parameter.
+        One effective sample size per parameter; ``nan`` for a parameter with
+        any non-finite draw.
     """
     chains = as_chains(samples)
     return np.array(
@@ -218,13 +228,17 @@ def autocorrelation_time(samples: np.ndarray) -> np.ndarray:
     Returns
     -------
     numpy.ndarray
-        One autocorrelation time per parameter.
+        One autocorrelation time per parameter; ``nan`` for a parameter with
+        any non-finite draw.
     """
     chains = as_chains(samples)
     total = float(chains.shape[0] * chains.shape[1])
     ess = effective_sample_size(chains)
     with np.errstate(divide="ignore", invalid="ignore"):
-        return np.where(ess > 0.0, total / ess, np.inf)
+        tau = np.where(ess > 0.0, total / ess, np.inf)
+    # An undefined effective sample size leaves the autocorrelation time
+    # undefined too; "infinitely correlated" would be a different claim.
+    return np.where(np.isnan(ess), np.nan, tau)
 
 
 def rank_normalize(samples: np.ndarray) -> np.ndarray:
@@ -467,14 +481,18 @@ def mcse(samples: np.ndarray) -> np.ndarray:
     Returns
     -------
     numpy.ndarray
-        One standard error per parameter.
+        One standard error per parameter; ``nan`` for a parameter with any
+        non-finite draw.
     """
     chains = as_chains(samples)
     flat = chains.reshape(-1, chains.shape[2])
     sd = flat.std(axis=0, ddof=1) if flat.shape[0] > 1 else np.zeros(flat.shape[1])
     ess = effective_sample_size(chains)
     with np.errstate(divide="ignore", invalid="ignore"):
-        return np.where(ess > 0.0, sd / np.sqrt(ess), np.inf)
+        err = np.where(ess > 0.0, sd / np.sqrt(ess), np.inf)
+    # A zero effective sample size means the mean is pure noise; an undefined
+    # one means the error is unknown, which is not the same statement.
+    return np.where(np.isnan(ess), np.nan, err)
 
 
 def suggest_burn_in(samples: np.ndarray) -> int:

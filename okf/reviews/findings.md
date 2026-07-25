@@ -1299,11 +1299,26 @@ forms. Findings RF-098..RF-102.
 - **Fix note:**
 
 ### RF-100
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (one non-finite draw makes `summarize` report the full draw count as the effective sample size)
 - **Location:** `chisurf/core/fitting/diagnostics.py:157-160` (`_ess_1d` falls through to `return total` whenever `within` is not `> 0.0`, which includes `nan`) with `:472-477` (`mcse`) and `:556` (`summarize`)
 - **Finding:** A single `nan`/`inf` draw makes `autocovariance` return all-`nan`, so `within` is `nan`, `not (nan > 0.0)` is `True`, and the function returns `total` — the *raw* draw count, the value reserved for "a constant parameter carries no information". Verified on 4×1000 draws with one element set to `nan`: `summarize` reports `ess = 4000.0` and `tau = 1.0` (i.e. perfectly independent draws) beside `rhat = nan`, `ess_bulk = nan`, `ess_tail = nan` and `mcse = nan`; `+inf` behaves the same. Every companion statistic correctly refuses to answer while the headline ESS reads as the best possible value, and `mean`/`sd` are quietly computed over the finite subset only (`summarize:571`), so the row describes three different samples at once. `rank_normalized_rhat:358` and `bulk_tail_ess:399` already gate on `np.all(np.isfinite(block))`; `_ess_1d` should do the same and return `nan`.
-- **Fix note:**
+- **Fix note:** `_ess_1d` now gates on `np.all(np.isfinite(chains))` before any
+  autocovariance is computed and returns `nan` — the same refusal its companions
+  give — so a contaminated parameter no longer reports the raw draw count as its
+  effective sample size (it also stops the FFT emitting `RuntimeWarning`s on that
+  input). `autocorrelation_time` and `mcse` propagate that `nan` instead of
+  folding it into their `ess <= 0` branch, which means `inf`: "infinitely
+  correlated" / "the mean is pure noise" are claims about a *known* chain, not
+  about an unknown one. `summarize` therefore reports `ess`/`tau`/`mcse` as `nan`
+  beside the already-`nan` `rhat`/`ess_bulk`/`ess_tail`, and
+  `convergence_warnings` still excludes the parameter from the low-ESS lists
+  (both already gate on `np.isfinite`). The constant-parameter branch (RF-099) is
+  untouched. Pinned by
+  `test/fitting/test_mcmc_diagnostics.py::test_a_non_finite_draw_leaves_the_sample_size_undefined_not_maximal`,
+  parametrised over `nan`, `+inf` and `-inf`, which also asserts the clean chain
+  still gets a finite ESS. Docs: the estimator's contract is now stated in
+  [subsystems/fitting.md](/subsystems/fitting.md).
 
 ### RF-101
 - **Status:** OPEN

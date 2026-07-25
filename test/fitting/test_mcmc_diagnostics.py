@@ -181,6 +181,26 @@ def test_convergence_warnings_name_the_offending_parameter():
     assert any('R-hat' in m for m in messages)
 
 
+@pytest.mark.parametrize('bad', [np.nan, np.inf, -np.inf])
+def test_a_non_finite_draw_leaves_the_sample_size_undefined_not_maximal(bad):
+    """One bad draw must not read as ``n`` perfectly independent samples.
+
+    A single ``nan``/``inf`` contaminates the FFT autocovariance, which used to
+    fall through the constant-parameter branch and report the *raw* draw count
+    beside a ``nan`` R-hat -- the best possible verdict next to a refusal.
+    """
+    chains = _ar1(0.5, n=1000, n_chains=4, seed=13)
+    chains = chains.copy()
+    chains[2, 17, 0] = bad
+    assert np.isnan(dg.effective_sample_size(chains)[0])
+    assert np.isnan(dg.autocorrelation_time(chains)[0])
+    assert np.isnan(dg.mcse(chains)[0])
+    e = dg.summarize(chains, names=['x'], burn_in=0)[0]
+    assert np.isnan(e['ess']) and np.isnan(e['tau']) and np.isnan(e['mcse'])
+    # The clean chain is untouched: a finite ESS is still reported.
+    assert dg.effective_sample_size(_ar1(0.5, n=1000, n_chains=4, seed=13))[0] > 0.0
+
+
 def test_short_chains_degrade_instead_of_raising():
     """Two draws are not enough to diagnose anything, and must not crash."""
     tiny = np.zeros((1, 2, 2))

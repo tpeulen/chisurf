@@ -210,6 +210,11 @@ against AR(1), whose `τ = (1+φ)/(1−φ)` is closed-form. Thresholds:
   credible interval is made of* — a chain can be trustworthy about the first and
   not the second. Both the robust and the plain values are reported, so a
   disagreement is visible rather than silently resolved.
+- **A non-finite draw makes the sample size undefined, not maximal.** Every
+  estimator gates on `np.all(np.isfinite(...))` and returns `nan` — `ess`, `τ`
+  and the MCSE alike — because one `nan`/`inf` contaminates the FFT
+  autocovariance of the whole chain. Reporting the raw draw count instead would
+  read as perfectly independent draws sitting beside a refused R̂.
 - All samplers return `chains` (per-chain, not only flattened) and
   `acceptance_rate`. `sample_fit` pools the `n_runs` **independent** runs, writes
   `diagnostics.json` beside `chains/`, logs the warnings and returns the report.
