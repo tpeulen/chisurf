@@ -424,17 +424,16 @@ class HelpWidget(QMainWindow):
         ]
 
     def _build_core_docs(self, parent_item):
-        base = pathlib.Path(cs.__file__).resolve().parent
-        root = base.parent
-        for path in sorted(root.rglob("*.md")):
-            try:
-                rel = path.relative_to(root)
-            except ValueError:
-                continue
-            if rel.parts and rel.parts[0] == "docs":
-                continue
-            if "plugins" in rel.parts:
-                continue
+        """Build the branch for project-level documentation outside ``docs/``.
+
+        The allow-listed roots come from the API layer so the tree and the
+        document index cannot drift apart.
+        """
+        from chisurf.plugins.core.help.api.io import core_doc_paths
+
+        root = pathlib.Path(cs.__file__).resolve().parent.parent
+        for path in core_doc_paths(root):
+            rel = path.relative_to(root)
             title = self._extract_markdown_title(path)
             label = title if title else str(rel)
             item = QTreeWidgetItem(parent_item, [label])

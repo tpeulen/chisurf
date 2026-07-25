@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import chisurf as cs
 import chisurf.core.settings
@@ -15,6 +14,14 @@ from chisurf.plugins.core.help.api.render import document_title
 
 #: Suffixes discovered under ``docs/`` (the manual is reStructuredText).
 DOC_SUFFIXES = (".md", ".rst")
+
+#: Project-root files shown in the "Core" category.
+CORE_DOC_FILES = ("README.md", "CHANGELOG.md")
+
+#: Project-root directories scanned for "Core" documentation. An allow-list:
+#: the repository also carries agent scratch space, an internal knowledge
+#: bundle and tool dot-directories, none of which are user documentation.
+CORE_DOC_ROOTS = ("examples", "modules")
 
 
 @dataclass
@@ -35,8 +42,8 @@ class DocEntry:
 class DocInfo:
     """Full document index produced by :func:`discover_docs`."""
 
-    entries: List[DocEntry] = field(default_factory=list)
-    tree: Dict[str, List[Dict]] = field(default_factory=dict)
+    entries: list[DocEntry] = field(default_factory=list)
+    tree: dict[str, list[dict]] = field(default_factory=dict)
 
 
 def discover_docs() -> DocInfo:
@@ -51,8 +58,8 @@ def discover_docs() -> DocInfo:
         All discovered documents with tree structure and flat list.
 
     """
-    entries: List[DocEntry] = []
-    tree: Dict[str, List[Dict]] = {
+    entries: list[DocEntry] = []
+    tree: dict[str, list[dict]] = {
         "User manual": [],
         "Documentation": [],
         "Core": [],
@@ -90,15 +97,8 @@ def discover_docs() -> DocInfo:
             )
 
     # Core project .md files
-    for path in sorted(root.rglob("*.md")):
-        try:
-            rel = path.relative_to(root)
-        except ValueError:
-            continue
-        if rel.parts and rel.parts[0] == "docs":
-            continue
-        if "plugins" in rel.parts:
-            continue
+    for path in core_doc_paths(root):
+        rel = path.relative_to(root)
         title = _get_title(path, str(rel))
         entries.append(
             DocEntry(
@@ -109,9 +109,7 @@ def discover_docs() -> DocInfo:
                 size=path.stat().st_size,
             )
         )
-        tree["Core"].append(
-            {"path": str(path), "title": title, "file_name": str(rel)}
-        )
+        tree["Core"].append({"path": str(path), "title": title, "file_name": str(rel)})
 
     # Plugin docs
     try:
@@ -167,7 +165,7 @@ def discover_docs() -> DocInfo:
     return DocInfo(entries=entries, tree=tree)
 
 
-def read_doc(path_str: str) -> Optional[str]:
+def read_doc(path_str: str) -> str | None:
     """Read a documentation file.
 
     Parameters
@@ -214,7 +212,7 @@ def save_doc(path_str: str, content: str) -> bool:
         return False
 
 
-def search_docs(query: str) -> List[Dict]:
+def search_docs(query: str) -> list[dict]:
     """Search documentation files for *query*.
 
     Parameters
@@ -228,7 +226,7 @@ def search_docs(query: str) -> List[Dict]:
         Matching entries with ``path``, ``title``, ``match_type``.
 
     """
-    results: List[Dict] = []
+    results: list[dict] = []
     query_lower = query.lower()
     try:
         info = discover_docs()
@@ -266,6 +264,44 @@ def search_docs(query: str) -> List[Dict]:
     return results
 
 
+def core_doc_paths(root: pathlib.Path | None = None) -> list[pathlib.Path]:
+    """Collect the project-level Markdown shown in the "Core" category.
+
+    The roots are allow-listed rather than deny-listed: a working tree also
+    holds scratch directories, the internal knowledge bundle and tool
+    dot-directories, and none of those are user documentation. Plugin pages are
+    skipped here because the "Plugins" category owns them. Both the document
+    index and the GUI tree read the category through this one function.
+
+    Parameters
+    ----------
+    root : pathlib.Path, optional
+        Project root directory. Defaults to the parent of the ``chisurf``
+        package.
+
+    Returns
+    -------
+    list of pathlib.Path
+        Sorted, de-duplicated Markdown files.
+
+    """
+    if root is None:
+        root = pathlib.Path(cs.__file__).resolve().parent.parent
+    paths = {root / name for name in CORE_DOC_FILES}
+    for sub in CORE_DOC_ROOTS:
+        directory = root / sub
+        if not directory.is_dir():
+            continue
+        for path in directory.rglob("*.md"):
+            rel = path.relative_to(root)
+            if any(part.startswith(".") for part in rel.parts):
+                continue
+            if "plugins" in rel.parts:
+                continue
+            paths.add(path)
+    return sorted(p for p in paths if p.is_file())
+
+
 # ── helpers ─────────────────────────────────────────────────────────
 
 
@@ -286,9 +322,7 @@ def _is_within(path: pathlib.Path, directory: pathlib.Path) -> bool:
         return False
 
 
-def _make_entry(
-    path: pathlib.Path, title: str, category: str, file_name: str
-) -> DocEntry:
+def _make_entry(path: pathlib.Path, title: str, category: str, file_name: str) -> DocEntry:
     """Build a :class:`DocEntry`, attaching review status for tracked pages."""
     status = review.status_of(path)
     return DocEntry(

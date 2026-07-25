@@ -65,13 +65,13 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-08](#inc-08) | S3 | INC | Server | Generic `JobManager` bypassed by the only real long-running jobs | REPORTED |
 | [INC-09](#inc-09) | S3 | INC | MMFDB | MMFDB is packaged standalone but a chisurf-free client is missing; the only RPC client + example facade live in chisurf | VERIFIED |
 | [INC-10](#inc-10) | S3 | INC | GUI | Ad-hoc tables everywhere: a third-party `DataFrameEditor` patched at runtime by three proxies/delegates, ~40 hand-rolled `QTableWidget`s, a duplicated checkbox delegate, and no shared sorting/filtering/column-hiding/colouring/export | ~~VERIFIED~~ ✅ FIXED (PRD-66) |
-| [INC-11](#inc-11) | S3 | INC | Plugins | Help browser's "Core" category rglobs the whole repo: 576 entries, 331 from `junk/`, 151 from `okf/`, 41 from `.opencode/` | VERIFIED |
+| [INC-11](#inc-11) | S3 | INC | Plugins | Help browser's "Core" category rglobs the whole repo: 576 entries, 331 from `junk/`, 151 from `okf/`, 41 from `.opencode/` | ~~VERIFIED~~ ✅ FIXED |
 | [INC-12](#inc-12) | S3 | INC | Docs | A published page links into `okf/`, which is excluded from the docs build — the only warning in an otherwise clean build | VERIFIED |
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
 
-34 findings (18 FIXED): 7 VERIFIED, 6 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL.
-Of the 16 open: 0×S1, 6×S2, 10×S3.
+34 findings (19 FIXED): 6 VERIFIED, 6 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL.
+Of the 15 open: 0×S1, 6×S2, 9×S3.
 
 ---
 
@@ -385,9 +385,19 @@ as user documentation.**
   `okf/` 151, `.opencode/` 41, `.claude/` 16, `AGENT/` 9. The `okf/` bundle is an
   internal agent-facing knowledge layer and is deliberately excluded from the published
   docs build, so surfacing it here contradicts that decision (compare [INC-12](#inc-12)).
-- Suggested direction: allow-list the roots worth showing (e.g. `README`, `CHANGELOG`,
-  top-level guides) rather than deny-listing two paths, and skip dot-directories.
-- Status: **VERIFIED**.
+- The GUI tree carried a **second copy** of the same deny-list
+  (`gui/tool.py::_build_core_docs`), so the branch the user actually sees was filtered
+  independently of the document index.
+- **Fixed**: `io.core_doc_paths()` is now the one allow-list — the project-root files
+  worth showing (`README.md`, `CHANGELOG.md`) plus the `examples/` and `modules/`
+  roots, skipping dot-directories and plugin pages (the "Plugins" category owns
+  those). Both the index and the GUI tree read the category through it, so they cannot
+  drift apart again. Measured after the change: **12** entries, all genuine
+  documentation; `search_docs`, which re-reads every discovered file, no longer greps
+  the scratch directories either. Guardrails: a hermetic `core_doc_paths` test over a
+  synthetic tree and a widget test asserting the rendered branch holds no scratch,
+  bundle or dot-directory page.
+- Status: ~~VERIFIED~~ **FIXED**.
 
 ### INC-12
 

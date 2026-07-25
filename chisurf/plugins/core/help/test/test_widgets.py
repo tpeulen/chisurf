@@ -101,6 +101,38 @@ def test_review_filter_hides_non_matching_pages(qapp, qtbot):
     assert not any(root.child(i).isHidden() for i in range(root.childCount()))
 
 
+def test_core_branch_shows_only_project_documentation(qapp, qtbot):
+    """The tree's project branch must not list scratch or knowledge-bundle files."""
+    import pathlib
+
+    from qtpy.QtCore import Qt
+
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+    widget.populate_docs()
+
+    branch = None
+    for i in range(widget.tree.topLevelItemCount()):
+        item = widget.tree.topLevelItem(i)
+        if "Core" in item.text(0) or "Project" in item.text(0):
+            branch = item
+            break
+    assert branch is not None
+    assert branch.childCount()
+
+    import chisurf as cs
+
+    root = pathlib.Path(cs.__file__).resolve().parent.parent
+    excluded = {"junk", "okf", "AGENT", "scratch", "build_tools", "test", "docs"}
+    for i in range(branch.childCount()):
+        path = pathlib.Path(str(branch.child(i).data(0, Qt.UserRole)))
+        parts = path.relative_to(root).parts
+        assert parts[0] not in excluded, path
+        assert not any(part.startswith(".") for part in parts), path
+
+
 def test_oversized_images_are_scaled_and_centred():
     """Manual screenshots must not blow up the layout."""
     import pathlib

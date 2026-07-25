@@ -2,6 +2,24 @@
 
 ## 2026-07-25
 
+* **The help browser stopped presenting agent scratch as user documentation
+  (INC-11).** The "Core" category `rglob`-ed the whole project root and
+  deny-listed exactly two paths (`docs/`, anything containing `plugins`), so the
+  browser offered **576** pages of which 331 came from `junk/`, 151 from the
+  internal `okf/` knowledge bundle, 41 from `.opencode/` and 16 from `.claude/`.
+  The GUI tree held a *second copy* of that deny-list, so the branch the user
+  actually sees was filtered independently of the document index. Both now read
+  one allow-list, `help/api/io.py::core_doc_paths()` — the project-root files
+  worth showing (`README.md`, `CHANGELOG.md`) plus the `examples/` and
+  `modules/` roots, skipping dot-directories and plugin pages, which the
+  "Plugins" category owns. Result: **12** entries, every one genuine
+  documentation (changelog, readme, the two example projects, the companion
+  modules' manuals); `search_docs`, which re-reads every discovered file, no
+  longer greps scratch space either. Verified by a hermetic `core_doc_paths`
+  test over a synthetic tree, a widget test asserting the rendered branch holds
+  no scratch/bundle/dot-directory page, and a headless screenshot of the
+  expanded branch. Tracked in [assessment INC-11](/specs/assessment.md#inc-11).
+
 * **A canonical form refuses a duplicated variable name (RF-003).**
   `CanonicalForm` addresses its scope by name — `marginal`, `condition` and
   `__mul__` all build `{name: index}` — but nothing enforced that the names were
