@@ -2,6 +2,28 @@
 
 ## 2026-07-26
 
+* **One spelling per plugin category, enforced (INC-07, partial).** Plugin
+  `categories` turns out to be read by nobody at runtime — but it is printed
+  verbatim into the generated plugin catalogue, so every drift is user-visible.
+  Two manifests listed a label twice and rendered `Structure, Structure` on their
+  docs page (`chimol`, `traj_tools`), and one split the vocabulary by case
+  (`synthetic_decay`'s `"Fluorescence Decay"` against six manifests'
+  `"Fluorescence decay"`). Fixed all three plus their catalogue pages, and pinned
+  it: `validate_manifest()` gained `_validate_categories()` (non-empty strings, no
+  case-insensitive duplicates) which the existing tree-wide
+  `test_builtin_manifests_all_valid` now enforces over all 102 manifests, plus a
+  new `test_builtin_category_vocabulary_is_case_consistent` that rejects two
+  spellings of one label. Verified the guardrail bites by reintroducing the split.
+  While confirming this, found the **same case split in the live menu path** and
+  left it open in [INC-07](/specs/assessment.md#inc-07): `synthetic_decay`'s
+  `display_name` is `"Spectroscopy:Fluorescence Decay:…"` where five siblings say
+  `"Fluorescence decay"`, so the ribbon builds two submenus differing only in case
+  and `docs/reference/plugins/index.md` carries two adjacent headings. That rename
+  moves the catalogue's plugin/category counts, which another working-tree change
+  is editing on the same lines — deferred rather than raced.
+  Tests: `test/core/test_plugin_manifest.py` (+5), `test/core/test_plugin_registry.py` (+1);
+  `test/core` green (568 passed, 3 skipped).
+
 * **GUI test: raw photons → correlation curve, the step before every FCS fit.**
   Drove the unified **FCS** tool (`chisurf/plugins/fcs/fcs_toolbox`) headlessly
   through its whole rail — channel definitions → files → correlate → merge →

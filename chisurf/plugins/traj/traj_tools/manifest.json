@@ -4,7 +4,7 @@
   "display_name": "Structure:Structure:Traj Tools",
   "description": "Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools.",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Structure", "Structure", "Tools"],
+  "categories": ["Structure", "Tools"],
   "state_namespace": "traj_tools",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",

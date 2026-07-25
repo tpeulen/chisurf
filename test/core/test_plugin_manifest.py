@@ -277,6 +277,35 @@ class TestValidateManifest:
         errors = validate_manifest("not a dict")
         assert errors
 
+    def test_categories_valid(self):
+        data = {"id": "test", "version": "1.0.0", "categories": ["Structure", "Tools"]}
+        assert validate_manifest(data) == []
+
+    def test_categories_duplicate(self):
+        """INC-07: a repeated label renders twice in the generated catalogue table."""
+        data = {
+            "id": "test",
+            "version": "1.0.0",
+            "categories": ["Structure", "Structure", "Molecular Viewer"],
+        }
+        errors = validate_manifest(data)
+        assert any("duplicate category" in e for e in errors)
+
+    def test_categories_duplicate_ignores_case(self):
+        data = {"id": "test", "version": "1.0.0", "categories": ["Structure", "structure"]}
+        errors = validate_manifest(data)
+        assert any("duplicate category" in e for e in errors)
+
+    def test_categories_empty_entry(self):
+        data = {"id": "test", "version": "1.0.0", "categories": ["Tools", ""]}
+        errors = validate_manifest(data)
+        assert any("categories" in e for e in errors)
+
+    def test_categories_not_a_list(self):
+        data = {"id": "test", "version": "1.0.0", "categories": "Tools"}
+        errors = validate_manifest(data)
+        assert any("categories" in e for e in errors)
+
 
 class TestRPCMethodSpec:
     """RPCMethodSpec defaults."""

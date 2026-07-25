@@ -4,7 +4,7 @@
   "display_name": "Spectroscopy:Fluorescence Decay:Synthetic Decay Generator",
   "description": "Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI.",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Fluorescence Decay"],
+  "categories": ["Spectroscopy", "Fluorescence decay"],
   "state_namespace": "synthetic_decay",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",

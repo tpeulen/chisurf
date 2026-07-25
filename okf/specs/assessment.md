@@ -61,7 +61,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-04](#inc-04) | S2 | INC | MMFDB | Auth enforced in ~5/40 `api.py` fns; ACL rows exist for few entity kinds | 🚧 ADDRESSED — `api.py` boundary now threads/enforces `auth` |
 | [INC-05](#inc-05) | S3 | INC | MMFDB | Repository composition and API boundaries | 🚧 IN PROGRESS (one DAO/repository authority; request context + shallow root landed) |
 | [INC-06](#inc-06) | S2 | INC | Plugins | Two plugin identity conventions coexist; `ndxplorer` has no manifest | ~~REPORTED~~ ✅ FIXED |
-| [INC-07](#inc-07) | S3 | INC | Plugins | `categories` drifts from directory group & `display_name`; demo games mixed in | REPORTED |
+| [INC-07](#inc-07) | S3 | INC | Plugins | `categories` drifts from directory group & `display_name`; demo games mixed in | 🚧 PARTIAL (`categories` vocabulary deduplicated + case-enforced; menu-path case split still open) |
 | [INC-08](#inc-08) | S3 | INC | Server | Generic `JobManager` bypassed by the only real long-running jobs | ~~REPORTED~~ ✅ FIXED |
 | [INC-09](#inc-09) | S3 | INC | MMFDB | MMFDB is packaged standalone but a chisurf-free client is missing; the only RPC client + example facade live in chisurf | VERIFIED |
 | [INC-10](#inc-10) | S3 | INC | GUI | Ad-hoc tables everywhere: a third-party `DataFrameEditor` patched at runtime by three proxies/delegates, ~40 hand-rolled `QTableWidget`s, a duplicated checkbox delegate, and no shared sorting/filtering/column-hiding/colouring/export | ~~VERIFIED~~ ✅ FIXED (PRD-66) |
@@ -70,7 +70,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
 
-36 findings (24 FIXED): 4 VERIFIED, 4 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL, 1 OPEN.
+36 findings (24 FIXED): 4 VERIFIED, 3 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 2 PARTIAL, 1 OPEN.
 Of the 12 open: 1×S1 (BUG-10), 4×S2, 7×S3.
 
 ---
@@ -360,6 +360,8 @@ The single largest source of non-uniformity across the codebase (see [core steer
 
 ### INC-07
 **S3 · Manifest metadata drifts from reality.** [plugins steering](plugins.md#steering-notes). `categories` disagrees three ways with the directory group and `display_name` (e.g. `chimol` → `["Structure","Structure","Molecular Viewer"]`; `batch_analysis` lives in `core/` but is `"Main:Tools:..."`); heavy ad-hoc `menu_hidden` for an undocumented hub/child pattern; dead `deprecated` fields; demo games (`breakout`/`pong`/`tetris`) shipped alongside production tools. → Define and enforce a category vocabulary; document the hub/child pattern or replace it; gate demo plugins behind a flag.
+- 🚧 **PARTIAL** (2026-07-26): the `categories` vocabulary is now self-consistent and enforced. `categories` is not a menu path — nothing reads it at runtime; it is rendered verbatim into the generated plugin catalogue (`build_tools/docs/generate_plugin_docs.py:187`), so every drift is directly user-visible. Fixed the two manifests that listed a label twice (`chimol` → `["Structure","Structure","Molecular Viewer"]`, `traj_tools` → `["Structure","Structure","Tools"]`, both of which printed `Structure, Structure` in their docs page) and the one case split (`synthetic_decay` alone said `"Fluorescence Decay"` against six manifests' `"Fluorescence decay"`). Guardrails: `validate_manifest()` gained `_validate_categories()` (list of non-empty strings, no case-insensitive duplicates), which the existing tree-wide `test_builtin_manifests_all_valid` enforces over every manifest, plus a new `test_builtin_category_vocabulary_is_case_consistent` pinning one spelling per label across the tree. Tests: `test/core/test_plugin_manifest.py` (+5), `test/core/test_plugin_registry.py` (+1).
+- 📋 **Newly verified, still open** — the same case split exists in the **menu path**, which *is* live: `synthetic_decay`'s `display_name` (and its legacy module-level `name`) reads `"Spectroscopy:Fluorescence Decay:…"` while five sibling plugins use `"Spectroscopy:Fluorescence decay:…"`, so the ribbon builds two sibling submenus differing only in case and `docs/reference/plugins/index.md` carries two adjacent headings (`## Spectroscopy → Fluorescence Decay` with one entry, `## Spectroscopy → Fluorescence decay` with five). → Rename the outlier to the majority spelling and regenerate the catalogue (the plugin count/category-count lines in `index.md` change with it). Remaining beyond that: `categories`-vs-directory-group drift (`batch_analysis`), the undocumented hub/child `menu_hidden` pattern, and gating the demo games.
 
 ### INC-08
 **S3 · The generic job manager is bypassed.** [rpc steering](rpc.md#steering-notes). `jobs.JobManager` exists, but the only real long-running work (fit sampling / scan) uses unlocked module-level dicts instead. → Route long-running jobs through `JobManager` so cancellation/status are uniform.

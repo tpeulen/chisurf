@@ -4,7 +4,7 @@
   "display_name": "Structure:Structure:ChiMOL",
   "description": "Molecular structure viewer and protein analysis plugin for ChiSurf.",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Structure", "Structure", "Molecular Viewer"],
+  "categories": ["Structure", "Molecular Viewer"],
   "icon": "🧬",
   "state_namespace": "chimol",
   "statefulness": {

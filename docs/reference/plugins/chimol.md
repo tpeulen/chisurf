@@ -9,7 +9,7 @@ Molecular structure viewer and protein analysis plugin for ChiSurf.
 | --- | --- |
 | Plugin id | `chimol` |
 | Menu path | Structure → Structure → **ChiMOL** |
-| Categories | Structure, Structure, Molecular Viewer |
+| Categories | Structure, Molecular Viewer |
 | Version | 0.2.0 |
 | Surfaces | gui |
 | State namespace | `chimol` |

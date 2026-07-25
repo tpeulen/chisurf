@@ -359,6 +359,31 @@ class TestPluginRegistryState:
                 bad.append(f"{mf}: {errors}")
         assert not bad, "\n".join(bad)
 
+    def test_builtin_category_vocabulary_is_case_consistent(self):
+        """INC-07 guard: one spelling per category label across all manifests.
+
+        ``categories`` is rendered verbatim into the generated plugin catalogue,
+        so ``"Fluorescence decay"`` and ``"Fluorescence Decay"`` split one
+        catalogue heading into two.
+        """
+        import collections
+        import json
+        import pathlib
+
+        import chisurf.plugins
+
+        plugins_root = pathlib.Path(chisurf.plugins.__file__).parent
+        spellings: dict[str, set[str]] = collections.defaultdict(set)
+        for mf in sorted(plugins_root.rglob("manifest.json")):
+            if "cookiecutter" in str(mf):  # template placeholders, not real labels
+                continue
+            data = json.loads(mf.read_text())
+            for category in data.get("categories") or []:
+                spellings[category.casefold()].add(category)
+
+        split = {k: sorted(v) for k, v in spellings.items() if len(v) > 1}
+        assert not split, f"categories spelled inconsistently: {split}"
+
 
 class TestLegacyMetadata:
     """_read_legacy_metadata() fallback."""

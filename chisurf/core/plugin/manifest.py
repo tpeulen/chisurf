@@ -245,7 +245,11 @@ _MANIFEST_SCHEMA = {
         "display_name": {"type": "string"},
         "description": {"type": "string"},
         "authors": {"type": "array", "items": {"type": "string"}},
-        "categories": {"type": "array", "items": {"type": "string"}},
+        "categories": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "uniqueItems": True,
+        },
         "icon": {"type": "string"},
         "state_namespace": {"type": "string"},
         "state_schema": {"type": "object"},
@@ -352,6 +356,46 @@ def _validate_statefulness(data: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _validate_categories(data: dict[str, Any]) -> list[str]:
+    """Validate the manifest categories field.
+
+    ``categories`` is a set of menu/catalogue labels, not a path: it is rendered
+    verbatim into the generated plugin documentation, so a repeated label shows
+    up twice in the catalogue table. Comparison is case-insensitive so that
+    ``["Structure", "structure"]`` is rejected too.
+
+    Parameters
+    ----------
+    data : dict
+        Parsed manifest JSON data.
+
+    Returns
+    -------
+    list of str
+        Validation errors. Empty list means valid.
+
+    """
+    errors: list[str] = []
+    categories = data.get("categories")
+
+    if categories is None:
+        return errors
+    if not isinstance(categories, list):
+        return ["field 'categories' must be an array of strings"]
+
+    seen: dict[str, str] = {}
+    for category in categories:
+        if not isinstance(category, str) or not category:
+            errors.append("each 'categories' entry must be a non-empty string")
+            continue
+        key = category.casefold()
+        if key in seen:
+            errors.append(f"duplicate category {category!r} (already listed as {seen[key]!r})")
+        else:
+            seen[key] = category
+    return errors
+
+
 def validate_manifest(data: dict[str, Any]) -> list[str]:
     """Validate manifest data against the standard schema.
 
@@ -387,5 +431,6 @@ def validate_manifest(data: dict[str, Any]) -> list[str]:
             if text_field in method and not isinstance(method[text_field], str):
                 errors.append(f"rpc_methods field {text_field!r} must be a string")
 
+    errors.extend(_validate_categories(data))
     errors.extend(_validate_statefulness(data))
     return errors

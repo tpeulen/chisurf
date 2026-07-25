@@ -9,7 +9,7 @@ Combined dockable workspace for trajectory alignment, conversion, energy calcula
 | --- | --- |
 | Plugin id | `traj_tools` |
 | Menu path | Structure → Structure → **Traj Tools** |
-| Categories | Structure, Structure, Tools |
+| Categories | Structure, Tools |
 | Version | 1.0.0 |
 | Surfaces | gui |
 | State namespace | `traj_tools` |
