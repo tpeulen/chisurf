@@ -2,6 +2,35 @@
 
 ## 2026-07-25
 
+* **A skill that composes a whole analysis: bursts to a distance.** The
+  request "process this smFRET measurement, select the bursts with a proximity
+  ratio of 0.5-0.7 and get the distance by TCSPC" is four analyses in a trench
+  coat, and it now works end to end with **no new tool** — `fret-from-bursts`
+  (plus a `single-molecule-bursts` knowledge concept) drives `run_python` and
+  the ordinary fitting tools. The chain: read the `.bur` tables of an existing
+  burst search; compute each burst's proximity ratio; keep the requested window
+  *and* the donor-only population below it; pool the donor-channel photons of
+  each population into a sub-ensemble micro-time decay; take an instrument
+  response from the **non-burst** photons of the same measurement
+  (`burst.irf_bg.extract_irf_background`); fit both decays against that same
+  IRF; and convert the lifetime ratio to E and R. Every assumption was checked
+  against the real Becker & Hickl single-molecule DNA sample rather than
+  written from memory: the `.bur` photon indices are **exclusive at the end**
+  (verified by reproducing the recorded per-colour counts exactly), the donor
+  is routing channels {0, 8} and the acceptor {1, 9} (verified the same way),
+  and the IRF from non-burst photons is contaminated by unburst fluorescence —
+  tolerable only because both decays share it, so the bias cancels in their
+  ratio. Result on the sample: tau_D(0) = 1.82 ns, tau_D(A) = 0.86 ns,
+  **E = 0.53, R = 51 A at R0 = 52 A** — and E from the donor lifetime agrees
+  with the proximity ratio it was selected on, which is the point: those are
+  independent observables, so the agreement tests the whole chain at once.
+  7 tests (`test/agent/test_burst_workflow.py`) run the real analysis; the
+  suite deliberately uses all ten photon files, because three of them leave the
+  FRET population ~2600 donor photons, at which point the two-component fit
+  stops being determined and E collapses to 0.14 — the too-few-photons failure
+  the skill warns about. Also registered as an example prompt, so it is
+  documented and live-tested from one source.
+
 * **`--json` reported a total failure as success, and NaN is not JSON (RF-060).**
   The scan-precision CLI's `--json` branch returned *above* the "no dwell time is
   realisable" guard, so settings nothing could be predicted for exited **0**

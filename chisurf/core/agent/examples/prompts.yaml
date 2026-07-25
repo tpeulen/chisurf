@@ -188,3 +188,24 @@ examples:
     expect_skills: [report-results]
     writes: ["*.csp"]
     safety: write
+
+  - id: burst-fret-distance
+    title: A distance from single-molecule bursts
+    prompt: >-
+      Process this single-molecule FRET measurement: select the bursts with a
+      proximity ratio between 0.5 and 0.7, build their donor decay and give me
+      the distance from the lifetime.
+    explanation: >-
+      The composed analysis. Reads the burst tables, computes each burst's
+      proximity ratio, keeps the requested window and — because a lifetime
+      needs a reference — also the donor-only population below it. Builds a
+      sub-ensemble decay from the donor photons of each, takes an instrument
+      response from the non-burst photons of the same measurement, fits both
+      against it and reports the efficiency and the distance, saying which R0
+      it used. On the sample data the efficiency from the donor lifetime comes
+      out near 0.53, agreeing with the proximity ratio it selected on.
+    data: ../../chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna
+    must_call: [run_python]
+    should_call: [load_data, create_fit, set_irf, run_fit]
+    expect_skills: [fret-from-bursts]
+    safety: dangerous

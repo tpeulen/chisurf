@@ -83,9 +83,19 @@ the conversation, so a follow-up does not silently lose the procedure. This
 happens *before* the first model call, which makes routing testable without a
 model in the loop. `load_skill` remains for what the matcher cannot see.
 
-The built-in library: `fit-decay`, `fret-from-decays`, `global-fitting`,
-`fit-correlation`, `batch-fitting`, `diagnose-fit`, `explore-data`,
-`report-results`, `write-analysis-script`, `use-the-computer`.
+The built-in library: `fit-decay`, `fret-from-decays`, `fret-from-bursts`,
+`global-fitting`, `fit-correlation`, `fit-series`, `batch-fitting`,
+`diagnose-fit`, `estimate-uncertainty`, `explore-data`, `report-results`,
+`write-analysis-script`, `use-the-computer`, `program-chisurf`.
+
+**A skill can compose a whole analysis, not just one step.** `fret-from-bursts`
+chains single-molecule burst data through proximity-ratio selection, a
+sub-ensemble decay built from the selected bursts' photons, an instrument
+response taken from the same measurement's non-burst photons, and a lifetime
+fit, to a distance — a chain no single tool performs and none needed to be
+added for. It is the demonstration that capability scales through written
+procedure over general primitives (`run_python` plus the fitting tools) rather
+than through more tools.
 
 **Skills are written against the software, not from memory.** Every claim in
 one is checked against a real fit first — the `fit-correlation` skill was

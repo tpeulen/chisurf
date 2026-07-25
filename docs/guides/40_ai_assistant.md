@@ -107,6 +107,7 @@ even sees it, so the right method is in play from the first turn.
 | --- | --- |
 | `fit-decay` | decays, lifetimes, TCSPC, IRFs |
 | `fret-from-decays` | FRET, donor-only/DA pairs, efficiencies, distances |
+| `fret-from-bursts` | single-molecule bursts, proximity ratio, sub-ensemble TCSPC |
 | `global-fitting` | global or simultaneous analysis, linking parameters |
 | `fit-correlation` | FCS, correlation curves, diffusion |
 | `batch-fitting` | a whole folder, a series, comparing samples |

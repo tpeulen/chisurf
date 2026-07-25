@@ -41,6 +41,9 @@ refers to it. Skills link here rather than repeating the background.
   distance, the Förster radius as an input, and the donor-only fraction.
 * [Correlation spectroscopy](concepts/correlation-spectroscopy.md) — what an
   FCS curve carries and which parameters are calibration rather than result.
+* [Single-molecule bursts](concepts/single-molecule-bursts.md) — what a burst
+  measurement contains, why the proximity ratio is not the efficiency, and what
+  a sub-ensemble decay averages over.
 * [Uncertainty and model choice](concepts/uncertainty-and-model-choice.md) —
   why a covariance error is optimistic, what a support-plane interval is, and
   when an extra component is justified.
