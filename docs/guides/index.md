@@ -58,6 +58,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 35 | [Combining measurements / repeats](35_combining_repeats.md) | `BurstWorkflow.register_all` |
 | 36 | [Multispot (8-spot) smFRET](36_multispot.md) | per-channel burst analysis |
 | 37 | [TAC linearization: microtime LUTs](37_tttr_microtime_lut.md) | `tttr_lut_tools` plugin, `staging.open_tttr` |
+| 38 | [Two-channel colocalization](38_colocalization.md) | `img_coloc` plugin, `imaging.colocalization` |
 
 ## Running
 

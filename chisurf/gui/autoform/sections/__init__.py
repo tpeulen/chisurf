@@ -16,9 +16,10 @@ from . import (
     help_section,  # noqa: F401  (registers the "help" section)
     image_browser_section,  # noqa: F401  (registers the "image_browser" section)
     path_list_section,  # noqa: F401  (registers the "path_list" section)
-    scalar_table_section,  # noqa: F401  (registers the "scalar_table" section)
     phasor_section,  # noqa: F401  (registers the "phasor" section)
     rate_matrix_section,  # noqa: F401  (registers the "rate_matrix" section)
+    scalar_table_section,  # noqa: F401  (registers the "scalar_table" section)
+    setup_selector_section,  # noqa: F401  (registers the "setup_selector" section)
     waterfall_section,  # noqa: F401  (registers the "waterfall" section)
 )
 from .registry import (

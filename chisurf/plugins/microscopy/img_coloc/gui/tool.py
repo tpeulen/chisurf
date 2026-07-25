@@ -49,6 +49,9 @@ class ImgColocTool(ChisurfDockTool):
 
     tool_settings_name = "ImgColocTool"
 
+    #: Model events, re-emitted so they are always handled on the GUI thread.
+    modelEvent = QtCore.Signal(str)
+
     def __init__(self, parent=None, embedded: bool = False, view_model=None, **kwargs):
         super().__init__(parent)
         self._embedded = bool(embedded)
@@ -74,7 +77,10 @@ class ImgColocTool(ChisurfDockTool):
 
         self.auto_form = AutoForm(self.model)
         self.setCentralWidget(self.auto_form)
-        self.model.add_observer(self._on_model_event)
+        # The view-model also notifies from the compute worker; the signal hop
+        # guarantees the handler (which touches widgets) runs on the GUI thread.
+        self.modelEvent.connect(self._handle_model_event)
+        self.model.add_observer(self.modelEvent.emit)
         self.restore_window_geometry()
 
     # ── actions ──
@@ -128,11 +134,15 @@ class ImgColocTool(ChisurfDockTool):
         except Exception:
             logger.debug("AutoForm plot refresh failed", exc_info=True)
 
-    def _on_model_event(self, event: str) -> None:
-        """React to view-model events (a new file triggers a run)."""
-        if event == "file":
+    def _handle_model_event(self, event: str) -> None:
+        """React to view-model events on the GUI thread.
+
+        A new file (or a new detector setup) triggers a run; a finished run or a
+        changed display refreshes the form.
+        """
+        if event in ("file", "setup"):
             self.run_with_progress()
-        elif event == "run":
+        else:
             self._refresh()
 
     def on_paths_dropped(self, paths) -> None:

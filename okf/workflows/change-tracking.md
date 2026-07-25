@@ -28,15 +28,56 @@ the same loop**. This is the process rule that the per-area
    heading — one bullet per landed unit of work, saying *what* changed, *why*, the
    verification result, and the affected concept links. OKF wins on conflicts
    (it is newer than the code comments).
-4. **Mark done when done** — flip `status:`/DoD in the relevant PRD, the glyph in
+4. **Update the user documentation in `docs/`** — OKF is the knowledge layer for
+   *agents*; `docs/` is the manual for *people*, and a change that alters what a
+   user sees or how they work is not finished until both are updated. See
+   [User documentation is part of the change](#user-documentation-is-part-of-the-change)
+   below for what that means per change type.
+5. **Mark done when done** — flip `status:`/DoD in the relevant PRD, the glyph in
    `prds/index.md`, and the row in the assessment backlog. Never leave finished
    work marked `planned`/`in-progress`/unchecked.
-5. **Commit** — a focused commit per file or small coherent batch, with a message
+6. **Commit** — a focused commit per file or small coherent batch, with a message
    that states the change, the verification (e.g. "suite: 420 passed"), and any
    audit-number delta. Commit **locally only — never push** (see
    [[feedback-no-push]]). **No commit trailers of any kind** — no
    `Co-Authored-By`, no "Generated with" / tool attribution. Commits are authored
    by tpeulen only; the message body is plain text with no trailer block.
+
+## User documentation is part of the change
+
+`docs/` is not a separate deliverable to be caught up later — a feature that
+users cannot find or understand is unfinished. Every change that touches
+user-visible behaviour updates it in the **same** change:
+
+| What changed | What to update in `docs/` |
+| --- | --- |
+| A new analysis method or model | `docs/concepts/<topic>.md` (the theory) **and** `docs/guides/NN_<topic>.md` (the workflow), each registered in `docs/concepts/index.rst` / `docs/guides/index.md` and cross-linked to each other |
+| A new or changed plugin | Regenerate the catalogue (`pixi run -e docs docs-plugins`) so `docs/reference/plugins/` matches the manifest and view spec — **plus** the concept + guide pair below |
+| A changed parameter / control | Its `description` in the `view.json` (that is the tooltip *and* the generated docs cell) |
+| A changed CLI / API surface | The guide's headless section and the API snippet |
+| Anything with a UI | A screenshot grabbed from the real widget in `docs/guides/make_screenshots.py`, never a mockup |
+
+### Plugins are documented in theory and in application
+
+A plugin is documented when **both** halves exist, because they answer different
+questions and neither substitutes for the other:
+
+* **Theory** — `docs/concepts/`: what the method measures, the formulas, the
+  assumptions, what the parameters mean physically, what a defensible result
+  looks like, and citations. Written so a reader can judge whether the method
+  fits their question at all. Reference-quality prose is the target (see
+  [[quickfit3-docs-for-concepts]]).
+* **Application** — `docs/guides/`: the numbered step-by-step workflow in
+  ChiSurf — which tool, which settings in which order, what the panels show,
+  the headless CLI equivalent, the Python API, and a real screenshot. Written so
+  a reader can reproduce the result today.
+
+Each half opens with a link to the other: the guide with a `Theory` admonition
+pointing at the concept anchor, the concept with a line pointing at the guide.
+
+In-app help follows the same split: short `description` tooltips on every
+control, and a `?` **help** section in the `view.json` whose Markdown file ships
+beside it — a condensed version of the guide, not a second source of truth.
 
 ## Parallel instances — never destroy uncommitted work
 

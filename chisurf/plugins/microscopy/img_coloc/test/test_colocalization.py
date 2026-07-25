@@ -202,3 +202,85 @@ def test_view_model_runs_headless(two_channel_tiff):
     vm.set_gate_from_rect(0, 0, vm.bins, vm.bins)
     assert vm.gate_enabled is True
     assert vm.gate_rect() is not None
+
+
+# --- detector setup + view spec ----------------------------------------------
+
+
+def test_setup_windows_become_channels():
+    """A picked detector setup offers its named windows as channels immediately."""
+    from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
+
+    vm = ColocViewModel()
+    vm.apply_setup_settings(
+        {
+            "name": "demo",
+            "detectors": {
+                "green": {"chs": [0, 1], "micro_time_ranges": []},
+                "red": {"chs": [4, 5], "micro_time_ranges": []},
+            },
+        }
+    )
+    assert vm.setup_name == "demo"
+    # Names are available before any file is loaded — the setup defines them.
+    assert vm.channel_names() == ["green", "red"]
+    assert vm.detectors["green"]["chs"] == [0, 1]
+    vm.apply_setup_settings({"name": "", "detectors": {}})
+    assert vm.channel_names() == []
+
+
+def test_setup_windows_ignored_for_camera_images(two_channel_tiff):
+    """Detector windows apply to photon streams only; a TIFF keeps its own channels."""
+    from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
+
+    path, _, _ = two_channel_tiff
+    vm = ColocViewModel()
+    vm.apply_setup_settings({"name": "demo", "detectors": {"green": {"chs": [0]}}})
+    vm.set_filename(str(path))
+    assert vm.compute() is True
+    assert vm.channel_names() == ["ch0", "ch1"]
+
+
+def test_view_spec_parses_and_binds_every_attribute():
+    """Every attribute the view spec binds exists on the view-model, with a tooltip."""
+    from chisurf.core.dataspec import Section
+    from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
+
+    vm = ColocViewModel()
+    spec = vm.view_spec()
+
+    def walk(sections):
+        for section in sections:
+            yield section
+            yield from walk(getattr(section, "sections", ()) or ())
+
+    bound = [s for s in walk(spec.sections) if isinstance(s, Section) and getattr(s, "attr", None)]
+    assert bound, "view spec binds no attributes"
+    for section in bound:
+        assert hasattr(vm, section.attr), f"missing model attribute {section.attr!r}"
+        assert getattr(section, "description", ""), f"{section.attr!r} has no tooltip"
+
+
+def test_help_resource_ships_next_to_the_view_spec():
+    """The ? modal's help file resolves relative to the view spec and covers the method."""
+    from chisurf.core.dataspec import CustomSection
+    from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
+
+    vm = ColocViewModel()
+
+    def walk(sections):
+        for section in sections:
+            yield section
+            yield from walk(getattr(section, "sections", ()) or ())
+
+    help_sections = [
+        s for s in walk(vm.view_spec().sections) if isinstance(s, CustomSection) and s.key == "help"
+    ]
+    assert help_sections, "no ? help button declared"
+    resource = str(help_sections[0].options.get("resource", ""))
+    # Resolved the way HelpButton resolves a relative resource: next to the spec.
+    help_md = vm._view_json.parent / resource
+    assert help_md.is_file()
+    text = help_md.read_text()
+    for expected in ("Workflow", "Pearson", "Manders", "Costes", "van Steensel"):
+        assert expected in text

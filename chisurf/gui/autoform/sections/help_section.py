@@ -13,6 +13,9 @@ Declare it in a view spec as a custom section::
 
 - ``text`` — Markdown/plain help body shown in the modal (or ``resource`` — a
   path to a ``.md``/``.txt``/``.html`` file read at click time; ``text`` wins).
+  A *relative* ``resource`` is resolved next to the view spec that declares it
+  (the model's ``_view_json``, else the model's module directory), so a plugin
+  ships its help file beside its ``view.json``.
 - ``title`` — modal window title (default ``"Help"``).
 - ``label`` — button glyph (default ``"?"``).
 - ``align`` — ``"right"`` (default) right-aligns the button; ``"left"`` / ``"full"``.
@@ -36,6 +39,7 @@ class HelpButton(QtWidgets.QWidget):
 
     def __init__(self, model=None, target: str = "", **options: Any):
         super().__init__()
+        self._model = model
         self._text = str(options.get("text", ""))
         self._resource = str(options.get("resource", ""))
         self._title = str(options.get("title", "Help"))
@@ -55,13 +59,42 @@ class HelpButton(QtWidgets.QWidget):
         if align == "left":
             layout.addStretch(1)
 
+    def _resource_path(self) -> pathlib.Path | None:
+        """Resolve ``resource`` to an existing file.
+
+        An absolute (or CWD-relative) path is used as given. A *relative* path is
+        resolved next to the view spec it was authored in — the model's
+        ``_view_json`` when it exposes one, else the directory of the model's
+        module — so a plugin can ship its help text beside its ``view.json``
+        without knowing the working directory.
+        """
+        if not self._resource:
+            return None
+        path = pathlib.Path(self._resource)
+        if path.is_file():
+            return path
+        if path.is_absolute():
+            return None
+        bases: list[pathlib.Path] = []
+        view_json = getattr(self._model, "_view_json", None)
+        if view_json:
+            bases.append(pathlib.Path(view_json).parent)
+        module = getattr(type(self._model), "__module__", "") if self._model is not None else ""
+        module_file = getattr(__import__("sys").modules.get(module, None), "__file__", None)
+        if module_file:
+            bases.append(pathlib.Path(module_file).parent)
+        for base in bases:
+            candidate = base / path
+            if candidate.is_file():
+                return candidate
+        return None
+
     def _content(self) -> str:
         if self._text:
             return self._text
-        if self._resource:
-            path = pathlib.Path(self._resource)
-            if path.is_file():
-                return path.read_text(encoding="utf-8")
+        path = self._resource_path()
+        if path is not None:
+            return path.read_text(encoding="utf-8")
         return "No help available."
 
     def _show(self) -> None:

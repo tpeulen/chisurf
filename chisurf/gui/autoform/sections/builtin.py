@@ -753,6 +753,11 @@ class TableWidget(QtWidgets.QTableWidget):
                 self.setColumnWidth(i, int(column["width"]))
         if getattr(section, "height", 0):
             self.setMinimumHeight(int(section.height))
+        if getattr(section, "expand", False):
+            # Fill the panel's spare vertical space (the form layout reads
+            # ``_autoform_expanding``) instead of leaving a gap below the rows.
+            self._autoform_expanding = True
+            self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.itemSelectionChanged.connect(self._on_selection_changed)
         self.itemDoubleClicked.connect(lambda _item: self._activate_current_row())
         self.itemChanged.connect(self._on_item_changed)
@@ -885,6 +890,10 @@ class InfoWidget(QtWidgets.QTextBrowser):
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         if getattr(section, "height", 0):
             self.setMinimumHeight(int(section.height))
+        if getattr(section, "max_height", 0):
+            # A short status line must not grow into the panel's spare space.
+            self.setMaximumHeight(int(section.max_height))
+            self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum)
         self.refresh()
 
     def _content(self) -> str:

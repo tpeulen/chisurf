@@ -1,5 +1,5 @@
 {
-  "_comment": "Two-channel colocalization tool. AutoForm over ColocViewModel: a Settings dock (source, channels, background/threshold, gate, options), a Coefficients dock (metric table), the two channel maps, the colocalized-pixel mask, and the intensity joint histogram whose rectangle ROI is the scatter gate. Run / export live in the host toolbar.",
+  "_comment": "Two-channel colocalization tool. AutoForm over ColocViewModel. Left: a single-column Settings dock following the workflow order — pick a detector setup, load the image, pick the channel pair, set background/thresholds, then the optional gate and significance blocks. Right: tabbed views (coefficient table, both channel maps side by side, colocalized-pixel mask, intensity scatter whose rectangle ROI is the gate, van Steensel profile). Run / export live in the host toolbar; long help sits behind the ? button.",
   "sections": [
     {
       "type": "dock_area",
@@ -11,49 +11,65 @@
           "type": "panel",
           "title": "Settings",
           "collapsed": false,
+          "n_col": 1,
           "sections": [
+            {"type": "custom", "key": "help",
+             "options": {"title": "Colocalization — help", "label": "?",
+                         "resource": "help.md"}},
+            {"type": "custom", "key": "setup_selector",
+             "options": {"attr": "setup_name", "call": "apply_setup_settings",
+                         "placeholder": "— raw detector channels —"}},
             {"type": "value", "attr": "filename", "label": "Image", "kind": "file", "call": "set_filename",
-             "description": "TIFF stack (or any readable image), or a photon-stream file (PTU/HT3/…) that is reconstructed into a confocal-scan image."},
+             "description": "The image to analyse. Either a TIFF stack (or any imageio-readable image), or a photon-stream file (PTU/HT3/…) which is reconstructed into a confocal-scan image — one channel per detector window of the setup above, or per raw routing channel when no setup is picked. Files can also be dropped on the window."},
             {"type": "choice", "attr": "channel_a", "label": "Channel A", "options_source": "channel_names", "call": "refresh_display",
-             "description": "First channel of the pair (populated after the first run)."},
+             "description": "First channel of the pair. With a detector setup this lists its named windows (green, red, …); otherwise the channels found in the file (available after the first run)."},
             {"type": "choice", "attr": "channel_b", "label": "Channel B", "options_source": "channel_names", "call": "refresh_display",
-             "description": "Second channel of the pair."},
+             "description": "Second channel of the pair. Manders M1 answers 'how much of A sits with B', M2 the mirror question, so the A/B order matters for those two coefficients."},
             {"type": "value", "attr": "frame", "label": "Frame", "kind": "int", "minimum": -1, "maximum": 100000, "step": 1,
-             "description": "Frame to analyse; -1 sums every frame of the stack."},
+             "description": "Which frame of the stack to analyse. -1 (default) sums every frame, which maximises the signal-to-noise of the coefficients; pick a single frame to follow a time series."},
             {"type": "choice", "attr": "channel_axis_mode", "label": "Axis order", "options": ["auto", "first axis"],
-             "description": "Images with unlabelled axes: 'auto' treats a short leading axis as channels; 'first axis' forces it."},
+             "description": "Only for images whose axes are unlabelled. 'auto' treats a short leading axis (≤ 4 planes) as the channels and anything longer as frames; 'first axis' forces the leading axis to be the channels. TIFFs written with ImageJ/OME metadata are read exactly as labelled and ignore this."},
             {
               "type": "panel",
               "title": "Background / thresholds",
               "collapsed": false,
+              "n_col": 1,
               "sections": [
                 {"type": "toggle", "attr": "auto_background", "label": "Auto background",
-                 "description": "Estimate each channel's background as a low intensity quantile."},
+                 "description": "Estimate each channel's background as a low intensity quantile of that channel and subtract it. Background offsets bias Pearson and, much more strongly, Manders' overlap coefficient, so subtracting them is not optional for comparable numbers."},
                 {"type": "value", "attr": "background_quantile", "label": "Quantile", "kind": "float", "minimum": 0.0, "maximum": 0.5, "step": 0.01, "decimals": 3,
-                 "description": "Quantile used for the background estimate (0.05 = lower 5 %)."},
-                {"type": "value", "attr": "background_a", "label": "Background A", "kind": "float", "decimals": 4},
-                {"type": "value", "attr": "background_b", "label": "Background B", "kind": "float", "decimals": 4},
+                 "description": "Quantile used by the automatic background estimate. 0.05 (the lower 5 %) is the conventional choice: low enough to sit in dark/out-of-cell pixels, high enough not to be a single outlier."},
+                {"type": "value", "attr": "background_a", "label": "Background A", "kind": "float", "decimals": 4,
+                 "description": "Intensity subtracted from channel A before anything else. Filled in by the estimate; type your own value (e.g. a measured dark level) to override it."},
+                {"type": "value", "attr": "background_b", "label": "Background B", "kind": "float", "decimals": 4,
+                 "description": "Intensity subtracted from channel B before anything else."},
                 {"type": "toggle", "attr": "auto_threshold", "label": "Costes thresholds",
-                 "description": "Derive both thresholds automatically from the orthogonal regression instead of setting them by hand."},
+                 "description": "Derive both thresholds from the data instead of by hand: an orthogonal regression of the channel pair is walked downwards until the pixels below it are no longer positively correlated. Everything below that point is indistinguishable from uncorrelated background. Hand-picked thresholds are the single largest source of irreproducible colocalization numbers."},
                 {"type": "value", "attr": "threshold_a", "label": "Threshold A", "kind": "float", "decimals": 4,
-                 "description": "Pixels must exceed this (background-subtracted) intensity in channel A."},
+                 "description": "A pixel counts as 'channel A present' above this background-subtracted intensity. Filled in by the Costes search when that is enabled."},
                 {"type": "value", "attr": "threshold_b", "label": "Threshold B", "kind": "float", "decimals": 4,
-                 "description": "Pixels must exceed this (background-subtracted) intensity in channel B."}
+                 "description": "A pixel counts as 'channel B present' above this background-subtracted intensity."}
               ]
             },
             {
               "type": "panel",
               "title": "Scatter gate",
               "collapsed": true,
+              "n_col": 1,
               "sections": [
                 {"type": "toggle", "attr": "gate_enabled", "label": "Gate active",
-                 "description": "Restrict the gated coefficients to the rectangle drawn on the joint histogram."},
-                {"type": "value", "attr": "gate_a_min", "label": "A min", "kind": "float", "decimals": 4},
-                {"type": "value", "attr": "gate_a_max", "label": "A max", "kind": "float", "decimals": 4},
-                {"type": "value", "attr": "gate_b_min", "label": "B min", "kind": "float", "decimals": 4},
-                {"type": "value", "attr": "gate_b_max", "label": "B max", "kind": "float", "decimals": 4},
+                 "description": "Restrict the gated coefficients to a rectangle in the intensity-vs-intensity plane. Drag the blue rectangle on the 'Intensity scatter' tab to set it, or type the bounds below; the gated pixels are highlighted in the 'Colocalized pixels' map."},
+                {"type": "value", "attr": "gate_a_min", "label": "A min", "kind": "float", "decimals": 4,
+                 "description": "Lower channel-A intensity of the gate rectangle."},
+                {"type": "value", "attr": "gate_a_max", "label": "A max", "kind": "float", "decimals": 4,
+                 "description": "Upper channel-A intensity of the gate rectangle."},
+                {"type": "value", "attr": "gate_b_min", "label": "B min", "kind": "float", "decimals": 4,
+                 "description": "Lower channel-B intensity of the gate rectangle."},
+                {"type": "value", "attr": "gate_b_max", "label": "B max", "kind": "float", "decimals": 4,
+                 "description": "Upper channel-B intensity of the gate rectangle."},
                 {"type": "button_row", "buttons": [
-                  {"label": "🧹 Clear gate", "action": "clear_gate", "description": "Disable the gate and recompute."}
+                  {"label": "🧹 Clear gate", "action": "clear_gate",
+                   "description": "Switch the gate off and recompute the coefficients over all thresholded pixels."}
                 ]}
               ]
             },
@@ -61,23 +77,25 @@
               "type": "panel",
               "title": "Significance / profile",
               "collapsed": true,
+              "n_col": 1,
               "sections": [
                 {"type": "toggle", "attr": "costes_test", "label": "Costes randomization test",
-                 "description": "Scramble one channel in PSF-sized blocks repeatedly and compare the observed correlation against that null distribution."},
+                 "description": "Scramble one channel in PSF-sized blocks many times and compare the measured correlation against that null distribution. It answers the question the coefficients cannot: is this correlation more than what random co-occurrence of two dense stainings would give? Colocalization is conventionally called significant at p > 0.95. Costs one correlation per randomization."},
                 {"type": "value", "attr": "costes_block", "label": "Block (px)", "kind": "int", "minimum": 1, "maximum": 64,
-                 "description": "Edge length of the scrambled blocks; use the PSF width."},
+                 "description": "Edge length of the scrambled blocks. Use the PSF width in pixels: smaller blocks destroy the image's own texture and make almost anything look significant, larger ones throw away resolution."},
                 {"type": "value", "attr": "costes_randomizations", "label": "Randomizations", "kind": "int", "minimum": 10, "maximum": 10000,
-                 "description": "Size of the null distribution."},
+                 "description": "Size of the null distribution. 100–200 is enough for a p-value quoted to two decimals; more only sharpens the tail."},
                 {"type": "value", "attr": "costes_seed", "label": "Seed", "kind": "int", "minimum": 0, "maximum": 1000000,
-                 "description": "Random seed, so the p-value is reproducible."},
+                 "description": "Seed of the random generator, so the same image and settings always give the same p-value (a reported number stays reproducible)."},
                 {"type": "value", "attr": "ccf_max_shift", "label": "van Steensel shift (px)", "kind": "int", "minimum": 0, "maximum": 200,
-                 "description": "Largest pixel shift of the cross-correlation profile; 0 disables it."},
-                {"type": "value", "attr": "bins", "label": "Histogram bins", "kind": "int", "minimum": 8, "maximum": 1024},
+                 "description": "Largest horizontal shift of the cross-correlation profile; 0 disables it. The profile peaks at 0 for true colocalization and away from 0 when the channels are misregistered — the standard check for chromatic aberration before trusting any coefficient."},
+                {"type": "value", "attr": "bins", "label": "Histogram bins", "kind": "int", "minimum": 8, "maximum": 1024,
+                 "description": "Bins per axis of the intensity scatter (joint histogram). More bins resolve fine structure in the cloud; fewer make sparse images look continuous."},
                 {"type": "toggle", "attr": "log_histogram", "label": "Log histogram",
-                 "description": "Show the joint histogram on a logarithmic intensity scale."}
+                 "description": "Show the intensity scatter on a logarithmic count scale, so the sparse bright tail stays visible next to the dense background cloud."}
               ]
             },
-            {"type": "info", "source": "results_html", "height": 60}
+            {"type": "info", "source": "results_html", "height": 48, "max_height": 84}
           ]
         },
         {
@@ -85,27 +103,33 @@
           "title": "Views",
           "persist": "img_coloc_views",
           "sections": [
+            {"type": "table", "source": "metric_rows", "title": "Coefficients", "expand": true,
+             "columns": [
+               {"key": "name", "label": "Coefficient", "width": 260,
+                "description": "Colocalization coefficient (see the ? help for what each one answers)."},
+               {"key": "value", "label": "Value", "width": 140,
+                "description": "Computed value; 'n/a' when it is undefined for this selection (e.g. no pixel above threshold)."}
+             ]},
             {
-              "type": "panel",
-              "title": "Coefficients",
-              "collapsed": false,
+              "type": "dock_area",
+              "title": "Channels",
+              "split": "horizontal",
               "sections": [
-                {"type": "table", "source": "metric_rows", "height": 320,
-                 "columns": [
-                   {"key": "name", "label": "Coefficient", "width": 240},
-                   {"key": "value", "label": "Value", "width": 140}
-                 ]}
+                {"type": "custom", "key": "image", "target": "image_a", "title": "Channel A",
+                 "options": {"colormap": true, "colormap_attr": "colormap"},
+                 "description": "Background-subtracted map of channel A."},
+                {"type": "custom", "key": "image", "target": "image_b", "title": "Channel B",
+                 "options": {"colormap": true, "colormap_attr": "colormap"},
+                 "description": "Background-subtracted map of channel B."}
               ]
             },
-            {"type": "custom", "key": "image", "target": "image_a", "title": "Channel A",
-             "options": {"colormap": true, "colormap_attr": "colormap"}},
-            {"type": "custom", "key": "image", "target": "image_b", "title": "Channel B",
-             "options": {"colormap": true, "colormap_attr": "colormap"}},
             {"type": "custom", "key": "image", "target": "coloc_mask_image", "title": "Colocalized pixels",
-             "options": {"colormap": true, "colormap_attr": "colormap"}},
+             "options": {"colormap": true, "colormap_attr": "colormap"},
+             "description": "Pixels above both thresholds; gated pixels are brighter when a scatter gate is active."},
             {"type": "custom", "key": "image", "target": "histogram_image", "title": "Intensity scatter",
              "options": {"colormap": true, "colormap_attr": "colormap", "invert_y": false,
-                         "rect_roi_call": "set_gate_from_rect", "rect_roi_source": "gate_rect"}},
+                         "rect_roi_call": "set_gate_from_rect", "rect_roi_source": "gate_rect"},
+             "description": "Joint histogram of the two channels (A horizontal, B vertical). Drag the blue rectangle to gate a pixel population."},
             {"type": "plot", "source": "ccf_series", "title": "van Steensel CCF",
              "x_label": "shift / px", "y_label": "PCC", "height": 220}
           ]

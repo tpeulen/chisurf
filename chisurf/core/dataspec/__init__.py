@@ -435,6 +435,9 @@ class TableSection(Section):
     selected_attr: str = ""
     #: Minimum table height in pixels.
     height: int = 0
+    #: Let the table fill the spare vertical space of its panel/dock instead of
+    #: staying at ``height`` with empty space below it.
+    expand: bool = False
     #: Allow cell editing.  Changes are sent to ``update_call`` as
     #: ``(row_index, column_key, value)``.
     editable: bool = False
@@ -526,6 +529,9 @@ class InfoSection(Section):
     is_markdown: bool = False
     #: Optional minimum height in pixels (0 = let the content size the block).
     height: int = 0
+    #: Optional maximum height in pixels (0 = unbounded). Set it for a short live
+    #: status line so it cannot expand into the panel's spare space.
+    max_height: int = 0
 
 
 @dataclasses.dataclass(frozen=True)

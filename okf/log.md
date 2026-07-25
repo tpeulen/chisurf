@@ -382,6 +382,39 @@
   the manifest `gui` entrypoint: it *execs* `__init__.py` with
   `__name__ == "plugin"`, so a package without that block loads and shows nothing
   — the block is what constructs the window.
+* **Colocalization, round 2 — setup-driven workflow, help, docs, and five
+  reusable AutoForm additions.** The tool now follows the same order as the rest
+  of the imaging stack: **pick a detector setup → load the file → pick the
+  channel pair → coefficients**. The setup's named windows (green / red / …) are
+  the pickable channels *before* any file is read, and are ignored for camera
+  images, so one tool covers photon streams and TIFFs without the user thinking
+  about routing-channel numbers. The picker itself became a general
+  **`setup_selector` AutoForm section** (writes the name to an attribute, calls
+  the established `apply_setup_settings` hook) — the widget every photon-stream
+  tool used to embed in hand-written Qt is now declarative. Four more general
+  section options fell out of making the layout not look bad: `table.expand`
+  (fill the dock instead of dead space), `info.max_height` (a status line must
+  not eat the panel), `image.invert_y` (a 2-D histogram is a plot, so it reads
+  bottom-up), and a view-relative `help.resource` (a plugin ships its `?` modal
+  Markdown beside its `view.json` instead of inlining it into JSON).
+* **A real threading bug surfaced while testing that workflow**: the view-model
+  notifies observers at the end of `compute()`, which runs on the compute worker,
+  so the tool's handler touched widgets off the GUI thread — a hard segfault the
+  direct-call tests could not see. Fixed by re-emitting model events through a Qt
+  signal on the tool, so the handler always runs on the GUI thread. Worth
+  remembering for every AutoForm tool with a background compute.
+* **[Docs are now part of the change](/workflows/change-tracking.md)** (new step 4
+  in the loop, mirrored in the root `CLAUDE.md`): a change to user-visible
+  behaviour updates `docs/` in the *same* change, and a plugin is documented only
+  when **both** halves exist — **theory** in `docs/concepts/` (what the method
+  measures, formulas, assumptions, citations) and **application** in
+  `docs/guides/` (which tool, which settings, headless CLI, Python API, a real
+  screenshot), cross-linked, each registered in its index. Colocalization is the
+  first plugin to land under the rule: `concepts/colocalization.md`,
+  `guides/38_colocalization.md` with figures grabbed from the real widget on the
+  confocal test file, the regenerated catalogue page (whose per-parameter table
+  is generated from the view spec's `description` fields — the same strings that
+  are the tooltips), and the in-app `?` modal.
 
 * **The LLM agent got a real harness: `chisurf/core/agent/`.** The old one
   (`code_editor/agent_runtime.py`) handed the model a bare list of 23 RPC

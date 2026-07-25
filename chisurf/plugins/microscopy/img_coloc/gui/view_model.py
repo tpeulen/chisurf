@@ -23,7 +23,11 @@ class ColocViewModel:
     """State + logic for the interactive two-channel colocalization tool (no Qt)."""
 
     def __init__(self) -> None:
+        #: The authored view spec (also the anchor for view-relative resources).
+        self._view_json = _VIEW_JSON
         # ── AutoForm-bound settings ──
+        #: Detector setup whose named windows become the image channels ("" = raw).
+        self.setup_name: str = ""
         self.filename: str = ""
         self.channel_a: str = ""
         self.channel_b: str = ""
@@ -51,6 +55,9 @@ class ColocViewModel:
         self.costes_seed: int = 0
         self.ccf_max_shift: int = 0
         self.colormap: str = "magma"
+        # ── detector windows from the selected setup ──
+        #: ``{window: {"chs": [...], "micro_time_ranges": [...]}}`` (empty = raw channels).
+        self.detectors: dict[str, dict] = {}
         # ── runtime state ──
         self._stack = None
         self._result = None
@@ -89,14 +96,69 @@ class ColocViewModel:
         self._stack = None
         self._result = None
         self._metrics = {}
-        self.channel_a = ""
-        self.channel_b = ""
+        if not (self.detectors and self._uses_windows()):
+            # Channel identities came from the previous file; with a setup selected
+            # the named windows stay valid across files.
+            self.channel_a = ""
+            self.channel_b = ""
         self.results_text = f"Loaded {pathlib.Path(path).name}. Press Run."
         self.notify("file")
 
+    def apply_setup_settings(self, payload: dict) -> None:
+        """Adopt the detector windows of a picked setup as the image channels.
+
+        The shared hook every imaging step implements: the setup's named windows
+        (green / red / …, each a channel set plus optional micro-time gates) become
+        the channels offered for the colocalization pair, instead of the raw
+        routing-channel numbers found in the file. An empty payload clears them.
+
+        Parameters
+        ----------
+        payload : dict
+            ``{"name": <setup>, "detectors": {...}}`` from the setup picker.
+        """
+        from chisurf.core.fluorescence.imaging import windows_from_payload
+
+        name = str((payload or {}).get("name", "") or "")
+        try:
+            windows = windows_from_payload(payload or {})
+        except Exception:
+            logger.debug("apply_setup_settings failed", exc_info=True)
+            windows = {}
+        if name == self.setup_name and windows == self.detectors:
+            return
+        self.setup_name = name
+        self.detectors = windows
+        # The channel identities changed; drop the stale pair and result.
+        self.channel_a = ""
+        self.channel_b = ""
+        self._stack = None
+        self._result = None
+        self._metrics = {}
+        self.notify("setup")
+
+    def window_names(self) -> list[str]:
+        """Return the detector-window names of the selected setup (may be empty)."""
+        return list(self.detectors.keys())
+
     def channel_names(self) -> list[str]:
-        """Return the channel names of the loaded stack (empty before the first run)."""
+        """Return the pickable channel names.
+
+        The selected setup's detector windows when one is chosen (available
+        immediately, before any file is read), otherwise the channels of the
+        loaded stack.
+        """
+        if self.detectors and self._uses_windows():
+            return self.window_names()
         return list(self._stack.channel_names) if self._stack is not None else []
+
+    def _uses_windows(self) -> bool:
+        """Return whether detector windows apply (photon streams only)."""
+        if not self.filename:
+            return True
+        from chisurf.core.fluorescence.imaging import is_photon_stream
+
+        return is_photon_stream(self.filename)
 
     def refresh_display(self, value=None) -> None:
         """Re-render after a channel pick (AutoForm calls bound methods as ``fn(value)``)."""
@@ -141,6 +203,7 @@ class ColocViewModel:
                 channel_a=channel_a,
                 channel_b=channel_b,
                 frame=None if int(self.frame) < 0 else int(self.frame),
+                windows=self.detectors if (self.detectors and self._uses_windows()) else None,
                 channel_axis=self._channel_axis(),
                 auto_background=bool(self.auto_background),
                 background_quantile=float(self.background_quantile),

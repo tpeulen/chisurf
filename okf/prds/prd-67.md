@@ -30,9 +30,10 @@ how to read an image.
 
 # Status
 
-**Done.** Coefficients, image-source seam, plugin (core/CLI/GUI), the reusable
-rectangle-gate and plot-axis options on the shared `image` AutoForm section, and
-16 headless tests landed. Follow-ups are listed under [Deferred](#deferred).
+**Done.** Coefficients, image-source seam, plugin (core/CLI/GUI), the
+detector-setup workflow, six reusable AutoForm additions, the in-app `?` help,
+the concept + guide documentation pair, and 20 headless tests landed. Follow-ups
+are listed under [Deferred](#deferred).
 
 Related: [PRD-40](prd-40.md) (AutoForm), [PRD-51](prd-51.md) (imaging
 correlation), [PRD-52](prd-52.md) (phasor imaging), [PRD-49](prd-49.md)
@@ -117,14 +118,49 @@ One `load_image_stack(path)` returning an `ImageStack`
 
 ## Shared AutoForm additions
 
-Two general options on the existing `image` section, authored in JSON and
-available to every plugin:
+Everything the tool needed beyond the existing sections was added as a *general*
+capability, authored in JSON and available to every plugin:
 
-- `rect_roi_call` / `rect_roi_source` — a draggable, resizable rectangle on any
-  image reporting its bounds to the model. Colocalization uses it as the scatter
-  gate; anything needing a 2-D region (histogram gating, ROI cropping) now can.
-- `invert_y` — images that are really plots (a 2-D histogram) read bottom-up
-  instead of following the top-left image origin.
+- **`setup_selector` section** — the detector-setup picker every photon-stream
+  tool used to embed in hand-written Qt is now declarative. It writes the setup
+  name to a model attribute and calls the established `apply_setup_settings`
+  hook with `{"name", "detectors"}`, so a view-model needs no extra glue.
+- **`image` section: `rect_roi_call` / `rect_roi_source`** — a draggable,
+  resizable rectangle on any image reporting its bounds to the model.
+  Colocalization uses it as the scatter gate; anything needing a 2-D region
+  (histogram gating, ROI cropping) now can.
+- **`image` section: `invert_y`** — images that are really plots (a 2-D
+  histogram) read bottom-up instead of following the top-left image origin.
+- **`table` section: `expand`** — a table fills its panel/dock instead of
+  leaving dead space below its rows.
+- **`info` section: `max_height`** — a short live status line can no longer grow
+  into the panel's spare space.
+- **`help` section: view-relative `resource`** — a relative help file is resolved
+  next to the view spec that declares it (the model's `_view_json`, else the
+  model's module directory), so a plugin ships its `?` modal text beside its
+  `view.json` instead of inlining Markdown into JSON.
+
+## Workflow: setup → file → channels → coefficients
+
+Colocalization is a *channel-pair* question, and in ChiSurf channels are named
+detector windows, not routing-channel numbers. The tool therefore follows the
+same order as the rest of the imaging stack: pick a **detector setup** (its
+windows — green / red / yellow — become the pickable channels *before* any file
+is read), load the **image**, pick the **pair**, then set background/thresholds.
+For a camera image the setup does not apply and the file's own channels are used;
+the view-model decides that per file, so one tool covers both worlds.
+
+## Documentation
+
+Per the [change-tracking rule](/workflows/change-tracking.md), the plugin is
+documented in **theory** (`docs/concepts/colocalization.md` — what each
+coefficient measures, the orthogonal-regression threshold search, the
+randomization null model, the registration check, and what a defensible report
+contains) and in **application** (`docs/guides/38_colocalization.md` — the
+step-by-step workflow with real screenshots, the CLI, and the Python API), plus
+the generated catalogue page whose per-parameter table comes from the view spec's
+`description` fields. The same descriptions are the in-app tooltips, and a
+condensed version of the guide is the `?` modal's Markdown.
 
 # Design decisions
 
@@ -160,11 +196,17 @@ Headless (`plugins/microscopy/img_coloc/test/`, 16 tests):
 - The Qt-free view-model computes, populates the channel list, produces the maps
   and histogram, and applies a gate.
 
-Verified additionally on real data: a multi-detector confocal photon stream
-(`test/data/clsm/PQ_Olympus_MFIS.ht3`) runs end-to-end through the CLI with
-Costes thresholds, the randomization test and the shift profile; and the GUI was
-built and rendered headlessly (settings + coefficient table + maps + scatter with
-a live gate).
+Additionally, the view spec is checked structurally: every attribute it binds
+exists on the view-model **and carries a tooltip**, and the `?` modal's help file
+resolves next to the spec and covers every coefficient family. A detector setup's
+windows become the pickable channels before any file is read, and are ignored for
+camera images.
+
+Verified on real data: a multi-detector confocal photon stream
+(`test/data/clsm/PQ_Olympus_MFIS.ht3`) runs end-to-end through the CLI *and* the
+GUI with named `green`/`red` windows (PCC 0.988, CCF peak at shift 0), with the
+whole workspace, both channel maps, the mask, the gated scatter and the CCF
+rendered headlessly — the same grabs that produce the guide's figures.
 
 # Non-goals
 

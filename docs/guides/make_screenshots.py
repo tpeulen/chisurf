@@ -47,8 +47,7 @@ def _grab_fcs_model_editor():
     from chisurf.gui.widgets.models.model_editor import build_model_editor
 
     x = np.logspace(-3, 3, 60)  # 1 us .. 1 s, in ms
-    data = DataCurve(name="synthetic-fcs", load_filename_on_init=False,
-                     y=np.zeros_like(x), x=x)
+    data = DataCurve(name="synthetic-fcs", load_filename_on_init=False, y=np.zeros_like(x), x=x)
     fit = fit_mod.Fit(model_class=GeneralFCSModel, data=data)
     editor = build_model_editor(fit.model)
     editor.resize(560, 760)
@@ -94,12 +93,28 @@ def _grab_pda_editor():
     ny, nx = s1s2.shape
     rr, cc = np.indices((ny, nx))
     y = s1s2.ravel(order="C")
-    pda = {"maximum_number_of_photons": nmax, "minimum_number_of_photons": nmin,
-           "minimum_time_window_length": 2e-3, "channels": ([0], [1]), "s1s2": s1s2,
-           "ps": ps, "row_indices": rr.ravel().tolist(), "col_indices": cc.ravel().tolist(),
-           "ndim": 2, "shape": (ny, nx), "size": int(y.size), "tttr_indices": None}
-    data = DataCurve(name="synthetic-pda", load_filename_on_init=False, pda=pda,
-                     y=y, x=np.arange(y.size), ey=tcspc.counting_noise(y))
+    pda = {
+        "maximum_number_of_photons": nmax,
+        "minimum_number_of_photons": nmin,
+        "minimum_time_window_length": 2e-3,
+        "channels": ([0], [1]),
+        "s1s2": s1s2,
+        "ps": ps,
+        "row_indices": rr.ravel().tolist(),
+        "col_indices": cc.ravel().tolist(),
+        "ndim": 2,
+        "shape": (ny, nx),
+        "size": int(y.size),
+        "tttr_indices": None,
+    }
+    data = DataCurve(
+        name="synthetic-pda",
+        load_filename_on_init=False,
+        pda=pda,
+        y=y,
+        x=np.arange(y.size),
+        ey=tcspc.counting_noise(y),
+    )
     fit = fit_mod.Fit(model_class=PdaGaussianDistanceModel, data=data)
     editor = build_model_editor(fit.model)
     editor.resize(560, 760)
@@ -113,8 +128,7 @@ def _grab_burst_browser():
     from chisurf.plugins.burst.burst_browser import BurstBrowserWidget
 
     folders = glob.glob(
-        "chisurf/plugins/burst/burst_selection/tests/data/"
-        "bh_spc132_sm_dna/burstwise_All*/bi4_bur"
+        "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/burstwise_All*/bi4_bur"
     )
     if not folders:
         print("SKIP _grab_burst_browser: no sample .bur folder")
@@ -136,25 +150,77 @@ def _grab_2cde_tool():
 
     rng = np.random.default_rng(0)
     # two static populations (low FRET-2CDE ~ 10) + a dynamic bridge (elevated 2CDE)
-    pr = np.concatenate([rng.normal(0.15, 0.04, 400), rng.normal(0.75, 0.04, 400),
-                         rng.uniform(0.2, 0.7, 200)])
-    cde = np.concatenate([rng.normal(10, 1.5, 400), rng.normal(10, 1.5, 400),
-                          rng.normal(28, 6, 200)])
-    df = pd.DataFrame({"First File": ["f0"] * pr.size,
-                       "Proximity Ratio": np.clip(pr, 0, 1),
-                       core.COLUMN_FRET_2CDE: cde})
+    pr = np.concatenate(
+        [rng.normal(0.15, 0.04, 400), rng.normal(0.75, 0.04, 400), rng.uniform(0.2, 0.7, 200)]
+    )
+    cde = np.concatenate(
+        [rng.normal(10, 1.5, 400), rng.normal(10, 1.5, 400), rng.normal(28, 6, 200)]
+    )
+    df = pd.DataFrame(
+        {
+            "First File": ["f0"] * pr.size,
+            "Proximity Ratio": np.clip(pr, 0, 1),
+            core.COLUMN_FRET_2CDE: cde,
+        }
+    )
     tool = BurstTwoCdeTool(embedded=True)
     tool._draw(df, core.COLUMN_FRET_2CDE)
     tool.resize(720, 520)
     _grab(tool, "burst_2cde_tool.png")
 
 
+def _grab_coloc_tool():
+    """Grab the colocalization workspace and its intensity scatter (guide 38)."""
+    # Import the tool first: it pulls the GUI packages in the order the app does
+    # (importing ``autoform`` cold trips a circular import in the widget layer).
+    from chisurf.plugins.microscopy.img_coloc.gui.tool import ImgColocTool
+
+    from chisurf.gui.autoform.sections.builtin import ImageMapWidget
+
+    source = pathlib.Path("test/data/clsm/PQ_Olympus_MFIS.ht3")
+    if not source.is_file():
+        raise FileNotFoundError(source)
+    tool = ImgColocTool()
+    # A detector setup as the Detector-Def tool defines it: named windows as channels.
+    tool.model.apply_setup_settings(
+        {
+            "name": "confocal",
+            "detectors": {
+                "green": {"chs": [0, 1], "micro_time_ranges": []},
+                "red": {"chs": [4, 5], "micro_time_ranges": []},
+            },
+        }
+    )
+    tool.model.filename = str(source)
+    tool.model.channel_a, tool.model.channel_b = "green", "red"
+    tool.model.auto_background = True
+    tool.model.ccf_max_shift = 12
+    tool.model.compute()
+    tool.resize(1500, 900)
+    tool.show()
+    tool._refresh()
+    QApplication.instance().processEvents()
+    _grab(tool, "coloc_workspace.png")
+
+    for widget in tool.findChildren(ImageMapWidget):
+        if getattr(widget, "_target", "") == "histogram_image":
+            widget.resize(560, 480)
+            _grab(widget, "coloc_scatter.png")
+            break
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
 
-    for grab in (_grab_fcs_model_editor, _grab_tcspc_lifetime_editor,
-                 _grab_pda_editor, _grab_burst_browser, _grab_2cde_tool):
+    for grab in (
+        _grab_fcs_model_editor,
+        _grab_tcspc_lifetime_editor,
+        _grab_pda_editor,
+        _grab_burst_browser,
+        _grab_2cde_tool,
+        _grab_coloc_tool,
+    ):
         try:
             grab()
         except Exception as exc:  # keep going; report which grab failed
@@ -181,8 +247,12 @@ def main():
     data = {
         "windows": {"prompt": [0, 2048]},
         "detectors": {"green": {"chs": [0, 8]}, "red": {"chs": [1, 9]}},
-        "tttr_reading": {"file_type": "SPC-130", "macro_time_resolution": 1.0,
-                         "micro_time_resolution": 0.032, "micro_time_binning": 1},
+        "tttr_reading": {
+            "file_type": "SPC-130",
+            "macro_time_resolution": 1.0,
+            "micro_time_resolution": 0.032,
+            "micro_time_binning": 1,
+        },
         "apply_lut": True,
         "channel_luts": {"0": np.linspace(0, 4096, 4096).tolist()},
         "channel_shifts": {"8": 3},

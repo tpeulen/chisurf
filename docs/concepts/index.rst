@@ -52,6 +52,7 @@ ordering below runs from the physical fundamentals to the specific methods.
 
    accessible_volume
    imaging_flim_phasor
+   colocalization
 
 .. rubric:: Simulation
 
