@@ -2,6 +2,32 @@
 
 ## 2026-07-25
 
+* **Undo/redo, at PyMOL's scope — Tier 1 of the chimol parity tracker is closed.**
+  PyMOL's `undo` is much narrower than the word suggests, and matching that scope
+  mattered more than extending it: it stores *coordinate* snapshots, per object, in a
+  ring of sixteen (`cUndoMask = 0xF` in `layer2/ObjectMolecule.h`), and refuses to
+  restore one once the atom count has changed. It does not undo a colour, a
+  representation, a deletion or a load. Promising more would be the wrong kind of
+  parity — a user who expects `undo` to bring back a deleted object is better served
+  by being told no than by an undo that half works.
+
+  The walk in `ObjectMoleculeUndo` is not the obvious pair of stacks: it writes the
+  present coordinates into the ring *before* stepping the iterator, which is why one
+  ring serves both directions and why undo/redo are the same routine with `dir` of
+  ∓1. A two-stack implementation passes a single undo and then drifts, so the tests
+  pin the reversibility rather than only the first step. chimol's snapshot carries
+  every array derived from the same edit — the CA trace, the per-atom render-space
+  positions, the atom array's Angstrom coordinates — since restoring a subset would
+  move the picture back while leaving what `save` writes stale.
+
+  `translate`/`rotate` push a snapshot before they move anything, so the operations
+  fill the ring rather than the undo command. The two failure modes are reported
+  separately, because they mean different things: an exhausted history is ordinary,
+  a restore refused for a changed atom count is not.
+
+  New in `renderer/undo.py` with `undo`/`redo`/`push_undo` commands.
+  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md).
+
 * **`origin` was a camera-model gap, not a one-line command.** PyMOL's view tuple
   defines two points — slots 12-14 the pivot in world space, slots 9-11 a
   camera-space offset applied after the rotation — and chimol had collapsed them into

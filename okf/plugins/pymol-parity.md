@@ -50,7 +50,27 @@ bearing for this group's work**, and those are tiered below.
 | `label` | **done** | Expression language, not templates; `L` menu now live |
 | `create` / `extract` | **done** | Child drawn in its parent's frame, true coordinates kept |
 | `origin` | **done** | Needed the two-point camera the view tuple defines |
-| Undo / redo | **missing** | No edit history at all |
+| Undo / redo | **done** | PyMOL's scope: coordinates, per object, ring of 16 |
+
+**Tier 1 is closed.** Everything a day's work touches is present. What follows is
+Tier 2, which is real but has workarounds.
+
+## Undo is narrower than the word
+
+PyMOL's `undo` is not a command history and matching that scope mattered more than
+extending it: it stores *coordinate* snapshots, per object, in a ring of sixteen
+(`cUndoMask = 0xF`), and refuses to restore one once the atom count has changed. It
+does not undo a colour, a representation, a deletion or a load. Promising more would
+be the wrong parity — a user expecting `undo` to bring back a deleted object is
+better served by being told no.
+
+The walk in `ObjectMoleculeUndo` is not the obvious pair of stacks: it writes the
+present state into the ring *before* stepping, which is why one ring serves both
+directions. A two-stack implementation passes a single undo and then drifts, so the
+tests pin the reversibility rather than just the first step. chimol's snapshot has
+to carry every array derived from the same edit — the trace, the render-space
+positions, the atom array's Angstrom coordinates — or an undo would move the picture
+back while leaving what `save` writes stale.
 
 ## The camera carries two points, not one
 

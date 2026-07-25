@@ -49,6 +49,7 @@ from .base import Renderer
 from .chimol_state import _MolViewObjectEntry, _MolViewObjectState, _StateField
 from .qtgl import QtGLRenderer
 from .scene import Geometry, Scene, SceneObject
+from .undo import UndoRing
 from .view_state import framing_centre, framing_radius
 
 logger = logging.getLogger(__name__)
@@ -478,6 +479,11 @@ class MolView(QtWidgets.QWidget):
     ) -> None:
         rot, trans = _coerce_rotation_translation(rotation, translation)
         target_id = object_id if object_id is not None else self._active_object_id
+
+        # PyMOL's editor snapshots coordinates before it moves them, which is what
+        # makes `undo` mean anything: the ring is filled by the operations, not by
+        # the undo command.
+        self.push_undo(object_id=target_id)
 
         with self._activate_object(object_id):
             state = self._get_active_state()
@@ -1395,6 +1401,8 @@ class MolView(QtWidgets.QWidget):
         self._objects: OrderedDict[str, _MolViewObjectEntry] = OrderedDict()
         self._active_object_id: str | None = None
         self._object_counter: int = 0
+        # Coordinate undo is per object, as PyMOL's is; see renderer/undo.py.
+        self._undo_rings: dict[str, UndoRing] = {}
         # Allow creating an initial entry during startup; turned off when last object is deleted.
         self._auto_create_enabled: bool = True
 
@@ -2236,6 +2244,82 @@ class MolView(QtWidgets.QWidget):
         renderer = self._renderer
         if renderer is not None and hasattr(renderer, "set_view_state"):
             renderer.set_view_state(vals)
+
+    def push_undo(self, *, object_id: str | None = None) -> bool:
+        """Snapshot an object's coordinates onto its undo ring (PyMOL ``push_undo``).
+
+        Parameters
+        ----------
+        object_id : str, optional
+            Object to snapshot; defaults to the active one.
+
+        Returns
+        -------
+        bool
+            False when there is no such object, or it carries no coordinates.
+
+        See Also
+        --------
+        chimol.renderer.undo.UndoRing : the ring, and why it is not a stack pair.
+        """
+        target = object_id or self._active_object_id
+        entry = self._objects.get(target) if target else None
+        state = getattr(entry, "state", None)
+        if state is None:
+            return False
+        return self._undo_ring(target).push(state)
+
+    def undo(self, *, direction: int = -1, object_id: str | None = None) -> str:
+        """Undo or redo an object's last coordinate change (PyMOL ``undo``/``redo``).
+
+        Parameters
+        ----------
+        direction : int, optional
+            ``-1`` to undo, ``+1`` to redo. One routine serves both, as
+            ``ObjectMoleculeUndo`` does: it leaves the present state in the ring
+            before stepping, so the walk is reversible.
+        object_id : str, optional
+            Object to act on; defaults to the active one.
+
+        Returns
+        -------
+        str
+            ``"restored"``, ``"empty"`` when the history holds nothing in that
+            direction, ``"resized"`` when the atom count has changed since the
+            snapshot -- PyMOL refuses that too, since old coordinates cannot be
+            poured into a differently sized object -- or ``"no object"``.
+        """
+        target = object_id or self._active_object_id
+        entry = self._objects.get(target) if target else None
+        state = getattr(entry, "state", None)
+        if state is None:
+            return "no object"
+
+        outcome = self._undo_ring(target).step(state, direction)
+        if outcome != "restored":
+            return outcome
+
+        if target == self._active_object_id:
+            # The globals mirror the active object's arrays.
+            self._coords = state.coords
+            self._center = state.center
+            self._radius = state.radius
+        self._update_view()
+        return "restored"
+
+    def undo_depth(self, *, object_id: str | None = None) -> int:
+        """Number of coordinate snapshots stored for an object."""
+        target = object_id or self._active_object_id
+        ring = self._undo_rings.get(target) if target else None
+        return ring.depth() if ring is not None else 0
+
+    def _undo_ring(self, object_id: str) -> UndoRing:
+        """The undo ring for an object, created on first use."""
+        ring = self._undo_rings.get(object_id)
+        if ring is None:
+            ring = UndoRing()
+            self._undo_rings[object_id] = ring
+        return ring
 
     def set_rotation_origin(self, point: Sequence[float]) -> bool:
         """Move the point the camera rotates about (PyMOL ``origin``).

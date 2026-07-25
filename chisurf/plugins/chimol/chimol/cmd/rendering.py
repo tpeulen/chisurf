@@ -299,6 +299,71 @@ class RenderingMixin(BaseCmd):
         else:
             viewer.zoom(buffer=float(buffer), complete=bool(complete))
 
+    @command("undo")
+    def undo(self) -> None:
+        """Restore the previous coordinates of an object (PyMOL ``undo``).
+
+        Narrower than the word suggests, and deliberately so: PyMOL's ``undo``
+        walks a ring of *coordinate* snapshots per object. It does not undo a
+        colour, a representation, a deletion or a load. ``translate`` and
+        ``rotate`` push a snapshot before they move anything, so those are what
+        there is to undo.
+        """
+        self._step_undo(-1, "undo")
+
+    @command("redo")
+    def redo(self) -> None:
+        """Reapply a coordinate change that ``undo`` reverted (PyMOL ``redo``)."""
+        self._step_undo(1, "redo")
+
+    @command("push_undo")
+    def push_undo(self, sel: Selection = "") -> None:
+        """Snapshot coordinates onto the undo ring (PyMOL ``push_undo``).
+
+        Parameters
+        ----------
+        sel : str, optional
+            Selection naming the object to snapshot; the whole object is stored
+            either way, since the ring is per object.
+        """
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        object_id = self._resolve_object_id(viewer, str(sel) or None)
+        if not viewer.push_undo(object_id=object_id):
+            self._emit_error("push_undo: that object has no coordinates to store")
+            return
+        self._emit_message(
+            f"push_undo: {viewer.undo_depth(object_id=object_id)} snapshots stored"
+        )
+
+    def _step_undo(self, direction: int, label: str) -> None:
+        """Walk the undo ring one step, reporting why when nothing happens."""
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        if not hasattr(viewer, "undo"):
+            self._emit_error(f"{label}: this viewer keeps no coordinate history")
+            return
+
+        object_id = self._resolve_object_id(viewer, None)
+        outcome = viewer.undo(direction=direction, object_id=object_id)
+        if outcome == "restored":
+            self._emit_message(f"{label}: coordinates restored")
+            return
+
+        # The ways this fails mean different things to a user, so they are reported
+        # separately: an exhausted history is ordinary, a refused restore is not.
+        if outcome == "resized":
+            self._emit_error(
+                f"{label}: the atom count has changed since that snapshot, "
+                "so it cannot be restored"
+            )
+        elif outcome == "no object":
+            self._emit_error(f"{label}: no object to {label}")
+        else:
+            self._emit_error(f"{label}: nothing to {label}")
+
     @command("origin")
     def origin(self, sel: Selection = "", position: str = "") -> None:
         """Set the point the camera rotates about (PyMOL ``origin``).
