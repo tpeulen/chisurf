@@ -152,9 +152,45 @@ it is built by a downhill recursion over any number of dyes, so a four-colour
 construct needs no new algebra. Verified by the A/B: the matrix form reproduces
 the incumbent's scalar-correction model to 1e-12.
 
-Remaining: the ChiSurf model + view spec, the burst-table reader, and stages
-3–7 (priors/MCMC, labelling and brightness corrections, global 2c+3c fits,
-dynamics).
+**Reachable from the GUI (2026-07-25).** `chisurf/core/models/pda3c/` +
+`tcpda.view.json` + `chisurf/core/experiments/pda3c/`, registered as the
+`pda3c` experiment type, so tcPDA appears in the add-fit flow like any other
+model. Two readers: a burst-table loader (`.npz`/`.npy`/text, five columns) and
+a **simulator** — three-colour data is scarce, and a model nobody can open is a
+model nobody checks, so the simulator makes the editor exercisable and lets a
+fit be scored against a truth the reader itself set.
+`test/gui/test_tcpda_model_editor.py` (10 tests) covers registration, both
+readers, editor rendering, and an end-to-end `fit.run()` that recovers
+(52.09, 46.10, 68.95) from a start of (47, 51, 62) against a truth of
+(52, 46, 68).
+
+Two decisions worth recording:
+
+- **The objective is the likelihood, dressed as least squares.** Each burst
+  contributes a multinomial *deviance* against the saturated model, so
+  `sum(wres**2) = const - 2 log L` and the existing least-squares machinery
+  performs maximum likelihood unmodified. `n_points` is overridden to the number
+  of independent cell counts (two from the blue trinomial, one from the green
+  binomial, per burst) rather than the length of the displayed curve — with the
+  curve's length the denominator went *negative* and chi2r came out at -7400.
+- **chi2r here is relative, not absolute.** The saturated reference has three
+  free cells per burst and the per-cell counts are far too small for the usual
+  deviance asymptotics, so it settles near **2.4** at the truth, stable across
+  dataset size. Good for comparing fits of the same data; not a goodness-of-fit
+  test. For that, use error surfaces or a parametric bootstrap like the
+  two-colour `consistency` module. This is documented on the model rather than
+  left for a user to discover.
+
+The displayed curve is the three proximity-ratio histograms
+(`F_BG/N_blue`, `F_BR/N_blue`, `F_GR/N_green`), computed **analytically** — a
+multinomial marginal is a binomial, so the prediction is a weighted sum of
+binomial pmfs over the observed burst sizes and the quadrature nodes, with no
+resampling.
+
+Remaining: a TTTR reader that builds the burst table from PIE windows and three
+detector channels (the current readers take a table someone else produced), a
+`docs/concepts` page and numbered guide, and stages 3–7 (priors/MCMC, labelling
+and brightness corrections, global 2c+3c fits, dynamics).
 
 Parent: [PRD-49](prd-49.md) (three-colour PDA row). Related: [PRD-50](prd-50.md)
 (two-colour PDA family), [PRD-61](prd-61.md) (parameter priors — the enabler),

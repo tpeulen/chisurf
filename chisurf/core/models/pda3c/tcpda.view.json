@@ -1,0 +1,143 @@
+{
+  "_comment": "Editor layout for the three-colour PDA model (TcPdaModel). PRD-65; compute stays in tcpda.py, this JSON is user-editable.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Distance populations",
+      "collapsible": true,
+      "collapsed": false,
+      "bounds_toggle": true,
+      "description": "Trivariate-Gaussian species over the three dye-pair distances. One row per species: amplitude, then mean and width for each pair.",
+      "sections": [
+        {
+          "type": "dynamic_group",
+          "target": "species",
+          "rows_source": "_distance_parameter_rows",
+          "row_width": 7,
+          "append_method": "append",
+          "remove_method": "pop",
+          "min_rows": 1,
+          "collapsible": false,
+          "style": "table"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Distance correlations",
+      "collapsible": true,
+      "collapsed": false,
+      "bounds_toggle": true,
+      "description": "Correlation between the three distances within a species — the quantity three-colour FRET exists to measure. Free these to ask whether the distances move together; fixed at zero they are three independent widths.",
+      "sections": [
+        {
+          "type": "dynamic_group",
+          "target": "species",
+          "rows_source": "_correlation_parameter_rows",
+          "row_width": 3,
+          "append_method": "append",
+          "remove_method": "pop",
+          "min_rows": 1,
+          "collapsible": false,
+          "style": "table"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Instrument / corrections",
+      "collapsible": true,
+      "collapsed": true,
+      "bounds_toggle": true,
+      "description": "Foerster radii, spectral crosstalk, relative detection efficiencies, direct excitation and per-channel background. These become the excitation and emission probability matrices the model composes.",
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "target": "setup",
+          "collapsible": false
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Quadrature",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "How the Gaussian species is integrated. Gauss-Hermite nodes per distance axis; a handful is ample because the species is exactly Gaussian in the transformed coordinates.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "scalar_table",
+          "options": {
+            "title": "Integration",
+            "rows": [
+              {
+                "attr": "n_nodes",
+                "label": "Nodes / axis",
+                "kind": "int"
+              },
+              {
+                "attr": "truncate",
+                "label": "Weight cutoff"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "distribution",
+      "options": {
+        "with_residual_panel": true,
+        "distribution_options": {
+          "Proximity ratios (BG | BR | GR)": {
+            "attribute": "fit",
+            "accessor": "chisurf.core.models.pda3c.tcpda:get_tcpda_ratio_curves",
+            "accessor_kwargs": {},
+            "scale_x": "lin",
+            "curve_options": {
+              "stepMode": false,
+              "connect": "all",
+              "multi_curve": true,
+              "symbol": [
+                "None",
+                "None",
+                "None"
+              ],
+              "pen": [
+                "b",
+                "r",
+                "k"
+              ]
+            }
+          },
+          "Distance P(R)": {
+            "attribute": "fit",
+            "accessor": "chisurf.core.models.pda3c.tcpda:get_tcpda_distance_distributions",
+            "accessor_kwargs": {},
+            "scale_x": "lin",
+            "curve_options": {
+              "stepMode": false,
+              "connect": "all",
+              "multi_curve": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "residual",
+      "options": {}
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "parameter_scan",
+      "options": {}
+    }
+  ]
+}
