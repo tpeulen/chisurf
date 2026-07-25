@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 26):*
+*Landed so far (allow-list 76 → 25):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -524,6 +524,15 @@ screenshot/qtbot verification after each cluster.
   Before/after screenshots confirmed the layouts are unchanged. (These files still
   import pyqtgraph for plots / `pyqtgraph.opengl`, so they remain allow-listed —
   only the dock system moved.)
+- **Batch 25** (allow-list 26 → 25) — finished `gui/plots/parameter_scan` (its
+  dockarea was already moved above). `pg.PlotWidget`→`cp.Plot`; the χ²-surface
+  curve → `line`/`set_data`; the confidence-interval overlays (a horizontal
+  threshold `InfiniteLine` + vertical crossing lines, dashed/dash-dot) → `hline`/
+  `vline` with `label=` and module-level `cp.to_pen` pens; overlay add/remove use
+  `add`/`remove` handles. The pyqtgraph `labelOpts` position hints have no chiplot
+  equivalent and were dropped (labels still render at the default position).
+  Screenshot-verified (χ² parabola + orange 68% threshold + green crossing lines
+  at 1.40/2.20, in a chisurf DockArea tab).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

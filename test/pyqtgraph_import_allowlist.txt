@@ -7,7 +7,6 @@ chisurf/gui/plots/_qwt_compat.py
 chisurf/gui/plots/av_plot.py
 chisurf/gui/plots/distribution.py
 chisurf/gui/plots/lineplot/lineplot.py
-chisurf/gui/plots/parameter_scan/parameter_scan.py
 chisurf/gui/plots/proteinMC.py
 chisurf/gui/plots/residual_image.py
 chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition.py

@@ -4,8 +4,8 @@ from chisurf import typing
 import time
 import re
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtWidgets, QtCore
+from chisurf.gui import chiplot as cp
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 
 import chisurf as cs
@@ -23,11 +23,9 @@ colors = plot_settings['colors']
 color_scheme = cs.core.settings.colors
 lw = plot_settings['line_width']
 
-OVERLAY_PEN = pg.mkPen((255, 128, 0), width=1.5, style=QtCore.Qt.DashLine)
-CROSSING_PEN = pg.mkPen((0, 180, 0), width=1.5, style=QtCore.Qt.DashDotDotLine)
+OVERLAY_PEN = cp.to_pen((255, 128, 0), width=1.5, style="dash")
+CROSSING_PEN = cp.to_pen((0, 180, 0), width=1.5, style="dash_dot")
 P_VALUE_LEVELS = (0.68, 0.95, 0.99)
-HORIZONTAL_LABEL_POSITIONS = (0.32, 0.50, 0.68, 0.82)
-VERTICAL_LABEL_POSITIONS = (0.18, 0.32, 0.46, 0.60, 0.74, 0.88)
 
 
 class ParameterScanWidget(
@@ -271,30 +269,27 @@ class ParameterScanPlot(
         self.layout.addWidget(area)
 
         self.p1 = QtWidgets.QPlainTextEdit()
-        p2 = pg.PlotWidget()
+        p2 = cp.Plot()
 
         area.addTab(p2, "Chi2-Surface")
 
-        distribution_plot = p2.getPlotItem()
-
-        self.distribution_plot = distribution_plot
-        self.distribution_curve = distribution_plot.plot(
-            x=[0.0],
-            y=[0.0],
-            pen=pg.mkPen(colors['data'], width=lw),
-            name='Data'
+        self.distribution_plot = p2
+        self.distribution_curve = p2.line(
+            [0.0], [0.0],
+            pen=colors['data'], width=lw,
+            name='Data',
         )
 
         self._overlay_items = []
 
     def _clear_overlays(self):
         for item in self._overlay_items:
-            self.distribution_plot.removeItem(item)
+            self.distribution_plot.remove(item)
         self._overlay_items = []
 
-    def _add_overlay(self, item):
-        self.distribution_plot.addItem(item)
-        self._overlay_items.append(item)
+    def _add_overlay(self, handle):
+        # The handle is already attached (created via hline/vline); just track it.
+        self._overlay_items.append(handle)
 
     @staticmethod
     def _format_interval_label(interval) -> str:
@@ -337,7 +332,7 @@ class ParameterScanPlot(
             if not np.any(np.isfinite(x)) or not np.any(np.isfinite(y)):
                 return
 
-            self.distribution_curve.setData(x=x, y=y)
+            self.distribution_curve.set_data(x, y)
 
             # Draw overlays from smart-scan result
             self._clear_overlays()
@@ -350,33 +345,24 @@ class ParameterScanPlot(
                         'threshold': result.get('threshold'),
                         'crossings': result.get('crossings', (None, None)),
                     }]
-                for interval_index, interval in enumerate(intervals):
+                for interval in intervals:
                     threshold = interval.get('threshold')
                     if threshold is None:
                         continue
-                    thr_line = pg.InfiniteLine(
-                        pos=threshold, angle=0,
+                    thr_line = self.distribution_plot.hline(
+                        threshold,
                         pen=OVERLAY_PEN,
                         label=self._format_interval_label(interval),
-                        labelOpts={
-                            'position': HORIZONTAL_LABEL_POSITIONS[
-                                interval_index % len(HORIZONTAL_LABEL_POSITIONS)
-                            ],
-                        },
                     )
                     self._add_overlay(thr_line)
 
                     crossings = interval.get('crossings', (None, None))
-                    for crossing_index, cr in enumerate(crossings):
+                    for cr in crossings:
                         if cr is not None:
-                            label_position = VERTICAL_LABEL_POSITIONS[
-                                (2 * interval_index + crossing_index) % len(VERTICAL_LABEL_POSITIONS)
-                            ]
-                            vline = pg.InfiniteLine(
-                                pos=cr, angle=90,
+                            vline = self.distribution_plot.vline(
+                                cr,
                                 pen=CROSSING_PEN,
                                 label='{:.4g}'.format(cr),
-                                labelOpts={'position': label_position},
                             )
                             self._add_overlay(vline)
         except Exception as e:

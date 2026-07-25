@@ -345,6 +345,8 @@ def test_migrated_modules_import(qapp):
         # NB: irf_estimator.gui.tool (Batch 24) is intentionally NOT listed — like
         # burst_fcs_correlator it transitively imports IMP, which segfaults in this
         # shared test process. Verified standalone + screenshot-checked instead.
+        # Batch 25
+        "chisurf.gui.plots.parameter_scan.parameter_scan",
     ):
         assert importlib.import_module(name) is not None
 
