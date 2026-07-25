@@ -17,7 +17,7 @@ from typing import Any
 import chisurf as cs
 from chisurf.core.agent.context import AgentContext
 from chisurf.core.agent.spec import SAFETY_READ, SAFETY_WRITE, ToolError, ToolRegistry
-from chisurf.core.agent.tools._dto import _round, chi2r
+from chisurf.core.agent.tools._dto import _round, chi2r, fit_members, member_summary
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +153,52 @@ def _default_decay_model(context: AgentContext) -> str:
 
 
 def assess_fit(fit: Any) -> dict[str, Any]:
-    """Judge a fit and say what to do about it.
+    """Judge a fit — or every curve of a grouped fit — and say what to do.
+
+    A dataset that arrived as several curves in one file is fitted as a group
+    with one member per curve, and judging only the selected member would pass
+    a group in which most curves fit badly.
+
+    Parameters
+    ----------
+    fit : object
+        The fit to judge.
+
+    Returns
+    -------
+    dict
+        The verdict for the fit; for a group, the verdict of its worst member
+        together with the per-member reduced chi-squares.
+    """
+    verdict = _assess_one(fit)
+    members = fit_members(fit)
+    if not members:
+        return verdict
+
+    verdict.update(member_summary(fit, detailed=True))
+    spread = verdict.get("members_chi2r")
+    entries = verdict.get("members") or []
+    if not spread or not entries:
+        return verdict
+
+    # The group is only as good as its worst curve.
+    worst_entry = max(entries, key=lambda entry: entry["chi2r"] or 0.0)
+    worst_verdict = _assess_one(members[worst_entry["member"]])
+    ranking = {"good": 0, "acceptable": 1, "poor": 2, "unknown": 3}
+    if ranking.get(worst_verdict.get("quality"), 0) > ranking.get(verdict.get("quality"), 0):
+        verdict["quality"] = worst_verdict["quality"]
+        verdict["reason"] = (
+            f"the {len(members)} curves in this dataset span reduced chi2 "
+            f"{spread['min']} to {spread['max']}; the worst is not acceptable "
+            f"({worst_verdict.get('reason', '')})"
+        )
+        if "next_step" in worst_verdict:
+            verdict["next_step"] = worst_verdict["next_step"]
+    return verdict
+
+
+def _assess_one(fit: Any) -> dict[str, Any]:
+    """Judge a single fit and say what to do about it.
 
     A number alone does not tell a model to keep working: on the sample decay
     a language model happily reported ``chi2r = 12.8`` as a result because

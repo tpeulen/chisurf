@@ -426,6 +426,16 @@ def read_zeiss_fcs(
         correlation_time = correlation[:, 0]
         correlation_amplitude = correlation[:, 1] + 1.0
 
+        # A ConfoCor measurement holds several kinds of curve -- the file
+        # read here carries four repeats each of AC1, AC2, CC12 and CC21 --
+        # and they must not be confused for repeats of one another, so the
+        # kind the parser already determined is kept in the name and in the
+        # meta data instead of being discarded.
+        curve_type = str(d['Type'][i]) if i < len(d['Type']) else ""
+        measurement_id = "%s_%s" % (d['Filename'][i], i)
+        if curve_type:
+            measurement_id = "%s_%s" % (measurement_id, curve_type)
+
         trace = d['Trace'][i]
         if len(trace) == 2:
             # Cross correlation and two channels
@@ -459,7 +469,8 @@ def read_zeiss_fcs(
             correlations.append(
                 {
                     'filename': filename,
-                    'measurement_id': "%s_%s" % (d['Filename'][i], i),
+                    'measurement_id': measurement_id,
+                    'correlation_type': curve_type,
                     'acquisition_time': aquisition_time,
                     'mean_count_rate': mean_count_rate,
                     'mean_count_rate_total': mean_count_rate_total,
@@ -477,7 +488,7 @@ def read_zeiss_fcs(
                     'intensity_trace': np.vstack(
                         [
                             intensity_ch1,
-                            intensity_time_ch2
+                            intensity_ch2
                         ]
                     ).tolist()
                 }
@@ -500,7 +511,8 @@ def read_zeiss_fcs(
             correlations.append(
                 {
                     'filename': filename,
-                    'measurement_id': "%s_%s" % (d['Filename'][i], i),
+                    'measurement_id': measurement_id,
+                    'correlation_type': curve_type,
                     'acquisition_time': aquisition_time,
                     'mean_count_rate': mean_count_rate,
                     'correlation_times': correlation_time.tolist(),

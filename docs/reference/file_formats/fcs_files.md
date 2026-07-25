@@ -173,6 +173,28 @@ trace.append((float(row[0]) * 1000, float(row[1]))
 The reader uses the trace to compute acquisition time and mean count rate,
 which in turn are used to derive weights for `correlation_amplitude_weights`.
 
+### One file, many curves
+
+A ConfoCor `.fcs` is a measurement archive rather than a single curve. A
+two-colour (FCCS) session typically yields **four repeats of four different
+kinds of curve**, and ChiSurf loads the file as one dataset group holding all
+of them:
+
+| curve type | meaning |
+| --- | --- |
+| `AC1`, `AC2` | autocorrelation of detector 1 / detector 2 |
+| `CC12`, `CC21` | cross-correlation between the detectors, computed both ways |
+
+The kind is taken from the `Channel` key of each `FcsDataSet` section and is
+preserved in two places: appended to `measurement_id` (so a curve is named
+`<file>_<index>_<type>`, e.g. `sample.fcs_2_CC12`) and stored as
+`correlation_type` in the curve's `meta_data`.
+
+Curves of different kinds answer different questions — the autocorrelations
+give `N` and `D` per channel, the cross-correlations give the co-diffusing
+fraction — so they are not repeats of one another and must not be averaged
+together. Fitting the group creates one fit with one member per curve.
+
 ---
 
 ## China FCS MATLAB `.mat` {#fcs-china-mat}

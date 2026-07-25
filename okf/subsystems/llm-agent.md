@@ -158,6 +158,14 @@ model is actually reading when it decides to stop:
 * `load_data` flags datasets whose names look like instrument-response
   measurements (`irf`, `prompt`, `lamp`) so they are used as references
   rather than fitted as samples.
+* A dataset that holds several curves reports `n_curves` and, where the
+  reader knows it, what kind each curve is; a fit over such a group reports
+  `n_members` and the spread of reduced chi-square across members, and is
+  judged by its **worst** member. One file is not always one measurement — a
+  cross-correlation measurement archive holds four repeats each of two
+  autocorrelations and two cross-correlations — and reporting the selected
+  member's chi-square as *the* result silently answers for one curve out of
+  sixteen.
 
 `auto_fit_decay` packages the same protocol into one call — attach the IRF,
 add components until chi-square stops improving materially (2 %), stop early

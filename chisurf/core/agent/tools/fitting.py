@@ -389,6 +389,8 @@ def run_fit(
             entry["chi2r"] = None if after is None else round(float(after), 4)
             entry["ok"] = True
             # A bare number does not tell a model that its work is unfinished.
+            # For a grouped fit this judges every curve, not just the selected
+            # one — a run over sixteen curves must not report one chi2r.
             entry["assessment"] = assess_fit(fit_object)
         except Exception as error:
             entry["ok"] = False

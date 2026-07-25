@@ -2,6 +2,32 @@
 
 ## 2026-07-25
 
+* **One file is not one curve: grouped datasets are no longer reported as a
+  single measurement.** A Zeiss ConfoCor `.fcs` is a measurement archive — the
+  sample in `test/data` holds sixteen correlation curves, four repeats each of
+  `AC1`, `AC2`, `CC12` and `CC21` — and ChiSurf correctly fits it as a group
+  with one member per curve. The assistant, however, was told "one fit,
+  chi2r = 133" while the sixteen members spanned 12 to 180: a number that
+  answers for one curve out of sixteen, presented as the result. Three changes,
+  in the layer where each belongs. **The reader** (`fio/fluorescence/fcs/
+  confocor3.py`) already determined each curve's kind and then discarded it, so
+  every curve arrived as `<file>_<n>` with nothing to distinguish an
+  autocorrelation from a cross-correlation; it now keeps the kind in
+  `measurement_id` and in `meta_data['correlation_type']`. The same function
+  stored channel 2's *time axis* as its intensity for cross-correlation curves
+  (`intensity_time_ch2` for `intensity_ch2`) — fixed. **The agent's payloads**
+  report `n_curves` and the per-curve kinds for a group, and `n_members` plus
+  the spread of reduced chi-square for a grouped fit, with `assess_fit` judging
+  a group by its worst member rather than its selected one. **The capability**
+  is expressed where capability belongs: the knowledge concept
+  `measurement-files` and the `fit-correlation` skill now explain that the
+  autocorrelations give `N` and `D` per channel while the cross-correlations
+  give the co-diffusing fraction, so the kinds are neither repeats nor
+  averageable. 7 regression tests (`test/agent/test_grouped_datasets.py`);
+  agent suite 417 passing. Also: the live-LLM tests now *skip* on provider
+  unavailability (HTTP 402/429/5xx, credit, rate limit) rather than failing, as
+  the example-prompt tests already did.
+
 * **Finite-difference HMC: measured, and the folklore is half wrong — but it
   still does not ship.** The standing answer to "can we not just use a numerical
   gradient?" was an argument rather than a number, so it was measured on a

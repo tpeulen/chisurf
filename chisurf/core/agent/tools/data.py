@@ -399,7 +399,7 @@ def list_datasets(context: AgentContext) -> dict[str, Any]:
     return {
         "ok": True,
         "n_datasets": len(datasets),
-        "datasets": [dataset_summary(d, i) for i, d in enumerate(datasets)],
+        "datasets": [dataset_summary(d, i, detailed=True) for i, d in enumerate(datasets)],
     }
 
 

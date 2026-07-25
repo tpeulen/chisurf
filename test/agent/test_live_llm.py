@@ -58,6 +58,40 @@ def live_session(context):
     )
 
 
+#: Failures that say nothing about the agent — the provider was unavailable,
+#: out of credit or rate-limiting. These skip; a genuinely wrong answer fails.
+UNAVAILABLE = (
+    "http 402",
+    "http 429",
+    "http 5",
+    "credit",
+    "quota",
+    "rate limit",
+    "capacity",
+    "timed out",
+    "connection",
+    "unreachable",
+)
+
+
+def require_reachable(result):
+    """Skip when the provider was unreachable rather than the agent wrong.
+
+    These prompts are documentation as much as tests: they must fail loudly
+    when the agent misbehaves, and stay quiet when nobody is answering.
+
+    Parameters
+    ----------
+    result : object
+        The result of :meth:`AgentSession.ask`.
+    """
+    if result.ok:
+        return
+    message = f"{result.stop_reason} {result.error}".lower()
+    if any(marker in message for marker in UNAVAILABLE):
+        pytest.skip(f"provider unavailable: {result.error}")
+
+
 def test_the_provider_is_configured_for_tool_calling(live_session):
     """A provider that cannot be reached fails every other test confusingly."""
     assert live_session.llm.settings.model, f"no model configured for {PROVIDER!r}"
@@ -71,6 +105,7 @@ def test_the_model_loads_and_fits_a_folder(live_session):
         f"decays with the model 'Lifetime (new)'. Report the reduced chi2."
     )
 
+    require_reachable(result)
     assert result.ok, f"agent stopped early: {result.stop_reason} {result.error}"
     called = result.tool_names()
     assert "load_data" in called
@@ -100,6 +135,7 @@ def test_the_model_recovers_from_a_wrong_path(live_session):
         "Load the data in the folder 'tcspc/DoesNotExist'. If that folder is "
         f"missing, load '{TCSPC}' instead."
     )
+    require_reachable(result)
     assert result.ok, f"agent stopped early: {result.stop_reason} {result.error}"
     assert len(live_session.context.datasets) > 0
 
@@ -109,6 +145,7 @@ def test_the_model_uses_python_for_something_no_tool_covers(live_session):
     result = live_session.ask(
         "Using run_python, print the sum of the numbers 1 to 10 and tell me the value."
     )
+    require_reachable(result)
     assert result.ok
     assert "run_python" in result.tool_names()
     assert "55" in result.text
@@ -125,6 +162,7 @@ def test_the_model_reaches_a_good_decay_fit_on_its_own(live_session):
         f"instrument response is in the same folder. Fit it properly and tell "
         f"me the lifetimes."
     )
+    require_reachable(result)
     assert result.ok, f"agent stopped early: {result.stop_reason} {result.error}"
     assert "set_irf" in result.tool_names(), "a decay fit without an IRF is wrong"
 
@@ -155,5 +193,6 @@ def test_the_model_reports_parameters_of_a_fit(live_session):
     """A follow-up question in the same conversation reuses the state."""
     live_session.ask(f"Load '{TCSPC}/215-268 D0.dat' and fit it with 'Lifetime (new)'.")
     result = live_session.ask("What is the fitted lifetime, in nanoseconds?")
+    require_reachable(result)
     assert result.ok
     assert any(character.isdigit() for character in result.text)

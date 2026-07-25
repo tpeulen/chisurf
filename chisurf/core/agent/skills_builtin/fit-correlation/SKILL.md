@@ -14,6 +14,11 @@ triggers:
   - autocorrelation
   - cross-correlation
   - brightness
+  - fccs
+  - co-diffusion
+  - codiffusion
+  - confocor
+  - bound fraction
 experiments: [FCS, PCF]
 tools:
   - list_files
@@ -76,6 +81,41 @@ link it rather than fixing it — see the `fit-series` skill.
 
 If the curve shows a fast component that diffusion cannot explain, free `b`.
 Do not free it by reflex: an unnecessary bunching term will absorb noise.
+
+## When one file holds many curves
+
+A correlator usually writes a whole session into one file, so a dataset is
+often a **group of curves rather than a single measurement**. Call
+`list_datasets` and read `n_curves` and each curve's `correlation_type`
+before deciding what to fit.
+
+A two-colour (FCCS) measurement gives curves of different kinds, and they
+answer different questions:
+
+* `AC1`, `AC2` — the autocorrelation of each detector. Fit these for `N` and
+  `D` of each labelled species.
+* `CC12`, `CC21` — the cross-correlation between the detectors. Its amplitude
+  carries the **co-diffusing fraction**, i.e. how much of the two species is
+  bound together. `CC12` and `CC21` are the same quantity computed both ways
+  and should agree.
+
+Never treat curves of different kinds as repeats of one another, and never
+average across kinds. Curves of the *same* kind in one file usually are
+repeats, and the `fit-series` skill applies to them.
+
+`create_fit` on the group creates one fit with a member per curve, and
+`run_fit` optimises every member. The headline reduced chi-square is the
+selected member's only — the result carries `n_members` and the spread, so
+report the spread and name any curve that is far out of line. When the kinds
+need different treatment, fit them separately rather than accepting one model
+over all of them:
+
+```python
+# which curve is which, before creating any fit
+for index, dataset in enumerate(datasets):
+    for position, curve in enumerate(dataset):
+        print(index, position, curve.name, curve.meta_data.get("correlation_type"))
+```
 
 ## Interpreting
 
