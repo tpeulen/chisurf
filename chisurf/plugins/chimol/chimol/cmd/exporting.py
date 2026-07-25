@@ -9,8 +9,10 @@ from pathlib import Path
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
+from ..io.export import unscale_coordinates, write_structure
 from .base import BaseCmd
 from .registry import command
+from .selection_types import Selection
 
 
 class RayRenderThread(QtCore.QThread):
@@ -41,6 +43,72 @@ class RayRenderThread(QtCore.QThread):
 
 class ExportMixin(BaseCmd):
     """Image and data export commands."""
+
+
+
+    @command("save")
+    def save(self, filename: str = "", sel: Selection = "") -> None:
+        """Write a structure or image (PyMOL ``save filename [, selection]``).
+
+        The format follows the extension: ``.pdb``/``.ent``/``.pqr`` write PDB,
+        ``.cif``/``.mmcif`` write mmCIF, ``.png`` saves the viewport, and anything
+        unrecognised writes PDB -- which is PyMOL's own rule rather than an
+        error, since a mistyped extension should still leave a usable file.
+
+        What is written is the structure **as the viewer holds it**: coordinates
+        as currently transformed, atoms as currently present. Re-exporting the
+        source file instead would silently discard whatever the user did.
+        """
+        if not filename:
+            self._emit_error("Usage: save <filename> [, selection]")
+            return
+
+        path = Path(str(filename)).expanduser()
+        if path.suffix.lower() == ".png":
+            self.png(str(path))
+            return
+
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        atoms = getattr(viewer, "_atoms", None)
+        coords = getattr(viewer, "_all_atom_coords", None)
+        if atoms is None or coords is None:
+            self._emit_error(
+                "save: the active object has no atoms to write "
+                "(load a structure first)"
+            )
+            return
+
+        mask = None
+        selection = str(sel).strip()
+        if selection:
+            try:
+                _, _, mask = self._resolve_selection_to_atom_mask(viewer, selection)
+            except Exception as exc:
+                self._emit_error(f"save: {exc}")
+                return
+            if mask is None or not np.asarray(mask, dtype=bool).any():
+                self._emit_error(f"save: selection '{selection}' matched no atoms")
+                return
+
+        xyz = unscale_coordinates(
+            coords,
+            float(getattr(viewer, "_scale_factor", 1.0) or 1.0),
+            getattr(viewer, "_raw_center", None),
+        )
+
+        try:
+            fmt, written = write_structure(
+                path, atoms, xyz, mask=mask,
+                title=str(getattr(window, "windowTitle", lambda: "")() or ""),
+            )
+        except Exception as exc:
+            self._emit_error(f"save: could not write {path}: {exc}")
+            return
+
+        self._emit_message(f"Wrote {written} atoms as {fmt.upper()}: {path}")
 
     @command("png")
     def png(

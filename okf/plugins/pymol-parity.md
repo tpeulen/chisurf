@@ -45,11 +45,23 @@ bearing for this group's work**, and those are tiered below.
 | Object menus A/S/H/L/C | **done** | 1:1 from `pymol/menu.py` |
 | Menu bar | **done** | PyMOL's grouping |
 | Selection algebra | partial | No `bymol`, `bychain`, `gap`, `pepseq`, `rep`, `flag` |
-| `save` (PDB/mmCIF export) | **missing** | Cannot get structures back out |
+| `save` (PDB/mmCIF export) | **done** | Writes what the viewer holds, not the source file |
 | `label` | **missing** | Whole representation; `L` menu is disabled because of it |
 | `create` / `extract` | **missing** | No way to split a selection into an object |
 | `origin` | **missing** | Rotation about a chosen point |
 | Undo / redo | **missing** | No edit history at all |
+
+## Reader differences found while closing Tier 1
+
+* **Alternate locations.** PyMOL keeps every altloc as a separate atom (148L:
+  1385 atoms, 22 A + 22 B); chimol reads through IMP's
+  `NonAlternativePDBSelector` and keeps only the first (1363). Defensible for a
+  viewer and it round-trips cleanly, but the atom counts will not agree with
+  PyMOL's on any structure with altlocs.
+* **Unit boundaries are where the bugs are.** `translate` took Angstrom and
+  applied them to the renderer's scene-unit arrays, so `translate [100,0,0]`
+  moved the molecule 10 Å. Invisible on screen; obvious the moment a file was
+  written. Any new command that takes a length must convert.
 
 # Tier 2 — routine, works around-able
 
