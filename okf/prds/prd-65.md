@@ -261,7 +261,19 @@ renormalised, which keeps the cost linear in channels rather than exponential in
 states; the marginals are exact, the joint is not. See [PRD-50](prd-50.md) for
 the measured validity range.
 
-Remaining: global two-plus-three-colour joint fits (stage 5), a
+**Global two-plus-three-colour fits (stage 5) — verified, not built
+(2026-07-25).** A three-colour construct shares a dye pair with the two-colour
+measurement of that pair, so the shared distance is over-determined and worth
+fitting jointly rather than averaging two answers afterwards. ChiSurf's global
+fit already concatenates its members' weighted residuals and its parameter
+linking is generic, so both PDA families drop in unchanged:
+`test/gui/test_pda_global_fit.py` puts a two-colour Gaussian fit and a tcPDA fit
+in one `GlobalFitModel`, checks the residual vector and point count are the sum
+of the members', links the shared distance (and confirms the follower is not
+offered to the optimiser twice), and recovers it from a displaced start. No
+tcPDA-specific global machinery was needed.
+
+Remaining: a
 `docs/concepts` page and numbered guide, and the unresolved error-surface width
 discrepancy.
 
