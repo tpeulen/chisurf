@@ -1062,3 +1062,67 @@ Findings RF-078..RF-082.
 - **Location:** `chisurf/plugins/chimol/chimol/renderer/scenes.py:216-221` (`keep_view`, captured only `if "view" not in aspects`) with `:244-258` and `:147-151`
 - **Finding:** `recall` restores representations, calls `viewer._update_view()`, then puts the view back **last**, because "the camera's offset is stored relative to the scene centre, and changing what is drawn moves that centre" (the module's own comment at `:249-252`). But `keep_view` is captured only when the caller *excludes* view. A scene stored with `view=0` — the colour-only or rep-only scene the module docstring advertises as the whole reason the flags exist — has `scene.view is None`, so recalling it with the command's default flags takes the `"view" in aspects` branch, `wanted` is `None`, and nothing is restored after the rebuild. Verified: with two objects 80 Å apart, `scene s1, store, view=0` then `disable mob` then `scene s1, recall` moves the camera state by **398.9**, while the same recall with an explicit `view=0` holds it to **0.0000** — the protection is present but unreachable for exactly the scenes it was written for. The same hole opens when `store` silently swallows a `get_view_state` failure at `:148-151`. Capture `keep_view` whenever no view will be restored: `if "view" not in aspects or scene.view is None`.
 - **Fix note:**
+
+### Review 2026-07-26 (7) — the project↔chinet session round trip, and the `to_dict` contract
+
+Slice: commit `0f7e07e69` — `chisurf/core/project/project.py::_restore_chinet_session`,
+`modules/chinet/chinet/session.py` (`Session.load`, the new `clear`),
+`chisurf/core/curve.py::_set_axis`, and the `skip_qt_widgets` parameter the same
+commit threaded through `Curve`/`ExperimentalData`/`DataCurve`. Everything below was
+reproduced in the `arm64` env through the real `Project.save`/`Project.load` path.
+What checks out: `Session.load` really is a classmethod and the old call discarded
+its result, so the direction of the fix is right; `Session.clear` empties both
+`nodes` and `_document["nodes"]`; `Curve.__init__`'s `float64` coercion removes the
+object-dtype `None` array and the one-sided `x`/`y` fill is symmetric; the
+`parameters_all_dict` switch in `fret_line.py` targets keys that really are absent
+from `parameter_dict` for fixed model constants; `DataGroup.name`'s setter matches
+its getter's `__dict__` lookup. Findings RF-083..RF-089.
+
+### RF-083
+- **Status:** OPEN
+- **Severity:** S1 (opening a project detaches every live parameter port from the object registry; the next save persists pre-open values)
+- **Location:** `chisurf/core/project/project.py:210-221` (`_restore_chinet_session`) via `modules/chinet/chinet/session.py:179` (`DB.clear()` inside `Session.load`), against `chisurf/core/parameter.py:661-667` (every `FittingParameter` owns a `chinet.Port`)
+- **Finding:** `Session.load` wipes the process-global `DB` registry and re-registers *file copies* under the very same oids, so after a project is opened `DB.get(p._port.oid)` no longer returns the live port an open parameter reads and writes — it returns a detached duplicate frozen at the value stored in the archive. Verified end to end: a `Parameter(value=3.0)` saved to `probe.csp`, the project re-opened, then `p1.value = 42.0` — `DB.get(p1._port.oid).value` still reads `[3.]`, and the *next* `Project.save` writes `('alpha', [3.0])` into `session.jsonl` instead of `42.0`. `Session.save` serialises `DB.dump_all()`, so the persisted node graph silently records the state at the moment of the last open, and every object created before that open is dropped from the registry entirely. Either re-point the registry at the live objects after a restore, or scope `Session.load`'s `DB.clear()` to the session being built instead of the process-wide singleton.
+- **Fix note:**
+
+### RF-084
+- **Status:** OPEN
+- **Severity:** S2 (every restored object is registered twice, so each save after a load duplicates the graph in the file)
+- **Location:** `modules/chinet/chinet/base.py:68` (`DB.register(self)` in `BaseObject.__init__`) with `:72-75` (the `oid` setter) and `:147-151` (`set_document`)
+- **Finding:** `BaseObject.__init__` registers the new object under a freshly minted uuid; `Session.load` then rebinds that object's oid to the one read from the file (`n.oid = oid`, `set_document`) and re-registers it — but nothing removes the first key, so `DB._objects` ends up holding two keys per restored object, both pointing at the same instance. `DB.dump_all()` iterates keys, so the object's document is emitted twice. Verified: a session with one node and one port saves as 3 lines; after one load/save cycle the same graph saves as **5** lines (`{'node': 2, 'port': 2, 'session': 1}`) with the node and port documents byte-identical and duplicated, and `len(DB._objects)` is 6 for 3 objects. Cross-process it is worse — opening a project written elsewhere and saving leaves **two** `type: "session"` documents in the file, since the live session is no longer registered under the restored session's oid. Reload still works (pass 2 skips oids already in `id_map`, pass 1 takes the first session line), so this is bloat and confusion rather than loss. Drop the stale key in the `oid` setter / `set_document` (`DB.remove(old_oid)` before re-registering).
+- **Fix note:**
+
+### RF-085
+- **Status:** OPEN
+- **Severity:** S2 (the restored-node loop never executes — nothing ever puts a node into the process session)
+- **Location:** `chisurf/core/project/project.py:217-219` (the `for name, node in restored.get_nodes().items()` loop) against `chisurf/core/models/__init__.py:81` (`self._node = cn.Node()`) and `chisurf/core/parameter.py:661-667`
+- **Finding:** No code in `chisurf` ever calls `chinet.session.add_node` / `create_node` — model nodes and parameter ports are constructed standalone and reach the archive only because `BaseObject.__init__` registers them in the global `DB`. The session document therefore always saves with an empty node map, which the commit's own goal ("restore the chinet graph on project load") depends on. Verified through the real path: `session.jsonl` written by `Project.save` contains `session doc nodes: [{}]` plus loose `port` documents, and after `Project.load` `chinet.session.get_nodes()` is `[]` — the new loop body runs zero times. What the restore actually does is repopulate `DB` with detached copies (see RF-083). Either register model nodes in `chinet.session` at construction so the graph is real, or drop the session-node round trip and persist what is actually used.
+- **Fix note:**
+
+### RF-086
+- **Status:** OPEN
+- **Severity:** S1 (a length mismatch that used to raise now silently truncates the other axis and desynchronises `ex`/`ey`/`mask`)
+- **Location:** `chisurf/core/curve.py:148-176` (`Curve._set_axis`, new in `0f7e07e69`) against `chisurf/core/data.py:232-243` (`DataCurve`'s `ex`/`ey`/`mask`), `:176-186` (the `data` property) and `:498` (`__getitem__`)
+- **Finding:** Before this commit `curve.y = v` was `self.d[1] = v` and a wrong length raised `ValueError: could not broadcast`. `_set_axis` now rebuilds the 2×N storage instead, keeping `min(old, new)` samples of the *other* axis and zero-padding the rest — so assigning one axis silently rewrites the other, and on a `DataCurve` it leaves the error and mask arrays at the old length. Verified: a 10-point `DataCurve`, then `dc.y = np.ones(4)` → `dc.x` is silently truncated to `[0,1,2,3]` while `len(dc.ex) == len(dc.ey) == len(dc.mask) == 10`; `dc[:]` returns arrays of lengths `(4, 4, 10, 10, 10)`, `to_dict()` writes `x`/`y` of 4 against `ex`/`ey`/`mask` of 10 into the project file, and the `data` property raises `ValueError: all the input array dimensions … must match exactly` from its `np.vstack` — a curve that no longer describes a dataset, produced by an assignment that reports success. The intended case (filling an empty curve) is served by the `storage.size == 0` situation alone; restrict the rebuild to that, or resize the companion arrays too and raise on a genuine mismatch. `test/core/test_curve.py:28-32` only covers the empty-curve fill, so nothing catches this.
+- **Fix note:**
+
+### RF-087
+- **Status:** OPEN
+- **Severity:** S2 (the `to_dict` contract this commit repaired is still broken in two Base subclasses)
+- **Location:** `chisurf/gui/widgets/general.py:750-755` (`Controller.to_dict`) and `:788-793` (`View.to_dict`)
+- **Finding:** Both override `Base.to_dict` without the `skip_qt_widgets` parameter — exactly the defect `0f7e07e69` fixed in `Curve`, `ExperimentalData` and `DataCurve`, and these are the two classes for which the flag exists (they *are* `QWidget` subclasses). Verified offscreen: `Controller().to_dict(skip_qt_widgets=True)` and `View().to_dict(skip_qt_widgets=True)` both raise `TypeError: to_dict() got an unexpected keyword argument 'skip_qt_widgets'`, and so does `to_json(skip_qt_widgets=True)` — which is the path `Base.save(..., skip_qt_widgets=True)` takes for `json` and `yaml` (`chisurf/core/base.py:363-366`). Saving a controller or a plot view with widgets skipped is therefore impossible. Add the parameter and forward it, as the three core classes now do. A guardrail test asserting every `Base` subclass's `to_dict` accepts the full signature would stop the next one.
+- **Fix note:**
+
+### RF-088
+- **Status:** OPEN
+- **Severity:** S3 (`skip_qt_widgets` is silently ignored on the elementary-conversion path)
+- **Location:** `chisurf/core/base.py:481-484` (`to_elementary(d)` with neither flag forwarded) against `:527-537` (`to_json`, which forwards both)
+- **Finding:** `Base.to_dict` skips Qt objects only when they are *direct* attributes; the subsequent `to_elementary(d)` call drops both `skip_qt_widgets` and `remove_protected`, so a widget nested inside a list or dict survives the conversion. Verified: an object carrying `widgets = [QWidget()]` serialised with `to_dict(remove_protected=True, convert_values_to_elementary=True, skip_qt_widgets=True)` yields `['<PyQt5.QtWidgets.QWidget object at 0x…>']`, while the same value through `to_elementary(..., skip_qt_widgets=True)` yields `[None]`. The caller asked for a widget-free dictionary and got a memory address baked into the payload. Forward both arguments, as `to_json` already does.
+- **Fix note:**
+
+### RF-089
+- **Status:** OPEN
+- **Severity:** S2 (a damaged optional entry makes the whole project unopenable)
+- **Location:** `chisurf/core/project/project.py:174-184` (`Project.load`'s `except (ImportError, AttributeError, KeyError)`) against `modules/chinet/chinet/session.py:164-176` (`Session.load`'s bare `except:` → `json.load`)
+- **Finding:** The chinet session is optional — a missing entry (`KeyError`) and an empty file (`Session.load` returns `None`) are both tolerated, and the save side is wrapped in the same kind of guard. A *malformed* `session.jsonl` is not: `Session.load` falls back to `json.load` on the whole file and raises `json.JSONDecodeError`, which is a `ValueError` and escapes the guard. Verified by rewriting the `session.jsonl` entry of a valid `.csp` to `{not json at all`: `Project.load` raises `JSONDecodeError: Expecting property name enclosed in double quotes`, so the datasets and fits in `project.json` — all intact — become unreachable, over a graph that is empty in practice (RF-085). The same archive with an *empty* session entry loads fine. Catch `ValueError`/`OSError` there too and log the skipped restore.
+- **Fix note:**
