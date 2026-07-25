@@ -30,6 +30,17 @@
 
 ## 2026-07-25
 
+
+* **chiplot Batch 28 — FCS filter-calculator off pyqtgraph (allow-list 23 → 22).**
+  Migrated `plugins/fcs/fcs_filter_calculator/gui_parts/main_window.py` (3291L):
+  3 `pg.PlotWidget`s → `cp.Plot`, ~37 `.plot()`→`line()`, `pg.mkPen`→`cp.to_pen`
+  (`QtCore.Qt.{Dot,Dash}Line`→`"dot"`/`"dash"`), the draggable fit-range region →
+  `region` + two `on_change` handlers + `set_bounds`/`.bounds`; pyqtgraph-only
+  hover styling dropped (no `setHoverPen` setter). Compute too heavy to construct
+  headless, so screenshot-verified via isolated repro of the exact draw calls
+  (log-y reconstruction + fit region, dotted/dashed filters, residuals). See
+  [PRD-64](prds/prd-64.md).
+
 * **Whether a chain can be believed, as a picture (Stan/ArviZ display side).**
   The convergence *numbers* were harvested from Stan earlier; the matching
   *plots* now exist. **Rank plot** (`rank_histogram`): draws ranked across all
