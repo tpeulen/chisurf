@@ -33,6 +33,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
 - **Imaging / CLSM** — image representations, pixel selection, phasor, pixel-wise MLE.
 - **Calculators & wizards** — FRET lines, kappa², anisotropy, the guided wizards.
 
+## Recorded workflows
+
+- [TCSPC lifetime fit](/usecases/tcspc-lifetime-fit.md) — load a decay and its
+  prompt, create a `Lifetime` fit, assign the IRF, fit, read χ²ᵣ and the
+  lifetimes. *(last driven 2026-07-25; RF-012..RF-017)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:
