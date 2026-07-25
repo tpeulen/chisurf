@@ -2,6 +2,39 @@
 
 ## 2026-07-25
 
+* **Two more MIA features on the ROI class: arbitrary-region selection and ROI
+  file interchange.** `chisurf/core/roi/builders.py::arbitrary_region` ports
+  MIA's two-scale pixel selection — a pixel survives only if its **local**
+  statistics resemble those of its **neighbourhood**, comparing the mean and
+  population variance (with the `n²/(n²−1)` correction) in a small window
+  against a larger window centred on the same pixel and dropping pixels whose
+  ratios fall outside the given folds. **What that buys over a threshold** is
+  the whole point: an aggregate, a speck of debris or a dead patch need not be
+  an outlier in the image as a whole, only against its own surroundings — the
+  tests pin two objects of *identical* brightness being told apart by their
+  extent (local/neighbourhood ratio ≈6 for a small aggregate versus ≈1.2 inside
+  an extended structure), which no absolute threshold can do. A second test
+  pins the matching trap: a **single hot pixel** is diluted below a 2× fold by a
+  3×3 window and only caught with a 1×1 one, so the window has to match the
+  scale of what is being rejected. **Deliberate deviation from the reference:**
+  the window filters use nearest-edge rather than zero padding, because zero
+  padding biases every border pixel downwards and would reject a
+  one-window-wide frame border for no physical reason.
+  `chisurf/core/roi/io.py` covers interchange — native JSON (lossless for every
+  shape including nested composites, and plain diffable text rather than the
+  binary mask file the reference exports), **Cellpose `_seg.npy` import** (a
+  pickled dict whose `masks` entry is a label image, so a segmentation done in
+  a dedicated tool arrives as regions ChiSurf can gate, combine and store), and
+  label images / single binary masks in both directions for tools that know
+  nothing about the native format. Tests: `test/core/test_roi_builders_io.py`
+  (19), ending with a full round trip — build a selection from the data, store
+  it, reload it in another session, and still select exactly the same pixels.
+  The package-level re-exports were deliberately left out of that commit:
+  `__init__.py` currently interleaves them with in-flight region-properties work
+  whose module is still untracked, so committing it would have left HEAD
+  importing a file that does not exist; the tests import the submodules
+  directly. See [regions of interest](/subsystems/roi.md).
+
 * **Capability now comes from skills, not from more tools — and the assistant
   has its own OKF bundle.** The tool catalogue had been growing with every new
   ability, which does not scale: 36 described tools is near the limit of what

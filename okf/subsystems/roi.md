@@ -59,6 +59,38 @@ output, connected components or an imported classification map becomes a list
 of regions that gate, combine and store like any drawn one.
 `rois_to_labels` is the inverse.
 
+## Building a region from the data
+
+`builders.arbitrary_region` is the port of the reference suite's two-scale pixel
+selection. A pixel survives only if its **local** statistics resemble those of
+its **neighbourhood**: the mean and population variance in a small window are
+compared against those in a larger window centred on the same pixel, and pixels
+whose ratios fall outside the given folds are dropped.
+
+That comparison is what it buys over a threshold. An aggregate, a speck of
+debris or a dead patch need not be an outlier in the image as a whole — only
+against its own surroundings. Two objects of *identical* brightness are told
+apart by their extent, which no absolute threshold can do.
+
+Deviation from the reference: the window filters use nearest-edge rather than
+zero padding. Zero padding biases every border pixel downwards and makes the
+frame edge look anomalous, rejecting a one-window-wide border for no physical
+reason.
+
+## Getting regions in and out
+
+`io.py` covers three directions:
+
+* **native JSON** — lossless for every shape including nested composites, and
+  plain readable text rather than the binary mask file the reference exports,
+  so a stored selection is diffable and hand-editable;
+* **segmentation import** — a Cellpose `_seg.npy` (a pickled dict whose `masks`
+  entry is a label image) or any integer label image becomes one region per
+  object, so work done in a dedicated segmentation tool arrives as regions
+  ChiSurf can gate, combine and store;
+* **label images and binary masks**, both directions, for tools that know
+  nothing about ChiSurf's own format.
+
 ## Consumers
 
 * **Image correlation** (`core/experiments/ics/`) — the reader takes a `roi`
