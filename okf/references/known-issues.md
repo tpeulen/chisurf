@@ -97,16 +97,6 @@ Grouped by area; captured June 2026.
   2026 by reproducing it with the then-current working changes stashed.
   Workaround: run the file with `--forked`, or per-test, until fixed.
 
-**Plugin command line** (surfaced July 2026, when `csc` started reading manifests)
-- `csc photon-acquisition` fails with `ModuleNotFoundError:
-  chisurf.plugins.core.acq.main` — `core/acq/standalone.py::run_as_plugin`
-  imports a module that does not exist.
-- `csc fret-line` runs an analysis instead of honouring `--help`: its manifest
-  points at `chisurf.plugins.fret_line.__main__:main`, a script entry point that
-  ignores its arguments. Plugin CLIs should expose a Click/argparse command.
-
-Both were unreachable before the CLI registrar read `manifest.json`, so neither
-is a regression — they were simply never callable.
 **Project save / restore**
 - Project round-trip: decay/lifetime models do not save & reload (critical).
 - Save→close→open resolves the active window via `chisurf.cs` after teardown

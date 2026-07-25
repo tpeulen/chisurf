@@ -160,6 +160,15 @@ class PluginRegistry:
     def register_cli(self, main_group: Any) -> None:
         """Attach each plugin's CLI command to a Click group.
 
+        .. note::
+           This is **not** how ``csc`` registers plugin commands. Attaching the
+           command objects here imports every plugin CLI module — Qt, tttrlib and
+           all — which ``csc --help`` cannot afford. Production registration lives
+           in :mod:`chisurf.core.cli`, which reads the same manifest
+           ``entrypoints.cli`` during its filesystem scan and imports a plugin only
+           when its command is actually invoked. Use this method from in-process
+           callers that have already paid the import cost.
+
         Parameters
         ----------
         main_group : click.Group
@@ -191,6 +200,12 @@ class PluginRegistry:
 
     def register_gui(self, menu: Any) -> None:
         """Register plugin GUI entrypoints (placeholder for Qt menu).
+
+        .. note::
+           Like :meth:`register_cli`, this imports each plugin to resolve its
+           widget class. The application's plugin menu is built from manifest
+           metadata *without* importing plugin code (see
+           :mod:`chisurf.gui`), which is what keeps GUI startup fast.
 
         Parameters
         ----------

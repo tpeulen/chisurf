@@ -43,6 +43,12 @@ def main() -> None:
 
 
 def _run(argv: list[str]) -> None:
+    if "-h" in argv or "--help" in argv:
+        # Without this every unrecognised flag — `--help` included — fell through
+        # to the compute/GUI branch, so `csc fret-line --help` ran an analysis.
+        print(__doc__.strip())
+        return
+
     if "--list-models" in argv:
         for m in list_models():
             print(m)

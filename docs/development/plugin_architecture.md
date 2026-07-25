@@ -638,10 +638,25 @@ The registry lives at `chisurf/core/plugin/registry.py`. It reads manifest.json 
 ### Phase 2 — PluginRegistry + auto-registration
 
 1. [ ] Register all plugins through `PluginRegistry` (not `app.py` manual imports)
-2. [ ] `ChiSurfServer.__init__` calls `registry.register_services(dispatcher)`
-3. [ ] CLI discovery uses `registry.register_cli(group)`
+2. [x] `ChiSurfServer.__init__` calls `registry.register_services(dispatcher)`
+3. [x] CLI discovery reads `manifest.json` — **but not via `registry.register_cli`**
+   (see below)
 4. [ ] GUI menu builds from `registry.register_gui(menu)`
-5. [ ] Remove AST-based metadata parsing as the primary discovery path (keep as fallback)
+5. [x] Manifest is the primary discovery path for the CLI; AST parsing of
+   `__init__.py` remains the documented fallback
+
+**Why the CLI does not call `registry.register_cli`.** That method imports every
+plugin's CLI object to attach it to the Click group, which would make `csc --help`
+import the whole plugin tree — Qt, tttrlib and all. `chisurf/core/cli.py` instead
+reads `entrypoints.cli` during the same filesystem+AST scan it already performs,
+registers a thin forwarding command per plugin, and imports the target module only
+when that command is actually invoked. `PluginRegistry.register_cli` remains for
+in-process callers that have already paid the import cost (it is what the registry
+unit tests exercise); it is not the production path.
+
+The same trade-off applies to `register_gui`: menus are built from manifest
+metadata without importing plugin code (see [GUI startup](#)), so item 4 stays
+open by design rather than by neglect.
 
 ### Phase 3 — State serialization
 

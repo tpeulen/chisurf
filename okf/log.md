@@ -1798,6 +1798,48 @@
   the plane in one cell. Guide 38 gained the object-map and object-distance
   figures, both grabbed from the real widget on synthetic puncta (the confocal
   test image is one continuous cell and would segment into a single object).
+* **Plugin CLIs were only half-wired — 24 of 40 never reached `csc`.** Found while
+  checking whether the new colocalization command actually existed: the command
+  line registered plugin CLIs *only* from the module-level `cli_entrypoint`
+  assignment it finds by AST scan, and never read `manifest.json`'s
+  `entrypoints.cli` — even though the manifest is the plugin contract and
+  `docs/development/plugin_architecture.md` already specified manifest-first. So
+  every plugin that filled in only the manifest (the majority: all the imaging
+  tools, `flc-2d`, `anisotropy`, `trace-browser`, `lut-tools`, `irf-estimator`, …)
+  was silently absent. `chisurf/core/cli.py` now reads the manifest first and
+  falls back to the AST value: **`csc` went from 18 to 49 commands**, all
+  smoke-tested by forwarding `--help`.
+* **Three smaller defects fell out of the same fix.** Manifest entries that omit
+  the `alias=` prefix (`module:attr`) were unparseable and silently dropped —
+  they now register under the plugin id. The cookiecutter scaffold was being
+  scanned as a plugin and leaked a literal `{{ cookiecutter.plugin_name }}`
+  command. And preferring the manifest would have *renamed* `csc
+  spectra-download` (its manifest lacked the alias, its module had it), so the
+  manifest was completed rather than letting the name drift — caught by the new
+  guardrail test that requires the two declarations to agree.
+* **Two pre-existing plugin bugs are now visible instead of hidden**: `csc
+  photon-acquisition` fails on a missing `chisurf.plugins.core.acq.main`, and
+  `csc fret-line` runs an analysis instead of honouring `--help` (its entry point
+  is a `__main__:main`). Both were unreachable before, so nothing regressed —
+  they were simply never callable. Recorded in
+  [known-issues](/references/known-issues.md) rather than fixed here, since they
+  belong to their own plugins.
+* **Both of those plugin CLIs are fixed** (so the known-issues entries were
+  removed rather than left to rot): the acquisition manager had moved to
+  `gui/tool.py`, and "run as plugin" presupposed chisurf's Qt application was
+  already up — from a shell it is not, so constructing a widget aborted the
+  process; it now falls back to standalone mode. `fret-line`'s hand-rolled flag
+  dispatcher had no `--help` branch, so *every* unrecognised flag fell through to
+  "compute or open the GUI". Both now answer `--help`, and
+  `csc photon-acquisition --cli --help` still reaches the simulation CLI beneath
+  it (the wrapper only claims `--help` when `--cli` is absent).
+* **The plugin-architecture migration checklist was reconciled** rather than left
+  half-ticked: `registry.register_cli` / `register_gui` are *not* the production
+  paths and never should be — they import every plugin to attach its command or
+  widget, which is exactly the cost `csc --help` and GUI startup refuse to pay.
+  Both methods now say so in their docstrings, and the doc records the decision
+  next to the checkbox so the next reader does not "finish" the wiring and
+  silently make startup import the whole tree.
 
 * **The LLM agent got a real harness: `chisurf/core/agent/`.** The old one
   (`code_editor/agent_runtime.py`) handed the model a bare list of 23 RPC

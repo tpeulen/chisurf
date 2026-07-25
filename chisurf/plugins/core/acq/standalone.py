@@ -93,7 +93,14 @@ def run_as_plugin():
         return 1
 
     # Import and run as normal plugin
-    from .main import SMAcquisitionManager
+    from .gui.tool import SMAcquisitionManager
+
+    if QApplication is not None and QApplication.instance() is None:
+        # "As a plugin" presupposes chisurf's Qt application is already running.
+        # Launched from the command line it is not, and constructing a widget
+        # without a QApplication aborts the process — run standalone instead.
+        logger.info("No running Qt application; falling back to standalone mode")
+        return run_standalone()
 
     try:
         manager = SMAcquisitionManager()
@@ -192,6 +199,17 @@ def main():
 
     # First: check for CLI mode flag and delegate to the simulation CLI.
     args = sys.argv[1:]
+    if '--cli' not in args and ('-h' in args or '--help' in args):
+        # Reachable as `csc photon-acquisition --help`, where silently opening a
+        # window instead of answering would be the wrong move. With `--cli` the
+        # flag belongs to the simulation CLI below, not to this wrapper.
+        print(
+            "Usage: photon-acquisition [--standalone] [--cli SUBCOMMAND ...]\n\n"
+            "  (no arguments)   open the acquisition GUI\n"
+            "  --standalone     force the standalone Qt application\n"
+            "  --cli ...        forward to the simulation CLI (try: --cli --help)"
+        )
+        return 0
     if '--cli' in args:
         cli_index = args.index('--cli')
         cli_args = args[cli_index + 1 :]
