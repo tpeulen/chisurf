@@ -764,6 +764,28 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         self._populate_matrix_table(self.excitation_table, matrices.get("excitation", {}))
         self._populate_matrix_table(self.emission_table, matrices.get("emission", {}))
         self._populate_matrix_table(self.detected_matrix_table, matrices.get("detected", {}))
+        self._publish_optical_parameters(matrices)
+
+    def _publish_optical_parameters(self, matrices: dict) -> None:
+        """Expose the simulated optics in the Global View as fitting parameters.
+
+        The excitation and emission probabilities are where the FRET correction
+        factors come from, so they belong beside the fits that consume them —
+        visible, linkable, and usable as the prior of a calibration. Re-running
+        the simulation refreshes the same group, so links into it survive.
+        """
+        if not matrices:
+            return
+        try:
+            from chisurf.plugins.core.lightpath_simulator.core.parameters import (
+                register_lightpath_parameters,
+            )
+
+            self._optical_parameters = register_lightpath_parameters(
+                matrices, owner_id="lightpath", label="Optical path",
+            )
+        except Exception:
+            logger.debug("could not publish the optical path parameters", exc_info=True)
 
     def _populate_signal_table(self, row_data: list[dict[str, Any]]) -> None:
         """Populate the detailed detector signal rows."""
@@ -822,7 +844,18 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
             if not thread.wait(3000):
                 logger.warning("Probe catalogue loader did not stop before close")
         self.client.close()
-            
+
+        # The optical model must not outlive the window that owns it, or the
+        # Global View keeps offering link targets nothing maintains.
+        try:
+            from chisurf.plugins.core.lightpath_simulator.core.parameters import (
+                unregister_lightpath_parameters,
+            )
+
+            unregister_lightpath_parameters("lightpath")
+        except Exception:
+            logger.debug("could not unpublish the optical path parameters", exc_info=True)
+
         super().closeEvent(event)
 
     def _create_content_factory_for_json_node(self, node_type_id: str, config: dict) -> Any:

@@ -4,6 +4,10 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+#: Trapezoidal integration. NumPy 2 renamed ``trapz`` to ``trapezoid`` and removed
+#: the old name, which left every spectral overlap here raising AttributeError.
+_trapezoid = getattr(np, "trapezoid", None) or np.trapz
+
 # Standard wavelengths for simulation
 WAVELENGTHS = np.arange(300, 901, 1, dtype=np.float64)
 
@@ -29,7 +33,7 @@ def calculate_r0(donor_em: np.ndarray, donor_qy: float, acceptor_abs: np.ndarray
     where J is the overlap integral in M^-1 cm^-1 nm^4.
     """
     # 1. Area-normalize donor emission
-    area = np.trapz(donor_em, WAVELENGTHS)
+    area = _trapezoid(donor_em, WAVELENGTHS)
     if area <= 0:
         return 0.0
     donor_em_norm = donor_em / area
@@ -37,7 +41,7 @@ def calculate_r0(donor_em: np.ndarray, donor_qy: float, acceptor_abs: np.ndarray
     # 2. Overlap integral J
     # acceptor_abs is normalized to 1 at peak, so scale by extinction coefficient
     # In our case, we assume it's normalized to 1 and ec_max is supplied.
-    J = np.trapz(donor_em_norm * acceptor_abs * acceptor_ec_max * (WAVELENGTHS**4), WAVELENGTHS)
+    J = _trapezoid(donor_em_norm * acceptor_abs * acceptor_ec_max * (WAVELENGTHS**4), WAVELENGTHS)
     
     # 3. R0 in nm -> Angstrom
     r0_nm = 0.02108 * (kappa2 * donor_qy * J * (n**-4))**(1/6)
@@ -191,7 +195,7 @@ def propagate_node(node_type, config, input_spectra, db):
                     }
                     
                     # For signal propagation, scale them
-                    norm = np.trapz(cur_em_norm, WAVELENGTHS)
+                    norm = _trapezoid(cur_em_norm, WAVELENGTHS)
                     if norm > 0:
                         cur_em_scaled = (cur_em_norm / norm) * qy
                     else:
@@ -203,7 +207,7 @@ def propagate_node(node_type, config, input_spectra, db):
                     sum_em += cur_em_scaled
                     
                     for src_id, in_spec in spectral_in.items():
-                        excitation_prob = np.trapz(in_spec * cur_abs_scaled, WAVELENGTHS)
+                        excitation_prob = _trapezoid(in_spec * cur_abs_scaled, WAVELENGTHS)
                         excitation_rows.append(
                             {
                                 "laser": str(src_id),
@@ -267,7 +271,7 @@ def propagate_node(node_type, config, input_spectra, db):
                 node_char = qe_y
                 out_dict = {}
                 for src_id, in_spec in spectral_in.items():
-                    signals[src_id] = float(np.trapz(in_spec * qe_y, WAVELENGTHS))
+                    signals[src_id] = float(_trapezoid(in_spec * qe_y, WAVELENGTHS))
                     out_dict[src_id] = in_spec * qe_y
                 config["_last_signals"] = signals
                 output_spectra["Out"] = out_dict

@@ -385,3 +385,58 @@ def test_lightpath_cli_contract_command():
     assert result.exit_code == 0
     assert payload["plugin_id"] == "lightpath_simulator"
     assert "lightpath.simulate" in payload["methods"]
+
+
+def test_simulated_optics_reach_the_global_view():
+    """A propagated light path publishes its optics as fitting parameters.
+
+    The end of the chain this plugin exists for: the excitation and emission
+    probabilities it computes are what the FRET correction factors are made of,
+    so they must be visible — and linkable — next to the fits that consume them.
+    """
+    from chisurf.core.parameter_group_registry import iter_registered_parameter_groups
+    from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import WAVELENGTHS
+    from chisurf.plugins.core.lightpath_simulator.backend.simulator import OpticalPathSimulator
+    from chisurf.plugins.core.lightpath_simulator.core.parameters import (
+        register_lightpath_parameters,
+        unregister_lightpath_parameters,
+    )
+
+    mock_db = MagicMock()
+    mock_db.get_standardized_optical_properties.return_value = {"qy": 0.8, "ext_coeff": 92000}
+    mock_db.get_probe_by_id.return_value = {"chromophore_name": "Test Dye"}
+    mock_db.get_probe_spectrum.return_value = (WAVELENGTHS, np.ones_like(WAVELENGTHS))
+
+    simulator = OpticalPathSimulator(mock_db)
+    simulator.load_from_dict({
+        "nodes": [
+            {"id": "node_laser", "type": "light_source", "title": "Laser", "inputs": [],
+             "outputs": [{"name": "Light", "is_output": True}],
+             "config": {"source_mode": "manual", "manual_lines": "488:1.0"}},
+            {"id": "node_sample", "type": "sample", "title": "Sample",
+             "inputs": [{"name": "In", "is_output": False}],
+             "outputs": [{"name": "Out", "is_output": True}], "config": {"probe_ids": [1]}},
+            {"id": "node_det", "type": "detector", "title": "Detector",
+             "inputs": [{"name": "In", "is_output": False}], "outputs": [],
+             "config": {"detector_name": "Main Channel", "probe_id": 999}},
+        ],
+        "edges": [
+            {"source": "node_laser", "source_port": 0, "target": "node_sample", "target_port": 0},
+            {"source": "node_sample", "source_port": 1, "target": "node_det", "target_port": 0},
+        ],
+    })
+    simulator.propagate()
+    matrices = simulator.get_crosstalk_matrices()
+
+    try:
+        group = register_lightpath_parameters(matrices, owner_id="lightpath_test")
+        owners = [owner for owner, *_ in iter_registered_parameter_groups()]
+        assert "lightpath_test" in owners
+        # every probability the simulator computed is now a fitting parameter
+        assert group.parameters_all
+        assert group.dyes and group.detectors
+        emission = group.parameter("em", group.dyes[0], group.detectors[0])
+        assert emission is not None and emission.value >= 0.0
+        assert emission.unique_identifier                    # linkable process-wide
+    finally:
+        unregister_lightpath_parameters("lightpath_test")

@@ -110,6 +110,17 @@ if __name__ == "plugin":
     except Exception:
         pass  # MMFDB not available — skip toolbar button
 
+    # Publish this window's constants as fitting parameters, so they show up in
+    # the Global View next to every fit parameter and can be linked to one.
+    try:
+        from chisurf.plugins.ndxplorer.parameters import bind_ndx_parameters
+
+        ndx_parameters = bind_ndx_parameters(ndx)
+        log(f"ndXplorer constants in the Global View: {len(ndx_parameters.constant_names)}")
+    except Exception:
+        ndx_parameters = None
+        log("Could not publish the ndXplorer constants as fitting parameters")
+
     # Calibrate the loaded measurement: the correction constants ndx applies
     # should follow from the data in the window, not from typed-in guesses.
     try:
@@ -125,6 +136,9 @@ if __name__ == "plugin":
                     ndx, "Accurate FRET", str(result.get("error", "calibration failed"))
                 )
                 return
+            if ndx_parameters is not None:
+                # The Global View must show what the window now holds.
+                ndx_parameters.pull(ndx)
             before = result["before"]
             lines = [result["report"], "", "ndXplorer constants:"]
             lines += [
@@ -148,6 +162,19 @@ if __name__ == "plugin":
             "to this window and add the accurate E / S / R_DA columns."
         )
         calibrate_action.triggered.connect(_optimize_calibration)
+
+        if ndx_parameters is not None:
+            def _sync_constants() -> None:
+                """Apply constants edited in the Global View, then read back."""
+                ndx_parameters.push(ndx)
+                ndx_parameters.pull(ndx)
+
+            sync_action = calibration_toolbar.addAction("⟲ Sync constants")
+            sync_action.setToolTip(
+                "Apply the constants as they stand in the Global View to this window "
+                "(and read back what the window holds)."
+            )
+            sync_action.triggered.connect(_sync_constants)
     except Exception:
         log("Could not add the accurate-FRET toolbar to ndXplorer")
 

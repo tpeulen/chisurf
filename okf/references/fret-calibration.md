@@ -280,6 +280,30 @@ back to the physically-motivated light-path prior.
   the single source of truth for which column is which channel (ndX / `.bur` /
   API spellings); the plugin and the ndX bridge both use it instead of guessing
   separately.
+- **Both sides of the calibration are fitting parameters in the Global View** —
+  `chisurf/plugins/ndxplorer/parameters.py::NdxConstants` wraps *every numeric
+  constant of an open ndX window* (read from the window, not hard-coded) as
+  `FittingParameter`s, and
+  `chisurf/plugins/core/lightpath_simulator/core/parameters.py::LightPathParameters`
+  does the same for the simulated optics (excitation/emission probabilities,
+  per-dye QY, per-detector efficiency, plus the derived γ/α/δ). Both publish
+  themselves through `chisurf/core/parameter_group_registry.py`, so they are
+  enumerated beside the fits and are linkable by `unique_identifier` — a fit's
+  `R0` can *follow* the window's `forster_radius`, a calibration's `PhiA` can
+  follow the optical `QY[dye]`. `bind_ndx_parameters` is called when the ndX
+  plugin opens a window; `_publish_optical_parameters` re-registers after every
+  light-path propagation (same `owner_id`, so links survive) and the tool
+  unregisters on close. `NdxConstants.update()` pushes a value edited in the
+  Global View into the window and recomputes it (no-op when they agree), and the
+  ndX toolbar has `⟲ Sync constants` for an explicit round trip.
+  **Parameters are created free**, not fixed — a registered group is not part of
+  any fit's model, so nothing optimizes them until something links to them, and
+  "fixed" would only have hidden them behind the Global View's *Include fixed*
+  switch. The three optical factors stay fixed because they are *derived*
+  read-outs (`update_factors` overwrites them). `LightPathParameters.as_prior_arguments()`
+  hands the group straight to `auto_calibrate(lightpath=…)`, so what the Global
+  View shows and what regularizes the calibration are the same numbers.
+  (`test/fitting/test_global_view_parameters.py`.)
 - **ndX window locator** — `calibration_bridge.find_ndx_windows()` finds the
   in-process ndXplorer windows among the top-level Qt widgets (empty head-less),
   which is what the tool's push/pull buttons use.

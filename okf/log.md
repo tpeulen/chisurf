@@ -2,6 +2,29 @@
 
 ## 2026-07-25
 
+* **ndXplorer's constants and the simulated optics are now fitting parameters in
+  the Global View.** Both were numbers trapped in their own tool: ndX's
+  correction constants in its parameter table, the light path's excitation and
+  emission probabilities in the simulator's matrices. `NdxConstants`
+  (`chisurf/plugins/ndxplorer/parameters.py`) and `LightPathParameters`
+  (`chisurf/plugins/core/lightpath_simulator/core/parameters.py`) wrap them as
+  `FittingParameter`s in registered `FittingParameterGroup`s, so they are
+  enumerated next to every fit parameter and — the point — **linkable**: a fit's
+  `R0` can follow the ndX window's `forster_radius`, a calibration's `PhiA` can
+  follow the optical `QY[dye]`, and one number then has one owner. The ndX group
+  is a *view* of a window (`pull`/`push`), and its `update()` carries an edit
+  made in the Global View into the window and recomputes it, so the two cannot
+  drift; the ndX toolbar also has `⟲ Sync constants`. The optics group is
+  re-registered after every propagation under the same `owner_id` (links
+  survive) and unregistered when the tool closes.
+  `LightPathParameters.as_prior_arguments()` hands the group straight to
+  `auto_calibrate(lightpath=…)` — what the Global View shows *is* what
+  regularizes the calibration. **Rendering the Global View headlessly caught the
+  design mistake**: created `fixed=True` (they are "settings"), the parameters
+  were invisible unless the *Include fixed* switch was on. They are created free
+  instead — nothing optimizes a registered group until something links to it —
+  and only the three derived optical factors stay fixed, because
+  `update_factors` overwrites them.
 * **i18n (PRD-63): live interface retranslation + `.ui` flagged as prototyping-only.**
   Switching the UI language now retranslates the running interface, not just
   newly-opened windows. `apply_language` emits the app-wide `language_notifier`;

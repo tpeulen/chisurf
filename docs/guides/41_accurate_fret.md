@@ -292,6 +292,50 @@ acceptor-only measurements) is described in
 [FRET calibration](fret_calibration.md) and remains the right choice when the
 reference samples were measured separately.
 
+## In the Global View
+
+Both sides of the calibration are published as ordinary **fitting parameters**,
+so they appear in the Global View next to every fit parameter — with their
+bounds, their link column and an editable value:
+
+* **ndXplorer constants** — every scalar the open window holds (`gG/gR`,
+  `alpha`, `beta`, `r`, the backgrounds, `PhiA`/`PhiD`, `forster_radius`,
+  `tauD0`, …), read from the window rather than hard-coded, so a setup with extra
+  constants exposes those too.
+* **Optical path** — the light-path simulator's excitation and emission
+  probabilities, the per-dye quantum yields and the per-detector efficiencies,
+  plus the `gamma`/`alpha`/`delta` they imply. Re-running the simulation
+  refreshes the same group, so links into it survive.
+
+That makes the two things you would otherwise keep in your head explicit:
+
+```python
+# a fit's Förster radius follows the one ndXplorer is using
+from chisurf.plugins.ndxplorer.parameters import bound_ndx_parameters
+
+constants = bound_ndx_parameters()
+fit.model.parameters_all_dict["R0"].link = constants.parameter("forster_radius")
+```
+
+and the optical model can hand itself over as the calibration prior directly:
+
+```python
+from chisurf.plugins.core.lightpath_simulator.core.parameters import (
+    registered_lightpath_parameters,
+)
+
+optics = registered_lightpath_parameters()
+result = auto_calibrate(i_dd, i_da, i_aa, lightpath=optics.as_prior_arguments())
+```
+
+Editing an ndXplorer constant in the Global View reaches the window: the group
+pushes the changed value and ndXplorer recomputes. The `⟲ Sync constants`
+toolbar action in ndXplorer does the same on demand, in both directions.
+
+Note that the optics `gamma`/`alpha`/`delta` are **derived** — recomputed from
+the probabilities whenever the optical model changes — so read them, do not fit
+them; fit the quantum yields and efficiencies they are made of.
+
 ## Pitfalls
 
 * **A single FRET population without lifetimes cannot give $\gamma$.** The tool
