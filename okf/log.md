@@ -147,6 +147,62 @@
   handling); verified end-to-end on a real confocal photon stream and headlessly
   rendered.
 
+* **The LLM agent got a real harness: `chisurf/core/agent/`.** The old one
+  (`code_editor/agent_runtime.py`) handed the model a bare list of 23 RPC
+  method names, no argument schemas, a hand-rolled "reply with one JSON
+  object" protocol, and a loop that aborted on the *first* tool failure. It
+  also had no way to load a file or create a fit, so the thing a user actually
+  asks for — "fit the files in this folder" — was unreachable. Replaced by a
+  Qt-free package with a described, safety-tiered tool catalogue
+  (`spec.py`/`tools/`), native provider tool calling with retries and honest
+  errors (`llm.py`), a domain-aware system prompt (`prompt.py`), and an
+  observe-act loop with budgets that feeds tool errors *back* to the model
+  instead of giving up (`runtime.py`). New concept:
+  [LLM agent](/subsystems/llm-agent.md).
+  **17 tools** cover the whole workflow: `list_files`, `load_data`,
+  `list_experiments`, `create_fit`, `run_fit`, `get_fit`, `set_parameter`,
+  `set_fit_range`, `export_fit_results`, `save_project`, `run_python`,
+  `write_file`/`read_file`, and the read-only listings. Destructive operations
+  (clear/remove) are deliberately absent; `run_python`/`write_file` sit in a
+  `dangerous` tier gated by a confirmation callback.
+  **Head-less operation needed a bootstrap.** Readers and model classes were
+  only ever registered while the GUI main window built its widgets, so any
+  non-GUI caller saw an empty registry.
+  `chisurf/core/experiments/bootstrap.py` performs the same registration from
+  `experiment_configs.yaml` without controllers, skipping `QWidget` classes
+  when no `QApplication` exists, and `ensure_qt_application()` gives the CLI
+  an off-screen one (several readers build widgets inside `get_data`, and Qt
+  *aborts the process* rather than raising when there is none).
+  **Three defects found by running it against a real model** (OpenRouter,
+  `openai/gpt-4o-mini`), each fixed in the harness rather than the prompt: it
+  reported starting-value chi-squares as results (so `create_fit` now withholds
+  `chi2r` and returns a `next_step` pointing at `run_fit`); it looped on
+  `working_dir + working_dir + path` (so relative paths that repeat the working
+  directory are de-duplicated and "no such directory" now lists what *is*
+  there); and it concluded a folder was empty when the data was one level down
+  (so a non-recursive listing that finds only sub-directories says so).
+  Also fixed: a fresh fit has range `(0, 0)` and no discovered parameters until
+  `update()` runs — `create_fit` now applies `autofitrange` and updates, so the
+  fit it hands back is actually runnable; and `Fit.chi2r` is a live property,
+  not a cached attribute, so the agent computes it instead of reading the RPC
+  services' cached-only helper (which returned `None` for every fresh fit).
+  **`python -m chisurf.core.agent`** is the head-less driver (`--interactive`,
+  `--safety`, `--list-tools`, `--json`). The GUI panel keeps its three modes
+  but they now mean tool tiers: *Chat only* / *ChiSurf tools* (write) /
+  *Full control* (adds code execution, confirmed per call); the dead RPC-status
+  dot became an AI-provider-readiness dot, and the embedded-RPC-server
+  round trip is gone entirely — tools run in-process, where the session is.
+  OpenRouter added as a first-class provider in `ai_settings`.
+  **Fixed en route** (pre-existing, and it broke the *first* data load in any
+  head-less session): `chisurf/gui/widgets/experiments/widgets.py` and that
+  package's `__init__` imported a module `rics` that does not exist.
+  Tests: `test/agent/` — 34 tool tests against real sample data, 21 runtime
+  tests driven by a scripted model (multi-tool turns, error recovery, budgets,
+  cancellation, confirmation, text-protocol fallback), 18 client tests, plus
+  4 live end-to-end tests marked `live_llm` that skip without an API key; and
+  14 widget tests for the rewired panel. `agent_runtime.py` and its 409-line
+  test file are retired.
+
 * **PRD-03 (result registry) closed — and MMFDB was silently losing NaN
   parameter values.** Auditing PRD-03 against the code found it complete: the
   payload codecs it was blocked on had landed, `_store_data`/`read_result` use

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import json
 import logging as std_logging
 import pathlib
@@ -23,14 +24,38 @@ except ImportError:
     from chisurf.core.settings.path_utils import get_path
     from chisurf.gui.widgets.general import EnterAwarePlainTextEdit  # noqa: E402
 
-from chisurf.plugins.core.code_editor.agent_runtime import (
-    ALLOWED_TOOLS,
-    AgentMode,
-    AgentRunConfig,
-    AgentRuntime,
-    AgentToolRegistry,
-    default_tool_registry,
+from chisurf.core.agent import (
+    SAFETY_DANGEROUS,
+    SAFETY_WRITE,
+    AgentConfig,
+    AgentContext,
+    AgentSession,
+    LLMClient,
+    LLMSettings,
+    build_default_registry,
 )
+
+
+class AgentMode(enum.Enum):
+    """How much of ChiSurf the assistant may touch.
+
+    ``CHAT_ONLY``
+        No tools; the assistant only answers and writes code into the editor.
+    ``CHISURF_TOOLS``
+        Load data, create and run fits, edit parameters, export results.
+    ``FULL_CONTROL``
+        Additionally run Python inside the session and write files, each
+        after an explicit confirmation.
+    """
+
+    CHAT_ONLY = "chat_only"
+    CHISURF_TOOLS = "chisurf_tools"
+    FULL_CONTROL = "full_control"
+
+    @property
+    def safety(self) -> str:
+        """Return the highest tool-safety tier this mode allows."""
+        return SAFETY_DANGEROUS if self is AgentMode.FULL_CONTROL else SAFETY_WRITE
 
 _PROVIDER_NAMES: dict[str, str] = {
     "openai": "OpenAI (ChatGPT)",
@@ -332,7 +357,13 @@ class AgentPanelWidget(QtWidgets.QWidget):
         self.mode_combo.setMinimumWidth(130)
         self.mode_combo.addItem("💬 Chat only", AgentMode.CHAT_ONLY.value)
         self.mode_combo.addItem(f"{Glyphs.WRENCH} ChiSurf tools", AgentMode.CHISURF_TOOLS.value)
-        self.mode_combo.addItem(f"{Glyphs.ROBOT} Autonomous fit", AgentMode.AUTONOMOUS_FIT.value)
+        self.mode_combo.addItem(f"{Glyphs.ROBOT} Full control", AgentMode.FULL_CONTROL.value)
+        self.mode_combo.setToolTip(
+            "Chat only: answers and writes code, touches nothing.\n"
+            "ChiSurf tools: loads data, creates and runs fits, edits parameters.\n"
+            "Full control: also runs Python in this session and writes files, "
+            "asking before each."
+        )
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
         header_layout.addWidget(self.mode_combo)
 
@@ -412,9 +443,9 @@ class AgentPanelWidget(QtWidgets.QWidget):
 
         layout.addLayout(button_layout)
 
-        self._runtime: Optional[AgentRuntime] = None
+        self._runtime: Optional[AgentSession] = None
         self._runtime_thread: Optional[threading.Thread] = None
-        self._rpc_available: bool = False
+        self._agent_session: Optional[AgentSession] = None
 
         self.responseReceived.connect(self._on_response_received)
         self.errorReceived.connect(self._on_error_received)
@@ -481,39 +512,39 @@ class AgentPanelWidget(QtWidgets.QWidget):
         """Handle agent mode change."""
         mode = self._current_mode()
         self._update_mode_status(mode)
-        if mode in (AgentMode.CHISURF_TOOLS, AgentMode.AUTONOMOUS_FIT):
-            self._check_rpc_status()
-        else:
-            self.rpc_status_label.setStyleSheet("color: #888; font-size: 10pt; margin-right: 4px;")
-            self.rpc_status_label.setToolTip("RPC not needed in chat-only mode")
+        self._check_provider_status()
+        # The tool set differs per mode, so the running conversation is stale.
+        self._agent_session = None
 
     def _update_mode_status(self, mode: AgentMode) -> None:
         """Update the status label with current mode info."""
         labels = {
             AgentMode.CHAT_ONLY: "💬 Chat only",
-            AgentMode.CHISURF_TOOLS: f"{Glyphs.WRENCH} Tool mode active",
-            AgentMode.AUTONOMOUS_FIT: f"{Glyphs.ROBOT} Autonomous fit mode",
+            AgentMode.CHISURF_TOOLS: f"{Glyphs.WRENCH} ChiSurf tools",
+            AgentMode.FULL_CONTROL: f"{Glyphs.ROBOT} Full control",
         }
         self.status_label.setText(labels.get(mode, ""))
 
-    def _check_rpc_status(self) -> None:
-        """Check ChiSurf RPC availability and update the status indicator."""
+    def _check_provider_status(self) -> None:
+        """Colour the status dot by whether the AI provider is usable."""
+        provider_key = self.provider_combo.currentData()
         try:
-            from chisurf.plugins.core.code_editor.settings import get_editor_settings
-            from chisurf.server.startup import rpc_is_available
-            ed = get_editor_settings()
-            host = str(ed.get("agent_chisurf_rpc_host", "127.0.0.1"))
-            port = int(ed.get("agent_chisurf_rpc_cmd_port", 8765))
-            self._rpc_available = rpc_is_available(host, port, timeout_ms=300)
-            if self._rpc_available:
-                self.rpc_status_label.setStyleSheet("color: #98c379; font-size: 10pt; margin-right: 4px;")
-                self.rpc_status_label.setToolTip(f"ChiSurf RPC connected: {host}:{port}")
-            else:
-                self.rpc_status_label.setStyleSheet("color: #e06c75; font-size: 10pt; margin-right: 4px;")
-                self.rpc_status_label.setToolTip(f"ChiSurf RPC unreachable: {host}:{port}")
+            settings = LLMSettings.from_provider(provider_key)
+            settings.validate()
+            ready = bool(settings.api_key) or "localhost" in settings.base_url
         except Exception:
-            self.rpc_status_label.setStyleSheet("color: #d19a66; font-size: 10pt; margin-right: 4px;")
-            self.rpc_status_label.setToolTip("RPC status check failed")
+            ready = False
+            settings = None
+        if ready:
+            self.rpc_status_label.setStyleSheet("color: #98c379; font-size: 10pt; margin-right: 4px;")
+            self.rpc_status_label.setToolTip(
+                f"AI provider ready: {settings.model} at {settings.base_url}"
+            )
+        else:
+            self.rpc_status_label.setStyleSheet("color: #e06c75; font-size: 10pt; margin-right: 4px;")
+            self.rpc_status_label.setToolTip(
+                "AI provider is not configured — set a base URL, model and API key."
+            )
 
     def _on_cancel(self) -> None:
         """Cancel the running agent operation."""
@@ -928,7 +959,7 @@ updated: 2026-06-09
         self._append_user(text)
 
         mode = self._current_mode()
-        if mode in (AgentMode.CHISURF_TOOLS, AgentMode.AUTONOMOUS_FIT):
+        if mode in (AgentMode.CHISURF_TOOLS, AgentMode.FULL_CONTROL):
             self._start_runtime(text, mode)
         else:
             self._process_message(text)
@@ -987,136 +1018,129 @@ updated: 2026-06-09
         self._append_sys(f"Error: {error_msg}")
         std_logging.error(f"Agent error: {error_msg}")
 
-    def _start_runtime(self, text: str, mode: AgentMode) -> None:
-        """Start the agent runtime in a background thread."""
-        from chisurf.plugins.core.code_editor.settings import get_editor_settings
-        ed_settings = get_editor_settings()
-        config = AgentRunConfig(
-            mode=mode,
-            max_tool_iterations=int(ed_settings.get("agent_max_tool_iterations", 25)),
-            tool_timeout_ms=int(ed_settings.get("agent_tool_timeout_ms", 30000)),
-            code_run_enabled=bool(ed_settings.get("agent_code_run_enabled", False)),
-            chisurf_rpc_host=str(ed_settings.get("agent_chisurf_rpc_host", "127.0.0.1")),
-            chisurf_rpc_cmd_port=int(ed_settings.get("agent_chisurf_rpc_cmd_port", 8765)),
-            chisurf_rpc_pub_port=int(ed_settings.get("agent_chisurf_rpc_pub_port", 8766)),
-            editor_rpc_host=str(ed_settings.get("agent_editor_rpc_host", "127.0.0.1")),
-            editor_rpc_cmd_port=int(ed_settings.get("agent_editor_rpc_cmd_port", 8775)),
-            editor_rpc_pub_port=int(ed_settings.get("agent_editor_rpc_pub_port", 8776)),
-            code_timeout_ms=int(ed_settings.get("agent_code_timeout_ms", 5000)),
-            output_max_chars=int(ed_settings.get("agent_output_max_chars", 20000)),
+    def _build_agent_context(self, mode: AgentMode) -> AgentContext:
+        """Return the execution context for a tool-enabled run.
+
+        Runtime events are forwarded to the GUI thread through a signal;
+        confirmations for the dangerous tools are asked there too, with the
+        worker thread blocked until the user answers.
+
+        Parameters
+        ----------
+        mode : AgentMode
+            The selected mode; decides whether code execution is offered.
+
+        Returns
+        -------
+        AgentContext
+        """
+        working_directory = str(
+            getattr(self.editor, "project_root", None) or pathlib.Path.cwd()
+        )
+        return AgentContext(
+            working_directory=working_directory,
+            allow_code_execution=mode is AgentMode.FULL_CONTROL,
+            confirm=self._confirm_tool if mode is AgentMode.FULL_CONTROL else None,
+            event_callback=lambda event, payload: self.runtimeEventReceived.emit(event, payload),
         )
 
+    def _confirm_tool(self, tool: str, arguments: Dict[str, Any]) -> bool:
+        """Ask the user, on the GUI thread, to approve a dangerous tool call.
+
+        Parameters
+        ----------
+        tool : str
+            Tool name.
+        arguments : dict
+            Arguments the model wants to use.
+
+        Returns
+        -------
+        bool
+            Whether the call may proceed.
+        """
+        decision: Dict[str, bool] = {}
+        answered = threading.Event()
+
+        def ask() -> None:
+            """Show the confirmation dialog and record the answer."""
+            try:
+                detail = json.dumps(arguments, indent=2, default=str)[:4000]
+                reply = QtWidgets.QMessageBox.question(
+                    self,
+                    "Allow agent action?",
+                    f"The assistant wants to run <b>{tool}</b>:<br>"
+                    f"<pre>{detail}</pre>",
+                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                    QtWidgets.QMessageBox.No,
+                )
+                decision["ok"] = reply == QtWidgets.QMessageBox.Yes
+            finally:
+                answered.set()
+
+        QtCore.QTimer.singleShot(0, ask)
+        if not answered.wait(timeout=300.0):
+            return False
+        return bool(decision.get("ok", False))
+
+    def _agent_session_for(self, mode: AgentMode) -> AgentSession | None:
+        """Return the conversation for *mode*, creating it when needed.
+
+        The session is kept between questions so follow-ups ("now fix the
+        lifetime and refit") continue the same conversation.
+
+        Parameters
+        ----------
+        mode : AgentMode
+            Selected agent mode.
+
+        Returns
+        -------
+        AgentSession or None
+            ``None`` when the AI provider is not configured; the reason has
+            already been written to the transcript in that case.
+        """
+        if self._agent_session is not None:
+            return self._agent_session
+
+        provider_key = self.provider_combo.currentData()
         try:
-            from chisurf.server.startup import (
-                ensure_embedded_chisurf_rpc_server,
-                session_state_from_live_chisurf,
-            )
-            state = session_state_from_live_chisurf()
-            available = ensure_embedded_chisurf_rpc_server(
-                host=config.chisurf_rpc_host,
-                cmd_port=config.chisurf_rpc_cmd_port,
-                pub_port=config.chisurf_rpc_pub_port,
-                timeout_s=3.0,
-                state=state,
-            )
-            if not available:
-                self._append_sys(f"{Glyphs.WARNING} ChiSurf RPC server not available. Tool execution disabled.")
-                self.send_btn.setEnabled(True)
-                self.input.setEnabled(True)
-                return
-            registry = default_tool_registry(config)
-        except Exception as e:
-            self._append_sys(f"⚠️ Could not connect to ChiSurf RPC: {e}")
+            settings = LLMSettings.from_provider(provider_key)
+            settings.validate()
+        except Exception as error:
+            self._append_sys(f"{Glyphs.WARNING} {error}")
+            return None
+
+        self._agent_session = AgentSession(
+            LLMClient(settings),
+            context=self._build_agent_context(mode),
+            registry=build_default_registry(),
+            config=AgentConfig(max_safety=mode.safety),
+            extra_instructions=(
+                "You are running inside the ChiSurf desktop application; the "
+                "user can see the fits you create in its windows."
+            ),
+        )
+        return self._agent_session
+
+    def _start_runtime(self, text: str, mode: AgentMode) -> None:
+        """Answer *text* with the tool-enabled agent, off the GUI thread."""
+        session = self._agent_session_for(mode)
+        if session is None:
             self.send_btn.setEnabled(True)
             self.input.setEnabled(True)
             return
 
-        def _llm_call(messages: List[Dict[str, Any]]) -> str:
-            """Call the LLM using existing agent infrastructure."""
-            provider_key = self.provider_combo.currentData()
-            if not provider_key:
-                return json.dumps({"type": "message", "content": "No provider selected."})
-            settings = ai_settings.get_api_settings(provider_key)
-            api_key = settings.get("api_key", "")
-            base_url = settings.get("base_url", "").strip().rstrip("/")
-            model = settings.get("text_model", settings.get("model", ""))
-            if not api_key or not base_url or not model:
-                return json.dumps({"type": "message", "content": "AI provider not fully configured."})
-
-            import requests
-            payload = {
-                "model": model,
-                "messages": messages,
-                "temperature": settings.get("temperature", 0.3),
-                "max_tokens": settings.get("max_tokens", 4096),
-            }
-            try:
-                resp = requests.post(
-                    base_url + "/chat/completions",
-                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                    json=payload,
-                    timeout=60,
-                )
-                if resp.status_code != 200:
-                    return json.dumps({"type": "message", "content": f"API error {resp.status_code}"})
-                data = resp.json()
-                choices = data.get("choices", [])
-                if choices:
-                    return choices[0].get("message", {}).get("content", "")
-                return json.dumps({"type": "message", "content": "No response from API."})
-            except Exception as e:
-                return json.dumps({"type": "message", "content": f"LLM call failed: {e}"})
-
-        def system_prompt_fn() -> str:
-            """Build the system prompt for tool-using modes."""
-            base = self._system_prompt
-            allowed = "\n".join(sorted(ALLOWED_TOOLS))
-            safety = (
-                "\n\n## Safety Rules\n"
-                "- Do not invent RPC method names. Only use tools from the allowed list.\n"
-                "- For fitting, always take a parameter snapshot before modifying parameters.\n"
-                "- If the target fit is ambiguous or missing, ask the user for clarification.\n"
-                "- Do not skip fit.parameter_snapshot before calling parameter.set_value.\n"
-            )
-            if mode == AgentMode.AUTONOMOUS_FIT:
-                base += (
-                    "\n\nYou are in AUTONOMOUS FIT mode. Follow this protocol:\n"
-                    "1. Call session.describe to inspect the session.\n"
-                    "2. Call fit.get on the target fit.\n"
-                    "3. Call fit.parameter_snapshot before any changes.\n"
-                    "4. Propose parameter changes (use parameter.set_value etc.).\n"
-                    "5. Call fit.run.\n"
-                    "6. Call fit.diagnostics.\n"
-                    "7. Iterate to improve fit quality.\n"
-                    "8. When done, emit final with a detailed summary.\n"
-                    + safety +
-                    "Available tools:\n" + allowed
-                )
-            else:
-                base += (
-                    "\n\nYou are in ChiSurf TOOLS mode. You may call individual "
-                    "tools when the user asks. Do not run multi-step autonomous "
-                    "loops unless the user explicitly requests it.\n"
-                    + safety +
-                    "Available tools:\n" + allowed
-                )
-            return base
-
-        self._runtime = AgentRuntime(
-            config=config,
-            tool_registry=registry,
-            event_callback=lambda ev, data: self.runtimeEventReceived.emit(ev, data),
-            llm_call_fn=_llm_call,
-            system_prompt_fn=system_prompt_fn,
-        )
-
+        self._runtime = session
         self.runtimeStarted.emit()
 
-        def _run():
+        def _run() -> None:
+            """Run one agent turn and report the outcome through signals."""
             try:
-                self._runtime.start(text)
-            except Exception as e:
-                std_logging.error(f"Runtime error: {e}")
+                session.ask(text)
+            except Exception as error:
+                std_logging.exception("agent run failed")
+                self.runtimeEventReceived.emit("agent.failed", {"error": str(error)})
             finally:
                 self.runtimeFinished.emit()
 
@@ -1131,7 +1155,7 @@ updated: 2026-06-09
         self.mode_combo.setEnabled(False)
         self.progress_bar.setVisible(True)
         self.status_label.setText(f"{Glyphs.ROBOT} Agent running...")
-        self._check_rpc_status()
+        self._check_provider_status()
 
     def _on_runtime_finished(self) -> None:
         """Handle runtime completion on the main thread."""
@@ -1146,9 +1170,9 @@ updated: 2026-06-09
         _save_history(self._chat_history)
 
     def _on_runtime_event(self, event: str, data: Dict[str, Any]) -> None:
-        """Handle a runtime event on the main thread."""
-        if event == "message.started":
-            pass
+        """Render an agent runtime event in the transcript (GUI thread)."""
+        if event == "agent.started":
+            self.status_label.setText(f"{Glyphs.ROBOT} Thinking...")
         elif event == "message.completed":
             content = data.get("content", "")
             if content:
@@ -1156,64 +1180,65 @@ updated: 2026-06-09
                 self._chat_history.append({"role": "assistant", "content": content})
         elif event == "tool.started":
             tool = data.get("tool", "?")
-            params = data.get("params", {})
-            compact = json.dumps(params, default=str)[:200]
-            self._append_sys(f"🔧 Calling <b>{tool}</b> params: {compact}")
-            self.status_label.setText(f"🔧 Executing {tool}...")
+            arguments = json.dumps(data.get("arguments", {}), default=str)[:200]
+            self._append_sys(f"🔧 <b>{tool}</b> {arguments}")
+            self.status_label.setText(f"🔧 {tool}...")
         elif event == "tool.completed":
             tool = data.get("tool", "?")
             ok = data.get("ok", False)
             elapsed = data.get("elapsed_ms", 0)
             status = Glyphs.SUCCESS if ok else Glyphs.ERROR
-            self._append_sys(f"{status} <b>{tool}</b> ({elapsed}ms)")
-        elif event == "tool.failed":
-            error = data.get("error", "unknown error")
-            self._append_sys(f"❌ Tool failed: {error}")
-        elif event == "fit.iteration.started":
-            self._append_sys("🏃 Fit run starting...")
-            self.status_label.setText("🏃 Running fit...")
-        elif event == "fit.iteration.completed":
-            ok = data.get("ok", False)
-            reason = data.get("reason", "")
-            metrics = data.get("metrics", {})
-            worsening = data.get("worsening_count", 0)
-            if metrics:
-                chi2r = metrics.get("chi2r", "?")
-                chi2 = metrics.get("chi2", "?")
-                self._append_sys(
-                    f"📊 chi2r={chi2r} chi2={chi2} "
-                    f"{f'{Glyphs.SUCCESS} improved' if ok else f'{Glyphs.ERROR} worsened'} "
-                    f"(worsening streak: {worsening})"
-                )
-            else:
-                self._append_sys(f"📊 Fit iteration: {Glyphs.SUCCESS if ok else Glyphs.ERROR} {reason}")
-        elif event == "fit.rollback.completed":
-            self._append_sys("⏪ Restored best-known parameter snapshot")
-        elif event == "agent.cancelled":
-            self._append_sys(f"{Glyphs.STOP} Agent cancelled by user")
+            self._append_sys(f"{status} <b>{tool}</b> ({elapsed} ms) {self._tool_highlight(data)}")
+        elif event in ("tool.failed", "tool.denied"):
+            tool = data.get("tool", "?")
+            self._append_sys(f"❌ <b>{tool}</b>: {data.get('error', 'failed')}")
         elif event == "agent.failed":
-            error = data.get("error", "unknown error")
-            self._append_sys(f"⚠️ Agent failed: {error}")
+            self._append_sys(f"⚠️ Agent failed: {data.get('error', 'unknown error')}")
         elif event == "agent.completed":
-            summary = data
-            fit_runs = summary.get("fit_runs", 0)
-            iterations = summary.get("iterations", 0)
-            rollback = summary.get("rollback_done", False)
-            initial = summary.get("initial_metrics", {})
-            best = summary.get("best_metrics", {})
-            lines = [
-                "---",
-                "**Agent run complete**",
-                f"- Iterations: {iterations}",
-                f"- Fit runs: {fit_runs}",
-                f"- Rollback: {'yes' if rollback else 'no'}",
+            stop_reason = data.get("stop_reason", "answer")
+            tools = data.get("tools", [])
+            if stop_reason != "answer":
+                self._append_sys(f"{Glyphs.STOP} Stopped: {stop_reason}")
+            if tools:
+                self._append_sys(
+                    f"— {data.get('steps', 0)} step(s), {len(tools)} tool call(s): "
+                    f"{', '.join(dict.fromkeys(tools))}"
+                )
+
+    @staticmethod
+    def _tool_highlight(data: Dict[str, Any]) -> str:
+        """Return a short summary of a tool result for the transcript.
+
+        Only the few numbers a user actually watches for are surfaced, so a
+        long run stays readable.
+
+        Parameters
+        ----------
+        data : dict
+            Payload of a ``tool.completed`` event.
+
+        Returns
+        -------
+        str
+            An HTML fragment, possibly empty.
+        """
+        result = data.get("result") or {}
+        if not isinstance(result, dict):
+            return ""
+        if "n_loaded" in result:
+            return f"→ {result['n_loaded']} dataset(s)"
+        if "n_created" in result:
+            return f"→ {result['n_created']} fit(s)"
+        if "results" in result and isinstance(result["results"], list):
+            values = [
+                str(entry.get("chi2r"))
+                for entry in result["results"][:6]
+                if isinstance(entry, dict) and entry.get("chi2r") is not None
             ]
-            if initial:
-                lines.append(f"- Initial chi2r: {initial.get('chi2r', '?')}  chi2: {initial.get('chi2', '?')}")
-            if best:
-                lines.append(f"- Best chi2r: {best.get('chi2r', '?')}  chi2: {best.get('chi2', '?')}")
-            lines.append("---")
-            self._append_sys("<br>".join(lines))
+            return "→ chi2r " + ", ".join(values) if values else ""
+        if "path" in result:
+            return f"→ {pathlib.Path(str(result['path'])).name}"
+        return ""
 
     def _start_fix_loop(self, issues: list[tuple[str, list[dict]]], iteration: int = 0) -> None:
         """Send validation issues back to the agent for auto-fixing."""

@@ -13,6 +13,7 @@
 * [Internationalisation](i18n.md) - The Qt-free translation seam, QTranslator bootstrap, string-extraction kit, and view.json/manifest/.ui localization.
 * [Operation history](history.md) - Append-only action history, headless replay, and MMFDB event-log projection.
 * [Macros, CLI & scripting](macros-cli.md) - Macros, `csc`, GUI scripts, and the recording QtConsole.
+* [LLM agent](llm-agent.md) - The plain-language assistant: described, safety-tiered tools, the observe-act loop, and its head-less CLI.
 * [Project persistence](project-persistence.md) - `.csp` archive format, UID-keyed project state, and UI-state capture.
 * [Pipelines](pipeline.md) - Typed DAGs of transformer invocations persisted and replayed through MMFDB provenance.
 * [Compiled Modules](compiled-modules.md) - The C++ extensions in `modules/` that must be built before tests.

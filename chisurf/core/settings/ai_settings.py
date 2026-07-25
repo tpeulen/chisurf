@@ -12,6 +12,7 @@ _LOG = logging.getLogger(__name__)
 # Provider definitions: display_name -> (key, default_base_url, api_key_url, env_var)
 PROVIDERS: dict[str, tuple[str, str, str, str]] = {
     "OpenAI (ChatGPT)": ("openai", "https://api.openai.com/v1", "https://platform.openai.com/api-keys", "OPENAI_API_KEY"),
+    "OpenRouter": ("openrouter", "https://openrouter.ai/api/v1", "https://openrouter.ai/keys", "OPENROUTER_API_KEY"),
     "Mistral": ("mistral", "https://api.mistral.ai/v1", "https://console.mistral.ai/api-keys/", "MISTRAL_API_KEY"),
     "Local (Ollama, LMStudio, ...)": ("local", "http://localhost:11434/v1", "", ""),
     "Custom (OpenAI-compatible)": ("custom", "", "", ""),
@@ -30,6 +31,16 @@ DEFAULT_PROVIDER_SETTINGS = {
         "text_model": "gpt-4o",
         "model": "gpt-4o",
         "image_model": "gpt-image-2",
+        "api_key": "",
+        "temperature": 0.3,
+        "top_p": 0.9,
+        "max_tokens": 4096,
+    },
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        "text_model": "openai/gpt-4o-mini",
+        "model": "openai/gpt-4o-mini",
+        "image_model": "",
         "api_key": "",
         "temperature": 0.3,
         "top_p": 0.9,
@@ -191,17 +202,33 @@ def save_api_settings(settings: dict, provider: str | None = None) -> bool:
         return False
 
 
+def get_provider_api_key(provider: str) -> str:
+    """Return the environment-variable API key for a provider key.
+
+    Parameters
+    ----------
+    provider : str
+        Canonical provider key, e.g. ``"openrouter"``.
+
+    Returns
+    -------
+    str
+        The key found in the provider's environment variable, or ``""``.
+    """
+    provider = normalize_provider_key(provider)
+    for _display, (key, _url, _api_url, env_var) in PROVIDERS.items():
+        if key == provider and env_var:
+            return os.environ.get(env_var, '').strip()
+    return ''
+
+
 def get_api_key() -> str:
     """Get API key from settings or environment variable."""
     settings = get_api_settings()
     api_key = settings.get('api_key', '')
 
     if not api_key:
-        provider = settings.get('provider', '')
-        for _display, (key, _url, _api_url, env_var) in PROVIDERS.items():
-            if key == provider and env_var:
-                api_key = os.environ.get(env_var, '')
-                break
+        api_key = get_provider_api_key(settings.get('provider', ''))
 
     return api_key.strip()
 
