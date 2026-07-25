@@ -184,7 +184,10 @@
   (coefficient limits, Costes thresholds between background and signal, p > 0.95
   for real vs < 0.95 for independent noise, CCF peak at a known offset, TIFF axis
   handling); verified end-to-end on a real confocal photon stream and headlessly
-  rendered.
+  rendered. Menu launch needs the plugin runner's own convention on top of
+  the manifest `gui` entrypoint: it *execs* `__init__.py` with
+  `__name__ == "plugin"`, so a package without that block loads and shows nothing
+  — the block is what constructs the window.
 
 * **The LLM agent got a real harness: `chisurf/core/agent/`.** The old one
   (`code_editor/agent_runtime.py`) handed the model a bare list of 23 RPC
