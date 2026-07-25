@@ -2057,9 +2057,30 @@ def sample_fit(
     # member's model -- so that member owns the report too, and shows it in the
     # per-member text a group's ``__str__`` is assembled from.
     fit.sampling_diagnostics = diagnostics
+    # Keep the draws themselves, not only their summary. Asking what the
+    # posterior would be under a different prior is a reweighting of these exact
+    # points and costs no model evaluation at all
+    # (:mod:`chisurf.core.fitting.reweight`) -- but only while the draws are in
+    # hand. Recovering them from the chain files afterwards is possible and
+    # tedious, and the summary alone cannot answer it at any price.
+    chain = pool_chains(run_results)
+    sampling_chain = None
+    if chain is not None:
+        burn_in = int((diagnostics or {}).get('burn_in', 0) or 0)
+        burn_in = max(0, min(burn_in, chain.shape[1] - 1))
+        kept = chain[:, burn_in:, :]
+        sampling_chain = {
+            'parameter_names': list(sample_model.parameter_names),
+            'parameter_values': kept.reshape(-1, kept.shape[2]),
+            'chains': kept,
+            'burn_in': burn_in,
+        }
+    fit.sampling_chain = sampling_chain
+
     selected = getattr(fit, 'selected_fit', None)
     if selected is not None and selected is not fit:
         selected.sampling_diagnostics = diagnostics
+        selected.sampling_chain = sampling_chain
 
     # restore initial parameter values
     sample_model.parameter_values = pv

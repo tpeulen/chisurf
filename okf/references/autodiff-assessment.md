@@ -134,10 +134,12 @@ here:
   [fitting subsystem](/subsystems/fitting.md).
 - Windowed adaptation with dual averaging — applicable to the blocked sampler's
   warm-up, not yet taken.
-- Pareto-smoothed importance sampling (in `loo`, not `stan` proper) — would make
+- Pareto-smoothed importance sampling (in `loo`, not `stan` proper) — makes
   reweighting a stored chain under a different prior reliable, and reports a
-  Pareto-`k` that says when it is not. The chain already stores `lnprior`
-  separately, so this is the missing half. Not yet taken.
+  Pareto-`k` that says when it is not. **Harvested**, and it turned out to be the
+  most valuable thing in the list: it buys a capability rather than a speed-up,
+  because a finished chain can now answer for priors it was not run under, at no
+  model evaluations at all. See the [fitting subsystem](/subsystems/fitting.md).
 
 # Numerical gradients and HMC — tried, measured, not shipped
 
@@ -181,13 +183,26 @@ nothing that `de` does not already provide without one. The implementation was
 written, measured and removed rather than kept as an option that could only
 mislead.
 
-**What would change this:** an *analytic* gradient. Not autodiff over the
-existing Python path (see above), but the observation that a decay model is
-**linear in its amplitudes** — so those Jacobian columns are convolutions the
-forward pass already computes, and are exact and free rather than *d* extra
-evaluations. That would cut both the LM Jacobian cost and the HMC gradient cost
-for the linear block, and it needs no new dependency. It does need a per-model
-hook, so it is a model-layer change, not a sampler one.
+**And the analytic gradient does not rescue it either.** The obvious candidate
+was that a decay model is *linear in its amplitudes*, so those Jacobian columns
+would be convolutions the forward pass already computes — exact and free rather
+than *d* extra evaluations, with no new dependency. Tested by asking whether
+``m(θ + t·e_k)`` is affine in ``t``:
+
+| parameter | autoscale on (default) | autoscale off |
+| --- | --- | --- |
+| background | **linear** | **linear** |
+| scatter | nonlinear | **linear** |
+| ``n0`` | — (held) | **linear** |
+| amplitude fraction | nonlinear | nonlinear |
+| lifetimes, timeshift | nonlinear | nonlinear |
+
+The premise is false for ChiSurf's parameterisation, and deliberately so.
+Amplitudes are exposed as *normalised fractions*, which is a nonlinear map of
+the amplitudes the convolution is linear in; and with autoscale the model is
+scale-invariant in them, so the derivative is not the convolved component at
+all. In the default configuration exactly one free parameter is linear — about
+12 % of a fit for a per-model hook. Not worth it.
 
 # When to revisit
 

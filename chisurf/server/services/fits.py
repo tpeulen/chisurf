@@ -1269,6 +1269,94 @@ def fit_posterior(
     return payload
 
 
+def fit_reweight_prior(
+    state: SessionState,
+    priors: dict[str, Any],
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
+    p_value: float = 0.68,
+) -> ServiceResult:
+    """Reuse a completed sampling run under different priors, without sampling.
+
+    A prior changes the posterior but not the likelihood, so draws already taken
+    can be reweighted to the new posterior rather than discarded. This evaluates
+    no model at all -- the ratio is a difference of two scalar prior densities at
+    points already in hand -- so it answers in milliseconds what re-sampling
+    answers in minutes.
+
+    The shortcut is not always valid, and says so: ``pareto_k`` above 0.7 means
+    the new prior favours a region the chain never explored, and the reported
+    numbers must be discarded in favour of sampling again. See
+    :mod:`chisurf.core.fitting.reweight`.
+
+    Parameters
+    ----------
+    state : SessionState
+        Server session.
+    priors : dict
+        Parameter name to the new prior as a ``get_state`` dict, e.g.
+        ``{"tau1": {"kind": "normal", "mu": 4.0, "sigma": 0.2}}``. ``None``
+        removes that parameter's prior.
+    fit_index, fit_uid : int or str, optional
+        Which fit to query.
+    p_value : float, optional
+        Interval coverage for the reported quantiles.
+
+    Returns
+    -------
+    ServiceResult
+        ``parameters``, ``pareto_k``, ``ess``, ``reliable``, ``changed`` and
+        ``warnings``; an error when the fit carries no chain to reweight.
+    """
+    fit, idx = _resolve_fit(state, fit_index, fit_uid)
+    if fit is None:
+        return service_error("fit not found", error_code=NOT_FOUND)
+    if not isinstance(priors, dict) or not priors:
+        return service_error(
+            "priors must be a non-empty mapping of parameter name to prior state",
+            error_code=INVALID_INPUT,
+        )
+
+    chain = getattr(fit, "sampling_chain", None)
+    if not isinstance(chain, dict) or chain.get("parameter_values") is None:
+        return service_error(
+            "this fit has no stored chain to reweight -- run a sampling job first",
+            error_code=NOT_FOUND,
+        )
+
+    from chisurf.core.fitting import reweight as reweight_module
+
+    # Quantiles matching the requested coverage, so the interval means the same
+    # thing it does for every other estimator.
+    tail = 0.5 * (1.0 - float(p_value))
+    quantiles = (tail, 0.5, 1.0 - tail)
+    try:
+        out = reweight_module.reweight_prior(
+            chain, priors, model=getattr(fit, "model", None), quantiles=quantiles
+        )
+    except KeyError as e:
+        return service_error(str(e), error_code=INVALID_INPUT)
+    except Exception as e:
+        return service_error(f"reweighting failed: {e}")
+
+    # ``pareto_k`` is deliberately inf when the weights are past smoothing, and
+    # nan when the tail was too short to diagnose; neither survives JSON. The
+    # verdict itself is in ``reliable`` and spelled out in ``warnings``.
+    k = out["pareto_k"]
+    return {
+        "ok": True,
+        "fit_index": idx,
+        "p_value": float(p_value),
+        "parameters": out["parameters"],
+        "pareto_k": float(k) if np.isfinite(k) else None,
+        "ess": out["ess"],
+        "n_draws": out["n_draws"],
+        "reliable": out["reliable"],
+        "changed": out["changed"],
+        "warnings": out["warnings"],
+    }
+
+
 def fit_sample_cancel(
     state: SessionState,
     job_id: str,

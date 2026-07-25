@@ -2,6 +2,57 @@
 
 ## 2026-07-25
 
+* **A finished chain now answers for priors it was not run under (PSIS).** The
+  standing answer to "what if I had assumed a tighter lifetime prior?" was to
+  sample again — a few hundred thousand model evaluations for a change that
+  touches no data. A prior changes the posterior but not the likelihood, so the
+  draws transfer by a ratio of two prior densities in which the likelihood
+  cancels exactly; only the parameters whose prior changed even enter it. New
+  `chisurf/core/fitting/reweight.py` does that with **zero** model evaluations,
+  and `sample_fit` now keeps the pooled post-burn-in draws on the fit as
+  `sampling_chain` rather than only their summary, since a summary cannot be
+  reweighted at any price. Reachable as `ChiSurfAPI.reweight_prior` and the
+  `fit.reweight_prior` RPC.
+  The reason this is safe to expose is Pareto-smoothed importance sampling
+  (harvested from Stan's `loo`, the last item on that list): it fits a
+  generalised Pareto to the largest weights and reports the shape `k̂` as a
+  verdict — above 0.7 the weight variance is infinite and the reweighting is
+  *refused* rather than reported, which is the honest answer when the new prior
+  favours somewhere the chain never went. Two things had to be got right: the
+  shape estimator is Zhang & Stephens' empirical-Bayes grid average shrunk
+  towards 1/2, not a maximisation; and the exceedances are `expm1(lw - cutoff)`
+  rather than `exp(lw) - exp(cutoff)`, because the latter underflows to zero past
+  ~700 log units — the diagnostic would go blind exactly where the weights are
+  most concentrated. Validated against a closed form (a linear model's posterior
+  is *exactly* Gaussian, so adding a Gaussian prior has an exact answer): the
+  reweighted mean and sd match it to well inside the posterior width across a
+  5.4σ shift, and match a chain actually sampled under the new prior. The
+  smoothing itself cuts the error of the reweighted expectation by ~35 % where
+  k̂ ≈ 0.6 and is a no-op where the weights are benign — measured, because the
+  property I first assumed (largest weight shrinks, ESS rises) is simply false.
+  20 tests in `test/fitting/test_prior_reweighting.py`.
+
+* **Numerical gradients and HMC: implemented, measured, removed.** The follow-up
+  to "no autodiff" is "then use a numerical gradient", and the folklore
+  dismissal was an argument rather than a number. Measured on a collinear
+  posterior with the mass matrix from the curvature at the optimum, effective
+  samples per 1000 evaluations: at 3 parameters HMC reached **83** hand-tuned
+  (τ = 1.0 — genuinely independent draws, which does contradict the folklore)
+  against `de` 73 and `blocked` 53; at 5 it fell to 30 vs 40; at 8 acceptance was
+  zero. Not shipped, for three reasons: Stan-style dual averaging *degrades* it
+  (it reads finite-difference rejections as "step too big" and shrinks ε without
+  limit, since that does not reduce the noise), so adapted it lands below `de`;
+  it collapses above ~4 parameters as FD error accumulates along the trajectory;
+  and the failure is quiet — zero acceptance looks like a short converged chain.
+  The winning configuration used two leapfrog steps, i.e. barely Hamiltonian, so
+  a gradient buys nothing `de` does not already give without one. The analytic
+  gradient does not rescue it either: the premise that a decay model is *linear
+  in its amplitudes* is **false** for ChiSurf's parameterisation, since
+  amplitudes are exposed as normalised fractions and autoscale makes the model
+  scale-invariant in them — exactly one free parameter is linear by default.
+  Recorded in [autodiff-assessment](/references/autodiff-assessment.md).
+
+
 * **The help browser stopped presenting agent scratch as user documentation
   (INC-11).** The "Core" category `rglob`-ed the whole project root and
   deny-listed exactly two paths (`docs/`, anything containing `plugins`), so the

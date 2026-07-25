@@ -458,6 +458,69 @@ class ChiSurfAPI:
             global_posterior=global_posterior,
         )
 
+    def reweight_prior(
+        self,
+        priors: Dict[str, Any],
+        fit_index: Optional[int] = None,
+        fit_uid: Optional[str] = None,
+        p_value: float = 0.68,
+    ) -> Dict[str, Any]:
+        """Ask what a completed sampling run would have said under other priors.
+
+        Changing a prior changes the posterior but not the likelihood, so the
+        draws a run already produced can be reweighted to the new posterior
+        instead of being thrown away. **No model is evaluated**, so the answer is
+        immediate where sampling again costs minutes.
+
+        The reliability of that shortcut is reported, not assumed: ``pareto_k``
+        above 0.7 means the new prior favours a region the chain did not explore
+        and the numbers must not be used. See
+        :mod:`chisurf.core.fitting.reweight`.
+
+        Parameters
+        ----------
+        priors : dict
+            Parameter name to the new prior, as a
+            :meth:`~chisurf.core.fitting.priors.Prior.get_state` dict (e.g.
+            ``{'tau1': {'kind': 'normal', 'mu': 4.0, 'sigma': 0.2}}``) or a
+            :class:`~chisurf.core.fitting.priors.Prior`. ``None`` removes the
+            prior on that parameter.
+        fit_index, fit_uid : int or str, optional
+            Which fit to query; defaults to the current one.
+        p_value : float, optional
+            Interval coverage for the reported quantiles.
+
+        Returns
+        -------
+        dict
+            ``ok``, and on success ``parameters`` (name, mean, sd, quantiles),
+            ``pareto_k``, ``ess``, ``reliable``, ``changed`` and ``warnings``.
+            ``ok`` is ``False`` when the fit has no stored chain to reweight.
+
+        Examples
+        --------
+        >>> api = ChiSurfAPI()                                   # doctest: +SKIP
+        >>> api.reweight_prior({'a': {'kind': 'normal',
+        ...                           'mu': 1.2, 'sigma': 0.1}})['reliable']
+        True
+        """
+        if self.mode == "server" and self.client is not None:
+            return self.client.fit__reweight_prior(
+                priors=priors, fit_index=fit_index, fit_uid=fit_uid,
+                p_value=p_value,
+            )
+        from chisurf.server.services import fits as _fits
+
+        class _State:
+            """Adapter presenting the process-local fits to the service layer."""
+
+            fits = property(lambda self: _local_fits())
+
+        return _fits.fit_reweight_prior(
+            _State(), priors=priors, fit_index=fit_index, fit_uid=fit_uid,
+            p_value=p_value,
+        )
+
     def run_fit(self, fit_index: Optional[int] = None, fit_uid: Optional[str] = None) -> Dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.fit__run(fit_index=fit_index, fit_uid=fit_uid)

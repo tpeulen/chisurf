@@ -347,6 +347,48 @@ names are prefixed (`3:tau`) and a member only knows its own. `approx_grad`,
 `covariance_matrix`, `lnprior`/`lnprob`/`lnprob_parts` and every sampler take an
 optional `model=`, so an engine over a group's global model works throughout.
 
+# Reusing a chain under a different prior
+
+`chisurf/core/fitting/reweight.py` answers "what would this look like under a
+different prior?" from a run that has already finished, instead of sampling
+again. A prior changes the posterior but not the likelihood, so draws from one
+transfer to the other by
+
+$$w_s \propto \exp[\ln\pi_\text{new}(\theta_s) - \ln\pi_\text{old}(\theta_s)],$$
+
+in which the likelihood cancels exactly. Only the parameters whose prior changed
+enter the ratio — every other prior cancels too — so this is a difference of two
+scalar densities per draw and evaluates **no model at all**: milliseconds against
+the minutes a fresh chain costs. `sample_fit` therefore keeps the pooled
+post-burn-in draws on the fit as `sampling_chain`, not only their summary; a
+summary cannot be reweighted at any price.
+
+The danger is the one every importance sampler has: if the new prior favours
+somewhere the chain did not go, a few draws carry all the weight and the answer
+is noise that still looks like a number. **Pareto-smoothed importance sampling**
+([Vehtari et al.](https://doi.org/10.48550/arXiv.1507.02646)) fits a generalised
+Pareto distribution to the largest weights and replaces them by its order
+statistics, and — the reason to prefer it — returns the fitted shape $\hat k$ as
+a verdict. Above 0.7 the weight variance is infinite and the result is refused
+rather than reported. Measured on a known truth, the smoothing cuts the error of
+the reweighted expectation by ~35 % where $\hat k \approx 0.6$, and changes
+nothing where the weights are already well behaved.
+
+Two implementation points matter. The shape estimator is
+[Zhang & Stephens](https://doi.org/10.1198/tech.2009.08017)' empirical-Bayes
+grid average rather than a maximisation, shrunk towards 1/2 by a prior worth ten
+observations so a short tail cannot report an implausibly heavy one. And the
+exceedances are computed as `expm1(lw - cutoff)` rather than
+`exp(lw) - exp(cutoff)`: the latter underflows to zero once the weights span more
+than ~700 log units, i.e. the diagnostic would go blind exactly where the weights
+are most concentrated. Factoring the cutoff out keeps the shape (which is
+scale-invariant) and turns that case into a verdict instead of a shrug.
+
+Reachable as `ChiSurfAPI.reweight_prior(...)` and the `fit.reweight_prior` RPC,
+taking priors as `get_state` dicts. `pareto_k` is reported as `null` over RPC
+when it is non-finite, since that is deliberate and JSON has no spelling for it;
+`reliable` and `warnings` carry the verdict either way.
+
 # Cost of an objective evaluation
 
 Profiling a global-fit sweep found the model evaluation itself was **6 %** of
