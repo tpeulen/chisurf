@@ -244,7 +244,23 @@ class Anisotropy(FittingParameterGroup):
 
     # TODO: needs docstring
     def get_decay(self, lifetime_spectrum: np.ndarray):
-        """Calculate the polarized decay."""
+        """Calculate the polarized decay.
+
+        Magic-angle (VM) detection has no anisotropy contribution:
+        :func:`~chisurf.core.fluorescence.anisotropy.decay.calculcate_spectrum`
+        returns the lifetime spectrum unchanged for any polarization that is not
+        VV, VH or VV/VH. Building the rotation spectrum first is therefore pure
+        waste on that path -- and not cheap waste, because reading :attr:`b`
+        normalises the rotational amplitudes and *writes them back*, so a
+        discarded spectrum still cost a read and a write per component on every
+        model evaluation.
+
+        Only this path short-circuits. Reading :attr:`b` or
+        :attr:`rotation_spectrum` directly -- which is what the GUI and the plots
+        do -- still normalises, so the visible values are unchanged.
+        """
+        if self._is_vm_polarization(self.polarization_type):
+            return lifetime_spectrum
         return chisurf.core.fluorescence.anisotropy.decay.calculcate_spectrum(
             lifetime_spectrum=lifetime_spectrum,
             anisotropy_spectrum=self.rotation_spectrum,

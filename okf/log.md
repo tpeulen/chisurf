@@ -2,6 +2,21 @@
 
 ## 2026-07-25
 
+* **Magic-angle fits were computing an anisotropy they then threw away.**
+  `Anisotropy.get_decay` always built the rotation spectrum and passed it to
+  `calculcate_spectrum`, whose documented behaviour is to return the lifetime
+  spectrum *unchanged* for any polarization that is not VV, VH or VV/VH — so on
+  the magic-angle path, which is what a plain lifetime fit uses, the whole thing
+  was discarded. And not cheap waste: reading `Anisotropy.b` normalises the
+  rotational amplitudes and **writes them back**, so a spectrum nobody used
+  still cost a read and a write per component on every model evaluation.
+  `get_decay` now short-circuits for VM. Only that path: reading `b` or
+  `rotation_spectrum` directly — which is what the GUI and the plots do — still
+  normalises, so no visible value changes. Verified byte-identical against the
+  full path in vm, vv and vh. **71.6 → 59.1 µs** per evaluation (unfrozen
+  87 → 77 µs), so a decay evaluation is now roughly half what it was at the start
+  of this optimisation work.
+
 * **Series and cross-linking, as a skill — and an FCS model bug it exposed.**
   "Load this FCS power series and do a global fit over the data" now works
   end to end. The capability arrived as a **skill**, `fit-series`, not as new

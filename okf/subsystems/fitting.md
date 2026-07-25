@@ -319,6 +319,15 @@ two-exponential TCSPC fit runs in ~37 ms.
   were recomputed anyway (24 000 → 7 054 calls).
 - **`parameter_values` setter** skips writing a value a parameter already has,
   and `Parameter.value` tests the float compare before the port read.
+- **Magic-angle detection skips the anisotropy path.**
+  `Anisotropy.get_decay` built the rotation spectrum and handed it to
+  `calculcate_spectrum`, which returns the lifetime spectrum unchanged for any
+  polarization that is not VV/VH/VV-VH. Not cheap waste either: reading
+  `Anisotropy.b` normalises the rotational amplitudes and *writes them back*, so
+  a discarded spectrum still cost a read and a write per component per
+  evaluation -- 21 % of a VM decay evaluation. Only `get_decay` short-circuits;
+  reading `b` or `rotation_spectrum` directly (GUI, plots) still normalises, so
+  visible values are unchanged.
 - **`frozen_epoch()`** is a token identifying one uninterrupted run. Anything a
   run cannot change may be memoised against it, in particular inputs that are
   expensive to *check* rather than to compute: `Convolve._array_fingerprint`
