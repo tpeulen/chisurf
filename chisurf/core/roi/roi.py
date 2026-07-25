@@ -931,6 +931,134 @@ def roi_from_dict(data: Dict[str, Any]) -> ROI:
     return cls(**params)
 
 
+def as_roi(value: Any) -> Optional[ROI]:
+    """Return *value* as a region, accepting its serialised form.
+
+    Settings cross RPC boundaries and project files as plain data, so a region
+    arrives either as itself or as the dict :meth:`ROI.to_dict` produced. Every
+    consumer needs the same three-line coercion, and writing it per consumer is
+    how the ``None`` case ends up handled differently in each.
+
+    Parameters
+    ----------
+    value : ROI or dict or None
+        The region, its serialised description, or nothing.
+
+    Returns
+    -------
+    ROI or None
+        The region, or ``None`` when nothing was given.
+
+    Raises
+    ------
+    ValueError
+        If a dict is given that is not a region description.
+
+    Examples
+    --------
+    >>> as_roi(None) is None
+    True
+    >>> as_roi(RectangleROI(0, 0, 2, 2).to_dict()).to_mask((3, 3)).sum()
+    np.int64(4)
+    """
+    if value is None or isinstance(value, ROI):
+        return value
+    if isinstance(value, dict):
+        return roi_from_dict(value)
+    raise ValueError(f"cannot read {type(value).__name__} as a region")
+
+
+def as_mask(
+    region: Any,
+    shape: Sequence[int],
+    extent: Extent = None,
+    image: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Return a boolean pixel mask from a region, an array, or nothing.
+
+    The other half of :func:`as_roi`: the seam where an analysis that wants an
+    array meets a caller that may hold a region, a mask it painted itself, or
+    no selection at all.
+
+    Parameters
+    ----------
+    region : ROI or array_like or None
+        A region (rasterised onto *shape*), an array, or ``None`` for
+        "everything". A boolean array is taken as-is; in a numeric one only
+        **positive** entries are inside, because an erase brush marks what it
+        removes with negatives and ``!= 0`` would select exactly those.
+    shape : sequence of int
+        Frame shape ``(ny, nx)``.
+    extent : tuple of float, optional
+        Value span, as for :meth:`ROI.to_mask`.
+    image : numpy.ndarray, optional
+        Image for intensity-dependent regions.
+
+    Returns
+    -------
+    numpy.ndarray
+        Boolean mask of shape ``(ny, nx)``; all-``True`` when *region* is
+        ``None``.
+
+    Examples
+    --------
+    >>> as_mask(None, (2, 2)).all()
+    np.True_
+    >>> as_mask(RectangleROI(-0.5, -0.5, 1.5, 0.5), (2, 2)).sum()
+    np.int64(2)
+
+    A painted buffer, where the erase brush wrote a negative:
+
+    >>> as_mask(np.array([[1.0, -1.0], [0.0, 2.0]]), (2, 2)).tolist()
+    [[True, False], [False, True]]
+    """
+    ny, nx = int(shape[0]), int(shape[1])
+    if region is None:
+        return np.ones((ny, nx), dtype=bool)
+    if isinstance(region, ROI):
+        return region.to_mask((ny, nx), extent, image)
+    arr = np.asarray(region)
+    return arr.astype(bool) if arr.dtype == bool else arr > 0
+
+
+def union_of(rois: Sequence[ROI], name: str = "") -> ROI:
+    """Combine several regions into the one region covering all of them.
+
+    ``a | b | c`` written for a list — the shape a loader or a segmentation
+    hands back when the caller wants a single gate ("the cells", not each cell).
+    A single region is returned unchanged rather than wrapped, so the common
+    case costs nothing.
+
+    Parameters
+    ----------
+    rois : sequence of ROI
+        The regions to combine; must not be empty.
+    name : str
+        Label for the combined region. Ignored when there is only one.
+
+    Returns
+    -------
+    ROI
+        The union.
+
+    Raises
+    ------
+    ValueError
+        If no region is given.
+
+    Examples
+    --------
+    >>> union_of([RectangleROI(0, 0, 2, 2), RectangleROI(3, 3, 5, 5)]).to_mask((5, 5)).sum()
+    np.int64(8)
+    """
+    members = list(rois)
+    if not members:
+        raise ValueError("union_of needs at least one region")
+    if len(members) == 1:
+        return members[0]
+    return CompositeROI("or", members, name=name)
+
+
 def labels_to_rois(
     labels: np.ndarray, crop: bool = True, background: int = 0
 ) -> List[MaskROI]:

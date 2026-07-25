@@ -187,20 +187,12 @@ def _selection_region(
         against (``None`` when no image was needed).
     """
     from chisurf.core.roi import RectangleROI, ThresholdROI
-    from chisurf.core.roi.io import load_rois, roi_from_mask_file, rois_from_cellpose
+    from chisurf.core.roi.io import load_region
 
     if mask_path:
-        path = str(mask_path).lower()
-        if path.endswith(".json"):
-            rois = load_rois(mask_path)
-        elif path.endswith("_seg.npy"):
-            rois = rois_from_cellpose(mask_path)
-        else:
-            rois = [roi_from_mask_file(mask_path)]
-        roi = rois[0]
-        for other in rois[1:]:
-            roi = roi | other
-        return roi, None
+        # Several regions in one file (a segmentation) become one gate: the
+        # decay of "the cells", not of each cell in turn.
+        return load_region(mask_path), None
 
     if threshold is not None:
         image = imaging.representation(clsm_image, tttr, image_type, n_ph_min)

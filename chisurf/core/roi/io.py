@@ -22,7 +22,7 @@ from typing import Any, Iterable, List, Sequence
 
 import numpy as np
 
-from .roi import ROI, MaskROI, labels_to_rois, roi_from_dict, rois_to_labels
+from .roi import ROI, MaskROI, labels_to_rois, roi_from_dict, rois_to_labels, union_of
 
 #: Marker written into native ROI files so a stray JSON is not mistaken for one.
 FORMAT = "chisurf-roi"
@@ -175,6 +175,86 @@ def rois_from_label_image(path: str, crop: bool = True) -> List[ROI]:
     if labels.ndim != 2:
         raise ValueError(f"expected a 2-D label image; got shape {labels.shape}")
     return labels_to_rois(labels.astype(int), crop=crop)
+
+
+def load_regions(path: str, crop: bool = True) -> List[ROI]:
+    """Read regions from a file of any supported kind.
+
+    The one entry point every consumer should use: it picks the reader from the
+    file itself rather than making each caller re-implement the dispatch — and
+    getting that dispatch subtly wrong is easy. A label image sent to the mask
+    reader, for instance, comes back as *one* merged region instead of one per
+    object, silently, because a label image is also a valid mask.
+
+    Parameters
+    ----------
+    path : str
+        A native ``.json`` region file, a Cellpose ``_seg.npy``, or an image
+        (TIFF / ``.npy``) holding either a label image or a binary mask.
+    crop : bool
+        Store each region from a segmentation cropped to its bounding box.
+
+    Returns
+    -------
+    list of ROI
+        The regions in the file: several for a segmentation or a multi-region
+        JSON, one for a binary mask.
+
+    Raises
+    ------
+    ValueError
+        If the file cannot be read as any of those.
+    """
+    p = pathlib.Path(path)
+    suffix = p.suffix.lower()
+    if suffix == ".json":
+        return load_rois(str(p))
+    if p.name.lower().endswith("_seg.npy"):
+        return rois_from_cellpose(str(p), crop=crop)
+
+    if suffix == ".npy":
+        arr = np.asarray(np.load(str(p)))
+    else:
+        import tifffile
+
+        arr = np.asarray(tifffile.imread(str(p)))
+    if arr.ndim != 2:
+        raise ValueError(f"expected a 2-D image; got shape {arr.shape}")
+
+    # An integer image carrying more than one object is a labelling, not a
+    # mask: reading it as a mask would merge every object into one region.
+    if np.issubdtype(arr.dtype, np.integer) and len(np.unique(arr[arr != 0])) > 1:
+        return labels_to_rois(arr.astype(int), crop=crop)
+    return [MaskROI(arr != 0, name=p.stem)]
+
+
+def load_region(path: str, crop: bool = True) -> ROI:
+    """Read a file as a single region, combining several into their union.
+
+    For callers that gate with one region — an analysis confined to "the cells",
+    not to each cell in turn.
+
+    Parameters
+    ----------
+    path : str
+        As for :func:`load_regions`.
+    crop : bool
+        As for :func:`load_regions`.
+
+    Returns
+    -------
+    ROI
+        The single region, or the union of all of them.
+
+    Raises
+    ------
+    ValueError
+        If the file holds no region.
+    """
+    regions = load_regions(path, crop=crop)
+    if not regions:
+        raise ValueError(f"no region in {path}")
+    return union_of(regions)
 
 
 def save_label_image(

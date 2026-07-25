@@ -41,9 +41,12 @@ from .roi import (
     PolygonROI,
     RectangleROI,
     ThresholdROI,
+    as_mask,
+    as_roi,
     labels_to_rois,
     roi_from_dict,
     rois_to_labels,
+    union_of,
 )
 
 __all__ = [
@@ -57,6 +60,9 @@ __all__ = [
     "roi_from_dict",
     "labels_to_rois",
     "rois_to_labels",
+    "as_roi",
+    "as_mask",
+    "union_of",
     # measurements of a region
     "RegionProperties",
     "regionprops",

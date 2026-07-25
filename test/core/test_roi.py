@@ -300,6 +300,48 @@ def test_segmented_regions_gate_molecule_positions():
     np.testing.assert_array_equal(roi.contains(positions), [True, False, True])
 
 
+def test_as_roi_accepts_a_region_its_serialised_form_or_nothing():
+    """Settings cross RPC as plain data, so every consumer needs this coercion.
+
+    Four of them were writing it out by hand, which is how ``None`` ends up
+    meaning something different in each.
+    """
+    from chisurf.core.roi import as_roi
+
+    rect = RectangleROI(0, 0, 2, 2)
+    assert as_roi(None) is None
+    assert as_roi(rect) is rect
+    np.testing.assert_array_equal(
+        as_roi(rect.to_dict()).to_mask((4, 4)), rect.to_mask((4, 4))
+    )
+    with pytest.raises(ValueError):
+        as_roi("a rectangle, please")
+
+
+def test_as_mask_treats_an_erased_pixel_as_outside():
+    """A paint buffer marks removal with a negative, not with zero.
+
+    ``!= 0`` on a signed buffer selects exactly the pixels the erase brush was
+    used to remove — the kind of inversion that looks like a rendering bug
+    three tools downstream.
+    """
+    from chisurf.core.roi import as_mask
+
+    painted = np.zeros((3, 3))
+    painted[0, 0] = 1.0
+    painted[1, 1] = -1.0          # erased
+    np.testing.assert_array_equal(
+        as_mask(painted, (3, 3)),
+        [[True, False, False], [False, False, False], [False, False, False]],
+    )
+
+    # None means everything; a ROI is rasterised; a bool array passes through.
+    assert as_mask(None, (2, 2)).all()
+    assert as_mask(RectangleROI(-0.5, -0.5, 0.5, 1.5), (2, 2)).sum() == 2
+    given = np.array([[True, False], [False, True]])
+    np.testing.assert_array_equal(as_mask(given, (2, 2)), given)
+
+
 def test_a_region_addresses_the_flattened_data_vector():
     """A fit holds a 1-D vector; a region on the map says which entries it means.
 

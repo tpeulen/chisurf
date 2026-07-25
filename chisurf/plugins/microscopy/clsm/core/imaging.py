@@ -176,14 +176,9 @@ def selection_array(
     numpy.ndarray
         ``uint8`` array of 0/1, shaped ``shape``.
     """
-    from chisurf.core.roi import ROI
+    from chisurf.core.roi import as_mask
 
-    if isinstance(mask, ROI):
-        return mask.to_mask(shape, image=image).astype(np.uint8)
-    sel = np.copy(np.asarray(mask))
-    sel[sel > 0] = 1
-    sel[sel < 0] = 0
-    return sel.astype(np.uint8)
+    return as_mask(mask, shape, image=image).astype(np.uint8)
 
 
 def decay_of_selection(

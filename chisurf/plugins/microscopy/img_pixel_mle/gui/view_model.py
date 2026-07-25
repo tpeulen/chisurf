@@ -339,20 +339,12 @@ class PixelMleViewModel(MleObserverMixin):
             self.roi = None
             self.notify("roi")
             return
-        from chisurf.core.roi.io import load_rois, roi_from_mask_file, rois_from_cellpose
+        from chisurf.core.roi.io import load_regions
+        from chisurf.core.roi.roi import union_of
 
         try:
-            lowered = path.lower()
-            if lowered.endswith(".json"):
-                regions = load_rois(path)
-            elif lowered.endswith("_seg.npy"):
-                regions = rois_from_cellpose(path)
-            else:
-                regions = [roi_from_mask_file(path)]
-            roi = regions[0]
-            for other in regions[1:]:
-                roi = roi | other
-            self.roi = roi
+            regions = load_regions(path)
+            self.roi = union_of(regions)
             self.status_text = f"Region loaded: {len(regions)} region(s) from {path}"
         except Exception as exc:  # noqa: BLE001 - surfaced in the status line
             logger.debug("could not read region %s", path, exc_info=True)

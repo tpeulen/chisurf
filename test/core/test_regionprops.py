@@ -72,6 +72,36 @@ def test_a_boolean_mask_is_one_region():
     assert prop.extent == 1.0
 
 
+def test_labels_are_measured_in_order_however_they_are_numbered():
+    """Gaps, a non-zero background and a huge label value all behave.
+
+    Measuring each label by scanning the whole frame is the obvious
+    implementation and it costs O(labels x frame); cutting each region from its
+    own bounding box instead must not change which regions come back, nor
+    their order.
+    """
+    labels = np.zeros((8, 8), dtype=int)
+    labels[1:3, 1:3] = 9        # out of order and non-contiguous ...
+    labels[5:7, 5:7] = 2        # ... with a gap before it
+    props = regionprops(labels)
+    assert [p.label for p in props] == [2, 9]
+    assert [p.area for p in props] == [4, 4]
+    assert props[0].centroid == (5.5, 5.5)
+
+    # A nominated background is excluded, and 0 becomes an ordinary label.
+    with_background = regionprops(labels, background=9)
+    assert [p.label for p in with_background] == [0, 2]
+    assert with_background[0].area == 8 * 8 - 8  # everything but the two blobs
+
+
+def test_negative_labels_are_refused_rather_than_dropped():
+    """Silently skipping them would report fewer regions than the image holds."""
+    labels = np.zeros((4, 4), dtype=int)
+    labels[0, 0] = -1
+    with pytest.raises(ValueError, match="negative"):
+        regionprops(labels)
+
+
 def test_rois_are_measured_in_the_order_given():
     """Several ROIs give several property sets, labelled 1..n and named."""
     rois = [RectangleROI(0, 0, 3, 3, name="a"), RectangleROI(5, 5, 9, 8, name="b")]

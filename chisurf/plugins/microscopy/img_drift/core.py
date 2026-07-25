@@ -34,7 +34,7 @@ from chisurf.core.fluorescence.imaging.drift import (
     estimate_drift,
 )
 from chisurf.core.fluorescence.imaging.image_source import is_photon_stream
-from chisurf.core.roi import ROI, roi_from_dict
+from chisurf.core.roi import as_roi
 
 
 @dataclasses.dataclass
@@ -94,15 +94,6 @@ class DriftResult:
         }
 
 
-def _as_roi(roi: Any) -> ROI | None:
-    """Return *roi* as a :class:`ROI`, accepting a live object or a dict."""
-    if roi is None or isinstance(roi, ROI):
-        return roi
-    if isinstance(roi, dict):
-        return roi_from_dict(roi)
-    raise TypeError(f"cannot interpret {type(roi).__name__} as a ROI")
-
-
 def measure_drift(
     filename: str,
     channel: Any = 0,
@@ -158,7 +149,7 @@ def measure_drift(
 
     frames = stack.frames(channel)
     shifts = estimate_drift(
-        frames, reference=reference, roi=_as_roi(roi), smooth=smooth, subpixel=subpixel
+        frames, reference=reference, roi=as_roi(roi), smooth=smooth, subpixel=subpixel
     )
     corrected = apply_drift(frames, shifts, mode=mode)
     return DriftResult(
@@ -276,7 +267,7 @@ def correct_photon_image(
         tttr_data=tttr, channels=list(channels or [0]), fill=True
     )
     shifts = correct_clsm_drift(
-        clsm, reference=reference, roi=_as_roi(roi),
+        clsm, reference=reference, roi=as_roi(roi),
         smooth=smooth, subpixel=subpixel, mode=mode,
     )
     return clsm, shifts

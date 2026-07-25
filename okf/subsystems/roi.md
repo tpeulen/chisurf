@@ -52,6 +52,24 @@ an intensity-dependent region can take part in one.
 region's *own* coordinates, exact and grid-free for the analytic shapes,
 rasterised for masks and thresholds. Interactive handles need it — a rectangle
 that re-derives its corners from a rasterised box walks across the image.
+`ROI.to_indices` answers the same question for a *flattened* array, which is the
+form a fit holds its data in.
+
+## The three coercions every consumer needs
+
+A consumer receives a region in whatever form its caller had, and the same three
+conversions were being written out per consumer — four copies of the first alone,
+each handling `None` slightly differently:
+
+| Helper | Converts |
+| --- | --- |
+| `as_roi(value)` | a `ROI`, its serialised dict (RPC, project files), or `None` → `ROI \| None` |
+| `as_mask(region, shape, ...)` | a `ROI`, a raw array, or `None` ("everything") → boolean mask |
+| `union_of(rois)` | several regions → one gate; a single region passes through unwrapped |
+
+`as_mask` carries one rule worth knowing: in a numeric array only **positive**
+entries are inside. A paint buffer marks erased pixels with a negative, so the
+obvious `!= 0` selects exactly what the erase brush removed.
 
 ## Persistence and segmentation
 
@@ -96,6 +114,12 @@ reason.
 * **label images and binary masks**, both directions, for tools that know
   nothing about ChiSurf's own format.
 
+`load_regions(path)` is the entry point consumers should use, with
+`load_region(path)` for the single-gate case. Dispatching on the extension per
+consumer looks trivial and is not: a label image is also a valid mask, so
+sending it to the mask reader merges every object into one region, silently.
+The shared loader decides from the file's own content.
+
 ## Measuring a region
 
 `props.py` answers the third question — *what is it?* — with
@@ -118,6 +142,11 @@ are reported because the imaging plugins here need them.
 The pay-off is that the measurements stop being re-derived. Molecule MLE used
 `skimage.measure.regionprops` directly and object colocalization used a pile of
 per-quantity `scipy.ndimage` reductions; both now read one property set.
+
+Labels are located with one `find_objects` pass and each region is cut from its
+own bounding box, rather than comparing the whole frame against every label in
+turn — the difference between `O(n_labels x frame)` and `O(frame)`, which is
+what a segmentation holding a few thousand molecules actually costs.
 
 Caveat worth carrying: on regions a few pixels across the discrete perimeter is
 biased in both directions, so `circularity` can exceed 1 (a 7x7 square scores

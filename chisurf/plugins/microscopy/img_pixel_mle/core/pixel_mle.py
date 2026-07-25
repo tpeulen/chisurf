@@ -158,11 +158,9 @@ class PixelMleSettings:
             The region, rebuilt from its serialised form when the settings
             arrived over RPC.
         """
-        from chisurf.core.roi import ROI, roi_from_dict
+        from chisurf.core.roi import as_roi
 
-        if self.roi is None or isinstance(self.roi, ROI):
-            return self.roi
-        return roi_from_dict(self.roi)
+        return as_roi(self.roi)
 
 
 @dataclasses.dataclass

@@ -250,3 +250,55 @@ def test_a_selection_survives_a_full_round_trip(tmp_path):
         restored.to_mask(img.shape), region.to_mask(img.shape)
     )
     assert not restored.to_mask(img.shape)[30, 30]
+
+
+# --- one loader for every kind ---------------------------------------------
+def test_load_regions_reads_each_kind_by_what_the_file_holds(tmp_path):
+    """One entry point, and a label image does not arrive as a single blob.
+
+    Dispatching on the extension alone merges a label image into one region,
+    silently, because a label image is also a valid mask. Consumers were each
+    re-implementing that dispatch — and each getting the same case wrong.
+    """
+    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.roi import RectangleROI
+    from chisurf.core.roi.io import load_region, load_regions
+
+    labels = np.zeros((12, 12), dtype=np.uint16)
+    labels[1:4, 1:4] = 1
+    labels[7:10, 7:10] = 2
+    label_path = tmp_path / "cells.tif"
+    tifffile.imwrite(str(label_path), labels)
+
+    regions = load_regions(str(label_path))
+    assert len(regions) == 2, "a label image is one region per object"
+    assert sorted(r.to_mask((12, 12)).sum() for r in regions) == [9, 9]
+
+    # ... and the same file as one gate is their union.
+    assert load_region(str(label_path)).to_mask((12, 12)).sum() == 18
+
+    # A binary mask stays a single region.
+    mask_path = tmp_path / "cell.tif"
+    tifffile.imwrite(str(mask_path), (labels > 0).astype(np.uint8))
+    assert len(load_regions(str(mask_path))) == 1
+
+    # The native format round-trips whatever it holds, shapes included.
+    native = save_rois([RectangleROI(0, 0, 3, 3), RectangleROI(5, 5, 8, 8)],
+                       str(tmp_path / "two.json"))
+    assert len(load_regions(native)) == 2
+    assert load_region(native).to_mask((12, 12)).sum() == 18
+
+
+def test_union_of_leaves_a_single_region_alone():
+    """The common case must not pay for a composite wrapper."""
+    from chisurf.core.roi import RectangleROI, union_of
+
+    one = RectangleROI(0, 0, 2, 2)
+    assert union_of([one]) is one
+
+    both = union_of([one, RectangleROI(3, 3, 5, 5)], name="cells")
+    assert both.to_mask((6, 6)).sum() == 8
+    assert both.name == "cells"
+
+    with pytest.raises(ValueError):
+        union_of([])

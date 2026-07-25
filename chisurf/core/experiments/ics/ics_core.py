@@ -19,7 +19,7 @@ try:
 except Exception:  # pragma: no cover - optional at import time
     tttrlib = None  # type: ignore[assignment]
 
-from chisurf.core.roi import ROI
+from chisurf.core.roi import as_mask
 
 from .data import IcsCarpet, IcsSettings, IcsTiming
 
@@ -195,10 +195,7 @@ def compute_ics_carpet(
     n_frames, ny, nx = stack.shape
 
     if mask is not None:
-        if isinstance(mask, ROI):
-            m = mask.to_mask((ny, nx), image=stack)
-        else:
-            m = np.asarray(mask, dtype=bool)
+        m = as_mask(mask, (ny, nx), image=stack)
         if m.shape != (ny, nx):
             raise ValueError(
                 f"Mask shape {m.shape} does not match image shape {(ny, nx)}"

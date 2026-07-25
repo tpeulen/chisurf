@@ -794,12 +794,58 @@ def regionprops(
         props = _measure(labels, intensity, 1, "", extra_properties)
         return [props] if props is not None else []
 
+    # ``find_objects`` gives every label's bounding box in one pass, so each
+    # region is cut from its own box instead of scanning the whole frame per
+    # label — the difference between O(n_labels x frame) and O(frame) when a
+    # segmentation holds thousands of molecules.
+    from scipy import ndimage as ndi
+
+    if labels.min() < 0:
+        raise ValueError(
+            "label images must not hold negative values; got "
+            f"{int(labels.min())}. Use `background=` to nominate a different "
+            "background label."
+        )
+
     out = []
-    for value in sorted(int(v) for v in np.unique(labels) if int(v) != int(background)):
-        props = _measure(labels == value, intensity, value, str(value), extra_properties)
-        if props is not None:
+    shifted = labels if int(background) == 0 else _relabel_background(labels, int(background))
+    boxes = ndi.find_objects(shifted.astype(np.intp))
+    for index, box in enumerate(boxes, start=1):
+        if box is None:  # a label value absent from the image
+            continue
+        value = index if int(background) == 0 else _original_label(index, int(background))
+        sub = shifted[box] == index
+        props = RegionProperties(
+            sub,
+            offset=(box[0].start, box[1].start),
+            label=value,
+            intensity=None if intensity is None else intensity[box],
+            name=str(value),
+            extra_properties=extra_properties,
+        )
+        if props.area:
             out.append(props)
+    # Ascending *original* label order, which the background swap can disturb.
+    out.sort(key=lambda p: p.label)
     return out
+
+
+def _relabel_background(labels: np.ndarray, background: int) -> np.ndarray:
+    """Return *labels* with a non-zero background value moved out of the way.
+
+    ``find_objects`` treats 0 as background; when the caller nominates another
+    value, the two are swapped so the fast path still applies.
+    """
+    out = np.asarray(labels).astype(np.intp, copy=True)
+    zeros = out == 0
+    out[out == background] = 0
+    out[zeros] = background
+    return out
+
+
+def _original_label(index: int, background: int) -> int:
+    """Undo :func:`_relabel_background` for one label value."""
+    return 0 if index == background else index
 
 
 def regionprops_table(

@@ -17,7 +17,7 @@ import tttrlib
 import chisurf.core.data
 from chisurf.core.experiments.core.reader import ExperimentReader
 from chisurf.core.fluorescence.imaging.drift import correct_drift
-from chisurf.core.roi import ROI, roi_from_dict
+from chisurf.core.roi import ROI, as_roi
 from .data import IcsCarpet, IcsSettings, IcsTiming, lag_time
 from .ics_core import compute_ics_carpet, frame_pairs, normalise_ics
 from .tttr_loader import load_clsm_from_tttr
@@ -245,15 +245,12 @@ class ICSReader(ExperimentReader):
         ROI or None
             The region, or ``None`` when unset or unreadable.
         """
-        roi = getattr(self, "roi", None)
-        if roi is None or isinstance(roi, ROI):
-            return roi
-        if isinstance(roi, dict):
-            try:
-                return roi_from_dict(roi)
-            except Exception:
-                return None
-        return None
+        try:
+            return as_roi(getattr(self, "roi", None))
+        except Exception:
+            # A reader is restored from whatever a project file holds; an
+            # unreadable region must not stop the data loading.
+            return None
 
     def _seed_timing_from_header(self, tttr_all) -> None:
         """Refine pixel/line durations from a TTTR header when possible.

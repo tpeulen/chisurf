@@ -451,7 +451,8 @@ class ClsmViewModel:
         """Load one or more regions from a file.
 
         Reads the native JSON format, a Cellpose segmentation, a label image or
-        a binary mask — whatever the extension says.
+        a binary mask — the shared loader picks by the file itself, so a label
+        image arrives as one region per object rather than one merged blob.
 
         Parameters
         ----------
@@ -461,19 +462,17 @@ class ClsmViewModel:
             Name for a single loaded region; defaults to the file stem (a file
             holding several regions keeps their own names).
         """
-        from chisurf.core.roi.io import load_rois, roi_from_mask_file, rois_from_cellpose
+        from chisurf.core.roi.io import load_regions
 
-        path = str(filename).lower()
-        stem = name or pathlib.Path(filename).stem
-        if path.endswith(".json"):
-            loaded = load_rois(filename)
-        elif path.endswith("_seg.npy"):
-            loaded = rois_from_cellpose(filename)
-        else:
-            loaded = [roi_from_mask_file(filename, name=stem)]
-
+        stem = pathlib.Path(filename).stem
+        loaded = load_regions(filename)
         for i, roi in enumerate(loaded):
-            key = roi.name or (stem if len(loaded) == 1 else f"{stem}_{i + 1}")
+            if len(loaded) == 1:
+                # An explicit name wins: it is what the caller asked this
+                # region to be called, whatever the file says.
+                key = name or roi.name or stem
+            else:
+                key = roi.name or f"{name or stem}_{i + 1}"
             self.rois[key] = roi
         self.notify("roi")
 

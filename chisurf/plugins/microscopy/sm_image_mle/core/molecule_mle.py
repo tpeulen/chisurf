@@ -140,11 +140,9 @@ class MoleculeMleSettings:
             The region, rebuilt from its serialised form when the settings came
             over RPC.
         """
-        from chisurf.core.roi import ROI, roi_from_dict
+        from chisurf.core.roi import as_roi
 
-        if self.roi is None or isinstance(self.roi, ROI):
-            return self.roi
-        return roi_from_dict(self.roi)
+        return as_roi(self.roi)
 
     @property
     def window(self) -> int:
