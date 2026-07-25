@@ -222,6 +222,18 @@ class PdaDynamicThreeStateModel(ModelCurve):
             enable_fret_efficiency=False
         )
         self.n_hist = int(n_hist)
+        #: How the time-averaged probability distribution is obtained.
+        #: ``"szabo-gopich"`` matches a shape to its exact first two moments
+        #: (deterministic, closed form, any number of states);
+        #: ``"monte-carlo"`` samples trajectories with Gillespie. The analytic
+        #: route is the default because a stochastic objective makes the fit
+        #: itself noisy -- the optimiser sees simulation scatter as structure.
+        #: It agrees with sampling to ~1% once there is more than a transition
+        #: or two per window; in the slow-exchange limit the true distribution
+        #: is trimodal and a two-moment match cannot follow it, so use
+        #: ``"monte-carlo"`` there -- or a static multi-species model, which is
+        #: what slow exchange actually means.
+        self.method = "szabo-gopich"
         self.seed = int(seed)
         self._mc_cache_key = None
         self._mc_fractions = None
@@ -269,16 +281,27 @@ class PdaDynamicThreeStateModel(ModelCurve):
             for R, s in zip(st.distances, st.sigmas)
         ])
 
-        fractions = self._time_fractions()  # (n_windows, 3)
-        pch1_samples = fractions @ pG_states  # (n_windows,)
+        if self.method == "szabo-gopich":
+            # Analytic: keep the exact first two moments of the time-averaged
+            # green probability and match a shape to them. Deterministic, where
+            # the Monte-Carlo route makes the fit objective itself noisy.
+            from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
 
-        # Histogram the per-window green probabilities into a compact spectrum.
-        counts, edges = np.histogram(pch1_samples, bins=self.n_hist, range=(0.0, 1.0))
-        centers = 0.5 * (edges[:-1] + edges[1:])
-        weights = counts.astype(float)
-        total = weights.sum()
-        if total > 0.0:
-            weights /= total
+            centers, weights = szabo_gopich_quadrature(
+                self.states.rate_matrix(), pG_states, self.states.sim_time_s,
+                n_nodes=self.n_hist,
+            )
+        else:
+            fractions = self._time_fractions()  # (n_windows, 3)
+            pch1_samples = fractions @ pG_states  # (n_windows,)
+
+            # Histogram the per-window green probabilities into a compact spectrum.
+            counts, edges = np.histogram(pch1_samples, bins=self.n_hist, range=(0.0, 1.0))
+            centers = 0.5 * (edges[:-1] + edges[1:])
+            weights = counts.astype(float)
+            total = weights.sum()
+            if total > 0.0:
+                weights /= total
 
         keep = weights > 0.0
         weights = weights[keep]

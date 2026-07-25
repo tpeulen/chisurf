@@ -276,6 +276,12 @@ class TcPdaSetup(FittingParameterGroup):
 
         # Fraction of molecules carrying the intended dye assignment. Free this
         # when the two labelling sites are chemically equivalent.
+        # Observation window, needed by the multistate (Szabo-Gopich) route
+        # because its rates are absolute (Hz) rather than per-window.
+        self._window = FittingParameter(
+            value=2e-3, name="T(window)", label_text="T<sub>window</sub>",
+            lb=1e-9, ub=1.0, bounds_on=True, fixed=True,
+        )
         # Mean number of state transitions per observation window. Zero is
         # the static limit, so the dynamic model nests the static one.
         self._k_ex = FittingParameter(
@@ -306,6 +312,11 @@ class TcPdaSetup(FittingParameterGroup):
     def k_ex(self) -> float:
         """Mean number of state transitions per observation window."""
         return max(float(self._k_ex.value), 0.0)
+
+    @property
+    def window(self) -> float:
+        """Observation-window duration in seconds."""
+        return max(float(self._window.value), 1e-12)
 
     @property
     def labeling_fraction(self) -> float:
@@ -369,6 +380,12 @@ class TcPdaModel(ModelCurve):
         #: states rather than a static mixture. Species three onward stay
         #: static, which is the convention the incumbent uses.
         self.dynamic = False
+        #: Optional (n_states, n_states) rate matrix in Hz, indexed
+        #: [target, source]. Set it to use the multistate Szabo-Gopich
+        #: route instead of the exact two-state occupation law.
+        self.rate_matrix = None
+        #: Quadrature nodes over the time-averaged probability.
+        self.dynamic_nodes = 24
         self._counts_cache = None
 
     # -- data ------------------------------------------------------------
@@ -588,6 +605,54 @@ class TcPdaModel(ModelCurve):
                 np.log(weights)[:, None] + np.stack(pieces, axis=0), axis=0
             )
 
+    def _multistate_log_likelihood(self, counts: BurstCounts, species, setup) -> np.ndarray:
+        """Per-burst log likelihood of N exchanging states (Szabo-Gopich).
+
+        Beyond two states there is no closed occupation-time law, so this keeps
+        the exact first two moments of the time-averaged per-photon
+        probabilities and matches a shape to them — the approximation Gopich and
+        Szabo introduced for exactly this problem. Each channel is averaged
+        independently, which is what makes the cost linear in the channel count
+        rather than exponential in the state count.
+        """
+        from scipy.special import logsumexp
+
+        from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
+        from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+
+        blue = np.stack([self._mean_channel_probabilities(s, setup)[0] for s in species])
+        green = np.stack([self._mean_channel_probabilities(s, setup)[1] for s in species])
+
+        rates = np.asarray(self.rate_matrix, dtype=float)
+        window = self.setup.window
+        n_nodes = max(4, int(self.dynamic_nodes))
+
+        def averaged(per_state):
+            """Nodes over the time-averaged probability of each channel."""
+            columns = []
+            for channel in range(per_state.shape[1]):
+                nodes, weights = szabo_gopich_quadrature(
+                    rates, per_state[:, channel], window, n_nodes=n_nodes
+                )
+                columns.append(nodes)
+            grid = np.stack(columns, axis=1)
+            # Channels are averaged one at a time and then renormalised: the
+            # marginals are exact, the joint is not, and renormalising is what
+            # keeps every node a valid probability vector.
+            total = grid.sum(axis=1, keepdims=True)
+            return np.divide(grid, np.where(total > 0, total, 1.0),
+                             out=np.zeros_like(grid), where=total > 0), weights
+
+        p_blue, weights = averaged(blue)
+        p_green, _ = averaged(green)
+
+        node = burst_log_likelihood(
+            counts.blue, p_blue, self.setup.background_blue
+        ) + burst_log_likelihood(
+            counts.green, p_green, self.setup.background_green
+        )
+        return logsumexp(np.log(weights)[:, None] + node, axis=0)
+
     def _per_burst_log_likelihood(self, counts: BurstCounts) -> np.ndarray:
         """Return the per-burst log likelihood under the current parameters."""
         from scipy.special import logsumexp
@@ -596,6 +661,9 @@ class TcPdaModel(ModelCurve):
 
         setup = self.setup.as_setup()
         species = self.species.as_species(self._labeling_weight())
+
+        if getattr(self, "dynamic", False) and self.rate_matrix is not None:
+            return self._multistate_log_likelihood(counts, species, setup)
 
         if getattr(self, "dynamic", False) and len(species) >= 2:
             exchanging, static = species[:2], species[2:]

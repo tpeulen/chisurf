@@ -69,7 +69,7 @@
       "title": "Exchange (dynamic)",
       "collapsible": true,
       "collapsed": true,
-      "description": "Treat the first two species as two conformational states that interconvert during the burst, rather than a static mixture. Species three onward stay static. K_ex is the mean number of transitions per observation window: zero is the static limit, so the dynamic model nests the static one.",
+      "description": "Treat the first two species as two conformational states that interconvert during the burst, rather than a static mixture. Species three onward stay static. K_ex is the mean number of transitions per observation window: zero is the static limit, so the dynamic model nests the static one. With a rate matrix set, any number of states is handled by the Szabo-Gopich approximation: its first two moments are exact, and the matched shape agrees with exact sampling to ~1% once there is more than a transition or two per window. In the slow limit the distribution is multi-modal and the match cannot follow it — but slow exchange means the states are resolved, so a static multi-species fit is the right model there.",
       "sections": [
         {
           "type": "toggle",
