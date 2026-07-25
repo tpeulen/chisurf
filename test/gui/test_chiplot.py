@@ -160,6 +160,17 @@ def test_set_menu_enabled_returns_self(qapp):
     assert plot.set_menu_enabled(True) is plot
 
 
+def test_set_axis_visible_returns_self(qapp):
+    """``set_axis_visible`` toggles individual axes and chains (returns self).
+
+    Regression guard for PRD-64 Batch 26 (proteinMC network diagram), which
+    hides both axes for a bare canvas.
+    """
+    plot = cp.Plot()
+    assert plot.set_axis_visible(left=False, bottom=False) is plot
+    assert plot.set_axis_visible(left=True, bottom=True, right=False, top=False) is plot
+
+
 def test_set_interactive_returns_self(qapp):
     """``set_interactive`` toggles mouse+menu on a Plot and chains.
 
@@ -347,6 +358,8 @@ def test_migrated_modules_import(qapp):
         # shared test process. Verified standalone + screenshot-checked instead.
         # Batch 25
         "chisurf.gui.plots.parameter_scan.parameter_scan",
+        # Batch 26
+        "chisurf.gui.plots.proteinMC",
     ):
         assert importlib.import_module(name) is not None
 

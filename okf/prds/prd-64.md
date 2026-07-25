@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 25):*
+*Landed so far (allow-list 76 → 24):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -533,6 +533,17 @@ screenshot/qtbot verification after each cluster.
   equivalent and were dropped (labels still render at the default position).
   Screenshot-verified (χ² parabola + orange 68% threshold + green crossing lines
   at 1.40/2.20, in a chisurf DockArea tab).
+- **Batch 26** (allow-list 25 → 24) — migrated `gui/plots/proteinMC.py` (998L, two
+  widgets): the 2×2 ProteinMC **trajectory trace view** (RMSD/dRMSD/Energy/FRET
+  curves + a non-movable "current frame" `vline` per panel) and the FPS
+  **distance-network diagram** (aspect-locked dark canvas, agreement-coloured
+  edge `line`s recoloured per frame via `Curve.set_pen`, node `scatter`, node/
+  message `text` labels). Grew the seam with a clean **`Plot.set_axis_visible(*,
+  left=, bottom=, right=, top=)`** verb (replaces `.native.hideAxis` — the
+  network canvas hides both axes); `getPlotItem()` drops away (chiplot Plots draw
+  directly), `setRange`→`set_xlim`/`set_ylim`. New `test_set_axis_visible_returns_self`;
+  both widgets before/after screenshot-verified (identical trace grid + network
+  layout).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

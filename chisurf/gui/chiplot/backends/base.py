@@ -222,6 +222,12 @@ class Canvas(abc.ABC):
     def invert_y(self, invert: bool = True) -> None:
         """Invert the y-axis direction."""
 
+    def set_axis_visible(self, side: str, visible: bool) -> None:
+        """Show or hide one axis (``"left"``/``"bottom"``/``"right"``/``"top"``).
+
+        Default no-op; backends with axis chrome override it.
+        """
+
     def set_menu_enabled(self, enabled: bool) -> None:
         """Enable/disable the backend's own right-click menu (default no-op)."""
 

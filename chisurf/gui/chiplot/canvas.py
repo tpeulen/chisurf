@@ -624,6 +624,17 @@ class Plot(QtWidgets.QWidget):
         self._canvas.invert_y(invert)
         return self
 
+    def set_axis_visible(self, *, left=None, bottom=None, right=None, top=None) -> Plot:
+        """Show/hide individual axes. Only the given sides change. Returns ``self``.
+
+        Example: ``plot.set_axis_visible(left=False, bottom=False)`` for a bare
+        canvas (e.g. a network diagram).
+        """
+        for side, vis in (("left", left), ("bottom", bottom), ("right", right), ("top", top)):
+            if vis is not None:
+                self._canvas.set_axis_visible(side, bool(vis))
+        return self
+
     @property
     def canvas(self):
         """The backend :class:`~chisurf.gui.chiplot.backends.base.Canvas`."""

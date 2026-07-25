@@ -688,6 +688,10 @@ class _PgCanvas(base.Canvas):
         """Invert the y-axis direction."""
         self._pi.getViewBox().invertY(invert)
 
+    def set_axis_visible(self, side, visible) -> None:
+        """Show or hide one axis."""
+        self._pi.showAxis(side, bool(visible))
+
     def set_menu_enabled(self, enabled) -> None:
         """Enable/disable pyqtgraph's own right-click viewbox menu."""
         try:

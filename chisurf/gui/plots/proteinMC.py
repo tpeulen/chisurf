@@ -1,9 +1,9 @@
 import json
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
+from chisurf.gui import chiplot as cp
 import chisurf.core.settings
 from chisurf.gui.plots.plotbase import Plot
 
@@ -125,10 +125,10 @@ class ProteinMCPlot(Plot):
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(2)
 
-        p1 = pg.PlotWidget()
-        p2 = pg.PlotWidget()
-        p3 = pg.PlotWidget()
-        p4 = pg.PlotWidget()
+        p1 = cp.Plot()
+        p2 = cp.Plot()
+        p3 = cp.Plot()
+        p4 = cp.Plot()
         for w in (p1, p2, p3, p4):
             w.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
@@ -143,26 +143,26 @@ class ProteinMCPlot(Plot):
 
         self.layout.addLayout(grid, stretch=1)
 
-        # RMSD - Curves
-        self.rmsd_plot = p1.getPlotItem()
-        self.drmsd_plot = p2.getPlotItem()
-        self.energy_plot = p3.getPlotItem()
-        self.fret_plot = p4.getPlotItem()
+        # RMSD - Curves (chiplot Plot exposes drawing directly; no getPlotItem)
+        self.rmsd_plot = p1
+        self.drmsd_plot = p2
+        self.energy_plot = p3
+        self.fret_plot = p4
 
-        self.rmsd_plot.setTitle("RMSD")
-        self.drmsd_plot.setTitle("dRMSD")
-        self.energy_plot.setTitle("Energy")
-        self.fret_plot.setTitle("FRET")
+        self.rmsd_plot.set_title("RMSD")
+        self.drmsd_plot.set_title("dRMSD")
+        self.energy_plot.set_title("Energy")
+        self.fret_plot.set_title("FRET")
 
         lw = cs.core.settings.gui['plot']['line_width']
-        self.rmsd_curve = self.rmsd_plot.plot(x=[0.0], y=[0.0], pen=pg.mkPen(colors['irf'], width=lw), name='rmsd')
-        self.drmsd_curve = self.drmsd_plot.plot(x=[0.0], y=[0.0], pen=pg.mkPen(colors['data'], width=lw), name='drmsd')
-        self.energy_curve = self.energy_plot.plot(x=[0.0], y=[0.0], pen=pg.mkPen(colors['model'], width=lw), name='energy')
-        self.fret_curve = self.fret_plot.plot(x=[0.0], y=[0.0], pen=pg.mkPen(colors['model'], width=lw), name='fret')
+        self.rmsd_curve = self.rmsd_plot.line([0.0], [0.0], pen=colors['irf'], width=lw, name='rmsd')
+        self.drmsd_curve = self.drmsd_plot.line([0.0], [0.0], pen=colors['data'], width=lw, name='drmsd')
+        self.energy_curve = self.energy_plot.line([0.0], [0.0], pen=colors['model'], width=lw, name='energy')
+        self.fret_curve = self.fret_plot.line([0.0], [0.0], pen=colors['model'], width=lw, name='fret')
+        # A movable=False "current frame" cursor on each panel.
         self.frame_lines = []
         for plot_item in (self.rmsd_plot, self.drmsd_plot, self.energy_plot, self.fret_plot):
-            line = pg.InfiniteLine(pos=0, angle=90, movable=False, pen=pg.mkPen((255, 255, 0, 180), width=1))
-            plot_item.addItem(line, ignoreBounds=True)
+            line = plot_item.vline(0, movable=False, pen=cp.to_pen((255, 255, 0, 180), width=1))
             self.frame_lines.append(line)
 
         # Build the controller now that the plot items exist so it can wire
@@ -191,13 +191,13 @@ class ProteinMCPlot(Plot):
 
         x = list(range(len(rmsd))) if rmsd.size else []
 
-        self.rmsd_curve.setData(x=x, y=rmsd)
-        self.drmsd_curve.setData(x=x, y=drmsd)
-        self.energy_curve.setData(x=x, y=energy)
-        self.fret_curve.setData(x=x, y=energy_fret)
+        self.rmsd_curve.set_data(x, rmsd)
+        self.drmsd_curve.set_data(x, drmsd)
+        self.energy_curve.set_data(x, energy)
+        self.fret_curve.set_data(x, energy_fret)
         frame_index = int(getattr(self.trajectory, "current_frame_index", 0))
         for line in self.frame_lines:
-            line.setValue(frame_index)
+            line.set_value(frame_index)
 
         try:
             cs.logging.info(
@@ -559,11 +559,10 @@ class ProteinMCDistanceNetworkPlot(Plot):
         self._network_static_items = []
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(2)
-        self.plot_widget = pg.PlotWidget(self)
-        self.plot_widget.setAspectLocked(True)
-        self.plot_widget.setBackground((20, 20, 20))
-        self.plot_widget.hideAxis("left")
-        self.plot_widget.hideAxis("bottom")
+        self.plot_widget = cp.Plot(self)
+        self.plot_widget.set_aspect_locked(True)
+        self.plot_widget.set_background((20, 20, 20))
+        self.plot_widget.set_axis_visible(left=False, bottom=False)
         self.layout.addWidget(self.plot_widget, stretch=1)
         self.plot_controller = ProteinMCDistanceNetworkControl(self, plot=self)
         self.update_all()
@@ -613,7 +612,7 @@ class ProteinMCDistanceNetworkPlot(Plot):
             target = float(edge["target"])
             error = max(float(edge["error_neg"] if model_distance < target else edge["error_pos"]), 1e-12)
             wres = (model_distance - target) / error
-            item.setPen(pg.mkPen(_agreement_color(wres), width=1.0 + min(abs(wres), 3.0) * 0.8))
+            item.set_pen(cp.to_pen(_agreement_color(wres), width=1.0 + min(abs(wres), 3.0) * 0.8))
 
     def _build_network_cache(self, structure, labeling_file: str, cache_key) -> None:
         """Build static network graphics once for responsive playback."""
@@ -638,31 +637,33 @@ class ProteinMCDistanceNetworkPlot(Plot):
             p2 = self._network_node_positions.get(edge["p2"])
             if p1 is None or p2 is None:
                 continue
-            item = self.plot_widget.plot([p1[0], p2[0]], [p1[1], p2[1]], pen=pg.mkPen((80, 80, 80, 120), width=1.0))
+            item = self.plot_widget.line([p1[0], p2[0]], [p1[1], p2[1]], pen=(80, 80, 80, 120), width=1.0)
             self._network_edges.append(edge)
             self._network_edge_items.append(item)
-        scatter = pg.ScatterPlotItem(
-            x=[self._network_node_positions[name][0] for name in nodes],
-            y=[self._network_node_positions[name][1] for name in nodes],
+        scatter = self.plot_widget.scatter(
+            [self._network_node_positions[name][0] for name in nodes],
+            [self._network_node_positions[name][1] for name in nodes],
             size=8,
-            brush=pg.mkBrush(230, 230, 230),
-            pen=pg.mkPen(30, 30, 30),
+            brush=(230, 230, 230),
+            pen=(30, 30, 30),
         )
-        self.plot_widget.addItem(scatter)
         self._network_static_items.append(scatter)
         for name in nodes:
             pos = self._network_node_positions[name]
-            label = pg.TextItem(str(name), color=(230, 230, 230), anchor=(0.5, 0.5))
-            label.setPos(float(pos[0] * 1.12), float(pos[1] * 1.12))
-            self.plot_widget.addItem(label)
+            label = self.plot_widget.text(
+                str(name), (float(pos[0] * 1.12), float(pos[1] * 1.12)),
+                color=(230, 230, 230), anchor=(0.5, 0.5),
+            )
             self._network_static_items.append(label)
-        self.plot_widget.setRange(xRange=(-1.25, 1.25), yRange=(-1.25, 1.25), padding=0.02)
+        self.plot_widget.set_xlim(-1.25, 1.25, padding=0.02)
+        self.plot_widget.set_ylim(-1.25, 1.25, padding=0.02)
 
     def _draw_message(self, message: str) -> None:
-        label = pg.TextItem(str(message), color=(230, 230, 230), anchor=(0.5, 0.5))
-        label.setPos(0.0, 0.0)
-        self.plot_widget.addItem(label)
-        self.plot_widget.setRange(xRange=(-1, 1), yRange=(-1, 1), padding=0.02)
+        self.plot_widget.text(
+            str(message), (0.0, 0.0), color=(230, 230, 230), anchor=(0.5, 0.5),
+        )
+        self.plot_widget.set_xlim(-1, 1, padding=0.02)
+        self.plot_widget.set_ylim(-1, 1, padding=0.02)
 
     def update(self, *args, **kwargs):
         """Refresh the circular network plot."""
