@@ -144,6 +144,23 @@ timescale, and its shape yields the interconversion rates. ChiSurf provides
 two- and three-state dynamic models, and a polarization-resolved variant for
 anisotropy PDA.
 
+**Two states have a closed form; more do not.** The two-state occupation-time
+distribution above is exact, boundary atoms included. Beyond two states the
+three-state model offers a choice. The default keeps the first two moments of
+the time average — exact for any rate matrix — and matches a bounded shape to
+them (Gopich & Szabo); it is deterministic, which matters because a stochastic
+objective makes the optimiser chase sampling scatter. Where that is not enough,
+because slow exchange makes the distribution multi-modal and no two-parameter
+shape has three peaks, the occupation times can be **sampled** instead.
+
+That sampling runs in the photon simulator's kinetics rather than in ChiSurf.
+The simulator records a *state trajectory* — every transition with the time it
+occurred — so the fraction of each observation window spent in each state comes
+out exactly; a periodic snapshot could not, since it cannot see a state entered
+and left between two samples. Each window is one immobile, non-emitting molecule
+started from the equilibrium populations, so windows are independent draws, and
+the seed is fixed so repeated evaluations of the same parameters agree.
+
 ## How much heterogeneity can PDA actually detect?
 
 The shot-noise floor is set entirely by burst size. At $E = 0.5$, where it is

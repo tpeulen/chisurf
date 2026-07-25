@@ -180,6 +180,18 @@ because well-separated states give a multi-modal distribution that a
 two-moment match cannot follow — but slow exchange means the states are
 *resolved*, and a static multi-species fit describes that case directly.
 
+Where the moment match is not enough, the occupation times are **sampled**
+instead. That sampling runs inside the photon simulator's kinetics rather than
+in ChiSurf: the simulator records a *state trajectory* — every transition, with
+the time it happened — from which the fraction of each observation window spent
+in each state follows exactly. An event log matters here rather than a
+periodic snapshot, because a snapshot cannot see a state that is entered and
+left between two samples, which is precisely the fast-exchange regime. Each
+observation window is one immobile, non-emitting molecule started from the
+equilibrium populations, so the windows are independent draws. The seed is
+fixed, so the fit objective stays deterministic and the optimiser is not
+chasing sampling scatter.
+
 ## Reading a fit
 
 A single species with small widths and correlations near zero: three rigid,
