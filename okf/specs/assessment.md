@@ -66,12 +66,12 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-09](#inc-09) | S3 | INC | MMFDB | MMFDB is packaged standalone but a chisurf-free client is missing; the only RPC client + example facade live in chisurf | VERIFIED |
 | [INC-10](#inc-10) | S3 | INC | GUI | Ad-hoc tables everywhere: a third-party `DataFrameEditor` patched at runtime by three proxies/delegates, ~40 hand-rolled `QTableWidget`s, a duplicated checkbox delegate, and no shared sorting/filtering/column-hiding/colouring/export | ~~VERIFIED~~ ✅ FIXED (PRD-66) |
 | [INC-11](#inc-11) | S3 | INC | Plugins | Help browser's "Core" category rglobs the whole repo: 576 entries, 331 from `junk/`, 151 from `okf/`, 41 from `.opencode/` | ~~VERIFIED~~ ✅ FIXED |
-| [INC-12](#inc-12) | S3 | INC | Docs | A published page links into `okf/`, which is excluded from the docs build — the only warning in an otherwise clean build | VERIFIED |
+| [INC-12](#inc-12) | S3 | INC | Docs | A published page links into `okf/`, which is excluded from the docs build — one of the two warnings in an otherwise clean build | ~~VERIFIED~~ ✅ FIXED |
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
 
-34 findings (19 FIXED): 6 VERIFIED, 6 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL.
-Of the 15 open: 0×S1, 6×S2, 9×S3.
+34 findings (20 FIXED): 5 VERIFIED, 6 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL.
+Of the 14 open: 0×S1, 6×S2, 8×S3.
 
 ---
 
@@ -404,15 +404,21 @@ as user documentation.**
 **A published doc links into `okf/`, which is excluded from the docs build — a permanent
 Sphinx warning.**
 
-- Location: `docs/development/chimol_pymol_render_plan.md:52`, which references
+- Location: `docs/development/chimol_pymol_render_plan.md`, which referenced
   `okf/plugins/profiles/chimol`.
 - `okf/` is intentionally kept out of the user-facing Sphinx build, so the reference
-  cannot resolve: `WARNING: Unknown source document '…/okf/plugins/profiles/chimol'`.
-  It is currently the **only** warning in an otherwise clean build, which erodes the
+  could not resolve: `WARNING: Unknown source document '…/okf/plugins/profiles/chimol'`.
+  It was one of only two warnings in an otherwise clean build, which erodes the
   value of "the docs build is warning-free" as a signal.
-- The user-facing docs are not supposed to link into the knowledge bundle at all; the
-  fix is to drop the link or inline the material it points at.
-- Status: **VERIFIED** (reproduced on every build).
+- The user-facing docs are not supposed to link into the knowledge bundle at all, so
+  the fix inlines the material the link pointed at (the PyMOL cartoon-parity harness
+  and its 0.428 Å number on 148L) instead of pointing readers at the bundle.
+- Fixing it exposed a second, previously masked warning on the same page family —
+  `docs/development/plugin_architecture.md` carried a placeholder `[GUI startup](#)`
+  link (`myst.xref_missing` on an empty target); the dangling link was replaced with
+  plain prose in the same change.
+- Status: ✅ **FIXED** — `sphinx-build -E -b html docs …` now completes with
+  **zero** warnings, so `-W`-style strictness is available as a future guardrail.
 
 ### I18N-01
 **S3 · i18n coverage gaps after the first pass.** [PRD-63](../prds/prd-63.md)

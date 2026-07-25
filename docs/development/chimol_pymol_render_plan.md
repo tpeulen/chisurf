@@ -52,9 +52,12 @@ Upgrade Chimol render quality to match/exceed PyMOL while keeping ChiSurf workin
 Ground truth is the installed PyMOL itself — `pymol -qc` exports its cartoon as
 OBJ, and under an identity view those vertices are in PDB Ångström, so the two
 meshes can be compared numerically and rendered through the same raytracer. The
-harness and the measured numbers are written up in the
-[ChiMOL OKF profile](../../okf/plugins/profiles/chimol.md); symmetric mean
-surface distance on 148L is ~0.45 Å.
+parity number is the **symmetric mean surface distance** between the two cartoon
+meshes, plus the per-secondary-structure cross-section dimensions. Feed both
+programs the *same* secondary structure before reading it, or an assignment
+difference is mistaken for a geometry one: on the full RCSB 148L (whose
+`HELIX`/`SHEET` records both honour) the distance is **0.428 Å**, and helix,
+strand and loop cross-sections agree to ~0.1 Å.
 
 - [x] Cartoon builder is sampler → profile → extruder (like PyMOL's `RepCartoon`)
 - [x] Beta-strand arrowheads flare to ~2.2× the body and taper to a point

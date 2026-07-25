@@ -654,9 +654,9 @@ when that command is actually invoked. `PluginRegistry.register_cli` remains for
 in-process callers that have already paid the import cost (it is what the registry
 unit tests exercise); it is not the production path.
 
-The same trade-off applies to `register_gui`: menus are built from manifest
-metadata without importing plugin code (see [GUI startup](#)), so item 4 stays
-open by design rather than by neglect.
+The same trade-off applies to `register_gui`: the navigation menus are built from
+manifest metadata alone, without importing plugin code, so item 4 stays open by
+design rather than by neglect.
 
 ### Phase 3 — State serialization
 

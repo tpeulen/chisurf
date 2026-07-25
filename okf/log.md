@@ -2,6 +2,25 @@
 
 ## 2026-07-25
 
+* **The docs build is warning-free again (INC-12).** Two published development
+  pages carried links that could never resolve, and both were load-bearing for
+  the "a clean docs build means something" signal. The ChiMOL render plan pointed
+  at `okf/plugins/profiles/chimol.md` — but `okf/` is deliberately excluded from
+  the user-facing Sphinx build, so every build emitted `Unknown source document`,
+  and the user-facing docs are not supposed to reach into the knowledge bundle at
+  all. Rather than repoint it, the material it was borrowing is now stated where
+  the reader needs it: the parity metric is the symmetric mean surface distance
+  between chimol's and PyMOL's cartoon meshes, both programs must be fed the
+  *same* secondary structure first, and on the full RCSB 148L that distance is
+  0.428 Å with cross-sections agreeing to ~0.1 Å. Removing it exposed a second
+  warning it had been sharing the build with: `plugin_architecture.md` had a
+  placeholder `[GUI startup](#)` link (empty MyST target) left over from a
+  section that was never written, replaced by the prose it stood for.
+  `sphinx-build -E -b html docs …` now finishes with **zero** warnings, which
+  makes a `-W` strict-docs guardrail a real option rather than an aspiration.
+  Assessment INC-12 closed and its count line corrected — the finding claimed to
+  be the *only* warning; it was one of two.
+
 * **A zero-radius region selected everything (RF-001).** `EllipseROI.contains`
   substituted `np.inf` for a zero radius to keep the division finite, which
   quietly turned the degenerate case into an *unbounded* one: `(dx/inf)**2 +
