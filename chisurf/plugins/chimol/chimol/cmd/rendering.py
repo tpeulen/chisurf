@@ -376,11 +376,6 @@ class RenderingMixin(BaseCmd):
         except ValueError:
             self._emit_error("translate vector must be three numbers")
             return
-        # PyMOL's `translate` is in Angstrom, but apply_transform_to_object
-        # works on the scene-unit arrays the renderer holds. Without this the
-        # molecule moves by `vector / scale` -- `translate [100,0,0]` shifted it
-        # 10 A, which only shows up once the result is written to a file.
-        vec = vec * float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
         object_id = self._resolve_object_id(viewer, str(sel) or None)
         try:
             viewer.apply_transform_to_object(np.eye(3), vec, object_id=object_id)

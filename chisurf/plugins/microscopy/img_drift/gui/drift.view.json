@@ -1,0 +1,171 @@
+{
+  "_comment": "Drift-correction tool. AutoForm over DriftViewModel. Left: a single-column Settings dock in workflow order \u2014 load the image, pick the channel the drift is measured on, choose the reference and how the correction is applied. Right: the drift trace, the before/after projections that show whether it worked, and the per-frame shift table. Run / export live in the host toolbar; long help sits behind the ? button.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Drift correction",
+      "split": "horizontal",
+      "persist": "img_drift",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Settings",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "custom",
+              "key": "data_source",
+              "options": {
+                "attr": "filename",
+                "call": "set_filename",
+                "label": "Image",
+                "filter": "Images and photon streams (*.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
+                "mmfdb_kinds": [
+                  "raw_data",
+                  "raw_measurement"
+                ],
+                "description": "The stack to correct: a TIFF stack, or a photon-stream file (PTU/HT3/\u2026) reconstructed into a confocal-scan image. Photon streams are corrected photon by photon, so the result stays usable for lifetime and correlation analysis."
+              }
+            },
+            {
+              "type": "choice",
+              "attr": "channel",
+              "label": "Measure on",
+              "options_source": "channel_names",
+              "description": "Channel the drift is measured on. The sample moves as a whole, so one channel drives the estimate and the correction is applied to all of them. Pick the brightest, most structured channel \u2014 a flat, empty channel gives a soft correlation peak and an unreliable shift."
+            },
+            {
+              "type": "choice",
+              "attr": "reference",
+              "label": "Reference",
+              "options": [
+                "first",
+                "previous",
+                "mean"
+              ],
+              "labels": [
+                "First frame",
+                "Previous frame",
+                "Stack mean"
+              ],
+              "description": "Which frame each frame is compared with. 'First frame' is right for slow monotonic drift and never accumulates error. 'Previous frame' follows non-monotonic wander but lets small per-frame errors add up over a long series. 'Stack mean' is a compromise for noisy data."
+            },
+            {
+              "type": "choice",
+              "attr": "mode",
+              "label": "Apply by",
+              "options": [
+                "wrap",
+                "constant"
+              ],
+              "labels": [
+                "Wrapping (keep all signal)",
+                "Blanking (drop what leaves)"
+              ],
+              "description": "Wrapping rolls the content that leaves one edge back in at the other, conserving every photon but making the wrapped strip meaningless. Blanking discards it and leaves the vacated strip empty \u2014 honest, but the edges then carry no signal. Wrapping matches the reference implementation."
+            },
+            {
+              "type": "panel",
+              "title": "Estimator",
+              "collapsed": true,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "smooth",
+                  "label": "Smoothing (\u03c3 px)",
+                  "kind": "float",
+                  "decimals": 2,
+                  "minimum": 0.0,
+                  "maximum": 20.0,
+                  "description": "Gaussian blur applied to the correlation before the peak is located. Guards against a noise-driven tie between two neighbouring pixels flipping the answer by one pixel. Zero disables it."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "subpixel",
+                  "label": "Sub-pixel refinement",
+                  "description": "Refine each integer peak by fitting a parabola through its neighbours. Useful for slow drift measured over many frames; the correction itself is still applied in whole pixels."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "dock_area",
+          "title": "Views",
+          "sections": [
+            {
+              "type": "plot",
+              "source": "drift_series",
+              "title": "Drift trace",
+              "x_label": "frame",
+              "y_label": "displacement / px",
+              "description": "Measured displacement per frame. A straight line is stage drift; a jump is a bump or a refocus; noise around zero means there was nothing to correct."
+            },
+            {
+              "type": "dock_area",
+              "title": "Projection",
+              "split": "horizontal",
+              "sections": [
+                {
+                  "type": "custom",
+                  "key": "image",
+                  "target": "before_image",
+                  "title": "Before",
+                  "options": {
+                    "colormap": true,
+                    "colormap_attr": "colormap"
+                  },
+                  "description": "All frames summed before correction. Drift shows up here as a directional blur."
+                },
+                {
+                  "type": "custom",
+                  "key": "image",
+                  "target": "after_image",
+                  "title": "After",
+                  "options": {
+                    "colormap": true,
+                    "colormap_attr": "colormap"
+                  },
+                  "description": "The same projection after correction. If the correction worked, features are sharper here than on the left; if the two look identical, there was no drift to remove."
+                }
+              ]
+            },
+            {
+              "type": "table",
+              "source": "shift_rows",
+              "title": "Shifts",
+              "expand": true,
+              "columns": [
+                {
+                  "key": "frame",
+                  "label": "Frame",
+                  "width": 90,
+                  "description": "Frame index."
+                },
+                {
+                  "key": "dx",
+                  "label": "dx / px",
+                  "width": 110,
+                  "description": "Displacement along the fast (pixel) axis."
+                },
+                {
+                  "key": "dy",
+                  "label": "dy / px",
+                  "width": 110,
+                  "description": "Displacement along the slow (line) axis."
+                },
+                {
+                  "key": "magnitude",
+                  "label": "|d| / px",
+                  "width": 110,
+                  "description": "Total displacement from the origin."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

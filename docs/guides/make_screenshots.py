@@ -169,6 +169,61 @@ def _grab_2cde_tool():
     _grab(tool, "burst_2cde_tool.png")
 
 
+def _grab_drift_tool():
+    """Grab the drift-correction workspace and its projections (guide 43).
+
+    A synthetic stack with a *known* linear drift, so the trace in the figure is
+    the ground truth and the before/after projections differ visibly. The real
+    confocal test image is a stable acquisition with sub-pixel drift, which
+    would make an honest but entirely uninformative screenshot.
+    """
+    import tifffile
+
+    from chisurf.gui.autoform.sections.builtin import ImageMapWidget
+    from chisurf.plugins.microscopy.img_drift.gui.tool import ImgDriftTool
+
+    rng = np.random.default_rng(1)
+    yy, xx = np.mgrid[0:64, 0:64]
+    base = sum(
+        90.0 * np.exp(-((yy - cy) ** 2 + (xx - cx) ** 2) / (2 * 3.0 ** 2))
+        for cy, cx in rng.integers(8, 56, size=(14, 2))
+    ) + rng.poisson(4.0, (64, 64))
+    stack = np.stack(
+        [np.roll(base, (2 * k, -k), axis=(0, 1)) for k in range(12)]
+    ).astype(np.float32)
+
+    tmp = pathlib.Path(tempfile.mkdtemp()) / "drift_demo.tif"
+    tifffile.imwrite(tmp, stack)
+
+    tool = ImgDriftTool()
+    tool.model.set_filename(str(tmp))
+    tool.model.compute()
+    tool.resize(1400, 820)
+    tool.show()
+    tool._refresh()
+    QApplication.instance().processEvents()
+    _grab(tool, "drift_workspace.png")
+
+    # The projections live on a tab that is not current, so their widgets have
+    # never been laid out; grabbing them now yields a collapsed sliver. Raise
+    # the tab and let Qt settle first.
+    from qtpy.QtWidgets import QTabBar
+
+    for bar in tool.findChildren(QTabBar):
+        for i in range(bar.count()):
+            if bar.tabText(i) == "Projection":
+                bar.setCurrentIndex(i)
+    QApplication.instance().processEvents()
+
+    targets = {"before_image": "drift_before.png", "after_image": "drift_after.png"}
+    for widget in tool.findChildren(ImageMapWidget):
+        name = targets.get(getattr(widget, "_target", ""))
+        if name:
+            widget.resize(420, 400)
+            QApplication.instance().processEvents()
+            _grab(widget, name)
+
+
 def _grab_coloc_tool():
     """Grab the colocalization workspace and its intensity scatter (guide 38)."""
     # Import the tool first: it pulls the GUI packages in the order the app does
@@ -339,6 +394,7 @@ def main():
         _grab_burst_browser,
         _grab_2cde_tool,
         _grab_coloc_tool,
+        _grab_drift_tool,
         _grab_accurate_fret_tool,
     ):
         try:

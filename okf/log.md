@@ -2,35 +2,45 @@
 
 ## 2026-07-25
 
-* **chimol: `save` -- structures can leave the viewer again.** The largest hole in
-  replacing PyMOL, ahead of any representation: chimol could show a structure but
-  not hand one back, so every transform, deleted water and renumbering was trapped
-  inside it.
-  New `io/export.py` writes **PDB and mmCIF**, and deliberately serialises *what
-  the viewer holds* rather than the source file -- re-exporting the input would
-  discard exactly the work worth keeping. Format follows the extension with
-  PyMOL's own fallback ("if the file format is not recognized, then a PDB file is
-  written by default"), so a mistyped extension still leaves a usable file. mmCIF
-  is there for one concrete reason: PDB has four columns for a residue number and
-  mmCIF has none, so a large-numbered structure survives.
-  **Verified by loading the output back into PyMOL**, which is the only test of a
-  writer that means anything: 1363 atoms, both chains E and S, 163 CA, 63 hetero
-  atoms, and `dss` finds H/L/S on it -- so the backbone ordering is intact. PDB
-  and mmCIF agree to 0.0000 A. Round-trip through chimol's own reader is exact.
-  **Two real bugs it exposed.**
-  `unscale_coordinates` had to exist at all because the viewer holds scene units;
-  writing those into a PDB gives a file that loads at the wrong size and place.
-  And a test asserting a transform reaches the file caught that **`translate` was
-  off by the scale factor** -- `translate [100,0,0]` moved the molecule **10 A**,
-  because PyMOL's translate is in Angstrom while
-  `apply_transform_to_object` works on the renderer's scene-unit arrays. Invisible
-  on screen, obvious the moment anything was written out. Fixed and pinned; the
-  parity tracker now carries "any new command taking a length must convert" as a
-  rule.
-  Also recorded: PyMOL keeps every **altloc** as a separate atom (148L 1385) where
-  chimol keeps only the first (1363), so atom counts will not agree on structures
-  with altlocs.
-  33 new tests. Suite: 427 passed, 1 skipped.
+* **New plugin `img_drift`: drift correction for TIFF stacks *and* photon-stream
+  images, correcting confocal data photon by photon.** Follow-up to the MIA
+  drift port, which only handled NumPy stacks. **The key addition is the
+  photon-level path.** A camera stack is an array of intensities, so correcting
+  it means resampling numbers; a confocal image reconstructed from a photon
+  stream is not — each pixel holds a *list of photons* with their arrival and
+  micro-times. Correcting it therefore has to **move photons between pixels**,
+  which the photon library exposes as `CLSMImage.transform` over an interleaved
+  source/target array of flat pixel indices (`frame*n_lines*n_pixels +
+  line*n_pixels + pixel`, verified experimentally before building on it). New
+  `clsm_transform_pairs` builds that mapping and `correct_clsm_drift` applies it
+  in place. Doing it this way is what keeps the corrected image *analysable*:
+  lifetimes, decays and correlations all remain valid, where shifting a rendered
+  intensity image would have discarded every photon-level quantity. Verified on
+  real data (`PQ_Olympus_MFIS.ht3`, 40 frames, 3.36 M photons): a known injected
+  drift is measured exactly and undone **bit-for-bit**, with photon count
+  conserved. **The plugin** (`chisurf/plugins/microscopy/img_drift/`) sits on the
+  shared `image_source` seam, so one code path serves TIFF and TTTR; Qt-free
+  `core.py` (`measure_drift`/`corrected_stack`/`correct_photon_image` + CSV/TIFF
+  writers), AutoForm GUI over a Qt-free `DriftViewModel` (drift trace with
+  distinct dx/dy/|d| series, before/after projections, per-frame shift table,
+  every control carrying a `description`, long help behind the `?`), and a
+  headless `img-drift` CLI. The drift is measured on one channel and applied to
+  all, as the reference implementation does — the sample moves as a whole, so a
+  per-channel estimate would only add noise. **Two GUI defects found by actually
+  looking at the rendered output** rather than trusting that it built: the drift
+  trace was empty because the view model returned `(x, y, label)` tuples where
+  the plot section wants `{"x","y","name"}` mappings; and the guide's "after"
+  figure was a 2 kB sliver because the projection widgets live on a non-current
+  tab and had never been laid out when grabbed — the screenshot generator now
+  raises the tab first. Docs: `docs/concepts/drift_correction.md` (why drift is
+  a systematic error and not blur, with the measured `G(0,0,Δ)` table showing a
+  *static* translating sample decaying `1.291 → 1.190 → 0.983` uncorrected and
+  flat corrected; the reference-choice bias/variance trade; what pure-translation
+  cannot fix) and `docs/guides/43_drift_correction.md` with real generated
+  figures (`_grab_drift_tool` added to `make_screenshots.py`, so they are
+  reproducible). Tests: `chisurf/plugins/microscopy/img_drift/test/` (12),
+  including the photon round-trip and a check that the summed projection sharpens
+  while conserving total signal. See [imaging plugins](/plugins/imaging.md).
 
 * **The example prompts are the tests.** "chato" had no documented way in: a
   user faced an empty box with no idea what to type, and nothing checked that

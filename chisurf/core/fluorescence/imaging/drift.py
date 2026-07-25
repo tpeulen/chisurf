@@ -15,7 +15,7 @@ assumes pure translation: no rotation, no scaling.
 
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -279,3 +279,128 @@ def correct_drift(
         images, reference=reference, roi=roi, smooth=smooth, subpixel=subpixel
     )
     return apply_drift(images, shifts, mode=mode, cval=cval), shifts
+
+
+def clsm_transform_pairs(
+    shape: Sequence[int], shifts: np.ndarray, mode: str = "wrap"
+) -> np.ndarray:
+    """Return the source/target pixel-index pairs that undo a drift in a CLSM image.
+
+    A confocal image reconstructed from a photon stream is not an array of
+    intensities but an array of *photon lists*, so correcting it means moving
+    photons between pixels rather than resampling numbers. The photon library
+    expresses that as an interleaved ``(source, target, source, target, ...)``
+    array of flat pixel indices, where a pixel index is
+    ``frame * n_lines * n_pixels + line * n_pixels + pixel``.
+
+    Correcting at photon level, rather than shifting a rendered image, is what
+    keeps every downstream analysis valid: micro-times, lifetimes and
+    correlations all still see real photons in the pixel they belong to.
+
+    Parameters
+    ----------
+    shape : sequence of int
+        CLSM shape ``(n_frames, n_lines, n_pixels)``.
+    shifts : numpy.ndarray
+        ``(n_frames, 2)`` measured displacements, from :func:`estimate_drift`.
+    mode : str
+        ``'wrap'`` maps every pixel onto some target, so no photon is lost (the
+        photon-level equivalent of PAM's ``circshift``). ``'constant'`` drops
+        photons that would move outside the frame.
+
+    Returns
+    -------
+    numpy.ndarray
+        Interleaved ``uint32`` source/target index pairs, ready to hand to the
+        image's ``transform`` method.
+
+    Raises
+    ------
+    ValueError
+        If the shift array does not match the frame count, or the mode is
+        unknown.
+    """
+    n_frames, n_lines, n_pixels = (int(v) for v in shape)
+    sh = np.asarray(shifts, dtype=float)
+    if sh.shape != (n_frames, 2):
+        raise ValueError(f"shifts must be ({n_frames}, 2); got {sh.shape}")
+    if mode not in ("wrap", "constant"):
+        raise ValueError(f"unknown mode {mode!r}; expected 'wrap' or 'constant'")
+
+    rows = np.arange(n_lines)
+    cols = np.arange(n_pixels)
+    grid_y, grid_x = np.meshgrid(rows, cols, indexing="ij")
+
+    pairs: List[np.ndarray] = []
+    for f in range(n_frames):
+        dy, dx = int(round(-sh[f, 0])), int(round(-sh[f, 1]))
+        ty, tx = grid_y + dy, grid_x + dx
+        if mode == "wrap":
+            ty %= n_lines
+            tx %= n_pixels
+            keep = np.ones(ty.shape, dtype=bool)
+        else:
+            keep = (ty >= 0) & (ty < n_lines) & (tx >= 0) & (tx < n_pixels)
+        base = f * n_lines * n_pixels
+        src = base + grid_y[keep] * n_pixels + grid_x[keep]
+        dst = base + ty[keep] * n_pixels + tx[keep]
+        pairs.append(np.stack([src, dst], axis=1).ravel())
+
+    if not pairs:
+        return np.zeros(0, dtype=np.uint32)
+    return np.concatenate(pairs).astype(np.uint32)
+
+
+def correct_clsm_drift(
+    clsm,
+    channel_image: Optional[np.ndarray] = None,
+    reference: str = "first",
+    roi=None,
+    smooth: float = 2.0,
+    subpixel: bool = False,
+    mode: str = "wrap",
+) -> np.ndarray:
+    """Estimate and remove drift from a confocal image **in place**, photon by photon.
+
+    Parameters
+    ----------
+    clsm : tttrlib.CLSMImage
+        The image to correct. Its pixel contents are rearranged in place.
+    channel_image : numpy.ndarray, optional
+        Stack ``(n_frames, ny, nx)`` to estimate the drift from. Defaults to
+        the image's own intensity. Supplying it lets a bright, structured
+        channel drive the correction of all channels, as PAM does when it
+        measures drift on channel 1 and applies it to the rest.
+    reference, roi, smooth, subpixel
+        Passed to :func:`estimate_drift`.
+    mode : str
+        ``'wrap'`` (conserve every photon) or ``'constant'`` (drop photons that
+        leave the frame).
+
+    Returns
+    -------
+    numpy.ndarray
+        The ``(n_frames, 2)`` measured displacements that were removed.
+
+    Raises
+    ------
+    ValueError
+        If the estimation stack does not match the image's frame geometry.
+    """
+    intensity = np.asarray(clsm.intensity)
+    n_frames, n_lines, n_pixels = intensity.shape
+
+    source = intensity if channel_image is None else np.asarray(channel_image)
+    if source.shape[0] != n_frames:
+        raise ValueError(
+            f"the estimation stack has {source.shape[0]} frames but the image has {n_frames}"
+        )
+
+    shifts = estimate_drift(
+        source.astype(float), reference=reference, roi=roi,
+        smooth=smooth, subpixel=subpixel,
+    )
+    pairs = clsm_transform_pairs((n_frames, n_lines, n_pixels), shifts, mode=mode)
+    if pairs.size:
+        clsm.transform(pairs)
+    return shifts
