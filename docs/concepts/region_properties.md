@@ -139,6 +139,27 @@ Each segmented molecule is a region in its own right, so a molecule's properties
 result table beside its fitted lifetime, and the same region can be handed to
 another tool, combined with another region, or stored with the project.
 
+## The same region, different axes
+
+A region carries no axes of its own, which is what lets one object do jobs that
+look unrelated:
+
+* **on a frame** — the pixels a decay is built from, a cell to restrict an
+  analysis to, the patch a drift estimate is measured in;
+* **on a scatter plane** — a gate on the joint histogram of two channels, where
+  the "coordinates" are the two intensities rather than positions. Gating a
+  rectangle there is the standard way to ask *do the bright pixels colocalize
+  even though the dim ones do not?*, and because the gate is a region it need
+  not be a rectangle: an ellipse around a population, or a polygon around a
+  diagonal cloud, works with no new machinery;
+* **as a segmentation** — each label of a watershed or an imported Cellpose
+  result is a region, so the objects a segmentation found can be gated,
+  measured and stored like a hand-drawn one.
+
+Regions save as JSON — geometry, name, and nested boolean combinations — which
+survives a project save, an RPC hop or another tool; a mask image is the export
+for programs that read nothing else.
+
 ## Interoperability
 
 The property names, definitions and algorithms follow

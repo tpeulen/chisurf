@@ -154,7 +154,7 @@ def compute_representation(
     return vars(result)
 
 
-def _selection_mask(
+def _selection_region(
     clsm_image: Any,
     tttr: Any,
     image_type: str,
@@ -163,20 +163,53 @@ def _selection_mask(
     frame_idx: int,
     mask_path: str | None,
     threshold: float | None,
-) -> np.ndarray:
-    """Resolve a 2-D selection mask from a file, a threshold, or all pixels."""
-    if mask_path:
-        import skimage as ski
+):
+    """Resolve the selected pixels to a region, from a file, a threshold, or all.
 
-        mask = np.asarray(ski.io.imread(mask_path))
-        if mask.ndim == 3:
-            mask = mask[0]
-        return mask
+    Parameters
+    ----------
+    clsm_image : tttrlib.CLSMImage
+        The filled CLSM image.
+    tttr : tttrlib.TTTR
+        The photon stream the image was built from.
+    image_type, n_ph_min, frame_mode, frame_idx
+        Representation settings, used only when a threshold is given.
+    mask_path : str or None
+        A stored region: the native JSON format, a Cellpose segmentation, a
+        label image or a binary mask. Several regions in one file are combined.
+    threshold : float or None
+        Fraction of the representation's maximum below which pixels are dropped.
+
+    Returns
+    -------
+    tuple
+        ``(roi, image)`` — the region and the intensity image it was resolved
+        against (``None`` when no image was needed).
+    """
+    from chisurf.core.roi import RectangleROI, ThresholdROI
+    from chisurf.core.roi.io import load_rois, roi_from_mask_file, rois_from_cellpose
+
+    if mask_path:
+        path = str(mask_path).lower()
+        if path.endswith(".json"):
+            rois = load_rois(mask_path)
+        elif path.endswith("_seg.npy"):
+            rois = rois_from_cellpose(mask_path)
+        else:
+            rois = [roi_from_mask_file(mask_path)]
+        roi = rois[0]
+        for other in rois[1:]:
+            roi = roi | other
+        return roi, None
+
     if threshold is not None:
         image = imaging.representation(clsm_image, tttr, image_type, n_ph_min)
         current, _, _ = imaging.reduce_frames(image, frame_mode, frame_idx)
-        return (current > threshold * float(current.max())).astype(np.uint8)
-    return np.ones((clsm_image.n_lines, clsm_image.n_pixel), dtype=np.uint8)
+        low = float(threshold) * float(current.max())
+        # Strictly above, as before: a threshold of 0 must not select empty pixels.
+        return ThresholdROI(low=np.nextafter(low, np.inf)), current
+
+    return RectangleROI(-0.5, -0.5, clsm_image.n_pixel - 0.5, clsm_image.n_lines - 0.5), None
 
 
 def extract_decay(
@@ -194,14 +227,18 @@ def extract_decay(
 ) -> dict[str, Any]:
     """Extract a decay histogram from a pixel selection and optionally save it.
 
-    The selection is, in order of precedence, *mask_path* (an image file),
+    The selection is, in order of precedence, *mask_path* (a stored region —
+    native JSON, a Cellpose segmentation, a label image or a binary mask),
     *threshold* (fraction of the representation's max), or every pixel.
     ``output_path`` writes a 3-column ``t<TAB>y<TAB>ey`` text file.
     """
     setup = _resolve_setup(filename, **setup_kwargs)
     tttr, clsm_image = _load(filename, setup)
-    mask = _selection_mask(
+    roi, region_image = _selection_region(
         clsm_image, tttr, image_type, n_ph_min, frame_mode, frame_idx, mask_path, threshold
+    )
+    mask = imaging.selection_array(
+        roi, (clsm_image.n_lines, clsm_image.n_pixel), image=region_image
     )
     t, y, ey = imaging.decay_of_selection(
         clsm_image,

@@ -1529,12 +1529,17 @@ class ImageMapWidget(QtWidgets.QWidget):
     Rectangle-gate ``options`` add a *draggable, resizable* rectangle on the image
     (e.g. gating a population in a 2-D intensity histogram):
 
-    * ``rect_roi_call`` (str) — model method called ``fn(x0, y0, x1, y1)`` with the
-      rectangle in image index coordinates whenever the user finishes moving or
-      resizing it. Setting this option is what enables the rectangle.
-    * ``rect_roi_source`` (str) — model method returning ``(x0, y0, x1, y1)`` (or
-      ``None``) used to place the rectangle; without it the rectangle starts on
-      the central quarter of the image.
+    * ``region_call`` (str) — model method called ``fn(roi)`` with a
+      :class:`~chisurf.core.roi.RectangleROI` in image index coordinates
+      whenever the user finishes moving or resizing the rectangle. Setting this
+      option is what enables the rectangle. Handing over a region rather than
+      four floats is what lets the model store it, serialise it, combine it with
+      other selections, or use it to mask an image — a gate drawn on a 2-D
+      histogram and a region drawn on a frame are the same object.
+    * ``region_source`` (str) — model method returning a
+      :class:`~chisurf.core.roi.ROI` (or ``None``) used to place the rectangle;
+      any region works, its bounding box is taken. Without it the rectangle
+      starts on the central quarter of the image.
 
     Axis ``options``:
 
@@ -1569,8 +1574,8 @@ class ImageMapWidget(QtWidgets.QWidget):
         markers_source: str | None = None,
         labels_source: str | None = None,
         roi_source: str | None = None,
-        rect_roi_call: str | None = None,
-        rect_roi_source: str | None = None,
+        region_call: str | None = None,
+        region_source: str | None = None,
         invert_y: bool = True,
         **options,
     ):
@@ -1616,8 +1621,8 @@ class ImageMapWidget(QtWidgets.QWidget):
         self._label_items = []
         self._roi_item = None
         # interactive rectangle gate
-        self._rect_roi_call = rect_roi_call
-        self._rect_roi_source = rect_roi_source
+        self._region_call = region_call
+        self._region_source = region_source
         self._rect_roi = None
         self._rect_placed = False
         self._ndim = 2
@@ -1640,7 +1645,7 @@ class ImageMapWidget(QtWidgets.QWidget):
                 self._setup_brush(pg)
             if self._select_attr or self._on_pick:
                 self._image.getView().scene().sigMouseClicked.connect(self._on_clicked)
-            if self._rect_roi_call:
+            if self._region_call:
                 self._setup_rect_roi(pg)
             if self._markers_source or self._roi_source or self._labels_source:
                 self._connect_slice_changed()
@@ -2045,36 +2050,47 @@ class ImageMapWidget(QtWidgets.QWidget):
         self._rect_roi = roi
 
     def _on_rect_roi(self) -> None:
-        """Report the rectangle (image index coordinates) to the model."""
-        if self._rect_roi is None or not self._rect_roi_call:
+        """Report the drawn rectangle to the model as a region."""
+        if self._rect_roi is None or not self._region_call:
             return
-        fn = getattr(self._model, self._rect_roi_call, None)
+        fn = getattr(self._model, self._region_call, None)
         if not callable(fn):
             return
+        from chisurf.core.roi import RectangleROI
+
         pos = self._rect_roi.pos()
         size = self._rect_roi.size()
         x0, y0 = float(pos.x()), float(pos.y())
         try:
-            fn(x0, y0, x0 + float(size.x()), y0 + float(size.y()))
+            fn(RectangleROI(x0, y0, x0 + float(size.x()), y0 + float(size.y()),
+                            name="gate"))
         except Exception:
-            logging.debug("rect ROI callback failed", exc_info=True)
+            logging.debug("region callback failed", exc_info=True)
 
     def _place_rect_roi(self, data) -> None:
-        """Place the rectangle from the model source, or on the image centre once."""
+        """Place the rectangle from the model's region, or on the image centre once."""
         if self._rect_roi is None:
             return
-        rect = None
-        if self._rect_roi_source:
-            src = getattr(self._model, self._rect_roi_source, None)
+        region = None
+        if self._region_source:
+            src = getattr(self._model, self._region_source, None)
             try:
-                rect = src() if callable(src) else src
+                region = src() if callable(src) else src
             except Exception:
-                rect = None
-        if rect is None:
+                region = None
+        if region is None:
             if self._rect_placed:
                 return
             nx, ny = float(data.shape[0]), float(data.shape[1])
             rect = (0.25 * nx, 0.25 * ny, 0.75 * nx, 0.75 * ny)
+        else:
+            # Analytic regions bound themselves exactly; anything else is
+            # rasterised. Snapping a rectangle's handles to pixel edges on every
+            # redraw would make it creep.
+            found = region.bounds((int(data.shape[1]), int(data.shape[0])), image=data)
+            if found is None:
+                return
+            rect = tuple(float(v) for v in found)
         x0, y0, x1, y1 = (float(v) for v in rect)
         self._rect_roi.blockSignals(True)
         self._rect_roi.setPos(x0, y0)

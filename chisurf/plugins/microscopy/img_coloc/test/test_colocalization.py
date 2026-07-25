@@ -122,6 +122,38 @@ def test_colocalization_metrics_gate_selects_pixels():
     assert np.isfinite(gated.metrics["gated_pearson"])
 
 
+def test_a_region_gates_the_scatter_plane_like_the_rectangle_does():
+    """The scatter plane is a pair of axes, so a region gates it too.
+
+    A rectangle passed as a region must select what the plain tuple selects
+    (bar its open upper edge), and — the reason for doing this at all — an
+    ellipse or a polygon around a population then works with no new code.
+    """
+    from chisurf.core.roi import EllipseROI, RectangleROI
+
+    signal = _blob_image()
+    as_tuple = coloc.colocalization_metrics(
+        signal, signal, threshold_a=1.0, threshold_b=1.0, gate=(50.0, 100.0, 50.0, 100.0)
+    )
+    as_region = coloc.colocalization_metrics(
+        signal, signal, threshold_a=1.0, threshold_b=1.0,
+        gate=RectangleROI(50.0, 50.0, 100.0, 100.0),
+    )
+    assert as_region.metrics["n_pixels_gated"] == pytest.approx(
+        as_tuple.metrics["n_pixels_gated"], abs=2
+    )
+    # The region survives into the result as plain data, so it can be stored.
+    assert as_region.metrics["gate"]["type"] == "rectangle"
+
+    elliptical = coloc.colocalization_metrics(
+        signal, signal, threshold_a=1.0, threshold_b=1.0,
+        gate=EllipseROI(75.0, 75.0, 25.0),
+    )
+    # An inscribed ellipse selects less than the box around it, and more than
+    # nothing — the shape is really being evaluated.
+    assert 0 < elliptical.metrics["n_pixels_gated"] <= as_region.metrics["n_pixels_gated"]
+
+
 # --- image loading + plugin core ---------------------------------------------
 
 
@@ -199,9 +231,11 @@ def test_view_model_runs_headless(two_channel_tiff):
     assert vm.image_a() is not None
     assert vm.histogram_image() is not None
     assert vm.metric_rows()
-    vm.set_gate_from_rect(0, 0, vm.bins, vm.bins)
+    from chisurf.core.roi import RectangleROI
+
+    vm.set_gate_region(RectangleROI(0, 0, vm.bins, vm.bins))
     assert vm.gate_enabled is True
-    assert vm.gate_rect() is not None
+    assert vm.gate_region() is not None
 
 
 # --- detector setup + view spec ----------------------------------------------

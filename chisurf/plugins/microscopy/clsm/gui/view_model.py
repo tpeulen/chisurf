@@ -1,8 +1,11 @@
 """Qt-free view-model backing the CLSM tool.
 
 :class:`ClsmViewModel` holds all interactive state (TTTR data, CLSM images,
-representations, the pixel selection, ROIs and saved decays) and performs every
-computation through the plugin ``core`` layer. It carries the attribute groups
+representations, the pixel selection, regions and saved decays) and performs
+every computation through the plugin ``core`` layer. The brush paints an array —
+that is what a brush is — but a saved selection is a
+:class:`chisurf.core.roi.ROI`, so it can be measured, combined, stored and
+handed to another tool like any other region. It carries the attribute groups
 that AutoForm binds its setting fields to, the ``source`` methods the declarative
 plot sections read, and a tiny observer hook so the custom widgets refresh when
 state changes.
@@ -84,7 +87,8 @@ class ClsmViewModel:
         self._subset_1: np.ndarray | None = None
         self._subset_2: np.ndarray | None = None
         self.selection_mask: np.ndarray | None = None
-        self.rois: dict[str, np.ndarray] = {}
+        #: Saved regions, by name (:class:`chisurf.core.roi.ROI` instances).
+        self.rois: dict[str, Any] = {}
         self.curves: list[dict[str, Any]] = []
         self.current_decay: dict[str, Any] | None = None
 
@@ -334,45 +338,143 @@ class ClsmViewModel:
             return False
 
     # ── ROI management ─────────────────────────────────────────────────
+    def selection_roi(self):
+        """Return the brushed selection as a region of interest.
+
+        Returns
+        -------
+        chisurf.core.roi.MaskROI or None
+            The painted pixels as the shared region type, or ``None`` when
+            nothing is selected.
+        """
+        from chisurf.core.roi import MaskROI
+
+        if self.selection_mask is None or not np.any(self.selection_mask > 0):
+            return None
+        return MaskROI(np.asarray(self.selection_mask) > 0, name="selection")
+
+    def region_properties(self, name: str = ""):
+        """Measure a saved region, or the current selection when unnamed.
+
+        Parameters
+        ----------
+        name : str
+            Name of a saved region; empty measures the live selection.
+
+        Returns
+        -------
+        chisurf.core.roi.RegionProperties or None
+            Area, centroid, shape and — when an image is displayed — the
+            intensity statistics of the region; ``None`` if there is none.
+        """
+        roi = self.rois.get(name) if name else self.selection_roi()
+        if roi is None or self.current_image is None:
+            return None
+        return roi.properties(self.current_image.shape, image=self.current_image)
+
+    def region_summary(self, name: str = "") -> str:
+        """Return a one-line description of a region for the UI.
+
+        Parameters
+        ----------
+        name : str
+            Name of a saved region; empty summarises the live selection.
+
+        Returns
+        -------
+        str
+            ``"<n> px, <mean> ph/px"`` — the two numbers that say whether a
+            selection is worth building a decay from. Empty when there is no
+            region.
+        """
+        props = self.region_properties(name)
+        if props is None:
+            return ""
+        return f"{props.area} px, {props.intensity_mean:.1f} ph/px"
+
+    def roi_entries(self) -> list[dict[str, Any]]:
+        """Return the saved regions as ``{"name", "summary"}`` rows for the list."""
+        return [
+            {"name": name, "summary": self.region_summary(name)} for name in self.rois
+        ]
+
     def add_roi(self, name: str) -> None:
-        """Save the current selection mask as a named ROI."""
-        if self.selection_mask is not None:
-            self.rois[name] = np.copy(self.selection_mask)
-            self.notify("roi")
+        """Save the current selection as a named region."""
+        roi = self.selection_roi()
+        if roi is None:
+            return
+        roi.name = name
+        self.rois[name] = roi
+        self.notify("roi")
 
     def apply_roi(self, name: str) -> None:
-        """Make a saved ROI the current selection and recompute the decay."""
+        """Make a saved region the current selection and recompute the decay."""
         roi = self.rois.get(name)
         if roi is not None and self.current_image is not None:
-            self.selection_mask = np.copy(roi)
+            self.selection_mask = roi.to_mask(
+                self.current_image.shape, image=self.current_image
+            ).astype(self.current_image.dtype)
             self.recompute_decay()
             self.notify("selection")
 
     def remove_roi(self, name: str) -> None:
-        """Remove a saved ROI by name."""
+        """Remove a saved region by name."""
         self.rois.pop(name, None)
         self.notify("roi")
 
     def save_roi(self, name: str, filename: str) -> None:
-        """Write a saved ROI mask to an image file."""
-        import skimage as ski
+        """Write a saved region to a file.
+
+        ``.json`` keeps the region itself — geometry, name and all — and is the
+        format to prefer; ``.tif`` / ``.npy`` rasterise it to a mask image
+        instead, for tools that read nothing else.
+
+        Parameters
+        ----------
+        name : str
+            Name of the saved region.
+        filename : str
+            Destination path; the extension picks the format.
+        """
+        from chisurf.core.roi.io import save_label_image, save_rois
 
         roi = self.rois.get(name)
         if roi is None:
             return
-        image = np.copy(roi)
-        image[image > 0] = 255
-        ski.io.imsave(filename, image.astype(np.uint8))
+        if str(filename).lower().endswith(".json"):
+            save_rois([roi], filename, metadata={"source": self.filename})
+        elif self.current_image is not None:
+            save_label_image([roi], self.current_image.shape, filename,
+                             image=self.current_image)
 
     def load_roi(self, filename: str, name: str | None = None) -> None:
-        """Load an ROI mask from an image file."""
-        import skimage as ski
+        """Load one or more regions from a file.
 
-        image = np.asarray(ski.io.imread(filename))
-        if image.ndim == 3:
-            image = image[0]
-        roi_name = name or pathlib.Path(filename).stem
-        self.rois[roi_name] = image
+        Reads the native JSON format, a Cellpose segmentation, a label image or
+        a binary mask — whatever the extension says.
+
+        Parameters
+        ----------
+        filename : str
+            Source path.
+        name : str, optional
+            Name for a single loaded region; defaults to the file stem (a file
+            holding several regions keeps their own names).
+        """
+        from chisurf.core.roi.io import load_rois, roi_from_mask_file, rois_from_cellpose
+
+        path = str(filename).lower()
+        stem = name or pathlib.Path(filename).stem
+        if path.endswith(".json"):
+            loaded = load_rois(filename)
+        elif path.endswith("_seg.npy"):
+            loaded = rois_from_cellpose(filename)
+        else:
+            loaded = [roi_from_mask_file(filename, name=stem)]
+
+        for i, roi in enumerate(loaded):
+            key = roi.name or (stem if len(loaded) == 1 else f"{stem}_{i + 1}")
+            self.rois[key] = roi
         self.notify("roi")
 
     # ── plot sources (read by declarative PlotSection widgets) ─────────

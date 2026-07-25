@@ -195,6 +195,45 @@ class ROI(abc.ABC):
             return None
         return (int(rows[0]), int(cols[0]), int(rows[-1]) + 1, int(cols[-1]) + 1)
 
+    def bounds(
+        self,
+        shape: Optional[Sequence[int]] = None,
+        extent: Extent = None,
+        image: Optional[np.ndarray] = None,
+    ) -> Optional[Tuple[float, float, float, float]]:
+        """Return the region's extent in its own coordinates.
+
+        Where :meth:`bounding_box` answers in whole pixels, this answers in the
+        coordinates the region is written in — exactly, and without rasterising,
+        for the analytic shapes. That is what a drawn handle needs: snapping a
+        rectangle's corners to pixel edges every time it is redrawn makes it
+        creep.
+
+        Parameters
+        ----------
+        shape : sequence of int, optional
+            Array shape ``(ny, nx)``, needed only for regions that have to be
+            rasterised to be bounded (masks, thresholds, composites).
+        extent : tuple of float, optional
+            Value span, as for :meth:`to_mask`.
+        image : numpy.ndarray, optional
+            Image for intensity-dependent regions.
+
+        Returns
+        -------
+        tuple of float or None
+            ``(x0, y0, x1, y1)``; ``None`` when the region is empty, or when it
+            needs a grid and none was given.
+        """
+        if shape is None:
+            return None
+        box = self.bounding_box(shape, extent, image)
+        if box is None:
+            return None
+        row0, col0, row1, col1 = box
+        # Pixel centres sit on integers, so the pixels [a, b) span [a-0.5, b-0.5).
+        return (col0 - 0.5, row0 - 0.5, col1 - 0.5, row1 - 0.5)
+
     def properties(
         self,
         shape: Sequence[int],
@@ -296,6 +335,15 @@ class RectangleROI(ROI):
             & (p[:, 1] < self.y1)
         )
 
+    def bounds(
+        self,
+        shape: Optional[Sequence[int]] = None,
+        extent: Extent = None,
+        image: Optional[np.ndarray] = None,
+    ) -> Tuple[float, float, float, float]:
+        """Return the rectangle itself — no grid needed."""
+        return (self.x0, self.y0, self.x1, self.y1)
+
     def _params(self) -> Dict[str, Any]:
         """Return the corner coordinates."""
         return {"x0": self.x0, "y0": self.y0, "x1": self.x1, "y1": self.y1}
@@ -363,6 +411,18 @@ class EllipseROI(ROI):
         ry = self.ry if self.ry > 0 else np.inf
         return (dx / rx) ** 2 + (dy / ry) ** 2 <= 1.0
 
+    def bounds(
+        self,
+        shape: Optional[Sequence[int]] = None,
+        extent: Extent = None,
+        image: Optional[np.ndarray] = None,
+    ) -> Tuple[float, float, float, float]:
+        """Return the ellipse's tightest box, rotation included."""
+        c, s = abs(np.cos(self.angle)), abs(np.sin(self.angle))
+        half_x = float(np.hypot(self.rx * c, self.ry * s))
+        half_y = float(np.hypot(self.rx * s, self.ry * c))
+        return (self.cx - half_x, self.cy - half_y, self.cx + half_x, self.cy + half_y)
+
     def _params(self) -> Dict[str, Any]:
         """Return the centre, radii and rotation."""
         return {
@@ -412,6 +472,17 @@ class PolygonROI(ROI):
             inside ^= straddles & (px < x_cross)
             j = i
         return inside
+
+    def bounds(
+        self,
+        shape: Optional[Sequence[int]] = None,
+        extent: Extent = None,
+        image: Optional[np.ndarray] = None,
+    ) -> Tuple[float, float, float, float]:
+        """Return the box spanned by the vertices."""
+        low = self.vertices.min(axis=0)
+        high = self.vertices.max(axis=0)
+        return (float(low[0]), float(low[1]), float(high[0]), float(high[1]))
 
     def _params(self) -> Dict[str, Any]:
         """Return the vertex list."""

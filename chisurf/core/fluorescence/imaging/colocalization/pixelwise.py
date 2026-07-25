@@ -17,6 +17,7 @@ coefficients answer the wrong question, see :mod:`~.objects`.
 from __future__ import annotations
 
 import dataclasses
+from typing import Any
 
 import numpy as np
 
@@ -667,7 +668,7 @@ def colocalization_metrics(
     threshold_a: float = 0.0,
     threshold_b: float = 0.0,
     auto_threshold: bool = False,
-    gate: tuple[float, float, float, float] | None = None,
+    gate: Any = None,
     bins: int = 128,
     costes_test: bool = False,
     costes_block: int = 4,
@@ -702,9 +703,13 @@ def colocalization_metrics(
         Manual per-channel thresholds applied to the background-subtracted data.
     auto_threshold : bool
         Replace the manual thresholds with Costes' automatic ones.
-    gate : tuple of float, optional
-        ``(a_min, a_max, b_min, b_max)`` rectangle in the scatter plane; only
-        pixels inside it enter the *gated* coefficients.
+    gate : tuple of float or ROI, optional
+        A selection in the scatter plane; only pixels inside it enter the
+        *gated* coefficients. Either the plain rectangle
+        ``(a_min, a_max, b_min, b_max)``, inclusive at both ends, or any
+        :class:`chisurf.core.roi.ROI` — an ellipse around a population, a
+        polygon around a diagonal cloud, a composite of several — evaluated on
+        the ``(a, b)`` value pair of each pixel.
     bins : int
         Bin count per axis of the returned joint histogram.
     costes_test : bool
@@ -810,9 +815,22 @@ def colocalization_metrics(
     metrics["coloc_area_fraction"] = float(np.count_nonzero(coloc_mask) / max(area, 1))
 
     if gate is not None:
-        a_min, a_max, b_min, b_max = (float(v) for v in gate)
-        gated = mask & (a >= a_min) & (a <= a_max) & (b >= b_min) & (b <= b_max)
-        metrics["gate"] = (a_min, a_max, b_min, b_max)
+        from chisurf.core.roi import ROI
+
+        if isinstance(gate, ROI):
+            # The scatter plane is just another pair of axes, so a region gates
+            # it exactly as it would gate an image — and any shape will do.
+            inside = np.zeros(mask.size, dtype=bool)
+            selected = np.flatnonzero(mask.ravel())
+            if selected.size:
+                points = np.column_stack([a.ravel()[selected], b.ravel()[selected]])
+                inside[selected] = gate.contains(points)
+            gated = inside.reshape(mask.shape)
+            metrics["gate"] = gate.to_dict()
+        else:
+            a_min, a_max, b_min, b_max = (float(v) for v in gate)
+            gated = mask & (a >= a_min) & (a <= a_max) & (b >= b_min) & (b <= b_max)
+            metrics["gate"] = (a_min, a_max, b_min, b_max)
         metrics["n_pixels_gated"] = int(np.count_nonzero(gated))
         metrics["gated_pearson"] = pearson(a[gated], b[gated])
         metrics["gated_manders_overlap"] = manders_overlap(a[gated], b[gated])

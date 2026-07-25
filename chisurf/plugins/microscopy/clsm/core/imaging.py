@@ -151,10 +151,45 @@ def reduce_frames(
     return image[frame_idx], image[frame_idx], image[ref_idx]
 
 
+def selection_array(
+    mask: Any, shape: tuple[int, int], image: np.ndarray | None = None
+) -> np.ndarray:
+    """Return a ``uint8`` pixel selection from a region or a raw array.
+
+    The one place the two notions of "selection" meet: a brush paints an array,
+    while a drawn, loaded or thresholded region is a
+    :class:`chisurf.core.roi.ROI`. Everything downstream wants the array.
+
+    Parameters
+    ----------
+    mask : chisurf.core.roi.ROI or numpy.ndarray
+        The region. An array is taken as-is (non-zero pixels selected); a ROI is
+        rasterised onto *shape*.
+    shape : tuple of int
+        Frame shape ``(n_lines, n_pixel)`` to rasterise onto.
+    image : numpy.ndarray, optional
+        Intensity image, needed only by intensity-dependent regions such as
+        :class:`~chisurf.core.roi.ThresholdROI`.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``uint8`` array of 0/1, shaped ``shape``.
+    """
+    from chisurf.core.roi import ROI
+
+    if isinstance(mask, ROI):
+        return mask.to_mask(shape, image=image).astype(np.uint8)
+    sel = np.copy(np.asarray(mask))
+    sel[sel > 0] = 1
+    sel[sel < 0] = 0
+    return sel.astype(np.uint8)
+
+
 def decay_of_selection(
     clsm_image: Any,
     tttr: Any,
-    mask: np.ndarray,
+    mask: Any,
     tac_coarsening: int = 1,
     stack_frames: bool = True,
     frame_idx: int = 0,
@@ -168,9 +203,10 @@ def decay_of_selection(
         The filled CLSM image.
     tttr : tttrlib.TTTR
         The TTTR dataset (for the micro-time resolution).
-    mask : numpy.ndarray
-        2-D selection mask (non-zero pixels are included); broadcast across all
-        frames internally.
+    mask : chisurf.core.roi.ROI or numpy.ndarray
+        The selected pixels — any region (a brushed mask, a drawn shape, a
+        threshold, a loaded segmentation) or a raw 2-D array whose non-zero
+        pixels are included. Broadcast across all frames internally.
     tac_coarsening : int
         Micro-time (TAC) binning factor.
     stack_frames : bool
@@ -190,10 +226,7 @@ def decay_of_selection(
     ey : numpy.ndarray
         Poisson weights (see :func:`counting_noise`).
     """
-    sel = np.copy(mask)
-    sel[sel > 0] = 1
-    sel[sel < 0] = 0
-    sel = sel.astype(np.uint8)
+    sel = selection_array(mask, (clsm_image.n_lines, clsm_image.n_pixel))
     selection = np.ascontiguousarray(
         np.broadcast_to(
             sel,

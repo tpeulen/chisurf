@@ -48,6 +48,11 @@ Composition is where the split pays off: *"bright pixels inside this polygon"*
 is `polygon & ThresholdROI(low=...)`, and a composite delegates per operand, so
 an intensity-dependent region can take part in one.
 
+`ROI.bounds` is the geometric companion to `bounding_box`: the extent in the
+region's *own* coordinates, exact and grid-free for the analytic shapes,
+rasterised for masks and thresholds. Interactive handles need it — a rectangle
+that re-derives its corners from a rasterised box walks across the image.
+
 ## Persistence and segmentation
 
 `ROI.to_dict()` / `roi_from_dict()` round-trip through plain JSON, including
@@ -135,11 +140,31 @@ biased in both directions, so `circularity` can exceed 1 (a 7x7 square scores
   molecule still carry its PSF tail.
 * **Drift correction** (`core/fluorescence/imaging/drift.py`) — estimates
   within a region, as PAM's MIA does, cropping to `ROI.bounding_box`.
+* **CLSM pixel select** (`plugins/microscopy/clsm`) — the brush still paints an
+  array (that is what a brush is), but everything downstream of it is a region:
+  `selection_roi()` wraps the paint buffer, saved regions are ROIs listed with
+  their own measurements (`216 px, 41.8 ph/px`), save/load goes through the
+  native JSON *and* the segmentation importers, and the headless
+  `extract_decay` resolves `--mask` / `--threshold` to a `MaskROI` /
+  `ThresholdROI`. `imaging.selection_array` is the single seam where a region
+  becomes the `uint8` array tttrlib wants.
+* **Scatter gates** — `pixelwise.colocalization_metrics(gate=...)` takes a ROI
+  as readily as the `(a_min, a_max, b_min, b_max)` tuple, evaluated with
+  `contains` on each pixel's `(a, b)` value pair. That is the axis-free claim
+  paying off: a gate on a joint histogram and a region on a frame are the same
+  object, and a population can be gated with an ellipse or a polygon without a
+  line of new machinery. The tuple stays for the drawn rectangle because it is
+  inclusive at both ends where a half-open `RectangleROI` is not.
+* **AutoForm `image` section** — the draggable rectangle exchanges a
+  `RectangleROI` through `region_call` / `region_source` (formerly
+  `rect_roi_call` / `rect_roi_source`, which passed four floats). Placement uses
+  `ROI.bounds`, exact for analytic shapes: rasterising a rectangle to find its
+  own extent snaps the handles to pixel edges, and doing that on every redraw
+  makes an interactive gate creep.
 
-Still on their own implementations, and the natural next migrations: the
-AutoForm `image` section's `rect_roi_call`/`rect_roi_source` seam, the 2-D
-residual plot's rectangle, and ndX's `DataSelection` hierarchy (which lives in
-a separate package and would need the dependency direction thought through).
+Still on their own implementations, and the natural next migrations: the 2-D
+residual plot's rectangle, and ndX's `DataSelection` hierarchy (which lives in a
+separate package and would need the dependency direction thought through).
 
 # Citations
 

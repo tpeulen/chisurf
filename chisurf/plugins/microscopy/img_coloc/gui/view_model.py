@@ -178,7 +178,14 @@ class ColocViewModel:
         return {"auto": None, "first axis": 0}.get(self.channel_axis_mode, None)
 
     def _gate(self):
-        """Return the scatter-plane gate rectangle, or ``None`` when disabled."""
+        """Return the scatter-plane gate rectangle, or ``None`` when disabled.
+
+        A plain tuple, not a region: the rectangle drawn here is inclusive at
+        both ends, so a gate dragged onto the brightest pixel keeps it, where a
+        half-open :class:`~chisurf.core.roi.RectangleROI` would not. The
+        analysis accepts either, so a shaped gate can be passed straight
+        through when one is ever drawn.
+        """
         if not self.gate_enabled:
             return None
         if self.gate_a_max <= self.gate_a_min or self.gate_b_max <= self.gate_b_min:
@@ -449,33 +456,58 @@ class ColocViewModel:
         ]
 
     # ── scatter gate (driven by the histogram's rectangle ROI) ──
-    def gate_rect(self):
-        """Return the gate rectangle in histogram-bin coordinates (or ``None``)."""
+    def gate_region(self):
+        """Return the gate as a region in histogram-bin coordinates.
+
+        Returns
+        -------
+        chisurf.core.roi.RectangleROI or None
+            Where to draw the rectangle on the joint histogram; ``None`` when
+            gating is off or no result has been computed yet.
+        """
         if self._result is None or not self.gate_enabled:
             return None
         edges_a = self._result.histogram.get("edges_a")
         edges_b = self._result.histogram.get("edges_b")
         if edges_a is None or edges_b is None or len(edges_a) < 2:
             return None
-        return (
+        from chisurf.core.roi import RectangleROI
+
+        return RectangleROI(
             self._to_bin(self.gate_a_min, edges_a),
             self._to_bin(self.gate_b_min, edges_b),
             self._to_bin(self.gate_a_max, edges_a),
             self._to_bin(self.gate_b_max, edges_b),
+            name="gate",
         )
 
-    def set_gate_from_rect(self, x0: float, y0: float, x1: float, y1: float) -> None:
-        """Adopt a rectangle drawn on the histogram (bin coordinates) as the gate."""
+    def set_gate_region(self, roi) -> None:
+        """Adopt a region drawn on the joint histogram as the gate.
+
+        The rectangle arrives in bin coordinates; the intensities it stands for
+        are read off the histogram edges, which is the one thing the widget
+        cannot know.
+
+        Parameters
+        ----------
+        roi : chisurf.core.roi.ROI
+            The drawn region; its bounding box in bin coordinates is used.
+        """
         if self._result is None:
             return
         edges_a = self._result.histogram.get("edges_a")
         edges_b = self._result.histogram.get("edges_b")
         if edges_a is None or edges_b is None or len(edges_a) < 2:
             return
-        self.gate_a_min = self._to_value(min(x0, x1), edges_a)
-        self.gate_a_max = self._to_value(max(x0, x1), edges_a)
-        self.gate_b_min = self._to_value(min(y0, y1), edges_b)
-        self.gate_b_max = self._to_value(max(y0, y1), edges_b)
+        bins = len(edges_a) - 1
+        box = roi.bounds((bins, bins))
+        if box is None:
+            return
+        x0, y0, x1, y1 = box
+        self.gate_a_min = self._to_value(x0, edges_a)
+        self.gate_a_max = self._to_value(x1, edges_a)
+        self.gate_b_min = self._to_value(y0, edges_b)
+        self.gate_b_max = self._to_value(y1, edges_b)
         self.gate_enabled = True
         self.compute()
 

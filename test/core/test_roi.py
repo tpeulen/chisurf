@@ -280,6 +280,33 @@ def test_segmented_regions_gate_molecule_positions():
     np.testing.assert_array_equal(roi.contains(positions), [True, False, True])
 
 
+def test_analytic_regions_bound_themselves_without_a_grid():
+    """``bounds`` is exact where it can be, so a drawn handle does not creep.
+
+    Rasterising a rectangle to find its extent snaps the corners to pixel
+    edges; do that on every redraw of an interactive gate and the rectangle
+    walks across the image.
+    """
+    assert RectangleROI(1.25, 2.5, 8.75, 6.0).bounds() == (1.25, 2.5, 8.75, 6.0)
+    assert EllipseROI(5, 4, 3, 2).bounds() == (2.0, 2.0, 8.0, 6.0)
+    assert PolygonROI([(1, 1), (7, 2), (4, 9)]).bounds() == (1.0, 1.0, 7.0, 9.0)
+    # A rotated ellipse still reports the box that contains it.
+    rotated = EllipseROI(0, 0, 4, 1, angle=np.pi / 2).bounds()
+    np.testing.assert_allclose(rotated, (-1.0, -4.0, 1.0, 4.0), atol=1e-12)
+
+
+def test_regions_that_need_a_grid_say_so():
+    """A mask or a threshold has no geometry to read; it needs rasterising."""
+    mask = MaskROI(np.array([[False, True], [False, True]]), offset=(3, 5))
+    assert mask.bounds() is None
+    assert mask.bounds((10, 10)) == (5.5, 2.5, 6.5, 4.5)
+    # Off the grid entirely: nothing to report.
+    assert MaskROI(np.ones((2, 2), dtype=bool), offset=(50, 50)).bounds((10, 10)) is None
+    # A rectangle, by contrast, knows where it is even off the grid — it is
+    # geometry, not pixels.
+    assert RectangleROI(50, 50, 60, 60).bounds((10, 10)) == (50.0, 50.0, 60.0, 60.0)
+
+
 def test_roi_is_the_abstract_base():
     """Every shape is a ROI, so consumers can accept the base type."""
     for roi in (RectangleROI(0, 0, 1, 1), EllipseROI(0, 0, 1),

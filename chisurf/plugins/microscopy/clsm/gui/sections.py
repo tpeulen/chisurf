@@ -19,12 +19,15 @@ from __future__ import annotations
 
 import pathlib
 
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 from chisurf.gui.autoform.sections.registry import register_section
 
 log = cs.logging
+
+#: Item role holding a region's name, so the visible row can also carry its size.
+_NAME_ROLE = QtCore.Qt.UserRole
 
 
 def _tool_button(text: str, tooltip: str = "", slot=None) -> QtWidgets.QToolButton:
@@ -91,15 +94,16 @@ class _RoiList(QtWidgets.QWidget):
         model.add_observer(self._on_event)
 
     def _current_name(self):
+        """Return the selected region's name (the row also carries its size)."""
         item = self.list_widget.currentItem()
-        return item.text() if item else ""
+        return str(item.data(_NAME_ROLE)) if item else ""
 
     def _on_add(self):
         name = self.name_edit.text().strip() or f"roi_{len(self._model.rois) + 1}"
         self._model.add_roi(name)
 
     def _on_apply(self, item):
-        self._model.apply_roi(item.text())
+        self._model.apply_roi(str(item.data(_NAME_ROLE)))
 
     def _on_remove(self):
         name = self._current_name()
@@ -111,19 +115,35 @@ class _RoiList(QtWidgets.QWidget):
         if not name:
             return
         fn, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save ROI", _working_dir(self._model), "PNG (*.png);;TIFF (*.tif)"
+            self, "Save ROI", _working_dir(self._model),
+            "Regions (*.json);;Mask image (*.tif);;NumPy (*.npy)",
         )
         if fn:
             self._model.save_roi(name, fn)
 
     def _on_load(self):
         fn, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Load ROI", _working_dir(self._model), "Images (*.tif *.png)"
+            self, "Load ROI", _working_dir(self._model),
+            "Regions (*.json);;Segmentation (*_seg.npy);;Masks (*.tif *.npy)",
         )
         if fn:
             self._model.load_roi(fn)
 
     def _on_event(self, event):
-        if event == "roi":
-            self.list_widget.clear()
-            self.list_widget.addItems(list(self._model.rois))
+        """Refresh the list, and its measurements, when regions or pixels change."""
+        if event in ("roi", "selection", "image"):
+            self._refresh_list()
+
+    def _refresh_list(self):
+        """Show each region with its size and brightness, keeping the selection."""
+        current = self._current_name()
+        self.list_widget.clear()
+        for entry in self._model.roi_entries():
+            summary = entry["summary"]
+            item = QtWidgets.QListWidgetItem(
+                f"{entry['name']}  —  {summary}" if summary else entry["name"]
+            )
+            item.setData(_NAME_ROLE, entry["name"])
+            self.list_widget.addItem(item)
+            if entry["name"] == current:
+                self.list_widget.setCurrentItem(item)

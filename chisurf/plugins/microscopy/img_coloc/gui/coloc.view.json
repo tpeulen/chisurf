@@ -164,7 +164,7 @@
              "description": "Pixels above both thresholds; gated pixels are brighter when a scatter gate is active."},
             {"type": "custom", "key": "image", "target": "histogram_image", "title": "Intensity scatter",
              "options": {"colormap": true, "colormap_attr": "colormap", "invert_y": false,
-                         "rect_roi_call": "set_gate_from_rect", "rect_roi_source": "gate_rect"},
+                         "region_call": "set_gate_region", "region_source": "gate_region"},
              "description": "Joint histogram of the two channels (A horizontal, B vertical). Drag the blue rectangle to gate a pixel population."},
             {"type": "plot", "source": "ccf_series", "title": "van Steensel CCF",
              "x_label": "shift / px", "y_label": "PCC"},

@@ -173,7 +173,10 @@ def representation(
     "mask_path",
     default=None,
     type=click.Path(exists=True),
-    help="Selection mask image (tif/png). Overrides --threshold.",
+    help=(
+        "Stored region: .json regions, a Cellpose _seg.npy segmentation, a label "
+        "image or a binary mask (tif/npy). Overrides --threshold."
+    ),
 )
 @click.option(
     "--threshold",

@@ -197,6 +197,94 @@ def test_view_model_workflow():
     assert {"setup", "clsm", "image", "decay"} <= set(events)
 
 
+# ── regions (no data needed) ────────────────────────────────────────────────
+
+
+def _painted_view_model():
+    """A view model with a synthetic image and a painted selection."""
+    from chisurf.plugins.microscopy.clsm.gui.view_model import ClsmViewModel
+
+    vm = ClsmViewModel()
+    image = np.zeros((16, 16), dtype=np.float64)
+    image[4:8, 5:11] = 20.0
+    vm.current_image = image
+    vm.selection_mask = np.zeros_like(image)
+    vm.selection_mask[4:8, 5:11] = 1.0
+    return vm
+
+
+def test_a_brushed_selection_is_a_region_and_can_be_measured():
+    """The paint buffer, the saved region and the measurement are one system."""
+    vm = _painted_view_model()
+
+    roi = vm.selection_roi()
+    assert roi is not None
+    assert roi.to_mask((16, 16)).sum() == 24
+
+    props = vm.region_properties()
+    assert props.area == 24
+    assert props.intensity_mean == 20.0
+    assert props.centroid == (5.5, 7.5)
+    # The list row says how big and how bright — the two numbers that decide
+    # whether a selection is worth a decay.
+    assert vm.region_summary() == "24 px, 20.0 ph/px"
+
+
+def test_saved_regions_round_trip_through_the_selection():
+    vm = _painted_view_model()
+    vm.add_roi("cell")
+    assert list(vm.rois) == ["cell"]
+    assert vm.roi_entries() == [{"name": "cell", "summary": "24 px, 20.0 ph/px"}]
+
+    vm.clear_selection()
+    assert vm.selection_roi() is None
+
+    vm.apply_roi("cell")
+    np.testing.assert_array_equal(vm.selection_mask > 0, vm.rois["cell"].to_mask((16, 16)))
+
+    vm.remove_roi("cell")
+    assert vm.rois == {}
+
+
+def test_regions_survive_a_file_round_trip(tmp_path):
+    """JSON keeps the region itself; a mask image keeps only its pixels."""
+    vm = _painted_view_model()
+    vm.add_roi("cell")
+
+    as_json = tmp_path / "cell.json"
+    vm.save_roi("cell", str(as_json))
+    vm.remove_roi("cell")
+    vm.load_roi(str(as_json))
+    assert "cell" in vm.rois
+    np.testing.assert_array_equal(
+        vm.rois["cell"].to_mask((16, 16)), vm.selection_roi().to_mask((16, 16))
+    )
+
+    pytest.importorskip("tifffile")
+    as_mask = tmp_path / "cell.tif"
+    vm.save_roi("cell", str(as_mask))
+    vm.load_roi(str(as_mask), name="from_mask")
+    np.testing.assert_array_equal(
+        vm.rois["from_mask"].to_mask((16, 16)), vm.rois["cell"].to_mask((16, 16))
+    )
+
+
+def test_selection_array_accepts_a_region_or_an_array():
+    """The one seam where a drawn region and a painted array meet."""
+    from chisurf.core.roi import EllipseROI
+    from chisurf.plugins.microscopy.clsm.core.imaging import selection_array
+
+    from_roi = selection_array(EllipseROI(5, 5, 3), (12, 12))
+    assert from_roi.dtype == np.uint8
+    assert from_roi.sum() == 29
+
+    painted = np.zeros((12, 12))
+    painted[2:4, 2:4] = 7.0
+    painted[6, 6] = -1.0  # a de-selected pixel, as the "erase" brush writes
+    from_array = selection_array(painted, (12, 12))
+    assert from_array.sum() == 4
+
+
 # ── gui smoke (Qt) ──────────────────────────────────────────────────────────
 
 

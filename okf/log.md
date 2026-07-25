@@ -2,6 +2,40 @@
 
 ## 2026-07-25
 
+* **Regions, everywhere a region was meant — and the gate on a scatter plane is
+  one of them.** Second pass over the ROI subsystem, migrating the consumers
+  that still had their own notion.
+  *CLSM pixel select* kept regions as bare arrays in a dict and wrote them with
+  `skimage.io`. The brush still paints an array — that is what a brush is — but
+  everything downstream is a region now: `selection_roi()` wraps the paint
+  buffer, saved regions are ROIs listed **with their own measurements**
+  (`bright patch — 216 px, 41.8 ph/px`, so a real structure is distinguishable
+  from a stray stroke without applying it), save/load runs through the native
+  JSON and the segmentation importers (a Cellpose `_seg.npy` arrives as one
+  region per object), and the headless `extract_decay` resolves `--mask` /
+  `--threshold` to a `MaskROI` / `ThresholdROI`. `imaging.selection_array` is
+  the single seam where a region becomes the `uint8` array tttrlib wants.
+  *Scatter gates.* `pixelwise.colocalization_metrics(gate=...)` now takes a ROI
+  as readily as the `(a_min, a_max, b_min, b_max)` tuple, evaluated with
+  `contains` on each pixel's `(a, b)` value pair — the axis-free claim finally
+  paying off, since a population can now be gated with an ellipse or a polygon
+  without a line of new machinery. The tuple stays for the drawn rectangle
+  because it is inclusive at both ends where a half-open `RectangleROI` is not,
+  and that difference bites exactly at the brightest pixel.
+  *AutoForm.* The draggable rectangle exchanges a `RectangleROI` through
+  `region_call` / `region_source` (was `rect_roi_call` / `rect_roi_source`,
+  passing four floats). Placement needed a new primitive: `ROI.bounds` — the
+  extent in the region's *own* coordinates, exact and grid-free for rectangles,
+  ellipses (rotation included) and polygons, rasterised for masks and
+  thresholds. Rasterising a rectangle to find its own extent snaps the handles
+  to pixel edges, and doing that on every redraw makes an interactive gate
+  creep; verified by round-tripping a gate through bins and back to the same
+  numbers.
+  Docs: `docs/concepts/region_properties.md` gained "the same region, different
+  axes"; guide 24 documents the region list and the file formats. 92 tests
+  green across `test_roi`, the coloc suite and the CLSM suite; both GUIs
+  rendered headless and read.
+
 * **The gradient-free answer to "why not NUTS", and an aGrUM concept I had
   written off.** Two results from researching what else the graphical-model
   world has that ChiSurf could use.

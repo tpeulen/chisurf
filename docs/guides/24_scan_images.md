@@ -35,6 +35,31 @@ Pixel-wise analyses: `img_pixel_mle` (per-pixel `2I*` lifetime, same harness as
 `sm_image_mle` (single-molecule image MLE), plus `psf_determination` and
 `img_calibration`.
 
+## Selecting pixels
+
+A decay is built from the pixels you select. Paint them with the brush on the
+image, then save the selection under a name in the **ROIs** tab: each saved
+region is listed with what it actually is — `bright patch — 216 px, 41.8 ph/px`
+— so you can tell a real structure from a stray brush stroke without applying
+it. Clicking a region makes it the current selection and rebuilds the decay.
+
+**Save** writes `.json` (the region itself: geometry, name, and nested
+combinations — the format to prefer) or a `.tif` / `.npy` mask image for tools
+that read nothing else. **Load** reads all of those back, plus a Cellpose
+`_seg.npy` segmentation, which arrives as one region per detected object.
+
+The same regions work headlessly:
+
+```python
+from chisurf.plugins.microscopy.clsm.api import clsm
+
+clsm.extract_decay("image.ptu", mask_path="cell.json")   # a stored region
+clsm.extract_decay("image.ptu", threshold=0.2)           # brightest pixels
+```
+
+The theory — what a region is, and the measurements reported for it — is in
+{ref}`concept-region-properties`.
+
 ## Result
 
 The same photon stream yields two co-registered images: an intensity map and a
