@@ -1425,3 +1425,69 @@ findings below are the things that break or mislead on the way. RF-107..RF-112.
 - **Location:** `chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/main_window.py:1430` (`_clear_recon_plot`, `self.plot_recon.addItem(region)`) reached from `:3146` (`_update_plots`) inside the `try` at `:2670` (`_compute_filters_multi_detector`)
 - **Finding:** `region` is a chiplot `_Region`; `plot_recon` falls through to the pyqtgraph backend (the call already emits `ChiplotPassthroughWarning: chiplot has no native 'addItem' (Plot scope)`), and `QGraphicsScene.addItem` rejects it: `TypeError: addItem(self, item: Optional[QGraphicsItem]): argument 2 has unexpected type '_Region'`. Verified by walking the FCS tool's navigation rail — selecting **Filter Calc** produces the traceback, logged at ERROR as `Multi-detector computation error: addItem(...)`, so the user sees empty plots and no error. A chiplot migration gap of exactly the kind the passthrough warning is meant to flag: either give chiplot a native `addItem`/region API on the `Plot` scope, or add the region through the chiplot handle rather than the raw `PlotItem`. (Noted separately, not filed: the panel then sat at 0 % CPU for over three minutes without completing and the walk had to be killed there — not characterised, so not claimed as a defect.)
 - **Fix note:**
+
+### Review 2026-07-26 — the server fit-job path, end to end
+
+Slice: `e46b80fe4` (INC-08, one job manager for sampling and parameter scans) and
+the two GUI consumers it feeds — `chisurf/server/jobs.py`,
+`chisurf/server/services/fits.py:1072-1546`,
+`chisurf/gui/widgets/fitting/fit_controller.py:_watch_sampling_job` and
+`chisurf/gui/plots/parameter_scan/parameter_scan.py`.
+
+The refactor itself holds: the id-space split by action is real, the cooperative
+`CANCELLING` state is honest about a worker that is still walking the live model,
+`cleanup()` prunes, and the cancel path does hand the borrowed parameter back.
+The findings are on either side of it — what the worker does when it *fails*
+rather than when it is cancelled, what happens when two jobs drive the same live
+fit, and what the two pollers make of a response that is not a job status.
+Reproduced in the `arm64` env against the service functions directly (the fakes
+from `test/server/test_fit_jobs_use_job_manager.py`). RF-113..RF-119.
+
+### RF-113
+- **Status:** OPEN
+- **Severity:** S1 (a scan that raises leaves the user's fit sitting at an arbitrary probe value, silently, and the model is re-evaluated there)
+- **Location:** `chisurf/server/services/fits.py:1477-1498` (`fit_parameter_scan_start._run`: the restore at `:1497-1498` is reachable only by falling off the end of the loop) against `:1478-1483` (the cancel checkpoint, which *does* restore)
+- **Finding:** The scan borrows the live parameter (`param.value = float(v)`; `model.update_model()`) and owes it back. Cancellation pays that debt — the comment at `:1479-1480` says so — but an exception does not: `update_model()` raising on step *k* propagates straight out of `_run`, `_execute_job` records FAILED, and `param.value` keeps the probe value forever. Verified with the test file's own fakes: a model that raises on its 4th update leaves `parameters_all_dict['a'].value == 1.6` for a parameter that started at `2.0`, with the job reporting only `status='failed', error='model blew up'`. A raising `update_model` is not exotic — it is the normal outcome of a probe value outside the model's domain, which a scan deliberately walks towards. `test_a_failing_scan_is_reported_as_failed` already drives this path and asserts only the status, so the corruption is uncovered. Wrap the loop in `try/finally` so the single restore serves the normal, cancelled and failed exits alike, and extend that test with the value assertion the cancel test already makes.
+- **Fix note:**
+
+### RF-114
+- **Status:** OPEN
+- **Severity:** S1 (a second scan captures a mid-flight value as "the original", scans the wrong interval, and restores the fit to that wrong value permanently)
+- **Location:** `chisurf/server/services/fits.py:1463-1469` (`_run` reads `value = getattr(param, "value", 0)` **inside** the worker thread, and derives `lo`/`hi` from it) with `:1456-1506` (nothing prevents a second job on the same fit) and `chisurf/gui/plots/parameter_scan/parameter_scan.py:150` (`processEvents()` inside the poll loop, with the Scan action never disabled)
+- **Finding:** The starting value is read when the thread runs, not when the RPC is served, so it is whatever the parameter happens to hold at that moment. Two scans on one fit therefore corrupt each other: verified with the service functions directly — scan A running (200 steps, 4 ms/step), scan B started 0.1 s later captured `1.3077` as the original, centred its window there instead of on `2.0`, and because B finished last its restore left `param.value == 1.3077` for a parameter whose true value was `2.0`. Both jobs report `completed`; nothing warns, and B's χ² curve is a scan of a region the user never asked about. This is reachable from the GUI precisely because `_poll_scan_result` pumps Qt events in its own loop while leaving `actionScanParameter` enabled, so a second click re-enters `scan_parameter`; a scan concurrent with a `fit.sample.*` job on the same fit is the same collision. Two independent halves: capture `value` (and `lo`/`hi`) in `fit_parameter_scan_start` before `start_threaded`, and refuse a second job against a fit that already has a live one (`INVALID_STATE`) rather than letting two threads drive one model.
+- **Fix note:**
+
+### RF-115
+- **Status:** OPEN
+- **Severity:** S2 (an unreachable or unknown sampling job is announced to the user as a finished run with no convergence problems)
+- **Location:** `chisurf/gui/widgets/fitting/fit_controller.py:554-577` (`_watch_sampling_job._poll`: `state = str(status.get("status", ""))` with no test of `status["ok"]`) against `chisurf/gui/widgets/fitting/fitting_client.py:951-955` (`sampling_status` returns `{"ok": False}` when `_try_rpc` fails) and `chisurf/server/services/__init__.py:27-49` (`service_error` payloads carry no `status` key)
+- **Finding:** Every failure mode of the status call — RPC unavailable, transport dropped, `RemoteError`, or a job the server no longer knows (`_JOBS.cleanup()` prunes past `max_history`, and a restarted server knows none) — produces a dict without a `status` key, so `state` is `""`. That value is not in `("queued", "running", "cancelling")`, so polling stops; it is not `"failed"`, so the error branch is skipped; `warnings` is then empty and the poller logs **"Sampling finished; no convergence problems detected (? chains x ? draws)"**. The `?` placeholders are the only hint that the run was never observed. The function's own docstring says its point is that "a finished run is not the same as a trustworthy one" — this path reports an *unobserved* run as the most trustworthy kind. Treat a response with `ok` false or no `status` as lost contact (the `except` branch's wording already exists at `:557-559`).
+- **Fix note:**
+
+### RF-116
+- **Status:** OPEN
+- **Severity:** S2 (an error response makes the parameter-scan widget re-issue the same RPC ~6000 times over five minutes while pumping Qt events, then give up leaving the server job running)
+- **Location:** `chisurf/gui/plots/parameter_scan/parameter_scan.py:124-152` (`_poll_scan_result`: the `while` loop breaks only on `"completed"` / `"failed"` / `"cancelled"`)
+- **Finding:** `parameter_scan_result` returns `{"ok": False}` on any RPC failure and `service_error(...)` — also without a `status` key — for an unknown job id, so `status` is `""`: neither the completion branch nor the `("failed", "cancelled")` break fires and the loop runs to its full 300 s deadline at 20 Hz, calling `processEvents()` each turn (the reentrancy that makes RF-114 reachable). Three fixes, all small: break when `not result.get("ok")` or `status` is empty; call `fc.cancel_parameter_scan(job_id)` on the deadline instead of abandoning a job that is still walking the live model; and disable `actionScanParameter` for the duration so the pumped events cannot start a second scan. A `QTimer`-driven poll like `_watch_sampling_job`'s would remove the blocking loop altogether.
+- **Fix note:**
+
+### RF-117
+- **Status:** OPEN
+- **Severity:** S2 (the widget's two range spin boxes are computed, then silently discarded on the RPC path, so the same button scans a different interval depending on whether RPC is up)
+- **Location:** `chisurf/gui/plots/parameter_scan/parameter_scan.py:162` (`scan_range = ((1.0 - p_min) * value, (1.0 + p_max) * value)`, used only by the local fallback at `:183-187`) and `:168-173` (`start_parameter_scan(..., range_factor=2.0)`, hard-coded) against `chisurf/server/services/fits.py:1432-1472` (the endpoint takes no range at all)
+- **Finding:** `fit_parameter_scan_start`'s signature is `(state, parameter_name, fit_index, fit_uid, n_steps, range_factor)` — there is no way to express the interval the user typed. The server invents its own: `half_range = err * range_factor` when the parameter carries an `error_estimate`, else `abs(value * 0.5)`, else `1.0`. So on the RPC path the ± spin boxes do nothing, and before a fit has converged (no error estimate) even `range_factor` is ignored, making the hard-coded `2.0` doubly inert — every scan is a fixed ±50 % of the current value. The local path honours the spin boxes exactly. Add an optional `scan_range` (or explicit `lo`/`hi`) to the endpoint and send the widget's, keeping the error-estimate heuristic as the default when it is absent.
+- **Fix note:**
+
+### RF-118
+- **Status:** OPEN
+- **Severity:** S3 (`max_history=0` — "keep no history" — is the one setting under which the documented pruning does nothing at all)
+- **Location:** `chisurf/server/jobs.py:269-277` (`JobManager.cleanup`: `to_remove = terminal[:-self._max_history] if len(terminal) > self._max_history else []`)
+- **Finding:** `-0` is not a negative index: with `_max_history == 0` the guard passes (any terminal job is `> 0`) and `terminal[:-0]` evaluates to `terminal[:0]`, the empty list, so nothing is pruned and the manager grows without bound in exactly the configuration that asks for the least memory. Verified: `JobManager(max_history=0)` with three completed jobs returns `cleanup() == 0` and still holds 3, while `max_history=1` correctly removes 2. `terminal[: max(0, len(terminal) - self._max_history)]` handles every value uniformly and lets the `if` go. `test/server/test_jobs.py:103` only covers `max_history=2`.
+- **Fix note:**
+
+### RF-119
+- **Status:** OPEN
+- **Severity:** S3 (the server exposes a `job_manager` that no job is ever registered in, while the real registry is a module-level singleton nothing can reach)
+- **Location:** `chisurf/server/app.py:51` (`self.job_manager = JobManager()`, plumbed on to `AppStartupServiceManager` at `:68` and into every `AppStartupContext` — `chisurf/startup/services.py:159`, `:406`, `:587`) against `chisurf/server/services/fits.py:1081` (`_JOBS = JobManager()`, where the fit jobs actually live)
+- **Finding:** There are two managers. Every `create_job` in the tree goes to the `fits.py` module-level `_JOBS`; `ServerApp.job_manager` is constructed, handed to the startup-service context and to `chisurf/gui/background_startup.py:84`, and never has a job put in it or taken out of it — grep finds only assignments. A startup service or plugin handed `context.job_manager` therefore sees an empty registry and cannot list, poll or cancel the sampling and scan jobs the server is actually running, and a generic `jobs.*` endpoint cannot be written against it; `test/server/test_app.py:45` asserts only that the attribute is not `None`. It is also process-global rather than per-session, so two `SessionState`s in one process share a job id space. Either inject the app's manager into the fits service (the dispatcher already carries `state` and `event_bus` the same way) or drop the unused attribute and the context field, so "one job manager" (INC-08) is true of the code and not only of the commit message.
+- **Fix note:**
