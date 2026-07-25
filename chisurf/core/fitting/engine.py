@@ -758,6 +758,97 @@ class GaussianEngine(PosteriorEngine):
         return out
 
 
+    def conditional_scan(
+            self,
+            name: str,
+            points: int = 41,
+            span: float = 3.0,
+    ) -> typing.Optional[typing.Dict[str, typing.Any]]:
+        r"""Sweep one parameter over its range and report what the rest become.
+
+        The question a correlated fit provokes -- *"if this lifetime really were
+        4.2 ns, what would the amplitudes have to be?"* -- asked at every value
+        at once. A profile scan answers it by re-fitting at each point; in
+        canonical form each answer is a matrix update, so the whole sweep costs
+        **one** curvature evaluation however many points it has.
+
+        Results are also reported in standardised units, where the picture is
+        easiest to read: for a Gaussian the conditional mean of :math:`Y` given
+        :math:`X = x` is
+        :math:`\mu_Y + \rho\,\sigma_Y (x - \mu_X)/\sigma_X`, so plotting
+        :math:`(\text{mean} - \mu_Y)/\sigma_Y` against
+        :math:`(x - \mu_X)/\sigma_X` gives a line **whose slope is exactly the
+        correlation**. The conditional width
+        :math:`\sigma_Y\sqrt{1 - \rho^2}` does not depend on where the sweep is,
+        so it is reported once per target: it is what the data still does not
+        know once the swept parameter is pinned down.
+
+        Parameters
+        ----------
+        name : str
+            Parameter to hold at each value.
+        points : int, optional
+            Number of held values.
+        span : float, optional
+            Half-width of the sweep, in standard deviations of ``name``.
+
+        Returns
+        -------
+        dict or None
+            ``held`` (the values), ``held_z`` (the same in sd units),
+            ``centre``/``sd`` of the swept parameter, and ``targets``: one entry
+            per other parameter with ``name``, ``mean`` (array), ``z`` (the
+            standardised shift), ``sd`` (the conditional width, a scalar),
+            ``marginal``/``marginal_sd`` and ``correlation``. ``None`` when the
+            curvature is unusable or ``name`` is not in it.
+        """
+        form = self.form()
+        if form is None or name not in form.names:
+            return None
+        index = form.names.index(name)
+        covariance = form.covariance
+        mean = form.mean
+        centre = float(mean[index])
+        sd = float(math.sqrt(max(covariance[index, index], 0.0)))
+        if not (sd > 0.0) or not np.isfinite(sd):
+            return None
+
+        points = max(2, int(points))
+        held_z = np.linspace(-abs(span), abs(span), points)
+        held = centre + sd * held_z
+
+        targets = []
+        for j, other in enumerate(form.names):
+            if other == name:
+                continue
+            sd_other = float(math.sqrt(max(covariance[j, j], 0.0)))
+            if not (sd_other > 0.0):
+                continue
+            rho = float(covariance[index, j] / (sd * sd_other))
+            rho = float(np.clip(rho, -1.0, 1.0))
+            mu_other = float(mean[j])
+            # The closed form, rather than one condition() call per point: they
+            # agree exactly, and this keeps a long sweep free.
+            z = rho * held_z
+            targets.append({
+                "name": other,
+                "mean": mu_other + sd_other * z,
+                "z": z,
+                "sd": sd_other * math.sqrt(max(1.0 - rho * rho, 0.0)),
+                "marginal": mu_other,
+                "marginal_sd": sd_other,
+                "correlation": rho,
+            })
+        return {
+            "name": name,
+            "held": held,
+            "held_z": held_z,
+            "centre": centre,
+            "sd": sd,
+            "targets": targets,
+        }
+
+
 class ProfileEngine(PosteriorEngine):
     """A chi² scan that re-optimises everything else at each point.
 

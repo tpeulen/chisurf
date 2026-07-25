@@ -274,6 +274,30 @@ relative uncertainty: `a` is pale because four datasets constrain it, the `c`s
 are red because one each does. The other two tabs show the posterior
 *correlation* (a pair at ±1 is one measurement, not two) and the *junction tree*.
 
+**What-if** answers the question a correlated fit provokes: *if this parameter
+really were that value, what would the others have to be?* Pick a parameter,
+drag the slider, and read the rest off in their own units. Dragging is free —
+for a Gaussian posterior each answer is a matrix update, so the whole curve came
+from one curvature evaluation and no model is evaluated at all.
+
+The plot is drawn in standardised units, where **the slope of each line is the
+correlation**: a line at 45° means the two parameters move one-for-one and the
+data cannot tell them apart. The table underneath gives the real numbers, and
+the last column is the useful one — how much narrower a parameter becomes once
+the swept one is pinned down. A parameter that goes 90 % narrower was never
+really measured independently.
+
+The same sweep is available headlessly:
+
+```python
+from chisurf.core.fitting import engine
+
+eng = engine.GaussianEngine(fit).add_all_targets().run()
+scan = eng.conditional_scan('tau1', points=61, span=3.0)
+for t in scan['targets']:
+    print(t['name'], t['correlation'], t['marginal_sd'], '->', t['sd'])
+```
+
 **Chain diagnostics** shows whether the chain can be believed.
 
 ![The rank tab of the chain diagnostics, showing eight converged chains](../images/chain_diagnostics_rank.png)
@@ -362,3 +386,5 @@ need to poll progress.
 - [ ] Rank plot even, and ESS growing in a straight line.
 - [ ] Intervals quoted with their `method`.
 - [ ] Any reweighted answer checked for `reliable` / `pareto_k` before use.
+- [ ] No parameter quoted as independently measured that **What-if** shows
+      collapsing when another is fixed.

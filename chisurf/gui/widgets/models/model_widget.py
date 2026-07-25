@@ -38,6 +38,7 @@ class ModelWidget(Model, QtWidgets.QWidget, metaclass=_ModelWidgetMeta):
             (cs.gui.plots.ParameterScanPlot, {}),
             (cs.gui.plots.PosteriorGraphPlot, {}),
             (cs.gui.plots.SamplingDiagnosticsPlot, {}),
+            (cs.gui.plots.ConditionalScanPlot, {}),
             (cs.gui.plots.ResidualPlot, {})
         ]
     except Exception:

@@ -394,6 +394,27 @@ names are prefixed (`3:tau`) and a member only knows its own. `approx_grad`,
 `covariance_matrix`, `lnprior`/`lnprob`/`lnprob_parts` and every sampler take an
 optional `model=`, so an engine over a group's global model works throughout.
 
+# The what-if sweep, for free
+
+`GaussianEngine.conditional_scan(name, points, span)` sweeps one parameter over
+±*span*·σ and reports what every other parameter becomes. This is what a profile
+scan answers by re-fitting at each point; in canonical form each answer is a
+matrix update, so the whole sweep costs **one** curvature evaluation however many
+points it has — which is what makes it a slider (`chisurf/gui/plots/conditional_scan.py`,
+the *What-if* plot) rather than a batch job. There is a test asserting a
+101-point sweep over every parameter evaluates the model exactly zero times.
+
+The closed form is used rather than one `condition()` call per point, and a test
+pins that the two agree exactly. Results are also given in standardised units,
+where the display reads best: for a Gaussian,
+`mean(Y | X=x) = μ_Y + ρ σ_Y (x − μ_X)/σ_X`, so plotting the standardised shift
+against the standardised held value gives a line **whose slope is the
+correlation**. The conditional width `σ_Y √(1 − ρ²)` does not depend on where the
+sweep is, so it is reported once per target: it is what the data still does not
+know once the swept parameter is pinned down. A parameter that goes 90 % narrower
+was never independently measured — the same statement the correlation view of the
+[posterior graph](#seeing-the-structure-not-only-reading-it) makes, in numbers.
+
 # Showing whether a chain can be believed
 
 The convergence *numbers* were harvested from Stan earlier; the matching

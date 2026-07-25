@@ -306,3 +306,106 @@ def test_the_covariance_is_the_same_inside_and_outside_a_freeze():
 
     assert list(used_a) == list(used_b)
     assert np.allclose(np.atleast_2d(cov_a), np.atleast_2d(cov_b), rtol=1e-12)
+
+
+# -- the what-if sweep ----------------------------------------------------
+
+def test_the_sweep_agrees_exactly_with_conditioning_point_by_point():
+    """It uses the closed form rather than one ``condition()`` per point.
+
+    That is only legitimate if the two agree, so this pins it: for a Gaussian
+    the conditional mean is linear in the held value and the conditional width
+    does not depend on it at all, which is exactly what the closed form encodes.
+    """
+    fit = _fit()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    form = engine.form()
+    scan = engine.conditional_scan(form.names[0], points=9, span=2.0)
+    assert scan is not None
+
+    for i, held in enumerate(scan['held']):
+        reference = {m.name: m for m in engine.conditional(
+            {scan['name']: float(held)})}
+        for target in scan['targets']:
+            m = reference[target['name']]
+            assert m.value == pytest.approx(target['mean'][i], rel=1e-9)
+            assert m.sd == pytest.approx(target['sd'], rel=1e-9)
+
+
+def test_the_slope_in_standardised_units_is_the_correlation():
+    """Why the plot is drawn that way: the picture *is* the correlation."""
+    fit = _fit()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    scan = engine.conditional_scan(engine.form().names[0], points=21, span=3.0)
+    for target in scan['targets']:
+        slope = np.polyfit(scan['held_z'], target['z'], 1)[0]
+        assert slope == pytest.approx(target['correlation'], abs=1e-9)
+        assert -1.0 <= target['correlation'] <= 1.0
+
+
+def test_pinning_a_parameter_narrows_the_others_by_the_right_amount():
+    """The conditional width is ``sd * sqrt(1 - r^2)``, and it is the point."""
+    fit = _fit()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    scan = engine.conditional_scan(engine.form().names[0])
+    for target in scan['targets']:
+        expected = target['marginal_sd'] * np.sqrt(
+            1.0 - target['correlation'] ** 2)
+        assert target['sd'] == pytest.approx(expected, rel=1e-9)
+        assert target['sd'] <= target['marginal_sd'] + 1e-12
+    # This fit is strongly correlated, so the narrowing is dramatic, not marginal.
+    assert any(t['sd'] < 0.2 * t['marginal_sd'] for t in scan['targets'])
+
+
+def test_at_the_optimum_the_conditional_is_the_marginal():
+    """Fixing a parameter at its own best value must change nothing."""
+    fit = _fit()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    scan = engine.conditional_scan(engine.form().names[0], points=11, span=2.0)
+    centre = int(np.argmin(np.abs(scan['held_z'])))
+    assert scan['held_z'][centre] == pytest.approx(0.0)
+    for target in scan['targets']:
+        assert target['mean'][centre] == pytest.approx(target['marginal'], rel=1e-9)
+
+
+def test_a_whole_sweep_costs_no_model_evaluations():
+    """The reason this can be a slider rather than a batch job."""
+    fit = _fit()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    engine.form()          # build the curvature once, up front
+
+    calls = [0]
+    model = fit.model
+    original = model.update_model
+
+    def counting(*a, _o=original, **k):
+        calls[0] += 1
+        return _o(*a, **k)
+
+    model.update_model = counting
+    try:
+        for name in engine.form().names:
+            out = engine.conditional_scan(name, points=101, span=3.0)
+            assert out is not None and out['targets']
+    finally:
+        model.update_model = original
+    assert calls[0] == 0
+
+
+def test_the_sweep_spans_the_requested_number_of_standard_deviations():
+    """The axis has to mean what the label says."""
+    fit = _fit()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    scan = engine.conditional_scan(engine.form().names[0], points=41, span=2.5)
+    assert scan['held_z'][0] == pytest.approx(-2.5)
+    assert scan['held_z'][-1] == pytest.approx(2.5)
+    assert scan['held'][0] == pytest.approx(scan['centre'] - 2.5 * scan['sd'])
+    assert scan['held'][-1] == pytest.approx(scan['centre'] + 2.5 * scan['sd'])
+    assert len(scan['held']) == 41
+
+
+def test_an_unknown_parameter_gives_nothing_rather_than_a_guess():
+    """Sweeping a name that is not in the posterior answers a different question."""
+    fit = _fit()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    assert engine.conditional_scan('not-a-parameter') is None

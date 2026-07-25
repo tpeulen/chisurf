@@ -143,6 +143,23 @@
 
 ## 2026-07-25
 
+* **The free conditional query is now a slider (What-if).** PRD-70's canonical
+  form made a conditional query a matrix update rather than a re-fit, and a test
+  had shown 25 queries costing zero model evaluations -- but nothing exposed it.
+  `GaussianEngine.conditional_scan()` sweeps one parameter over +-3 sigma and
+  reports what every other becomes, and `chisurf/gui/plots/conditional_scan.py`
+  makes it draggable: *if this lifetime really were 4.2 ns, what would the
+  amplitudes have to be?* A 101-point sweep over every parameter evaluates the
+  model **zero** times, which is asserted. The closed form is used rather than
+  one `condition()` per point, and a test pins that the two agree exactly
+  (measured 4e-13). Drawn in standardised units, where the slope of each line
+  *is* the correlation and the picture is therefore the correlation; the table
+  underneath gives real units, with the column that matters being how much
+  narrower each parameter becomes once the swept one is pinned -- 90 % narrower
+  means it was never independently measured. 7 tests; guide section and
+  checklist item added.
+
+
 * **Docs caught up with the three fitting changes.** Prior reweighting, the
   posterior-graph views and the chain-diagnostics plots are all user-visible, and
   the last three commits updated OKF but not `docs/` -- which the project rule

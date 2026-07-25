@@ -16,6 +16,7 @@ from chisurf.gui.plots.deer_pr import DeerPrCIPlot
 from chisurf.gui.plots.fitinfo import *
 from chisurf.gui.plots.lineplot import *
 from chisurf.gui.plots.parameter_scan import ParameterScanPlot
+from chisurf.gui.plots.conditional_scan import ConditionalScanPlot
 from chisurf.gui.plots.posterior_graph import PosteriorGraphPlot
 from chisurf.gui.plots.sampling_diagnostics import SamplingDiagnosticsPlot
 from chisurf.gui.plots.plotbase import *
