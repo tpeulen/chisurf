@@ -66,6 +66,35 @@ Every feature should have a headless test path (API/CLI), not GUI-only.
 Model/UI changes have a dedicated headless check via the `test-model-editor`
 skill.
 
+# GUI work is never blind — screenshot and look at it
+
+**Any change that touches a GUI is unfinished until the widget has been rendered
+and the rendering has been *looked at*.** Passing construction tests only prove
+the widget did not crash; they say nothing about clipped labels, fields that
+wrapped into a nonsensical two-column pairing, a status box that swallowed the
+panel, a plot drawn upside-down, or a tab bar overlapping its content. Those are
+the defects users actually report, and every one of them is invisible to
+assertions and obvious in a PNG.
+
+The loop, for every GUI change:
+
+1. Build the widget headlessly in the `arm64` env with
+   `QT_QPA_PLATFORM=offscreen` — no display needed.
+2. Drive it into the state a user would see (load a real test file, run the
+   analysis, switch to each tab) — an empty widget hides most layout defects.
+3. `widget.grab().save(...)` into the scratchpad, then **read the PNG and inspect
+   it**. The agent inspects it; do not hand PNGs to the user to eyeball.
+4. Fix what looks wrong and repeat until it looks right. Resize once before the
+   final grab — some layout artefacts only settle after the first real resize.
+
+Two practical notes: the offscreen platform refuses to create an OpenGL context,
+so a GL viewport must be grabbed under `cocoa` with an offscreen surface instead;
+and interactive behaviour (a dragged ROI, a picked point) is verified by driving
+the signal programmatically and asserting the model changed, not by looking.
+
+Screenshots that end up in `docs/guides/` are produced the same way from the real
+widget — see `docs/guides/make_screenshots.py` — never as mockups.
+
 # Citations
 
 [1] [Project instructions (CLAUDE.md)](/references/claude-md.md)

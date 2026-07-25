@@ -415,6 +415,21 @@
   confocal test file, the regenerated catalogue page (whose per-parameter table
   is generated from the view spec's `description` fields — the same strings that
   are the tooltips), and the in-app `?` modal.
+* **[GUI work is never blind](/workflows/testing.md) — a second standing rule,
+  mirrored in the root `CLAUDE.md`.** A change touching a GUI is unfinished until
+  the widget has been rendered headlessly (`QT_QPA_PLATFORM=offscreen`,
+  `widget.grab()`), **driven into a realistic state** (real file loaded, analysis
+  run, every tab visited), and the PNG *looked at* by the agent — not handed to
+  the user to eyeball. Construction tests only prove the widget did not crash;
+  the colocalization tool's four screenshot rounds caught exactly the class of
+  defect assertions cannot see: fields wrapping into nonsensical two-column
+  pairs, a status box swallowing the panel, a table floating mid-dock, nested
+  dock tab bars overlapping their content (they settle only after the first real
+  resize), and a joint histogram drawn upside-down because an image's origin is
+  top-left while a plot's is bottom-left. Caveats recorded with the rule: the
+  offscreen platform refuses a GL context (grab GL viewports under `cocoa` with
+  an offscreen surface), and interactive behaviour is verified by emitting the
+  signal programmatically and asserting on the model, not by looking.
 
 * **The LLM agent got a real harness: `chisurf/core/agent/`.** The old one
   (`code_editor/agent_runtime.py`) handed the model a bare list of 23 RPC
