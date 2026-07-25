@@ -101,7 +101,11 @@ keys_formats = [
     ('res_name', '|U5'),
     ('atom_id', 'i4'),
     ('atom_name', '|U5'),
-    ('element', '|U1'),
+    # Two characters: half the periodic table has a two-letter symbol, and a
+    # one-character field silently truncates every one of them -- ZN becomes Z,
+    # CL becomes C. Anything keyed on the element then fails: `metals` never
+    # matched, `elem ZN` never matched, and a chlorine was coloured as carbon.
+    ('element', '|U2'),
     ('xyz', '3f8'),
     ('charge', 'f8'),
     ('radius', 'f8'),

@@ -1047,7 +1047,7 @@ class RenderingMixin(BaseCmd):
         token = (raw or "").strip().lower()
         if token in ("single", "uniform"):
             return "single"
-        if token in ("by_residue", "residue", "aa", "by_aa"):
+        if token in ("by_residue", "residue", "aa", "by_aa", "byresidue"):
             return "by_residue"
         if token in (
             "by_ss",
@@ -1056,11 +1056,11 @@ class RenderingMixin(BaseCmd):
             "by_secondary_structure",
         ):
             return "by_secondary_structure"
-        if token in ("by_sequence", "sequence", "seq"):
+        if token in ("by_sequence", "sequence", "seq", "bysequence"):
             return "by_sequence"
-        if token in ("by_element", "element", "elem", "cpk", "by_elem"):
+        if token in ("by_element", "element", "elem", "cpk", "by_elem", "byelement"):
             return "by_element"
-        if token in ("by_chain", "chain"):
+        if token in ("by_chain", "chain", "bychain"):
             return "by_chain"
         if token in ("spectrum", "rainbow"):
             return "spectrum"

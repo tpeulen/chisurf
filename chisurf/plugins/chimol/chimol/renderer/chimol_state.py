@@ -153,7 +153,15 @@ class _StateField:
     def __get__(self, instance, owner):  # type: ignore[override]
         if instance is None:
             return self
-        state = instance._get_active_state()
+        # Reading from an empty viewer answers "nothing", not an exception.
+        # `_get_active_state` raises when the last object has been deleted, and
+        # every reader of these fields already handles ``None`` -- so raising
+        # turned `delete` of the final object into a crash in whatever touched
+        # `viewer._atoms` next, which in a GUI is the following repaint.
+        try:
+            state = instance._get_active_state()
+        except RuntimeError:
+            return None
         return getattr(state, self.attr_name)
 
     def __set__(self, instance, value):  # type: ignore[override]

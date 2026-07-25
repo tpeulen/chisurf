@@ -1,0 +1,233 @@
+"""Every object-menu entry, fired through the real window.
+
+The A/S/H/L/C menus are how most people drive the viewer, and until now nothing
+tested them: the command layer was covered, the *menus* were not. Running them one
+by one through ``MolViewPluginWindow._run_object_menu_command`` — the same path a
+click takes — found five broken entries at once, including "remove waters", which
+crashed on any structure that actually had waters.
+
+Two things make this worth its runtime. Each entry runs against a **freshly loaded
+window**, so one failure cannot poison the next and the failures that remain are
+real. And the structure is the solvated fragment, because a menu that operates on
+waters or ions cannot be tested against a protein that has neither — which is
+exactly how "remove waters" stayed broken.
+"""
+
+from __future__ import annotations
+
+import pathlib
+
+import pytest
+
+from chisurf.plugins.chimol.chimol.app import object_menus as om
+
+_PDB = (
+    pathlib.Path(__file__).resolve().parents[4]
+    / "test" / "data" / "atomic_coordinates" / "pdb_files"
+)
+#: Six residues, a metal ion and eight waters -- small enough that 150-odd window
+#: loads stay quick, complete enough that every menu entry has something to act
+#: on. A menu that removes waters cannot be tested against a structure with none,
+#: which is exactly how "remove waters" stayed broken.
+_FRAGMENT = _PDB / "solvated_fragment.pdb"
+
+_MENUS = {
+    "A": om.ACTION_MENU,
+    "S": om.SHOW_MENU,
+    "H": om.HIDE_MENU,
+    "L": om.LABEL_MENU,
+    "C": om.COLOR_MENU,
+}
+
+
+def _leaves(entries, prefix=""):
+    """Every leaf entry, with the menu path that reaches it."""
+    for entry in entries:
+        if not entry.label:
+            continue
+        path = f"{prefix}{entry.label}"
+        if entry.children:
+            yield from _leaves(entry.children, prefix=f"{path} > ")
+        else:
+            yield path, entry
+
+
+def _runnable():
+    """Every menu entry chimol claims to implement."""
+    out = []
+    for key, table in _MENUS.items():
+        for path, entry in _leaves(table):
+            if entry.command is not None:
+                out.append(pytest.param(entry.command, id=f"{key}:{path}"))
+    return out
+
+
+def _disabled():
+    out = []
+    for key, table in _MENUS.items():
+        for path, entry in _leaves(table):
+            if entry.command is None:
+                out.append(pytest.param(entry, id=f"{key}:{path}"))
+    return out
+
+
+@pytest.fixture(scope="session")
+def qapp():
+    from qtpy import QtWidgets
+
+    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+
+def _open(qapp, path, *, second_object=False):
+    """Open a real plugin window on ``path``, with error capture wired in."""
+    pytest.importorskip("chisurf.core.structure")
+    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+        MolViewPluginWindow,
+    )
+    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+
+    win = MolViewPluginWindow()
+    win.resize(700, 500)
+    win.show()
+    for _ in range(5):
+        qapp.processEvents()
+    win._load_structure_from_path(path)
+    for _ in range(10):
+        qapp.processEvents()
+
+    errors: list[str] = []
+    shared.set_window(win)
+    shared.set_message_callback(lambda _m: None)
+    shared.set_error_callback(errors.append)
+    panel = getattr(win, "command_panel", None)
+    if panel is not None:
+        panel.append_message = lambda _m: None
+        panel.append_error = errors.append
+
+    if second_object:
+        # `align to ...` and `super to ...` need something to align *to*.
+        shared.do(f"copy other, {path.stem}")
+        for _ in range(5):
+            qapp.processEvents()
+        errors.clear()
+    return win, errors
+
+
+@pytest.fixture
+def window(qapp):
+    """Build a window on the fragment, with a second object to align against.
+
+    Fresh per test: a menu entry that breaks the session would otherwise make
+    every later entry look broken too.
+    """
+    win, errors = _open(qapp, _FRAGMENT, second_object=True)
+    yield win, errors
+    win.close()
+
+
+@pytest.fixture
+def solvated(qapp):
+    """Build a window on the fragment that actually has waters and an ion."""
+    win, errors = _open(qapp, _FRAGMENT)
+    yield win, errors
+    win.close()
+
+
+#: The window names an object after the file it came from, so that is the name a
+#: menu entry is given -- not one the test picks.
+OBJECT = _FRAGMENT.stem
+SOLVATED = OBJECT
+
+
+def _fill(template: str) -> str:
+    """Substitute the placeholders a click would fill in."""
+    line = template.replace("{sele}", OBJECT)
+    if "{text}" in line:
+        # A prompted value: a number where one is wanted, a name otherwise.
+        value = "0.5" if any(
+            word in line for word in ("transparency", "width", "radius")
+        ) else "copied"
+        line = line.replace("{text}", value)
+    return line
+
+
+@pytest.mark.parametrize("template", _runnable())
+def test_a_menu_entry_runs(window, template):
+    """Every entry with a command must run without reporting an error."""
+    win, errors = window
+    for part in _fill(template).split(";"):
+        part = part.strip()
+        if part:
+            win._run_object_menu_command(part)
+
+    from qtpy import QtWidgets
+
+    app = QtWidgets.QApplication.instance()
+    for _ in range(5):
+        app.processEvents()
+
+    assert errors == [], f"{template!r} -> {errors[-1] if errors else ''}"
+
+
+@pytest.mark.parametrize("entry", _disabled())
+def test_a_disabled_entry_says_why(entry):
+    """An entry chimol cannot honour must explain itself, not sit there dead.
+
+    A greyed-out row with no tooltip is indistinguishable from a bug.
+    """
+    assert entry.note.strip(), f"{entry.label!r} is disabled with no explanation"
+
+
+# --------------------------------------------------------------------------- #
+# The ones that were broken
+# --------------------------------------------------------------------------- #
+def test_remove_waters_removes_the_waters(solvated):
+    """The entry the user reported. It crashed on any structure that had any."""
+    win, errors = solvated
+    before = len(win.viewer._atoms)
+    win._run_object_menu_command(f"remove solvent and {SOLVATED}")
+    assert errors == []
+    assert len(win.viewer._atoms) == before - 8
+
+
+def test_deleting_the_last_object_leaves_a_usable_viewer(solvated):
+    """Reading state from an empty viewer used to raise, so the next repaint died."""
+    win, errors = solvated
+    win._run_object_menu_command(f"delete {SOLVATED}")
+    assert errors == []
+    assert win.viewer.list_objects() == []
+    # The crash was here: any reader of a state field, which a repaint is.
+    assert win.viewer._atoms is None
+    assert win.viewer._all_atom_coords is None
+
+
+def test_copy_to_object_copies_from_the_right_one(window):
+    """The template had its arguments the wrong way round.
+
+    `copy target, source` -- so `copy {sele}, {text}` asked to copy *from* the
+    name the user typed, which does not exist.
+    """
+    win, errors = window
+    win._run_object_menu_command(f"copy duplicate, {OBJECT}")
+    assert errors == []
+    assert "duplicate" in [str(o["name"]) for o in win.viewer.list_objects()]
+
+
+@pytest.mark.parametrize("mode", ["byelement", "bychain", "byresidue", "bysequence"])
+def test_the_colour_menu_spellings_are_accepted(window, mode):
+    """The menu writes them without underscores; `color` only knew `by_element`."""
+    win, errors = window
+    win._run_object_menu_command(f"color {mode}, {OBJECT}")
+    assert errors == []
+
+
+@pytest.mark.parametrize(
+    "colour",
+    ["wheat", "palegreen", "lightblue", "paleyellow",
+     "lightpink", "palecyan", "lightorange", "bluewhite"],
+)
+def test_every_tint_in_the_menu_exists(colour):
+    """The tints menu once listed `yellowtint`, which is not a PyMOL colour."""
+    from chisurf.plugins.chimol.chimol.colors import get_pymol_color
+
+    assert get_pymol_color(colour) is not None

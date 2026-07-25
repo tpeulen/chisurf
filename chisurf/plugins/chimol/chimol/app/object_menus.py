@@ -123,7 +123,7 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
     SEP,
     MenuEntry("rename object", "set_name {sele}, {text}",
               prompt=("Rename object", "New name:")),
-    MenuEntry("copy to object", "copy {sele}, {text}",
+    MenuEntry("copy to object", "copy {text}, {sele}",
               prompt=("Copy to object", "Name of the copy:")),
     MenuEntry("group", None, "Chimol has no object groups yet."),
     MenuEntry("delete object", "delete {sele}", color=DESTRUCTIVE),
@@ -300,7 +300,10 @@ COLOR_MENU: tuple[MenuEntry, ...] = (
     _color_shades("magentas", ("magenta", "hotpink", "violet", "purple")),
     _color_shades("cyans", ("cyan", "palecyan", "aquamarine", "teal")),
     _color_shades("oranges", ("orange", "brightorange", "olive", "deepolive")),
-    _color_shades("tints", ("bluewhite", "palecyan", "lightpink", "yellowtint")),
+    # PyMOL's own tints, from its `menu.py`. An earlier list here invented
+    # `yellowtint`, which is not a PyMOL colour and so could never be applied.
+    _color_shades("tints", ("wheat", "palegreen", "lightblue", "paleyellow",
+                            "lightpink", "palecyan", "lightorange", "bluewhite")),
     _color_shades("grays", ("white", "gray90", "gray70", "gray50", "gray30",
                             "black")),
 )

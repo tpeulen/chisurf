@@ -27,7 +27,7 @@ PSEUDOATOM_DTYPE = np.dtype([
     ("res_name", "|U5"),
     ("atom_id", "i4"),
     ("atom_name", "|U5"),
-    ("element", "|U1"),
+    ("element", "|U2"),
     ("xyz", "3f8"),
     ("charge", "f8"),
     ("radius", "f8"),
@@ -543,31 +543,33 @@ class EditingMixin(BaseCmd):
         if np.all(keep_mask):
             return
 
+        removed = int(np.sum(atom_mask))
+
         if not np.any(keep_mask):
-            # Remove entire object? Or just clear it?
-            # PyMOL usually keeps the object but it's empty.
-            # Here we'll just clear atoms.
+            # PyMOL keeps the object and empties it rather than deleting it, so
+            # a mistaken `remove all` is undone by reloading rather than by
+            # rebuilding the session.
             entry.state.atoms = np.array([], dtype=entry.state.atoms.dtype)
             entry.state.all_atom_coords = None
-        else:
-            entry.state.atoms = entry.state.atoms[keep_mask].copy()
-            entry.state.all_atom_coords = entry.state.atoms["xyz"].copy()
+            entry.state.coords = None
+            viewer._update_view()
+            self._emit_message(f"Removed {removed} atoms from {obj_name} (now empty)")
+            return
 
-        # Update masks if they exist
-        if entry.state.ball_mask is not None:
-             if len(entry.state.ball_mask) == len(keep_mask):
-                  entry.state.ball_mask = entry.state.ball_mask[keep_mask].copy()
+        entry.state.atoms = entry.state.atoms[keep_mask].copy()
 
-        if entry.state.sticks_mask is not None:
-             if len(entry.state.sticks_mask) == len(keep_mask):
-                  entry.state.sticks_mask = entry.state.sticks_mask[keep_mask].copy()
+        # Every per-atom mask has to shrink with the array, or the next redraw
+        # indexes past the end of it.
+        for name in ("ball_mask", "sticks_mask", "cartoon_mask"):
+            mask = getattr(entry.state, name, None)
+            if mask is not None and len(mask) == len(keep_mask):
+                setattr(entry.state, name, np.asarray(mask)[keep_mask].copy())
 
-        # Rebuild trace if needed? MolView.set_structure does a lot of work.
-        # For now, just trigger view update.
-        # NOTE: Full re-processing might be needed if CA atoms were removed.
-        # We might want to call a method like viewer.update_from_atoms(obj_id)
+        # Everything derived from the coordinates -- the render-space positions,
+        # the trace, the bonds, the bounding sphere -- is now stale. This used to
+        # assign the raw Angstrom coordinates straight into the render array
+        # (which is scaled and centred) and then hand `set_structure` the live
+        # state, which begins by clearing the very arrays it is about to read.
+        self._rebuild_after_coordinate_change(viewer, obj_id)
 
-        # A hack for now: tell MolView to re-process the atoms
-        viewer.set_structure(entry.state)
-
-        self._emit_message(f"Removed {np.sum(atom_mask)} atoms from {obj_name}")
+        self._emit_message(f"Removed {removed} atoms from {obj_name}")

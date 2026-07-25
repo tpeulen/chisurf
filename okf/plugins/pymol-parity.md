@@ -55,6 +55,36 @@ bearing for this group's work**, and those are tiered below.
 **Tier 1 is closed.** Everything a day's work touches is present. What follows is
 Tier 2, which is real but has workarounds.
 
+## The menus were never tested, and five were broken
+
+The A/S/H/L/C menus are how most people drive the viewer, and nothing tested them:
+the *command* layer was covered, the menus were not. Firing all 138 entries through
+`MolViewPluginWindow._run_object_menu_command` — the path a click takes — found five
+broken at once:
+
+| Entry | What happened |
+| --- | --- |
+| A: remove waters | **crashed** on any structure that had waters |
+| A: delete object | reading state from the emptied viewer raised, so the next repaint died |
+| A: copy to object | template arguments reversed: it copied *from* the name typed |
+| C: by element / by chain | menu writes `byelement`; `color` only knew `by_element` |
+| C: tints > yellowtint | not a PyMOL colour at all — the menu invented it |
+
+All five fixed, and the sweep is now a test: 157 cases, every entry plus a check
+that each disabled entry explains itself.
+
+**Why they survived.** Every structure in the test data was a protein with no
+waters and no ions, so nothing could exercise the entries that act on them. Added
+`solvated_fragment.pdb` — six residues, a zinc, eight waters — small enough that
+150 window loads run in 23 seconds.
+
+## The element field was one character wide
+
+Found in the same pass. `ZN` was stored as `Z`, `CL` as `C`. Everything keyed on
+the element inherited it: `metals` matched nothing on any structure ever, `elem ZN`
+matched nothing, bond inference saw the wrong element, and a chlorine coloured as a
+carbon. One character in `keys_formats`, in the reader shared by all of chisurf.
+
 ## Sweep the surface before extending it
 
 Closing Tier 1 turned up four "implemented but silent" defects in a row, so before
