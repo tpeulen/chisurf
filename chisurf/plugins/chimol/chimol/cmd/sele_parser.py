@@ -353,8 +353,13 @@ class Evaluator:
             # Try to resolve named selection or object name
             if node.value.lower() == "polymer":
                  return self._get_polymer_mask(object_id)
-            if node.value.lower() == "solvent":
+            # `water` is not a PyMOL selection keyword, but it is what everyone
+            # types; accepting it costs nothing and no PyMOL script can break on
+            # a name PyMOL itself rejects.
+            if node.value.lower() in ("solvent", "water", "waters"):
                  return self._get_solvent_mask(object_id)
+            if node.value.lower() in ("hetatm", "hetero", "organic"):
+                 return self._get_hetero_mask(object_id)
             return self._get_ident_mask(node.value, object_id)
         elif isinstance(node, UnaryOpNode):
             if node.op == "NOT":
@@ -403,13 +408,32 @@ class Evaluator:
              return np.zeros(0, dtype=bool)
 
     def _get_polymer_mask(self, object_id: str) -> np.ndarray:
-        # Heuristic: mostly proteins/nucleic acids
-        # For now, return all since we don't have polymer flags parsed
-        return self._get_all_mask(object_id)
+        """Atoms belonging to a traced chain, i.e. everything but hetero atoms."""
+        return ~self._get_hetero_mask(object_id)
 
     def _get_solvent_mask(self, object_id: str) -> np.ndarray:
-        # Heuristic: HOH, WAT
-        return self._eval_property("resn", ValueNode("HOH"), object_id) | self._eval_property("resn", ValueNode("WAT"), object_id)
+        """Water, by residue name, as PyMOL's ``solvent`` does."""
+        mask = self._get_none_mask(object_id)
+        for name in ("HOH", "WAT", "DOD", "H2O", "SOL", "TIP3"):
+            mask = mask | self._eval_property("resn", ValueNode(name), object_id)
+        return mask
+
+    def _get_hetero_mask(self, object_id: str) -> np.ndarray:
+        """Atoms in residues the backbone trace never visits.
+
+        Defined by absence from the trace rather than by a residue-name table,
+        which is the same rule the viewer uses to decide what to draw as
+        nonbonded, so a selection and the picture agree.
+        """
+        try:
+            entry = self.viewer._objects.get(object_id)
+            atoms = getattr(entry.state, "atoms", None)
+            if atoms is None:
+                return self._get_none_mask(object_id)
+            mask = self.viewer._hetero_atom_mask(atoms, len(atoms))
+            return np.asarray(mask, dtype=bool)
+        except Exception:
+            return self._get_none_mask(object_id)
 
     def _get_ident_mask(self, name: str, object_id: str) -> np.ndarray:
          # Could be named selection or object name fallback

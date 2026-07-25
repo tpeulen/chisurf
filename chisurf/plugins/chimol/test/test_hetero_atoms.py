@@ -203,3 +203,83 @@ def test_hetero_atoms_reach_the_scene(loaded_view):
     # A merged sphere mesh has many vertices per atom; the coarse CA fallback
     # produced a points object with about a tenth of the residue count.
     assert atom_objects[0].geometry.positions.shape[0] > _N_DISPLAYED
+
+
+# --------------------------------------------------------------------------- #
+# Selecting the solvent
+# --------------------------------------------------------------------------- #
+# PyMOL's object-panel H menu has a first-class "waters" entry that runs
+# `hide("(solvent and (sele))")`, so hiding the solvent is an everyday action and
+# has to be reachable. `water` is not a PyMOL selection keyword -- PyMOL rejects
+# it -- but it is what everyone types, and accepting it cannot break a PyMOL
+# script that uses a name PyMOL itself refuses.
+
+
+def test_solvent_and_its_spellings_agree(loaded_view):
+    from chisurf.plugins.chimol.chimol.cmd.sele_parser import Evaluator
+
+    oid = loaded_view.get_active_object_id()
+    evaluator = Evaluator(loaded_view, oid)
+    masks = [
+        np.asarray(evaluator.evaluate(expr, oid), dtype=bool)
+        for expr in ("solvent", "water", "waters")
+    ]
+    assert all(np.array_equal(masks[0], m) for m in masks[1:])
+
+
+def test_polymer_is_the_complement_of_hetero(loaded_view):
+    """The two must partition the atoms, or `hide polymer` leaves orphans."""
+    from chisurf.plugins.chimol.chimol.cmd.sele_parser import Evaluator
+
+    oid = loaded_view.get_active_object_id()
+    evaluator = Evaluator(loaded_view, oid)
+    polymer = np.asarray(evaluator.evaluate("polymer", oid), dtype=bool)
+    hetero = np.asarray(evaluator.evaluate("hetatm", oid), dtype=bool)
+    assert not (polymer & hetero).any()
+    assert (polymer | hetero).all()
+    assert int(hetero.sum()) == _N_DISPLAYED
+
+
+def test_hiding_by_a_selection_name_works(loaded_view):
+    """`hide water` is the obvious thing to type; PyMOL rejects it, we act on it.
+
+    148L has ligands but no waters, so this uses `hetatm`; a name that selects
+    nothing is deliberately left to fail as an unknown representation, which is
+    the more useful message in that case.
+    """
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+    class _Window:
+        def __init__(self, viewer):
+            self.viewer = viewer
+
+    cmd = Cmd(_Window(loaded_view))
+    messages, errors = [], []
+    cmd.set_message_callback(messages.append)
+    cmd.set_error_callback(errors.append)
+
+    before = int(np.count_nonzero(loaded_view._ball_mask))
+    assert before > 0
+    cmd.do("hide hetatm")
+    assert errors == []
+    assert int(np.count_nonzero(loaded_view._ball_mask)) == 0
+    # And it teaches the PyMOL spelling rather than silently guessing.
+    assert any("hide everything, hetatm" in m for m in messages)
+
+    cmd.do("show hetatm")
+    assert int(np.count_nonzero(loaded_view._ball_mask)) == before
+
+
+def test_a_name_that_selects_nothing_is_still_an_error(loaded_view):
+    """148L has no waters, so `hide water` there is a typo, not an instruction."""
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+    class _Window:
+        def __init__(self, viewer):
+            self.viewer = viewer
+
+    cmd = Cmd(_Window(loaded_view))
+    errors: list[str] = []
+    cmd.set_error_callback(errors.append)
+    cmd.do("hide water")
+    assert errors and "Unsupported representation" in errors[-1]

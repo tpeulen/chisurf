@@ -68,10 +68,14 @@ class RenderingMixin(BaseCmd):
 
         self._emit_error(f"Unsupported representation for 'as': {rep}")
 
+    #: Every representation ``everything`` stands for, in the order applied.
+    _ALL_REPRESENTATIONS = ("cartoon", "trace", "atoms", "sticks", "dots",
+                            "surface", "metaball")
+
     def _toggle_representation(self, rep: str, sel: str, *, visible: bool) -> None:
         rep_target = (rep or "").strip().lower()
         if not rep_target:
-            self._emit_error("Usage: show/hide <cartoon|trace|atoms|sticks|dots|surface|metaball|plane>[, selection]")
+            self._emit_error("Usage: show/hide <cartoon|trace|atoms|sticks|dots|surface|metaball|plane|everything>[, selection]")
             return
 
         window, viewer = self._require_window_and_viewer()
@@ -80,6 +84,31 @@ class RenderingMixin(BaseCmd):
 
         selection = (sel or "").strip() or None
         vis = bool(visible)
+
+        # `hide water` is the obvious thing to type and PyMOL rejects it too
+        # ("unknown representation"), because the representation slot is not a
+        # selection slot. Rather than repeat that, take the hint: if the word is
+        # not a representation but does name a selection, treat it as
+        # `everything, <selection>` and say what was assumed, so the PyMOL
+        # spelling is still learned.
+        if rep_target not in self._ALL_REPRESENTATIONS and rep_target not in (
+            "everything", "all", "*", "ribbon", "ca_trace", "lines", "spheres",
+            "balls", "ball", "bonds", "points", "surf", "metaballs", "mesh",
+            "plane", "grid",
+        ):
+            if selection is None and self._names_a_selection(viewer, rep_target):
+                self._emit_message(
+                    f"'{rep_target}' is a selection, not a representation; "
+                    f"showing/hiding everything in it "
+                    f"(PyMOL spelling: hide everything, {rep_target})."
+                )
+                selection = rep_target
+                rep_target = "everything"
+
+        if rep_target == "everything":
+            for name in self._ALL_REPRESENTATIONS:
+                self._toggle_representation(name, selection or "", visible=vis)
+            return
 
         if rep_target in ("all", "*"):
             # If selection given, maybe support it? For now, object-level visibility
@@ -172,6 +201,22 @@ class RenderingMixin(BaseCmd):
                 return
         except Exception as exc:
             self._emit_error(f"Failed to update representation '{rep_target}': {exc}")
+
+    def _names_a_selection(self, viewer, token: str) -> bool:
+        """Report whether ``token`` resolves to a non-empty atom selection.
+
+        Used only to turn an unknown representation into a helpful action rather
+        than an error; a token that selects nothing is left to fail as a
+        representation, which is the more useful message in that case.
+        """
+        try:
+            _, _, mask = self._resolve_selection_to_atom_mask(viewer, token)
+        except Exception:
+            return False
+        try:
+            return bool(np.asarray(mask, dtype=bool).any())
+        except Exception:
+            return False
 
     @command("center")
     def center(self, sel: Selection = "") -> None:

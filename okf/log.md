@@ -2,6 +2,28 @@
 
 ## 2026-07-25
 
+* **chimol: `hide water` does what you meant, and `solvent`/`polymer`/`hetatm`
+  mean what they say.** `hide water` reported "Unsupported representation".
+  **PyMOL rejects it too** -- `hide water` there is `Error: unknown
+  representation: 'water'`, and `water` is not even a valid PyMOL selection name
+  (only `solvent` is). But PyMOL's own object-panel **H** menu carries a
+  first-class *waters* entry running `hide("(solvent and (sele))")`, so hiding
+  solvent is an everyday action that simply has an awkward spelling. Rather than
+  reproduce the error, `show`/`hide` now check whether an unknown representation
+  names a **non-empty** selection and, if so, act on it as
+  `everything, <selection>` while printing the PyMOL spelling, so the idiom is
+  still learned. A name that selects nothing is left to fail as an unknown
+  representation, which is the more useful message for a typo.
+  `everything` is now a real representation keyword, as in PyMOL.
+  **The selection keywords were stubs.** `polymer` returned *all* atoms
+  ("For now, return all since we don't have polymer flags parsed") and `solvent`
+  matched only HOH/WAT. Now `hetatm`/`hetero`/`organic` use the same
+  absence-from-the-trace rule the viewer uses to decide what to draw as
+  nonbonded -- so a selection and the picture cannot disagree -- `polymer` is its
+  exact complement (pinned by a test that they partition the atoms), and
+  `solvent` also matches DOD/H2O/SOL/TIP3, with `water`/`waters` as aliases.
+  Suite: 280 passed, 1 skipped (4 new).
+
 * **Dropped the conda `tttrlib` dependency; the source build is now its only
   provider.** The published packages (bioconda *and* PyPI, both capped at
   `0.26.2`) lag the source by enough to be **wrong rather than merely old**: they
