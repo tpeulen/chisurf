@@ -103,6 +103,41 @@ Two invariants make the table trustworthy, both pinned by tests:
 2. **The config is the storage** — nothing is cached in the settings layer, so an
    open viewer sees a change on its next redraw.
 
+# The GUI follows PyMOL's layout
+
+A PyMOL user should be able to drive chimol without being taught. Two surfaces
+carry that, both transcribed from PyMOL's **source** rather than from
+screenshots — `pymol/menu.py` and `pymol/_gui.py` define their menus
+declaratively, so the copy is mechanical and testable.
+
+**Per-object A/S/H/L/C menus** (`app/object_menus.py`, `app/objects_panel.py`).
+Entry for entry from `mol_action`/`mol_show`/`mol_hide`/`mol_labels`/`mol_color`:
+same entries, same order, same separators, same labels, including PyMOL's stray
+trailing space in `"by ss  "`. **The buttons live on each molecule's row**, next
+to its visibility box, name and `current/total` state counter, with a permanent
+grey `all` row above acting on everything. That is not cosmetic — a single shared
+button row retargets every action at whatever is selected, which no PyMOL user
+expects. Implemented as a Qt item widget per list row, so the item keeps its
+check state and the existing handlers still fire; Qt's own check indicator is
+hidden and the item text blanked, or both render underneath the row widget.
+
+**Main menu bar** (`app/menu_bar.py`), in PyMOL's order and wording.
+
+The two surfaces make **opposite calls about gaps**, deliberately:
+
+- Within a menu, an entry chimol cannot do stays **visible, disabled, and
+  explained in its tooltip**. Dropping it would change the menu's shape and hide
+  the gap; wiring it to something approximate would misreport what happened.
+- A whole top-level menu chimol cannot fill at all (Build, Movie, Scene, Wizard,
+  Plugin) is **omitted**, with the reason recorded in `OMITTED_MENUS`. A menu has
+  no shape to preserve, and an empty one is a promise with nothing behind it.
+
+Every entry runs through the same command layer the command line uses and is
+echoed there, so clicking teaches the command. Tests pin the labels and order
+against PyMOL's own tables (re-read from a live PyMOL when it is importable),
+that every wired verb is a registered command, that every `set <name>` resolves
+to a real setting, and that no disabled entry lacks a reason.
+
 # Renderer abstraction (design contract)
 
 `chisurf/plugins/chimol/chimol/renderer/` separates a Qt-free scene/controller
