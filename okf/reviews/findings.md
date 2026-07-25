@@ -749,3 +749,63 @@ Findings RF-052..RF-056.
 - **Location:** `chisurf/plugins/burst/burst_selection/gui/tool.py:774` (`_build_histogram_group`, `gmm_components_spin` created with `setRange(0, 10)` and no `setValue`) with `_plot_gmm` at `:2489`
 - **Finding:** The spin box therefore starts at 0, `_plot_gmm` reads `n_components = 0`, the auto-component branch is only taken when *Auto components* is ticked, and the fall-through writes "GMM fitting skipped: not enough data points or zero components." So **🎯 Fit GMM** does nothing on a fresh session and the message leads with the wrong cause — verified on a 620-burst proximity-ratio histogram, which has plenty of data. Default the spin to 1 (or 2, the usual smFRET case), or tick *Auto components* by default, and split the message so "zero components" is reported as its own, actionable text.
 - **Fix note:**
+
+### Review 2026-07-25 — scan-precision planner (`img_precision` + `ics.precision`)
+
+Slice: the newly landed *Plan* panel (commit `bf7a5cb38`) — the `img_precision`
+plugin (`core.py`, `gui/view_model.py`, `gui/tool.py`, `cli/main.py`) and the
+`RICSPE` port it wraps, `chisurf/core/experiments/ics/precision.py`. Every
+finding below was reproduced against the source in the `arm64` env. The
+estimator's own algebra (the `q` brightness correction, `_atanh_over_argument`
+through and below a spherical focus, the master-grid slice bounds in
+`correlation_covariance`, the `correlation_grid` closed form against its
+docstring) was checked numerically and is sound. Findings RF-057..RF-063.
+
+### RF-057
+- **Status:** OPEN
+- **Severity:** S1 (`ZeroDivisionError` from a GUI-reachable setting; silently negative variance below it)
+- **Location:** `chisurf/core/experiments/ics/precision.py:415` (`correlation_covariance`, `denom`) and `:402` (`term1`, `2 * (nx - 2 * xi) * (ny - 2 * psi)`), unguarded by the validation block at `:521-535`
+- **Finding:** `rics_precision` validates the times, the sizes and `D`, but never `n_lags` against `nx`/`ny`, and both are user-facing spin boxes: `precision.view.json:87` gives `nx` a **minimum of 8** while `:109` gives `n_lags` a **maximum of 15**. At `n_lags >= nx` the loop reaches `xi == nx`, `denom = (nx - xi) * … = 0`, and the call dies with `ZeroDivisionError: float division by zero` — verified through the GUI view model (`nx = ny = 8`, `n_lags = 8` → `compute()` returns False with status `Prediction failed: float division by zero`). That contradicts the documented contract (`Raises ValueError …`) *and* defeats `sweep_dwell`'s per-point recovery, which catches `ValueError` only, by deliberate comment (`core.py:175-179`) — so one bad *global* setting takes the whole curve down rather than one point. Below that, for `2 * n_lags > nx`, `2 * (nx - 2 * xi)` — a count of pixel positions where the triple product fits — goes **negative** (nx=16 → −4 at xi=9) and subtracts from a variance with no error at all. One guard fixes both: reject `2 * n_lags >= min(nx, ny)` with a `ValueError` naming the offending pair, and clamp the overlap count at 0. Pin it with a test that asserts the raise for `nx=8, n_lags=8` and that `sweep_dwell` propagates it rather than returning a curve of NaNs.
+- **Fix note:**
+
+### RF-058
+- **Status:** OPEN
+- **Severity:** S2 (a documented geometry flag that only half applies)
+- **Location:** `chisurf/core/experiments/ics/precision.py:537` (`gamma = gamma_factors(two_d)`) versus `:572`, `:582` and `:601` (the three `correlation_grid` calls) — `correlation_grid` (`:138`) takes no `two_d` parameter
+- **Finding:** `two_d` is exposed as **Membrane (2-D)** (`precision.view.json:65`) and documented in `docs/guides/45_scan_precision.md:47`, and it switches the shape factors (`gamma_factors`) and the number-density geometry (area instead of volume, `:541-545`) — but the correlation model that both *generates* the noiseless data and *fits* it keeps the 3-D axial denominator `sqrt(1 + 4Dτ/(αw)²)` unconditionally. Ticking the box therefore predicts a hybrid: 2-D brightness statistics on a 3-D correlation decay. Measured on the fitted lag grid at the **slow end of the default sweep** (dwell 0.5 ms, `nx=64`, overhead 1.2, D=10 µm²/s, `w_z/w_r=5`) the retained axial factor suppresses the correlation by up to **2.2×** (ratio 0.45 at ψ=4) against a true 2-D shape — i.e. it distorts exactly the half of the curve the user is choosing a dwell time from. At the fast end it is 0.2 % and invisible, which is why it survives the shipped tests. Either thread `two_d` into `correlation_grid` (drop the axial term) or state in the flag's `description` and in the guide that only the shape factors change.
+- **Fix note:**
+
+### RF-059
+- **Status:** OPEN
+- **Severity:** S2 (two CSV writers, one header, different contracts)
+- **Location:** `chisurf/plugins/microscopy/img_precision/gui/tool.py:107-113` (`_export_csv`) via `gui/view_model.py:198` (`sweep_rows`), against `cli/main.py:81-86` (`--out-csv`)
+- **Finding:** Both write a file whose header is `dwell_us,line_ms,frame_ms,error_percent`, but the GUI export reuses `sweep_rows()` — the **display** formatting — so an unrealisable point lands in the numeric `error_percent` column as the em dash `—` (verified: `sweep_rows` returns `{'error': '—', 'dwell': '1', …}` for a NaN row) where the CLI writes an empty field, and every value is pre-rounded to `%.3g`/`%.1f` where the CLI writes `%.6g`/`%.4g`. A `dwell_us` of `1.5811388300841894e-05` s is exported by the CLI as `15.8114` and by the GUI as `15.8`. Give the view model a numeric export accessor (or reuse the CLI's row builder) and have both paths call it; a test that exports a sweep containing one NaN row from both paths and asserts the two files agree would pin it.
+- **Fix note:**
+
+### RF-060
+- **Status:** OPEN
+- **Severity:** S3 (invalid JSON and a success exit code on a total failure)
+- **Location:** `chisurf/plugins/microscopy/img_precision/cli/main.py:88-96` (the `as_json` branch returns before the realisability check)
+- **Finding:** The `--json` branch emits `sweep.to_dict()` and returns *above* the "no dwell time is realisable" guard, so a configuration in which every point failed exits **0** with `"relative_error": [NaN, NaN, NaN]`, `"best_dwell_s": NaN`. Verified with `--w-r 0`: exit 0 and a payload that a strict parser rejects (`json.loads(..., parse_constant=raise)` → `bare NaN`), while the identical invocation without `--json` correctly exits 1 with `Error: no dwell time is realisable …`. The scripting path is the one that most needs the non-zero exit. Move the check above the branch and emit the failure as JSON (`{"error": …}`) with a non-zero exit.
+- **Fix note:**
+
+### RF-061
+- **Status:** OPEN
+- **Severity:** S3 (observer plumbing that is never triggered)
+- **Location:** `chisurf/plugins/microscopy/img_precision/gui/view_model.py:57` (`notify`) and `gui/tool.py:76-77` (`modelEvent` / `add_observer`)
+- **Finding:** `PrecisionViewModel.notify()` has no caller anywhere — not in the plugin, not in `chisurf/gui/autoform/`, not in `ChisurfDockTool` (grepped `.notify(` and `add_observer` across all three). The `modelEvent` signal, its comment ("re-emitted so they are always handled on the GUI thread") and `_handle_model_event` are therefore dead: the panel refreshes only because `_on_finished` also calls `_refresh()`. Either call `notify()` where state changes (and fix RF-062 first, which that would immediately expose) or delete the three-part observer path so the next reader does not assume a live channel.
+- **Fix note:**
+
+### RF-062
+- **Status:** OPEN
+- **Severity:** S3 (a plotted point whose coordinates were never computed together)
+- **Location:** `chisurf/plugins/microscopy/img_precision/gui/view_model.py:181` (`sweep_series`, `"x": np.array([float(self.pixel_time_us)])`)
+- **Finding:** The "your setting" marker takes its **x** from the live spin-box attribute and its **y** from `s.current.relative_error`, the prediction made for whatever `pixel_time_us` was when `compute()` ran. `s.current.pixel_time` carries the value that was actually predicted and is ignored. Any refresh that is not preceded by a recompute plots the old error at the new dwell. Latent today only because nothing refreshes the plot without recomputing (RF-061); it becomes a live wrong-data bug the moment that observer path is wired. Use `s.current.pixel_time * 1e6`. `_summary()` (`:165`) reads the same live attribute for its `At {…} µs:` prefix and should follow.
+- **Fix note:**
+
+### RF-063
+- **Status:** OPEN
+- **Severity:** S3 (docstrings describing a different tool)
+- **Location:** `chisurf/plugins/microscopy/img_precision/gui/tool.py:47` (`ImgPrecisionTool`) and `:25` (`_ComputeTask`)
+- **Finding:** Copy-paste from the `img_drift` panel survived: the class docstring reads *"Drift-correction tool: action toolbar + `AutoForm(view_model)`"* and `_ComputeTask` is documented as *"Run the Qt-free measurement off the UI thread (image reads are slow)"*. This tool corrects no drift and reads no images at all — it takes no data, which is the single most important thing about it and is exactly what the class docstring should say (the CLI's help text and `test_precision_is_registered_in_the_imaging_toolbox` both make the point correctly). Also note the panel has no re-entrancy guard on **▶ Predict** (`:81`): a second press starts a second `_ComputeTask` against the same view model, and the slower run's `_sweep`/`_status` win regardless of order. At GUI defaults a sweep takes 0.9 s so the window is small, but cost grows as `n_lags⁴` and the spin box allows 15 (≈ 3 min), where a double press is likely.
+- **Fix note:**
