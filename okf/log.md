@@ -2,6 +2,31 @@
 
 ## 2026-07-25
 
+* **PRD-01 (MMFDB project round-trip) closed — global fits were shattered on
+  restore.** Auditing the PRD found Tasks 1–6 had all landed incrementally
+  without anyone flipping its status, so it still read `planned` while the code
+  was done. But the audit also turned up a case the existing round-trip test did
+  not cover and that was genuinely lossy: `archive_project_to_mmfdb` writes one
+  `fit_result` artifact **per local fit**, each carrying the same fit UID, and
+  `restore_project_from_artifacts` appended one fit record per artifact. So an
+  N-way global fit came back as N single-local-fit groups that all carried the
+  *same* id — global fitting is the application's core feature, and duplicate
+  UIDs collide anywhere fits are keyed by uid. The existing test passed only
+  because both its fits had exactly one local fit.
+  Fixed in the mmfdb repo (`8ca4573`) with `_regroup_fit_artifacts`, which merges
+  artifacts by UID. Ordering could not come from the artifact id — it embeds
+  `lf_id`, which is the local fit's own id whenever it has one and only falls
+  back to the index — so the archiver now records `fit_index` / `local_fit_index`
+  in the artifact metadata and the restorer sorts on those, falling back to
+  encounter order for older archives. Artifacts reachable both as project outputs
+  and via the fit-operation query are de-duplicated by artifact id, and UID-less
+  fits keep one bucket each rather than collapsing together.
+  Six new cases in `test/fio/test_mmfdb_project_roundtrip.py` (now 18) cover the
+  global-fit round trip, local-fit and group ordering, the legacy fallback,
+  de-duplication and anonymous fits. Verified the consumer side too:
+  `macros/core_fit.py::load_project_payload` already iterates `local_fits` per
+  group, so the fix reaches the loaded project.
+
 * **Parameter editors never repainted from a server-side change — Qt was dropping
   the refresh.** Continuing the parameter-edit audit. Every server-side change (a
   fit run, linked-parameter propagation, any RPC that finalizes a model) reaches

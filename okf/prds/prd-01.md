@@ -3,26 +3,43 @@ type: PRD
 prd: "01"
 title: "PRD-01: Fix MMFDB Project Round-Trip"
 description: Make archiving a project to MMFDB and restoring it produce an identical project
-status: planned
+status: done
 phase: "0"
-resource: modules/mmfdb/src/mmfdb/project_archiver.py
+resource: modules/mmfdb/src/mmfdb/project/project_archiver.py
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
 Archiving a project to MMFDB and then restoring it must reproduce the original
-project exactly. Today the round-trip is lossy: only the inner fit-state payload
-is stored (dropping fit id, name, model name, plot state, and range), multiple
-datasets collapse to a single key, project-level metadata is not persisted, and
-chinet sessions, parameters, and dependency edges are discarded on restore. This
-PRD stores full fit records plus project metadata during archival and reads back
-fit groups, all datasets, parameters, and edges on restore, backed by a
-round-trip regression test.
+project exactly. The round trip used to be lossy: only the inner fit-state payload
+was stored (dropping fit id, name, model name, plot state, and range), multiple
+datasets collapsed to a single key, project-level metadata was not persisted,
+chinet sessions/parameters/dependency edges were discarded on restore, and a
+global fit came back shattered into one group per local fit. The archiver now
+stores full fit records plus project metadata, and restore reads back whole fit
+groups, all datasets, parameters and edges — gated by a round-trip regression
+test.
 
 # Status
-Planned. The PRD enumerates concrete fixes in `project_archiver.py` and the
-project-browser restore handler, with a new round-trip test as the gate.
+**Done (2026-07-25).** Tasks 1–7 are implemented and gated by
+`test/fio/test_mmfdb_project_roundtrip.py` (18 cases). The archiver now lives at
+`modules/mmfdb/src/mmfdb/project/project_archiver.py`, not the top-level path
+this PRD originally cited, and the restore handler is
+`chisurf/plugins/core/project_browser/backend/services.py`.
+
+Tasks 1–6 had in fact landed incrementally without the PRD being flipped. Auditing
+them against the code turned up one case the round-trip test did not cover and
+that was still lossy: **global fits were shattered on restore.** The archiver
+writes one `fit_result` artifact per local fit, all sharing the fit UID, and the
+restorer appended a fit record per artifact — so an N-way global fit came back as
+N single-local-fit groups that all carried the *same* id, colliding wherever fits
+are keyed by uid. Fixed by `_regroup_fit_artifacts`, which merges artifacts by UID
+and orders local fits by a new `fit_index` / `local_fit_index` pair recorded at
+archive time (the artifact id cannot supply the order — it embeds `lf_id`, which
+is the local fit's own id whenever it has one). Archives written before the change
+fall back to encounter order. Six new test cases cover the global-fit case, the
+fallback, artifact de-duplication and UID-less fits.
 
 # Goal
 `archive_project_to_mmfdb()` followed by `restore_project_from_artifacts()` must
@@ -184,13 +201,14 @@ assertions:
 4. Dataset UIDs are preserved.
 
 # Definition of Done
-- [ ] `archive_project_to_mmfdb()` stores full fit records with id/name/model_name
-- [ ] `archive_project_to_mmfdb()` stores project-level metadata (version, ui_state, experiments)
-- [ ] `restore_project_from_artifacts()` returns fit-group records, not flat dicts
-- [ ] `restore_project_from_artifacts()` returns all datasets with unique keys
-- [ ] `restore_project_from_artifacts()` returns parameters and dependency edges
-- [ ] Restore handler in project_browser uses chinet sessions
-- [ ] Round-trip test passes
+- [x] `archive_project_to_mmfdb()` stores full fit records with id/name/model_name
+- [x] `archive_project_to_mmfdb()` stores project-level metadata (version, ui_state, experiments)
+- [x] `restore_project_from_artifacts()` returns fit-group records, not flat dicts
+- [x] a global fit restores as **one** group holding all its local fits, in order
+- [x] `restore_project_from_artifacts()` returns all datasets with unique keys
+- [x] `restore_project_from_artifacts()` returns parameters and dependency edges
+- [x] Restore handler in project_browser uses chinet sessions
+- [x] Round-trip test passes (18 cases)
 
 # Relationships
 - Foundational fix that later result/provenance PRDs build on: [PRD-030](prd-030.md), [PRD-03](prd-03.md).
