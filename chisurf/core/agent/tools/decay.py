@@ -106,6 +106,52 @@ def _default_group(model: Any) -> str:
     )
 
 
+def _only_decay_dataset(context: AgentContext) -> int:
+    """Return the single dataset that is a decay rather than a reference.
+
+    Raises
+    ------
+    ToolError
+        When there is nothing to fit, or more than one candidate.
+    """
+    candidates = [
+        index for index, dataset in enumerate(context.datasets) if not looks_like_irf(dataset)
+    ]
+    if not candidates:
+        raise ToolError(
+            "no decay is loaded to fit — call load_data first "
+            "(every loaded dataset looks like an IRF reference)"
+        )
+    if len(candidates) > 1:
+        listing = [
+            {"index": index, "name": str(getattr(context.datasets[index], "name", ""))}
+            for index in candidates
+        ]
+        raise ToolError(f"say which decay to fit with 'dataset'. Candidates: {listing}")
+    return candidates[0]
+
+
+def _default_decay_model(context: AgentContext) -> str:
+    """Return the lifetime model name to use when the caller names none.
+
+    Raises
+    ------
+    ToolError
+        When no lifetime model is registered for the session.
+    """
+    import chisurf as cs
+
+    context.ensure_experiments()
+    for experiment in cs.experiment.values():
+        for name in experiment.model_names:
+            if str(name).strip().lower().startswith("lifetime"):
+                return str(name)
+    raise ToolError(
+        "no lifetime model is registered in this session; "
+        "call list_experiments and pass 'model' explicitly"
+    )
+
+
 def assess_fit(fit: Any) -> dict[str, Any]:
     """Judge a fit and say what to do about it.
 
@@ -385,7 +431,9 @@ def set_components(
         "Prefer this over driving set_irf / set_components / run_fit yourself "
         "when the user just wants the decay fitted — it is the same protocol "
         "but takes one step instead of ten, and it returns the whole trace so "
-        "you can see how chi2 improved with each component."
+        "you can see how chi2 improved with each component.\n"
+        "If no fit exists yet, pass the decay as 'dataset' and one is created "
+        "for you; you do not need to call create_fit first."
     ),
     parameters={
         "type": "object",
@@ -393,6 +441,20 @@ def set_components(
             "fit": {
                 "type": ["integer", "string"],
                 "description": "Fit index or name. Omit when there is only one fit.",
+            },
+            "dataset": {
+                "type": ["integer", "string"],
+                "description": (
+                    "Decay dataset to fit, when no fit exists yet. A fit is "
+                    "created for it with 'model' below."
+                ),
+            },
+            "model": {
+                "type": "string",
+                "description": (
+                    "Model to create the fit with when 'dataset' is given. "
+                    "Default: the lifetime model of that experiment."
+                ),
             },
             "irf": {
                 "type": ["integer", "string"],
@@ -414,13 +476,29 @@ def auto_fit_decay(
     fit: Any = None,
     irf: Any = None,
     max_components: int = 4,
+    dataset: Any = None,
+    model: str | None = None,
 ) -> dict[str, Any]:
     """Attach the IRF and grow the model until the fit stops improving."""
-    from chisurf.core.agent.tools.fitting import run_fit
+    from chisurf.core.agent.tools.fitting import create_fit, run_fit
 
-    fit_object, fit_index = context.resolve_fit(fit)
     steps: list[dict[str, Any]] = []
     notes: list[str] = []
+
+    if fit is None and (dataset is not None or not context.fits):
+        # "Fit this decay" is one instruction, not two: creating the fit here
+        # saves a round trip and a chance to pick the wrong model.
+        if dataset is None:
+            dataset = _only_decay_dataset(context)
+        created = create_fit(
+            context,
+            model_name=model or _default_decay_model(context),
+            datasets=[dataset],
+        )
+        fit = created["fit_indices"][0]
+        notes.append(f"created fit {fit} with model {created['model']!r}")
+
+    fit_object, fit_index = context.resolve_fit(fit)
 
     model = getattr(fit_object, "model", None)
     convolve = getattr(model, "convolve", None)

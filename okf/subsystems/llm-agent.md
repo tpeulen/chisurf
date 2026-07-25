@@ -142,7 +142,16 @@ provider's reply shape through the loop to keep that true.
 | --- | --- | --- |
 | `read` | listing files, experiments, datasets, fits, curves, `fit_report` | — |
 | `write` | loading data, creating/running/auto-fitting, IRF and component changes, parameters, plots, exports | *ChiSurf tools* |
-| `dangerous` | `run_python`, `write_file` | *Full control* (asks per call) |
+| `dangerous` | `run_python`, `write_file`, `run_command` | *Full control* (asks per call) |
+
+`run_command` runs any program on the machine, unsandboxed and as the user.
+That is deliberate — analysis routinely needs a vendor converter, an archive
+tool or somebody else's script, and a sandbox that blocked those would defeat
+the purpose. The protection is the confirmation callback: the user sees the
+exact command and can refuse it. A short list of indiscriminately destructive
+patterns (`rm -rf /`, `mkfs`, `shutdown`, fork bombs) is refused outright,
+because a dialog is a poor last line of defence against those and no
+legitimate use of them belongs in a fitting assistant.
 
 Destructive operations (clearing the session, removing fits or datasets) are
 deliberately **not** in the catalogue.

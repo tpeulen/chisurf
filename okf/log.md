@@ -2,6 +2,42 @@
 
 ## 2026-07-25
 
+* **The agent can drive the computer, and the head-less registry finally has
+  every model in it.** Running the whole suite against a second provider
+  (Mistral, EU) surfaced three defects that OpenRouter had not.
+  **A `QApplication` nobody references is garbage-collected.**
+  `ensure_qt_application()` created one, returned `True`, and the instance
+  vanished before the caller could use it — so every head-less session
+  silently lost the Qt-only readers and models, the daily-driver `Lifetime`
+  among them. The application is now held in a module global, and the
+  head-less TCSPC registry goes from 2 models to the full set. That is why a
+  live run had to guess model names in the first place.
+  **Model names are display strings.** The proven lifetime model is registered
+  as `"Lifetime "` — trailing space included — so a model asking for
+  `"Lifetime"` was rejected on a spelling technicality. `resolve_model_name`
+  now matches ignoring case and surrounding space, falls back to a unique
+  prefix, and reports genuine ambiguity with the candidates.
+  **`auto_fit_decay` demanded a fit that did not exist yet.** "Fit this decay"
+  is one instruction; it now creates the fit from a `dataset` (auto-detecting
+  the single non-IRF measurement when there is only one) instead of failing
+  and making the model call `create_fit` first.
+  Also fixed: re-running the bootstrap appended a second copy of any reader
+  declared without a `name`.
+  **New `tools/system.py` — `run_command`, `which_program`, `list_directory`**,
+  plus a `use-the-computer` skill. The agent can unpack an archive, call a
+  vendor converter, run somebody else's script and move results into place.
+  It is unsandboxed by design (a sandbox would block the converter the user
+  asked for) and sits in the `dangerous` tier: absent below *Full control*,
+  confirmed per call above it, with a short list of indiscriminately
+  destructive patterns refused outright rather than offered for confirmation.
+  27 tools, 8 skills.
+  Verified end to end against Mistral: given a zip in `incoming/`, the agent
+  unpacked it to a new sub-directory, loaded the pair, attached the IRF, grew
+  the model to three lifetimes (chi2r 1.03, Durbin-Watson 2.01) and wrote a
+  plot and a CSV into `results/` — leaving the original archive untouched, as
+  the skill instructs. The live suite passes against Mistral (8/8) as well as
+  OpenRouter.
+
 * **chimol: PyMOL's cartoon curve, which is not a spline.** chimol interpolated
   between guide residues with Catmull-Rom plus a tension knob. That is a
   reasonable spline and it is *not* the curve PyMOL draws -- no tension reaches

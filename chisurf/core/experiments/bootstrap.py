@@ -71,6 +71,13 @@ def qt_application_available() -> bool:
         return False
 
 
+#: The off-screen application created by :func:`ensure_qt_application`.
+#: A ``QApplication`` that nothing references is garbage-collected the moment
+#: the call returns, and ``QApplication.instance()`` goes back to ``None`` --
+#: which silently costs the caller every Qt-only reader and model.
+_QT_APPLICATION: Any = None
+
+
 def ensure_qt_application() -> bool:
     """Create an off-screen ``QApplication`` when none exists yet.
 
@@ -85,6 +92,7 @@ def ensure_qt_application() -> bool:
     bool
         ``True`` when an application exists afterwards.
     """
+    global _QT_APPLICATION
     try:
         from qtpy import QtWidgets
     except Exception:
@@ -95,11 +103,11 @@ def ensure_qt_application() -> bool:
 
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     try:
-        QtWidgets.QApplication([])
+        _QT_APPLICATION = QtWidgets.QApplication([])
     except Exception:
         logger.warning("could not create an off-screen QApplication", exc_info=True)
         return False
-    return True
+    return QtWidgets.QApplication.instance() is not None
 
 
 def resolve_class(class_path: str | None) -> type | None:
@@ -166,7 +174,10 @@ def _register_readers(
     list of str
         Names of the readers that were registered.
     """
+    # A reader declared without a ``name`` param is identified by its class,
+    # otherwise a re-run appends a second copy of it.
     existing = {str(name) for name in experiment.reader_names}
+    existing |= {type(reader).__name__ for reader in experiment.readers}
     added: list[str] = []
     for reader_config in reader_configs or []:
         reader_class = resolve_class(reader_config.get("reader_class"))
@@ -180,8 +191,10 @@ def _register_readers(
             continue
         params = dict(reader_config.get("reader_params", {}) or {})
         params["experiment"] = experiment
-        if str(params.get("name", "")) in existing:
+        identity = str(params.get("name") or reader_class.__name__)
+        if identity in existing:
             continue
+        existing.add(identity)
         try:
             experiment.add_reader(reader_class(**params))
         except Exception as exc:

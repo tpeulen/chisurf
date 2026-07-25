@@ -38,8 +38,20 @@ in its header decides how much it may touch:
 | Mode | What it can do |
 | --- | --- |
 | 💬 Chat only | Answers and writes code into the editor. Touches nothing. |
-| 🔧 ChiSurf tools | Loads data, creates and runs fits, edits parameters, exports results. |
-| 🤖 Full control | Also runs Python inside the session and writes files — asking you before each. |
+| 🔧 ChiSurf tools | Loads data, creates and runs fits, edits parameters, exports results. Stays inside ChiSurf. |
+| 🤖 Full control | Also runs Python inside the session, writes files, and **runs programs on your computer** — asking you before each. |
+
+**Full control means what it says.** In that mode the assistant can run any
+program you can: unpack an archive, call a vendor converter, drive another
+analysis tool, move results into place. It runs as you, with your
+permissions, and is not sandboxed — a sandbox would block the converter you
+asked it to run. What protects you is that **you see each command before it
+runs and can refuse it**. A handful of indiscriminately destructive commands
+(`rm -rf /`, `mkfs`, `shutdown`, fork bombs) are refused outright rather than
+offered for confirmation.
+
+Use *ChiSurf tools* for ordinary analysis; switch to *Full control* when the
+job genuinely reaches outside the program.
 
 The transcript shows every tool call, the skill it is following, and the
 reduced chi-square as fits complete, so you can see what it did rather than
@@ -73,6 +85,7 @@ even sees it, so the right method is in play from the first turn.
 | `explore-data` | what is in a folder, what is loaded |
 | `report-results` | exporting, saving, plotting, writing up |
 | `write-analysis-script` | custom calculations and scripts |
+| `use-the-computer` | unpacking, converting, running other software |
 
 `python -m chisurf.core.agent --list-skills` prints them with the phrases that
 trigger each one.

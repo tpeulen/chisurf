@@ -122,6 +122,52 @@ def _model_names() -> dict[str, list[str]]:
     }
 
 
+def resolve_model_name(requested: str) -> str:
+    """Return the registered model name matching *requested*.
+
+    Model names are display strings, and some carry stray whitespace or
+    capitalisation a user would never reproduce -- the daily-driver lifetime
+    model is registered as ``"Lifetime "``, trailing space included. Rejecting
+    ``"Lifetime"`` for that reason is a spelling test, not a safety check, so
+    the match ignores case and surrounding space and falls back to a unique
+    prefix.
+
+    Parameters
+    ----------
+    requested : str
+        The name asked for.
+
+    Returns
+    -------
+    str
+        The exact registered name to use.
+
+    Raises
+    ------
+    ToolError
+        When nothing matches, or when the name is ambiguous.
+    """
+    known = _model_names()
+    everything = [name for names in known.values() for name in names]
+    wanted = str(requested).strip().lower()
+
+    exact = [name for name in everything if name == requested]
+    if exact:
+        return exact[0]
+    relaxed = [name for name in everything if name.strip().lower() == wanted]
+    if len(set(relaxed)) == 1:
+        return relaxed[0]
+    prefixed = [name for name in everything if name.strip().lower().startswith(wanted)]
+    if len(set(prefixed)) == 1:
+        return prefixed[0]
+    if prefixed:
+        raise ToolError(
+            f"model name {requested!r} is ambiguous — it matches "
+            f"{sorted(set(prefixed))}. Use the full name."
+        )
+    raise ToolError(f"unknown model {requested!r}. Available models per experiment: {known}")
+
+
 @registry.add(
     name="describe_session",
     description=(
@@ -232,11 +278,7 @@ def create_fit(
     if not indices:
         raise ToolError("no datasets are loaded — call load_data first")
 
-    known_models = _model_names()
-    if not any(model_name in names for names in known_models.values()):
-        raise ToolError(
-            f"unknown model {model_name!r}. Available models per experiment: {known_models}"
-        )
+    resolved_name = resolve_model_name(model_name)
 
     groups = [indices] if grouped else [[index] for index in indices]
     created: list[dict[str, Any]] = []
@@ -245,11 +287,11 @@ def create_fit(
         before = len(context.fits)
         try:
             if grouped and len(group) > 1:
-                _create_grouped_fit(group, model_name)
+                _create_grouped_fit(group, resolved_name)
             else:
                 cs.core.actions.dispatch(
                     name="fit.add",
-                    payload={"dataset_indices": list(group), "model_name": str(model_name)},
+                    payload={"dataset_indices": list(group), "model_name": resolved_name},
                 )
         except Exception as error:
             failures.append({"datasets": group, "error": f"{type(error).__name__}: {error}"})
@@ -278,6 +320,7 @@ def create_fit(
     result: dict[str, Any] = {
         "ok": True,
         "n_created": len(created),
+        "model": resolved_name,
         "fits": created,
         "fit_indices": [entry["index"] for entry in created],
         "next_step": (

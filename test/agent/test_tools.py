@@ -152,6 +152,38 @@ def test_create_fit_rejects_an_invented_model_name(loaded):
         fitting_tools.create_fit(loaded, model_name="Exponential-ish")
 
 
+def test_model_names_tolerate_case_and_stray_whitespace(loaded):
+    """The daily-driver model is registered as 'Lifetime ' — with the space."""
+    exact = fitting_tools.resolve_model_name(MODEL_NAME)
+    assert exact == MODEL_NAME
+    assert fitting_tools.resolve_model_name(MODEL_NAME.upper()) == MODEL_NAME
+    assert fitting_tools.resolve_model_name(f"  {MODEL_NAME}  ") == MODEL_NAME
+
+
+def test_an_ambiguous_model_name_asks_for_the_full_one(monkeypatch):
+    """Against a fixed registry, so the answer does not depend on Qt state."""
+    monkeypatch.setattr(
+        fitting_tools,
+        "_model_names",
+        lambda: {"TCSPC": ["Lifetime (new)", "Lifetime mixer (new)"]},
+    )
+    with pytest.raises(ToolError, match="ambiguous"):
+        fitting_tools.resolve_model_name("Lifetime")
+
+
+def test_a_prefix_resolves_when_it_is_unique(monkeypatch):
+    monkeypatch.setattr(
+        fitting_tools, "_model_names", lambda: {"TCSPC": ["Lifetime ", "FRET: PDDEM"]}
+    )
+    assert fitting_tools.resolve_model_name("Lifetime") == "Lifetime "
+    assert fitting_tools.resolve_model_name("fret") == "FRET: PDDEM"
+
+
+def test_create_fit_reports_the_name_it_resolved_to(loaded):
+    result = fitting_tools.create_fit(loaded, model_name=MODEL_NAME.upper(), datasets=[0])
+    assert result["model"] == MODEL_NAME
+
+
 def test_create_fit_can_group_datasets_into_one_fit(loaded):
     result = fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0, 1], grouped=True)
     assert result["n_created"] == 1

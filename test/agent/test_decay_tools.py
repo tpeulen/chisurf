@@ -199,6 +199,30 @@ def test_auto_fit_decay_finds_the_irf_and_the_component_count(decay_fit):
     assert trace[-1]["chi2r"] < trace[0]["chi2r"] / 5, "adding components must help a lot here"
 
 
+def test_auto_fit_decay_creates_the_fit_it_needs(context):
+    """Fitting a decay is one instruction, not create_fit plus auto_fit."""
+    data_tools.load_data(context, paths=[DECAY_FILE, IRF_FILE])
+    assert context.fits == []
+
+    result = decay_tools.auto_fit_decay(context)
+
+    assert len(context.fits) == 1
+    assert any("created fit 0" in note for note in result["notes"])
+    assert result["assessment"]["quality"] in ("good", "acceptable")
+
+
+def test_auto_fit_decay_asks_which_decay_when_several_could_be_meant(context):
+    data_tools.load_data(context, directory=TCSPC, pattern="*.dat")
+    with pytest.raises(ToolError, match="which decay"):
+        decay_tools.auto_fit_decay(context)
+
+
+def test_auto_fit_decay_refuses_when_only_references_are_loaded(context):
+    data_tools.load_data(context, paths=[IRF_FILE])
+    with pytest.raises(ToolError, match="no decay is loaded"):
+        decay_tools.auto_fit_decay(context)
+
+
 def test_auto_fit_decay_honours_a_component_ceiling(decay_fit):
     result = decay_tools.auto_fit_decay(decay_fit, fit=0, max_components=1)
     assert result["n_components"] == 1
