@@ -1508,6 +1508,16 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot Batch 19 — reusable spectrum viewer off pyqtgraph (allow-list
+  32 → 31).** Migrated `gui/widgets/spectrum_view.py` (absorption/emission
+  overlay, also an AutoForm section). Trace dicts → `line(pen=color, width=,
+  style=, name=)`; `{solid,dash,dot,dashdot}`→chiplot styles (`dashdot`→
+  `dash_dot`); "no spectra" `TextItem`→`plot.text(...)`; `set_background(None)` +
+  `legend()` + `grid` + units folded into `set_labels`. Heavy axis/legend theming
+  stays a flagged `.native`/`raw.mkPen` passthrough. **GUI-screenshot verified**
+  (three overlaid spectra, distinct solid/dash/dot, grey legend+labels, grid,
+  400–700 nm / 0–1). New `test_spectrum_view_plots_traces`. See [PRD-64](prds/prd-64.md).
+
 * **chiplot Batch 18 — node-editor PT preview plot off pyqtgraph (allow-list
   33 → 32).** Migrated `gui/widgets/node_editor/widgets/pt_plot_widget.py` (a small
   themed PT plot, optional-pyqtgraph). `pg is None` guard → `_plotting_available()`
