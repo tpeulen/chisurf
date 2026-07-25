@@ -3,7 +3,7 @@ type: PRD
 prd: "65"
 title: "PRD-65: Three-Colour Photon Distribution Analysis (tcPDA)"
 description: A burst-wise three-colour PDA model — trinomial/binomial photon-partition likelihood with Poisson background, correlated trivariate distance distributions, labelling and brightness corrections, and MAP + MCMC inference with per-parameter priors, implemented in Python/numba with algorithmic rather than language-level speedups.
-status: draft
+status: in-progress
 phase: "unassigned"
 resource: chisurf/core/models/pda3c/
 tags: [prd, fret, pda, three-colour, bayesian]
@@ -27,20 +27,33 @@ the prior framework from [PRD-61](prd-61.md) and the sampler in
 `chisurf/core/fitting/sample.py`. The compute core is **Python/numba and stays
 there**: the incumbent reaches for threaded C and CUDA because it evaluates the
 likelihood by brute force, whereas the cost here is attacked algorithmically —
-collapsing duplicate bursts, expressing the grid sweep as a matrix product,
-replacing the nested background sum with short 1-D convolutions, and integrating
-the Gaussian species by Gauss–Hermite quadrature instead of on a uniform grid.
+collapsing duplicate bursts, and expressing *both* the grid sweep and the nested
+background sum as matrix products, with Gauss–Hermite quadrature to replace the
+uniform distance grid still to come.
 Staged: forward model and its two-colour reduction first, then the 3-D static
 fit, then priors/posteriors, corrections, global two-plus-three-colour fits, and
 finally dynamics.
 
 # Status
 
-Draft / unassigned (STATUS TABLE authoritative). Design fixed against a reading
-of the incumbent suite's implementation; nothing built. Split out of
-[PRD-50](prd-50.md) scope item 4 because — see *Why not inside PRD-50* — it
-shares neither the compute engine, the data object, nor the fit objective with
-two-colour PDA.
+In progress. Split out of [PRD-50](prd-50.md) scope item 4 because — see *Why
+not inside PRD-50* — it shares neither the compute engine, the data object, nor
+the fit objective with two-colour PDA.
+
+**Stage 1 landed (2026-07-25):** `chisurf/core/fluorescence/pda3c/likelihood.py`
+— the trinomial/binomial partition with Poisson background, as two matrix
+products (see *Performance strategy*), with an untruncated per-burst convolution
+and a literal nested sum kept beside it as independent references.
+`test/models/test_pda3c_likelihood.py` (18 tests) covers the factorisation
+against the nested sum, normalisation over the count lattice, burst collapsing,
+memory chunking, and the stage-1 acceptance criterion: **marginalised over the
+photon-number distribution, the two-channel case reproduces `tttrlib.Pda`'s S1S2
+matrix to a total variation below 1e-6** — a different algorithm for the same
+quantity. Levers 1–3 measured; see the table below.
+
+Remaining: the three-colour probability model (efficiencies → channel
+probabilities with corrections), trivariate-Gaussian species, the model +
+view spec, the burst-table reader, and stages 3–7.
 
 Parent: [PRD-49](prd-49.md) (three-colour PDA row). Related: [PRD-50](prd-50.md)
 (two-colour PDA family), [PRD-61](prd-61.md) (parameter priors — the enabler),
@@ -224,15 +237,30 @@ reformulations, not approximations, except where noted.
    is one GEMM: `(n_tuples × 5) @ (5 × n_grid)`. Precompute the log-coefficients
    once (the incumbent's "binomial coefficient library", the same idea). This is
    the fast path and also the correctness reference for the general one.
-3. **Background as a convolution, not a nested sum.** Signal plus independent
-   Poisson background is a convolution in the count domain. The trinomial
-   factorises into sequential binomials ($F_{BB}$ against the rest, then
-   $F_{BG}$ against $F_{BR}$), so each channel contributes a **1-D** convolution
-   with a Poisson kernel instead of a term in a triple sum. Precompute the
-   kernels once per background level, and truncate them at a probability-mass
-   tolerance rather than at $\min(F, N_{BG})$ — the tail is negligible long
-   before that bound. Cost drops from a product of three sums to a sum of three
-   short convolutions.
+3. **Background as a second matrix product, not a nested sum.** *(Landed — and
+   it goes further than this PRD first claimed.)* Only one thing couples the
+   channels in the nested sum: the multinomial's leading $n!$, which depends on
+   the *total* background count $m$ and not on how it is distributed. Dividing
+   through by the zero-background term and grouping by $m$ leaves a product of
+   per-channel series $u_c(b)=\mathrm{Pois}(b;B_c)\frac{F_c!}{(F_c-b)!}p_c^{-b}$
+   — a discrete convolution. But $u_c$ splits into a burst-determined factor
+   times $p_c^{-b}$, so the whole box sum is a **GEMM** between a
+   (bursts × box) and a (points × box) array. The background therefore costs the
+   same *kind* of operation as the signal term, and the two compose: with no
+   background the correction is exactly 1.
+
+   **The truncation claim in the first draft of this PRD was wrong**, and it
+   caused a real bug before the tests caught it. The series may *not* be cut on
+   Poisson tail mass: after folding in the weight $w_m$ the terms behave like
+   $\mathrm{Pois}(b;B_c)\,(F_c/(Np_c))^b$, and wherever a channel collected far
+   more photons than the model allows, that ratio is large and the terms *grow*
+   for many steps before the Poisson factor turns them over — precisely where
+   the background explanation carries the entire likelihood. Cutting on
+   $\mathrm{Pois}(b;B_c)$ moved one test burst's log-likelihood by 3. The cutoff
+   now uses an **effective rate** $B_c \max(F_c/(N p_c))$, which is ~1 near the
+   optimum and large exactly where it must be. This matters even though the
+   absolute likelihood there is negligible: MCMC and support-plane scans read
+   the *shape* of the surface away from the optimum.
 4. **Quadrature instead of a uniform distance grid.** The species *is* a
    trivariate Gaussian, so integrating it on a uniform 3-D grid is the wrong
    quadrature: cost is $O(n^3)$ in the grid resolution. Transform by the
@@ -252,6 +280,27 @@ Order of work: correctness first via (2) as the no-background reference, then
 (1) and (3), then (4) with its accuracy check, then numba. Record measured
 timings in the PRD as each lands, so "it is too slow" is never an unmeasured
 claim.
+
+## Measured (2026-07-25, `chisurf/core/fluorescence/pda3c/`, levers 1–3)
+
+Pure NumPy, no numba, one core, on synthetic three-colour bursts (mean 25
+photons) against a 200-point model grid:
+
+| | |
+|---|---|
+| burst collapsing, 10k / 100k bursts | 4.8× / **26× fewer evaluations**, and rising — distinct count vectors saturate near 3.9k while bursts do not |
+| convolution vs. nested sum, one burst | 24 ms → 0.32 ms (**75×**), identical to 1e-10 |
+| zero-background grid, 2.5k × 200 | **22 ms** (43 ns/cell) |
+| with background, per-cell loop | 333 µs/cell → ~170 s extrapolated for 100k bursts |
+| with background, GEMM factorisation | **2.3 s** for 100k bursts × 200 points (~70× the loop) |
+
+The 2.3 s figure is *after* the truncation fix, which cost ~5× against the
+earlier (wrong) 0.42 s, and it uses a deliberately pessimistic random grid
+containing near-zero channel probabilities; a real distance grid is better
+conditioned. The conclusion stands and is the premise of this PRD: **the
+algorithm was the cost, not the language.** Numba (lever 5) and quadrature
+(lever 4) are not yet needed, and the C/CUDA the incumbent requires is not on
+the table.
 
 # Reuse
 
