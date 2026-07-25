@@ -59,6 +59,44 @@ ChiSurf's parameter report labels every interval with the method that produced
 it, and prefers `mcmc` over `profile` over `laplace` when more than one is
 available.
 
+### One way to ask
+
+All three sit behind a single engine interface, so a caller declares what it
+wants to know and reads the answer without knowing which estimator produced it:
+
+```python
+from chisurf.core.fitting import engine
+
+eng = engine.get_engine('mcmc', fit)
+eng.condition('tau2', 4.0)        # fix a parameter, re-optimise the rest
+eng.add_target('tau1')            # only declared targets are computed
+eng.add_joint_target(('tau1', 'x1'))
+eng.run(steps=5000, n_runs=2)
+
+m = eng.marginal('tau1')
+print(m.value, m.interval(0.68), m.method)
+print(eng.joint(('tau1', 'x1')).correlation)
+```
+
+- **`condition(name, value)`** fixes a parameter and re-optimises the rest. That
+  is what a profile scan *is*, and what the other engines do by construction, so
+  it means the same thing whichever engine is used.
+- **Targets are declared, not assumed** — a profile scan of one parameter should
+  not scan the other nine.
+- **`joint`** returns a covariance and a `correlation` matrix. Only a chain has
+  a real one; a profile scan handles one parameter at a time and returns `None`
+  rather than pretending.
+- **`log_evidence`** is available from engines that integrate over the
+  parameters. A profile scan maximises rather than integrates, so it has none.
+- **`stored`** reports what has *already* been computed without computing
+  anything new — which is what a summary table needs, since reading a table must
+  never kick off a scan or a sampling run. `Fit.posterior_summary` is a loop
+  over it.
+
+An answer is a `Marginal`: `value`, `sd`, `interval(p)`, `quantiles`, the
+`method` that produced it, and the engine's diagnostics. A plot or a report
+consumes one without caring where it came from.
+
 ## Why a chain needs diagnostics
 
 An MCMC chain is not a sample from the posterior — it is a sample from

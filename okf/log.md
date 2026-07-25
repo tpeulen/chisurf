@@ -585,6 +585,39 @@
   would make `find_parameters` rediscover parameters through the cache itself.
   9 tests in `test/fitting/test_frozen_structure.py`.
 
+* **Three ways to ask the same question, now with one way to ask (PRD-70).**
+  The covariance at the optimum, a profile χ² scan and a sampled posterior all
+  answer "what does the data actually support for this parameter?", and all
+  three had a different calling convention, return shape and storage location:
+  error estimates on the parameter, a `scan_result` dict, a report on the fit.
+  `Fit.posterior_summary` papered over it by reaching into all three stores with
+  the precedence hard-coded, nothing could ask for a *joint* answer even though a
+  chain contains one, nothing could ask for the evidence, and "fix this
+  parameter and re-optimise the rest" — the operation a profile scan *is* — had
+  no name. New `chisurf/core/fitting/engine.py`: `condition` / `add_target` /
+  `add_joint_target` / `run` / `marginal` / `joint` / `log_evidence`, with
+  `LaplaceEngine`, `ProfileEngine`, `SamplingEngine`, `StoredEngine` and
+  `AutoEngine` behind it. Answers are `Marginal` / `Joint` dataclasses carrying
+  the method that produced them, so a report or a plot consumes one without
+  knowing its origin. Only declared targets are computed — a profile scan of one
+  parameter should not scan the other nine. Each engine still refuses to claim
+  more than it knows: a profile scan has no joint answer and no evidence because
+  it maximises rather than integrates, and a sampled marginal from a chain that
+  failed its own checks comes back as `none` rather than as a number.
+  `StoredEngine` exists because reading a summary must compute *nothing*, which
+  is a genuinely different operation from running an estimator;
+  `Fit.posterior_summary` is now a loop over it, output shape unchanged.
+  Threading `model=` through `approx_grad`, `covariance_matrix` and `walk_mcmc`
+  fell out of it: an engine over a group's global model otherwise silently got
+  the selected member's 2×2 covariance and reported `nan` for every other
+  parameter — the same `FitGroup.model`-is-one-member trap as before, third
+  occurrence. `ProfileEngine` also routes each scan to the member that owns the
+  parameter, since group names are prefixed and a member only knows its own.
+  16 tests. This completes the architecture borrowed from probabilistic
+  graphical-model toolkits: [PRD-68](/prds/prd-68.md) took the model,
+  [PRD-69](/prds/prd-69.md) the inference, this the query. See
+  [PRD-70](/prds/prd-70.md) and the [fitting subsystem](/subsystems/fitting.md).
+
 * **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
   The posterior of a group already factorises over its datasets, but
   `GlobalFitModel` flattened every local model's free parameters plus the

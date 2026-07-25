@@ -26,7 +26,8 @@ def walk_mcmc(
         callback: typing.Callable = None,
         check_cancel: typing.Callable = None,
         n_adapt: int = None,
-        target_acceptance: float = 0.3
+        target_acceptance: float = 0.3,
+        model: cs.core.models.Model = None
 ) -> dict:
     """Sample the free parameters of a fit with a Metropolis random walk.
 
@@ -64,6 +65,12 @@ def walk_mcmc(
         with the proposal widths implied by ``step_size`` alone.
     target_acceptance : float, optional
         Acceptance rate the warm-up aims for.
+    model : chisurf.core.models.Model, optional
+        Model to sample; defaults to ``fit.model``, which for a
+        :class:`~chisurf.core.fitting.fit.FitGroup` is the *selected member's*
+        model. Pass
+        :func:`chisurf.core.fitting.factorgraph.posterior_model` for the joint
+        posterior of a group.
 
     Returns
     -------
@@ -84,8 +91,10 @@ def walk_mcmc(
     stationary distribution is the posterior -- adapting while recording would
     break that guarantee.
     """
-    dim = fit.model.n_free
-    state_initial = np.asarray(fit.model.parameter_values, dtype=np.float64)
+    if model is None:
+        model = fit.model
+    dim = model.n_free
+    state_initial = np.asarray(model.parameter_values, dtype=np.float64)
     thin = max(1, int(thin))
     n_samples = max(1, int(steps) // thin)
     # initialize arrays. The data misfit and the prior are recorded apart so the
@@ -97,7 +106,7 @@ def walk_mcmc(
     n_recorded = 0
     n_accepted = 0
     state_prev = np.copy(state_initial)
-    bounds = fit.model.parameter_bounds
+    bounds = model.parameter_bounds
 
     # Proposal width is relative to the starting value; parameters that start
     # at (numerically) zero would never move, so fall back to an absolute step.
@@ -110,7 +119,8 @@ def walk_mcmc(
             parameter_values=state,
             fit=fit,
             chi2max=chi2max,
-            bounds=bounds
+            bounds=bounds,
+            model=model
         )
         return lnlike + lnpr, lnpr, c2
 
@@ -195,13 +205,13 @@ def walk_mcmc(
     parameter = parameter[:n_recorded]
     lnprior = lnprior[:n_recorded]
     chi2 = chi2[:n_recorded]
-    dof = float(fit.model.n_points - fit.model.n_free - 1.0)
+    dof = float(model.n_points - model.n_free - 1.0)
 
     return {
         'chi2r': chi2 / dof,
         'lnprior': lnprior,
         'parameter_values': parameter,
-        'parameter_names': fit.model.parameter_names,
+        'parameter_names': model.parameter_names,
         'acceptance_rate': n_accepted / float(max(1, i_step)),
         # One chain, with its per-draw structure kept so that the split R-hat
         # and the autocorrelation time can be computed from it.

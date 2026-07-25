@@ -236,6 +236,37 @@ per 1000 model evaluations — 7.8× the ESS for 40% fewer evaluations. A group
 whose datasets share a parameter is one component and falls back to a single
 joint chain.
 
+# One query API over the estimators
+
+`chisurf/core/fitting/engine.py` ([PRD-70](/prds/prd-70.md)) puts the covariance,
+the profile scan and the sampled posterior behind one protocol, so the estimator
+is a choice of engine rather than different code at every call site.
+
+| Call | Meaning |
+| --- | --- |
+| `condition(name, value)` | fix a parameter and re-optimise the rest — what a profile scan *is* |
+| `add_target` / `add_joint_target` | declare what to compute; nothing else is |
+| `run(**options)` | do the work |
+| `marginal` / `joint` / `log_evidence` | read the answer |
+
+Engines: `LaplaceEngine` (covariance at the optimum, always available, reports a
+Laplace `log_evidence`), `ProfileEngine` (asymmetric intervals, one parameter at
+a time, no joint and no evidence — it maximises rather than integrates),
+`SamplingEngine` (the only real joint answers; **refuses** to return a marginal
+from a chain that failed its own checks), `StoredEngine` (reports what has
+already been computed, computing nothing — `Fit.posterior_summary` is a loop
+over it), and `AutoEngine` (best available per parameter, still labelled).
+
+Answers are `Marginal` / `Joint` dataclasses carrying the `method` that produced
+them, so a report or a plot consumes one without knowing its origin.
+`Joint.correlation` is what a global fit is usually really after: a pair at ±1 is
+one measurement, not two.
+
+`ProfileEngine` routes each scan to the *member* that owns the parameter — group
+names are prefixed (`3:tau`) and a member only knows its own. `approx_grad`,
+`covariance_matrix`, `lnprior`/`lnprob`/`lnprob_parts` and every sampler take an
+optional `model=`, so an engine over a group's global model works throughout.
+
 # Cost of an objective evaluation
 
 Profiling a global-fit sweep found the model evaluation itself was **6 %** of

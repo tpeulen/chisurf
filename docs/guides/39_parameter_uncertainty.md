@@ -244,6 +244,25 @@ status['warnings']    # what went wrong, per parameter
 status['diagnostics'] # the full per-parameter report
 ```
 
+## 10. Asking directly, without picking an estimator first
+
+```python
+from chisurf.core.fitting import engine
+
+eng = engine.get_engine('auto', fit, use=('laplace', 'mcmc'))
+eng.add_all_targets()
+eng.run(steps=5000, n_runs=2)
+
+for m in eng.marginals():
+    lo, hi = m.interval(0.68)
+    print(f"{m.name}: {m.value:.4f}  [{lo:.4f}, {hi:.4f}]  ({m.method})")
+```
+
+`auto` runs the estimators you allow and takes, per parameter, the best answer
+that actually worked — labelled with which one that was. `laplace` costs
+nothing, `profile` costs a re-fit per scan point, `mcmc` costs a sampling run;
+`stored` costs nothing at all and reports only what is already there.
+
 ## Checklist
 
 - [ ] Priors reflect knowledge you actually have, not a convenience.

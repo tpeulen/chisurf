@@ -17,6 +17,7 @@ import chisurf.core.curve
 import chisurf.core.experiments
 import chisurf.core.data
 import chisurf.core.fitting.diagnostics
+import chisurf.core.fitting.engine
 import chisurf.core.fitting.factorgraph
 import chisurf.core.fitting.parameter
 import chisurf.core.fitting.priors
@@ -740,51 +741,6 @@ class Fit(cs.core.base.Base):
             })
         return out
 
-    def _mcmc_intervals(
-            self,
-            p_value: float
-    ) -> typing.Dict[str, typing.Tuple[float, float]]:
-        """Return credible intervals from the chain this fit was last sampled with.
-
-        :func:`sample_fit` leaves its convergence report on the fit as
-        ``sampling_diagnostics``; this reads the posterior quantiles out of it.
-        Parameters whose chain failed its convergence checks are **omitted**
-        rather than reported, because a quantile of an unconverged chain is a
-        number without a meaning -- the caller then falls back to the profile or
-        covariance estimate.
-
-        Parameters
-        ----------
-        p_value : float
-            Central credible mass, e.g. ``0.68``.
-
-        Returns
-        -------
-        dict
-            Parameter name -> ``(low, high)``. Empty when nothing was sampled.
-        """
-        report = getattr(self, 'sampling_diagnostics', None)
-        if not isinstance(report, dict):
-            return {}
-        entries = report.get('parameters') or []
-        lo_q = 0.5 - 0.5 * float(p_value)
-        hi_q = 0.5 + 0.5 * float(p_value)
-        out = {}
-        for e in entries:
-            quantiles = e.get('quantiles') or {}
-            low = _closest_quantile(quantiles, lo_q)
-            high = _closest_quantile(quantiles, hi_q)
-            if low is None or high is None:
-                continue
-            rhat = e.get('rhat', float('nan'))
-            ess = e.get('ess', 0.0)
-            if not np.isfinite(rhat) or rhat > cs.core.fitting.diagnostics.RHAT_THRESHOLD:
-                continue
-            if not np.isfinite(ess) or ess < cs.core.fitting.diagnostics.ESS_THRESHOLD:
-                continue
-            out[str(e.get('name'))] = (float(low), float(high))
-        return out
-
     def posterior_summary(
             self,
             p_value: float = 0.68
@@ -819,52 +775,27 @@ class Fit(cs.core.base.Base):
         from a chain left by :func:`sample_fit`, the only one that needs no
         Gaussian or single-parameter assumption), ``profile`` and ``laplace``.
         """
-        chain_intervals = self._mcmc_intervals(p_value)
-        out = []
+        engine = cs.core.fitting.engine.StoredEngine(self, model=self.model)
+        names = []
         for name in sorted(self.model.parameters_all_dict.keys()):
             p = self.model.parameters_all_dict[name]
             if not isinstance(p, cs.core.fitting.parameter.FittingParameter):
                 continue
             if getattr(p, 'is_output', False) or p.fixed:
                 continue
-            try:
-                value = float(p.value)
-            except Exception:
-                continue
-            low = high = float('nan')
-            method = 'none'
-            # A chain describes the whole posterior, so it outranks a profile
-            # scan (one parameter at a time) and a covariance (Gaussian).
-            if str(p.name) in chain_intervals:
-                low, high = chain_intervals[str(p.name)]
-                method = 'mcmc'
-            scan = getattr(p, 'scan_result', None) if method == 'none' else None
-            if isinstance(scan, dict):
-                try:
-                    intervals = cs.core.fitting.support_plane.confidence_intervals_from_scan_result(
-                        scan, p_values=(p_value,)
-                    )
-                except Exception:
-                    intervals = []
-                if intervals:
-                    lo, hi = intervals[0].get('crossings', (None, None))
-                    if lo is not None or hi is not None:
-                        low = float(lo) if lo is not None else float('nan')
-                        high = float(hi) if hi is not None else float('nan')
-                        method = 'profile'
-            if method == 'none':
-                try:
-                    err = float(p.error_estimate)
-                except Exception:
-                    err = float('nan')
-                if np.isfinite(err):
-                    low, high, method = value - err, value + err, 'laplace'
+            names.append(str(p.name))
+            engine.add_target(str(p.name))
+        engine.run(p_value=p_value)
+
+        out = []
+        for name in names:
+            m = engine.marginal(name)
             out.append({
-                'name': str(p.name),
-                'value': value,
-                'low': low,
-                'high': high,
-                'method': method,
+                'name': m.name,
+                'value': m.value,
+                'low': m.low,
+                'high': m.high,
+                'method': m.method,
                 'p_value': float(p_value),
             })
         return out
@@ -2232,7 +2163,8 @@ def approx_grad(
         fit: cs.core.fitting.fit.Fit,
         epsilon: float = None,
         args=(),
-        f0=None
+        f0=None,
+        model: cs.core.models.Model = None
 ) -> typing.Tuple[float, np.array]:
     """Approximate gradient of the weighted residuals with respect to ``xk``.
 
@@ -2247,9 +2179,13 @@ def approx_grad(
         is ``epsilon * max(|xk[k]|, 1)``. Defaults to
         :data:`FINITE_DIFFERENCE_STEP`.
     args : tuple, optional
-        Additional positional arguments forwarded to ``fit.get_wres``.
+        Unused; kept so existing call sites keep working.
     f0 : array_like, optional
         Pre-computed weighted residuals at ``xk``.
+    model : chisurf.core.models.Model, optional
+        Model to differentiate; defaults to ``fit.model``, which for a
+        :class:`FitGroup` is the *selected member's* model rather than the
+        global one.
 
     Returns
     -------
@@ -2267,12 +2203,17 @@ def approx_grad(
     """
     if epsilon is None:
         epsilon = FINITE_DIFFERENCE_STEP
-    p0 = fit.model.parameter_values
-    f = fit.get_wres
+    if model is None:
+        model = fit.model
+    p0 = model.parameter_values
+
+    def f(values):
+        """Weighted residuals of ``model`` at a parameter vector."""
+        return get_wres(values, model)
     xk = np.asarray(xk, dtype=float)
     n_xk = len(xk)
     if f0 is None:
-        f0 = f(*((xk,) + args))
+        f0 = f(xk)
     i = len(f0)
     grad = np.zeros((n_xk, i, ), float)
     ei = np.zeros((n_xk, ), float)
@@ -2284,16 +2225,17 @@ def approx_grad(
         step = (xk[k] + step) - xk[k]
         ei[k] = 1.0
         d = step * ei
-        grad[k] = (f(*((xk + d,) + args)) - f0) / step
+        grad[k] = (f(xk + d) - f0) / step
         ei[k] = 0.0
 
-    fit.model.parameter_values = p0
+    model.parameter_values = p0
     return f0, grad
 
 
 def covariance_matrix(
         fit: cs.core.fitting.fit.Fit,
         epsilon: float = None,
+        model: cs.core.models.Model = None,
         **kwargs
 ) -> typing.Tuple[np.array, typing.List[int]]:
     """Estimate the covariance matrix of the fit parameters.
@@ -2310,6 +2252,9 @@ def covariance_matrix(
         The fit whose model and residuals are used.
     epsilon : float, optional
         Relative step size for the numerical gradient, see :func:`approx_grad`.
+    model : chisurf.core.models.Model, optional
+        Model whose parameters the covariance is over; defaults to ``fit.model``,
+        which for a :class:`FitGroup` is the *selected member's* model.
     **kwargs
         Ignored; accepted so callers may pass through unrelated options.
 
@@ -2320,9 +2265,10 @@ def covariance_matrix(
     important_parameters : list of int
         Indices of parameters whose partial derivatives are non-zero.
     """
-    model = fit.model
+    if model is None:
+        model = fit.model
     xk = np.array(model.parameter_values)
-    fi_v, partial_derivatives = approx_grad(xk, fit, epsilon)
+    fi_v, partial_derivatives = approx_grad(xk, fit, epsilon, model=model)
 
     # find parameters which do not change the models
     # use only parameters which change the models
