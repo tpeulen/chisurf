@@ -115,10 +115,19 @@ even sees it, so the right method is in play from the first turn.
 | `report-results` | exporting, saving, plotting, writing up |
 | `write-analysis-script` | custom calculations and scripts |
 | `use-the-computer` | unpacking, converting, running other software |
+| `estimate-uncertainty` | confidence intervals, error bars, whether a component is justified |
 | `program-chisurf` | writing plugins, models or patches to ChiSurf itself |
 
 `python -m chisurf.core.agent --list-skills` prints them with the phrases that
 trigger each one.
+
+Behind the skills sits the assistant's own **knowledge base** — a small set of
+concepts about fluorescence analysis and about what ChiSurf's objects mean
+(`chisurf/core/agent/knowledge_base/`). It is searched alongside the project
+documentation, so a skill can stay a short procedure and point at the
+background rather than repeat it. It is deliberately separate from the `okf/`
+bundle in the repository, which describes how ChiSurf is *built* rather than
+what the measurements *mean*.
 
 ### Writing your own
 

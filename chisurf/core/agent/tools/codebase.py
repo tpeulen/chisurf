@@ -24,6 +24,15 @@ logger = logging.getLogger(__name__)
 registry = ToolRegistry()
 
 
+def _is_within(path: pathlib.Path, root: pathlib.Path) -> bool:
+    """Return whether *path* sits inside *root*."""
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return False
+    return True
+
+
 @registry.add(
     name="search_api",
     description=(
@@ -188,21 +197,31 @@ def search_docs(context: AgentContext, query: str, limit: int = 5) -> dict[str, 
 )
 def read_doc(context: AgentContext, document: str, max_lines: int = 250) -> dict[str, Any]:
     """Return the text of a documentation file."""
-    from chisurf.core.agent.knowledge import repository_root
+    from chisurf.core.agent.knowledge import knowledge_base_root, repository_root
 
     base = repository_root()
-    target = (base / str(document).strip()).resolve()
-    try:
-        target.relative_to(base)
-    except ValueError as error:
-        raise ToolError("only ChiSurf's own documentation can be read this way") from error
+    name = str(document).strip()
+    target = (base / name).resolve()
+    if not target.is_file():
+        # An installed package reports its own concepts by file name, since
+        # they do not sit under the checkout.
+        matches = sorted(knowledge_base_root().rglob(pathlib.Path(name).name))
+        if matches:
+            target = matches[0]
+    allowed_roots = (base, knowledge_base_root().resolve())
+    if not any(_is_within(target, root) for root in allowed_roots):
+        raise ToolError("only ChiSurf's own documentation can be read this way")
     if not target.is_file():
         raise ToolError(f"no such document: {document}. Use search_docs to find one.")
 
     lines = target.read_text(encoding="utf-8", errors="replace").splitlines()
+    try:
+        shown = target.relative_to(base).as_posix()
+    except ValueError:
+        shown = target.name
     return {
         "ok": True,
-        "document": target.relative_to(base).as_posix(),
+        "document": shown,
         "n_lines": len(lines),
         "truncated": len(lines) > int(max_lines),
         "content": "\n".join(lines[: int(max_lines)])[: context.max_result_chars],

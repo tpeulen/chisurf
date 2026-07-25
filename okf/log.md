@@ -2,6 +2,36 @@
 
 ## 2026-07-25
 
+* **Capability now comes from skills, not from more tools — and the assistant
+  has its own OKF bundle.** The tool catalogue had been growing with every new
+  ability, which does not scale: 36 described tools is near the limit of what
+  can be handed to a model honestly, and every addition is code to maintain
+  for a judgement that would read better as prose.
+  **`estimate-uncertainty` is the worked example**: confidence intervals and
+  model comparison arrived with **no new tool at all**. The skill carries
+  verified recipes that drive `run_python` against `Fit.adaptive_chi2_scan`
+  and an F-test. Asked for "a proper confidence interval, not the fit's own
+  error bar", the assistant ran the recipe, reported the support-plane
+  interval and named the covariance error as the optimistic lower bound it
+  is. On the sample decay the difference is real: covariance 0.0014 ns against
+  a 95 % support-plane half-width of 0.0039 ns, nearly three times larger; and
+  two lifetimes to three gives F = 808, p ~ 0.
+  A skill that carries code is held to it — every python block in every skill
+  is compiled by the test suite, because a recipe a model copies must not
+  teach a syntax error.
+  **`chisurf/core/agent/knowledge_base/`** is an OKF bundle carried by the
+  assistant, deliberately *not* the repository's `okf/`: that one describes
+  how ChiSurf is built, this one what the measurements and the session objects
+  mean. Six concepts — the session model, TCSPC decays, FRET from lifetimes,
+  correlation spectroscopy, measurement files, uncertainty and model choice —
+  each with OKF frontmatter, each checkable against the program, each holding
+  the background that would otherwise be repeated in every skill. It is
+  searched with the repository documentation through `search_docs`/`read_doc`
+  and ranked slightly above it, being written for this purpose and concise.
+  47 tests in `test/agent/test_knowledge_base.py` cover frontmatter, index
+  completeness, that a question reaches the concept about it, that skill links
+  into the bundle resolve, and that skill code compiles. 12 skills, 36 tools.
+
 * **The agent can program ChiSurf, because it can now look it up.** Driving
   the program through tools needs no knowledge of the codebase; writing
   against it does, and that is precisely what a general-purpose model lacks —

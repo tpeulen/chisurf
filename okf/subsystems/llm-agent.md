@@ -97,6 +97,41 @@ Discovery layers built-in → plugin (`agent_skills/` beside a `manifest.json`)
 → user (`<settings>/agent_skills/`), later overriding earlier, so a lab can
 replace `fit-decay` with its own protocol without touching the code.
 
+# Capability comes from skills, not from more tools
+
+The tool catalogue is the set of *primitives*; new capability is added as a
+**SKILL file**, not as more Python. `estimate-uncertainty` is the worked
+example: confidence intervals and model comparison arrived with no new tool
+at all, as a procedure that drives `run_python` against
+`Fit.adaptive_chi2_scan` and an F-test. Asked for "a proper confidence
+interval, not the fit's own error bar", the assistant ran the recipe and
+reported the support-plane interval while naming the covariance error as the
+optimistic lower bound it is.
+
+This keeps the tool surface small enough to describe honestly, and puts
+domain judgement where it can be read and corrected by a scientist rather
+than compiled. A skill that carries code is held to it: every ```python block
+in every skill is compiled by the test suite, because a recipe a model copies
+must not teach a syntax error.
+
+# The assistant's own knowledge base
+
+`chisurf/core/agent/knowledge_base/` is an OKF bundle carried **by the
+assistant**, and deliberately not the repository's `okf/`:
+
+| bundle | answers | audience |
+| --- | --- | --- |
+| `okf/` | how ChiSurf is *built* | someone changing the code |
+| `knowledge_base/` | what the measurements and the session objects *mean* | the assistant, while operating the program |
+
+Six concepts so far — the session model, TCSPC decays, FRET from lifetimes,
+correlation spectroscopy, measurement files, uncertainty and model choice —
+each with OKF frontmatter and each checkable against the program. Skills link
+into it instead of repeating background, which is what keeps a skill a
+procedure. It is searched with the repository documentation through
+`search_docs`/`read_doc` and ranked slightly above it, since it is written
+for this purpose and is deliberately concise.
+
 # Making the answer *correct*, not just produced
 
 Getting a model to call the right tools is the easy half. On a real TCSPC

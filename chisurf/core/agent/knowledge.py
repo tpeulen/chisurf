@@ -34,7 +34,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-#: Directories that hold prose knowledge, relative to the repository root.
+#: Directories of the checkout that hold prose knowledge about the *codebase*.
 PROSE_ROOTS = ("okf", "docs")
 
 #: Parts of the tree that are not the public API.
@@ -367,10 +367,28 @@ def read_definition(symbol: ApiSymbol, max_lines: int = 120) -> str:
 _CHANGELOG_NAMES = {"log.md", "changelog.md", "history.md", "assessment.md"}
 
 
+def knowledge_base_root() -> pathlib.Path:
+    """Return the assistant's own knowledge bundle, shipped with the package.
+
+    This is deliberately separate from the repository's ``okf/``: that bundle
+    describes how ChiSurf is *built*, this one what fluorescence analysis and
+    ChiSurf's objects *mean*. Both are searched, because a question can land
+    in either.
+    """
+    return pathlib.Path(__file__).parent / "knowledge_base"
+
+
 def iter_prose_documents(roots: Iterable[str] = PROSE_ROOTS) -> list[pathlib.Path]:
-    """Return the markdown documents that carry ChiSurf's prose knowledge."""
+    """Return every markdown document the assistant can consult.
+
+    That is the assistant's own knowledge bundle plus the repository's
+    documentation and OKF concepts.
+    """
     base = repository_root()
     documents: list[pathlib.Path] = []
+    bundle = knowledge_base_root()
+    if bundle.is_dir():
+        documents.extend(sorted(bundle.rglob("*.md")))
     for name in roots:
         directory = base / name
         if not directory.is_dir():
@@ -383,6 +401,14 @@ def iter_prose_documents(roots: Iterable[str] = PROSE_ROOTS) -> list[pathlib.Pat
             and path.name.lower() not in _CHANGELOG_NAMES
         )
     return documents
+
+
+def _display_document(path: pathlib.Path, base: pathlib.Path) -> str:
+    """Return the identifier a caller can pass back to ``read_doc``."""
+    try:
+        return path.relative_to(base).as_posix()
+    except ValueError:
+        return path.name
 
 
 def search_prose(query: str, limit: int = 6, context_lines: int = 8) -> list[dict[str, Any]]:
@@ -411,6 +437,7 @@ def search_prose(query: str, limit: int = 6, context_lines: int = 8) -> list[dic
         return []
 
     base = repository_root()
+    bundle_root = knowledge_base_root()
     hits: list[tuple[float, dict[str, Any]]] = []
     for path in iter_prose_documents():
         try:
@@ -428,6 +455,11 @@ def search_prose(query: str, limit: int = 6, context_lines: int = 8) -> list[dic
         # that mentions it in passing.
         if any(term in path.stem.lower() for term in terms):
             score *= 2
+        # The assistant's own bundle is written for exactly this purpose and
+        # is deliberately concise; the repository's documentation is larger
+        # and aimed at developers. Prefer the former when both match.
+        if bundle_root in path.parents:
+            score *= 1.5
 
         lines = text.splitlines()
         best_line, best_hits = 0, 0
@@ -442,7 +474,7 @@ def search_prose(query: str, limit: int = 6, context_lines: int = 8) -> list[dic
             (
                 float(score),
                 {
-                    "document": path.relative_to(base).as_posix(),
+                    "document": _display_document(path, base),
                     "title": next(
                         (line.lstrip("# ").strip() for line in lines if line.startswith("#")),
                         path.stem,
