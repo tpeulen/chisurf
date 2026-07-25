@@ -653,11 +653,32 @@ another instance); the symbol names are given so they stay findable.
 - **Fix note:**
 
 ### RF-046
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the Kristine writer emits a transposed file, or crashes)
 - **Location:** `chisurf/core/fio/fluorescence/fcs/kristine.py:46-64` (`write_kristine`) — the `.T` at `:53`, the `np.vstack` at `:63`, the second `.T` at `:64`
 - **Finding:** The branch that includes uncertainties transposes to `(n, 4)` at `:53` and is then transposed **again** at `:64`, so `np.savetxt` writes 4 rows of `n` columns; the no-uncertainty branch does not transpose at `:61` and comes out correct. Verified with a 20-point curve: without `mask`, the file is `(4, 20)` and `read_kristine` reads it back as **4** correlation points with `acquisition_time = 0.0043 s` (was 10.0) and `mean_count_rate = 1.50` (was 50.0) — silent, total corruption of a saved dataset. With a `mask` array it is worse: `np.vstack([(n,4), (n,)])` raises `ValueError: all the input array dimensions except for the concatenation axis must match exactly, but along dimension 1, the array at index 0 has size 4 and the array at index 1 has size 20`. Both paths are live: `write_single_fcs` (`fcs/__init__.py:337`) always passes `data_set.ey` as an ndarray and passes `mask` whenever the curve has one, and the `fcs_convert` CLI plugin (`chisurf/plugins/fcs/fcs_convert/cli.py:100`) routes user conversions through it. The reader is fine — both committed `test/data/fcs/kristine/*.cor` files round-trip correctly — so the fix is to build the column stack once, in `(n, ncol)` order, and drop the second transpose. A writer→reader round-trip test (4-column and 5-column-with-mask) is the guardrail; there is none today.
-- **Fix note:**
+- **Fix note:** `write_kristine` now builds the column list once — time,
+  amplitude, the metadata column, then the optional uncertainty and mask — and
+  writes `np.column_stack(columns)`, so there is no transpose left to double.
+  Reproduced against `HEAD` first: a 20-point curve with uncertainties came out
+  as `(4, 20)` and read back as **4** points with `acquisition_time =
+  5.46e-06 s` (was 10.0) and `mean_count_rate = 1.497` (was 50.0). The mask half
+  was two bugs, not one: besides the `np.vstack` shape error, the
+  *no-uncertainty* branch happened to place the mask in column 4 — the column
+  the reader takes the **uncertainties** from. There is no slot for a mask
+  without them, so that combination now raises a `ValueError` saying so (it
+  raised an unrelated shape error before; the only live caller,
+  `write_single_fcs`, always passes `ey`, which `DataCurve` guarantees to be an
+  array). Pinned by `test/fio/test_kristine_roundtrip.py`: the 4-column and
+  5-column-with-mask round trips (shape, point count, both metadata values,
+  weights `1/ey`, the mask), the 3-column case as a regression guard, the
+  refusal, and an end-to-end `write_fcs` → `read_fcs` of the committed
+  `Kristine_with_error.cor` — the `fcs_convert` path, which carries a mask and
+  therefore raised before anything was written. Three of the five fail on the
+  old writer. `test/fio` green (279 passed, 12 skipped); `ruff check` on
+  `kristine.py` reports one finding *fewer* than `HEAD` (the old `:param:`
+  docstring is now NumPy-style) and none new, and the new test file is
+  `ruff check` + `ruff format` clean.
 
 ### RF-047
 - **Status:** OPEN

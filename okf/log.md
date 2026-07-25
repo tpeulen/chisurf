@@ -2,6 +2,23 @@
 
 ## 2026-07-25
 
+* **The kristine writer could not produce a file its own reader can read
+  (RF-046).** `write_kristine` transposed the uncertainty branch twice, so
+  `np.savetxt` wrote `n_columns` rows of `n_points` values: a saved 20-point
+  curve came back as **4** correlation points with an acquisition time of
+  5.46e-06 s instead of 10.0 s and a count rate of 1.497 instead of 50.0 —
+  silent, total corruption of a saved dataset, on the path `write_single_fcs`
+  and the `fcs_convert` CLI both use. Passing a mask on top of it raised a
+  shape error from `np.vstack` before anything was written, and in the
+  no-uncertainty branch a mask landed in column 4 — the column the reader takes
+  the *uncertainties* from. The columns are now stacked once, in their final
+  `(n_points, n_columns)` order, and a mask without uncertainties is refused
+  with a message (the format has no slot for it). Pinned by
+  `test/fio/test_kristine_roundtrip.py`, which round-trips the 4-column,
+  5-column-with-mask and 3-column layouts and converts the committed
+  `Kristine_with_error.cor` through the public `write_fcs`/`read_fcs`; three of
+  its five tests fail on the old writer. `test/fio` green (279 passed).
+
 * **A/B'd the RICS precision predictor against the reference in Octave — full
   double-precision parity, and a unit bug in the reference.** The reference
   kernels were run unmodified and every intermediate frozen into

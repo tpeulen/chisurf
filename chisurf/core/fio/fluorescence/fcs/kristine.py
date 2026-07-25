@@ -19,52 +19,63 @@ def write_kristine(
         mask: np.ndarray = None,
         verbose: bool = True
 ) -> None:
-    """
+    """Write a correlation curve as a Kristine ``.cor`` file.
 
-    :param filename: the filename
-    :param correlation_amplitude: an array containing the amplitude of the
-    correlation function
-    :param correlation_amplitude_uncertainty: an estimate for the
-    uncertainty of the correlation amplitude
-    :param correlation_time: an array containing the correlation times
-    :param mean_countrate: the mean countrate of the experiment in kHz
-    :param acquisition_time: the acquisition of the FCS experiment in
-    seconds
-    :return:
+    The file carries one row per correlation point, in the column order
+    :func:`read_kristine` expects: the correlation time, the correlation
+    amplitude, a metadata column holding the acquisition time and the mean
+    count rate in its first two rows and zeros below, and optionally the
+    amplitude uncertainty and the mask.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the file that is written.
+    correlation_amplitude : numpy.ndarray
+        Amplitude of the correlation function.
+    correlation_time : numpy.ndarray
+        Correlation times.
+    mean_countrate : float
+        Mean count rate of the experiment in kHz.
+    acquisition_time : float
+        Acquisition time of the FCS experiment in seconds.
+    correlation_amplitude_uncertainty : numpy.ndarray, optional
+        Estimate of the uncertainty of the correlation amplitude, written as
+        the fourth column.
+    mask : numpy.ndarray, optional
+        Per-point mask, written as the fifth column.
+    verbose : bool
+        If True, print the name of the file that is written.
+
+    Raises
+    ------
+    ValueError
+        If a mask is given without the uncertainties that precede it in the
+        column layout — the format has no slot for a mask on its own.
     """
     if verbose:
         print("Writing kristine .cor to file: ", filename)
-    col_1 = np.array(correlation_time)
-    col_2 = np.array(correlation_amplitude)
-    col_3 = np.zeros_like(correlation_amplitude)
+    col_1 = np.asarray(correlation_time, dtype=np.float64)
+    col_2 = np.asarray(correlation_amplitude, dtype=np.float64)
+    col_3 = np.zeros_like(col_2)
     col_3[0] = acquisition_time
     col_3[1] = mean_countrate
-    if isinstance(
-            correlation_amplitude_uncertainty,
-            np.ndarray
-    ):
-        data = np.vstack(
-            [
-                col_1,
-                col_2,
-                col_3,
-                correlation_amplitude_uncertainty
-            ]
-        ).T
-    else:
-        data = np.vstack(
-            [
-                col_1,
-                col_2,
-                col_3
-            ]
+    columns = [col_1, col_2, col_3]
+    if isinstance(correlation_amplitude_uncertainty, np.ndarray):
+        columns.append(np.asarray(correlation_amplitude_uncertainty, dtype=np.float64))
+    elif isinstance(mask, np.ndarray):
+        raise ValueError(
+            "A kristine file stores the mask in its fifth column, behind the "
+            "correlation-amplitude uncertainties; a mask cannot be written "
+            "without them."
         )
     if isinstance(mask, np.ndarray):
-        data = np.vstack([data, mask])
-    data = data.T
+        columns.append(np.asarray(mask, dtype=np.float64))
+    # np.savetxt writes one line per row, so the columns are stacked in their
+    # final (n_points, n_columns) order and not transposed afterwards.
     np.savetxt(
         filename,
-        data,
+        np.column_stack(columns),
     )
 
 
