@@ -7,6 +7,11 @@ description: >-
   of ChiSurf.
 triggers:
   - unzip
+  - unpack
+  - zip
+  - zip file
+  - extract
+  - tar
   - archive
   - convert
   - install

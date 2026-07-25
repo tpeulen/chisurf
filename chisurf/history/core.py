@@ -11,6 +11,77 @@ from chisurf import typing
 from chisurf.core.actions._infra import canonical as _canon
 
 
+def _json_fallback(value: typing.Any) -> str:
+    """Return a text stand-in for a value JSON cannot represent.
+
+    Action payloads legitimately carry live objects — ``dataset.add`` records
+    the reader instance it was handed — and those cannot be encoded. Writing
+    the repr keeps the surrounding event readable instead of failing the
+    whole file.
+
+    Parameters
+    ----------
+    value : object
+        The value the encoder could not handle.
+
+    Returns
+    -------
+    str
+    """
+    try:
+        return f"<{type(value).__name__}: {value!r}>"[:500]
+    except Exception:
+        return f"<{type(value).__name__}>"
+
+
+def json_safe_payload(payload: typing.Any, _depth: int = 0) -> typing.Any:
+    """Return *payload* with anything JSON cannot encode replaced by text.
+
+    History is a durable record: it is written to JSONL and embedded whole
+    into a ``.csp`` project. An action payload, however, holds whatever the
+    caller passed — ``dataset.add`` is handed a live reader object — and one
+    such value used to make **saving a project impossible**, because the
+    events are serialised as part of it.
+
+    Sanitising here rather than at each writer keeps every consumer safe and
+    stops the live object being held alive by the event list.
+
+    Parameters
+    ----------
+    payload : object
+        The value to sanitise; usually the action payload dict.
+    _depth : int
+        Recursion guard for deeply nested structures.
+
+    Returns
+    -------
+    object
+        A structure containing only JSON-encodable values.
+
+    Examples
+    --------
+    >>> json_safe_payload({"n": 1, "reader": object()})["n"]
+    1
+    >>> json_safe_payload({"reader": object()})["reader"].startswith("<object")
+    True
+    """
+    if _depth > 12:
+        return _json_fallback(payload)
+    if payload is None or isinstance(payload, (str, int, float, bool)):
+        return payload
+    if isinstance(payload, dict):
+        return {
+            str(key): json_safe_payload(value, _depth + 1) for key, value in payload.items()
+        }
+    if isinstance(payload, (list, tuple, set)):
+        return [json_safe_payload(item, _depth + 1) for item in payload]
+    try:
+        json.dumps(payload)
+    except (TypeError, ValueError):
+        return _json_fallback(payload)
+    return payload
+
+
 class OperationHistory:
     """Append-only operation history for traceable user actions."""
 
@@ -60,7 +131,7 @@ class OperationHistory:
             "action_type": str(action_type),
             "source_uid": None if source_uid is None else str(source_uid),
             "target_uid": None if target_uid is None else str(target_uid),
-            "payload": payload or {},
+            "payload": json_safe_payload(payload or {}),
             "summary": str(summary),
         }
         with self._lock:
@@ -162,10 +233,15 @@ class OperationHistory:
                     }
                     fp.write("# CHISURF HISTORY METADATA: " + json.dumps(metadata, sort_keys=True) + "\n")
                 
-                # Write events
+                # Write events. An action payload can carry a live object —
+                # ``dataset.add`` records the reader it was given — and a
+                # single one of those used to raise, which took the whole
+                # project save down with it. History is a record, not a
+                # transport: an object that cannot be represented is written
+                # as its repr rather than losing every event around it.
                 for row in rows:
-                    fp.write(json.dumps(row, sort_keys=True) + "\n")
-        
+                    fp.write(json.dumps(row, sort_keys=True, default=_json_fallback) + "\n")
+
         return path
 
     def load_jsonl(self, filename: typing.Union[str, Path], replace: bool = True) -> typing.Dict[str, typing.Any]:

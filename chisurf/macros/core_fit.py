@@ -2696,11 +2696,19 @@ def load_fit_project(project_path: str):
             pass
 
     # --- Rebuild fit groups and restore their state -----------------------
-    fits_map = proj.fits or {}
-    for key, rec in fits_map.items():
+    # ``Project.fits`` is a list of records, each carrying its own uid — as
+    # every other consumer of it assumes. Iterating it as a mapping raised
+    # ``'list' object has no attribute 'items'`` and made every project
+    # unloadable.
+    for position, rec in enumerate(proj.fits or []):
         if not isinstance(rec, dict):
             continue
-        if rec.get("type") != "fit_group":
+        key = rec.get("uid") or rec.get("id") or f"#{position}"
+        # ``type`` is optional: the writer emits fit-group records without it,
+        # and demanding it here skipped every fit in every saved project. A
+        # record that carries ``local_fits`` *is* a fit group.
+        record_type = rec.get("type")
+        if record_type is not None and record_type != "fit_group":
             continue
 
         local_fits = rec.get("local_fits") or []

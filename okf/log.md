@@ -2,6 +2,38 @@
 
 ## 2026-07-25
 
+* **The example prompts are the tests.** "chato" had no documented way in: a
+  user faced an empty box with no idea what to type, and nothing checked that
+  the things we claimed it could do still worked.
+  `chisurf/core/agent/examples/prompts.yaml` is one catalogue with three
+  consumers — the table in the user guide, the starter menu in the assistant
+  panel, and the live end-to-end tests. Twelve prompts, from "What is in this
+  folder?" to the FRET pair and the zipped archive. Each carries the sample
+  data it needs, the tools that **must** be used, the skills its wording must
+  pull in and the files it should leave behind, so an example cannot quietly
+  stop working. The offline half (completeness, tools and skills that exist,
+  routing, buildable scenarios) always runs; the live half is **allowed not to
+  run** — no key, no network or an exhausted account is a skip, because a
+  documentation example must never break a build on a machine with no model
+  configured. `--list-examples` and `--example <id>` on the CLI.
+  **They paid for themselves immediately.** The first live pass found three
+  natural phrasings that reached no skill ("fit *every decay*", "keep it *the
+  same in both*", "the *zip file*") — fixed with a `*` wildcard in trigger
+  phrases and better triggers — and the `save-the-work` example uncovered
+  three separate defects between the request and a file on disk:
+  (1) `save_project` dispatched `fit.save`, a GUI-only per-fit numeric export
+  that does nothing head-lessly, instead of `project.save`;
+  (2) saving *any* session with loaded data raised `Object of type TCSPCReader
+  is not JSON serializable`, because `dataset.add` records the live reader in
+  its history payload and the events are embedded whole in the archive —
+  `history.core.json_safe_payload` now sanitises payloads at record time;
+  (3) loading a project iterated `Project.fits` — a **list** — as a mapping,
+  and skipped every record for want of a `type` field the writer never emits,
+  so no project had been loadable at all.
+  A save/load round trip now restores datasets, fits and chi2r; 11 tests in
+  `test/agent/test_project_roundtrip.py` keep it that way. All twelve examples
+  pass live against Mistral.
+
 * **One ROI class replaces seven ad-hoc notions of "region"; MIA's drift
   correction ported on top of it.** ChiSurf had at least seven unrelated
   regions — index ranges in the image correlator (`ics/masks.py`), a painted

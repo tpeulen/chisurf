@@ -391,6 +391,16 @@ class AgentPanelWidget(QtWidgets.QWidget):
             " stop:0 #7aa2f7, stop:1 #9ece6a); border-radius: 3px; }"
         )
 
+        self.examples_btn = QtWidgets.QToolButton()
+        self.examples_btn.setText("💡 Things to ask")
+        self.examples_btn.setToolTip(
+            "Example prompts that are shipped with ChiSurf and tested against a real model"
+        )
+        self.examples_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        self.examples_btn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+        self.examples_btn.setMenu(self._build_examples_menu())
+        layout.addWidget(self.examples_btn)
+
         self.input = EnterAwarePlainTextEdit(self)
         self.input.setPlaceholderText("Ask something... (Enter to send, Shift+Enter for newline)")
         self.input.setMaximumHeight(80)
@@ -1017,6 +1027,36 @@ updated: 2026-06-09
 
         self._append_sys(f"Error: {error_msg}")
         std_logging.error(f"Agent error: {error_msg}")
+
+    def _build_examples_menu(self) -> QtWidgets.QMenu:
+        """Return a menu of the shipped example prompts.
+
+        A new user's hardest question is "what can I even ask it". These are
+        the same examples the documentation shows and the live tests run, so
+        the menu cannot drift from what actually works.
+
+        Returns
+        -------
+        QtWidgets.QMenu
+        """
+        from chisurf.core.agent.example_prompts import starter_prompts
+
+        menu = QtWidgets.QMenu(self)
+        for example in starter_prompts(limit=10):
+            action = menu.addAction(example.title)
+            action.setToolTip(" ".join(example.explanation.split()))
+            action.triggered.connect(
+                lambda _checked=False, text=example.prompt.strip(): self._use_example(text)
+            )
+        if menu.isEmpty():
+            menu.addAction("(no examples available)").setEnabled(False)
+        return menu
+
+    def _use_example(self, text: str) -> None:
+        """Put an example prompt in the input box for the user to edit or send."""
+        self.input.setPlainText(text)
+        self.input.setFocus()
+        self.input.moveCursor(QtGui.QTextCursor.End)
 
     def _build_agent_context(self, mode: AgentMode) -> AgentContext:
         """Return the execution context for a tool-enabled run.

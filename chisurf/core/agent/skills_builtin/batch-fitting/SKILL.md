@@ -14,6 +14,11 @@ triggers:
   - all of them
   - compare
   - titration
+  - every *
+  - each *
+  - all the *
+  - same model
+  - the same way
 tools:
   - list_files
   - load_data

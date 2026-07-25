@@ -19,6 +19,11 @@ triggers:
   - common
   - constrain
   - titration series
+  - titration
+  - keep the same
+  - same in both
+  - both of these
+  - across all
 tools:
   - link_parameters
   - unlink_parameters

@@ -63,6 +63,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--list-skills", action="store_true", help="Print the skill catalogue and exit."
     )
     parser.add_argument(
+        "--list-examples",
+        action="store_true",
+        help="Print the example prompts and exit.",
+    )
+    parser.add_argument(
+        "--example",
+        metavar="ID",
+        help="Run one of the example prompts (see --list-examples).",
+    )
+    parser.add_argument(
         "--no-skills",
         action="store_true",
         help="Do not auto-load skills (they stay reachable through load_skill).",
@@ -185,7 +195,27 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"    triggers: {', '.join(skill.triggers)}")
         return 0
 
+    if arguments.list_examples:
+        from chisurf.core.agent.example_prompts import describe_examples
+
+        print(describe_examples())
+        return 0
+
     request = " ".join(arguments.request).strip()
+    if arguments.example:
+        from chisurf.core.agent.example_prompts import get_example, load_examples
+
+        example = get_example(arguments.example)
+        if example is None:
+            print(
+                f"error: no example called {arguments.example!r}. Available: "
+                f"{[item.id for item in load_examples()]}",
+                file=sys.stderr,
+            )
+            return 2
+        request = example.prompt.strip()
+        if not arguments.quiet:
+            print(f"# {example.title}\n> {request}\n", file=sys.stderr)
     if not request and not arguments.interactive:
         build_parser().print_help()
         return 2

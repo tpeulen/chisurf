@@ -64,6 +64,10 @@ def trigger_pattern(trigger: str) -> re.Pattern[str]:
     allowed to sit up to :data:`_TRIGGER_GAP` words apart, and a trailing
     plural is optional.
 
+    A ``*`` in a trigger stands for any single word, so ``every *`` covers
+    "every decay", "every file" and "every measurement" without listing the
+    nouns a user might reach for.
+
     Parameters
     ----------
     trigger : str
@@ -82,12 +86,15 @@ def trigger_pattern(trigger: str) -> re.Pattern[str]:
     True
     >>> bool(trigger_pattern("decay").search("decayed sample"))
     False
+    >>> bool(trigger_pattern("every *").search("fit every decay"))
+    True
     """
-    words = [word for word in re.split(r"\W+", trigger.strip().lower()) if word]
+    words = [word for word in re.split(r"[^\w*]+", trigger.strip().lower()) if word]
     if not words:
         return re.compile(r"(?!x)x")  # matches nothing
-    parts = [re.escape(word) for word in words]
-    parts[-1] += "s?"
+    parts = [r"\w+" if word == "*" else re.escape(word) for word in words]
+    if words[-1] != "*":
+        parts[-1] += "s?"
     joined = (r"\W+(?:\w+\W+){0," + str(_TRIGGER_GAP) + r"}").join(parts)
     return re.compile(r"\b" + joined + r"\b", flags=re.IGNORECASE)
 

@@ -125,3 +125,18 @@ class TestAgentPanelWidget:
         from chisurf.core.agent import build_default_registry
 
         json.dumps(build_default_registry().to_openai_tools())
+
+    def test_the_panel_offers_the_shipped_example_prompts(self, qapp):
+        """A new user's hardest question is what to ask it."""
+        from chisurf.core.agent.example_prompts import starter_prompts
+
+        panel = AgentPanelWidget()
+        actions = [action.text() for action in panel.examples_btn.menu().actions()]
+        assert actions
+        assert actions[0] == starter_prompts(limit=1)[0].title
+
+    def test_choosing_an_example_fills_the_input(self, qapp):
+        """It is put in the box to edit, not sent behind the user's back."""
+        panel = AgentPanelWidget()
+        panel._use_example("Fit the decay in this folder.")
+        assert panel.input.toPlainText() == "Fit the decay in this folder."

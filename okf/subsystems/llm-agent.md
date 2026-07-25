@@ -192,6 +192,28 @@ rather than raising when none exists.
   `convolve.lineEdit` unconditionally — a *widget* attribute — so it raised
   for every Qt-free model. The presentation write is now guarded.
 
+# Example prompts are the tests
+
+`chisurf/core/agent/examples/prompts.yaml` is one catalogue serving three
+consumers: the table in the user guide, the starter menu in the assistant
+panel, and the live end-to-end tests. Writing them once is what stops the
+three drifting — a documented example that is never exercised rots, and a
+test nobody reads teaches nobody.
+
+Each entry carries the sample data it needs, the tools that **must** be used,
+the skills its wording must pull in, and the files it should leave behind.
+The offline half (catalogue completeness, tools and skills that exist,
+routing, buildable scenarios) always runs; the live half is **allowed not to
+run** — no key, no network or an exhausted account is a skip, because a
+documentation example must never break a build on a machine with no model
+configured. What it will not do is pass quietly when the assistant does the
+wrong thing.
+
+They pay for themselves: the first live run found three natural phrasings
+that reached no skill ("fit **every decay**", "keep it **the same in both**",
+"the **zip file**"), and the `save-the-work` example uncovered three separate
+defects between the request and a file on disk.
+
 # Testing
 
 `test/agent/` covers the tools against real sample data, the loop against a

@@ -1,0 +1,190 @@
+# Example prompts for the ChiSurf assistant ("chato").
+#
+# This file is the single source of truth for three things:
+#
+#   * documentation — the table in docs/guides/40_ai_assistant.md,
+#   * the starter prompts offered in the assistant panel,
+#   * the live end-to-end tests (test/agent/test_example_prompts.py).
+#
+# That is deliberate: an example that is only in the documentation rots, and
+# a test that nobody reads teaches nobody. Written here, an example is
+# demonstrated to work every time the live suite runs.
+#
+# Fields
+# ------
+# id            stable identifier (kebab-case)
+# title         short label, shown in the GUI
+# prompt        the text a user would actually type
+# explanation   what the assistant is expected to do, in prose
+# data          sample directory under test/data this needs (optional)
+# needs         "session" when data must already be loaded, "fitted-session"
+#               when a fit must exist too
+# must_call     tools that have to be used; a miss is a harness defect
+# should_call   tools that are the natural choice but not the only one
+# expect_skills skills that must be auto-loaded from the wording
+# writes        files the prompt is expected to produce
+# safety        highest tool tier the example needs
+
+examples:
+  - id: what-is-here
+    title: See what data you have
+    prompt: What is in this folder?
+    explanation: >-
+      Lists the files, says what kind of measurement each one is, and points
+      out which are instrument-response references rather than samples —
+      without loading or changing anything.
+    data: tcspc/EasyTau300
+    must_call: [list_files]
+    expect_skills: [explore-data]
+    safety: read
+
+  - id: describe-session
+    title: Ask what is already loaded
+    prompt: What do I have open at the moment?
+    explanation: >-
+      Summarises the datasets and fits in the session, with their indices and
+      reduced chi-squares.
+    needs: session
+    must_call: [describe_session]
+    safety: read
+
+  - id: fit-one-decay
+    title: Fit a fluorescence decay properly
+    prompt: >-
+      I measured a fluorescence decay here. Fit it properly and tell me the
+      lifetimes.
+    explanation: >-
+      Loads the decay and its instrument response, attaches the IRF, adds
+      lifetime components until the reduced chi-square stops improving, and
+      reports the lifetimes with uncertainties. Reaches chi2r ~1.03 on the
+      sample data.
+    data: tcspc/single-decay
+    must_call: [load_data]
+    should_call: [auto_fit_decay, set_irf, run_fit]
+    expect_skills: [fit-decay]
+    safety: write
+
+  - id: fit-and-plot
+    title: Fit and show me the result
+    prompt: Fit the decay in this folder and make a plot I can look at.
+    explanation: >-
+      As above, and writes a PNG of the data, the fitted curve and the
+      weighted residuals — the picture a reader judges a fit by.
+    data: tcspc/single-decay
+    must_call: [plot_fit]
+    writes: ["*.png"]
+    safety: write
+
+  - id: fret-efficiency
+    title: FRET efficiency and distance from a labelled pair
+    prompt: >-
+      These are donor-only and donor-acceptor measurements of a labelled
+      sample, each with its own IRF. Work out the FRET efficiency and the
+      distance.
+    explanation: >-
+      Fits the donor-only reference, builds a FRET model on the quenched
+      sample, ties the donor photophysics to the reference, and reports the
+      efficiency, the inter-dye distance and the donor-only fraction with the
+      assumed Foerster radius. Reaches E ~ 0.32 at R ~ 52 A on the sample data.
+    data: tcspc/EasyTau300
+    must_call: [load_data, create_fit]
+    should_call: [set_irf, link_parameters, auto_fit_decay]
+    expect_skills: [fret-from-decays]
+    safety: write
+
+  - id: batch-folder
+    title: Fit a whole folder the same way
+    prompt: >-
+      Fit every decay in this folder with the same model and give me a csv of
+      the results.
+    explanation: >-
+      Creates one fit per measurement, runs them all, checks each one, and
+      exports a table with every parameter and reduced chi-square. Reference
+      measurements are not fitted as samples.
+    data: tcspc/EasyTau300
+    must_call: [load_data, create_fit, run_fit, export_fit_results]
+    expect_skills: [batch-fitting]
+    writes: ["*.csv"]
+    safety: write
+
+  - id: judge-a-fit
+    title: Ask whether a fit is any good
+    prompt: Is this fit any good? What would you check?
+    explanation: >-
+      Reports the reduced chi-square, the Durbin-Watson statistic and the
+      parameter uncertainties, and names the most likely cause when something
+      is off — a missing instrument response, too few components, a fit range
+      that includes scattered light.
+    needs: fitted-session
+    must_call: [fit_report]
+    should_call: [get_fit, plot_fit]
+    expect_skills: [diagnose-fit]
+    safety: read
+
+  - id: fit-correlation
+    title: Fit an FCS correlation curve
+    prompt: >-
+      Fit this FCS curve and tell me the diffusion time and how many
+      molecules are in the volume.
+    explanation: >-
+      Loads the correlation curve, fits a diffusion model, and reports the
+      particle number and diffusion time — saying which parameters it fixed,
+      because a correlation result is meaningless without that.
+    data: fcs/kristine
+    must_call: [load_data, create_fit, run_fit]
+    expect_skills: [fit-correlation]
+    safety: write
+
+  - id: global-analysis
+    title: Share a parameter between measurements
+    prompt: >-
+      Fit the two decays in this folder and link the long lifetime between
+      them so they share one value. Tell me what that shared value is.
+    explanation: >-
+      Fits each measurement, then links the named lifetime so a single value
+      is determined by both datasets at once, and reruns. Reports what was
+      linked and what the shared value came out as.
+    data: tcspc/repeats
+    must_call: [link_parameters]
+    should_call: [create_fit, auto_fit_decay, run_fit]
+    expect_skills: [global-fitting]
+    safety: write
+
+  - id: unpack-and-fit
+    title: Start from an archive
+    prompt: >-
+      My measurement is in the zip file here. Unpack it somewhere sensible,
+      fit the decay, and leave me a plot.
+    explanation: >-
+      Runs the unpacking outside ChiSurf, then does the analysis inside it —
+      writing into a new directory and leaving the original archive alone.
+    data: tcspc/zipped
+    must_call: [run_command, load_data]
+    should_call: [plot_fit]
+    expect_skills: [use-the-computer]
+    safety: dangerous
+
+  - id: custom-calculation
+    title: Something no tool covers
+    prompt: >-
+      Using python, tell me the total number of photons in each loaded
+      measurement.
+    explanation: >-
+      Runs a short script inside the live session — the escape hatch for
+      anything the built-in tools do not do.
+    needs: session
+    must_call: [run_python]
+    expect_skills: [write-analysis-script]
+    safety: dangerous
+
+  - id: save-the-work
+    title: Keep the results
+    prompt: Save all of this so I can carry on tomorrow.
+    explanation: >-
+      Writes the whole session — data, fits and parameters — to a project
+      file that reopens in ChiSurf.
+    needs: fitted-session
+    must_call: [save_project]
+    expect_skills: [report-results]
+    writes: ["*.csp"]
+    safety: write

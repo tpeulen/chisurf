@@ -587,13 +587,39 @@ def set_fit_range(
     safety=SAFETY_WRITE,
 )
 def save_project(context: AgentContext, path: str) -> dict[str, Any]:
-    """Save the session to a ChiSurf project file."""
+    """Save the session to a ChiSurf project archive.
+
+    ``fit.save`` sounds like the right action and is not: it is a per-fit
+    numeric export that needs an open fit window and does nothing at all
+    head-lessly. The project archive is ``project.save``, which works without
+    a GUI.
+    """
     target = context.resolve_path(path)
+    if target.suffix.lower() != ".csp":
+        target = target.with_suffix(".csp")
     target.parent.mkdir(parents=True, exist_ok=True)
-    cs.core.actions.dispatch(name="fit.save", payload={"target_path": str(target)})
-    if not target.exists():
-        raise ToolError(f"project was not written to {target}")
-    return {"ok": True, "path": str(target), "size_kb": round(target.stat().st_size / 1024.0, 1)}
+
+    cs.core.actions.dispatch(
+        name="project.save",
+        payload={"target_path": str(target), "project_name": target.stem},
+    )
+    if not target.is_file():
+        # The macro derives its own file name from the project name when the
+        # target names a directory; find what it actually wrote.
+        candidates = sorted(
+            target.parent.glob("*.csp"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
+        if not candidates:
+            raise ToolError(f"the project was not written to {target}")
+        target = candidates[0]
+
+    return {
+        "ok": True,
+        "path": str(target),
+        "size_kb": round(target.stat().st_size / 1024.0, 1),
+        "n_fits": len(context.fits),
+        "n_datasets": len(context.datasets),
+    }
 
 
 @registry.add(
