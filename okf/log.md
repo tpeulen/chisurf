@@ -2,6 +2,15 @@
 
 ## 2026-07-25
 
+
+* **chiplot Batch 23 — legacy burst selector off pyqtgraph (allow-list
+  28 → 27).** Migrated `plugins/burst/burst_selection/gui/legacy/burst_selector.py`
+  (per-feature histogram + overlaid GMM fit). `pg.PlotWidget`→`cp.Plot`;
+  `pg.BarGraphItem(alpha=0.7)`→`bars(brush=(0,0,255,178))`; GMM sum + dashed
+  per-component lines via `line(style="dash")` + `cp.int_color`. Screenshot-
+  verified (bimodal blue histogram, red fit, dashed components, legend). See
+  [PRD-64](prds/prd-64.md).
+
 * **Global analysis reached the agent, which is what ChiSurf is for.** The
   harness could fit measurements one at a time; it could not tie them
   together — so the one thing the program is named for was out of reach.
