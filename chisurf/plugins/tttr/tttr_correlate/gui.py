@@ -4,8 +4,8 @@ import chisurf as cs
 
 import sys
 
-import pyqtgraph as pg
 from chisurf.gui import QtCore, QtWidgets
+from chisurf.gui import chiplot as cp
 # Now using qtpy compatibility layer through cs.gui import
 
 import numpy as np
@@ -579,8 +579,7 @@ class CorrelateTTTR(
 
     def clear_curves(self):
         self._curves = list()
-        plot = self.plot.getPlotItem()
-        plot.clear()
+        self.plot.clear()
 
     def get_data_curves(
             self,
@@ -590,13 +589,10 @@ class CorrelateTTTR(
         return self._curves
 
     def plot_curves(self):
-        self.legend.close()
-        plot = self.plot.getPlotItem()
-        plot.clear()
-
-        self.legend = plot.addLegend()
-        plot.setLogMode(x=True, y=False)
-        plot.showGrid(True, True, 1.0)
+        self.plot.clear()
+        self.plot.legend()
+        self.plot.set_log(x=True, y=False)
+        self.plot.grid(x=True, y=True, alpha=1.0)
 
         # Import settings here to make them dynamic
         from chisurf.core.settings import cs_settings, colors
@@ -606,12 +602,10 @@ class CorrelateTTTR(
         lw = plot_settings['line_width']
         for i, curve in enumerate(self._curves):
             w = lw * 0.5 if i != current_curve else 1.5 * lw
-            plot.plot(
-                x=curve.x, y=curve.y,
-                pen=pg.mkPen(
-                    colors[i % len(colors)]['hex'],
-                    width=w
-                ),
+            self.plot.line(
+                curve.x, curve.y,
+                pen=colors[i % len(colors)]['hex'],
+                width=w,
                 name=curve.name
             )
 
@@ -656,10 +650,9 @@ class CorrelateTTTR(
         self.correlator.correlator_thread.finished.connect(self.add_curve)
         # self.curve_selector.itemClicked.connect(self.plot_curves)
 
-        self.plot = pg.PlotWidget()
-        plot = self.plot.getPlotItem()
+        self.plot = cp.Plot()
         self.verticalLayout_9.addWidget(self.plot)
-        self.legend = plot.addLegend()
+        self.plot.legend()
         self.cs.onRemoveDataset = self.onRemoveDataset
 
 

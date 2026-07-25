@@ -570,7 +570,20 @@ class _PgCanvas(base.Canvas):
         return _Text(item, self._pi)
 
     def add_legend(self, *, offset=(30, 30)) -> None:
-        """Enable a legend collecting named handles."""
+        """Enable a legend collecting named handles (idempotent).
+
+        Removes any legend created by an earlier call first, so refreshing a
+        plot (clear → legend → redraw) does not stack orphaned legend boxes in
+        the scene.
+        """
+        existing = getattr(self._pi, "legend", None)
+        if existing is not None:
+            scene = existing.scene()
+            if scene is not None:
+                scene.removeItem(existing)
+            else:
+                self._pi.removeItem(existing)
+            self._pi.legend = None
         self._pi.addLegend(offset=offset)
 
     def readd(self, handle: H.Handle) -> None:

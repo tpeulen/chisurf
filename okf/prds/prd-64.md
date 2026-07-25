@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 51):*
+*Landed so far (allow-list 76 → 49):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -336,6 +336,15 @@ screenshot/qtbot verification after each cluster.
   same way; it landed in a follow-up combined commit because its file also
   carried a concurrent i18n string-wrapping edit from another working-tree
   instance (already backed by that instance's committed `.qm`/`.ts`).
+- **Batch 9** (allow-list 51 → 49) — migrated the two TTTR curve-viewer tools
+  `plugins/tttr/tttr_histogram` and `plugins/tttr/tttr_correlate` onto the native
+  API. Both share the same `pg.PlotWidget` + `getPlotItem().addLegend()` +
+  per-refresh `plot()`/`setLogMode`/`showGrid` idiom, mapped to
+  `cp.Plot()` + `plot.line(...)` + `set_log`/`grid` + `legend()`. The only API
+  work was making the backend's `legend()` **idempotent** — it now removes any
+  legend from a prior call before adding a fresh one, so the clear→legend→redraw
+  refresh loop no longer stacks orphaned legend boxes in the scene (previously
+  each tool had to `legend.close()` the old one by hand).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

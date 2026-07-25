@@ -1,5 +1,20 @@
 # Update Log
 
+## 2026-07-25
+
+* **chiplot Batch 9 — migrated the two TTTR curve-viewer tools off pyqtgraph
+  (allow-list 51 → 49).** Ported `plugins/tttr/tttr_histogram` and
+  `plugins/tttr/tttr_correlate` from `pg.PlotWidget` + `getPlotItem()` +
+  `addLegend()`/`plot()`/`setLogMode`/`showGrid`/`mkPen` to `cp.Plot` +
+  `line`/`set_log`/`grid`/`legend`. Both share an identical per-refresh idiom
+  (clear → re-add legend → redraw curves), which exposed one real API gap: the
+  backend's `legend()` was not idempotent, so a refresh loop stacked orphaned
+  legend boxes (the old code hand-managed this with `legend.close()`). Fixed it
+  at the seam — `add_legend` now removes any legend from a prior call before
+  adding a fresh one — so call sites just do `clear()` then `legend()`. Seam
+  guard green, both widgets construct headless and refresh cleanly. See
+  [PRD-64](prds/prd-64.md).
+
 ## 2026-07-24
 
 * **All guide images converted to numbered `{figure}` directives.** 29 of the 44

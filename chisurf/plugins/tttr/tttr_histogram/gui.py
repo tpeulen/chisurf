@@ -5,9 +5,9 @@ import sys
 import re
 
 import numpy as np
-import pyqtgraph as pg
 
 from chisurf.gui import QtWidgets
+from chisurf.gui import chiplot as cp
 
 import chisurf.core.decorators
 import chisurf.core.curve
@@ -51,10 +51,9 @@ class HistogramTTTR(
             experiment=chisurf.core.experiments.types['tcspc']
         )
         self.verticalLayout_6.addWidget(self.curve_selector)
-        self.plot = pg.PlotWidget()
-        plot = self.plot.getPlotItem()
+        self.plot = cp.Plot()
         self.verticalLayout_9.addWidget(self.plot)
-        self.legend = plot.addLegend()
+        self.plot.legend()
         self.curve_selector.onRemoveDataset = self.remove_curve
 
         # Actions
@@ -84,25 +83,20 @@ class HistogramTTTR(
 
     def clear_curves(self):
         super().clear_curves()
-        plot = self.plot.getPlotItem()
-        plot.clear()
+        self.plot.clear()
 
     def plot_curves(self):
-        self.legend.close()
-        plot = self.plot.getPlotItem()
-        plot.clear()
-        self.legend = plot.addLegend()
+        self.plot.clear()
+        self.plot.legend()
 
         current_curve = self.curve_selector.selected_curve_index
         for i, curve in enumerate(self._curves):
             l = lw * 0.5 if i != current_curve else 1.5 * lw
             color = chisurf.core.settings.colors[i % len(chisurf.core.settings.colors)]['hex']
-            plot.plot(x=curve.x, y=curve.y,
-                         pen=pg.mkPen(color, width=l),
-                         name=curve.name)
+            self.plot.line(curve.x, curve.y, pen=color, width=l, name=curve.name)
 
-        plot.setLogMode(x=False, y=True)
-        plot.showGrid(True, True, 1.0)
+        self.plot.set_log(x=False, y=True)
+        self.plot.grid(x=True, y=True, alpha=1.0)
 
     def add_curve(
             self,
