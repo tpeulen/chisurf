@@ -304,13 +304,21 @@ def test_save_writes_what_the_viewer_holds_not_the_source_file(loaded, tmp_path)
     Otherwise `save` is a file copy and every bit of work in the session is lost.
     """
     cmd, view, _, errors = loaded
+    before = np.asarray(view._atoms["xyz"], dtype=float).copy()
+
     cmd.do("translate [100, 0, 0]")
     out = tmp_path / "moved.pdb"
     cmd.do(f"save {out}")
     assert errors == []
+
     back = _written_coords(out)
-    original = np.asarray(view._atoms["xyz"], dtype=float)
-    assert back[:, 0].mean() > original[:, 0].mean() + 50.0
+    # The file carries the transform, measured against where the atoms *were*.
+    assert back[:, 0].mean() == pytest.approx(before[:, 0].mean() + 100.0, abs=1e-3)
+    # ...and it agrees with the atom array, which a transform now also moves.
+    # This used to be the opposite assertion: `_apply_rigid_transform` skipped
+    # structured arrays, so `save` (reading the renderer's copy) and the atom
+    # array disagreed by exactly the translation.
+    assert np.allclose(back, np.asarray(view._atoms["xyz"], dtype=float), atol=5e-4)
 
 
 def test_an_empty_selection_is_reported(loaded, tmp_path):

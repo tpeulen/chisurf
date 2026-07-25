@@ -423,6 +423,14 @@ class MeasurementMixin(BaseCmd):
             self._emit_error(str(exc))
             return
 
+        # Those coordinates are the renderer's, in scene units. RMSD is a length
+        # and scales with them, so without this the number came out ten times too
+        # large -- with an Angstrom sign on it, and disagreeing with `align`,
+        # which reads the atom array.
+        scale = float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
+        if scale:
+            rmsd = rmsd / scale
+
         if use_ca:
             msg = (
                 f"RMSD between {mob_name} and {tgt_name} over {count} CA atoms: "

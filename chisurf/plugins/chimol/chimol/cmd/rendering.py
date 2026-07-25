@@ -313,6 +313,131 @@ class RenderingMixin(BaseCmd):
         else:
             viewer.zoom(buffer=float(buffer), complete=bool(complete))
 
+    @command("scene")
+    def scene(
+        self,
+        key: str = "",
+        action: str = "recall",
+        message: str = "",
+        view: str = "1",
+        color: str = "1",
+        active: str = "1",
+        rep: str = "1",
+    ) -> None:
+        """Store and recall named scenes (PyMOL ``scene``).
+
+        A scene bookmarks more than a camera: which objects are enabled, how each
+        is drawn, and what colour it is. That is the difference from
+        ``get_view``/``set_view``, and it is what makes a scene able to reproduce a
+        figure rather than just a viewpoint.
+
+        ``scene`` with no arguments lists the stored scenes.
+
+        Parameters
+        ----------
+        key : str
+            Scene name. ``auto`` steps to the next one; ``*`` with
+            ``action=delete`` clears them all.
+        action : str
+            ``store``, ``recall`` (the default), ``delete``, ``rename``,
+            ``next``, ``previous``.
+        message : str, optional
+            Text carried with the scene, or the new name when renaming.
+        view, color, active, rep : str, optional
+            Per-aspect flags, as in PyMOL. Set one to ``0`` to leave that aspect
+            alone, so a scene can carry only an orientation or only a colouring.
+        """
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        store = self._scene_store
+        verb = str(action).strip().lower() or "recall"
+        name = str(key).strip()
+
+        if not name and verb == "recall":
+            names = store.names()
+            self._emit_message(
+                "scene: " + (", ".join(names) if names else "no scenes stored")
+            )
+            return
+
+        aspects = tuple(
+            aspect
+            for aspect, flag in (
+                ("view", view), ("color", color), ("active", active), ("rep", rep)
+            )
+            if str(flag).strip().lower() not in ("0", "off", "false", "no")
+        )
+
+        if verb == "store":
+            if not name or name == "auto":
+                name = f"scene_{len(store) + 1:03d}"
+            store.store(viewer, name, aspects=aspects, message=message)
+            self._emit_message(
+                f"scene: stored '{name}' ({', '.join(aspects) or 'nothing'})"
+            )
+            self._last_scene = name
+            return
+
+        if verb == "delete":
+            if store.delete(name):
+                self._emit_message(f"scene: deleted '{name}'")
+            else:
+                self._emit_error(f"scene: no scene named '{name}'")
+            return
+
+        if verb == "rename":
+            if store.rename(name, str(message).strip()):
+                self._emit_message(f"scene: renamed '{name}' to '{message}'")
+            else:
+                self._emit_error(f"scene: cannot rename '{name}'")
+            return
+
+        if verb in ("next", "previous") or name == "auto":
+            step = -1 if verb == "previous" else 1
+            name = store.step(self._last_scene, step)
+            if name is None:
+                self._emit_error("scene: no scenes stored")
+                return
+
+        if name not in store:
+            self._emit_error(f"scene: no scene named '{name}'")
+            return
+
+        restored, missing = store.recall(viewer, name, aspects=aspects)
+        self._last_scene = name
+        note = ""
+        if missing:
+            # A scene recalled against a changed session is a common surprise;
+            # silence makes it look as though the scene itself was wrong.
+            note = f" ({len(missing)} gone: {', '.join(sorted(missing)[:3])})"
+        text = store.get(name).message
+        self._emit_message(
+            f"scene: recalled '{name}', {restored} objects{note}"
+            + (f" -- {text}" if text else "")
+        )
+
+    @property
+    def _scene_store(self):
+        """The session's scenes, created on first use."""
+        store = getattr(self, "_scenes", None)
+        if store is None:
+            from ..renderer.scenes import SceneStore
+
+            store = SceneStore()
+            self._scenes = store
+        return store
+
+    @property
+    def _last_scene(self) -> str | None:
+        """Which scene was last stored or recalled, for ``scene next``."""
+        return getattr(self, "_last_scene_name", None)
+
+    @_last_scene.setter
+    def _last_scene(self, value: str | None) -> None:
+        self._last_scene_name = value
+
     @command("undo")
     def undo(self) -> None:
         """Restore the previous coordinates of an object (PyMOL ``undo``).

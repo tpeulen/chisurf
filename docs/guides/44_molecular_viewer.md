@@ -42,11 +42,12 @@ five menus PyMOL uses, and the grey `all` row applies them to everything at once
 
 ```{figure} figures/chimol_objects_panel.png
 :name: fig-chimol-objects
-:width: 620px
+:width: 680px
 
-The Objects panel. Each molecule gets a row with PyMOL's five menus —
+The Objects panel, here with the ligand and its peptidoglycan split off into
+objects of their own. Each molecule gets a row with PyMOL's five menus —
 **A**ction, **S**how, **H**ide, **L**abel and **C**olour — and the grey `all`
-row applies a choice to every object.
+row applies a choice to every object at once.
 ```
 
 The camera follows PyMOL's commands and its 18-float view tuple, so a view can

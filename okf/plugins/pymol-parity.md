@@ -193,13 +193,51 @@ confusion is exactly what hid `resn`.
 # Tier 2 — routine, works around-able
 
 **Done:** `get_area`, `get_extent`, `get_chains`, `get_title`, `iterate_state`,
-`alter_state`, `spectrum` by property.
+`alter_state`, `spectrum` by property, `scene`.
 
 **Remaining:** `get_bond`, `smooth`, `sort`, `protect`, `mask`, `bond`/`unbond`,
 `h_add`/`h_fill`, `cealign`, `pair_fit`, `intra_fit`, `matrix_copy`,
-`symexp`/`symmetry`, `group`/`ungroup`/`order`, scenes (`scene`/`view`),
-`ramp_new`, `cartoon_putty`, `cartoon_dumbbell`, `cartoon_fancy_helices`,
-`ellipsoid`, `cell`, `slice`.
+`symexp`/`symmetry`, `group`/`ungroup`/`order`, `ramp_new`, `cartoon_putty`,
+`cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
+
+## Two coordinate arrays, and they had drifted apart
+
+The worst defect found so far, because it made commands disagree about where the
+molecule *is*. chimol keeps coordinates twice — `atoms["xyz"]` in Angstrom, and
+the renderer's arrays in scene units — and `_apply_rigid_transform` **skipped
+structured arrays on purpose**. So `translate` and `rotate` moved the render
+arrays and left the atom array behind.
+
+Everything that reads the atom array was then working from pre-transform
+coordinates: `align`, `super`, `get_area`, `get_extent`, `alter_state`, and every
+distance selection. On a displaced copy, `rms` (render arrays) reported 281 Å
+while `align` (atom array) saw nothing to do, announced an RMSD of 0.000, and
+moved nothing.
+
+Both halves are fixed: the transform now reaches the atom array — through the
+scale, since the translation arrives in scene units and the atom array is in
+Angstrom — and `rms` converts its result out of scene units, having previously
+printed a length ten times too large with an Angstrom sign on it.
+
+One test had encoded the desynchronisation (it asserted that `save` and the atom
+array *disagreed* by exactly the translation) and now asserts they agree.
+
+**Sampling is orientation-dependent.** Fixed dot directions mean a rotated
+molecule samples its own surface slightly differently — a few percent at the
+default density. Pure translation is exact. Documented in the concept page; worth
+knowing before comparing two structures' areas.
+
+## Scenes
+
+`scene` stores the camera, object activity, representations and colours, with
+PyMOL's per-aspect flags so a scene can carry only a viewpoint or only a
+colouring. Two things are chimol-specific, both from the camera being stored
+*relative to the scene centre*, which moves when what is drawn changes:
+
+* the view is restored **last**, after the representations — restoring it first
+  lets the rebuild undo it;
+* `view=0` actively holds the camera across the rebuild, since otherwise "leave
+  the view alone" still moves the picture.
 
 ## `get_area` is the one with physics in it
 
@@ -252,25 +290,33 @@ The tracer still draws **spheres only** and cannot render a cartoon. Rather than
 silently omitting the molecule it now says so and points at `show spheres`.
 Cartoon ray-tracing needs ribbon primitives in the tracer and is not started.
 
-# Known GUI defects
+# Capturing the GUI headlessly
 
-Both found while screenshotting, both confined to `QWidget.grab()` paths and not
-to normal painting — but they block automated GUI capture, which the project's
-"never implement a GUI blind" rule depends on:
+Real constraints, verified:
 
-* **Grabbing the objects panel widget alone crashes** under the offscreen
-  platform (hard crash, no traceback). So does `panel.mapTo(window, ...)`.
-  Grabbing the whole window works, so the guide figure is a window grab cropped
-  afterwards with PIL.
-* **Grabbing the window crashes once the panel holds two molecule rows.** One row
-  is fine. Painting with two rows is fine — only the grab fails.
-* Offscreen clamps the window to 640×603 whatever `resize` asks for, so grabs are
-  small; and `QOpenGLWidget` content never appears in a grab at all
-  (`grabFramebuffer` returns black without a display session). The ray tracer is
-  the only way to capture the 3D view headlessly.
+* Offscreen clamps a `QMainWindow` to 640×603 whatever `resize` asks for, so
+  **grab the widget you want rather than the window** — a child widget honours its
+  own `resize`.
+* `QOpenGLWidget` content never appears in a grab: `QWidget.grab()` reads the
+  backing store, and `grabFramebuffer` returns black without a display session. A
+  window grab therefore shows the panels over an empty viewport. **The ray tracer
+  is the only way to capture the 3D view headlessly** — which is what
+  `okf/workflows/testing.md` already prescribes for visual tests.
 * `ray` driven through `MolViewPluginWindow` hands the trace to a worker and
   reports `ray: cancelled` in a script with no event loop of its own. Driving a
   bare `MolView` traces synchronously and works.
+* `ObjectsDock.widget` is a **property**. Calling it (`widget()`) raises
+  `TypeError: 'QWidget' object is not callable`.
+
+:::{note}
+A previous revision of this file claimed that grabbing the objects panel crashed,
+and that grabbing the window crashed once the panel held two rows. **Both were
+wrong.** The "crashes" were `TypeError` from calling that property, and the
+tracebacks were hidden because the diagnostic scripts filtered stderr through
+`grep`. Panel grabs work at any size and with any number of rows. The lesson is
+the diagnostic one: a silent exit under a filtered pipe is not evidence of a
+crash, and the filter has to come off before drawing a conclusion.
+:::
 
 # Tier 3 — specialised or superseded here
 

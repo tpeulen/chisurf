@@ -122,10 +122,19 @@ def _apply_rigid_transform(data, rotation, translation):
         return None
 
     arr = np.asarray(data)
-    # Skip structured/record arrays (e.g. atoms with an 'xyz' field). Those
-    # store coordinates in a dedicated field and are not transformed here.
+    # A structured atom array keeps its coordinates in an `xyz` field, so
+    # transform that. Skipping it -- as this used to -- left the atom array
+    # holding pre-transform coordinates while the render arrays moved, and the
+    # two are read by different commands: `rms` reported 69 A of displacement
+    # over render coordinates while `align` read the atom array, saw nothing to
+    # do, and announced an RMSD of 0.000.
     if getattr(arr.dtype, "fields", None):
-        return data
+        if "xyz" not in (arr.dtype.names or ()):
+            return data
+        moved = arr.copy()
+        xyz = np.asarray(moved["xyz"], dtype=float)
+        moved["xyz"] = (xyz @ rotation.T) + translation
+        return moved
 
     arr = arr.astype(float, copy=False)
 
@@ -562,9 +571,19 @@ class MolView(QtWidgets.QWidget):
             state = self._get_active_state()
             state.coords = _apply_rigid_transform(state.coords, rot, trans)
             state.center = _apply_rigid_transform(state.center, rot, trans)
-            state.atoms = _apply_rigid_transform(state.atoms, rot, trans)
             state.all_atom_coords = _apply_rigid_transform(state.all_atom_coords, rot, trans)
             state.frames = _apply_rigid_transform(state.frames, rot, trans)
+
+            # The atom array is in Angstrom while everything above is in scene
+            # units, so the translation has to come back through the scale. The
+            # rotation is scale-free. Leaving the atom array untransformed --
+            # which is what happened before -- desynchronised the two, and
+            # `align`, `get_area`, `alter_state` and the distance selections all
+            # read the stale one.
+            scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
+            state.atoms = _apply_rigid_transform(
+                state.atoms, rot, trans / scale if scale else trans
+            )
 
             if state.coords is not None:
                 center, radius = _compute_center_radius(state.coords)

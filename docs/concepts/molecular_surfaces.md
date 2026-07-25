@@ -109,6 +109,15 @@ Against the closed-form area of two overlapping spheres:
 For comparing structures, or for anything quoted in a figure, use 3 or 4. The
 default is a reasonable interactive compromise, not a publication setting.
 
+One consequence of a fixed point set is worth knowing: **the sampled area depends
+slightly on the molecule's orientation**. The dots sit at fixed directions, so
+rotating the structure changes which of them fall into a crevice, and the answer
+moves by roughly the sampling error — a few percent at the default density, well
+under one percent at level 4. The true area is of course a rigid invariant; only
+the estimate wobbles. Pure translation is exact. If you are comparing two
+structures, or the same structure in two poses, raise the density rather than
+trusting agreement in the last digit.
+
 Note that the sampling error is *not* the dominant uncertainty in most uses. The
 choice of van der Waals radii, whether hydrogens are present, and which
 conformation of a flexible side chain was crystallised all move the answer more

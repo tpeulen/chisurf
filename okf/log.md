@@ -2,6 +2,53 @@
 
 ## 2026-07-25
 
+* **chimol kept coordinates twice and they had drifted apart.** The worst defect
+  in this plugin so far, because it made commands disagree about where the
+  molecule *is*. Coordinates live in `atoms["xyz"]` (Angstrom) and in the
+  renderer's arrays (scene units), and `_apply_rigid_transform` **skipped
+  structured arrays on purpose** — so `translate` and `rotate` moved the render
+  arrays and left the atom array behind.
+
+  Everything reading the atom array was then working from pre-transform
+  coordinates: `align`, `super`, `get_area`, `get_extent`, `alter_state`, and every
+  distance selection. On a displaced copy, `rms` (render arrays) reported 281 Å
+  while `align` (atom array) saw nothing to do, announced an RMSD of 0.000, and
+  moved nothing at all.
+
+  Both halves fixed: the transform now reaches the atom array — through the scale,
+  since the translation arrives in scene units — and `rms` converts its result out
+  of scene units, having printed a length ten times too large with an Angstrom sign
+  on it. A `translate [10,0,0]` now moves the atom array by exactly 10 Å and the
+  render array by exactly 100 scene units, and `align` removes a 14 Å displacement
+  to 0.0000. One existing test had encoded the desynchronisation — it asserted that
+  `save` and the atom array disagreed by exactly the translation — and now asserts
+  they agree.
+
+  A related property, documented rather than fixed because it is inherent: the
+  *sampled* surface area depends slightly on orientation, since the dots sit at
+  fixed directions in the lab frame. A few percent at the default density; pure
+  translation is exact.
+
+* **Scenes.** `scene` stores the camera, object activity, representations and
+  colours, with PyMOL's per-aspect flags so one scene can carry a viewpoint and
+  another a colour scheme. Two behaviours are chimol-specific, both because the
+  camera is stored *relative to the scene centre*, which moves when what is drawn
+  changes: the view is restored **last** (restoring it first lets the rebuild undo
+  it), and `view=0` actively holds the camera across the rebuild, since otherwise
+  "leave the view alone" still moves the picture.
+
+* **Correction to this morning's entry.** It reported that grabbing chimol's
+  objects panel crashed, and that grabbing the window crashed with two molecule
+  rows. **Both were wrong.** `ObjectsDock.widget` is a property; calling it raised
+  `TypeError`, and the tracebacks were invisible because the diagnostic scripts
+  filtered stderr through `grep`. Panel grabs work at any size and with any number
+  of rows, and the guide figure is now a direct panel grab rather than a cropped
+  window. The real constraints — offscreen clamps a main window to 640×603, GL
+  content never appears in a grab, `ray` is cancelled under the plugin window —
+  stand. The diagnostic lesson: a silent exit under a filtered pipe is not evidence
+  of a crash.
+
+
 
 * **chiplot Batch 27 — guiqwt compat shim off pyqtgraph (allow-list 24 → 23).**
   Rewrote `gui/plots/_qwt_compat.py` (the guiqwt→pyqtgraph shim used by

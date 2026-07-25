@@ -407,18 +407,17 @@ def _grab_chimol_viewer():
 
     Two mechanisms, because neither covers both:
 
+    * the **panel** is an ordinary widget grab;
     * the **render** goes through chimol's own ray tracer, which needs no GPU and
       no display -- the same path the plugin's visual tests use. A GL grab is not
-      an option here: ``QWidget.grab()`` reads the backing store and never sees
-      OpenGL content, and ``grabFramebuffer`` returns black without a display
-      session;
-    * the **panel** comes from a whole-window grab, cropped afterwards. Grabbing
-      the panel widget on its own crashes under the offscreen platform, as does
-      ``mapTo`` on it -- see the parity tracker.
+      an option: ``QWidget.grab()`` reads the backing store and never sees OpenGL
+      content, and ``grabFramebuffer`` returns black without a display session, so
+      a window grab shows the panels over an empty viewport.
+
+    Note ``objects.widget`` is a **property**; calling it raises ``TypeError``
+    rather than doing anything useful.
     """
     import pathlib as _pathlib
-
-    from PIL import Image
 
     from chisurf.plugins.chimol.chimol.app.molview_main_window import (
         MolViewPluginWindow,
@@ -439,14 +438,20 @@ def _grab_chimol_viewer():
     for _ in range(30):
         app.processEvents()
 
-    # -- the object panel, cropped out of a full-window grab ------------------
-    full = FIG / "_chimol_window_full.png"
-    window.grab().save(str(full))
-    image = Image.open(full)
-    image.crop((262, 58, 640, 190)).resize((756, 264), Image.LANCZOS).save(
-        str(FIG / "chimol_objects_panel.png")
-    )
-    full.unlink(missing_ok=True)
+    # -- the object panel, with a couple of derived objects to show rows ------
+    panel_cmd = Cmd(window)
+    panel_cmd.set_message_callback(lambda _m: None)
+    panel_cmd.set_error_callback(lambda m: print("  chimol:", m))
+    panel_cmd.do("create peptidoglycan, chain S")
+    panel_cmd.do("create ligand, resn NAG")
+    for _ in range(30):
+        app.processEvents()
+
+    panel = window.objects.widget       # a property, not a method
+    panel.resize(900, 250)
+    for _ in range(20):
+        app.processEvents()
+    panel.grab().save(str(FIG / "chimol_objects_panel.png"))
     print("wrote chimol_objects_panel.png")
 
     # -- a ray-traced render, coloured by solvent accessibility ---------------
