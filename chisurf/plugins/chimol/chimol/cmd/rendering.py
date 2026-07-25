@@ -215,12 +215,8 @@ class RenderingMixin(BaseCmd):
             viewer.orient()
 
     @command("zoom")
-    def zoom(self, sel: Selection = "", buffer: float = 0.0, complete: bool = False) -> None:
-        """Zoom view to fit a selection (PyMOL ``zoom [sel [, buffer [, complete]]]``).
-
-        ``buffer`` adds room around the fit; ``complete`` guarantees nothing is
-        clipped by fitting the bounding sphere instead of the bounding box.
-        """
+    def zoom(self, sel: Selection = "", buffer: float = 2.0) -> None:
+        """Zoom view to fit selection (PyMOL ``zoom [selection [, buffer]]``)."""
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -230,14 +226,13 @@ class RenderingMixin(BaseCmd):
             try:
                 obj_id, _, res_indices = self._resolve_selection_to_residue_indices(viewer, selection)  # type: ignore
                 if obj_id:
-                    viewer.zoom(res_indices, buffer=float(buffer),
-                                complete=bool(complete), object_id=obj_id)
+                    viewer.zoom(res_indices, buffer=float(buffer), object_id=obj_id)
                 else:
                     self._emit_error(f"Selection '{selection}' did not resolve.")
             except Exception as exc:
                 self._emit_error(f"Failed to zoom: {exc}")
         else:
-            viewer.zoom(buffer=float(buffer), complete=bool(complete))
+            viewer.zoom(buffer=float(buffer))
 
     @command("reset")
     def reset(self) -> None:

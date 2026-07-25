@@ -384,19 +384,6 @@ assuming a fixed lens.
 PyMOL's rule, `d = radius / tan(fov / 2)` — verified against `cmd.zoom` for radii
 5/10/20 Å at 20° and 45°, agreeing to 5 significant figures. `fit_to_radius` uses
 it, so widening the lens pulls the camera in instead of shrinking the molecule.
-
-**What gets fitted is `view_state.framing_radius`.** PyMOL's default
-(`complete=0`) fits the largest half-extent of the axis-aligned bounding box;
-`complete=1` fits the bounding sphere so nothing can be clipped. Both are
-measured on the **world** axes, not the camera's — which looks like an oversight
-and is not: it makes the zoom level independent of orientation, so turning the
-molecule does not make it breathe. Confirmed by zooming a 30×5 Å bar at
-0/30/45/90° of roll, where PyMOL returns the same distance every time (the
-camera-space extent would fall to 21 Å at 45°). `zoom` fits **every atom**, not
-the CA trace: the side chains reaching furthest out are exactly the ones a trace
-omits. Residual gap: PyMOL measures the extent of the *rendered representation*,
-so its camera sits ~3 % further back on 148L (24.47 Å vs 23.77 Å); that padding
-is representation-dependent and is not modelled.
 The default field of view is **20°**, PyMOL's, which is what makes a `set_view`
 tuple copied from PyMOL frame the molecule the same way here; it was previously a
 hardcoded 45° with a `distance = 3 × radius` framing rule that matched no lens in
@@ -456,13 +443,9 @@ Four constraints follow, all load-bearing:
 1. **Never bundle the `Structure` import with GUI imports.** It is pure core
    code; sharing a `try/except` with anything that pulls in Qt means a GUI-side
    import failure silently disables the reader for *every* file.
-2. **Never swallow a reader failure silently — and tell the user, not just the
-   log.** Falling back is legitimate; falling back quietly is not, because the
-   symptom (a bare CA spring with no secondary structure, sequence or radius of
-   gyration) does not name its cause and reads as a rendering bug.
-   `_report_degraded_load` logs *and* writes to the command panel, naming the
-   file, the reader's error, and what the fallback costs. The info overlay's
-   `System: coordinates` line is the other tell that this path was taken.
+2. **Never swallow a reader failure silently.** Falling back is legitimate;
+   falling back without a log line makes the degradation undiagnosable, since the
+   symptom (a bad-looking render) does not name its cause.
 3. **Keep the fallback non-lossy.** Anything that reaches `add_coordinates` for a
    PDB should carry `trace_coords`/`res_ids`/`res_names`/`chain_ids`, so a reader
    failure costs accuracy, not a broken picture.

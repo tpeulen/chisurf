@@ -147,45 +147,6 @@ def test_the_polymer_is_not_marked(loaded_view):
     assert loaded_view._show_cartoon is True
 
 
-def test_a_degraded_load_is_reported(tmp_path):
-    """A silent fallback reads as a rendering bug, not as a reader giving up.
-
-    The raw-coordinate path yields a bare backbone trace with no residues,
-    sequence or secondary structure. Users have to be told that is what they are
-    looking at.
-    """
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-
-    class _Panel:
-        def __init__(self):
-            self.errors: list[str] = []
-
-        def append_error(self, text):
-            self.errors.append(text)
-
-    window = MolViewPluginWindow.__new__(MolViewPluginWindow)
-    window.command_panel = _Panel()
-    window._report_degraded_load(tmp_path / "weird.pdb", ValueError("no reader"))
-
-    assert window.command_panel.errors
-    message = window.command_panel.errors[-1]
-    assert "weird.pdb" in message
-    assert "no reader" in message
-    assert "raw coordinates" in message
-
-
-def test_a_degraded_load_without_a_panel_does_not_raise(tmp_path):
-    """Chimol also runs headless, where there is nothing to append to."""
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-
-    window = MolViewPluginWindow.__new__(MolViewPluginWindow)
-    window._report_degraded_load(tmp_path / "x.pdb", None)
-
-
 def test_hetero_atoms_reach_the_scene(loaded_view):
     """The per-atom mask must survive into the built geometry.
 

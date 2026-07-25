@@ -44,7 +44,6 @@ from .base import Renderer
 from .chimol_state import _MolViewObjectEntry, _MolViewObjectState, _StateField
 from .qtgl import QtGLRenderer
 from .scene import Geometry, Scene, SceneObject
-from .view_state import framing_radius
 
 logger = logging.getLogger(__name__)
 
@@ -1959,32 +1958,6 @@ class MolView(QtWidgets.QWidget):
         """Return the current left-drag rotation style."""
         return self._mouse_mode
 
-    def _framing_radius(self, complete: bool = False) -> float:
-        """Radius the camera should fit, over whichever coordinates we have.
-
-        Prefers the all-atom coordinates, since that is what PyMOL measures;
-        falls back to the CA trace and finally to the scene's bounding-sphere
-        radius when neither is available.
-        """
-        for attr in ("_all_atom_coords", "_coords"):
-            pts = getattr(self, attr, None)
-            if pts is None:
-                continue
-            try:
-                radius = framing_radius(pts, complete=complete)
-            except Exception:
-                continue
-            if radius > 0.0:
-                return radius
-
-        scene = self._scene
-        if scene is not None:
-            try:
-                return float(getattr(scene, "radius", 0.0))
-            except Exception:
-                pass
-        return 0.0
-
     def reset_view(self) -> None:
         """Reset the camera to show all visible objects at default orientation."""
         if self._renderer is None:
@@ -1992,7 +1965,9 @@ class MolView(QtWidgets.QWidget):
 
         radius = 0.0
         try:
-            radius = self._framing_radius()
+            scene = self._scene
+            if scene is not None:
+                radius = float(getattr(scene, "radius", 0.0))
         except Exception:
             pass
 
@@ -2057,51 +2032,22 @@ class MolView(QtWidgets.QWidget):
         center = coords.mean(axis=0)
         self._renderer.look_at(center)
 
-    def zoom(
-        self,
-        indices: Sequence[int] | None = None,
-        *,
-        buffer: float = 0.0,
-        complete: bool = False,
-        object_id: str | None = None,
-    ) -> None:
-        """Zoom the camera to fit target residues (PyMOL ``zoom``).
-
-        Parameters
-        ----------
-        indices : sequence of int or None
-            Residue indices to fit; ``None`` fits everything.
-        buffer : float, optional
-            Extra room around the fitted radius, in scene units. PyMOL's default
-            is 0, which frames tightly and may clip a corner.
-        complete : bool, optional
-            Fit the bounding sphere rather than the bounding box, so that no atom
-            centre can be clipped at any orientation.
-        object_id : str or None
-            Object to take the residues from.
-
-        See Also
-        --------
-        chimol.renderer.view_state.framing_radius : the two fitting rules.
-        """
-        # With no selection, fit every atom rather than the CA trace: PyMOL
-        # measures the whole molecule, and a trace-only fit reads ~20% small
-        # because the side chains reaching furthest out are exactly the ones
-        # left out of it.
-        coords = None
-        if indices is None and object_id is None:
-            all_atoms = getattr(self, "_all_atom_coords", None)
-            if all_atoms is not None and np.asarray(all_atoms).size:
-                coords = np.asarray(all_atoms, dtype=float)
-        if coords is None:
-            coords = self.get_residue_positions(indices, object_id=object_id)
+    def zoom(self, indices: Sequence[int] | None = None, *, buffer: float = 2.0, object_id: str | None = None) -> None:
+        """Zoom camera to fit target residues."""
+        coords = self.get_residue_positions(indices, object_id=object_id)
         if coords.size == 0:
             self.reset_view()
             return
 
-        mn, mx = coords.min(axis=0), coords.max(axis=0)
-        center = (mn + mx) * 0.5
-        radius = framing_radius(coords, complete=complete)
+        # Attempt to use geometry utils if reachable, else use simple bounds
+        try:
+            from ..geometry import _compute_center_radius
+            center, radius = _compute_center_radius(coords)
+        except ImportError:
+            # Fallback to simple mean/std or box-center
+            mn, mx = coords.min(axis=0), coords.max(axis=0)
+            center = (mn + mx) * 0.5
+            radius = np.linalg.norm(mx - mn) * 0.5
 
         if self._renderer is not None:
             self._renderer.look_at(center)

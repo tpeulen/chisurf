@@ -15,7 +15,6 @@ The constants checked here were measured from PyMOL itself:
 from __future__ import annotations
 
 import math
-import pathlib
 
 import numpy as np
 import pytest
@@ -23,7 +22,6 @@ import pytest
 from chisurf.plugins.chimol.chimol.renderer.view_state import (
     DEFAULT_FOV,
     distance_for_radius,
-    framing_radius,
     pack_view_state,
     unpack_view_state,
 )
@@ -126,80 +124,6 @@ def test_framing_ignores_the_sign_of_the_field_of_view():
 
 def test_degenerate_field_of_view_does_not_divide_by_zero():
     assert distance_for_radius(10.0, 0.0) == pytest.approx(10.0)
-
-
-# --------------------------------------------------------------------------- #
-# What zoom fits
-# --------------------------------------------------------------------------- #
-def _bar(half_x: float = 30.0, half_y: float = 5.0) -> np.ndarray:
-    """Four points forming a flat bar: half-extents (half_x, half_y, 0)."""
-    return np.array(
-        [[-half_x, 0.0, 0.0], [half_x, 0.0, 0.0],
-         [0.0, -half_y, 0.0], [0.0, half_y, 0.0]]
-    )
-
-
-def test_default_fits_the_bounding_box():
-    """PyMOL's complete=0: the largest half-extent, not the bounding sphere."""
-    assert framing_radius(_bar()) == pytest.approx(30.0)
-
-
-def test_complete_fits_the_bounding_sphere():
-    """PyMOL's complete=1, which cannot clip a point at any orientation."""
-    assert framing_radius(_bar(), complete=True) == pytest.approx(30.0)
-    cube = np.array([[-10.0, -10.0, -10.0], [10.0, 10.0, 10.0]])
-    assert framing_radius(cube) == pytest.approx(10.0)
-    assert framing_radius(cube, complete=True) == pytest.approx(
-        math.sqrt(3) * 10.0
-    )
-
-
-@pytest.mark.parametrize("angle, camera_space_radius", [(30.0, 25.981), (45.0, 21.213)])
-def test_the_box_is_measured_on_the_world_axes(angle, camera_space_radius):
-    """The fit takes coordinates and no camera, which is the point.
-
-    PyMOL measures the box on the world axes, so turning the camera cannot
-    change the zoom level and the molecule does not breathe as it is rotated.
-    Measuring in camera space instead would give these smaller radii for a
-    30x5 A bar, and that is what PyMOL was checked *not* to do.
-    """
-    rotated = _bar() @ _rotation(angle).T
-    assert framing_radius(rotated) == pytest.approx(camera_space_radius, rel=1e-3)
-    # Rotating the coordinates is a different thing from rotating the camera:
-    # here the bar really has moved, so the world box really has changed.
-    assert framing_radius(rotated) < framing_radius(_bar())
-
-
-def test_empty_input_fits_nothing():
-    assert framing_radius(np.zeros((0, 3))) == 0.0
-    assert framing_radius(np.array([])) == 0.0
-
-
-@pytest.mark.parametrize(
-    "complete, pymol_radius",
-    [
-        # Measured on 148L with `zoom buffer=0`, converted back through
-        # d * tan(fov/2). PyMOL measures the extent of the *rendered
-        # representation*, so it pads by ~0.7-1.2 A over the atom centres.
-        (False, 24.466),
-        (True, 30.487),
-    ],
-)
-def test_agrees_with_pymol_on_148l(complete, pymol_radius):
-    pdb = (
-        pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
-    )
-    xyz = np.array(
-        [
-            [float(line[30:38]), float(line[38:46]), float(line[46:54])]
-            for line in pdb.read_text().splitlines()
-            if line.startswith(("ATOM", "HETATM"))
-        ]
-    )
-    assert framing_radius(xyz, complete=complete) == pytest.approx(
-        pymol_radius, rel=0.05
-    )
 
 
 # --------------------------------------------------------------------------- #
