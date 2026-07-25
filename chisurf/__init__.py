@@ -19,6 +19,10 @@ from ._bundled_packages import bootstrap_bundled_packages as _bootstrap_bundled_
 _bootstrap_bundled_packages()
 del _bootstrap_bundled_packages
 
+# Dependency APIs that were renamed out from under us (NumPy 2 removed np.trapz
+# and friends). Restored before anything computes with them -- see the module.
+from chisurf.core import compat as _compat  # noqa: F401
+
 import chisurf.core.info
 
 # --- DISTUTILS SHIM FOR PYTHON 3.12 ---

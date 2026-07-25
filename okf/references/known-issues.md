@@ -189,6 +189,12 @@ retired `_dev/fluorophore_db` plugin were fixed on the spot.
 **Environment**
 - Built-in Jupyter/notebook integration is disabled/broken; the notebook menu is
   missing from the ribbon.
+- `modules/ndxplorer/ndxplorer/utils/performance_optimizations.py` still calls
+  `np.bool8`, removed in NumPy 2. In-process it is covered by
+  `chisurf/core/compat.py` (chisurf is imported first, which restores the alias),
+  but ndXplorer run standalone would raise. The root fix belongs in the ndxplorer
+  repository — left alone here only because that working tree currently holds
+  another instance's uncommitted work.
 
 # Deferred enhancements
 

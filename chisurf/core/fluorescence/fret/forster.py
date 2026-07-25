@@ -21,10 +21,6 @@ from __future__ import annotations
 import numpy as np
 
 #: Prefactor giving R0 in nm when J is expressed in M⁻¹ cm⁻¹ nm⁴ (Lakowicz).
-#: Trapezoidal integration. NumPy 2 renamed ``trapz`` to ``trapezoid`` and
-#: removed the old name, which left every overlap integral here raising.
-_trapezoid = getattr(np, "trapezoid", None) or np.trapz
-
 _R0_PREFACTOR_NM = 0.02108
 
 
@@ -50,11 +46,11 @@ def overlap_integral(
             "wavelength_nm, donor_emission and acceptor_extinction must be 1-D arrays "
             "of the same length (>= 2)"
         )
-    area = _trapezoid(f_d, wl)
+    area = np.trapz(f_d, wl)
     if area <= 0:
         raise ValueError("donor emission spectrum has non-positive area")
     f_d_norm = f_d / area
-    return float(_trapezoid(f_d_norm * eps_a * wl**4, wl))
+    return float(np.trapz(f_d_norm * eps_a * wl**4, wl))
 
 
 def forster_radius(

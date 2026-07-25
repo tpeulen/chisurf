@@ -3,10 +3,6 @@ from __future__ import annotations
 import numpy as np
 
 
-#: Trapezoidal integration; NumPy 2 removed the ``trapz`` spelling.
-_trapezoid = getattr(np, "trapezoid", None) or np.trapz
-
-
 def phasor_giw(
         f,
         n,
@@ -24,7 +20,7 @@ def phasor_giw(
     """
     y = f * np.cos(n * omega * times)
     x = times
-    return _trapezoid(y, x) / _trapezoid(f, x)
+    return np.trapz(y, x) / np.trapz(f, x)
 
 
 def phasor_siw(
@@ -44,7 +40,7 @@ def phasor_siw(
     """
     y = f * np.sin(n * omega * times)
     x = times
-    return _trapezoid(y, x) / _trapezoid(f, x)
+    return np.trapz(y, x) / np.trapz(f, x)
 
 
 class Phasor(object):

@@ -301,10 +301,15 @@ back to the physically-motivated light-path prior.
   both help map the burst-table columns (`guess_columns(..., extra_hints)`) and
   name the detectors for the optics prior. (`test/fitting/test_dye_properties.py`,
   including a round trip through the real `MFDatabase` write/read API.)
-- **NumPy 2 fix** — `np.trapz` was removed; `forster.py` (every overlap integral),
-  `tcspc/phasor.py` and the light-path `crosstalk.py` used it, so R0-from-spectra
-  and the whole optical propagation raised `AttributeError`. All three now use a
-  `_trapezoid` alias.
+- **NumPy 2 fix, by shim not by rewrite** — `np.trapz` was removed; `forster.py`
+  (every overlap integral), `tcspc/phasor.py` and the light-path `crosstalk.py`
+  used it, so R0-from-spectra and the whole optical propagation raised
+  `AttributeError`. Rewriting the call sites would fix neither dependencies nor
+  submodules and would pin the tree to one NumPy, so
+  [`chisurf/core/compat.py`](/architecture/index.md) restores the missing aliases
+  **in both directions** (old name on NumPy 2, new name on NumPy 1) and the
+  package root applies it before anything computes. Call sites keep their
+  original spelling. Guardrail: `test/core/test_numpy_compat.py`.
 - **Both sides of the calibration are fitting parameters in the Global View** —
   `chisurf/plugins/ndxplorer/parameters.py::NdxConstants` wraps *every numeric
   constant of an open ndX window* (read from the window, not hard-coded) as

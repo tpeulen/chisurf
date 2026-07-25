@@ -2,6 +2,27 @@
 
 ## 2026-07-25
 
+* **NumPy 2 removed `np.trapz` and friends; fixed by shim, not by rewrite.**
+  Three call sites in this tree were dead — the Förster overlap integral
+  (`fret/forster.py`), the phasor transform (`tcspc/phasor.py`) and the
+  light-path spectral propagation (`lightpath_simulator/backend/crosstalk.py`) —
+  each raising `AttributeError` inside computations, mostly under a `try`/`except`
+  that turned the failure into a silently degraded path rather than a crash.
+  Rewriting the call sites to the new spelling would have fixed neither
+  dependencies nor submodules and would have pinned the tree to one NumPy, so
+  `chisurf/core/compat.py` restores the removed aliases **in both directions**
+  (the old name on NumPy 2, the new name on NumPy 1 — pure renames only, nothing
+  with a behaviour change) and the package root applies it before anything
+  computes. Call sites keep their original spelling. Guardrail:
+  `test/core/test_numpy_compat.py` asserts both spellings exist, that a restored
+  alias *is* its replacement, that applying twice is a no-op, and that the three
+  dead paths actually compute. `np.bool8` in the ndxplorer submodule is covered
+  in-process by the same shim; the root fix is recorded in
+  [known issues](/references/known-issues.md) because that working tree holds
+  another instance's uncommitted work. **CLAUDE.md gained the general rule**:
+  breakage found while doing something else is fixed in the same change, at its
+  root, with a guardrail test — or recorded in known-issues with the reason,
+  never only in the chat.
 * **Becker & Hickl SDT reading was broken; fixed, plus the two registry ids I
   had invented.** Chasing MIA's `Read_SDT` (which turns out to be a thin
   BioFormats wrapper, while ChiSurf has its own native reader) showed the native
