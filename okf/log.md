@@ -2,6 +2,37 @@
 
 ## 2026-07-25
 
+* **Parameter tables: three more edit-path defects (found while auditing the
+  stale-spin-box fix).** (1) *Any* mouse button toggled a `fixed` / `bounds_on`
+  checkbox cell, because `_BooleanToggleDelegate.editorEvent` acted on every
+  `MouseButtonRelease` — so the right-click that opens the table's link / copy
+  context menu silently flipped the flag on its way there (confirmed headlessly
+  in both the plain and the paired table). It now requires the left button and an
+  editable cell. (2) Both models' `setData` signalled only the edited cell, but
+  one column's edit changes what its neighbours show: enabling **Bounds** left
+  the Lo/Hi cells painting blank (they had become editable numbers), and setting
+  a Lo above the current value clamped the value to it (`Parameter.value` clamps
+  on read) while the Value cell kept showing the superseded number — both now
+  emit the whole row. (3) Table edits were **local-only**: the per-parameter row
+  widgets push every edit to the fitting client *and* record it via
+  `_trace_operation`, while the table wrote the attribute and stopped, so a
+  parameter changed in a model editor never reached a remote backend and left no
+  entry in the history projection. The write + RPC + trace triple was duplicated
+  across eight handlers (four row-widget, four popup) and is now one place —
+  `ParameterActionsMixin.apply_value` / `apply_fixed` / `apply_bounds_on` /
+  `apply_bounds` — used by the row widgets, the detail popup and
+  `parameter_table._set_param_value` (via the proxy controller the tables already
+  install on every parameter; a standalone table without controllers still falls
+  back to the plain write). That also fixed a fourth defect the refactor exposed:
+  the **detail popup never echoed locally**, it only RPC'd — and ChiSurf starts
+  (with a warning) when its RPC server is unreachable, in which state every popup
+  edit vanished on the next refresh. Eight regression tests across
+  `test/gui/test_parameter_table_widget.py` and `test_parameter_table_actions.py`,
+  all verified to fail on the unfixed tree; 49 pass in those two files, and the
+  auto-model / FCS / RICS / PDA / DEER model-editor and spinbox suites are green
+  (`test_model_editor_integration.py::test_every_configured_tcspc_model_resolves_with_a_name`,
+  `test_parameter_widget_link_visuals.py` and `test_parameter_prior_widget.py`
+  each fail identically on a clean HEAD worktree — pre-existing).
 * **Concept depth batch 2 (h2mm, accessible_volume) + a filesystem-path link
   audit.** Audited every filesystem-style path cited in `docs/` (454 distinct
   backticked paths) — the earlier sweep only covered *dotted* Python paths, so

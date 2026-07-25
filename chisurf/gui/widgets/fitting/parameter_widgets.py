@@ -366,48 +366,14 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.refresh_from_model()
 
     def _on_fixed_toggled(self):
-        fp = self.controller.fitting_parameter
-        new_fixed = self.cb_fixed.isChecked()
-        source = self.controller._parameter_context(fp)
-        fc = get_fitting_client()
-        if fc is not None:
-            fc.set_parameter_fixed(
-                parameter_name=str(fp.name),
-                fixed=new_fixed,
-                fit_uid=source.get("fit_uid"),
-            )
-        self.controller._trace_operation(
-            "parameter_fixed",
-            f"set fixed={new_fixed} for parameter '{fp.name}' in fit '{source['fit_group']}' / local '{source['local_fit']}'",
-            {
-                "parameter_name": str(fp.name),
-                "fixed": bool(new_fixed),
-                **source,
-            },
-        )
+        self.controller.apply_fixed(self.cb_fixed.isChecked())
         self.controller.finalize()
         self.refresh_from_model()
 
     def _on_bounds_on_toggled(self):
         fp = self.controller.fitting_parameter
         checked = self.cb_bounds_on.isChecked()
-        source = self.controller._parameter_context(fp)
-        fc = get_fitting_client()
-        if fc is not None:
-            fc.set_parameter_bounds_on(
-                parameter_name=str(fp.name),
-                bounds_on=checked,
-                fit_uid=source.get("fit_uid"),
-            )
-        self.controller._trace_operation(
-            "parameter_bounds_on",
-            f"set bounds_on={checked} for parameter '{fp.name}' in fit '{source['fit_group']}' / local '{source['local_fit']}'",
-            {
-                "parameter_name": str(fp.name),
-                "bounds_on": bool(checked),
-                **source,
-            },
-        )
+        self.controller.apply_bounds_on(checked)
         self.sb_lb.setEnabled(checked)
         self.sb_ub.setEnabled(checked)
         if checked:
@@ -418,45 +384,12 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
             except Exception:
                 bounds_valid = False
             if not bounds_valid:
-                if fc is not None:
-                    fc.set_parameter_bounds(
-                        parameter_name=str(fp.name),
-                        bounds=(self.sb_lb.value(), self.sb_ub.value()),
-                        fit_uid=source.get("fit_uid"),
-                    )
-                self.controller._trace_operation(
-                    "parameter_bounds_set",
-                    f"initialize bounds for parameter '{fp.name}' to ({self.sb_lb.value()}, {self.sb_ub.value()})",
-                    {
-                        "parameter_name": str(fp.name),
-                        "lower": float(self.sb_lb.value()),
-                        "upper": float(self.sb_ub.value()),
-                        **source,
-                    },
-                )
+                self.controller.apply_bounds(self.sb_lb.value(), self.sb_ub.value())
         self.controller.finalize()
         self.refresh_from_model()
 
     def _on_bounds_changed(self):
-        fp = self.controller.fitting_parameter
-        source = self.controller._parameter_context(fp)
-        fc = get_fitting_client()
-        if fc is not None:
-            fc.set_parameter_bounds(
-                parameter_name=str(fp.name),
-                bounds=(self.sb_lb.value(), self.sb_ub.value()),
-                fit_uid=source.get("fit_uid"),
-            )
-        self.controller._trace_operation(
-            "parameter_bounds_set",
-            f"set bounds for parameter '{fp.name}' to ({self.sb_lb.value()}, {self.sb_ub.value()}) in fit '{source['fit_group']}' / local '{source['local_fit']}'",
-            {
-                "parameter_name": str(fp.name),
-                "lower": float(self.sb_lb.value()),
-                "upper": float(self.sb_ub.value()),
-                **source,
-            },
-        )
+        self.controller.apply_bounds(self.sb_lb.value(), self.sb_ub.value())
         self.controller.finalize()
         self.refresh_from_model()
 
@@ -567,26 +500,7 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
             self._prior_form.addRow(label, sb)
 
     def _on_value_changed(self):
-        fp = self.controller.fitting_parameter
-        old_value = float(fp.value)
-        source = self.controller._parameter_context(fp)
-        fc = get_fitting_client()
-        if fc is not None:
-            fc.set_parameter_value(
-                parameter_name=str(fp.name),
-                value=self.sb_value.value(),
-                fit_uid=source.get("fit_uid"),
-            )
-        self.controller._trace_operation(
-            "parameter_value",
-            f"set value for parameter '{fp.name}' from {old_value} to {self.sb_value.value()} in fit '{source['fit_group']}' / local '{source['local_fit']}'",
-            {
-                "parameter_name": str(fp.name),
-                "old_value": float(old_value),
-                "new_value": float(self.sb_value.value()),
-                **source,
-            },
-        )
+        self.controller.apply_value(self.sb_value.value())
         self.controller.finalize()
         self.controller._update_linked_parameters()
         self.controller._trigger_model_update()
@@ -846,6 +760,147 @@ class ParameterActionsMixin:
                 chisurf.logging.info(line)
         except Exception:
             pass
+
+    # -- parameter mutation -------------------------------------------------
+    #
+    # Every editor that changes a parameter — the row widget, the detail popup
+    # and the AutoForm parameter table — has to do the same three things: write
+    # the value locally, send it to the backend, and record the operation in the
+    # provenance trace.  These helpers are that one place.  Skipping the local
+    # echo leaves the edit lost whenever the RPC server is unreachable (the GUI
+    # starts up fine without it); skipping the trace drops the edit from the
+    # history projection.
+
+    def _apply(
+        self,
+        parameter,
+        write: typing.Callable[[], None],
+        rpc: typing.Callable[..., None],
+        action_type: str,
+        summary: str,
+        payload: typing.Dict[str, typing.Any],
+    ) -> None:
+        """Local echo, backend RPC and provenance trace for one parameter edit."""
+        source = self._parameter_context(parameter)
+        try:
+            write()
+        except Exception:
+            pass
+        fc = get_fitting_client()
+        if fc is not None:
+            try:
+                rpc(fc, source)
+            except Exception:
+                pass
+        self._trace_operation(action_type, summary, {**payload, **source})
+
+    def _target(self, parameter):
+        """Return ``parameter`` or, when omitted, the controller's own one."""
+        return self.fitting_parameter if parameter is None else parameter
+
+    def apply_value(self, value: float, parameter=None) -> None:
+        """Set a parameter's value (local echo + RPC + trace)."""
+        fp = self._target(parameter)
+        value = float(value)
+        try:
+            old_value = float(fp.value)
+        except Exception:
+            old_value = float("nan")
+
+        def write():
+            fp.value = value
+
+        def rpc(fc, source):
+            fc.set_parameter_value(
+                parameter_name=str(fp.name),
+                value=value,
+                fit_uid=source.get("fit_uid"),
+            )
+
+        self._apply(
+            fp,
+            write,
+            rpc,
+            "parameter_value",
+            f"set value for parameter '{fp.name}' from {old_value} to {value}",
+            {
+                "parameter_name": str(fp.name),
+                "old_value": old_value,
+                "new_value": value,
+            },
+        )
+
+    def apply_fixed(self, fixed: bool, parameter=None) -> None:
+        """Set a parameter's fixed flag (local echo + RPC + trace)."""
+        fp = self._target(parameter)
+        fixed = bool(fixed)
+
+        def write():
+            fp.fixed = fixed
+
+        def rpc(fc, source):
+            fc.set_parameter_fixed(
+                parameter_name=str(fp.name),
+                fixed=fixed,
+                fit_uid=source.get("fit_uid"),
+            )
+
+        self._apply(
+            fp,
+            write,
+            rpc,
+            "parameter_fixed",
+            f"set fixed={fixed} for parameter '{fp.name}'",
+            {"parameter_name": str(fp.name), "fixed": fixed},
+        )
+
+    def apply_bounds_on(self, bounds_on: bool, parameter=None) -> None:
+        """Enable or disable a parameter's bounds (local echo + RPC + trace)."""
+        fp = self._target(parameter)
+        bounds_on = bool(bounds_on)
+
+        def write():
+            fp.bounds_on = bounds_on
+
+        def rpc(fc, source):
+            fc.set_parameter_bounds_on(
+                parameter_name=str(fp.name),
+                bounds_on=bounds_on,
+                fit_uid=source.get("fit_uid"),
+            )
+
+        self._apply(
+            fp,
+            write,
+            rpc,
+            "parameter_bounds_on",
+            f"set bounds_on={bounds_on} for parameter '{fp.name}'",
+            {"parameter_name": str(fp.name), "bounds_on": bounds_on},
+        )
+
+    def apply_bounds(self, lower: float, upper: float, parameter=None) -> None:
+        """Set a parameter's bounds (local echo + RPC + trace)."""
+        fp = self._target(parameter)
+        lower, upper = float(lower), float(upper)
+
+        def write():
+            fp.bounds = (lower, upper)
+
+        def rpc(fc, source):
+            fc.set_parameter_bounds(
+                parameter_name=str(fp.name),
+                bounds=(lower, upper),
+                fit_uid=source.get("fit_uid"),
+            )
+
+        self._apply(
+            fp,
+            write,
+            rpc,
+            "parameter_bounds_set",
+            f"set bounds for parameter '{fp.name}' to ({lower}, {upper})",
+            {"parameter_name": str(fp.name), "lower": lower, "upper": upper},
+        )
 
     def _build_details_tooltip_text(self) -> str:
         fp = self.fitting_parameter
@@ -1813,31 +1868,7 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
     def _on_main_value_changed(self):
         if getattr(self, "_is_output_param", False):
             return
-        fp = self.fitting_parameter
-        value = self.widget_value.value()
-        old_value = float(fp.value)
-        source = self._parameter_context(fp)
-        try:
-            fp.value = value
-        except Exception:
-            pass
-        fc = get_fitting_client()
-        if fc is not None:
-            fc.set_parameter_value(
-                parameter_name=str(fp.name),
-                value=value,
-                fit_uid=source.get("fit_uid"),
-            )
-        self._trace_operation(
-            "parameter_value",
-            f"set value for '{fp.name}' from {old_value} to {value} in fit '{source['fit_group']}' / local '{source['local_fit']}'",
-            {
-                "parameter_name": str(fp.name),
-                "old_value": float(old_value),
-                "new_value": float(value),
-                **source,
-            },
-        )
+        self.apply_value(self.widget_value.value())
         self.finalize()
         self._update_linked_parameters()
         self._trigger_model_update()
@@ -1847,27 +1878,7 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
             return
         fp = self.fitting_parameter
         checked = self.widget_bounds_on.isChecked()
-        source = self._parameter_context(fp)
-        try:
-            fp.bounds_on = checked
-        except Exception:
-            pass
-        fc = get_fitting_client()
-        if fc is not None:
-            fc.set_parameter_bounds_on(
-                parameter_name=str(fp.name),
-                bounds_on=checked,
-                fit_uid=source.get("fit_uid"),
-            )
-        self._trace_operation(
-            "parameter_bounds_on",
-            f"set bounds_on={checked} for '{fp.name}' in fit '{source['fit_group']}' / local '{source['local_fit']}'",
-            {
-                "parameter_name": str(fp.name),
-                "bounds_on": bool(checked),
-                **source,
-            },
-        )
+        self.apply_bounds_on(checked)
         if checked:
             bounds_valid = False
             try:
@@ -1876,21 +1887,8 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
             except Exception:
                 bounds_valid = False
             if not bounds_valid:
-                if fc is not None:
-                    fc.set_parameter_bounds(
-                        parameter_name=str(fp.name),
-                        bounds=(self.widget_lower_bound.value(), self.widget_upper_bound.value()),
-                        fit_uid=source.get("fit_uid"),
-                    )
-                self._trace_operation(
-                    "parameter_bounds_set",
-                    f"initialize bounds for '{fp.name}' to ({self.widget_lower_bound.value()}, {self.widget_upper_bound.value()})",
-                    {
-                        "parameter_name": str(fp.name),
-                        "lower": float(self.widget_lower_bound.value()),
-                        "upper": float(self.widget_upper_bound.value()),
-                        **source,
-                    },
+                self.apply_bounds(
+                    self.widget_lower_bound.value(), self.widget_upper_bound.value()
                 )
         self.finalize()
 
@@ -1913,61 +1911,13 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
     def _on_main_fixed_toggled(self):
         if getattr(self, "_is_output_param", False):
             return
-        fp = self.fitting_parameter
-        new_fixed = self.widget_fix.isChecked()
-        source = self._parameter_context(fp)
-        try:
-            fp.fixed = new_fixed
-        except Exception:
-            pass
-        fc = get_fitting_client()
-        if fc is not None:
-            fc.set_parameter_fixed(
-                parameter_name=str(fp.name),
-                fixed=new_fixed,
-                fit_uid=source.get("fit_uid"),
-            )
-        self._trace_operation(
-            "parameter_fixed",
-            f"set fixed={new_fixed} for '{fp.name}' in fit '{source['fit_group']}' / local '{source['local_fit']}'",
-            {
-                "parameter_name": str(fp.name),
-                "fixed": bool(new_fixed),
-                **source,
-            },
-        )
+        self.apply_fixed(self.widget_fix.isChecked())
         self.finalize()
 
     def _on_main_bounds_changed(self):
         if getattr(self, "_is_output_param", False):
             return
-        fp = self.fitting_parameter
-        source = self._parameter_context(fp)
-        fc = get_fitting_client()
-        try:
-            fp.bounds = (self.widget_lower_bound.value(), self.widget_upper_bound.value())
-        except Exception:
-            pass
-        if fc is not None:
-            fc.set_parameter_bounds(
-                parameter_name=str(fp.name),
-                bounds=(self.widget_lower_bound.value(), self.widget_upper_bound.value()),
-                fit_uid=source.get("fit_uid"),
-            )
-        self._trace_operation(
-            "parameter_bounds_set",
-            (
-                f"set bounds for '{fp.name}' to "
-                f"({self.widget_lower_bound.value()}, {self.widget_upper_bound.value()}) "
-                f"in fit '{source['fit_group']}' / local '{source['local_fit']}'"
-            ),
-            {
-                "parameter_name": str(fp.name),
-                "lower": float(self.widget_lower_bound.value()),
-                "upper": float(self.widget_upper_bound.value()),
-                **source,
-            },
-        )
+        self.apply_bounds(self.widget_lower_bound.value(), self.widget_upper_bound.value())
         self.finalize()
 
     def finalize(self, *args):

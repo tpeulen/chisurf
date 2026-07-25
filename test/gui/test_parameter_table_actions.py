@@ -171,6 +171,95 @@ def test_cell_edit_still_dispatches_on_change(table):
     assert calls, "a cell edit should dispatch on_change"
 
 
+class _RecordingClient:
+    """Stand-in fitting client that records the RPCs a widget sends."""
+
+    def __init__(self):
+        self.calls = []
+
+    def __getattr__(self, name):
+        def call(**kwargs):
+            self.calls.append((name, kwargs))
+            return {"ok": True}
+
+        return call
+
+
+def test_cell_edit_reaches_the_backend_and_the_trace(table, params, monkeypatch):
+    """Regression: table edits were local-only — invisible to backend and history.
+
+    The row widgets push every edit to the fitting client and record it in the
+    provenance trace; the table wrote the attribute and stopped there, so a
+    parameter changed in a model editor never reached a remote backend and left
+    no history entry.  Both now go through the parameter's controller.
+    """
+    from chisurf.gui.widgets.fitting import parameter_widgets
+
+    client = _RecordingClient()
+    traced = []
+    monkeypatch.setattr(parameter_widgets, "get_fitting_client", lambda: client)
+    monkeypatch.setattr(
+        parameter_widgets.ParameterActionsMixin,
+        "_trace_operation",
+        lambda self, action_type, summary, payload=None: traced.append(
+            (action_type, payload or {})
+        ),
+    )
+
+    table.table_model.setData(
+        table.table_model.index(0, COL_VALUE), "4.25", QtCore.Qt.EditRole
+    )
+
+    assert params[0].value == 4.25, "the local echo must still happen"
+    assert ("set_parameter_value", {
+        "parameter_name": "p1", "value": 4.25, "fit_uid": client.calls[0][1]["fit_uid"],
+    }) in client.calls
+    actions = [a for a, _ in traced]
+    assert "parameter_value" in actions
+    payload = dict(traced[actions.index("parameter_value")][1])
+    assert payload["new_value"] == 4.25 and payload["old_value"] == 2.0
+
+
+def test_checkbox_edit_reaches_the_backend_and_the_trace(table, params, monkeypatch):
+    """The fixed flag takes the same route as the value."""
+    from chisurf.gui.widgets.fitting import parameter_widgets
+    from chisurf.gui.autoform.sections.parameter_table import COL_FIXED
+
+    client = _RecordingClient()
+    traced = []
+    monkeypatch.setattr(parameter_widgets, "get_fitting_client", lambda: client)
+    monkeypatch.setattr(
+        parameter_widgets.ParameterActionsMixin,
+        "_trace_operation",
+        lambda self, action_type, summary, payload=None: traced.append(action_type),
+    )
+
+    table.table_model.setData(
+        table.table_model.index(0, COL_FIXED), "True", QtCore.Qt.EditRole
+    )
+
+    assert params[0].fixed is True
+    assert [name for name, _ in client.calls] == ["set_parameter_fixed"]
+    assert traced == ["parameter_fixed"]
+
+
+def test_popup_edit_echoes_locally_without_a_backend(table, qtbot, params):
+    """Regression: the detail popup only RPC'd, so an edit was lost without a server.
+
+    ChiSurf starts (with a warning) when its RPC server is unreachable; in that
+    state every popup edit vanished and the popup snapped back on refresh.
+    """
+    table._on_cell_clicked(table.table_model.index(0, COL_NAME))
+    popup = table._detail_popup
+    qtbot.addWidget(popup)
+
+    popup.sb_value.setValue(7.5)
+    popup.sb_value.editingFinished.emit()
+
+    assert params[0].value == 7.5
+    popup.hide()
+
+
 def test_controllers_released_when_the_table_dies(params, qapp):
     """A dead table must not leave a deleted proxy on the parameters."""
     w = ParameterGroupTableWidget(params)

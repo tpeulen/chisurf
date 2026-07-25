@@ -86,7 +86,19 @@ Return / focus-out that would do it — so `_FloatEditDelegate.setModelData` cal
 non-virtual `QAbstractSpinBox::interpretText`, which knows nothing about the
 value this subclass manages) before reading `value()`. Without that call every
 number typed into a table cell was discarded on commit and the cell snapped back
-to its previous value. The TCSPC Lifetime model's Lifetimes (xₗ/τₗ) and
+to its previous value. A cell edit is applied through the parameter's
+`controller` (the proxy the table installs), whose `apply_value` /
+`apply_fixed` / `apply_bounds_on` / `apply_bounds` helpers do the three things
+every parameter editor owes: local write, backend RPC through the fitting
+client, and a provenance-trace entry — the same route the per-parameter row
+widgets and the detail popup take, so a table edit is no less visible to the
+backend or the history projection than a row-widget edit. `setData` signals the
+whole **row** as changed, since one column's edit changes what its neighbours
+show (enabling bounds fills the Lo/Hi cells; a bound that excludes the current
+value clamps it). The boolean columns' click-to-toggle delegate acts on the
+**left** button only and only on an editable cell — otherwise the right-click
+that opens the link/copy context menu flipped the flag on its way. The TCSPC
+Lifetime model's Lifetimes (xₗ/τₗ) and
 Anisotropy rotation (bᵢ/ρᵢ) groups use `style:"table"`. Both table widgets
 (`parameter_group_table` and the paired `dynamic_group` table) can hide the
 **Lo / Hi / Bounds** columns to keep the tables narrow — every `panel` puts a

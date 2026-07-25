@@ -57,6 +57,21 @@ SLOT_COLUMN_META = [m for m in COLUMN_META if m[0] != "name"]
 SLOT_COLUMN_IDS = [m[0] for m in SLOT_COLUMN_META]
 
 
+def _editor(param: FittingParameter):
+    """Return the parameter's controller when it can apply edits, else ``None``.
+
+    Both tables install a
+    :class:`~chisurf.gui.widgets.fitting.parameter_widgets.FittingParameterProxyController`
+    on every parameter they render (see ``_install_controllers``).  That
+    controller is what carries an edit to the backend and into the provenance
+    trace, exactly as the per-parameter row widgets do — writing the attribute
+    directly would keep the edit local and invisible to the history.  A table
+    used standalone (no controllers installed) falls back to the plain write.
+    """
+    ctrl = getattr(param, "controller", None)
+    return ctrl if hasattr(ctrl, "apply_value") else None
+
+
 def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) -> bool:
     """Write one editable column back onto ``param``; return success.
 
@@ -65,6 +80,7 @@ def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) ->
     exact same rules (linked followers stay read-only, bounds are stored as a
     tuple).
     """
+    ctrl = _editor(param)
     try:
         if col_id == "value":
             is_follower = getattr(param, "is_linked", False) and not getattr(
@@ -72,19 +88,27 @@ def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) ->
             )
             if is_follower:
                 return False
-            param.value = float(value)
+            if ctrl is not None:
+                ctrl.apply_value(float(value), param)
+            else:
+                param.value = float(value)
         elif col_id == "fixed":
-            param.fixed = _parse_bool(value)
-        elif col_id == "bounds_lo":
+            if ctrl is not None:
+                ctrl.apply_fixed(_parse_bool(value), param)
+            else:
+                param.fixed = _parse_bool(value)
+        elif col_id in ("bounds_lo", "bounds_hi"):
             b = list(param.bounds)
-            b[0] = float(value)
-            param.bounds = tuple(b)
-        elif col_id == "bounds_hi":
-            b = list(param.bounds)
-            b[1] = float(value)
-            param.bounds = tuple(b)
+            b[0 if col_id == "bounds_lo" else 1] = float(value)
+            if ctrl is not None:
+                ctrl.apply_bounds(b[0], b[1], param)
+            else:
+                param.bounds = tuple(b)
         elif col_id == "bounds_on":
-            param.bounds_on = _parse_bool(value)
+            if ctrl is not None:
+                ctrl.apply_bounds_on(_parse_bool(value), param)
+            else:
+                param.bounds_on = _parse_bool(value)
         else:
             return False
     except Exception:
@@ -181,8 +205,15 @@ class _BooleanToggleDelegate(QtWidgets.QStyledItemDelegate):
         option: QtWidgets.QStyleOptionViewItem,
         index: QtCore.QModelIndex,
     ) -> bool:
+        # A read-only cell must not toggle, and only the *left* button edits:
+        # every other button reached here too, so right-clicking a Fixed cell to
+        # open the link / copy context menu silently flipped the flag first.
+        if not (index.flags() & QtCore.Qt.ItemIsEditable):
+            return False
         et = event.type()
         if et in (QtCore.QEvent.MouseButtonRelease, QtCore.QEvent.MouseButtonDblClick):
+            if getattr(event, "button", None) and event.button() != QtCore.Qt.LeftButton:
+                return False
             new_val = self._toggle(index.data(QtCore.Qt.DisplayRole))
             return model.setData(index, str(new_val), QtCore.Qt.EditRole)
         if et == QtCore.QEvent.KeyPress:
@@ -384,7 +415,12 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
         if not _set_param_value(param, col_id, value):
             return False
 
-        self.dataChanged.emit(index, index)
+        # Repaint the whole row, not just the edited cell: one column's edit
+        # changes what its neighbours show. Enabling bounds turns the blank Lo /
+        # Hi cells into editable numbers, and a bound that excludes the current
+        # value clamps it — with a single-cell signal those cells kept painting
+        # the superseded text.
+        self.dataChanged.emit(self.index(index.row(), 0), self.index(index.row(), self.columnCount() - 1))
         return True
 
     # -- helpers ------------------------------------------------------------
@@ -1071,7 +1107,8 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
         param, col_id = pa
         if not _set_param_value(param, col_id, value):
             return False
-        self.dataChanged.emit(index, index)
+        # Row-wide, for the reason given in ``ParameterGroupTableModel.setData``.
+        self.dataChanged.emit(self.index(index.row(), 0), self.index(index.row(), self.columnCount() - 1))
         return True
 
 

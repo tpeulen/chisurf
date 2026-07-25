@@ -533,6 +533,109 @@ def test_spinbox_interpret_text_ignores_unparsable_entry(qapp):
     assert sb.value() == pytest.approx(1000.0)
 
 
+def _click_cell(qapp, view, index, button):
+    from qtpy import QtCore
+    from qtpy.QtTest import QTest
+
+    rect = view.visualRect(index)
+    QTest.mouseClick(view.viewport(), button, QtCore.Qt.NoModifier, rect.center())
+    qapp.processEvents()
+
+
+@pytest.mark.parametrize("button", ["right", "middle"])
+def test_only_the_left_button_toggles_a_checkbox_cell(qapp, button):
+    """Regression: right-clicking a Fixed cell flipped the flag.
+
+    The toggle delegate acted on *every* mouse release, so the right-click that
+    opens the table's link / copy context menu silently fixed (or released) the
+    parameter on the way.
+    """
+    from qtpy import QtCore
+    from chisurf.core.fitting.parameter import FittingParameter
+    from chisurf.gui.autoform.sections.parameter_table import (
+        ParameterGroupTableWidget, COL_FIXED,
+    )
+
+    params = [FittingParameter(name="N", value=1.0)]
+    widget = ParameterGroupTableWidget(params=params)
+    widget.show()
+    index = widget.table_model.index(0, COL_FIXED)
+    btn = {"right": QtCore.Qt.RightButton, "middle": QtCore.Qt.MiddleButton}[button]
+
+    _click_cell(qapp, widget.table_view, index, btn)
+    assert params[0].fixed is False, f"{button}-click toggled the fixed flag"
+
+    _click_cell(qapp, widget.table_view, index, QtCore.Qt.LeftButton)
+    assert params[0].fixed is True, "the left button must still toggle"
+
+
+def test_right_click_does_not_toggle_in_the_paired_table(qapp):
+    """The paired table shares the toggle delegate — same guarantee."""
+    from qtpy import QtCore
+    from chisurf.core.fitting.parameter import FittingParameter
+    from chisurf.gui.autoform.sections.parameter_table import (
+        PairedParameterTableWidget, SLOT_COLUMN_IDS,
+    )
+
+    params = [
+        FittingParameter(name="b1", value=0.5),
+        FittingParameter(name="tc1", value=0.001),
+    ]
+    widget = PairedParameterTableWidget(params=params, width=2)
+    widget.show()
+    col = 1 + SLOT_COLUMN_IDS.index("fixed")
+    index = widget.table_model.index(0, col)
+
+    _click_cell(qapp, widget.table_view, index, QtCore.Qt.RightButton)
+    assert params[0].fixed is False
+
+
+def test_enabling_bounds_repaints_the_whole_row(qapp):
+    """Regression: the Lo / Hi cells kept painting blank after enabling bounds.
+
+    ``setData`` signalled only the edited cell, but one column's edit changes
+    what its neighbours show — enabling bounds turns the blank Lo / Hi cells into
+    editable numbers.
+    """
+    from qtpy import QtCore
+    from chisurf.core.fitting.parameter import FittingParameter
+    from chisurf.gui.autoform.sections.parameter_table import (
+        ParameterGroupTableWidget, COL_BOUNDS_LO, COL_BOUNDS_ON,
+    )
+
+    params = [FittingParameter(name="N", value=1.0)]
+    widget = ParameterGroupTableWidget(params=params)
+    model = widget.table_model
+    spans = []
+    model.dataChanged.connect(lambda tl, br, *a: spans.append((tl.column(), br.column())))
+
+    assert model.data(model.index(0, COL_BOUNDS_LO), QtCore.Qt.DisplayRole) == ""
+    model.setData(model.index(0, COL_BOUNDS_ON), "True", QtCore.Qt.EditRole)
+
+    assert spans == [(0, model.columnCount() - 1)]
+    assert model.data(model.index(0, COL_BOUNDS_LO), QtCore.Qt.DisplayRole) != ""
+
+
+def test_a_bound_that_clamps_the_value_repaints_the_value_cell(qapp):
+    """A lower bound above the value moves the value — the cell has to follow."""
+    from qtpy import QtCore
+    from chisurf.core.fitting.parameter import FittingParameter
+    from chisurf.gui.autoform.sections.parameter_table import (
+        ParameterGroupTableModel, COL_BOUNDS_LO, COL_VALUE,
+    )
+
+    params = [FittingParameter(name="N", value=2.0, bounds_on=True)]
+    model = ParameterGroupTableModel(params)
+    spans = []
+    model.dataChanged.connect(lambda tl, br, *a: spans.append((tl.column(), br.column())))
+
+    model.setData(model.index(0, COL_BOUNDS_LO), 10.0, QtCore.Qt.EditRole)
+
+    assert params[0].value == pytest.approx(10.0)
+    assert spans == [(0, model.columnCount() - 1)]
+    assert model.data(model.index(0, COL_VALUE), QtCore.Qt.DisplayRole) == "10"
+
+
 def test_copy_paste_values(qapp):
     from qtpy import QtCore, QtWidgets
     from chisurf.gui.autoform.sections.parameter_table import (
