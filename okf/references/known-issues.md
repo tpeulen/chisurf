@@ -97,6 +97,32 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**Found 2026-07-25 while migrating the imaging tools onto the ROI subsystem.**
+Three red tests, each pointing at real behaviour rather than a stale test alone.
+Left open because each needs a decision from the owner of code being actively
+worked in this tree; the fourth found alongside them (a `np.float` in
+`test_fluorescence`, removed in NumPy 1.24) and three stale imports of the
+retired `_dev/fluorophore_db` plugin were fixed on the spot.
+
+- **`calculcate_spectrum` returns 16 terms where the anisotropy test expects
+  8.** `test_fluorescence.py::test_fluorescence_anisotropy_decay_calculcate_spectrum`.
+  For a 2-term lifetime spectrum and a 2-term anisotropy spectrum, VV with
+  `l1=0.1` yields every rotation × lifetime cross-product rather than the
+  reduced form the test pins. Either the expectation predates a deliberate
+  change to the spectrum algebra, or the mixing corrections are being applied
+  per cross-term where they should collapse. `chisurf/core/models/tcspc/`
+  anisotropy is under active work, so the semantics call belongs there.
+- **A binary `.pqres` file is read with `np.loadtxt`.**
+  `test_fluorescence/test_pqres.py::test_read_fcs_pqres` fails with
+  `UnicodeDecodeError` on byte 0xff — the PicoQuant result format is binary
+  (`PQRESLT\0` magic) and the FCS reader dispatches it to the text path. Either
+  the reader needs a binary branch for this format or the dispatcher must stop
+  claiming it.
+- **`test_structure.py::test_labeled_structure` fails on the labelled-structure
+  path.** Molecular modelling has moved out of chisurf into the external
+  framework, so this may be a test that outlived its subject rather than a
+  live defect; confirm before either fixing or removing it.
+
 **Fixed 2026-07-25 — kept here because the *patterns* keep recurring**
 
 - **A GUI modal reported an error from the macro layer, so head-less loading

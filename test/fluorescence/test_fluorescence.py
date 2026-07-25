@@ -143,9 +143,9 @@ class Tests(unittest.TestCase):
         directory = './test/data/tttr/BH/132/'
         spc_files = glob.glob(directory + '/BH_SPC132.spc')
         photons = chisurf.core.fio.fluorescence.photons.Photons(spc_files, reading_routine="bh132")
-        cr_filter = np.ones_like(photons.macro_times, dtype=np.float)
-        w1 = np.ones_like(photons.macro_times, dtype=np.float)
-        w2 = np.ones_like(photons.macro_times, dtype=np.float)
+        cr_filter = np.ones_like(photons.macro_times, dtype=float)
+        w1 = np.ones_like(photons.macro_times, dtype=float)
+        w2 = np.ones_like(photons.macro_times, dtype=float)
         points_per_decade = 5
         number_of_decades = 10
         results = chisurf.core.fluorescence.fcs.correlate.log_corr(
