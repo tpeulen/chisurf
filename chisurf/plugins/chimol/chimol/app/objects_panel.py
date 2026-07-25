@@ -227,8 +227,9 @@ class ObjectRow(QtWidgets.QWidget):
 
     def set_state(self, current: int, total: int) -> None:
         """Show PyMOL's ``current/total`` state counter, or nothing if static."""
+        # The leading space keeps the counter off the name; PyMOL columns them.
         self.state_label.setText(
-            f"{int(current)}/{int(total)}" if int(total) > 0 else ""
+            f" {int(current)}/{int(total)}" if int(total) > 0 else ""
         )
 
     def set_checked(self, checked: bool) -> None:
