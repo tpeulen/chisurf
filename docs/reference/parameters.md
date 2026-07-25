@@ -3,7 +3,7 @@
 
 Every named fit/model parameter known to ChiSurf, with its meaning and the analysis contexts it appears in. Generated from the parameter registry (`chisurf/core/settings/constants/parameter_registry.json`), which is built from the model and plugin source. Plugin-specific UI controls are listed on each [plugin page](plugins/index.md).
 
-Total registered parameters: **228**.
+Total registered parameters: **230**.
 
 | Parameter | Meaning | Keywords |
 | --- | --- | --- |
@@ -121,6 +121,7 @@ Total registered parameters: **228**.
 | `g` | Model parameter g used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
 | `gG` | Detection efficiency / g-factor of the green (donor) channel. |  |
 | `gR` | Detection efficiency / g-factor of the red (acceptor) channel. |  |
+| `ics.alpha` | Anomalous diffusion exponent alpha in MSD(tau) = 4*D*tau^alpha. 1 is normal diffusion; below 1 is subdiffusion (crowding, transient binding), above 1 is directed transport. Releasing it turns an image-correlation fit into the anomalous/iMSD case. | ICS, iMSD, anomalous diffusion, MSD |
 | `ik` | Shape parameter of the synthetic IRF model. | TCSPC, lifetime, IRF, shape |
 | `irf_start` | Start index (or time) of the IRF region used for convolution. | TCSPC, lifetime, IRF, window, start |
 | `irf_stop` | Stop index (or time) of the IRF region used for convolution. | TCSPC, lifetime, IRF, window, stop |
@@ -172,6 +173,7 @@ Total registered parameters: **228**.
 | `rh_min` | Lower bound of the hydrodynamic-radius axis. |  |
 | `rics.aT` | Triplet/blinking fraction a_T (0–1). | RICS, triplet, blinking, fraction |
 | `rics.D` | Diffusion coefficient D in µm²/s. | RICS, diffusion, mobility |
+| `rics.frame_dur` | Frame time t_frame in ms. Converts a frame lag Delta into a lag time via tau = \|xi*t_pixel + psi*t_line + Delta*t_frame\|, so it scales every diffusion coefficient derived from frame lags (STICS/TICS/iMSD). | RICS, ICS, STICS, frame time, scan timing |
 | `rics.line_dur` | Time between successive scanned lines in milliseconds. | RICS, imaging, timing, line scan |
 | `rics.n` | Average number of fluorescent molecules in the observation volume N. RICS/ICS amplitude G(0) is proportional to 1/N. | RICS, ICS, number of molecules, concentration |
 | `rics.offset` | Additive offset of the correlation function. | RICS, baseline, correlation |
