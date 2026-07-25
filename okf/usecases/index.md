@@ -46,6 +46,11 @@ The workflows a first pass should cover — expand as the tester discovers more:
   CLSM `.ptu`, auto-detect the scan markers, build a CLSM image and an intensity
   representation, brush a pixel selection, read its decay, save it as an ROI and
   export it to ChiSurf. *(last driven 2026-07-25; RF-030..RF-035)*
+- [Burst selection and FRET histogram](/usecases/burst-selection-fret.md) — load
+  raw single-molecule TTTR files into the integrated Burst Analysis workflow,
+  pick a detector setup, find and filter bursts, read the proximity-ratio
+  histogram, then carry the burst folder into BVA, 2CDE, burst-MLE and the
+  Burst Browser. *(last driven 2026-07-25; RF-052..RF-056)*
 
 ## Per-workflow file format
 

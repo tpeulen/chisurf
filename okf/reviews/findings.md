@@ -706,3 +706,46 @@ another instance); the symbol names are given so they stay findable.
   round-trip surface nobody needs, where removing the stub costs nothing.
   `test/fio/test_asc_alv_error_contract.py::test_alv_writer_stub_is_gone` keeps
   it from coming back.
+
+### GUI-tester 2026-07-25 — burst selection / FRET (Burst Analysis workflow)
+
+Slice: the integrated **Burst Analysis** workflow driven headlessly end-to-end on
+`chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/m000-m002.spc`
+(3 files, 533 699 photons → 71 802 selected → 620 bursts). Use case:
+[burst selection → FRET histogram](/usecases/burst-selection-fret.md).
+Findings RF-052..RF-056.
+
+### RF-052
+- **Status:** OPEN
+- **Severity:** S2 (a documented column is 1000× off and contradicts its neighbours)
+- **Location:** `chisurf/core/fio/fluorescence/burst.py:435` (`generate_burst_dataframe`, `crate = (npix / dur)/1e3`), header at `:353`
+- **Finding:** `dur` is already in milliseconds (`:432`, `(macro[stop]-macro[start]) * res * 1e3`), so `npix/dur` is photons per ms — i.e. **kHz** — and dividing by `1e3` again writes **MHz** into a column headed `Count Rate (KHz)`. The per-detector rates in the same row are computed correctly (`rate = idxs.size / d_ms`, `:469`), so one burst row carries two `… (KHz)` columns whose scales differ by 1000 and the burst's *total* rate reads smaller than its own green sub-rate. Verified on `m000.spc`, first burst: 21 photons between macro times of photons 1786 and 1807 = 0.8980875 ms → 23.383 kHz; the GUI *Bursts* table and the written `.bur` both show `0.023383`, next to `Green Count Rate (KHz) = 20.817`. The older writer in the same file gets it right because its `duration` is in seconds (`:218`, `:227`). Note before fixing: the bundled legacy reference (`burstwise_All 0.1000#15/bi4_bur/m000.bur`) carries the same 1000× scaling (29 photons / 0.3969 ms → `0.0730`), so this convention predates the port — decide explicitly whether to correct the value (and version the `.bur`) or relabel the column, and pin it with a test that asserts the total rate ≥ every per-detector rate.
+- **Fix note:**
+
+### RF-053
+- **Status:** OPEN
+- **Severity:** S1 (both export menu items raise on every non-empty dataset)
+- **Location:** `chisurf/plugins/burst/burst_selection/gui/tool.py:3055` (`export_bur`) and `:3071` (`export_flr_cif`)
+- **Finding:** Both guards are `if not self._last_frame:` and `_last_frame` is a `pandas.DataFrame`, so the guard raises `ValueError: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all()` exactly when there *is* something to export — before the file dialog opens, so the whole *File → Export → Export as .bur / Export as flrCIF* surface is dead. Verified by driving the widget: with 620 bursts loaded both calls raise; after `clear()` both correctly write "No burst data to export." to the summary (`not None` is `True`), which is why the bug is invisible to a smoke test that never loads data. Use `if self._last_frame is None or self._last_frame.empty:` (the same idiom the rest of the class already uses at `:2040`, `:2438`, `:2543`) and add a test that exports a non-empty frame to `tmp_path` with the file dialog patched.
+- **Fix note:**
+
+### RF-054
+- **Status:** OPEN
+- **Severity:** S2 (the preview contradicts both the run and its own parameters)
+- **Location:** `chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py:765` (`burst_start_stop`) feeding `update_burst_info` at `:1033`; displayed in the Burst Selection *Filter Settings* → *Info* box
+- **Finding:** The Info box derives its burst statistics from `find_bursts(self.selected, max_gap)` — contiguous runs of the *photon-selection mask* over the full photon array — not from the burst search the settings above it describe and the **🚀** run actually performs (tttrlib `sliding_window`, L=20, m=10, T=0.5 ms, applied to the filtered photon stream). The two disagree by more than an order of magnitude and the box is not refreshed after a run, so both numbers sit on screen at once. Verified on `m000.spc` with the shipped `BS` setup: the Info box reports *Bursts 7730, mean duration 4.103 ms, mean photons/burst 15.0* while the run reports 152 bursts of mean 113 photons (620 over three files) — and *mean photons/burst 15.0* is impossible beside the *Min photons (L) = 20* the same panel displays two rows lower, which is the self-evident tell. Either compute the preview with the configured search on the filtered stream (so it predicts the run), or label it as "photons passing the filter, grouped" and drop the burst-search-shaped statistics.
+- **Fix note:**
+
+### RF-055
+- **Status:** OPEN
+- **Severity:** S2 (an exception per repaint; error bars never drawn)
+- **Location:** `chisurf/plugins/burst/burst_bva/gui/tool.py:467-468` (`_setup_plot`, `plot.errorbars(..., height=np.array([]))`) with `:522` (`set_data(x_centers, mean, top=sd, bottom=sd)`)
+- **Finding:** The item is created with an empty `height` and thereafter only ever updated with `top`/`bottom`. `_ErrorBars.set_data` (`chisurf/gui/chiplot/backends/pyqtgraph_backend.py:288`) forwards only the keys it is given, and pyqtgraph's `ErrorBarItem.setData` merges into existing opts, so the stale `height=array([])` survives and `drawPath` takes the `height` branch: `y1 = y - height/2.` → `ValueError: operands could not be broadcast together with shapes (31,) (0,)`, raised from both `paint` and `boundingRect` on every repaint. Verified by opening the BVA panel on a 620-burst folder (`Done – 555 bursts with Std > 0 on 620 total`): the console fills with the traceback and the binned-mean curve is drawn with no uncertainties at all. Create the item without `height` (or pass `height=None` in `set_data` alongside `top`/`bottom`) and guard the empty-data case; a test that calls `_plot_2d_histogram` on a small array and asserts the item's opts carry no `height` would pin it.
+- **Fix note:**
+
+### RF-056
+- **Status:** OPEN
+- **Severity:** S3 (a primary button that is a no-op until an undiscoverable field is changed)
+- **Location:** `chisurf/plugins/burst/burst_selection/gui/tool.py:774` (`_build_histogram_group`, `gmm_components_spin` created with `setRange(0, 10)` and no `setValue`) with `_plot_gmm` at `:2489`
+- **Finding:** The spin box therefore starts at 0, `_plot_gmm` reads `n_components = 0`, the auto-component branch is only taken when *Auto components* is ticked, and the fall-through writes "GMM fitting skipped: not enough data points or zero components." So **🎯 Fit GMM** does nothing on a fresh session and the message leads with the wrong cause — verified on a 620-burst proximity-ratio histogram, which has plenty of data. Default the spin to 1 (or 2, the usual smFRET case), or tick *Auto components* by default, and split the message so "zero components" is reported as its own, actionable text.
+- **Fix note:**

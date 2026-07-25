@@ -2,6 +2,25 @@
 
 ## 2026-07-25
 
+* **GUI-tester: the Burst Analysis workflow, end to end, on real SPC data.** Drove
+  the integrated burst window headlessly on
+  `burst_selection/tests/data/bh_spc132_sm_dna/m000-m002.spc` (533 699 photons →
+  71 802 selected → 620 bursts): files → detector setup → sliding-window search →
+  proximity-ratio histogram → BVA / 2CDE / burst-MLE / Browser, screenshotting
+  and reading every tab. The physics and the panel-to-panel hand-off are right —
+  the histogram shows the expected dsDNA donor-only + FRET populations, and the
+  burst folder and detector setup reach all six downstream panels with no user
+  action. Five defects filed: the burst `Count Rate (KHz)` column is written in
+  MHz and disagrees with the per-detector rates in the same row (RF-052); both
+  *File → Export* actions raise `ValueError: truth value of a DataFrame is
+  ambiguous` whenever there is data (RF-053); the *Info* preview counts runs of
+  the selection mask instead of the configured burst search, so it reports 7730
+  bursts where the run finds 152 and a mean photons/burst below its own *Min
+  photons* (RF-054); the BVA error-bar item keeps an empty `height`, raising on
+  every repaint (RF-055); and *Fit GMM* is a no-op because its component spin
+  defaults to 0 (RF-056). Use case + UX notes:
+  [burst selection → FRET histogram](/usecases/burst-selection-fret.md).
+
 * **RF-030 fixed: the CLSM mean-micro-time map was scaled by *Min #Ph*, not
   filtered by it.** `imaging.representation` called
   `get_mean_micro_time(tttr, n_ph_min, False)` against a tttrlib signature whose
