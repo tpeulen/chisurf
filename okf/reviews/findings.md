@@ -1215,3 +1215,60 @@ Findings RF-090..RF-097.
 - **Location:** `chisurf/plugins/tttr/microtime_histogram/wizard.py:1362` (`compute_microtime_histogram`, which has no empty-`selected_files` guard) against `:790-792` and `:849-852`, where `add_to_chisurf` and `open_save_dialog` both do warn
 - **Finding:** **Compute** with no files ticked logs "Computing microtime histogram…", iterates an empty list and returns, without clearing the plot, the FWHM box or `original_histograms`. Verified: after computing a decay, clearing the file list and pressing **Compute** again, the previous curves stay drawn and the FWHM box still reads `0.27 ns (82.0 channels)` — no dialog, no status line, nothing disabled. Pressing it on a freshly opened tool is equally silent. A user who swaps datasets and re-computes cannot distinguish a stale result from a new one. The sibling actions in the same class already raise a "No Files" warning; do the same here (and clear the display) before the loop.
 - **Fix note:**
+
+### Review 2026-07-26 (8) — the in-tree graph layer and the MCMC diagnostics
+
+Slice: the two newest algorithm landings — `1d4634cf6`
+(`modules/chinet/chinet/graph/`, the containers/algorithms/layouts/GraphML that
+replaced the external graph library) and `fad49246f`
+(`chisurf/core/fitting/diagnostics.py`). Everything below was reproduced in the
+`arm64` env.
+
+What checks out, and is worth not re-reviewing: over **800 random directed graphs**
+(1–7 nodes, three densities, self-loops in 30 %) `simple_cycles`, `topological_sort`,
+`is_directed_acyclic_graph`, `connected_components`, `maximum_spanning_tree` weight
+and weighted all-pairs `shortest_path_length` agree with the reference
+implementation **exactly, 0 mismatches**. Self-loop bookkeeping matches too
+(`degree`, `number_of_edges`, `copy`, `subgraph`, directed in/out-degree). The
+spectral layout collapsing each component to a point on a disconnected graph is an
+inherent property of the method and is bit-for-bit what the old library did — not a
+regression. In `diagnostics.py` the ESS estimator recovers the AR(1)
+autocorrelation time correctly (φ=0.5 → 2.95 vs 3.00; φ=0.9 → 19.36 vs 19.00 over
+4×20000 draws), and the Geyer initial-positive-and-monotone truncation, the
+Gelman–Rubin pooled variance and the Blom rank transform are all the standard
+forms. Findings RF-098..RF-102.
+
+### RF-098
+- **Status:** OPEN
+- **Severity:** S2 (a GraphML file written for a graph with graph-level attributes is rejected outright by conforming readers, and those attributes are lost on every round trip)
+- **Location:** `modules/chinet/chinet/graph/graphml.py:131-135` (`write_graphml`, the `graph.graph` loop) and `:236-245` (`read_graphml`, which handles only `node` and `edge` children)
+- **Finding:** Graph-level attributes are emitted as `<data key="title">` — the *attribute name*, not a `<key>` id — and no `<key for="graph">` element is ever declared, while node and edge attributes correctly go through `key_ids`. GraphML requires `data/@key` to refer to a declared `<key>`, so the document is invalid. Verified: `Graph(title="run 7", threshold=0.5)` with one weighted edge writes `<data key="title">run 7</data>` under a keys block declaring only `d0` for the edge weight, and the reference GraphML reader refuses **the whole file** with `NetworkXError: Bad GraphML data: no key title` — the nodes and edges are lost with it. The reverse direction fails silently: `read_graphml` iterates only `node`/`edge` tags, so a well-formed third-party file's graph-level `<data>` is dropped and `.graph` comes back `{}` (checked against a reference-written file that declares `d0`/`d1` `for="graph"`). Both contradict the module docstring's "opens in yEd, Gephi or Cytoscape unchanged, and a file written by those opens here". Declare graph-scope keys in `key_ids` alongside node/edge, and read graph-level `<data>` in `read_graphml`. Neither direction is covered — `test_chinet_graph.py`'s four GraphML tests all use graphs with an empty `.graph`.
+- **Fix note:**
+
+### RF-099
+- **Status:** OPEN
+- **Severity:** S1 (a parameter the sampler never moved is reported as the best-converged one in the table, with no warning — or as the worst, decided by floating-point luck)
+- **Location:** `chisurf/core/fitting/diagnostics.py:157-160` (the `not (within > 0.0)` guard in `_ess_1d`) against `:114-124` (`autocovariance`, FFT-based)
+- **Finding:** The guard meant to catch a constant parameter is unreachable for a real constant chain: `autocovariance` centres with `x - x.mean()` and transforms through the FFT, so lag 0 comes back as a rounding residual (~1e-31) rather than `0.0`, and the entire ESS/τ/MCSE machinery then runs on that noise. Verified on `np.full((4, 2000), v)` — a parameter that is *bit-identical in all 8000 draws*: `v = 1.234`, `0.001`, `3.7` → `ess = 4.0`, `tau = 1998`; `v = 0.0`, `1.0`, `0.5`, `2.5` → the residual happens to be exactly `0.0`, the guard fires, and `ess = 8000`, `tau = 1.0`, `mcse ≈ 0`, `rhat = 1.0`, **`convergence_warnings` returns `[]`**. Identical situations, opposite verdicts, decided only by whether the constant is binary-exact — and the silent branch is the one a parameter pinned at a bound of `0.0` takes. This is on the live path: `sample_fit` → `_write_sampling_diagnostics` (`chisurf/core/fitting/fit.py:2166-2167`) writes it to `diagnostics.json` and logs the warnings. Test the *range* (`np.ptp(block) == 0.0`, as `rank_normalized_rhat:361` and `bulk_tail_ess:399` already do) instead of a floating-point variance, and report a frozen parameter as such rather than as either extreme.
+- **Fix note:**
+
+### RF-100
+- **Status:** OPEN
+- **Severity:** S1 (one non-finite draw makes `summarize` report the full draw count as the effective sample size)
+- **Location:** `chisurf/core/fitting/diagnostics.py:157-160` (`_ess_1d` falls through to `return total` whenever `within` is not `> 0.0`, which includes `nan`) with `:472-477` (`mcse`) and `:556` (`summarize`)
+- **Finding:** A single `nan`/`inf` draw makes `autocovariance` return all-`nan`, so `within` is `nan`, `not (nan > 0.0)` is `True`, and the function returns `total` — the *raw* draw count, the value reserved for "a constant parameter carries no information". Verified on 4×1000 draws with one element set to `nan`: `summarize` reports `ess = 4000.0` and `tau = 1.0` (i.e. perfectly independent draws) beside `rhat = nan`, `ess_bulk = nan`, `ess_tail = nan` and `mcse = nan`; `+inf` behaves the same. Every companion statistic correctly refuses to answer while the headline ESS reads as the best possible value, and `mean`/`sd` are quietly computed over the finite subset only (`summarize:571`), so the row describes three different samples at once. `rank_normalized_rhat:358` and `bulk_tail_ess:399` already gate on `np.all(np.isfinite(block))`; `_ess_1d` should do the same and return `nan`.
+- **Fix note:**
+
+### RF-101
+- **Status:** OPEN
+- **Severity:** S2 (three unrelated conditions are all reported to the user as "never moved or disagree completely between chains")
+- **Location:** `chisurf/core/fitting/diagnostics.py:659-664` (`convergence_warnings`, `stuck = [... not np.isfinite(e["rhat"])]`) against `:358-363` (`rank_normalized_rhat`, which returns `nan` for two different reasons and `inf` for a third)
+- **Finding:** The message is keyed off `rhat` merely being non-finite, but `rank_normalized_rhat` returns `nan` for a chain that is too short (`block.shape[1] < 2`), `nan` for a chain containing any non-finite draw, `nan` for a single chain of fewer than four draws (via `np.var(..., ddof=1)` on one element), and `inf` only for the genuinely stuck case. Verified — all four produce the identical line `1 parameter(s) never moved or disagree completely between chains (e.g. p)`: a 4×1 chain, a 4×1000 chain with one `nan`, a 1×3 chain, and four constant chains at different values. Only the last is what the text describes; for the `nan`-draw case (RF-100) it actively points the reader at the wrong diagnosis, and **no** message anywhere reports that the chain contains non-finite draws. Separate the cases and say which one fired.
+- **Fix note:**
+
+### RF-102
+- **Status:** OPEN
+- **Severity:** S3 (`rank_normalized_rhat` reports an unsplit statistic as a split one, and leaks numpy RuntimeWarnings)
+- **Location:** `chisurf/core/fitting/diagnostics.py:307-311` (`_split` returns the chains untouched when `n // 2 < 2`) with `:357-368` (`rank_normalized_rhat`) against `:431-433` (`split_rhat`, which returns `nan` instead)
+- **Finding:** For two or three draws per chain `_split` silently declines to split, and `rank_normalized_rhat` proceeds anyway — so `summarize` publishes a `rhat` that was never split under a docstring promising "``nan`` when the chains are too short" and a warning string that calls it "rank-normalised split R-hat". Verified: `m=2, n=2` → `rank_normalized_rhat` `1.932` while `split_rhat` is `nan`; `m=2, n=3` → `1.067` vs `nan`. Separately, `m=1` with `n < 4` reaches `_rhat_1d` with a single chain mean, so `np.var(means, ddof=1)` leaks `RuntimeWarning: Degrees of freedom <= 0 for slice` and `invalid value encountered in scalar divide` out of a diagnostics call before returning `nan`. Return `nan` when `_split` could not split (as `split_rhat` does), and guard the one-chain case rather than letting numpy warn.
+- **Fix note:**
