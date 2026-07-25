@@ -123,7 +123,8 @@ for e in fit.posterior_summary(p_value=0.68):
 
 | `method` | Use when |
 | --- | --- |
-| `blocked` | **default choice** — correlated parameters, global fits, decays |
+| `collapsed` | a **linked** global fit — integrates each dataset's private parameters out and samples only the shared ones |
+| `blocked` | correlated parameters, unlinked groups, single decays |
 | `emcee` | many well-scaled parameters, or as an independent cross-check |
 | `mcmc` | only for an uncorrelated, well-conditioned posterior |
 
@@ -177,7 +178,30 @@ Blocks come from the fit's factor structure: each dataset's private parameters
 form one block, the shared ones another. `r['block_acceptance']` reports the
 acceptance of each, which is what tells you a particular block is badly scaled.
 
-## 7. Inspecting the structure of a global fit
+## 7. Linked global fits: use `collapsed`
+
+Linking a parameter across datasets *reduces* the dimension but makes the
+posterior **harder** to sample — the shared parameter is correlated with every
+dataset's private ones. `collapsed` integrates the private parameters out
+analytically and samples only the shared ones:
+
+```python
+report = chisurf.core.fitting.fit.sample_fit(
+    fit=group_fit, target_directory='./sampling',
+    method='collapsed', steps=3000, n_runs=2, global_posterior=True,
+)
+```
+
+With three private parameters per dataset this gave 26× the effective samples
+per model evaluation of `blocked` — and the `blocked` run's error bar on the
+shared parameter was 5.6× too small, an under-sampled result that only the ESS
+diagnostic exposed. Exact when the private parameters enter linearly
+(amplitudes, offsets, scatter fractions); otherwise check against `blocked`.
+
+With one private parameter per dataset the two are about even, so `blocked` is
+fine there.
+
+## 8. Inspecting the structure of a global fit
 
 ```python
 print(joint.structure_report())

@@ -177,6 +177,61 @@ be decomposed this way; that is what the shared parameter means. The
 `components > 1` in something called a "global fit" means nothing is actually
 being shared.
 
+## Linking reduces the dimension and makes sampling *harder*
+
+This is the counter-intuitive one. Linking a parameter across $N$ datasets
+removes $N-1$ free parameters — the fit is genuinely smaller. Measured on six
+datasets of $c + a x^2$, linking $a$ took the dimension from 12 to 7. Sampling
+then got **~50× worse** per model evaluation, and the shared parameter's
+autocorrelation time went from 1 to 20.
+
+Dimension is simply the wrong difficulty measure. **Coupling** is the right one.
+Unlinked, the fit is six independent 2-parameter problems that each draw
+essentially independent samples. Linked, it is one 7-parameter problem in which
+$a$ is strongly correlated with every dataset's $c$ — and a conditional move can
+only shift $a$ a little before the $c$'s object. The factor graph reports the
+right quantity: number of components, separator, treewidth.
+
+### Collapsing: integrate the private parameters out
+
+At fixed shared parameters the datasets are conditionally independent, so each
+one's *private* parameters can be optimised alone and integrated out
+analytically (Laplace), leaving a target over the shared parameters only:
+
+$$p(\theta_S \mid D) \;\propto\; \pi(\theta_S)\prod_k
+  \int L_k(\theta_S, \theta_k)\,\pi_k(\theta_k)\,\mathrm{d}\theta_k .$$
+
+That is a genuinely low-dimensional posterior — usually one to three parameters
+however many datasets there are. Private parameters are then drawn from their
+conditional Gaussian at each recorded shared state, so the output is still a
+full joint sample (and the private parameters carry no autocorrelation of their
+own — they are Rao-Blackwellised).
+
+**This is exact when each dataset's model is linear in its private
+parameters**, which covers amplitudes, offsets, scatter fractions and scaling
+factors — most nuisance parameters in fluorescence decay and FCS models. Where
+a private parameter enters non-linearly the Laplace integral is an
+approximation and should be checked against a joint chain.
+
+Measured, one shared parameter across datasets of $c + b x + d x^3 + a x^2$
+(three private parameters each, 25 dimensions total):
+
+| Sampler | τ(shared) | min ESS | ESS / 1000 evals | reported $a$ |
+| --- | --- | --- | --- | --- |
+| `blocked` | 589 | 3.4 | 0.045 | 1.25069 ± 0.00682 |
+| `collapsed` | 4.9 | 411 | **1.154** | 1.24845 ± 0.03857 |
+
+Note the second column of numbers as much as the first. The blocked run's error
+bar is **5.6× too small** — with an effective sample size of 3.4 it had not
+explored the posterior at all, and would have been quoted as a confident wrong
+answer. Only the ESS diagnostic distinguishes it from the correct run.
+
+The nested per-dataset optimisation is not free: with a *single* private
+parameter per dataset, collapsing buys 3–4× the effective sample size per draw
+but costs ~3.5× the evaluations, so it is roughly a wash. It wins outright as
+soon as each dataset carries several private parameters — which is the normal
+case.
+
 ## Adaptation and validity
 
 Both random-walk samplers tune their proposal during a **warm-up** phase and

@@ -279,6 +279,39 @@
   which is what makes any of this reachable for a `FitGroup`; the default is
   unchanged. 11 tests.
 
+* **Linking reduces the dimension and makes sampling *harder* — so collapse it
+  instead (PRD-69).** Following the component decomposition to its conclusion:
+  the *coupled* case. Linking a parameter across datasets removes free
+  parameters, so the fit is genuinely smaller — and measured on six datasets it
+  took the dimension 12 → 7 and cost **~50×** in effective samples per model
+  evaluation, with the shared parameter's autocorrelation time going 1 → 20.
+  Dimension is the wrong difficulty measure; coupling is, and the factor graph
+  already reports it (components, separator, treewidth). `sample_marginal_shared`
+  (`method='collapsed'`) fixes it: at fixed shared parameters the datasets are
+  conditionally independent, so each one's *private* parameters are profiled and
+  integrated out by Laplace, leaving a target over the separator alone — one to
+  three dimensions however many datasets there are. Privates are then drawn from
+  their conditional Gaussian at each recorded state, so the output is still a
+  full joint (Rao-Blackwellised) sample. **Exact when the private parameters
+  enter linearly**, which covers amplitudes, offsets, scatter fractions and
+  scaling factors — most nuisance parameters in decay and FCS models.
+  The profile must be restricted to each local model's *private positions*: a
+  link master lives on one of the datasets, so optimising that model's whole free
+  list re-optimises the shared parameter and undoes every proposal. The first
+  implementation did exactly that — acceptance 1.000 and the chain diffused to
+  −4.6e7 — which is why the conditional curvature is now built from the Jacobian
+  of the *restricted* residuals rather than from `Fit.covariance_matrix` (the
+  marginal covariance over everything the local model varies). Measured with
+  three private parameters per dataset (25 dims): `collapsed` τ(shared) 4.9 /
+  minESS 411 / **1.154** ESS per 1000 evaluations against `blocked` 589 / 3.4 /
+  0.045 — 26×. Note the other column too: `blocked` reported the shared parameter
+  as 1.25069 ± 0.00682 against `collapsed`'s 1.24845 ± 0.03857, an error bar
+  **5.6× too small** from a chain with an effective sample size of 3.4 — a
+  confidently wrong answer that only the ESS diagnostic exposes. With a *single*
+  private parameter per dataset it is a wash (3–4× the ESS per draw for ~3.5× the
+  evaluations), so `blocked` stays right for that case and this is reported as
+  such rather than sold as a universal win. 8 tests.
+
 * **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
   The posterior of a group already factorises over its datasets, but
   `GlobalFitModel` flattened every local model's free parameters plus the

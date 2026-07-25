@@ -236,6 +236,23 @@ per 1000 model evaluations — 7.8× the ESS for 40% fewer evaluations. A group
 whose datasets share a parameter is one component and falls back to a single
 joint chain.
 
+**Linking lowers the dimension and makes sampling harder.** Measured on six
+datasets, linking one parameter took the dimension 12 → 7 and cost ~50× in ESS
+per model evaluation (τ of the shared parameter 1 → 20). Dimension is the wrong
+difficulty measure; coupling is. `sample_marginal_shared` (`method='collapsed'`)
+integrates each dataset's *private* parameters out by Laplace at fixed shared
+values — exact when they enter linearly, which covers amplitudes, offsets and
+scatter fractions — and samples the separator only, drawing the privates
+conditionally so the output is still a full joint sample.
+
+The profile must be restricted to each local model's *private positions*: a link
+master lives on one dataset, so optimising that model's whole free list would
+re-optimise the shared parameter and flatten the target. With three private
+parameters per dataset (25 dims): `collapsed` τ(shared) 4.9 / minESS 411 /
+1.154 ESS per 1000 evals against `blocked` 589 / 3.4 / 0.045 — 26×, and
+`blocked` there reported an error bar 5.6× too small. With a *single* private
+parameter it is roughly a wash (3–4× the ESS per draw, ~3.5× the evaluations).
+
 **Sampling a group samples one member.** `lnprior`/`lnprob`/`lnprob_parts`,
 `walk_mcmc_blocked` and `sample_independent_components` take an optional
 `model=`; without it they use `fit.model`, which for a `FitGroup` is the

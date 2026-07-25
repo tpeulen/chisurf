@@ -164,6 +164,34 @@ effective samples per 1000 model evaluations — 7.8× the ESS for 40% fewer
 evaluations. `method='blocked'` routes through this and falls back to one joint
 chain when there is a single component.
 
+### Collapsing a linked global fit
+
+Linking *lowers* the dimension and makes sampling **harder**: six datasets,
+dimension 12 → 7, ~50× worse ESS per evaluation, τ of the shared parameter
+1 → 20. Coupling, not dimension, is the difficulty. `sample_marginal_shared`
+(`method='collapsed'`) profiles each dataset's private parameters at fixed
+shared values and integrates them out by Laplace — exact when they enter
+linearly, i.e. amplitudes, offsets, scatter fractions — leaving a 1–3 dimensional
+target however many datasets there are. Privates are drawn conditionally, so the
+output is a full joint (Rao-Blackwellised) sample.
+
+The profile is restricted to each local model's *private positions*: the link
+master lives on one dataset, so optimising that model's whole free list would
+re-optimise the shared parameter and flatten the target — the first
+implementation did exactly that and the chain diffused to −4.6e7.
+
+Three private parameters per dataset (25 dims):
+
+| Sampler | τ(shared) | min ESS | ESS / 1000 evals | reported `a` |
+| --- | --- | --- | --- | --- |
+| `blocked` | 589 | 3.4 | 0.045 | 1.25069 ± 0.00682 |
+| `collapsed` | 4.9 | 411 | **1.154** | 1.24845 ± 0.03857 |
+
+26×, and the `blocked` error bar is 5.6× too small — a confidently wrong answer
+that only the ESS diagnostic exposes. With a *single* private parameter per
+dataset it is a wash (3–4× ESS per draw, ~3.5× the evaluations), so `blocked`
+remains right for that case.
+
 `sample_fit(..., global_posterior=True)` targets the group's joint posterior
 rather than the selected member's model, which is what makes any of this
 reachable for a `FitGroup`.
