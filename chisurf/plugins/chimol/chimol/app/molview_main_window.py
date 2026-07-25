@@ -217,6 +217,10 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             self,
             margins=dock_margins,
             spacing=spacing,
+            # The A/S/H/L/C menus drive the same command layer the command line
+            # does, so every menu action is reproducible as a typed command and
+            # shows up in the command log.
+            run_command=self._run_object_menu_command,
         )
         self.object_list = self.objects.object_list
         self.object_list.itemSelectionChanged.connect(
@@ -1429,6 +1433,31 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
     # ------------------------------------------------------------------
     # Object management helpers
     # ------------------------------------------------------------------
+
+    def _run_object_menu_command(self, line: str) -> None:
+        """Run a command from an object menu, echoing it like a typed one.
+
+        Echoing matters more than it looks: it is how a user learns which command
+        the menu entry corresponds to, which is the whole path from clicking
+        around to writing a script.
+        """
+        panel = getattr(self, "command_panel", None)
+        if panel is not None:
+            try:
+                panel.append_message(f"> {line}")
+            except Exception:
+                pass
+        try:
+            _cmd.do(line)
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                "Object menu command failed: %s", line, exc_info=True
+            )
+            if panel is not None:
+                try:
+                    panel.append_error(f"{line}: {exc}")
+                except Exception:
+                    pass
 
     def _report_degraded_load(self, path: Path, exc: Optional[BaseException]) -> None:
         """Tell the user the structure reader gave up, and name the reason.

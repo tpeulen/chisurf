@@ -2,6 +2,40 @@
 
 ## 2026-07-25
 
+* **chimol: PyMOL's object-panel A/S/H/L/C menus, transcribed 1:1.** The object
+  panel is how most people actually drive PyMOL, so the five per-molecule menus
+  are now reproduced entry for entry in `app/object_menus.py` -- same entries,
+  same order, same separators, same labels, including the ones with a stray
+  trailing space (`"by ss  "`) or odd abbreviation (`"assign sec. struc."`).
+  **Taken from PyMOL's source, not from a screenshot.** (`screencapture` is
+  blocked without macOS Screen Recording permission, which turned out not to
+  matter.) `pymol/menu.py`'s own builders `mol_action`/`mol_show`/`mol_hide`/
+  `mol_labels`/`mol_color` were *called* and their nested tables dumped, so the
+  transcription is mechanical. A test re-dumps them from a live PyMOL when it is
+  importable and asserts the labels and order still match, so the copy cannot
+  drift; when PyMOL is absent it compares against the transcription instead.
+  **Unsupported entries are shown, disabled, and explained** rather than dropped.
+  Dropping them would change the menu's shape and hide the gap; wiring them to
+  something approximate would lie about what happened. So `drag matrix`, `clean`,
+  `flag ignore`, `valence`, `cell` and the whole `L` menu are greyed out with a
+  tooltip saying what is missing, and a test fails if any disabled entry has no
+  reason. 12 of the Action menu's 24 entries are live, including `zoom`/`orient`/
+  `center`, `assign sec. struc.`, `rename object`, `copy to object`,
+  `delete object`, `remove waters` and a `preset` submenu.
+  **Every entry runs a chimol command through the same layer the command line
+  uses**, and is echoed to the command panel as `> hide everything, solvent and
+  1dg3`, which is how a user gets from clicking to scripting. A test asserts every
+  wired command's verb is actually registered, so there can be no dead buttons.
+  **Two selection-grammar bugs fell out of scoping the menus to their object.**
+  Every entry targets `... and <object>`, and (1) a PDB-style name lexed as a
+  number followed by an identifier -- `1dg3` gave "Unexpected token INT '1'" --
+  and (2) a bare object name selected *nothing*, because `_get_ident_mask` was a
+  stub returning the empty mask. Both fixed: the tokenizer accepts a digit-led
+  identifier that contains at least one letter (with `INT` guarded by a negative
+  lookahead so `resi 10-20` still lexes as numbers), and an identifier naming an
+  object selects that object's atoms.
+  Suite: 301 passed, 1 skipped (21 new).
+
 * **The agent defaults to an EU-hosted model, and finds the key you actually
   exported.** Two provider-layer problems, both of which read to a user as
   "the assistant does not work".

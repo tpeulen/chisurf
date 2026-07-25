@@ -1,0 +1,307 @@
+"""PyMOL's per-object A / S / H / L / C menus, transcribed entry for entry.
+
+PyMOL's object panel is how most people drive PyMOL: every molecule gets five
+buttons, and almost everything you do day to day is in them. The tables below are
+a **1:1 transcription** of ``pymol/menu.py`` — same entries, same order, same
+separators, same labels (including the ones with an odd space or abbreviation, so
+they read identically) — taken from PyMOL's own builders
+``mol_action``/``mol_show``/``mol_hide``/``mol_labels``/``mol_color`` rather than
+from a screenshot.
+
+Each entry carries the **chimol** command it runs. Where chimol has no
+equivalent, ``command`` is ``None`` and the entry is rendered greyed out with a
+note saying so. That is deliberate: dropping the entry would make the menu a
+different shape from PyMOL's and hide the gap, while wiring it to something
+approximate would lie about what happened. A disabled entry with a reason is the
+honest middle, and it keeps the menu navigable by muscle memory.
+
+``{sele}`` in a command is replaced by the object or selection the menu was
+opened on. ``{text}`` marks a command that first asks for a value.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class MenuEntry:
+    """One row of an object menu.
+
+    Attributes
+    ----------
+    label : str
+        PyMOL's own label, verbatim, including leading spaces used for
+        indentation in its sub-groupings.
+    command : str or None
+        Chimol command template, with ``{sele}`` for the target and ``{text}``
+        for a prompted value. ``None`` means chimol has no equivalent; the entry
+        is shown disabled.
+    note : str
+        Shown as the tooltip. For an unsupported entry this says what is missing;
+        for a supported one that differs from PyMOL, what the difference is.
+    prompt : tuple of str
+        ``(title, question)`` when the command needs a value first.
+    children : tuple of MenuEntry
+        Submenu entries.
+    """
+
+    label: str
+    command: str | None = None
+    note: str = ""
+    prompt: tuple[str, str] | None = None
+    children: tuple["MenuEntry", ...] = field(default_factory=tuple)
+
+    @property
+    def is_separator(self) -> bool:
+        """Whether this row is a gap between groups rather than an entry."""
+        return self.label == ""
+
+    @property
+    def is_submenu(self) -> bool:
+        """Whether this row opens a submenu."""
+        return bool(self.children)
+
+
+SEP = MenuEntry("")
+
+_NO_LABELS = "Chimol has no label representation yet."
+_NO_EDIT = "Chimol has no structure editing yet."
+_NO_MATRIX = "Chimol has no per-object matrix dragging yet."
+
+
+# --------------------------------------------------------------------------- #
+# A — Action  (pymol.menu.mol_action)
+# --------------------------------------------------------------------------- #
+ACTION_MENU: tuple[MenuEntry, ...] = (
+    MenuEntry("zoom", "zoom {sele}"),
+    MenuEntry("orient", "orient {sele}"),
+    MenuEntry("center", "center {sele}"),
+    MenuEntry("origin", None, "Chimol rotates about the scene centre; "
+                              "a per-object origin is not implemented."),
+    SEP,
+    MenuEntry("drag matrix", None, _NO_MATRIX),
+    MenuEntry("reset matrix", None, _NO_MATRIX),
+    SEP,
+    MenuEntry("drag coordinates", None, _NO_MATRIX),
+    MenuEntry("clean", None, _NO_EDIT),
+    SEP,
+    MenuEntry("preset", None, "", children=(
+        MenuEntry("simple", "hide everything, {sele}; show cartoon, {sele}"),
+        MenuEntry("ball and stick", "hide everything, {sele}; "
+                                    "show sticks, {sele}; show spheres, {sele}"),
+        MenuEntry("ligand sites", "hide everything, {sele}; "
+                                  "show cartoon, {sele}; show spheres, hetatm"),
+        MenuEntry("technical", "hide everything, {sele}; show cartoon, {sele}; "
+                               "show sticks, {sele}; show spheres, hetatm"),
+    )),
+    MenuEntry("find", None, "Chimol has no polar-contact/clash finder yet."),
+    MenuEntry("align", None, "", children=(
+        MenuEntry("align to ...", "align {sele}, {text}",
+                  prompt=("Align", "Align onto which object?")),
+        MenuEntry("super to ...", "super {sele}, {text}",
+                  prompt=("Super", "Superpose onto which object?")),
+    )),
+    MenuEntry("generate", None, "Chimol cannot generate symmetry mates or "
+                                "surfaces as new objects yet."),
+    SEP,
+    MenuEntry("assign sec. struc.", "dss"),
+    SEP,
+    MenuEntry("rename object", "set_name {sele}, {text}",
+              prompt=("Rename object", "New name:")),
+    MenuEntry("copy to object", "copy {sele}, {text}",
+              prompt=("Copy to object", "Name of the copy:")),
+    MenuEntry("group", None, "Chimol has no object groups yet."),
+    MenuEntry("delete object", "delete {sele}"),
+    SEP,
+    MenuEntry("hydrogens", None, "", children=(
+        MenuEntry("add", None, _NO_EDIT),
+        MenuEntry("remove", "remove elem H and {sele}"),
+    )),
+    MenuEntry("remove waters", "remove solvent and {sele}"),
+    SEP,
+    MenuEntry("state", None, "Chimol frames are driven by the timeline panel."),
+    MenuEntry("masking", None, "Chimol has no atom masking yet."),
+    MenuEntry("sequence", None, "", children=(
+        MenuEntry("show", "set seq_view, on"),
+        MenuEntry("hide", "set seq_view, off"),
+    )),
+    MenuEntry("movement", None, "Chimol has no per-object motion yet."),
+    MenuEntry("compute", None, "", children=(
+        MenuEntry("count atoms", "count_atoms {sele}"),
+    )),
+)
+
+
+# --------------------------------------------------------------------------- #
+# S / H — Show and Hide  (pymol.menu.mol_show / mol_hide, via rep_action)
+# --------------------------------------------------------------------------- #
+# PyMOL's wire/licorice pairs are one representation with a fine-grained
+# sub-entry; chimol has a single representation each, so both rows drive it.
+_LINES_NOTE = "Chimol's lines are the backbone trace, not per-bond wireframe."
+_NB_NOTE = "Mapped to the non-polymer atoms, which is what PyMOL's nonbonded "\
+           "glyphs mark."
+_NO_CELL = "Chimol does not read crystal cells."
+_NO_FLAG = "Chimol has no per-atom flags yet."
+_NO_VALENCE = "Chimol does not draw bond valences."
+
+
+def _rep_action(action: str) -> tuple[MenuEntry, ...]:
+    """PyMOL's ``rep_action`` table, shared by the Show and Hide menus."""
+    return (
+        MenuEntry("wire", f"{action} lines, {{sele}}", _LINES_NOTE),
+        MenuEntry("  lines", f"{action} lines, {{sele}}", _LINES_NOTE),
+        MenuEntry("  nonbonded", f"{action} spheres, hetatm and {{sele}}", _NB_NOTE),
+        SEP,
+        MenuEntry("licorice", f"{action} sticks, {{sele}}"),
+        MenuEntry("  sticks", f"{action} sticks, {{sele}}"),
+        MenuEntry("  nb_spheres", f"{action} spheres, hetatm and {{sele}}", _NB_NOTE),
+        SEP,
+        MenuEntry("ribbon", f"{action} cartoon, {{sele}}",
+                  "Chimol draws one cartoon; set cartoon_tube_radius for a "
+                  "ribbon-like tube."),
+        MenuEntry("cartoon", f"{action} cartoon, {{sele}}"),
+        SEP,
+        MenuEntry("label", None, _NO_LABELS),
+        MenuEntry("cell", None, _NO_CELL),
+        SEP,
+        MenuEntry("dots", f"{action} dots, {{sele}}"),
+        MenuEntry("spheres", f"{action} spheres, {{sele}}"),
+        SEP,
+        MenuEntry("mesh", f"{action} metaball, {{sele}}",
+                  "Chimol's mesh is the metaball surface."),
+        MenuEntry("surface", f"{action} surface, {{sele}}"),
+        MenuEntry("flag ignore", None, _NO_FLAG),
+    )
+
+
+SHOW_MENU: tuple[MenuEntry, ...] = (
+    MenuEntry("as", None, "", children=(
+        MenuEntry("cartoon", "as cartoon"),
+        MenuEntry("lines", "as lines"),
+        MenuEntry("spheres", "as spheres"),
+    )),
+    SEP,
+    *_rep_action("show"),
+    SEP,
+    MenuEntry("organic", "show spheres, organic and {sele}"),
+    MenuEntry("main chain", "show sticks, name N+CA+C+O and {sele}"),
+    MenuEntry("side chain", "show sticks, not name N+CA+C+O and {sele}"),
+    MenuEntry("disulfides", None, "Chimol cannot find disulfides yet."),
+    SEP,
+    MenuEntry("valence", None, _NO_VALENCE),
+)
+
+
+HIDE_MENU: tuple[MenuEntry, ...] = (
+    MenuEntry("everything", "hide everything, {sele}"),
+    SEP,
+    *_rep_action("hide"),
+    SEP,
+    MenuEntry("main chain", "hide sticks, name N+CA+C+O and {sele}"),
+    MenuEntry("side chain", "hide sticks, not name N+CA+C+O and {sele}"),
+    MenuEntry("waters", "hide everything, solvent and {sele}"),
+    SEP,
+    MenuEntry("hydrogens", "hide everything, elem H and {sele}"),
+    SEP,
+    MenuEntry("unselected", "hide everything, not {sele}"),
+    SEP,
+    MenuEntry("valence", None, _NO_VALENCE),
+)
+
+
+# --------------------------------------------------------------------------- #
+# L — Label  (pymol.menu.mol_labels)
+# --------------------------------------------------------------------------- #
+# Kept in full and entirely disabled: chimol has no label representation, and a
+# menu that silently loses fifteen entries is harder to trust than one that says
+# what it cannot do.
+LABEL_MENU: tuple[MenuEntry, ...] = (
+    MenuEntry("clear", None, _NO_LABELS),
+    SEP,
+    MenuEntry("residues", None, _NO_LABELS),
+    MenuEntry("residues (oneletter)", None, _NO_LABELS),
+    MenuEntry("chains", None, _NO_LABELS),
+    MenuEntry("segments", None, _NO_LABELS),
+    SEP,
+    MenuEntry("atom name", None, _NO_LABELS),
+    MenuEntry("element symbol", None, _NO_LABELS),
+    MenuEntry("residue name", None, _NO_LABELS),
+    MenuEntry("one letter code", None, _NO_LABELS),
+    MenuEntry("residue identifier", None, _NO_LABELS),
+    MenuEntry("chain identifier", None, _NO_LABELS),
+    MenuEntry("segment identifier", None, _NO_LABELS),
+    SEP,
+    MenuEntry("b-factor", None, _NO_LABELS),
+    MenuEntry("occupancy", None, _NO_LABELS),
+    MenuEntry("vdw radius", None, _NO_LABELS),
+    SEP,
+    MenuEntry("other properties", None, _NO_LABELS),
+    SEP,
+    MenuEntry("atom identifiers", None, _NO_LABELS),
+)
+
+
+# --------------------------------------------------------------------------- #
+# C — Color  (pymol.menu.mol_color)
+# --------------------------------------------------------------------------- #
+def _color_shades(name: str, colors: tuple[str, ...]) -> MenuEntry:
+    """One of PyMOL's colour-family submenus."""
+    return MenuEntry(name, None, "", children=tuple(
+        MenuEntry(c, f"color {c}, {{sele}}") for c in colors
+    ))
+
+
+COLOR_MENU: tuple[MenuEntry, ...] = (
+    MenuEntry("by element", None, "", children=(
+        MenuEntry("by element", "color byelement, {sele}"),
+    )),
+    MenuEntry("by chain", None, "", children=(
+        MenuEntry("by chain", "color bychain, {sele}"),
+    )),
+    # PyMOL's label carries trailing spaces; kept for an exact match.
+    MenuEntry("by ss  ", None, "", children=(
+        MenuEntry("by secondary structure", "color by_ss, {sele}"),
+    )),
+    MenuEntry("by rep", None, "Chimol colours per object and selection, "
+                              "not per representation."),
+    MenuEntry("spectrum", None, "", children=(
+        MenuEntry("by sequence", "color by_sequence, {sele}"),
+        MenuEntry("spectrum", "spectrum"),
+    )),
+    SEP,
+    MenuEntry("auto", None, "Chimol has no automatic per-object colour cycle."),
+    SEP,
+    _color_shades("reds", ("red", "firebrick", "salmon", "darksalmon")),
+    _color_shades("greens", ("green", "forest", "limon", "palegreen")),
+    _color_shades("blues", ("blue", "skyblue", "marine", "slate")),
+    _color_shades("yellows", ("yellow", "paleyellow", "wheat", "sand")),
+    _color_shades("magentas", ("magenta", "hotpink", "violet", "purple")),
+    _color_shades("cyans", ("cyan", "palecyan", "aquamarine", "teal")),
+    _color_shades("oranges", ("orange", "brightorange", "olive", "deepolive")),
+    _color_shades("tints", ("bluewhite", "palecyan", "lightpink", "yellowtint")),
+    _color_shades("grays", ("white", "gray90", "gray70", "gray50", "gray30",
+                            "black")),
+)
+
+
+#: The five buttons, in PyMOL's order, with their menus.
+OBJECT_MENUS: tuple[tuple[str, str, tuple[MenuEntry, ...]], ...] = (
+    ("A", "Action", ACTION_MENU),
+    ("S", "Show", SHOW_MENU),
+    ("H", "Hide", HIDE_MENU),
+    ("L", "Label", LABEL_MENU),
+    ("C", "Color", COLOR_MENU),
+)
+
+
+__all__ = [
+    "MenuEntry",
+    "SEP",
+    "ACTION_MENU",
+    "SHOW_MENU",
+    "HIDE_MENU",
+    "LABEL_MENU",
+    "COLOR_MENU",
+    "OBJECT_MENUS",
+]

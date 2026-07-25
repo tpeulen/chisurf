@@ -39,11 +39,17 @@ TOKEN_TYPES = [
     ("TO", r"\bto\b"),
     ("ALL", r"\ball\b|\*"),
     ("NONE", r"\bnone\b"),
-    ("IDENT", r"[a-zA-Z_][a-zA-Z0-9_]*"),
+    # An identifier may *start* with a digit as long as it is not a pure number:
+    # PDB entries are named like `1dg3`, and lexing that as INT + IDENT made every
+    # selection naming such an object a parse error ("Unexpected token INT '1'").
+    # The alternation order matters -- FLOAT and INT must come first so that
+    # `12` and `1.5` still lex as numbers, and the digit-led identifier pattern
+    # requires at least one letter or underscore to disambiguate.
+    ("FLOAT", r"\d+\.\d+"),
+    ("INT", r"\d+(?![a-zA-Z_0-9])"),
+    ("IDENT", r"[a-zA-Z_][a-zA-Z0-9_]*|\d[a-zA-Z0-9_]*[a-zA-Z_][a-zA-Z0-9_]*"),
     ("PLUS", r"\+"),
     ("MINUS", r"-"),
-    ("FLOAT", r"\d+\.\d+"),
-    ("INT", r"\d+"),
     ("COLON", r":"),
     ("SLASH", r"/"),
 ]
@@ -436,9 +442,47 @@ class Evaluator:
             return self._get_none_mask(object_id)
 
     def _get_ident_mask(self, name: str, object_id: str) -> np.ndarray:
-         # Could be named selection or object name fallback
-         # Return none for now if it's not handled
-         return self._get_none_mask(object_id)
+        """Resolve a bare name to an object's atoms, as PyMOL does.
+
+        ``solvent and 1dg3`` is the ordinary way to scope a selection to one
+        molecule, and it is what the object menus generate. Returning nothing
+        here made every such selection silently empty.
+        """
+        target = (name or "").strip().lower()
+        if not target:
+            return self._get_none_mask(object_id)
+
+        try:
+            objects = self.viewer.list_objects()
+        except Exception:
+            objects = []
+        for obj in objects:
+            oid = str(obj.get("id", ""))
+            oname = str(obj.get("name", ""))
+            if target not in (oid.lower(), oname.lower()):
+                continue
+            # Within one object every atom matches; across objects the caller
+            # evaluates per object, so a different object contributes nothing.
+            if oid == object_id or oname.lower() == target == str(
+                self._object_name(object_id) or ""
+            ).lower():
+                return self._get_all_mask(object_id)
+            return (
+                self._get_all_mask(object_id)
+                if oid == object_id
+                else self._get_none_mask(object_id)
+            )
+        return self._get_none_mask(object_id)
+
+    def _object_name(self, object_id: str) -> str | None:
+        """Display name of ``object_id``, when the viewer knows it."""
+        try:
+            for obj in self.viewer.list_objects():
+                if str(obj.get("id", "")) == str(object_id):
+                    return str(obj.get("name", "")) or None
+        except Exception:
+            pass
+        return None
 
     def _eval_property(self, prop: str, values_node: ASTNode, object_id: str) -> np.ndarray:
         none_mask = self._get_none_mask(object_id)
