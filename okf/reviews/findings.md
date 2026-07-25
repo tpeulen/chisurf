@@ -842,3 +842,60 @@ docstring) was checked numerically and is sound. Findings RF-057..RF-063.
 - **Location:** `chisurf/plugins/microscopy/img_precision/gui/tool.py:47` (`ImgPrecisionTool`) and `:25` (`_ComputeTask`)
 - **Finding:** Copy-paste from the `img_drift` panel survived: the class docstring reads *"Drift-correction tool: action toolbar + `AutoForm(view_model)`"* and `_ComputeTask` is documented as *"Run the Qt-free measurement off the UI thread (image reads are slow)"*. This tool corrects no drift and reads no images at all — it takes no data, which is the single most important thing about it and is exactly what the class docstring should say (the CLI's help text and `test_precision_is_registered_in_the_imaging_toolbox` both make the point correctly). Also note the panel has no re-entrancy guard on **▶ Predict** (`:81`): a second press starts a second `_ComputeTask` against the same view model, and the slower run's `_sweep`/`_status` win regardless of order. At GUI defaults a sweep takes 0.9 s so the window is small, but cost grows as `n_lags⁴` and the spin box allows 15 (≈ 3 min), where a double press is likely.
 - **Fix note:**
+
+### Review 2026-07-25 (5) — the MCMC sampling backends (`core/fitting/sample.py`)
+
+Slice: `chisurf/core/fitting/sample.py` and its driver `sample_fit` /
+`pool_chains` in `chisurf/core/fitting/fit.py` — the recently reworked warm-up
+(`086422d51`), the collapsed shared-parameter sampler and the independent-component
+decomposition. Every finding below was reproduced in the `arm64` env against the
+`_collinear_fit` / `_global_fit` fixtures the existing suites use. The parts that
+check out: the DE snooker Jacobian (`0.5*(d-1)*log(‖x*-z‖²/‖x-z‖²)`) and its
+projection step match ter Braak; the Laplace normalisation in `_profile_locals`
+(`½[d ln 2π - ln det JᵀJ]` with Σ = (JᵀJ)⁻¹) is right for `-lnL = ½χ²`; the
+closed-form component merge `χ² = Σ_c χ²_run,c - (C-1)χ²_0` holds even when a run
+is cancelled part-way through the component list; and `_adaptation_windows`
+produces a valid schedule at both the clipped minimum (100) and maximum (500).
+Findings RF-064..RF-069.
+
+### RF-064
+- **Status:** OPEN
+- **Severity:** S1 (the collapsed target counts a shared parameter's prior twice)
+- **Location:** `chisurf/core/fitting/sample.py:1421-1426` (`_target`, the `shared_prior` loop) against `:1259`/`:1208` (`_profile_locals` → `_restricted_wres(..., include_priors=True)`) and `chisurf/core/fitting/fit.py:2475` (`_prior_residuals`)
+- **Finding:** `_prior_residuals` appends a prior residual for **every** free parameter of the local model, and `_shared_and_private` documents at `:1177` that one local model's free list still holds the *shared* parameter (the link master lives on that dataset). So `_profile_locals` already folds the shared prior into `ln_z` as `-½r² = +lnpdf`, and `_target` then adds `shared_prior` on top. Verified on the 4-dataset star-linked `_global_fit` with `NormalPrior(mu=1.25, sigma=0.01)` on the shared `a`: the master's local model reports one prior residual (`-4.91`) while the other three report none, and over a grid of shared values `T(v) - [T_noprior(v) + lnpdf(v)]` equals `lnpdf(v)` to the last digit (`[-12.5, -8, -4.5, -2, -0.5, 0, …]` for both). The shared parameter's collapsed posterior is therefore narrowed by √2 in the prior-dominated limit — `sample_fit(method='collapsed')` reports a credible interval that is too small exactly when an informative prior is in play. Fix by profiling the locals with the shared parameter's prior excluded (or by dropping `shared_prior` and letting `_profile_locals` own it), and pin it with a collapsed run against `walk_mcmc_blocked` on a fit with a prior on the shared parameter — `test/fitting/test_collapsed_sampler.py` has no prior test at all.
+- **Fix note:**
+
+### RF-065
+- **Status:** OPEN
+- **Severity:** S1 (recorded draws violate the parameter bounds; the chain file and the diagnostics then disagree about which draws exist)
+- **Location:** `chisurf/core/fitting/sample.py:1504-1505` (`sample_marginal_shared`, `draw[indices] = theta + chol @ rng.normal(...)`) with `chisurf/core/fitting/fit.py:1932` (`save_chain_to_file`, `mask = np.where(np.isfinite(chi2))`) and `:2096` (`pool_chains`)
+- **Finding:** The private parameters are drawn from their *untruncated* conditional Gaussian, so any private parameter whose bound sits within a few σ of its profiled optimum yields out-of-range draws. `lnprob_parts` then returns `(-inf, -inf, inf)` for them, and the two consumers diverge: `save_chain_to_file` drops every non-finite-`chi2` row from the `.er4` file, while `pool_chains` reads `r['chains']` unmasked and hands the invalid draws straight to `summarize`/`convergence_warnings` and to `fit.sampling_chain`. Verified on the 4-dataset `_global_fit` with a lower bound placed on one private `c` at its optimum: **117 of 300 recorded draws** violate a bound, all 117 carry `chi2r = inf` and `lnprior = -inf`, and all 117 survive into the pooled diagnostics but not into the saved chain. A bound at zero on a background offset or an amplitude fitted near zero is the routine version of this. Either truncate/reject the conditional draw against `model.parameter_bounds` or discard the recorded state, and make the file and the diagnostics apply the same mask either way.
+- **Fix note:**
+
+### RF-066
+- **Status:** OPEN
+- **Severity:** S2 (`sample_fit`'s `n_runs` are not the independent runs its R-hat is computed from)
+- **Location:** `chisurf/core/fitting/sample.py:812` (`walk_mcmc_blocked`, `state = np.asarray(model.parameter_values, …)`) and `:97` (`walk_mcmc`), neither of which restores the model before returning — unlike `:714` (`sample_differential_evolution`) and `:1518` (`sample_marginal_shared`) — reached through `:1096-1101` (single-component fallback) and `chisurf/core/fitting/fit.py:1953` (the `n_runs` loop), against `:2102` (`pool_chains`: *"Independent runs are exactly what a cross-chain R-hat is computed from"*)
+- **Finding:** `_lnprob` sets `model.parameter_values` on every evaluation, and the last evaluation of a sweep is the *trial*, so both walkers return with the model parked on the final proposal — possibly a rejected one. Verified on `_collinear_fit`: after `walk_mcmc_blocked`, the model reads `[1.0792, 1.8657, 0.5523]`, which is neither the optimum `[0.9411, 2.0776, 0.4763]` nor the last recorded draw `[0.9949, 2.0029, 0.5019]`. `sample_fit` restores the starting values only *after* all `n_runs`, so for `method='mcmc'` and for `method='blocked'` on a single-component fit (the common case) runs 2..N start from the previous run's leftover proposal — the runs are one continued chain, and the cross-run R-hat can no longer detect a failure to reach the typical set. It also breaks `_seed_block_covariances`, whose docstring promises "the curvature of the objective at the optimum": from run 2 on, `fit.covariance_matrix` is evaluated at that arbitrary leftover point. Restore `model.parameter_values` before returning from both walkers (as the other two backends already do).
+- **Fix note:**
+
+### RF-067
+- **Status:** OPEN
+- **Severity:** S2 (a documented pass-through option silently ignored by one backend)
+- **Location:** `chisurf/core/fitting/sample.py:1302` (`sample_marginal_shared` takes no `chi2max`) and `chisurf/core/fitting/fit.py:1995-2002` (the `method == 'collapsed'` branch, which is the only one of the five not to pass `chi2max`)
+- **Finding:** `sample_fit`'s docstring states that "steps, thin, chi2max, n_runs, step_size, temp" are "passed through to `cs.core.fitting.sample`", and the `de`, `blocked`, `mcmc` and `emcee` branches all forward `chi2max`. `sample_marginal_shared` has no such parameter, so a user-set cutoff is silently dropped for the collapsed backend — and its two fallbacks to `sample_independent_components` (`:1384` and `:1440`) drop it as well, so a fit that falls back is *also* sampled without the cutoff the caller asked for. Either thread `chi2max` through `_target` (rejecting a shared state whose profiled χ² exceeds it) or raise when a non-infinite `chi2max` reaches this backend; do not accept it and ignore it.
+- **Fix note:**
+
+### RF-068
+- **Status:** OPEN
+- **Severity:** S3 (a parameter docstring that documents the value the change replaced)
+- **Location:** `chisurf/core/fitting/sample.py:783-784` (`walk_mcmc_blocked`, the `n_adapt` parameter) against `:886` (`n_adapt = int(np.clip((n_samples * thin) // 20, 100, 500))`)
+- **Finding:** The perf change `086422d51` shortened the default warm-up from `min(2000, max(200, n_steps // 2))` to `clip(n_steps // 20, 100, 500)` and updated the inline comment (`:879-885`) and `okf/subsystems/fitting.md:277`, but not the docstring, which still reads "Defaults to half the chain (bounded to ``[200, 2000]``)" — i.e. exactly the behaviour the commit removed, and the message a caller reading `help()` or the API docs gets. On the shipped default of 1000 steps the real value is 100, not 500. Correct the sentence to match `:886`.
+- **Fix note:**
+
+### RF-069
+- **Status:** OPEN
+- **Severity:** S3 (a return annotation that contradicts the function)
+- **Location:** `chisurf/core/fitting/sample.py:228` (`_seed_block_covariances(...) -> list[np.ndarray]`) against `:305` (`return out, from_curvature`)
+- **Finding:** The function returns a 2-tuple — its own Returns section says so ("``(covariances, from_curvature)``") and the sole caller unpacks two values at `:831` — but the annotation claims a bare list. `pixi run typecheck` runs mypy over `chisurf/`, so this is a live annotation error rather than a cosmetic one. Change it to `tuple[list[np.ndarray], list[bool]]`.
+- **Fix note:**
