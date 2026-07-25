@@ -43,8 +43,6 @@ DEPS=(
     "scikit-image"
     "pyqt"
     "numba"
-    "guiqwt"
-    "guidata"
     "typing-extensions"
     "pytools"
     "pyyaml"

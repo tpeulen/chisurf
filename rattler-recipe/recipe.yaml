@@ -110,11 +110,9 @@ requirements:
     - emcee
     - pyopengl
     - pytables
-    # guidata: light, still backs the optional DataFrameEditor (table_plot,
-    # legacy burst selector); both call sites degrade gracefully if absent.
-    - guidata
-    # guiqwt removed: its only users (global_tcspc, surfaceplot) were ported to
-    # pyqtgraph; dropping it sheds the heavy PythonQwt/Qwt C++ stack.
+    # guidata/guiqwt removed: guiqwt's users (global_tcspc, surfaceplot) were
+    # ported to pyqtgraph, and guidata's DataFrameEditor was replaced by the
+    # in-tree chitable widget family. No third-party GUI toolkit remains.
     - python-docx
     - qtconsole
     - hmmlearn

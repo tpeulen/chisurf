@@ -1,303 +1,97 @@
+"""The "Data table" plot — a fit's curves as a table.
+
+Shows ``x``, the data, the model, the weighted residuals, the fit mask and every
+support curve the model exposes, with ``x``/data/mask editable and edits routed
+back through the fitting client so the fit recomputes.
+
+Both the main table and the "Show model" parameter editor are
+:mod:`chisurf.gui.widgets.chitable` widgets. They previously leaned on a
+third-party ``DataFrameEditor`` that had to be fought after construction — its
+background colouring stripped by one proxy, its ``name`` column locked by
+another, checkboxes grafted onto its boolean columns — which is what motivated
+having a table of our own.
+"""
+
 from __future__ import annotations
 
-from typing import Optional, List, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
-
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtWidgets
 
 import chisurf.core.fitting
-from chisurf.gui.plots import plotbase
 from chisurf.core.actions import record_action
+from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.plots import plotbase
+from chisurf.gui.widgets.chitable import (
+    ArraySource,
+    ChiTableWidget,
+    ColumnSpec,
+    edit_dataframe,
+)
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
+#: Curves that already have a dedicated column and must not be repeated.
+_SUPPORT_EXCLUSIONS = {"data", "model", "weighted residuals", "autocorrelation"}
 
-class NoBackgroundProxy(QtCore.QIdentityProxyModel):
-    """Proxy model that removes any background color roles.
-    This neutralizes background coloring coming from the underlying model (e.g., guidata's DataFrameModel).
+#: The fixed leading columns, in order, with the keys used for edit routing.
+_BASE_COLUMNS = ("x", "data", "model", "w. res.", "mask")
+
+#: Columns whose cells the user may edit.
+_EDITABLE_COLUMNS = ("x", "data", "mask")
+
+
+def _fit_column_specs(keys: Sequence[str]) -> list[ColumnSpec]:
+    """Build the column specs for a fit table.
+
+    Parameters
+    ----------
+    keys : sequence of str
+        Column keys in table order, base columns first.
+
+    Returns
+    -------
+    list of ColumnSpec
     """
-    def data(self, index: QtCore.QModelIndex, role: int = QtCore.Qt.DisplayRole):
-        if role in (QtCore.Qt.BackgroundRole, QtCore.Qt.BackgroundColorRole):
-            return None
-        return super().data(index, role)
-
-class ReadOnlyColumnProxy(QtCore.QIdentityProxyModel):
-    """Proxy model that disables editing for specified column labels.
-    Looks up columns by their horizontal header text and removes ItemIsEditable flag.
-    Can be stacked with other proxies (e.g., NoBackgroundProxy).
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._readonly_headers = set()
-
-    def setReadOnlyHeaders(self, headers):
-        self._readonly_headers = set(headers or [])
-
-    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlags:
-        f = super().flags(index)
-        try:
-            header = self.headerData(index.column(), QtCore.Qt.Horizontal)
-            if isinstance(header, str) and header in self._readonly_headers:
-                f &= ~QtCore.Qt.ItemIsEditable
-        except Exception:
-            pass
-        return f
-
-try:
-    # Used for the model parameter table dialog
-    from guidata.widgets.dataframeeditor import DataFrameEditor
-except Exception:  # pragma: no cover - optional dependency
-    DataFrameEditor = None  # type: ignore
-
-
-class BooleanToggleDelegate(QtWidgets.QStyledItemDelegate):
-    def _is_checked(self, value) -> bool:
-        try:
-            if isinstance(value, (bool, np.bool_)):
-                return bool(value)
-            if isinstance(value, (int, np.integer)):
-                return bool(int(value))
-            if isinstance(value, str):
-                v = value.strip().lower()
-                return v in ('1', 'true', 't', 'yes', 'y', 'on')
-        except Exception:
-            pass
-        return False
-
-    def _toggle(self, value) -> bool:
-        return not self._is_checked(value)
-
-    def _checkbox_rect(self, option: QtWidgets.QStyleOptionViewItem) -> QtCore.QRect:
-        rect = QtCore.QRect(option.rect)
-        size = 16
-        x = rect.x() + (rect.width() - size) // 2
-        y = rect.y() + (rect.height() - size) // 2
-        return QtCore.QRect(x, y, size, size)
-
-    def paint(self, painter: QtGui.QPainter, option: QtWidgets.QStyleOptionViewItem, index: QtCore.QModelIndex) -> None:
-        checked = self._is_checked(index.data(QtCore.Qt.DisplayRole))
-        style = QtWidgets.QApplication.style() if QtWidgets.QApplication.instance() else option.widget.style()
-        cb_opt = QtWidgets.QStyleOptionButton()
-        cb_opt.state = QtWidgets.QStyle.State_Enabled | (QtWidgets.QStyle.State_On if checked else QtWidgets.QStyle.State_Off)
-        cb_opt.rect = self._checkbox_rect(option)
-        style.drawControl(QtWidgets.QStyle.CE_CheckBox, cb_opt, painter)
-
-    def createEditor(self, parent, option, index):
-        # No inline editor; we toggle directly via editorEvent
-        return None
-
-    def editorEvent(self, event: QtCore.QEvent, model: QtCore.QAbstractItemModel, option: QtWidgets.QStyleOptionViewItem, index: QtCore.QModelIndex) -> bool:
-        et = event.type()
-        if et in (QtCore.QEvent.MouseButtonRelease, QtCore.QEvent.MouseButtonDblClick):
-            new_val = self._toggle(index.data(QtCore.Qt.DisplayRole))
-            str_val = 'True' if new_val else 'False'
-            return model.setData(index, str_val, QtCore.Qt.EditRole)
-        if et == QtCore.QEvent.KeyPress:
-            if isinstance(event, QtGui.QKeyEvent) and event.key() in (QtCore.Qt.Key_Space, QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
-                new_val = self._toggle(index.data(QtCore.Qt.DisplayRole))
-                str_val = 'True' if new_val else 'False'
-                return model.setData(index, str_val, QtCore.Qt.EditRole)
-        return False
-
-class _FitTableModel(QtCore.QAbstractTableModel):
-    """Lightweight table model exposing x, data, model, and residuals.
-
-    Columns:
-      0: x (editable)
-      1: data (editable)
-      2: model (read-only)
-      3: weighted residuals (read-only)
-    """
-
-    HEADERS = ["x", "data", "model", "w. res.", "mask"]
-
-    def __init__(self, parent_plot: "FitTablePlot"):
-        super().__init__(parent_plot)
-        self._plot = parent_plot
-        self._x = np.array([], dtype=float)
-        self._y = np.array([], dtype=float)
-        self._ym = np.array([], dtype=float)
-        self._wres = np.array([], dtype=float)
-        self._mask = np.array([], dtype=float)
-        self._support_headers: List[str] = []
-        self._support_arrays: List[np.ndarray] = []
-        self._column_count: int = len(self.HEADERS)
-
-    # ---- Required model API ----
-    def rowCount(self, parent=QtCore.QModelIndex()) -> int:
-        return 0 if parent.isValid() else self._x.size
-
-    def columnCount(self, parent=QtCore.QModelIndex()) -> int:
-        if parent.isValid():
-            return 0
-        return self._column_count
-
-    def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int = QtCore.Qt.DisplayRole):
-        if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
-            if section < len(self.HEADERS):
-                try:
-                    return self.HEADERS[section]
-                except Exception:
-                    return None
-            idx = section - len(self.HEADERS)
-            if 0 <= idx < len(self._support_headers):
-                return self._support_headers[idx]
-            return None
-        return super().headerData(section, orientation, role)
-
-    def data(self, index: QtCore.QModelIndex, role: int = QtCore.Qt.DisplayRole):
-        if not index.isValid():
-            return None
-        row = index.row()
-        col = index.column()
-        if row < 0 or row >= self._x.size:
-            return None
-
-        if role in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole):
-            try:
-                if col == 0:
-                    v = self._x[row]
-                elif col == 1:
-                    v = self._y[row]
-                elif col == 2:
-                    v = self._ym[row]
-                elif col == 3:
-                    v = self._wres[row]
-                elif col == 4:
-                    v = self._mask[row]
-                else:
-                    idx = col - len(self.HEADERS)
-                    if 0 <= idx < len(self._support_arrays):
-                        arr = self._support_arrays[idx]
-                        v = arr[row] if row < arr.size else np.nan
-                    else:
-                        return None
-            except Exception:
-                return None
-
-            if role == QtCore.Qt.EditRole:
-                return repr(float(v))
-            try:
-                if np.isfinite(v):
-                    return f"{float(v):.6g}"
-                return "nan"
-            except Exception:
-                return str(v)
-
-        if role == QtCore.Qt.TextAlignmentRole:
-            return int(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-
-        return None
-
-    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlags:
-        if not index.isValid():
-            return QtCore.Qt.NoItemFlags
-        base = QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
-        if index.column() in (0, 1, 4):
-            base |= QtCore.Qt.ItemIsEditable
-        return base
-
-    def setData(self, index: QtCore.QModelIndex, value, role: int = QtCore.Qt.EditRole) -> bool:
-        if role != QtCore.Qt.EditRole or not index.isValid():
-            return False
-        row = index.row()
-        col = index.column()
-        if row < 0 or row >= self._x.size or col not in (0, 1, 4):
-            return False
-        try:
-            v = float(str(value))
-        except Exception:
-            return False
-
-        if col == 0:
-            self._x[row] = v
-        elif col == 1:
-            self._y[row] = v
-        else:
-            self._mask[row] = v
-            self._plot._set_mask(self._mask)
-
-        # Backpropagate to fit and recompute model/residuals when x or y changed
-        if col in (0, 1):
-            self._plot._set_arrays(self._x, self._y)
-            # Refresh arrays from updated fit
-            self._plot._refresh_arrays_into_model()
-
-        # Emit dataChanged for whole row (all columns) for simplicity
-        left = self.index(row, 0)
-        right = self.index(row, 4)
-        self.dataChanged.emit(left, right, [QtCore.Qt.DisplayRole])
-        return True
-
-    # ---- Helpers called by parent plot ----
-    def set_arrays(
-        self,
-        x: np.ndarray,
-        y: np.ndarray,
-        ym: np.ndarray,
-        wres: np.ndarray,
-        mask: np.ndarray,
-        support_arrays: Optional[Sequence[Tuple[str, np.ndarray]]] = None,
-    ) -> None:
-        new_column_count = len(self.HEADERS)
-        if support_arrays:
-            new_column_count += len(support_arrays)
-        if new_column_count != self._column_count:
-            self.beginResetModel()
-            reset_model = True
-        else:
-            reset_model = False
-        self._x = np.asarray(x, dtype=float)
-        self._y = np.asarray(y, dtype=float)
-        self._ym = np.asarray(ym, dtype=float)
-        self._wres = np.asarray(wres, dtype=float)
-        if mask is None:
-            self._mask = np.ones_like(self._x, dtype=float)
-        else:
-            m = np.asarray(mask, dtype=float).ravel()
-            n = self._x.size
-            if m.size == n:
-                self._mask = m
-            else:
-                self._mask = np.ones(n, dtype=float)
-                k = min(n, m.size)
-                if k > 0:
-                    self._mask[:k] = m[:k]
-        if support_arrays:
-            headers: List[str] = []
-            arrays: List[np.ndarray] = []
-            for header, arr in support_arrays:
-                headers.append(str(header))
-                arrays.append(np.asarray(arr, dtype=float))
-            self._support_headers = headers
-            self._support_arrays = arrays
-        else:
-            self._support_headers = []
-            self._support_arrays = []
-        try:
-            self.headerDataChanged.emit(QtCore.Qt.Horizontal, 0, max(0, self._column_count - 1))
-        except Exception:
-            pass
-        if reset_model:
-            self._column_count = new_column_count
-            self.endResetModel()
-        else:
-            rows = self._x.size
-            if rows > 0 and self._column_count > 0:
-                top_left = self.index(0, 0)
-                bottom_right = self.index(rows - 1, self._column_count - 1)
-                self.dataChanged.emit(top_left, bottom_right, [QtCore.Qt.DisplayRole])
+    specs = []
+    for key in keys:
+        if key == "mask":
+            specs.append(
+                ColumnSpec(
+                    key=key,
+                    label="mask",
+                    kind="float",
+                    editable=True,
+                    width=55,
+                    tooltip="1 includes the channel in the fit, 0 excludes it",
+                )
+            )
+            continue
+        specs.append(
+            ColumnSpec(
+                key=key,
+                label=key,
+                kind="float",
+                editable=key in _EDITABLE_COLUMNS,
+                colorize=True,
+                width=90 if key != "x" else 80,
+            )
+        )
+    return specs
 
 
 class FitTablePlot(plotbase.Plot):
-    """Data table view for a Fit, implemented with QTableView + model.
+    """Table view of a fit's data, model and residuals.
 
-    Columns:
-      - x (independent variable, editable)
-      - data (y, editable)
-      - model (y_model, read-only)
-      - weighted residuals (wres, read-only)
+    Parameters
+    ----------
+    fit : chisurf.core.fitting.fit.Fit
+        The fit to display.
+    parent : qtpy.QtWidgets.QWidget, optional
+        Parent widget.
+    **kwargs
+        Forwarded to :class:`chisurf.gui.plots.plotbase.Plot`.
     """
 
     name = "Data table"
@@ -305,23 +99,29 @@ class FitTablePlot(plotbase.Plot):
     def __init__(
         self,
         fit: chisurf.core.fitting.fit.Fit,
-        parent: Optional[QtWidgets.QWidget] = None,
+        parent: QtWidgets.QWidget | None = None,
         **kwargs,
     ):
         super().__init__(fit, parent=parent, **kwargs)
 
-        # Top control bar
+        self._source: ArraySource | None = None
+        self._column_keys: tuple[str, ...] = ()
+        self._refresh_pending = False
+        self._applying_edit = False
+
         controls = QtWidgets.QWidget(self)
         h = QtWidgets.QHBoxLayout(controls)
-        h.setContentsMargins(6, 6, 6, 6)
+        h.setContentsMargins(6, 4, 6, 4)
         h.setSpacing(6)
 
-        self.btn_show_model = QtWidgets.QPushButton("Show model", controls)
-        self.btn_show_model.setToolTip("Open a table editor for model parameters")
+        self.btn_show_model = QtWidgets.QToolButton(controls)
+        self.btn_show_model.setText(f"{Glyphs.SETTINGS} Model")
+        self.btn_show_model.setToolTip("Open a table editor for the model parameters")
         self.btn_show_model.clicked.connect(self.on_show_model)
 
-        self.btn_copy = QtWidgets.QPushButton("Copy", controls)
-        self.btn_copy.setToolTip("Copy Data table (x, data, model, w. res.) to clipboard")
+        self.btn_copy = QtWidgets.QToolButton(controls)
+        self.btn_copy.setText(Glyphs.COPY)
+        self.btn_copy.setToolTip("Copy the whole table, with headers, to the clipboard")
         self.btn_copy.clicked.connect(self.on_copy_table_to_clipboard)
 
         self.lbl_info = QtWidgets.QLabel("", controls)
@@ -332,57 +132,27 @@ class FitTablePlot(plotbase.Plot):
         h.addStretch(1)
         h.addWidget(self.lbl_info)
 
-        # Main table view + model
-        self.table = QtWidgets.QTableView(self)
-        self._model = _FitTableModel(self)
-        self.table.setModel(self._model)
-        self._refresh_pending = False
-
-        hh = self.table.horizontalHeader()
-        hh.setStretchLastSection(False)
-        try:
-            hh.setSectionResizeMode(QtWidgets.QHeaderView.Interactive)
-        except Exception:
-            try:
-                hh.setResizeMode(QtWidgets.QHeaderView.Interactive)  # Qt4 fallback
-            except Exception:
-                pass
-        hh.setMinimumSectionSize(20)
-        try:
-            self.table.setColumnWidth(0, 80)
-            self.table.setColumnWidth(1, 90)
-            self.table.setColumnWidth(2, 90)
-            self.table.setColumnWidth(3, 90)
-            self.table.setColumnWidth(4, 55)
-        except Exception:
-            pass
-
-        self.table.setAlternatingRowColors(False)
-        self.table.setWordWrap(False)
-        self.table.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
-        self.table.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
-
-        # Compact font for table only
-        try:
-            f = self.table.font()
-            f.setPointSize(max(7, f.pointSize() - 1))
-            f.setStyleStrategy(QtGui.QFont.PreferAntialias)
-            self.table.setFont(f)
-            self.table.verticalHeader().setDefaultSectionSize(max(16, self.table.fontMetrics().height() + 6))
-        except Exception:
-            pass
+        self.table = ChiTableWidget(parent=self)
 
         self.layout.addWidget(controls)
         self.layout.addWidget(self.table)
 
-        # Populate initial arrays
         self._refresh_arrays_into_model()
 
-    # ---- Utilities ----
+    # ── array plumbing ───────────────────────────────────────────────────
+
     def _get_arrays(self):
-        """Return arrays aligned to the data length.
-        x, data are the full data arrays.
-        model and wres are truncated or padded with NaN to match data length.
+        """Return the fit's arrays, all aligned to the data length.
+
+        ``x`` and the data are the full data arrays; the model and residuals are
+        truncated or NaN-padded to match, and the residuals are placed inside the
+        fit range rather than at the start.
+
+        Returns
+        -------
+        tuple
+            ``(x, y, model, weighted_residuals, mask, support_columns)`` where
+            ``support_columns`` is a list of ``(name, array)`` pairs.
         """
         fit = self.fit
         data_curve = fit.data
@@ -397,11 +167,23 @@ class FitTablePlot(plotbase.Plot):
         x = x[:nd].copy()
         y = y[:nd].copy()
 
-        # Model and residuals may have different lengths – align to data length
         ym_raw = np.asarray(model_curve.y, dtype=float)
         wres_raw = np.asarray(wres_curve.y, dtype=float)
 
         def align(arr: np.ndarray, n: int) -> np.ndarray:
+            """Truncate or NaN-pad ``arr`` to length ``n``.
+
+            Parameters
+            ----------
+            arr : numpy.ndarray
+                Source array.
+            n : int
+                Target length.
+
+            Returns
+            -------
+            numpy.ndarray
+            """
             if arr is None:
                 return np.full(n, np.nan, dtype=float)
             m = len(arr)
@@ -413,84 +195,77 @@ class FitTablePlot(plotbase.Plot):
             return out
 
         ym = align(ym_raw, nd)
-        # Embed weighted residuals into the full data length based on fit range
+
         try:
             xmin, xmax = self.fit.fit_range
         except Exception:
             xmin, xmax = 0, nd - 1
-        if nd <= 0:
-            return x, y, ym, np.array([]), None, []
-        # Clip and normalize indices
         xmin = int(np.clip(xmin, 0, nd - 1))
         xmax = int(np.clip(xmax, 0, nd - 1))
         if xmax < xmin:
             xmin, xmax = xmax, xmin
-        # Initialize with NaNs and fill inside fit range from residuals
         wres = np.full(nd, np.nan, dtype=float)
         try:
             seg_len = min(wres_raw.size, xmax - xmin + 1, nd - xmin)
             if seg_len > 0:
-                wres[xmin:xmin + seg_len] = wres_raw[:seg_len].astype(float, copy=False)
+                wres[xmin : xmin + seg_len] = wres_raw[:seg_len].astype(float, copy=False)
         except Exception:
-            # If anything goes wrong, fall back to simple alignment
             wres = align(wres_raw, nd)
-        mask = None
+
         try:
             mask_raw = getattr(self.fit, "mask", None)
         except Exception:
             mask_raw = None
-        if nd > 0:
-            if mask_raw is None:
-                mask = np.ones(nd, dtype=float)
-            else:
-                try:
-                    m = np.asarray(mask_raw, dtype=float).ravel()
-                except Exception:
-                    mask = np.ones(nd, dtype=float)
-                else:
-                    mask = np.ones(nd, dtype=float)
-                    k = min(nd, m.size)
-                    if k > 0:
-                        mask[:k] = m[:k]
-        if mask is not None and wres.size == nd:
+        mask = np.ones(nd, dtype=float)
+        if mask_raw is not None:
+            try:
+                m = np.asarray(mask_raw, dtype=float).ravel()
+            except Exception:
+                m = np.array([], dtype=float)
+            k = min(nd, m.size)
+            if k > 0:
+                mask[:k] = m[:k]
+        if wres.size == nd:
             try:
                 wres = wres * mask
             except Exception:
                 pass
-        support_columns: List[Tuple[str, np.ndarray]] = []
+
+        support_columns: list[tuple[str, np.ndarray]] = []
         try:
             curves = self.fit.get_curves(copy_curves=False)
         except Exception:
             curves = {}
-        exclusion = {"data", "model", "weighted residuals", "autocorrelation"}
-        for name, curve in getattr(curves, 'items', lambda: [])():
-            if name in exclusion:
+        for name, curve in getattr(curves, "items", lambda: [])():
+            if name in _SUPPORT_EXCLUSIONS:
                 continue
             try:
-                arr = np.asarray(getattr(curve, "y"), dtype=float)
+                arr = np.asarray(curve.y, dtype=float)
             except Exception:
                 continue
-            aligned = align(arr, nd)
-            support_columns.append((name, aligned))
+            support_columns.append((name, align(arr, nd)))
 
         return x, y, ym, wres, mask, support_columns
 
     def _set_arrays(self, x: np.ndarray, y: np.ndarray) -> None:
-        """Write back x, y to fit.data and trigger recompute."""
+        """Write ``x`` and the data back to the fit and trigger a recompute.
+
+        Parameters
+        ----------
+        x : numpy.ndarray
+            Independent variable.
+        y : numpy.ndarray
+            Measured data.
+        """
         data_curve = self.fit.data
-        # Preserve ex/ey lengths or regenerate default if absent
-        ex = getattr(data_curve, 'ex', None)
-        ey = getattr(data_curve, 'ey', None)
-        if ex is not None and len(ex) == len(x):
-            pass
-        else:
+        ex = getattr(data_curve, "ex", None)
+        ey = getattr(data_curve, "ey", None)
+        if ex is None or len(ex) != len(x):
             ex = np.ones_like(x)
-        if ey is not None and len(ey) == len(y):
-            pass
-        else:
+        if ey is None or len(ey) != len(y):
             ey = np.ones_like(y)
         data_curve.set_data(x=x, y=y, ex=ex, ey=ey)
-        # Recompute model and residuals via FittingClient or fallback
+
         fc = get_fitting_client()
         if fc is not None:
             fit_uid = str(getattr(self.fit, "unique_identifier", "") or "")
@@ -498,6 +273,13 @@ class FitTablePlot(plotbase.Plot):
                 fc.update_fit(fit_uid=fit_uid)
 
     def _set_mask(self, mask: np.ndarray) -> None:
+        """Send an edited fit mask to the backend and trace it.
+
+        Parameters
+        ----------
+        mask : numpy.ndarray
+            One weight per data channel; non-zero includes the channel.
+        """
         try:
             m = np.asarray(mask, dtype=float).ravel()
         except Exception:
@@ -511,7 +293,10 @@ class FitTablePlot(plotbase.Plot):
             fit_group_name = str(getattr(self.fit, "name", ""))
             record_action(
                 action_type="fit_mask_set",
-                summary=f"set fit mask for '{fit_group_name}' ({int(np.count_nonzero(m))}/{int(m.size)} active)",
+                summary=(
+                    f"set fit mask for '{fit_group_name}' "
+                    f"({int(np.count_nonzero(m))}/{int(m.size)} active)"
+                ),
                 payload={
                     "fit_group": fit_group_name,
                     "mask_size": int(m.size),
@@ -521,70 +306,106 @@ class FitTablePlot(plotbase.Plot):
             )
         except Exception:
             pass
+
+    def _on_cell_set(self, key: str, _row: int, _value) -> None:
+        """Route a cell edit back to the fit.
+
+        Parameters
+        ----------
+        key : str
+            Column key that was edited.
+        _row : int
+            Edited row (unused; whole columns are pushed).
+        _value : object
+            New value (unused; read back from the source).
+        """
+        if self._applying_edit or self._source is None:
+            return
+        self._applying_edit = True
+        try:
+            if key in ("x", "data"):
+                x = np.asarray(self._source.column_array(0), dtype=float)
+                y = np.asarray(self._source.column_array(1), dtype=float)
+                self._set_arrays(x, y)
+            elif key == "mask":
+                self._set_mask(np.asarray(self._source.column_array(4), dtype=float))
+            else:
+                return
+        finally:
+            self._applying_edit = False
         self._refresh_arrays_into_model()
 
     def _refresh_arrays_into_model(self) -> None:
+        """Re-read the fit into the table, keeping filter, sort and visibility."""
         if not self.isVisible():
             self._refresh_pending = True
             return
         x, y, ym, wres, mask, support = self._get_arrays()
-        self._model.set_arrays(x, y, ym, wres, mask, support)
-        n = x.size
-        self.lbl_info.setText(f"N={n}  |  chi2r={getattr(self.fit, 'chi2r', float('nan')):.4g}")
+        if mask is None:
+            mask = np.ones_like(x)
+        columns = list(zip(_BASE_COLUMNS, (x, y, ym, wres, mask))) + support
+        keys = tuple(k for k, _ in columns)
+        specs = _fit_column_specs(keys)
+
+        if self._source is None or keys != self._column_keys:
+            # A changed column set means new headers and delegates; anything
+            # else would leave the view describing the previous model.
+            self._column_keys = keys
+            self._source = ArraySource(columns, specs=specs, on_set=self._on_cell_set)
+            self.table.set_source(self._source)
+        else:
+            self._source.set_columns(columns, specs=specs)
+            self.table.refresh()
+
+        chi2r = getattr(self.fit, "chi2r", float("nan"))
+        self.lbl_info.setText(f"N={x.size}  |  χ²ᵣ={chi2r:.4g}")
         self._refresh_pending = False
 
-    def showEvent(self, event):
+    # ── Qt / Plot API ────────────────────────────────────────────────────
+
+    def showEvent(self, event):  # noqa: N802, D102 (Qt override)
         super().showEvent(event)
         if getattr(self, "_refresh_pending", False):
             self._refresh_arrays_into_model()
 
-    def on_copy_table_to_clipboard(self) -> None:
-        """Copy the current Data table (x, data, model, w. res.) to the clipboard.
+    def update(self, *args, **kwargs) -> None:
+        """Re-read the fit after a recompute.
 
-        Data is exported as tab-separated text with a single header row.
+        Parameters
+        ----------
+        *args
+            Forwarded to the base plot.
+        **kwargs
+            Forwarded to the base plot.
         """
-        try:
-            model = self._model
-            n_rows = model.rowCount()
-            n_cols = model.columnCount()
-            if n_rows <= 0 or n_cols <= 0:
-                return
+        super().update(*args, **kwargs)
+        self._refresh_arrays_into_model()
 
-            # Header
-            header_cells = []
-            for c in range(n_cols):
-                h = model.headerData(c, QtCore.Qt.Horizontal, QtCore.Qt.DisplayRole)
-                header_cells.append(str(h) if h is not None else "")
-            lines = ["\t".join(header_cells)]
+    def on_copy_table_to_clipboard(self) -> None:
+        """Copy every visible row and column, with headers, to the clipboard."""
+        view = self.table.table_view
+        model = view.chitable_model()
+        if model is not None:
+            model.fetch_all()
+        view.clearSelection()
+        view.copy_selection(include_header=True)
 
-            # Rows
-            for r in range(n_rows):
-                row_cells = []
-                for c in range(n_cols):
-                    idx = model.index(r, c)
-                    v = model.data(idx, QtCore.Qt.DisplayRole)
-                    row_cells.append(str(v) if v is not None else "")
-                lines.append("\t".join(row_cells))
+    # ── model-parameter editor ───────────────────────────────────────────
 
-            text = "\n".join(lines)
-            cb = QtWidgets.QApplication.clipboard()
-            cb.setText(text)
-        except Exception:
-            pass
+    def _parameter_frame(self, param_dict) -> pd.DataFrame:
+        """Build the editable frame of model parameters.
 
-    def on_show_model(self):
-        if DataFrameEditor is None:
-            QtWidgets.QMessageBox.warning(self, "DataFrameEditor unavailable", "guidata DataFrameEditor is not installed.")
-            return
-        # Build a comprehensive parameter table including link info
-        model = self.fit.model
-        # Prefer all parameters, including nested groups
-        try:
-            param_dict = model.parameters_all_dict
-        except Exception:
-            # Fallback to direct parameters list
-            param_dict = {p.name: p for p in getattr(model, 'parameters', [])}
+        Parameters
+        ----------
+        param_dict : dict
+            Mapping of parameter name to parameter object.
 
+        Returns
+        -------
+        pandas.DataFrame
+            Columns ``name``, ``value``, ``lb``, ``ub``, ``fixed``,
+            ``bounds_on``, ``linked`` and ``link_target``.
+        """
         rows = []
         for name, p in param_dict.items():
             try:
@@ -592,19 +413,6 @@ class FitTablePlot(plotbase.Plot):
             except Exception:
                 value = np.nan
             lb, ub = p.bounds
-            fixed = bool(p.fixed)
-            bounded = bool(getattr(p, 'bounds_on', False))
-            linked = bool(getattr(p, 'is_linked', False))
-            # Determine link target name if any
-            link_target_name = None
-            try:
-                link_obj = getattr(p, 'link', None)
-                if link_obj is not None:
-                    # p.link returns a Parameter or None
-                    link_target_name = getattr(link_obj, 'name', None)
-            except Exception:
-                link_target_name = None
-            # Safely convert bounds, allowing None -> NaN
             try:
                 lb_val = float(lb) if lb is not None else np.nan
             except Exception:
@@ -613,173 +421,137 @@ class FitTablePlot(plotbase.Plot):
                 ub_val = float(ub) if ub is not None else np.nan
             except Exception:
                 ub_val = np.nan
-            rows.append({
-                'name': name,
-                'value': value,
-                'lb': lb_val,
-                'ub': ub_val,
-                'fixed': fixed,
-                'bounds_on': bounded,
-                'linked': linked,
-                'link_target': link_target_name if link_target_name is not None else ''
-            })
+            link_obj = getattr(p, "link", None)
+            rows.append(
+                {
+                    "name": name,
+                    "value": value,
+                    "lb": lb_val,
+                    "ub": ub_val,
+                    "fixed": bool(p.fixed),
+                    "bounds_on": bool(getattr(p, "bounds_on", False)),
+                    "linked": bool(getattr(p, "is_linked", False)),
+                    "link_target": str(getattr(link_obj, "name", "") or ""),
+                }
+            )
+        return pd.DataFrame(rows).reset_index(drop=True)
 
-        df = pd.DataFrame(rows).reset_index(drop=True)
+    def on_show_model(self) -> None:
+        """Open the model-parameter table and apply the accepted edits."""
+        model = self.fit.model
+        try:
+            param_dict = model.parameters_all_dict
+        except Exception:
+            param_dict = {p.name: p for p in getattr(model, "parameters", [])}
+
+        df = self._parameter_frame(param_dict)
         if df.empty:
-            QtWidgets.QMessageBox.information(self, "No parameters", "Model exposes no editable parameters.")
+            QtWidgets.QMessageBox.information(
+                self, "No parameters", "Model exposes no editable parameters."
+            )
             return
 
-        # Ensure boolean columns are real booleans (no NaN) for proper checkbox behavior
-        for _col in ("fixed", "bounds_on", "linked"):
-            if _col in df.columns:
-                try:
-                    df[_col] = df[_col].apply(lambda v: bool(v) if pd.notna(v) else False)
-                except Exception:
-                    pass
-
-        dlg = DataFrameEditor(self)
-        if not dlg.setup_and_check(df, title="Model parameters"):
+        new_df = edit_dataframe(
+            df,
+            parent=self,
+            title="Model parameters",
+            readonly_columns=("name",),
+            bool_columns=("fixed", "bounds_on", "linked"),
+            colorize_columns=(),
+        )
+        if new_df is None:
             return
-        # Customize the editor: hide index/row headers and adjust size; install boolean toggle delegates
-        try:
-            # Hide any row headers (index) on contained table views
-            views = dlg.findChildren(QtWidgets.QTableView)
-            for v in views:
-                try:
-                    v.verticalHeader().setVisible(False)
-                except Exception:
-                    pass
-                # Disable alternating row colors and remove background coloring via proxy
-                try:
-                    v.setAlternatingRowColors(False)
-                    orig_model = v.model()
-                    # Stack proxies: NoBackgroundProxy -> ReadOnlyColumnProxy
-                    if orig_model is not None:
-                        nb_source = orig_model
-                        if not isinstance(orig_model, NoBackgroundProxy):
-                            nb = NoBackgroundProxy(v)
-                            nb.setSourceModel(orig_model)
-                            nb_source = nb
-                        ro = ReadOnlyColumnProxy(v)
-                        ro.setSourceModel(nb_source)
-                        ro.setReadOnlyHeaders(["name"])  # make 'name' column read-only
-                        v.setModel(ro)
-                except Exception:
-                    pass
-                # Also hide a first column named like an index, if present
-                try:
-                    header0 = v.model().headerData(0, QtCore.Qt.Horizontal)
-                    if isinstance(header0, str) and header0.strip().lower() in ("index", "#", ""):
-                        v.setColumnHidden(0, True)
-                except Exception:
-                    pass
-                # Install checkbox toggle delegate on boolean columns
-                try:
-                    model = v.model()
-                    if model is not None:
-                        ncols = model.columnCount()
-                        for ci in range(ncols):
-                            header = model.headerData(ci, QtCore.Qt.Horizontal)
-                            if isinstance(header, str) and header in ("fixed", "bounds_on", "linked"):
-                                v.setItemDelegateForColumn(ci, BooleanToggleDelegate(v))
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        # Adjust size based on row count, with sane defaults
-        try:
-            nrows = max(1, len(df))
-            height = min(900, 140 + nrows * 28)
-            dlg.resize(900, height)
-        except Exception:
+        self._apply_parameter_frame(new_df, param_dict)
+
+    def _apply_parameter_frame(self, new_df: pd.DataFrame, param_dict) -> None:
+        """Push an edited parameter frame back through the fitting client.
+
+        Parameters
+        ----------
+        new_df : pandas.DataFrame
+            The accepted frame, in the layout :meth:`_parameter_frame` produces.
+        param_dict : dict
+            Mapping of parameter name to parameter object.
+        """
+        fc = get_fitting_client()
+        if fc is None:
+            return
+        fit_uid = str(getattr(self.fit, "unique_identifier", "") or "")
+        fit_idx = getattr(self.fit, "fit_idx", None)
+
+        for _, row in new_df.iterrows():
+            name = row.get("name")
+            if name not in param_dict:
+                continue
+
             try:
-                dlg.resize(900, 600)
+                if pd.notna(row.get("value")):
+                    fc.set_parameter_value(
+                        name, float(row["value"]), fit_uid=fit_uid, fit_index=fit_idx
+                    )
             except Exception:
                 pass
-        if dlg.exec_() == QtWidgets.QDialog.Accepted:
-            new_df = dlg.get_value()
-            # Backpropagate edits to parameters
-            pmap = param_dict  # already a name->parameter dict
-            
-            def _parse_bool(v) -> bool:
-                try:
-                    if isinstance(v, (bool, np.bool_)):
-                        return bool(v)
-                    if isinstance(v, (int, np.integer)):
-                        return int(v) != 0
-                    if isinstance(v, (float, np.floating)):
-                        return float(v) != 0.0
-                    if isinstance(v, str):
-                        s = v.strip().lower()
-                        return s in ('1', 'true', 't', 'yes', 'y', 'on')
-                except Exception:
-                    pass
-                return False
 
-            fc = get_fitting_client()
-            fit_uid = str(getattr(self.fit, "unique_identifier", "") or "")
-            fit_idx = getattr(self.fit, "fit_idx", None)
+            try:
+                if pd.notna(row.get("lb")) and pd.notna(row.get("ub")):
+                    fc.set_parameter_bounds(
+                        name,
+                        (float(row["lb"]), float(row["ub"])),
+                        fit_uid=fit_uid,
+                        fit_index=fit_idx,
+                    )
+            except Exception:
+                pass
 
-            for _, row in new_df.iterrows():
-                name = row.get('name')
-                if name not in pmap:
-                    continue
-                p = pmap[name]
+            try:
+                fc.set_parameter_fixed(
+                    name, _parse_bool(row.get("fixed")), fit_uid=fit_uid, fit_index=fit_idx
+                )
+            except Exception:
+                pass
 
-                # Update value
-                try:
-                    if pd.notna(row.get('value')):
-                        val = float(row['value'])
-                        fc.set_parameter_value(name, val, fit_uid=fit_uid, fit_index=fit_idx)
-                except Exception:
-                    pass
+            try:
+                fc.set_parameter_bounds_on(
+                    name, _parse_bool(row.get("bounds_on")), fit_uid=fit_uid, fit_index=fit_idx
+                )
+            except Exception:
+                pass
 
-                # Update bounds
-                try:
-                    if pd.notna(row.get('lb')) and pd.notna(row.get('ub')):
-                        lb = float(row['lb'])
-                        ub = float(row['ub'])
-                        fc.set_parameter_bounds(name, (lb, ub), fit_uid=fit_uid, fit_index=fit_idx)
-                except Exception:
-                    pass
+            target = str(row.get("link_target") or "").strip()
+            try:
+                if _parse_bool(row.get("linked")) and target in param_dict and target != name:
+                    fc.link_parameters(name, target, fit_uid=fit_uid, fit_index=fit_idx)
+                else:
+                    fc.unlink_parameter(name, fit_uid=fit_uid, fit_index=fit_idx)
+            except Exception:
+                pass
 
-                # Update fixed
-                try:
-                    if 'fixed' in row:
-                        fixed_val = _parse_bool(row['fixed'])
-                        fc.set_parameter_fixed(name, fixed_val, fit_uid=fit_uid, fit_index=fit_idx)
-                except Exception:
-                    pass
-
-                # Update bounds_on
-                try:
-                    if 'bounds_on' in row:
-                        bounds_on_val = _parse_bool(row['bounds_on'])
-                        fc.set_parameter_bounds_on(name, bounds_on_val, fit_uid=fit_uid, fit_index=fit_idx)
-                except Exception:
-                    pass
-
-                # Update linking
-                try:
-                    want_linked = _parse_bool(row.get('linked'))
-                except Exception:
-                    want_linked = False
-                target_name = str(row.get('link_target')) if row.get('link_target') is not None else ''
-                target_name = target_name.strip()
-                try:
-                    if want_linked and target_name and target_name in pmap and target_name != name:
-                        fc.link_parameters(name, target_name, fit_uid=fit_uid, fit_index=fit_idx)
-                    else:
-                        fc.unlink_parameter(name, fit_uid=fit_uid, fit_index=fit_idx)
-                except Exception:
-                    pass
-
-            # Recompute model and refresh via FittingClient or fallback
-            fc.update_fit(fit_uid=fit_uid, fit_index=fit_idx)
-            fc.model_finalize(fit_uid=fit_uid, fit_index=fit_idx)
-            self._refresh_arrays_into_model()
-
-    # ---- Plot API ----
-    def update(self, *args, **kwargs) -> None:
-        super().update(*args, **kwargs)
+        fc.update_fit(fit_uid=fit_uid, fit_index=fit_idx)
+        fc.model_finalize(fit_uid=fit_uid, fit_index=fit_idx)
         self._refresh_arrays_into_model()
+
+
+def _parse_bool(value) -> bool:
+    """Interpret a table cell as a boolean.
+
+    Parameters
+    ----------
+    value : object
+        A bool, number or string such as ``"True"``.
+
+    Returns
+    -------
+    bool
+    """
+    try:
+        if isinstance(value, (bool, np.bool_)):
+            return bool(value)
+        if isinstance(value, (int, np.integer)):
+            return int(value) != 0
+        if isinstance(value, (float, np.floating)):
+            return float(value) != 0.0
+        if isinstance(value, str):
+            return value.strip().lower() in ("1", "true", "t", "yes", "y", "on")
+    except Exception:
+        pass
+    return False

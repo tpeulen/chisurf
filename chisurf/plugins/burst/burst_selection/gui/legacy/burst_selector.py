@@ -11,11 +11,7 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.glyphs import Glyphs
-
-try:
-    from guidata.widgets.dataframeeditor import DataFrameEditor
-except Exception:  # pragma: no cover - optional dependency
-    DataFrameEditor = None  # type: ignore
+from chisurf.gui.widgets.chitable import edit_dataframe
 
 import numpy as np
 import pandas as pd
@@ -357,24 +353,13 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
             )
             return
 
-        if DataFrameEditor is None:
-            QtWidgets.QMessageBox.warning(
-                self, "DataFrameEditor unavailable",
-                "guidata DataFrameEditor is not installed."
-            )
+        edited = edit_dataframe(self.current_df, parent=self, title="Burst Results")
+        if edited is None:
             return
-
-        dlg = DataFrameEditor(self)
-        # set up the editor on the current DataFrame
-        if not dlg.setup_and_check(self.current_df, title="Burst Results"):
-            return
-
-        if dlg.exec_() == QtWidgets.QDialog.Accepted:
-            # user hit OK: grab the possibly-modified DataFrame back
-            self.current_df = dlg.get_value()
-            # refresh the preview and histogram
-            self.populate_table(self.current_df)
-            self.update_histogram()
+        self.current_df = edited
+        # refresh the preview and histogram
+        self.populate_table(self.current_df)
+        self.update_histogram()
 
 
     @chisurf.gui.decorators.init_with_ui("gui.ui", path=chisurf.core.settings.plugin_path / "burst" / "burst_selection" / "gui" / "assets")

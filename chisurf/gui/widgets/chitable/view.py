@@ -65,7 +65,10 @@ class ChiTableView(QtWidgets.QTableView):
     def setModel(self, model) -> None:  # noqa: N802, D102 (Qt override)
         super().setModel(model)
         if isinstance(model, ChiTableModel):
-            self.horizontalHeader().setSortIndicatorShown(True)
+            # The indicator stays hidden until the user actually sorts —
+            # otherwise column 0 shows an arrow claiming a sort that is not
+            # applied.
+            self.horizontalHeader().setSortIndicatorShown(False)
             self.horizontalHeader().setSectionsClickable(True)
             try:
                 self.horizontalHeader().sectionClicked.disconnect(self._on_header_clicked)
@@ -100,6 +103,7 @@ class ChiTableView(QtWidgets.QTableView):
         else:
             order = QtCore.Qt.AscendingOrder
         model.sort(section, order)
+        header.setSortIndicatorShown(True)
         header.setSortIndicator(section, order)
 
     def _maybe_fetch_more(self, value: int) -> None:
