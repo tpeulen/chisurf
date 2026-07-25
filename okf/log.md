@@ -2,6 +2,22 @@
 
 ## 2026-07-25
 
+* **A member of a grouped fit had no index, so every write it addressed went
+  nowhere (RF-029).** `find_fit_idx` matched by identity against `chisurf.fits`
+  and fell off the end for anything it did not find, returning `None` from a
+  `-> int` signature. Only `FitGroup`s are listed there, so *every* member `Fit`
+  inside a group — what a model widget holds — resolved to `None`, which travels
+  on as the target index and reaches the server as "fit not found" (the root
+  cause behind the FCS finding: six ERROR tracebacks per created FCS fit and a
+  dead background-correction checkbox). The `getattr(fit, "fit_idx", None)`
+  idiom every call site defends itself with cannot help, because the attribute
+  exists. A member now resolves to the index of the group holding it, and the
+  not-found case returns `None` explicitly with `int | None` on both
+  `find_fit_idx` and `Fit.fit_idx`. `-1` was rejected as the sentinel: the
+  action layer indexes `cs.fits[int(fit_index)]` directly, where it would
+  silently retarget the *last* fit. Pinned by
+  `test/fitting/test_fit_indexing.py`.
+
 * **The only end-to-end GUI workflow tests run again (RF-023).** All three tests
   in `test/gui/test_gui_chisurf_main.py` — the sole cover for "choose experiment
   → load data → add fit" — had been red on a renamed button, and behind that

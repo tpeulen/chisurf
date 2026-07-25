@@ -452,11 +452,38 @@ deliberate pass. Findings RF-026..RF-029 below.
 - **Fix note:**
 
 ### RF-029
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (a promised int is silently `None`, defeating every guard written against it)
 - **Location:** `chisurf/core/fitting/__init__.py:128-142` (`find_fit_idx`) via `chisurf/core/fitting/fit.py:101` (`Fit.fit_idx`)
 - **Finding:** `find_fit_idx` walks `chisurf.fits` looking for an identity match and has **no explicit return** for the not-found case, so it falls off the end and returns `None` despite `-> int` and a docstring promising "position of the fit in the global fit list". Verified: `find_fit_idx(<object not in cs.fits>)` → `None`. This is the root cause behind the FCS `RF-020`: only `FitGroup`s live in `cs.fits`, the member `Fit`s inside a group inherit the very same property (`FitGroup.fit_idx is Fit.fit_idx` → `True`), so any code holding a *member* fit gets `None`. The idiom every call site uses to defend against that — `getattr(fit, "fit_idx", None)` (`chisurf/core/models/fcs/mdf.py:177`, `gui/widgets/models/fcs/parse_fcs_widget.py:376`) and `getattr(self.fit, "fit_idx", 0)` (`gui/plots/residual_image.py:797`) — cannot work, because the attribute *exists*; the default is never reached and `None` is passed on as the target index, where `fit.range.set` (`core/actions/fit_actions.py:139`, which catches only `IndexError`/`AttributeError`) raises `TypeError` from `int(None)` and the server's `_resolve_fit` reports "fit not found". Fix it where it lives: make a member fit resolve to the index of the group that contains it (or return `-1` / raise, and correct the annotation), rather than patching each call site.
-- **Fix note:**
+- **Fix note:** Fixed where it lives, both halves. (a) A member of a `FitGroup`
+  now resolves to the index of the **group holding it**: only groups are listed
+  in `chisurf.fits`, so the identity-only search left every member fit without
+  an index — the root cause behind the FCS `RF-020`, where the member's
+  `fit_index=None` reaches the server as "fit not found". Reproduced against
+  `HEAD` first: for a two-member `FitGroup` at index 0, `find_fit_idx(group)`
+  returned `0` while `find_fit_idx(member)` returned `None` for both members. A
+  top-level identity match still wins over a membership match (two passes).
+  (b) The not-found case now `return`s `None` **explicitly**, and both
+  `find_fit_idx` and `Fit.fit_idx` are annotated `int | None` and document it,
+  so the signature no longer promises an `int` it cannot deliver. `-1` was
+  considered and rejected for the sentinel: `chisurf/core/actions/fit_actions.py`
+  indexes `cs.fits[int(fit_index)]` directly, so `-1` would silently retarget
+  the *last* fit — a wrong-fit mutation is worse than the honest `None`
+  (the server's `_resolve_fit` already rejects both). Pinned by
+  `test/fitting/test_fit_indexing.py` — member → group index, the same through
+  the `Fit.fit_idx` property with two groups in `cs.fits` (so a wrong group
+  would fail), and the not-in-the-list case. All 75 files of `test/fitting/`
+  run **per file** give exactly the same exit codes as `HEAD` (13 pre-existing
+  failures, unchanged) — per file because the whole-directory run aborts
+  (`Fatal Python error: Aborted`) at `HEAD` too, a pre-existing cross-test
+  interaction in this environment. Also green: `test/test_fitting_client.py` +
+  `test/test_fix.py` + `test/test_crash.py` (71 passed, 1 failure that is red
+  at `HEAD` as well) and the fit-addressing server suites
+  `test_services_fits` / `test_services_parameters` / `..._uid` / `test_session`
+  (75). `ruff check` on the two touched files reports three
+  findings *fewer* than `HEAD` and none new, and the new test file is
+  `ruff check` + `ruff format` clean.
 
 ### Use-case run 2026-07-25 — Imaging / CLSM-Draw (image → pixel selection → decay)
 

@@ -580,7 +580,11 @@ support-plane F-test interval agree.
 # Exposure
 
 - Active fits live in the `chisurf.fits` list (indexed via `find_fit_idx`) — a
-  legacy [runtime global](/architecture/runtime-globals.md).
+  legacy [runtime global](/architecture/runtime-globals.md). Only groups are
+  listed there, so a member of a grouped fit resolves to the index of the group
+  holding it; a fit that is in no list resolves to `None` (`find_fit_idx` and
+  `Fit.fit_idx` are `int | None`), never to a positional sentinel that would
+  address a different fit.
 - The [action layer](/architecture/action-layer.md)
   (`chisurf/core/actions/fit_actions.py`) mediates `run_fit`.
 - The [API facade](/architecture/api-facade.md) (`chisurf/core/api/`) exposes

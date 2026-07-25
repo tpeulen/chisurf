@@ -98,13 +98,18 @@ class Fit(cs.core.base.Base):
     """
 
     @property
-    def fit_idx(self) -> int:
+    def fit_idx(self) -> int | None:
         """Index of this fit in ``cs.fits``.
+
+        A member of a :class:`FitGroup` is not listed in ``cs.fits`` itself and
+        resolves to the index of its group, so a member fit can be addressed by
+        index like any other fit.
 
         Returns
         -------
-        int
-            Position of the fit in the global fit list.
+        int or None
+            Position of the fit -- or of the group containing it -- in the
+            global fit list, or ``None`` if the fit is not part of it.
         """
         return cs.core.fitting.find_fit_idx(self)
 

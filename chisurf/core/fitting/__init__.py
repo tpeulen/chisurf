@@ -128,18 +128,41 @@ def calculate_weighted_residuals(
 def find_fit_idx(
         fit: 'chisurf.core.fitting.fit.Fit',
         fits: list['chisurf.core.fitting.fit.Fit'] = None
-) -> int:
-    """Returns index of the fit of a model in chisurf.fits array
+) -> int | None:
+    """Find the position of a fit in the global fit list.
 
-    :param model:
-    :param fits:
-    :return:
+    Only :class:`~chisurf.core.fitting.fit.FitGroup` instances are listed in
+    ``chisurf.fits``; the member fits they contain are not. A member therefore
+    resolves to the index of the **group holding it**, which is the index the
+    action layer and the server RPC address a fit by -- a member that resolved
+    to nothing would silently target no fit at all.
+
+    Parameters
+    ----------
+    fit : Fit
+        The fit to locate. May be a member of a grouped fit.
+    fits : list of Fit, optional
+        List of fits to search. Defaults to ``chisurf.fits``.
+
+    Returns
+    -------
+    int or None
+        Position of the fit -- or of the group containing it -- in ``fits``,
+        or ``None`` if the fit is not part of the list at all.
     """
     if fits is None:
         fits = chisurf.fits
     for idx, f in enumerate(fits):
         if f is fit:
             return idx
+    for idx, f in enumerate(fits):
+        members = getattr(f, "grouped_fits", None)
+        if not isinstance(members, (list, tuple)):
+            continue
+        for member in members:
+            if member is fit:
+                return idx
+    return None
 
 
 def find_fit_idx_of_parameter(
