@@ -2,6 +2,35 @@
 
 ## 2026-07-25
 
+* **The photon library's Python extension never linked OpenMP; fixed there, so
+  ChiSurf's build task stops patching around it.** Root cause found while
+  looking at whether tttrlib could simply be a pip dependency: the top-level
+  OpenMP flags reach `CMAKE_CXX_FLAGS` and `CMAKE_EXE_LINKER_FLAGS`, but a
+  Python extension is a **`MODULE` library, not an executable**, so it received
+  the compile flags and none of the link ones — it compiled with `-fopenmp` and
+  linked without the runtime. The R and Java modules had always linked
+  `OpenMP::OpenMP_CXX` explicitly; only Python was missing it. The failure mode
+  was worse than a link error: on macOS the module carries
+  `-Wl,-flat_namespace,-undefined,dynamic_lookup` so Python symbols resolve at
+  load time, and that flag let the unresolved OpenMP symbols through too — the
+  build succeeded and the module failed at **import** with `symbol not found in
+  flat namespace '___kmpc_barrier'`. That is why every downstream build had to
+  inject `-lomp` plus an rpath by hand. Fixed upstream (`fix(build): link
+  OpenMP into the Python extension`); verified on macOS arm64 that
+  `pip install .` with only `CMAKE_PREFIX_PATH` set — no linker flags of any
+  kind — now yields a module linking `@rpath/libomp.dylib` that imports
+  cleanly, where the same command previously built and then failed to import.
+  Consequently `build_tools/build_tttrlib.py` lost its Darwin branch and now
+  passes just the environment prefix. Suites: photon-library CLSM 135 passed /
+  5 skipped; ChiSurf ICS 24 passed, against a module built by the simplified
+  task. **Next step, not taken:** with a plain `pip install` of the source now
+  sufficient, `tttrlib` can become a declarative `[pypi-dependencies]` path
+  entry and the bespoke task, the tracked symlink and the three CI clone steps
+  can all go. That needs a `pixi install`/`pixi lock` to validate, which would
+  overwrite another change's large in-flight re-solve of `pixi.lock`, so it is
+  deliberately left for when that file is free. See
+  [compiled modules](/subsystems/compiled-modules.md).
+
 * **The agent can drive the computer, and the head-less registry finally has
   every model in it.** Running the whole suite against a second provider
   (Mistral, EU) surfaced three defects that OpenRouter had not.

@@ -12,9 +12,11 @@ points at a sibling checkout (the same arrangement as ``modules/mmfdb``). When
 it does not resolve this script fails loudly: with no conda package behind it,
 silently continuing would leave the environment with no tttrlib at all.
 
-macOS note: the SWIG module must link ``libomp`` explicitly, otherwise it builds
-but fails to load with ``symbol not found in flat namespace '___kmpc_barrier'``.
-We pass the env's ``libomp`` on the shared/module linker flags on Darwin.
+The build itself needs nothing beyond the environment prefix. It used to inject
+macOS-specific ``libomp`` linker flags, because tttrlib's Python extension
+compiled with OpenMP but never linked it and then failed at import with
+``symbol not found in flat namespace '___kmpc_barrier'``; that is fixed in
+tttrlib, so a plain build is enough.
 """
 
 from __future__ import annotations
@@ -55,19 +57,16 @@ def main() -> int:
         return 1
 
     prefix = os.environ.get("CONDA_PREFIX") or sys.prefix
-    lib = Path(prefix) / "lib"
 
+    # The environment prefix is all CMake needs: it finds HDF5, OpenMP and the
+    # rest there. This used to also inject `-L… -lomp -Wl,-rpath,…` on macOS,
+    # because tttrlib's Python extension compiled with OpenMP but never linked
+    # it — and the module's flat-namespace flag let the missing symbols through
+    # to fail at import time. That is fixed in tttrlib itself (the extension now
+    # links `OpenMP::OpenMP_CXX` like the R and Java modules always did), so a
+    # plain build produces an importable module.
     env = dict(os.environ)
-    cmake_args = [f"-DCMAKE_PREFIX_PATH={prefix}"]
-    if sys.platform == "darwin":
-        # Link the env's libomp into the SWIG module (flat-namespace fix). The
-        # quotes keep each -D<flag>=<value with spaces> a single scikit-build arg.
-        omp = f"-L{lib} -lomp -Wl,-rpath,{lib}"
-        cmake_args += [
-            f'"-DCMAKE_SHARED_LINKER_FLAGS={omp}"',
-            f'"-DCMAKE_MODULE_LINKER_FLAGS={omp}"',
-        ]
-    env["CMAKE_ARGS"] = " ".join(cmake_args)
+    env["CMAKE_ARGS"] = f"-DCMAKE_PREFIX_PATH={prefix}"
 
     shutil.rmtree(_BUILD_DIR, ignore_errors=True)
     cmd = [

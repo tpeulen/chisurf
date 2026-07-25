@@ -34,10 +34,15 @@ symlink, which points at a sibling checkout — the same arrangement as
 `modules/mmfdb`, and CI clones the sibling repo the same way. With no package
 behind it the task **fails loudly** when the symlink does not resolve, printing
 the clone command, rather than leaving the environment with no tttrlib at all.
-On macOS it links the env's `libomp` into the SWIG module (otherwise it loads
-with a flat-namespace `___kmpc_barrier` error) and builds in an isolated
-`build/tttrlib` tree so it never disturbs the developer's own tttrlib build dir.
-See `build_tools/build_tttrlib.py`.
+The build needs nothing beyond the environment prefix. It used to inject
+macOS `libomp` linker flags, because tttrlib's Python extension compiled with
+OpenMP but never linked it — the module's flat-namespace flag let the missing
+symbols through, so it built fine and failed at *import* with
+`___kmpc_barrier`. That is fixed in tttrlib (the extension now links
+`OpenMP::OpenMP_CXX`, as the R and Java modules always did), so a plain
+`pip install` of the source produces an importable module. The task still
+builds in an isolated `build/tttrlib` tree so it never disturbs the
+developer's own tttrlib build dir. See `build_tools/build_tttrlib.py`.
 
 # Citations
 
