@@ -1424,6 +1424,33 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
     # Object management helpers
     # ------------------------------------------------------------------
 
+    def _report_degraded_load(self, path: Path, exc: Optional[Exception]) -> None:
+        """Tell the user the structure reader gave up and what that costs them.
+
+        Parameters
+        ----------
+        path : pathlib.Path
+            File that fell back to the raw-coordinate parser.
+        exc : Exception or None
+            Why the reader failed, when that is known. ``None`` means it was
+            simply unavailable.
+        """
+        reason = f": {exc}" if exc is not None else " (reader unavailable)"
+        message = (
+            f"{path.name} loaded as raw coordinates{reason}. "
+            "Residues, sequence, secondary structure and radius of gyration are "
+            "not available, so it will draw as a plain backbone trace."
+        )
+        logging.getLogger(__name__).warning(message)
+        try:
+            # Attribute lookup itself can fail on a partially built window, so
+            # the log above is the channel that is always there.
+            panel = getattr(self, "command_panel", None)
+            if panel is not None:
+                panel.append_error(message)
+        except Exception:
+            pass
+
     def _load_structure_from_path(self, path: Path, *, name: Optional[str] = None) -> str:
         """Load a structure or coordinate file and register it as a new object."""
 
@@ -1558,6 +1585,11 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             )
             n_atoms = getattr(structure, "n_atoms", "?")
         elif coords_arr is not None:
+            # Say so. Falling back is legitimate, but the result looks like a
+            # bare CA spring with no secondary structure, no sequence and no
+            # radius of gyration -- and silently, that reads as a rendering bug
+            # rather than as a reader that gave up on this file.
+            self._report_degraded_load(path, primary_exc)
             # Pass the parsed backbone through: without residue/chain ids the
             # trace cannot find segment boundaries and draws one polyline
             # through every atom in file order.
