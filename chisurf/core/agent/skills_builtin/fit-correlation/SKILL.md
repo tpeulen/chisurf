@@ -45,27 +45,34 @@ Call `get_fit` and look at what is free before doing anything else.
 
 ## What the parameters mean
 
-The general diffusion model exposes, among others:
+The general model has a **diffusion mode**, and only that mode's parameters
+are fitted. In the default `gauss` mode they are:
 
 * `N` — average number of particles in the observation volume. The
-  correlation amplitude is essentially `1/N`, and the concentration follows
-  from it and the effective volume.
+  correlation amplitude is essentially `1/N`.
 * `D` — diffusion coefficient; `tauD` is the corresponding diffusion time.
-* `w0`, `wem` — the lateral and axial dimensions of the observation volume,
-  with `w_r`/`w_z` as their ratios.
-* `b` — the bunching/antibunching amplitude, for fast photophysics such as
-  triplet blinking (typically microseconds, well below the diffusion time).
-* `bg` — background.
+* `w_r`, `w_z` — the lateral and axial dimensions of the observation volume,
+  in nm. **These are the shape parameters.**
+* `b` — the offset, plus the bunching/antibunching terms for fast
+  photophysics such as triplet blinking (microseconds, well below the
+  diffusion time).
+
+The `mdf` mode uses `w0`/`wem` instead, and the two-focus mode adds `diam`.
+Call `get_fit` and read the names that are actually there rather than
+assuming — they change with the mode.
 
 ## The judgement that matters
 
 **The shape of the observation volume is a calibration, not a fit result.**
-`w0`, `wem` and their ratios come from a calibration measurement with a dye of
-known diffusion coefficient — and they arrive **free** in a fresh fit. Leaving
-them free while also fitting `D` makes both meaningless, because the fit can
-trade a wider volume against slower diffusion and reach the same curve. Fix
-them (`set_parameter` with `fixed=true`) at the calibrated values, then fit
-`N` and `D`.
+`w_r` and `w_z` come from a calibration measurement with a dye of known
+diffusion coefficient — and they arrive **free** in a fresh fit. Leaving them
+free while also fitting `D` makes both meaningless, because the fit can trade
+a wider volume against slower diffusion and reach the same curve. Fix them
+(`set_parameter` with `fixed=true`) at the calibrated values, then fit `N`
+and `D`.
+
+Across a **series** of measurements the shape is the same in every one, so
+link it rather than fixing it — see the `fit-series` skill.
 
 If the curve shows a fast component that diffusion cannot explain, free `b`.
 Do not free it by reflex: an unnecessary bunching term will absorb noise.

@@ -114,6 +114,14 @@ than compiled. A skill that carries code is held to it: every ```python block
 in every skill is compiled by the test suite, because a recipe a model copies
 must not teach a syntax error.
 
+Two things follow from the skills-first rule. New abilities are cheap — a
+series/global-fit capability arrived as `fit-series` with no new tool at all,
+composing `link_parameters` and a `run_python` comparison recipe. And
+verifying a skill against the program is where defects surface: writing that
+one showed every FCS fit reporting its *defaults* as results, because
+`GeneralFCSModel` exposed all three of its diffusion presets to the optimiser
+while computing with one.
+
 # The assistant's own knowledge base
 
 `chisurf/core/agent/knowledge_base/` is an OKF bundle carried **by the

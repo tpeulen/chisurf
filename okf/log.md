@@ -2,29 +2,82 @@
 
 ## 2026-07-25
 
-* **A cache whose key cost more than the lookup saved, and an autoscale that
-  announced a structure change twice per evaluation.** Two findings from
-  profiling a TCSPC decay evaluation, both algorithmic rather than micro.
-  (1) `Convolve._processed_irf` memoises the processed instrument response — an
-  earlier fix, worth 42 % of fit wall time. But its *key* hashes the whole IRF
-  byte array on every evaluation (deliberately: a summary like `sum()` is blind
-  to an in-place `np.roll`, which would silently serve a stale curve), and with
-  the cache in place the rebuild it guards almost never happens. So **14 % of an
-  evaluation** went on deciding that nothing had changed. Neither the IRF nor the
-  data is a fit parameter, so the hash is now taken once per run, keyed on a new
-  `factorgraph.frozen_epoch()` token; the array's *identity* is still checked, and
-  outside a run the full hash is taken exactly as before. 88.4 → 71.6 µs per
-  evaluation.
-  (2) `Convolve.scale` wrote the autoscaled amplitude with
-  `_n0.fixed = False; _n0.value = n0; _n0.fixed = True`. `Parameter.value`
-  *already* writes past the port's fixed guard, so the toggles were redundant --
-  and each one announced a structure change, invalidating every cached
-  free-parameter list in the program **twice per model evaluation** for a free
-  set that does not change. Found because `frozen_structure`'s own exit check
-  fired: the guard was written to catch stale caches and instead caught a
-  gratuitous invalidation. 40 structure bumps per 20 evaluations → 0, and the
-  *unfrozen* path got faster too (95 → 87 µs), since it was paying for the churn
-  as well.
+* **Series and cross-linking, as a skill — and an FCS model bug it exposed.**
+  "Load this FCS power series and do a global fit over the data" now works
+  end to end. The capability arrived as a **skill**, `fit-series`, not as new
+  tools: what a series shares is linked with the existing `link_parameters`,
+  and the across-fits comparison is a `run_python` recipe. The skill carries
+  the judgement — link what belongs to the instrument or the molecule (for
+  FCS the observation-volume shape `w_r`/`w_z`), never what the experiment
+  *varied*, and honour the user when they name the parameter themselves —
+  plus how to read the resulting table: a quantity that should be constant
+  but drifts is the most informative thing in it (a diffusion time growing
+  with power is optical saturation, not slower diffusion).
+  **The bug.** Verifying the recipe showed every FCS fit reporting `N = 1.0`
+  and `D = 300.0` — the untouched defaults — as results. `GeneralFCSModel`
+  instantiates three diffusion presets (`mdf`, `gauss`, `two_focus`) so the
+  user can switch between them, but `update_model` computes with exactly one,
+  and `find_parameters` collected all three. So the optimiser varied
+  parameters the model never reads (15 free where there are 5, with `N`, `D`
+  and `b` each appearing three times), and `parameters_all_dict` — keyed by
+  name — handed back whichever copy came last, typically an **inactive** one
+  still at its default. `parameters_all` now excludes the inactive presets:
+  the same fit reports five free parameters and moves them (N = 0.365,
+  D = 237 um^2/s, w_r = 431 nm, chi2r 2049 -> 5.08, better than the 5.35 the
+  redundant set reached).
+  The `fit-correlation` skill and the correlation concept were wrong about
+  the parameter names as a result — they described the MDF group's `w0`/`wem`
+  while the default Gaussian mode uses `w_r`/`w_z` — and are corrected, with
+  the note that the names follow the active mode and should be read from the
+  fit rather than assumed.
+  Verified live: the agent loaded the series, linked the shape across all four
+  members, ran the global fit, compared the parameters across it, exported the
+  table, and reported honestly that chi2r 2.45 with Durbin-Watson 0.88 means
+  the model is still missing something. 13 skills; 399 offline agent tests.
+
+* **Regions can now be measured, not only drawn — and the measurements are
+  scikit-image's.** `chisurf/core/roi/props.py`. The ROI subsystem answered
+  *where* a region is and stopped there, so every consumer of a segmentation
+  re-derived the same numbers: molecule MLE called `skimage.measure.regionprops`
+  directly, object colocalization ran one `scipy.ndimage` reduction per quantity
+  (`center_of_mass`, two `sum`s), nobody else measured anything. `regionprops` /
+  `regionprops_table` fill that in with the **scikit-image interface
+  deliberately copied** — same signature, same property names (`area_bbox`,
+  `axis_major_length`, `centroid_weighted`, `intensity_mean`, `extent`,
+  `euler_number`, ...), `prop['area']` item access, `extra_properties`, the
+  `centroid-0`/`centroid-1` column splitting — so habits and code transfer both
+  ways. 27 properties are asserted equal to `skimage.measure.regionprops` to
+  1e-9 in `test/core/test_regionprops.py`; getting there meant matching the
+  *algorithms*, not just the formulas: the perimeter's border-configuration
+  weights (`sqrt(2)` sits at codes 21 and 33, not the 6/14/26 a plausible
+  reading gives), the Crofton coefficient LUT, the convex hull taken over
+  half-pixel-offset pixel *corners*, and `orientation`'s degenerate branch,
+  which returns `+pi/4` when the cross moment is positive — the opposite of what
+  the obvious reading of the source suggests.
+  Extensions on top, none renaming anything: a bare mask or a drawn `ROI`
+  measures exactly like a label (so a hand-drawn selection is comparable with a
+  watershed output), `RegionProperties.to_roi()` converts a measurement back
+  into a region, and `circularity` / `intensity_sum` are reported because the
+  imaging plugins need them. Recorded caveat: on regions a few pixels across the
+  discrete perimeter is biased both ways and `circularity` can exceed 1 (a 7x7
+  square scores 1.07) — it sorts single molecules, it does not measure them.
+* **Single-molecule imaging: foreground and background are regions now.**
+  `plugins/microscopy/sm_image_mle`. `MoleculeMleSettings.roi` (a `ROI` or its
+  serialised dict, so it survives RPC) confines the molecule search, applied
+  *before* the threshold so an Otsu level is computed from the region's own
+  pixels rather than the whole frame's. The result partitions the frame:
+  `foreground_roi()`, `background_roi(margin)` and `background_rate()`. The
+  background is the **dilated** foreground's complement — the pixels touching a
+  molecule still carry its PSF tail, and including them biases the rate upward
+  and makes every molecule look dimmer than it is. Per-molecule rows gained
+  `intensity_mean` / `intensity_max` / weighted centroid, all from the one
+  property set instead of a second opinion. The GUI's segmentation preview was
+  a duplicate of the core's segmentation-plus-regionprops loop with fewer
+  columns; it now calls `segmentation_preview()` and reports the background rate
+  in its status line. Also: object colocalization measures through `regionprops`
+  and exposes `ObjectSet.properties` / `.rois()`, and drift correction crops via
+  the new `ROI.bounding_box()`. Theory page:
+  `docs/concepts/region_properties.md`.
 
 * **Rectangle FRAP ported: recovery fitted in space *and* time, not as a curve.**
   `chisurf/core/fluorescence/imaging/frap.py`. **Correcting an earlier claim in
@@ -84,17 +137,6 @@
   the geometry they annotate, and `hide labels` keeps the text -- you turn labels
   off to read the structure, not to lose what you annotated.
   37 new tests. Suite: 464 passed, 1 skipped.
-
-
-* **chiplot Batch 24 — IRF estimator off pyqtgraph (allow-list 27 → 26).**
-  Migrated the self-contained `plugins/fluorescence_decay/irf_estimator/gui/tool.py`
-  (1087L; log-y decay/IRF plot + mouse crosshairs + draggable fit-range region).
-  Curves → `line` (solid/dashed); crosshairs → non-movable `vline`/`hline` +
-  `set_value`; range selector → `region`/`on_change(final=False)`/`set_bounds`,
-  show/hide via a `_range_in_plot` flag (replacing `x in main_plot.items()`) and
-  re-added after `clear()`. Mouse-tracking pyqtgraph internals stay `.native`
-  passthroughs. Screenshot-verified; imports IMP → standalone-verified, kept out
-  of the shared import test. See [PRD-64](prds/prd-64.md).
 
 * **Two more MIA features on the ROI class: arbitrary-region selection and ROI
   file interchange.** `chisurf/core/roi/builders.py::arbitrary_region` ports
@@ -2728,6 +2770,16 @@
   confidence), which is what caught the orientation error. Also made
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
+
+* **chiplot Batch 24 — IRF estimator off pyqtgraph (allow-list 27 → 26).**
+  Migrated the self-contained `plugins/fluorescence_decay/irf_estimator/gui/tool.py`
+  (1087L; log-y decay/IRF plot + mouse crosshairs + draggable fit-range region).
+  Curves → `line` (solid/dashed); crosshairs → non-movable `vline`/`hline` +
+  `set_value`; range selector → `region`/`on_change(final=False)`/`set_bounds`,
+  show/hide via a `_range_in_plot` flag (replacing `x in main_plot.items()`) and
+  re-added after `clear()`. Mouse-tracking pyqtgraph internals stay `.native`
+  passthroughs. Screenshot-verified; imports IMP → standalone-verified, kept out
+  of the shared import test. See [PRD-64](prds/prd-64.md).
 
 * **chiplot Batch 23 — legacy burst selector off pyqtgraph (allow-list
   28 → 27).** Migrated `plugins/burst/burst_selection/gui/legacy/burst_selector.py`

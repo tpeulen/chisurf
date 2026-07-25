@@ -115,6 +115,7 @@ even sees it, so the right method is in play from the first turn.
 | `report-results` | exporting, saving, plotting, writing up |
 | `write-analysis-script` | custom calculations and scripts |
 | `use-the-computer` | unpacking, converting, running other software |
+| `fit-series` | a power series, titration, time course or repeats fitted together |
 | `estimate-uncertainty` | confidence intervals, error bars, whether a component is justified |
 | `program-chisurf` | writing plugins, models or patches to ChiSurf itself |
 

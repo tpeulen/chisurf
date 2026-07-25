@@ -27,13 +27,18 @@ The correlation models are closed-form: there is no instrument response to
 deconvolve and no component count to raise. What decides the fit is **which
 parameters are free**.
 
-The shape of the observation volume — the beam waist and its axial extent —
-is a property of the instrument, measured by calibrating with a dye of known
-diffusion coefficient. In a fresh fit these arrive *free*. Fitting them
-together with the diffusion coefficient makes both meaningless: a wider
-volume and slower diffusion produce the same curve. Fix them at the
-calibrated values, then fit the particle number and the diffusion
-coefficient.
+The shape of the observation volume — the lateral and axial dimensions,
+`w_r` and `w_z` in the default mode — is a property of the instrument,
+measured by calibrating with a dye of known diffusion coefficient. In a fresh
+fit these arrive *free*. Fitting them together with the diffusion coefficient
+makes both meaningless: a wider volume and slower diffusion produce the same
+curve. Fix them at the calibrated values, or **link them across a series**,
+then fit the particle number and the diffusion coefficient.
+
+The model carries several diffusion presets and computes with exactly one, so
+the parameter names depend on the active mode: `w_r`/`w_z` for the Gaussian
+mode, `w0`/`wem` for the MDF mode. Read the names from the fit rather than
+assuming them.
 
 Because of this, a diffusion time is only comparable between measurements on
 the same calibrated instrument, and an absolute concentration is only as good

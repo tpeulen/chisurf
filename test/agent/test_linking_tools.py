@@ -109,3 +109,59 @@ def test_a_linked_series_still_runs(two_fits):
 
     assert result["n_run"] == 2
     assert all(entry["ok"] for entry in result["results"])
+
+
+# ── a series, fitted globally ─────────────────────────────────────────
+
+
+@pytest.fixture()
+def correlation_series(context, tmp_path):
+    """Four correlation measurements of one sample, as a power series would be."""
+    import shutil
+
+    from test.agent.conftest import DATA_DIR
+
+    source = DATA_DIR / "fcs" / "kristine" / "Kristine_with_error.cor"
+    for power in ("010", "020", "050", "100"):
+        shutil.copy(source, tmp_path / f"sample_{power}uW.cor")
+    context.working_directory = str(tmp_path)
+    data_tools.load_data(context, directory=".", pattern="*.cor")
+    fitting_tools.create_fit(
+        context, model_name="FCS (general: diffusion + bunching/anticorr)"
+    )
+    return context
+
+
+def test_the_shape_can_be_shared_across_a_series(correlation_series):
+    """What the instrument contributes is one value for the whole series."""
+    result = linking_tools.link_parameters(
+        correlation_series, parameters=["w_r", "w_z"], source_fit=0
+    )
+    assert len(result["linked"]) == 6, "two parameters across three follower fits"
+
+    free = result["free_parameters"]
+    assert free["1"] == free["0"] - 2, "each follower loses both shape parameters"
+
+
+def test_a_globally_fitted_series_shares_one_value(correlation_series):
+    linking_tools.link_parameters(
+        correlation_series, parameters=["w_r", "w_z"], source_fit=0
+    )
+    fitting_tools.run_fit(correlation_series)
+
+    shape = [
+        float(fit.model.parameters_all_dict["w_r"].value)
+        for fit in correlation_series.fits
+    ]
+    assert len(set(round(value, 6) for value in shape)) == 1, f"not shared: {shape}"
+
+
+def test_what_the_experiment_varies_stays_free(correlation_series):
+    """Linking the shape must not tie down the per-measurement quantities."""
+    linking_tools.link_parameters(
+        correlation_series, parameters=["w_r", "w_z"], source_fit=0
+    )
+    for fit in correlation_series.fits:
+        free = {parameter.name for parameter in fit.model.parameters}
+        assert "N" in free, "the particle number is the measurement"
+        assert "w_r" not in free or fit is correlation_series.fits[0]
