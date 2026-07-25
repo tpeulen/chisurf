@@ -208,6 +208,47 @@ def test_log_list_widget_filter_hides_rows(qapp, qtbot):
     assert widget.isRowHidden(1) is True
 
 
+def test_log_list_widget_caps_rows(qapp, qtbot):
+    widget = LogListWidget(max_rows=10)
+    qtbot.addWidget(widget)
+
+    widget.add_entries(
+        [(f"2026-06-10 12:00:00,{i:03d} - INFO - entry {i}", None) for i in range(25)]
+    )
+
+    assert widget.rowCount() == 10
+    # The oldest rows are dropped, the newest kept.
+    assert widget.item(0, 3).text() == "entry 15"
+    assert widget.item(9, 3).text() == "entry 24"
+
+
+def test_idle_filter_pass_is_skipped(qapp, qtbot):
+    widget = LogListWidget()
+    qtbot.addWidget(widget)
+    window = QWidget()
+    window.plainTextEditLog = widget
+    window.lineEdit_LogFilter = QLineEdit()
+    window.checkBox_filter_hide = QCheckBox()
+
+    widget.addItem("2026-06-10 12:00:00,001 - INFO - alpha message")
+
+    calls = []
+    original_reset = widget.reset_row_styles
+    widget.reset_row_styles = lambda row: (calls.append(row), original_reset(row))
+
+    misc_helpers.filter_log_content(window)  # first idle pass clears styling
+    assert calls  # it did run once
+    calls.clear()
+
+    misc_helpers.filter_log_content(window)  # nothing to do -> no O(rows) walk
+    assert calls == []
+
+    # A real filter must still be applied.
+    window.lineEdit_LogFilter.setText("alpha")
+    misc_helpers.filter_log_content(window)
+    assert calls
+
+
 def test_log_list_widget_copy_selected_rows(qapp, qtbot):
     widget = LogListWidget()
     qtbot.addWidget(widget)

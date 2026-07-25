@@ -76,6 +76,75 @@ def test_worker_thread_logging_is_delivered_and_filter_debounced(qapp):
         log.removeHandler(handler)
 
 
+def test_burst_is_applied_in_batches(qapp):
+    """A burst must cost a handful of widget updates, not one per record."""
+    from qtpy import QtWidgets
+    from chisurf.gui import QTextEditLogger
+
+    class BatchWidget(QtWidgets.QWidget):
+        def __init__(self):
+            super().__init__()
+            self.batches = []
+
+        def add_entries(self, entries):
+            self.batches.append(len(entries))
+
+    widget = BatchWidget()
+    handler = QTextEditLogger(widget, "append", level=logging.DEBUG)
+
+    log = logging.getLogger("chisurf.test.qtel.batch")
+    log.setLevel(logging.DEBUG)
+    log.propagate = False
+    log.addHandler(handler)
+    try:
+        n = 500
+        t = threading.Thread(target=lambda: [log.info("msg %d", i) for i in range(n)])
+        t.start()
+        t.join()
+
+        _drain(qapp)
+
+        assert sum(widget.batches) == n  # nothing dropped
+        assert len(widget.batches) <= 5  # ... and delivered in few updates
+    finally:
+        log.removeHandler(handler)
+
+
+def test_status_mode_shows_last_message_of_a_burst(qapp):
+    """Only the newest message is visible in a status bar; skip the rest."""
+    from qtpy import QtWidgets
+    from chisurf.gui import QTextEditLogger
+
+    class CountingLabel(QtWidgets.QLabel):
+        def __init__(self):
+            super().__init__()
+            self.set_calls = 0
+
+        def setText(self, text):  # type: ignore[override]
+            self.set_calls += 1
+            super().setText(text)
+
+    label = CountingLabel()
+    handler = QTextEditLogger(label, "set", log_string="%(message)s", level=logging.INFO)
+
+    log = logging.getLogger("chisurf.test.qtel.status.burst")
+    log.setLevel(logging.INFO)
+    log.propagate = False
+    log.addHandler(handler)
+    try:
+        n = 200
+        t = threading.Thread(target=lambda: [log.info("msg %d", i) for i in range(n)])
+        t.start()
+        t.join()
+
+        _drain(qapp)
+
+        assert label.text() == f"msg {n - 1}"
+        assert label.set_calls <= 5
+    finally:
+        log.removeHandler(handler)
+
+
 def test_status_mode_updates_widget(qapp):
     from qtpy import QtWidgets
     from chisurf.gui import QTextEditLogger

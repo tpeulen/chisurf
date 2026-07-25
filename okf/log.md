@@ -2,6 +2,37 @@
 
 ## 2026-07-25
 
+* **The GUI log handler was quadratic; a data load spent seconds logging.**
+  `QTextEditLogger` is installed on the *root* logger (status bar + log console),
+  so every record from every subsystem paid its cost. Beyond the thread-safety
+  and filter-debounce fix already landed, three per-record costs remained:
+  one queued signal *per record*, one table insert plus `scrollToBottom` *per
+  record*, and — because the debounced pass still walked every row — an O(rows)
+  filter over a console that grew without bound.
+  **Records are now buffered and applied in batches.** `emit()` appends to a
+  lock-guarded deque and wakes the GUI thread once per batch, not once per
+  record; the GUI side flushes immediately when idle (no added latency for an
+  isolated message) and otherwise at most every 50 ms. `set` mode applies only
+  the newest message — a status bar cannot show the other 399. `LogListWidget`
+  gained `add_entries()` (updates disabled, one `scrollToBottom` for the whole
+  batch) and a `max_rows` cap (5000, oldest trimmed), so filter and style passes
+  stay bounded no matter how long the session runs.
+  **The remaining O(rows) walk is skipped when it cannot do anything.** With no
+  filter text and hiding off there is nothing to highlight and the previous idle
+  pass already cleared leftover styling, so `filter_log_content` returns early —
+  the common case, and the one that made a burst quadratic. Also cached the
+  filter-owner lookup (it walked the parent chain per record), the level
+  QBrushes, and replaced a `strptime`/`strftime` round trip per record with a
+  string slice.
+  **Measured** headlessly with 400 records logged from a worker thread into a
+  real console (`test/gui`-style offscreen Qt, so paint cost is *understated*):
+  empty console 1454 ms -> 17 ms; with 500 rows already present 4278 ms -> 15 ms
+  (the ~290x is the quadratic term disappearing). Covered by
+  `test/gui/test_log_handler_gui.py` (500 records arrive in <=5 widget updates;
+  a status-bar burst ends on the newest message in <=5 `setText` calls) and
+  `test/gui/settings/test_log_filter.py` (row cap keeps the newest rows; a second
+  idle filter pass does no row walk, a real filter still applies). 15 passed.
+
 * **chimol: real ambient occlusion, in the interactive viewport, without
   raytracing.** PyMOL has no ambient occlusion at all, so this is the first place
   chimol is deliberately ahead rather than at parity.

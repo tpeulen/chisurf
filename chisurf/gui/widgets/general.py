@@ -257,8 +257,13 @@ class LogListWidget(QtWidgets.QTableWidget):
         r"(?P<level>[A-Z]+)\s+-\s+(?P<message>.*)$"
     )
 
-    def __init__(self, parent=None):
+    #: Rows kept in the console. Every filter pass and style reset is O(rows),
+    #: so an unbounded log makes the whole GUI slower the longer it runs.
+    DEFAULT_MAX_ROWS = 5000
+
+    def __init__(self, parent=None, max_rows: int = DEFAULT_MAX_ROWS):
         super().__init__(0, 4, parent)
+        self.max_rows = max_rows
         self.setHorizontalHeaderLabels(["Time", "Level", "Origin", "Message"])
         self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
@@ -271,6 +276,35 @@ class LogListWidget(QtWidgets.QTableWidget):
 
     def addItem(self, text, record=None):  # type: ignore[override]
         """Add one log row to the table."""
+        self.add_entries([(text, record)])
+
+    def add_entries(self, entries):
+        """Add a batch of log rows with a single relayout and scroll.
+
+        Parameters
+        ----------
+        entries : Iterable[tuple]
+            ``(text, record)`` pairs; ``record`` may be ``None``.
+
+        Notes
+        -----
+        Inserting rows one at a time makes a burst of log records (a data load
+        emits hundreds) pay a viewport relayout and a ``scrollToBottom`` each,
+        which is what made logging dominate load time.
+        """
+        entries = list(entries)
+        if not entries:
+            return
+        self.setUpdatesEnabled(False)
+        try:
+            for text, record in entries:
+                self._append_row(text, record)
+            self._trim_rows()
+        finally:
+            self.setUpdatesEnabled(True)
+        self.scrollToBottom()
+
+    def _append_row(self, text, record=None):
         full_time, time_text, level, source, message = self._parse_log_entry(str(text), record)
         row = self.rowCount()
         self.insertRow(row)
@@ -280,7 +314,12 @@ class LogListWidget(QtWidgets.QTableWidget):
         self._set_item(row, 2, source, source)
         self._set_item(row, 3, message, message)
         self._style_level(row, level)
-        self.scrollToBottom()
+
+    def _trim_rows(self):
+        """Drop the oldest rows so the console stays bounded (and fast)."""
+        excess = self.rowCount() - self.max_rows
+        if excess > 0:
+            self.model().removeRows(0, excess)
 
     def count(self):  # type: ignore[override]
         """Return the number of log rows."""
@@ -359,18 +398,32 @@ class LogListWidget(QtWidgets.QTableWidget):
             return text
         return f"{text[: max_len - 1]}…"
 
+    _LEVEL_COLORS = {
+        "DEBUG": (90, 120, 160),
+        "INFO": (30, 130, 30),
+        "WARNING": (190, 130, 0),
+        "ERROR": (200, 50, 50),
+        "CRITICAL": (150, 0, 150),
+    }
+
+    #: Lazily built QBrush cache (populated after a QApplication exists).
+    _LEVEL_BRUSHES: dict = {}
+
+    @classmethod
+    def _level_brush(cls, level):
+        # Cached: a burst of records would otherwise rebuild the colour map and
+        # allocate a QColor/QBrush per row.
+        key = level.upper()
+        brush = cls._LEVEL_BRUSHES.get(key)
+        if brush is None:
+            brush = QtGui.QBrush(QtGui.QColor(*cls._LEVEL_COLORS.get(key, (0, 0, 0))))
+            cls._LEVEL_BRUSHES[key] = brush
+        return brush
+
     def _style_level(self, row, level):
-        color_map = {
-            "DEBUG": QtGui.QColor(90, 120, 160),
-            "INFO": QtGui.QColor(30, 130, 30),
-            "WARNING": QtGui.QColor(190, 130, 0),
-            "ERROR": QtGui.QColor(200, 50, 50),
-            "CRITICAL": QtGui.QColor(150, 0, 150),
-        }
         item = self.item(row, 1)
         if item is not None:
-            color = color_map.get(level.upper(), QtGui.QColor(0, 0, 0))
-            item.setForeground(QtGui.QBrush(color))
+            item.setForeground(self._level_brush(level))
 
     def _parse_log_entry(self, text, record=None):
         full_time = ""
@@ -395,6 +448,10 @@ class LogListWidget(QtWidgets.QTableWidget):
     def _display_time(full_time: str) -> str:
         if not full_time:
             return ""
+        # Fast path for the standard "%Y-%m-%d %H:%M:%S[,%f]" stamp: a slice
+        # instead of a strptime/strftime round trip per record.
+        if len(full_time) >= 19 and full_time[4] == "-" and full_time[10] == " " and full_time[13] == ":":
+            return full_time[11:19]
         for fmt in ("%Y-%m-%d %H:%M:%S,%f", "%Y-%m-%d %H:%M:%S"):
             try:
                 return time.strftime("%H:%M:%S", time.strptime(full_time, fmt))
