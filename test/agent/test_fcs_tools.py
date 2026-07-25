@@ -64,14 +64,40 @@ def test_set_irf_refuses_a_model_that_does_not_convolve(correlation_fit):
         decay_tools.set_irf(correlation_fit, irf=0, fit=0)
 
 
+def test_only_the_active_diffusion_mode_is_fitted(correlation_fit):
+    """Three diffusion presets exist; the model computes with exactly one.
+
+    While all three were exposed, the optimiser varied parameters the model
+    never reads and ``parameters_all_dict`` could return an inactive ``N``
+    still sitting at its default, as though it were the fitted value.
+    """
+    model = correlation_fit.fits[0].model
+    names = [parameter.name for parameter in model.parameters]
+
+    assert len(names) == len(set(names)), f"a parameter is exposed more than once: {names}"
+    assert "w_r" in names, "the active (gauss) preset should be present"
+    assert "w0" not in names, "the inactive MDF preset should not be"
+
+
 def test_the_shape_parameters_arrive_free_and_can_be_fixed(correlation_fit):
     """Fixing the calibrated volume is the judgement the skill teaches."""
     before = {p["name"]: p for p in fitting_tools.get_fit(correlation_fit, fit=0)["parameters"]}
-    assert before["w0"]["fixed"] is False, "the volume shape is free in a fresh fit"
+    assert before["w_r"]["fixed"] is False, "the volume shape is free in a fresh fit"
 
-    fitting_tools.set_parameter(correlation_fit, parameter="w0", fit=0, fixed=True)
+    fitting_tools.set_parameter(correlation_fit, parameter="w_r", fit=0, fixed=True)
     after = {p["name"]: p for p in fitting_tools.get_fit(correlation_fit, fit=0)["parameters"]}
-    assert after["w0"]["fixed"] is True
+    assert after["w_r"]["fixed"] is True
+
+
+def test_fitting_moves_the_parameters_off_their_defaults(correlation_fit):
+    """The reported values must be fitted ones, not untouched defaults."""
+    model = correlation_fit.fits[0].model
+    before = {name: model.parameters_all_dict[name].value for name in ("N", "D")}
+    fitting_tools.run_fit(correlation_fit, fit=0)
+    after = {name: model.parameters_all_dict[name].value for name in ("N", "D")}
+
+    assert after["N"] != before["N"], "N was reported unchanged from its default"
+    assert after["D"] != before["D"], "D was reported unchanged from its default"
 
 
 def test_the_report_does_not_claim_an_irf(correlation_fit):

@@ -167,6 +167,39 @@ class GeneralFCSModel(ModelCurve):
         if v not in self._DIFFUSION_MODES:
             raise ValueError(f"diffusion_mode must be one of {self._DIFFUSION_MODES}, got {v!r}")
         self._diffusion_mode = v
+        self.update()
+
+    def _inactive_diffusion_groups(self) -> list:
+        """Return the diffusion parameter groups the active mode does not use."""
+        if self.diffusion_mode == "mdf":
+            return [self.gauss, self.two_focus]
+        if self.diffusion_mode == "two_focus":
+            return [self.mdf_physical, self.mdf_optics, self.mdf_outputs, self.gauss]
+        return [self.mdf_physical, self.mdf_optics, self.mdf_outputs, self.two_focus]
+
+    @property
+    def parameters_all(self):
+        """Return the parameters of the *active* diffusion mode only.
+
+        All three diffusion presets are instantiated so the user can switch
+        between them, but :meth:`update_model` computes with exactly one. If
+        the inactive ones stay in the parameter list, the optimiser varies
+        numbers the model never reads — the fit becomes rank-deficient, and
+        ``parameters_all_dict`` (which is keyed by name) can hand back the
+        *inactive* ``N`` or ``D``, still sitting at its default, as if it were
+        the fitted value.
+
+        Returns
+        -------
+        list of FittingParameter
+            Every parameter except those belonging to an inactive diffusion
+            preset.
+        """
+        excluded: set[int] = set()
+        for group in self._inactive_diffusion_groups():
+            for parameter in getattr(group, "_parameters", None) or []:
+                excluded.add(id(parameter))
+        return [p for p in super().parameters_all if id(p) not in excluded]
 
     def _mdf_shape(self, tau_ms: np.ndarray):
         """Return ``(g, N, b)`` for the MDF diffusion mode, or ``None`` if invalid."""
