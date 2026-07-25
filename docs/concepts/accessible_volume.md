@@ -118,11 +118,43 @@ $$
 
 with $R_0$ the Förster radius. **This is the measure to compare against an
 intensity-based FRET-efficiency measurement**, because it uses the same $E\to R$
-inversion the experiment does. The ordering is typically
-$R_\text{mp} \lesssim \langle R_{DA}\rangle_E \lesssim \langle R_{DA}\rangle$: the
-FRET weighting pulls estimate 3 toward the short-distance conformers that dominate
-transfer. (A time-resolved FRET-decay analysis resolves $P(R_{DA})$ directly and is
-the way to handle fast dye averaging.)
+inversion the experiment does. (A time-resolved FRET-decay analysis resolves
+$P(R_{DA})$ directly and is the way to handle fast dye averaging.)
+
+**How far apart are 2 and 3, and in which direction?** The gap is a Jensen
+effect, so its *sign* is set by the curvature of $E(R)$ — and that curvature
+changes sign. Differentiating $E = 1/(1+(R/R_0)^6)$ twice gives a numerator
+$\propto 42(R/R_0)^6 - 30$, so the inflection sits at
+
+$$
+R^{\ast} = \left(\tfrac{5}{7}\right)^{1/6} R_0 \approx 0.945\,R_0
+\qquad (E \approx 0.58).
+$$
+
+Below $R^{\ast}$ the response is concave and $\langle R_{DA}\rangle_E >
+\langle R_{DA}\rangle$; above it the response is convex and
+$\langle R_{DA}\rangle_E < \langle R_{DA}\rangle$. For a Gaussian $P(R)$ of
+width $\sigma$ with $R_0 = 52$ Å:
+
+| $\langle R_{DA}\rangle$ | $\sigma = 3$ Å | $\sigma = 6$ Å | $\sigma = 10$ Å | $\sigma = 15$ Å |
+|---|---|---|---|---|
+| 40 Å (below $R^\ast$) | +0.3 Å | +1.1 Å | +2.4 Å | +3.7 Å |
+| 50 Å (near $R^\ast$) | −0.0 Å | −0.1 Å | −0.1 Å | +0.0 Å |
+| 65 Å (above $R^\ast$) | −0.3 Å | −1.2 Å | −2.7 Å | −4.7 Å |
+
+(entries are $\langle R_{DA}\rangle_E - \langle R_{DA}\rangle$.)
+
+Three things follow. To leading order the discrepancy is the Jensen term
+$\tfrac{1}{2}\sigma^2 E''$, so it grows roughly with the **square of the cloud
+width** for narrow clouds (tapering off once $\sigma$ becomes comparable to
+$R_0$): negligible for a tight AV, several Å for the broad clouds typical of
+long linkers. It **vanishes near $R^\ast \approx 0.945\,R_0$**,
+which is also where FRET is most precise — so measurements in the sweet spot are
+the least sensitive to which measure you quote. And the common shorthand that
+"FRET averaging always pulls toward the short-distance conformers" is only true
+for $R \gtrsim R_0$; below $R^\ast$ it pulls the other way. Quoting the wrong
+measure therefore introduces a *signed*, distance-dependent bias, not a
+harmless offset.
 
 ## The κ² = 2/3 assumption
 

@@ -53,5 +53,5 @@ H2MM results dashboard.
 
 ## See also
 
-- `chisurf/plugins/burst/burst_h2mm/` (`core/analysis.py`, `gui/tool.py`); theory in `docs/H2MM.md`.
+- `chisurf/plugins/burst/burst_h2mm/` (`core/analysis.py`, `gui/tool.py`); theory in {ref}`concept-h2mm`.
 - Uncertainty & simulation validation: [tutorial 31](31_h2mm_simulation_validation.md).

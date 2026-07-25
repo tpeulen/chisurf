@@ -82,7 +82,7 @@ Script::
 
 Purpose:
 
-- Read ``chisurf/models/fcs/models.yaml``.
+- Read ``chisurf/core/models/fcs/models.yaml``.
 - For each parsed FCS model, collect the parameter names that appear in
   the ``initial`` block.
 - Ensure there is a corresponding ``fcs.<symbol>`` entry in the
@@ -93,7 +93,7 @@ Typical usage::
     python dev_tools/export_fcs_parameters.py
 
 This script is idempotent and safe to re-run after editing
-``models/fcs/models.yaml`` or adding new FCS models.
+``core/models/fcs/models.yaml`` or adding new FCS models.
 
 TCSPC parsed-model exporter: export_tcspc_parameters
 ----------------------------------------------------
@@ -104,7 +104,7 @@ Script::
 
 Purpose:
 
-- Read ``chisurf/models/tcspc/tcspc.models.json``.
+- Read ``chisurf/core/models/tcspc/tcspc.models.json``.
 - For each TCSPC decay model, collect parameter names from the
   ``initial`` block.
 - Ensure there is a corresponding ``tcspc.<symbol>`` entry in the
@@ -199,7 +199,7 @@ A few typical maintenance workflows for developers:
          python dev_tools/fill_fcs_descriptions.py
          python dev_tools/fill_tcspc_descriptions.py
 
-2. **After editing FCS parsed models (models/fcs/models.yaml)**
+2. **After editing FCS parsed models (core/models/fcs/models.yaml)**
 
    - Update FCS registry entries::
 
@@ -209,7 +209,7 @@ A few typical maintenance workflows for developers:
 
          python dev_tools/fill_fcs_descriptions.py
 
-3. **After editing TCSPC parsed models (models/tcspc/tcspc.models.json)**
+3. **After editing TCSPC parsed models (core/models/tcspc/tcspc.models.json)**
 
    - Update TCSPC registry entries::
 

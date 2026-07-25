@@ -2,6 +2,41 @@
 
 ## 2026-07-25
 
+* **Concept depth batch 2 (h2mm, accessible_volume) + a filesystem-path link
+  audit.** Audited every filesystem-style path cited in `docs/` (454 distinct
+  backticked paths) — the earlier sweep only covered *dotted* Python paths, so
+  `chisurf/...`-style file references had never been checked. All but one of the
+  genuinely-missing paths live in `docs/development/` PRDs and plans, which
+  describe planned or historical states and were deliberately left alone. The two
+  user-facing ones are fixed: guide 30 pointed at a non-existent `docs/H2MM.md`
+  (now the `concept-h2mm` ref), and `parameter_registry_tools.rst` still told
+  users to edit `chisurf/models/fcs/models.yaml` /
+  `chisurf/models/tcspc/tcspc.models.json` at their pre-`core` locations
+  (5 occurrences, now `chisurf/core/models/...`).
+* **Corrected the AV averaging-bias claim — the sign flips at 0.945 R0.**
+  `docs/concepts/accessible_volume.md` asserted the ordering
+  `R_mp <~ <R_DA>_E <~ <R_DA>`, i.e. that FRET averaging always pulls toward the
+  short-distance conformers. That holds only above the inflection of `E(R)`:
+  differentiating `E = 1/(1+(R/R0)^6)` twice gives a numerator `42(R/R0)^6 - 30`,
+  so the curvature changes sign at `R* = (5/7)^(1/6) R0 ~ 0.945 R0` (E ~ 0.58).
+  *Below* R* the response is concave and `<R_DA>_E > <R_DA>`. Verified numerically
+  against Gaussian P(R) with R0 = 52 A: at `<R> = 40 A` the difference is
+  **+3.7 A** (sigma = 15 A) but at `<R> = 65 A` it is **-4.7 A** — same magnitude,
+  opposite sign. Replaced the claim with the derivation, a signed table over
+  (`<R>`, sigma), and the consequences (leading Jensen term ~ sigma^2 E''/2; the
+  bias vanishes near R*, which is also where FRET is most precise).
+* **H2MM page: dropped a stale "experimental" claim, added the resolution
+  limits.** The page still said the plugin is *marked experimental*; commit
+  `cf2c1ed5` ("drop experimental flag") removed that — the manifest has no
+  `experimental` key (unlike `burst_ebfret`, which still does). Added "What H2MM
+  can and cannot resolve": the kinetic window bounded below by burst duration and
+  above by the inter-photon gap (~10^3..10^5 s^-1 at 50 kHz), the free-parameter
+  count actually used for BIC/ICL (`k = K^2 + (P-1)K - 1`, tabulated for K=2..5 and
+  P=2,3) showing that 3->4 states adds ~92 to the BIC penalty at 10^5 photons so
+  the likelihood must gain >46 to break even, that B-derived efficiencies are
+  *apparent* (uncorrected), local-optima/label-permutation caveats, and burst
+  truncation biasing dwell times short.
+
 * **chimol: the PyMOL settings namespace, and two camera facts measured from
   PyMOL rather than assumed.** Three parity gaps, all verified against a running
   PyMOL rather than against its documentation.

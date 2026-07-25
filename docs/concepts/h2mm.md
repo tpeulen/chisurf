@@ -157,12 +157,69 @@ dwell **E histogram** (or **E–S scatter**), the **transition-density plot**, t
 per-state **fluorescence-decay** (nanotime) histograms, and an interactive
 per-burst **Viterbi state-path** viewer. Per-photon, per-burst, and per-dwell
 tables are exported for ndxplorer (the per-dwell table is the unit downstream
-dwell-filtering acts on). The plugin is marked **experimental** — validated on
-simulated data, not yet on experimental measurements.
+dwell-filtering acts on).
 
 When your data are already binned (TIRF/camera trajectories with a constant
 frame rate), the appropriate tool is binned HMM instead — see
 {doc}`/guides/20_ebfret_binned_hmm`.
+
+## What H2MM can and cannot resolve
+
+**The kinetic window is bounded at both ends, by photons and by bursts.** A
+transition can only be located in time to within roughly one inter-photon
+interval, and it can only be *seen* if it happens during a burst. At a typical
+per-molecule count rate of 50 kHz the mean gap is $\langle\Delta t\rangle =
+20\ \mu\mathrm{s}$, and a 1 ms burst therefore carries ~50 photons. That places
+the accessible rate range at roughly
+
+$$
+\frac{1}{\text{burst duration}} \;\lesssim\; k \;\lesssim\;
+\frac{1}{\langle\Delta t\rangle},
+\qquad\text{here } 10^{3}\ \mathrm{s^{-1}} \dots 10^{5}\ \mathrm{s^{-1}} .
+$$
+
+Faster exchange is averaged within the photon spacing and shows up as a single
+state of intermediate $E$; slower exchange simply never occurs inside a burst,
+and the molecule looks static. Raising the excitation power widens the upper
+edge but costs photobleaching — which shortens bursts and closes the lower edge.
+
+**Model selection gets conservative fast, because the parameter count grows
+quadratically.** ChiSurf counts free parameters as $k = K^2 + (P-1)K - 1$ for
+$K$ states and $P$ photon streams:
+
+| $K$ | $k$ ($P=2$, DD/DA) | $k$ ($P=3$, with AA) |
+|---|---|---|
+| 2 | 5 | 7 |
+| 3 | 11 | 14 |
+| 4 | 19 | 23 |
+| 5 | 29 | 34 |
+
+With $N = 10^5$ photons, $\ln N \approx 11.5$, so going from 3 to 4 states adds
+8 parameters and $8 \times 11.5 \approx 92$ to the BIC penalty. The 4-state
+model must therefore improve the log-likelihood by more than ~46 just to break
+even. This is why state counts above 3–4 need genuinely large photon budgets,
+and why a BIC curve that keeps falling is more often a sign of unmodelled
+heterogeneity (photophysics, bleaching, aggregates) than of real extra
+conformations.
+
+**The efficiencies are apparent, not accurate.** $E_i$ read from $\mathbf{B}$ is
+an *uncorrected* proximity ratio — leakage, direct excitation and $\gamma$ have
+not been applied (see {ref}`concept-smfret-bursts`). Apply the corrections to
+the per-state values afterwards; do not compare raw $\mathbf{B}$-derived
+efficiencies against corrected histogram values.
+
+**Baum-Welch finds a local optimum.** The likelihood is multimodal, so the
+result depends on the starting model; ChiSurf uses random restarts and keeps the
+best converged fit, but reproducibility across restarts is the check that this
+worked, not something to assume. Label-permutation degeneracy is expected —
+state 1 and state 2 may swap between runs, so match states by $E$, not by index.
+
+**Dwell times are truncated by the burst.** Any dwell longer than the remaining
+burst is cut short, which biases the dwell-time distribution toward short
+values and the exit rates upward. The first and last dwell of every burst are
+censored by construction; excluding them, or accounting for the censoring, is
+necessary before reading rate constants off dwell histograms rather than off
+$\mathbf{A}$.
 
 ## See also
 
