@@ -2,6 +2,20 @@
 
 ## 2026-07-25
 
+
+* **fix: burst-analysis pipeline produced empty plots — two root causes.**
+  (1) The registry-driven "tttrlib" burst-search mode raised when the installed
+  tttrlib publishes no burst-search registry, aborting
+  `burst_selection.jobs.analyze_files` so no bursts (hence empty plots) reached
+  any downstream panel; `_run_burst_search` now falls back to the built-in
+  sliding-window search with a warning (verified: 226k burst photons on real
+  FRET data with the registry forced off). (2) `mmfdb.objects.put` rejects
+  server-side paths ("send base64 data"); the mmfdb_admin client, the
+  burst-analysis data import, and vv_vh_g_factor now read the file and upload
+  base64 bytes. Neither was a chiplot-migration regression — the migrated burst
+  panels render correctly (browser verified on 2980 real bursts). Commits
+  e33999639, c46a4e39c.
+
 * **A painted gate can finally mean values, not pixels.** `chisurf/core/roi`.
   `MaskROI` assumed pixel indices, so every bitmap selection drawn on a *plot*
   — a cluster painted on a phasor plane, a band painted on an intensity scatter
