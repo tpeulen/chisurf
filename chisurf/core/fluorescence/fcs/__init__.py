@@ -76,8 +76,10 @@ def noise(
         Number of initial data points to skip (e.g., to avoid afterpulsing effects).
         Default is 0.
     correlation_amplitude_range : tuple of int, optional
-        Tuple (lb, ub) defining the index range used to calculate the correlation offset
-        and the mean correlation amplitude. Default is (0, 16).
+        Tuple (lb, ub) defining the index range of the short-lag amplitude window,
+        `correlation[lb:ub]`. The long-lag baseline that is subtracted from it is the
+        mirror of that window at the end of the curve, `correlation[n - ub:n - lb]`.
+        Default is (0, 16), i.e. the first and the last 16 points.
     time_upper : float, optional
         Upper time limit (in ms) below which the standard weighting is applied.
         For times above this threshold, weights are scaled down. Default is 10.
@@ -129,7 +131,12 @@ def noise(
 
     lb, ub = correlation_amplitude_range
 
-    correlation_offset = np.mean(correlation[-lb:-ub])
+    # The offset is the long-lag baseline: the mirror image of the short-lag
+    # amplitude window `correlation[lb:ub]` at the end of the curve. Index from
+    # the front so that `lb = 0` selects up to the very last point (a negative
+    # stop of `-lb` would silently drop the whole tail).
+    n = len(correlation)
+    correlation_offset = np.mean(correlation[n - ub:n - lb])
     mean_correlation_amplitude = np.mean(correlation[lb:ub]) - correlation_offset
     if mean_correlation_amplitude == 0:
         print("WARNING: the mean correlation amplitude seems to be zero!")

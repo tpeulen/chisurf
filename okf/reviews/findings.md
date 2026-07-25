@@ -658,11 +658,33 @@ another instance); the symbol names are given so they stay findable.
 - **Fix note:**
 
 ### RF-045
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the noise model's baseline is the mean of nearly the whole curve)
 - **Location:** `chisurf/core/fluorescence/fcs/__init__.py:131` (`noise`, `correlation_offset = np.mean(correlation[-lb:-ub])`)
 - **Finding:** With the default `correlation_amplitude_range = (0, 16)` this is `correlation[-0:-16]`, i.e. `correlation[0:-16]` — everything *except* the last 16 points, not the last 16 points. The offset is meant to be the long-lag baseline (the next line subtracts it from `mean(correlation[0:16])`, the short-lag amplitude), but it instead averages the amplitude region into the baseline. Verified on `test/data/fcs/asc/ALV-7004.ASC` (231 points): as coded the slice takes 215 points and gives `offset = 1.215952`; the intended tail `correlation[-16:]` gives `1.000315`. The derived amplitude is therefore `A = 0.152` instead of `0.368` — a factor 2.4. `A` enters `suren` quadratically (`S ∝ A²/ns`) and `starchev` as `N = 1/A` cubed, and it also shifts the half-amplitude crossing used to estimate `diffusion_time` at `:138`, so this biases **every** weight ChiSurf computes for FCS. No caller ever overrides `correlation_amplitude_range` (only three references tree-wide, all in this file), so the default is the only path. Fix the slice (`correlation[-ub:]` or an explicit `(baseline_lb, baseline_ub)` pair) and pin the offset with a test on a synthetic `G = 1 + A/(1+t/τ)`, where the answer is known exactly.
-- **Fix note:**
+- **Fix note:** The baseline slice is now indexed from the front —
+  `correlation[n - ub:n - lb]` — so it is the true mirror of the short-lag
+  window `correlation[lb:ub]` at the end of the curve, and `lb = 0` selects up
+  to the last point instead of dropping the whole tail. Confirmed against
+  `HEAD` on a synthetic `G = 1 + 0.5/(1 + t/1 ms)` (200 log-spaced lags): the
+  old slice averaged 184 of the 200 points and returned `offset = 1.310`, so
+  the derived amplitude was `0.190` instead of `0.499` — a factor 2.6, in the
+  same direction and of the same size as the 2.4 seen on the real ALV file. A
+  non-zero `lb` was worse than biased: `(2, 16)` made the old expression
+  `correlation[-2:-16]`, an **empty** slice, so the offset was `NaN` and every
+  weight on the curve came out `NaN`. Pinned by
+  `test/fluorescence/test_fcs_noise_weights.py`, which recovers the internal
+  amplitude through the Starchev branch (with `a2 = c1 = p = 0` and `a1 = 1`
+  the variance is exactly `A³/i`) and asserts the default window, the mirrored
+  non-zero-`lb` window, that head and tail windows stay disjoint for three
+  ranges, and that the estimated `diffusion_time` now tracks the exact one;
+  plus a finiteness guard on the `suren` branch. Four of the five fail on the
+  old slice. `test/fluorescence` + `test/fio` green (284 passed, 12 skipped,
+  counting only the new file from `test/fluorescence`); the two long-standing
+  `test/fluorescence` failures (`test_pqres`, `test_labeled_structure`) fail
+  identically with and without this change. `ruff check` on
+  `fcs/__init__.py` reports the same 17 pre-existing findings as `HEAD` and
+  none new; the new test file is `ruff check` clean.
 
 ### RF-046
 - **Status:** FIXED

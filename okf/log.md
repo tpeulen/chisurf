@@ -2,6 +2,26 @@
 
 ## 2026-07-26
 
+* **Every FCS weight ChiSurf computes was built on the wrong baseline** (RF-045).
+  `core/fluorescence/fcs.noise` takes the correlation amplitude as a short-lag
+  window minus a long-lag baseline, but the baseline slice was
+  `correlation[-lb:-ub]` — with the only default anyone uses, `(0, 16)`, that is
+  `correlation[0:-16]`: *everything except* the last 16 points, i.e. the
+  amplitude region averaged into its own baseline. On a synthetic
+  `G = 1 + 0.5/(1 + t/1 ms)` the amplitude came out `0.190` instead of `0.499`.
+  That amplitude enters `suren` quadratically and `starchev` as `1/A` cubed, and
+  it moves the half-amplitude crossing used to estimate the diffusion time, so
+  the bias reached every weight on every imported curve — ALV, Kristine,
+  ConfoCor, PyCorrFit and China readers all route through this one function, and
+  no caller ever overrode the range. A non-zero lower bound was worse still:
+  `(2, 16)` made the expression an **empty** slice, so the offset was `NaN` and
+  the whole weight array with it. The baseline is now indexed from the front,
+  `correlation[n - ub:n - lb]`, which is the actual mirror of the head window.
+  Pinned by `test/fluorescence/test_fcs_noise_weights.py`, which recovers the
+  internal amplitude through the Starchev branch (setting `a2 = c1 = p = 0` and
+  `a1 = 1` makes the variance exactly `A**3 / i`) rather than asserting on
+  weights; four of its five tests fail on the old slice.
+
 * **Running the assistant against a real model found three defects the whole
   offline suite could not.** The burst-to-distance workflow was tested,
   documented and green, and it still did not work end to end. (1) `run_python`
