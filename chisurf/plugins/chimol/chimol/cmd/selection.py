@@ -213,6 +213,158 @@ class SelectionMixin(BaseCmd):
         else:
             self._emit_message("[" + ", ".join(names) + "]")
 
+    @command("get_chains")
+    def get_chains(self, sel: Selection = "") -> None:
+        """Print the chain identifiers in a selection (PyMOL ``get_chains``)."""
+        atoms, mask, _ = self._selection_atoms(sel, "get_chains")
+        if atoms is None:
+            return
+        if "chain" not in (atoms.dtype.names or ()):
+            self._emit_error("get_chains: this structure carries no chain field")
+            return
+        chains = np.char.strip(atoms["chain"][mask].astype(str))
+        found = sorted({c for c in chains.tolist() if c})
+        self._emit_message("[" + ", ".join(found) + "]")
+
+    @command("get_extent")
+    def get_extent(self, sel: Selection = "") -> None:
+        """Print the bounding box of a selection (PyMOL ``get_extent``).
+
+        Two corners in Angstrom, ``[[min_x, min_y, min_z], [max_x, ...]]`` -- the
+        *raw* box, not the symmetric one ``zoom`` frames with.
+        """
+        atoms, mask, _ = self._selection_atoms(sel, "get_extent")
+        if atoms is None:
+            return
+        if "xyz" not in (atoms.dtype.names or ()):
+            self._emit_error("get_extent: this object carries no coordinates")
+            return
+        xyz = np.asarray(atoms["xyz"], dtype=float)[mask]
+        low, high = xyz.min(axis=0), xyz.max(axis=0)
+        self._emit_message(
+            "[[%.3f, %.3f, %.3f], [%.3f, %.3f, %.3f]]"  # noqa: UP031
+            % (low[0], low[1], low[2], high[0], high[1], high[2])
+        )
+
+    @command("get_title")
+    def get_title(self, sel: Selection = "") -> None:
+        """Print an object's title (PyMOL ``get_title``)."""
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        object_id = self._resolve_object_id(viewer, str(sel) or None)
+        entry = getattr(viewer, "_objects", {}).get(object_id)
+        if entry is None:
+            self._emit_error("get_title: no such object")
+            return
+        self._emit_message(str(entry.source_path or entry.name))
+
+    @command("get_area")
+    def get_area(self, sel: Selection = "", state: str = "1", load_b: str = "0") -> None:
+        """Print the surface area of a selection (PyMOL ``get_area``).
+
+        Which surface is measured follows the ``dot_solvent`` setting, as in
+        PyMOL: off (the default) gives the van der Waals surface area, on gives
+        the solvent-accessible surface. ``dot_density`` controls the sampling and
+        ``solvent_radius`` the probe.
+
+        Every atom of the object occludes, not only the selected ones -- the area
+        of a residue *in* a protein is not its area in isolation, and that
+        difference is the whole reason to compute it.
+
+        Parameters
+        ----------
+        sel : str, optional
+            Atoms to total the area over.
+        state : str, optional
+            Accepted for compatibility; chimol holds one coordinate set.
+        load_b : str, optional
+            When true, write each atom's own area into its b-factor, so
+            ``spectrum b`` then colours by accessibility.
+        """
+        from ..analysis.surface_area import atom_surface_areas
+        from ..settings import get_setting
+
+        atoms, mask, object_id = self._selection_atoms(sel, "get_area")
+        if atoms is None:
+            return
+        fields = atoms.dtype.names or ()
+        if "xyz" not in fields:
+            self._emit_error("get_area: this object carries no coordinates")
+            return
+        if "radius" not in fields:
+            self._emit_error(
+                "get_area: this structure carries no van der Waals radii"
+            )
+            return
+
+        radii = np.asarray(atoms["radius"], dtype=float)
+        if not np.any(radii > 0):
+            self._emit_error("get_area: every van der Waals radius is zero")
+            return
+
+        try:
+            areas = atom_surface_areas(
+                np.asarray(atoms["xyz"], dtype=float),
+                radii,
+                solvent_radius=float(get_setting("solvent_radius")),
+                dot_solvent=bool(get_setting("dot_solvent")),
+                dot_density=int(get_setting("dot_density")),
+                mask=mask,
+            )
+        except Exception as exc:
+            self._emit_error(f"get_area: {exc}")
+            return
+
+        if str(load_b).strip().lower() not in ("", "0", "false", "no"):
+            if "bfactor" in fields:
+                atoms["bfactor"][mask] = areas[mask]
+                _, viewer = self._require_window_and_viewer()
+                if viewer is not None:
+                    viewer._update_view()
+            else:
+                self._emit_error(
+                    "get_area: load_b needs a b-factor field to write into"
+                )
+
+        kind = "solvent-accessible" if get_setting("dot_solvent") else "van der Waals"
+        self._emit_message(
+            f"get_area: {areas.sum():.3f} A^2 ({kind}, "
+            f"{int(np.count_nonzero(mask))} atoms)"
+        )
+
+    def _selection_atoms(self, sel, label: str):
+        """Resolve a selection to ``(atoms, mask, object_id)``, reporting failures.
+
+        The whole atom array comes back, not the selected slice: a query about part
+        of a structure usually still needs the rest of it -- surface area is
+        occluded by neighbours the selection does not contain.
+        """
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return None, None, None
+
+        selection = str(sel).strip() or "all"
+        try:
+            object_id, _, mask = self._resolve_selection_to_atom_mask(
+                viewer, selection
+            )
+        except Exception as exc:
+            self._emit_error(f"{label}: {exc}")
+            return None, None, None
+
+        entry = getattr(viewer, "_objects", {}).get(object_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None:
+            self._emit_error(f"{label}: that object has no atoms")
+            return None, None, None
+
+        mask = np.asarray(mask, dtype=bool)
+        if not mask.any():
+            self._emit_error(f"{label}: '{selection}' matched no atoms")
+            return None, None, None
+        return atoms, mask, object_id
+
     @command("deselect")
     def deselect(self) -> None:
         """Clear the active object's residue selection (PyMOL ``deselect``)."""

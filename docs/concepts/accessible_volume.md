@@ -14,6 +14,14 @@ This page explains what the AV *is*, why three different "distances" fall out of
 pair of AVs, and how they become restraints. For the step-by-step workflow and API
 in ChiSurf, see the guide {doc}`/guides/23_accessible_volume`.
 
+:::{admonition} Choosing where to label
+:class: tip
+Whether a site can be labelled at all is a question about the *protein* surface
+rather than the dye: a buried cysteine will not react however good the linker.
+{ref}`Solvent accessibility <concept-molecular-surfaces>` is how that is measured,
+and it is worth checking before simulating an AV for a site.
+:::
+
 ## Why a tethered dye samples a distribution
 
 A dye on a flexible linker has two consequences, and the AV model uses the first

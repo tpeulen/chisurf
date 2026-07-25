@@ -54,6 +54,7 @@ ordering below runs from the physical fundamentals to the specific methods.
    :maxdepth: 1
 
    accessible_volume
+   molecular_surfaces
    imaging_flim_phasor
    region_properties
    colocalization

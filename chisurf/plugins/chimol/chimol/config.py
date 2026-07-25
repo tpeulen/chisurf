@@ -179,6 +179,9 @@ def _load_display_config() -> dict:
             "px_mode": True,
         },
         "surface": {
+            "dot_solvent": False,
+            "dot_density": 2,
+            "solvent_radius": 1.4,
             "size_scale": 0.03,
             "min_size": 2.5,
             "ao_radius": 4.5,

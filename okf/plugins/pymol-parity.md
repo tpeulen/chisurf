@@ -192,12 +192,49 @@ confusion is exactly what hid `resn`.
 
 # Tier 2 — routine, works around-able
 
-`get_area`, `get_extent`, `get_chains`, `get_title`, `get_bond`,
-`iterate_state`, `alter_state`, `smooth`, `sort`, `protect`, `mask`,
-`bond`/`unbond`, `h_add`/`h_fill`, `cealign`, `pair_fit`, `intra_fit`,
-`matrix_copy`, `symexp`/`symmetry`, `group`/`ungroup`/`order`, scenes
-(`scene`/`view`), `ramp_new`, `spectrum` by property, `cartoon_putty`,
-`cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
+**Done:** `get_area`, `get_extent`, `get_chains`, `get_title`, `iterate_state`,
+`alter_state`, `spectrum` by property.
+
+**Remaining:** `get_bond`, `smooth`, `sort`, `protect`, `mask`, `bond`/`unbond`,
+`h_add`/`h_fill`, `cealign`, `pair_fit`, `intra_fit`, `matrix_copy`,
+`symexp`/`symmetry`, `group`/`ungroup`/`order`, scenes (`scene`/`view`),
+`ramp_new`, `cartoon_putty`, `cartoon_dumbbell`, `cartoon_fancy_helices`,
+`ellipsoid`, `cell`, `slice`.
+
+## `get_area` is the one with physics in it
+
+Solvent accessibility decides where a dye can be attached and how freely it moves,
+so this is one of the few numbers the viewer computes that feeds back into
+experiment design. Transcribed from `RepDotDoNew` in `cRepDotAreaType` mode, with
+two details that a generic Shrake–Rupley gets wrong:
+
+* the points are an **icosahedral geodesic** (12/42/162/642/2562 for `dot_density`
+  0–4), reproduced exactly — dot counts verified against `Sphere_nDot`;
+* each point carries **its own** solid angle, from the spherical excess of its
+  incident triangles, not `4π/N`. On a geodesic sphere the twelve original
+  icosahedron vertices have five neighbours where every later vertex has six, so a
+  uniform weight is wrong by a few percent, worst at low density (min/max weight
+  ratio is 0.74 at the default level).
+
+Validated three ways: the weights sum to 4π to 1e-9 at every level; an isolated
+sphere and two overlapping spheres match closed-form areas, converging 6.3 % →
+1.5 % → 0.2 % across densities 0/2/4; and a random cluster agrees to within 1 %
+with an independently written Shrake–Rupley using a *golden-spiral* sphere and
+uniform weights, so a shared mistake in the tessellation cannot hide. T4 lysozyme
+gives 8 200 Å² accessible against 17 700 Å² van der Waals — the factor of two that
+makes labelling the surface without saying which one nearly meaningless.
+
+Every atom occludes even when only a selection is reported, which is the whole
+point: the area of a residue *in* a protein is not its area in isolation.
+
+# Documentation gap
+
+chimol has **no user documentation** — `docs/` carries only development notes for
+it. The theory half for surfaces now exists
+(`docs/concepts/molecular_surfaces.md`, cross-linked from the accessible-volume
+concept), but there is no numbered guide for the viewer as a whole, which the
+project's documentation rule requires for a plugin. That is a piece of work in its
+own right and is not started.
 
 # Tier 3 — specialised or superseded here
 

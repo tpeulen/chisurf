@@ -191,6 +191,17 @@ _SPECS: tuple[SettingSpec, ...] = (
     _spec("fog", "ray.fog_intensity", "float", 1.0,
           "Fog density."),
 
+    # -- Surface area -------------------------------------------------------
+    # Read by `get_area`. Defaults are PyMOL's own, from layer1/SettingInfo.h.
+    _spec("dot_solvent", "surface.dot_solvent", "bool", False,
+          "Measure the solvent-accessible surface rather than the van der "
+          "Waals surface."),
+    _spec("dot_density", "surface.dot_density", "int", 2,
+          "Dot sampling level 0-4, giving 12, 42, 162, 642 or 2562 dots per "
+          "atom. Higher is more accurate and slower."),
+    _spec("solvent_radius", "surface.solvent_radius", "float", 1.4,
+          "Probe radius in Angstrom, used when dot_solvent is on."),
+
     # -- Sequence viewer ----------------------------------------------------
     _spec("seq_view", "sequence.seq_view", "bool", True,
           "Show the sequence viewer."),

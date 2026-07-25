@@ -2,6 +2,48 @@
 
 ## 2026-07-25
 
+* **chimol can measure solvent accessibility — the first Tier-2 work.** `get_area`,
+  with `get_extent`, `get_chains` and `get_title` alongside. Accessibility decides
+  where a dye can be attached and how freely it moves, so this is one of the few
+  numbers the viewer computes that feeds back into experiment design rather than
+  into a picture.
+
+  Transcribed from `RepDotDoNew` (`layer2/RepDot.cpp`) in `cRepDotAreaType` mode.
+  Two details a generic Shrake–Rupley gets wrong, both of which change the answer:
+  the sample points are an **icosahedral geodesic** — `dot_density` 0–4 giving
+  12/42/162/642/2562 points, reproduced exactly and checked against PyMOL's
+  `Sphere_nDot` — and each point carries **its own** solid angle from the spherical
+  excess of its incident triangles rather than `4π/N`. The twelve original
+  icosahedron vertices have five neighbours where every later vertex has six, so
+  the weights differ by a quarter between extremes and a uniform weight is a
+  systematic error of a few percent.
+
+  Validated three ways rather than against itself, since a dot-sampling bug gives a
+  plausible number and not an obviously wrong one: weights sum to 4π to 1e-9 at
+  every level; isolated and overlapping spheres match closed-form areas, converging
+  6.3 % → 1.5 % → 0.2 % across densities 0/2/4; and a random cluster agrees within
+  1 % with an independently written Shrake–Rupley using a *golden-spiral* sphere
+  and uniform weights, so a mistake shared with the tessellation cannot hide. T4
+  lysozyme gives 8 200 Å² accessible against 17 700 Å² van der Waals — the factor
+  of two that makes an unlabelled "surface area" nearly meaningless, so the command
+  says which surface it measured.
+
+  Every atom occludes even when a selection is reported, which is the point: the
+  area of a residue *in* a protein is not its area in isolation. `load_b` writes
+  per-atom areas into the b-factor, so `spectrum b` then colours by accessibility.
+  New settings `dot_solvent`, `dot_density` and `solvent_radius`, with PyMOL's
+  defaults.
+
+  Docs: new concept page `docs/concepts/molecular_surfaces.md` — the two surfaces
+  and why they differ by a factor of two, the probe, the sampling and its accuracy
+  table, the labelling-in-context point, with the commands and Python API — indexed
+  and cross-linked from the accessible-volume concept, which is where the two meet.
+  Every command in that page was executed to confirm it runs.
+
+  **Gap recorded, not closed:** chimol still has no numbered user guide, which the
+  documentation rule requires for a plugin. Noted in the tracker.
+
+
 * **NumPy 2 removed `np.trapz` and friends; fixed by shim, not by rewrite.**
   Three call sites in this tree were dead — the Förster overlap integral
   (`fret/forster.py`), the phasor transform (`tcspc/phasor.py`) and the
