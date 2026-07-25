@@ -1979,6 +1979,17 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot Batch 22 — burst FCS-correlator wizard off pyqtgraph + text
+  autorange fix (allow-list 29 → 28).** Migrated the self-contained
+  `plugins/burst/burst_fcs_correlator/wizard.py` (log-x correlation plot w/ data
+  markers + fit + diffusion-time inset, and a P(τ_D) distribution plot). Curves →
+  `line`/`set_data`; `pg.TextItem` inset → `plot.text(...)` (`_Text.text` property
+  + `set_position`). **Second real bug found by screenshot:** the inset label at a
+  raw data coord on a log-x axis blew auto-range to ~10¹⁷³ (I'd dropped the
+  original's `ignoreBounds=True`). Fixed at the seam — `add_text` now uses
+  `ignoreBounds=True`, so annotations never drive the range. New
+  `test_text_does_not_drive_autorange`; screenshot-verified. See [PRD-64](prds/prd-64.md).
+
 * **chiplot Batch 21 — burst browser histogram off pyqtgraph (allow-list
   30 → 29).** Migrated `plugins/burst/burst_browser/gui/sections.py` (per-column
   burst histogram). `pg.PlotWidget`→`cp.Plot`; `pg.BarGraphItem`→`plot.bars(...)`.
