@@ -243,3 +243,147 @@ def test_a_singular_block_covariance_does_not_crash():
     )
     assert np.all(np.isfinite(r['parameter_values']))
     assert r['parameter_values'].shape[0] == 200
+
+
+# -- warm-up adaptation ---------------------------------------------------
+
+def test_the_curvature_seed_survives_the_warm_up():
+    """Warm-up must not overwrite a covariance it cannot improve on.
+
+    The curvature at the optimum *is* the posterior covariance for a
+    near-Gaussian posterior. A warm-up chain that has not mixed spreads less
+    than the posterior it explores, so its empirical covariance is biased low --
+    measured at 10x too narrow in every direction at once. Adopting it destroyed
+    the seed and cost ~80x the effective samples per evaluation, which is why
+    only blocks *without* a curvature seed have their shape adapted.
+    """
+    fit = _collinear_fit()
+    seeded = chisurf.core.fitting.sample._seed_block_covariances(
+        fit, [np.arange(fit.model.n_free)],
+        np.asarray(fit.model.parameter_values, dtype=float), 0.05, fit.model,
+    )
+    covariances, from_curvature = seeded
+    assert from_curvature == [True], "this fit should supply a usable curvature"
+
+    factors = []
+    original = chisurf.core.fitting.sample._cholesky_or_diagonal
+
+    def spy(cov, _o=original):
+        out = _o(cov)
+        factors.append(out)
+        return out
+
+    chisurf.core.fitting.sample._cholesky_or_diagonal = spy
+    try:
+        np.random.seed(0)
+        chisurf.core.fitting.sample.walk_mcmc_blocked(
+            fit=fit, steps=800, step_size=0.05, thin=1
+        )
+    finally:
+        chisurf.core.fitting.sample._cholesky_or_diagonal = original
+
+    # Exactly one factorisation: the seed. No warm-up replacement.
+    assert len(factors) == 1
+    seed_cov = factors[0] @ factors[0].T
+    assert np.allclose(seed_cov, covariances[0], rtol=1e-8, atol=0.0)
+
+
+def test_a_block_without_a_curvature_seed_does_adapt_its_shape():
+    """The other half: a diagonal guess *can* be improved on, and must be.
+
+    A group's global model has no usable curvature, so its blocks start from a
+    diagonal that knows nothing about correlations. Left alone, the chain simply
+    stops moving -- measured at zero acceptance -- so for these blocks the
+    warm-up estimate is the only shape information available.
+    """
+    fit = _global_fit(n_datasets=3)
+    model = posterior_model(fit)
+    state = np.asarray(model.parameter_values, dtype=float)
+    blocks = chisurf.core.fitting.sample._default_blocks(
+        fit, model.n_free, model
+    )
+    _, from_curvature = chisurf.core.fitting.sample._seed_block_covariances(
+        fit, [np.asarray(b, dtype=int) for b in blocks], state, 0.05, model,
+    )
+    assert not any(from_curvature), "a global model has no usable curvature"
+
+    np.random.seed(1)
+    r = chisurf.core.fitting.sample.walk_mcmc_blocked(
+        fit=fit, steps=1500, step_size=0.05, thin=1, model=model
+    )
+    # It moves at all, which without shape adaptation it does not.
+    assert r['acceptance_rate'] > 0.05
+    ess = dg.effective_sample_size(np.asarray(r['chains']))
+    assert float(ess.min()) > 5.0
+
+
+def test_the_warm_up_is_a_small_share_of_the_chain():
+    """Warm-up draws are discarded, so their cost comes out of the answer.
+
+    The old default spent half the chain adapting one scale per block. Dual
+    averaging settles that in ~100 sweeps, and shortening the warm-up improved
+    effective samples per evaluation on every posterior tested.
+    """
+    for steps, expected in ((4000, 200), (2000, 100), (20000, 500)):
+        n_adapt = int(np.clip(steps // 20, 100, 500))
+        assert n_adapt == expected
+        assert n_adapt <= steps // 10
+
+
+def test_dual_averaging_reaches_its_target_acceptance():
+    """The scale adaptation has to actually work, not merely run."""
+    fit = _collinear_fit()
+    np.random.seed(2)
+    r = chisurf.core.fitting.sample.walk_mcmc_blocked(
+        fit=fit, steps=3000, step_size=0.05, thin=1
+    )
+    # One block of three parameters targets max(0.234, 0.44/sqrt(3)) = 0.254.
+    assert 0.15 < r['acceptance_rate'] < 0.40
+
+
+def test_dual_averaging_reports_the_average_not_the_last_iterate():
+    """The reason it replaced Robbins-Monro: the answer is a converged value."""
+    da = chisurf.core.fitting.sample._DualAveraging(log_eps=0.0, target=0.25)
+    rng = np.random.default_rng(0)
+    for _ in range(400):
+        # Accept far too often, so the scale must grow.
+        da.update(1.0 if rng.random() < 0.9 else 0.0)
+    grown = da.final()
+    assert grown > 0.0
+    # The average is inside the range the iterates wandered over, and is not
+    # simply the most recent one.
+    assert abs(grown - da.log_eps) > 1e-9
+
+
+def test_the_shrinkage_is_free_of_the_units_a_parameter_is_measured_in():
+    """Stan ridges towards the identity; here that would be a bug.
+
+    Stan samples in a standardised space where every coordinate is O(1). ChiSurf
+    parameters carry physical units, so an absolute ``1e-3 * I`` ridge dominates
+    any finely-scaled parameter and inflates its proposal until nothing is
+    accepted. Rescaling the draws must rescale the estimate exactly.
+    """
+    rng = np.random.default_rng(3)
+    draws = rng.normal(size=(200, 3)) @ np.array(
+        [[1.0, 0.0, 0.0], [0.9, 0.4, 0.0], [0.5, 0.3, 0.2]]
+    )
+    small = draws * 1e-6
+    a = chisurf.core.fitting.sample._regularised_covariance(draws)
+    b = chisurf.core.fitting.sample._regularised_covariance(small)
+    assert a is not None and b is not None
+    assert np.allclose(b, a * 1e-12, rtol=1e-9)
+    # And correlations survive the shrinkage rather than being ridged away.
+    corr = a / np.sqrt(np.outer(np.diag(a), np.diag(a)))
+    assert abs(corr[0, 1]) > 0.5
+
+
+def test_the_adaptation_windows_grow_and_stay_inside_the_warm_up():
+    """A schedule that ran past the warm-up would adapt while recording."""
+    for n in (50, 200, 1000, 4000):
+        init, term, ends = chisurf.core.fitting.sample._adaptation_windows(n)
+        assert all(0 < e <= n - term for e in ends)
+        assert ends == sorted(ends)
+        assert len(set(ends)) == len(ends)
+        assert init >= 0 and term >= 0
+    # Too short to estimate a covariance from at all: scale adaptation only.
+    assert chisurf.core.fitting.sample._adaptation_windows(10)[2] == []

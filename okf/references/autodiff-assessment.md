@@ -132,8 +132,16 @@ here:
   folded variant, and bulk/tail effective sample sizes
   ([Vehtari et al. 2021](https://doi.org/10.1214/20-BA1221)). Harvested; see the
   [fitting subsystem](/subsystems/fitting.md).
-- Windowed adaptation with dual averaging — applicable to the blocked sampler's
-  warm-up, not yet taken.
+- Windowed adaptation with dual averaging — **harvested into the blocked
+  sampler's warm-up**, but only after three of its pieces were measured to be
+  wrong here: sliding windows (a random walk's short window measures how far it
+  travelled, not how wide the target is — 600× too small), an identity ridge
+  (Stan's coordinates are O(1); ChiSurf's carry physical units), and replacing a
+  curvature seed at all (a chain that has not mixed is biased narrow, and the
+  curvature *is* the answer for a near-Gaussian posterior). What transferred
+  cleanly was dual averaging of the scale and the short-warm-up discipline; ~2×
+  effective samples per evaluation. See the
+  [fitting subsystem](/subsystems/fitting.md).
 - Pareto-smoothed importance sampling (in `loo`, not `stan` proper) — makes
   reweighting a stored chain under a different prior reliable, and reports a
   Pareto-`k` that says when it is not. **Harvested**, and it turned out to be the

@@ -141,6 +141,13 @@ def test_it_beats_the_covariance_proposal_away_from_the_optimum():
     The covariance proposal is only as good as the point it was taken at. On a
     curved posterior, started away from the optimum, it proposes in the wrong
     shape; DE learns the shape from the population as it goes.
+
+    The margin used to be ~36x. It is now ~3x, because `blocked` got much better
+    at exactly this case: its warm-up was spending half the chain re-estimating a
+    covariance it could not improve on, and now spends a tenth of it adapting
+    only the proposal scale. DE still wins here -- a wrong shape is a wrong shape
+    and no amount of scale tuning fixes it -- but this is no longer the rout it
+    was, and the assertion says so rather than passing on a stale margin.
     """
     def _ess_per_eval(sampler):
         np.random.seed(11)
@@ -176,8 +183,9 @@ def test_it_beats_the_covariance_proposal_away_from_the_optimum():
         fit=f, steps=6000, step_size=0.05, thin=1))
     de = _ess_per_eval(lambda f: chisurf.core.fitting.sample.sample_differential_evolution(
         fit=f, steps=600, thin=1, seed=3))
-    # Measured at ~36x; assert an order of magnitude so this is not brittle.
-    assert de > 5.0 * blocked
+    # Measured at ~3x since the blocked warm-up was fixed; assert well below
+    # that so this is not brittle.
+    assert de > 1.8 * blocked
 
 
 def test_it_is_competitive_on_a_collinear_posterior():

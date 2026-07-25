@@ -228,11 +228,58 @@ against AR(1), whose `τ = (1+φ)/(1−φ)` is closed-form. Thresholds:
 
 `walk_mcmc_blocked` seeds each block's proposal covariance from
 `Fit.covariance_matrix` (the curvature at the optimum — previously computed for
-error bars and never used by the sampler), refines it from the empirical
-covariance during warm-up, then **freezes** it so the recorded chain stays
-time-homogeneous. Blocks come from `FactorGraph.sampling_blocks()`: variables
-grouped by identical likelihood-factor neighbourhood — a true partition, cheapest
-block first, degenerating to one block for a single `Fit`.
+error bars and never used by the sampler), tunes it during a warm-up, then
+**freezes** it so the recorded chain stays time-homogeneous. Blocks come from
+`FactorGraph.sampling_blocks()`: variables grouped by identical
+likelihood-factor neighbourhood — a true partition, cheapest block first,
+degenerating to one block for a single `Fit`.
+
+**What the warm-up may and may not touch.** The curvature at the optimum *is*
+the posterior covariance for a near-Gaussian posterior, and a short chain cannot
+improve on it. A warm-up chain that has not mixed spreads *less* than the
+posterior it explores, so its empirical covariance is biased low — measured at
+10× too narrow in every direction at once, i.e. almost purely a scale error with
+the correlations intact. Replacing a curvature seed with it cost **40–80×** the
+effective samples per evaluation. So the warm-up adapts:
+
+| block seeded from | shape | scale |
+| --- | --- | --- |
+| the curvature | left alone | dual averaging |
+| the fallback diagonal (e.g. a group's global model, where the curvature indices do not apply) | empirical, rescaled to preserve the current size | dual averaging |
+
+The second row is not optional: a global model's blocks start from a diagonal
+that knows nothing about correlations, and without shape adaptation the chain
+reaches **zero** acceptance.
+
+Three transplants from Stan needed changing to work here, each measured:
+
+- **Dual averaging replaces Robbins-Monro** for the scale, because it reports the
+  running average of the iterates rather than wherever the last few random
+  acceptances left it. (This is the same technique measured to *degrade* a
+  finite-difference HMC; the difference is that there the rejections came from
+  gradient noise a smaller step could not reduce, whereas a random-walk
+  acceptance rate responds to the scale monotonically.) Stan centres the search
+  at `log(10·ε₀)` because its initial step size comes from a crude heuristic;
+  here the initial scale is already the theoretical optimum `2.38/√d`, so that
+  inflation just starts a decade too wide and is dropped.
+- **Windows grow, they do not slide.** Stan estimates each window's metric from
+  that window alone, which is sound for NUTS because it moves nearly
+  independently every iteration. A random walk moves by one proposal, so a short
+  window measures how far the chain *travelled*, not how wide the target *is*:
+  a sliding second window estimated the scale **600× too small**, and since a
+  narrower proposal then travels even less, every later window shrank again.
+- **Shrinkage is towards `diag(cov)`, not the identity.** Stan samples in a
+  standardised space where every coordinate is O(1), so a `1e-3·I` ridge is
+  negligible. ChiSurf parameters carry physical units, so the same absolute
+  ridge dominates any finely-scaled parameter and inflates its proposal until
+  nothing is accepted.
+
+The warm-up is also **short** — `clip(steps/20, 100, 500)` rather than half the
+chain. Warm-up draws are discarded, so their cost comes straight out of the
+effective sample size, and one scale per block settles in ~100 sweeps. Together
+these gave **1.5×/5.0×/1.1×/1.8×** the effective samples per evaluation on a
+collinear, an off-optimum, a two-exponential and a badly-conditioned quartic
+posterior — better on every one, and ~2× in the geometric mean.
 
 **`de` needs neither a gradient nor a covariance.** Differential-Evolution MCMC
 (ter Braak) proposes `x_i + γ(x_j − x_k) + ε` with `γ = 2.38/√(2d)`, so the
@@ -565,7 +612,8 @@ follow the posterior rather than an acceptance-filtered caricature of it — and
 returns an `acceptance_rate` alongside the chain. Proposal widths start at
 `step_size` relative to each parameter's value and are then tuned by a warm-up
 phase (`n_adapt`) — re-derived from the spread of the warm-up states and
-rescaled by a Robbins-Monro recursion towards `target_acceptance` — and
+rescaled towards `target_acceptance` (`walk_mcmc_blocked` uses dual averaging
+for this; see above) — and
 **frozen before recording**, so the returned chain remains time-homogeneous and
 its stationary distribution is still the posterior. `sample_emcee` takes
 `steps` as steps *per walker* and returns `steps // thin` states per walker

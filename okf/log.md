@@ -2,6 +2,47 @@
 
 ## 2026-07-25
 
+* **The blocked sampler's warm-up was costing more than it bought (~2x).** Stan's
+  windowed adaptation was the last unharvested item from that review, and taking
+  it required measuring which of its pieces actually transfer to a random walk.
+  Three do not. *Sliding windows*: Stan estimates each window's metric from that
+  window alone, which is sound for NUTS because it moves nearly independently
+  each iteration, but a random walk moves by one proposal, so a short window
+  measures how far the chain travelled rather than how wide the target is --
+  measured at **600x too small**, and since a narrower proposal travels even
+  less, every later window shrank again. *An identity ridge*: Stan's coordinates
+  are O(1) in its standardised space, whereas ChiSurf parameters carry physical
+  units, so `1e-3*I` dominates any finely-scaled parameter until nothing is
+  accepted; shrinkage now goes towards `diag(cov)` and is unit-invariant.
+  *Replacing the covariance at all*: the curvature at the optimum **is** the
+  posterior covariance for a near-Gaussian posterior, and a warm-up chain that
+  has not mixed is biased narrow -- 10x too narrow in every direction at once,
+  i.e. nearly a pure scale error -- so adopting it cost 40x-80x the effective
+  samples per evaluation. Blocks seeded from the curvature now keep their shape
+  and adapt only their scale; blocks seeded from the fallback diagonal (a
+  group's global model, where the curvature indices do not apply) still adapt
+  their shape, and must -- without it that chain reaches **zero** acceptance.
+  What did transfer: dual averaging of the scale (it reports the running average
+  rather than wherever the last few random acceptances left it), minus Stan's
+  `log(10*eps)` centring, which exists because its initial step size comes from a
+  crude heuristic while ours is already the theoretical optimum `2.38/sqrt(d)`.
+  And the warm-up is now **short** -- `clip(steps/20, 100, 500)` instead of half
+  the chain -- because warm-up draws are discarded, so their cost comes straight
+  out of the effective sample size, while one scale per block settles in ~100
+  sweeps. Result: **1.5x / 5.0x / 1.1x / 1.8x** effective samples per evaluation
+  on a collinear, an off-optimum, a two-exponential and a quartic posterior --
+  better on every one, ~2x in the geometric mean. The DE-vs-blocked test that
+  asserted a 36x margin on the off-optimum case now asserts ~3x, because
+  `blocked` improved 5x at exactly that case; the assertion was updated rather
+  than left passing on a stale margin. 8 new tests in
+  `test/fitting/test_blocked_sampler.py`.
+  Also repaired, found in passing: `sample_differential_evolution`'s docstring
+  had its LaTeX baked into literal control characters by some earlier tool --
+  `\ast`, `\varepsilon`, `\frac` and `\ne` had become BEL, vertical tab, form
+  feed and a real newline, so the rendered maths read `x^st_i = ... + arepsilon`,
+  `rac{2.38}` and a formula broken across three lines.
+
+
 * **The test suite has a hang and five API-drift failures, now written down.**
   Verifying an unrelated change meant running `pytest test/core`, which never
   finishes: `test_mmfdb_schema_migration.py` was still on its first of 9 tests
