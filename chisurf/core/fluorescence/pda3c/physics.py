@@ -48,9 +48,24 @@ Emission is mapped to counted channels by one matrix,
 ``detection[c, d]`` = probability that a photon emitted by dye ``d`` is counted
 in channel ``c``. It folds quantum yield, filter transmission, detector
 efficiency and spectral crosstalk into a single object — the same quantity
-``lightpath_simulator``'s ``get_crosstalk_matrices()`` already builds. Direct
-excitation of the redder dyes by the bluer laser is added as extra emission
-weight before the mapping.
+``lightpath_simulator``'s ``get_crosstalk_matrices()`` already builds. The
+incumbent suite carries the same information as loose scalars (``cr_bg``,
+``cr_br``, ``cr_gr`` crosstalk; ``gamma_bg``, ``gamma_br``, ``gamma_gr``
+relative brightness); the matrix form is lower triangular, since a redder dye
+never leaks into a bluer channel, and it enforces ``gamma_bg = gamma_br /
+gamma_gr`` structurally instead of storing two and deriving the third.
+
+Direct excitation
+-----------------
+A laser pulse excites **exactly one** dye, so the direct-excitation
+probabilities *partition* the excitation rather than adding to it: with ``de_bg``
+and ``de_br`` the chances that a blue pulse lands on G or R, the blue dye gets
+the remainder ``1 - de_bg - de_br``, and every B-excitation pathway is scaled by
+it. Treating direct excitation as extra weight on top instead leaves the donor's
+share at one; because the channel probabilities are normalised afterwards, that
+error is invisible at zero direct excitation and grows with it — a silent bias
+in exactly the correction meant to remove one. Verified against the incumbent in
+``test/models/test_pda3c_pam_ab.py``.
 """
 
 from __future__ import annotations
@@ -81,11 +96,14 @@ class ThreeColorSetup:
         blue, green, red). Defaults to the identity — perfect, crosstalk-free
         detection with unit quantum yield.
     direct_excitation_blue : tuple of float
-        Probability that the blue laser excites (G, R) directly, relative to
-        its excitation of B.
+        Probability that a blue-laser excitation lands directly on (G, R). The
+        blue dye receives the **remainder**, ``1 - de_bg - de_br`` — the laser's
+        excitation is partitioned, not topped up. Adding direct excitation as
+        extra weight instead would leave the donor's share untouched and shift
+        every channel probability.
     direct_excitation_green : float
-        Probability that the green laser excites R directly, relative to its
-        excitation of G.
+        Probability that a green-laser excitation lands directly on R; G
+        receives ``1 - de_gr``.
     """
 
     r0_bg: float = 50.0
@@ -163,18 +181,21 @@ def blue_channel_probabilities(r_bg, r_br, r_gr, setup: ThreeColorSetup) -> np.n
     """
     e_bg, e_br, e_gr = transfer_efficiencies(r_bg, r_br, r_gr, setup)
     dex_g, dex_r = setup.direct_excitation_blue
+    # The laser excites exactly one dye: B with the remaining probability.
+    p_excite_b = 1.0 - dex_g - dex_r
 
     # Emission weight per dye: which dye ends up carrying the excitation.
     emission = np.stack(
         [
-            1.0 - e_bg - e_br,
-            e_bg * (1.0 - e_gr) + dex_g * (1.0 - e_gr),
-            e_br + e_bg * e_gr + dex_g * e_gr + dex_r,
+            p_excite_b * (1.0 - e_bg - e_br),
+            p_excite_b * e_bg * (1.0 - e_gr) + dex_g * (1.0 - e_gr),
+            p_excite_b * (e_br + e_bg * e_gr) + dex_g * e_gr + dex_r,
         ],
         axis=-1,
     )
     emission = np.clip(emission, 0.0, None)
-    return _normalise(emission @ setup.detection.T)
+    # Always 2-D, so a scalar distance and an array of them index alike.
+    return np.atleast_2d(_normalise(emission @ setup.detection.T))
 
 
 def green_channel_probabilities(r_gr, setup: ThreeColorSetup) -> np.ndarray:
@@ -198,11 +219,13 @@ def green_channel_probabilities(r_gr, setup: ThreeColorSetup) -> np.ndarray:
     """
     r_gr = np.asarray(r_gr, dtype=float)
     _, _, e_gr = transfer_efficiencies(r_gr, r_gr, r_gr, setup)
+    dex_r = setup.direct_excitation_green
+    p_excite_g = 1.0 - dex_r
 
     emission = np.stack(
         [
-            np.broadcast_to(1.0 - e_gr, e_gr.shape),
-            e_gr + setup.direct_excitation_green,
+            np.broadcast_to(p_excite_g * (1.0 - e_gr), e_gr.shape),
+            p_excite_g * e_gr + dex_r,
         ],
         axis=-1,
     )
@@ -211,4 +234,4 @@ def green_channel_probabilities(r_gr, setup: ThreeColorSetup) -> np.ndarray:
     # Only the green and red detection channels are open under green excitation,
     # so drop the blue row and the blue emitter column of the detection matrix.
     detection_gr = setup.detection[1:, 1:]
-    return _normalise(emission @ detection_gr.T)
+    return np.atleast_2d(_normalise(emission @ detection_gr.T))

@@ -71,6 +71,49 @@ deliberately displaced start, 5 quadrature nodes per axis, ~17 s. The control
 matters as much as the fit: a method sold on measuring joint motion must be
 shown *not* inventing correlation when there is none.
 
+**A/B-verified against the incumbent (2026-07-25):**
+`test/models/test_pda3c_pam_ab.py` transcribes the incumbent's MATLAB
+expressions verbatim and asserts equality over randomised distances and
+correction sets — the precedent set by
+[fcs-pam-port](/references/fcs-pam-port.md) and `test_fcs_pam_ab.py`.
+Agreement is to 1e-12 on `PBB`/`PBG`/`PBR` and `PGR` across 500 random
+parameter sets, and the burst likelihood matches the incumbent's C kernel
+term for term.
+
+- **It found a real bug.** ChiSurf added direct excitation of G and R as *extra*
+  emission weight, leaving the blue dye's share at 1; the incumbent scales every
+  blue-excitation pathway by `pe_b = 1 - de_bg - de_br`. A laser pulse excites
+  exactly one dye, so the probabilities **partition** — they do not top up.
+  Because channel probabilities are normalised afterwards the error was
+  invisible at zero direct excitation and grew with it: a silent bias in exactly
+  the correction meant to remove one. Fixed, with a regression test that also
+  checks the un-partitioned variant gives a *different* answer, so the test
+  discriminates.
+- **Two parameterisations, one physics.** The incumbent builds pairwise Förster
+  efficiencies and combines them as `E1(1-E2)/(1-E1·E2)`; ChiSurf goes straight
+  to `x_bg/(1+x_bg+x_br)`. Substituting `E = x/(1+x)` collapses one onto the
+  other — verified numerically as well, since the identity is not obvious by
+  inspection and either side could drift.
+- **Corrections map cleanly.** The incumbent's loose scalars (`cr_bg`, `cr_br`,
+  `cr_gr`, `gamma_bg`, `gamma_br`, `gamma_gr`) are exactly a lower-triangular
+  detection matrix, and ChiSurf's single-matrix form enforces
+  `gamma_bg = gamma_br/gamma_gr` structurally rather than storing two and
+  deriving the third.
+- **The no-`P(n)` convention is confirmed from source**, not inferred: the
+  incumbent's kernel carries no photon-number weight, which is what ChiSurf's
+  default `photon_number_pmf=None` reproduces.
+- **One difference that is not a bug:** the incumbent's *simulator* carves
+  background out of a fixed total burst size, while ChiSurf's adds it on top of
+  a drawn signal (matching `tttrlib`'s convention for two colours). The
+  *likelihoods* agree; this only concerns what the burst-size distribution
+  means, and each is self-consistent.
+
+Octave was considered for executing the reference directly and rejected on
+inspection: the expressions live inline in a 6.9k-line GUI reading a global
+struct with no callable entry point, and the shipped MEX binaries are x86_64
+MATLAB-ABI objects that Octave cannot load on arm64. Transcription is the
+faithful route here as well as the reviewable one.
+
 Remaining: the ChiSurf model + view spec, the burst-table reader, and stages
 3–7 (priors/MCMC, labelling and brightness corrections, global 2c+3c fits,
 dynamics).

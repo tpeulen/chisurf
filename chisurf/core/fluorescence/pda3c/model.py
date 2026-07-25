@@ -106,7 +106,7 @@ class BurstCounts:
             self.multiplicity = np.ones(self.blue.shape[0], dtype=float)
         self.multiplicity = np.asarray(self.multiplicity, dtype=float)
 
-    def collapsed(self) -> "BurstCounts":
+    def collapsed(self) -> BurstCounts:
         """Return an equivalent table with duplicate bursts merged.
 
         Exact: the likelihood sees a burst only through its counts, so bursts
