@@ -42,6 +42,10 @@ The workflows a first pass should cover — expand as the tester discovers more:
   correlation curve, create a `Parse-Model` fit, pick the 3D-Gauss equation,
   restrict the lag range, fit, read `N`, `t_d` and χ²ᵣ.
   *(last driven 2026-07-25; RF-018..RF-025)*
+- [CLSM image and pixel-selected decay](/usecases/clsm-image-decay.md) — load a
+  CLSM `.ptu`, auto-detect the scan markers, build a CLSM image and an intensity
+  representation, brush a pixel selection, read its decay, save it as an ROI and
+  export it to ChiSurf. *(last driven 2026-07-25; RF-030..RF-035)*
 
 ## Per-workflow file format
 

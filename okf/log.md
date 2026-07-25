@@ -2,6 +2,21 @@
 
 ## 2026-07-25
 
+* **Drove the Imaging/CLSM workflow through the GUI and recorded it.** New use
+  case [clsm-image-decay](/usecases/clsm-image-decay.md): load `Leica_SP5.ptu`
+  into CLSM-Draw, auto-detect the scan markers, build a CLSM image and an
+  intensity representation, brush a pixel selection, read its decay, save it as
+  an ROI and export it to ChiSurf. The intensity/selection/decay/ROI/export path
+  is correct and sub-second, but the `Mean micro time` representation is
+  quantitatively wrong (RF-030/RF-031: `get_mean_micro_time` is called with the
+  old positional signature, so *Min #Ph* scales the image instead of
+  discriminating pixels, and the per-frame means are then summed over 230
+  frames), and *Frames* / *Frame* / *Coarsen* have no effect on the image
+  although the decay honours them (RF-032). Also filed RF-033..RF-035. UX notes
+  (all seven panels stacked as tabs so image and decay are never visible
+  together, opaque selection overlay, FRC with no 1/7 threshold or resolution)
+  stay in the use case.
+
 * **A test was permanently replacing a module global, and later tests paid for
   it.** `test/models/test_fret_line_overlays.py` pinned
   `chisurf.core.models.tcspc.fret.rda_axis` to a 50-point axis in an autouse
