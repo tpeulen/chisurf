@@ -1,8 +1,8 @@
 """Interactive IRF background-region selector (embedded in the wizard).
 
-A pyqtgraph plot of the raw and corrected VV/VH IRFs with a draggable
-:class:`~pyqtgraph.LinearRegionItem` for the background window, mirrored by two
-spin boxes. Dragging the region recomputes the corrected IRFs through the model
+A chiplot plot of the raw and corrected VV/VH IRFs with a draggable region for
+the background window, mirrored by two spin boxes. Dragging the region
+recomputes the corrected IRFs through the model
 (which calls the Qt-free :func:`...core.irf.correct_irfs`). Embedded via the
 ``embed`` section with ``pass_model=True``.
 """
@@ -10,9 +10,9 @@ spin boxes. Dragging the region recomputes the corrected IRFs through the model
 from __future__ import annotations
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 
 
@@ -48,15 +48,14 @@ class IrfNormalizationWidget(QtWidgets.QWidget):
         bar.addWidget(self._ub)
         layout.addLayout(bar)
 
-        self._plot = pg.PlotWidget()
-        self._plot.setLogMode(x=False, y=True)
-        self._plot.addLegend()
+        self._plot = cp.Plot()
+        self._plot.set_log(y=True)
+        self._plot.legend()
         layout.addWidget(self._plot, 1)
 
-        self._region = pg.LinearRegionItem()
-        self._plot.addItem(self._region)
+        self._region = self._plot.region((0.0, 1.0), movable=True)
 
-        self._region.sigRegionChangeFinished.connect(self._on_region)
+        self._region.on_change(self._on_region, final=True)
         self._lb.editingFinished.connect(self._on_spin)
         self._ub.editingFinished.connect(self._on_spin)
 
@@ -78,8 +77,7 @@ class IrfNormalizationWidget(QtWidgets.QWidget):
         self._sync_region_from_model()
         self._refresh_plot()
 
-    def _on_region(self) -> None:
-        lb, ub = self._region.getRegion()
+    def _on_region(self, lb, ub) -> None:
         self._lb.blockSignals(True)
         self._ub.blockSignals(True)
         self._lb.setValue(int(lb))
@@ -91,9 +89,8 @@ class IrfNormalizationWidget(QtWidgets.QWidget):
 
     def _on_spin(self) -> None:
         lb, ub = self._lb.value(), self._ub.value()
-        self._region.blockSignals(True)
-        self._region.setRegion((lb, ub))
-        self._region.blockSignals(False)
+        # ``set_bounds`` blocks signals, so this does not re-enter ``_on_region``.
+        self._region.set_bounds(lb, ub)
         self._model.apply_region(lb, ub)
         self._refresh_plot(keep_region=True)
 
@@ -104,19 +101,19 @@ class IrfNormalizationWidget(QtWidgets.QWidget):
             w.blockSignals(True)
             w.setValue(v)
             w.blockSignals(False)
-        self._region.blockSignals(True)
-        self._region.setRegion((lb, ub))
-        self._region.blockSignals(False)
+        self._region.set_bounds(lb, ub)
 
     def _refresh_plot(self, keep_region: bool = False) -> None:
-        # clear only the data curves, keep the region item
-        for item in list(self._plot.getPlotItem().listDataItems()):
-            self._plot.removeItem(item)
+        # clear the data curves, then re-attach the region and legend
+        self._plot.clear()
+        self._plot.legend()
+        self._plot.add(self._region)
         for s in self._model.plot_series():
-            self._plot.plot(
-                x=np.asarray(s["x"]),
-                y=np.asarray(s["y"]),
-                pen=pg.mkPen(s.get("color", "w"), width=s.get("width", 1)),
+            self._plot.line(
+                np.asarray(s["x"]),
+                np.asarray(s["y"]),
+                pen=s.get("color", "w"),
+                width=s.get("width", 1),
                 name=s.get("name"),
             )
 

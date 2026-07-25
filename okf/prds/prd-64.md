@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 45):*
+*Landed so far (allow-list 76 → 42):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -366,6 +366,19 @@ screenshot/qtbot verification after each cluster.
   (idempotent-legend refresh loop, `set_menu_enabled`, signal-safe
   `set_bounds`/`set_value`, the union of migrated draw verbs, and import-clean of
   all four modules).
+- **Batch 11** (allow-list 45 → 42) — migrated three decay/anisotropy tools:
+  `plugins/fcs/fcs_lfcs_sim` (log-x FCS preview), `plugins/fluorescence_decay/`
+  `tr_anisotropy` IRF background-region selector, and `plugins/vv_vh_anisotropy`
+  (dual decay + r(t) plots with an r∞ region). All standard `PlotWidget`→`cp.Plot`
+  + `line`/`set_log`/`set_ylim`/`legend`/`grid` + `region` verbs; the two region
+  tools drop their manual `blockSignals` dance now that `set_bounds` is
+  signal-safe (Batch 10), and both region callbacks take the handle's
+  `(lo, hi)` directly. `fcs_lfcs_sim` keeps one flagged pyqtgraph passthrough via
+  `plot.native.getAxis("bottom").enableAutoSIPrefix(False)` — an axis cosmetic
+  chiplot has no native verb for yet (candidate for a future `set_auto_si_prefix`
+  when a second call site appears). Import-clean test extended to all three;
+  vv_vh_anisotropy constructed headless with its full redraw + region-drag path
+  exercised.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

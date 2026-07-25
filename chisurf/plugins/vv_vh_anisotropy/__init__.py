@@ -9,7 +9,7 @@ Features
 - Compute r(t) = (VV − g·VH) / (VV + 2·g·VH)
 - Apply user-specified g-factor, optional constant backgrounds (BG VV, BG VH), and a fractional
   channel shift between VV and VH (VH relative to VV)
-- Plot background-corrected decays on a semilogarithmic axis and r(t) using pyqtgraph
+- Plot background-corrected decays on a semilogarithmic axis and r(t) using chiplot
 - Select a region on r(t) to estimate r∞; r∞ is subtracted from r(t) and saved alongside the data
 - Use channel indices (0..N−1) for the x-axis
 - Fix the anisotropy y-range to [0, 0.45] for visual consistency
@@ -37,7 +37,7 @@ from qtpy.QtWidgets import (
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QIcon
 
-import pyqtgraph as pg
+from chisurf.gui import chiplot as cp
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -277,7 +277,7 @@ class VvVhAnisotropyCalculator(QWidget):
     - Computes r(t) = (VV - g*VH)/(VV + 2*g*VH)
     - Considers user-specified g-factor, VV/VH background values
     - Supports time shift between VV and VH (VH shifted relative to VV)
-    - Plots decays (log-y) and r(t) with a LinearRegionItem to define the r∞ region
+    - Plots decays (log-y) and r(t) with a draggable region to define the r∞ region
       and subtract it from r(t) as an offset.
     """
 
@@ -399,36 +399,28 @@ class VvVhAnisotropyCalculator(QWidget):
         plots_layout = QHBoxLayout()
 
         # Decays plot
-        self.decay_plot = pg.PlotWidget()
-        self.decay_plot.setLabel('left', 'Intensity')
-        self.decay_plot.setLabel('bottom', 'Channel')
-        self.decay_plot.setTitle('Decays (VV, VH)')
-        self.decay_plot.addLegend()
-        self.decay_plot.setLogMode(x=False, y=True)
+        self.decay_plot = cp.Plot(title='Decays (VV, VH)')
+        self.decay_plot.set_labels(left='Intensity', bottom='Channel')
+        self.decay_plot.legend()
+        self.decay_plot.set_log(y=True)
         plots_layout.addWidget(self.decay_plot)
 
         # r(t) plot
-        self.r_plot = pg.PlotWidget()
-        self.r_plot.setLabel('left', 'r(t)')
-        self.r_plot.setLabel('bottom', 'Channel')
-        self.r_plot.setTitle('Anisotropy r(t)')
-        self.r_plot.addLegend()
+        self.r_plot = cp.Plot(title='Anisotropy r(t)')
+        self.r_plot.set_labels(left='r(t)', bottom='Channel')
+        self.r_plot.legend()
         # Fix y-axis range for anisotropy to [0, 0.45]
-        try:
-            self.r_plot.enableAutoRange('y', False)
-        except Exception:
-            pass
-        self.r_plot.setYRange(0.0, 0.45)
+        self.r_plot.set_ylim(0.0, 0.45)
         plots_layout.addWidget(self.r_plot)
 
         # Region for r∞ in r(t) plot
         self.region_bounds = [0.0, 1.0]
-        self.region = pg.LinearRegionItem(
-            values=self.region_bounds,
-            brush=pg.mkBrush(color=(50, 200, 50, 50)),
-            movable=True
+        self.region = self.r_plot.region(
+            tuple(self.region_bounds),
+            brush=(50, 200, 50, 50),
+            movable=True,
         )
-        self.region.sigRegionChanged.connect(self._on_region_changed)
+        self.region.on_change(self._on_region_changed, final=False)
 
         main_layout.addLayout(plots_layout)
         self.setLayout(main_layout)
@@ -470,10 +462,9 @@ class VvVhAnisotropyCalculator(QWidget):
         # Set region initially to last 20% for r∞
         n = len(self.time_axis)
         self.region_bounds = [self.time_axis[int(n*0.7)], self.time_axis[int(n*0.9)]]
-        # Add region to r plot
-        if self.region not in self.r_plot.items():
-            self.r_plot.addItem(self.region)
-        self.region.setRegion(self.region_bounds)
+        # ``set_bounds`` blocks signals, so this does not re-enter the handler;
+        # the region is (re)attached by ``_update_r_plot``.
+        self.region.set_bounds(*self.region_bounds)
 
         self._recompute_and_update_plots()
 
@@ -504,12 +495,11 @@ class VvVhAnisotropyCalculator(QWidget):
         except Exception:
             pass
 
-    def _on_region_changed(self):
+    def _on_region_changed(self, lo=None, hi=None):
         # Keep internal bounds and recompute r∞/plots
-        try:
-            self.region_bounds = list(self.region.getRegion())
-        except Exception:
-            pass
+        if lo is None or hi is None:
+            lo, hi = self.region.bounds
+        self.region_bounds = [lo, hi]
         self._recompute_and_update_plots()
 
     def _apply_shift_interp(self, y: np.ndarray, shift: float) -> np.ndarray:
@@ -678,6 +668,7 @@ class VvVhAnisotropyCalculator(QWidget):
 
     def _update_decay_plot(self):
         self.decay_plot.clear()
+        self.decay_plot.legend()
         if self.time_axis is None:
             return
 
@@ -692,7 +683,7 @@ class VvVhAnisotropyCalculator(QWidget):
                 vv_plot = vv_plot - float(self.bg_vv_spin.value())
                 # For log plotting, mask non-positive values as NaN
                 vv_plot = np.where(vv_plot > 0, vv_plot, np.nan)
-            self.decay_plot.plot(self.time_axis, vv_plot, pen=pg.mkPen('b', width=2),
+            self.decay_plot.line(self.time_axis, vv_plot, pen='b', width=2,
                                  name='VV (BG corrected)' if apply_bg else 'VV')
 
         if vh_curr is not None:
@@ -703,24 +694,21 @@ class VvVhAnisotropyCalculator(QWidget):
             shift = float(self.shift_spin.value())
             # For visualization, shift the time axis of VH
             shifted_time = self.time_axis + shift
-            self.decay_plot.plot(shifted_time, vh_plot, pen=pg.mkPen('r', width=2),
+            self.decay_plot.line(shifted_time, vh_plot, pen='r', width=2,
                                  name=(f'VH (shift {shift:.3f} ch, BG corrected)'
                                        if apply_bg else f'VH (shift {shift:.3f} ch)'))
 
     def _update_r_plot(self):
         self.r_plot.clear()
+        self.r_plot.legend()
         if self.time_axis is None or self.r_t is None:
             return
         # raw r(t)
-        self.r_plot.plot(self.time_axis, self.r_t, pen=pg.mkPen('m', width=2), name='r(t)')
-        # ensure region is present
-        if self.region not in self.r_plot.items():
-            self.r_plot.addItem(self.region)
-        # keep region at current bounds
-        try:
-            self.region.setRegion(self.region_bounds)
-        except Exception:
-            pass
+        self.r_plot.line(self.time_axis, self.r_t, pen='m', width=2, name='r(t)')
+        # re-attach the region (clear removed it) and keep it at current bounds
+        # (``set_bounds`` blocks signals, so no re-entrancy into the handler).
+        self.r_plot.add(self.region)
+        self.region.set_bounds(*self.region_bounds)
 
 if __name__ == '__main__':
     # Simple manual test runner

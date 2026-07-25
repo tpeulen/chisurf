@@ -19,6 +19,7 @@ import numpy as np
 from qtpy import QtWidgets
 
 from chisurf.core.dataspec import load_view_spec
+from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform import AutoForm, register_section
 
 _GUI_DIR = pathlib.Path(__file__).resolve().parent
@@ -103,16 +104,14 @@ class LifetimeFcsSimWidget(QtWidgets.QWidget):
         layout.addWidget(self._plot, 1)
 
     def _make_plot(self):
-        import pyqtgraph as pg
-
-        plot = pg.PlotWidget()
-        plot.setLogMode(x=True, y=False)
-        bottom = plot.getAxis("bottom")
-        bottom.enableAutoSIPrefix(False)
-        plot.setLabel("bottom", "lag time (ms)")
-        plot.setLabel("left", "G(τ)")
-        plot.addLegend()
-        plot.showGrid(x=True, y=True, alpha=0.3)
+        plot = cp.Plot()
+        plot.set_log(x=True)
+        # pyqtgraph-specific axis cosmetic (keep the raw "ms" unit rather than an
+        # auto SI-prefix); reached via the backend escape hatch — a migration gap.
+        plot.native.getAxis("bottom").enableAutoSIPrefix(False)
+        plot.set_labels(bottom="lag time (ms)", left="G(τ)")
+        plot.legend()
+        plot.grid(x=True, y=True, alpha=0.3)
         return plot
 
     def simulate(self) -> None:
@@ -127,11 +126,8 @@ class LifetimeFcsSimWidget(QtWidgets.QWidget):
         self._refresh_plot(datasets)
 
     def _refresh_plot(self, datasets: list[dict]) -> None:
-        import pyqtgraph as pg
-
         self._plot.clear()
-        if self._plot.plotItem.legend is not None:
-            self._plot.plotItem.legend.clear()
+        self._plot.legend()  # idempotent: resets the legend for the redraw
         for d in datasets:
             a, b = d["species_a"], d["species_b"]
             if a == b:
@@ -143,9 +139,9 @@ class LifetimeFcsSimWidget(QtWidgets.QWidget):
             x = np.asarray(d["x"], dtype=float)
             y = np.asarray(d["y"], dtype=float)
             good = x > 0
-            self._plot.plot(
+            self._plot.line(
                 x[good], y[good], name=d["name"],
-                pen=pg.mkPen(color, width=width),
+                pen=color, width=width,
             )
 
 

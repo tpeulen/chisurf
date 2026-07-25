@@ -190,6 +190,10 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.fcs.fcs_correlator.correlator_panel",
         "chisurf.plugins.fcs.fcs_correlator.filter_panel",
         "chisurf.plugins.fcs.fcs_correlator.merger_panel",
+        # Batch 11
+        "chisurf.plugins.fcs.fcs_lfcs_sim.gui.tool",
+        "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.irf_widget",
+        "chisurf.plugins.vv_vh_anisotropy",
     ):
         assert importlib.import_module(name) is not None
 
