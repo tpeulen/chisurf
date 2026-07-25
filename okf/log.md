@@ -2,24 +2,38 @@
 
 ## 2026-07-25
 
-* **chimol: `cartoon_smooth_loops` implemented, and the whole curve exposed as
-  settings.** The last unimplemented step of PyMOL's cartoon pipeline is in, so
-  nothing in the chain is missing now. It is **off by default as in PyMOL** --
-  rounding the coil pulls it away from the real backbone -- but a setting that
-  silently does nothing is worse than one that is off.
-  Two details separate it from the sheet pass, both from `RepCartoonSmoothLoops`:
-  the run is **widened by one residue into the flanking element**, so smoothing
-  does not stop dead at the junction and crease there; and the orientations are
-  renormalised but **not** re-orthogonalised against the tangent, since a loop
-  has no face to keep flat. Verified on a kinked coil between two helices: second
-  difference along the loop 30.0 -> 2.0, with both helices untouched.
-  **Seven more PyMOL settings registered** -- `cartoon_throw`, `cartoon_power`,
-  `cartoon_power_b`, `cartoon_refine_tips`, `cartoon_refine_normals`,
-  `cartoon_smooth_loops`, `cartoon_smooth_cycles` -- so the curve and the
-  guide-frame conditioning are reachable as `set cartoon_throw, 2.0` rather than
-  only by dotted path. The "every entry is live" test covers them, so each one
-  had to name a config path the builder actually reads.
-  Suite: 379 passed, 1 skipped.
+* **Global analysis reached the agent, which is what ChiSurf is for.** The
+  harness could fit measurements one at a time; it could not tie them
+  together — so the one thing the program is named for was out of reach.
+  New `tools/linking.py`: `link_parameters`, `unlink_parameters`,
+  `list_links`. A linked parameter has one value fitted against several
+  datasets at once, and the tools report the free-parameter count per fit so
+  the constraint is visible rather than assumed.
+  Two skills come with it. **`global-fitting`** covers what to link (a
+  property of the system or instrument) and what never to link (whatever the
+  experiment is varying), and the difference between linking and fixing:
+  fixing asserts a value you know, linking asserts only that it is the same
+  everywhere and lets the data decide. **`fret-from-decays`** is the
+  donor-only/donor-acceptor protocol — fit the reference, build a
+  `FRET: FD (...)` model on the quenched sample, give the donor reference to
+  it, read `E_FRET`, `R(G,1)` and `xDOnly`, and treat `R0`/`k2` as inputs
+  rather than results.
+  Both were written against the software rather than from memory: the
+  workflow was run by hand on the sample donor/acceptor pair first, which is
+  also where the numbers in the skill come from. Fitting the DA decay with a
+  plain lifetime model reaches chi2r ~45, which is why the skill says not to.
+  **Live proof, from a single plain-language request** ("these are donor-only
+  and donor-acceptor measurements, work out the FRET efficiency and the
+  distance"): the agent loaded four files, fitted the donor reference to
+  chi2r 1.03, created the Gaussian-distance FRET model on the DA decay with
+  its own IRF, **linked the donor lifetimes across the two fits**, and
+  reported E = 0.322 +- 0.012 at R = 52.0 A with 34 % donor-only and the
+  assumed Foerster radius stated — chi2r **1.09**. The linked reference beat
+  the hand-built version with a *fixed* two-component donor (chi2r 4.59),
+  which is the global-analysis payoff in one number.
+  12 tests in `test/agent/test_linking_tools.py`, including that a link
+  removes exactly one degree of freedom and that the follower tracks the
+  source's value. 30 tools, 10 skills.
 
 * **The correlation path, verified rather than assumed.** The FCS reader
   became usable again after the schema fix, so the `fit-correlation` skill
@@ -1978,17 +1992,6 @@
   confidence), which is what caught the orientation error. Also made
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
-
-* **chiplot Batch 22 — burst FCS-correlator wizard off pyqtgraph + text
-  autorange fix (allow-list 29 → 28).** Migrated the self-contained
-  `plugins/burst/burst_fcs_correlator/wizard.py` (log-x correlation plot w/ data
-  markers + fit + diffusion-time inset, and a P(τ_D) distribution plot). Curves →
-  `line`/`set_data`; `pg.TextItem` inset → `plot.text(...)` (`_Text.text` property
-  + `set_position`). **Second real bug found by screenshot:** the inset label at a
-  raw data coord on a log-x axis blew auto-range to ~10¹⁷³ (I'd dropped the
-  original's `ignoreBounds=True`). Fixed at the seam — `add_text` now uses
-  `ignoreBounds=True`, so annotations never drive the range. New
-  `test_text_does_not_drive_autorange`; screenshot-verified. See [PRD-64](prds/prd-64.md).
 
 * **chiplot Batch 21 — burst browser histogram off pyqtgraph (allow-list
   30 → 29).** Migrated `plugins/burst/burst_browser/gui/sections.py` (per-column

@@ -79,6 +79,8 @@ even sees it, so the right method is in play from the first turn.
 | Skill | Loaded when you ask about |
 | --- | --- |
 | `fit-decay` | decays, lifetimes, TCSPC, IRFs |
+| `fret-from-decays` | FRET, donor-only/DA pairs, efficiencies, distances |
+| `global-fitting` | global or simultaneous analysis, linking parameters |
 | `fit-correlation` | FCS, correlation curves, diffusion |
 | `batch-fitting` | a whole folder, a series, comparing samples |
 | `diagnose-fit` | a bad chi-square, structured residuals, a stuck parameter |
@@ -122,6 +124,13 @@ its IRF, applying the same model to twenty measurements, exporting a table,
 and following the standard fitting protocol. On a sample donor decay it
 reaches a reduced chi-square of 1.03 with three lifetime components,
 unassisted.
+
+It also handles the multi-step analyses ChiSurf exists for. Asked only *"these
+are donor-only and donor-acceptor measurements, work out the FRET efficiency
+and the distance"*, it fits the donor reference, builds a Gaussian-distance
+FRET model on the acceptor sample, **links the donor lifetimes across the two
+fits**, and reports E = 0.32 ± 0.01 at R = 52 Å with the assumed Förster
+radius stated — reduced chi-square 1.09.
 
 Check its work as you would a student's:
 

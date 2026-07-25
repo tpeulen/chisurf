@@ -83,8 +83,16 @@ the conversation, so a follow-up does not silently lose the procedure. This
 happens *before* the first model call, which makes routing testable without a
 model in the loop. `load_skill` remains for what the matcher cannot see.
 
-The built-in library: `fit-decay`, `fit-correlation`, `batch-fitting`,
-`diagnose-fit`, `explore-data`, `report-results`, `write-analysis-script`.
+The built-in library: `fit-decay`, `fret-from-decays`, `global-fitting`,
+`fit-correlation`, `batch-fitting`, `diagnose-fit`, `explore-data`,
+`report-results`, `write-analysis-script`, `use-the-computer`.
+
+**Skills are written against the software, not from memory.** Every claim in
+one is checked against a real fit first — the `fit-correlation` skill was
+wrong on its first draft (it implied components and an IRF that correlation
+models do not have), and `fret-from-decays` quotes the numbers the sample
+data actually produces. A skill that misdescribes the program is worse than
+no skill: the model follows it confidently into a wall.
 Discovery layers built-in → plugin (`agent_skills/` beside a `manifest.json`)
 → user (`<settings>/agent_skills/`), later overriding earlier, so a lab can
 replace `fit-decay` with its own protocol without touching the code.
