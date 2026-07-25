@@ -26,9 +26,9 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import pandas as pd
 import tttrlib
-import pyqtgraph as pg
 
 from chisurf.gui import QtWidgets, QtCore
+from chisurf.gui import chiplot as cp
 from chisurf.core.models.fcs.maxent import fcs_maxent
 from chisurf.gui.widgets.wizard.tttr_correlator import WizardTTTRCorrelator
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
@@ -267,28 +267,20 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         bottom_layout.setSpacing(4)
 
         plots_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical, bottom_widget)
-        self.plot_corr_view = pg.PlotWidget(plots_splitter)
-        self.plot_corr_view.setLogMode(True, False)
-        self.plot_corr_view.setLabel("bottom", "Correlation time, t_c (ms)")
-        self.plot_corr_view.setLabel("left", "Correlation amplitude, G")
-        self.curve_corr_data_view = self.plot_corr_view.plot(pen="w", symbol="o", symbolSize=4)
-        self.curve_corr_fit_view = self.plot_corr_view.plot(pen="r")
+        self.plot_corr_view = cp.Plot(plots_splitter)
+        self.plot_corr_view.set_log(x=True, y=False)
+        self.plot_corr_view.set_labels(
+            bottom="Correlation time, t_c (ms)", left="Correlation amplitude, G")
+        self.curve_corr_data_view = self.plot_corr_view.line([], [], pen="w", symbol="o", symbol_size=4)
+        self.curve_corr_fit_view = self.plot_corr_view.line([], [], pen="r")
         # Inset text for diffusion times (mean / fitted) in the correlation plot
-        self.text_td_inset = pg.TextItem(color="y", anchor=(1, 1))
-        try:
-            self.text_td_inset.setText("")
-        except Exception:
-            pass
-        try:
-            self.plot_corr_view.addItem(self.text_td_inset, ignoreBounds=True)
-        except Exception:
-            pass
+        self.text_td_inset = self.plot_corr_view.text("", (0.0, 0.0), color="y", anchor=(1, 1))
 
-        self.plot_dist_view = pg.PlotWidget(plots_splitter)
-        self.plot_dist_view.setLogMode(True, False)
-        self.plot_dist_view.setLabel("bottom", "Diffusion time, tau_D (ms)")
-        self.plot_dist_view.setLabel("left", "P(tau_D)")
-        self.curve_dist_view = self.plot_dist_view.plot(pen="y")
+        self.plot_dist_view = cp.Plot(plots_splitter)
+        self.plot_dist_view.set_log(x=True, y=False)
+        self.plot_dist_view.set_labels(
+            bottom="Diffusion time, tau_D (ms)", left="P(tau_D)")
+        self.curve_dist_view = self.plot_dist_view.line([], [], pen="y")
         # Start with the diffusion-time distribution plot hidden; it is only
         # shown for entries that were fitted with MaxEnt.
         try:
@@ -659,13 +651,13 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
     def _clear_browser_plots(self) -> None:
 
         try:
-            self.curve_corr_data_view.setData([], [])
-            self.curve_corr_fit_view.setData([], [])
-            self.curve_dist_view.setData([], [])
+            self.curve_corr_data_view.set_data([], [])
+            self.curve_corr_fit_view.set_data([], [])
+            self.curve_dist_view.set_data([], [])
             try:
                 # Clear inset text and hide distribution plot when nothing is selected
                 if hasattr(self, "text_td_inset"):
-                    self.text_td_inset.setText("")
+                    self.text_td_inset.text = ""
                 if hasattr(self, "plot_dist_view"):
                     self.plot_dist_view.setVisible(False)
             except Exception:
@@ -703,25 +695,25 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
         try:
             if tau.size and g.size:
-                self.curve_corr_data_view.setData(tau, g)
+                self.curve_corr_data_view.set_data(tau, g)
             else:
-                self.curve_corr_data_view.setData([], [])
+                self.curve_corr_data_view.set_data([], [])
 
             if tau.size and g_fit.size:
-                self.curve_corr_fit_view.setData(tau, g_fit)
+                self.curve_corr_fit_view.set_data(tau, g_fit)
             else:
-                self.curve_corr_fit_view.setData([], [])
+                self.curve_corr_fit_view.set_data([], [])
 
             # Update diffusion-time distribution plot only for MaxEnt-fitted entries
             use_maxent_entry = (fit_mode_entry == "maxent")
             if use_maxent_entry and td_grid.size and p.size:
-                self.curve_dist_view.setData(td_grid, p)
+                self.curve_dist_view.set_data(td_grid, p)
                 try:
                     self.plot_dist_view.setVisible(True)
                 except Exception:
                     pass
             else:
-                self.curve_dist_view.setData([], [])
+                self.curve_dist_view.set_data([], [])
                 try:
                     self.plot_dist_view.setVisible(False)
                 except Exception:
@@ -736,18 +728,18 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                     if np.isfinite(td_peak_ms):
                         parts.append(f"td_peak = {td_peak_ms:.3g} ms")
                     text = "\n".join(parts)
-                    self.text_td_inset.setText(text)
+                    self.text_td_inset.text = text
 
                     # Place the inset near the top-right corner of the current data range
                     if tau.size and g.size and text:
                         try:
                             x = float(np.nanmax(tau))
                             y = float(np.nanmax(g))
-                            self.text_td_inset.setPos(x, y)
+                            self.text_td_inset.set_position(x, y)
                         except Exception:
                             pass
                     elif not text:
-                        self.text_td_inset.setText("")
+                        self.text_td_inset.text = ""
             except Exception:
                 pass
         except Exception:

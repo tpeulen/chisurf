@@ -75,6 +75,25 @@ def test_plot_draw_all_families(qapp):
     img.set_image(np.random.rand(4, 4))
 
 
+def test_text_does_not_drive_autorange(qapp):
+    """A text annotation must not blow the view auto-range (PRD-64 Batch 22).
+
+    Text items are added with ignoreBounds=True; a label placed at a far data
+    coordinate (e.g. a raw value on a log axis) must not stretch the range.
+    """
+    x = np.logspace(-2, 3, 60)
+    y = 1.0 + 0.8 * np.exp(-x / 2.0)
+    plot = cp.Plot()
+    plot.set_log(x=True, y=False)
+    plot.line(x, y, pen="w")
+    plot.text("inset", (float(x.max()), float(y.max())), color="y")  # raw coord on log-x
+    plot.autoscale()
+    (x0, x1) = plot.native.getViewBox().viewRange()[0]
+    # log10(data-x) spans -2..3; the text at raw x=1000 would push x1 to ~1000
+    # without ignoreBounds. Assert the range stays near the data.
+    assert x1 < 10.0, f"text drove the x auto-range out (x1={x1})"
+
+
 def test_scatter_is_log_aware(qapp):
     """Scatter points must transform under log mode (PRD-64 Batch 20 fix).
 
@@ -317,6 +336,10 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.burst.burst_background.gui.sections",
         # Batch 21
         "chisurf.plugins.burst.burst_browser.gui.sections",
+        # NB: burst_fcs_correlator.wizard (Batch 22) is intentionally NOT listed —
+        # it imports IMP, which segfaults when loaded alongside the other heavy
+        # extensions in this shared test process. It is verified to import
+        # standalone + screenshot-checked instead.
     ):
         assert importlib.import_module(name) is not None
 

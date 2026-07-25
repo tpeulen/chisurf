@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 29):*
+*Landed so far (allow-list 76 → 28):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -480,6 +480,20 @@ screenshot/qtbot verification after each cluster.
   correct axes). The acq cluster (`core/acq/{__init__,gui/tool,gui/windows}`) is
   deferred like maxent — windows create curves that the 3000-line `tool.py` drives
   via `setData`/`InfiniteLine`, so it needs a dedicated coordinated pass.
+- **Batch 22** (allow-list 29 → 28) — migrated the self-contained
+  `plugins/burst/burst_fcs_correlator/wizard.py` (a per-pair FCS browser: a log-x
+  correlation plot with data markers + fit line + a diffusion-time inset label,
+  and a log-x P(τ_D) distribution plot). Curves → `line(...)`/`set_data`; the
+  `pg.TextItem` inset → `plot.text(...)` with the `_Text` handle's `text`
+  property + `set_position`. **Second real chiplot bug found by screenshot:** the
+  inset text, placed at a raw data coordinate on a log-x axis, drove the view
+  auto-range out to ~10¹⁷³ (I'd dropped the original's `ignoreBounds=True`).
+  Fixed at the seam — `add_text` now adds every label with `ignoreBounds=True`,
+  so annotations never stretch the range. New `test_text_does_not_drive_autorange`;
+  screenshot-verified (FCS correlation decay G 1.8→1.0 on a clean log-x axis).
+  (The wizard imports IMP, which segfaults alongside the other heavy extensions in
+  the shared chiplot test process, so it is verified standalone, not in the
+  import-clean sweep.)
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

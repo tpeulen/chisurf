@@ -593,11 +593,17 @@ class _PgCanvas(base.Canvas):
         return _Marker(item, self._pi)
 
     def add_text(self, text, pos, *, color, anchor, draggable) -> H.Text:
-        """Draw a text label."""
+        """Draw a text label.
+
+        Added with ``ignoreBounds=True`` so the annotation never drives the
+        view's auto-range — a text placed at a data coordinate (especially on a
+        log axis, where a raw coordinate lands far off the log scale) must not
+        blow the range out.
+        """
         cls = _DraggableTextItem if draggable else pg.TextItem
         item = cls(text=text, color=color.as_tuple(), anchor=anchor)
         item.setPos(*pos)
-        self._pi.addItem(item)
+        self._pi.addItem(item, ignoreBounds=True)
         return _Text(item, self._pi)
 
     def add_legend(self, *, offset=(30, 30)) -> None:
