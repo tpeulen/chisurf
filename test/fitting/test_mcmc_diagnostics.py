@@ -244,7 +244,6 @@ def test_the_folded_statistic_catches_a_difference_in_spread():
 
 def test_tail_ess_is_reported_separately_from_bulk():
     """The quantiles a credible interval is made of are governed by the tail."""
-    rng = np.random.default_rng(3)
     chains = _ar1(0.5, n=4000, n_chains=4, seed=4)
     bulk, tail = dg.bulk_tail_ess(chains)
     assert np.all(np.isfinite(bulk)) and np.all(np.isfinite(tail))
@@ -283,3 +282,136 @@ def test_the_warnings_name_which_effective_sample_size_failed():
     assert messages
     assert any('bulk' in m or 'tail' in m for m in messages)
     assert any('tau1' in m for m in messages)
+
+
+# -- rank plots and ESS growth (the display-side diagnostics) -------------
+
+def _ar1_chains(rho, n_chains=8, n_draws=1200, seed=0, shift=0.0):
+    """Return AR(1) chains with a known autocorrelation time."""
+    rng = np.random.default_rng(seed)
+    out = np.zeros((n_chains, n_draws, 1))
+    for c in range(n_chains):
+        v = 0.0
+        for t in range(n_draws):
+            v = rho * v + rng.normal(0.0, 1.0)
+            out[c, t, 0] = v
+    out[0] += shift
+    return out
+
+
+def test_rank_histograms_are_flat_when_the_chains_agree():
+    """Every chain holds an equal share of the pooled ranks, by construction."""
+    rng = np.random.default_rng(0)
+    chains = rng.normal(size=(4, 2000, 2))
+    counts, edges, expected = dg.rank_histogram(chains, bins=20)
+
+    assert counts.shape == (2, 4, 20)
+    assert edges.shape == (21,)
+    assert expected == pytest.approx(2000 / 20)
+    # Each chain's draws are all accounted for, in every parameter.
+    assert np.allclose(counts.sum(axis=2), 2000)
+    # And the pooled total per bin is the same for every bin.
+    assert np.allclose(counts.sum(axis=1), 4 * expected, rtol=0.0, atol=1e-9)
+
+
+def test_a_chain_sampling_elsewhere_shows_as_structure():
+    """The failure a rank plot exists to make visible."""
+    rng = np.random.default_rng(1)
+    chains = rng.normal(size=(4, 2000, 1))
+    chains[0] += 1.5
+    counts, _, expected = dg.rank_histogram(chains, bins=20)
+    off = counts[0, 0]
+    # The shifted chain holds far too few low ranks and far too many high ones.
+    assert off[0] < 0.5 * expected
+    assert off[-1] > 1.5 * expected
+
+
+def test_ties_are_shared_rather_than_given_to_whichever_sorted_first():
+    """A parameter pinned at a bound must not fake a perfect split."""
+    chains = np.zeros((2, 100, 1))
+    counts, _, expected = dg.rank_histogram(chains, bins=10)
+    # Every draw identical: the average rank is the same for all, so each chain
+    # lands wholly in one bin -- but the *same* bin, not different ones.
+    assert counts[0].sum() == 200
+    occupied = np.nonzero(counts[0].sum(axis=0))[0]
+    assert occupied.size == 1
+
+
+def test_the_uniformity_threshold_is_calibrated_not_a_fixed_percentage():
+    """A converged run must read as flat whatever its shape.
+
+    A fixed percentage cannot do this: the more cells a histogram has, the
+    further from flat its worst one is by chance alone. Every one of these is
+    converged, and every one must say so.
+    """
+    for n_chains, n_draws in ((4, 2000), (8, 750), (20, 300)):
+        rng = np.random.default_rng(n_chains)
+        chains = rng.normal(size=(n_chains, n_draws, 1))
+        counts, _, _ = dg.rank_histogram(chains, bins=20)
+        z, z_null = dg.rank_uniformity(counts[0], n_draws, 20)
+        assert z < 1.5 * z_null, (n_chains, n_draws, z, z_null)
+
+
+def test_autocorrelation_is_accounted_for_in_the_noise_level():
+    """Otherwise a converged but slow chain reports its own memory as structure."""
+    chains = _ar1_chains(rho=0.9, seed=2)
+    counts, _, _ = dg.rank_histogram(chains, bins=20)
+    tau = float(dg.within_chain_tau(chains)[0])
+    assert tau > 5.0, "AR(1) at rho=0.9 is strongly autocorrelated"
+
+    naive, z_null = dg.rank_uniformity(counts[0], chains.shape[1], 20)
+    corrected, _ = dg.rank_uniformity(counts[0], chains.shape[1], 20, tau=tau)
+    assert corrected < naive
+    assert corrected < 1.5 * z_null, "a converged chain must not be flagged"
+
+
+def test_the_correction_does_not_hide_a_split_run():
+    """The trap: correcting by the *pooled* ESS would explain the fault away.
+
+    A run whose chains disagree has a terrible pooled effective sample size --
+    precisely *because* they disagree. Inflating the noise level by that would
+    let every badly split run excuse itself. The within-chain autocorrelation is
+    unaffected by where the other chains sat, so it does not.
+    """
+    chains = _ar1_chains(rho=0.9, seed=3, shift=6.0)
+    counts, _, _ = dg.rank_histogram(chains, bins=20)
+    tau = float(dg.within_chain_tau(chains)[0])
+    z, z_null = dg.rank_uniformity(counts[0], chains.shape[1], 20, tau=tau)
+    assert z > 2.5 * z_null, (z, z_null)
+
+    # And the pooled figure really would have hidden it.
+    pooled_tau = chains.shape[1] / max(
+        float(dg.effective_sample_size(chains)[0]) / chains.shape[0], 1e-9)
+    hidden, _ = dg.rank_uniformity(
+        counts[0], chains.shape[1], 20, tau=pooled_tau)
+    assert hidden < z
+
+
+def test_effective_sample_size_grows_linearly_when_it_should():
+    """The signature of a healthy chain, and the reason to plot the curve."""
+    rng = np.random.default_rng(4)
+    chains = rng.normal(size=(4, 2000, 1))
+    draws, ess = dg.ess_evolution(chains, points=8)
+    assert draws.size >= 4
+    assert ess.shape == (draws.size, 1)
+    # Efficiency stays roughly constant instead of decaying.
+    efficiency = ess[:, 0] / (draws * chains.shape[0])
+    assert efficiency.min() > 0.5 * efficiency.max()
+    assert np.all(np.diff(ess[:, 0]) > -0.2 * ess[0, 0]), "must not fall away"
+
+
+def test_effective_sample_size_flattens_for_a_stuck_chain():
+    """And the failure the curve shows that a single final number does not."""
+    # A random walk never forgets where it started: more draws buy almost
+    # nothing, which shows as a curve that bends over.
+    rng = np.random.default_rng(5)
+    walk = np.cumsum(rng.normal(size=(4, 2000, 1)), axis=1)
+    draws, ess = dg.ess_evolution(walk, points=8)
+    efficiency = ess[:, 0] / (draws * walk.shape[0])
+    assert efficiency[-1] < 0.5 * efficiency[0], efficiency
+
+
+def test_ess_evolution_refuses_a_chain_too_short_to_judge():
+    """Below a handful of draws the estimator reports noise, not a number."""
+    draws, ess = dg.ess_evolution(np.zeros((2, 4, 1)), points=5)
+    assert draws.size == 0 and ess.shape[0] == 0

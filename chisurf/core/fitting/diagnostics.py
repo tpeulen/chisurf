@@ -45,6 +45,10 @@ __all__ = [
     "suggest_burn_in",
     "summarize",
     "convergence_warnings",
+    "rank_histogram",
+    "rank_uniformity",
+    "within_chain_tau",
+    "ess_evolution",
     "as_chains",
     "RHAT_THRESHOLD",
     "ESS_THRESHOLD",
@@ -659,3 +663,197 @@ def convergence_warnings(
             f"between chains (e.g. {stuck[0]['name']})."
         )
     return messages
+
+
+def rank_histogram(
+        samples: np.ndarray,
+        bins: int = 20,
+) -> typing.Tuple[np.ndarray, np.ndarray, float]:
+    r"""Return per-chain rank histograms — the plot that replaces the trace plot.
+
+    Draws are ranked **across all chains together** and each chain's ranks are
+    histogrammed. If the chains are sampling the same distribution, every chain
+    holds an equal share of the low, middle and high ranks, so every histogram
+    is flat at ``n_draws / bins``. A chain that lingers somewhere the others do
+    not shows as a slope or a spike, at a glance and on a fixed scale.
+
+    This is the display counterpart of :func:`rank_normalized_rhat`, and it is
+    recommended over a trace plot for the same reason
+    ([Vehtari et al. 2021](https://doi.org/10.1214/20-BA1221)): a trace plot's
+    resolution collapses as the chain gets longer, so exactly when there are
+    enough draws to judge convergence it becomes a black smear. A rank histogram
+    is just as readable at ten thousand draws as at one thousand.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray
+        Chains, in any shape accepted by :func:`as_chains`.
+    bins : int, optional
+        Number of rank bins.
+
+    Returns
+    -------
+    tuple
+        ``(counts, edges, expected)`` -- ``counts`` is
+        ``(n_parameters, n_chains, bins)``, ``edges`` the ``bins + 1`` bin edges
+        in rank space ``[0, 1]``, and ``expected`` the flat level every chain
+        should sit at.
+    """
+    chains = as_chains(samples)
+    n_chains, n_draws, n_par = chains.shape
+    bins = max(1, int(bins))
+    total = n_chains * n_draws
+    edges = np.linspace(0.0, 1.0, bins + 1)
+    counts = np.zeros((n_par, n_chains, bins), dtype=np.float64)
+
+    for k in range(n_par):
+        flat = chains[:, :, k].ravel()
+        order = np.argsort(flat, kind="mergesort")
+        ranks = np.empty(total, dtype=np.float64)
+        # Average ranks for ties, so a parameter stuck at a bound does not put
+        # all of its draws in whichever bin the sort happened to favour.
+        i = 0
+        while i < total:
+            j = i
+            while j + 1 < total and flat[order[j + 1]] == flat[order[i]]:
+                j += 1
+            ranks[order[i:j + 1]] = 0.5 * ((i + 1) + (j + 1))
+            i = j + 1
+        scaled = (ranks - 0.5) / total
+        for c in range(n_chains):
+            counts[k, c], _ = np.histogram(
+                scaled[c * n_draws:(c + 1) * n_draws], bins=edges
+            )
+    return counts, edges, float(n_draws) / bins
+
+
+def ess_evolution(
+        samples: np.ndarray,
+        points: int = 12,
+) -> typing.Tuple[np.ndarray, np.ndarray]:
+    """Return the effective sample size computed on growing prefixes of a chain.
+
+    A converged sampler's effective sample size grows **linearly** with the
+    draws taken: twice the effort buys twice the information. One that has not
+    converged -- stuck in a mode, or with an autocorrelation time longer than
+    the run -- shows an ESS that flattens, and the flattening is visible long
+    before any single number crosses a threshold. A final ESS on its own cannot
+    show this, because it is one point on this curve with the shape discarded.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray
+        Chains, in any shape accepted by :func:`as_chains`.
+    points : int, optional
+        How many prefix lengths to evaluate.
+
+    Returns
+    -------
+    tuple
+        ``(draws, ess)`` -- the prefix lengths, and ``(n_points, n_parameters)``
+        effective sample sizes.
+    """
+    chains = as_chains(samples)
+    n_draws = chains.shape[1]
+    points = max(2, int(points))
+    # Below ~8 draws the estimator has nothing to work with; start there rather
+    # than reporting noise as the first point of the curve.
+    if n_draws < 8:
+        return np.zeros(0, dtype=int), np.zeros((0, chains.shape[2]))
+    lengths = np.unique(
+        np.linspace(max(8, n_draws // points), n_draws, points).astype(int)
+    )
+    # A prefix longer than the chain would silently be truncated by the slice
+    # and reported under the wrong draw count.
+    lengths = lengths[(lengths >= 8) & (lengths <= n_draws)]
+    if lengths.size == 0:
+        return np.zeros(0, dtype=int), np.zeros((0, chains.shape[2]))
+    out = np.array([
+        effective_sample_size(chains[:, :int(n), :]) for n in lengths
+    ])
+    return lengths, out
+
+
+def within_chain_tau(samples: np.ndarray) -> np.ndarray:
+    """Return each parameter's autocorrelation time *within* a chain.
+
+    Averaged over chains, and deliberately **not** derived from the pooled
+    effective sample size. The pooled figure collapses when chains disagree with
+    each other, which is the very failure a rank histogram exists to detect: use
+    it to set the noise level and a badly split run explains its own structure
+    away. A chain's own autocorrelation is unaffected by where the other chains
+    happen to be.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray
+        Chains, in any shape accepted by :func:`as_chains`.
+
+    Returns
+    -------
+    numpy.ndarray
+        One autocorrelation time per parameter, at least 1.
+    """
+    chains = as_chains(samples)
+    n_chains, n_draws, n_par = chains.shape
+    per_chain = np.empty((n_chains, n_par), dtype=np.float64)
+    for c in range(n_chains):
+        ess = effective_sample_size(chains[c:c + 1])
+        per_chain[c] = n_draws / np.maximum(ess, 1e-9)
+    return np.maximum(per_chain.mean(axis=0), 1.0)
+
+
+def rank_uniformity(
+        counts: np.ndarray,
+        n_draws: int,
+        bins: int,
+        tau: float = 1.0,
+) -> typing.Tuple[float, float]:
+    r"""Return ``(z_max, z_null)`` for one parameter's rank histogram.
+
+    A rank histogram is never exactly flat, and how far from flat it should be
+    is not a matter of taste: under the null each chain's bin count is
+    :math:`\mathrm{Binomial}(n, 1/b)`, so the standard deviation is
+    :math:`\sqrt{n\,p\,(1-p)}` and the largest of :math:`N` standardised
+    deviations is about :math:`\sqrt{2\ln N}` even when nothing is wrong.
+
+    Comparing the two is the difference between a diagnostic and a nuisance.
+    Judging "flat" by a fixed percentage flags every converged run with enough
+    bins in it -- and a warning that fires on healthy chains is worse than no
+    warning at all, because it teaches the reader to skip it.
+
+    The binomial variance assumes *independent* draws, which no MCMC chain
+    produces. Autocorrelation inflates the variance of a bin count by roughly
+    the autocorrelation time, so ``tau`` scales the null: without it a perfectly
+    converged but slowly-mixing chain reports several sigma of structure that is
+    nothing but its own memory. Pass :func:`within_chain_tau`, not something
+    derived from the pooled effective sample size -- see that function for why.
+
+    Parameters
+    ----------
+    counts : numpy.ndarray
+        ``(n_chains, bins)`` counts for one parameter.
+    n_draws : int
+        Draws per chain.
+    bins : int
+        Number of rank bins.
+    tau : float, optional
+        Within-chain autocorrelation time. The default of 1 assumes independent
+        draws and will over-report structure on any real chain.
+
+    Returns
+    -------
+    tuple
+        The largest standardised deviation, and the value expected from noise
+        alone for a histogram of this size. Their *ratio* is the thing to read:
+        near one is flat, well above one is structure.
+    """
+    counts = np.atleast_2d(np.asarray(counts, dtype=np.float64))
+    p = 1.0 / max(1, int(bins))
+    expected = float(n_draws) * p
+    sd = math.sqrt(
+        max(float(n_draws) * p * (1.0 - p) * max(float(tau), 1.0), 1e-30)
+    )
+    z_max = float(np.abs(counts - expected).max() / sd)
+    n_cells = max(counts.size, 2)
+    return z_max, math.sqrt(2.0 * math.log(n_cells))

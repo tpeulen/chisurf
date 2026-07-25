@@ -2,6 +2,42 @@
 
 ## 2026-07-25
 
+* **Whether a chain can be believed, as a picture (Stan/ArviZ display side).**
+  The convergence *numbers* were harvested from Stan earlier; the matching
+  *plots* now exist. **Rank plot** (`rank_histogram`): draws ranked across all
+  chains together and histogrammed per chain, flat when they agree. It replaces
+  the trace plot for the reason its authors give -- a trace plot's resolution
+  collapses as the chain lengthens, so it becomes a black smear exactly when
+  there are finally enough draws to judge. **ESS growth** (`ess_evolution`):
+  effective sample size against draws, which grows linearly when converged and
+  bends over when the extra draws are adding nothing -- a shape a single final
+  ESS throws away.
+  Two things had to be got right, both caught by rendering and looking. First,
+  overlaying per-chain histograms is unreadable the moment there are more than a
+  handful of chains, and differential evolution runs a *population*: eight
+  overlaid outlines were a solid block of colour. Above five chains it now draws
+  a **heatmap** (chains x rank bins, colour = departure from flat), which scales
+  to any number and makes a chain favouring one end of the range a visible band.
+  Second, and more subtly, the "is it flat?" verdict has to be **calibrated**:
+  a rank histogram is never exactly flat, the largest of N standardised
+  deviations is ~sqrt(2 ln N) by chance, and *autocorrelation inflates that
+  further*. The first version reported 6.2 sigma of structure on a chain whose
+  heatmap is visibly clean -- a false alarm, and a warning that fires on healthy
+  chains is worse than no warning because it teaches the reader to skip it. With
+  the autocorrelation correction the same chain reads 1.9 sigma against 3.2
+  expected. The trap in that correction is worth recording: it must use the
+  **within-chain** autocorrelation, never the pooled effective sample size. The
+  pooled figure collapses precisely *because* chains disagree, so using it would
+  let every badly split run explain its own fault away -- measured, a shifted
+  chain reads 11x the noise level with the within-chain tau and is hidden by the
+  pooled one. There is a test asserting exactly that.
+  Also fixed in passing: `ess_evolution` could emit a prefix longer than the
+  chain, silently truncated by the slice and reported under the wrong draw
+  count; a pre-existing unused-variable lint in the diagnostics tests; and my
+  new test helper had shadowed an existing `_ar1` in the same file, which broke
+  fourteen unrelated tests until renamed. 10 new tests.
+
+
 * **Putty cartoons, and a cross-test config leak they exposed.** A putty tube's
   thickness carries a per-residue number — for this group rarely a b-factor, more
   often an accessibility from `get_area` or a fitted per-residue quantity written

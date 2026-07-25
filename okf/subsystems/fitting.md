@@ -167,7 +167,7 @@ support constraint, not a coupling.
 
 Cliques come from a greedy `min_fill` (or `min_degree`) elimination order; the
 clique tree is the maximum-weight spanning tree over shared-variable counts.
-Only `numpy` and `networkx` are involved.
+Only `numpy` and the in-tree graph layer `chinet.graph` are involved.
 
 **Selective updates.** `GlobalFitModel.update_model` recomputes only the local
 models a change reached. The dirty set is armed *solely* by the
@@ -393,6 +393,49 @@ vector entirely, so it correctly has no marginal of its own.
 names are prefixed (`3:tau`) and a member only knows its own. `approx_grad`,
 `covariance_matrix`, `lnprior`/`lnprob`/`lnprob_parts` and every sampler take an
 optional `model=`, so an engine over a group's global model works throughout.
+
+# Showing whether a chain can be believed
+
+The convergence *numbers* were harvested from Stan earlier; the matching
+*pictures* are `chisurf/gui/plots/sampling_diagnostics.py`, over headless
+builders in `diagnostics.py`.
+
+**Rank plot** (`rank_histogram`) — draws ranked across all chains together and
+histogrammed per chain. Converged chains are flat; one that lingers where the
+others do not shows as a slope or a spike. This is the recommended replacement
+for a trace plot, because a trace plot's resolution collapses as the chain
+lengthens, so it turns into a black smear exactly when there are finally enough
+draws to judge. With more than five chains it is drawn as a **heatmap** (chains
+× rank bins, colour = departure from flat) rather than overlaid outlines:
+differential evolution runs a *population*, and twenty overlaid histograms are a
+solid block of colour.
+
+**ESS growth** (`ess_evolution`) — effective sample size against draws taken.
+Converged, it grows linearly: twice the effort buys twice the information.
+Flattening means the extra draws are adding nothing, and it is visible long
+before any single number crosses a threshold — which a final ESS cannot show,
+being one point on this curve with the shape thrown away.
+
+**The verdict is calibrated, not a fixed percentage** (`rank_uniformity`). A
+rank histogram is never exactly flat: under the null each bin count is
+Binomial(*n*, 1/*b*), and the largest of *N* standardised deviations is about
+`sqrt(2 ln N)` even when nothing is wrong. Judging by a fixed percentage flags
+every converged run with enough bins in it, and a warning that fires on healthy
+chains is worse than none — it teaches the reader to skip it.
+
+Two corrections were needed to make that honest:
+
+- **Autocorrelation inflates the null.** The binomial variance assumes
+  independent draws, which no chain produces. Without the correction a perfectly
+  converged but slowly-mixing run reports several sigma of structure that is
+  nothing but its own memory (measured: 6.2σ against 3.2σ expected, on a chain
+  whose heatmap is visibly clean; corrected, 1.9σ).
+- **The correction must use the *within-chain* autocorrelation**
+  (`within_chain_tau`), never the pooled effective sample size. The pooled
+  figure collapses when chains disagree — which is the very failure the plot
+  exists to detect — so using it lets every badly split run explain itself away.
+  A chain's own autocorrelation does not care where the other chains sat. There
+  is a test asserting exactly this trap.
 
 # Seeing the structure, not only reading it
 
