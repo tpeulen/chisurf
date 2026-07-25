@@ -72,31 +72,48 @@ class ExportMixin(BaseCmd):
         if viewer is None:
             return
 
-        atoms = getattr(viewer, "_atoms", None)
-        coords = getattr(viewer, "_all_atom_coords", None)
-        if atoms is None or coords is None:
-            self._emit_error(
-                "save: the active object has no atoms to write "
-                "(load a structure first)"
-            )
-            return
-
+        # Which object to write: the one the selection resolved against, not
+        # whichever happens to be active. `save out.pdb, sugars` must write
+        # `sugars`; reading the active object's arrays while masking with another
+        # object's selection is a length mismatch when the two differ in size and,
+        # worse, silently writes the wrong atoms when they do not.
         mask = None
+        state = None
         selection = str(sel).strip()
         if selection:
             try:
-                _, _, mask = self._resolve_selection_to_atom_mask(viewer, selection)
+                object_id, _, mask = self._resolve_selection_to_atom_mask(
+                    viewer, selection
+                )
             except Exception as exc:
                 self._emit_error(f"save: {exc}")
                 return
             if mask is None or not np.asarray(mask, dtype=bool).any():
                 self._emit_error(f"save: selection '{selection}' matched no atoms")
                 return
+            entry = getattr(viewer, "_objects", {}).get(object_id)
+            state = getattr(entry, "state", None)
+
+        if state is not None:
+            atoms = getattr(state, "atoms", None)
+            coords = getattr(state, "all_atom_coords", None)
+            centre = getattr(state, "raw_center", None)
+        else:
+            atoms = getattr(viewer, "_atoms", None)
+            coords = getattr(viewer, "_all_atom_coords", None)
+            centre = getattr(viewer, "_raw_center", None)
+
+        if atoms is None or coords is None:
+            self._emit_error(
+                "save: that object has no atoms to write "
+                "(load a structure first)"
+            )
+            return
 
         xyz = unscale_coordinates(
             coords,
             float(getattr(viewer, "_scale_factor", 1.0) or 1.0),
-            getattr(viewer, "_raw_center", None),
+            centre,
         )
 
         try:

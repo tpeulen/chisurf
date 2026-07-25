@@ -164,6 +164,37 @@ def _imp_keep_residue(res_name: str) -> bool:
     return name in _STANDARD_RESIDUES
 
 
+def _imp_atom_name(atom) -> str:
+    """Return the PDB atom name of an ``IMP.atom.Atom``.
+
+    IMP prints the type of any atom it does not recognise as a standard
+    amino-acid or nucleotide position with a ``HET:`` prefix, so ``N`` of a ligand
+    residue stringifies as ``"HET: N  "``. Stored verbatim in the five-character
+    ``atom_name`` field that truncates to ``"HET: "``, which loses the name
+    entirely: every ligand atom then shares one name, and selections like
+    ``name C1`` or PyMOL's backbone/sidechain classification cannot see ligands
+    at all.
+
+    Parameters
+    ----------
+    atom : IMP.atom.Atom
+        The atom whose name is wanted.
+
+    Returns
+    -------
+    str
+        The atom name without IMP's prefix or its quoting, e.g. ``"N"``.
+    """
+    name = str(atom.get_atom_type()).strip()
+    # IMP wraps the type in quotes; strip them before anything else so the
+    # prefix test below sees the bare string.
+    if len(name) >= 2 and name[0] == name[-1] == '"':
+        name = name[1:-1]
+    if name.upper().startswith("HET:"):
+        name = name[4:]
+    return name.strip()
+
+
 def find_atom_index(
         atoms: np.array,
         chain_identifier: str,
@@ -444,7 +475,7 @@ def convert_atoms(
         atoms[j]['res_id'] = r.get_index()
         atoms[j]['res_name'] = r.get_name()
         atoms[j]['atom_id'] = a.get_input_index()
-        atoms[j]['atom_name'] = str(a.get_atom_type())[1:-1]
+        atoms[j]['atom_name'] = _imp_atom_name(a)
         atoms[j]['element'] = t.get_name(a.get_element())
         atoms[j]['xyz'] = IMP.core.XYZR(atom).get_coordinates()
         atoms[j]['radius'] = IMP.core.XYZR(atom).get_radius() * radius_scaleling

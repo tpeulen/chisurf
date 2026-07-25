@@ -1,7 +1,14 @@
 import unittest
 from unittest.mock import MagicMock
 import numpy as np
-from chisurf.plugins.chimol.chimol.cmd.sele_parser import Evaluator, Token, tokenize
+from chisurf.plugins.chimol.chimol.cmd.sele_parser import (
+    AllNode,
+    Evaluator,
+    NoneNode,
+    Parser,
+    Token,
+    tokenize,
+)
 
 class TestSelectionGrammar(unittest.TestCase):
     def setUp(self):
@@ -89,8 +96,15 @@ class TestSelectionGrammar(unittest.TestCase):
     def test_keywords_case_insensitive(self):
         # Regression guard: the combined TOKEN_REGEX must compile on Python
         # 3.11+ (no inline (?i) flags) and keep keywords case-insensitive.
+        #
+        # `all` and `none` lex as IDENT and resolve through the keyword table
+        # rather than owning token types: a keyword that needs its own token type
+        # is a keyword the tokenizer can forget, which is how `resn` came to be
+        # unparseable while the evaluator implemented it.
         types = [t.type for t in tokenize("ALL AND NOT NONE")]
-        self.assertEqual(types, ["ALL", "AND", "NOT", "NONE"])
+        self.assertEqual(types, ["IDENT", "AND", "NOT", "IDENT"])
+        self.assertIsInstance(Parser(tokenize("ALL")).parse(), AllNode)
+        self.assertIsInstance(Parser(tokenize("NoNe")).parse(), NoneNode)
         mask = self.evaluator.evaluate("CHAIN A AND NAME CA")
         self.assertEqual(np.where(mask)[0].tolist(), [1, 3])
 

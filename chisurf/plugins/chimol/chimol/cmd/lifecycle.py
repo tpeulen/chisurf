@@ -4,10 +4,82 @@ import copy
 
 from .base import BaseCmd
 from .registry import command
+from .selection_types import Selection
 
 
 class LifecycleMixin(BaseCmd):
     """Object and session lifecycle commands."""
+
+
+    @command("create")
+    def create(self, name: str = "", sel: Selection = "") -> None:
+        """Make a new object from a selection (PyMOL ``create name, selection``).
+
+        The new object sits exactly where the selected atoms are, so it overlays
+        the structure it came from; ``extract`` is the same but also removes the
+        atoms from the source.
+        """
+        self._create_or_extract(name, sel, extract=False)
+
+    @command("extract")
+    def extract(self, name: str = "", sel: Selection = "") -> None:
+        """Move a selection into a new object (PyMOL ``extract``).
+
+        Unlike ``create`` this **removes** the atoms from the source, which is how
+        you pull a ligand or a chain out for separate treatment rather than
+        duplicating it.
+        """
+        self._create_or_extract(name, sel, extract=True)
+
+    def _create_or_extract(self, name: str, sel, *, extract: bool) -> None:
+        verb = "extract" if extract else "create"
+        target = str(name).strip()
+        selection = str(sel).strip()
+        if not target or not selection:
+            self._emit_error(f"Usage: {verb} <name>, <selection>")
+            return
+
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        try:
+            source_id, _, mask = self._resolve_selection_to_atom_mask(
+                viewer, selection
+            )
+        except Exception as exc:
+            self._emit_error(f"{verb}: {exc}")
+            return
+
+        import numpy as np
+
+        if mask is None or not np.asarray(mask, dtype=bool).any():
+            self._emit_error(f"{verb}: '{selection}' matched no atoms")
+            return
+
+        n = int(np.count_nonzero(np.asarray(mask, dtype=bool)))
+        try:
+            new_id = viewer.create_from_selection(
+                mask, name=target, source_id=source_id, extract=extract
+            )
+        except Exception as exc:
+            self._emit_error(f"{verb} failed: {exc}")
+            return
+
+        if new_id is None:
+            self._emit_error(f"{verb}: could not build '{target}'")
+            return
+
+        # The object list is the window's, not the viewer's, so it has to be told.
+        refresh = getattr(window, "_refresh_objects_from_viewer", None)
+        if callable(refresh):
+            try:
+                refresh()
+            except Exception:
+                pass
+
+        moved = "moved" if extract else "copied"
+        self._emit_message(f"{verb}: {moved} {n} atoms into '{target}'")
 
     @command("delete", aliases=("del",))
     def delete(self, *targets_in: str) -> None:

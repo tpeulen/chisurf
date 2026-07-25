@@ -2,6 +2,78 @@
 
 ## 2026-07-25
 
+* **`resn NAG` matched nothing, and the reason was structural.** The chimol
+  selection evaluator read `res_name` correctly and had done for a long time, but
+  the *parser* carried its own hand-maintained tuple of property names which did
+  not list `resn`. So the expression parsed as an implicit `AND` of two bare
+  identifiers, evaluated to nothing, and reported an empty selection — which looks
+  like a structure without NAG, not like a missing feature. The same stale list had
+  been copied to three call sites in `cmd/selection.py`, where it decided whether a
+  leading word was a keyword or an object name.
+
+  Fixed by giving the vocabulary one home: `cmd/sele_keywords.py`, transcribed from
+  `Keyword[]` in PyMOL's `layer3/Selector.cpp` — 85 canonical keywords, 169
+  spellings including the `c.`-style abbreviations and the deprecated `;` forms.
+  Parser and evaluator both read it; so do all three call sites. Arity and fixity
+  come from the `STYP_` suffix of each `SELE_` code, and reading the stack reducer
+  at the end of `SelectorSelect` corrected two more errors: `STYP_PRP1` reduces
+  `LIST PRP1 PVAL`, so `around`/`expand`/`extend`/`gap` are **postfix**, and
+  `STYP_OP22` reduces `LIST OP22 VALU VALU LIST`, so `within`/`near_to`/`beyond`
+  are **infix**. Both had been implemented as prefix, i.e. `name CA around 5` — the
+  form everyone writes — was a parse error.
+
+  The distance operators also compared Angstrom against the viewer's scene-unit
+  coordinates, so `within 5` meant `within 0.5`: the same unit-boundary defect
+  `translate` had, invisible on screen in both cases. Now converted at one seam and
+  pinned against a brute-force distance matrix.
+
+  New in this change: `bymol` as real bonded components (label propagation over
+  `bond_pairs`, so a covalently bound ligand is one molecule with its protein —
+  which 148L actually is, through a 1.51 Å Glu26:OE2–MurNAc:C1 bond), `bychain`,
+  `bysegment`, `bycalpha`, `bound_to`, `first`/`last`, `gap` measured surface to
+  surface, `extend` by bonds, `in`/`like`, `-` as subtract, `pepseq` as a motif
+  regex over the one-letter sequence, `rep`, `color`, `label`, `index`/`rank`,
+  numeric comparisons (`b < 30`, `x`/`y`/`z`), glob wildcards, and `ss` with both
+  the `H/S/L` and `H/E/C` alphabets. What chimol cannot answer now raises
+  `UnsupportedSelection` naming the reason — an unimplemented keyword must not look
+  like an empty selection, since that confusion is what hid `resn`.
+
+* **Atom classes are derived, not looked up.** `polymer`, `organic`, `solvent`,
+  `inorganic`, `backbone`, `sidechain`, `guide` and `metals` now come from
+  `analysis/atom_classes.py`, transcribed from `SelectorClassifyAtoms`: per residue,
+  from *which atoms are present*, so a modified residue or an unusual ligand lands
+  in the right class with no name table to maintain, and a residue named `ALA`
+  missing its backbone does not pretend to be polymer. `metals` is by proton count
+  per `AtomInfoType::isMetal`. One deviation is documented in the module: PyMOL also
+  requires a peptide or phosphodiester bond, which needs connectivity not carried
+  at that level, so an isolated free amino acid classifies as protein.
+
+* **Ligand atom names were being lost in the shared reader.** IMP prefixes the type
+  of any atom it cannot classify as a standard amino-acid or nucleotide position
+  with `HET:`, so a ligand's `N` stringifies as `"HET: N  "`. Stored verbatim in the
+  five-character `atom_name` field it truncated to `HET:` — giving *every* ligand
+  atom in every structure the same name. Fixed in
+  `chisurf/core/fio/structure/coordinates.py` (`_imp_atom_name`), which affects all
+  of chisurf rather than only the viewer. Two visible consequences: `name`-based
+  selections reach ligands at all, and 148L's peptidoglycan stem peptide (DAL, FGA)
+  now classifies as polymer and joins the backbone trace, since it is a genuine
+  peptide. The chimol hetero-atom tests were updated to assert that rather than the
+  old count.
+
+* **`create` / `extract` landed, and `save` was writing the wrong object.** A
+  selection can now be split into its own object. The child is drawn in its
+  parent's frame — otherwise a subset jumps to the scene origin — while its stored
+  coordinates stay true, so `save` writes where the atoms really are; the older
+  `split_chains` shifts stored coordinates instead, which looks identical on screen
+  and writes a wrong file. Creating an object no longer steals the active one,
+  which had silently re-scoped the following command. Separately, `save` read the
+  *active* object's arrays while masking with a selection that may have resolved
+  against another, so `save out.pdb, sugars` raised a length mismatch — and would
+  have written the wrong atoms silently had the two objects matched in size.
+
+  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md) — Tier 1 now has
+  `origin` and undo/redo left.
+
 * **Magic-angle fits were computing an anisotropy they then threw away.**
   `Anisotropy.get_decay` always built the rotation spectrum and passed it to
   `calculcate_spectrum`, whose documented behaviour is to return the lifetime

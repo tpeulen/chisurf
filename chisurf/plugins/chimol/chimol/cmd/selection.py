@@ -7,7 +7,29 @@ import numpy as np
 
 from .base import BaseCmd
 from .registry import command
+from .sele_keywords import split_keyword
 from .selection_types import Selection
+
+
+def _opens_with_keyword(token: str) -> bool:
+    """Report whether an expression opens with a keyword rather than an object name.
+
+    Asked of the keyword table rather than a local list, because a keyword missing
+    from such a list is silently read as an object name: that is how ``resn NAG``
+    came to look for an object called ``resn``. The same list had been copied to
+    three call sites, so it could drift three ways at once.
+
+    Parameters
+    ----------
+    token : str
+        The first token of the expression.
+
+    Returns
+    -------
+    bool
+        True when the token is a selection keyword or one of its abbreviations.
+    """
+    return split_keyword(token) is not None
 
 
 class SelectionMixin(BaseCmd):
@@ -421,8 +443,7 @@ class SelectionMixin(BaseCmd):
 
         obj_info = None
         first = tokens[0]
-        t0 = first.lower()
-        if t0 not in ("all", "none", "res", "resi", "residue", "name", "and", "or", "not", "within", "around", "expand", "byres", "bymol", "byobj"):
+        if not _opens_with_keyword(first):
             obj_info = self._find_object_by_name(viewer, first)
 
         if obj_info is None:
@@ -471,8 +492,7 @@ class SelectionMixin(BaseCmd):
 
         obj_info = None
         first = tokens[0]
-        t0 = first.lower()
-        if t0 not in ("all", "none", "res", "resi", "residue", "name", "and", "or", "not", "within", "around", "expand", "byres", "bymol", "byobj"):
+        if not _opens_with_keyword(first):
             obj_info = self._find_object_by_name(viewer, first)
 
         if obj_info is None:
@@ -548,8 +568,7 @@ class SelectionMixin(BaseCmd):
 
         obj_info = None
         first = tokens[0]
-        t0 = first.lower()
-        if t0 not in ("all", "none", "res", "resi", "residue", "name", "and", "or", "not", "within", "around", "expand", "byres", "bymol", "byobj"):
+        if not _opens_with_keyword(first):
             obj_info = self._find_object_by_name(viewer, first)
 
         if obj_info is None:

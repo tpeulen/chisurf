@@ -26,12 +26,26 @@ _PDB_148L = (
 _HETERO_RESNAMES = {"API", "BME", "DAL", "FGA", "MUB", "NAG"}
 _N_HETATM = 63
 
+# Not every hetero residue stays off the trace. 148L's ligand is a peptidoglycan
+# fragment whose stem peptide -- DAL (D-alanine) and FGA (gamma-glutamate) -- is a
+# genuine peptide: each carries N, CA, C and O and is bonded to its neighbours. So
+# the trace visits it, the cartoon draws it, and it is *not* part of the display
+# mask, which is defined as "not drawn by the cartoon".
+#
+# That only became true once the reader stopped losing ligand atom names: IMP
+# prefixes the type of any atom it cannot classify with `HET:`, which truncated to
+# `HET:` in the five-character field, so every ligand atom shared one name and no
+# ligand residue could ever show a backbone. See `_imp_atom_name`.
+_TRACED_HETERO_RESNAMES = {"DAL", "FGA"}
+_N_TRACED_HETERO_ATOMS = 15
+
 # Chain E ends on a dangling backbone nitrogen: `ATOM 1317  N  ASN E 163` is the
 # only record for that residue. With no CA it cannot enter the trace, so the
-# cartoon never draws it -- and the display mask, which is defined by exactly
-# that ("not drawn by the cartoon"), picks it up alongside the ligands.
+# cartoon never draws it -- and the display mask picks it up alongside the ligands.
 _N_UNTRACED_POLYMER_ATOMS = 1
-_N_DISPLAYED = _N_HETATM + _N_UNTRACED_POLYMER_ATOMS
+_N_DISPLAYED = (
+    _N_HETATM + _N_UNTRACED_POLYMER_ATOMS - _N_TRACED_HETERO_ATOMS
+)
 
 
 @pytest.fixture(scope="module")
@@ -117,7 +131,19 @@ def test_hetero_atoms_are_marked_for_display(loaded_view):
 def test_the_marked_atoms_are_the_hetero_residues(loaded_view):
     names = np.asarray(loaded_view._atoms["res_name"]).astype(str)
     marked = {n.strip() for n in names[loaded_view._ball_mask]}
-    assert _HETERO_RESNAMES <= marked
+    assert (_HETERO_RESNAMES - _TRACED_HETERO_RESNAMES) <= marked
+
+
+def test_a_hetero_residue_with_a_backbone_joins_the_trace(loaded_view):
+    """The ligand's stem peptide is a peptide, and is drawn as one.
+
+    DAL and FGA carry N/CA/C/O and are bonded into a chain, so excluding them
+    would draw a covalently continuous peptide as disconnected spheres. This is
+    only reachable because the reader now keeps ligand atom names.
+    """
+    names = np.asarray(loaded_view._atoms["res_name"]).astype(str)
+    marked = {n.strip() for n in names[loaded_view._ball_mask]}
+    assert not (_TRACED_HETERO_RESNAMES & marked)
 
 
 def test_an_untraced_polymer_residue_is_displayed_too(loaded_view):

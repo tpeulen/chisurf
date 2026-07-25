@@ -1049,6 +1049,146 @@ class MolView(QtWidgets.QWidget):
             except Exception:
                 return []
 
+
+    def create_from_selection(
+        self,
+        mask: np.ndarray,
+        *,
+        name: str,
+        source_id: str | None = None,
+        extract: bool = False,
+    ) -> str | None:
+        """Make a new object from a selection (PyMOL ``create`` / ``extract``).
+
+        ``extract`` additionally removes the atoms from the source, which is the
+        only difference between the two commands in PyMOL.
+
+        The new object is placed **in the same frame as its parent**. Every object
+        is otherwise centred on its own centroid for rendering, so a subset would
+        be drawn at the scene origin and appear to jump away from the structure it
+        came from. The fix is applied to the *render-space* arrays only: the stored
+        ``atoms["xyz"]`` keeps its true coordinates, so ``save`` on the new object
+        writes where the atoms really are rather than where they are drawn. An
+        earlier approach (still visible in ``split_chains``) shifted the stored
+        coordinates instead, which looks identical on screen and writes a wrong
+        file.
+
+        Parameters
+        ----------
+        mask : numpy.ndarray
+            Boolean per-atom selection into the source object.
+        name : str
+            Name for the new object.
+        source_id : str, optional
+            Object to take atoms from; defaults to the active one.
+        extract : bool, optional
+            Remove the atoms from the source as well.
+
+        Returns
+        -------
+        str or None
+            The new object's id, or ``None`` when the selection was empty or the
+            source has no atoms.
+        """
+        source = source_id or self._active_object_id
+        entry = self._objects.get(source) if source else None
+        if entry is None:
+            return None
+
+        atoms = getattr(entry.state, "atoms", None)
+        if atoms is None or getattr(atoms.dtype, "fields", None) is None:
+            return None
+
+        keep = np.asarray(mask, dtype=bool)
+        if keep.shape[0] != len(atoms) or not keep.any():
+            return None
+
+        parent_centre = np.asarray(entry.state.raw_center, dtype=float) \
+            if entry.state.raw_center is not None else None
+
+        class _Subset:
+            """The minimal shape :meth:`add_structure` needs."""
+
+        subset = _Subset()
+        subset.atoms = atoms[keep].copy()
+        subset.xyz = np.asarray(subset.atoms["xyz"], dtype=float)
+        subset.n_atoms = int(len(subset.atoms))
+
+        new_id = self.add_structure(
+            subset, name=name, source_path=entry.source_path
+        )
+        if new_id is None:
+            return None
+
+        if parent_centre is not None:
+            self._reframe_to(new_id, parent_centre)
+
+        if extract:
+            self._remove_atoms(source, keep)
+
+        # Adding an object makes it active, which would silently re-scope the next
+        # command: `create sugars, resn NAG` followed by `extract stem, resn DAL`
+        # would look for DAL inside `sugars` and report that nothing matched. The
+        # source stays active, as it does in PyMOL, where creating an object does
+        # not change what an unqualified selection means.
+        if self._objects.get(source) is not None:
+            self._active_object_id = source
+
+        self._update_view()
+        return new_id
+
+    def _reframe_to(self, object_id: str, centre: np.ndarray) -> None:
+        """Redraw an object about ``centre`` instead of its own centroid.
+
+        Only the render-space arrays move; the stored coordinates are the truth
+        and must not be touched (see :meth:`create_from_selection`).
+        """
+        with self._activate_object(object_id):
+            own = self._raw_center
+            if own is None:
+                return
+            shift = (np.asarray(own, dtype=float) - np.asarray(centre, dtype=float))
+            shift = shift * float(self._scale_factor)
+            for attr in ("_coords", "_all_atom_coords"):
+                arr = getattr(self, attr, None)
+                if arr is not None:
+                    setattr(self, attr, np.asarray(arr, dtype=float) + shift)
+            self._raw_center = np.asarray(centre, dtype=float)
+
+    def _remove_atoms(self, object_id: str, mask: np.ndarray) -> None:
+        """Drop the masked atoms from an object (the ``extract`` half).
+
+        Rebuilt through :meth:`add_structure`'s own path rather than by editing
+        the arrays in place, because a dozen derived arrays -- the trace, the
+        secondary structure, the bond list, every per-atom mask -- would otherwise
+        be left describing atoms that are no longer there.
+        """
+        entry = self._objects.get(object_id)
+        if entry is None:
+            return
+        atoms = getattr(entry.state, "atoms", None)
+        if atoms is None:
+            return
+
+        keep = ~np.asarray(mask, dtype=bool)
+        centre = entry.state.raw_center
+        if not keep.any():
+            self.remove_object(object_id)
+            return
+
+        class _Remaining:
+            """The minimal shape :meth:`set_structure` needs."""
+
+        remaining = _Remaining()
+        remaining.atoms = atoms[keep].copy()
+        remaining.xyz = np.asarray(remaining.atoms["xyz"], dtype=float)
+        remaining.n_atoms = int(len(remaining.atoms))
+
+        with self._activate_object(object_id):
+            self.set_structure(remaining)
+        if centre is not None:
+            self._reframe_to(object_id, np.asarray(centre, dtype=float))
+
     def split_chains(self, *, prefix: str | None = None, object_ids: list[str] | None = None) -> int:
         """Create a new object for each chain in the specified objects.
 
