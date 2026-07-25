@@ -234,6 +234,29 @@ in the anisotropy area; neither is reachable from a production call path today.
 - mmfdb-admin: cancelling the password prompt still opens the UI.
 
 **Tests**
+
+Found while verifying an unrelated change (2026-07-25); each is reproducible on
+its own and none is caused by the change that found them. `pytest test/core`
+cannot complete at all until the first item is dealt with.
+
+- `test/core/test_mmfdb_schema_migration.py` **does not finish**: the first of its
+  9 tests was still running after four minutes. This is what makes a full
+  `pytest test/core` run appear to hang. Needs a look at the migration waterfall
+  in the MMFDB repository (fix belongs there, not chisurf-side).
+- `test/core/test_rename.py` fails at **collection** on a hard-coded Windows path
+  (`e:\dev\chisurf\test\data\clsm\Leica_SP8.ptu`), so it takes the whole
+  directory down with it when collected.
+- Four test/core files fail on API drift — the test describes an interface the
+  code no longer has, so each needs a decision (was the test left behind, or did
+  the code regress?): `test_curve.py` (`Curve.to_dict()` has no
+  `skip_qt_widgets`; `chisurf.core.data` no longer exposes `Curve`),
+  `test_base.py` (two objects share a UUID where the test expects distinct ones),
+  `test_chinet_session.py` (`TypeError: 'NoneType' object is not callable`),
+  `test_grouping.py` (`AttributeError: can't set attribute` — a property lost its
+  setter).
+- `test/models/test_fret_line.py` fails on `KeyError: 'R0'` — the model's
+  `parameter_dict` no longer carries that key on the `StaticFRETLine` path — plus
+  two lifetime mismatches.
 - `test/models/test_user_models.py` tests an API that no longer exists:
   `chisurf.core.models._user_model_registry`, `_user_models_loaded`,
   `register_user_model` and `iter_user_models_for_experiment`. The module now

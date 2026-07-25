@@ -2,6 +2,20 @@
 
 ## 2026-07-25
 
+* **The test suite has a hang and five API-drift failures, now written down.**
+  Verifying an unrelated change meant running `pytest test/core`, which never
+  finishes: `test_mmfdb_schema_migration.py` was still on its first of 9 tests
+  after four minutes, and `test_rename.py` fails at *collection* on a hard-coded
+  Windows path, taking the directory with it. Underneath those, four test/core
+  files and two test/models files fail because they describe an interface the
+  code no longer has (`Curve.to_dict(skip_qt_widgets=…)`, a UUID expected to be
+  unique, a lost property setter, the removed user-model registry, a missing
+  `R0` key). None is caused by the change that found them — verified for the
+  NumPy shim by running the affected path with and without the alias, which
+  gives byte-identical results. Each is recorded in
+  [known issues](/references/known-issues.md) with its symptom rather than
+  guessed at, because "test left behind" and "code regressed" need different
+  fixes and the answer belongs to whoever owns each subsystem.
 
 * **chiplot Batch 26 — ProteinMC trace + FPS network off pyqtgraph (allow-list
   25 → 24).** Migrated `gui/plots/proteinMC.py` (2 widgets): the 2×2
