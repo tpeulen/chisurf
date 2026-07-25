@@ -62,7 +62,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-05](#inc-05) | S3 | INC | MMFDB | Repository composition and API boundaries | 🚧 IN PROGRESS (one DAO/repository authority; request context + shallow root landed) |
 | [INC-06](#inc-06) | S2 | INC | Plugins | Two plugin identity conventions coexist; `ndxplorer` has no manifest | ~~REPORTED~~ ✅ FIXED |
 | [INC-07](#inc-07) | S3 | INC | Plugins | `categories` drifts from directory group & `display_name`; demo games mixed in | REPORTED |
-| [INC-08](#inc-08) | S3 | INC | Server | Generic `JobManager` bypassed by the only real long-running jobs | REPORTED |
+| [INC-08](#inc-08) | S3 | INC | Server | Generic `JobManager` bypassed by the only real long-running jobs | ~~REPORTED~~ ✅ FIXED |
 | [INC-09](#inc-09) | S3 | INC | MMFDB | MMFDB is packaged standalone but a chisurf-free client is missing; the only RPC client + example facade live in chisurf | VERIFIED |
 | [INC-10](#inc-10) | S3 | INC | GUI | Ad-hoc tables everywhere: a third-party `DataFrameEditor` patched at runtime by three proxies/delegates, ~40 hand-rolled `QTableWidget`s, a duplicated checkbox delegate, and no shared sorting/filtering/column-hiding/colouring/export | ~~VERIFIED~~ ✅ FIXED (PRD-66) |
 | [INC-11](#inc-11) | S3 | INC | Plugins | Help browser's "Core" category rglobs the whole repo: 576 entries, 331 from `junk/`, 151 from `okf/`, 41 from `.opencode/` | ~~VERIFIED~~ ✅ FIXED |
@@ -70,8 +70,8 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
 
-36 findings (23 FIXED): 4 VERIFIED, 5 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL, 1 OPEN.
-Of the 13 open: 1×S1 (BUG-10), 4×S2, 8×S3.
+36 findings (24 FIXED): 4 VERIFIED, 4 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL, 1 OPEN.
+Of the 12 open: 1×S1 (BUG-10), 4×S2, 7×S3.
 
 ---
 
@@ -363,6 +363,7 @@ The single largest source of non-uniformity across the codebase (see [core steer
 
 ### INC-08
 **S3 · The generic job manager is bypassed.** [rpc steering](rpc.md#steering-notes). `jobs.JobManager` exists, but the only real long-running work (fit sampling / scan) uses unlocked module-level dicts instead. → Route long-running jobs through `JobManager` so cancellation/status are uniform.
+- ✅ **FIXED** (2026-07-26): `fit.sample.*` and `fit.parameter_scan.*` share one `JobManager` in `chisurf/server/services/fits.py`; the two `_SAMPLING_JOBS` / `_PARAMETER_SCAN_JOBS` dicts are gone, so status, progress, cooperative cancellation and history trimming are implemented once and taken under the manager lock instead of by worker threads. The unbounded growth went with them (`cleanup()` on each start). Job ids are namespaced by action, so a scan id can no longer be polled through the sampling endpoints. `JobManager` gained `set_progress`, `start_threaded` (a worker that reports progress needs its own id before it starts) and a `CANCELLING` state — cancelling a *running* job only requests it, and the worker's own checkpoint makes it `CANCELLED`, so a caller is no longer told a job is finished while it is still writing to the model it borrowed. Guardrail tests: `test/server/test_fit_jobs_use_job_manager.py` (5), `test/server/test_jobs.py` (+3).
 
 ### INC-09
 **S3 · MMFDB is packaged standalone but not yet cleanly separable; a chisurf-free client is missing.** [mmfdb steering](mmfdb.md#steering-notes). MMFDB already lives in its own module with its own `pyproject.toml` (`modules/mmfdb/`), and it *is* usable without chisurf — verified in `modules/mmfdb/examples/mmfdb_08_standalone_no_lockin.ipynb`, which drives `mmfdb` + tttrlib + FRETBursts with `chisurf` never imported. But that standalone path has to talk to the **embedded** repository (`mmfdb.repository.MFDatabase`) directly, because the only network/RPC client (`MMFDBClient`) and the ergonomic example facade (`BurstWorkflow`) both live *inside* chisurf (`chisurf/plugins/core/mmfdb_admin/gui/client.py`, `chisurf/plugins/burst/burst_analysis/api/workflow.py`). The `mmfdb.api` functions also require auth even in-process (see INC-04), so a standalone consumer cannot use the public API without bootstrapping a user. Target: mmfdb ships as its own repository that chisurf depends on (one-way); a Qt-free, chisurf-free `mmfdb` client (HTTP + optional in-process default principal) moves into the mmfdb package so external tools get the same ergonomics the chisurf facade has today.

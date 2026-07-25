@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import threading
-
 import numpy as np
 
 from typing import Any, Dict, List, Optional
 
+from chisurf.server.jobs import JobManager
 from chisurf.server.services import (
     ServiceResult,
     service_error,
@@ -1073,9 +1072,43 @@ def fit_mask_set(
 # ── Sampling (job-based) ─────────────────────────────────────────────
 
 
-_SAMPLING_JOBS: Dict[str, Dict[str, Any]] = {}
-"""In-memory dict of ``{job_id: job_info}`` for sampling jobs.
-In production this should be a proper job manager with persistence."""
+SAMPLE_ACTION = "fit.sample"
+"""Job action of a posterior-sampling run."""
+
+PARAMETER_SCAN_ACTION = "fit.parameter_scan"
+"""Job action of a one-parameter chi-square scan."""
+
+_JOBS = JobManager()
+"""The one registry for the server's long-running fit work.
+
+Sampling and parameter scans each used to keep their own bare ``dict`` of job
+state, mutated from worker threads without a lock and never pruned. Both now go
+through :class:`~chisurf.server.jobs.JobManager`, so status transitions,
+cooperative cancellation and history trimming are implemented once (INC-08).
+"""
+
+
+def _job_or_error(job_id: str, action: str):
+    """Return the job with *job_id* if it belongs to *action*, else an error.
+
+    Parameters
+    ----------
+    job_id : str
+        Job identifier as handed out by the matching ``*_start`` call.
+    action : str
+        Action the job must carry, so a sampling id cannot be polled through
+        the parameter-scan endpoints and vice versa.
+
+    Returns
+    -------
+    tuple
+        ``(job, None)`` when found, otherwise ``(None, service_error(...))``.
+
+    """
+    job = _JOBS.get_job(job_id)
+    if job is None or job.action != action:
+        return None, service_error(f"job {job_id} not found", error_code=NOT_FOUND)
+    return job, None
 
 
 def fit_sample_start(
@@ -1102,17 +1135,14 @@ def fit_sample_start(
     ``fit.sample.status`` reports the resulting convergence verdict, so a caller
     can tell a finished job from a trustworthy one.
     """
-    import uuid
     fit, idx = _resolve_fit(state, fit_index, fit_uid)
     if fit is None:
         return service_error("fit not found", error_code=NOT_FOUND)
-    job_id = str(uuid.uuid4())
-    _SAMPLING_JOBS[job_id] = {
-        "status": "starting",
+    job = _JOBS.create_job(SAMPLE_ACTION, {
         "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
         "fit_index": idx,
-        "progress": 0,
-    }
+    })
+    job_id = job.job_id
 
     import copy as _copy
     kw = _copy.copy(dict(
@@ -1122,50 +1152,42 @@ def fit_sample_start(
     ))
     target_dir_val = target_directory or ""
 
-    def _run() -> None:
-        _SAMPLING_JOBS[job_id]["status"] = "running"
-        try:
-            def _progress_callback(done: int, total: int) -> None:
-                _SAMPLING_JOBS[job_id]["progress"] = (
-                    int(100.0 * done / total) if total > 0 else 0
-                )
+    def _run() -> Dict[str, Any]:
+        def _progress_callback(done: int, total: int) -> None:
+            _JOBS.set_progress(job_id, int(100.0 * done / total) if total > 0 else 0)
 
-            def _check_cancel() -> bool:
-                return bool(_SAMPLING_JOBS[job_id].get("cancel", False))
+        def _check_cancel() -> bool:
+            return _JOBS.should_cancel(job_id)
 
-            import chisurf.core.settings
-            settings_kw = chisurf.core.settings.cs_settings.get(
-                'optimization', {}
-            ).get('sampling', {}).copy()
-            settings_kw.update(kw)
+        import chisurf.core.settings
+        settings_kw = chisurf.core.settings.cs_settings.get(
+            'optimization', {}
+        ).get('sampling', {}).copy()
+        settings_kw.update(kw)
 
-            from chisurf.core.fitting.fit import sample_fit
-            report = sample_fit(
-                fit,
-                target_directory=target_dir_val,
-                progress_callback=_progress_callback,
-                check_cancel=_check_cancel,
-                **settings_kw,
-            )
-            # A finished job is not the same as a trustworthy one. The
-            # convergence report is the only thing that distinguishes a chain
-            # worth quoting from one that never left its starting point, so it
-            # travels with the job rather than being discarded.
-            _SAMPLING_JOBS[job_id]["status"] = "completed"
-            _SAMPLING_JOBS[job_id]["progress"] = 100
-            if isinstance(report, dict):
-                _SAMPLING_JOBS[job_id]["diagnostics"] = report
-                _SAMPLING_JOBS[job_id]["warnings"] = list(report.get("warnings") or [])
-                _SAMPLING_JOBS[job_id]["converged"] = not report.get("warnings")
-            else:
-                _SAMPLING_JOBS[job_id]["warnings"] = []
-                _SAMPLING_JOBS[job_id]["converged"] = None
-        except Exception as e:
-            _SAMPLING_JOBS[job_id]["status"] = "failed"
-            _SAMPLING_JOBS[job_id]["error"] = str(e)
+        from chisurf.core.fitting.fit import sample_fit
+        report = sample_fit(
+            fit,
+            target_directory=target_dir_val,
+            progress_callback=_progress_callback,
+            check_cancel=_check_cancel,
+            **settings_kw,
+        )
+        _JOBS.set_progress(job_id, 100)
+        # A finished job is not the same as a trustworthy one. The convergence
+        # report is the only thing that distinguishes a chain worth quoting from
+        # one that never left its starting point, so it travels with the job
+        # rather than being discarded.
+        if isinstance(report, dict):
+            return {
+                "diagnostics": report,
+                "warnings": list(report.get("warnings") or []),
+                "converged": not report.get("warnings"),
+            }
+        return {"diagnostics": None, "warnings": [], "converged": None}
 
-    t = threading.Thread(target=_run, daemon=True, name=f"sampling-{job_id[:8]}")
-    t.start()
+    _JOBS.start_threaded(job, _run)
+    _JOBS.cleanup()
     return {"ok": True, "job_id": job_id}
 
 
@@ -1363,14 +1385,13 @@ def fit_sample_cancel(
 ) -> ServiceResult:
     """Cancel a running sampling job.
 
-    Sets a flag that the worker thread observes via the ``check_cancel``
-    callback passed to ``sample_fit``.
+    Sets the job's cancellation event, which the worker thread observes via the
+    ``check_cancel`` callback passed to ``sample_fit``.
     """
-    job = _SAMPLING_JOBS.get(job_id)
-    if job is None:
-        return service_error(f"job {job_id} not found", error_code=NOT_FOUND)
-    job["cancel"] = True
-    job["status"] = "cancelling"
+    job, error = _job_or_error(job_id, SAMPLE_ACTION)
+    if error is not None:
+        return error
+    _JOBS.cancel_job(job_id)
     return {"ok": True}
 
 
@@ -1386,28 +1407,26 @@ def fit_sample_status(
     readable ``warnings``, and the full per-parameter ``diagnostics`` report
     that was also written to ``diagnostics.json``.
     """
-    job = _SAMPLING_JOBS.get(job_id)
-    if job is None:
-        return service_error(f"job {job_id} not found", error_code=NOT_FOUND)
+    job, error = _job_or_error(job_id, SAMPLE_ACTION)
+    if error is not None:
+        return error
+    report = job.result if isinstance(job.result, dict) else {}
     return {
         "ok": True,
         "job_id": job_id,
-        "status": job.get("status"),
-        "progress": job.get("progress", 0),
-        "error": job.get("error"),
+        "status": job.status.value,
+        "progress": job.progress,
+        "error": job.error,
         # ``converged`` is None until the job finishes, then False when the
         # chain failed its own R-hat / effective-sample-size checks. A caller
         # that only looks at ``status`` cannot tell those apart.
-        "converged": job.get("converged"),
-        "warnings": job.get("warnings", []),
-        "diagnostics": job.get("diagnostics"),
+        "converged": report.get("converged"),
+        "warnings": report.get("warnings", []),
+        "diagnostics": report.get("diagnostics"),
     }
 
 
 # ── Parameter scan (job-based) ───────────────────────────────────────
-
-
-_PARAMETER_SCAN_JOBS: Dict[str, Dict[str, Any]] = {}
 
 
 def fit_parameter_scan_start(
@@ -1424,7 +1443,6 @@ def fit_parameter_scan_start(
     immediately with a ``job_id``. Poll ``fit.parameter_scan.result``
     for completion, call ``fit.parameter_scan.cancel`` to cancel.
     """
-    import uuid
     fit, idx = _resolve_fit(state, fit_index, fit_uid)
     if fit is None:
         return service_error("fit not found", error_code=NOT_FOUND)
@@ -1435,64 +1453,58 @@ def fit_parameter_scan_start(
     param = params.get(parameter_name)
     if param is None:
         return service_error(f"parameter '{parameter_name}' not found", error_code=NOT_FOUND)
-    job_id = str(uuid.uuid4())
-    _PARAMETER_SCAN_JOBS[job_id] = {
-        "status": "starting",
+    job = _JOBS.create_job(PARAMETER_SCAN_ACTION, {
         "parameter_name": parameter_name,
         "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
-        "progress": 0,
-    }
+        "fit_index": idx,
+    })
+    job_id = job.job_id
 
-    def _run() -> None:
-        _PARAMETER_SCAN_JOBS[job_id]["status"] = "running"
-        try:
-            value = getattr(param, "value", 0) or 0
-            err = getattr(param, "error_estimate", None)
-            half_range = (err * range_factor) if err else abs(value * 0.5)
-            if half_range <= 0:
-                half_range = 1.0
-            lo = value - half_range
-            hi = value + half_range
-            import numpy as np
-            values = np.linspace(lo, hi, int(n_steps))
-            chi2s = []
-            chi2rs = []
-            n_total = len(values)
+    def _run() -> Optional[Dict[str, Any]]:
+        value = getattr(param, "value", 0) or 0
+        err = getattr(param, "error_estimate", None)
+        half_range = (err * range_factor) if err else abs(value * 0.5)
+        if half_range <= 0:
+            half_range = 1.0
+        lo = value - half_range
+        hi = value + half_range
+        import numpy as np
+        values = np.linspace(lo, hi, int(n_steps))
+        chi2s = []
+        chi2rs = []
+        n_total = len(values)
 
-            for i, v in enumerate(values):
-                if _PARAMETER_SCAN_JOBS[job_id].get("cancel", False):
-                    _PARAMETER_SCAN_JOBS[job_id]["status"] = "cancelled"
-                    param.value = value
-                    model.update_model()
-                    return
-                param.value = float(v)
+        for i, v in enumerate(values):
+            if _JOBS.should_cancel(job_id):
+                # The scan walks the live model, so a cancelled scan still owes
+                # the caller its starting point back.
+                param.value = value
                 model.update_model()
-                chi2 = getattr(fit, "chi2", None)
-                if chi2 is None:
-                    chi2 = float("nan")
-                chi2r = getattr(fit, "chi2r", None)
-                if chi2r is None:
-                    chi2r = float("nan")
-                chi2s.append(float(chi2))
-                chi2rs.append(float(chi2r))
-                _PARAMETER_SCAN_JOBS[job_id]["progress"] = int(100.0 * (i + 1) / n_total)
-
-            # Restore original value
-            param.value = value
+                return None
+            param.value = float(v)
             model.update_model()
-            _PARAMETER_SCAN_JOBS[job_id].update({
-                "status": "completed",
-                "progress": 100,
-                "values": [float(v) for v in values],
-                "chi2": chi2s,
-                "chi2r": chi2rs,
-            })
-        except Exception as e:
-            _PARAMETER_SCAN_JOBS[job_id]["status"] = "failed"
-            _PARAMETER_SCAN_JOBS[job_id]["error"] = str(e)
+            chi2 = getattr(fit, "chi2", None)
+            if chi2 is None:
+                chi2 = float("nan")
+            chi2r = getattr(fit, "chi2r", None)
+            if chi2r is None:
+                chi2r = float("nan")
+            chi2s.append(float(chi2))
+            chi2rs.append(float(chi2r))
+            _JOBS.set_progress(job_id, int(100.0 * (i + 1) / n_total))
 
-    t = threading.Thread(target=_run, daemon=True, name=f"scan-{job_id[:8]}")
-    t.start()
+        # Restore original value
+        param.value = value
+        model.update_model()
+        _JOBS.set_progress(job_id, 100)
+        return {
+            "values": [float(v) for v in values],
+            "chi2": chi2s,
+            "chi2r": chi2rs,
+        }
+
+    _JOBS.start_threaded(job, _run)
+    _JOBS.cleanup()
     return {"ok": True, "job_id": job_id}
 
 
@@ -1502,13 +1514,13 @@ def fit_parameter_scan_cancel(
 ) -> ServiceResult:
     """Cancel a running parameter scan.
 
-    Sets a flag that the worker thread observes between scan steps.
+    Sets the job's cancellation event, which the worker thread observes between
+    scan steps.
     """
-    job = _PARAMETER_SCAN_JOBS.get(job_id)
-    if job is None:
-        return service_error(f"job {job_id} not found", error_code=NOT_FOUND)
-    job["cancel"] = True
-    job["status"] = "cancelling"
+    job, error = _job_or_error(job_id, PARAMETER_SCAN_ACTION)
+    if error is not None:
+        return error
+    _JOBS.cancel_job(job_id)
     return {"ok": True}
 
 
@@ -1517,15 +1529,17 @@ def fit_parameter_scan_result(
     job_id: str,
 ) -> ServiceResult:
     """Get the result of a completed parameter scan."""
-    job = _PARAMETER_SCAN_JOBS.get(job_id)
-    if job is None:
-        return service_error(f"job {job_id} not found", error_code=NOT_FOUND)
+    job, error = _job_or_error(job_id, PARAMETER_SCAN_ACTION)
+    if error is not None:
+        return error
+    scan = job.result if isinstance(job.result, dict) else {}
     return {
         "ok": True,
         "job_id": job_id,
-        "status": job.get("status"),
-        "values": job.get("values", []),
-        "chi2": job.get("chi2", []),
-        "chi2r": job.get("chi2r", []),
-        "error": job.get("error"),
+        "status": job.status.value,
+        "progress": job.progress,
+        "values": scan.get("values", []),
+        "chi2": scan.get("chi2", []),
+        "chi2r": scan.get("chi2r", []),
+        "error": job.error,
     }

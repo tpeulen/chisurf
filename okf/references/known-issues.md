@@ -97,6 +97,26 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**Found 2026-07-26 while routing the fit jobs through the job manager
+([INC-08](/specs/assessment.md#inc-08)).** Two failures in the server suite,
+both confirmed identical on the unmodified tree, both about the RPC *transport*
+rather than the services under change — left open because fixing them means
+re-deciding the client's error contract, which is [SV-04](/specs/assessment.md#sv-04)
+territory and does not belong in an unrelated change.
+
+- **Eight `test/server/test_rpc_edge_cases.py` tests are stale against the
+  SV-04 error contract.** `ChisurfClient.call()` now raises `RemoteError` for
+  application-level errors (that *was* the SV-04 fix), but these tests still
+  expect an error **dict** back — e.g. `test_very_long_method_name` calls an
+  unknown method and asserts on the returned payload, and gets
+  `RemoteError: method '…' not found`. The tests need updating to
+  `pytest.raises(RemoteError)`, not the code.
+- **`test/server/test_client.py::test_client_meta_ping` hangs indefinitely.**
+  It blocks with the process idle (seconds of CPU over ten-plus minutes of
+  wall clock), so a plain `pytest test/server` never terminates. Whatever it
+  waits on needs a timeout; until then the file must be excluded to run the
+  suite.
+
 **Found 2026-07-25 while migrating the imaging tools onto the ROI subsystem.**
 Three red tests, each pointing at real behaviour rather than a stale test alone.
 Left open because each needs a decision from the owner of code being actively

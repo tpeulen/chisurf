@@ -46,7 +46,7 @@ def _wait(job_id, timeout=120.0):
     deadline = time.time() + timeout
     while time.time() < deadline:
         status = fit_service.fit_sample_status(None, job_id)
-        if status.get("status") not in ("starting", "running"):
+        if status.get("status") not in ("queued", "running", "cancelling"):
             return status
         time.sleep(0.1)
     raise AssertionError("sampling job did not finish in time")

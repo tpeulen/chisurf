@@ -2,6 +2,90 @@
 
 ## 2026-07-26
 
+* **The server's two long-running jobs stopped inventing their own job systems
+  ([INC-08](/specs/assessment.md#inc-08)).** `fit.sample.*` and
+  `fit.parameter_scan.*` each kept a bare module-level `dict` of job state,
+  mutated from a worker thread with no lock, never pruned, while
+  `chisurf/server/jobs.py`'s `JobManager` — written for exactly this — sat
+  unused. Both now go through one manager in
+  `chisurf/server/services/fits.py`, so status transitions, progress,
+  cooperative cancellation and history trimming exist once instead of twice and
+  a half, the two id spaces are namespaced by action (a scan id polled through
+  `fit.sample.status` is now an error rather than a confusing empty answer),
+  and the jobs no longer accumulate for the life of the process. Two things
+  came out of doing it properly. `JobManager` gained `start_threaded`, because
+  a worker that reports its own progress needs its job id *before* the thread
+  starts, which `run_threaded` cannot give it. And it gained a **`CANCELLING`**
+  state: cancelling a *running* job previously flipped it straight to
+  `cancelled` while the worker was still walking the live model and had not yet
+  restored the parameter it borrowed — a caller that believed the status acted
+  on a half-scanned model. Cancel now only *requests*; the worker's own
+  checkpoint makes it terminal. Wire vocabulary is the `JobStatus` values
+  (`queued`/`running`/`cancelling`/…), and the one polling consumer
+  (`fit_controller._watch_sampling_job`) follows. Tests:
+  `test/server/test_fit_jobs_use_job_manager.py` (5 — registration, completion,
+  cancel-restores-the-parameter, worker failure, id-space isolation) and three
+  more in `test/server/test_jobs.py`; 388 server tests + the sampling-job
+  convergence tests green. Two pre-existing server failures found alongside and
+  confirmed identical on the unmodified tree (stale `test_rpc_edge_cases`
+  expectations against the SV-04 error contract, and a hanging
+  `test_client_meta_ping`) are recorded in
+  [known issues](/references/known-issues.md) rather than fixed here — they are
+  about the transport contract, not this change.
+
+* **Running the assistant against a real model found three defects the whole
+  offline suite could not.** The burst-to-distance workflow was tested,
+  documented and green, and it still did not work end to end. (1) `run_python`
+  executed in the *process* directory rather than the agent's, so every
+  relative path in a snippet silently found nothing — the model wrote the
+  skill's recipe correctly, got "No objects to concatenate" from an empty glob,
+  and spent its budget re-listing files it had already seen. It now runs inside
+  `context.working_directory`. (2) The give-up message said "the last error was:
+  unknown", because it read `ToolInvocation.error`, which is only set when a
+  tool *raises*; `run_python` reports failure in its payload. It now reports
+  whichever is present, prefixed with the tool name. (3) A helper defined
+  between `@registry.add(name="run_python")` and `def run_python` was decorated
+  instead, so the catalogue advertised `run_python` and dispatched to a context
+  manager — 452 tests passed, and the first real model call got
+  `working_directory() got an unexpected keyword argument 'code'`. Guardrail
+  added (`test/agent/test_registry_wiring.py`): every registered handler must
+  accept the arguments its schema advertises, take `context` first, and not be
+  a context manager.
+* **A skill has to forbid the shortcut, not just describe the method.** With
+  the harness fixed, the model completed the analysis and reported *no FRET* —
+  E ≈ 0, distance infinite — with an excellent reduced chi-square of 0.93. It
+  had called `set_parameter` to **fix** the FRET population's lifetime at the
+  donor-only value before fitting it, so the answer was guaranteed by
+  construction; freed, that decay fits to 0.86 ns and gives E = 0.53. The skill
+  said "fit both decays the same way", and that was not enough.
+  `fret-from-bursts` now states outright that the FRET lifetime is the
+  measurement and must never be fixed, linked or seeded from the reference,
+  that the only quantities the two fits may share belong to the instrument
+  (IRF, fit range), and that τ_D(A) = τ_D(0) is far more likely to mean a
+  constrained fit than a sample without FRET. Re-run, the model reaches
+  τ_D(0) = 1.85 ns, τ_D(A) = 0.86 ns, **E = 0.54, R = 50.8 Å** — matching the
+  reference analysis, from a plain-language request, over 20 tool calls.
+
+* **Every FCS weight ChiSurf computes was built on the wrong baseline** (RF-045).
+  `core/fluorescence/fcs.noise` takes the correlation amplitude as a short-lag
+  window minus a long-lag baseline, but the baseline slice was
+  `correlation[-lb:-ub]` — with the only default anyone uses, `(0, 16)`, that is
+  `correlation[0:-16]`: *everything except* the last 16 points, i.e. the
+  amplitude region averaged into its own baseline. On a synthetic
+  `G = 1 + 0.5/(1 + t/1 ms)` the amplitude came out `0.190` instead of `0.499`.
+  That amplitude enters `suren` quadratically and `starchev` as `1/A` cubed, and
+  it moves the half-amplitude crossing used to estimate the diffusion time, so
+  the bias reached every weight on every imported curve — ALV, Kristine,
+  ConfoCor, PyCorrFit and China readers all route through this one function, and
+  no caller ever overrode the range. A non-zero lower bound was worse still:
+  `(2, 16)` made the expression an **empty** slice, so the offset was `NaN` and
+  the whole weight array with it. The baseline is now indexed from the front,
+  `correlation[n - ub:n - lb]`, which is the actual mirror of the head window.
+  Pinned by `test/fluorescence/test_fcs_noise_weights.py`, which recovers the
+  internal amplitude through the Starchev branch (setting `a2 = c1 = p = 0` and
+  `a1 = 1` makes the variance exactly `A**3 / i`) rather than asserting on
+  weights; four of its five tests fail on the old slice.
+
 * **The object menus were never tested, and five entries were broken** — including
   "remove waters", which is what prompted this. The A/S/H/L/C menus are how most
   people drive the viewer, and nothing exercised them: the *command* layer was

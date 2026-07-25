@@ -558,7 +558,7 @@ class FittingControllerWidget(Controller):
                 cs.logging.warning("Sampling: lost contact with the job; stopping polling.")
                 return
             state = str(status.get("status", ""))
-            if state in ("starting", "running"):
+            if state in ("queued", "running", "cancelling"):
                 QtCore.QTimer.singleShot(interval_ms, _poll)
                 return
             if state == "failed":

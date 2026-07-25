@@ -10,9 +10,18 @@ from typing import Any, Callable, Dict, List, Optional
 class JobStatus(str, enum.Enum):
     QUEUED = "queued"
     RUNNING = "running"
+    # Cancellation is cooperative: a running worker only notices the request at
+    # its next checkpoint, and until then it may still be touching shared state.
+    # CANCELLING says "asked, not yet stopped"; CANCELLED is terminal.
+    CANCELLING = "cancelling"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+    @property
+    def is_terminal(self) -> bool:
+        """Return ``True`` once the job's worker can no longer be running."""
+        return self in (JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED)
 
 
 class Job:
@@ -42,6 +51,7 @@ class Job:
         self.status = JobStatus.QUEUED
         self.result: Any = None
         self.error: Optional[str] = None
+        self.progress: int = 0
         self.started_at: Optional[float] = None
         self.finished_at: Optional[float] = None
         self._cancel_event = threading.Event()
@@ -54,6 +64,7 @@ class Job:
             "status": self.status.value,
             "result": self.result,
             "error": self.error,
+            "progress": self.progress,
             "started_at": self.started_at,
             "finished_at": self.finished_at,
         }
@@ -171,7 +182,14 @@ class JobManager:
         return True
 
     def cancel_job(self, job_id: str) -> bool:
-        """Cancel a job (cooperative, sets a cancellation event).
+        """Request cancellation of a job (cooperative, sets a cancellation event).
+
+        A job that has not started yet is cancelled outright. A **running** one
+        only moves to :attr:`JobStatus.CANCELLING`, because its worker keeps
+        going until its next checkpoint -- reporting it as finished while it is
+        still writing to the objects it borrowed would be a lie a caller acts
+        on. :meth:`_execute_job` makes it CANCELLED when the worker actually
+        stops.
 
         Parameters
         ----------
@@ -183,9 +201,40 @@ class JobManager:
         if job is None:
             return False
         with self._lock:
-            job.status = JobStatus.CANCELLED
             job._cancel_event.set()
+            if job.status == JobStatus.RUNNING:
+                job.status = JobStatus.CANCELLING
+            elif not job.status.is_terminal:
+                job.status = JobStatus.CANCELLED
+                job.finished_at = time.time()
+        return True
+
+    def _finish_cancelled(self, job: Job) -> None:
+        """Mark a job whose worker has now stopped as terminally CANCELLED."""
+        with self._lock:
+            job.status = JobStatus.CANCELLED
             job.finished_at = time.time()
+
+    def set_progress(self, job_id: str, percent: int) -> bool:
+        """Record how far a running job has got, in whole percent.
+
+        Long-running work reports progress from its worker thread while a
+        caller polls the job, so the value is clamped to ``0..100`` and written
+        under the manager lock rather than left to the worker.
+
+        Parameters
+        ----------
+        job_id : str
+            Job identifier.
+        percent : int
+            Completion in percent; values outside ``0..100`` are clamped.
+
+        """
+        job = self.get_job(job_id)
+        if job is None:
+            return False
+        with self._lock:
+            job.progress = max(0, min(100, int(percent)))
         return True
 
     def should_cancel(self, job_id: str) -> bool:
@@ -220,9 +269,7 @@ class JobManager:
     def cleanup(self) -> int:
         """Remove oldest completed/failed/cancelled jobs beyond ``max_history``."""
         with self._lock:
-            terminal = [j for j in self._jobs.values() if j.status in (
-                JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED
-            )]
+            terminal = [j for j in self._jobs.values() if j.status.is_terminal]
             terminal.sort(key=lambda j: j.finished_at or 0.0)
             to_remove = terminal[:-self._max_history] if len(terminal) > self._max_history else []
             for j in to_remove:
@@ -239,11 +286,28 @@ class JobManager:
 
     def run_threaded(self, action: str, params: Optional[Dict[str, Any]], fn: Callable) -> Job:
         """Run *fn* in a daemon thread.  Returns the job immediately (RUNNING)."""
-        job = self.create_job(action, params)
+        return self.start_threaded(self.create_job(action, params), fn)
+
+    def start_threaded(self, job: Job, fn: Callable) -> Job:
+        """Run *fn* in a daemon thread for an **already created** job.
+
+        A worker that reports progress or polls for cancellation needs the job
+        id before it starts, which :meth:`run_threaded` cannot give it. Create
+        the job first, close over its id, then hand both here.
+
+        Parameters
+        ----------
+        job : Job
+            Job to execute; must have been created by this manager.
+        fn : callable
+            Nullary callable whose return value becomes the job result.
+
+        """
         t = threading.Thread(
             target=self._execute_job,
             args=(job, fn),
             daemon=True,
+            name=f"{job.action}-{job.job_id[:8]}",
         )
         t.start()
         return job
@@ -264,12 +328,15 @@ class JobManager:
         self.start_job(job.job_id)
         try:
             if self.should_cancel(job.job_id):
+                self._finish_cancelled(job)
                 return
             result = fn()
             if self.should_cancel(job.job_id):
-                self.cancel_job(job.job_id)
+                self._finish_cancelled(job)
             else:
                 self.complete_job(job.job_id, result)
         except Exception as e:
-            if job.status != JobStatus.CANCELLED:
+            if self.should_cancel(job.job_id):
+                self._finish_cancelled(job)
+            else:
                 self.fail_job(job.job_id, str(e))

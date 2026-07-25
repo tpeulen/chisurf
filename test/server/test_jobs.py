@@ -54,11 +54,13 @@ class TestJobManager:
         assert job.status == JobStatus.CANCELLED
 
     def test_cancel_job_running(self):
+        """Cancelling a running job only *requests* it; the worker ends it."""
         mgr = JobManager()
         job = mgr.create_job("fit.run", {})
         mgr.start_job(job.job_id)
         mgr.cancel_job(job.job_id)
-        assert job.status == JobStatus.CANCELLED
+        assert job.status == JobStatus.CANCELLING
+        assert mgr.should_cancel(job.job_id)
 
     def test_cancel_nonexistent(self):
         mgr = JobManager()
@@ -177,3 +179,70 @@ class TestJobManager:
 
         assert job.status == JobStatus.COMPLETED
         assert job.result == "done"
+
+    def test_cancelling_a_running_job_is_not_the_same_as_cancelled(self):
+        """A running worker keeps going until its checkpoint; say so."""
+        mgr = JobManager()
+        job = mgr.create_job("calculate", {})
+        release = threading.Event()
+        noticed = threading.Event()
+
+        def my_task():
+            noticed.set()
+            release.wait(5.0)
+            return "unused"
+
+        mgr.start_threaded(job, my_task)
+        assert noticed.wait(5.0)
+
+        assert mgr.cancel_job(job.job_id)
+        assert job.status == JobStatus.CANCELLING
+        assert not job.status.is_terminal
+        assert job.finished_at is None
+
+        release.set()
+        timeout = 5.0
+        while not job.status.is_terminal and timeout > 0:
+            time.sleep(0.01)
+            timeout -= 0.01
+
+        assert job.status == JobStatus.CANCELLED
+        assert job.finished_at is not None
+        # A cancelled worker's return value is not a result.
+        assert job.result is None
+
+    def test_set_progress_clamps_and_serializes(self):
+        """Progress is reported by the worker, so out-of-range values are clamped."""
+        mgr = JobManager()
+        job = mgr.create_job("calculate", {})
+
+        assert mgr.set_progress(job.job_id, 42)
+        assert job.progress == 42
+        assert job.to_dict()["progress"] == 42
+
+        mgr.set_progress(job.job_id, 250)
+        assert job.progress == 100
+        mgr.set_progress(job.job_id, -7)
+        assert job.progress == 0
+
+        assert not mgr.set_progress("no-such-job", 10)
+
+    def test_start_threaded_lets_the_worker_know_its_own_job_id(self):
+        """A worker that reports progress needs its job id before it starts."""
+        mgr = JobManager()
+        job = mgr.create_job("calculate", {})
+
+        def my_task():
+            mgr.set_progress(job.job_id, 50)
+            return mgr.should_cancel(job.job_id)
+
+        assert mgr.start_threaded(job, my_task) is job
+
+        timeout = 5.0
+        while job.status in (JobStatus.QUEUED, JobStatus.RUNNING) and timeout > 0:
+            time.sleep(0.01)
+            timeout -= 0.01
+
+        assert job.status == JobStatus.COMPLETED
+        assert job.result is False
+        assert job.progress == 50
