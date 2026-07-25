@@ -2,6 +2,15 @@
 
 ## 2026-07-25
 
+
+* **chiplot Batch 25 — parameter-scan χ²-surface off pyqtgraph (allow-list
+  26 → 25).** Finished `gui/plots/parameter_scan` (dockarea already moved).
+  `pg.PlotWidget`→`cp.Plot`; χ²-curve → `line`/`set_data`; confidence-interval
+  overlays (threshold `hline` + crossing `vline`s, dashed/dash-dot, labelled) via
+  module-level `cp.to_pen`; overlay add/remove via handles. `labelOpts` position
+  hints dropped (no chiplot equivalent; labels still render). Screenshot-verified.
+  See [PRD-64](prds/prd-64.md).
+
 * **Diffusion/temperature physics centralised out of the FCS plugin, and
   beam-waist calibration built on it (MIA `Calibration` port).** The
   temperature–viscosity–Stokes-Einstein relations lived in
