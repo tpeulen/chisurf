@@ -38,6 +38,7 @@ the `laplace` engine already answers, and a chain remains the way to find out.
 """
 from __future__ import annotations
 
+import collections
 import dataclasses
 import math
 
@@ -76,6 +77,27 @@ class CanonicalForm:
     h: np.ndarray
     g: float = 0.0
 
+    def __post_init__(self) -> None:
+        """Reject a scope that names the same variable twice.
+
+        Every operation here addresses the scope by name -- :meth:`marginal`,
+        :meth:`condition` and :meth:`__mul__` all build ``{name: index}`` -- so
+        a repeated name would silently resolve to its *last* occurrence and
+        return another variable's moments without ever raising. Uniqueness is
+        the contract that makes the name the identity of the variable.
+
+        Raises
+        ------
+        ValueError
+            If a name appears more than once.
+        """
+        if len(set(self.names)) != len(self.names):
+            counts = collections.Counter(self.names)
+            repeated = sorted(n for n, c in counts.items() if c > 1)
+            raise ValueError(
+                f"a canonical form needs a unique name per variable; repeated: {repeated}"
+            )
+
     # -- construction -----------------------------------------------------
 
     @classmethod
@@ -108,6 +130,8 @@ class CanonicalForm:
 
         Raises
         ------
+        ValueError
+            If ``names`` repeats a name.
         numpy.linalg.LinAlgError
             If ``covariance`` is not positive definite.
         """
@@ -185,6 +209,8 @@ class CanonicalForm:
         ------
         KeyError
             If a requested name is not in this form's scope.
+        ValueError
+            If ``keep`` repeats a name.
         """
         keep = tuple(str(n) for n in keep)
         index = {n: i for i, n in enumerate(self.names)}

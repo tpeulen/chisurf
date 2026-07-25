@@ -286,6 +286,10 @@ operations an engine performs are linear in it:
   its per-dataset ones and eliminating a variable touches only the factors it
   appears in.
 
+All three address the scope **by name**, so the name is the identity of the
+variable and a form refuses a scope that repeats one: a duplicate would resolve
+to its last occurrence and quietly report another variable's moments.
+
 `GaussianEngine` builds the form once and answers every marginal, joint and
 conditional from it. `LaplaceEngine.condition` costs a full re-fit *per query*;
 `GaussianEngine.conditional` costs a matrix update, so 25 conditional queries

@@ -2,6 +2,24 @@
 
 ## 2026-07-25
 
+* **A canonical form refuses a duplicated variable name (RF-003).**
+  `CanonicalForm` addresses its scope by name — `marginal`, `condition` and
+  `__mul__` all build `{name: index}` — but nothing enforced that the names were
+  unique, so a repeat resolved to its *last* occurrence and answered for the
+  wrong variable without raising. Measured against the old code: scope
+  `('tau', 'tau', 'x')` with variances `(0.01, 4.0, 1.0)` returned `mean 5.0,
+  var 4.0` from `marginal(['tau'])`, and `condition({'tau': 2.0})` dropped only
+  the second, leaving a form that still contained a variable called `'tau'`.
+  `__mul__` already assumed uniqueness, and the `GaussianEngine` path is safe
+  only by accident (a global fit prefixes names with the fit index) — so this was
+  a latent contract gap in a public, composable module rather than a live bug.
+  `__post_init__` now raises `ValueError` listing the repeats, which covers
+  `from_moments`, direct construction and `marginal(keep)` with a duplicated
+  entry alike. Pinned by `test_a_repeated_name_is_refused`
+  (`test/fitting/test_canonical_form.py`, 16 passed), with the posterior-engine,
+  factor-graph, collapsed-sampler and covariance suites green alongside.
+  Concept: [fitting](/subsystems/fitting.md).
+
 * **RICSPE ported: how precisely will this scan measure D, before you run it.**
   `chisurf/core/experiments/ics/precision.py`. Computes the **full covariance of
   the RICS correlation estimator** analytically (correlation values at different

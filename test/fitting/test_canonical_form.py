@@ -145,6 +145,30 @@ def test_an_unknown_name_is_refused():
         form.condition({'nope': 1.0})
 
 
+def test_a_repeated_name_is_refused():
+    """A duplicate scope entry would answer for the wrong variable.
+
+    The scope is addressed by name, so ``('tau', 'tau', 'x')`` used to resolve
+    ``'tau'`` to its *last* occurrence: the marginal reported the second
+    variable's moments and conditioning dropped only that one, leaving a form
+    that still contained a variable called ``'tau'``. Wrong answers, no
+    exception -- so uniqueness is enforced at construction.
+    """
+    with pytest.raises(ValueError, match="unique"):
+        CanonicalForm.from_moments(
+            ('tau', 'tau', 'x'),
+            np.array([1.0, 5.0, 0.0]),
+            np.diag([0.01, 4.0, 1.0]),
+        )
+    with pytest.raises(ValueError, match="unique"):
+        CanonicalForm(names=('a', 'a'), K=np.eye(2), h=np.zeros(2))
+    # Asking for the same variable twice builds such a scope, too.
+    names, mean, cov = _gaussian(seed=7, d=3)
+    form = CanonicalForm.from_moments(names, mean, cov)
+    with pytest.raises(ValueError, match="unique"):
+        form.marginal(('x0', 'x0'))
+
+
 # -- the engine -----------------------------------------------------------
 
 def test_the_gaussian_engine_agrees_with_the_laplace_one():
