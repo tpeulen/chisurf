@@ -2,6 +2,31 @@
 
 ## 2026-07-25
 
+* **Recorded this session's defects in the cleanup backlog
+  ([specs/assessment.md](/specs/assessment.md)).** Six new findings in the house
+  format, three fixed and three left open with evidence. **Fixed:** `BUG-06`
+  `vm_rt_to_vv_vh` striding an already-halved pair count so every rotation
+  component after the first was silently discarded (a 2-component spectrum returned
+  bit-identical output to a 1-component one; fitting path unaffected); `BUG-07` the
+  `csc` console script declared as `chisurf.cli:cli` when no such module exists, so
+  every invocation of the documented CLI died at import; `BUG-08` no image had ever
+  rendered in the Help browser for *any* document, because a base URL alone does not
+  make `QTextBrowser` resolve relative sources — plus the native-size and
+  float-to-bottom layout defects that only surfaced once images loaded. **Open:**
+  `BUG-09` two tests in `test/fluorescence/test_fluorescence.py` — `test_fcs` dead
+  since NumPy removed `np.float`, and `…calculcate_spectrum` asserting a stale
+  mixing expectation (`-0.3` where the current union/concatenate convention gives
+  `-0.15`), left open deliberately because resolving it is a semantics decision, not
+  a typo fix; `INC-11` the Help browser's "Core" category rglobs the whole repo and
+  presents **576** files as documentation, 331 of them from `junk/`, 151 from `okf/`
+  and 41 from `.opencode/` — surfacing the internal knowledge bundle in the user's
+  doc browser contradicts its deliberate exclusion from the published build;
+  `INC-12` `docs/development/chimol_pymol_render_plan.md:52` linking into `okf/`,
+  the only warning left in an otherwise clean Sphinx build. Corrected the summary
+  tally, which was already stale before this change (claimed 25 findings/13 fixed
+  against an actual 27/15); it now reads 33 findings, 18 fixed, and every table row
+  has a matching section (checked both directions).
+
 * **Colocalization landed as an imaging plugin ([PRD-67](/prds/prd-67.md)),
   `chisurf/plugins/microscopy/img_coloc/`.** The last standard multi-colour
   imaging question ChiSurf could not answer. The reference suite's plugin

@@ -43,6 +43,10 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [BUG-03](#bug-03) | S1 | BUG | Server | `model_component_remove` references undefined `component_type` → `NameError` | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-04](#bug-04) | S2 | BUG | Core | `@abc.abstractmethod` not enforced: `Base(object)` has no `ABCMeta` | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-05](#bug-05) | S1 | BUG | Plugins | F-test calculator's two directions are not inverses (asking for 95% returns a χ² whose confidence is 0.09%) | ✅ FIXED |
+| [BUG-06](#bug-06) | S1 | BUG | Core | `vm_rt_to_vv_vh` strides an already-halved count, so every rotation component after the first is silently discarded | ✅ FIXED |
+| [BUG-07](#bug-07) | S1 | BUG | Packaging | `csc` console script points at a non-existent `chisurf.cli` module — every invocation fails at import | ✅ FIXED |
+| [BUG-08](#bug-08) | S2 | BUG | Plugins | No image ever rendered in the Help browser: relative sources passed to Qt unresolved (`setSearchPaths` missing) | ✅ FIXED |
+| [BUG-09](#bug-09) | S2 | BUG | Tests | `test_fcs` dead since NumPy removed `np.float`; `…calculcate_spectrum` asserts a stale mixing expectation (`-0.3` vs `-0.15`) | VERIFIED |
 | [DATA-01](#data-01) | S1 | DATA | Plugins | **3** manifests fail validation and are silently dropped by `load_manifest()` | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-02](#data-02) | S2 | DATA | MMFDB | `SCHEMA_VERSION = 40` is a stamp with no migration waterfall | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-03](#data-03) | S2 | DATA | MMFDB | Core `mmfdb_*` DDL is hand-written and defined twice (must be hand-synced) | ~~REPORTED~~ ✅ FIXED |
@@ -59,9 +63,12 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-08](#inc-08) | S3 | INC | Server | Generic `JobManager` bypassed by the only real long-running jobs | REPORTED |
 | [INC-09](#inc-09) | S3 | INC | MMFDB | MMFDB is packaged standalone but a chisurf-free client is missing; the only RPC client + example facade live in chisurf | VERIFIED |
 | [INC-10](#inc-10) | S3 | INC | GUI | Ad-hoc tables everywhere: a third-party `DataFrameEditor` patched at runtime by three proxies/delegates, ~40 hand-rolled `QTableWidget`s, a duplicated checkbox delegate, and no shared sorting/filtering/column-hiding/colouring/export | ~~VERIFIED~~ ✅ FIXED (PRD-66) |
+| [INC-11](#inc-11) | S3 | INC | Plugins | Help browser's "Core" category rglobs the whole repo: 576 entries, 331 from `junk/`, 151 from `okf/`, 41 from `.opencode/` | VERIFIED |
+| [INC-12](#inc-12) | S3 | INC | Docs | A published page links into `okf/`, which is excluded from the docs build — the only warning in an otherwise clean build | VERIFIED |
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 
-25 findings (13 FIXED): 4 VERIFIED, 7 REPORTED, 1 PARTIAL. 0×S1, 4×S2, 7×S3.
+33 findings (18 FIXED): 6 VERIFIED, 6 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL.
+Of the 15 open: 0×S1, 6×S2, 9×S3.
 
 ---
 
@@ -187,6 +194,85 @@ The single largest source of non-uniformity across the codebase (see [core steer
   complex model improves (which is what caught the orientation error: a 10% χ² drop
   over ~900 points scored 0.077 before and 0.923 after).
 
+### BUG-06
+
+**S1 · `vm_rt_to_vv_vh` silently discarded every rotation component after the first.**
+
+- Location: `chisurf/core/fluorescence/anisotropy/decay.py` — `vm_rt_to_vv_vh`.
+- The rotation spectrum is interleaved `[β₁, ρ₁, β₂, ρ₂, …]`, so the pair count is
+  `len // 2`. The loop computed `n_anisotropies = len // 2` and then iterated
+  `range(0, n_anisotropies, 2)` — striding an already-halved count. For any spectrum
+  with two or more components only `(β₁, ρ₁)` was ever read, so `r(0)` fell short of
+  `r₀` and every further component vanished without warning.
+- Evidence (ran): a two-component spectrum returned **bit-identical** VV/VH to the
+  one-component case (`np.allclose` → `True`).
+- Blast radius is limited to this time-domain simulation helper. The fitting path
+  (`calculcate_spectrum` → `Anisotropy.get_decay`) composes spectra through
+  `elte2`/`e1tn` and always honoured every component.
+- Why it survived: its only covering test had been erroring out since NumPy removed
+  `np.float` (see [BUG-09](#bug-09)), and that test's hard-coded reference arrays had
+  been generated *from the buggy code* — even though its own spectrum
+  `[0.1, 0.6, 0.38-0.1, 10.0]` is written so the amplitudes sum to `r₀ = 0.38`.
+- ✅ **FIXED** (2026-07-25). Iterates all `n_anisotropies` pairs. The test now derives
+  its expectation **analytically** rather than re-recording output, and asserts
+  `r(0) = 0.38`, giving `vv[0] = 1 + 2r₀ = 1.76` and `vh[0] = 1 − r₀ = 0.62`; the
+  module doctest, dead for the same NumPy-2 reason, was revived and corrected.
+
+### BUG-07
+
+**S1 · The `csc` console script pointed at a module that does not exist.**
+
+- Location: `pyproject.toml` `[project.scripts]`.
+- Declared as `csc = "chisurf.cli:cli"`, but there is no `chisurf.cli` module — the
+  Click group lives in `chisurf.core.cli`. Every `csc …` invocation therefore failed
+  at import, so the documented CLI entry point was unusable for all users.
+- Evidence (ran): `import chisurf.cli` → `ModuleNotFoundError: No module named
+  'chisurf.cli'`; `python -m chisurf.core.cli help review-check` works.
+- ✅ **FIXED** (2026-07-25). Repointed to `chisurf.core.cli:cli`. Note that fixing the
+  entry point requires a reinstall to take effect, so tasks that must work in an
+  unreinstalled tree (e.g. `docs-check-reviewed`) invoke `python -m chisurf.core.cli`.
+
+### BUG-08
+
+**S2 · No image had ever rendered in the Help browser, for any document.**
+
+- Location: `chisurf/plugins/core/help/gui/tool.py` — document display.
+- Rendered HTML references images relatively (`_images/…` in the manual, `figures/…`
+  in the guides). The viewer passed a base URL to `setHtml`, but that alone does not
+  make `QTextBrowser` resolve relative resources; it needs `setSearchPaths`. Qt was
+  handed the raw relative path and failed every load.
+- Evidence (ran, instrumented `loadResource`): the browser requested
+  `_images/image_rId18.png` verbatim and the load returned null; after setting search
+  paths the same request resolves.
+- Two further layout defects surfaced only once images actually loaded, and are fixed
+  with it: Qt renders images at native pixel size and ignores CSS `max-width`, so a
+  910 px manual screenshot pushed the text off the page (images now carry an explicit
+  `width`/`height` computed from a header-only size read); and docutils emits a block
+  image as a bare `<img class="align-center">` between paragraphs, which without the
+  docutils stylesheet made Qt float the image to the bottom of the document (block
+  images are now wrapped in a centred paragraph and the unusable class dropped).
+- ✅ **FIXED** (2026-07-25). Covered by `test_oversized_images_are_scaled_and_centred`
+  and `test_inline_images_are_not_wrapped`.
+
+### BUG-09
+
+**S2 · Two tests in `test/fluorescence/test_fluorescence.py` are dead or assert stale values.**
+
+- Location: `test/fluorescence/test_fluorescence.py`.
+- `test_fcs` still constructs `np.ones_like(..., dtype=np.float)`. `np.float` was
+  removed in NumPy 2, so the test raises `AttributeError` at collection time and has
+  not exercised anything for some time. (`test_vm_vv_vh` had the same defect and was
+  repaired as part of [BUG-06](#bug-06); this one remains.)
+- `test_fluorescence_anisotropy_decay_calculcate_spectrum` fails on a *stale
+  expectation*, not a code fault: with `g = 1.5, l1 = 0.1` it asserts the VV spectrum
+  `[0.9, 4., 1.8, 0.8, 0.15, 4., -0.3, 0.8]`, but the current union/concatenate mixing
+  convention in `calculcate_spectrum` yields `-0.15` where the test wants `-0.3`. The
+  in-code comments record a deliberate rework of exactly this mixing, so the test was
+  most likely never updated with it.
+- Deliberately left open: the second one is a question about which mixing convention is
+  intended, and answering it changes fit semantics — an owner decision, not a typo fix.
+- Status: **VERIFIED** (both observed failing on 2026-07-25).
+
 ## Data / schema / manifest issues (DATA)
 
 ### DATA-01
@@ -282,6 +368,38 @@ crashed on nullable pandas dtypes and wrote filtered edits to the wrong row.
 the delegates are consolidated, both `DataFrameEditor` call sites are gone and
 `guidata` is dropped from every packaging file with a guardrail test. Migrating
 the remaining hand-rolled plugin tables stays open under that PRD.
+
+### INC-11
+
+**Help browser's "Core" category lists agent scratch and the internal knowledge bundle
+as user documentation.**
+
+- Location: `chisurf/plugins/core/help/api/io.py` — `discover_docs`, the "Core" branch.
+- It `rglob("*.md")`s the entire repository root, excluding only `docs/` and anything
+  with `plugins` in its path. Nothing else is filtered, so every stray Markdown file in
+  the tree is presented to the user as ChiSurf documentation.
+- Evidence (ran, 2026-07-25): **576** entries, of which `junk/` contributes 331,
+  `okf/` 151, `.opencode/` 41, `.claude/` 16, `AGENT/` 9. The `okf/` bundle is an
+  internal agent-facing knowledge layer and is deliberately excluded from the published
+  docs build, so surfacing it here contradicts that decision (compare [INC-12](#inc-12)).
+- Suggested direction: allow-list the roots worth showing (e.g. `README`, `CHANGELOG`,
+  top-level guides) rather than deny-listing two paths, and skip dot-directories.
+- Status: **VERIFIED**.
+
+### INC-12
+
+**A published doc links into `okf/`, which is excluded from the docs build — a permanent
+Sphinx warning.**
+
+- Location: `docs/development/chimol_pymol_render_plan.md:52`, which references
+  `okf/plugins/profiles/chimol`.
+- `okf/` is intentionally kept out of the user-facing Sphinx build, so the reference
+  cannot resolve: `WARNING: Unknown source document '…/okf/plugins/profiles/chimol'`.
+  It is currently the **only** warning in an otherwise clean build, which erodes the
+  value of "the docs build is warning-free" as a signal.
+- The user-facing docs are not supposed to link into the knowledge bundle at all; the
+  fix is to drop the link or inline the material it points at.
+- Status: **VERIFIED** (reproduced on every build).
 
 ### I18N-01
 **S3 · i18n coverage gaps after the first pass.** [PRD-63](../prds/prd-63.md)
