@@ -2,6 +2,17 @@
 
 ## 2026-07-25
 
+
+* **chiplot Batch 24 — IRF estimator off pyqtgraph (allow-list 27 → 26).**
+  Migrated the self-contained `plugins/fluorescence_decay/irf_estimator/gui/tool.py`
+  (1087L; log-y decay/IRF plot + mouse crosshairs + draggable fit-range region).
+  Curves → `line` (solid/dashed); crosshairs → non-movable `vline`/`hline` +
+  `set_value`; range selector → `region`/`on_change(final=False)`/`set_bounds`,
+  show/hide via a `_range_in_plot` flag (replacing `x in main_plot.items()`) and
+  re-added after `clear()`. Mouse-tracking pyqtgraph internals stay `.native`
+  passthroughs. Screenshot-verified; imports IMP → standalone-verified, kept out
+  of the shared import test. See [PRD-64](prds/prd-64.md).
+
 * **Two more MIA features on the ROI class: arbitrary-region selection and ROI
   file interchange.** `chisurf/core/roi/builders.py::arbitrary_region` ports
   MIA's two-scale pixel selection — a pixel survives only if its **local**
