@@ -246,6 +246,17 @@ class ForeignTableProxy(QtCore.QSortFilterProxyModel):
         if rows and cols:
             self.dataChanged.emit(self.index(0, 0), self.index(rows - 1, cols - 1))
 
+    def lessThan(self, left, right) -> bool:  # noqa: N802, D102 (Qt override)
+        # The source models this wraps render numbers as formatted strings, so
+        # Qt's default comparison sorts "10" before "9". Compare numerically
+        # whenever both cells parse as numbers, and fall back to text otherwise.
+        lv = self.sourceModel().data(left, QtCore.Qt.DisplayRole)
+        rv = self.sourceModel().data(right, QtCore.Qt.DisplayRole)
+        lf, rf = _as_float(lv), _as_float(rv)
+        if np.isfinite(lf) and np.isfinite(rf):
+            return lf < rf
+        return str(lv or "") < str(rv or "")
+
     def data(self, index, role=QtCore.Qt.DisplayRole):  # noqa: D102 (Qt override)
         if role in (QtCore.Qt.BackgroundRole, QtCore.Qt.BackgroundColorRole):
             if self._color is None:

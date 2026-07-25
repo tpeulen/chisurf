@@ -250,8 +250,30 @@ class ChiTableWidget(QtWidgets.QWidget):
             self._foreign_proxy = proxy
             self._chi_model = None
             self._view.setModel(proxy)
-            self._view.setSortingEnabled(bool(self._features & TableFeature.SORT))
+            if self._features & TableFeature.SORT:
+                self._view.setSortingEnabled(True)
+                # setSortingEnabled() immediately sorts by the header's current
+                # indicator section, so a freshly-built table would come up
+                # silently sorted by column 0. Restore source order and hide the
+                # indicator until the user actually clicks a header.
+                proxy.sort(-1)
+                header = self._view.horizontalHeader()
+                header.setSortIndicatorShown(False)
+                header.sortIndicatorChanged.connect(self._on_sort_indicator_changed)
         self._after_model_set()
+
+    def _on_sort_indicator_changed(self, section: int, _order) -> None:
+        """Reveal the sort indicator once the user sorts a column.
+
+        Parameters
+        ----------
+        section : int
+            Column the indicator moved to.
+        _order : qtpy.QtCore.Qt.SortOrder
+            New sort order (unused).
+        """
+        if section >= 0:
+            self._view.horizontalHeader().setSortIndicatorShown(True)
 
     def set_dataframe(self, df, **kwargs: Any) -> None:
         """Show a :class:`pandas.DataFrame`.

@@ -40,6 +40,8 @@ from chisurf.gui.autoform.sections.parameter_table import (
     _RichTextDelegate,
 )
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.chitable import ChiTableWidget, TableFeature
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
 # ── column enumeration ──────────────────────────────────────────────────
@@ -406,7 +408,17 @@ def _warn(message: str) -> None:
 
 
 class GlobalParameterTableWidget(QtWidgets.QWidget):
-    """QTableView over every parameter across fits and registered plugin groups.
+    """Every parameter across fits and registered plugin groups, as a table.
+
+    The table itself is a :class:`~chisurf.gui.widgets.chitable.ChiTableWidget`
+    wrapped around :class:`GlobalParameterTableModel` through the *foreign model*
+    path: the model keeps its own semantics — RPC-mediated edits, and the Link
+    column addressing parameters by **source** row number — while gaining search,
+    per-column filters, sorting, column hiding, headered copy and CSV export.
+
+    Rewriting the model onto a chitable source was deliberately not done: the row
+    numbers in the Link column are part of the data, and they stay meaningful
+    only because filtering and sorting happen in a layer above the model.
 
     Opts into ``AUTOFORM_REFRESH`` so :meth:`AutoForm.refresh_plots` re-reads the
     rows; also refreshes on registry changes and ``parameter.`` RPC events.
@@ -418,10 +430,22 @@ class GlobalParameterTableWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self._model = GlobalParameterTableModel(mutator=mutator, parent=self)
 
-        self._view = QtWidgets.QTableView(self)
-        self._view.setModel(self._model)
+        self._table = ChiTableWidget(
+            model=self._model,
+            features=(
+                TableFeature.SEARCH
+                | TableFeature.COLUMN_FILTERS
+                | TableFeature.SORT
+                | TableFeature.COLUMN_PICKER
+                | TableFeature.COLOR_BY_VALUE
+                | TableFeature.EXPORT
+                | TableFeature.STATUSBAR
+            ),
+            parent=self,
+        )
+
+        self._view = self._table.table_view
         self._view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self._view.setAlternatingRowColors(True)
         self._view.setEditTriggers(
             QtWidgets.QAbstractItemView.DoubleClicked
             | QtWidgets.QAbstractItemView.SelectedClicked
@@ -434,9 +458,14 @@ class GlobalParameterTableWidget(QtWidgets.QWidget):
         self._view.setItemDelegateForColumn(COL_FIXED, _BooleanToggleDelegate(self._view))
         self._view.setItemDelegateForColumn(COL_BOUNDS_ON, _BooleanToggleDelegate(self._view))
         self._view.horizontalHeader().setStretchLastSection(True)
+        # Only Value and Error carry a magnitude worth shading; the rest are
+        # identifiers, flags and row numbers.
+        proxy = self._table.proxy
+        if proxy is not None:
+            proxy.set_color_scheme(None, columns={COL_VALUE, COL_ERROR})
 
         refresh_btn = QtWidgets.QToolButton(self)
-        refresh_btn.setText("⟳")
+        refresh_btn.setText(Glyphs.REFRESH)
         refresh_btn.setToolTip("Reload parameters from all fits and plugins")
         refresh_btn.clicked.connect(self.refresh)
 
@@ -449,17 +478,49 @@ class GlobalParameterTableWidget(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.addLayout(bar)
-        layout.addWidget(self._view)
+        layout.addWidget(self._table)
 
         self._subscribe_events()
         self.refresh()
 
+    # -- accessors --------------------------------------------------------
+
+    @property
+    def table_model(self) -> GlobalParameterTableModel:
+        """Return the source model (never the filter proxy).
+
+        Returns
+        -------
+        GlobalParameterTableModel
+        """
+        return self._model
+
+    @property
+    def table_view(self) -> QtWidgets.QTableView:
+        """Return the view.
+
+        Returns
+        -------
+        qtpy.QtWidgets.QTableView
+        """
+        return self._view
+
+    @property
+    def table(self) -> ChiTableWidget:
+        """Return the chitable container.
+
+        Returns
+        -------
+        chisurf.gui.widgets.chitable.ChiTableWidget
+        """
+        return self._table
+
     # -- refresh wiring ---------------------------------------------------
 
     def refresh(self):
-        """Re-enumerate rows and resize columns."""
-        self._model.refresh()
-        self._view.resizeColumnsToContents()
+        """Re-enumerate rows and resize columns, keeping filter and sort."""
+        self._table.refresh()
+        self._view.auto_resize_columns()
 
     def _subscribe_events(self):
         # Registry changes (a plugin (un)registers its working model).

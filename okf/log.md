@@ -2,40 +2,39 @@
 
 ## 2026-07-25
 
-* **chimol: the deposited model arrives whole, and what no cartoon draws is
-  shown.** Prompted by a side-by-side against PyMOL on 1DG3: chimol's picture was
-  missing every water PyMOL rendered as a red dot.
-  **Root cause, in the core reader.** `read_coordinates` selects with
-  `NonWaterPDBSelector` and `convert_atoms` drops non-standard residues, so
-  waters, ions, ligands and sugars never reached the viewer at all — 1DG3 lost
-  341 atoms, 148L 63. Those defaults are right for the modelling code and are
-  **unchanged**; `read_coordinates`/`read`/`Structure` gained `keep_water` and
-  `only_standard_residues` keywords, and chimol's `_read_full_model` asks for the
-  whole model, falling back to the plain call on `TypeError` for factories that
-  predate the arguments. A test pins that the core default still drops them.
-  **Then show them.** `MolView._hetero_atom_mask` marks every atom whose residue
-  never enters the backbone trace and switches the atom representation on, which
-  is what PyMOL's `auto_show_nonbonded` (on by default, confirmed from its own
-  settings) does there. They are drawn at their element's CPK colour — so a water
-  oxygen reads red rather than as an anonymous grey ball — and scaled by a new
-  `nonbonded_size` setting (0.25, PyMOL's value) instead of their van-der-Waals
-  radius, because a shell of full-size water spheres buries the molecule inside
-  it. Defining the mask by absence from the trace rather than by a residue-name
-  table also catches incomplete polymer residues: 148L's chain E ends on a lone
-  backbone nitrogen (`ASN E 163`, no CA) that would otherwise be loaded and then
-  drawn by nothing.
-  **A per-atom mask never reached the mesh.** The ball-mesh builder's outer guard
-  admitted only a mask of *residue* length, while its body handled both, so any
-  per-atom selection silently fell through to a coarse every-tenth-CA sampling —
-  54 points instead of the selected atoms. Fixed to accept either length.
-  **Also measured while there** (not yet matched): PyMOL's `zoom` defaults to
-  `complete=0`, framing on the largest half-extent of the bounding box (148L:
-  implied R 24.47 vs max half-extent 23.77); `complete=1` frames on the bounding
-  sphere (30.49 vs 29.30). chimol frames on the bounding sphere, so its default
-  `zoom` behaves like PyMOL's `complete=1`.
-  Suite: 225 passed, 1 skipped (11 new). The `expectedFailure`
-  `test/fluorescence/test_structure.py::test_labeled_structure` reports
-  "unexpected success" — verified pre-existing in a clean worktree at HEAD.
+* **PRD-65: three-colour PDA (tcPDA) design note.** Split out of PRD-50's scope
+  item 4, because it turned out to share nothing but physics with two-colour PDA:
+  `tttrlib.Pda` is two-channel *by construction* (the S1S2 convolution **is** the
+  two-channel assumption), the data object is a per-burst count table rather than
+  a histogram, and the objective is a burst likelihood rather than a statistic on
+  a 1-D projection. Design fixed against a reading of the incumbent suite's
+  implementation: per burst, blue-excitation photons follow a **trinomial**
+  partition over three detectors and green-excitation photons a **binomial** one,
+  each convolved with per-channel Poisson background; species are **trivariate
+  Gaussians over (R_GR, R_BG, R_BR) with a full covariance matrix**, so the
+  inter-distance *correlation* — the entire reason to do three-colour at all — is
+  a fitted quantity rather than an assumption. Plus a global labelling fraction
+  (the dominant systematic in three-colour samples, never fully labelled) and a
+  brightness reference. Inference is MAP + MCMC over per-parameter priors, which
+  ChiSurf can already do: [PRD-61](/prds/prd-61.md) landed the prior framework and
+  PRD-50 fixed the sampler, so the Bayesian layer is reuse, not new work — only
+  the prior *columns* in the parameter table are missing.
+  **The compute core is Python/numba and stays there.** The incumbent ships
+  hand-threaded C and a CUDA kernel because it evaluates the likelihood by brute
+  force; the PRD attacks the three cost factors algorithmically instead —
+  collapse bursts sharing a count tuple (exact, free, grows with dataset size);
+  express the no-background grid sweep as a single GEMM; replace the nested
+  background sum with three short 1-D convolutions (the trinomial factorises into
+  sequential binomials, and the Poisson tail truncates on probability mass long
+  before `min(F, N_BG)`); and integrate the Gaussian species by Gauss–Hermite
+  quadrature on Cholesky-transformed coordinates instead of on a uniform 3-D grid,
+  which is the largest lever and has no counterpart in the incumbent. Every
+  shortcut is required to be tested against the reference it replaces — a speedup
+  that changes the answer is a bug. Seven stages, each independently testable,
+  starting with the two-colour reduction (blue off ⇒ must agree with the existing
+  PDA) because that tests the new forward model against an already-validated one.
+  Wired into [prds/index.md](/prds/index.md); PRD-50 and PRD-49 repointed.
+  See [prds/prd-65.md](/prds/prd-65.md).
 
 * **Concept depth batch 3 (pda, ebfret): detection limits rather than more
   theory.** Both pages already derived their models correctly and both cite files
@@ -62,6 +61,41 @@
   K+1 is settled on physics, not on a small difference. Noted the real defaults
   (`analyse()` scans min_states=2..max_states=4 from a fixed `seed`, so
   reproducibility across runs is determinism, not evidence of a global optimum).
+
+* **PDA: the fitted histogram and its statistic are now choices, not constants
+  (PRD-50).** The 1-D PDA residual hard-coded *both* halves of what it compares.
+  (1) It always projected the S1S2 matrix onto the raw proximity ratio with 81
+  bins over [0,1]; each model dutifully built a `kw_hist` in `__init__` — the
+  Gaussian model's was a log `S0/S1` range — stored it, and never read it again,
+  so the log-ratio axis the plot offered was never actually fittable. (2) It
+  always weighted by `1/sqrt(max(d,1))`, a Neyman chi-square, despite the comment
+  calling it Poisson. Both now live in `chisurf/core/models/pda/common.py::PdaFitSettings`
+  (one per model, `model.fit_settings`) and are edited from a new
+  **"Fit histogram / statistic"** panel present in all six PDA `*.view.json`
+  (axis + statistic combos with tooltips, plus a `scalar_table` for bins /
+  range / log / N_min). The axis (`S1/(S0+S1)`, `E`, `S0/S1`, `R`) is built by a
+  single `build_pda_histogram_function` that the distribution plot also calls, so
+  the plotted and the fitted histogram can no longer drift apart — that
+  duplication is deleted; selecting an axis adopts that axis' default range
+  (`PDA_AXIS_RANGES`), and the corrected `E`/`R` axes bin through gamma and R0 and
+  so join the data-histogram cache key. The statistic (`pda_weighted_residuals`)
+  now defaults to the **Poisson deviance**
+  `sign(d-m)*sqrt(2[m-d+d ln(d/m)])`, with Neyman and Pearson chi-square kept as
+  options. That default is not cosmetic: a PDA histogram is a projection of a
+  *sparse* S1S2 matrix, so many bins hold a handful of bursts, and over twenty
+  Poisson realisations of an 800-count histogram the recovered Gaussian mean
+  distance is biased **-0.02 A** under the deviance versus **+0.28 A** (Neyman)
+  and **-0.17 A** (Pearson) — against a 0.27 A per-fit scatter, i.e. the familiar
+  chi-square costs a full standard deviation of systematic error in the direction
+  its low-count weighting predicts. Also switched every PDA `dynamic_group` to
+  `"style": "table"`, so species / Gaussian components render as one paired-table
+  row each (value + fix + bounds columns) like the lifetime editor, instead of a
+  spin-box grid. New `test/models/test_pda_statistics.py` (25 tests: settings
+  semantics, the deviance closed form, per-axis finiteness, gamma-driven
+  re-binning, the bias comparison, view-spec contracts, and a headless check that
+  the panel builds live widgets that commit through to the model). See
+  [references/pda-theory.md](/references/pda-theory.md) and
+  [prds/prd-50.md](/prds/prd-50.md).
 
 * **i18n (PRD-63): French brought to parity + discoverable language pickers.**
   Translated ~1700 additional French strings (`chisurf_fr.ts` now 2065/2483
