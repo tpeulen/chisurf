@@ -85,8 +85,12 @@ try:
 except Exception:
     burstio = None
 try:
-    from ndxplorer import reader as ndx_reader
-    from ndxplorer.plot_main import NDXplorer
+    # Both moved when ndXplorer was reorganised (``ndxplorer.reader`` ->
+    # ``ndxplorer.io.reader``, ``ndxplorer.plot_main`` -> the package root).
+    # Guarded imports turn that into a silently missing feature, so the paths
+    # are covered by a test rather than only by this ``except``.
+    from ndxplorer import NDXplorer
+    from ndxplorer.io import reader as ndx_reader
 except Exception:
     ndx_reader = None
     NDXplorer = None

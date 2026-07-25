@@ -76,7 +76,7 @@ def test_maps_to_dataframe_hdf5_roundtrip_and_ndxplorer():
     back = pd.read_hdf(path, key="results")
     assert len(back) == 64 and "B" in back.columns
     pytest.importorskip("ndxplorer")
-    from ndxplorer import reader as ndx_reader
+    from ndxplorer.io import reader as ndx_reader
 
     ds = ndx_reader.read_mfd_hdf5([path])
     assert ds is not None
