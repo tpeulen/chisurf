@@ -2,6 +2,33 @@
 
 ## 2026-07-25
 
+* **A photon-level simulation found three defects the count-level tests could
+  not.** `chisurf/core/fluorescence/burst/simulate.py` simulates a whole ALEX
+  smFRET experiment with tttrlib from declared parameters — diffusing molecules,
+  alternating lasers, per-species micro-time decays — with the correction factors
+  baked into the per-stream brightnesses and each FRET population's donor decay
+  taken from the same Gaussian-broadened distance the static FRET line
+  integrates, so the simulated populations lie *on* the line. Running the
+  automatic calibration on the resulting bursts exposed: (1) **EM initialization
+  collapse** — quantile-spaced starts all land in the dominant FRET cloud when
+  the reference populations are ~5 % of the data, so a broad component swallowed
+  the acceptor-only cluster, the class cut landed at `S<0.34` instead of
+  `S<0.08`, 18 % of the acceptor-only class was contaminated and `delta` inflated
+  by 37 %; `gaussian_mixture_1d` now tries quantile- **and** range-spaced starts
+  and keeps the better likelihood. (2) **Reference gates were cut at the
+  midpoint** — but the FRET class needs completeness while the donor-only and
+  acceptor-only classes need purity (they *define* α and δ), so the reference
+  classes are now cut to the core of their own component (2σ). (3) **Noise-born
+  sub-populations biased gamma** — a mixture places a small extra component in
+  the valley between two shot-noise-smeared states, and its centre does not lie
+  on the `1/S`-vs-`E` line; sub-populations below 10 % are merged and population
+  centres now enter the fit weighted by `sqrt(n_bursts)`. Two implementation
+  details worth remembering: the per-photon laser must be recovered with the
+  engine's **integer** window rule (the float `fmod` version mis-assigns ~5 % of
+  photons at window boundaries), and `to_tttr` preserving photon order is now
+  asserted rather than assumed. After the fixes the declared factors come back to
+  a few per cent and the efficiencies to ~0.01 across seeds. Reachable head-less
+  as `csc accurate-fret --simulate <file>`.
 * **chimol: flat sheets ported from `RepCartoonFlattenSheets`, and the cartoon
   pipeline mapped.** With PyMOL's source to hand the cartoon can be compared step
   for step instead of by matching rendered meshes.

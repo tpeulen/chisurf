@@ -85,12 +85,20 @@ __all__ = [
 
 def gaussian_mixture_1d(x, n_components: int, *, n_iterations: int = 300,
                         tolerance: float = 1e-7, sigma_floor: float = 1e-3,
-                        seed: int = 0) -> dict:
+                        init: str = "auto", seed: int = 0) -> dict:
     """Fit a one-dimensional Gaussian mixture by expectation-maximization.
 
-    Deterministic (quantile-initialized) and dependency-free, so automatic
-    population gating does not pull in a machine-learning stack and gives the
-    same answer on every run.
+    Deterministic and dependency-free, so automatic population gating does not
+    pull in a machine-learning stack and gives the same answer on every run.
+
+    Two initializations are tried and the better likelihood is kept, because
+    neither alone is safe here. Quantile-spaced starts follow the density and
+    handle overlapping components, but when one population dominates (a burst
+    measurement is mostly doubly labelled molecules) every start lands inside it
+    and the small reference populations get swallowed by one broad component —
+    which then puts the class boundary in the wrong place. Range-spaced starts
+    cover the axis instead, which is what separates a sparse population at
+    ``S ≈ 0`` from a dense one at ``S ≈ 0.5``.
 
     Parameters
     ----------
@@ -105,6 +113,8 @@ def gaussian_mixture_1d(x, n_components: int, *, n_iterations: int = 300,
     sigma_floor : float, optional
         Lower bound on the component widths (keeps EM from collapsing onto a
         single burst).
+    init : str, optional
+        ``"auto"`` (try both and keep the better), ``"quantile"`` or ``"range"``.
     seed : int, optional
         Unused placeholder kept for signature stability; the fit is
         deterministic.
@@ -119,12 +129,32 @@ def gaussian_mixture_1d(x, n_components: int, *, n_iterations: int = 300,
     x = np.asarray(x, dtype=float).ravel()
     x = x[np.isfinite(x)]
     k = max(1, int(n_components))
-    n = x.size
-    if n == 0:
+    if x.size == 0:
         raise ValueError("gaussian_mixture_1d needs at least one finite sample")
 
-    quantiles = (np.arange(k) + 0.5) / k
-    means = np.quantile(x, quantiles)
+    starts = []
+    if init in ("auto", "quantile"):
+        starts.append(np.quantile(x, (np.arange(k) + 0.5) / k))
+    if init in ("auto", "range") and k > 1:
+        lo, hi = float(np.min(x)), float(np.max(x))
+        starts.append(np.linspace(lo, hi, k) if hi > lo else np.full(k, lo))
+    if not starts:
+        starts.append(np.quantile(x, (np.arange(k) + 0.5) / k))
+
+    best = None
+    for start in starts:
+        fit = _em_1d(x, start, n_iterations=n_iterations, tolerance=tolerance,
+                     sigma_floor=sigma_floor)
+        if best is None or fit["log_likelihood"] > best["log_likelihood"]:
+            best = fit
+    return best
+
+
+def _em_1d(x, means, *, n_iterations: int, tolerance: float, sigma_floor: float) -> dict:
+    """One expectation-maximization run of a 1-D Gaussian mixture from ``means``."""
+    k = int(np.size(means))
+    n = int(x.size)
+    means = np.asarray(means, dtype=float).copy()
     spread = float(np.std(x)) or 1.0
     sigmas = np.full(k, max(spread / max(k, 1), sigma_floor))
     weights = np.full(k, 1.0 / k)
@@ -262,6 +292,7 @@ def classify_es_populations(stoichiometry, efficiency=None, *,
                             max_components: int = 4,
                             max_fret_populations: int = 3,
                             min_population: int = 20,
+                            reference_sigma: float = 2.0,
                             method: str = "auto") -> PopulationSplit:
     """Find donor-only, acceptor-only and FRET bursts without manual gates.
 
@@ -291,6 +322,16 @@ def classify_es_populations(stoichiometry, efficiency=None, *,
         Largest number of FRET sub-populations tried.
     min_population : int, optional
         Classes with fewer bursts than this are treated as absent.
+    reference_sigma : float, optional
+        Half-width, in units of the fitted component's own standard deviation, of
+        the **core** each reference class is restricted to. The two jobs differ:
+        the FRET class must be *complete* (it only has to contain the molecules
+        whose efficiency is wanted), while the donor-only and acceptor-only
+        classes must be *pure* — they define ``alpha`` and ``delta``, and a
+        doubly labelled burst leaking into them biases those factors directly.
+        Cutting at the midpoint between components serves neither; the core cut
+        buys purity with bursts the ratio estimators do not miss. ``0`` restores
+        the plain midpoint cut.
     method : str, optional
         ``"auto"`` (mixture, falling back to thresholds) or ``"threshold"``.
 
@@ -305,31 +346,41 @@ def classify_es_populations(stoichiometry, efficiency=None, *,
     used_method = "threshold"
     components: dict = {}
 
+    #: Core cuts of the reference classes (see ``reference_sigma``); None = midpoint.
+    donor_core = acceptor_core = None
     if method != "threshold" and np.count_nonzero(finite) >= 5 * 3:
         try:
             fit = _best_mixture(s[finite], max_components=max_components)
-            means = fit["means"]
+            means, sigmas = fit["means"], fit["sigmas"]
             # Class per component, then the cut where neighbouring components meet.
             klass = np.where(means >= hi, 1, np.where(means <= lo, -1, 0))
             if np.any(klass == 0):
                 fret_means = means[klass == 0]
                 if np.any(klass == -1):
-                    lo = float(0.5 * (np.max(means[klass == -1]) + np.min(fret_means)))
+                    index = int(np.argmax(np.where(klass == -1, means, -np.inf)))
+                    lo = float(0.5 * (means[index] + np.min(fret_means)))
+                    if reference_sigma > 0:
+                        acceptor_core = float(means[index] + reference_sigma * sigmas[index])
                 if np.any(klass == 1):
-                    hi = float(0.5 * (np.max(fret_means) + np.min(means[klass == 1])))
+                    index = int(np.argmin(np.where(klass == 1, means, np.inf)))
+                    hi = float(0.5 * (np.max(fret_means) + means[index]))
+                    if reference_sigma > 0:
+                        donor_core = float(means[index] - reference_sigma * sigmas[index])
                 used_method = "mixture"
                 components = {
                     "means": means.tolist(),
                     "weights": fit["weights"].tolist(),
-                    "sigmas": fit["sigmas"].tolist(),
+                    "sigmas": sigmas.tolist(),
                     "bic_by_k": fit.get("bic_by_k", {}),
                 }
         except Exception:  # pragma: no cover - degenerate data falls back
             used_method = "threshold"
 
-    donor_only = finite & (s > hi)
-    acceptor_only = finite & (s < lo)
-    fret = finite & ~donor_only & ~acceptor_only
+    # The FRET class keeps the midpoint cuts (completeness); the reference classes
+    # are restricted to the core of their own component (purity).
+    donor_only = finite & (s > max(hi, donor_core if donor_core is not None else hi))
+    acceptor_only = finite & (s < min(lo, acceptor_core if acceptor_core is not None else lo))
+    fret = finite & ~(s > hi) & ~(s < lo)
     if np.count_nonzero(donor_only) < min_population:
         donor_only = np.zeros_like(donor_only)
     if np.count_nonzero(acceptor_only) < min_population:
@@ -354,7 +405,8 @@ def classify_es_populations(stoichiometry, efficiency=None, *,
 
 def split_fret_subpopulations(efficiency, *, max_populations: int = 3,
                               min_population: int = 20,
-                              min_separation: float = 0.05) -> np.ndarray:
+                              min_separation: float = 0.05,
+                              min_fraction: float = 0.1) -> np.ndarray:
     """Split doubly-labelled bursts into efficiency sub-populations.
 
     The detection factor ``gamma`` is identified by how the stoichiometry varies
@@ -373,6 +425,13 @@ def split_fret_subpopulations(efficiency, *, max_populations: int = 3,
     min_separation : float, optional
         Sub-populations whose centres are closer than this in efficiency are
         merged (they carry no independent information for the ``gamma`` fit).
+    min_fraction : float, optional
+        Sub-populations holding less than this fraction of the bursts are merged
+        into their neighbour. Shot noise smears a two-state sample into a
+        continuum, and a mixture will happily place a small extra component in
+        the valley between the real states; that component is a selection on
+        noise, not a species, and its centre lies off the ``1/S`` vs ``E`` line
+        it would otherwise be fitted to.
 
     Returns
     -------
@@ -390,10 +449,12 @@ def split_fret_subpopulations(efficiency, *, max_populations: int = 3,
 
     # Merge components that are too small or too close to be independent.
     means = fit["means"]
+    n_finite = int(np.count_nonzero(finite))
+    floor = max(int(min_population), int(np.ceil(float(min_fraction) * n_finite)))
     keep: list[int] = []
     for i in range(means.size):
         n_i = int(np.count_nonzero(lab[finite] == i))
-        if n_i < min_population:
+        if n_i < floor:
             continue
         if keep and abs(means[i] - means[keep[-1]]) < min_separation:
             continue

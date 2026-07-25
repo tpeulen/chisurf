@@ -236,6 +236,45 @@ back to the physically-motivated light-path prior.
   `test_calibration_ndx_bridge.py` (stub) and `test_ndxplorer_unmix_headless.py`
   (ndX's **real** DataSource + real equation/constant files: the factors are
   recovered from simulated bursts and ndX's own `FRET efficiency` column changes).
+- **Photon-level simulation with declared parameters** —
+  `chisurf/core/fluorescence/burst/simulate.py` (`SmfretParameters`,
+  `simulate_smfret`) builds an ALEX smFRET measurement with tttrlib's `SimEngine`:
+  diffusing molecules, two excitation grids alternating in whole macro-windows,
+  per-species micro-time decays. The correction factors *are* the declared
+  per-stream brightnesses (`I_DD=(1−E)B`, `I_DA=γEB+αI_DD+δI_AA`, `I_AA=βγB`), so
+  recovering them closes the loop. Details that took measurement to get right:
+  the per-photon laser is recovered with the engine's **integer** window rule
+  (`(window // windows_per_laser) % n_lasers`) — the float `fmod` version
+  mis-assigns ~5 % of photons at window boundaries; `to_tttr` preserves photon
+  order, which is asserted rather than assumed; and the exported routing channel
+  encodes *laser × detector* so the stream is self-describing. A FRET
+  population's donor decay is `fret_lifetime_spectrum` of the same
+  Gaussian-broadened distance the static line integrates, so the simulated
+  populations lie **on** the line (the mean micro-time of an IRF-free decay is
+  ⟨τ⟩_F) and the lifetime route is testable. `SimulatedSmfret.burst_table()` runs
+  a real registry burst search and returns per-burst channel counts, ⟨τ⟩_F and
+  the ground-truth species. Reachable head-less via
+  `csc accurate-fret --simulate <file>`.
+- **What the photon-level test found** (`test/fitting/test_simulated_experiment.py`)
+  — three defects invisible to count-level tests:
+  1. **EM initialization collapse.** Quantile-spaced starts all land inside the
+     dominant FRET cloud when the reference populations are small (~5 %), so one
+     broad component swallowed the acceptor-only cluster and the derived cut
+     landed at `S<0.34` instead of `S<0.08` → 18 % contamination → `delta`
+     inflated by 37 %. `gaussian_mixture_1d` now tries **quantile- and
+     range-spaced** starts and keeps the better likelihood.
+  2. **Reference gates were cut at the midpoint.** The FRET class needs
+     completeness, the reference classes need *purity* (they define α and δ);
+     they are now cut to the core of their own component (`reference_sigma`,
+     default 2σ).
+  3. **Noise-born sub-populations biased gamma.** A mixture places an extra
+     component in the valley between two shot-noise-smeared states; its centre is
+     off the `1/S`-vs-`E` line. Sub-populations below `min_fraction` (10 %) are
+     merged, and `global_es_correction` now weights each population centre by
+     `sqrt(n_bursts)`.
+  After the fixes, recovery across seeds: α 0.074–0.084 (0.080), δ 0.056–0.063
+  (0.060), γ_ES 0.636–0.672 and γ_line 0.644–0.663 (0.650), β 1.389–1.404
+  (1.400), E 0.289–0.309 / 0.738–0.758 (0.30 / 0.75).
 - **Shared burst-table conventions** — `chisurf/core/fluorescence/burst/table.py`
   (`COLUMN_HINTS`, `guess_columns`, `read_burst_table`, `columns_from_data`) is
   the single source of truth for which column is which channel (ndX / `.bur` /

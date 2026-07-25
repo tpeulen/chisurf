@@ -493,9 +493,13 @@ def global_es_correction(i_dd, i_da, i_aa, labels, *, alpha=0.0, delta=0.0) -> d
         raise ValueError("global_es_correction needs >= 2 populations")
     e_mean = np.array([e_pr[labels == u].mean() for u in uniq])
     inv_s = np.array([1.0 / s_pr[labels == u].mean() for u in uniq])
+    counts = np.array([np.count_nonzero(labels == u) for u in uniq], dtype=float)
 
-    # Linear fit 1/S = Omega + Sigma * E.
-    sigma, omega = np.polyfit(e_mean, inv_s, 1)
+    # Linear fit 1/S = Omega + Sigma * E, each population weighted by how well
+    # its centre is known (the standard error of a mean falls as 1/sqrt(n)). Left
+    # unweighted, a small population — often a shot-noise artefact of splitting a
+    # burst cloud rather than a species — drags the slope and biases gamma.
+    sigma, omega = np.polyfit(e_mean, inv_s, 1, w=np.sqrt(counts))
     denom = omega + sigma - 1.0
     gamma = (omega - 1.0) / denom if abs(denom) > 1e-12 else float("nan")
     beta = denom

@@ -235,6 +235,30 @@ that $R_0$ itself is calibration-dependent — it scales with the donor quantum
 yield and with the orientation factor $\kappa^2$ ({ref}`concept-fret`), and its
 uncertainty enters every distance directly.
 
+## How well it can work
+
+Simulating the whole experiment from declared parameters — diffusing molecules,
+alternating lasers, per-photon micro-times — and running the automatic
+calibration on the resulting photon stream puts numbers on the accuracy. At
+≈1500 bursts of ≈70 photons the factors come back to a few per cent and the
+efficiencies to ≈0.01 (see the {doc}`guide </guides/41_accurate_fret>` for the
+table). Two lessons from that exercise generalize:
+
+* **The population finder matters more than the estimators.** A mixture fit that
+  lets a small reference population be swallowed by a broad component puts the
+  class boundary in the wrong place, and a few per cent of doubly labelled
+  bursts leaking into the acceptor-only class inflates $\delta$ by tens of per
+  cent. The reference classes are therefore cut to the *core* of their own
+  component (purity), while the FRET class keeps the mid-point cut
+  (completeness) — the two classes have different jobs.
+* **Splitting a burst cloud finer than the physics does not help.** Shot noise
+  smears two states into a continuum, and a mixture will happily place an extra
+  component in the valley between them. That component is a selection on noise,
+  not a species; its centre does not lie on the $1/S$-vs-$E$ line, and fitting it
+  biases $\gamma$. Sub-populations that hold only a small fraction of the bursts
+  are therefore merged, and population centres enter the fit weighted by how many
+  bursts they hold.
+
 ## Assumptions worth stating
 
 * **The reference populations are what they claim to be.** A donor-only gate

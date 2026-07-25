@@ -195,6 +195,54 @@ ndXplorer's constants do not use Hellenkamp's letters:
 The bridge translates in both directions, so the numbers in the tool and in
 ndXplorer always mean the same thing.
 
+## Trying it without data (and checking it works)
+
+ChiSurf can simulate the whole experiment with tttrlib — diffusing molecules,
+two alternating lasers, per-photon micro-times — from *declared* parameters, so
+the tool can be tried, and its recovery checked, without a measurement:
+
+```bash
+csc accurate-fret --simulate demo_bursts.csv --simulate-photons 350000
+```
+
+That writes a burst table (with the declared factors in its header) and
+calibrates it immediately. From Python the same simulation is:
+
+```python
+from chisurf.core.fluorescence.burst.simulate import SmfretParameters, simulate_smfret
+
+parameters = SmfretParameters(
+    efficiencies=(0.30, 0.75),          # the populations to recover
+    gamma=0.65, alpha=0.08, beta=1.40, delta=0.06,
+    tau_d0=4.0, linker_sigma=6.0, r0=52.0,
+    donor_only=0.05, acceptor_only=0.05,   # the reference populations
+)
+simulation = simulate_smfret(parameters)
+bursts = simulation.burst_table(min_photons=50)
+```
+
+The photons are a real `tttrlib.TTTR` object whose routing channel is the ALEX
+stream (`0` = I_DD, `1` = I_DA, `2` = donor detector under acceptor excitation,
+`3` = I_AA), and every burst carries the ground-truth species it came from. The
+donor decay of a FRET population is the multi-exponential decay of the same
+Gaussian-broadened distance the static line integrates, so the simulated
+populations lie *on* the line and the lifetime route can be judged.
+
+On such a simulation (≈1500 bursts of ~70 photons, three seeds) the automatic
+calibration returns
+
+| factor | declared | recovered |
+|---|---|---|
+| α | 0.080 | 0.074 – 0.084 |
+| δ | 0.060 | 0.056 – 0.063 |
+| γ (E–S fit) | 0.650 | 0.636 – 0.672 |
+| γ (FRET line) | 0.650 | 0.644 – 0.663 |
+| β | 1.400 | 1.389 – 1.404 |
+| E | 0.30 / 0.75 | 0.289–0.309 / 0.738–0.758 |
+
+which is the accuracy to expect at that photon count: a few per cent on the
+factors, ≈0.01 on the efficiency. Brighter bursts tighten all of it.
+
 ## Head-less
 
 ```bash

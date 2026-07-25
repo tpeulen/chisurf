@@ -54,6 +54,8 @@ __all__ = [
     "donor_lifetime_spectrum",
     "gaussian_distance_distribution",
     "lifetime_averages",
+    "fret_lifetime_spectrum",
+    "distance_for_efficiency",
     "static_fret_line",
     "dynamic_fret_line",
     "no_linker_line",
@@ -171,6 +173,81 @@ def _state_spectrum(distance_weights, distances, donor_x, donor_tau, r0: float):
     amp = distance_weights[..., None] * donor_x[None, :]
     shape = tau.shape[:-2] + (tau.shape[-2] * tau.shape[-1],)
     return amp.reshape(shape), tau.reshape(shape)
+
+
+def fret_lifetime_spectrum(mean_distance: float, *, donor=4.0, r0: float = 52.0,
+                           sigma: float = 6.0, n_distance_samples: int = 81):
+    """Donor lifetime spectrum of one FRET state (linker distribution × donor decay).
+
+    The multi-exponential decay a donor actually shows when its acceptor sits at
+    ``mean_distance`` with linker width ``sigma`` — the same spectrum
+    :func:`static_fret_line` averages, exposed for simulating that decay.
+
+    Parameters
+    ----------
+    mean_distance : float
+        Mean donor–acceptor distance (Å).
+    donor : float or array_like, optional
+        Donor-only lifetime specification (see :func:`donor_lifetime_spectrum`).
+    r0 : float, optional
+        Förster radius (Å).
+    sigma : float, optional
+        Width of the linker distance distribution (Å).
+    n_distance_samples : int, optional
+        Samples used to discretize the Gaussian.
+
+    Returns
+    -------
+    amplitudes, lifetimes : numpy.ndarray
+        The lifetime spectrum, amplitudes normalized to sum 1.
+    """
+    donor_x, donor_tau = donor_lifetime_spectrum(donor)
+    w, r = gaussian_distance_distribution(
+        float(mean_distance), float(sigma), n_points=n_distance_samples
+    )
+    amp, tau = _state_spectrum(w, r, donor_x, donor_tau, float(r0))
+    amp, tau = amp[0], tau[0]
+    total = float(np.sum(amp))
+    return (amp / total if total else amp), tau
+
+
+def distance_for_efficiency(efficiency, *, donor=4.0, r0: float = 52.0,
+                            sigma: float = 6.0,
+                            distance_range: tuple[float, float] = (10.0, 200.0),
+                            n_points: int = 600):
+    """Mean donor–acceptor distance that yields a given FRET efficiency.
+
+    The inverse of the static line's ``E(R_mean)``. It is *not*
+    ``R0 (1/E − 1)^{1/6}`` once a linker distribution is present: averaging over
+    the distribution shifts the mean distance that produces a given efficiency.
+
+    Parameters
+    ----------
+    efficiency : array_like
+        Target FRET efficiency (0…1).
+    donor : float or array_like, optional
+        Donor-only lifetime specification.
+    r0 : float, optional
+        Förster radius (Å).
+    sigma : float, optional
+        Linker width (Å).
+    distance_range : tuple of float, optional
+        Search range of mean distances (Å).
+    n_points : int, optional
+        Resolution of the search.
+
+    Returns
+    -------
+    numpy.ndarray
+        Mean distance(s) in Å.
+    """
+    line = static_fret_line(
+        donor, r0=r0, sigma=sigma, distance_range=distance_range, n_points=n_points
+    )
+    # the line is sorted by tau_f, i.e. by decreasing efficiency
+    return np.interp(
+        np.asarray(efficiency, dtype=float), line.efficiency[::-1], line.parameter[::-1]
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -11,7 +11,7 @@ from .. import core as _core
 
 
 @click.command("accurate-fret")
-@click.argument("burst_table", type=click.Path(exists=True))
+@click.argument("burst_table", type=click.Path(exists=True), required=False)
 @click.option("--i-dd", "column_i_dd", default=None,
               help="Column of the donor signal under donor excitation (auto-detected).")
 @click.option("--i-da", "column_i_da", default=None,
@@ -40,9 +40,16 @@ from .. import core as _core
 @click.option("--as-json", is_flag=True, help="Print the calibration as JSON.")
 @click.option("--output", "-o", type=click.Path(), default=None,
               help="Write the per-burst accurate values to this CSV file.")
+@click.option("--simulate", type=click.Path(), default=None,
+              help="Simulate an ALEX measurement with known factors, write its burst "
+                   "table here and calibrate that instead of a file.")
+@click.option("--simulate-photons", type=int, default=350_000,
+              help="Photon budget of the simulation.")
+@click.option("--simulate-seed", type=int, default=3, help="Seed of the simulation.")
 def cli(burst_table, column_i_dd, column_i_da, column_i_aa, column_tau, tau_d0, r0,
         linker_sigma, background, gamma_source, lightpath, no_priors, bootstrap,
-        max_populations, list_lightpaths, list_columns, as_json, output):
+        max_populations, list_lightpaths, list_columns, as_json, output,
+        simulate, simulate_photons, simulate_seed):
     """Calibrate accurate FRET from a per-burst table.
 
     Finds the donor-only, acceptor-only and FRET populations automatically,
@@ -54,6 +61,13 @@ def cli(burst_table, column_i_dd, column_i_da, column_i_aa, column_tau, tau_d0, 
         for entry in _core.list_lightpaths():
             click.echo(f"{entry['operation_id']}\t{entry.get('name', '')}")
         return
+
+    if simulate:
+        burst_table = _write_simulated_table(simulate, simulate_photons, simulate_seed,
+                                             tau_d0, r0, linker_sigma)
+        click.echo(f"simulated burst table: {burst_table}")
+    if not burst_table:
+        raise click.UsageError("give a burst table, or --simulate a measurement")
 
     columns = _core.read_burst_table(burst_table)
     if list_columns:
@@ -105,6 +119,54 @@ def cli(burst_table, column_i_dd, column_i_da, column_i_aa, column_tau, tau_d0, 
     if output:
         _core.export_csv(output, result)
         click.echo(f"wrote {output}")
+
+
+def _write_simulated_table(path, n_photons, seed, tau_d0, r0, linker_sigma):
+    """Simulate an ALEX measurement with known factors and write its burst table.
+
+    Lets the tool be tried — and its recovery checked — without any data: the
+    factors that produced the file are written into its header.
+
+    Parameters
+    ----------
+    path : str
+        Destination CSV file.
+    n_photons : int
+        Photon budget of the simulation.
+    seed : int
+        Random seed.
+    tau_d0, r0, linker_sigma : float
+        Donor lifetime (ns), Förster radius (Å) and linker width (Å) to simulate.
+
+    Returns
+    -------
+    str
+        The path that was written.
+    """
+    import numpy as np
+
+    from chisurf.core.fluorescence.burst.simulate import SmfretParameters, simulate_smfret
+
+    parameters = SmfretParameters(
+        n_photons=int(n_photons), seed=int(seed), tau_d0=float(tau_d0),
+        r0=float(r0), linker_sigma=float(linker_sigma), alex_period=0.1,
+    )
+    simulation = simulate_smfret(parameters)
+    bursts = simulation.burst_table(min_photons=50)
+    header = [
+        "# simulated ALEX measurement (tttrlib) — the declared truth:",
+        f"#   gamma={parameters.gamma} alpha={parameters.alpha} "
+        f"beta={parameters.beta} delta={parameters.delta}",
+        f"#   E={parameters.efficiencies} tau_D0={parameters.tau_d0} "
+        f"R0={parameters.r0} linker_sigma={parameters.linker_sigma}",
+        "i_dd,i_da,i_aa,tau_f,n_photons,species",
+    ]
+    data = np.column_stack([bursts[k] for k in
+                            ("i_dd", "i_da", "i_aa", "tau_f", "n_photons", "species")])
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(header) + "\n")
+        np.savetxt(fh, data, delimiter=",", fmt="%.6g")
+    return str(path)
 
 
 if __name__ == "__main__":  # pragma: no cover
