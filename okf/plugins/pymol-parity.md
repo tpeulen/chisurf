@@ -49,8 +49,30 @@ bearing for this group's work**, and those are tiered below.
 | `save` (PDB/mmCIF export) | **done** | Writes what the viewer holds, not the source file |
 | `label` | **done** | Expression language, not templates; `L` menu now live |
 | `create` / `extract` | **done** | Child drawn in its parent's frame, true coordinates kept |
-| `origin` | **missing** | Rotation about a chosen point |
+| `origin` | **done** | Needed the two-point camera the view tuple defines |
 | Undo / redo | **missing** | No edit history at all |
+
+## The camera carries two points, not one
+
+`origin` looked like a one-line command and was actually a camera-model gap. PyMOL's
+view tuple defines **two** points — slots 12-14 the pivot in world space, slots 9-11
+a camera-space offset applied after the rotation — and chimol had collapsed them
+into a single orbit target. They agree until something separates them, and `origin`
+is the only thing that does: `ExecutiveOrigin` always passes `preserve=1`, so moving
+the pivot must leave the picture exactly where it was. The compensation is
+`SceneOriginSet`'s, transcribed: the model-space difference rotated into camera
+space, added to the view offset.
+
+The property worth pinning is the invisible one. A wrong implementation looks
+correct until someone rotates, so the tests assert both halves: that the
+projection matrix is unchanged by `origin`, and that after it a chosen atom holds
+its screen position through a 40° turn while the control case swings away.
+
+Adding a non-zero slot 9 broke the loader's layout discriminator, which keyed on
+"slot 9 is zero" to tell a PyMOL tuple from chimol's two older ones — a saved view
+with an offset would have been read as a completely different camera, silently. One
+corner is genuinely ambiguous (an identity rotation with a negative slot 11 could be
+either format) and is resolved in PyMOL's favour, which the tests document.
 
 ## The selection language
 

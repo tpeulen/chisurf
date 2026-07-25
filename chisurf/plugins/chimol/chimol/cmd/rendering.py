@@ -299,6 +299,118 @@ class RenderingMixin(BaseCmd):
         else:
             viewer.zoom(buffer=float(buffer), complete=bool(complete))
 
+    @command("origin")
+    def origin(self, sel: Selection = "", position: str = "") -> None:
+        """Set the point the camera rotates about (PyMOL ``origin``).
+
+        ``origin [selection]`` pivots about the centre of a selection;
+        ``origin position=[x,y,z]`` about an explicit point in Angstrom. With
+        neither, the pivot returns to the centre of everything, as PyMOL's default
+        selection of ``all`` does.
+
+        Nothing appears to happen until the next rotation: PyMOL always preserves
+        the current view when it moves the origin, so the pivot changes while the
+        picture stays put. Rotating afterwards is what shows the difference.
+
+        Parameters
+        ----------
+        sel : str, optional
+            Selection whose centre becomes the pivot.
+        position : str, optional
+            Explicit pivot as ``[x, y, z]``, in Angstrom. Overrides ``sel``, which
+            is what PyMOL does -- it blanks the selection when a position is given.
+        """
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        point = None
+        if str(position).strip():
+            try:
+                point = self._parse_vector(str(position))
+            except ValueError as exc:
+                self._emit_error(f"origin: {exc}")
+                return
+            if point is None:
+                self._emit_error("origin: position must be three numbers, [x, y, z]")
+                return
+        else:
+            try:
+                point = self._selection_centre(viewer, str(sel).strip())
+            except Exception as exc:
+                self._emit_error(f"origin: {exc}")
+                return
+            if point is None:
+                self._emit_error("origin: could not determine a centre")
+                return
+
+        if not viewer.set_rotation_origin(point):
+            self._emit_error("origin: this renderer cannot move the pivot")
+            return
+        self._emit_message(
+            "origin: rotating about "
+            f"({point[0]:.3f}, {point[1]:.3f}, {point[2]:.3f})"
+        )
+
+    @staticmethod
+    def _parse_vector(text: str) -> np.ndarray | None:
+        """Read a ``[x, y, z]`` argument, in any of the spellings PyMOL accepts.
+
+        Brackets and commas are optional, so ``[1,2,3]``, ``1 2 3`` and ``1, 2, 3``
+        all work.
+
+        Parameters
+        ----------
+        text : str
+            The argument as typed.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Three floats, or ``None`` when fewer than three numbers were given.
+
+        Raises
+        ------
+        ValueError
+            If the values are present but not numbers.
+        """
+        tokens = [
+            t
+            for t in str(text).replace("[", " ").replace("]", " ").replace(",", " ").split()
+            if t
+        ]
+        if len(tokens) < 3:
+            return None
+        try:
+            return np.array([float(t) for t in tokens[:3]], dtype=float)
+        except ValueError as exc:
+            raise ValueError("expected three numbers, [x, y, z]") from exc
+
+    def _selection_centre(self, viewer, selection: str) -> np.ndarray | None:
+        """Centre of a selection in Angstrom, the way ``ExecutiveOrigin`` finds it.
+
+        PyMOL takes the midpoint of a *weighted* extent, which re-centres the
+        bounding box on the mean of the coordinates -- so the answer is the
+        centroid, not the midpoint of the raw box. The same rule frames ``zoom``.
+        """
+        from ..renderer.view_state import framing_centre
+
+        if selection:
+            object_id, _, mask = self._resolve_selection_to_atom_mask(viewer, selection)
+            entry = getattr(viewer, "_objects", {}).get(object_id)
+            atoms = getattr(getattr(entry, "state", None), "atoms", None)
+            if atoms is None or "xyz" not in (atoms.dtype.names or ()):
+                raise ValueError("that object carries no coordinates")
+            chosen = np.asarray(mask, dtype=bool)
+            if not chosen.any():
+                raise ValueError(f"selection '{selection}' matched no atoms")
+            return framing_centre(np.asarray(atoms["xyz"], dtype=float)[chosen])
+
+        atoms = getattr(viewer, "_atoms", None)
+        if atoms is None or "xyz" not in (atoms.dtype.names or ()):
+            return None
+        return framing_centre(np.asarray(atoms["xyz"], dtype=float))
+
     @command("reset")
     def reset(self) -> None:
         """Reset view to default orientation and center."""
@@ -367,18 +479,13 @@ class RenderingMixin(BaseCmd):
         _, viewer = self._require_window_and_viewer()
         if viewer is None or not hasattr(viewer, "apply_transform_to_object"):
             return
-        nums = [
-            t
-            for t in str(vector).replace("[", "").replace("]", "").replace(",", " ").split()
-            if t
-        ]
-        if len(nums) < 3:
-            self._emit_error("Usage: translate [x, y, z] [, selection]")
-            return
         try:
-            vec = np.array([float(nums[0]), float(nums[1]), float(nums[2])], dtype=float)
-        except ValueError:
-            self._emit_error("translate vector must be three numbers")
+            vec = self._parse_vector(str(vector))
+        except ValueError as exc:
+            self._emit_error(f"translate: {exc}")
+            return
+        if vec is None:
+            self._emit_error("Usage: translate [x, y, z] [, selection]")
             return
         # PyMOL's `translate` is in Angstrom, but apply_transform_to_object
         # works on the scene-unit arrays the renderer holds. Without this the

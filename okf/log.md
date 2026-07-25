@@ -2,6 +2,38 @@
 
 ## 2026-07-25
 
+* **`origin` was a camera-model gap, not a one-line command.** PyMOL's view tuple
+  defines two points — slots 12-14 the pivot in world space, slots 9-11 a
+  camera-space offset applied after the rotation — and chimol had collapsed them into
+  a single orbit target. They agree until something separates them, and `origin` is
+  the only thing that does: `ExecutiveOrigin` always passes `preserve=1`, so moving
+  the pivot must leave the picture exactly where it is. Rotating about a chosen atom
+  while that atom sits off-centre is impossible with one point, which is most of
+  what the command is for.
+
+  `pack_view_state`/`unpack_view_state` and the GL camera now carry both, with the
+  compensation transcribed from `SceneOriginSet` (the model-space difference rotated
+  into camera space, added to the view offset). Framing resets the offset, as PyMOL's
+  does. Verified on 148L: the projection matrix is unchanged by `origin` to 1e-5, the
+  pivot lands on the NAG centroid, and a 40° turn afterwards leaves that centroid at
+  the same screen position while the control case moves it.
+
+  Adding a non-zero slot 9 broke the loader's layout discriminator, which keyed on
+  "slot 9 is zero" to tell a PyMOL tuple from chimol's two older ones — so a saved
+  view with an offset would have loaded as a completely different camera, silently.
+  One corner is genuinely ambiguous (an identity rotation with a negative slot 11
+  could be either format, and nothing in the eighteen floats distinguishes them);
+  resolved in PyMOL's favour and documented in the tests, since a legacy azimuth is
+  periodic and such a view is recoverable by writing 315 rather than -45.
+
+  `origin` takes PyMOL's arguments: a selection, or `position=[x,y,z]` in Angstrom
+  which overrides it. The centre of a selection is the centroid, since
+  `ExecutiveOrigin` averages a *weighted* extent — the same rule that frames `zoom`.
+  The `[x,y,z]` parsing `translate` had inline is now one shared helper.
+
+  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md) — Tier 1 now has only
+  undo/redo left.
+
 * **`resn NAG` matched nothing, and the reason was structural.** The chimol
   selection evaluator read `res_name` correctly and had done for a long time, but
   the *parser* carried its own hand-maintained tuple of property names which did

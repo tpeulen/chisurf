@@ -10,11 +10,18 @@ The tuple matches PyMOL's ``cmd.get_view()`` exactly, so a view can be copied
 between the two programs::
 
     0-8    rotation matrix, **camera basis in the columns**
-    9-11   camera position in camera space: ``(0, 0, -distance)``
+    9-11   camera position in camera space, normally ``(0, 0, -distance)``
     12-14  origin of rotation (the point the camera orbits), in world space
     15     near clipping plane
     16     far clipping plane
     17     field of view in degrees, **negated for a perspective camera**
+
+Slots 9-11 and 12-14 are **two different points**, and collapsing them into one
+is tempting because they agree until something separates them. ``origin`` is what
+separates them: it moves the pivot (12-14) while compensating the camera-space
+offset (9-11) so the picture does not visibly move — ``ExecutiveOrigin`` always
+passes ``preserve=1``. A camera that keeps only one point can frame and orbit, but
+cannot rotate about a chosen atom while that atom sits off-centre.
 
 The sign of slot 17 is the orthoscopic flag, and it reads backwards from the
 obvious guess: PyMOL writes ``-field_of_view`` for its default *perspective*
@@ -41,7 +48,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -81,6 +88,10 @@ class ViewState:
         Whether the source tuple asked for an orthoscopic camera. PyMOL encodes
         this as the sign of slot 17; chimol only renders perspective, but the
         flag is carried through so a view round-trips unchanged.
+    shift : np.ndarray
+        Camera-space offset applied after the rotation. Non-zero only when the
+        rotation origin is not at the centre of the view, which is exactly what
+        ``origin`` arranges.
     """
 
     rotation: np.ndarray
@@ -90,6 +101,7 @@ class ViewState:
     far: float
     fov: float = DEFAULT_FOV
     orthoscopic: bool = False
+    shift: np.ndarray = field(default_factory=lambda: np.zeros(3, dtype=float))
 
 
 def distance_for_radius(
@@ -242,6 +254,7 @@ def pack_view_state(
     far: float,
     fov: float = DEFAULT_FOV,
     orthoscopic: bool = False,
+    shift: Sequence[float] | None = None,
 ) -> list[float]:
     """Serialise a camera into the 18-float PyMOL tuple.
 
@@ -252,7 +265,7 @@ def pack_view_state(
     distance : float
         Camera-to-target distance.
     target : sequence of float
-        World-space orbit point.
+        World-space orbit point — the point the camera *rotates about*.
     near, far : float
         Clipping planes.
     fov : float, optional
@@ -260,6 +273,10 @@ def pack_view_state(
     orthoscopic : bool, optional
         Controls the sign of slot 17: positive when orthoscopic, negative for
         the perspective camera, matching PyMOL.
+    shift : sequence of float, optional
+        Camera-space offset applied *after* the rotation, which slides the image
+        on screen without moving the pivot. This is what lets the rotation origin
+        differ from the centre of the view, as ``origin`` requires.
 
     Returns
     -------
@@ -268,11 +285,16 @@ def pack_view_state(
     """
     r = np.asarray(rotation, dtype=float).reshape(3, 3)
     t = np.asarray(target, dtype=float).reshape(3)
+    s = (
+        np.zeros(3, dtype=float)
+        if shift is None
+        else np.asarray(shift, dtype=float).reshape(3)
+    )
     # Transposed on the way out: PyMOL keeps the camera basis in the columns.
     flat = r.T.reshape(-1)
     return [
         *(float(v) for v in flat),
-        0.0, 0.0, -float(distance),
+        float(s[0]), float(s[1]), float(s[2]) - float(distance),
         float(t[0]), float(t[1]), float(t[2]),
         float(near), float(far),
         abs(float(fov)) if orthoscopic else -abs(float(fov)),
@@ -310,17 +332,41 @@ def unpack_view_state(view: Sequence[float]) -> ViewState:
 
     is_identity = np.allclose(mat, np.eye(3), atol=1e-6)
 
-    # PyMOL: the camera sits at (0, 0, -distance) in camera space, so slot 11 is
-    # a negative distance and slot 9 is zero. chimol's own older tuples put the
-    # (positive) distance in slot 9 instead, which makes the two unambiguous.
-    if abs(slot9) < 1e-9 and slot11 < 0.0:
-        return ViewState(mat.T, abs(slot11), target, near, far, fov,
-                         orthoscopic=vals[17] > 0.0)
+    # Which layout is this? Both older chimol forms put a *positive* distance in
+    # slot 9; PyMOL puts a camera-space offset there whose z component carries the
+    # negated distance. Discriminating on "slot 9 is zero" was only safe while
+    # chimol never wrote an x/y offset -- once `origin` can move the pivot away
+    # from the centre of the view, slot 9 is legitimately non-zero and a PyMOL
+    # tuple would have been misread as a legacy one.
+    #
+    # One corner is genuinely ambiguous and is resolved in PyMOL's favour: an
+    # identity rotation with a positive slot 9 and a *negative* slot 11 could be
+    # either a PyMOL view that happens not to be rotated, or a legacy angle tuple
+    # whose azimuth is negative. Nothing in the eighteen floats distinguishes them.
+    # PyMOL compatibility is the point of this module, so slot 11 being negative
+    # decides it; a legacy azimuth is periodic, so such a view is recoverable by
+    # writing 315 rather than -45.
+    chimol_matrix_form = (
+        abs(slot10) < 1e-9 and abs(slot11) < 1e-9 and slot9 > 0.0
+    )
+    chimol_angle_form = is_identity and slot9 > 0.0 and slot11 >= 0.0
+
+    if not (chimol_matrix_form or chimol_angle_form):
+        return ViewState(
+            mat.T,
+            abs(slot11),
+            target,
+            near,
+            far,
+            fov,
+            orthoscopic=vals[17] > 0.0,
+            shift=np.array([slot9, slot10, 0.0], dtype=float),
+        )
 
     # The older chimol layouts predate the orthoscopic flag and always wrote a
     # positive field of view, so their sign carries no meaning.
     distance = max(slot9, 0.1)
-    if is_identity and (abs(slot10) > 1e-9 or abs(slot11) > 1e-9):
+    if chimol_angle_form and (abs(slot10) > 1e-9 or abs(slot11) > 1e-9):
         # Legacy: identity matrix with elevation/azimuth in slots 10-11.
         return ViewState(rotation_from_angles(slot10, slot11), distance,
                          target, near, far, fov)

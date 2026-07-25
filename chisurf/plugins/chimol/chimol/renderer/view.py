@@ -2237,6 +2237,45 @@ class MolView(QtWidgets.QWidget):
         if renderer is not None and hasattr(renderer, "set_view_state"):
             renderer.set_view_state(vals)
 
+    def set_rotation_origin(self, point: Sequence[float]) -> bool:
+        """Move the point the camera rotates about (PyMOL ``origin``).
+
+        The picture does not move: PyMOL's ``origin`` always preserves the current
+        view, so nothing appears to happen until the next rotation, which then
+        pivots about the chosen point.
+
+        Parameters
+        ----------
+        point : sequence of float
+            The new pivot, in **Angstrom** in the structure's own frame. Converted
+            to the renderer's scene units here, which is the seam every command
+            taking a length has to respect.
+
+        Returns
+        -------
+        bool
+            False when there is no renderer to tell.
+        """
+        renderer = self._renderer
+        if renderer is None or not hasattr(renderer, "set_origin"):
+            return False
+        scene = self._transform_world_coords_to_scene(
+            np.asarray(point, dtype=float).reshape(1, 3)
+        )
+        renderer.set_origin(np.asarray(scene, dtype=float).reshape(3))
+        return True
+
+    def get_rotation_origin(self) -> np.ndarray | None:
+        """Return the current pivot in Angstrom, or ``None`` without a renderer."""
+        renderer = self._renderer
+        if renderer is None or not hasattr(renderer, "get_origin"):
+            return None
+        scene = np.asarray(renderer.get_origin(), dtype=float)
+        centre = self._raw_center
+        scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
+        out = scene / scale if scale else scene
+        return out + np.asarray(centre, dtype=float) if centre is not None else out
+
     def center(self, indices: Sequence[int] | None = None, *, object_id: str | None = None) -> None:
         """Center camera on the geometric center of target residues."""
         coords = self.get_residue_positions(indices, object_id=object_id)

@@ -193,6 +193,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._panning = False
         self._right_dragged = False
         self._pan_offset = np.zeros(3, dtype=float)
+        # Camera-space offset applied after the rotation. Zero until `origin`
+        # separates the pivot from the centre of the view; see _build_matrices.
+        self._view_shift = np.zeros(3, dtype=float)
 
         camera_cfg = (_DISPLAY_CONFIG.get("camera") or {})
         self._mouse_mode = self._normalize_mouse_mode(
@@ -447,11 +450,18 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._distance = max(float(distance), 1.0)
         self._rot = self._make_rot(elevation, azimuth)
         self._pan_offset = np.zeros(3, dtype=float)
+        self._view_shift = np.zeros(3, dtype=float)
         self._update_center_opt()
         self.update()
 
     def look_at(self, target: np.ndarray) -> None:
-        """Set the camera to look at the given world-space coordinate."""
+        """Set the camera to look at the given world-space coordinate.
+
+        Both the pivot and the centre of the view move here, which is what
+        ``center`` and ``zoom`` want: PyMOL's framing resets slots 9-11 to
+        ``(0, 0, -distance)``. Use :meth:`set_origin` for the other case, where
+        only the pivot should move.
+        """
         center = np.zeros(3, dtype=float)
         if self._scene is not None:
             try:
@@ -459,8 +469,40 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             except Exception:
                 center = np.zeros(3, dtype=float)
         self._pan_offset = np.asarray(target, dtype=float) - center
+        self._view_shift = np.zeros(3, dtype=float)
         self._update_center_opt()
         self.update()
+
+    def set_origin(self, origin: np.ndarray) -> None:
+        """Move the point the camera rotates about, without moving the picture.
+
+        This is PyMOL's ``origin``, which always passes ``preserve=1`` to
+        ``SceneOriginSet``: the pivot changes and the view translation absorbs the
+        difference, so nothing appears to happen until the next rotation. The
+        compensation is ``SceneOriginSet``'s, transcribed -- the model-space
+        difference rotated into camera space and added to the view offset::
+
+            v0 = origin_new - origin_old        (model space)
+            v1 = rotation @ v0                  (camera space)
+            shift += v1
+
+        Parameters
+        ----------
+        origin : numpy.ndarray
+            The new pivot, in world (scene) space.
+        """
+        center = self._scene_center()
+        previous = center + self._pan_offset
+        wanted = np.asarray(origin, dtype=float).reshape(3)
+
+        self._view_shift = self._view_shift + self._rot @ (wanted - previous)
+        self._pan_offset = wanted - center
+        self._update_center_opt()
+        self.update()
+
+    def get_origin(self) -> np.ndarray:
+        """Return the point the camera rotates about, in world space."""
+        return self._scene_center() + self._pan_offset
 
     def set_distance(self, distance: float) -> None:
         """Set the distance from the target point."""
@@ -551,6 +593,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             self._far_clip,
             self._fov,
             self._orthoscopic,
+            shift=self._view_shift,
         )
 
     def set_view_state(self, view) -> None:
@@ -560,6 +603,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._distance = max(state.distance, 0.1)
         self._rot = state.rotation
         self._pan_offset = state.target - self._scene_center()
+        self._view_shift = np.asarray(state.shift, dtype=float).copy()
         self._near_clip = self._clamp_near_clip(state.near)
         self._far_clip = max(state.far, self._near_clip * 10.0)
         # Assigned rather than routed through set_field_of_view: the tuple
@@ -1004,7 +1048,12 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         proj.perspective(self._fov, aspect, self._near_clip, self._far_clip)
 
         view = QtGui.QMatrix4x4()
-        view.translate(0.0, 0.0, -self._distance)
+        # The camera-space offset is applied *after* the rotation, which slides the
+        # image without moving the pivot -- that separation is what `origin` needs.
+        shift = self._view_shift
+        view.translate(
+            float(shift[0]), float(shift[1]), float(shift[2]) - self._distance
+        )
         r = self._rot
         rot_qm = QtGui.QMatrix4x4(
             float(r[0, 0]), float(r[0, 1]), float(r[0, 2]), 0.0,
@@ -1032,8 +1081,16 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 center = np.zeros(3, dtype=float)
         center = center + self._pan_offset
         # Camera axes in world are the rows of the world->camera rotation; the
-        # camera sits distance units along its +Z axis (row 2) from the target.
-        return center + self._distance * self._rot[2]
+        # camera sits distance units along its +Z axis (row 2) from the target,
+        # less whatever camera-space offset slides the image (see _build_matrices).
+        shift = self._view_shift
+        return (
+            center
+            + self._distance * self._rot[2]
+            - float(shift[0]) * self._rot[0]
+            - float(shift[1]) * self._rot[1]
+            - float(shift[2]) * self._rot[2]
+        )
 
     def _prepare_draw_data(self, scene: Optional[Scene]) -> None:
         """Convert Scene objects into CPU-side arrays ready for VBO upload."""
