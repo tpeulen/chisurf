@@ -98,6 +98,26 @@ def test_ellipse_is_symmetric_and_respects_rotation():
     np.testing.assert_array_equal(wide, tall.T)
 
 
+def test_ellipse_with_a_zero_radius_has_no_extent():
+    """A collapsed axis selects the points on it — not the whole plane.
+
+    A zero radius must not read as "unbounded": a zero-radius gate that
+    silently selects every point feeds a whole-plane mask into everything
+    downstream, with nothing to distinguish it from a real selection.
+    """
+    points = np.array([[0.0, 0.0], [0.5, 0.5], [1.0, 0.0]])
+
+    point_like = EllipseROI(0.5, 0.5, 0.0)
+    np.testing.assert_array_equal(point_like.contains(points), [False, True, False])
+
+    # Only the x extent collapses: a vertical segment through the centre.
+    segment = EllipseROI(0.5, 0.5, 0.0, 2.0)
+    np.testing.assert_array_equal(segment.contains(points), [False, True, False])
+    np.testing.assert_array_equal(
+        segment.contains(np.array([[0.5, 0.0], [0.6, 0.5]])), [True, False]
+    )
+
+
 def test_polygon_matches_the_equivalent_rectangle():
     """A 4-vertex polygon and the rectangle it traces agree."""
     poly = PolygonROI([(0.5, 0.5), (3.5, 0.5), (3.5, 2.5), (0.5, 2.5)])

@@ -48,11 +48,28 @@ The rotation convention claimed "bit-identical" in `45dec1c9` **does** match
 degenerate-radius case does not. Findings RF-001..RF-006 below.
 
 ### RF-001
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (correctness)
 - **Location:** `chisurf/plugins/microscopy/img_pixel_phasor/analysis.py:355` (`mask_from_circular_cursor`) via `chisurf/core/roi/roi.py:410` (`EllipseROI.contains`)
 - **Finding:** A zero-radius circular cursor now selects **every** pixel instead of none. `EllipseROI.contains` treats a zero radius as unbounded (`rx = self.rx if self.rx > 0 else np.inf`), so `(dx/inf)**2 + (dy/inf)**2 == 0 <= 1` is True everywhere. The pre-`45dec1c9` implementation computed `(g-cg)**2 + (s-cs)**2 <= 0.0`, i.e. essentially nothing. Verified: `mask_from_circular_cursor([0,0.5,1],[0,0.5,0],(0.5,0.5),0.0)` returns `[True, True, True]`. The elliptic path is inconsistent with this — `cursor_roi` explicitly raises `ValueError` on a zero semi-axis, but the circular path performs no such check, and `phasor.cursor_mask` happily accepts `radius: 0` from an RPC client or a spin box wound to its minimum. Result: a silently whole-plane gate feeding `pseudo_color`/fraction maps.
-- **Fix note:**
+- **Fix note:** Fixed at the root in `EllipseROI.contains`: a zero radius is now
+  an axis with *no* extent rather than an unbounded one — the `np.inf`
+  substitution still keeps the division finite, but the collapsed axis adds an
+  exact-equality constraint (`dx == 0` / `dy == 0`), so a zero-radius circle
+  selects only its centre and a single zero semi-axis collapses the ellipse onto
+  a segment. That restores the pre-`45dec1c9` phasor behaviour and makes every
+  ROI consumer (gating, `to_mask`, `regionprops`) degenerate-safe. The phasor
+  inconsistency is closed on top: `cursor_roi` now refuses a zero *radius* on the
+  circular path with the same `ValueError` the elliptic path already raised, so
+  `phasor.cursor_mask` returns a structured error instead of a whole-plane mask
+  for `radius: 0` from an RPC client. Pinned by
+  `test/core/test_roi.py::test_ellipse_with_a_zero_radius_has_no_extent` (both
+  the point-like and the segment case) and
+  `img_pixel_phasor/test/test_analysis.py::test_a_zero_radius_cursor_is_refused`.
+  `test/core/test_roi.py`, `test_regionprops.py`, `test_roi_builders_io.py`, the
+  `img_pixel_phasor`, `img_coloc`, `clsm`, `img_pixel_mle`, `sm_image_mle`,
+  `test_ratio_fret.py`, `test_frap.py` and `test_drift.py` suites all green
+  (284 tests); `ruff check` adds no new findings on the touched files.
 
 ### RF-002
 - **Status:** OPEN

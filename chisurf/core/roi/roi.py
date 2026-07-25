@@ -442,9 +442,19 @@ class EllipseROI(ROI):
         if self.angle:
             c, s = np.cos(-self.angle), np.sin(-self.angle)
             dx, dy = dx * c - dy * s, dx * s + dy * c
+        # A zero radius is an axis with *no* extent, not an unbounded one: the
+        # ellipse collapses onto a segment (or, with both radii zero, onto its
+        # centre) and only points sitting exactly on it are inside. The np.inf
+        # substitution keeps the division finite; the equality below restores
+        # the degeneracy it would otherwise wash out.
         rx = self.rx if self.rx > 0 else np.inf
         ry = self.ry if self.ry > 0 else np.inf
-        return (dx / rx) ** 2 + (dy / ry) ** 2 <= 1.0
+        inside = (dx / rx) ** 2 + (dy / ry) ** 2 <= 1.0
+        if self.rx == 0:
+            inside &= dx == 0.0
+        if self.ry == 0:
+            inside &= dy == 0.0
+        return inside
 
     def bounds(
         self,

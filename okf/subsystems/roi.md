@@ -38,7 +38,7 @@ region drawn on an image are the same `RectangleROI`.
 | Class | Covers |
 | --- | --- |
 | `RectangleROI` | index ranges, drawn boxes, histogram gates. Half-open, so abutting rectangles tile without overlap; `from_slices` converts array slice bounds |
-| `EllipseROI` | circles (beads, spots) and rotated ellipses; the 2-D Gaussian gates on parameter histograms |
+| `EllipseROI` | circles (beads, spots) and rotated ellipses; the 2-D Gaussian gates on parameter histograms. A zero radius is a **collapsed** axis with no extent, not an unbounded one — a degenerate gate selects its centre (or a segment), never the whole plane |
 | `PolygonROI` | arbitrary regions **and** freehand outlines — a hand-drawn contour is just a polygon with many vertices, so there is no separate freehand type |
 | `MaskROI` | anything not analytic: a painted brush stroke, one label of a segmentation, an imported classification map. Optionally cropped to a bounding box with an offset, or given an `extent` so its cells span **values** rather than pixel indices — `from_histogram(mask, edges_x, edges_y)` is how a region painted on a 2-D histogram gates the data behind it |
 | `ThresholdROI` | intensity selection, absolute or percentile. Image-dependent, so it answers only the pixel question and raises on `contains` |

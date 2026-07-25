@@ -307,12 +307,14 @@ def cursor_roi(
     Raises
     ------
     ValueError
-        For an unknown *kind*, or an elliptic cursor without usable radii.
+        For an unknown *kind*, or a cursor without usable radii.
     """
     from chisurf.core.roi import EllipseROI
 
     cg, cs = float(center[0]), float(center[1])
     if kind == "circular":
+        if float(radius) == 0.0:
+            raise ValueError("circular cursor radius must be non-zero")
         return EllipseROI(cg, cs, float(radius), name=name)
     if kind == "elliptic":
         if radii is None:

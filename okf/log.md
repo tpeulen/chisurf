@@ -2,6 +2,24 @@
 
 ## 2026-07-25
 
+* **A zero-radius region selected everything (RF-001).** `EllipseROI.contains`
+  substituted `np.inf` for a zero radius to keep the division finite, which
+  quietly turned the degenerate case into an *unbounded* one: `(dx/inf)**2 +
+  (dy/inf)**2 == 0 <= 1` is true for every point, so a phasor cursor wound down
+  to `radius = 0` gated the whole `(g, s)` plane and fed a whole-plane mask into
+  `pseudo_color` and the fraction maps — where the pre-region implementation had
+  selected essentially nothing. A collapsed axis has *no* extent, so `contains`
+  now adds the exact-equality constraint the `inf` washes out (`dx == 0` /
+  `dy == 0`): a zero-radius circle is its centre, one zero semi-axis is a
+  segment. The fix is in the shared geometry, so every consumer (gating,
+  `to_mask`, `regionprops`) is degenerate-safe, not just the phasor cursors. On
+  top of that, `cursor_roi` now refuses a zero *radius* on the circular path with
+  the same `ValueError` the elliptic path already raised — the inconsistency that
+  let `phasor.cursor_mask` accept `radius: 0` from an RPC client in the first
+  place. Pinned by `test/core/test_roi.py::test_ellipse_with_a_zero_radius_has_no_extent`
+  and `img_pixel_phasor/test/test_analysis.py::test_a_zero_radius_cursor_is_refused`;
+  every ROI-consumer suite green (284: ROI, regionprops, ROI-io, phasor,
+  colocalization, CLSM, pixel/molecule MLE, ratio-FRET, FRAP, drift).
 * **A finished chain now answers for priors it was not run under (PSIS).** The
   standing answer to "what if I had assumed a tighter lifetime prior?" was to
   sample again — a few hundred thousand model evaluations for a change that

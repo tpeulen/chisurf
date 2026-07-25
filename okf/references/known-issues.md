@@ -146,6 +146,18 @@ retired `_dev/fluorophore_db` plugin were fixed on the spot.
   **Pattern: when a model holds alternative parameter groups, the parameter
   list has to follow the active one.**
 
+**Test collection**
+- `test/core/test_rename.py` breaks collection of the **whole** `test/core`
+  package on any machine that is not the original Windows one: it is not a test
+  but an ad-hoc tttrlib file-locking script that runs at import time and opens a
+  hardcoded `e:\dev\chisurf\test\data\clsm\Leica_SP8.ptu`, so
+  `pytest test/core` stops at `FileNotFoundError` before running anything. It
+  carries no test function and no assertion; it was swept in by the
+  package-layout reorganisation (`e56240187`). The fix is to delete it or turn
+  it into a real test over `test/data/clsm/`. Left alone here only because this
+  run was scoped to a single review finding (RF-001) in a shared working tree —
+  workaround: `pytest test/core --ignore=test/core/test_rename.py`.
+
 **Qt teardown in test suites**
 - `chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py` aborts with
   `libc++abi: Pure virtual function called!` when the file is run as one

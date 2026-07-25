@@ -111,6 +111,21 @@ def test_circular_cursor_selects_exact_pixels():
     np.testing.assert_array_equal(mask, expected)
 
 
+def test_a_zero_radius_cursor_is_refused():
+    """A cursor with no area is an error on both paths, not a whole-plane gate."""
+    with pytest.raises(ValueError):
+        analysis.cursor_roi((0.5, 0.5), "circular", radius=0.0)
+    with pytest.raises(ValueError):
+        analysis.mask_from_circular_cursor(
+            np.array([0.0, 0.5, 1.0]),
+            np.array([0.0, 0.5, 0.0]),
+            center=(0.5, 0.5),
+            radius=0.0,
+        )
+    with pytest.raises(ValueError):
+        analysis.cursor_roi((0.5, 0.5), "elliptic", radii=(0.0, 0.1))
+
+
 def test_elliptic_cursor_axis_aligned():
     g = np.array([0.5, 0.7, 0.5])
     s = np.array([0.3, 0.3, 0.5])
