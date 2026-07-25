@@ -184,6 +184,96 @@ def test_dynamic_two_state_matches_static_in_slow_limit(qapp):
     assert y.size > 0 and np.all(np.isfinite(y)) and float(np.sum(y)) > 0.0
 
 
+def _dynamic_two_state_fit(true_kex, free_kex, total=2e5, seed=1):
+    """Build a dynamic-PDA self-recovery fit and run it.
+
+    The data is a Poisson realisation of the two-state dynamic model at
+    ``true_kex``. Both candidate fits are given the same structural freedom --
+    the two distances and the occupancy -- so the *only* thing that
+    distinguishes them is whether the exchange parameter is free (dynamic) or
+    pinned at zero (static two-population limit). That makes them properly
+    nested and gives the static alternative every chance to mimic the data.
+
+    Returns
+    -------
+    tuple
+        ``(fit, model)`` after ``fit.run()``.
+    """
+    import chisurf.core.fluorescence.tcspc as tcspc
+
+    model_class = _resolve("chisurf.core.models.pda.dynamic.PdaDynamicTwoStateModel")
+    fit = _make_pda_fit(model_class)
+    m = fit.model
+    st = m.states
+    st._R1.value, st._s1.value = 40.0, 4.0
+    st._R2.value, st._s2.value = 62.0, 4.0
+    st._x1.value, st._kex.value = 0.5, true_kex
+    m.update()
+    _ = m.get_wres(fit)
+
+    s1s2 = np.asarray(m.pda.get_S1S2_matrix(), dtype=float)
+    ny, nx = fit.data.pda["shape"]
+    s1s2 = s1s2[:ny, :nx]
+    s1s2 = s1s2 / max(s1s2.sum(), 1e-12) * total
+    noisy = np.random.default_rng(seed).poisson(s1s2).astype(float)
+
+    fit.data.pda["s1s2"] = noisy
+    fit.data.y = noisy.ravel(order="C")
+    fit.data.ey = tcspc.counting_noise(fit.data.y)
+
+    for p in m.parameters_all:
+        p.fixed = True
+    for p in (st._x1, st._R1, st._R2):
+        p.fixed = False
+    # Perturbed start, so recovery is not the trivial identity.
+    st._x1.value, st._R1.value, st._R2.value = 0.42, 43.0, 58.0
+    st._kex.fixed = not free_kex
+    st._kex.value = true_kex * 4.0 if free_kex else 0.0
+
+    m.find_parameters()
+    fit.run()
+    return fit, m
+
+
+def test_dynamic_pda_recovers_exchange_and_rejects_the_static_model(qapp):
+    """PRD-50 acceptance: 2-state exchange is recovered; static-only is rejected.
+
+    Two halves, matching the PRD criterion:
+
+    1. a synthetic 2-state exchange at a known rate is recovered by the fit;
+    2. the nested static-only alternative is rejected by the F-test that the
+       ``f_test`` plugin exposes (both share
+       :func:`chisurf.core.math.statistics.f_test_confidence`).
+    """
+    from chisurf.core.math.statistics import f_test_confidence
+
+    true_kex = 2.0
+    fit_dyn, m_dyn = _dynamic_two_state_fit(true_kex, free_kex=True)
+    st = m_dyn.states
+
+    # (1) the exchange rate -- and the state structure -- come back.
+    assert st.k_ex == pytest.approx(true_kex, rel=0.1)
+    assert st.R1 == pytest.approx(40.0, abs=1.0)
+    assert st.R2 == pytest.approx(62.0, abs=1.0)
+    assert st.x1 == pytest.approx(0.5, abs=0.05)
+    assert fit_dyn.chi2r < 1.5, f"dynamic fit did not converge (chi2r={fit_dyn.chi2r:.2f})"
+
+    # (2) the static limit cannot follow, even re-optimising both distances:
+    # it pulls them together to imitate dynamic averaging and still fails.
+    fit_static, m_static = _dynamic_two_state_fit(true_kex, free_kex=False)
+    assert m_static.states.k_ex == 0.0
+    assert m_static.n_free == m_dyn.n_free - 1, "the two models must be nested"
+    assert fit_static.chi2r > 10.0 * fit_dyn.chi2r
+
+    confidence = f_test_confidence(
+        chi2r_1=fit_static.chi2r,
+        chi2r_2=fit_dyn.chi2r,
+        nu_1=m_static.n_points - m_static.n_free,
+        nu_2=m_dyn.n_points - m_dyn.n_free,
+    )
+    assert confidence > 0.99, f"F-test failed to reject the static model (conf={confidence:.4f})"
+
+
 def test_three_state_mc_gillespie_equilibrium():
     """The Gillespie MC recovers the analytic equilibrium populations."""
     from chisurf.core.models.pda.dynamic_mc import (
