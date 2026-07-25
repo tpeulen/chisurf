@@ -8,7 +8,9 @@ about making that concrete, because once you see it the parameter choices in
 ChiSurf stop being arbitrary.
 
 For the step-by-step workflow, see the {doc}`FCS guide </guides/09_diffusion_fcs>`;
-for the confocal single-point analogue, see {ref}`concept-fcs-correlation`.
+for the confocal single-point analogue, see {ref}`concept-fcs-correlation`. For
+choosing the scan settings *before* recording — the dwell time is a physics
+parameter, not a convenience — see {ref}`concept-scan-precision`.
 
 ## The object: a correlation carpet
 

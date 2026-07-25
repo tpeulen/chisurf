@@ -1,0 +1,15 @@
+{
+  "id": "img_precision",
+  "version": "1.0.0",
+  "display_name": "Imaging:Scan Precision",
+  "description": "Predict how precisely a raster scan will measure a diffusion coefficient, and find the dwell time that measures it best — before the microscope time is spent.",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Imaging"],
+  "icon": "📐",
+  "state_namespace": "img_precision",
+  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+  "entrypoints": {
+    "gui": "chisurf.plugins.microscopy.img_precision.gui.tool:ImgPrecisionTool",
+    "cli": "img-precision=chisurf.plugins.microscopy.img_precision.cli:cli"
+  }
+}

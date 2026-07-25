@@ -106,6 +106,13 @@ def _drift(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     return widget
 
 
+def _precision(parent: ImagingToolsTool) -> QtWidgets.QWidget:
+    from chisurf.plugins.microscopy.img_precision.gui.tool import ImgPrecisionTool
+    widget = ImgPrecisionTool(parent=parent, embedded=True)
+    parent._register_panel("precision", widget)
+    return widget
+
+
 def _pixel_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_pixel_mle.gui.tool import ImgPixelMleTool
     widget = ImgPixelMleTool(parent=parent, embedded=True)
@@ -188,6 +195,17 @@ IMAGING_PANELS: list[dict] = [
         "description": "Define detector channels and PIE time windows once for all imaging tools.",
         "factory": _setup,
         "role": "setup",
+    },
+    {
+        "name": "Plan",
+        "icon": "📐",
+        "description": (
+            "Before acquiring: predict how precisely a scan will measure a given "
+            "diffusion coefficient, and which pixel dwell time measures it best. "
+            "Needs no data — it answers from the settings you intend to use."
+        ),
+        "factory": _precision,
+        "role": "precision",
     },
     {
         "name": "Browser",

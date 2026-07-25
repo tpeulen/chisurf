@@ -14,6 +14,67 @@
   instead of `-1 × resolution`. Pinned by
   `test_mean_micro_time_is_in_ns_and_discriminates`. Frame reduction on top of it
   (RF-031) is still open.
+* **The RICS precision predictor got a GUI, and looking at it found three
+  defects.** The MIA `RICSPE` port had been Qt-free-only; it is now the **Plan**
+  panel at the top of Image Tools (`microscopy/img_precision`), plus a standalone
+  tool. It answers before the experiment — from the intended settings and an
+  expected `D` — how precisely a raster scan would measure `D`, and sweeps the
+  pixel dwell time to show where the optimum lies. Plan sits *above* Browser
+  because planning precedes acquiring, and deliberately **outside**
+  `PIPELINE_ORDER`: the Back/Next walk threads one dataset through the numbered
+  steps and this panel consumes no dataset at all. Compute is a thin Qt-free
+  `core.py` (`sweep_dwell`, `line_time_for`, `default_dwell_range`) over
+  `core/experiments/ics/precision.py`, plus a headless `img-precision` CLI —
+  which is the practical way to do the thing the docs recommend, sweeping `D`
+  rather than the dwell time.
+
+  **The first render was useless, and only inspecting the PNG showed it.** On a
+  linear y-axis the 5241 % point at 0.5 µs flattened the entire 2-10 % region
+  the user is actually choosing between into a line along the bottom; the plot
+  is now log-log. The same grab showed "your setting" invisible — a single point
+  drawn as a line — so it carries a diamond symbol with `no_line`. A test now
+  pins both (`test_the_plot_is_logarithmic_on_both_axes`), because both are the
+  kind of defect that a passing test suite and a widget that "builds fine" hide
+  completely.
+
+  **`rics_precision` divided by zero instead of rejecting the input.** It
+  validated that a line can hold its pixels but never that the timings were
+  positive at all, so `pixel_time=0` surfaced as a `ZeroDivisionError` from the
+  middle of the brightness algebra — indistinguishable, to a caller, from a bug.
+  Every quantity that divides (`pixel_time`, `line_time`, `pixel_size`, `w_r`,
+  `w_z`, `diffusion_coefficient`) is now checked up front and raises `ValueError`,
+  which is what `sweep_dwell` already treats as "this dwell is unrealisable,
+  leave a gap and carry on". Found by a test written to assert exactly that
+  behaviour.
+
+  **An all-NaN sweep used to report success.** Per-point `ValueError` tolerance
+  is right for one bad dwell time, but when *every* point fails the cause is a
+  setting shared by all of them (a zero waist, a nonsense `D`) and the view model
+  was returning `True` with a curve of holes. It now fails with a message naming
+  the likely culprits.
+
+  Testing note, and a lesson repeated: my first shape test asserted that a larger
+  `D` moves the optimum monotonically down. It failed — the same over-claim I had
+  already made once in this module and replaced with a ratio test, because each
+  point is a Monte-Carlo estimate carrying ~10 % uncertainty and the argmin
+  wanders along flat stretches. The test was dropped rather than re-litigated;
+  the physics it tried to assert is covered robustly in `test_ics_precision.py`.
+  Downsized settings had also produced a garbage curve (an error of 2.3e7 at one
+  point) — below ~3 lags and a few tens of realisations the estimator has no
+  shape to test — so the plugin suite documents its floor rather than picking the
+  fastest numbers that run. 11 tests in
+  `chisurf/plugins/microscopy/img_precision/test/`; the 30 existing
+  `test_ics_precision.py` + `test_ics_calibration.py` and the 13 `img_drift`
+  tests stay green.
+
+  Documented in theory ({doc}`concepts/scan_precision`) and application
+  (guide 45, with a real screenshot from `make_screenshots.py`). Both pages state
+  the limits plainly: the minimum is an order of magnitude and not a setting to
+  dial in; `D` is an input, so the honest procedure is to sweep it and pick a
+  dwell tolerable across the range; precision is quoted per *frame count*, not
+  per unit time, so the right-hand side of the curve is also a longer
+  acquisition; and none of it says anything about bias.
+
 * **chimol is documented — and making the figure found two more defects.** The
   plugin had no user documentation at all; `docs/` carried only development notes.
   Now `docs/guides/44_molecular_viewer.md` covers loading, selecting, drawing,

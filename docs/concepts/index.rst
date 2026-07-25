@@ -25,6 +25,7 @@ ordering below runs from the physical fundamentals to the specific methods.
 
    filtered_fcs
    image_correlation
+   scan_precision
    pch_fida
 
 .. rubric:: Single-molecule FRET (bursts)

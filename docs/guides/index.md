@@ -65,6 +65,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 42 | [Three-colour PDA (tcPDA)](42_tcpda.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |
 | 43 | [Drift correction](43_drift_correction.md) | `img_drift` plugin, `imaging.drift` |
 | 44 | [The molecular viewer (ChiMOL)](44_molecular_viewer.md) | `chimol` plugin, PyMOL-compatible commands, `get_area` |
+| 45 | [Planning a scan: which dwell time measures D best?](45_scan_precision.md) | `img_precision` plugin, `experiments.ics.precision` |
 
 ## Running
 

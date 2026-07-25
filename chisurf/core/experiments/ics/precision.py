@@ -510,9 +510,24 @@ def rics_precision(
     ------
     ValueError
         If the scan timing is inconsistent (a line cannot be shorter than the
-        pixels it contains).
+        pixels it contains), or if a quantity that must describe a real
+        acquisition is not positive.
     """
     from scipy.optimize import least_squares
+
+    # Every one of these divides somewhere below. Rejecting them here keeps the
+    # failure a ValueError callers can treat as "this setting is unrealisable"
+    # rather than a ZeroDivisionError surfacing from the middle of the algebra.
+    for name, value in (
+        ("pixel_time", pixel_time),
+        ("line_time", line_time),
+        ("pixel_size", pixel_size),
+        ("w_r", w_r),
+        ("w_z", w_z),
+        ("diffusion_coefficient", diffusion_coefficient),
+    ):
+        if not float(value) > 0.0:
+            raise ValueError(f"{name} must be positive, got {value!r}")
 
     if pixel_time * nx > line_time:
         raise ValueError(

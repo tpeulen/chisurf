@@ -1,0 +1,157 @@
+{
+  "_comment": "Scan-precision planner. AutoForm over PrecisionViewModel. Left: what you are measuring and how you plan to scan it. Right: predicted error against pixel dwell time, with the user's own setting marked, plus the numbers behind the curve. Predict lives in the host toolbar; long help sits behind the ? button.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Scan precision",
+      "split": "horizontal",
+      "persist": "img_precision",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Settings",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "panel",
+              "title": "Sample",
+              "collapsed": false,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "diffusion_coefficient",
+                  "label": "D [µm²/s]",
+                  "description": "The diffusion coefficient you expect to measure. This is the awkward part of planning a scan: the best settings depend on the answer you do not have yet, so use a literature value or a guess and check how sensitive the prediction is to it. A free dye is a few hundred; a labelled protein a few tens; a membrane protein below one.",
+                  "kind": "float", "decimals": 3, "minimum": 1e-06, "maximum": 100000.0
+                },
+                {
+                  "type": "value",
+                  "attr": "n_particles",
+                  "label": "Molecules in view",
+                  "description": "Number of fluorescent molecules in the illuminated region. Too few and the correlation is noisy; too many and its amplitude (which goes as 1/N) sinks into the background.",
+                  "kind": "float", "decimals": 1, "minimum": 0.01, "maximum": 1000000.0
+                },
+                {
+                  "type": "value",
+                  "attr": "brightness_khz",
+                  "label": "Brightness [kHz/molecule]",
+                  "description": "Photons per second from a single molecule at the centre of the focus. This is the dominant lever on precision after the number of frames — a dim label cannot be rescued by scanning cleverly.",
+                  "kind": "float", "decimals": 2, "minimum": 0.001, "maximum": 100000.0
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Optics",
+              "collapsed": false,
+              "sections": [
+                {
+                  "type": "value", "attr": "w_r", "label": "w_r [µm]",
+                  "description": "Lateral beam waist. Measure it with the waist calibration rather than guessing: every predicted error scales with it.",
+                  "kind": "float", "decimals": 3, "minimum": 0.001, "maximum": 100.0
+                },
+                {
+                  "type": "value", "attr": "w_z", "label": "w_z [µm]",
+                  "description": "Axial beam waist. Only its ratio to w_r matters here.",
+                  "kind": "float", "decimals": 3, "minimum": 0.001, "maximum": 1000.0
+                },
+                {
+                  "type": "value", "attr": "pixel_size_nm", "label": "Pixel size [nm]",
+                  "description": "Physical pixel size. It should sample the waist several times over — around 4 to 6 pixels across w_r — or the spatial shape of the correlation is undersampled.",
+                  "kind": "float", "decimals": 2, "minimum": 1.0, "maximum": 100000.0
+                },
+                {
+                  "type": "toggle", "attr": "two_d", "label": "Membrane (2-D)",
+                  "description": "Use the 2-D geometry for a membrane or a surface, which has different shape factors from a 3-D focus."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Scan",
+              "collapsed": false,
+              "sections": [
+                {
+                  "type": "value", "attr": "pixel_time_us", "label": "Pixel dwell [µs]",
+                  "description": "The dwell time you plan to use. It is marked on the curve so you can see how far it sits from the optimum.",
+                  "kind": "float", "decimals": 3, "minimum": 0.01, "maximum": 100000.0
+                },
+                {
+                  "type": "value", "attr": "line_overhead", "label": "Line overhead ×",
+                  "description": "How much longer a line takes than the sum of its pixels, from flyback and settling. 1.2 means 20 % overhead. The sweep scales the line time with the dwell, because a line cannot stay short as its pixels grow.",
+                  "kind": "float", "decimals": 2, "minimum": 1.0, "maximum": 100.0
+                },
+                {
+                  "type": "value", "attr": "nx", "label": "Pixels per line",
+                  "kind": "int", "minimum": 8, "maximum": 4096,
+                  "description": "Image width. A larger image averages more pixel pairs and so measures better, at the cost of a longer frame."
+                },
+                {
+                  "type": "value", "attr": "ny", "label": "Lines per frame",
+                  "kind": "int", "minimum": 8, "maximum": 4096,
+                  "description": "Image height."
+                },
+                {
+                  "type": "value", "attr": "n_images", "label": "Frames",
+                  "kind": "int", "minimum": 1, "maximum": 100000,
+                  "description": "Frames averaged. Precision improves as the square root of this, so halving the error costs four times the acquisition time."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Estimator",
+              "collapsed": true,
+              "sections": [
+                {
+                  "type": "value", "attr": "n_lags", "label": "Lags fitted",
+                  "kind": "int", "minimum": 1, "maximum": 15,
+                  "description": "Largest lag included on each axis. Cost grows as the fourth power of this, so raising it is expensive; the reference implementation uses 15."
+                },
+                {
+                  "type": "value", "attr": "n_repeats", "label": "Repeats",
+                  "kind": "int", "minimum": 5, "maximum": 2000,
+                  "description": "Monte-Carlo realisations behind each point. The predicted error carries an uncertainty of roughly 1/sqrt(2N) itself — about 11 % at 40 — which is why the position of the minimum is only good to an order of magnitude."
+                },
+                {
+                  "type": "value", "attr": "seed", "label": "Seed",
+                  "kind": "int", "minimum": 0, "maximum": 1000000,
+                  "description": "Random seed, so a quoted prediction can be reproduced."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "dock_area",
+          "title": "Prediction",
+          "sections": [
+            {
+              "type": "plot",
+              "source": "sweep_series",
+              "title": "Error vs dwell",
+              "x_label": "pixel dwell / µs",
+              "y_label": "predicted error / %",
+              "log_x": true,
+              "log_y": true,
+              "description": "Predicted relative error on D against pixel dwell time, with your own setting marked. Both axes are logarithmic: a badly-matched dwell is wrong by orders of magnitude, and on a linear axis one such point flattens the whole usable range into a line. The curve rises at both ends: too fast and the molecule has not moved between pixels, too slow and it has already decorrelated. Read the minimum as an order of magnitude — the estimate is itself a Monte-Carlo quantity."
+            },
+            {
+              "type": "table",
+              "source": "sweep_rows",
+              "title": "Numbers",
+              "expand": true,
+              "columns": [
+                {"key": "dwell", "label": "Dwell [µs]", "width": 110, "description": "Pixel dwell time."},
+                {"key": "line", "label": "Line [ms]", "width": 110, "description": "Line time implied by the dwell and the overhead."},
+                {"key": "frame", "label": "Frame [ms]", "width": 110, "description": "Time for one frame — multiply by the frame count for the total acquisition."},
+                {"key": "error", "label": "Error [%]", "width": 110, "description": "Predicted relative error on D. '—' means the timing is not realisable."}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
