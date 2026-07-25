@@ -673,14 +673,23 @@ def read_asc(
         try:
             mean_count_rate = d["Count rates"][i]
         except (KeyError, IndexError):
-            mean_count_rate = np.sum(intensity) / aquisition_time
+            # The trace is already a rate, so its mean *is* the mean count
+            # rate; summing it and dividing by the duration divides by the
+            # number of bins per second instead. Where the file records the
+            # instrument's own count rate the two can be compared: on
+            # ALV-7004.ASC it says 60.78 kHz, the trace mean gives 60.27 and
+            # the sum-over-duration gave 30.25.
+            mean_count_rate = float(np.mean(intensity))
 
         # in cross correlations the count rate of the correlation
         # channels are set to zero. In this case use the mean of the
         # two intensity traces
         if mean_count_rate == 0.0:
-            aquisition_time = np.mean(intensity_time[-1])
-            mean_count_rate = np.mean(intensity[-1])
+            # ``intensity[-1]`` is the *last sample* of the trace, not the
+            # trace: it made the count rate a single noisy time bin (77.8
+            # against a mean of 60.3 on the sample file).
+            aquisition_time = float(intensity_time[-1].mean())
+            mean_count_rate = float(np.mean(intensity))
         
         # Import here to avoid circular import
         import chisurf.core.fluorescence.fcs

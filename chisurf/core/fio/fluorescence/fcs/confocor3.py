@@ -438,18 +438,27 @@ def read_zeiss_fcs(
 
         trace = d['Trace'][i]
         if len(trace) == 2:
-            # Cross correlation and two channels
+            # Cross correlation and two channels.
+            # The trace column is already a rate in kHz, so the mean count
+            # rate is its mean -- as the auto-correlation branch below does.
+            # Summing it and dividing by the acquisition time in *ms* instead
+            # divides by the number of bins per millisecond: on the sample
+            # file that reported 6.5 kHz for detectors running at 147 and
+            # 184 kHz, a factor of 25 (the 25.6 ms bins of the down-sampled
+            # trace). The count rate feeds the noise model, so every
+            # cross-correlation curve came out with weights far too small and
+            # fitted "better" than the auto-correlations of the same photons.
             # Intensity in channel 1
             intensity_time_ch1 = trace[0][:, 0]
             intensity_ch1 = trace[0][:, 1]
             aquisition_time_ch1 = intensity_time_ch1[-1]
-            mean_count_rate_ch1 = np.sum(intensity_ch1) / aquisition_time_ch1
+            mean_count_rate_ch1 = float(np.mean(intensity_ch1))
 
             # Intensity in channel 2
             intensity_time_ch2 = trace[1][:, 0]
             intensity_ch2 = trace[1][:, 1]
             aquisition_time_ch2 = intensity_time_ch2[-1]
-            mean_count_rate_ch2 = np.sum(intensity_ch2) / aquisition_time_ch2
+            mean_count_rate_ch2 = float(np.mean(intensity_ch2))
 
             # Mean intensity per detector (legacy quantity).
             mean_count_rate = 0.5 * (mean_count_rate_ch1 + mean_count_rate_ch2)

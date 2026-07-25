@@ -173,6 +173,15 @@ trace.append((float(row[0]) * 1000, float(row[1]))
 The reader uses the trace to compute acquisition time and mean count rate,
 which in turn are used to derive weights for `correlation_amplitude_weights`.
 
+```{note}
+The trace column is already a **rate** (kHz), so the mean count rate is the
+*mean* of that column. Summing it and dividing by the duration divides by the
+number of bins per unit time — a factor set only by how the trace happened to
+be binned — and the resulting count rate feeds the noise model, silently
+rescaling every weight derived from it. This applies to every FCS reader that
+derives a count rate from a trace.
+```
+
 ### One file, many curves
 
 A ConfoCor `.fcs` is a measurement archive rather than a single curve. A

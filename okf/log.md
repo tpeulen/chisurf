@@ -2,6 +2,32 @@
 
 ## 2026-07-25
 
+* **The FCS count rate is part of the fit, and two readers computed it wrong.**
+  A correlation reader derives `correlation_amplitude_weights` from the
+  acquisition time and the mean count rate, so an error there reweights every
+  point. The intensity trace is stored as a *rate* per bin, so the mean count
+  rate is its mean; summing it and dividing by the duration divides by the bins
+  per unit time, a factor set only by the binning. The ConfoCor
+  cross-correlation branch did that with the duration in **milliseconds** and
+  reported **6.5 kHz for detectors running at 147 and 184 kHz** — 25x low, the
+  25.6 ms bins of the down-sampled trace — so every cross-correlation curve got
+  weights ~25x too large and fitted far "better" than the autocorrelations of
+  the same photons (chi2r 12-37 against 130-380). The ALV reader had the same
+  error in its fallback, plus `np.mean(intensity[-1])`, which is the *last
+  sample* of the trace rather than the trace. Both now take the mean.
+  **Validated against ground truth rather than by inspection:** `ALV-7004.ASC`
+  records the instrument's own 60.78 kHz, the trace mean gives 60.27 and the
+  old expression 30.25; and on the ConfoCor file the corrected cross-correlation
+  error now matches the shot-noise-dominated short-lag scatter of the
+  autocorrelations to 1.0-1.3x, where before it was off by ~20x. 4 regression
+  tests (`test/fio/test_fcs_count_rates.py`), each confirmed to fail on the old
+  code. The remaining chi2r of a few hundred on this live-cell sample is *not*
+  weights: comparing the four repeats shows the noise model is calibrated at
+  short lag and only under-predicts the long-lag scatter, which is the cell
+  changing between consecutive 20 s measurements, not measurement noise. That
+  reading — a huge chi2r on cell data means the model, and repeats are the
+  honest error bar — went into the `fit-correlation` skill.
+
 * **A member of a grouped fit had no index, so every write it addressed went
   nowhere (RF-029).** `find_fit_idx` matched by identity against `chisurf.fits`
   and fell off the end for anything it did not find, returning `None` from a

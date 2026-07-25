@@ -36,6 +36,26 @@ reading_routine, experiments}`. Extension → experiment routing:
 | `.pt3`, `.t3r`, `.sm`, `.raw` | PicoQuant / SM / CZ-RAW | (varies) | tcspc (+fcs/pda) |
 | `.csv` / `.txt` / `.fcs` | text / ISS FCS | — | fcs, pda |
 
+# Correlation curves carry their own weights
+
+An FCS reader does not only parse a curve: it derives
+`correlation_amplitude_weights` from the acquisition time and the **mean count
+rate**, so the count rate is part of the fit, not metadata. The intensity trace
+is stored as a *rate* per bin, so that mean is the mean of the trace; summing
+it and dividing by the duration divides by the bins per unit time — a factor
+set only by the binning — and rescales every weight. Two readers did that (the
+ConfoCor cross-correlation branch and the ALV fallback), which made affected
+curves fit far "better" than curves built from the same photons. A file that
+records the instrument's own count rate is the ground truth for checking this,
+and at short lag the derived error must match the empirical scatter between
+repeats.
+
+A reader may also return **many curves per file**: a cross-correlation
+measurement archive holds repeats of two autocorrelations and two
+cross-correlations, which are different quantities rather than repeats of one.
+Whatever distinguishes them must survive into the dataset — see
+[the assistant's use of it](/subsystems/llm-agent.md).
+
 # Photon / TTTR data (tttrlib)
 
 Time-tagged single-photon records are parsed by the compiled `tttrlib`

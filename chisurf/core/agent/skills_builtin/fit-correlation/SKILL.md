@@ -133,3 +133,18 @@ noise is smallest. Structured residuals only at long lag usually mean the
 measurement was too short. A curve that does not flatten at long lag, or that
 rises again, means drift, aggregates or a bleaching sample — no choice of
 model fixes that, and saying so is the useful answer.
+
+A reduced chi-square in the **hundreds** is not a fit that needs one more
+iteration. On measurements in living cells it is normal and it means the
+model, not the optimiser: cells give two or more diffusing species, anomalous
+diffusion, bleaching and drift, none of which a single free-shape diffusion
+term can absorb. Say that plainly instead of reporting the parameters as if
+they were determined.
+
+**When there are repeats, they are your error bar.** The scatter of a fitted
+quantity across repeated measurements of the same sample is the honest
+uncertainty, and on live cells it is far larger than the statistical error the
+weights imply — the point-to-point scatter between repeats of one sample runs
+several times the per-curve noise at long lag, because the cell itself changed
+between them. Quote the spread across repeats, not the error estimate of a
+single fit.
