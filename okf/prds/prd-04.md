@@ -404,9 +404,20 @@ back-and-forth is condensed; all listed items were resolved unless noted):
   `_chisurf_schema.foreign_key`, the gate iterates every dictionary item with no
   allow-list, the wizard reads the child tables (blob is fallback-only), and the
   hardcodes are gone. Remaining minor/optional: index SQL is still a small
-  hardcode; a missing dictionary category currently degrades to a no-op comment
-  (prefer fail-loud); enumerations are enforced at the app layer, not via SQL
-  `CHECK`; column order is alphabetical.
+  hardcode; enumerations are enforced at the app layer, not via SQL `CHECK`;
+  column order is alphabetical.
+  **Fail-loud generator — done (2026-07-25, mmfdb `4916b1d`).** The "missing
+  dictionary category degrades to a no-op comment" item is fixed:
+  `generate_create_table_for_category` raises `UnknownCategoryError`. Making it
+  loud immediately exposed what the silence had hidden — `CREATE_TABLES_SQL`
+  asked for `mmfdb_microtime_shift`, a category the PRD-19 collapse had removed
+  from the dictionary, while `_drop_legacy_tables` in the *same module* drops
+  that table as legacy. The create had always been a no-op comment, so
+  create-then-drop looked like it worked. The bespoke table was retired in
+  favour of role-indexed `mmfdb_parameter` rows (the microtime-shifter plugin
+  already documents it as retired), so the stale line is gone. A new test
+  asserts every category `CREATE_TABLES_SQL` generates is really declared in
+  the dictionary.
 - **Per-user sidequest.** Implemented to the locked decisions (owner column, not
   ACL; user-namespaced ids; `is_public` + owner-only checkbox; per-user idempotent
   migration; own+public scoping; gate extended). Fixed a privacy inversion where
@@ -434,20 +445,21 @@ back-and-forth is condensed; all listed items were resolved unless noted):
 - **Sidequest C (g-factor).** Solid — the provenance chain is built end to end
   (reference decay registered, g-factor archived as a parented calibration, channel
   carries a dictionary-declared `g_factor_calibration_id`, FCS read-only regression
-  fixed). Follow-ups: assert the calibration→reference-decay edge in tests; guard
-  the `notes` f-string against a `None` g-factor so a missing value fails loudly
-  rather than being swallowed; optionally add an FK on `g_factor_calibration_id`
-  and a C3 round-trip test.
+  fixed). Follow-ups **audited 2026-07-25**: the calibration→reference-decay
+  edge *is* asserted (`vv_vh_g_factor/test/test_calib_provenance.py` checks the
+  `derived_from` edge for both the calibration and the derived decays), and the
+  `notes` f-string is safe because `archive_g_factor_handler` early-returns on a
+  `None` g-factor long before reaching it. Still open, still optional: an FK on
+  `g_factor_calibration_id` and a C3 round-trip test.
 - **Sidequest D (time-versioned calibration).** Table, generated DDL, gate,
   append-only API, latest-per-channel resolution, migration backfill, and the date
-  combobox are all present and tested. Two defects to fix: `save_setup` appended a
-  snapshot on **every** save with no change detection (structural re-saves polluted
-  the calibration history) — dedup-on-change against the latest snapshot, or route
-  calibration only through `add_setup_calibration`; and the date combobox resolved
-  the setup id **without the active user**, so it was empty for per-user setups —
-  pass `_resolve_active_user_id()` to `setup_id_for_name` at both call sites. The
-  D6 reproducibility metadata (burst pipeline records `calibrated_at`) is
-  implemented but inherits the same user-scoping concern.
+  combobox are all present and tested. Both previously-listed defects are **fixed**
+  (verified 2026-07-25): `save_setup` appends a calibration snapshot only when the
+  factors differ from the latest one, so structural re-saves no longer pollute the
+  calibration-date history; and both date-combobox call sites now pass
+  `_resolve_active_user_id()` to `setup_id_for_name`, so per-user setups resolve.
+  The D6 reproducibility metadata (burst pipeline records `calibrated_at`)
+  inherits the now-correct user scoping.
 
 # Relationships
 - Builds on [PRD-030](prd-030.md) codecs and the [PRD-03](prd-03.md) registry; adds setup/channel records extended later by an optical-configuration PRD.
