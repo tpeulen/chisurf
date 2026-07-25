@@ -137,6 +137,29 @@ master removes it from `parameters` and therefore from the fit, without deleting
 it — the model still reads its value. This is how global fits share one degree of
 freedom across datasets.
 
+# Editing a parameter from a GUI
+
+Every parameter editor — the per-parameter row widget, the detail popup and the
+AutoForm [parameter tables](/subsystems/gui-autoform.md) — owes an edit the same
+three things, and does them through one shared implementation
+(`ParameterActionsMixin.apply_value` / `apply_fixed` / `apply_bounds_on` /
+`apply_bounds`): a **local write**, an **RPC** to the backend through the fitting
+client, and a **provenance-trace entry** so the edit appears in the
+[history](/subsystems/history.md) projection. Omitting the local write leaves the
+edit lost whenever the RPC server is unreachable (the GUI starts, with a warning,
+in that state); omitting the trace drops the edit from the history. A write of the
+value a parameter already holds is dropped — an editor refresh re-emits its
+editor's signals, and recording those as edits filled the history with no-op
+operations.
+
+The refresh path runs the other way and is **thread-bound**: a server-side change
+(a fit run, linked-parameter propagation, any RPC that finalizes a model) reaches
+`parameter.controller.finalize()` on the RPC thread, which runs no Qt event loop.
+A timer created there never fires and a `dataChanged` emitted there is dropped by
+Qt outright, so both editors kept painting superseded numbers; `finalize` now
+posts itself to the thread its widgets live on (`QCoreApplication.postEvent`) and
+runs the repaint there.
+
 See [fitting](/subsystems/fitting.md), [models](/subsystems/models.md), the
 [data model](/subsystems/data-model.md), and the [action layer](/architecture/action-layer.md)
 that mediates parameter edits. Parameters reach GUIs/plugins through the

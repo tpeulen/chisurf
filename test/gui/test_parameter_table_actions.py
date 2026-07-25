@@ -260,6 +260,96 @@ def test_popup_edit_echoes_locally_without_a_backend(table, qtbot, params):
     popup.hide()
 
 
+def test_writing_the_value_a_parameter_already_has_is_dropped(table, params, monkeypatch):
+    """An editor refresh re-emits its editor's signals — that is not an edit.
+
+    Recording those filled the history with "from 2.0 to 2.0" operations and
+    repainted the view for nothing.
+    """
+    from chisurf.gui.widgets.fitting import parameter_widgets
+
+    client = _RecordingClient()
+    traced = []
+    monkeypatch.setattr(parameter_widgets, "get_fitting_client", lambda: client)
+    monkeypatch.setattr(
+        parameter_widgets.ParameterActionsMixin,
+        "_trace_operation",
+        lambda self, action_type, summary, payload=None: traced.append(action_type),
+    )
+    ctrl = table._controller(0)
+
+    ctrl.apply_value(params[0].value)
+    ctrl.apply_fixed(params[0].fixed)
+    ctrl.apply_bounds_on(params[0].bounds_on)
+    # An unset side stays None rather than failing to convert, so editing the
+    # other one still lands.
+    ctrl.apply_bounds(*params[0].bounds)
+
+    assert not traced and not client.calls
+
+    ctrl.apply_bounds_on(True)
+    ctrl.apply_bounds(None, 5.0)
+    assert params[0].bounds[1] == 5.0
+
+    ctrl.apply_value(params[0].value + 1.0)
+    assert traced == ["parameter_bounds_on", "parameter_bounds_set", "parameter_value"]
+
+
+def _finalize_from_a_worker_thread(controller, qapp):
+    """Call ``controller.finalize()`` off-thread, then pump the GUI event loop."""
+    import threading
+    import time
+
+    t = threading.Thread(target=controller.finalize, name="fake-rpc-server")
+    t.start()
+    t.join()
+    for _ in range(10):
+        qapp.processEvents()
+        time.sleep(0.01)
+
+
+def test_finalize_from_another_thread_repaints_on_the_gui_thread(table, qapp):
+    """Regression: a server-thread refresh never reached the table.
+
+    Every server-side change (a fit run, linked-parameter propagation, any RPC
+    that finalizes a model) calls the controllers on the RPC thread, which runs
+    no Qt event loop: emitting ``dataChanged`` from there makes Qt drop the
+    emission ("Cannot queue arguments of type 'QVector<int>'") and the table kept
+    painting the superseded value.
+    """
+    import threading
+
+    seen = []
+    table.table_model.dataChanged.connect(
+        lambda *_: seen.append(threading.current_thread().name)
+    )
+
+    _finalize_from_a_worker_thread(table._controller(0), qapp)
+
+    assert seen, "the off-thread refresh never reached the table"
+    assert all(name == threading.main_thread().name for name in seen)
+
+
+def test_row_widget_finalize_from_another_thread_updates_the_editor(params, qtbot, qapp):
+    """The row widget had the same gap: its off-thread guard never fired.
+
+    It rescheduled with ``QTimer.singleShot``, but a timer created on a thread
+    with no event loop never fires — so the refresh was dropped silently instead
+    of noisily.
+    """
+    from chisurf.gui.widgets.fitting.parameter_widgets import (
+        make_fitting_parameter_widget,
+    )
+
+    widget = make_fitting_parameter_widget(params[0])
+    qtbot.addWidget(widget)
+    params[0].value = 12.5
+
+    _finalize_from_a_worker_thread(widget, qapp)
+
+    assert widget.widget_value.value() == pytest.approx(12.5)
+
+
 def test_controllers_released_when_the_table_dies(params, qapp):
     """A dead table must not leave a deleted proxy on the parameters."""
     w = ParameterGroupTableWidget(params)

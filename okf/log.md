@@ -2,6 +2,38 @@
 
 ## 2026-07-25
 
+* **Parameter editors never repainted from a server-side change — Qt was dropping
+  the refresh.** Continuing the parameter-edit audit. Every server-side change (a
+  fit run, linked-parameter propagation, any RPC that finalizes a model) reaches
+  `parameter.controller.finalize()` on the `chisurf-rpc-server` thread, which is a
+  plain Python thread with no Qt event loop, and **both** editors lost the refresh
+  there. The AutoForm tables' proxy controller emitted `dataChanged` straight from
+  that thread: Qt cannot marshal the signal's `QVector<int>` roles argument across
+  threads, so it logged "Cannot queue arguments of type 'QVector<int>'" and
+  **dropped the emission** — an RPC `parameter.set_value` moved a parameter to 9.75
+  while the table went on painting 2 (reproduced headlessly; running the new
+  regression tests against the unfixed tree even segfaults, so the old path was
+  unsafe, not merely lossy). The row widget's guard looked correct but was a silent
+  no-op: it rescheduled with `QTimer.singleShot`, and a timer created on a thread
+  with no event loop never fires (verified in isolation). Both now go through
+  `ParameterActionsMixin._defer_finalize_to_owning_thread`, which posts a custom
+  event to the editor with `QCoreApplication.postEvent` (thread-safe, delivered
+  into the owning thread's loop) and re-runs `finalize` there.
+  Also: the `apply_*` helpers now **drop a write of the value/flag the parameter
+  already holds** — an editor refresh re-emits its editor's signals, and recording
+  those as edits wrote "set value … from 2.0 to 2.0" operations into the history
+  and repainted the view for nothing (this surfaced as an existing test seeing
+  three repaints where it expected one) — and `apply_bounds` passes `None`
+  through as "unbounded on this side" instead of coercing it to `float`, which
+  would have made editing one bound fail while the other was unset.
+  Four regression tests (proxy + row widget off-thread refresh, the no-op guard,
+  the `None` bound), each verified to fail on the unfixed tree; 52 pass across the
+  two parameter-table suites, plus the FCS-editor, auto-model-widget, prior-widget
+  and chitable suites. Pre-existing and unrelated: the two source-scanning
+  "link visuals" contract tests (a wrong relative path / a missing `Path` import),
+  `test_widgets.py`'s node-editor errors, and
+  `test_parameter_prior_widget.py::test_focus_moving_to_a_child_keeps_the_popup_open`
+  (order-dependent — passes in a full-file run, fails alone, on HEAD as well).
 * **chimol: the deposited model arrives whole, and what no cartoon draws is
   shown.** Prompted by a side-by-side against PyMOL on 1DG3: chimol's picture was
   missing every water PyMOL rendered as a red dot.

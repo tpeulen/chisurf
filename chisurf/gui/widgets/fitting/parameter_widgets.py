@@ -649,6 +649,43 @@ class ParameterActionsMixin:
     detail-popup behaviour.
     """
 
+    #: Event type that carries a deferred :meth:`finalize` to the owning thread.
+    _FINALIZE_EVENT = QtCore.QEvent.registerEventType()
+
+    # -- thread hop ---------------------------------------------------------
+    def _defer_finalize_to_owning_thread(self) -> bool:
+        """Post ``finalize()`` to this editor's own thread; ``True`` when posted.
+
+        Every server-side change — a fit run, linked-parameter propagation, any
+        RPC that finalizes a model — reaches the controllers on the RPC thread,
+        which is a plain Python thread with **no Qt event loop**.  Two things go
+        wrong there and both end in an editor that keeps painting superseded
+        numbers: ``QTimer.singleShot`` created on such a thread never fires
+        (verified — its timer needs an event loop that thread does not run), and
+        emitting ``dataChanged`` across threads makes Qt drop the emission
+        outright ("Cannot queue arguments of type 'QVector<int>'", the roles
+        argument has no registered metatype).  ``postEvent`` is thread-safe and
+        delivers into the owning thread's event loop, so the refresh happens
+        where the widgets live.
+
+        Returns
+        -------
+        bool
+            ``True`` when the call was posted and the caller must return,
+            ``False`` when it is already on the right thread.
+        """
+        if QtCore.QThread.currentThread() is self.thread():
+            return False
+        QtCore.QCoreApplication.postEvent(self, QtCore.QEvent(self._FINALIZE_EVENT))
+        return True
+
+    def event(self, e: QtCore.QEvent) -> bool:
+        """Run a deferred :meth:`finalize` posted from another thread."""
+        if e.type() == self._FINALIZE_EVENT:
+            self.finalize()
+            return True
+        return super().event(e)
+
     def _locate_parameter(self, parameter) -> typing.Tuple[str, str]:
         fit_group_label = "?"
         local_fit_label = "?"
@@ -799,13 +836,21 @@ class ParameterActionsMixin:
         return self.fitting_parameter if parameter is None else parameter
 
     def apply_value(self, value: float, parameter=None) -> None:
-        """Set a parameter's value (local echo + RPC + trace)."""
+        """Set a parameter's value (local echo + RPC + trace).
+
+        A write of the value the parameter already holds is dropped: an editor
+        refresh re-emits its editor's signals, and recording those as edits
+        filled the history with "from 2.0 to 2.0" operations and repainted the
+        view for nothing.
+        """
         fp = self._target(parameter)
         value = float(value)
         try:
             old_value = float(fp.value)
         except Exception:
             old_value = float("nan")
+        if old_value == value:
+            return
 
         def write():
             fp.value = value
@@ -831,9 +876,14 @@ class ParameterActionsMixin:
         )
 
     def apply_fixed(self, fixed: bool, parameter=None) -> None:
-        """Set a parameter's fixed flag (local echo + RPC + trace)."""
+        """Set a parameter's fixed flag (local echo + RPC + trace).
+
+        A no-op write is dropped, as in :meth:`apply_value`.
+        """
         fp = self._target(parameter)
         fixed = bool(fixed)
+        if bool(getattr(fp, "fixed", None)) == fixed:
+            return
 
         def write():
             fp.fixed = fixed
@@ -855,9 +905,14 @@ class ParameterActionsMixin:
         )
 
     def apply_bounds_on(self, bounds_on: bool, parameter=None) -> None:
-        """Enable or disable a parameter's bounds (local echo + RPC + trace)."""
+        """Enable or disable a parameter's bounds (local echo + RPC + trace).
+
+        A no-op write is dropped, as in :meth:`apply_value`.
+        """
         fp = self._target(parameter)
         bounds_on = bool(bounds_on)
+        if bool(getattr(fp, "bounds_on", None)) == bounds_on:
+            return
 
         def write():
             fp.bounds_on = bounds_on
@@ -879,9 +934,19 @@ class ParameterActionsMixin:
         )
 
     def apply_bounds(self, lower: float, upper: float, parameter=None) -> None:
-        """Set a parameter's bounds (local echo + RPC + trace)."""
+        """Set a parameter's bounds (local echo + RPC + trace).
+
+        A no-op write is dropped, as in :meth:`apply_value`.  ``None`` means
+        "unbounded on this side" and is passed through — a parameter whose other
+        bound is still unset would otherwise fail to take the one being edited.
+        """
         fp = self._target(parameter)
-        lower, upper = float(lower), float(upper)
+        lower = None if lower is None else float(lower)
+        upper = None if upper is None else float(upper)
+        current = getattr(fp, "bounds", None)
+        if isinstance(current, (tuple, list)) and len(current) == 2:
+            if tuple(current) == (lower, upper):
+                return
 
         def write():
             fp.bounds = (lower, upper)
@@ -1158,7 +1223,14 @@ class FittingParameterProxyController(ParameterActionsMixin, QtWidgets.QWidget):
         self._on_change = on_change
 
     def finalize(self, *args) -> None:
-        """Notify the owning view that the parameter changed."""
+        """Notify the owning view that the parameter changed.
+
+        Like the row widget's ``finalize``, a call arriving from the RPC thread
+        is posted to the thread the view lives on — the notification repaints a
+        table, and a repaint signalled from another thread is dropped by Qt.
+        """
+        if self._defer_finalize_to_owning_thread():
+            return
         cb = self._on_change
         if cb is not None:
             try:
@@ -1921,10 +1993,9 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         self.finalize()
 
     def finalize(self, *args):
-        # Ensure execution on the widget's thread (GUI thread). If called from another thread,
-        # reschedule finalize to run on the correct thread and return immediately.
-        if QtCore.QThread.currentThread() is not self.thread():
-            QtCore.QTimer.singleShot(0, lambda: self.finalize())
+        # Repainting must happen on the widget's own thread; a call from the RPC
+        # thread is posted there instead (see _defer_finalize_to_owning_thread).
+        if self._defer_finalize_to_owning_thread():
             return
         #super().update(*args)
         self.blockSignals(True)
