@@ -1,58 +1,38 @@
 # %% [markdown]
 # ## Environment Setup
-# 
-# **Important**: This notebook requires `tttrlib` to be installed.
-# 
-# ### Installation Instructions:
-# 
-# #### macOS/Linux:
+#
+# **Important**: This notebook requires `tttrlib`.
+#
+# Do **not** install the published `tttrlib` package (bioconda or PyPI). Both are
+# capped at 0.26.2, which lags the source by enough to be wrong rather than merely
+# old: it predates the photon simulator and carries a `compute_ics` defect that
+# segfaults image correlation whenever a frame lag is used. ChiSurf therefore does
+# not depend on it and builds tttrlib from source.
+#
+# ### Installation
+#
+# Clone tttrlib as a sibling of the ChiSurf checkout (this is what the tracked
+# `modules/tttrlib` symlink points at), then let pixi build it:
+#
 # ```bash
-# conda install -c bioconda tttrlib
+# git clone https://github.com/Fluorescence-Tools/tttrlib.git ../tttrlib
+# pixi run build-extensions
 # ```
-# 
-# #### Windows:
-# tttrlib is not available via conda on Windows. You have several options:
-# 
-# 1. **Install via pip** (easiest method):
-#    ```bash
-#    pip install tttrlib
-#    ```
-#    Note: This requires Visual Studio Build Tools or Visual Studio Community Edition to be installed for compilation.
-# 
-# 2. **Use WSL (Windows Subsystem for Linux)**:
-#    - Install WSL2 (Windows 10/11): https://docs.microsoft.com/en-us/windows/wsl/install
-#    - Once in WSL, follow the Linux installation instructions:
-#      ```bash
-#      conda install -c bioconda tttrlib
-#      ```
-#    - This provides a native Linux environment on Windows without dual-booting
-# 
-# 3. **Compile from source using conda recipe**:
-#    - A conda recipe for Windows is available in the tttrlib repository
-#    - Clone the repository: https://github.com/fluorescence-tools/tttrlib
-#    - Navigate to the conda recipe directory
-#    - Build using: `conda build conda-recipe`
-#    - Install the built package
-# 
-# 4. **Manual compilation** (requires Visual Studio Community Edition):
-#    - Install Visual Studio Community Edition (free) with C++ build tools
-#    - Clone the repository: https://github.com/fluorescence-tools/tttrlib
-#    - Follow the build instructions in the repository
-#    - Use CMake to configure and build the project
-# 
-# 5. **Use ChiSurf environment** (recommended for full functionality):
-#    - Install ChiSurf which includes tttrlib
-#    - **Download**: https://peulen.xyz/downloads/chisurf
-#    - **GitHub**: https://github.com/fluorescence-tools/chisurf
-# 
-# **Note**: For Windows compilation, Visual Studio Community Edition is free and provides all necessary build tools. Make sure to select "Desktop development with C++" during installation.
-# 
+#
+# Building from source needs a C++ toolchain: Visual Studio Build Tools on Windows
+# ("Desktop development with C++"), Xcode command-line tools on macOS, or
+# build-essential/cmake/ninja on Linux. Alternatively install ChiSurf itself,
+# which ships tttrlib:
+#
+# - **Download**: https://peulen.xyz/downloads/chisurf
+# - **GitHub**: https://github.com/fluorescence-tools/chisurf
+#
 # ### Running this notebook:
-# 1. Open Anaconda Prompt or terminal
-# 2. Activate the environment: `conda activate chisurf-env` (or your environment with tttrlib)
+# 1. Open a terminal
+# 2. Activate the ChiSurf environment (`pixi shell`, or your own env with tttrlib)
 # 3. Launch Jupyter: `jupyter notebook` or `jupyter lab`
 # 4. Open this notebook
-# 
+#
 # Alternatively, you can select the appropriate kernel from the Jupyter kernel selector.
 # %% [markdown]
 # # Burst Selection Analysis - ALEX Configuration
