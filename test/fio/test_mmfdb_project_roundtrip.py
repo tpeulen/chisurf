@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import uuid
 
@@ -354,3 +355,138 @@ def test_roundtrip_fit_metadata_fields(tmp_path) -> None:
     assert fit["fit_range"] == [0, 100]
     assert fit["plot_state"] == {"log_scale": False, "x_range": [0, 100]}
     db.close()
+
+
+def _make_global_fit_payload(n_local: int = 3) -> dict:
+    """Payload whose first fit is a *global* fit over ``n_local`` local fits.
+
+    Global fitting is the point of the application, and it is the case the
+    archive/restore asymmetry breaks: the archiver writes one ``fit_result``
+    artifact per local fit, all sharing the fit UID.
+    """
+    payload = _make_test_payload()
+    template = payload["fits"][0]["local_fits"][0]
+    locals_ = []
+    for i in range(n_local):
+        lf = copy.deepcopy(template)
+        lf["dataset_id"] = "ds_001" if i % 2 == 0 else "ds_002"
+        lf["fit_state"]["parameters"]["p1"]["value"] = 5.0 + i
+        locals_.append(lf)
+    payload["fits"][0]["local_fits"] = locals_
+    return payload
+
+
+def test_roundtrip_global_fit_is_not_shattered(tmp_path) -> None:
+    """A global fit must come back as ONE group holding all its local fits.
+
+    Previously each local fit was restored as its own fit group, so a 3-way
+    global fit turned into three groups -- all carrying the *same* fit id,
+    which also collides downstream wherever fits are keyed by id.
+    """
+    payload = _make_global_fit_payload(n_local=3)
+    db, restored, _, _ = _archive_and_restore(tmp_path, payload)
+    assert restored is not None
+
+    assert len(restored["fits"]) == len(payload["fits"]), (
+        f"group count changed: {len(payload['fits'])} archived, "
+        f"{len(restored['fits'])} restored"
+    )
+    assert [len(f["local_fits"]) for f in restored["fits"]] == [3, 1]
+
+    ids = [f["id"] for f in restored["fits"]]
+    assert len(set(ids)) == len(ids), f"duplicate fit ids after restore: {ids}"
+    db.close()
+
+
+def test_roundtrip_global_fit_preserves_local_fit_order(tmp_path) -> None:
+    """Local fits keep their original order and payloads within the group."""
+    payload = _make_global_fit_payload(n_local=3)
+    db, restored, _, _ = _archive_and_restore(tmp_path, payload)
+    assert restored is not None
+
+    original = payload["fits"][0]["local_fits"]
+    restored_locals = restored["fits"][0]["local_fits"]
+    assert len(restored_locals) == len(original)
+
+    def _p1(local_fit):
+        return local_fit["fit_state"]["parameters"]["p1"]["value"]
+
+    assert [_p1(lf) for lf in restored_locals] == [_p1(lf) for lf in original]
+    assert [lf["dataset_id"] for lf in restored_locals] == [
+        lf["dataset_id"] for lf in original
+    ]
+    db.close()
+
+
+def test_roundtrip_global_fit_keeps_group_order(tmp_path) -> None:
+    """Fit groups come back in the order they were archived."""
+    payload = _make_global_fit_payload(n_local=2)
+    db, restored, _, _ = _archive_and_restore(tmp_path, payload)
+    assert restored is not None
+
+    assert [f["id"] for f in restored["fits"]] == [f["id"] for f in payload["fits"]]
+    db.close()
+
+
+def test_regroup_falls_back_to_encounter_order_without_indices(tmp_path) -> None:
+    """Archives predating the index metadata still regroup, in encounter order.
+
+    ``lf_id`` is only the local-fit index when a local fit carries no id of its
+    own, so artifact-id ordering cannot be relied on for older archives; the
+    order the artifacts arrive in is the best available signal.
+    """
+    from mmfdb.project.project_archiver import _regroup_fit_artifacts
+
+    entries = [
+        {
+            "artifact_id": f"fit_result:v1:fit_a:{name}",
+            "envelope": {"id": "fit_a", "name": "A", "model_name": "M"},
+            "local_fit": {"dataset_id": name},
+            "fit_index": None,
+            "local_fit_index": None,
+        }
+        for name in ("zebra", "alpha", "middle")
+    ]
+    records = _regroup_fit_artifacts(entries)
+
+    assert len(records) == 1
+    assert [lf["dataset_id"] for lf in records[0]["local_fits"]] == [
+        "zebra", "alpha", "middle"
+    ]
+
+
+def test_regroup_ignores_a_duplicated_artifact(tmp_path) -> None:
+    """The same artifact reached twice must not duplicate its local fit."""
+    from mmfdb.project.project_archiver import _regroup_fit_artifacts
+
+    entry = {
+        "artifact_id": "fit_result:v1:fit_a:0",
+        "envelope": {"id": "fit_a", "name": "A", "model_name": "M"},
+        "local_fit": {"dataset_id": "ds_001"},
+        "fit_index": 0,
+        "local_fit_index": 0,
+    }
+    records = _regroup_fit_artifacts([entry, dict(entry)])
+
+    assert len(records) == 1
+    assert len(records[0]["local_fits"]) == 1
+
+
+def test_regroup_keeps_unidentified_fits_separate(tmp_path) -> None:
+    """Fits archived without a UID must not all collapse into one group."""
+    from mmfdb.project.project_archiver import _regroup_fit_artifacts
+
+    entries = [
+        {
+            "artifact_id": f"fit_result:v1::{i}",
+            "envelope": {"id": "", "name": f"anon {i}", "model_name": "M"},
+            "local_fit": {"dataset_id": f"ds_{i}"},
+            "fit_index": i,
+            "local_fit_index": 0,
+        }
+        for i in range(3)
+    ]
+    records = _regroup_fit_artifacts(entries)
+
+    assert len(records) == 3
+    assert [r["name"] for r in records] == ["anon 0", "anon 1", "anon 2"]
