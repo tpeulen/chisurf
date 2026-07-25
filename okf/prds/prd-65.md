@@ -51,9 +51,29 @@ photon-number distribution, the two-channel case reproduces `tttrlib.Pda`'s S1S2
 matrix to a total variation below 1e-6** — a different algorithm for the same
 quantity. Levers 1–3 measured; see the table below.
 
-Remaining: the three-colour probability model (efficiencies → channel
-probabilities with corrections), trivariate-Gaussian species, the model +
-view spec, the burst-table reader, and stages 3–7.
+**Stage 2 landed (2026-07-25):** `physics.py` (competing/cascading transfer
+pathways → channel probabilities, with a single detection matrix carrying
+quantum yield, crosstalk and detector efficiency, plus direct excitation),
+`species.py` (trivariate Gaussian, Cholesky parameterisation, nearest-PD repair,
+Gauss–Hermite quadrature), and `model.py` (species mixture, burst table,
+simulator, total log likelihood). `test/models/test_pda3c_model.py` (15 tests).
+
+The **stage-2 acceptance criterion is met**, including the part that matters:
+
+| | R_GR | R_BG | R_BR | ρ(GR,BG) |
+|---|---|---|---|---|
+| truth | 52.0 | 46.0 | 68.0 | 0.8 |
+| recovered | 52.09 | 46.04 | 67.23 | **+0.767** |
+| uncorrelated control (truth ρ=0) | 52.16 | 46.28 | 67.19 | **−0.000** |
+
+6000 simulated bursts, 40/35 photons per excitation period, Nelder–Mead from a
+deliberately displaced start, 5 quadrature nodes per axis, ~17 s. The control
+matters as much as the fit: a method sold on measuring joint motion must be
+shown *not* inventing correlation when there is none.
+
+Remaining: the ChiSurf model + view spec, the burst-table reader, and stages
+3–7 (priors/MCMC, labelling and brightness corrections, global 2c+3c fits,
+dynamics).
 
 Parent: [PRD-49](prd-49.md) (three-colour PDA row). Related: [PRD-50](prd-50.md)
 (two-colour PDA family), [PRD-61](prd-61.md) (parameter priors — the enabler),
@@ -162,9 +182,17 @@ Each stage is independently useful and independently testable.
    likelihood with background summation, plus the 1-D "GR only" mode. Acceptance
    is the reduction itself: with blue switched off, tcPDA and the existing
    two-colour PDA must agree on the same data.
-2. **Static 3-D fit.** Trivariate-Gaussian species (Cholesky-parameterised),
-   multi-species mixtures, MAP fit against the burst likelihood. The 2-D
-   (BG/BR) mode falls out as a restriction.
+2. **Static 3-D fit.** *(Landed.)* Trivariate-Gaussian species
+   (Cholesky-parameterised), multi-species mixtures, MAP fit against the burst
+   likelihood. The 2-D (BG/BR) mode falls out as a restriction.
+
+   One structural point worth stating because it is easy to get wrong and hard
+   to notice: a burst's blue and green counts come from the **same molecule at
+   the same distances**, so the two periods must be multiplied *before*
+   averaging over the distance distribution. Averaging each period separately
+   and multiplying afterwards models a molecule that re-randomises its
+   conformation between the two pulses — which discards exactly the joint
+   information the experiment exists to collect. A test pins the distinction.
 3. **Priors + posterior.** Per-parameter priors ([PRD-61](prd-61.md)) exposed in
    the parameter table; MCMC posterior with credible intervals via
    `fitting/sample.py`.
@@ -227,10 +255,17 @@ reformulations, not approximations, except where noted.
 1. **Collapse identical bursts.** The likelihood depends on a burst only through
    its five counts, so bursts sharing a count tuple share a value. Group by
    `(F_BB, F_BG, F_BR, F_GG, F_GR)` and evaluate once per *unique* tuple with a
-   multiplicity weight. With realistic burst sizes the unique-tuple count
-   saturates well below the burst count, so this is a large, free, and exact win
-   that grows with dataset size — and it quietly turns "burst-wise" back into
-   "histogram-wise" without giving up the likelihood.
+   multiplicity weight. Exact and free.
+
+   **How much it buys is entirely data-dependent, and the first estimate here
+   was too optimistic.** On three channels at ~25 photons per burst it is
+   26× at 100k bursts and still climbing, because the reachable count vectors
+   saturate while the bursts do not. On the *full five-count* three-colour
+   problem at 40+35 photons it is worth almost nothing — 6000 bursts collapsed
+   to 5993 distinct vectors — because the count lattice is five-dimensional and
+   far larger than the dataset. So: keep it (it costs one `np.unique` and can
+   only help), rely on it for the small-count and two-colour paths, and do not
+   count on it for realistic three-colour burst sizes.
 2. **Make the grid evaluation a matrix product.** Ignoring background, the
    log-likelihood is $\sum_\text{ch} F_\text{ch}\log p_\text{ch}$ plus a
    burst-only multinomial coefficient. Over all tuples and all grid points that

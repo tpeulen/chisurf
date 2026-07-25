@@ -82,6 +82,84 @@
   curve because the shared `DummyLinearModel` fixture has no uncertainties and
   therefore no residuals to minimise.
 
+* **tcPDA stage 2 (PRD-65): the three-channel model, and it measures the
+  correlation.** On top of the stage-1 likelihood: `physics.py` turns three
+  distances into channel probabilities, `species.py` carries a correlated
+  trivariate-Gaussian population, `model.py` assembles them into a mixture with
+  a simulator and a total log likelihood.
+  The physics is where three colours stop being "two colours, three times".
+  The B→G and B→R pathways **compete for the same excited donor**, so they share
+  a denominator and opening one lowers the other — reading a two-colour formula
+  off one pair of a three-colour construct overestimates that distance, in a way
+  that mimics the molecule getting longer. And energy delivered to green may
+  **cascade** on to red, so the red channel is fed by two distinguishable routes
+  (direct B→R and the B→G→R relay), which is precisely what makes three
+  distances identifiable from count statistics. Detection folds quantum yield,
+  filter transmission, detector efficiency and crosstalk into one matrix — the
+  same object `lightpath_simulator.get_crosstalk_matrices()` already builds.
+  Species are trivariate Gaussians over (R_GR, R_BG, R_BR) with a **full
+  covariance**, parameterised by a Cholesky factor so the optimiser cannot leave
+  the positive-definite cone (`nearest_positive_definite` is kept only for
+  covariances arriving from outside the fit), and integrated by **Gauss–Hermite
+  quadrature** on the transformed coordinates rather than a uniform 3-D grid.
+  **One structural trap, now pinned by a test:** a burst's blue and green counts
+  come from the same molecule at the same distances, so the two excitation
+  periods must be multiplied *before* averaging over the distance distribution.
+  Averaging each separately and multiplying after models a molecule that
+  re-randomises between the two pulses — discarding exactly the joint
+  information three-colour exists to collect.
+  **Stage-2 acceptance met**, including the half that matters: from 6000
+  simulated bursts (40/35 photons per period, Nelder–Mead from a displaced
+  start, 5 nodes/axis, ~17 s) the fit recovers R_GR/R_BG/R_BR = 52.09/46.04/67.23
+  against a truth of 52/46/68, **and ρ = +0.767 against a truth of 0.8** — while
+  the uncorrelated control returns **ρ = −0.000**. A method sold on measuring
+  joint motion has to be shown not inventing correlation when there is none.
+  **A PRD claim corrected by measurement:** burst collapsing is worth 26× on
+  three channels at ~25 photons, but almost nothing on the full five-count
+  problem at realistic burst sizes (6000 → 5993 distinct), because the count
+  lattice is five-dimensional. Kept — it costs one `np.unique` — but no longer
+  claimed as a general lever. `test/models/test_pda3c_model.py` (15).
+  See [prds/prd-65.md](/prds/prd-65.md).
+
+* **tcPDA stage 1 (PRD-65): the three-colour burst likelihood, as two matrix
+  products.** New `chisurf/core/fluorescence/pda3c/likelihood.py` — the
+  trinomial (blue excitation, three detectors) / binomial (green excitation,
+  two) photon partition convolved with per-channel Poisson background, which is
+  the forward model three-colour PDA fits. The incumbent evaluates it as a
+  nested sum over every channel's background count and needs threaded C plus a
+  CUDA kernel to make that bearable; this does not. **Only one thing couples the
+  channels** — the multinomial's leading `n!`, which depends on the *total*
+  background count `m` and not on how it is distributed. Grouping by `m` leaves
+  a product of per-channel series, i.e. a convolution; and since each series
+  splits into a burst-determined factor times `p_c**-b`, the whole box sum is a
+  **GEMM** between a (bursts × box) and a (points × box) array. Background then
+  costs the same *kind* of operation as the signal term, and the two compose
+  exactly (no background ⇒ correction is 1).
+  **Measured** (pure NumPy, one core, 200-point grid): collapsing bursts that
+  share a count vector gives 4.8×/**26×** fewer evaluations at 10k/100k bursts
+  and keeps rising (distinct vectors saturate, bursts do not); convolution vs.
+  nested sum is **75×** on one burst; the zero-background grid is 43 ns/cell;
+  and the full 100k-burst × 200-point likelihood *with* background runs in
+  **2.3 s** against ~170 s for a per-cell loop. No numba yet, and the C/CUDA the
+  incumbent needs is off the table — which was the premise of the PRD.
+  **A wrong claim in the PRD's first draft cost a real bug, caught by the
+  tests:** the series may *not* be truncated on Poisson tail mass. After folding
+  in the weight the terms behave like `Pois(b;B)·(F_c/(N p_c))**b`, so wherever a
+  channel collected far more photons than the model allows they *grow* for many
+  steps — and that is exactly where the background explanation carries the whole
+  likelihood. A channel with `p=0.009` that saw 27 photons came out 3 log-units
+  wrong. The cutoff now uses an effective rate `B·max(F/(N p))`; the PRD is
+  corrected. It matters despite the tiny absolute likelihood, because MCMC and
+  support-plane scans read the surface *away* from the optimum.
+  `test/models/test_pda3c_likelihood.py` (18): factorisation vs. the untruncated
+  nested sum, normalisation over the count lattice, the two internal paths
+  against each other, burst collapsing, memory chunking, that regression — and
+  the **stage-1 acceptance criterion**: marginalised over the photon-number
+  distribution, the two-channel case reproduces `tttrlib.Pda`'s S1S2 matrix to a
+  total variation below 1e-6, a different algorithm computing the same quantity.
+  (The first attempt missed by 3.1e-3, which turned out to be exactly the mass
+  falling off an `nmax`-truncated grid, not a model discrepancy.)
+  See [prds/prd-65.md](/prds/prd-65.md).
 
 * **chimol: `zoom` frames the molecule the way PyMOL frames it, and a degraded
   load says so.** Two follow-ups to the camera work, both measured against a
