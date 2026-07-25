@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ChiSurf: scheduled documentation-rebuild job.
+  Runs claude_job.sh once a day (03:47 local, staggered after translate-ui) to
+  regenerate the plugin docs, run the Sphinx build, fix clear doc defects, and
+  commit only the docs it touched. Install: see build_tools/jobs/README.md.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.chisurf.build-docs</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/claude_job.sh</string>
+        <string>build-docs</string>
+        <string>build_tools/jobs/prompts/build_docs.md</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/tpeulen/dev/chisurf</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>47</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/build-docs.launchd.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/build-docs.launchd.err</string>
+</dict>
+</plist>

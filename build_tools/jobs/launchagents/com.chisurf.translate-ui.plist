@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ChiSurf: scheduled UI-translation job.
+  Runs claude_job.sh once a day (03:17 local) to extract new UI strings, translate
+  the untranslated de/fr ones, recompile the .qm catalogues, and commit them.
+  A missed run (machine asleep) fires at next wake because RunAtLoad is false and
+  StartCalendarInterval is used. Install: see build_tools/jobs/README.md.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.chisurf.translate-ui</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/claude_job.sh</string>
+        <string>translate-ui</string>
+        <string>build_tools/jobs/prompts/translate_ui.md</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/tpeulen/dev/chisurf</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>17</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/translate-ui.launchd.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/translate-ui.launchd.err</string>
+</dict>
+</plist>
