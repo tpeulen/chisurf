@@ -25,6 +25,7 @@ fix. Nothing is left to be guessed.
 * `spec.py` — `ToolSpec` (name, description, JSON Schema, safety tier),
   `ToolRegistry`, and the argument validation that turns a malformed call into
   a readable error rather than a `TypeError`.
+* `skills.py` + `skills_builtin/` — the procedures (see below).
 * `context.py` — `AgentContext`: working directory, code-execution policy,
   confirmation and event callbacks, and the resolution of loose references
   ("the second fit", a file name, an index) to real session objects.
@@ -58,6 +59,35 @@ fix. Nothing is left to be guessed.
 A **failing tool does not end the run** — its error goes back to the model,
 which corrects itself. Only *repeated identical* failures stop the loop; that
 is the difference between an assistant that recovers and one that gives up.
+
+# Skills: tools say *what*, skills say *how*
+
+`set_irf` is a tool. "Attach the IRF, then add lifetime components until
+chi-square stops improving, and never report a chi-square from a fit you have
+not judged" is a **procedure** — the knowledge a spectroscopist has and a
+general-purpose model does not.
+
+That knowledge cannot live in the system prompt: every experiment type would
+add a section that is dead weight for every other request, and the prompt
+would grow without bound as ChiSurf covers more methods. Skills are separate
+`SKILL.md` documents with their own frontmatter (`name`, `description`,
+`triggers`, `experiments`, `tools`); an unloaded skill costs one catalogue
+line.
+
+**Loading is automatic and deterministic.** Before the model sees a question
+it is scored against every skill's triggers — with multi-word triggers
+tolerating real phrasing, so "fit all 20 files" matches `all files` — plus a
+weak signal from the experiment types already loaded. The top matches are
+injected into the system prompt for that turn and stay active for the rest of
+the conversation, so a follow-up does not silently lose the procedure. This
+happens *before* the first model call, which makes routing testable without a
+model in the loop. `load_skill` remains for what the matcher cannot see.
+
+The built-in library: `fit-decay`, `fit-correlation`, `batch-fitting`,
+`diagnose-fit`, `explore-data`, `report-results`, `write-analysis-script`.
+Discovery layers built-in → plugin (`agent_skills/` beside a `manifest.json`)
+→ user (`<settings>/agent_skills/`), later overriding earlier, so a lab can
+replace `fit-decay` with its own protocol without touching the code.
 
 # Making the answer *correct*, not just produced
 

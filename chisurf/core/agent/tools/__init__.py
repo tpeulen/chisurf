@@ -11,6 +11,8 @@ The catalogue is assembled from three groups:
     response, the number of components, the quality report, and the plot
 ``scripting``
     running Python in the live session and reading/writing text files
+``skills``
+    listing and loading the procedures in :mod:`chisurf.core.agent.skills`
 
 Every group is a plain :class:`~chisurf.core.agent.spec.ToolRegistry`, so a
 plugin can extend the agent by merging its own registry into the default one.
@@ -19,9 +21,9 @@ plugin can extend the agent by merging its own registry into the default one.
 from __future__ import annotations
 
 from chisurf.core.agent.spec import ToolRegistry
-from chisurf.core.agent.tools import data, decay, fitting, scripting
+from chisurf.core.agent.tools import data, decay, fitting, scripting, skills
 
-__all__ = ["build_default_registry", "data", "decay", "fitting", "scripting"]
+__all__ = ["build_default_registry", "data", "decay", "fitting", "scripting", "skills"]
 
 
 def build_default_registry() -> ToolRegistry:
@@ -40,7 +42,13 @@ def build_default_registry() -> ToolRegistry:
     True
     """
     registry = ToolRegistry()
-    for group in (data.registry, fitting.registry, decay.registry, scripting.registry):
+    for group in (
+        data.registry,
+        fitting.registry,
+        decay.registry,
+        scripting.registry,
+        skills.registry,
+    ):
         for spec in group.tools.values():
             registry.register(spec)
     return registry

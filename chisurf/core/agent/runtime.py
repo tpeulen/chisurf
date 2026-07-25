@@ -17,6 +17,11 @@ Design decisions that matter for how well it behaves:
   counts are explicit and reported in the result.
 * **The conversation survives across questions**, so follow-ups like "now fix
   the lifetime and refit" work without repeating context.
+* **Skills are loaded from the request itself.**  Before the model sees a
+  question, it is matched against the skill library and the matching
+  procedures are injected (see :mod:`chisurf.core.agent.skills`), so the
+  right method is in context from the first turn instead of one tool call
+  later.
 """
 
 from __future__ import annotations
@@ -35,6 +40,7 @@ from chisurf.core.agent.prompt import (
     parse_text_protocol,
     text_protocol_prompt,
 )
+from chisurf.core.agent.skills import SkillLibrary, session_experiments
 from chisurf.core.agent.spec import (
     SAFETY_DANGEROUS,
     ToolError,
@@ -67,6 +73,14 @@ class AgentConfig:
     max_history_messages : int
         Conversation messages kept (besides the system prompt) before older
         turns are dropped.
+    auto_load_skills : bool
+        Match the request against the skill library and inject the matching
+        procedures before the model sees it.  Turning this off leaves the
+        skills reachable through ``load_skill``.
+    max_active_skills : int
+        How many skills may be in context at once.
+    skill_match_threshold : float
+        Score a skill must reach to be loaded automatically.
     """
 
     max_steps: int = 24
@@ -75,6 +89,9 @@ class AgentConfig:
     max_consecutive_failures: int = 4
     max_safety: str = SAFETY_DANGEROUS
     max_history_messages: int = 80
+    auto_load_skills: bool = True
+    max_active_skills: int = 2
+    skill_match_threshold: float = 2.0
 
 
 @dataclass
@@ -143,6 +160,10 @@ class AgentSession:
         Budgets and policy.
     extra_instructions : str
         Appended to the system prompt (host application context).
+    skills : SkillLibrary, optional
+        Procedures the agent may follow.  Discovered from the built-in,
+        plugin and user directories when omitted; pass an empty library to
+        run without skills.
     """
 
     def __init__(
@@ -152,14 +173,20 @@ class AgentSession:
         registry: ToolRegistry | None = None,
         config: AgentConfig | None = None,
         extra_instructions: str = "",
+        skills: SkillLibrary | None = None,
     ):
         self.llm = llm
         self.context = context or AgentContext()
         self.registry = registry or build_default_registry()
         self.config = config or AgentConfig()
         self.extra_instructions = extra_instructions
+        self.skills = SkillLibrary.discover() if skills is None else skills
         self.messages: list[dict[str, Any]] = []
         self._cancelled = False
+        # The skill tools read the library through the context, so a tool
+        # handler needs no back-reference to the session.
+        self.context.extras["skill_library"] = self.skills
+        self.context.extras.setdefault("active_skills", [])
 
     # ── public API ────────────────────────────────────────────────────
 
@@ -173,9 +200,10 @@ class AgentSession:
         self._cancelled = True
 
     def reset(self) -> None:
-        """Forget the conversation (tools and context are kept)."""
+        """Forget the conversation and the loaded skills."""
         self.messages = []
         self._cancelled = False
+        self.context.extras["active_skills"] = []
 
     def ask(self, question: str) -> AgentResult:
         """Answer *question*, calling tools as needed.
@@ -190,6 +218,7 @@ class AgentSession:
         AgentResult
         """
         self._cancelled = False
+        self._activate_skills(question)
         self._sync_system_prompt()
         self.messages.append({"role": "user", "content": str(question)})
         self.context.emit("agent.started", {"question": question})
@@ -337,18 +366,70 @@ class AgentSession:
                 }
             )
 
+    @property
+    def active_skills(self) -> list[str]:
+        """Names of the skills whose instructions are currently in context."""
+        return list(self.context.extras.get("active_skills", []))
+
+    def _activate_skills(self, question: str) -> list[str]:
+        """Load the skills this request needs, before the model sees it.
+
+        Matching happens on the user's own words plus the experiment types
+        already in the session, so the procedure for the job is in context
+        from the first turn rather than one tool call later.  Skills stay
+        active for the rest of the conversation: a follow-up ("now export
+        that") should not silently lose the procedure it is following.
+
+        Parameters
+        ----------
+        question : str
+            The user's message.
+
+        Returns
+        -------
+        list of str
+            Names of the skills newly activated by this request.
+        """
+        if not self.skills.skills or not self.config.auto_load_skills:
+            return []
+        active = self.context.extras.setdefault("active_skills", [])
+        experiments = session_experiments(self.context.datasets)
+        matched = self.skills.match(
+            question,
+            experiments,
+            limit=self.config.max_active_skills,
+            threshold=self.config.skill_match_threshold,
+        )
+        added: list[str] = []
+        for skill in matched:
+            if skill.name in active:
+                continue
+            if len(active) >= self.config.max_active_skills:
+                break
+            active.append(skill.name)
+            added.append(skill.name)
+            self.context.emit("skill.loaded", {"skill": skill.name, "trigger": "auto"})
+        return added
+
     def _sync_system_prompt(self) -> None:
         """Insert or refresh the system prompt with the current session state."""
         catalogue = "" if self.native_tools else self.registry.describe(self.config.max_safety)
         extra = self.extra_instructions
         if not self.native_tools:
             extra = "\n\n".join(filter(None, [extra, text_protocol_prompt(catalogue)]))
+        active = [
+            skill
+            for skill in (self.skills.get(name) for name in self.active_skills)
+            if skill is not None
+        ]
         prompt = build_system_prompt(
             datasets=self.context.datasets,
             fits=self.context.fits,
             working_directory=self.context.working_directory,
             tool_catalogue=catalogue,
             extra=extra,
+            active_skills=active,
+            skill_catalogue=self.skills.catalogue(exclude=self.active_skills),
         )
         message = {"role": "system", "content": prompt}
         if self.messages and self.messages[0].get("role") == "system":

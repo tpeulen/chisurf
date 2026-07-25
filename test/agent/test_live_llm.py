@@ -107,6 +107,23 @@ def test_the_model_reaches_a_good_decay_fit_on_its_own(live_session):
     assert verdict["quality"] in ("good", "acceptable"), verdict
 
 
+def test_the_right_skill_is_loaded_from_the_request(live_session):
+    """Routing happens before the model is called, so it is deterministic."""
+    live_session.ask(f"Have a look at what is in the folder {TCSPC}.")
+    assert "explore-data" in live_session.active_skills
+
+    live_session.ask("Now fit the donor decay and give me its lifetime.")
+    assert "fit-decay" in live_session.active_skills
+
+
+def test_a_loaded_skill_reaches_the_model(live_session):
+    """The procedure must be in the request, not merely in the library."""
+    live_session.ask(f"Fit the decay {TCSPC}/215-268 D0.dat.")
+    system_prompt = live_session.messages[0]["content"]
+    assert "Skill: fit-decay" in system_prompt
+    assert "instrument response" in system_prompt.lower()
+
+
 def test_the_model_reports_parameters_of_a_fit(live_session):
     """A follow-up question in the same conversation reuses the state."""
     live_session.ask(f"Load '{TCSPC}/215-268 D0.dat' and fit it with 'Lifetime (new)'.")

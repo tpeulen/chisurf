@@ -2,6 +2,76 @@
 
 ## 2026-07-25
 
+* **The agent is skill-based now.** The fitting protocol lived in the system
+  prompt, which does not scale: every experiment type ChiSurf covers would add
+  a section that is dead weight for every other request. `chisurf/core/agent/skills.py`
+  makes procedures first-class — `SKILL.md` documents with frontmatter
+  (`name`, `description`, `triggers`, `experiments`, `tools`) — and the TCSPC
+  prose moved out of the prompt into `skills_builtin/fit-decay/`.
+  **A tool says what can be done; a skill says how the job is done properly.**
+  Seven ship: `fit-decay`, `fit-correlation`, `batch-fitting`, `diagnose-fit`,
+  `explore-data`, `report-results`, `write-analysis-script`.
+  **Loading is automatic and happens before the model is called.** The request
+  is scored against each skill's triggers, with multi-word triggers tolerating
+  real phrasing (`all files` matches "fit all 20 files"), plus a weak signal
+  from the experiment types already in the session; the top matches are
+  injected into that turn's system prompt and stay active for the rest of the
+  conversation. Because routing runs ahead of the first model call it is
+  deterministic and testable without a model in the loop — 45 tests cover
+  parsing, trigger tolerance, routing of real requests, capping, override and
+  the auto-load lifecycle. `load_skill`/`list_skills` remain for what the
+  matcher cannot see, and an unloaded skill costs one catalogue line.
+  Discovery layers built-in → plugin (`agent_skills/` beside a `manifest.json`)
+  → user (`<settings>/agent_skills/`), later overriding earlier: a lab can
+  replace `fit-decay` with its own protocol, and a plugin can teach the agent
+  its workflow, without touching the code. `--list-skills` and `--no-skills`
+  on the CLI; the GUI transcript announces each skill as it loads.
+  Verified live: "what's in this folder?" loads `explore-data` and the answer
+  follows it (names the IRF as a reference, proposes the analysis instead of
+  starting one); "fit this decay" loads `fit-decay` and reaches chi2r 1.03.
+  User guide: `docs/guides/40_ai_assistant.md`.
+
+* **Language pickers now show real painted flag icons, not emoji.** The ribbon
+  flag-dropdown and Settings combo rendered the language flags as dotted
+  letter-boxes (`G B` / `D E` / `F R`) because Qt's font stack here does not
+  render regional-indicator emoji pairs as flag glyphs. Replaced the emoji with
+  painted `QIcon`s built by a new `gui/i18n.py:language_flag_icon` (per-locale
+  QPainter recipe — striped tricolours, a Union Jack for `en`, disc/star for
+  `ja`/`zh`, two-letter pill fallback; cached by size). `LanguageFlagSwitcher`
+  now uses the flag as its button icon (icon-only) and puts the flag icons in the
+  menu; `LanguageSelector` shows them in the combo. The emoji `language_flag`
+  stays for tooltips. Verified offscreen: en/de/fr/… all render as recognisable
+  flags. See [i18n subsystem](subsystems/i18n.md).
+
+* **A silent no-op in the schema generator was hiding a create/drop
+  contradiction (PRD-04).** Working the PRD-04 punch-list, the one item with
+  real teeth was "a missing dictionary category currently degrades to a no-op
+  comment (prefer fail-loud)". `generate_create_table_for_category` returned the
+  string `-- Category X not found in dictionary`; callers execute that as SQL,
+  where a comment does nothing — so a database could stamp itself as migrated
+  while silently missing a table, surfacing much later as an unrelated
+  "no such table". In a design where the dictionary is the schema authority
+  that is the one failure mode that must not be quiet. It now raises
+  `UnknownCategoryError` (mmfdb `4916b1d`).
+  Turning it loud immediately broke the import — and the breakage was real.
+  `CREATE_TABLES_SQL` asked for **`mmfdb_microtime_shift`**, whose category the
+  PRD-19 collapse had removed from the dictionary, while `_drop_legacy_tables`
+  in the *same module* lists that table as legacy and drops it. The create had
+  been a comment all along, so create-then-drop had looked like it worked. The
+  bespoke table was retired in favour of role-indexed `mmfdb_parameter` rows —
+  the microtime-shifter plugin already documents it as retired and writes
+  parameters instead — so the stale line is removed with a comment recording
+  why the category is deliberately absent. A new test asserts every category
+  `CREATE_TABLES_SQL` generates is actually declared in the dictionary, which is
+  the guard that would have caught it.
+  Also audited the rest of the PRD-04 punch-list against the code and updated
+  the review outcomes: Sidequest D's "two defects to fix" are both fixed
+  (calibration snapshots now dedup on change, and both date-combobox call sites
+  pass the active user), and two of Sidequest C's three follow-ups are done
+  (the calibration→reference-decay edge *is* asserted; the `notes` f-string is
+  unreachable with a `None` g-factor because the handler early-returns). Only
+  the optional FK + C3 round-trip test remain.
+
 * **chimol: the occlusion now survives the GL shader, and the config editor can
   reset itself.** Follow-up after the ambient occlusion still looked flat in the
   running app.

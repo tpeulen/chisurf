@@ -148,7 +148,9 @@ namespaces = true
     "*.csv", "*.npy", "*.dat",
     "*.dll", "*.so", "*.dylib", "*.pyd", "*.ipynb",
     "*.db", "*.txt", "*.dic",
-    "*.qm", "*.ts"
+    "*.qm", "*.ts",
+    # Agent skills ship as SKILL.md documents beside the code that uses them.
+    "*.md"
 ]
 "chisurf.settings.constants" = ["*.json"]
 

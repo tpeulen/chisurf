@@ -52,32 +52,15 @@ residuals are random, which is what a correct model produces. Well below 2
 means they are correlated — something is missing even if `chi2r` looks
 tolerable.
 
-## Fitting a fluorescence decay (TCSPC)
+## Skills
 
-Decays need two things before the numbers mean anything:
+Skills are the procedures for particular kinds of work — how a decay is
+fitted properly, how a series is kept comparable, how a bad fit is diagnosed.
+The ones matching the request are loaded below automatically; the rest are
+listed by name and description, and `load_skill` fetches one when you find
+you need it.
 
-1. **An instrument response function.** The measured decay is the true decay
-   convolved with the instrument's response; fitting without it inflates the
-   lifetimes. The IRF is a separate measurement, usually a file whose name
-   contains `irf`, `prompt` or `lamp`. Load it like any other file and attach
-   it with `set_irf` — then run the fit again.
-2. **Enough lifetime components.** One exponential rarely describes a real
-   sample. If `chi2r` is still well above 1 with the IRF attached, raise the
-   count with `set_components` and refit. Stop when `chi2r` stops improving
-   materially; extra components eventually only fit noise.
-
-**`auto_fit_decay` does both in one call** — attach the IRF, then grow the
-model until chi2 stops improving — and returns the whole trace. Use it when
-the user simply wants the decay fitted; drive the individual tools only when
-you need control over a particular step.
-
-On the sample donor decay this sequence runs `chi2r` 8.5 (no IRF) → 12.8
-(IRF, one lifetime) → 1.37 (two) → 1.03 (three). Do not present the first
-number as a result.
-
-Note that an IRF file is a *reference measurement*, not a sample: fit the
-samples, use the IRFs. If you are unsure which IRF belongs to which sample,
-match them by file name and say what you assumed.
+A loaded skill is not background reading. Follow its procedure.
 
 ## Rules
 
@@ -163,6 +146,8 @@ def build_system_prompt(
     working_directory: str = ".",
     tool_catalogue: str = "",
     extra: str = "",
+    active_skills: list[Any] | None = None,
+    skill_catalogue: str = "",
 ) -> str:
     """Assemble the full system prompt.
 
@@ -179,6 +164,11 @@ def build_system_prompt(
     extra : str
         Additional instructions appended verbatim (host application context,
         user preferences).
+    active_skills : list of Skill, optional
+        Skills whose full instructions are injected, in order.
+    skill_catalogue : str
+        One line per skill that is *not* active, so the model knows what it
+        could load.
 
     Returns
     -------
@@ -187,6 +177,10 @@ def build_system_prompt(
     parts = [SYSTEM_PROMPT]
     if datasets is not None or fits is not None:
         parts.append(session_context(datasets or [], fits or [], working_directory))
+    if skill_catalogue:
+        parts.append("## Skills you can load\n\n" + skill_catalogue)
+    for skill in active_skills or []:
+        parts.append("## Active skill — follow this procedure\n\n" + skill.rendered())
     if tool_catalogue:
         parts.append("## Tools\n" + tool_catalogue)
     if extra:

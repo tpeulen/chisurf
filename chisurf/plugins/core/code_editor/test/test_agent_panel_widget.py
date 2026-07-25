@@ -63,6 +63,14 @@ class TestAgentPanelWidget:
         """Only the numbers a user watches for are echoed into the transcript."""
         assert expected in AgentPanelWidget._tool_highlight({"result": result})
 
+    def test_a_loaded_skill_is_announced(self, qapp):
+        """The user should see which procedure the assistant is following."""
+        panel = AgentPanelWidget()
+        panel._on_runtime_event("skill.loaded", {"skill": "fit-decay", "trigger": "auto"})
+        transcript = panel.transcript.toPlainText()
+        assert "fit-decay" in transcript
+        assert "matched" in transcript
+
     def test_runtime_events_reach_the_transcript(self, qapp):
         """Tool and completion events are rendered without raising."""
         panel = AgentPanelWidget()

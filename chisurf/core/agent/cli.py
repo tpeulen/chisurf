@@ -59,6 +59,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--list-tools", action="store_true", help="Print the tool catalogue and exit."
     )
+    parser.add_argument(
+        "--list-skills", action="store_true", help="Print the skill catalogue and exit."
+    )
+    parser.add_argument(
+        "--no-skills",
+        action="store_true",
+        help="Do not auto-load skills (they stay reachable through load_skill).",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging.")
     parser.add_argument(
         "--no-qt",
@@ -80,6 +88,11 @@ def _print_event(name: str, payload: dict[str, Any]) -> None:
         )
     elif name in ("tool.failed", "tool.denied"):
         print(f"  ! {payload.get('tool')}: {payload.get('error')}", file=sys.stderr)
+    elif name == "skill.loaded":
+        print(
+            f"  * skill: {payload.get('skill')} ({payload.get('trigger')})",
+            file=sys.stderr,
+        )
 
 
 def _confirm(tool: str, arguments: dict[str, Any]) -> bool:
@@ -110,7 +123,11 @@ def build_cli_session(arguments: argparse.Namespace) -> AgentSession:
         model=arguments.model,
         working_directory=arguments.directory,
         context=context,
-        config=AgentConfig(max_steps=arguments.max_steps, max_safety=arguments.safety),
+        config=AgentConfig(
+            max_steps=arguments.max_steps,
+            max_safety=arguments.safety,
+            auto_load_skills=not arguments.no_skills,
+        ),
     )
 
 
@@ -155,6 +172,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if arguments.list_tools:
         print(build_default_registry().describe(arguments.safety))
+        return 0
+
+    if arguments.list_skills:
+        from chisurf.core.agent.skills import SkillLibrary
+
+        library = SkillLibrary.discover()
+        for name in library.names():
+            skill = library.get(name)
+            print(f"{name}\n    {skill.description.strip()}")
+            if skill.triggers:
+                print(f"    triggers: {', '.join(skill.triggers)}")
         return 0
 
     request = " ".join(arguments.request).strip()

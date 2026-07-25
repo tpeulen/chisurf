@@ -1192,6 +1192,9 @@ updated: 2026-06-09
         elif event in ("tool.failed", "tool.denied"):
             tool = data.get("tool", "?")
             self._append_sys(f"❌ <b>{tool}</b>: {data.get('error', 'failed')}")
+        elif event == "skill.loaded":
+            trigger = "matched" if data.get("trigger") == "auto" else "requested"
+            self._append_sys(f"📘 Skill <b>{data.get('skill')}</b> ({trigger})")
         elif event == "agent.failed":
             self._append_sys(f"⚠️ Agent failed: {data.get('error', 'unknown error')}")
         elif event == "agent.completed":
