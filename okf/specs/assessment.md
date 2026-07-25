@@ -42,7 +42,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [BUG-02](#bug-02) | S1 | BUG | Server | `fit_select` defined twice in `fits.py` (second shadows first) | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-03](#bug-03) | S1 | BUG | Server | `model_component_remove` references undefined `component_type` → `NameError` | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-04](#bug-04) | S2 | BUG | Core | `@abc.abstractmethod` not enforced: `Base(object)` has no `ABCMeta` | ~~VERIFIED~~ ✅ FIXED |
-| [BUG-05](#bug-05) | S1 | BUG | Plugins | F-test calculator's two directions are not inverses (asking for 95% returns a χ² whose confidence is 0.09%) | VERIFIED — needs a convention decision |
+| [BUG-05](#bug-05) | S1 | BUG | Plugins | F-test calculator's two directions are not inverses (asking for 95% returns a χ² whose confidence is 0.09%) | ✅ FIXED |
 | [DATA-01](#data-01) | S1 | DATA | Plugins | **3** manifests fail validation and are silently dropped by `load_manifest()` | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-02](#data-02) | S2 | DATA | MMFDB | `SCHEMA_VERSION = 40` is a stamp with no migration waterfall | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-03](#data-03) | S2 | DATA | MMFDB | Core `mmfdb_*` DDL is hand-written and defined twice (must be hand-synced) | ~~REPORTED~~ ✅ FIXED |
@@ -164,11 +164,27 @@ The single largest source of non-uniformity across the codebase (see [core steer
     χ²(simpler)/χ²(complex).
   - **Degree-of-freedom order.** This panel calls `F(n₁, n₂)` = `F(ν, p)`, while the
     χ²-max panel of the same tool calls `F(p, ν)`. One of the two is transposed.
-- Fix: decide the intended convention (reduced vs. absolute χ², which model is the
-  numerator, and the dof order), then make the two directions exact inverses and
-  update the help text. Deliberately **not** patched blind: this calculator produces
-  numbers users quote in publications, and a self-consistent-but-wrong convention
-  would be worse than the current obvious breakage.
+- ✅ **FIXED** (2026-07-25). The convention was not actually open: `FTestTool._load_fit`
+  settles all three questions, because it is the only thing that ever populates these
+  fields from real data. It writes `chi2r` into both χ² slots and `n_points - n_free`
+  into **both** `n₁` and `n₂` — so the χ² are *reduced* and the `n` are the two fits'
+  *total* degrees of freedom, not a parameter count. That is exactly the classical
+  variance-ratio test used in fluorescence decay analysis:
+  `conf = F.cdf(χ²ᵣ(simple)/χ²ᵣ(complex), ν_simple, ν_complex)`, inverting to
+  `χ²ᵣ(complex) = χ²ᵣ(simple) / F.ppf(conf, ν_simple, ν_complex)`. The dof order is
+  then numerator-first and correct; the χ²-max panel's `F(p, ν)` is a *different*
+  statistic (the support-plane threshold), so the two panels legitimately differ and
+  neither is transposed — that part of the original report was a false alarm.
+- The statistics moved out of the GUI into `chisurf.core.math.statistics`
+  (`f_test_confidence`, `f_test_chi2r`) so they are testable without Qt and reusable;
+  the tool now delegates. Help text and the `n₂` description in `ftest.view.json` were
+  corrected (the latter said "degrees of freedom *added* by the second model", which
+  is not what `_load_fit` writes). Defaults changed to a self-consistent pair.
+- The old plugin test asserted equality with the shipped formulas and so had **locked
+  the bug in**; it is rewritten around the defining properties — round-trip inversion
+  at several confidences, 0.5 for equally good models, and monotone confidence as the
+  complex model improves (which is what caught the orientation error: a 10% χ² drop
+  over ~900 points scored 0.077 before and 0.923 after).
 
 ## Data / schema / manifest issues (DATA)
 

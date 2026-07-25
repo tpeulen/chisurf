@@ -11,13 +11,13 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histogram of single-molecule bursts to recover inter-dye distance distributions and, in its dynamic form, kinetic exchange between conformational states. The `tttrlib.Pda` C++ engine already computes the histograms, but no ChiSurf model, `view.json`, or plugin wraps it. This PRD adds the model + schema + AutoForm UI + fit integration in staged scope: static (single/multi-Gaussian, Lorentzian) PDA, dynamic/N-state kinetic PDA, Support-Plane/MCMC error surfaces, three-color PDA, and a kinetic consistency check. Dual-color models are already ported to the PRD-38 model/view-spec split with headless coverage, and both error-surface routes (support-plane and MCMC) are validated against each other; time-binned dynamic PDA and three-color tcPDA remain.
+Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histogram of single-molecule bursts to recover inter-dye distance distributions and, in its dynamic form, kinetic exchange between conformational states. The `tttrlib.Pda` C++ engine already computes the histograms, but no ChiSurf model, `view.json`, or plugin wraps it. This PRD adds the model + schema + AutoForm UI + fit integration in staged scope: static (single/multi-Gaussian, Lorentzian) PDA, dynamic/N-state kinetic PDA, Support-Plane/MCMC error surfaces, three-color PDA, and a kinetic consistency check. Dual-color models are already ported to the PRD-38 model/view-spec split with headless coverage, both error-surface routes (support-plane and MCMC) are validated against each other, and the dynamic two-state criterion is met end to end (exchange rate recovered, nested static model rejected by F-test); time-binned dynamic PDA and three-color tcPDA remain.
 
 # Status
 Draft / unassigned (STATUS TABLE authoritative). Dual-color static plus a dynamic
 two-state model done under AutoForm; error surfaces work via both support-plane and
-MCMC. Follow-ups (GUI light-path hook, time-binned dynamic PDA, tcPDA, adaptive MCMC
-proposals) open.
+MCMC; the dynamic acceptance criterion (rate recovery + F-test rejection of the static
+model) is met. Follow-ups (GUI light-path hook, time-binned dynamic PDA, tcPDA) open.
 
 Parent: [PRD-49](prd-49.md) (Phase 1, first target). Related: PRD-38
 (model/view-spec split), PRD-40 (declarative editors), PRD-04 (burst pipeline),
@@ -116,6 +116,24 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   iterations and stored `steps` per walker instead of the documented `steps // thin`.
   The loop now iterates in stored states and reports progress in raw steps.
 
+- **Dynamic-PDA recovery + F-test rejection of the static model (2026-07-25).** The
+  remaining dynamic acceptance criterion is met by
+  `test_dynamic_pda_recovers_exchange_and_rejects_the_static_model`: data is a Poisson
+  realisation of the two-state model at `K_ex = 2`, and the fit recovers
+  `K_ex = 1.99`, `R1 = 40.1`, `R2 = 62.0`, `x1 = 0.503` from a perturbed start at
+  `chi2r = 1.04`. The static alternative is the *nested* `K_ex = 0` limit given the
+  same freedom in both distances and the occupancy — it pulls the two distances
+  together (40/62 → 42.6/56.9) to imitate dynamic averaging and still only reaches
+  `chi2r = 150.9`, which the F-test rejects at confidence 1 − 2e-62.
+- **F-test calculator fixed (2026-07-25, BUG-05).** Reaching for the `f_test` plugin to
+  close the criterion above showed its two directions were not inverses: asking for 95%
+  confidence returned a χ² the tool itself then scored at 0.09%, and the ratio was
+  taken complex-over-simple so confidence *fell* as the added parameters became more
+  justified. The statistics now live in `chisurf.core.math.statistics`
+  (`f_test_confidence`, `f_test_chi2r`) and are shared by the plugin and the test
+  above. See [assessment BUG-05](/specs/assessment.md#bug-05) for why the convention
+  was determined rather than guessed.
+
 **Follow-ups (not yet done):**
 - GUI button wiring the live light-path plugin session to a selected PDA model
   (the pure bridge API is done and tested; only the one-click GUI hook remains).
@@ -179,6 +197,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   `test-model-editor` skill pattern; added under `test/` or `chisurf/core/models/pda/test/`.
 - **Dynamic PDA:** synthetic 2-state exchange at known rate is recovered; static-only
   fit is rejected by F-test (`f_test` plugin).
+  *(Met — `K_ex` recovered to 0.4%, the nested static limit rejected at confidence ~1.)*
 - **Error surface:** SPA/MCMC produces a confidence interval bracketing the true value.
   *(Met — both routes, and they agree on the interval width.)*
 - **UI:** model appears in the add-fit combobox, renders parameter groups and the
