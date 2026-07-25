@@ -2,6 +2,16 @@
 
 ## 2026-07-25
 
+
+* **chiplot Batch 27 — guiqwt compat shim off pyqtgraph (allow-list 24 → 23).**
+  Rewrote `gui/plots/_qwt_compat.py` (the guiqwt→pyqtgraph shim used by
+  `global_tcspc` + `surfaceplot`) onto chiplot: `_PgPlot` subclasses `cp.Plot`;
+  guiqwt methods → chiplot verbs; the `make.*` adapters (curve/label/histogram/
+  histogram2D/range) defer handle creation to `attach()` and build chiplot
+  handles (`line`/`line(step,fill)`/`image`/`region`). Consumers keep the same API
+  and import clean. Before/after screenshot-verified: exp-decay curves, overlaid
+  step histograms, "hot" 2-D ES histogram all identical. See [PRD-64](prds/prd-64.md).
+
 * **A skill that composes a whole analysis: bursts to a distance.** The
   request "process this smFRET measurement, select the bursts with a proximity
   ratio of 0.5-0.7 and get the distance by TCSPC" is four analyses in a trench
