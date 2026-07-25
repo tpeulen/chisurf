@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea, DockSplitter
 
@@ -114,28 +114,30 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
 
     def _create_plot_widgets(self) -> None:
         """Create plot widgets early to avoid hot-reload deletion issues."""
-        self.main_plot = pg.PlotWidget()
-        self.main_plot.setLabel("left", "Intensity (counts/channel)")
-        self.main_plot.setLabel("bottom", "Time (ns)")
-        self.main_plot.setTitle("IRF Estimation Results")
-        self.main_plot.addLegend()
-        self.main_plot.setLogMode(x=False, y=True)
-        self.main_plot.setMenuEnabled(True)
-        self.main_plot.setMouseEnabled(x=True, y=True)
-        self.main_plot.showGrid(x=True, y=True, alpha=0.3)
+        self.main_plot = cp.Plot()
+        self.main_plot.set_labels(left="Intensity (counts/channel)", bottom="Time (ns)")
+        self.main_plot.set_title("IRF Estimation Results")
+        self.main_plot.legend()
+        self.main_plot.set_log(x=False, y=True)
+        self.main_plot.set_interactive(mouse=True, menu=True)
+        self.main_plot.grid(x=True, y=True, alpha=0.3)
 
-        self.crosshair_v = pg.InfiniteLine(angle=90, movable=False)
-        self.crosshair_h = pg.InfiniteLine(angle=0, movable=False)
-        self.main_plot.addItem(self.crosshair_v, ignoreBounds=True)
-        self.main_plot.addItem(self.crosshair_h, ignoreBounds=True)
-        self.main_plot.scene().sigMouseMoved.connect(self._on_mouse_moved)
+        # Mouse-tracking crosshairs (non-movable; positioned in _on_mouse_moved).
+        self.crosshair_v = self.main_plot.vline(0.0, movable=False)
+        self.crosshair_h = self.main_plot.hline(0.0, movable=False)
+        # pyqtgraph scene mouse signal — reached via the backend escape hatch.
+        self.main_plot.native.scene().sigMouseMoved.connect(self._on_mouse_moved)
 
-        self.range_selector = pg.LinearRegionItem(
-            values=self.range_bounds,
-            brush=pg.mkBrush(color=(50, 200, 50, 50)),
+        # The range selector is created now but only shown when range selection
+        # is enabled; region() adds it, so remove it until it is switched on.
+        self.range_selector = self.main_plot.region(
+            tuple(self.range_bounds),
+            brush=(50, 200, 50, 50),
             movable=True,
         )
-        self.range_selector.sigRegionChanged.connect(self._on_range_changed)
+        self.range_selector.on_change(self._on_range_changed, final=False)
+        self.main_plot.remove(self.range_selector)
+        self._range_in_plot = False
 
     # ------------------------------------------------------------------
     # Status bar
@@ -580,7 +582,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
             self.background_spinbox.setValue(bg_estimate)
 
             self.range_bounds = [0.0, float(len(decay_data) - 1)]
-            self.range_selector.setRegion(self.range_bounds)
+            self.range_selector.set_bounds(*self.range_bounds)
 
             self._update_all_plots()
             self._update_control_states()
@@ -823,13 +825,15 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
         if y_data is not None and y_data.ndim > 1:
             y_data = y_data.flatten()
 
-        had_range = self.range_selector in self.main_plot.items()
+        had_range = self._range_in_plot
         self.main_plot.clear()
+        self._range_in_plot = False  # clear() removed every item, incl. the region
 
-        self.main_plot.plot(
+        self.main_plot.line(
             self.channel_axis,
             y_data,
-            pen=pg.mkPen("b", width=2),
+            pen="b",
+            width=2,
             name="Measured Decay",
         )
 
@@ -837,12 +841,12 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
             decay_corrected = np.maximum(
                 self.decay_data_original - self.manual_background, 0.1
             )
-            self.main_plot.plot(
+            self.main_plot.line(
                 self.channel_axis,
                 decay_corrected,
-                pen=pg.mkPen(
-                    "cyan", width=2, style=QtCore.Qt.PenStyle.DashLine
-                ),
+                pen="cyan",
+                width=2,
+                style="dash",
                 name=f"BG Corrected (BG={self.manual_background:.1f})",
             )
 
@@ -853,10 +857,11 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
             irf_thresholded = np.where(
                 irf_scaled >= 1.0, irf_scaled, np.nan
             )
-            self.main_plot.plot(
+            self.main_plot.line(
                 self.channel_axis,
                 irf_thresholded,
-                pen=pg.mkPen("g", width=2),
+                pen="g",
+                width=2,
                 name="Estimated IRF (scaled)",
             )
 
@@ -883,25 +888,26 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
                 )
                 forward += self.irf_params["C"]
 
-                self.main_plot.plot(
+                self.main_plot.line(
                     self.channel_axis,
                     forward[:, 0],
-                    pen=pg.mkPen(
-                        "orange", width=2, style=QtCore.Qt.PenStyle.DashLine
-                    ),
+                    pen="orange",
+                    width=2,
+                    style="dash",
                     name="IRF \u2297 Exp (Forward Model)",
                 )
 
         if had_range and self.use_range_selection:
-            self.main_plot.addItem(self.range_selector)
+            self.main_plot.add(self.range_selector)
+            self._range_in_plot = True
 
     def _on_mouse_moved(self, pos: QtCore.QPointF) -> None:
         """Handle mouse movement for crosshair display."""
-        if self.main_plot.sceneBoundingRect().contains(pos):
-            mouse_point = self.main_plot.plotItem.vb.mapSceneToView(pos)
+        if self.main_plot.native.sceneBoundingRect().contains(pos):
+            mouse_point = self.main_plot.native.getViewBox().mapSceneToView(pos)
             x, y = mouse_point.x(), mouse_point.y()
-            self.crosshair_v.setPos(x)
-            self.crosshair_h.setPos(y)
+            self.crosshair_v.set_value(x)
+            self.crosshair_h.set_value(y)
             if self.channel_axis is not None and self.decay_data is not None:
                 idx = int(np.argmin(np.abs(self.channel_axis - x)))
                 if 0 <= idx < len(self.channel_axis):
@@ -947,16 +953,18 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
         """Handle range selection checkbox changes."""
         self.use_range_selection = self.range_selection_checkbox.isChecked()
         if self.use_range_selection and self.decay_data is not None:
-            self.main_plot.addItem(self.range_selector)
-        elif (
-            hasattr(self, "range_selector")
-            and self.range_selector in self.main_plot.items()
-        ):
-            self.main_plot.removeItem(self.range_selector)
+            if not self._range_in_plot:
+                self.main_plot.add(self.range_selector)
+                self._range_in_plot = True
+        elif self._range_in_plot:
+            self.main_plot.remove(self.range_selector)
+            self._range_in_plot = False
 
-    def _on_range_changed(self) -> None:
+    def _on_range_changed(self, lo=None, hi=None) -> None:
         """Handle range selector region changes."""
-        self.range_bounds = list(self.range_selector.getRegion())
+        if lo is None or hi is None:
+            lo, hi = self.range_selector.bounds
+        self.range_bounds = [lo, hi]
 
     def _on_auto_update_changed(self) -> None:
         """Handle auto-update checkbox changes."""

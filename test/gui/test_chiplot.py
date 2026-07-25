@@ -342,6 +342,9 @@ def test_migrated_modules_import(qapp):
         # standalone + screenshot-checked instead.
         # Batch 23
         "chisurf.plugins.burst.burst_selection.gui.legacy.burst_selector",
+        # NB: irf_estimator.gui.tool (Batch 24) is intentionally NOT listed — like
+        # burst_fcs_correlator it transitively imports IMP, which segfaults in this
+        # shared test process. Verified standalone + screenshot-checked instead.
     ):
         assert importlib.import_module(name) is not None
 

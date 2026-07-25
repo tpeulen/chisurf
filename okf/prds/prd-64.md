@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 27):*
+*Landed so far (allow-list 76 → 26):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -502,6 +502,18 @@ screenshot/qtbot verification after each cluster.
   `line(..., style="dash")` with `cp.int_color`; `set_title`/`set_labels`/
   `legend`. Screenshot-verified (bimodal blue histogram, red GMM fit, dashed
   component curves, legend).
+- **Batch 24** (allow-list 27 → 26) — migrated the self-contained
+  `plugins/fluorescence_decay/irf_estimator/gui/tool.py` (1087L; a single log-y
+  decay/IRF plot with mouse-tracking crosshairs and a draggable fit-range region).
+  Curves → `line(...)` (solid/dashed via `style="dash"`); crosshairs → non-movable
+  `vline`/`hline` with `set_value`; the range selector → `region` with
+  `on_change(final=False)` + `set_bounds`, its show/hide tracked by a
+  `_range_in_plot` flag (replacing `x in main_plot.items()` membership tests) and
+  re-added after `clear()`. The pyqtgraph mouse-tracking internals
+  (`scene().sigMouseMoved`, `sceneBoundingRect`, `getViewBox().mapSceneToView`)
+  stay flagged `.native` passthroughs. Screenshot-verified (blue decay + cyan
+  dashed BG-corrected + green IRF on a log-y axis, three-entry legend). Imports IMP
+  transitively → verified standalone, kept out of the shared import-clean sweep.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,
