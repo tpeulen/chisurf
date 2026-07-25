@@ -66,6 +66,7 @@ class _DrawData:
     depth_test: bool = True
     glyph: Optional[str] = None
     radii: Optional[np.ndarray] = None
+    occlusion: Optional[np.ndarray] = None
     material: Any = None
     two_sided: bool = False
 
@@ -100,6 +101,7 @@ class _GpuDrawCall:
     depth: float = 0.0  # camera-space depth for transparent sorting
     glyph: Optional[str] = None
     radii_vbo: Optional[QtGui.QOpenGLBuffer] = None
+    occlusion_vbo: Optional[QtGui.QOpenGLBuffer] = None
     material: Any = None
     two_sided: bool = False
 
@@ -143,6 +145,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._two_sided_uniform = -1
         self._point_size_uniform = -1
         self._radius_attr = -1
+        self._occlusion_attr = -1
         self._background = (0.0, 0.0, 0.0, 1.0)
 
         lighting_cfg = (_DISPLAY_CONFIG.get("lighting") or {})
@@ -727,6 +730,19 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                         self._program.disableAttributeArray(self._radius_attr)
                         self._program.setAttributeValue(self._radius_attr, 0.0)
 
+                if self._occlusion_attr != -1:
+                    if call.occlusion_vbo is not None:
+                        call.occlusion_vbo.bind()
+                        self._program.enableAttributeArray(self._occlusion_attr)
+                        self._program.setAttributeBuffer(
+                            self._occlusion_attr, GL_FLOAT, 0, 1
+                        )
+                    else:
+                        # Geometry with no occlusion baked in is fully exposed,
+                        # so it keeps the unattenuated lighting it had before.
+                        self._program.disableAttributeArray(self._occlusion_attr)
+                        self._program.setAttributeValue(self._occlusion_attr, 0.0)
+
                 gl.glDrawArrays(call.primitive, 0, call.vertex_count)
 
                 if call.primitive == GL_POINTS:
@@ -738,11 +754,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 call.normals_vbo.release()
                 if call.radii_vbo is not None:
                     call.radii_vbo.release()
+                if call.occlusion_vbo is not None:
+                    call.occlusion_vbo.release()
                 self._program.disableAttributeArray(self._pos_attr)
                 self._program.disableAttributeArray(self._color_attr)
                 self._program.disableAttributeArray(self._normal_attr)
                 if self._radius_attr != -1:
                     self._program.disableAttributeArray(self._radius_attr)
+                if self._occlusion_attr != -1:
+                    self._program.disableAttributeArray(self._occlusion_attr)
 
         # Restore global GL state so we don't leak into the next frame
         gl.glEnable(GL_CULL_FACE)
@@ -772,15 +792,18 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         attribute vec4 color;
         attribute vec3 normal;
         attribute float radius;
+        attribute float occlusion;
         uniform mat4 mvp;
         uniform mat4 normalMatrix;
         uniform mat4 viewMatrix;
         varying vec4 v_color;
         varying vec3 v_normal;
         varying vec3 v_viewPos;
+        varying float v_occ;
         uniform int glyphMode;
         uniform float pointSize;
         void main() {
+            v_occ = clamp(occlusion, 0.0, 1.0);
             vec4 worldPos = vec4(position, 1.0);
             gl_Position = mvp * worldPos;
             v_color = color;
@@ -797,6 +820,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         varying vec4 v_color;
         varying vec3 v_normal;
         varying vec3 v_viewPos;
+        varying float v_occ;
         uniform vec3 lightDir;
         uniform float ambientStrength;
         uniform float specStrength;
@@ -835,19 +859,28 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             }
 
             vec3 baseColor = v_color.rgb;
-            
+
+            // Ambient occlusion is already multiplied into v_color, so the
+            // surface term needs nothing further. What has to be damped is every
+            // term that does *not* come from the surface colour -- ambient, rim,
+            // environment reflection, sun -- because those reach a crevice from
+            // directions the crevice cannot see. Leaving them undamped fills the
+            // shading back in and the occlusion reads as an overall dimming
+            // instead of as shape.
+            float exposure = 1.0 - v_occ;
+
             // Fresnel for jelly/bubble look: edges are more opaque and reflective
             float fresnel = pow(clamp(1.0 - dot(n, viewDir), 0.0, 1.0), 2.5);
             
             // 1. Shading (Diffuse + Ambient)
             // Use a slightly lower ambient to make rim and reflections pop
-            float ambient = ambientStrength * 0.7;
+            float ambient = ambientStrength * 0.7 * exposure;
             float diffuse = (1.0 - ambient) * lambert;
             vec3 shaded = baseColor * (ambient + diffuse);
             
             // 2. Rim lighting (edge glow)
             float rim = pow(clamp(1.0 - dot(n, viewDir), 0.0, 1.0), rimPower);
-            shaded += baseColor * rim * rimStrength;
+            shaded += baseColor * rim * rimStrength * exposure;
             
             // 3. Procedural Environment Reflection (Fake MatCap)
             vec3 R = reflect(-viewDir, n);
@@ -861,11 +894,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             envReflection += vec3(1.5) * sun;
             
             // Blend reflection based on Fresnel
-            float reflectMul = clamp(specStrength * (0.1 + 0.6 * fresnel), 0.0, 1.0);
+            float reflectMul = clamp(specStrength * (0.1 + 0.6 * fresnel), 0.0, 1.0) * exposure;
             vec3 finalColor = mix(shaded, envReflection, reflectMul);
             
             // Point-source specular highlight
-            finalColor += spec * vec3(1.0);
+            finalColor += spec * exposure * vec3(1.0);
             
             // 4. Fog
             float fogFactor = clamp(1.0 - exp(-fogDensity * length(v_viewPos)), 0.0, 1.0);
@@ -907,6 +940,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._two_sided_uniform = program.uniformLocation("twoSided")
         self._point_size_uniform = program.uniformLocation("pointSize")
         self._radius_attr = program.attributeLocation("radius")
+        self._occlusion_attr = program.attributeLocation("occlusion")
 
     def _render_labels(self) -> None:
         if not self._labels:
@@ -1034,9 +1068,21 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         if positions.size == 0:
             return None
         normals = None
+        # Per-vertex occlusion is indexed like the positions, so it has to be
+        # expanded through the same index array or it will not line up with the
+        # flattened triangle list and is silently dropped.
+        occlusion = None
+        if geom.occlusion is not None:
+            occlusion = np.asarray(geom.occlusion, dtype=np.float32).reshape(-1)
         if geom.indices is not None:
             try:
                 idx = np.asarray(geom.indices, dtype=np.int32).reshape(-1)
+                if occlusion is not None:
+                    occlusion = (
+                        occlusion[idx]
+                        if occlusion.shape[0] == idx.max() + 1
+                        else None
+                    )
                 positions = positions[idx]
                 if geom.colors is not None:
                     colors = np.asarray(geom.colors, dtype=np.float32)
@@ -1106,6 +1152,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             depth_test=depth_test,
             glyph=glyph,
             radii=np.asarray(geom.radii, dtype=np.float32) if geom.radii is not None else None,
+            occlusion=(
+                occlusion
+                if occlusion is not None and occlusion.shape[0] == positions.shape[0]
+                else None
+            ),
             material=obj.material,
             two_sided=two_sided,
         )
@@ -1203,6 +1254,17 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 vbo_rad.release()
                 gpu_call.radii_vbo = vbo_rad
 
+            if (
+                draw.occlusion is not None
+                and draw.occlusion.size == draw.positions.shape[0]
+            ):
+                vbo_occ = QtGui.QOpenGLBuffer(QtGui.QOpenGLBuffer.VertexBuffer)
+                vbo_occ.create()
+                vbo_occ.bind()
+                vbo_occ.allocate(draw.occlusion.tobytes(), draw.occlusion.nbytes)
+                vbo_occ.release()
+                gpu_call.occlusion_vbo = vbo_occ
+
         self._needs_upload = False
 
     def _release_gpu_calls(self) -> None:
@@ -1213,6 +1275,10 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 call.colors_vbo.destroy()
             if call.normals_vbo.isCreated():
                 call.normals_vbo.destroy()
+            if call.radii_vbo is not None and call.radii_vbo.isCreated():
+                call.radii_vbo.destroy()
+            if call.occlusion_vbo is not None and call.occlusion_vbo.isCreated():
+                call.occlusion_vbo.destroy()
         self._gpu_calls = []
 
     def _update_center_opt(self) -> None:

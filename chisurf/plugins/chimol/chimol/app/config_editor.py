@@ -38,12 +38,53 @@ class MolViewConfigEditor(QtWidgets.QDialog):
             QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel,
             parent=self,
         )
+        # A hand-edited config that predates a new setting is indistinguishable
+        # from a deliberate choice, so there has to be a way back to the shipped
+        # defaults without hunting for the file on disk.
+        self._reset_button = btn_box.addButton(
+            "\N{ANTICLOCKWISE OPEN CIRCLE ARROW} Reset to defaults",
+            QtWidgets.QDialogButtonBox.ResetRole,
+        )
+        self._reset_button.setToolTip(
+            "Replace the editor contents with the configuration shipped with "
+            "this version of Chimol. Nothing is written until you press Save."
+        )
         layout.addWidget(btn_box)
 
         btn_box.accepted.connect(self._on_save)
         btn_box.rejected.connect(self.reject)
+        self._reset_button.clicked.connect(self._on_reset)
 
         self._load_from_disk()
+
+    def _on_reset(self) -> None:
+        """Load the packaged defaults into the editor, leaving the file alone.
+
+        Deliberately not written straight to disk: the user still has to press
+        Save, so a mis-click cannot silently discard a config they tuned.
+        """
+        from ..config import get_package_display_config_path
+
+        package_path = get_package_display_config_path()
+        try:
+            text = package_path.read_text(encoding="utf-8")
+        except Exception as exc:  # pragma: no cover - UI feedback
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Failed to read the defaults",
+                f"Could not read {package_path}:\n{exc}",
+            )
+            return
+
+        self._edit.setReadOnly(False)
+        self._edit.setPlainText(text)
+        QtWidgets.QMessageBox.information(
+            self,
+            "Defaults loaded",
+            "The shipped configuration is now in the editor.\n\n"
+            "Press Save to write it to your settings file, or Cancel to keep "
+            "what you had.",
+        )
 
     def _load_from_disk(self) -> None:
         if self._json_path is None:

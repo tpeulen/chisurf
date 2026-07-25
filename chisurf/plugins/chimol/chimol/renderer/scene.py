@@ -41,6 +41,14 @@ class Geometry:
     normals: Optional[np.ndarray] = None
     colors: Optional[np.ndarray] = None
     radii: Optional[np.ndarray] = None
+    occlusion: Optional[np.ndarray] = None
+    """Per-vertex ambient occlusion in ``[0, 1]``, 0 being fully exposed.
+
+    Already multiplied into ``colors``; it is carried separately so a backend can
+    also damp the light that does *not* come from the surface colour — ambient,
+    rim, environment reflection. Without that, those terms fill the crevices back
+    in and the occlusion reads as an overall dimming rather than as shape.
+    """
     meta: Dict[str, Any] = field(default_factory=dict)
     # meta["labels"] -> list[str] for kind == "text"
 

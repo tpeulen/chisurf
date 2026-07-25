@@ -29,6 +29,7 @@ from ..geometry import (
     _build_trace_ups,
     _compute_center_radius,
     _estimate_ambient_occlusion,
+    occlusion_from_spheres,
     _extract_ca_trace,
     _generate_cartoon_tube_arrays,
     _generate_nucleic_cartoon_arrays,
@@ -2783,6 +2784,134 @@ class MolView(QtWidgets.QWidget):
             except Exception:
                 pass
 
+    def _occlusion_occluders(
+        self, override: str | None = None
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        """Return what casts the ambient occlusion, with radii, in scene units.
+
+        By default this is the **residue trace**, not the atoms. A cartoon
+        ribbon threads straight through its own side chains, so occluding it
+        with every atom buries the whole molecule in shadow — the ribbon is
+        surrounded by geometry that is not being drawn. Coarse residue-sized
+        occluders stand for the bulk of the fold instead, which is what should
+        darken a groove between two helices.
+
+        Set ``occlusion.occluders`` to ``"atoms"`` for the all-atom set, which
+        suits space-filling representations where the atoms *are* the picture.
+
+        Parameters
+        ----------
+        override : str or None
+            ``"atoms"`` or ``"residues"``, taking precedence over the config.
+            Representations that know which is right for them pass it.
+
+        Returns
+        -------
+        tuple or None
+            ``(centres, radii)``, or ``None`` when there is nothing to occlude
+            with.
+        """
+        cfg = _DISPLAY_CONFIG.get("occlusion") or {}
+        scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
+        choice = override or str(cfg.get("occluders", "residues"))
+        use_atoms = choice.lower() == "atoms"
+
+        centres = radii = None
+        if use_atoms:
+            centres = getattr(self, "_all_atom_coords", None)
+            radii = getattr(self, "_all_atom_radii", None)
+        if centres is None:
+            centres = getattr(self, "_coords", None)
+            radii = None
+        if centres is None:
+            return None
+
+        pts = np.asarray(centres, dtype=float)
+        if pts.ndim != 2 or pts.shape[0] == 0 or pts.shape[1] != 3:
+            return None
+
+        if radii is not None:
+            rad = np.asarray(radii, dtype=float).reshape(-1)
+            if rad.shape[0] != pts.shape[0]:
+                rad = None
+        else:
+            rad = None
+        if rad is None:
+            # One sphere standing in for a whole residue, so it is sized like a
+            # residue rather than like an atom.
+            rad = np.full(
+                pts.shape[0], float(cfg.get("residue_radius", 3.2)) * scale
+            )
+        return pts, rad
+
+    def _shade_by_occlusion(
+        self,
+        verts: np.ndarray,
+        norms: np.ndarray,
+        cols: np.ndarray | None,
+        *,
+        occluders: str | None = None,
+    ) -> tuple[np.ndarray | None, np.ndarray | None]:
+        """Darken mesh vertex colours by their ambient occlusion.
+
+        Baked here rather than computed per frame: the occlusion of a rigid
+        molecule does not depend on the camera, so paying for it once per rebuild
+        costs nothing while the view moves and cannot shimmer the way a
+        screen-space estimate does.
+
+        Parameters
+        ----------
+        verts, norms : numpy.ndarray
+            ``(N, 3)`` mesh vertices and their normals, in scene units.
+        cols : numpy.ndarray or None
+            ``(N, 4)`` RGBA vertex colours to modulate.
+        occluders : str or None
+            ``"atoms"`` or ``"residues"``; see :meth:`_occlusion_occluders`.
+
+        Returns
+        -------
+        tuple
+            ``(colours, occlusion)``. The occlusion is handed on to the backend
+            as well, so it can damp the light that does not come from the surface
+            colour; it is ``None`` when occlusion is off or could not be
+            computed.
+        """
+        if cols is None:
+            return cols, None
+        cfg = _DISPLAY_CONFIG.get("occlusion") or {}
+        if not bool(cfg.get("enabled", True)):
+            return cols, None
+
+        darkness = float(cfg.get("darkness", 0.7))
+        if darkness <= 0.0:
+            return cols, None
+
+        casters = self._occlusion_occluders(occluders)
+        if casters is None:
+            return cols, None
+        centres, radii = casters
+
+        scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
+        try:
+            occ = occlusion_from_spheres(
+                verts,
+                norms,
+                centres,
+                radii,
+                max_distance=float(cfg.get("max_distance", 10.0)) * scale,
+                strength=float(cfg.get("strength", 1.4)),
+            )
+        except Exception:
+            logger.warning("Ambient occlusion failed; drawing unshaded",
+                           exc_info=True)
+            return cols, None
+        if occ is None or occ.shape[0] != cols.shape[0]:
+            return cols, None
+
+        shaded = np.array(cols, dtype=float, copy=True)
+        shaded[:, :3] *= (1.0 - darkness * occ)[:, None]
+        return np.clip(shaded, 0.0, 1.0), occ
+
     def _update_cartoon(
         self, coords: np.ndarray, n_points: int, config: dict, colors: np.ndarray | None
     ) -> list[SceneObject]:
@@ -2831,14 +2960,19 @@ class MolView(QtWidgets.QWidget):
         if colors_for_tube is not None:
             colors_for_tube = colors_for_tube[mask]
 
-        try:
-            occ_ca = _estimate_ambient_occlusion(
-                coords_cartoon,
-                radius=ao_radius,
-                max_neighbors=ao_max,
-            )
-        except Exception:
-            occ_ca = None
+        # The per-residue neighbour count below is superseded by the per-vertex
+        # occlusion applied to the finished mesh, which is normal-aware and an
+        # order of magnitude finer. Running both would darken the cartoon twice.
+        occ_ca = None
+        if not bool((_DISPLAY_CONFIG.get("occlusion") or {}).get("enabled", True)):
+            try:
+                occ_ca = _estimate_ambient_occlusion(
+                    coords_cartoon,
+                    radius=ao_radius,
+                    max_neighbors=ao_max,
+                )
+            except Exception:
+                occ_ca = None
 
         if (
             occ_ca is not None
@@ -2959,12 +3093,14 @@ class MolView(QtWidgets.QWidget):
 
                 if arrays is not None:
                     verts, norms, faces_arr, cols = arrays
+                    cols, occ = self._shade_by_occlusion(verts, norms, cols)
                     geom = Geometry(
                         kind="mesh",
                         positions=verts,
                         indices=faces_arr,
                         normals=norms,
                         colors=cols,
+                        occlusion=occ,
                     )
                     scene_objects.append(
                         SceneObject(id="cartoon", geometry=geom, render_mode="opaque")
@@ -2982,12 +3118,16 @@ class MolView(QtWidgets.QWidget):
             )
             if nuc_arrays is not None:
                 nuc_verts, nuc_norms, nuc_faces, nuc_cols = nuc_arrays
+                nuc_cols, nuc_occ = self._shade_by_occlusion(
+                    nuc_verts, nuc_norms, nuc_cols
+                )
                 nuc_geom = Geometry(
                     kind="mesh",
                     positions=nuc_verts,
                     indices=nuc_faces,
                     normals=nuc_norms,
                     colors=nuc_cols,
+                    occlusion=nuc_occ,
                     # Flat base-ring plates need two-sided lighting so they are
                     # not dark from the anti-light face.
                     meta={"two_sided": True},
@@ -3429,12 +3569,19 @@ class MolView(QtWidgets.QWidget):
                                 except Exception:
                                     vcols = None
 
+                                # Space-filling spheres are shaded against the
+                                # atoms themselves: here the atoms are the
+                                # picture, not hidden bulk.
+                                ball_cols, ball_occ = self._shade_by_occlusion(
+                                    verts, norms, vcols, occluders="atoms"
+                                )
                                 geom = Geometry(
                                     kind="mesh",
                                     positions=verts,
                                     indices=faces,
                                     normals=norms,
-                                    colors=vcols,
+                                    colors=ball_cols,
+                                    occlusion=ball_occ,
                                 )
                                 scene_objects.append(
                                     SceneObject(id="atoms_mesh", geometry=geom, render_mode="opaque")

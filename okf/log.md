@@ -2,6 +2,35 @@
 
 ## 2026-07-25
 
+* **chimol: the occlusion now survives the GL shader, and the config editor can
+  reset itself.** Follow-up after the ambient occlusion still looked flat in the
+  running app.
+  **The verification gap was mine.** Every render I had checked went through the
+  *raytracer*; I had never rendered the live GL viewport, because
+  `QT_QPA_PLATFORM=offscreen` refuses to create a GL context
+  ("This plugin does not support createPlatformOpenGLContext"). Under `cocoa` an
+  offscreen `QOffscreenSurface` + `QOpenGLContext` works (GL 2.1 Metal), so the
+  widget can be grabbed headlessly after all. Doing that showed the viewport
+  looking glossy and flat where the raytrace looked solid.
+  **Two real defects, found by measuring instead of squinting.** First, the
+  per-vertex occlusion never reached the GPU at all: `_geometry_to_draw_data`
+  expands positions/colours/normals through the index array into a flat triangle
+  list, and the occlusion array was not expanded with them, so the length check
+  in the upload silently dropped it (0 of 2 draw calls had the buffer). Second,
+  and the reason it looked flat even once it arrived: the fragment shader adds
+  ambient, rim, a fresnel-blended environment reflection and a sun highlight,
+  **none of which come from the surface colour**. Baking occlusion into the
+  vertex colour therefore darkened the pigment while those terms kept lighting
+  the crevice from directions it cannot see. The occlusion is now carried to the
+  backend as its own `Geometry.occlusion` channel and a per-vertex GL attribute,
+  and the shader damps every non-surface term by `1 - occlusion`. Local contrast
+  across the lit pixels of 148L: **30.8 -> 34.1** (mean brightness 74.0 -> 67.8).
+  **Config editor: "Reset to defaults" button.** A hand-edited config that
+  predates a new setting is indistinguishable from a deliberate choice. The
+  button loads the packaged JSON into the editor and deliberately does *not*
+  write it, so a mis-click cannot discard a tuned config.
+  Suite: 271 passed, 1 skipped (3 new).
+
 * **The agent can now produce a decay fit that is actually right, and knows
   when it has not.** The harness landed the day before could drive the
   session; it could not do fluorescence. On the sample donor decay a language

@@ -278,3 +278,45 @@ def test_disabling_occlusion_is_honoured(view):
     finally:
         cfg["darkness"] = previous
     assert shaded[:, :3].min() < untouched[:, :3].min()
+
+
+# --------------------------------------------------------------------------- #
+# The backend needs the occlusion, not only the darkened colour
+# --------------------------------------------------------------------------- #
+def test_occlusion_is_attached_to_the_geometry(view):
+    """The GL shader damps ambient, rim and reflection with it.
+
+    Those terms do not come from the surface colour, so baking the occlusion
+    into the colour alone leaves them free to light a crevice from directions it
+    cannot see -- which made the occlusion read as an overall dimming instead of
+    as shape.
+    """
+    scene = view.get_current_scene()
+    meshes = [o for o in scene.objects if o.geometry.kind == "mesh"]
+    assert meshes
+    for obj in meshes:
+        occ = obj.geometry.occlusion
+        assert occ is not None, f"{obj.id} carries no occlusion"
+        assert occ.shape[0] == obj.geometry.positions.shape[0]
+        assert occ.min() >= 0.0 and occ.max() <= 1.0
+        assert occ.max() > 0.0, f"{obj.id} occlusion is uniformly zero"
+
+
+def test_the_occlusion_matches_the_darkening_in_the_colours(view):
+    """The two channels must describe the same shading, not drift apart."""
+    scene = view.get_current_scene()
+    obj = next(o for o in scene.objects if o.id.endswith("cartoon"))
+    occ = obj.geometry.occlusion
+    brightness = obj.geometry.colors[:, :3].sum(axis=1)
+    # Rank correlation is enough and is robust to the per-residue base colour.
+    order_occ = np.argsort(np.argsort(occ))
+    order_bright = np.argsort(np.argsort(-brightness))
+    assert np.corrcoef(order_occ, order_bright)[0, 1] > 0.5
+
+
+def test_geometry_without_occlusion_is_still_valid():
+    """Overlays and grids carry no occlusion; the backend must accept that."""
+    from chisurf.plugins.chimol.chimol.renderer.scene import Geometry
+
+    geom = Geometry(kind="mesh", positions=np.zeros((3, 3)))
+    assert geom.occlusion is None
