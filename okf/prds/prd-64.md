@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 24):*
+*Landed so far (allow-list 76 → 23):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -544,6 +544,17 @@ screenshot/qtbot verification after each cluster.
   directly), `setRange`→`set_xlim`/`set_ylim`. New `test_set_axis_visible_returns_self`;
   both widgets before/after screenshot-verified (identical trace grid + network
   layout).
+- **Batch 27** (allow-list 24 → 23) — rewrote the guiqwt→pyqtgraph compat shim
+  `gui/plots/_qwt_compat.py` onto chiplot. `_PgPlot` now subclasses `cp.Plot`
+  (was `pg.PlotWidget`); the guiqwt methods map to chiplot verbs
+  (`do_autoscale`→`autoscale`, `set_scales`→`set_log`, `set_titles`→`set_labels`,
+  `set_aspect_ratio`→`set_aspect_locked`). The `make.*` adapter items
+  (`curve`/`label`/`histogram`/`histogram2D`/`range`) now defer handle creation to
+  `attach(plot)` and build chiplot handles (`line`/`line(step,fill)`/`image`/
+  `region`) so `set_data`/`set_hist_data`/`set_range` update live. Its two
+  consumers (`global_tcspc`, `surfaceplot` — not allow-listed) keep the same API
+  and import clean. Before/after screenshot-verified: identical exp-decay curves,
+  overlaid step histograms, and the "hot" 2-D ES histogram.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

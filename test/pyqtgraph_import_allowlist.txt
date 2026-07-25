@@ -3,7 +3,6 @@
 # is NOT listed. Remove a path here as it migrates to chisurf.gui.chiplot;
 # adding a NEW path is a test failure. Goal: empty (bar the ChiMOL GL file).
 chisurf/gui/autoform/sections/builtin.py
-chisurf/gui/plots/_qwt_compat.py
 chisurf/gui/plots/av_plot.py
 chisurf/gui/plots/distribution.py
 chisurf/gui/plots/lineplot/lineplot.py

@@ -360,6 +360,10 @@ def test_migrated_modules_import(qapp):
         "chisurf.gui.plots.parameter_scan.parameter_scan",
         # Batch 26
         "chisurf.gui.plots.proteinMC",
+        # Batch 27
+        "chisurf.gui.plots._qwt_compat",
+        "chisurf.gui.plots.global_tcspc.global_tcspc",
+        "chisurf.gui.plots.surfaceplot.surfaceplot",
     ):
         assert importlib.import_module(name) is not None
 
