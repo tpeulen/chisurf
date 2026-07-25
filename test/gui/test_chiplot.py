@@ -229,6 +229,10 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.tttr.tttr_lut_tools.gui.sections",
         # Batch 13
         "chisurf.plugins.tttr.tttr_lut_tools.gui.settings_panel",
+        # Batch 14
+        "chisurf.gui.autoform.sections.decay_conv_section",
+        "chisurf.gui.widgets.wizard.fcs_merger.fcs_merger_ui",
+        "chisurf.gui.widgets.wizard.fcs_merger.fcs_merger",
     ):
         assert importlib.import_module(name) is not None
 

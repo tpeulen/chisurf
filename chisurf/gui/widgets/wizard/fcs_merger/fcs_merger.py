@@ -4,7 +4,6 @@ import typing
 import json
 import re
 import numpy as np
-import pyqtgraph as pg
 
 import chisurf as cs
 import chisurf.core.fio as io
@@ -64,15 +63,16 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
             checkbox_item = self.tableWidget.item(i, 0)
             if checkbox_item is not None and checkbox_item.checkState() == QtCore.Qt.Unchecked:
                 # Draw not-used curves with a dashed grey pen
-                pen = pg.mkPen('grey', width=1.0, style=QtCore.Qt.DashLine)
+                color, width, style = 'grey', 1.0, 'dash'
             else:
                 width = 3.0 if i == idx else 1.0
-                pen = pg.mkPen(cs.core.settings.colors[i % len(cs.core.settings.colors)]['hex'], width=width)
-            self.plot_item_fcs.plot(x=cor['x'], y=cor['y'], pen=pen)
+                color = cs.core.settings.colors[i % len(cs.core.settings.colors)]['hex']
+                style = 'solid'
+            self.plot_item_fcs.line(cor['x'], cor['y'], pen=color, width=width, style=style)
 
         self.pw_fcs_mean.clear()
         corr_mean = self.mean_correlation
-        self.plot_item_fcs_mean.plot(x=corr_mean['x'], y=corr_mean['y'])
+        self.plot_item_fcs_mean.line(corr_mean['x'], corr_mean['y'])
 
     def onClearFiles(self):
         cs.logging.info("WizardTTTRCorrelator::onClearFiles")

@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 40):*
+*Landed so far (allow-list 76 → 37):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -405,6 +405,18 @@ screenshot/qtbot verification after each cluster.
   passthroughs. New `test_curve_set_pen_restyles`; import-clean extended; panel
   constructed headless with the LUT-preview redraw exercised. tttr_lut_tools now
   fully off pyqtgraph.
+- **Batch 14** (allow-list 40 → 37) — migrated the AutoForm `decay_conv` section
+  (`gui/autoform/sections/decay_conv_section.py`, a decay+IRF plot with three
+  draggable regions — conv/IRF/BG) and the FCS-merger wizard pair
+  (`gui/widgets/wizard/fcs_merger/{fcs_merger,fcs_merger_ui}.py`, two log-x FCS
+  plots). `decay_conv` maps its three curves + three regions onto
+  `line`/`set_data` + `region`/`set_bounds`, and — because `set_bounds` is
+  signal-safe — drops its `_updating` re-entrancy flag entirely; region callbacks
+  take `(start, stop)`. `fcs_merger_ui` drops the `getPlotItem()` split (chiplot's
+  `Plot` exposes drawing directly, so `plot_item_*` just aliases the widget) and
+  `fcs_merger` maps its per-curve `mkPen` (incl. the dashed grey "unused" pen) to
+  `line(pen=…, width=…, style=…)`. Import-clean test extended to all three;
+  `DecayConvWidget` constructed headless with its three region drags exercised.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

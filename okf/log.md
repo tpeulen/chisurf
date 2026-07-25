@@ -2,6 +2,47 @@
 
 ## 2026-07-25
 
+* **PRD-66: chitable — one table family, and the last third-party GUI
+  dependency dropped.** ChiSurf's tables were a third-party `DataFrameEditor`
+  plus ~40 hand-rolled `QTableWidget`s. The editor was the only thing with
+  value-scaled backgrounds and a real context menu, so the Data-table plot
+  imported it and then fought it — `NoBackgroundProxy` to strip its colouring,
+  `ReadOnlyColumnProxy` to lock the `name` column, a duplicated checkbox
+  delegate, and ~45 lines walking `dlg.findChildren(QTableView)` to install all
+  three after construction. Nothing else shared sorting, filtering, column
+  hiding, colouring or export; no `QSortFilterProxyModel` existed anywhere in
+  either repository. New `chisurf/gui/widgets/chitable/`: a `TableSource`
+  adapter protocol (pandas frames / named numpy columns / record objects with an
+  explicit column spec and a setter that an RPC mutator can occupy), one
+  `ChiTableModel` carrying filter and sort in a **visible-row index array**
+  rather than a proxy (a per-row Python predicate is untenable at burst scale,
+  and an index array keeps source rows recoverable — which is what lets the
+  Global View keep linking parameters by row number), vectorised `FilterSpec`
+  masks, a `ValueColorScheme` served through `BackgroundRole` so it composes
+  with the boolean/float/rich-text delegates, and a container widget with
+  search, column picker, hide-empty-columns, colour toggle and CSV export.
+  Migrated: the Data-table plot (its "Show model" dialog now calls
+  `edit_dataframe(readonly_columns=…, bool_columns=…)` — the thing the proxy
+  stack was emulating), the Global View parameter table (via `ForeignTableProxy`,
+  so its RPC mutator and row-number links are untouched), and the legacy burst
+  selector. `guidata` removed from `pixi.toml`, the rattler recipe and
+  `build_tools/setup_runtime.sh` with a guardrail test; with the plotting
+  toolkit already gone, no third-party GUI framework remains. ndXplorer's
+  `DataFrameEditor` now delegates to chitable behind the optional-import
+  arrangement it already used for the parameter editor, keeping a fixed local
+  fallback so it still installs standalone (committed in its own repository,
+  `bcd2247`). Two defects fixed at the root along the way: numeric-ness tested
+  with `np.issubdtype`, which *raises* on the nullable `Float64`/`Int64` dtypes
+  the pyarrow burst reader produces, and filtered edits written through the view
+  row, silently corrupting an unrelated frame row — both now regression-tested,
+  as is the sorting variant of the second. Two more found while verifying:
+  `setSortingEnabled(True)` silently sorts by column 0 on construction, and
+  `ForeignTableProxy` needed a numeric `lessThan` because the models it wraps
+  render numbers as strings ("10" sorted before "9"). New concept
+  [subsystems/gui-tables.md](/subsystems/gui-tables.md); backlog row INC-10
+  closed. 122 offscreen-Qt tests across the table suites; 10 ndXplorer tests
+  pass with ChiSurf present and 10 with it blocked.
+
 * **PRD-01 (MMFDB project round-trip) closed — global fits were shattered on
   restore.** Auditing the PRD found Tasks 1–6 had all landed incrementally
   without anyone flipping its status, so it still read `planned` while the code
@@ -445,6 +486,19 @@
   confidence), which is what caught the orientation error. Also made
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
+
+* **chiplot Batch 14 — decay_conv section + FCS-merger wizard off pyqtgraph
+  (allow-list 40 → 37).** Migrated `gui/autoform/sections/decay_conv_section.py`
+  (decay+IRF plot with three draggable conv/IRF/BG regions) and the FCS-merger
+  wizard pair `gui/widgets/wizard/fcs_merger/{fcs_merger,fcs_merger_ui}.py`.
+  `decay_conv` maps its curves + regions onto `line`/`set_data` +
+  `region`/`set_bounds` and drops its `_updating` re-entrancy flag entirely (now
+  that `set_bounds` is signal-safe); region callbacks take `(start, stop)`.
+  `fcs_merger_ui` drops the `getPlotItem()` split (chiplot's `Plot` draws
+  directly), and `fcs_merger` maps its per-curve `mkPen` (incl. dashed-grey
+  "unused") to `line(pen=…, width=…, style=…)`. Import-clean extended;
+  `DecayConvWidget` constructed headless with its three region drags. See
+  [PRD-64](prds/prd-64.md).
 
 * **chiplot Batch 13 — LUT settings panel off pyqtgraph (allow-list 41 → 40).**
   Migrated `plugins/tttr/tttr_lut_tools/gui/settings_panel.py` (microtime
