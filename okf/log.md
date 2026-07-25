@@ -3,6 +3,40 @@
 ## 2026-07-25
 
 * **Two more things a run cannot change: parameter values and class
+  properties.** (1) Most of a model's parameters — instrument response,
+  detection geometry, background, everything not being optimised — hold the same
+  value for an entire run and are re-read on every evaluation. Inside a freeze a
+  read is memoised on the parameter and dropped by the value setter, which is the
+  *single* point at which a value changes: models write through
+  `Parameter.value`, never into the backing port (verified), and these models
+  have no computed chinet-node ports. Linked parameters are deliberately never
+  cached — a follower is written through its *port* when its master moves, which
+  never reaches the follower object, so a cached follower would keep answering
+  the old value; there is a test for exactly that. (2) `Base.__setattr__` walked
+  the whole MRO via `getattr(self.__class__, key, None)` on **every** attribute
+  write, and for a key that is not a class attribute — ordinary instance state,
+  i.e. most writes — that walk runs to completion before failing. Memoised per
+  `(class, attribute)`, the same fix already applied to
+  `ParameterGroup.__setattr__`. Cumulative: a global objective sweep is
+  **1.46 s → 0.45 s (3.2×)** with 3.84 M → 0.95 M calls, a decay model evaluation
+  is **1.46–1.49×** faster under a freeze with byte-identical residuals, and a
+  two-exponential TCSPC fit runs in ~37 ms. Further gains now need the model
+  layer to read its parameters into vectors once rather than one attribute at a
+  time — invasive across many models for a smaller return, so stopping here.
+  Landed in `fb8dbdce`.
+
+* **Recovered log entries dropped by stale-base commits.** `a87fa24a` rewrote
+  `okf/log.md` from a copy predating nine entries (two chimol, one agent, six
+  fitting/sampling) and removed them from history; the same happened again while
+  the first recovery was being staged. They are restored verbatim below in their
+  original relative order. `okf/log.md` is an append-mostly file in a tree
+  several agent instances write at once: rebuild the content from
+  `git show HEAD:okf/log.md` **immediately** before committing, never from a copy
+  read earlier in the session, and check `git diff --cached --stat` shows only
+  what you intend before every commit.
+
+
+* **Two more things a run cannot change: parameter values and class
   properties.** Continuing down the same seam. (1) Most of a model's parameters
   — instrument response, detection geometry, background, everything not being
   optimised — hold the same value for an entire run and are re-read on every
