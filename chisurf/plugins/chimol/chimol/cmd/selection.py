@@ -11,7 +11,7 @@ from .selection_types import Selection
 
 
 class SelectionMixin(BaseCmd):
-    """Selection handling, object visibility, and simple set/enable toggles."""
+    """Selection handling, object listing, and visibility toggles."""
 
     # ------------------------------------------------------------------ #
     # Commands
@@ -138,106 +138,6 @@ class SelectionMixin(BaseCmd):
                     "indices": [],
                 }
             self._emit_message(f"Selected object {obj_name}")
-
-    @command("set")
-    def set(self, name: str, value: str = "") -> None:
-        """Set a display/cartoon setting or representation toggle (PyMOL ``set``)."""
-        name = str(name).strip().rstrip(",").lower()
-        value = str(value).strip()
-        if not name or not value:
-            self._emit_error("Usage: set <name>, <value>")
-            return
-
-        value_l = value.lower()
-        bool_map = {
-            "on": True,
-            "off": False,
-            "true": True,
-            "false": False,
-            "1": True,
-            "0": False,
-        }
-
-        if name in ("bg_color", "bg_colour"):
-            self.bg_color(value)
-            return
-
-        if name in ("color_mode", "color"):
-            self.color(value)
-            return
-
-        if name in (
-            "cartoon",
-            "trace",
-            "ca_trace",
-            "atoms",
-            "sticks",
-            "surface",
-            "dots",
-            "plane",
-            "grid",
-        ):
-            if value_l not in bool_map:
-                self._emit_error(
-                    f"Value for set {name} must be one of: on, off, true, false, 1, 0"
-                )
-                return
-            vis = bool_map[value_l]
-            if vis:
-                self.show(name)
-            else:
-                self.hide(name)
-            return
-
-        cartoon_setting_map = {
-            "cartoon_sampling": "cartoon_sampling",
-            "cartoon_loop_radius": "loop_radius",
-            "cartoon_loop_quality": "loop_quality",
-            "cartoon_rect_length": "rect_length",
-            "cartoon_rect_width": "rect_width",
-            "cartoon_oval_length": "oval_length",
-            "cartoon_oval_width": "oval_width",
-            "cartoon_oval_quality": "oval_quality",
-            "cartoon_tube_radius": "tube_radius",
-            "cartoon_tube_quality": "tube_quality",
-        }
-        if name in cartoon_setting_map:
-            window, viewer = self._require_window_and_viewer()
-            if viewer is None:
-                return
-            from ..config import _DISPLAY_CONFIG
-            try:
-                _DISPLAY_CONFIG.setdefault("cartoon", {})[cartoon_setting_map[name]] = float(value)
-            except ValueError:
-                self._emit_error(f"Invalid numeric value for {name}: {value}")
-                return
-            try:
-                viewer._update_view()
-            except Exception:
-                pass
-            self._emit_message(f"{name} set to {value}")
-            return
-
-        if name.startswith("metaball.") or name.startswith("metaball_"):
-            prop = name.replace("metaball_", "").replace("metaball.", "")
-            window, viewer = self._require_window_and_viewer()
-            if viewer is None:
-                return
-
-            from ..config import _DISPLAY_CONFIG
-            mcfg = _DISPLAY_CONFIG.setdefault("metaball", {})
-            try:
-                mcfg[prop] = float(value)
-                viewer._update_view()
-                self._emit_message(f"Metaball {prop} set to {value}")
-            except ValueError:
-                self._emit_error(f"Invalid value for metaball.{prop}: {value}")
-            return
-
-        self._emit_error(
-            "set command supports bg_color, color_mode, rep toggles, "
-            "and metaball properties (metaball.alpha, metaball.shininess, etc.)"
-        )
 
     @command("objects")
     def objects(self) -> None:

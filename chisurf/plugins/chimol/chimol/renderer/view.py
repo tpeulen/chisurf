@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from collections import OrderedDict
 from collections.abc import Sequence
 from contextlib import contextmanager
@@ -43,6 +44,8 @@ from .base import Renderer
 from .chimol_state import _MolViewObjectEntry, _MolViewObjectState, _StateField
 from .qtgl import QtGLRenderer
 from .scene import Geometry, Scene, SceneObject
+
+logger = logging.getLogger(__name__)
 
 # Default per-atom van-der-Waals radius (Angstrom) used for raw-coordinate
 # objects that carry no radii of their own. Sized to sit just below the real
@@ -1912,6 +1915,20 @@ class MolView(QtWidgets.QWidget):
         except Exception:
             pass
 
+    def set_field_of_view(self, fov: float) -> None:
+        """Set the camera's vertical field of view in degrees.
+
+        Delegates to the renderer, which re-frames the scene so the molecule
+        keeps its on-screen size (see
+        :meth:`~.qtgl.QtGLRenderer.set_field_of_view`).
+        """
+        renderer = self._renderer
+        if renderer is None:
+            return
+        setter = getattr(renderer, "set_field_of_view", None)
+        if callable(setter):
+            setter(fov)
+
     def set_mouse_mode(self, mode: str) -> None:
         """Set the mouse interaction style.
 
@@ -1952,7 +1969,8 @@ class MolView(QtWidgets.QWidget):
         if radius <= 0.0:
             radius = float(getattr(self, "_radius", 10.0))
 
-        # Use defaults
+        # The distance is recomputed from the field of view by fit_to_radius
+        # immediately afterwards; this only establishes the orientation.
         self._renderer.reset_view(
             distance=max(radius * 3.0, 5.0),
             elevation=float(self._default_elevation),
@@ -2105,6 +2123,42 @@ class MolView(QtWidgets.QWidget):
 
         if changed:
             self._update_view()
+
+    def recompute_secondary_structure(self) -> int:
+        """Recompute the secondary structure from the coordinates (PyMOL ``dss``).
+
+        Discards whatever the object is currently annotated with — including a
+        depositor's ``HELIX``/``SHEET`` records — and derives H/E/C from the
+        backbone geometry instead. This is the escape hatch for structures whose
+        records are absent, stale, or disagree with the model, and for
+        trajectory frames where the conformation has moved on.
+
+        Returns
+        -------
+        int
+            Number of residues assigned, or 0 when there is nothing to work on.
+        """
+        atoms = getattr(self, "_atoms", None)
+        coords = getattr(self, "_coords", None)
+        if atoms is None or coords is None:
+            return 0
+        try:
+            n_res = int(coords.shape[0])
+        except Exception:
+            return 0
+        if n_res <= 0:
+            return 0
+
+        try:
+            codes = assign_ss_c3_from_atoms(atoms, n_res, verbose=False)
+        except Exception:
+            logger.warning("Secondary-structure assignment failed", exc_info=True)
+            return 0
+        if not codes:
+            return 0
+
+        self.set_secondary_structure_codes(codes)
+        return len(codes)
 
     def set_secondary_structure_codes(self, codes) -> None:
         """Set per-residue secondary-structure codes for coloring.

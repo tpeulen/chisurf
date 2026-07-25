@@ -15,12 +15,12 @@ except Exception:  # pragma: no cover - handled at runtime
 from ..config import _DISPLAY_CONFIG
 from .base import Renderer
 from .scene import Geometry, Material, Scene, SceneObject
-from .view_state import pack_view_state, unpack_view_state
-
-# Vertical field of view of the GL camera, in degrees. Shared by the projection
-# matrix and the serialised view tuple so an offscreen raytrace of a saved view
-# frames the scene exactly like the interactive widget does.
-_GL_FOV_DEGREES = 45.0
+from .view_state import (
+    DEFAULT_FOV,
+    distance_for_radius,
+    pack_view_state,
+    unpack_view_state,
+)
 
 
 # Minimal set of OpenGL enum values used by this renderer. These are
@@ -171,9 +171,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._max_near_clip = 10.0
         self._clip_wheel_scale = 0.85
         self._grid_draw_data: Optional[_DrawData] = None
+        # Vertical field of view in degrees, shared by the projection matrix,
+        # the framing rule and the serialised view tuple so that an offscreen
+        # raytrace of a saved view frames the scene like the widget does.
+        cam_cfg = (_DISPLAY_CONFIG.get("camera") or {})
+        self._fov = float(cam_cfg.get("field_of_view", DEFAULT_FOV))
+        self._orthoscopic = bool(cam_cfg.get("orthoscopic", False))
         self._opts = {
             "center": QtGui.QVector3D(0.0, 0.0, 0.0),
-            "fov": 45.0,
+            "fov": self._fov,
         }
         self.opts = self._opts  # Compatibility with picking helpers
         self._drag_selecting = False
@@ -391,9 +397,24 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._far_clip = far_val
         self.update()
 
+    def set_field_of_view(self, fov: float) -> None:
+        """Set the vertical field of view in degrees, re-framing the scene.
+
+        Changing the lens keeps the molecule the same size on screen by moving
+        the camera, which is how PyMOL behaves and what makes ``field_of_view``
+        usable as a perspective control rather than a zoom control.
+        """
+        new_fov = abs(float(fov))
+        if new_fov < 1e-3 or abs(new_fov - self._fov) < 1e-9:
+            return
+        self._fov = new_fov
+        self._opts["fov"] = new_fov
+        self._distance = max(distance_for_radius(self._target_radius, new_fov), 5.0)
+        self.update()
+
     def fit_to_radius(self, radius: float) -> None:
         self._target_radius = max(float(radius), 1.0)
-        self._distance = max(self._target_radius * 3.0, 5.0)
+        self._distance = max(distance_for_radius(self._target_radius, self._fov), 5.0)
 
         target_near = max(self._target_radius * 0.02, self._min_near_clip)
         self._near_clip = self._clamp_near_clip(target_near)
@@ -510,7 +531,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             self._scene_center() + self._pan_offset,
             self._near_clip,
             self._far_clip,
-            _GL_FOV_DEGREES,
+            self._fov,
+            self._orthoscopic,
         )
 
     def set_view_state(self, view) -> None:
@@ -522,6 +544,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._pan_offset = state.target - self._scene_center()
         self._near_clip = self._clamp_near_clip(state.near)
         self._far_clip = max(state.far, self._near_clip * 10.0)
+        # Assigned rather than routed through set_field_of_view: the tuple
+        # already carries the matching distance, which re-framing would discard.
+        self._fov = abs(float(state.fov))
+        self._opts["fov"] = self._fov
+        self._orthoscopic = bool(state.orthoscopic)
         self._update_center_opt()
         self.update()
 
@@ -925,7 +952,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         height = max(self.height(), 1)
         aspect = width / float(height)
         proj = QtGui.QMatrix4x4()
-        proj.perspective(_GL_FOV_DEGREES, aspect, self._near_clip, self._far_clip)
+        proj.perspective(self._fov, aspect, self._near_clip, self._far_clip)
 
         view = QtGui.QMatrix4x4()
         view.translate(0.0, 0.0, -self._distance)

@@ -14,8 +14,12 @@ between the two programs::
     12-14  origin of rotation (the point the camera orbits), in world space
     15     near clipping plane
     16     far clipping plane
-    17     field of view in degrees (PyMOL writes a negative value for an
-           orthoscopic camera)
+    17     field of view in degrees, **negated for a perspective camera**
+
+The sign of slot 17 is the orthoscopic flag, and it reads backwards from the
+obvious guess: PyMOL writes ``-field_of_view`` for its default *perspective*
+camera and ``+field_of_view`` when ``orthoscopic`` is on. Verified against
+``cmd.get_view()`` with the setting toggled both ways.
 
 The column convention in slots 0-8 is load-bearing and easy to get backwards.
 chimol works internally with a **world-to-camera** rotation whose *rows* are the
@@ -41,9 +45,16 @@ from dataclasses import dataclass
 
 import numpy as np
 
-DEFAULT_FOV = 45.0
+DEFAULT_FOV = 20.0
+"""Vertical field of view in degrees, matching PyMOL's ``field_of_view`` default."""
 
-__all__ = ["ViewState", "pack_view_state", "unpack_view_state", "rotation_from_angles"]
+__all__ = [
+    "ViewState",
+    "pack_view_state",
+    "unpack_view_state",
+    "rotation_from_angles",
+    "distance_for_radius",
+]
 
 
 @dataclass
@@ -76,6 +87,33 @@ class ViewState:
     far: float
     fov: float = DEFAULT_FOV
     orthoscopic: bool = False
+
+
+def distance_for_radius(radius: float, fov: float = DEFAULT_FOV) -> float:
+    """Camera distance at which a sphere of ``radius`` just fills the view.
+
+    This is PyMOL's framing rule, ``d = radius / tan(fov / 2)``, checked against
+    ``cmd.zoom`` for several radii and fields of view. Framing therefore follows
+    the field of view: widening the lens pulls the camera in rather than
+    shrinking the molecule, which is what makes a ``zoom`` here and a ``zoom``
+    there put the molecule at the same size on screen.
+
+    Parameters
+    ----------
+    radius : float
+        Bounding radius of what must be visible, in scene units.
+    fov : float, optional
+        Vertical field of view in degrees.
+
+    Returns
+    -------
+    float
+        Camera-to-target distance.
+    """
+    half_tan = math.tan(math.radians(abs(float(fov))) * 0.5)
+    if half_tan <= 1e-6:
+        return max(float(radius), 1.0)
+    return max(float(radius) / half_tan, 1.0)
 
 
 def rotation_from_angles(elevation: float, azimuth: float) -> np.ndarray:
@@ -113,7 +151,8 @@ def pack_view_state(
     fov : float, optional
         Vertical field of view in degrees.
     orthoscopic : bool, optional
-        Written back as a negative field of view, matching PyMOL.
+        Controls the sign of slot 17: positive when orthoscopic, negative for
+        the perspective camera, matching PyMOL.
 
     Returns
     -------
@@ -129,7 +168,7 @@ def pack_view_state(
         0.0, 0.0, -float(distance),
         float(t[0]), float(t[1]), float(t[2]),
         float(near), float(far),
-        -abs(float(fov)) if orthoscopic else abs(float(fov)),
+        abs(float(fov)) if orthoscopic else -abs(float(fov)),
     ]
 
 
@@ -160,7 +199,6 @@ def unpack_view_state(view: Sequence[float]) -> ViewState:
     slot9, slot10, slot11 = vals[9], vals[10], vals[11]
     target = np.array(vals[12:15], dtype=float)
     near, far = vals[15], vals[16]
-    ortho = vals[17] < 0.0
     fov = abs(vals[17]) if abs(vals[17]) > 1e-9 else DEFAULT_FOV
 
     is_identity = np.allclose(mat, np.eye(3), atol=1e-6)
@@ -169,12 +207,15 @@ def unpack_view_state(view: Sequence[float]) -> ViewState:
     # a negative distance and slot 9 is zero. chimol's own older tuples put the
     # (positive) distance in slot 9 instead, which makes the two unambiguous.
     if abs(slot9) < 1e-9 and slot11 < 0.0:
-        return ViewState(mat.T, abs(slot11), target, near, far, fov, ortho)
+        return ViewState(mat.T, abs(slot11), target, near, far, fov,
+                         orthoscopic=vals[17] > 0.0)
 
+    # The older chimol layouts predate the orthoscopic flag and always wrote a
+    # positive field of view, so their sign carries no meaning.
     distance = max(slot9, 0.1)
     if is_identity and (abs(slot10) > 1e-9 or abs(slot11) > 1e-9):
         # Legacy: identity matrix with elevation/azimuth in slots 10-11.
         return ViewState(rotation_from_angles(slot10, slot11), distance,
-                         target, near, far, fov, ortho)
+                         target, near, far, fov)
 
-    return ViewState(mat, distance, target, near, far, fov, ortho)
+    return ViewState(mat, distance, target, near, far, fov)

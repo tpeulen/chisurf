@@ -2,6 +2,47 @@
 
 ## 2026-07-25
 
+* **chimol: the PyMOL settings namespace, and two camera facts measured from
+  PyMOL rather than assumed.** Three parity gaps, all verified against a running
+  PyMOL rather than against its documentation.
+  **`set` reached almost nothing.** It recognised a hand-written list of ~10
+  cartoon keys plus `metaball.*`, and the config carried a *second, flat* copy of
+  ~36 PyMOL setting names (`cartoon_loop_radius`, `ray_shadow`, `specular`, ...)
+  that **no code read at all** — writing them was inert. New `chimol/settings.py`
+  is one table mapping each PyMOL name onto the nested config path the renderer
+  actually reads, with `set` / `get` / `unset` / `toggle` / `help_setting` in a new
+  `cmd/settings.py` mixin (`set` moved out of `selection.py`, where it did not
+  belong). Resolution accepts an exact name, an unambiguous prefix
+  (`cartoon_oval_w` -> `cartoon_oval_width`, ambiguous prefixes list the
+  candidates), or a dotted path (`metaball.alpha`) for entries with no PyMOL name.
+  36 settings registered; the dead flat block is deleted from both the defaults
+  and `chimol_display.json` (`_version` 2 -> 3). A test walks every entry and
+  fails if its path is absent from the config, so a dead setting cannot be added
+  back; another fails if the flat namespace reappears.
+  **The sign of view-tuple slot 17 was backwards.** PyMOL writes a **negative**
+  field of view for its *perspective* camera and a positive one for orthoscopic —
+  the opposite of what the code and its docstring claimed. Measured directly:
+  `orthoscopic off` -> `-20.0`, `on` -> `+20.0`, and again at `field_of_view 35`.
+  A view copied from PyMOL was therefore read as orthoscopic. Fixed in
+  `pack_view_state`/`unpack_view_state`, with the rule confined to the PyMOL
+  branch since the older chimol layouts always wrote a positive value and meant
+  nothing by it. Pinned by a test carrying a real `cmd.get_view()` tuple.
+  **Framing ignored the lens.** `fit_to_radius` used `distance = 3 x radius`, and
+  the field of view was a hardcoded 45 in three places. PyMOL's actual rule,
+  recovered by zooming pseudoatom pairs of known size: `d = radius / tan(fov/2)`,
+  exact to 5 significant figures for radii 5/10/20 A at 20 and 45 degrees. Now
+  `view_state.distance_for_radius`, used by `fit_to_radius`; the field of view is
+  a real per-renderer value fed by the `field_of_view` setting, defaulting to
+  PyMOL's **20** (was 45), so `set field_of_view` changes perspective while
+  keeping the molecule the same size on screen. Also measured but *not* yet
+  matched: PyMOL frames on the largest half-extent of the bounding box, chimol on
+  the bounding-sphere radius, so chimol still zooms ~26 % looser.
+  **`dss`** added (`MolView.recompute_secondary_structure`), completing the pair
+  with the deposited-record support: a load adopts `HELIX`/`SHEET`, `dss` throws
+  them away and recomputes from the backbone.
+  Suite: 214 passed, 1 skipped (was 155) — 39 new settings tests, 18 view-state,
+  2 for `dss`.
+
 * **Concept pages: worked numbers and failure modes for the five thinnest.**
   Continued the docs refinement into `docs/concepts/`, taking the new bottom five
   (`fret`, `burst_2cde`, `filtered_fcs`, `pch_fida`, `anisotropy`) from
