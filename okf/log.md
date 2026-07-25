@@ -2,6 +2,23 @@
 
 ## 2026-07-25
 
+* **The only end-to-end GUI workflow tests run again (RF-023).** All three tests
+  in `test/gui/test_gui_chisurf_main.py` — the sole cover for "choose experiment
+  → load data → add fit" — had been red on a renamed button, and behind that
+  they had rotted in three further places that no assertion could see: the
+  reader was addressed by *class* name (`TCSPCReader`) where the combo shows
+  `TXT/CSV`, so `findText` returned −1 and the default reader was silently used;
+  the model was `'Lifetime fit'` where `LifetimeModel.name` is `'Lifetime '`,
+  trailing space and all; and the dataset click landed **below the tree's
+  viewport** in a full-suite run (the tree is ~46 px tall, the third row's centre
+  is at y=54), which selects nothing — and `add_fits_for_datasets` returns
+  silently on an empty selection, so the test created no fit and logged nothing.
+  Each of the four is now an explicit assertion (reader offered, model offered,
+  row exists, click actually selected), the helper scrolls the row into view
+  first, and every test checks the created fit's model, data and — after one
+  `model.update()`, since parameter discovery is lazy — that it has parameters.
+  `3 passed`, in either order and individually.
+
 * **Drove the Imaging/CLSM workflow through the GUI and recorded it.** New use
   case [clsm-image-decay](/usecases/clsm-image-decay.md): load `Leica_SP5.ptu`
   into CLSM-Draw, auto-detect the scan markers, build a CLSM image and an

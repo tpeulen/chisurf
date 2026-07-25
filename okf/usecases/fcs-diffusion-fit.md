@@ -121,9 +121,11 @@ experiments are missing from the combo. Cause: the GUI never merges the shipped
 experiments are present, every one with readers, and there are zero ERRORs.
 
 Also stumbled over: `test/gui/test_gui_chisurf_main.py` — the only end-to-end
-"load data → add fit" GUI tests, including the FCS one — fails on
-`gui.pushButton_2` (renamed to `toolButton`), so this workflow currently has no
-working regression test (RF-023).
+"load data → add fit" GUI tests, including the FCS one — failed on
+`gui.pushButton_2` (renamed to `toolButton`), so this workflow had no working
+regression test (RF-023, now fixed: the tests were stale in four places — button
+name, reader name, model name, and a dataset click that landed below the tree's
+viewport — and each is now an explicit assertion).
 
 ## UX / UI suggestions
 
@@ -197,7 +199,8 @@ working regression test (RF-023).
   upgraded install offers a dead `RICS` experiment (IndexError on selection) and
   hides `Image correlation` / `tcPDA (3-colour)`.
 - RF-023 — `test/gui/test_gui_chisurf_main.py` (the load-data → add-fit tests,
-  incl. FCS) fails on the renamed `pushButton_2`.
+  incl. FCS) failed on the renamed `pushButton_2`. **Fixed** — all three tests
+  green and now fail loudly on reader/model/selection drift.
 - RF-024 — fits are named after the container class
   (`Parse-Model - ExperimentDataCurveGroup`) and typed by widget class
   (`ParseFCSWidget`).

@@ -356,11 +356,40 @@ RF-018..RF-025 below.
 - **Fix note:**
 
 ### RF-023
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (the only end-to-end GUI workflow tests are red)
 - **Location:** `test/gui/test_gui_chisurf_main.py:145` (and `:104`, `:111`, `:157` via the shared `add_fit` helper)
 - **Finding:** All three tests in the main-window GUI suite — `test_tcspc`, `test_fcs`, `test_global_fit`, i.e. the only tests that walk "choose experiment → load data → add fit" — fail with `AttributeError: 'Main' object has no attribute 'pushButton_2'. Did you mean: 'toolButton_2'?`. The **Add fit** button in `chisurf/gui/gui.ui` is `toolButton` (connected to `actionAdd_fit`); `toolButton_2` is the unrelated **+ Data** button. Verified: `pytest test/gui/test_gui_chisurf_main.py -x -q` → `1 failed` in 7 s. So the workflows in [usecases/tcspc-lifetime-fit](/usecases/tcspc-lifetime-fit.md) and [usecases/fcs-diffusion-fit](/usecases/fcs-diffusion-fit.md) currently have no regression cover at all; the fix is a one-word rename plus asserting something about the created fit (the tests only check that no exception escapes).
-- **Fix note:**
+- **Fix note:** All three tests are green (`3 passed`, repeatedly and individually,
+  in either order). The rename was only the first layer — the tests had silently
+  rotted in four independent places, each of which is now an explicit assertion
+  rather than a no-op, so the next drift fails loudly:
+  1. **The button.** `pushButton_2` → `toolButton` (the *Analysis* button), and
+     the helper parameter is renamed `add_fit_button` with the `toolButton_2`
+     confusion written into its docstring.
+  2. **Reader names.** `setup_name="TCSPCReader"` is a *class* name; the combo
+     shows the `name` from `experiment_configs.yaml` (`TXT/CSV`). `findText`
+     returned −1 and `setCurrentIndex(-1)` left the default reader selected, so
+     the test passed a reader it never chose. `setup_reader` now asserts both
+     indices are found.
+  3. **Model names.** `'Lifetime fit'` is not offered — `LifetimeModel.name` is
+     `'Lifetime '`, trailing space included (`chisurf/core/models/tcspc/lifetime.py:316`).
+     `add_fit` now asserts the model is in the combo, and that the created fit's
+     name starts with the model that was picked.
+  4. **The dataset click.** `test_global_fit` clicked `'Global-fit'`, which is not
+     in the tree (the row reads `Global Dataset`), and in a full-suite run the
+     TCSPC row sits **below the viewport** — the tree is ~46 px tall, the third
+     row's centre is at y=54, so `QTest.mouseClick` landed outside and selected
+     nothing. `onAddFit` → `add_fits_for_datasets` returns silently on an empty
+     `data_idx`, so no fit was created and nothing was logged. The helper now
+     `scrollToItem`s first and asserts both that the row exists and that the
+     click actually selected it.
+  Each test additionally asserts the fit's data and that `parameters_all` is
+  non-empty after one `model.update()` (parameter discovery is lazy —
+  `Model.update` calls `find_parameters`, so a freshly added fit legitimately
+  reports zero). Lint on the file went 21 → 9 errors (the remainder is the
+  pre-existing `E402`/`I001` from the `sys.path` bootstrap); the stale
+  "Test the kappa2 distribution GUI" class docstring is corrected.
 
 ### RF-024
 - **Status:** OPEN
