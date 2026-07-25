@@ -3,6 +3,10 @@
 Stage drift moves the sample between frames. This tool measures that movement
 and removes it, for both camera stacks and photon-stream (confocal) images.
 
+It sits in the **Image Tools** toolbox between *Browser* and *1. Intensity*,
+because every per-pixel map in the numbered pipeline is built from frames that
+must already be aligned. Correct here first, then continue with **Next ▶**.
+
 ## Why it matters more than it looks
 
 For a plain intensity image, drift is a cosmetic blur in the summed projection.

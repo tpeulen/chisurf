@@ -99,6 +99,13 @@ def _browser(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     return widget
 
 
+def _drift(parent: ImagingToolsTool) -> QtWidgets.QWidget:
+    from chisurf.plugins.microscopy.img_drift.gui.tool import ImgDriftTool
+    widget = ImgDriftTool(parent=parent, embedded=True)
+    parent._register_panel("drift", widget)
+    return widget
+
+
 def _pixel_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_pixel_mle.gui.tool import ImgPixelMleTool
     widget = ImgPixelMleTool(parent=parent, embedded=True)
@@ -190,6 +197,18 @@ IMAGING_PANELS: list[dict] = [
         "role": "browser",
     },
     {
+        "name": "Drift",
+        "icon": "🎯",
+        "description": (
+            "Optional pre-processing: measure and remove inter-frame sample drift. "
+            "Belongs before the numbered steps — every per-pixel map below is built "
+            "from frames that must already be aligned. Photon streams are corrected "
+            "photon by photon, so the steps below still see real photons."
+        ),
+        "factory": _drift,
+        "role": "drift",
+    },
+    {
         "name": "1. Intensity",
         "icon": "🔆",
         "description": "Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference).",
@@ -271,8 +290,8 @@ class ImagingToolsTool(NavigationPanelTool):
 
     #: Analysis steps in pipeline order for the "Next ▶" convenience.
     PIPELINE_ORDER = (
-        "browser", "pixel_intensity", "pixel_nb", "pixel_micro_time", "calibration",
-        "pixel_phasor", "pixel_mle",
+        "browser", "drift", "pixel_intensity", "pixel_nb", "pixel_micro_time",
+        "calibration", "pixel_phasor", "pixel_mle",
     )
     #: Roles whose (Qt-free) view-models the coordinator owns + pre-computes.
     ANALYSIS_ROLES = ("pixel_intensity", "pixel_nb", "pixel_micro_time", "pixel_phasor")

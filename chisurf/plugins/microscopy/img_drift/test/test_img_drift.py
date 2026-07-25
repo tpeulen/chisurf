@@ -196,3 +196,31 @@ def test_view_spec_loads_and_names_real_sources():
     for attr in ("drift_series", "shift_rows", "before_image", "after_image",
                  "channel_names", "set_filename"):
         assert hasattr(vm, attr), f"view spec references missing {attr!r}"
+
+
+# --- toolbox integration ---------------------------------------------------
+def test_drift_is_registered_in_the_imaging_toolbox():
+    """The tool is reachable from Image Tools, before the numbered pipeline.
+
+    Drift correction is pre-processing: every per-pixel map in the numbered
+    steps is built from frames that must already be aligned, so the panel has
+    to sit ahead of them and inside the pipeline order the 'Next' button walks.
+    """
+    from chisurf.plugins.microscopy.imaging_tools.gui.tool import (
+        IMAGING_PANELS,
+        ImagingToolsTool,
+    )
+
+    names = [p["name"] for p in IMAGING_PANELS]
+    roles = [p.get("role") for p in IMAGING_PANELS]
+    assert "drift" in roles, "the drift panel is not registered in the toolbox"
+
+    # ordered before every numbered analysis step
+    assert names.index("Drift") < names.index("1. Intensity")
+    order = ImagingToolsTool.PIPELINE_ORDER
+    assert "drift" in order
+    assert order.index("drift") < order.index("pixel_intensity")
+
+    panel = IMAGING_PANELS[roles.index("drift")]
+    assert callable(panel["factory"])
+    assert panel.get("description"), "every navigation entry needs a description"
