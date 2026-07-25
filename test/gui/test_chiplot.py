@@ -364,6 +364,8 @@ def test_migrated_modules_import(qapp):
         "chisurf.gui.plots._qwt_compat",
         "chisurf.gui.plots.global_tcspc.global_tcspc",
         "chisurf.gui.plots.surfaceplot.surfaceplot",
+        # Batch 28
+        "chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window",
     ):
         assert importlib.import_module(name) is not None
 

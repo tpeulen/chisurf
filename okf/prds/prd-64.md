@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 23):*
+*Landed so far (allow-list 76 → 22):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -555,6 +555,19 @@ screenshot/qtbot verification after each cluster.
   consumers (`global_tcspc`, `surfaceplot` — not allow-listed) keep the same API
   and import clean. Before/after screenshot-verified: identical exp-decay curves,
   overlaid step histograms, and the "hot" 2-D ES histogram.
+- **Batch 28** (allow-list 23 → 22) — migrated the FCS filter-calculator main window
+  (`plugins/fcs/fcs_filter_calculator/gui_parts/main_window.py`, 3291L): three
+  `pg.PlotWidget`s (filters / reconstruction / residuals) → `cp.Plot`, all ~37
+  `.plot(...)` calls → `line(...)`, the inline/helper `pg.mkPen(...)` → `cp.to_pen`
+  (with `QtCore.Qt.{Dot,Dash}Line`→`"dot"`/`"dash"`), the draggable fit-range
+  `LinearRegionItem` (two signals + `getRegion`/`setRegion`) → `region` with two
+  `on_change` handlers (`final=False`/`True`) + `set_bounds`/`.bounds`; the
+  pyqtgraph-only hover brush/pen dropped (LinearRegionItem has no `setHoverPen`
+  setter — a constructor-only nicety). The tool's built-in-example compute is too
+  heavy to construct headless, so the three plots were screenshot-verified via an
+  isolated repro of the exact draw calls plus a module import-clean check.
+  (`fcs_filter_calculator/test/test_widgets.py` still imports pyqtgraph — a
+  separate test-only entry.)
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

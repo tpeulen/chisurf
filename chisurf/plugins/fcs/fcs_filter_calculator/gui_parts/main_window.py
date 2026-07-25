@@ -5,8 +5,9 @@ import pathlib
 from typing import Dict, List
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
+
+from chisurf.gui import chiplot as cp
 
 import chisurf as cs
 from chisurf.core.fluorescence.decay import (
@@ -253,34 +254,29 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.status_label.setWordWrap(True)
         sidebar_layout.addWidget(self.status_label)
 
-        self.plot_filters = pg.PlotWidget(title="Lifetime Filters")
-        self.plot_filters.setLabel("bottom", "TAC bin")
-        self.plot_filters.setLabel("left", "Filter value")
-        self.plot_filters.addLegend()
-        self.plot_recon = pg.PlotWidget(title="Reconstruction Quality")
-        self.plot_recon.setLabel("bottom", "TAC bin")
-        self.plot_recon.setLabel("left", "Counts")
-        self.plot_recon.setLogMode(y=True)
-        self.plot_recon.addLegend()
+        self.plot_filters = cp.Plot(title="Lifetime Filters")
+        self.plot_filters.set_labels(bottom="TAC bin", left="Filter value")
+        self.plot_filters.legend()
+        self.plot_recon = cp.Plot(title="Reconstruction Quality")
+        self.plot_recon.set_labels(bottom="TAC bin", left="Counts")
+        self.plot_recon.set_log(y=True)
+        self.plot_recon.legend()
         # Draggable fit/filter range (TAC bins of the first detector). Auto-fit and
         # the reconstruction use only this window — set past the prompt to a tail fit.
-        self._fit_region = pg.LinearRegionItem(
+        self._fit_region = self.plot_recon.region(
+            (0.0, 1.0),
             brush=(90, 150, 255, 55),
-            hoverBrush=(120, 175, 255, 80),
-            pen=pg.mkPen((150, 190, 255), width=2),
-            hoverPen=pg.mkPen((190, 215, 255), width=3),
+            pen=cp.to_pen((150, 190, 255), width=2),
             movable=True,
         )
-        self._fit_region.setZValue(10)  # above the decays so its handles are grabbable
+        self._fit_region.z = 10  # above the decays so its handles are grabbable
         self._fit_region_initialized = False
         self._syncing_range = False
-        self._fit_region.sigRegionChanged.connect(self._on_region_changed)
+        self._fit_region.on_change(self._on_region_changed, final=False)
         # Re-apply the range on release: recompute (re-zero filters) + re-mask residuals.
-        self._fit_region.sigRegionChangeFinished.connect(self._on_fit_range_committed)
-        self.plot_recon.addItem(self._fit_region)
-        self.plot_residuals = pg.PlotWidget(title="Weighted Residuals")
-        self.plot_residuals.setLabel("bottom", "TAC bin")
-        self.plot_residuals.setLabel("left", "Residuals (σ)")
+        self._fit_region.on_change(self._on_fit_range_committed, final=True)
+        self.plot_residuals = cp.Plot(title="Weighted Residuals")
+        self.plot_residuals.set_labels(bottom="TAC bin", left="Residuals (σ)")
         self._build_docks(sidebar)
 
         # Set up drag and drop for the whole widget
@@ -786,8 +782,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         color = self._filter_color(result, index)
         name = f"{prefix}{self._filter_label(result, index)}"
         if self._filter_is_rejected(result, index):
-            return pg.mkPen(color, style=QtCore.Qt.DotLine), f"{name} (rejected)"
-        return pg.mkPen(color), name
+            return cp.to_pen(color, style="dot"), f"{name} (rejected)"
+        return cp.to_pen(color), name
 
     def _plot_irf_overlay(self, plot, x, det_name, ref_peak) -> None:
         """Overlay a detector's IRF/scatter pattern on ``plot``, scaled to the decay peak.
@@ -811,9 +807,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         # visible instrument-response spike is drawn.
         floor = max(float(ref_peak) * 1e-4, 1e-9) if ref_peak else 1e-9
         disp = np.where(disp >= floor, disp, np.nan)
-        plot.plot(
+        plot.line(
             x, disp,
-            pen=pg.mkPen("#22d3ee", style=QtCore.Qt.DotLine),
+            pen=cp.to_pen("#22d3ee", style="dot"),
             name=f"{det_name}: IRF" if det_name else "IRF",
         )
 
@@ -1453,7 +1449,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._syncing_range = True
         try:
             if source != "region":
-                self._fit_region.setRegion((float(start), float(stop)))
+                self._fit_region.set_bounds(float(start), float(stop))
             if source != "spin":
                 self.sb_fit_start.setValue(int(start))
                 self.sb_fit_stop.setValue(int(stop))
@@ -1462,8 +1458,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         finally:
             self._syncing_range = False
 
-    def _on_region_changed(self) -> None:
-        lo, hi = self._fit_region.getRegion()
+    def _on_region_changed(self, *_args) -> None:
+        lo, hi = self._fit_region.bounds
         self._set_fit_range(int(round(min(lo, hi))), int(round(max(lo, hi))), source="region")
 
     def _on_fit_range_committed(self, *_args) -> None:
@@ -1482,7 +1478,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
     def _fit_range(self, n_bins: int) -> tuple[int, int]:
         """The selected fit/filter range (TAC bins), clamped to ``[0, n_bins]``."""
-        lo, hi = self._fit_region.getRegion()
+        lo, hi = self._fit_region.bounds
         start = max(0, int(round(min(lo, hi))))
         stop = min(int(n_bins), int(round(max(lo, hi))))
         if stop - start < 4:
@@ -3074,14 +3070,14 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 for i in range(res.n_filters):
                     filter_label = self._filter_label(res, i)
                     # Parallel filters
-                    self.plot_filters.plot(x + base_x, res.filters_par[i], pen=self._filter_color(res, i),
+                    self.plot_filters.line(x + base_x, res.filters_par[i], pen=self._filter_color(res, i),
                                           name=f"{det_name}: {filter_label} (||)")
                     # Perpendicular filters
-                    self.plot_filters.plot(x + base_x + offset, res.filters_perp[i], pen=self._filter_color(res, i),
+                    self.plot_filters.line(x + base_x + offset, res.filters_perp[i], pen=self._filter_color(res, i),
                                           name=f"{det_name}: {filter_label} (⊥)")
                 # Zero lines
-                self.plot_filters.plot(x + base_x, np.zeros(res.n_bins), pen=pg.mkPen('w', style=QtCore.Qt.DashLine))
-                self.plot_filters.plot(x + base_x + offset, np.zeros(res.n_bins), pen=pg.mkPen('w', style=QtCore.Qt.DashLine))
+                self.plot_filters.line(x + base_x, np.zeros(res.n_bins), pen=cp.to_pen('w', style="dash"))
+                self.plot_filters.line(x + base_x + offset, np.zeros(res.n_bins), pen=cp.to_pen('w', style="dash"))
             
             # 2. Reconstruction - stack each detector's par/perp
             self._clear_recon_plot()
@@ -3093,15 +3089,15 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 
                 # Parallel
                 detector_color = self._stable_plot_color(det_name)
-                self.plot_recon.plot(x + base_x, res.total_decay_par, pen=detector_color,
+                self.plot_recon.line(x + base_x, res.total_decay_par, pen=detector_color,
                                     name=f"{det_name}: Total (||)")
-                self.plot_recon.plot(x + base_x, res.reconstruction_par, pen=pg.mkPen(detector_color, style=QtCore.Qt.DashLine),
-                                    name=f"{det_name}: Recon (||)", style=QtCore.Qt.DashLine)
+                self.plot_recon.line(x + base_x, res.reconstruction_par, pen=cp.to_pen(detector_color, style="dash"),
+                                    name=f"{det_name}: Recon (||)", style="dash")
                 # Perpendicular
-                self.plot_recon.plot(x + base_x + offset, res.total_decay_perp, pen=detector_color,
+                self.plot_recon.line(x + base_x + offset, res.total_decay_perp, pen=detector_color,
                                     name=f"{det_name}: Total (⊥)")
-                self.plot_recon.plot(x + base_x + offset, res.reconstruction_perp, pen=pg.mkPen(detector_color, style=QtCore.Qt.DashLine),
-                                    name=f"{det_name}: Recon (⊥)", style=QtCore.Qt.DashLine)
+                self.plot_recon.line(x + base_x + offset, res.reconstruction_perp, pen=cp.to_pen(detector_color, style="dash"),
+                                    name=f"{det_name}: Recon (⊥)", style="dash")
             
             # 3. Residuals - stack each detector's par/perp
             self.plot_residuals.clear()
@@ -3113,16 +3109,16 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 
                 # Parallel
                 detector_color = self._stable_plot_color(det_name)
-                self.plot_residuals.plot(x + base_x, self._mask_to_fit_range(res.weighted_residuals_par, det_name), pen=detector_color, connect="finite",
+                self.plot_residuals.line(x + base_x, self._mask_to_fit_range(res.weighted_residuals_par, det_name), pen=detector_color, connect="finite",
                                         name=f"{det_name} (||)")
                 # Perpendicular
-                self.plot_residuals.plot(x + base_x + offset, self._mask_to_fit_range(res.weighted_residuals_perp, det_name), pen=detector_color, connect="finite",
+                self.plot_residuals.line(x + base_x + offset, self._mask_to_fit_range(res.weighted_residuals_perp, det_name), pen=detector_color, connect="finite",
                                         name=f"{det_name} (⊥)")
                 # Reference lines
                 for val in [-3, 0, 3]:
-                    pen = pg.mkPen('r' if val != 0 else 'w', style=QtCore.Qt.DashLine)
-                    self.plot_residuals.plot(x + base_x, np.full(res.n_bins, val), pen=pen)
-                    self.plot_residuals.plot(x + base_x + offset, np.full(res.n_bins, val), pen=pen)
+                    pen = cp.to_pen('r' if val != 0 else 'w', style="dash")
+                    self.plot_residuals.line(x + base_x, np.full(res.n_bins, val), pen=pen)
+                    self.plot_residuals.line(x + base_x + offset, np.full(res.n_bins, val), pen=pen)
             return
         
         # Handle multi-detector mode - stack detectors horizontally
@@ -3142,9 +3138,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 
                 for i in range(res.n_filters):
                     pen, name = self._filter_pen_name(res, i, f"{det_name}: ")
-                    self.plot_filters.plot(x, res.filters[i], pen=pen, name=name)
+                    self.plot_filters.line(x, res.filters[i], pen=pen, name=name)
                 # Zero line for this detector
-                self.plot_filters.plot(x, np.zeros(res.n_bins), pen=pg.mkPen('w', style=QtCore.Qt.DashLine))
+                self.plot_filters.line(x, np.zeros(res.n_bins), pen=cp.to_pen('w', style="dash"))
             
             # 2. Reconstruction - stack each detector horizontally
             self._clear_recon_plot()
@@ -3154,10 +3150,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 x = np.arange(res.n_bins) + (det_idx * offset)
                 
                 detector_color = self._stable_plot_color(det_name)
-                self.plot_recon.plot(x, res.total_decay, pen=detector_color,
+                self.plot_recon.line(x, res.total_decay, pen=detector_color,
                                     name=f"{det_name}: Total")
-                self.plot_recon.plot(x, res.reconstruction, pen=pg.mkPen(detector_color, style=QtCore.Qt.DashLine),
-                                    name=f"{det_name}: Recon", style=QtCore.Qt.DashLine)
+                self.plot_recon.line(x, res.reconstruction, pen=cp.to_pen(detector_color, style="dash"),
+                                    name=f"{det_name}: Recon", style="dash")
                 self._plot_irf_overlay(self.plot_recon, x, det_name, self._decay_peak(res.total_decay))
 
             # 3. Residuals - stack each detector horizontally
@@ -3167,12 +3163,12 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 det_name = dr['detector']
                 x = np.arange(res.n_bins) + (det_idx * offset)
                 
-                self.plot_residuals.plot(x, self._mask_to_fit_range(res.weighted_residuals, det_name), pen=self._stable_plot_color(det_name), connect="finite",
+                self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals, det_name), pen=self._stable_plot_color(det_name), connect="finite",
                                         name=f"{det_name}")
                 # Reference lines for this detector
                 for val in [-3, 0, 3]:
-                    pen = pg.mkPen('r' if val != 0 else 'w', style=QtCore.Qt.DashLine)
-                    self.plot_residuals.plot(x, np.full(res.n_bins, val), pen=pen)
+                    pen = cp.to_pen('r' if val != 0 else 'w', style="dash")
+                    self.plot_residuals.line(x, np.full(res.n_bins, val), pen=pen)
             return
         
         # Handle Anisotropy mode - stack decays horizontally
@@ -3188,35 +3184,35 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             for i in range(res.n_filters):
                 filter_label = self._filter_label(res, i)
                 # Parallel filters (left side)
-                self.plot_filters.plot(x, res.filters_par[i], pen=self._filter_color(res, i),
+                self.plot_filters.line(x, res.filters_par[i], pen=self._filter_color(res, i),
                                       name=f"{filter_label} (||)")
                 # Perpendicular filters (right side, offset)
-                self.plot_filters.plot(x + offset, res.filters_perp[i], pen=self._filter_color(res, i),
+                self.plot_filters.line(x + offset, res.filters_perp[i], pen=self._filter_color(res, i),
                                       name=f"{filter_label} (⊥)")
             # Zero lines for both channels
-            self.plot_filters.plot(x, np.zeros_like(x), pen=pg.mkPen('w', style=QtCore.Qt.DashLine))
-            self.plot_filters.plot(x + offset, np.zeros_like(x), pen=pg.mkPen('w', style=QtCore.Qt.DashLine))
+            self.plot_filters.line(x, np.zeros_like(x), pen=cp.to_pen('w', style="dash"))
+            self.plot_filters.line(x + offset, np.zeros_like(x), pen=cp.to_pen('w', style="dash"))
 
             # 2. Reconstruction - stack horizontally
             self._clear_recon_plot()
             # Parallel (left)
-            self.plot_recon.plot(x, res.total_decay_par, pen='w', name="Total (||)")
-            self.plot_recon.plot(x, res.reconstruction_par, pen='r', name="Recon (||)")
+            self.plot_recon.line(x, res.total_decay_par, pen='w', name="Total (||)")
+            self.plot_recon.line(x, res.reconstruction_par, pen='r', name="Recon (||)")
             # Perpendicular (right)
-            self.plot_recon.plot(x + offset, res.total_decay_perp, pen='w', name="Total (⊥)")
-            self.plot_recon.plot(x + offset, res.reconstruction_perp, pen='r', name="Recon (⊥)")
+            self.plot_recon.line(x + offset, res.total_decay_perp, pen='w', name="Total (⊥)")
+            self.plot_recon.line(x + offset, res.reconstruction_perp, pen='r', name="Recon (⊥)")
 
             # 3. Residuals - stack horizontally
             self.plot_residuals.clear()
             # Parallel (left)
-            self.plot_residuals.plot(x, self._mask_to_fit_range(res.weighted_residuals_par), pen='g', connect="finite", name="Residuals (||)")
+            self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals_par), pen='g', connect="finite", name="Residuals (||)")
             # Perpendicular (right)
-            self.plot_residuals.plot(x + offset, self._mask_to_fit_range(res.weighted_residuals_perp), pen='y', connect="finite", name="Residuals (⊥)")
+            self.plot_residuals.line(x + offset, self._mask_to_fit_range(res.weighted_residuals_perp), pen='y', connect="finite", name="Residuals (⊥)")
             # Reference lines for both channels
             for val in [-3, 0, 3]:
-                pen = pg.mkPen('r' if val != 0 else 'w', style=QtCore.Qt.DashLine)
-                self.plot_residuals.plot(x, np.full_like(x, val), pen=pen)
-                self.plot_residuals.plot(x + offset, np.full_like(x, val), pen=pen)
+                pen = cp.to_pen('r' if val != 0 else 'w', style="dash")
+                self.plot_residuals.line(x, np.full_like(x, val), pen=pen)
+                self.plot_residuals.line(x + offset, np.full_like(x, val), pen=pen)
             return
         
         # Standard single-channel mode
@@ -3230,13 +3226,13 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.plot_filters.clear()
         for i in range(res.n_filters):
             pen, name = self._filter_pen_name(res, i)
-            self.plot_filters.plot(x, res.filters[i], pen=pen, name=name)
-        self.plot_filters.plot(x, np.zeros_like(x), pen=pg.mkPen('w', style=QtCore.Qt.DashLine))
+            self.plot_filters.line(x, res.filters[i], pen=pen, name=name)
+        self.plot_filters.line(x, np.zeros_like(x), pen=cp.to_pen('w', style="dash"))
 
         # 2. Reconstruction
         self._clear_recon_plot()
-        self.plot_recon.plot(x, res.total_decay, pen='w', name="Total")
-        self.plot_recon.plot(x, res.reconstruction, pen='r', name="Recon", style=QtCore.Qt.DashLine)
+        self.plot_recon.line(x, res.total_decay, pen='w', name="Total")
+        self.plot_recon.line(x, res.reconstruction, pen='r', name="Recon", style="dash")
         # Overlay the IRF/scatter pattern (single detector → one stored entry).
         peak = self._decay_peak(res.total_decay)
         for det_name in list(self._irf_by_detector.keys()):
@@ -3244,9 +3240,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
         # 3. Residuals
         self.plot_residuals.clear()
-        self.plot_residuals.plot(x, self._mask_to_fit_range(res.weighted_residuals), pen='g', connect="finite")
+        self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals), pen='g', connect="finite")
         for val in [-3, 0, 3]:
-            self.plot_residuals.plot(x, np.full_like(x, val), pen=pg.mkPen('r' if val != 0 else 'w', style=QtCore.Qt.DashLine))
+            self.plot_residuals.line(x, np.full_like(x, val), pen=cp.to_pen('r' if val != 0 else 'w', style="dash"))
 
     def _on_export(self) -> None:
         if not self._result and not self._result_anisotropy and not self._result_multi_detector and not self._result_multi_anisotropy:
