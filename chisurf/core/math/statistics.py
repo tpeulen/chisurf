@@ -215,9 +215,8 @@ def bayesian_information_criterion(
     263.8155105579643
     """
     if case == 'gaussian':
-        return n * value + k * np.log(n)
-    else:
-        return k * np.log(n) - 2.0 * np.log(value)
+        return float(n * value + k * np.log(n))
+    return float(k * np.log(n) - 2.0 * np.log(value))
 
 
 def durbin_watson(
@@ -326,12 +325,12 @@ def chi2_max(
     --------
     >>> chi2_threshold = chi2_max(chi2_value=1.0, number_of_parameters=3, nu=20, conf_level=0.95)
     >>> chi2_threshold
-    1.464758681821117
+    1.4647586818211171
     """
-    return chi2_value * (
+    return float(chi2_value * (
         1.0 + float(number_of_parameters) / nu *
         scipy.stats.f.isf(1. - conf_level, number_of_parameters, nu)
-    )
+    ))
 
 
 def chi2_threshold(
@@ -363,7 +362,96 @@ def chi2_threshold(
     float
         The chi-squared value at which the F-test p-value equals p_value.
     """
-    return chi2_min * (
+    return float(chi2_min * (
         1.0 + float(n_extra_params) / nu *
         scipy.stats.f.isf(1. - p_value, n_extra_params, nu)
-    )
+    ))
+
+
+def f_test_confidence(
+        chi2r_1: float = 1.0,
+        chi2r_2: float = 1.0,
+        nu_1: int = 1,
+        nu_2: int = 1
+) -> float:
+    """Confidence that the second (more complex) model is justified.
+
+    Two fits of the same data are compared through the ratio of their
+    *reduced* chi-squared values. If the reduced chi-squared of the simpler
+    model is ``chi2r_1`` on ``nu_1`` degrees of freedom and that of the more
+    complex model is ``chi2r_2`` on ``nu_2``, the ratio ``chi2r_1 / chi2r_2``
+    follows an F distribution with ``(nu_1, nu_2)`` degrees of freedom, and the
+    confidence is its cumulative probability.
+
+    The ratio is taken *simpler over complex* -- adding parameters can only
+    lower chi-squared, so the ratio exceeds one exactly when the extra
+    parameters help, and the confidence then rises above roughly one half.
+    Equal reduced chi-squared expresses no preference either way, and gives
+    exactly 0.5 when the two models also share their degrees of freedom.
+
+    Parameters
+    ----------
+    chi2r_1 : float, optional
+        Reduced chi-squared of the simpler model. Default is 1.0.
+    chi2r_2 : float, optional
+        Reduced chi-squared of the more complex model. Default is 1.0.
+    nu_1 : int, optional
+        Degrees of freedom of the simpler model (points minus free
+        parameters). Default is 1.
+    nu_2 : int, optional
+        Degrees of freedom of the more complex model. Default is 1.
+
+    Returns
+    -------
+    float
+        Confidence in ``[0, 1]`` that the more complex model is justified.
+
+    Examples
+    --------
+    >>> round(f_test_confidence(1.0, 1.0, 100, 100), 6)
+    0.5
+    >>> round(f_test_confidence(1.1, 1.0, 897, 895), 3)
+    0.923
+    """
+    if chi2r_2 <= 0.0:
+        return float("nan")
+    return float(scipy.stats.f.cdf(chi2r_1 / chi2r_2, nu_1, nu_2))
+
+
+def f_test_chi2r(
+        chi2r_1: float = 1.0,
+        conf_level: float = 0.95,
+        nu_1: int = 1,
+        nu_2: int = 1
+) -> float:
+    """Reduced chi-squared the complex model must reach at ``conf_level``.
+
+    Exact inverse of :func:`f_test_confidence` in its second argument: the
+    largest ``chi2r_2`` for which the more complex model is still justified at
+    the requested confidence.
+
+    Parameters
+    ----------
+    chi2r_1 : float, optional
+        Reduced chi-squared of the simpler model. Default is 1.0.
+    conf_level : float, optional
+        Requested confidence level. Default is 0.95.
+    nu_1 : int, optional
+        Degrees of freedom of the simpler model. Default is 1.
+    nu_2 : int, optional
+        Degrees of freedom of the more complex model. Default is 1.
+
+    Returns
+    -------
+    float
+        The reduced chi-squared threshold of the more complex model.
+
+    Examples
+    --------
+    >>> round(f_test_chi2r(1.0, 0.95, 100, 5), 6)
+    0.227011
+    """
+    critical = float(scipy.stats.f.ppf(conf_level, nu_1, nu_2))
+    if critical <= 0.0:
+        return float("inf")
+    return chi2r_1 / critical

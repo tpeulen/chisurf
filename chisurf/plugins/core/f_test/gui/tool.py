@@ -20,10 +20,9 @@ import pathlib
 from typing import Any
 
 from qtpy import QtWidgets
-from scipy.stats import f as fdist
 
 from chisurf.core.dataspec import load_view_spec
-from chisurf.core.math.statistics import chi2_max
+from chisurf.core.math.statistics import chi2_max, f_test_chi2r, f_test_confidence
 from chisurf.gui.glyphs import Glyphs
 
 _GUI_DIR = pathlib.Path(__file__).parent
@@ -38,12 +37,14 @@ class _FTestModel:
     """Backing model for the F-test / χ²-max calculator; fields in ftest.view.json."""
 
     def __init__(self) -> None:
-        # F-test: compare two nested models.
-        self.chi2_1 = 1.0
+        # F-test: compare two nested models. The defaults describe a plausible
+        # pair -- the extra parameters of model 2 buy a 10% lower reduced χ².
+        self.chi2_1 = 1.1
         self.n1 = 100
-        self.chi2_2 = 1.5
-        self.n2 = 5
+        self.chi2_2 = 1.0
+        self.n2 = 98
         self.conf_level = 0.95
+        self.recompute_conf()
         # χ²-max: upper χ² limit from a single fit.
         self.chi2_min = 1.0
         self.npars = 1
@@ -56,17 +57,19 @@ class _FTestModel:
         return load_view_spec(_GUI_DIR / "ftest.view.json")
 
     def recompute_conf(self) -> None:
-        """Confidence that model 2 is justified: ``F.cdf(χ²₂/χ²₁, n₁, n₂)``."""
+        """Confidence that model 2 is justified: ``F.cdf(χ²₁/χ²₂, n₁, n₂)``."""
         try:
-            self.conf_level = float(fdist.cdf(self.chi2_2 / self.chi2_1, self.n1, self.n2))
+            self.conf_level = f_test_confidence(
+                chi2r_1=self.chi2_1, chi2r_2=self.chi2_2, nu_1=self.n1, nu_2=self.n2
+            )
         except (ZeroDivisionError, ValueError):
             pass
 
     def recompute_chi2_2(self) -> None:
-        """χ²(2) threshold for the current confidence: ``χ²₁·(n₂/n₁)·F.isf(1−conf, n₁, n₂)``."""
+        """χ²(2) threshold for the current confidence: ``χ²₁ / F.ppf(conf, n₁, n₂)``."""
         try:
-            self.chi2_2 = float(
-                self.chi2_1 * self.n2 / self.n1 * fdist.isf(1.0 - self.conf_level, self.n1, self.n2)
+            self.chi2_2 = f_test_chi2r(
+                chi2r_1=self.chi2_1, conf_level=self.conf_level, nu_1=self.n1, nu_2=self.n2
             )
         except (ZeroDivisionError, ValueError):
             pass
