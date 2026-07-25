@@ -2,6 +2,35 @@
 
 ## 2026-07-25
 
+* **chimol: `zoom` frames the molecule the way PyMOL frames it, and a degraded
+  load says so.** Two follow-ups to the camera work, both measured against a
+  running PyMOL.
+  **The framing radius.** chimol fitted the bounding *sphere* of the CA trace;
+  PyMOL's default (`complete=0`) fits the largest half-extent of the axis-aligned
+  bounding *box* over every atom, and `complete=1` fits the sphere. New
+  `view_state.framing_radius` implements both, and `zoom` gained PyMOL's
+  `complete` argument (its `buffer` default also moves 2.0 -> 0.0, PyMOL's).
+  **The box is measured on the world axes, not the camera's** — which looks like
+  an oversight and is not: it makes the zoom level independent of orientation, so
+  turning the molecule does not make it breathe. Established by zooming a 30x5 A
+  bar at 0/30/45/90 degrees of roll, where PyMOL returns the same distance every
+  time while the camera-space extent falls to 21 A at 45 degrees.
+  **`zoom` now fits every atom**, not the CA trace: the side chains reaching
+  furthest out are exactly the ones a trace omits, which framed 148L ~7 % large.
+  End to end on 148L the camera distance/radius ratio is now exactly
+  `1/tan(fov/2)` in both modes, and the radius lands within 3 % of PyMOL
+  (23.77 vs 24.47 A box, 29.30 vs 30.49 A sphere). The residual is PyMOL
+  measuring the extent of the *rendered representation* rather than of the atom
+  centres; that padding is representation-dependent and is not modelled.
+  **The silent fallback is no longer silent.** When the structure reader gives
+  up, `_load_structure_from_path` drops to the raw-coordinate parser and the
+  result is a bare CA spring with no residues, sequence, secondary structure or
+  radius of gyration. It logged, but told the user nothing, so the degradation
+  reads as a rendering bug — which is exactly how it was reported.
+  `_report_degraded_load` now also writes to the command panel, naming the file,
+  the reader's error and what was lost.
+  Suite: 244 passed, 1 skipped (19 new).
+
 * **Recorded this session's defects in the cleanup backlog
   ([specs/assessment.md](/specs/assessment.md)).** Six new findings in the house
   format, three fixed and three left open with evidence. **Fixed:** `BUG-06`
