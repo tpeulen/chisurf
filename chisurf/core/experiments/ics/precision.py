@@ -262,6 +262,36 @@ def _pair_counts(n: int) -> np.ndarray:
     return n - np.abs(d)
 
 
+def _atanh_over_argument(z_squared: float) -> float:
+    r"""Return :math:`\operatorname{atanh}(z)/z` as a function of :math:`z^2`.
+
+    Written in terms of the square because that is the only form in which *z*
+    enters the dwell-time brightness correction, and the square stays real for
+    every focus shape. A squat focus (:math:`w_z < w_r`) makes :math:`z`
+    imaginary, where :math:`\operatorname{atanh}(iy)/(iy) = \arctan(y)/y`
+    continues the function without leaving the reals; a spherical one
+    (:math:`w_z = w_r`) sends :math:`z` to zero, a removable singularity
+    covered by the series :math:`1 + z^2/3 + z^4/5`.
+
+    Parameters
+    ----------
+    z_squared : float
+        The squared argument, smaller than one.
+
+    Returns
+    -------
+    float
+        The ratio — finite, real and continuous through zero.
+    """
+    if abs(z_squared) < 1e-8:
+        return 1.0 + z_squared / 3.0 + z_squared ** 2 / 5.0
+    if z_squared > 0.0:
+        z = math.sqrt(z_squared)
+        return math.atanh(z) / z
+    y = math.sqrt(-z_squared)
+    return math.atan(y) / y
+
+
 def correlation_covariance(
     n_lags: int,
     nx: int,
@@ -454,7 +484,9 @@ def rics_precision(
     n_particles : float
         Number of molecules in the illuminated region.
     w_r, w_z : float
-        Beam waists in µm.
+        Beam waists in µm. Any aspect ratio is accepted: the brightness
+        correction is smooth through a spherical focus (``w_z == w_r``) and
+        below it.
     brightness : float
         Molecular brightness in photons per second per molecule.
     n_images : int
@@ -502,14 +534,21 @@ def rics_precision(
         beta = 1.0 / alpha ** 2
         tau_c = w_r ** 2 / (4.0 * d)
         fact = math.sqrt(1.0 + beta * pixel_time / tau_c)
-        root = math.sqrt(1.0 - beta)
         # Photons per molecule per dwell, corrected for the motion that happens
-        # during the dwell itself: a molecule does not sit still while it is read.
-        q = brightness * 4 * tau_c ** 2 * (
-            beta * (1 + pixel_time / tau_c)
-            * math.atanh(root * (fact - 1) / (beta + fact - 1))
-            - root * (fact - 1)
-        ) / (pixel_time * beta * root)
+        # during the dwell itself: a molecule does not sit still while it is
+        # read. The reference writes this with sqrt(1 - beta) both inside the
+        # atanh and as a divisor; pulling that factor out (as atanh(z)/z) keeps
+        # the value identical for an elongated focus and removes the apparent
+        # singularity at alpha = 1, where the factor cancels rather than
+        # diverging, and the branch cut below it, where it merely turns
+        # imaginary. A spherical or squat focus is an ordinary acquisition.
+        rise = fact - 1.0
+        norm = beta + rise
+        z_squared = (1.0 - beta) * (rise / norm) ** 2
+        q = brightness * 4 * tau_c ** 2 * rise * (
+            beta * (1 + pixel_time / tau_c) * _atanh_over_argument(z_squared) / norm
+            - 1.0
+        ) / (pixel_time * beta)
         n_apparent = n_particles * brightness * pixel_time / q
         m = n_apparent * omega / volume
     f = (n_particles if two_d else n_apparent) * q * omega * gamma[0] / volume

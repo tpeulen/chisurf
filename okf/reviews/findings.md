@@ -127,11 +127,27 @@ which is what exposed RF-007. Findings RF-007..RF-011 below.
 - **Fix note:**
 
 ### RF-008
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (crash on valid input)
 - **Location:** `chisurf/core/experiments/ics/precision.py:505` (`rics_precision`, the 3-D `q` brightness correction)
 - **Finding:** `root = math.sqrt(1.0 - beta)` with `beta = 1/alpha²` makes the 3-D branch crash for any focus that is not elongated: `w_z == w_r` (alpha = 1, beta = 1) divides by `root == 0` — verified `ZeroDivisionError: float division by zero` — and `w_z < w_r` raises `ValueError: math domain error` from the sqrt. Neither is a genuine singularity: the limit exists and the function is smooth through alpha = 1. Verified by evaluating the same expression with `cmath`: q = 0.79796 at alpha = 1.5, 0.797959 at 1.000001, 0.797959 at 0.999999 and 0.79758 at 0.8 — continuous, real-valued and finite on both sides (for beta > 1, `atanh` of an imaginary argument is `i·atan`, and the `1/root` prefactor cancels it). The docstring documents only a `ValueError` for inconsistent scan timing, so this reaches the caller as a bare arithmetic error with no message.
-- **Fix note:**
+- **Fix note:** The singularity was in the *transcription*, not in the physics:
+  `sqrt(1 - beta)` appears both inside the `atanh` and as the divisor, so it
+  cancels. Factoring it out — `atanh(z)/z` as a function of `z**2 = (1 - beta) *
+  ((fact - 1)/(beta + fact - 1))**2`, which is real on both branches — removes
+  it. The new `_atanh_over_argument` helper covers the three cases: `atanh(z)/z`
+  for an elongated focus, `atan(y)/y` for a squat one (the analytic continuation
+  through the imaginary axis) and the series `1 + z²/3 + z⁴/5` through the
+  removable singularity at `z = 0`. Numerically identical to the old expression
+  where the old one ran (rel. 1.6e-14 at the shipped `alpha = 5`, worst 8e-10
+  over a grid of alpha/dwell/D — the residual is cancellation in the *old* form),
+  and now continuous through `alpha = 1`: `q` = 0.0996812745046 / 0.0996812742930
+  / 0.0996812740810 at alpha = 1.000001 / 1 / 0.999999 where the old code gave a
+  value / `ZeroDivisionError` / `ValueError: math domain error`. Pinned by
+  `test/experiments/test_ics_precision.py::test_a_focus_that_is_not_elongated_is_an_ordinary_acquisition`
+  (predicts for `w_z` below, at and above `w_r`, and checks the spherical case
+  against the limit approached from the elongated side). `test/experiments/`
+  green (60 tests); `ruff check` adds no findings on the touched files.
 
 ### RF-009
 - **Status:** OPEN

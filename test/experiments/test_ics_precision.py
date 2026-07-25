@@ -179,6 +179,29 @@ def test_an_impossible_scan_timing_is_rejected():
         rics_precision(10.0, pixel_time=1e-3, line_time=1e-4, **FAST)
 
 
+def test_a_focus_that_is_not_elongated_is_an_ordinary_acquisition():
+    """A spherical or squat focus must predict, not raise.
+
+    The dwell-time brightness correction is written with a ``sqrt(1 - beta)``
+    that vanishes at ``w_z == w_r`` and turns imaginary below it, but neither is
+    a real singularity: the factor cancels, so the prediction is continuous
+    across the aspect ratio. Taking the expression at face value used to give a
+    ``ZeroDivisionError`` at ``w_z == w_r`` and a ``math domain error`` below.
+    """
+    common = dict(pixel_time=8e-6, line_time=1e-3, n_images=50, w_r=0.25, **FAST)
+
+    errors = [
+        rics_precision(10.0, w_z=w_z, **common).relative_error
+        for w_z in (0.2, 0.25, 0.3)
+    ]
+    assert all(np.isfinite(e) and e > 0 for e in errors)
+
+    # continuity through the spherical case: approaching it from the elongated
+    # side must land on the value taken there.
+    near = rics_precision(10.0, w_z=0.25 * (1 + 1e-6), **common).relative_error
+    assert near == pytest.approx(errors[1], rel=1e-6)
+
+
 def test_two_d_geometry_runs():
     """The membrane geometry uses different shape factors and still predicts."""
     r = rics_precision(

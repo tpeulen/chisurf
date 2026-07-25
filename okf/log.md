@@ -2,6 +2,25 @@
 
 ## 2026-07-25
 
+* **A round focus crashed the RICS precision predictor (RF-008).** The
+  dwell-time brightness correction in `rics_precision` follows the reference in
+  writing `sqrt(1 - beta)` (with `beta = (w_r/w_z)²`) both inside an `atanh` and
+  as the divisor of the whole expression. Taken literally that is a division by
+  zero for a spherical focus (`w_z == w_r`) and a `math domain error` for a
+  squat one — yet neither is a singularity of the *function*: the two occurrences
+  cancel, and the correction is smooth right through `alpha = 1`. Factoring the
+  root out leaves `atanh(z)/z` with a purely real `z²`, which the new
+  `_atanh_over_argument` evaluates on three branches — `atanh(z)/z` above,
+  `atan(y)/y` below (the continuation through the imaginary axis, where the
+  `1/root` prefactor cancels the `i`) and the series `1 + z²/3 + z⁴/5` through
+  the removable singularity. Identical to the old expression wherever the old one
+  ran (rel. 1.6e-14 at the shipped `alpha = 5`), and now continuous across it.
+  A round or oblate detection volume is an ordinary confocal geometry, so this
+  was a crash on valid input, reported as a bare arithmetic error the docstring
+  did not mention. Pinned by
+  `test_ics_precision.py::test_a_focus_that_is_not_elongated_is_an_ordinary_acquisition`;
+  `test/experiments/` green (60).
+
 * **The docs build is warning-free again (INC-12).** Two published development
   pages carried links that could never resolve, and both were load-bearing for
   the "a clean docs build means something" signal. The ChiMOL render plan pointed
