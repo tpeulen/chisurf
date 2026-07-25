@@ -216,9 +216,44 @@ Two things measurement decided, not convention:
   interchangeable — documented on the method rather than left to surprise
   someone comparing a two- and a three-colour analysis of the same file.
 
-Remaining: a `docs/concepts` page and numbered guide, and stages 3–7
-(priors/MCMC, labelling and brightness corrections, global 2c+3c fits,
-dynamics).
+**Stages 3, 4 and 6 landed (2026-07-25).**
+
+- **Priors and posteriors (stage 3)** — nothing built. [PRD-61](prd-61.md)
+  already supplies per-parameter priors with a selector and modal, and
+  `fitting/sample.py` the samplers; what was missing was evidence that tcPDA
+  parameters are ordinary enough to use them, since the objective is a
+  likelihood deviance rather than a histogram chi-square. A Gaussian prior moves
+  the estimate monotonically in its width and correctly does *not* enter the
+  reported chi2r. Both error-surface routes bracket the truth. **Their widths do
+  not agree**, and the disagreement grows with dataset size (MCMC/support-plane
+  ratios 1.32 / 2.05 / 2.86 at 1500 / 2500 / 5000 bursts while `sqrt(chi2r)`
+  stays 1.5); a constant factor would be the F-test's chi-square rescaling, an
+  *n*-dependent one is not, and the cause is **not established**. Prefer the
+  MCMC interval meanwhile — it samples `exp(-deviance/2)`, the actual posterior
+  here.
+- **Corrections (stage 4)** — both, as enhancements to the existing model.
+  *Stochastic labelling* is a permutation rather than a dropout: chemically
+  equivalent sites mean green and red land on either one, so each population
+  gains a mirror with R(BG) and R(BR) exchanged, R(GR) untouched (it is the
+  distance *between* the swapped dyes) and the two correlations with GR traded.
+  *Brightness* falls out of physics already computed — transfer moves photons
+  between channels of different detection efficiency, so the un-normalised
+  channel-weight sum that `channel_probabilities` discards **is** the relative
+  brightness; each species then gets its own burst-size distribution stretched
+  by it.
+- **Dynamics (stage 6)** — a toggle, not a second model: the first two species
+  become exchanging states, species three onward stay static (the incumbent's
+  convention). It reuses the two-colour occupation-time law rather than
+  re-deriving it, and it **nests the static model exactly**, because the
+  boundary atoms (molecules that never switched) get the full distance integral
+  while only the mixed interior uses the averaged-probability simplification.
+
+Looking at that law to build stage 6 turned up a defect in it — see
+[PRD-50](prd-50.md) and `test/models/test_two_state_occupation.py`.
+
+Remaining: global two-plus-three-colour joint fits (stage 5), a
+`docs/concepts` page and numbered guide, and the unresolved error-surface width
+discrepancy.
 
 Parent: [PRD-49](prd-49.md) (three-colour PDA row). Related: [PRD-50](prd-50.md)
 (two-colour PDA family), [PRD-61](prd-61.md) (parameter priors — the enabler),

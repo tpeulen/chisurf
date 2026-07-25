@@ -178,6 +178,27 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   are one row each with their value, fix and bounds columns side by side (the
   layout the lifetime editor already used) rather than a spin-box grid.
 
+- **The two-state occupation-time density is wrong away from equal populations
+  (2026-07-25).** Found while building three-colour dynamics on the same law.
+  `dynamic.py::two_state_time_fraction_pdf`, combined with the standard boundary
+  masses, is not a probability distribution unless `x1 = 0.5`: the total reaches
+  1.36 at `x1 = 0.2`, `K_ex = 8`, and its shape disagrees with a direct
+  simulation of the telegraph process with a tilt that mirrors under
+  `x1 -> 1 - x1`. Both errors vanish exactly at `x1 = 0.5` — which is very
+  likely why it was not caught, since this PRD's own dynamic acceptance test
+  recovered `x1 = 0.503`. **`PdaDynamicTwoStateModel` is therefore biased for
+  unequal state populations**, and its reported `K_ex` at unequal occupancy
+  should not be trusted until it is switched over.
+  A correct replacement is available and verified:
+  `two_state_occupation_quadrature` computes the law exactly from the
+  Feynman–Kac characteristic function (no closed form required), agrees with
+  simulation to a total variation of 0.002, gives `sum(w) = 1` and `E[f] = x1`
+  to ~1e-5 for every population and exchange rate tested, and costs 0.11 ms.
+  The model is **deliberately left unswitched**: it changes published two-colour
+  results and that is not a decision to take as a side effect of three-colour
+  work. `test/models/test_two_state_occupation.py` asserts both the correct law
+  and the defect, so the record cannot go stale silently.
+
 **Follow-ups (not yet done):**
 - GUI button wiring the live light-path plugin session to a selected PDA model
   (the pure bridge API is done and tested; only the one-click GUI hook remains).
