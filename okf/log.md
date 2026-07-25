@@ -143,6 +143,17 @@
 
 ## 2026-07-25
 
+
+* **chiplot: seam capabilities for the linked-panel family (PRD-64).** Added
+  `Plot.link_x`/`link_y` (shared pan/zoom across stacked panels — residuals above
+  data) and `fill`/`border` on `Plot.text` (a boxed draggable label — the
+  fit-quality overlay). Both screenshot-verified vs the pyqtgraph originals (zoom
+  propagates across the 3 panels; the χ²ᵣ/τ label draws with a blue fill + white
+  border). Tests `test_link_x_shares_range` + `test_text_fill_border`. Prep for
+  `lineplot`, which additionally needs a larger `Curve`-handle API
+  (symbol/opacity/pen-introspection) before a clean port — deferred so the core
+  TCSPC plot isn't littered with `.native` passthroughs. See [PRD-64](prds/prd-64.md).
+
 * **The free conditional query is now a slider (What-if).** PRD-70's canonical
   form made a conditional query a matrix update rather than a re-fit, and a test
   had shown 25 queries costing zero model evaluations -- but nothing exposed it.
