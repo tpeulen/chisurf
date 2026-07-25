@@ -315,6 +315,8 @@ def test_migrated_modules_import(qapp):
         "chisurf.gui.widgets.spectrum_view",
         # Batch 20
         "chisurf.plugins.burst.burst_background.gui.sections",
+        # Batch 21
+        "chisurf.plugins.burst.burst_browser.gui.sections",
     ):
         assert importlib.import_module(name) is not None
 

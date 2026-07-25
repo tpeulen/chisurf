@@ -15,9 +15,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.widgets.collapsible_box import CollapsibleBox
 from chisurf.gui.widgets.tool_buttons import action_button
@@ -334,8 +334,8 @@ class _HistogramSection(QtWidgets.QWidget):
         self._model = model
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
-        self.plot = pg.PlotWidget()
-        self.plot.setLabel("left", "Counts")
+        self.plot = cp.Plot()
+        self.plot.set_labels(left="Counts")
         lay.addWidget(self.plot)
         model.add_observer(self._on_event)
         self._redraw()
@@ -348,7 +348,5 @@ class _HistogramSection(QtWidgets.QWidget):
         h = self._model.histogram()
         if not h:
             return
-        self.plot.addItem(pg.BarGraphItem(
-            x=h["centers"], height=h["counts"], width=h["width"], brush="b", pen="k"
-        ))
-        self.plot.setLabel("bottom", h["label"])
+        self.plot.bars(h["centers"], h["counts"], width=h["width"], brush="b", pen="k")
+        self.plot.set_labels(bottom=h["label"])

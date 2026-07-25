@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 30):*
+*Landed so far (allow-list 76 → 29):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -472,6 +472,14 @@ screenshot/qtbot verification after each cluster.
   `setTicks`. New `test_scatter_is_log_aware`; both sections
   screenshot-verified (decaying points + tail-fit line on clean log-log axes;
   green/red/yellow coloured bars with named ticks).
+- **Batch 21** (allow-list 30 → 29) — migrated `plugins/burst/burst_browser/`
+  `gui/sections.py` (the per-column burst histogram is the only plotting section;
+  the rest are combos/tables). `pg.PlotWidget`→`cp.Plot`, the `pg.BarGraphItem`
+  becomes `plot.bars(centers, counts, width=, brush="b", pen="k")`. Import-clean
+  extended; screenshot-verified (blue Gaussian FRET-E histogram, black outlines,
+  correct axes). The acq cluster (`core/acq/{__init__,gui/tool,gui/windows}`) is
+  deferred like maxent — windows create curves that the 3000-line `tool.py` drives
+  via `setData`/`InfiniteLine`, so it needs a dedicated coordinated pass.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,
