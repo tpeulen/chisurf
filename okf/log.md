@@ -2,6 +2,38 @@
 
 ## 2026-07-25
 
+* **RICSPE ported: how precisely will this scan measure D, before you run it.**
+  `chisurf/core/experiments/ics/precision.py`. Computes the **full covariance of
+  the RICS correlation estimator** analytically (correlation values at different
+  lags share pixels, so it is a matrix, not per-lag variances — ignoring the
+  off-diagonal terms understates the error), draws noise from it, refits each
+  realisation for `D`, and reports the spread as a relative error. Includes the
+  three-point correlation that the shot-noise term needs, since the variance of
+  a correlation depends on the *third* moment of the intensity and a
+  "variance = signal" estimate is simply wrong. **Made tractable:** the
+  reference recomputes the two-point correlation inside the innermost of four
+  nested loops; every one of those evaluations is the same function at a shifted
+  integer lag, so it is computed once on a master grid and sliced, and the
+  pair-count weighting has a closed form (`n − |d|`) instead of an O(n²)
+  meshgrid-unique. A prediction now takes ~0.1 s. `nearest_spd` uses eigenvalue
+  clipping rather than the reference's Higham iteration, which produced matrices
+  that passed its own Cholesky check yet were rejected by the sampler. **The
+  physics comes out:** error falls as 1/√frames (0.115 at 20 frames → 0.050 at
+  100, predicted 0.051); brighter samples measure better; and there is an
+  **interior optimum in dwell time** — for D = 10 µm²/s on a 64×64 scan the
+  error runs 0.272 (0.5 µs) → 0.022 (16 µs) → 0.037 (64 µs). Too fast and the
+  molecule has not moved between pixels; too slow and it has decorrelated.
+  **A claim I had to walk back:** I first asserted that the optimal dwell shifts
+  monotonically with `D`, having seen it at one parameter set. It does not
+  survive a change of image size — at nx=64 the argmin jumped to the far end of
+  the scan, because the returned error is itself a Monte-Carlo quantity
+  (~10 % uncertainty at the default repeat count) and the curve is flat there.
+  The real, stable statement is a *ratio*: a slow sample is penalised 5–6× by
+  scanning fast, a fast one only ~1.5×, reproducible across seeds. The test
+  asserts that, and the module now documents that the minimum's position is not
+  resolved to one step of a scan. Tests:
+  `test/experiments/test_ics_precision.py` (16).
+
 
 * **fix: burst-analysis pipeline produced empty plots — two root causes.**
   (1) The registry-driven "tttrlib" burst-search mode raised when the installed
