@@ -67,7 +67,53 @@ cannot be separated, every burst is treated as doubly labelled, and only the
 lifetime route to $\gamma$ remains — so gate the singly labelled bursts out
 beforehand.
 
-### 3. Set the photophysics
+### 3. Pick the dyes (and the setup)
+
+Three of the numbers a calibration needs are properties of the **dyes**, not of
+your data: both quantum yields and the Förster radius. Rather than typing them
+from a catalogue, pick the donor and acceptor in the **Dyes (database)** panel.
+ChiSurf then reads what the fluorophore database holds and computes what follows:
+
+$$R_0 = f\Big(\textstyle\int F_D(\lambda)\,\varepsilon_A(\lambda)\,\lambda^4\,d\lambda,\;
+\Phi_D,\;\kappa^2,\;n\Big)$$
+
+from the donor's stored **emission spectrum**, the acceptor's **absorption
+spectrum** scaled by its molar extinction coefficient, and the donor's quantum
+yield — the same calculation a paper reports, run on the curated data. The donor
+lifetime $\tau_{D(0)}$ is filled in too when the database has it.
+
+Two assumptions stay yours: $\kappa^2$ (2/3 for freely rotating linkers; it
+enters as its sixth root, so even a factor of two moves $R_0$ by ~12 %) and the
+refractive index (1.33 water, ~1.4 inside a protein; $R_0 \propto n^{-2/3}$).
+
+The database is curated but incomplete — some entries carry spectra and no
+quantum yield. **What it cannot answer is left as you set it**, and the panel
+reports which is which:
+
+```text
+ATTO 550 → ATTO 643
+  R0        65.04 Å      [mmfdb:spectra]
+  Phi_D     0.8          [mmfdb:property]
+  Phi_A     0.62         [mmfdb:property]
+  tau_D(0)  3.6 ns       [mmfdb:property]
+```
+
+The **Setup** selector at the top does the same job for the detection side: its
+named windows (green, red, yellow, …) say which channels the measurement has,
+which helps the channel columns map themselves when the table uses site-specific
+names, and names the detectors when the optical model supplies the prior.
+
+Head-less, the same lookup is:
+
+```python
+from chisurf.core.fluorescence.fret.dyes import fret_pair, apply_to_calibration
+
+pair = fret_pair("ATTO 550", "ATTO 643", kappa2=2/3, refractive_index=1.33)
+print(pair.summary())                       # values with their provenance
+calibration, applied = apply_to_calibration(pair)
+```
+
+### 4. Set the photophysics
 
 **τ_D(0)** is the donor-only lifetime, measured on a donor-only sample; it
 anchors the FRET lines at $E = 0$. **Linker width** (6 Å is typical) sets the
@@ -75,7 +121,7 @@ curvature of the static line. **R0** affects only the distance, never the
 efficiency. Backgrounds go in the collapsed **Background** panel — subtract them,
 they bias low-efficiency populations most.
 
-### 4. Choose the prior
+### 5. Choose the prior
 
 Leave **Use the optics prior** on and pick a **Light path** saved by the
 light-path simulator. Its excitation matrix (which laser excites which dye) and
@@ -84,7 +130,7 @@ become Gaussian priors for $\gamma$, $\alpha$ and $\delta$; fill in the quantum
 yields and detection efficiencies next to it. With no light path selected the
 calibration is a pure data estimate.
 
-### 5. Calibrate
+### 6. Calibrate
 
 **🎯 Calibrate** runs the iteration in a worker thread. The report at the bottom
 left names every route that contributed:
@@ -109,7 +155,7 @@ The two independent $\gamma$ estimates agreeing to 0.4 % is the consistency chec
 worth doing on every new sample; set **gamma from** to `combined` in the
 **Procedure** panel to average them, or to `lifetime`/`es` to force one route.
 
-### 6. Read the plots
+### 7. Read the plots
 
 ```{figure} figures/accurate_fret_es.png
 :alt: E-S plot with the automatically classified burst populations
@@ -136,7 +182,7 @@ The **Populations** tab puts numbers on it: accurate $E$ with its combined
 statistical and systematic error, the distance, and the *Off static line*
 offset.
 
-### 7. Use the calibration
+### 8. Use the calibration
 
 * **🔗 Share in session** publishes it as a linkable pseudo-fit, so any fit can
   link its correction parameters to this one calibration (global analysis).

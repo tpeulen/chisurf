@@ -2,6 +2,27 @@
 
 ## 2026-07-25
 
+* **Dye properties and spectra now come from MMFDB, reached through dye
+  selection.** The quantum yields and the Förster radius are properties of the
+  dye pair, not of the measurement, yet they were typed in per analysis — so the
+  same pair could acquire a different R0 in every project.
+  `chisurf/core/fluorescence/fret/dyes.py` reads the curated fluorophore data and
+  computes what follows: R0 from the donor emission × acceptor absorption × ε_max
+  overlap, plus Φ_D/Φ_A and τ_D(0) when curated. Validated against the real
+  database — EGFP→mCherry 52.4 Å, ATTO 550→ATTO 643 65.0 Å, both matching the
+  literature. Three things the real data forced: the catalogue stores most shapes
+  as *excitation* rather than absorption (identical shape for a dye), so
+  absorption falls back to it; the stored curve is a normalized shape that must be
+  scaled by `ext_coeff` before it is ε(λ); and the catalogue is **incomplete**
+  (725 of 2157 probes carry ε, 672 carry QY, and there are *no* stored Förster
+  radii at all), so every quantity carries provenance and a gap leaves the user's
+  value untouched instead of defaulting to something plausible. In the tool this
+  is a *Dyes (database)* panel with κ² and the refractive index next to it; the
+  *setup* selector supplies the detection side, its windows both helping the
+  burst-table columns map themselves and naming the detectors for the optics
+  prior. **Also fixed: `np.trapz` was removed in NumPy 2**, so `fret/forster.py`,
+  `tcspc/phasor.py` and the light-path `crosstalk.py` all raised — R0-from-spectra
+  and the entire optical propagation were dead.
 * **Diffusion/temperature physics centralised out of the FCS plugin, and
   beam-waist calibration built on it (MIA `Calibration` port).** The
   temperature–viscosity–Stokes-Einstein relations lived in

@@ -280,6 +280,31 @@ back to the physically-motivated light-path prior.
   the single source of truth for which column is which channel (ndX / `.bur` /
   API spellings); the plugin and the ndX bridge both use it instead of guessing
   separately.
+- **Dye properties and spectra come from MMFDB, via dye selection** —
+  `chisurf/core/fluorescence/fret/dyes.py` (`DyeProperties`, `FretPair`,
+  `list_dyes`, `dye_properties`, `fret_pair`, `apply_to_calibration`) reads the
+  curated fluorophore data and computes what follows: `R0` from the donor
+  emission × acceptor absorption × ε_max overlap (`forster_radius_from_spectra`),
+  plus `PhiD`/`PhiA` and `tauD0` when curated. Validated against the real
+  database: EGFP→mCherry 52.4 Å, ATTO 550→ATTO 643 65.0 Å, matching the
+  literature. Details that matter: the catalogue stores most shapes as
+  **excitation** rather than absorption (same shape for a dye), so absorption
+  falls back to it; the stored curve is a normalized shape and must be scaled by
+  `ext_coeff` to be ε(λ); and **every quantity carries provenance**
+  (`mmfdb:spectra` / `mmfdb:property` / `mmfdb:pair` / `missing`) with anything
+  the catalogue cannot answer left at the user's value rather than defaulted.
+  Coverage in the shipped DB: 2157 probes, 725 with `ext_coeff`, 672 with `qy`,
+  825 absorption + 866 emission spectra, **0** stored Förster radii — so R0 has
+  to be computed, not looked up. Exposed in the tool as a *Dyes (database)* panel
+  (donor/acceptor + κ² + refractive index) whose selection fills R0, the quantum
+  yields and τ_D(0); the *setup* selector supplies the detector windows, which
+  both help map the burst-table columns (`guess_columns(..., extra_hints)`) and
+  name the detectors for the optics prior. (`test/fitting/test_dye_properties.py`,
+  including a round trip through the real `MFDatabase` write/read API.)
+- **NumPy 2 fix** — `np.trapz` was removed; `forster.py` (every overlap integral),
+  `tcspc/phasor.py` and the light-path `crosstalk.py` used it, so R0-from-spectra
+  and the whole optical propagation raised `AttributeError`. All three now use a
+  `_trapezoid` alias.
 - **Both sides of the calibration are fitting parameters in the Global View** —
   `chisurf/plugins/ndxplorer/parameters.py::NdxConstants` wraps *every numeric
   constant of an open ndX window* (read from the window, not hard-coded) as

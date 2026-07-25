@@ -42,6 +42,14 @@ class AccurateFretViewModel:
         self.column_i_da: str = ""
         self.column_i_aa: str = ""
         self.column_tau_f: str = ""
+        # ── the setup and the dyes: where the photophysics comes from ──
+        self.setup_name: str = ""
+        self.donor_dye: str = ""
+        self.acceptor_dye: str = ""
+        self.kappa2: float = 2.0 / 3.0
+        self.refractive_index: float = 1.33
+        #: ``{window: {...}}`` of the selected detector setup (empty = raw channels).
+        self.detectors: dict[str, dict] = {}
         # ── photophysics / instrument ──
         self.donor_lifetime: float = 4.0
         self.forster_radius: float = 52.0
@@ -66,6 +74,8 @@ class AccurateFretViewModel:
         self._columns: dict[str, np.ndarray] = {}
         self._result: _core.CalibrationResult | None = None
         self._lightpaths: list[dict] = []
+        self._dyes: list = []
+        self._dye_pair = None
         self.results_text: str = (
             "Load a burst table (or drop one), map the channel columns and press Calibrate."
         )
@@ -110,13 +120,10 @@ class AccurateFretViewModel:
             self.results_text = f"Could not read {pathlib.Path(path).name}: {exc}"
             self.notify("error")
             return
-        guess = _core.guess_columns(self._columns)
-        self.column_i_dd = guess.get("i_dd", "")
-        self.column_i_da = guess.get("i_da", "")
-        self.column_i_aa = guess.get("i_aa", "")
-        self.column_tau_f = guess.get("tau_f", "")
+        self._map_columns()
         self._result = None
-        missing = [k for k in ("i_dd", "i_da") if k not in guess]
+        missing = [k for k in ("i_dd", "i_da")
+                   if not getattr(self, f"column_{k}")]
         self.results_text = (
             f"{pathlib.Path(path).name}: {len(next(iter(self._columns.values())))} bursts, "
             f"{len(self._columns)} columns."
@@ -158,11 +165,7 @@ class AccurateFretViewModel:
             return "No numeric burst columns in the ndXplorer window."
         self._columns = columns
         self.filename = "<ndXplorer>"
-        guess = _core.guess_columns(columns)
-        self.column_i_dd = guess.get("i_dd", "")
-        self.column_i_da = guess.get("i_da", "")
-        self.column_i_aa = guess.get("i_aa", "")
-        self.column_tau_f = guess.get("tau_f", "")
+        self._map_columns()
         self._result = None
         self.notify("file")
         return f"Loaded {len(next(iter(columns.values())))} bursts from ndXplorer."
@@ -170,6 +173,105 @@ class AccurateFretViewModel:
     def column_names(self) -> list[str]:
         """Column names of the loaded table (for the column pickers)."""
         return ["", *self._columns.keys()]
+
+    # ── the setup: which detection windows exist ──
+    def apply_setup_settings(self, payload: dict) -> None:
+        """Adopt a detector setup's named windows.
+
+        The shared setup hook. Its windows say which detection channels the
+        measurement has, which is used twice: their names help recognise the
+        burst-table columns (a table written with site-specific channel names
+        still maps itself), and they name the detectors when the optical model
+        supplies the calibration prior.
+
+        Parameters
+        ----------
+        payload : dict
+            ``{"name": <setup>, "detectors": {...}}`` from the setup picker.
+        """
+        self.detectors = dict((payload or {}).get("detectors") or {})
+        self.setup_name = str((payload or {}).get("name") or "")
+        if self._columns:
+            self._map_columns()
+        self.notify("setup")
+
+    def _window_hints(self) -> dict:
+        """Column-name fragments per channel role, from the setup's windows.
+
+        A window called ``green`` marks the donor channel, ``red`` the FRET
+        channel and ``yellow`` the acceptor-excitation channel — the convention
+        the detector setups use.
+        """
+        keywords = {
+            "i_dd": ("green", "donor"),
+            "i_da": ("red", "acceptor", "fret"),
+            "i_aa": ("yellow", "delayed"),
+        }
+        hints: dict[str, list[str]] = {}
+        for window in self.detectors:
+            low = str(window).strip().lower()
+            for role, words in keywords.items():
+                if any(word in low for word in words):
+                    hints.setdefault(role, []).append(low)
+                    break
+        return hints
+
+    def _map_columns(self) -> None:
+        """Fill the four channel combos from the loaded columns."""
+        guess = _core.guess_columns(self._columns, self._window_hints())
+        self.column_i_dd = guess.get("i_dd", "")
+        self.column_i_da = guess.get("i_da", "")
+        self.column_i_aa = guess.get("i_aa", "")
+        self.column_tau_f = guess.get("tau_f", "")
+
+    # ── the dyes: where the photophysics comes from ──
+    def dye_names(self) -> list[str]:
+        """Names of the dyes the database can describe (for the dye pickers)."""
+        if not self._dyes:
+            from chisurf.core.fluorescence.fret.dyes import list_dyes
+
+            self._dyes = list_dyes()
+        return ["", *[d.name for d in self._dyes]]
+
+    def apply_dye_selection(self) -> str:
+        """Take R0, the quantum yields and tau_D(0) from the selected dye pair.
+
+        The indirect route to the database: the user picks two dyes, and the
+        numbers that are properties of the dyes rather than of the data follow —
+        R0 computed from the stored emission and absorption spectra, the quantum
+        yields and (when curated) the donor lifetime. Anything the database
+        cannot answer is left untouched rather than defaulted, and the report
+        says which is which.
+
+        Returns
+        -------
+        str
+            A status message.
+        """
+        if not (self.donor_dye and self.acceptor_dye):
+            return "Pick a donor and an acceptor dye."
+        from chisurf.core.fluorescence.fret.dyes import fret_pair
+
+        pair = fret_pair(self.donor_dye, self.acceptor_dye,
+                         kappa2=self.kappa2, refractive_index=self.refractive_index)
+        self._dye_pair = pair
+        if pair is None:
+            self.results_text = "The dye pair could not be resolved in the database."
+            self.notify("error")
+            return self.results_text
+        if pair.forster_radius:
+            self.forster_radius = float(pair.forster_radius)
+        if pair.donor.quantum_yield:
+            self.quantum_yield_donor = float(pair.donor.quantum_yield)
+        if pair.acceptor.quantum_yield:
+            self.quantum_yield_acceptor = float(pair.acceptor.quantum_yield)
+        if pair.donor.lifetime:
+            self.donor_lifetime = float(pair.donor.lifetime)
+        self.results_text = pair.summary()
+        self.notify("dyes")
+        return f"{pair.donor.name} → {pair.acceptor.name}: R0 = " + (
+            f"{pair.forster_radius:.1f} Å" if pair.forster_radius else "not in the database"
+        )
 
     def lightpath_names(self) -> list[str]:
         """Names of the saved light paths usable as the optics prior."""
@@ -210,6 +312,12 @@ class AccurateFretViewModel:
         prior["qy_a"] = float(self.quantum_yield_acceptor)
         prior["gG"] = float(self.detection_green)
         prior["gR"] = float(self.detection_red)
+        # The setup names the detectors; without it the light path's own order is used.
+        windows = self._window_hints()
+        if windows.get("i_dd"):
+            prior["green_detector"] = windows["i_dd"][0]
+        if windows.get("i_da"):
+            prior["red_detector"] = windows["i_da"][0]
         return prior
 
     def can_run(self) -> str | None:

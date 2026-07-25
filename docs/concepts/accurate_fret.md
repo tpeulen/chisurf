@@ -259,6 +259,40 @@ table). Two lessons from that exercise generalize:
   are therefore merged, and population centres enter the fit weighted by how many
   bursts they hold.
 
+## Where the dye numbers come from
+
+$\Phi_D$, $\Phi_A$ and $R_0$ are properties of the **dye pair**, and the same
+pair should not acquire a different $R_0$ in every analysis. ChiSurf therefore
+reads them from the curated fluorophore database rather than from a typed-in
+constant: the donor's emission spectrum, the acceptor's absorption spectrum
+scaled by its molar extinction coefficient, and the donor's quantum yield give
+
+$$
+J = \int F_D(\lambda)\,\varepsilon_A(\lambda)\,\lambda^4\,d\lambda,
+\qquad
+R_0 = 0.211\,\big(\kappa^2\,n^{-4}\,\Phi_D\,J\big)^{1/6}\ \text{(Å, }J\text{ in M}^{-1}\text{cm}^{-1}\text{nm}^4).
+$$
+
+Computed this way from the database's own entries the results reproduce the
+literature (EGFP→mCherry 52 Å, ATTO 550→ATTO 643 65 Å), which is the check that
+the stored spectra, the extinction coefficients and the overlap integral are
+consistent with each other.
+
+Two caveats are worth keeping in view. $\kappa^2 = 2/3$ is an *average over
+orientations*, justified when both dyes rotate freely on their linkers within the
+fluorescence lifetime; it enters only as $\kappa^{2\,1/6}$, so it is forgiving,
+but a genuinely immobilized dye breaks the assumption rather than blurring it.
+And the quantum yield of a dye **on a molecule** is not the catalogue value of
+the free dye — local quenching is exactly what a donor-only lifetime measurement
+reveals — so a curated $\Phi_D$ is a starting point, and the measured
+$\tau_{D(0)}$ is the check on it.
+
+Because the catalogue is incomplete, every quantity carries its provenance:
+computed from spectra, read from a stored property, or absent. A quantity the
+database cannot supply is left as the user set it rather than defaulted — a
+calibration resting on a guessed quantum yield is worse than one that says it
+does not know.
+
 ## Assumptions worth stating
 
 * **The reference populations are what they claim to be.** A donor-only gate

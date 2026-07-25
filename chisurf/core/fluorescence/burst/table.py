@@ -36,13 +36,17 @@ COLUMN_HINTS: dict[str, tuple[str, ...]] = {
 }
 
 
-def guess_columns(names) -> dict[str, str]:
+def guess_columns(names, extra_hints: dict | None = None) -> dict[str, str]:
     """Map channel roles onto column names by matching known naming conventions.
 
     Parameters
     ----------
     names : iterable of str
         Column names of the burst table.
+    extra_hints : dict, optional
+        ``{role: (fragment, …)}`` tried *before* the built-in conventions —
+        typically the detector windows of the selected setup, which is how a
+        table with site-specific channel names ("det0_green") still maps itself.
 
     Returns
     -------
@@ -54,6 +58,7 @@ def guess_columns(names) -> dict[str, str]:
     out: dict[str, str] = {}
     lowered = [(str(n), str(n).strip().lower()) for n in names]
     for role, hints in COLUMN_HINTS.items():
+        hints = tuple((extra_hints or {}).get(role, ())) + tuple(hints)
         for hint in hints:
             match = next((original for original, low in lowered
                           if low == hint or hint in low), None)

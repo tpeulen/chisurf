@@ -13,6 +13,10 @@
           "collapsed": false,
           "n_col": 1,
           "sections": [
+            {"type": "custom", "key": "setup_selector",
+             "options": {"attr": "setup_name", "call": "apply_setup_settings",
+                         "placeholder": "— no detector setup —"},
+             "description": "Detector setup whose named windows (green, red, yellow, …) say which detection channels this measurement has. Picking one helps the channel columns below map themselves even when the table uses site-specific names, and it names the detectors when the optical model supplies the prior."},
             {"type": "value", "attr": "filename", "label": "Burst table", "kind": "file", "call": "set_filename",
              "description": "Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar's ndXplorer button instead to calibrate exactly the bursts currently open there."},
             {
@@ -29,6 +33,22 @@
                  "description": "Acceptor signal under acceptor excitation (ALEX/PIE) — the 'yellow' channel. Optional, but without it there is no stoichiometry: donor-only and acceptor-only bursts can then not be found automatically and every burst is assumed to be doubly labelled."},
                 {"type": "choice", "attr": "column_tau_f", "label": "Donor lifetime", "options_source": "column_names",
                  "description": "Per-burst fluorescence-averaged donor lifetime in presence of the acceptor (ns). Optional, and powerful: it puts every burst on the E-tau plot, lets the static FRET line determine gamma from a single population, and turns the off-line offset into a dynamics test."}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Dyes (database)",
+              "collapsed": false,
+              "n_col": 1,
+              "sections": [
+                {"type": "choice", "attr": "donor_dye", "label": "Donor", "options_source": "dye_names", "call": "apply_dye_selection",
+                 "description": "Donor dye, from the fluorophore database. Selecting a pair fills in the numbers that are properties of the dyes rather than of this measurement: the Förster radius computed from the stored emission and absorption spectra, both quantum yields, and the donor lifetime when it is curated. Anything the database does not have is left as you set it — the report says which is which."},
+                {"type": "choice", "attr": "acceptor_dye", "label": "Acceptor", "options_source": "dye_names", "call": "apply_dye_selection",
+                 "description": "Acceptor dye. Its absorption spectrum and molar extinction coefficient are what the overlap integral — and therefore R0 — is computed from, so an acceptor without those cannot supply an R0."},
+                {"type": "value", "attr": "kappa2", "label": "kappa²", "kind": "float", "minimum": 0.0, "maximum": 4.0, "step": 0.01, "decimals": 4, "call": "apply_dye_selection",
+                 "description": "Orientation factor. 2/3 is the isotropic average that free dye linkers justify; it enters R0 only as its sixth root, so even a factor-of-two error moves R0 by ~12 %."},
+                {"type": "value", "attr": "refractive_index", "label": "Refractive index", "kind": "float", "minimum": 1.0, "maximum": 2.0, "step": 0.01, "decimals": 3, "call": "apply_dye_selection",
+                 "description": "Refractive index of the medium between the dyes: 1.33 for water, ~1.4 inside a protein. R0 scales as n^(-2/3)."}
               ]
             },
             {
