@@ -2,6 +2,41 @@
 
 ## 2026-07-25
 
+* **"Loading takes minutes" was not slowness, and not tttrlib.** A ConfoCor3
+  `.fcs` never reaches tttrlib — the format is text. Two independent defects
+  in sequence produced the symptom.
+  **The reader raised.** `np.float` was removed in NumPy 1.24 and `np.float_`
+  in 2.0, and seven modules still used them — including three FCS readers
+  (ConfoCor3, ALV `.ASC`, PyCorrFit), each raising `AttributeError` on the
+  first data line it parsed. Those formats simply did not load. A removed
+  alias only fails when its code path runs, which is how it hid in readers for
+  formats nobody had exercised recently.
+  **Then the failure was "reported" with a modal.** `core_data.add_dataset`
+  caught every read error and constructed `MyMessageBox`, whose `__init__`
+  calls `exec_()`. With a `QApplication` but no user — the CLI, a script, a
+  test, the assistant — that blocks forever waiting for a click; with no
+  `QApplication` at all Qt *aborts the process*. So a file that could not be
+  read presented as an unresponsive load. Errors are re-raised when there is
+  no GUI.
+  ConfoCor3 now loads four files in 4.1 s, ALV and PyCorrFit in well under a
+  second, and an unreadable file raises promptly. Eight tests, including a
+  guardrail that scans the package for the aliases NumPy 2 removed. Both
+  patterns are recorded in [known issues](/references/known-issues.md): never
+  report from core/macro code with a modal, and a removed alias hides until
+  its path runs.
+
+* **Scheduled Claude-driven maintenance jobs (`build_tools/jobs/`).** Added durable
+  macOS LaunchAgents that wake Claude Code headlessly (`claude -p`) for recurring
+  upkeep that needs judgement: `com.chisurf.translate-ui` (daily — extract →
+  translate untranslated de/fr → recompile `.qm` → commit catalogues),
+  `com.chisurf.build-docs` (daily — reconcile `docs/` **and** `okf/` with the
+  source, then a warning-free Sphinx rebuild), and `com.chisurf.improve-prds`
+  (every 30 min — one small, **test+lint-gated** roadmap increment from
+  `okf/prds/` + the assessment backlog, committing only if green). `claude_job.sh`
+  is the shared runner (launchd PATH, `mkdir` lock since macOS lacks `flock`, dated
+  logs); the prompts in `build_tools/jobs/prompts/` are the safety boundary (narrow
+  file scope, pathspec-only local commits, no push). New workflow concept
+  [scheduled-jobs](/workflows/scheduled-jobs.md) + index entry.
 * **Regions, everywhere a region was meant — and the gate on a scatter plane is
   one of them.** Second pass over the ROI subsystem, migrating the consumers
   that still had their own notion.
