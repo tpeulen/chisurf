@@ -187,10 +187,38 @@ multinomial marginal is a binomial, so the prediction is a weighted sum of
 binomial pmfs over the observed burst sizes and the quadrature nodes, with no
 resampling.
 
-Remaining: a TTTR reader that builds the burst table from PIE windows and three
-detector channels (the current readers take a table someone else produced), a
-`docs/concepts` page and numbered guide, and stages 3–7 (priors/MCMC, labelling
-and brightness corrections, global 2c+3c fits, dynamics).
+**One reader, two colour counts (2026-07-25).** Rather than a second TTTR
+reader, `PdaReader` gained an `n_colors` selector (defaulting to the number of
+configured detection-channel groups, so a three-colour setup selects tcPDA on
+its own) and a `detection_windows()` description of the physical
+excitation/detection combinations — two for dual colour, five for three, since
+the blue pulse is visible in all three detectors while the green pulse is only
+visible in green and red. Three colours take the burst-table path; everything
+about opening the file, finding time windows and configuring channels is shared.
+`test/gui/test_pda_reader_colors.py` (7 tests) runs against real TTTR data
+(`BH_SPC132.spc`), including a full three-colour read that produces a fittable
+dataset and a regression that the two-colour S1S2 path is unchanged.
+
+Two things measurement decided, not convention:
+
+- **`get_ranges_by_time_window` returns an inclusive `[start, stop]`.** Every
+  window reaches `minimum_time_window_length` only when the stop photon is
+  counted, and *not one* does when it is dropped. A test pins this. Note that
+  `chisurf/core/fluorescence/burst/bva.py` slices `[start:stop]` and therefore
+  loses the last photon of every burst — a small, uniform, pre-existing bias,
+  left alone here because changing it changes published BVA output.
+- **The two colour paths do not select identical bursts.** At 2 ms / 20 photons
+  on that file, `get_ranges_by_time_window` yields 731 windows while
+  `Pda.compute_experimental_histograms` reports 455: the engine applies a
+  further internal selection its API does not expose, and neither a duration nor
+  a photon-count filter reproduces it. The recovered proximity-ratio
+  *distributions* agree to a total variation of ~0.17. Comparable, not
+  interchangeable — documented on the method rather than left to surprise
+  someone comparing a two- and a three-colour analysis of the same file.
+
+Remaining: a `docs/concepts` page and numbered guide, and stages 3–7
+(priors/MCMC, labelling and brightness corrections, global 2c+3c fits,
+dynamics).
 
 Parent: [PRD-49](prd-49.md) (three-colour PDA row). Related: [PRD-50](prd-50.md)
 (two-colour PDA family), [PRD-61](prd-61.md) (parameter priors — the enabler),

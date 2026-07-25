@@ -2,10 +2,36 @@
   "sections": [
     {
       "type": "panel",
+      "title": "Colours",
+      "collapsed": false,
+      "description": "Two colours build the S1S2 histogram two-colour PDA fits; three build the per-burst photon table three-colour PDA fits. The micro-time ranges are photon-selection windows for two colours and the blue/green excitation periods for three.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "n_colors",
+          "label": "Colours",
+          "options": [
+            2,
+            3
+          ],
+          "labels": [
+            "2 — PDA (S1S2 histogram)",
+            "3 — tcPDA (burst table)"
+          ],
+          "description": "Defaults to the number of configured detection-channel groups, so a three-colour setup selects tcPDA on its own.",
+          "rebuild_on_change": true
+        }
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Detector",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "pda_detector"}
+        {
+          "type": "custom",
+          "key": "pda_detector"
+        }
       ]
     },
     {
@@ -29,7 +55,10 @@
           "minimum": 1,
           "maximum": 9999
         },
-        {"type": "custom", "key": "pda_tw"}
+        {
+          "type": "custom",
+          "key": "pda_tw"
+        }
       ]
     }
   ]

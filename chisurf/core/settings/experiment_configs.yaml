@@ -126,7 +126,24 @@ pda:
 
 pda3c:
   readers:
-    # A tcPDA dataset is a burst table (5 counts per burst), not a curve.
+    # The *same* reader as two-colour PDA: three channel groups and two
+    # excitation windows put it on the burst-table path instead of the S1S2 one,
+    # so a three-colour setup needs no separate TTTR reading code.
+    - reader_class: chisurf.core.experiments.pda.PdaReader
+      reader_params:
+        name: PTU/HT3/SPC
+        n_colors: 3
+        micro_time_ranges:
+          - [0, 8000]      # blue excitation period
+          - [8000, 16000]  # green excitation period
+        channels:
+          - [0]            # blue detector
+          - [1]            # green detector
+          - [2]            # red detector
+      controller_class: chisurf.gui.widgets.experiments.pda.controller.PdaTTTRWidget
+      controller_params:
+        name: PTU/HT3/SPC
+    # A burst table someone else produced.
     - reader_class: chisurf.core.experiments.pda3c.Pda3cBurstTableReader
       reader_params:
         name: Burst table (CSV/NPZ)

@@ -92,6 +92,7 @@ class PdaReader(ExperimentReader):
             minimum_number_of_photons: int = 5,
             minimum_time_window_length: float = 2e-3,
             tw_configs=None,
+            n_colors: int = None,
             *args,
             **kwargs
     ):
@@ -100,9 +101,12 @@ class PdaReader(ExperimentReader):
         Parameters
         ----------
         channels : tuple of list of int
-            Channel numbers for donor/acceptor detection ``(green, red)``.
+            Detection channel numbers. Two entries ``(green, red)`` for
+            two-colour PDA; three ``(blue, green, red)`` for three-colour.
         micro_time_ranges : list of tuple of int
-            Micro-time windows ``(start, stop)`` for photon selection.
+            Micro-time windows ``(start, stop)`` for photon selection. For
+            three colours these are the **excitation periods** — the blue and
+            green halves of the PIE cycle.
         reading_routine : str
             tttrlib reader type (e.g. ``'PTU'``).
         maximum_number_of_photons : int
@@ -113,6 +117,10 @@ class PdaReader(ExperimentReader):
             Minimum time window length for bursts in seconds.
         tw_configs : list, optional
             List of ``(min_photons, min_tw_len_s)`` configurations.
+        n_colors : int, optional
+            Number of colours, 2 or 3. Defaults to the number of channel
+            groups, so a three-colour detection setup produces three-colour
+            data without being told twice.
         """
         super().__init__(*args, **kwargs)
         self.reading_routine = reading_routine
@@ -122,6 +130,163 @@ class PdaReader(ExperimentReader):
         self.minimum_time_window_length = minimum_time_window_length
         self.tw_configs = tw_configs
         self.channels = channels
+        self.n_colors = int(n_colors) if n_colors else len(channels)
+
+    # -- three-colour path ------------------------------------------------
+
+    def _micro_time_range(self, index: int) -> tuple:
+        """Return micro-time window ``index``, falling back to the first."""
+        ranges = list(self.micro_time_ranges or [(0, 2 ** 31)])
+        return tuple(ranges[min(index, len(ranges) - 1)])
+
+    def detection_windows(self) -> list:
+        """Return the ``(channels, micro_time_range)`` pairs a burst is counted in.
+
+        One entry per physical excitation/detection combination, which is what
+        makes the two colour counts the same kind of object rather than two
+        code paths:
+
+        - **two colours** — green and red detection, each with its own
+          photon-selection window;
+        - **three colours** — five combinations, because the blue pulse can be
+          seen in all three detectors while the green pulse is only visible in
+          green and red (nothing emits blue after a green excitation).
+
+        Returns
+        -------
+        list of (list of int, tuple of int)
+            Two-colour order ``(green, red)``; three-colour order
+            ``F_BB, F_BG, F_BR, F_GG, F_GR``.
+        """
+        if int(getattr(self, "n_colors", 2)) >= 3:
+            blue_excitation = self._micro_time_range(0)
+            green_excitation = self._micro_time_range(1)
+            blue, green, red = (list(c) for c in self.channels[:3])
+            return [
+                (blue, blue_excitation),
+                (green, blue_excitation),
+                (red, blue_excitation),
+                (green, green_excitation),
+                (red, green_excitation),
+            ]
+        return [
+            (list(channels), self._micro_time_range(index))
+            for index, channels in enumerate(self.channels[:2])
+        ]
+
+    def _three_color_curve(self, blue, green, name, filename,
+                           minimum_number_of_photons, minimum_time_window_length,
+                           tttr_header_json=None, source_filenames=None):
+        """Wrap a three-colour burst table into a DataCurve the tcPDA model reads.
+
+        The curve's ``y`` is the measured proximity-ratio histograms, so the
+        ordinary plotting machinery works; the payload the model actually fits
+        rides in ``meta_data['pda3c']``.
+        """
+        from chisurf.core.fluorescence.pda3c import BurstCounts
+        from chisurf.core.models.pda3c.tcpda import observed_ratio_histograms
+
+        counts = BurstCounts(blue=blue, green=green)
+        histogram = observed_ratio_histograms(counts.collapsed()) * max(blue.shape[0], 1)
+        y = np.asarray(histogram, dtype=float)
+        x = np.arange(y.size, dtype=float)
+
+        payload = {
+            "blue": np.asarray(blue, dtype=float),
+            "green": np.asarray(green, dtype=float),
+            "n_bursts": int(blue.shape[0]),
+            "columns": ["F_BB", "F_BG", "F_BR", "F_GG", "F_GR"],
+            "channels": self.channels,
+            "micro_time_ranges": self.micro_time_ranges,
+            "minimum_number_of_photons": int(minimum_number_of_photons),
+            "minimum_time_window_length": float(minimum_time_window_length),
+        }
+        meta_all = {
+            "pda3c": payload,
+            "tttr_header_json": tttr_header_json,
+            "filenames": source_filenames,
+            "reading_routine": self.reading_routine,
+            "micro_time_ranges": self.micro_time_ranges,
+        }
+        data = chisurf.core.data.DataCurve(
+            name=name,
+            filename=filename,
+            load_filename_on_init=False,
+            data_reader=self,
+            meta_data=meta_all,
+            y=y, x=x,
+            ey=chisurf.core.fluorescence.tcspc.counting_noise(y),
+        )
+        data.pda3c = payload
+        return data
+
+    def burst_count_table(self, tttr_data, minimum_number_of_photons: int,
+                          minimum_time_window_length: float):
+        """Return per-burst photon counts for the three-colour model.
+
+        Bursts are the time windows ``get_ranges_by_time_window`` finds, using
+        the same ``minimum_time_window_length`` / ``minimum_number_of_photons``
+        settings as the two-colour path.
+
+        **The two paths do not select identical bursts.** Measured on
+        ``test/data/tttr/BH/132/BH_SPC132.spc`` at 2 ms / 20 photons, this
+        yields 731 windows while ``Pda.compute_experimental_histograms`` reports
+        455 — the engine applies a further internal selection that its API does
+        not expose and that a duration or photon-count filter does not
+        reproduce. The recovered proximity-ratio *distributions* agree to a
+        total variation of ~0.17. So: comparable, not interchangeable. Do not
+        read a two- and a three-colour analysis of the same file as having
+        identical burst sets.
+
+        Counting is done with a cumulative sum per detection window rather than
+        a Python loop over bursts, which keeps a multi-million-photon file
+        interactive.
+
+        Parameters
+        ----------
+        tttr_data : tttrlib.TTTR
+            Photon stream.
+        minimum_number_of_photons : int
+            Minimum photons per time window.
+        minimum_time_window_length : float
+            Minimum time-window length in seconds.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(n_bursts, n_detection_windows)`` counts, columns ordered as
+            :meth:`detection_windows`.
+        """
+        ranges = np.asarray(
+            tttr_data.get_ranges_by_time_window(
+                minimum_time_window_length,
+                -1,
+                int(minimum_number_of_photons),
+                -1,
+            ),
+            dtype=np.int64,
+        )
+        windows = self.detection_windows()
+        if ranges.size < 2:
+            return np.zeros((0, len(windows)))
+        ranges = ranges.reshape(-1, 2)
+        starts = ranges[:, 0]
+        stops = np.minimum(ranges[:, 1], len(tttr_data) - 1)
+
+        routing = np.asarray(tttr_data.routing_channels)
+        micro = np.asarray(tttr_data.micro_times)
+
+        counts = np.zeros((starts.size, len(windows)), dtype=float)
+        for index, (channels, (low, high)) in enumerate(windows):
+            mask = np.isin(routing, channels) & (micro >= low) & (micro <= high)
+            cumulative = np.concatenate(([0], np.cumsum(mask, dtype=np.int64)))
+            # The ranges are INCLUSIVE of ``stop``: measured on real data, every
+            # window spans at least ``minimum_time_window_length`` only when the
+            # stop photon is counted, and none of them do when it is dropped.
+            # (``fluorescence/burst/bva.py`` slices ``[start:stop]`` and so
+            # silently loses the last photon of every burst.)
+            counts[:, index] = cumulative[stops + 1] - cumulative[starts]
+        return counts
 
     def view_spec(self):
         """Return the declarative editor spec for PDA reader settings."""
@@ -363,6 +528,31 @@ class PdaReader(ExperimentReader):
 
             base_name = fn.stem
             multi = len(configs) > 1
+
+            if int(getattr(self, "n_colors", 2)) >= 3:
+                # Three-colour setups take the burst-table path: tcPDA fits a
+                # per-burst photon partition, not an S1S2 histogram, so there is
+                # nothing to build a 2D grid from. Same file reading, same burst
+                # definition, different payload.
+                for n_ph_cfg, tw_len_cfg in configs:
+                    table = self.burst_count_table(t, n_ph_cfg, tw_len_cfg)
+                    blue, green = table[:, :3], table[:, 3:]
+                    name = base_name
+                    if multi:
+                        name = f"{base_name}_TW{float(tw_len_cfg) * 1e3:g}ms"
+                    data = self._three_color_curve(
+                        blue, green, name=name,
+                        filename=(source_filenames[0]['path'] if source_filenames else str(fn)),
+                        minimum_number_of_photons=n_ph_cfg,
+                        minimum_time_window_length=tw_len_cfg,
+                        tttr_header_json=tttr_header_json,
+                        source_filenames=source_filenames,
+                    )
+                    data_group.append(data)
+                    logging.info(
+                        "tcPDA: %s -> %d bursts", name, int(blue.shape[0])
+                    )
+                return data_group
 
             for n_ph_cfg, tw_len_cfg in configs:
                 logging.debug({
