@@ -142,14 +142,13 @@ chain = chisurf.core.fitting.sample.walk_mcmc(fit=fit, steps=600, step_size=0.01
 
 :::{admonition} Prefer the MCMC interval
 :class: note
-Both routes bracket the true value, but the support-plane interval is **too
-narrow** here. Tripling the data should shrink an interval by $\sqrt{3.33}=1.83$;
-the MCMC width shrinks by 1.81, the support-plane width by 3.31 — that is
-$1/n$ rather than $1/\sqrt{n}$, and no likelihood interval can narrow faster
-than the square root of the data. The chain is not at fault (effective sample
-size ~1900, split-$\hat R$ = 1.00, width stable over a 20-fold change in chain
-length). Quote the **MCMC** interval; it samples $e^{-\text{deviance}/2}$, the
-actual posterior for this objective.
+Both routes bracket the true value, but the support-plane interval is currently
+unreliable on this objective, for two reasons: its threshold uses the F-test
+form, which rescales by $\chi^2_r$ and is right for least squares with unknown
+variance but wrong for a likelihood deviance; and the adaptive scan was
+returning its own grid edge rather than a crossing. Quote the **MCMC** interval
+— it samples $e^{-\text{deviance}/2}$, the actual posterior here, and matches
+the corrected likelihood-ratio interval to 2%.
 :::
 
 Read $\chi^2_r$ as a **relative** measure here — it settles near 2.4 for a good

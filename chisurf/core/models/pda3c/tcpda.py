@@ -51,17 +51,27 @@ and 0.497 for 600, 3000 and 12 000 steps, with the effective sample size rising
 104 -> 1914, split-R-hat at 1.00 and acceptance ~0.35. The sampled width is
 real.
 
-*It is the scaling.* Going from 1500 to 5000 bursts — 3.33x the data — an
-interval should shrink by `sqrt(3.33) = 1.83`. The MCMC width shrinks by
-**1.81**; the support-plane width shrinks by **3.31**, i.e. like `1/n` rather
-than `1/sqrt(n)`. A likelihood interval cannot narrow faster than the square
-root of the data, so the support-plane scan is the one that is wrong here.
+*Two separate faults, which is why the ratio looked n-dependent.*
 
-This is a property of the *scan on a likelihood deviance*, not of tcPDA: the
-F-test threshold is a statement about a chi-square with an unknown variance,
-which a deviance with `chi2r ~ 2.3` is not. It likely affects any model whose
-`chi2r` sits far from one. Until it is fixed, **quote the MCMC interval** — it
-samples `exp(-deviance/2)`, the actual posterior for this objective.
+1. **Wrong threshold for a likelihood.** `chi2_threshold` applies the F-test
+   form `chi2r_min (1 + k/nu F)`, which rescales by `chi2r_min` — correct for
+   least squares with an *unknown* variance, wrong for a deviance, whose scale
+   is already fixed by the likelihood. The right level is the plain
+   likelihood-ratio one, `delta chi2 = 6.63` at 99% and one parameter. Using it,
+   the interval widths become 0.883 and 0.489 at 1500 and 5000 bursts against
+   MCMC's 0.897 and 0.497 — agreement to 2%, and the correct `1/sqrt(n)`
+   scaling. The F-test form inflates by `sqrt(chi2r) ~ 1.5`.
+2. **The scan reports its own grid edge.** `adaptive_chi2_scan` returned a
+   **three-point, one-sided** grid whose maximum sat *at* the threshold without
+   crossing it, and the reported interval was exactly that grid's span. So the
+   number was not a crossing at all, which is why it also failed to scale.
+
+The two errors push in opposite directions — the threshold too high, the scan
+too narrow — and their ratio drifts with `n`, which is what made the
+disagreement look mysterious. Both are in shared fitting code and affect any
+model whose `chi2r` sits far from one, not just tcPDA. Until they are fixed,
+**quote the MCMC interval**: it samples `exp(-deviance/2)`, the actual posterior
+for this objective, and it reproduces the corrected likelihood-ratio interval.
 
 The displayed curve
 -------------------

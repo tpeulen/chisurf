@@ -43,6 +43,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [BUG-03](#bug-03) | S1 | BUG | Server | `model_component_remove` references undefined `component_type` → `NameError` | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-04](#bug-04) | S2 | BUG | Core | `@abc.abstractmethod` not enforced: `Base(object)` has no `ABCMeta` | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-05](#bug-05) | S1 | BUG | Plugins | F-test calculator's two directions are not inverses (asking for 95% returns a χ² whose confidence is 0.09%) | ✅ FIXED |
+| [BUG-10](#bug-10) | S1 | BUG | Fitting | Support-plane intervals wrong on likelihood objectives: F-test threshold rescales by χ²ᵣ, and the adaptive scan reports its own grid edge instead of a crossing | 📋 OPEN |
 | [BUG-06](#bug-06) | S1 | BUG | Core | `vm_rt_to_vv_vh` strides an already-halved count, so every rotation component after the first is silently discarded | ✅ FIXED |
 | [BUG-07](#bug-07) | S1 | BUG | Packaging | `csc` console script points at a non-existent `chisurf.cli` module — every invocation fails at import | ✅ FIXED |
 | [BUG-08](#bug-08) | S2 | BUG | Plugins | No image ever rendered in the Help browser: relative sources passed to Qt unresolved (`setSearchPaths` missing) | ✅ FIXED |
@@ -457,3 +458,40 @@ form on the `retranslate_from_ui` path so language switching keeps working meanw
 2. Add the guardrails that would have caught them: manifest validation in discovery (DATA-01), a duplicate-handler-name test (BUG-02), a "no `chisurf.gui` import under `chisurf/server/`" import-lint (SV-01), and a published-vs-declared event-topic assertion (SV-05). — ✅ **DATA-01/BUG-02/SV-01 guardrails in place; SV-05 remaining**
 3. Then take the **S2** structural items (SV-02/03, INC-04, DATA-02/03) as scoped refactors, each closing out the corresponding spec steering-notes entry.
 4. As each finding is fixed, strike its row here and remove it from the owning spec's steering notes; when a subsystem has no findings left here, it has reached its spec.
+
+### BUG-10
+**S1 · Support-plane confidence intervals are wrong on likelihood objectives, twice over.**
+
+- Location: `chisurf/core/math/statistics.py::chi2_threshold` and
+  `chisurf/core/fitting/fit.py::adaptive_chi2_scan` (crossings consumed by
+  `chisurf/core/fitting/support_plane.py::confidence_intervals_from_scan_result`).
+- Found while validating tcPDA error surfaces, where MCMC and the support plane
+  disagreed on interval width by a factor that *grew with dataset size* — 1.32,
+  2.05, 2.86 at 1500, 2500 and 5000 bursts. Two independent faults pushing in
+  opposite directions, which is why the ratio drifted instead of being constant.
+- **Fault 1 — the threshold.** `chi2_threshold` uses the F-test form
+  `chi2r_min · (1 + k/nu · F)`, which rescales by `chi2r_min`. That is correct
+  for least squares with an *unknown* noise scale; it is wrong for a likelihood
+  deviance, whose scale the likelihood already fixes. The right level is the
+  plain likelihood-ratio one, `Δchi2 = 6.63` at 99% / one parameter. Measured on
+  tcPDA: the likelihood-ratio threshold gives widths 0.883 and 0.489 at 1500 and
+  5000 bursts against MCMC's 0.897 and 0.497 — 2% agreement and the correct
+  `1/sqrt(n)` scaling. The F-test form inflates by `sqrt(chi2r)`, which is 1.5×
+  when `chi2r ≈ 2.3`.
+- **Fault 2 — the scan reports its grid edge, not a crossing.**
+  `adaptive_chi2_scan` returned a **three-point, one-sided** grid whose maximum
+  sat *at* the threshold without exceeding it, and the reported interval was
+  exactly that grid's span (0.621 reported against 0.621 spanned). So the number
+  was never a threshold crossing, which is also why it failed to scale as
+  `1/sqrt(n)`.
+- Impact: any model whose `chi2r` sits far from one gets a wrong support-plane
+  interval, and every model can get a grid-edge interval when the scan
+  terminates early. Two-colour PDA agreed with MCMC to 8% because its `chi2r ≈ 1`
+  makes fault 1 vanish and its broader minimum let the scan walk further.
+- Fix: give the threshold an objective-type switch (least-squares → F-test,
+  likelihood → likelihood-ratio), and make the scan refuse to report a crossing
+  it never bracketed — it should widen its range or return `None` rather than
+  hand back its own edge.
+- Not fixed here: this is shared fitting code under concurrent edit, and the
+  threshold change is a design decision about how objectives declare themselves.
+  Evidence and the reproduction are in the tcPDA model docstring.
