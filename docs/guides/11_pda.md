@@ -60,6 +60,37 @@ list of Gaussian components (mean $R_{P}$, width $s_{P}$, fraction $x_{P}$);
 $\gamma$. These map onto the forward model in {ref}`concept-pda`.
 ```
 
+## Diagnostics
+
+Every PDA model editor has a collapsed **Diagnostics** panel with two buttons.
+
+**🔗 Apply light path** fills leakage, direct excitation and $\gamma$ from a
+simulated optical setup rather than leaving them as guesses. It reads the
+light-path graph named in the field below it, or the light-path simulator's last
+session when that is empty, simulates it, and maps the excitation and emission
+matrices onto the correction terms. Donor, acceptor and the two detectors are
+taken from the matrices — a two-dye, two-detector setup needs no further input,
+and anything else is *reported* rather than guessed, because picking the wrong
+pair silently rescales every corrected quantity.
+
+**🎲 Consistency check** answers a question $\chi^2$ does not. A good $\chi^2$
+says the model *can be made* to fit; this says whether the measured bursts could
+plausibly have come from the fitted scheme at all. It resamples synthetic
+datasets from the fitted spectrum and reports where the measurement falls among
+them, as a bootstrap p-value. Run it on a converged fit — the spectrum is read as
+it currently stands.
+
+Both are ordinary model methods, so the scripted path is the same code:
+
+```python
+model.lightpath_graph = "setup.json"
+model.apply_light_path()
+
+model.consistency_resamples = 500
+result = model.run_consistency_check()
+print(result["p_value"], result["consistent"])
+```
+
 ## Measuring an exchange rate: several time bins, one rate
 
 A dynamic PDA histogram responds to exchange only through the number of

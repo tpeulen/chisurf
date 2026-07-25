@@ -17,8 +17,8 @@ Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histo
 Draft / unassigned (STATUS TABLE authoritative). Dual-color static plus a dynamic
 two-state model done under AutoForm; error surfaces work via both support-plane and
 MCMC; the dynamic acceptance criterion (rate recovery + F-test rejection of the static
-model) is met. Follow-ups (GUI light-path hook, consistency-check GUI surface) open; tcPDA split
-out into [PRD-65](prd-65.md).
+model) is met. Follow-ups closed: light-path hook and the consistency-check GUI surface both
+land on a shared Diagnostics panel. tcPDA split out into [PRD-65](prd-65.md).
 
 Parent: [PRD-49](prd-49.md) (Phase 1, first target). Related: PRD-38
 (model/view-spec split), PRD-40 (declarative editors), PRD-04 (burst pipeline),
@@ -279,17 +279,42 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   test now asserts `transitions_per_window` since that is what one dataset
   determines.
 
+- **Both diagnostics are reachable from the editor (2026-07-25).** The kinetic
+  consistency check and the light-path bridge were headless APIs with no way to
+  reach them from a model editor. Both are now methods on a shared
+  `common.PdaDiagnosticsMixin` that all five PDA models (plus SAW-ν) inherit, so a
+  `button_row` in each view spec is the entire user interface and the scripted and
+  clicked paths are the same code.
+  `run_consistency_check()` bootstraps from the fitted spectrum and reports the
+  p-value and verdict; `get_pda_consistency` exposes `hist_measured` /
+  `hist_expected` as a plot accessor and returns nothing before the check has run,
+  so the panel is blank rather than misleading.
+  `apply_light_path()` reads a light-path graph — or the plugin's last easy-mode
+  session when the field is empty, which is what makes it one click — simulates it
+  and maps the excitation/emission matrices onto the crosstalk terms. **Dye and
+  detector labels come from the matrices**; anything other than two dyes and two
+  detectors is refused *with its labels listed* rather than guessed at, because a
+  wrong donor/acceptor assignment silently rescales every corrected quantity.
+  Neither button can propagate an exception into the editor: every failure path
+  lands in the status line instead.
+  Two things the implementation had to get right and did not at first: an `info`
+  section's `source` is **called**, so the status accessors are methods, not
+  properties — as properties they rendered as two blank boxes, which is what the
+  headless screenshot showed. And the light-path matrix payload keys are
+  `rows`/`columns`, not the `row_labels`/`column_labels` of the builder's local
+  variables. `test/models/test_pda_diagnostics.py` (18 tests) covers both actions
+  on every model, including that each view spec's button actions and info sources
+  name attributes that exist.
+  Deliberate scope call: the hook takes a light-path **graph** rather than a
+  handle on a live plugin widget. A model reaching into a running GUI instance is
+  untestable headlessly and would put Qt in the Qt-free model layer; a graph path
+  defaulting to the plugin's last session gives the same one-click result.
+
 **Follow-ups (not yet done):**
-- GUI button wiring the live light-path plugin session to a selected PDA model
-  (the pure bridge API is done and tested; only the one-click GUI hook remains).
 - Three-color tcPDA — **split out into [PRD-65](prd-65.md)**; it shares neither
   the engine (`tttrlib.Pda` is two-channel by construction) nor the data object
   (burst table, not S1S2 matrix) nor the fit objective (burst likelihood, not a
   histogram statistic) with this PRD.
-- The kinetic consistency check is a headless API only — no GUI surface yet.
-  Natural home is a button on the PDA model editor that runs it on the current
-  fit and plots `hist_measured` / `hist_expected` with the bootstrap p-value; the
-  function already returns both histograms for exactly that.
 
 # Scope (staged)
 

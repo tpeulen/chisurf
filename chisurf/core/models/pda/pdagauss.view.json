@@ -24,7 +24,7 @@
           "type": "toggle",
           "target": "distances",
           "attr": "limited_width",
-          "label": "Limited width (σ = p%·R)"
+          "label": "Limited width (\u03c3 = p%\u00b7R)"
         },
         {
           "type": "dynamic_group",
@@ -54,6 +54,55 @@
     },
     {
       "type": "panel",
+      "title": "Diagnostics",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "\ud83d\udd17 Apply light path",
+              "action": "apply_light_path",
+              "description": "Fill leakage, direct excitation and gamma from a simulated optical setup instead of leaving them as guesses. Uses the light-path graph below, or the light-path simulator's last session when that is empty."
+            },
+            {
+              "label": "\ud83c\udfb2 Consistency check",
+              "action": "run_consistency_check",
+              "description": "Resample synthetic datasets from the fitted scheme and report where the measurement falls among them. A good chi2 says the model can be made to fit; this says whether the data could plausibly have come from it. Run it on a converged fit."
+            }
+          ]
+        },
+        {
+          "type": "value",
+          "attr": "lightpath_graph",
+          "label": "Light path",
+          "kind": "str",
+          "description": "Path to a light-path graph or easy-mode config JSON. Empty uses the light-path simulator's last session."
+        },
+        {
+          "type": "value",
+          "attr": "consistency_resamples",
+          "label": "Resamples",
+          "kind": "int",
+          "minimum": 20,
+          "maximum": 100000,
+          "description": "Bootstrap size. The p-value cannot resolve anything finer than 1/(n+1), so 200 is the practical floor for a 0.05 verdict."
+        },
+        {
+          "type": "info",
+          "source": "lightpath_html",
+          "max_height": 90
+        },
+        {
+          "type": "info",
+          "source": "consistency_html",
+          "max_height": 90
+        }
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Fit histogram / statistic",
       "collapsible": true,
       "collapsed": true,
@@ -72,12 +121,12 @@
           ],
           "labels": [
             "Proximity ratio S1/(S0+S1)",
-            "FRET efficiency E (γ-corrected)",
+            "FRET efficiency E (\u03b3-corrected)",
             "Intensity ratio S0/S1 (log)",
-            "Distance R [Å]"
+            "Distance R [\u00c5]"
           ],
           "rebuild_on_change": true,
-          "description": "Corrected axes (E, R) bin through the model's γ and R0, so they move with the correction factors; the raw ratios do not."
+          "description": "Corrected axes (E, R) bin through the model's \u03b3 and R0, so they move with the correction factors; the raw ratios do not."
         },
         {
           "type": "choice",
@@ -91,10 +140,10 @@
           ],
           "labels": [
             "Poisson deviance (MLE)",
-            "Neyman χ² (data-weighted)",
-            "Pearson χ² (model-weighted)"
+            "Neyman \u03c7\u00b2 (data-weighted)",
+            "Pearson \u03c7\u00b2 (model-weighted)"
           ],
-          "description": "PDA histograms are sparse, where the χ² approximations are biased: Neyman pulls amplitudes low, Pearson high. The Poisson deviance is the likelihood-ratio statistic and is unbiased there — leave it selected unless reproducing a χ²-based analysis."
+          "description": "PDA histograms are sparse, where the \u03c7\u00b2 approximations are biased: Neyman pulls amplitudes low, Pearson high. The Poisson deviance is the likelihood-ratio statistic and is unbiased there \u2014 leave it selected unless reproducing a \u03c7\u00b2-based analysis."
         },
         {
           "type": "custom",
@@ -239,7 +288,7 @@
               ]
             }
           },
-          "R [Å]": {
+          "R [\u00c5]": {
             "attribute": "fit",
             "accessor": "chisurf.core.models.pda.common:get_pda_distribution",
             "accessor_kwargs": {

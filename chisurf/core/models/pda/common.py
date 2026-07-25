@@ -806,3 +806,189 @@ def pda_1d_residuals_from_s1s2(
         return pda_weighted_residuals(data_y, model_y, statistic=settings.statistic)
     except Exception:
         return np.zeros(0, dtype=np.float64)
+
+
+class PdaDiagnosticsMixin:
+    """Diagnostics every PDA model shares, reachable from its editor.
+
+    Two things that had headless APIs and no way to reach them from the GUI: the
+    kinetic consistency check, and the light-path connection that fills the
+    correction factors from a simulated optical setup. Both are model methods
+    here rather than a bespoke widget, so a ``button_row`` in the view spec is
+    the whole user interface and the CLI/API path is the same code.
+
+    Each action leaves a short HTML summary the editor's ``info`` section shows,
+    and stores its full result on the model for the plot accessors.
+    """
+
+    #: Path to a light-path graph (or easy-mode config) JSON. Empty means the
+    #: light-path plugin's last session, which is what makes this one click.
+    lightpath_graph: str = ""
+
+    #: Bootstrap size of the consistency check. 200 resolves a p-value to 0.005,
+    #: which is finer than the 0.05 the verdict turns on.
+    consistency_resamples: int = 200
+
+    _consistency_result = None
+    _consistency_status = ""
+    _lightpath_status = ""
+
+    # -- kinetic consistency check ------------------------------------------
+
+    def run_consistency_check(self) -> dict:
+        """Test whether the measured bursts are consistent with this fit.
+
+        Resamples synthetic datasets from the fitted spectrum and reports where
+        the measurement falls in that distribution. A converged fit is assumed:
+        the spectrum is read as it currently stands, so running this on an
+        unfitted model tests the starting guess.
+
+        Returns
+        -------
+        dict
+            The full result of
+            :func:`chisurf.core.models.pda.consistency.kinetic_consistency_check`,
+            also stored on the model for the plot accessor.
+        """
+        from chisurf.core.models.pda.consistency import kinetic_consistency_check
+
+        try:
+            result = kinetic_consistency_check(
+                self.fit, n_resamples=int(self.consistency_resamples)
+            )
+        except (TypeError, ValueError) as error:
+            self._consistency_result = None
+            self._consistency_status = f"<b>Consistency check failed:</b> {error}"
+            return {}
+
+        verdict = "consistent" if result["consistent"] else "<b>inconsistent</b>"
+        self._consistency_result = result
+        self._consistency_status = (
+            f"p = {result['p_value']:.3f} over {int(self.consistency_resamples)} "
+            f"resamples of {result['n_bursts']} bursts &rarr; the data are "
+            f"{verdict} with the fitted scheme.<br>"
+            f"&chi;<sup>2</sup> measured {result['chi2_measured']:.1f}, "
+            f"resampled median {float(np.median(result['chi2_resampled'])):.1f}."
+        )
+        return result
+
+    def consistency_html(self) -> str:
+        """Return the last consistency check's summary, for the editor's info box.
+
+        A method rather than a property: an ``info`` section's ``source`` is
+        called on every refresh, so a property would render as an empty box.
+        """
+        return self._consistency_status or (
+            "Not run. Fit first, then check whether the measured bursts could "
+            "plausibly have come from the fitted scheme &mdash; a good "
+            "&chi;<sup>2</sup> alone does not say so."
+        )
+
+    # -- light-path connection ----------------------------------------------
+
+    def apply_light_path(self) -> dict:
+        """Fill the correction factors from a simulated optical light path.
+
+        Reads a light-path graph (or the plugin's easy-mode config, converted),
+        simulates it, and maps the resulting excitation and emission matrices
+        onto the nuisance group's crosstalk terms. The dye and detector labels
+        are taken from the matrices themselves, so a two-dye/two-detector setup
+        needs no further input; anything else is reported rather than guessed at,
+        because picking the wrong pair silently rescales every corrected
+        quantity.
+
+        Returns
+        -------
+        dict
+            The light-path simulation result, or ``{}`` if it could not be run.
+        """
+        import json
+        import pathlib
+
+        source = str(self.lightpath_graph or "").strip()
+        if not source:
+            source = str(pathlib.Path.home() / ".chisurf" / "settings"
+                         / "lightpath_easy_last.json")
+        path = pathlib.Path(source)
+        if not path.is_file():
+            self._lightpath_status = (
+                f"<b>No light path found.</b> Set a graph file, or configure one "
+                f"in the light-path simulator (looked in {path})."
+            )
+            return {}
+
+        try:
+            payload = json.loads(path.read_text())
+            if "nodes" not in payload:      # an easy-mode config, not a graph
+                from chisurf.plugins.core.lightpath_simulator.gui.easy_mode import (
+                    build_easy_graph,
+                )
+                payload = build_easy_graph(payload)
+            from chisurf.plugins.core.lightpath_simulator.core.workflow import (
+                simulate_lightpath,
+            )
+            result = simulate_lightpath(payload)
+            matrices = result["crosstalk_matrices"]
+            # The simulator's matrix payload is {rows, columns, values, ...}:
+            # excitation is laser x dye, emission is dye x detector.
+            dyes = list(matrices["excitation"]["columns"])
+            detectors = list(matrices["emission"]["columns"])
+            lasers = list(matrices["excitation"]["rows"])
+        except Exception as error:                      # noqa: BLE001 - reported
+            self._lightpath_status = f"<b>Light-path simulation failed:</b> {error}"
+            return {}
+
+        if len(dyes) != 2 or len(detectors) != 2:
+            self._lightpath_status = (
+                f"<b>Ambiguous setup.</b> The light path has {len(dyes)} dyes and "
+                f"{len(detectors)} detectors; a two-colour PDA needs exactly two "
+                f"of each, so the donor/acceptor and green/red assignment cannot "
+                f"be inferred. Dyes: {', '.join(dyes)}. "
+                f"Detectors: {', '.join(detectors)}."
+            )
+            return {}
+
+        apply_lightpath_to_nuisance(
+            self.nuisance, result,
+            donor=dyes[0], acceptor=dyes[1],
+            green_detector=detectors[0], red_detector=detectors[1],
+            green_laser=lasers[0] if lasers else None,
+        )
+        self._lightpath_status = (
+            f"Applied {path.name}: donor {dyes[0]} &rarr; {detectors[0]}, "
+            f"acceptor {dyes[1]} &rarr; {detectors[1]}"
+            + (f", excited at {lasers[0]}" if lasers else "")
+            + f".<br>&gamma; = {float(self.nuisance.gamma):.3f}, "
+            f"&alpha; = {float(self.nuisance.alpha):.4f}, "
+            f"&delta; = {float(self.nuisance.delta):.4f}."
+        )
+        return result
+
+    def lightpath_html(self) -> str:
+        """Return the last light-path application's summary, for the info box.
+
+        A method, for the same reason as :meth:`consistency_html`.
+        """
+        return self._lightpath_status or (
+            "Not applied. Fills leakage, direct excitation and &gamma; from a "
+            "simulated optical setup instead of leaving them as guesses."
+        )
+
+
+def get_pda_consistency(fit) -> list:
+    """Return the consistency check's measured/expected histograms as curves.
+
+    Plot accessor for the view spec. Empty until
+    :meth:`PdaDiagnosticsMixin.run_consistency_check` has run, so the panel is
+    blank rather than misleading before the check exists.
+    """
+    result = getattr(fit.model, "_consistency_result", None)
+    if not result:
+        return []
+    measured = np.asarray(result["hist_measured"], dtype=float)
+    expected = np.asarray(result["hist_expected"], dtype=float)
+    x = np.arange(measured.size, dtype=float)
+    return [
+        {"x": x, "y": measured, "label": "measured"},
+        {"x": x, "y": expected, "label": "expected (fitted scheme)"},
+    ]

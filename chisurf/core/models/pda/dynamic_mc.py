@@ -42,6 +42,7 @@ from chisurf.core.fluorescence.kinetics import occupation_time_fractions
 from chisurf.core.math.functions.distributions import normal_distribution
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.pda.common import (
+    PdaDiagnosticsMixin,
     green_probability_from_efficiency,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
@@ -108,7 +109,7 @@ class PdaDynamicThreeStates(FittingParameterGroup):
         return int(round(float(self._n_windows.value)))
 
 
-class PdaDynamicThreeStateModel(ModelCurve):
+class PdaDynamicThreeStateModel(PdaDiagnosticsMixin, ModelCurve):
     """Dynamic three-state (dual-color) PDA model via Monte-Carlo mixing."""
 
     name = "PDA-dynamic-3-state (MC)"
