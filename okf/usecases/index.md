@@ -56,6 +56,10 @@ The workflows a first pass should cover — expand as the tester discovers more:
   TTTR file, build the polarization-resolved micro-time histogram, read its width,
   save the stacked VV/VH curve and push it into ChiSurf. The step before every
   TCSPC fit. *(last driven 2026-07-26; RF-090..RF-097)*
+- [FCS correlation from raw TTTR](/usecases/fcs-correlate-tttr.md) — the step
+  before the FCS fit: define correlation channels, drop TTTR files, multi-tau
+  correlate in chunks, inspect and merge the chunks, save the `.cor` and push it
+  into ChiSurf. *(last driven 2026-07-26; RF-107..RF-112)*
 - [FRET calculators](/usecases/fret-calculators.md) — open the Calculators hub,
   convert a measured efficiency into a donor–acceptor distance, bound the κ²
   orientation error, and generate a static FRET line to overlay on an smFRET

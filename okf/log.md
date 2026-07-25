@@ -2,6 +2,30 @@
 
 ## 2026-07-26
 
+* **GUI test: raw photons → correlation curve, the step before every FCS fit.**
+  Drove the unified **FCS** tool (`chisurf/plugins/fcs/fcs_toolbox`) headlessly
+  through its whole rail — channel definitions → files → correlate → merge →
+  save → *Add to ChiSurf* — against a scratch copy of the SPC-130 sample. New use
+  case [FCS correlation from raw TTTR](/usecases/fcs-correlate-tttr.md); with
+  [TTTR micro-time histogram](/usecases/tttr-microtime-histogram.md) this closes
+  the *correlator* half of the "Correlation / TTTR tools" coverage area. The
+  numerics work — four chunks correlate in about a second, the merger picks them
+  up automatically, the micro-time-resolved **Fine** path reaches 3.3 ps — but
+  step 1 is wired to a widget that no longer exists: `_channel_def_context` still
+  reads `setup_combo` / `_detector_setups` / `_channels_for_setup` off the
+  AutoForm-ported `FCSChannelWidget`, returns `('', {}, {})`, and leaves the
+  preset and detector combos permanently empty so the only way to correlate is to
+  type raw routing-channel numbers — or to leave them blank, in which case the
+  whole detector is silently correlated against itself (RF-107). Also: the last
+  multi-tau lag is exported as `G = 0, ey = 0` and re-read as a divide-by-zero
+  weight (RF-108); the *selected* row's label is white-on-white in every
+  `NavigationPanelTool`, so the current step has no readable name (RF-109);
+  **Next**/**Back** walk into steps the tool greyed out, where a live burst filter
+  does work that is then discarded (RF-110); **Save Merged** writes
+  `<data folder>/cr5.cor` with no dialog and no feedback (RF-111); and the Filter
+  Calc panel raises on a chiplot `_Region` that is swallowed as a "computation
+  error" (RF-112). Findings RF-107..RF-112.
+
 * **The multi-run ALV reader ran into a NumPy alias removed four versions ago
   ([RF-043](/reviews/findings.md#rf-043)).** `mysplit` — which cuts the single
   recorded intensity trace into one piece per run, and is therefore on the path

@@ -1369,3 +1369,59 @@ evidence contract, not in the math.
 - **Location:** `docs/guides/39_parameter_uncertainty.md:296-297` (`scan = eng.conditional_scan('tau1', points=61, span=3.0)` followed by `for t in scan['targets']`) against `chisurf/core/fitting/engine.py:805-807` (`if form is None or name not in form.names: return None`)
 - **Finding:** The engine's scope is `posterior_model(fit).parameter_names`, which for a `FitGroup` — the object the same guide builds at line 24, and what the GUI always holds — is prefixed with the member index. Verified: `eng.form().names` is `('1:c', '1:a', '1:b')`, and `eng.conditional_scan('a')` returns `None`, so the loop under it dies with `TypeError: 'NoneType' object is not subscriptable`. The name in the snippet is also `'tau1'`, which belongs to a lifetime model and not to the `c+a*x+b*x**2` fit the section is running. OKF already states the rule ([subsystems/fitting](/subsystems/fitting.md): "group names are prefixed (`3:tau`)"); the guide neither states it nor obeys it. Use a name taken from `eng.form().names` in the example and say in one clause that the sweep is keyed by the form's own (prefixed) names.
 - **Fix note:**
+
+### GUI walk 2026-07-26 (FCS correlator) — raw TTTR to a correlation curve
+
+Use case: [FCS correlation from raw TTTR](/usecases/fcs-correlate-tttr.md). The
+unified **FCS** tool (`chisurf/plugins/fcs/fcs_toolbox`) driven offscreen in the
+`arm64` env against a scratch copy of `test/data/tttr/BH/132/BH_SPC132.spc`
+(183 657 photons, 62.3 s, channels 0/1/8/9), with `QMessageBox` intercepted:
+channel definitions → files → correlate → merge → save → *Add to ChiSurf*.
+
+The happy path holds — `Correlate` on an empty tool refuses correctly, four
+chunks correlate in about a second, the merger picks them up automatically and
+`Add to ChiSurf` produces a 180-point FCS dataset. The **Fine** (micro-time)
+correlation is also fine: 181 points from 3.3 ps to 0.031 ms, all finite. The
+findings below are the things that break or mislead on the way. RF-107..RF-112.
+
+### RF-107
+- **Status:** OPEN
+- **Severity:** S1 (step 1 of the correlator workflow feeds nothing to step 4; naming detectors becomes unreachable and a blank channel field silently correlates every routing channel against itself)
+- **Location:** `chisurf/plugins/fcs/fcs_correlator/tool.py:535-543` (`_channel_def_context`) and `:246-250` (`_bind_channel_def_panel`), against `chisurf/plugins/fcs/fcs_channel_preset/gui/tool.py:66-86` (`FCSChannelWidget`, the AutoForm port) and `.../gui/view_model.py:42-110`
+- **Finding:** `_channel_def_context` still reads `widget.setup_combo.currentText()`, `widget._detector_setups` and `widget._channels_for_setup`. The AutoForm port moved all three onto `widget.model` (`current_setup`, `_detector_setups`, `_channel_names`), so the lookups fail inside their own `try`/`getattr` defaults and the function returns `('', {}, {})` — for a panel that is at that moment reporting setup `BS` with channels `['green', 'red', 'yellow']`. Verified offscreen: after visiting step 1, `tool._channel_def_context(chdef)` → `('', {}, {})` and `workflow_context.detector_settings` → `{'setup_name': '', 'detectors': {}, 'tttr_reading': {}}`. Downstream, `load_fcs_presets('', {})` finds no block **and** skips the `_default_pairs_from_detectors` fallback (guarded on `detectors`), so `_fcs_presets == []` → the *FCS Preset* combo is permanently empty; `model._channel_defs` stays `{}` → `_ChannelComboWidget.refresh` fills the *A:* / *B:* combos with `[]`. The user's only remaining input is raw routing numbers in `Ch A`/`Ch B`, and if those are left blank `correlate_data` (`correlator_panel.py:249-254`) falls back to *all* used routing channels for both sides with nothing said in the UI — verified: a correlation ran over `[0, 1, 8, 9] × [0, 1, 8, 9]`. `_bind_channel_def_panel` fails the same way (`widget.setup_combo.currentIndexChanged` inside a bare `except: pass`), so `_on_channel_setup_changed` never fires and switching setup does not invalidate the stale filter selection it exists to drop. Read the three values off `widget.model`; the docstring at `:530-533` already describes the intended contract.
+- **Fix note:**
+
+### RF-108
+- **Status:** OPEN
+- **Severity:** S2 (the last point of every exported correlation curve is a zero with a zero error, which the reader turns into a divide-by-zero on the way back in)
+- **Location:** `chisurf/plugins/fcs/fcs_correlator/correlator_panel.py:386-394` (`_correlate_one`: the `y[x > dur] = 1.0` guard covers lags past the chunk duration but not the empty terminal multi-tau bin) with `chisurf/core/fio/fluorescence/fcs/kristine.py:110-116` (`w = 1./data[:, 3][i]`, no zero guard)
+- **Finding:** Every chunk comes back with `G = 0` at the first lag (`x = 0.0`, undrawable on the log axis) and `G = 0` at the last lag. The `x = 0` point is filtered out downstream (`kristine.py:100`, `x > 0`), but the terminal zero is not: verified on 4 chunks of `BH_SPC132.spc`, per-chunk `y` has zeros at indices `[0, 180]`, the merged curve keeps `y[-1] = 0.0` **and** `ey[-1] = 0.0`, and that row is written into the `.cor`. Pressing **Add to ChiSurf** immediately re-reads it and raises `RuntimeWarning: divide by zero encountered in divide` at `kristine.py:112`; the loaded dataset ends `y[-3:] = [1.0914, 1.0825, 0.0]`. Both plots show it as a vertical dive to zero at the right edge. Two independent fixes: flatten/drop the empty terminal bin in `_correlate_one` the way the beyond-duration lags already are, and guard the `1/ey` in the Kristine reader so a zero error becomes a zero weight (masked point) rather than `inf`.
+- **Fix note:**
+
+### RF-109
+- **Status:** OPEN
+- **Severity:** S2 (in every navigation-panel window the user cannot read the name of the step or tool they are currently on)
+- **Location:** `chisurf/gui/widgets/navigation.py:438-454` (the `nav_list` stylesheet: `QListWidget::item` is styled but there is no `::item:selected` rule)
+- **Finding:** Styling `::item` without a `:selected` rule makes Qt paint the selected row's label in `HighlightedText` while the stylesheet suppresses the `Highlight` background — on this palette that is `#ffffff` text on a white row. Verified by pixel histogram of each row's `visualItemRect`: in the FCS tool the selected row (`'📂 2. Files & Steps'`) contains **no** `#000000` pixels, against 162, 97 and 162 for its unselected neighbours; the row renders as its emoji and nothing else. Reproduced identically in a second, unrelated tool — the TTTR Toolbox's selected `'🏷️ TTTR Header Editor'` row is likewise blank next to its icon (`nav_tttr.png`) — so this is the shared shell, and it affects the FCS, Burst Analysis, Decay Analysis, Imaging Tools and Converter windows alike. Disabled rows are unaffected (they use the disabled text colour), which is why the greyed-out steps stay readable while the active one does not. Add an explicit `QListWidget::item:selected { background: …; color: …; }` pair.
+- **Fix note:**
+
+### RF-110
+- **Status:** OPEN
+- **Severity:** S2 (the two navigation buttons walk the user into steps the same window has explicitly greyed out, and that step then does real work that is thrown away)
+- **Location:** `chisurf/gui/widgets/navigation.py:676-692` (`goto_next_step` / `goto_prev_step` skip rows flagged `separator` but never test `ItemIsEnabled`) against `chisurf/plugins/fcs/fcs_correlator/tool.py:230-259` (`_set_nav_enabled` / `_update_step_nav_state`, which disable optional steps)
+- **Finding:** `FcsCorrelatorTool` disables the **3. Photon / Burst Filter** and **5. FCS Merger** rows when their *Steps:* checkbox is off — the rail greys them out and they cannot be clicked. **Next ▶** and **◀ Back** ignore that: verified with the filter unticked, `Next` from row 2 lands on row 3 with `enabled=False`, and `Back` from row 4 returns to it. The panel is not merely displayed, it is fully live — it read the file, ran with `Mode=burst, enable=✓` and reported `96 774 / 183 657 photons kept (52.7 %)` — while `workflow_context.use_photon_filter` is `False`, so `_apply_context_to_correlator` correlates the raw stream and every one of those decisions is silently discarded. Skip disabled (and separator) rows when stepping, as the click path already does.
+- **Fix note:**
+
+### RF-111
+- **Status:** OPEN
+- **Severity:** S2 (a Save button with no dialog, no feedback and no undo, writing an implementation-named file into the user's data folder)
+- **Location:** `chisurf/plugins/fcs/fcs_correlator/merger_panel.py:128-142` (`target_filepath` / `save_mean`) with `chisurf/plugins/fcs/fcs_correlator/correlator_panel.py:96` (`_output_subdir = pathlib.Path("cr5")`)
+- **Finding:** **Save Merged** calls `save_mean(None)`, which derives the path from `folder_path` — set by the tool to `<analysis folder>/cr5`, the correlator's internal output-subdirectory constant — and writes `<data folder>/cr5.cor`. Verified: with the TTTR file in a scratch folder, pressing the button produced `…/data2/cr5.cor` with **no** file dialog, **no** confirmation, **no** status text and nothing in the log; `DIALOGS` was empty and the only way to learn the path was to read it off the model. Two consequences: the output is named after an implementation detail rather than the measurement (every dataset in every folder becomes `cr5.cor`), and a second run overwrites the first without a word. The sibling **Add to ChiSurf** does warn ("No Correlation File") on the failure path, so the pattern exists. Offer the path (a save dialog defaulting to the TTTR stem), or at minimum report the written path in the status line.
+- **Fix note:**
+
+### RF-112
+- **Status:** OPEN
+- **Severity:** S2 (opening the Filter Calc panel raises during its own plot reset; the exception is swallowed and reported as a computation error, leaving the panel's plots empty)
+- **Location:** `chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/main_window.py:1430` (`_clear_recon_plot`, `self.plot_recon.addItem(region)`) reached from `:3146` (`_update_plots`) inside the `try` at `:2670` (`_compute_filters_multi_detector`)
+- **Finding:** `region` is a chiplot `_Region`; `plot_recon` falls through to the pyqtgraph backend (the call already emits `ChiplotPassthroughWarning: chiplot has no native 'addItem' (Plot scope)`), and `QGraphicsScene.addItem` rejects it: `TypeError: addItem(self, item: Optional[QGraphicsItem]): argument 2 has unexpected type '_Region'`. Verified by walking the FCS tool's navigation rail — selecting **Filter Calc** produces the traceback, logged at ERROR as `Multi-detector computation error: addItem(...)`, so the user sees empty plots and no error. A chiplot migration gap of exactly the kind the passthrough warning is meant to flag: either give chiplot a native `addItem`/region API on the `Plot` scope, or add the region through the chiplot handle rather than the raw `PlotItem`. (Noted separately, not filed: the panel then sat at 0 % CPU for over three minutes without completing and the walk had to be killed there — not characterised, so not claimed as a defect.)
+- **Fix note:**
