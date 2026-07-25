@@ -16,7 +16,10 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.view_state import framing_radius
+from chisurf.plugins.chimol.chimol.renderer.view_state import (
+    distance_for_radius,
+    framing_radius,
+)
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -165,3 +168,67 @@ def _scene_scale(view) -> float:
         ]
     )
     return framing_radius(view._all_atom_coords) / framing_radius(xyz)
+
+
+# --------------------------------------------------------------------------- #
+# Read from PyMOL's C++, not inferred
+# --------------------------------------------------------------------------- #
+# layer1/Scene.cpp, SceneWindowSphere:
+#     float dist = 2.f * radius / GetFovWidth(G);
+#     if (I->Height > I->Width) dist *= (float)I->Height / (float)I->Width;
+# with GetFovWidth == 2 * tan(fov * PI / 360), i.e. 2 * tan(fov/2).
+# layer3/Executive.cpp, ExecutiveWindowZoom, chooses the radius:
+#     inclusive ? ExecutiveGetMaxDistance(...)          // bounding sphere
+#               : max(df[0], df[1], df[2]) / 2          // half-extent
+#     if (radius < MAX_VDW) radius = MAX_VDW;           // MAX_VDW == 2.5
+
+
+def test_a_portrait_viewport_pulls_the_camera_back():
+    """PyMOL widens the fit when height exceeds width; the fov is vertical."""
+    upright = distance_for_radius(10.0, 20.0, aspect=480 / 640)
+    landscape = distance_for_radius(10.0, 20.0, aspect=640 / 480)
+    assert upright == pytest.approx(landscape * (640 / 480))
+
+
+def test_a_landscape_viewport_is_not_corrected():
+    """Only Height > Width triggers it, per the source."""
+    plain = distance_for_radius(10.0, 20.0)
+    for aspect in (1.0, 4 / 3, 16 / 9):
+        assert distance_for_radius(10.0, 20.0, aspect=aspect) == pytest.approx(plain)
+
+
+@pytest.mark.parametrize(
+    "width, height, pymol_distance",
+    [
+        # Measured from PyMOL on 148L at field_of_view 20, buffer 0.
+        (640, 480, 138.755),
+        (480, 640, 185.006),
+        (800, 800, 138.755),
+        (400, 800, 277.509),
+    ],
+)
+def test_the_aspect_correction_matches_pymol(width, height, pymol_distance):
+    """Same molecule, four viewports, against PyMOL's own numbers."""
+    # PyMOL's radius on 148L, from its extent: max half-extent plus the ~0.7 A
+    # it pads by (see framing_radius's note).
+    radius = 24.4662
+    assert distance_for_radius(radius, 20.0, aspect=width / height) == pytest.approx(
+        pymol_distance, rel=1e-4
+    )
+
+
+def test_a_tiny_fragment_does_not_swallow_the_camera():
+    """PyMOL floors the radius at MAX_VDW so one atom is not framed at nothing."""
+    from chisurf.plugins.chimol.chimol.renderer.view_state import MIN_FRAMING_RADIUS
+
+    single = np.zeros((1, 3))
+    assert framing_radius(single) == pytest.approx(MIN_FRAMING_RADIUS)
+    # And the floor scales with the scene, since chimol does not work in Angstrom.
+    assert framing_radius(single, scale=10.0) == pytest.approx(
+        MIN_FRAMING_RADIUS * 10.0
+    )
+
+
+def test_the_floor_does_not_disturb_a_real_molecule():
+    xyz = np.array([[0.0, 0.0, 0.0], [0.0, 40.0, 0.0]])
+    assert framing_radius(xyz) == pytest.approx(20.0)

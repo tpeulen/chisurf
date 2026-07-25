@@ -2,6 +2,33 @@
 
 ## 2026-07-25
 
+* **chimol: the framing rule confirmed against PyMOL's C++, and two gaps it
+  exposed.** With the source checkout available (`junk/pymol-open-source`) the
+  camera rules could be *read* rather than inferred, and the ones derived
+  empirically hold exactly. `layer1/Scene.cpp:SceneWindowSphere`:
+  `dist = 2*radius / GetFovWidth(G)` with
+  `GetFovWidth = 2*tan(fov*PI/360)`, i.e. **`d = radius / tan(fov/2)`**;
+  `layer3/Executive.cpp:ExecutiveWindowZoom` picks the radius as
+  `max(df[0], df[1], df[2]) / 2` (the bounding-box half-extent) or, with
+  `inclusive`, `ExecutiveGetMaxDistance` (the bounding sphere). All three match
+  what was implemented from measurement.
+  **Two things were missing.** `SceneWindowSphere` also has
+  `if (Height > Width) dist *= Height/Width` — a **portrait-viewport
+  correction**, since the field of view is vertical and a tall window makes the
+  horizontal extent binding. Verified against PyMOL at 640x480, 480x640, 800x800
+  and 400x800: the factor is exact. And `ExecutiveWindowZoom` floors the radius
+  at `MAX_VDW` (2.5 A, `layer0/Base.h`), so a single atom cannot put the camera
+  inside itself; applied here in scene units, since chimol does not work in
+  Angstrom.
+  **Still unattributed**: PyMOL's zoom radius on 148L runs +0.700 A over the
+  extent it reports through `get_extent`. The offset is *additive* (identical at
+  buffer 0, 1 and 5), independent of viewport, and exactly **zero** for
+  pseudoatoms with `vdw=0`, so it is van-der-Waals-related — but
+  `OMOP_MNMX` demonstrably ranges over bare coordinates, `cObjectMolecule` is
+  skipped in the object-extent branch, and `CmdZoom` adds no buffer of its own.
+  Recorded rather than guessed at.
+  Suite: 320 passed, 1 skipped (8 new).
+
 * **chimol: PyMOL's main menu bar.** Completes the GUI pass. PyMOL's bar is
   File / Edit / Build / Movie / Display / Setting / Scene / Mouse / Wizard /
   Plugin / Help (`pymol/_gui.py:get_menudata`), and a PyMOL user looks for things

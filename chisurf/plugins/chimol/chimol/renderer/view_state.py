@@ -55,6 +55,7 @@ __all__ = [
     "rotation_from_angles",
     "distance_for_radius",
     "framing_radius",
+    "MIN_FRAMING_RADIUS",
 ]
 
 
@@ -90,14 +91,24 @@ class ViewState:
     orthoscopic: bool = False
 
 
-def distance_for_radius(radius: float, fov: float = DEFAULT_FOV) -> float:
+def distance_for_radius(
+    radius: float,
+    fov: float = DEFAULT_FOV,
+    *,
+    aspect: float | None = None,
+) -> float:
     """Camera distance at which a sphere of ``radius`` just fills the view.
 
-    This is PyMOL's framing rule, ``d = radius / tan(fov / 2)``, checked against
-    ``cmd.zoom`` for several radii and fields of view. Framing therefore follows
-    the field of view: widening the lens pulls the camera in rather than
-    shrinking the molecule, which is what makes a ``zoom`` here and a ``zoom``
-    there put the molecule at the same size on screen.
+    This is PyMOL's framing rule, read from ``SceneWindowSphere`` in its source::
+
+        float dist = 2.f * radius / GetFovWidth(G);          // 2*tan(fov/2)
+        if (I->Height > I->Width) dist *= Height / Width;
+
+    which is ``d = radius / tan(fov / 2)``, widened when the viewport is taller
+    than it is wide. Framing therefore follows the field of view: widening the
+    lens pulls the camera in rather than shrinking the molecule, which is what
+    makes a ``zoom`` here and a ``zoom`` there put the molecule at the same size
+    on screen.
 
     Parameters
     ----------
@@ -105,6 +116,10 @@ def distance_for_radius(radius: float, fov: float = DEFAULT_FOV) -> float:
         Bounding radius of what must be visible, in scene units.
     fov : float, optional
         Vertical field of view in degrees.
+    aspect : float, optional
+        Viewport width divided by height. Only a **portrait** viewport changes
+        the result: PyMOL corrects when height exceeds width, because the field
+        of view is vertical and the horizontal extent is then the binding one.
 
     Returns
     -------
@@ -114,10 +129,20 @@ def distance_for_radius(radius: float, fov: float = DEFAULT_FOV) -> float:
     half_tan = math.tan(math.radians(abs(float(fov))) * 0.5)
     if half_tan <= 1e-6:
         return max(float(radius), 1.0)
-    return max(float(radius) / half_tan, 1.0)
+    distance = float(radius) / half_tan
+    if aspect is not None and aspect > 0.0 and aspect < 1.0:
+        distance /= aspect
+    return max(distance, 1.0)
 
 
-def framing_radius(points: np.ndarray, *, complete: bool = False) -> float:
+#: PyMOL floors the zoom radius here (``MAX_VDW`` in ``layer0/Base.h``), so a
+#: single atom or a tiny fragment does not put the camera inside it.
+MIN_FRAMING_RADIUS = 2.5
+
+
+def framing_radius(
+    points: np.ndarray, *, complete: bool = False, scale: float = 1.0
+) -> float:
     """Radius that ``zoom`` should fit, following PyMOL's two modes.
 
     PyMOL's default (``complete=0``) frames on the **largest half-extent of the
@@ -138,6 +163,9 @@ def framing_radius(points: np.ndarray, *, complete: bool = False) -> float:
         ``(N, 3)`` coordinates to fit.
     complete : bool, optional
         Use the bounding sphere so no point can be clipped.
+    scale : float, optional
+        Scene units per Angstrom, so that PyMOL's ``MAX_VDW`` floor is applied in
+        the same units as ``points``.
 
     Returns
     -------
@@ -159,8 +187,10 @@ def framing_radius(points: np.ndarray, *, complete: bool = False) -> float:
     hi = pts.max(axis=0)
     if complete:
         centre = (lo + hi) * 0.5
-        return float(np.max(np.linalg.norm(pts - centre, axis=1)))
-    return float(np.max(hi - lo) * 0.5)
+        radius = float(np.max(np.linalg.norm(pts - centre, axis=1)))
+    else:
+        radius = float(np.max(hi - lo) * 0.5)
+    return max(radius, MIN_FRAMING_RADIUS * float(scale))
 
 
 def rotation_from_angles(elevation: float, azimuth: float) -> np.ndarray:

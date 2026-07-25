@@ -2008,7 +2008,10 @@ class MolView(QtWidgets.QWidget):
             if pts is None:
                 continue
             try:
-                radius = framing_radius(pts, complete=complete)
+                radius = framing_radius(
+                    pts, complete=complete,
+                    scale=float(getattr(self, '_scale_factor', 1.0) or 1.0),
+                )
             except Exception:
                 continue
             if radius > 0.0:
@@ -2138,7 +2141,10 @@ class MolView(QtWidgets.QWidget):
 
         mn, mx = coords.min(axis=0), coords.max(axis=0)
         center = (mn + mx) * 0.5
-        radius = framing_radius(coords, complete=complete)
+        radius = framing_radius(
+            coords, complete=complete,
+            scale=float(getattr(self, '_scale_factor', 1.0) or 1.0),
+        )
 
         if self._renderer is not None:
             self._renderer.look_at(center)

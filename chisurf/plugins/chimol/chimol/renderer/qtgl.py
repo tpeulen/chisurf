@@ -400,6 +400,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._far_clip = far_val
         self.update()
 
+    def _aspect(self) -> float:
+        """Viewport width over height, for PyMOL's portrait framing correction."""
+        height = max(self.height(), 1)
+        return max(self.width(), 1) / float(height)
+
     def set_field_of_view(self, fov: float) -> None:
         """Set the vertical field of view in degrees, re-framing the scene.
 
@@ -412,12 +417,22 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             return
         self._fov = new_fov
         self._opts["fov"] = new_fov
-        self._distance = max(distance_for_radius(self._target_radius, new_fov), 5.0)
+        self._distance = max(
+            distance_for_radius(
+                self._target_radius, new_fov, aspect=self._aspect()
+            ),
+            5.0,
+        )
         self.update()
 
     def fit_to_radius(self, radius: float) -> None:
         self._target_radius = max(float(radius), 1.0)
-        self._distance = max(distance_for_radius(self._target_radius, self._fov), 5.0)
+        self._distance = max(
+            distance_for_radius(
+                self._target_radius, self._fov, aspect=self._aspect()
+            ),
+            5.0,
+        )
 
         target_near = max(self._target_radius * 0.02, self._min_near_clip)
         self._near_clip = self._clamp_near_clip(target_near)
