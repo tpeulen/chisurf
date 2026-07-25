@@ -46,6 +46,11 @@ def compute_colocalization(
     profiles: bool = False,
     profile_bins: int = 50,
     roi=None,
+    object_analysis: bool = False,
+    object_min_size: int = 4,
+    object_smoothing: float = 0.0,
+    object_split: bool = False,
+    object_distance: float = 3.0,
 ) -> dict:
     """Compute colocalization coefficients for a channel pair of one image file.
 
@@ -90,6 +95,11 @@ def compute_colocalization(
         Number of bins in those profiles.
     roi : array_like of bool, optional
         Spatial region the analysis is restricted to.
+    object_analysis : bool
+        Also run the object-based analysis (segment both channels into particles
+        and score their coincidence).
+    object_min_size, object_smoothing, object_split, object_distance
+        Segmentation and coincidence parameters of that analysis.
 
     Returns
     -------
@@ -128,6 +138,11 @@ def compute_colocalization(
         profiles=profiles,
         profile_bins=profile_bins,
         roi=roi,
+        object_analysis=object_analysis,
+        object_min_size=object_min_size,
+        object_smoothing=object_smoothing,
+        object_split=object_split,
+        object_distance=object_distance,
     )
     if result.metrics.get("n_pixels", 0) == 0:
         result.metrics["warning"] = (
@@ -172,6 +187,16 @@ METRIC_LABELS: tuple[tuple[str, str], ...] = (
     ("ccf2d_peak_dy", "2-D CCF peak Δy (px)"),
     ("ccf2d_peak", "2-D CCF peak PCC"),
     ("roi_area_fraction", "ROI area fraction"),
+    ("n_objects_a", "Objects in A"),
+    ("n_objects_b", "Objects in B"),
+    ("object_fraction_a_near_b", "Objects: fraction A with B partner"),
+    ("object_fraction_b_near_a", "Objects: fraction B with A partner"),
+    ("object_fraction_a_in_b", "Objects: fraction A centres inside B"),
+    ("object_fraction_b_in_a", "Objects: fraction B centres inside A"),
+    ("object_median_distance_a", "Objects: median distance A→B (px)"),
+    ("object_median_distance_b", "Objects: median distance B→A (px)"),
+    ("object_mean_overlap_a", "Objects: mean area overlap A"),
+    ("object_mean_overlap_b", "Objects: mean area overlap B"),
 )
 
 

@@ -61,7 +61,14 @@ therefore not comparable between images. ChiSurf implements the full set.
 
 # Scope
 
-## Coefficients (`core/fluorescence/imaging/colocalization.py`)
+## Coefficients (`core/fluorescence/imaging/colocalization/`)
+
+The module became a package once the object regime arrived, because the two
+regimes share nothing but the question: `pixelwise.py` holds the intensity
+coefficients, `objects.py` the segmentation and the object measures, and the
+package re-exports both so callers import one name.
+
+### Pixel-wise (`pixelwise.py`)
 
 Qt-free NumPy implementations, reimplemented from published formulas (documented
 prior art, no code copied):
@@ -89,6 +96,19 @@ prior art, no code copied):
   exposes a registration/chromatic offset rather than true colocalization.
 - **Joint histogram** — the 2-D intensity scatter, plus a rectangular gate in
   that plane yielding its own gated coefficients and pixel mask.
+
+### Object-based (`objects.py`)
+
+For punctate signal the pixel-wise coefficients answer the wrong question: sparse
+spots sit mostly on empty background, so the correlation is dominated by the
+co-occurrence of *nothing*. `segment_objects()` labels each channel's particles
+(threshold, minimum size, optional Gaussian smoothing, optional distance-transform
+watershed for touching objects) and `object_colocalization()` scores them:
+nearest-neighbour distance distributions both ways, the fraction with a partner
+within a **tolerance** (the honest parameter — nothing is localised better than
+the PSF), the fraction of centres falling *inside* an object of the other channel,
+and per-object area overlap. The segmentation honours the same thresholds and ROI
+as the coefficients, so both regimes agree on what "present" means.
 
 ## Image-source seam (`core/fluorescence/imaging/image_source.py`)
 
@@ -249,18 +269,20 @@ Both references were read line by line and every capability accounted for.
 | Camera TIFF **and** photon-stream input | ✅ (image stacks) | ✅ | ✅ (one loader) |
 | Named detector windows as channels | ✖ | ✖ | ✅ |
 | Headless CLI / scripting API | ✖ | ✖ | ✅ |
-| Object-based colocalization | ✖ | ✖ (commented out) | ✖ (non-goal) |
+| Object-based colocalization | ✖ | ✖ (commented out) | ✅ (segmentation + 4 object measures) |
 
-The three capabilities the multiparameter suite had and ChiSurf lacked — the
-hand-drawn ROI, the intensity-resolved profiles and the 2-D plane — were ported
-in the same PRD; the only remaining ✖ is object-based colocalization, which
-neither reference implements either and which needs a segmentation layer.
+Every row is now covered. The three capabilities the multiparameter suite had and
+ChiSurf lacked — the hand-drawn ROI, the intensity-resolved profiles and the 2-D
+plane — were ported, and **object-based colocalization**, which *both* references
+stub out as "not implemented yet", was implemented outright: segmentation
+(threshold, minimum size, optional smoothing and watershed splitting) plus the
+four object measures of Bolte & Cordelières 2006 — nearest-neighbour distance
+distributions, the fraction with a partner inside a resolution-sized tolerance,
+the fraction of centres inside an object of the other channel, and per-object area
+overlap, each reported in both directions.
 
 # Non-goals
 
-- **Object-based colocalization** (segment objects, then measure centroid
-  distances / overlap). A different analysis family needing a segmentation layer
-  this PRD does not introduce.
 - **Registration / chromatic-shift correction.** The van Steensel profile
   *diagnoses* a shift; correcting it belongs to an image-registration step.
 - **3-D / z-stack colocalization.** The frame axis is currently summed or
@@ -268,7 +290,8 @@ neither reference implements either and which needs a segmentation layer.
 
 # Deferred
 
-- Object-based (segmentation) colocalization and per-object statistics.
+- A per-object results table (the objects are segmented and scored; only the
+  aggregate statistics are surfaced, not one row per particle).
 - Costes randomization over a 2-D block grid including diagonal correlation
   lengths (currently square blocks) plus a scrambled-image preview.
 - Registering results in MMFDB ([PRD-03](prd-03.md) / [PRD-07](prd-07.md)) once

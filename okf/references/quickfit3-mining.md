@@ -171,8 +171,14 @@ Every surveyed QuickFit3 plugin directory, mapped to topic, chisurf equivalent (
       plane whose central row reproduces the 1-D profile).
       *Beyond both*: Manders M1/M2, Costes automatic thresholds + seeded randomization
       significance, Li's ICQ and Spearman, per Dunn et al. 2011.
-    - **Not ported, by choice**: object-based colocalization (needs a segmentation layer;
-      unimplemented in both references too) — recorded as a non-goal in the PRD.
+      *Object regime*: both references stub object-based colocalization out
+      (`case 6 %object based (particle localization)` is commented out) — ChiSurf
+      implements it: segmentation (threshold / min-size / smoothing / watershed split)
+      plus the four Bolte & Cordelières 2006 measures (nearest-neighbour distance
+      distributions, coincident fraction within a resolution-sized tolerance,
+      centre-inside-object fraction, per-object area overlap), both directions.
+    - **Nothing outstanding.** Every row of the [PRD-67](/prds/prd-67.md) parity table
+      is covered.
     - **Why**: Standard for multi-color validation; high utility for multi-channel workflows
 
 12. **Robust statistics library** (`lib/qfmathtools.h`)

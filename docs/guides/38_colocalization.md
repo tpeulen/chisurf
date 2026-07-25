@@ -103,7 +103,26 @@ Open the **Region of interest** panel, set a **Brush (px)** size, and paint on t
 profiles and the coefficients — is then computed inside that region only, and the
 table reports its area fraction. **🧽 Clear ROI** goes back to the whole image.
 
-### 9. Gate a population in the scatter
+### 9. Punctate signal? Count objects instead
+
+If the channels show discrete spots rather than continuous distributions, tick
+**Object analysis** in the *Objects (punctate signal)* panel. Both channels are
+segmented into particles and scored by coincidence rather than by correlation:
+how many objects each channel has, what fraction has a partner within the
+**Tolerance (px)** (set it to the optical resolution), what fraction of centres
+lands inside an object of the other channel, and the median nearest-neighbour
+distance — all reported in both directions.
+
+**Min size** drops noise-sized detections, **Smoothing** helps when shot noise
+fragments a spot, and **Split touching objects** separates puncta that merge
+(over-segments irregular shapes, so leave it off for those).
+
+The **Objects** tab maps the result — 1 = channel A only, 2 = channel B only,
+3 = both — and **Object distances** shows the nearest-neighbour distributions. A
+spike at short distance next to a flat tail is exactly what a mix of coincident
+and independent puncta looks like.
+
+### 10. Gate a population in the scatter
 
 The **Intensity scatter** tab is the joint histogram (A horizontal, B vertical).
 Drag the blue rectangle over a region — a dim background cloud, a bright punctate
@@ -129,7 +148,7 @@ Everything the GUI does is available without it:
 img-coloc IMAGE.ptu -a green -b red \
     --auto-background --costes-threshold \
     --costes-test --randomizations 200 --block 4 --seed 0 \
-    --ccf-shift 12 --json
+    --ccf-shift 12 --objects --object-distance 3 --json
 ```
 
 `--json` prints the full metric dictionary (`-o results.json` writes it). For a

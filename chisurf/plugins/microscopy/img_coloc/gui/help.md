@@ -100,6 +100,22 @@ puncta) behaves differently from the whole image.
   profile for registration: a purely *vertical* offset leaves the horizontal
   profile peaking at zero.
 
+## Punctate signal: count objects, don't correlate pixels
+
+For discrete spots (vesicles, foci) the coefficients above answer the wrong
+question — sparse puncta sit mostly on empty background, so the correlation is
+dominated by the co-occurrence of nothing. Tick **Object analysis** instead:
+
+* both channels are segmented into particles;
+* each object's distance to the nearest object of the other channel is measured;
+* the tool reports how many have a partner within the **Tolerance (px)** — set it
+  to the optical resolution — how many centres fall inside an object of the other
+  channel, and the median distance, all in both directions.
+
+The **Objects** tab shows 1 = A only, 2 = B only, 3 = both; **Object distances**
+shows the nearest-neighbour distribution (a spike at short distance = real
+coincidence, a broad one = chance).
+
 ## Analysing only part of the image
 
 Open **Region of interest**, pick a brush size and paint on the *Channel A* map.

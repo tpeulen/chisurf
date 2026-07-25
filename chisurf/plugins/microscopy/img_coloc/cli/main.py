@@ -39,6 +39,13 @@ def _channel(value: str):
 @click.option("--ccf-2d", is_flag=True, help="Also compute the 2-D cross-correlation plane.")
 @click.option("--profiles", is_flag=True, help="Also compute PCC-vs-intensity profiles.")
 @click.option("--profile-bins", type=int, default=30, help="Bins in those profiles.")
+@click.option("--objects", "object_analysis", is_flag=True, help="Run the object-based analysis.")
+@click.option("--object-min-size", type=int, default=4, help="Minimum object size (px).")
+@click.option(
+    "--object-smoothing", type=float, default=0.0, help="Gaussian sigma before segmenting."
+)
+@click.option("--object-split", is_flag=True, help="Split touching objects (watershed).")
+@click.option("--object-distance", type=float, default=3.0, help="Coincidence tolerance (px).")
 @click.option("--json", "as_json", is_flag=True, help="Print the metrics as JSON.")
 @click.option(
     "--output", "-o", type=click.Path(), default=None, help="Write the metrics to a JSON file."
@@ -63,6 +70,11 @@ def cli(
     ccf_2d,
     profiles,
     profile_bins,
+    object_analysis,
+    object_min_size,
+    object_smoothing,
+    object_split,
+    object_distance,
     as_json,
     output,
 ):
@@ -91,6 +103,11 @@ def cli(
         ccf_2d=ccf_2d,
         profiles=profiles,
         profile_bins=profile_bins,
+        object_analysis=object_analysis,
+        object_min_size=object_min_size,
+        object_smoothing=object_smoothing,
+        object_split=object_split,
+        object_distance=object_distance,
     )
     metrics = {k: (list(v) if isinstance(v, tuple) else v) for k, v in result["metrics"].items()}
     if as_json:

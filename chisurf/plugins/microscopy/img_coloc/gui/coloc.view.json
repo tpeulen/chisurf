@@ -90,6 +90,24 @@
             },
             {
               "type": "panel",
+              "title": "Objects (punctate signal)",
+              "collapsed": true,
+              "n_col": 1,
+              "sections": [
+                {"type": "toggle", "attr": "object_analysis", "label": "Object analysis",
+                 "description": "Segment both channels into discrete particles and count how many coincide. This is the right question for puncta (vesicles, foci): on sparse spots the intensity coefficients are dominated by the empty background between them and report almost nothing."},
+                {"type": "value", "attr": "object_distance", "label": "Tolerance (px)", "kind": "float", "minimum": 0.0, "maximum": 100.0, "step": 0.5, "decimals": 2,
+                 "description": "Centre-to-centre distance within which two objects count as coincident. Set it to the optical resolution — nothing can be localised better than the PSF, so demanding an identical centroid would only measure noise."},
+                {"type": "value", "attr": "object_min_size", "label": "Min size (px)", "kind": "int", "minimum": 1, "maximum": 10000,
+                 "description": "Objects smaller than this are discarded as noise."},
+                {"type": "value", "attr": "object_smoothing", "label": "Smoothing (σ px)", "kind": "float", "minimum": 0.0, "maximum": 10.0, "step": 0.5, "decimals": 2,
+                 "description": "Gaussian smoothing applied before segmenting; use it when shot noise fragments single objects into several."},
+                {"type": "toggle", "attr": "object_split", "label": "Split touching objects",
+                 "description": "Separate objects that touch, with a distance-transform watershed. Helps dense puncta; over-segments irregular shapes."}
+              ]
+            },
+            {
+              "type": "panel",
               "title": "Significance / profile",
               "collapsed": true,
               "n_col": 1,
@@ -154,7 +172,12 @@
              "options": {"colormap": true, "colormap_attr": "colormap", "invert_y": false},
              "description": "Full 2-D cross-correlation plane: the peak sits at the (Δx, Δy) that realigns the channels, so a vertical registration offset is visible too."},
             {"type": "plot", "source": "profile_series", "title": "PCC vs intensity",
-             "x_label": "intensity / ratio", "y_label": "PCC"}
+             "x_label": "intensity / ratio", "y_label": "PCC"},
+            {"type": "custom", "key": "image", "target": "object_map_image", "title": "Objects",
+             "options": {"colormap": true, "colormap_attr": "colormap"},
+             "description": "Segmented objects: 1 = channel A only, 2 = channel B only, 3 = both — coincidence read directly off the map."},
+            {"type": "plot", "source": "object_distance_series", "title": "Object distances",
+             "x_label": "nearest-neighbour distance / px", "y_label": "objects"}
           ]
         }
       ]

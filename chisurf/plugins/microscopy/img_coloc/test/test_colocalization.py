@@ -425,3 +425,130 @@ def test_view_model_exposes_the_new_views(two_channel_tiff):
     assert vm._metrics["n_pixels_total"] == 32 * 64
     vm.clear_roi()
     assert vm._metrics["n_pixels_total"] == 64 * 64
+
+
+# --- object-based colocalization ---------------------------------------------
+
+
+def _puncta_image(centres, shape=(128, 128), sigma=2.0, amplitude=100.0):
+    """Return an image with Gaussian puncta at *centres*."""
+    y, x = np.mgrid[: shape[0], : shape[1]]
+    img = np.zeros(shape, dtype=float)
+    for cy, cx in centres:
+        img += amplitude * np.exp(-((y - cy) ** 2 + (x - cx) ** 2) / (2 * sigma**2))
+    return img
+
+
+def test_segment_objects_counts_and_locates_puncta():
+    """Segmentation finds every punctum and puts its centroid on the true centre."""
+    centres = [(20, 30), (60, 70), (100, 40)]
+    objects = coloc.segment_objects(_puncta_image(centres))
+    assert objects.count == 3
+    found = sorted(tuple(np.round(c).astype(int)) for c in objects.centroids)
+    assert found == sorted(centres)
+    assert (objects.areas > 0).all()
+    assert (objects.intensities > 0).all()
+
+
+def test_segment_objects_drops_small_specks():
+    """``min_size`` discards noise-sized detections."""
+    image = _puncta_image([(30, 30)], sigma=2.0)
+    image[100, 100] = 1000.0  # a single hot pixel
+    assert coloc.segment_objects(image, min_size=1).count == 2
+    assert coloc.segment_objects(image, min_size=4).count == 1
+
+
+def test_object_colocalization_counts_partners():
+    """The coincident fraction reflects how many objects have a partner in range."""
+    a_centres = [(20, 20), (20, 60), (60, 20), (60, 60), (100, 100)]
+    # Four partners displaced by 1 px, the fifth punctum of A is alone.
+    b_centres = [(21, 20), (21, 60), (61, 20), (61, 60)]
+    out = coloc.object_colocalization(
+        _puncta_image(a_centres), _puncta_image(b_centres), distance=3.0
+    )
+    metrics = out["metrics"]
+    assert metrics["n_objects_a"] == 5
+    assert metrics["n_objects_b"] == 4
+    assert metrics["object_fraction_a_near_b"] == pytest.approx(4 / 5)
+    assert metrics["object_fraction_b_near_a"] == pytest.approx(1.0)
+    assert metrics["object_median_distance_b"] == pytest.approx(1.0, abs=0.2)
+
+
+def test_object_tolerance_controls_what_counts_as_coincident():
+    """Objects 5 px apart coincide at a 6 px tolerance and not at a 2 px one."""
+    a = _puncta_image([(40, 40)])
+    b = _puncta_image([(45, 40)])
+    near = coloc.object_colocalization(a, b, distance=6.0)["metrics"]
+    far = coloc.object_colocalization(a, b, distance=2.0)["metrics"]
+    assert near["object_fraction_a_near_b"] == pytest.approx(1.0)
+    assert far["object_fraction_a_near_b"] == pytest.approx(0.0)
+
+
+def test_object_centroid_inside_and_overlap():
+    """Centre-inside-object and area-overlap agree for perfectly coincident puncta."""
+    image = _puncta_image([(50, 50), (80, 20)])
+    out = coloc.object_colocalization(image, image, distance=1.0)
+    metrics = out["metrics"]
+    assert metrics["object_fraction_a_in_b"] == pytest.approx(1.0)
+    assert metrics["object_mean_overlap_a"] == pytest.approx(1.0)
+    assert metrics["object_median_distance_a"] == pytest.approx(0.0, abs=1e-6)
+
+
+def test_object_analysis_is_reachable_from_the_metrics_entry_point():
+    """``colocalization_metrics`` folds the object metrics into the same table."""
+    a = _puncta_image([(30, 30), (70, 70)])
+    b = _puncta_image([(30, 31)])
+    result = coloc.colocalization_metrics(a, b, object_analysis=True, object_distance=3.0)
+    assert result.objects
+    assert result.metrics["n_objects_a"] == 2
+    assert result.metrics["object_fraction_a_near_b"] == pytest.approx(0.5)
+    rows = {r["name"] for r in plugin_core.metric_rows(result.metrics)}
+    assert "Objects in A" in rows
+    assert "Objects: fraction A with B partner" in rows
+
+
+def test_object_distance_histogram_bins_the_distances():
+    """The distance histogram counts every finite nearest-neighbour distance."""
+    histogram = coloc.object_distance_histogram([1.0, 1.5, 2.0, np.nan], bins=4)
+    assert histogram["counts"].sum() == 3
+    assert histogram["x"].size == 4
+
+
+def test_object_analysis_respects_the_roi():
+    """A spatial ROI excludes objects outside it from the object analysis too."""
+    a = _puncta_image([(20, 20), (100, 100)])
+    b = _puncta_image([(20, 21), (100, 101)])
+    roi = np.zeros(a.shape, dtype=bool)
+    roi[:64, :64] = True
+    result = coloc.colocalization_metrics(a, b, object_analysis=True, roi=roi)
+    assert result.metrics["n_objects_a"] == 1
+    assert result.metrics["n_objects_b"] == 1
+
+
+def test_view_model_exposes_the_object_views():
+    """The object map and the distance histogram reach the tool."""
+    import tifffile
+
+    from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
+
+    a = _puncta_image([(30, 30), (70, 70), (100, 40)])
+    b = _puncta_image([(30, 31), (70, 71)])
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = f"{tmp}/puncta.tif"
+        tifffile.imwrite(
+            path, np.stack([a, b]).astype(np.float32), imagej=True, metadata={"axes": "CYX"}
+        )
+        vm = ColocViewModel()
+        vm.object_analysis = True
+        vm.object_distance = 3.0
+        vm.set_filename(path)
+        assert vm.compute() is True
+    assert vm._metrics["n_objects_a"] == 3
+    assert vm._metrics["object_fraction_a_near_b"] == pytest.approx(2 / 3)
+    label_map = vm.object_map_image()
+    assert label_map is not None
+    assert set(np.unique(label_map)) <= {0.0, 1.0, 2.0, 3.0}
+    assert 3.0 in np.unique(label_map)  # coincident pixels are marked
+    assert vm.object_distance_series()

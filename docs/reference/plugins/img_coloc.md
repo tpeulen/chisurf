@@ -57,6 +57,16 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Brush (px) | `brush_size` | int |  | 1 … 64 | Edge length of the square brush used to paint the region of interest on the Channel A map. Painting restricts every coefficient — thresholds, the null model and the profiles — to that region, the way a hand-drawn cell outline should. |
 
+### Objects (punctate signal)
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Object analysis | `object_analysis` | bool |  |  | Segment both channels into discrete particles and count how many coincide. This is the right question for puncta (vesicles, foci): on sparse spots the intensity coefficients are dominated by the empty background between them and report almost nothing. |
+| Tolerance (px) | `object_distance` | float |  | 0.0 … 100.0 (step 0.5) | Centre-to-centre distance within which two objects count as coincident. Set it to the optical resolution — nothing can be localised better than the PSF, so demanding an identical centroid would only measure noise. |
+| Min size (px) | `object_min_size` | int |  | 1 … 10000 | Objects smaller than this are discarded as noise. |
+| Smoothing (σ px) | `object_smoothing` | float |  | 0.0 … 10.0 (step 0.5) | Gaussian smoothing applied before segmenting; use it when shot noise fragments single objects into several. |
+| Split touching objects | `object_split` | bool |  |  | Separate objects that touch, with a distance-transform watershed. Helps dense puncta; over-segments irregular shapes. |
+
 ### Significance / profile
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |

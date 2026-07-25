@@ -55,6 +55,11 @@ class ColocViewModel:
         self.costes_seed: int = 0
         self.ccf_max_shift: int = 0
         self.profile_bins: int = 30
+        self.object_analysis: bool = False
+        self.object_min_size: int = 4
+        self.object_smoothing: float = 0.0
+        self.object_split: bool = False
+        self.object_distance: float = 3.0
         self.brush_size: int = 9
         self.colormap: str = "magma"
         # ── detector windows from the selected setup ──
@@ -250,6 +255,11 @@ class ColocViewModel:
                 profiles=True,
                 profile_bins=int(self.profile_bins),
                 roi=self._roi(),
+                object_analysis=bool(self.object_analysis),
+                object_min_size=int(self.object_min_size),
+                object_smoothing=float(self.object_smoothing),
+                object_split=bool(self.object_split),
+                object_distance=float(self.object_distance),
             )
         except Exception as exc:
             logger.debug("colocalization compute failed", exc_info=True)
@@ -374,6 +384,48 @@ class ColocViewModel:
                     "y": y[good],
                     "name": labels.get(key, key),
                     "color": colours.get(key),
+                }
+            )
+        return series
+
+    def object_map_image(self):
+        """Return a categorical map of the segmented objects (or ``None``).
+
+        ``1`` = channel-A object only, ``2`` = channel-B object only, ``3`` = both,
+        so coincidence is visible directly instead of via two separate masks.
+        """
+        if self._result is None or not self._result.objects:
+            return None
+        objects = self._result.objects
+        mask_a = objects["objects_a"].mask
+        mask_b = objects["objects_b"].mask
+        return mask_a.astype(float) + 2.0 * mask_b.astype(float)
+
+    def object_distance_series(self) -> list[dict]:
+        """Return the nearest-neighbour object-distance histograms as plot series.
+
+        A peak at short distance is real coincidence; a broad distribution centred
+        on the mean inter-object spacing is what chance looks like.
+        """
+        if self._result is None or not self._result.objects:
+            return []
+        from chisurf.core.fluorescence.imaging import object_distance_histogram
+
+        objects = self._result.objects
+        series = []
+        for key, name, colour in (
+            ("distances_a", "A → nearest B", "#2ca02c"),
+            ("distances_b", "B → nearest A", "#d62728"),
+        ):
+            histogram = object_distance_histogram(objects[key], bins=20)
+            if not np.any(histogram["counts"]):
+                continue
+            series.append(
+                {
+                    "x": np.asarray(histogram["x"], dtype=float),
+                    "y": np.asarray(histogram["counts"], dtype=float),
+                    "name": name,
+                    "color": colour,
                 }
             )
         return series

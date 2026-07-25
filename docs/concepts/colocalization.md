@@ -207,6 +207,42 @@ Reading it first, and gating a region of it to interrogate a subpopulation, tell
 you more than any coefficient — the coefficients are summaries of this picture,
 and a summary is only trustworthy once you have seen what it summarises.
 
+## When pixels are the wrong unit: object-based colocalization
+
+Everything above treats each pixel as a sample of two intensities. For **punctate**
+signal — vesicles, granules, foci — that is the wrong unit. Sparse spots sit
+mostly on empty background, so a correlation coefficient is dominated by the
+co-occurrence of *nothing*: it can be near zero for perfectly coincident puncta
+(few pixels carry any signal at all) and respectably high for spots that merely
+share a crowded region.
+
+The object-based approach segments each channel into discrete objects and asks
+countable questions instead:
+
+- **How far is each object from the nearest object of the other channel?** The
+  distribution of nearest-neighbour distances is the raw result — a peak at short
+  distance is coincidence, a broad distribution centred on the mean inter-object
+  spacing is chance.
+- **What fraction have a partner within a tolerance $d$?** This is the headline
+  number, and $d$ is the one honest parameter: two objects cannot be localised
+  better than the PSF, so "coincident" means "closer than the resolution", never
+  "identical centroid".
+- **What fraction of centres fall *inside* an object of the other channel?** A
+  stricter, tolerance-free variant (Bolte & Cordelières' second object measure).
+- **How much of each object's area is covered by the other channel?** The
+  object-level analogue of Manders' fractions.
+
+All four are asymmetric, so — like $M_1$/$M_2$ — they are reported in both
+directions. Segmentation itself has the usual knobs (threshold, minimum size,
+optional smoothing, optional watershed splitting of touching objects), and the
+threshold should be the same one the pixel-wise coefficients use, so both regimes
+agree on what "present" means.
+
+Object- and pixel-based results are complements, not alternatives: report the
+coefficients for continuous distributions, the object statistics for puncta, and
+be suspicious when a dataset gives a confident answer in the regime it does not
+belong to.
+
 ## Restricting the analysis: regions of interest
 
 Coefficients computed over a whole field of view mix everything in it — cells and
@@ -228,6 +264,7 @@ A defensible colocalization result is not one number but a small set:
 | Costes $p$-value with its block size | separates real colocalization from dense-staining chance |
 | van Steensel peak shift (or the 2-D CCF peak) | shows the channels were registered |
 | The region analysed, if not the whole image | the coefficients depend on it |
+| For puncta: object counts, the coincident fraction **and** the tolerance | correlation coefficients do not describe sparse spots |
 
 ## References
 
@@ -240,6 +277,8 @@ A defensible colocalization result is not one number but a small set:
   protein-protein colocalization in live cells.* Biophys J 86:3993–4003.
 - Li Q et al. (2004) *A syntaxin 1, Gαo, and N-type calcium channel complex at a
   presynaptic nerve terminal.* J Neurosci 24:4070–4081.
+- Bolte S, Cordelières FP (2006) *A guided tour into subcellular colocalization
+  analysis in light microscopy.* J Microsc 224:213–232.
 - van Steensel B et al. (1996) *Partial colocalization of glucocorticoid and
   mineralocorticoid receptors in discrete compartments in nuclei of rat
   hippocampus neurons.* J Cell Sci 109:787–792.

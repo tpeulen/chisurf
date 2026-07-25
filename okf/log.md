@@ -1140,6 +1140,29 @@
   asserts exactly that failure mode. The catalogue, concept page, guide and in-app
   help all gained the new sections, and the mining list's colocalization row is
   crossed off as ✅ done with the audit recorded beside it.
+* **Object-based colocalization implemented — the one row *neither* reference
+  fills.** Both suites stub it out (`case 6 %object based (particle
+  localization)`, commented out), so "parity" here meant building it rather than
+  porting it. The reason it matters: for punctate signal the intensity
+  coefficients answer the wrong question — sparse spots sit mostly on empty
+  background, so the correlation is dominated by the co-occurrence of *nothing*,
+  and PCC can be near zero for perfectly coincident puncta. `objects.py` segments
+  each channel (threshold, min size, optional smoothing, optional
+  distance-transform watershed for touching spots) and scores the four Bolte &
+  Cordelières 2006 measures — nearest-neighbour distance distributions, the
+  fraction with a partner inside a **tolerance** (the honest parameter: nothing is
+  localised better than the PSF), the fraction of centres falling *inside* an
+  object of the other channel, and per-object area overlap — each in both
+  directions, since they are as asymmetric as Manders' M1/M2. Segmentation honours
+  the same thresholds and ROI as the coefficients, so the two regimes agree on
+  what "present" means.
+* **`colocalization.py` became a package.** The two regimes share nothing but the
+  question, so `pixelwise.py` / `objects.py` split cleanly behind a re-exporting
+  `__init__`; imports are unchanged. Verified on synthetic puncta where the answer
+  is known by construction, and screenshot-checked: the *Objects* tab maps
+  1 = A only / 2 = B only / 3 = both, and the *Object distances* tab shows the
+  textbook shape — a spike at ~1 px from the real partners beside a flat tail at
+  chance spacing. [PRD-67](/prds/prd-67.md)'s parity table now has no ✖ left.
 
 * **The LLM agent got a real harness: `chisurf/core/agent/`.** The old one
   (`code_editor/agent_runtime.py`) handed the model a bare list of 23 RPC
