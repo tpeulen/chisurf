@@ -148,11 +148,12 @@ def test_the_polymer_is_not_marked(loaded_view):
 
 
 def test_a_degraded_load_is_reported(tmp_path):
-    """A silent fallback reads as a rendering bug, not as a reader giving up.
+    """A silent fallback leaves nobody able to act on it.
 
-    The raw-coordinate path yields a bare backbone trace with no residues,
-    sequence or secondary structure. Users have to be told that is what they are
-    looking at.
+    The built-in parser recovers the cartoon, so this costs metadata rather than
+    the picture — but the message still has to name the cause, because "the
+    reader is unavailable" on its own is not something a user can do anything
+    with.
     """
     from chisurf.plugins.chimol.chimol.app.molview_main_window import (
         MolViewPluginWindow,
@@ -172,8 +173,10 @@ def test_a_degraded_load_is_reported(tmp_path):
     assert window.command_panel.errors
     message = window.command_panel.errors[-1]
     assert "weird.pdb" in message
+    # The cause has to be quoted, not merely alluded to.
     assert "no reader" in message
-    assert "raw coordinates" in message
+    assert "ValueError" in message
+    assert "built-in parser" in message
 
 
 def test_a_degraded_load_without_a_panel_does_not_raise(tmp_path):

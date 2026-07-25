@@ -23,7 +23,13 @@ except Exception:  # pragma: no cover - standalone moview
 
 try:
     from chisurf.core.structure import Structure as _ChiSurfStructure
-except Exception:  # pragma: no cover - standalone moview
+
+    _STRUCTURE_IMPORT_ERROR: Optional[BaseException] = None
+except Exception as _exc:  # pragma: no cover - standalone moview
+    # Kept, not just logged: "the reader is unavailable" is useless on its own,
+    # and the log line is easy to miss during startup. The message shown when a
+    # file degrades names this exception.
+    _STRUCTURE_IMPORT_ERROR = _exc
     logging.getLogger(__name__).warning(
         "chisurf.core.structure.Structure is unavailable; Chimol will fall back "
         "to raw coordinates and cannot show residues, sequence or Rg.",
@@ -1424,22 +1430,31 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
     # Object management helpers
     # ------------------------------------------------------------------
 
-    def _report_degraded_load(self, path: Path, exc: Optional[Exception]) -> None:
-        """Tell the user the structure reader gave up and what that costs them.
+    def _report_degraded_load(self, path: Path, exc: Optional[BaseException]) -> None:
+        """Tell the user the structure reader gave up, and name the reason.
+
+        The built-in parser now recovers the backbone, secondary structure and
+        hetero atoms on its own, so this costs metadata rather than the picture.
+        It is still worth saying: a bare "reader unavailable" leaves nobody able
+        to act, which is why the import error itself is quoted when there is one.
 
         Parameters
         ----------
         path : pathlib.Path
             File that fell back to the raw-coordinate parser.
-        exc : Exception or None
-            Why the reader failed, when that is known. ``None`` means it was
-            simply unavailable.
+        exc : BaseException or None
+            Why the reader failed on this file, when that is known.
         """
-        reason = f": {exc}" if exc is not None else " (reader unavailable)"
+        cause = exc if exc is not None else _STRUCTURE_IMPORT_ERROR
+        if cause is not None:
+            reason = f": {type(cause).__name__}: {cause}"
+        else:
+            reason = " (the structure reader is unavailable; see the log)"
         message = (
-            f"{path.name} loaded as raw coordinates{reason}. "
-            "Residues, sequence, secondary structure and radius of gyration are "
-            "not available, so it will draw as a plain backbone trace."
+            f"{path.name} loaded with the built-in parser{reason}. "
+            "The cartoon, secondary structure and hetero atoms are recovered "
+            "from the file, but sequence metadata and the radius of gyration "
+            "are not available."
         )
         logging.getLogger(__name__).warning(message)
         try:
@@ -1601,6 +1616,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 res_ids=backbone.res_ids if backbone is not None else None,
                 res_names=backbone.res_names if backbone is not None else None,
                 chain_ids=backbone.chain_ids if backbone is not None else None,
+                atoms=backbone.atoms if backbone is not None else None,
             )
             n_atoms = 0 if coords_arr is None else coords_arr.shape[0]
         else:

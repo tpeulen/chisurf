@@ -2,6 +2,33 @@
 
 ## 2026-07-25
 
+* **chimol: losing the core reader no longer costs the cartoon.** The warning
+  added earlier did its job and named the real problem: a fetched 1DG3 reported
+  "loaded as raw coordinates (reader unavailable)", i.e. the GUI process failed to
+  import `chisurf.core.structure` even though the same interpreter imports it fine
+  standalone. The picture that came out was the bare CA spring.
+  **The fallback was the defect, not the reader.** `_parse_pdb_backbone` handed
+  over CA positions only, and `set_coordinates` then set `_atoms = None` and never
+  computed either secondary structure or trace up-vectors. So the cartoon had
+  nothing to shape (everything coil -> thin loop tube) *and* no orientation for
+  the ribbon. The parser now also returns a structured per-atom array
+  (`atom_name`/`res_name`/`chain`/`res_id`/`element`/`xyz`), index-aligned with
+  the coordinates because the viewer maps per-atom masks between them by
+  position; alternate locations are dropped at the single point where both are
+  appended, so they cannot drift apart. `set_coordinates` uses it to run
+  `_build_trace_ups` and `assign_ss_c3_from_atoms`, and `add_coordinates` applies
+  deposited HELIX/SHEET records, exactly as the `Structure` path does.
+  Verified with `structure_factory=None` -- no core reader at all -- on 1DG3:
+  4698 atoms, **381 H / 57 E / 102 C**, 540 trace up-vectors, 341 waters shown.
+  Identical assignment to the reader path, and it renders as ribbons and arrows.
+  **The message now names the cause.** "Reader unavailable" is not something a
+  user can act on, so the import exception is kept in
+  `_STRUCTURE_IMPORT_ERROR` and quoted. Wording also corrected: the fallback now
+  costs sequence metadata and the radius of gyration, not the picture. The
+  capture sits inside the `try` so the annotated assignment does not push every
+  later import past E402.
+  Suite: 276 passed, 1 skipped (5 new).
+
 * **The agent is skill-based now.** The fitting protocol lived in the system
   prompt, which does not scale: every experiment type ChiSurf covers would add
   a section that is dead weight for every other request. `chisurf/core/agent/skills.py`

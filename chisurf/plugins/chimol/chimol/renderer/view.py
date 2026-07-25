@@ -1182,6 +1182,7 @@ class MolView(QtWidgets.QWidget):
         res_ids: np.ndarray | None = None,
         res_names: np.ndarray | None = None,
         chain_ids: np.ndarray | None = None,
+        atoms: np.ndarray | None = None,
     ) -> str:
         entry = self._create_object(name=name, source_path=source_path)
         self.set_coordinates(
@@ -1190,7 +1191,9 @@ class MolView(QtWidgets.QWidget):
             res_ids=res_ids,
             res_names=res_names,
             chain_ids=chain_ids,
+            atoms=atoms,
         )
+        self._apply_deposited_secondary_structure(source_path)
         return entry.object_id
 
     @contextmanager
@@ -1667,6 +1670,7 @@ class MolView(QtWidgets.QWidget):
         res_ids: np.ndarray | None = None,
         res_names: np.ndarray | None = None,
         chain_ids: np.ndarray | None = None,
+        atoms: np.ndarray | None = None,
     ) -> None:
         """Set raw coordinates for visualization.
 
@@ -1682,12 +1686,18 @@ class MolView(QtWidgets.QWidget):
             Optional per-CA residue metadata of length ``M``. Supplying these
             is what lets the trace break at chain and residue gaps; without
             them the viewer draws one polyline through every point in ``xyz``.
+        atoms:
+            Optional structured per-atom array aligned with ``xyz``, carrying at
+            least ``atom_name``, ``xyz``, ``res_id`` and ``chain``. This is what
+            separates a *cartoon* from a bare spring: secondary structure is
+            assigned from N/CA/C/O, and the ribbon takes its up-vector from the
+            backbone carbonyl. Without it the viewer can only tube the CA trace.
         """
         arr = np.asarray(xyz, dtype=float)
         if arr.ndim != 2 or arr.shape[1] != 3:
             raise ValueError("xyz must have shape (N, 3)")
 
-        self._atoms = None
+        self._atoms = atoms if isinstance(atoms, np.ndarray) else None
         self._all_atom_res_ids = None
         self._atom_features = {}
         self._atom_feature_meta = {}
@@ -1753,6 +1763,30 @@ class MolView(QtWidgets.QWidget):
         self._center = np.zeros(3, dtype=float)
         self._raw_center = np.asarray(center, dtype=float)
         self._radius = float(radius * scale)
+
+        # With a real atom array the fallback is not a second-class citizen: it
+        # can orient the ribbon and assign secondary structure exactly as
+        # set_structure does, so a missing core reader costs metadata rather
+        # than the picture.
+        self._secondary_structure = None
+        self._trace_ups = None
+        if self._atoms is not None and self._coords is not None:
+            self._trace_ups = _build_trace_ups(
+                self._atoms, self._residue_ids, self._coords, self._residue_chain_ids
+            )
+            try:
+                n_res = int(self._coords.shape[0])
+                ss_codes = assign_ss_c3_from_atoms(self._atoms, n_res, verbose=False)
+            except Exception:
+                logger.warning("Secondary-structure assignment failed for raw "
+                               "coordinates", exc_info=True)
+                ss_codes = None
+            if ss_codes:
+                try:
+                    self._secondary_structure = np.asarray(ss_codes, dtype="U1")
+                except Exception:
+                    self._secondary_structure = None
+
         self._update_view()
 
         # No sequence information when only raw coordinates are provided
@@ -1764,8 +1798,10 @@ class MolView(QtWidgets.QWidget):
         # Per-atom masks sized to all atoms so the sticks/atoms toggles have a
         # valid baseline to flip on (see set_sticks_visible/set_atoms_visible).
         n_atoms = arr.shape[0]
-        self._ball_mask = np.zeros(n_atoms, dtype=bool)
+        self._ball_mask = self._hetero_atom_mask(self._atoms, n_atoms)
         self._sticks_mask = np.zeros(n_atoms, dtype=bool)
+        if self._ball_mask.any():
+            self._show_atoms = True
 
     def set_frames(
         self,

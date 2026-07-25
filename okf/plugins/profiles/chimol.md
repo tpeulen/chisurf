@@ -515,9 +515,18 @@ Four constraints follow, all load-bearing:
    `_report_degraded_load` logs *and* writes to the command panel, naming the
    file, the reader's error, and what the fallback costs. The info overlay's
    `System: coordinates` line is the other tell that this path was taken.
-3. **Keep the fallback non-lossy.** Anything that reaches `add_coordinates` for a
-   PDB should carry `trace_coords`/`res_ids`/`res_names`/`chain_ids`, so a reader
-   failure costs accuracy, not a broken picture.
+3. **Keep the fallback non-lossy — including the atom array.** Anything that
+   reaches `add_coordinates` for a PDB should carry
+   `trace_coords`/`res_ids`/`res_names`/`chain_ids` **and `atoms`**, so a reader
+   failure costs metadata, not the picture. The atom array is what separates a
+   cartoon from a bare spring: `assign_ss_c3_from_atoms` needs N/CA/C/O to
+   assign H/E/C, and `_build_trace_ups` needs the backbone carbonyl to know
+   which way the ribbon faces. Without it everything is coil and the cartoon
+   degenerates to a thin loop tube threading the alpha carbons — which is what a
+   user reports as "ugly cartoon", not as "the reader failed". It must stay
+   **index-aligned with `coords`**, because per-atom masks and colours are mapped
+   between the two by position; alternate locations are therefore dropped at the
+   one point where both are appended.
 4. **Build the CA trace from `ATOM` records of the first model only**, skipping
    non-first altlocs. Including `HETATM` puts ligands and waters on the backbone;
    including further `MODEL`s makes the trace jump between conformers.

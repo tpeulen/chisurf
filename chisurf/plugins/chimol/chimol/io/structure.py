@@ -66,6 +66,13 @@ class PdbBackbone:
         recognisable protein backbone.
     res_ids, res_names, chain_ids : numpy.ndarray or None
         Per-CA residue number, residue name and chain id, each of length ``M``.
+    atoms : numpy.ndarray or None
+        Structured per-atom array with ``atom_name``, ``xyz``, ``res_id``,
+        ``chain``, ``res_name`` and ``element``. This is what lets the fallback
+        draw a *real* cartoon: secondary structure needs N/CA/C/O to assign
+        H/E/C, and the ribbon needs the carbonyl to know which way is up.
+        Without it the viewer can only spline a thin tube through the CA
+        positions, which is the bare-spring look that says "the reader gave up".
     """
 
     coords: np.ndarray
@@ -73,6 +80,17 @@ class PdbBackbone:
     res_ids: np.ndarray | None = None
     res_names: np.ndarray | None = None
     chain_ids: np.ndarray | None = None
+    atoms: np.ndarray | None = None
+
+
+_ATOM_DTYPE = np.dtype([
+    ("atom_name", "U4"),
+    ("res_name", "U4"),
+    ("chain", "U2"),
+    ("res_id", np.int64),
+    ("element", "U2"),
+    ("xyz", float, (3,)),
+])
 
 
 def _parse_pdb_backbone(path: str) -> PdbBackbone:
@@ -103,6 +121,7 @@ def _parse_pdb_backbone(path: str) -> PdbBackbone:
     res_ids: list[int] = []
     res_names: list[str] = []
     chain_ids: list[str] = []
+    atom_rows: list[tuple] = []
     seen_residues: set[tuple[str, str]] = set()
 
     with open(path, encoding="utf-8", errors="ignore") as fh:
@@ -116,34 +135,54 @@ def _parse_pdb_backbone(path: str) -> PdbBackbone:
                 xyz = (float(line[30:38]), float(line[38:46]), float(line[46:54]))
             except ValueError:
                 continue
+
+            # Alternate locations are dropped here rather than further down, so
+            # that ``coords`` and ``atoms`` stay index-aligned: the viewer maps
+            # per-atom masks and colours between them by position.
+            altloc = line[16:17]
+            if altloc not in (" ", "", "A"):
+                continue
             coords.append(xyz)
+
+            chain = line[21:22].strip()
+            res_name = line[17:20].strip()
+            atom_name = line[12:16].strip()
+            try:
+                res_id = int(line[22:26])
+            except ValueError:
+                res_id = -1
+
+            # Element from columns 77-78 when present, else the leading letters
+            # of the atom name -- enough for CPK colouring and for telling a
+            # backbone carbonyl from anything else.
+            element = line[76:78].strip().upper()
+            if not element:
+                element = "".join(c for c in atom_name[:2] if c.isalpha()).upper()[:1]
+
+            atom_rows.append((atom_name, res_name, chain, res_id, element, xyz))
 
             # The CA trace drives the cartoon/trace geometry, so it must come
             # from polymer records only -- ligands and waters are not backbone.
             if not is_atom:
                 continue
-            altloc = line[16:17]
-            if altloc not in (" ", "", "A"):
+            if atom_name != "CA":
                 continue
-            if line[12:16].strip() != "CA":
-                continue
-            chain = line[21:22].strip()
             res_seq = line[22:27].strip()  # includes the insertion code
             key = (chain, res_seq)
             if key in seen_residues:
                 continue
             seen_residues.add(key)
-            try:
-                res_id = int(line[22:26])
-            except ValueError:
+            if res_id < 0:
                 continue
             trace.append(xyz)
             res_ids.append(res_id)
-            res_names.append(line[17:20].strip())
+            res_names.append(res_name)
             chain_ids.append(chain)
 
     if not coords:
         raise ValueError(f"No atom coordinates found in {path!r}")
+
+    atoms = np.array(atom_rows, dtype=_ATOM_DTYPE) if atom_rows else None
 
     if len(trace) >= 2:
         return PdbBackbone(
@@ -152,8 +191,9 @@ def _parse_pdb_backbone(path: str) -> PdbBackbone:
             res_ids=np.asarray(res_ids, dtype=int),
             res_names=np.asarray(res_names, dtype=object),
             chain_ids=np.asarray(chain_ids, dtype=object),
+            atoms=atoms,
         )
-    return PdbBackbone(coords=np.asarray(coords, dtype=float))
+    return PdbBackbone(coords=np.asarray(coords, dtype=float), atoms=atoms)
 
 
 def parse_pdb_secondary_structure(path: str | Path) -> dict[tuple[str, int], str] | None:

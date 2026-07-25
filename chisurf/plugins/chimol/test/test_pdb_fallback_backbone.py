@@ -158,3 +158,84 @@ def test_empty_file_raises(tmp_path: pathlib.Path) -> None:
 
     with pytest.raises(ValueError):
         _parse_pdb_backbone(str(pdb))
+
+
+# --------------------------------------------------------------------------- #
+# The fallback must draw a cartoon, not a bare spring
+# --------------------------------------------------------------------------- #
+# When the core reader is unavailable the built-in parser is all there is. It
+# used to hand over CA positions only, which left the viewer with no secondary
+# structure and no ribbon orientation -- so a protein came out as a thin spring
+# threading through the alpha carbons. Losing the reader should cost metadata,
+# not the picture.
+
+_FALLBACK_PDB = (
+    pathlib.Path(__file__).resolve().parents[4]
+    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+)
+
+
+@pytest.fixture(scope="module")
+def parsed():
+    return _parse_pdb_backbone(str(_FALLBACK_PDB))
+
+
+def test_the_parser_returns_a_structured_atom_array(parsed):
+    assert parsed.atoms is not None
+    fields = set(parsed.atoms.dtype.names)
+    # Secondary structure needs N/CA/C/O by name; the ribbon needs the carbonyl.
+    assert {"atom_name", "xyz", "res_id", "chain"} <= fields
+
+
+def test_the_atom_array_is_index_aligned_with_the_coordinates(parsed):
+    """Per-atom masks and colours are mapped between the two by position."""
+    assert parsed.atoms.shape[0] == parsed.coords.shape[0]
+    assert np.allclose(parsed.atoms["xyz"], parsed.coords)
+
+
+def test_the_backbone_atoms_needed_for_a_cartoon_are_present(parsed):
+    names = set(np.char.strip(parsed.atoms["atom_name"].astype(str)))
+    assert {"N", "CA", "C", "O"} <= names
+
+
+def test_hetero_records_survive_the_parser(parsed):
+    """Waters and ligands are part of the deposited model."""
+    res_names = set(np.char.strip(parsed.atoms["res_name"].astype(str)))
+    assert {"NAG", "BME"} & res_names
+
+
+def test_the_fallback_assigns_secondary_structure(qapp_for_fallback):
+    """Without this the cartoon has nothing to shape and draws a loop tube."""
+    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+
+    structure, backbone = load_structure_payload(
+        _FALLBACK_PDB, structure_factory=None
+    )
+    assert structure is None
+
+    view = MolView()
+    view.add_coordinates(
+        backbone.coords,
+        name="148l",
+        source_path=str(_FALLBACK_PDB),
+        trace_coords=backbone.trace_coords,
+        res_ids=backbone.res_ids,
+        res_names=backbone.res_names,
+        chain_ids=backbone.chain_ids,
+        atoms=backbone.atoms,
+    )
+
+    ss = view._secondary_structure
+    assert ss is not None
+    codes = set(np.unique(ss))
+    assert "H" in codes and "E" in codes, f"only got {codes}"
+    # And the ribbon needs an up-vector per residue, or it twists arbitrarily.
+    assert view._trace_ups is not None
+    assert view._trace_ups.shape[0] == view._coords.shape[0]
+
+
+@pytest.fixture(scope="session")
+def qapp_for_fallback():
+    from qtpy import QtWidgets
+
+    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
