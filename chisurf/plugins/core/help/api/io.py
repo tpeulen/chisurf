@@ -9,7 +9,12 @@ from typing import Dict, List, Optional
 import chisurf as cs
 import chisurf.core.settings
 import chisurf.plugins
+from chisurf.plugins.core.help.api import review
 from chisurf.plugins.core.help.api.markdown import extract_title
+from chisurf.plugins.core.help.api.render import document_title
+
+#: Suffixes discovered under ``docs/`` (the manual is reStructuredText).
+DOC_SUFFIXES = (".md", ".rst")
 
 
 @dataclass
@@ -21,6 +26,9 @@ class DocEntry:
     category: str
     file_name: str
     size: int
+    review_status: str = review.STATUS_REVIEWED
+    reviewer: str = ""
+    review_date: str = ""
 
 
 @dataclass
@@ -32,7 +40,10 @@ class DocInfo:
 
 
 def discover_docs() -> DocInfo:
-    """Discover all Markdown documentation files.
+    """Discover all documentation files.
+
+    Covers Markdown throughout the project and the reStructuredText user manual.
+    Entries in review-tracked directories carry their sign-off status.
 
     Returns
     -------
@@ -43,6 +54,7 @@ def discover_docs() -> DocInfo:
     entries: List[DocEntry] = []
     tree: Dict[str, List[Dict]] = {
         "User manual": [],
+        "Documentation": [],
         "Core": [],
         "Plugins": [],
     }
@@ -50,26 +62,31 @@ def discover_docs() -> DocInfo:
     base = pathlib.Path(cs.__file__).resolve().parent
     root = base.parent
 
-    # User manual docs
+    # Project documentation: the reStructuredText manual is kept in its own
+    # category because it is the part under human-review gating.
     docs_dir = root / "docs"
+    manual_dir = docs_dir / "manual"
     if docs_dir.exists():
-        for path in sorted(docs_dir.rglob("*.md")):
+        paths = sorted(
+            p for p in docs_dir.rglob("*") if p.suffix.lower() in DOC_SUFFIXES and p.is_file()
+        )
+        for path in paths:
             try:
                 rel = path.relative_to(docs_dir)
             except ValueError:
                 rel = path.name
+            in_manual = _is_within(path, manual_dir)
+            category = "User manual" if in_manual else "Documentation"
             title = _get_title(path, str(rel))
-            entries.append(
-                DocEntry(
-                    path=str(path),
-                    title=title,
-                    category="User manual",
-                    file_name=str(rel),
-                    size=path.stat().st_size,
-                )
-            )
-            tree["User manual"].append(
-                {"path": str(path), "title": title, "file_name": str(rel)}
+            entry = _make_entry(path, title, category, str(rel))
+            entries.append(entry)
+            tree[category].append(
+                {
+                    "path": str(path),
+                    "title": title,
+                    "file_name": str(rel),
+                    "review_status": entry.review_status,
+                }
             )
 
     # Core project .md files
@@ -257,5 +274,30 @@ def _get_title(path: pathlib.Path, fallback: str) -> str:
         text = path.read_text(encoding="utf-8")
     except Exception:
         return fallback
-    title = extract_title(text)
+    title = document_title(text, path)
     return title if title else fallback
+
+
+def _is_within(path: pathlib.Path, directory: pathlib.Path) -> bool:
+    try:
+        path.relative_to(directory)
+        return True
+    except ValueError:
+        return False
+
+
+def _make_entry(
+    path: pathlib.Path, title: str, category: str, file_name: str
+) -> DocEntry:
+    """Build a :class:`DocEntry`, attaching review status for tracked pages."""
+    status = review.status_of(path)
+    return DocEntry(
+        path=str(path),
+        title=title,
+        category=category,
+        file_name=file_name,
+        size=path.stat().st_size,
+        review_status=status.status,
+        reviewer=status.reviewer,
+        review_date=status.date,
+    )

@@ -14,6 +14,7 @@ import os
 import sys
 import importlib.util
 sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('_ext'))
 
 
 # -- Project information -----------------------------------------------------
@@ -36,7 +37,13 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
+    # Marks manual pages that no human has signed off. The hard release gate is
+    # the separate `docs-check-reviewed` task.
+    'review_banner',
 ]
+
+# Set to False to build the manual without human-review banners.
+review_banner_enabled = True
 
 autosummary_generate = False
 numpydoc_show_class_members = False

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import getpass
 import pathlib
 import re
 import webbrowser
@@ -10,6 +11,7 @@ from typing import Optional
 from qtpy.QtCore import Qt, QUrl
 from qtpy.QtGui import QImage, QTextDocument
 from qtpy.QtWidgets import (
+    QComboBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -29,7 +31,27 @@ import chisurf as cs
 import chisurf.core.settings
 from chisurf.core.info import help_url
 from chisurf.gui.glyphs import Glyphs
+from chisurf.plugins.core.help.api import review
 from chisurf.plugins.core.help.gui.client import HelpClient
+
+#: Badge shown next to a page for each review status.
+REVIEW_BADGES = {
+    review.STATUS_REVIEWED: "✅",
+    review.STATUS_STALE: "⚠️",
+    review.STATUS_UNREVIEWED: "⬜",
+}
+
+#: Explanation shown as a tooltip / status line for each review status.
+REVIEW_TOOLTIPS = {
+    review.STATUS_REVIEWED: "Checked by a human and unchanged since.",
+    review.STATUS_STALE: (
+        "Was checked, but the page has been edited since — it needs "
+        "re-checking and counts as unreviewed."
+    ),
+    review.STATUS_UNREVIEWED: (
+        "Not checked by a human. Largely machine-drafted; blocks release."
+    ),
+}
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -39,6 +61,84 @@ except ImportError:
             return cls
         return decorator
     persist_plugin_state = _noop_persist_plugin_state
+
+
+def _is_within(path: pathlib.Path, directory: pathlib.Path) -> bool:
+    """Whether *path* lies inside *directory*."""
+    try:
+        path.relative_to(directory)
+        return True
+    except ValueError:
+        return False
+
+
+_IMG_TAG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+_IMG_SRC = re.compile(r'src\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE)
+
+
+def _constrain_image_widths(html: str, base_dir: pathlib.Path, max_width: int) -> str:
+    """Make document images render sensibly in Qt's rich-text engine.
+
+    Two adjustments are needed. Qt renders images at their native pixel size and
+    ignores CSS ``max-width``, so a full-resolution manual screenshot would push
+    the text off the page; an explicit ``width``/``height`` fixes that, read from
+    the image header rather than by decoding the file. Separately, docutils emits
+    block images as a bare ``<img class="align-center">`` between paragraphs —
+    without the docutils stylesheet Qt lays that out erratically, floating the
+    image away from its place in the text, so the image is wrapped in a centred
+    paragraph and the unusable class dropped.
+
+    Parameters
+    ----------
+    html : str
+        Rendered document HTML.
+    base_dir : pathlib.Path
+        Directory that relative image sources resolve against.
+    max_width : int
+        Maximum rendered width in pixels.
+
+    Returns
+    -------
+    str
+        HTML with images sized and wrapped for Qt.
+
+    """
+    if max_width <= 0:
+        return html
+
+    def _fix(match: "re.Match[str]") -> str:
+        tag = match.group(0)
+        preceding = html[: match.start()].rstrip().lower()
+        # A bare block image sits between paragraphs; an inline one does not.
+        is_block = preceding.endswith(("</p>", "</div>", "<div>", "</h1>", "</h2>"))
+
+        tag = re.sub(r'\s*class\s*=\s*["\'][^"\']*["\']', "", tag, flags=re.IGNORECASE)
+
+        if not re.search(r"\bwidth\s*=", tag, re.IGNORECASE):
+            src_match = _IMG_SRC.search(tag)
+            if src_match:
+                src = src_match.group(1)
+                if not src.startswith(("http://", "https://", "data:")):
+                    path = pathlib.Path(src)
+                    if not path.is_absolute():
+                        path = base_dir / path
+                    try:
+                        from qtpy.QtGui import QImageReader
+
+                        size = QImageReader(str(path)).size()
+                        width, height = size.width(), size.height()
+                    except Exception:
+                        width = height = 0
+                    if width > 0 and height > 0 and width > max_width:
+                        scaled = max(1, round(height * max_width / width))
+                        tag = (
+                            tag[:-1].rstrip("/")
+                            + f' width="{max_width}" height="{scaled}">'
+                        )
+
+        return f'<p align="center">{tag}</p>' if is_block else tag
+
+    return _IMG_TAG.sub(_fix, html)
 
 
 class HelpTextBrowser(QTextBrowser):
@@ -108,6 +208,13 @@ class HelpWidget(QMainWindow):
         title.setStyleSheet("font-weight: bold; font-size: 12pt;")
         header.addWidget(title)
         header.addStretch()
+        self.review_summary_label = QLabel("")
+        self.review_summary_label.setStyleSheet("color: #888888; font-size: 9pt;")
+        self.review_summary_label.setToolTip(
+            "Human-review status of the user manual. Unreviewed or stale pages "
+            "block a release."
+        )
+        header.addWidget(self.review_summary_label)
         layout.addLayout(header)
 
         # Splitter: tree | content
@@ -141,8 +248,13 @@ class HelpWidget(QMainWindow):
         self.path_label = QLabel("")
         self.path_label.setStyleSheet("color: #888888; font-size: 8pt;")
 
+        self.review_label = QLabel("")
+        self.review_label.setWordWrap(True)
+        self.review_label.setVisible(False)
+
         right_layout.addWidget(self.title_label)
         right_layout.addWidget(self.path_label)
+        right_layout.addWidget(self.review_label)
         right_layout.addWidget(self.viewer, 1)
         right_layout.addWidget(self.editor, 1)
 
@@ -186,6 +298,33 @@ class HelpWidget(QMainWindow):
 
         toolbar.addSeparator()
 
+        # Review sign-off
+        self.review_btn = toolbar.addAction("✅  Mark reviewed")
+        self.review_btn.setCheckable(True)
+        self.review_btn.setEnabled(False)
+        self.review_btn.setToolTip(
+            "Record that a human has checked this manual page.\n"
+            "Editing the page afterwards makes the sign-off stale automatically."
+        )
+        self.review_btn.toggled.connect(self._on_review_toggled)
+
+        review_filter_label = QLabel("Show:")
+        self.review_filter = QComboBox()
+        self.review_filter.addItem("All pages", "all")
+        self.review_filter.addItem("⬜ Unreviewed", review.STATUS_UNREVIEWED)
+        self.review_filter.addItem("⚠️ Stale", review.STATUS_STALE)
+        self.review_filter.addItem("✅ Reviewed", review.STATUS_REVIEWED)
+        self.review_filter.setToolTip(
+            "Filter the user manual by human-review status."
+        )
+        self.review_filter.currentIndexChanged.connect(
+            lambda _: self._apply_review_filter()
+        )
+        toolbar.addWidget(review_filter_label)
+        toolbar.addWidget(self.review_filter)
+
+        toolbar.addSeparator()
+
         filter_label = QLabel(f"{Glyphs.SEARCH} Filter:")
         self.filter_line_edit = QLineEdit()
         self.filter_line_edit.setPlaceholderText("Type to filter documents...")
@@ -207,19 +346,45 @@ class HelpWidget(QMainWindow):
         self.tree.clear()
         self.docs_index = {}
         manual_root = QTreeWidgetItem(self.tree, ["📘 User manual"])
+        docs_root = QTreeWidgetItem(self.tree, ["📄 Documentation"])
         core_root = QTreeWidgetItem(self.tree, ["📗 Core"])
         plugins_root = QTreeWidgetItem(self.tree, ["📙 Plugins"])
         self._build_manual_docs(manual_root)
+        self._build_project_docs(docs_root)
         self._build_core_docs(core_root)
         self._build_plugin_docs(plugins_root)
+        self._update_review_summary()
+        self._apply_review_filter()
 
     def _build_manual_docs(self, parent_item):
+        """Build the user-manual branch, badged with review status.
+
+        The manual is reStructuredText and is the part under human-review
+        gating, so it is discovered through the shared API rather than a local
+        glob and each page carries its sign-off badge.
+        """
+        for entry in self._manual_entries():
+            path = pathlib.Path(entry["path"])
+            badge = REVIEW_BADGES.get(entry.get("review_status", ""), "")
+            label = entry.get("title") or path.name
+            item = QTreeWidgetItem(parent_item, [f"{badge} {label}".strip()])
+            item.setData(0, Qt.UserRole, str(path))
+            item.setData(0, Qt.UserRole + 1, entry.get("review_status", ""))
+            tip = REVIEW_TOOLTIPS.get(entry.get("review_status", ""), "")
+            if tip:
+                item.setToolTip(0, f"{path.name}\n{tip}")
+            self._index_document_item(item, path)
+
+    def _build_project_docs(self, parent_item):
+        """Build the branch for project documentation outside the manual."""
         base = pathlib.Path(cs.__file__).resolve().parent
-        root = base.parent
-        docs_dir = root / "docs"
+        docs_dir = base.parent / "docs"
+        manual_dir = docs_dir / "manual"
         if not docs_dir.exists():
             return
         for path in sorted(docs_dir.rglob("*.md")):
+            if _is_within(path, manual_dir):
+                continue
             try:
                 rel = path.relative_to(docs_dir)
             except ValueError:
@@ -229,6 +394,34 @@ class HelpWidget(QMainWindow):
             item = QTreeWidgetItem(parent_item, [label])
             item.setData(0, Qt.UserRole, str(path))
             self._index_document_item(item, path)
+
+    def _manual_entries(self):
+        """Return the user-manual documents with review status attached."""
+        try:
+            result = self.client.list_docs()
+            entries = (result or {}).get("entries", [])
+            manual = [e for e in entries if e.get("category") == "User manual"]
+            if manual:
+                return sorted(manual, key=lambda e: e.get("file_name", ""))
+        except Exception:
+            pass
+        # Offline fallback: read the tree directly.
+        from chisurf.plugins.core.help.api.io import discover_docs
+
+        try:
+            info = discover_docs()
+        except Exception:
+            return []
+        return [
+            {
+                "path": e.path,
+                "title": e.title,
+                "file_name": e.file_name,
+                "review_status": e.review_status,
+            }
+            for e in info.entries
+            if e.category == "User manual"
+        ]
 
     def _build_core_docs(self, parent_item):
         base = pathlib.Path(cs.__file__).resolve().parent
@@ -448,15 +641,23 @@ class HelpWidget(QMainWindow):
             self._find_first_leaf(item)
             return
         file_path = pathlib.Path(path)
-        self._open_markdown_path(file_path)
+        self._open_document_path(file_path)
 
-    def _open_markdown_path(self, file_path: pathlib.Path, anchor: Optional[str] = None):
+    def _open_document_path(self, file_path: pathlib.Path, anchor: Optional[str] = None):
         if not file_path.exists():
             return
         self.current_path = file_path
         self.title_label.setText(file_path.name)
         self.path_label.setText(str(file_path))
         self.edit_btn.setEnabled(True)
+        self._refresh_review_state(file_path)
+        # Images are referenced relative to the document (``_images/…`` in the
+        # manual, ``figures/…`` in the guides). A base URL alone does not make
+        # QTextBrowser resolve them, so give it an explicit search path.
+        try:
+            self.viewer.setSearchPaths([str(file_path.parent)])
+        except Exception:
+            pass
         result = self.client.read_doc(str(file_path))
         if result is None:
             self.viewer.setPlainText(f"Could not read {file_path}")
@@ -468,15 +669,7 @@ class HelpWidget(QMainWindow):
             self.viewer.hide()
             self.save_btn.setEnabled(True)
         else:
-            html = result.get("html")
-            if html is None:
-                self.viewer.setPlainText(text)
-            else:
-                try:
-                    base_url = QUrl.fromLocalFile(str(file_path))
-                    self.viewer.setHtml(html, base_url)
-                except Exception:
-                    self.viewer.setHtml(html)
+            self._set_viewer_html(result.get("html"), text, file_path)
             self.viewer.show()
             self.editor.hide()
             self.save_btn.setEnabled(False)
@@ -497,8 +690,8 @@ class HelpWidget(QMainWindow):
             if url.isLocalFile() or url.scheme() == "file":
                 local_path = pathlib.Path(url.toLocalFile())
                 fragment = url.fragment() or None
-                if local_path.suffix.lower() == ".md":
-                    self._open_markdown_path(local_path, fragment)
+                if local_path.suffix.lower() in (".md", ".rst"):
+                    self._open_document_path(local_path, fragment)
                     return
             self.viewer.setSource(url)
         except Exception:
@@ -536,15 +729,7 @@ class HelpWidget(QMainWindow):
                 self.save_btn.setEnabled(False)
                 return
             text = result.get("content", "")
-            html = result.get("html")
-            if html is None:
-                self.viewer.setPlainText(text)
-            else:
-                try:
-                    base_url = QUrl.fromLocalFile(str(self.current_path))
-                    self.viewer.setHtml(html, base_url)
-                except Exception:
-                    self.viewer.setHtml(html)
+            self._set_viewer_html(result.get("html"), text, self.current_path)
             self.viewer.show()
             self.editor.hide()
             self.save_btn.setEnabled(False)
@@ -564,15 +749,146 @@ class HelpWidget(QMainWindow):
             if result is None:
                 self.viewer.setPlainText(text)
                 return
-            html = result.get("html")
-            if html is None:
-                self.viewer.setPlainText(text)
-            else:
-                try:
-                    base_url = QUrl.fromLocalFile(str(self.current_path))
-                    self.viewer.setHtml(html, base_url)
-                except Exception:
-                    self.viewer.setHtml(html)
+            self._set_viewer_html(result.get("html"), text, self.current_path)
+        # Saving changes the content hash, so a signed-off page becomes stale.
+        self._refresh_review_state(self.current_path)
+        self._refresh_tree_badges()
+
+    # ── human review ────────────────────────────────────────────────
+
+    def _set_viewer_html(
+        self, html: Optional[str], text: str, file_path: pathlib.Path
+    ):
+        """Show *html* for *file_path*, resolving and scaling its images."""
+        if html is None:
+            self.viewer.setPlainText(text)
+            return
+        try:
+            self.viewer.setSearchPaths([str(file_path.parent)])
+        except Exception:
+            pass
+        try:
+            width = self.viewer.viewport().width() - 24
+            if width <= 0:
+                width = 880
+            html = _constrain_image_widths(html, file_path.parent, width)
+        except Exception:
+            pass
+        try:
+            self.viewer.setHtml(html, QUrl.fromLocalFile(str(file_path)))
+        except Exception:
+            self.viewer.setHtml(html)
+
+    # ── human review ────────────────────────────────────────────────
+
+    def _refresh_review_state(self, file_path: Optional[pathlib.Path]):
+        """Update the review banner and the sign-off button for *file_path*."""
+        if file_path is None:
+            self.review_label.setVisible(False)
+            self.review_btn.setEnabled(False)
+            return
+
+        info = self.client.review_status(str(file_path))
+        tracked = bool(info.get("tracked"))
+        status = info.get("status", "")
+
+        self.review_btn.blockSignals(True)
+        self.review_btn.setEnabled(tracked)
+        self.review_btn.setChecked(tracked and status == review.STATUS_REVIEWED)
+        self.review_btn.blockSignals(False)
+
+        if not tracked:
+            self.review_label.setVisible(False)
+            return
+
+        badge = REVIEW_BADGES.get(status, "")
+        tip = REVIEW_TOOLTIPS.get(status, "")
+        who = ""
+        if status == review.STATUS_REVIEWED and info.get("reviewer"):
+            who = f" — {info['reviewer']}, {info.get('date', '')}"
+        colours = {
+            review.STATUS_REVIEWED: ("#1b5e20", "#e8f5e9"),
+            review.STATUS_STALE: ("#e65100", "#fff3e0"),
+            review.STATUS_UNREVIEWED: ("#b71c1c", "#ffebee"),
+        }
+        fg, bg = colours.get(status, ("#000000", "#f0f0f0"))
+        self.review_label.setText(f"{badge} {status.upper()}{who} — {tip}")
+        self.review_label.setStyleSheet(
+            f"color: {fg}; background: {bg}; padding: 4px; border-radius: 3px;"
+            "font-size: 9pt;"
+        )
+        self.review_label.setVisible(True)
+
+    def _on_review_toggled(self, checked: bool):
+        """Record or clear the sign-off for the current page."""
+        if self.current_path is None:
+            return
+        try:
+            reviewer = getpass.getuser()
+        except Exception:
+            reviewer = ""
+        status = review.STATUS_REVIEWED if checked else review.STATUS_UNREVIEWED
+        result = self.client.set_review_status(
+            str(self.current_path), status, reviewer
+        )
+        if not result:
+            QMessageBox.warning(
+                self,
+                "Review status",
+                f"Could not record review status for {self.current_path.name}.",
+            )
+        self._refresh_review_state(self.current_path)
+        self._refresh_tree_badges()
+        self._update_review_summary()
+
+    def _refresh_tree_badges(self):
+        """Re-read review status and update the manual branch badges."""
+        statuses = {
+            e["path"]: e.get("review_status", "") for e in self._manual_entries()
+        }
+        root = self.tree.topLevelItem(0)
+        if root is None:
+            return
+        for i in range(root.childCount()):
+            item = root.child(i)
+            path = item.data(0, Qt.UserRole)
+            if path not in statuses:
+                continue
+            status = statuses[path]
+            label = item.text(0)
+            for badge in REVIEW_BADGES.values():
+                label = label.replace(badge, "").strip()
+            item.setText(0, f"{REVIEW_BADGES.get(status, '')} {label}".strip())
+            item.setData(0, Qt.UserRole + 1, status)
+            tip = REVIEW_TOOLTIPS.get(status, "")
+            if tip:
+                item.setToolTip(0, f"{pathlib.Path(path).name}\n{tip}")
+        self._apply_review_filter()
+
+    def _apply_review_filter(self):
+        """Hide manual pages that do not match the selected review status."""
+        if not hasattr(self, "review_filter"):
+            return
+        wanted = self.review_filter.currentData()
+        root = self.tree.topLevelItem(0)
+        if root is None:
+            return
+        for i in range(root.childCount()):
+            item = root.child(i)
+            status = item.data(0, Qt.UserRole + 1)
+            item.setHidden(wanted not in ("all", None) and status != wanted)
+
+    def _update_review_summary(self):
+        """Show the manual-wide review tally in the header."""
+        if not hasattr(self, "review_summary_label"):
+            return
+        report = self.client.review_check()
+        summary = report.get("summary")
+        if not summary:
+            self.review_summary_label.setText("")
+            return
+        mark = "✅" if report.get("passed") else "⬜"
+        self.review_summary_label.setText(f"{mark} Manual: {summary}")
 
     # ── external links ──────────────────────────────────────────────
 

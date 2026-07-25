@@ -134,6 +134,12 @@ docs-screenshots = { cmd = "python docs/guides/make_screenshots.py" }
 docs-manual = { cmd = "python build_tools/docs/convert_manual.py" }
 docs-clean = { cmd = "rm -rf docs/_build" }
 docs-html = { depends-on = ["docs-plugins"], cmd = "sphinx-build -E -b html docs docs/_build" }
+# Release gate: fails when a review-tracked page (docs/manual) is unreviewed or
+# has been edited since its sign-off. Sign pages off in the Help browser or with
+# `csc help review-set <path> --reviewer <name>`.
+docs-check-reviewed = { cmd = "python -m chisurf.core.cli help review-check" }
+# Production build: refuses to publish human-unchecked documentation.
+docs-release = { depends-on = ["docs-check-reviewed", "docs-html"] }
 
 [target.win-64.dependencies]
 hdf5 = "*"

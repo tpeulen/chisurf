@@ -2,6 +2,53 @@
 
 ## 2026-07-25
 
+* **Manual review gating + the Help browser can finally read the manual
+  (`core/help`).** Much of `docs/manual` is machine-drafted, and it ships: it sits
+  in the `docs/index.rst` toctree. Two gaps closed. **(1) The browser could not
+  open it at all** — `discover_docs()` globbed `*.md`, so all 79 `.rst` pages were
+  invisible. New `api/rst.py` renders them via bare docutils (a Sphinx build is
+  far too slow for interactive browsing), registering no-op fallbacks for
+  Sphinx-only roles (`:doc:`, `:ref:`, `:numref:`, …) so cross-references degrade
+  to readable labels rather than error markers; `api/render.py` dispatches on
+  suffix so callers stop caring about format. The GUI's duplicate discovery glob
+  was removed in favour of the shared API, and the mislabelled "User manual"
+  category (which actually held *all* of `docs/`) was split into
+  **User manual** (`docs/manual`) and **Documentation**. **(2) Nothing tracked
+  human sign-off.** New Qt-free `api/review.py`: pages in a tracked directory
+  (`TRACKED_DIRS = ("manual",)`) are `reviewed` / `stale` / `unreviewed`, stored in
+  a per-directory sidecar `review_status.json`. The registry keeps a **content
+  hash** with each sign-off, which is the whole point — editing an approved page
+  invalidates the approval automatically (`stale`), so a page cannot be signed off
+  once and then quietly rewritten. Sidecar rather than in-file so the RST stays
+  clean and a directory's state diffs as one file; safe because `docs-manual` is
+  retired and the RST is hand-maintained. Surfaces: GUI (per-page badges
+  ✅/⚠️/⬜, a coloured banner on the open page, **Mark reviewed**, a status filter,
+  and a header tally), CLI (`help review-check` = the gate, `review-list`,
+  `review-set`), RPC (`help.review.status`/`.set`/`.check`). **Enforcement is
+  split deliberately:** `docs-html` still builds unreviewed pages — dropping them
+  would hole the toctree and break cross-references — but `docs/_ext/review_banner.py`
+  stamps each with a visible warning; the hard gate is the new
+  `docs-check-reviewed` pixi task (exit 1, currently 79 blocking), which the new
+  `docs-release` task depends on. Coverage: 23 headless tests in
+  `test/test_review.py` (hash normalisation, the reviewed→edit→stale→re-review
+  lifecycle, untracked pages never blocking, corrupt-registry degradation, RST
+  rendering and Sphinx-role fallback) plus 5 GUI tests; 35 pass in the plugin.
+  See [plugins/core-tools.md](/plugins/core-tools.md).
+* **Two pre-existing bugs found while building it.** (a) The `csc` console script
+  was declared `chisurf.cli:cli`, but there is no `chisurf.cli` module — the CLI
+  group is `chisurf.core.cli`, so *every* `csc` invocation failed on import; fixed
+  in `pyproject.toml` (the pixi task uses `python -m chisurf.core.cli` so it works
+  without a reinstall). (b) **No image in the Help browser had ever rendered**: Qt
+  was asked to load the relative `src` (`_images/…`, `figures/…`) unresolved,
+  because a base URL alone does not make `QTextBrowser` resolve relative
+  resources — it needs `setSearchPaths`. Fixed, and two follow-on layout problems
+  with it: Qt renders images at native size and ignores CSS `max-width` (a 910 px
+  manual screenshot pushed the text off the page, so images are now scaled with an
+  explicit `width`/`height` read from the image header), and docutils' bare
+  `<img class="align-center">` between paragraphs made Qt float the image to the
+  bottom of the document, so block images are wrapped in a centred paragraph and
+  the unusable class dropped.
+
 * **PRD-66: chitable — one table family, and the last third-party GUI
   dependency dropped.** ChiSurf's tables were a third-party `DataFrameEditor`
   plus ~40 hand-rolled `QTableWidget`s. The editor was the only thing with

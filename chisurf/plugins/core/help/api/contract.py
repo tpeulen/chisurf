@@ -9,6 +9,9 @@ METHOD_READ_DOC = "help.docs.read"
 METHOD_SAVE_DOC = "help.docs.save"
 METHOD_SEARCH_DOCS = "help.docs.search"
 METHOD_CONTRACT = "help.docs.contract"
+METHOD_REVIEW_STATUS = "help.review.status"
+METHOD_REVIEW_SET = "help.review.set"
+METHOD_REVIEW_CHECK = "help.review.check"
 
 
 def contract_descriptor() -> Dict[str, Any]:
@@ -108,6 +111,88 @@ def contract_descriptor() -> Dict[str, Any]:
                                     "path": {"type": "string"},
                                     "title": {"type": "string"},
                                     "match_type": {"type": "string"},
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            METHOD_REVIEW_STATUS: {
+                "summary": "Return the human-review status of one page.",
+                "params": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}},
+                    "required": ["path"],
+                },
+                "result": {
+                    "type": "object",
+                    "properties": {
+                        "ok": {"type": "boolean"},
+                        "result": {
+                            "type": "object",
+                            "properties": {
+                                "path": {"type": "string"},
+                                "status": {
+                                    "type": "string",
+                                    "enum": ["reviewed", "stale", "unreviewed"],
+                                },
+                                "reviewer": {"type": "string"},
+                                "date": {"type": "string"},
+                            },
+                        },
+                    },
+                },
+            },
+            METHOD_REVIEW_SET: {
+                "summary": (
+                    "Record or clear human sign-off for a page. Marking a page "
+                    "reviewed stores a hash of its current content, so any later "
+                    "edit turns the page stale automatically."
+                ),
+                "params": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "status": {
+                            "type": "string",
+                            "enum": ["reviewed", "unreviewed"],
+                        },
+                        "reviewer": {"type": "string"},
+                    },
+                    "required": ["path", "status"],
+                },
+                "result": {
+                    "type": "object",
+                    "properties": {
+                        "ok": {"type": "boolean"},
+                        "result": {"type": "object"},
+                    },
+                },
+            },
+            METHOD_REVIEW_CHECK: {
+                "summary": (
+                    "Report every tracked page that is not cleanly reviewed. "
+                    "Used as the release gate."
+                ),
+                "params": {},
+                "result": {
+                    "type": "object",
+                    "properties": {
+                        "ok": {"type": "boolean"},
+                        "result": {
+                            "type": "object",
+                            "properties": {
+                                "passed": {"type": "boolean"},
+                                "summary": {"type": "string"},
+                                "blocking": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "rel_path": {"type": "string"},
+                                            "status": {"type": "string"},
+                                        },
+                                    },
                                 },
                             },
                         },

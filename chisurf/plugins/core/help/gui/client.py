@@ -9,6 +9,9 @@ from chisurf.plugins.core.help.api.contract import (
     METHOD_CONTRACT,
     METHOD_LIST_DOCS,
     METHOD_READ_DOC,
+    METHOD_REVIEW_CHECK,
+    METHOD_REVIEW_SET,
+    METHOD_REVIEW_STATUS,
     METHOD_SAVE_DOC,
     METHOD_SEARCH_DOCS,
 )
@@ -107,6 +110,60 @@ class HelpClient:
     def describe_contract(self) -> Dict[str, Any]:
         """Return the Help plugin workflow contract."""
         result = self._call(METHOD_CONTRACT)
+        if result and result.get("ok"):
+            return result.get("result", {})
+        return {}
+
+    def review_status(self, path: str) -> Dict[str, Any]:
+        """Return the human-review status of one page.
+
+        Parameters
+        ----------
+        path : str
+            Documentation page.
+
+        Returns
+        -------
+        dict
+            Status payload, or an empty dict when unavailable.
+
+        """
+        result = self._call(METHOD_REVIEW_STATUS, {"path": path})
+        if result and result.get("ok"):
+            return result.get("result", {})
+        return {}
+
+    def set_review_status(
+        self, path: str, status: str, reviewer: str = ""
+    ) -> Dict[str, Any]:
+        """Record or clear human sign-off for a page.
+
+        Parameters
+        ----------
+        path : str
+            Documentation page.
+        status : str
+            ``"reviewed"`` or ``"unreviewed"``.
+        reviewer : str, optional
+            Name recorded with the sign-off.
+
+        Returns
+        -------
+        dict
+            Resulting status payload, or an empty dict on failure.
+
+        """
+        result = self._call(
+            METHOD_REVIEW_SET,
+            {"path": path, "status": status, "reviewer": reviewer},
+        )
+        if result and result.get("ok"):
+            return result.get("result", {})
+        return {}
+
+    def review_check(self) -> Dict[str, Any]:
+        """Return the release-gate report for all tracked pages."""
+        result = self._call(METHOD_REVIEW_CHECK)
         if result and result.get("ok"):
             return result.get("result", {})
         return {}
