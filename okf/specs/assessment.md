@@ -66,9 +66,10 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-11](#inc-11) | S3 | INC | Plugins | Help browser's "Core" category rglobs the whole repo: 576 entries, 331 from `junk/`, 151 from `okf/`, 41 from `.opencode/` | VERIFIED |
 | [INC-12](#inc-12) | S3 | INC | Docs | A published page links into `okf/`, which is excluded from the docs build — the only warning in an otherwise clean build | VERIFIED |
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
+| [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
 
-33 findings (18 FIXED): 6 VERIFIED, 6 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL.
-Of the 15 open: 0×S1, 6×S2, 9×S3.
+34 findings (18 FIXED): 7 VERIFIED, 6 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 1 PARTIAL.
+Of the 16 open: 0×S1, 6×S2, 10×S3.
 
 ---
 
@@ -419,6 +420,36 @@ landed the translation kit and localized the data-driven (view.json/manifest) an
 - **Kit wiring** — add the `pixi.toml` `i18n-extract`/`i18n-compile` tasks and the
   `gui.language` YAML default (held back in the initial commit to avoid a
   shared-file collision).
+
+### INC-13
+
+**S3 · Runtime `.ui` forms are a prototyping carry-over; the target is zero of
+them.** 43 Qt Designer `.ui` files are still loaded at runtime via `uic.loadUi`
+(`chisurf/gui/decorators.py:_compiled_ui_class`); AutoForm + `*.view.json` is the
+one intended UI mechanism ([PRD-40](../prds/prd-40.md), [GUI & AutoForm](../subsystems/gui-autoform.md)).
+Each form should be ported to a `view.json` (+ a view-model where it carries
+logic) and the `.ui` deleted. Why it is debt, not style:
+
+- **No live retranslation.** `uic.loadUi` binds text at build time, so an open
+  `.ui` form cannot follow a language switch on its own — it needs the
+  reparse-and-reapply shim `chisurf/gui/retranslate.py`, added by
+  [PRD-63](../prds/prd-63.md) precisely to paper over this. AutoForm reads its
+  text through the [i18n seam](../subsystems/i18n.md) on every build and
+  retranslates for free.
+- **Two divergent UI paths** (data-driven specs vs. hand-drawn XML) double the
+  surface for the glossary/terminology drift already tracked in [I18N-01](#i18n-01),
+  and for tooltip/label conventions and theming.
+- **Opaque to tooling** — `.ui` XML is invisible to the model/UI dataspec, the
+  parameter registry, and the AutoForm section library (tables, `path_list`,
+  `image`, `waterfall`, …) that already replaces most hand-built widgets.
+
+Locations (43 files): densest under `chisurf/gui/widgets/models/tcspc/` (3),
+`chisurf/plugins/tttr/tttr_correlate/` (3), `chisurf/gui/widgets/{pdb,fio,experiments/tcspc}/`
+(2 each), `chisurf/plugins/tttr/tttr_histogram/` (2), plus the main-window
+`chisurf/gui/gui.ui` and singletons across the wizard, vv_vh_g_factor, burst and
+microtime-histogram plugins. Status: **VERIFIED** (`find chisurf -name '*.ui' | wc -l`
+= 43). Migrate opportunistically as each form is touched; keep every un-migrated
+form on the `retranslate_from_ui` path so language switching keeps working meanwhile.
 
 ## How to work this list
 

@@ -193,6 +193,32 @@ the acquisition simulator's Decay modal both embed it so the two never diverge
 When touching GUI code, prefer porting hand-built widgets to AutoForm + a
 JSON view scheme.
 
+## Runtime `.ui` forms are prototyping-only (migration target: removal)
+
+The ~43 Qt Designer `.ui` files still loaded at runtime via `uic.loadUi`
+(`chisurf/gui/decorators.py:_compiled_ui_class`) are a **prototyping-era carry-over,
+not a supported UI layer** — AutoForm + `*.view.json` is the one intended UI
+mechanism. Each `.ui` form should be ported to a `view.json` (+ a view-model where
+it carries logic) and the `.ui` deleted; the target end-state is **zero runtime
+`.ui` files**. Reasons this is debt, not just style:
+
+- **No live retranslation.** `uic.loadUi` binds every string at build time, so an
+  open `.ui` form cannot follow a UI-language switch without the
+  reparse-and-reapply shim `chisurf/gui/retranslate.py` — whereas AutoForm reads
+  its text through the [i18n seam](/subsystems/i18n.md) on every build and
+  retranslates for free. (This is what motivated flagging the forms: see
+  [PRD-63](/prds/prd-63.md).)
+- **Two divergent UI paths** — data-driven specs vs. hand-drawn XML — double the
+  surface for glossary/terminology drift ([I18N-01](/specs/assessment.md#i18n-01)),
+  tooltip/label conventions, and theming.
+- **Opaque to tooling** — `.ui` XML is invisible to the model/UI dataspec, the
+  parameter registry, and the AutoForm section library (tables, `path_list`,
+  `image`, `waterfall`, …) that already replace most hand-built widgets.
+
+Tracked as [INC-13](/specs/assessment.md#inc-13). Until a form is migrated, keep
+it on the [`retranslate_from_ui`](/subsystems/i18n.md) path so language switching
+still works.
+
 ## UI convention: space-efficient labels + tooltips (general rule)
 
 Screen space is a first-class constraint everywhere in ChiSurf — panels dock

@@ -2,6 +2,22 @@
 
 ## 2026-07-25
 
+* **i18n (PRD-63): live interface retranslation + `.ui` flagged as prototyping-only.**
+  Switching the UI language now retranslates the running interface, not just
+  newly-opened windows. `apply_language` emits the app-wide `language_notifier`;
+  the main window subscribes and (deferred one event-loop turn, so the ribbon flag
+  dropdown that triggered the switch isn't destroyed mid-signal) re-applies the
+  translation to its live menus/actions/labels via the new reusable
+  `chisurf/gui/retranslate.py:retranslate_from_ui` (parses the `.ui` XML,
+  re-translates through the installed translator, writes back onto live widgets by
+  `objectName` — no re-instantiation, state/connections preserved), then rebuilds
+  the ribbon. Hardened `language_notifier` against C++-object deletion across
+  QApplication churn (`_live_notifier`). Tests: `test/gui/test_retranslate.py`.
+  This shim exists only because of the 43 runtime `.ui` forms, so **flagged the
+  `.ui` layer as prototyping-only tech debt** ([INC-13](/specs/assessment.md#inc-13)):
+  AutoForm `view.json` is the one intended UI mechanism and retranslates for free;
+  target end-state is zero runtime `.ui`. Recorded in
+  [GUI & AutoForm](/subsystems/gui-autoform.md) and [i18n](/subsystems/i18n.md).
 * **chimol: the cartoon gets PyMOL's per-residue guide-frame stage.** The two
   conditioning steps PyMOL runs before any sampling could not be patched in --
   chimol derived its tangents from the *finished spline*, so there was nowhere to
