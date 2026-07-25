@@ -13,6 +13,7 @@ from . import (
     data_source_section,  # noqa: F401  (registers the "data_source" section)
     decay_conv_section,  # noqa: F401  (registers the "decay_conv" section)
     embed_section,  # noqa: F401  (registers the "embed" section)
+    equation_editor_section,  # noqa: F401  (registers the "equation_editor" section)
     global_parameter_table,  # noqa: F401  (registers the "global_parameter_table" section)
     help_section,  # noqa: F401  (registers the "help" section)
     image_browser_section,  # noqa: F401  (registers the "image_browser" section)

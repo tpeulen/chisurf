@@ -190,6 +190,42 @@ preview into one view; the FCS Filter Calculator's synthetic-component dialog an
 the acquisition simulator's Decay modal both embed it so the two never diverge
 (see [plugins/fcs.md](/plugins/fcs.md)).
 
+## Equation editor + safe expression engine
+
+`chisurf/core/expressions.py` is a **general, Qt-free safe expression engine**:
+an AST-whitelist parser/validator/evaluator for *user-entered* formulas (derived
+columns, analytical parameter relations, model equations). It replaces the
+codebase's ad-hoc alternatives — `eval` under `from numpy import *`, a
+`re.Scanner` tokeniser — none of which sandboxes input or gives structured
+feedback. Everything is governed by an `ExpressionPolicy`: which node kinds are
+allowed (arithmetic, optional comparisons/bit-ops), the whitelisted function set
+(`DEFAULT_POLICY` ships a rich NumPy library — `sin/cos/exp/log/sqrt/where/clip/
+minimum/maximum/…`), the named constants (`pi/e/tau/inf/nan`), and how names
+resolve: **quoted** references (`'Green Count Rate'`, so names may contain
+spaces) vs **bare** identifiers (`tau`), optionally case-insensitive and matched
+on the part left of a `|` (the `"Name | unit"` column convention). Public surface:
+`validate_expression(expr, known_names, policy) -> ValidationResult(ok, message,
+refs)` for GUI ✓/✗, plus `compile_expression`/`evaluate_expression`. Two presets:
+`DEFAULT_POLICY` (rich, Python-like, bare names) and `NDX_POLICY` (ndXplorer
+burst-column convention — quoted names, arithmetic + `abs`, case-insensitive,
+left-of-`|`).
+
+`chisurf/gui/widgets/equation_editor.py::EquationTableEditor` is the general
+widget on top of that engine: a validated `Output | Expression | ✓/✗` table with
+per-row error tooltips, a names+functions reference dialog, an optional inline
+LaTeX preview of the focused row (reuses the parse-model `latex.py` helper;
+auto-off for quoted-name conventions), add/remove rows, an `applied` signal, and
+the lightweight `CodeEditor` surface (`text()`/`setText`/`load_file`/`save_text`/
+`save_callback`/`filename`) so it drops in wherever a YAML equation blob was
+edited as raw text. Validation is pluggable: a caller may inject its own
+`validator` so the editor's ✓/✗ stays in step with whatever engine will *evaluate*
+the formulas. The `equation_editor` AutoForm section
+(`sections/equation_editor_section.py`) exposes it view.json-drivably
+(`{attr, names, call, policy}`). ndXplorer's equation editor delegates to this
+widget when ChiSurf is importable (injecting its own `equation_graph`
+validator + a `(columns, constants)`→mapping names adapter), and falls back to a
+local table when ChiSurf is absent.
+
 When touching GUI code, prefer porting hand-built widgets to AutoForm + a
 JSON view scheme.
 
