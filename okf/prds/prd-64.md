@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 31):*
+*Landed so far (allow-list 76 → 30):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -458,6 +458,20 @@ screenshot/qtbot verification after each cluster.
   **GUI-screenshot verified** — three overlaid spectra rendered headless and
   inspected: distinct solid/dash/dot lines, light-grey legend + axis labels, grid,
   correct 400–700 nm / 0–1 ranges. New `test_spectrum_view_plots_traces`.
+- **Batch 20** (allow-list 31 → 30) — migrated `plugins/burst/burst_background/`
+  `gui/sections.py` (a log-log inter-photon-time distribution with points + a
+  fitted tail, and a per-detector background-rate bar chart). **Fixed a real
+  chiplot bug found by GUI-screenshot inspection:** `scatter()` was backed by a
+  raw `pg.ScatterPlotItem`, which **ignores log mode** — on a log plot the points
+  landed at linear positions and blew the auto-range out to ~500 decades (garbage
+  10²⁷³ axis labels). `add_scatter` now uses a **log-aware `PlotDataItem`** (no
+  line + a symbol), so scatters transform correctly under `set_log`; this also
+  retroactively fixes `filter_panel`'s log-y dt-scatter (Batch 10). The bar chart
+  draws one `bars()` call per detector (chiplot `bars` takes a single brush) to
+  keep per-bar colours, with detector-name tick labels via a flagged `.native`
+  `setTicks`. New `test_scatter_is_log_aware`; both sections
+  screenshot-verified (decaying points + tail-fit line on clean log-log axes;
+  green/red/yellow coloured bars with named ticks).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

@@ -504,17 +504,24 @@ class _PgCanvas(base.Canvas):
         return _Curve(item, self._pi)
 
     def add_scatter(self, x, y, *, size, pen, brush, symbol, name=None) -> H.Scatter:
-        """Draw a scatter cloud."""
-        item = pg.ScatterPlotItem(
-            x=np.asarray(x),
-            y=np.asarray(y),
-            size=size,
-            pen=_pen(pen),
-            brush=_brush(brush),
-            symbol=symbol.value,
-            name=name,
-        )
-        self._pi.addItem(item)
+        """Draw a scatter cloud.
+
+        Backed by a **log-aware** ``PlotDataItem`` (no connecting line + a symbol)
+        rather than a raw ``ScatterPlotItem``. A raw ScatterPlotItem ignores the
+        plot's log mode, so its points would be drawn at linear positions on a log
+        axis and would corrupt auto-range; a PlotDataItem transforms correctly
+        under :meth:`set_log`.
+        """
+        kw = {
+            "pen": None,
+            "symbol": symbol.value,
+            "symbolSize": size,
+            "symbolBrush": _brush(brush) if brush is not None else None,
+            "symbolPen": _pen(pen) if pen is not None else None,
+        }
+        if name is not None:
+            kw["name"] = name
+        item = self._pi.plot(np.asarray(x), np.asarray(y), **kw)
         return _Scatter(item, self._pi)
 
     def add_bars(self, x, height, *, width, pen, brush) -> H.Bars:

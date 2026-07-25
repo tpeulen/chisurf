@@ -12,9 +12,9 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtWidgets
 
+from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.tool_buttons import styled_tool_button
@@ -115,12 +115,10 @@ class _IhtPlotSection(QtWidgets.QWidget):
         self._model = model
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
-        self.plot = pg.PlotWidget()
-        self.plot.setLogMode(x=True, y=True)
-        self.plot.setLabel("bottom", "inter-photon time", units="ms")
-        self.plot.setLabel("left", "counts")
-        self.plot.setTitle("Inter-photon-time distribution + background tail fit")
-        self.plot.addLegend(offset=(-10, 10))
+        self.plot = cp.Plot(title="Inter-photon-time distribution + background tail fit")
+        self.plot.set_log(x=True, y=True)
+        self.plot.set_labels(bottom="inter-photon time (ms)", left="counts")
+        self.plot.legend(offset=(-10, 10))
         lay.addWidget(self.plot)
         model.add_observer(self._on_event)
         self._redraw()
@@ -130,25 +128,17 @@ class _IhtPlotSection(QtWidgets.QWidget):
 
     def _redraw(self):
         self.plot.clear()
-        legend = getattr(self.plot, "legend", None)
-        if legend is not None:
-            legend.clear()
+        self.plot.legend(offset=(-10, 10))  # idempotent: reset for the redraw
         for s in self._model.iht_series():
             x = np.asarray(s["x"], dtype=float)
             y = np.asarray(s["y"], dtype=float)
             if s.get("symbol"):
-                self.plot.plot(
-                    x,
-                    y,
-                    pen=None,
-                    symbol="o",
-                    symbolSize=3,
-                    symbolBrush=(*_rgb(s["color"]), 90),
-                    symbolPen=None,
-                    name=s.get("name"),
+                self.plot.scatter(
+                    x, y, size=3, brush=(*_rgb(s["color"]), 90),
+                    pen=None, symbol="o", name=s.get("name"),
                 )
             else:
-                self.plot.plot(x, y, pen=pg.mkPen(s["color"], width=s.get("width", 2)))
+                self.plot.line(x, y, pen=s["color"], width=s.get("width", 2))
 
 
 def _rgb(color):
@@ -169,9 +159,8 @@ class _RatePlotSection(QtWidgets.QWidget):
         self._model = model
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
-        self.plot = pg.PlotWidget()
-        self.plot.setLabel("left", "background", units="kHz")
-        self.plot.setTitle("Background rate per detector")
+        self.plot = cp.Plot(title="Background rate per detector")
+        self.plot.set_labels(left="background (kHz)")
         lay.addWidget(self.plot)
         model.add_observer(self._on_event)
         self._redraw()
@@ -185,12 +174,12 @@ class _RatePlotSection(QtWidgets.QWidget):
         if not rows:
             return
         x = np.arange(len(rows))
-        self.plot.addItem(
-            pg.BarGraphItem(
-                x=x,
-                height=[r["rate"] for r in rows],
-                width=0.6,
-                brushes=[r["color"] for r in rows],
-            )
+        # One bar per detector so each keeps its own colour (chiplot ``bars``
+        # takes a single brush per call).
+        for xi, r in zip(x.tolist(), rows):
+            self.plot.bars([xi], [r["rate"]], width=0.6, brush=r["color"])
+        # Detector names as bottom-axis tick labels — a pyqtgraph-specific verb
+        # reached via the backend escape hatch (migration gap).
+        self.plot.native.getAxis("bottom").setTicks(
+            [list(zip(x.tolist(), [r["detector"] for r in rows]))]
         )
-        self.plot.getAxis("bottom").setTicks([list(zip(x.tolist(), [r["detector"] for r in rows]))])

@@ -75,6 +75,24 @@ def test_plot_draw_all_families(qapp):
     img.set_image(np.random.rand(4, 4))
 
 
+def test_scatter_is_log_aware(qapp):
+    """Scatter points must transform under log mode (PRD-64 Batch 20 fix).
+
+    A raw pyqtgraph ScatterPlotItem ignores log mode and would leave the view
+    auto-ranged at the linear default (~[0,1]); a log-aware PlotDataItem makes
+    the view span the data's log10 range.
+    """
+    x = np.logspace(-3, 1, 60)
+    y = np.exp(-x / 0.5) * 1000 + 5  # ~5 .. ~1000
+    plot = cp.Plot()
+    plot.set_log(x=True, y=True)
+    plot.scatter(x, y, size=3, brush=(60, 120, 200, 90), symbol="o")
+    plot.autoscale()
+    (y0, y1) = plot.native.getViewBox().viewRange()[1]
+    # log10(data) spans ~0.7 .. 3.0; a linear-default view would be ~[0, 1].
+    assert y1 > 2.0, f"scatter did not autorange under log mode (y1={y1})"
+
+
 def test_region_and_marker_values(qapp):
     plot = cp.Plot()
     reg = plot.region((1.0, 3.0))
@@ -295,6 +313,8 @@ def test_migrated_modules_import(qapp):
         "chisurf.gui.widgets.node_editor.widgets.pt_plot_widget",
         # Batch 19
         "chisurf.gui.widgets.spectrum_view",
+        # Batch 20
+        "chisurf.plugins.burst.burst_background.gui.sections",
     ):
         assert importlib.import_module(name) is not None
 
