@@ -251,6 +251,16 @@ Two things measurement decided, not convention:
 Looking at that law to build stage 6 turned up a defect in it — see
 [PRD-50](prd-50.md) and `test/models/test_two_state_occupation.py`.
 
+**Multistate dynamics (2026-07-25).** `TcPdaModel` takes an optional rate
+matrix, which switches its dynamic path from the exact two-state occupation law
+to the Szabo–Gopich multistate approximation in the shared
+`chisurf/core/fluorescence/kinetics.py` — the same module the two-colour
+three-state model now uses, so neither colour count carries its own copy. Each
+channel's time-averaged probability is matched independently and the node
+renormalised, which keeps the cost linear in channels rather than exponential in
+states; the marginals are exact, the joint is not. See [PRD-50](prd-50.md) for
+the measured validity range.
+
 Remaining: global two-plus-three-colour joint fits (stage 5), a
 `docs/concepts` page and numbered guide, and the unresolved error-surface width
 discrepancy.

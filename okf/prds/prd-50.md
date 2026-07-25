@@ -208,6 +208,28 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   `test_dynamic_pda_recovers_exchange_at_unequal_populations` now covers that
   regime, which the original acceptance test (at `x1 = 0.503`) could not.
 
+- **Szabo–Gopich multistate dynamics (2026-07-25).** Beyond two states there is
+  no closed occupation-time law, so `PdaDynamicThreeStateModel` had only
+  Gillespie sampling — which makes the fit objective itself stochastic. New
+  shared `chisurf/core/fluorescence/kinetics.py` implements Gopich & Szabo's
+  route (JPC B 2010): the first two moments of the time-averaged observable are
+  exact for any rate matrix via the spectral decomposition of the generator, and
+  a bounded (beta) shape is matched to them. The model gains a `method` choice
+  and defaults to the analytic route. A beta rather than the original's
+  Gaussian because the observable is a probability that piles up against both
+  ends in the slow limit, where a clipped Gaussian would distort exactly the
+  comparison against a static fit.
+  **Validity is measured:** total variation against exact sampling is
+  0.19 / 0.11 / 0.010 / 0.0012 at `k·T` = 0.002 / 0.2 / 2 / 20 — ~1% from about
+  two transitions per window upward, degrading as exchange slows because three
+  separated states are trimodal and no two-parameter shape has three peaks.
+  Inherent, and not a practical limit: slow exchange means resolved states,
+  which a static multi-species fit describes exactly.
+  A cross-check against the exact two-state law caught a transposition — the
+  correlation function carries the equilibrium weight on the *initial* state and
+  `exp(Qt)` is not symmetric, so the wrong placement understated the variance by
+  26%; the three-state simulation check had passed with it.
+
 **Follow-ups (not yet done):**
 - GUI button wiring the live light-path plugin session to a selected PDA model
   (the pure bridge API is done and tested; only the one-click GUI hook remains).
