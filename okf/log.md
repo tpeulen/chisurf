@@ -2,6 +2,30 @@
 
 ## 2026-07-25
 
+* **A cache whose key cost more than the lookup saved, and an autoscale that
+  announced a structure change twice per evaluation.** Two findings from
+  profiling a TCSPC decay evaluation, both algorithmic rather than micro.
+  (1) `Convolve._processed_irf` memoises the processed instrument response — an
+  earlier fix, worth 42 % of fit wall time. But its *key* hashes the whole IRF
+  byte array on every evaluation (deliberately: a summary like `sum()` is blind
+  to an in-place `np.roll`, which would silently serve a stale curve), and with
+  the cache in place the rebuild it guards almost never happens. So **14 % of an
+  evaluation** went on deciding that nothing had changed. Neither the IRF nor the
+  data is a fit parameter, so the hash is now taken once per run, keyed on a new
+  `factorgraph.frozen_epoch()` token; the array's *identity* is still checked, and
+  outside a run the full hash is taken exactly as before. 88.4 → 71.6 µs per
+  evaluation.
+  (2) `Convolve.scale` wrote the autoscaled amplitude with
+  `_n0.fixed = False; _n0.value = n0; _n0.fixed = True`. `Parameter.value`
+  *already* writes past the port's fixed guard, so the toggles were redundant --
+  and each one announced a structure change, invalidating every cached
+  free-parameter list in the program **twice per model evaluation** for a free
+  set that does not change. Found because `frozen_structure`'s own exit check
+  fired: the guard was written to catch stale caches and instead caught a
+  gratuitous invalidation. 40 structure bumps per 20 evaluations → 0, and the
+  *unfrozen* path got faster too (95 → 87 µs), since it was paying for the churn
+  as well.
+
 * **Rectangle FRAP ported: recovery fitted in space *and* time, not as a curve.**
   `chisurf/core/fluorescence/imaging/frap.py`. **Correcting an earlier claim in
   this log's MIA audit:** FRAP is not one remaining function but a ~1900-line

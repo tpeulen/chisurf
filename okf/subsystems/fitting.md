@@ -319,6 +319,21 @@ two-exponential TCSPC fit runs in ~37 ms.
   were recomputed anyway (24 000 → 7 054 calls).
 - **`parameter_values` setter** skips writing a value a parameter already has,
   and `Parameter.value` tests the float compare before the port read.
+- **`frozen_epoch()`** is a token identifying one uninterrupted run. Anything a
+  run cannot change may be memoised against it, in particular inputs that are
+  expensive to *check* rather than to compute: `Convolve._array_fingerprint`
+  hashes the instrument-response bytes (a summary like `sum()` is blind to an
+  in-place `np.roll`, which would serve a stale curve), which cost **14 %** of a
+  decay evaluation to decide that nothing had changed. Neither the IRF nor the
+  data is a fit parameter, so inside a run it is hashed once; the array's
+  *identity* is still checked, and outside a run the full hash is taken as
+  before.
+- **Autoscale no longer announces a structure change.** `Convolve.scale` wrote
+  the autoscaled amplitude by toggling `_n0.fixed` off and on -- twice per model
+  evaluation, invalidating every cached free-parameter list in the program for a
+  free set that does not change (`_n0` is fixed before and after).
+  `Parameter.value` already writes past the port's fixed guard, so the toggles
+  were redundant as well as expensive.
 - **Frozen parameter values.** Most of a model's parameters -- instrument
   response, detection geometry, background, everything not being optimised --
   hold the same value for a whole run and are re-read on every evaluation. Inside

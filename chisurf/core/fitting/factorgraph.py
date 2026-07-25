@@ -70,6 +70,7 @@ __all__ = [
     "window_version",
     "bump_window_version",
     "frozen_structure",
+    "frozen_epoch",
     "frozen",
     "LIKELIHOOD",
     "PRIOR",
@@ -157,6 +158,29 @@ def bump_structure_version() -> int:
     return _STRUCTURE_VERSION
 
 
+#: Incremented on entering and on leaving :func:`frozen_structure`, so a value
+#: identifies one uninterrupted run. ``None`` outside a freeze.
+_FROZEN_EPOCH = 0
+_FROZEN_DEPTH = 0
+
+
+def frozen_epoch() -> typing.Optional[int]:
+    """Return a token identifying the current run, or ``None`` outside one.
+
+    Anything a run cannot change may be memoised against this: the token is
+    stable for exactly as long as the freeze lasts and differs afterwards, so a
+    cache keyed on it can never outlive the contract that justifies it. Used for
+    inputs that are expensive to *check* rather than to compute -- an instrument
+    response whose cache key hashes the whole array, for instance.
+
+    Returns
+    -------
+    int or None
+        The current epoch, or ``None`` when no freeze is active.
+    """
+    return _FROZEN_EPOCH if _FROZEN_DEPTH > 0 else None
+
+
 @contextlib.contextmanager
 def frozen_structure(*targets):
     """Hold the parameter structure fixed for the duration of a run.
@@ -205,6 +229,9 @@ def frozen_structure(*targets):
             if model is not None and model not in models:
                 models.append(model)
 
+    global _FROZEN_EPOCH, _FROZEN_DEPTH
+    _FROZEN_EPOCH += 1
+    _FROZEN_DEPTH += 1
     entered = []
     frozen_parameters = []
     structure_at_entry = structure_version()
@@ -248,6 +275,8 @@ def frozen_structure(*targets):
                     continue
         yield
     finally:
+        _FROZEN_DEPTH -= 1
+        _FROZEN_EPOCH += 1
         for model in entered:
             model.__dict__.pop("_frozen_structure", None)
         for q in frozen_parameters:

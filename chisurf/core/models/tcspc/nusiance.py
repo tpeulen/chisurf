@@ -590,6 +590,36 @@ class Convolve(FittingParameterGroup):
         
         return irf
 
+    def _array_fingerprint(self, y):
+        """Fingerprint an array, memoised for the duration of a run.
+
+        Hashing the bytes rather than a summary statistic is deliberate: a
+        reduction like ``sum()`` is blind to in-place reordering (``np.roll`` on
+        an IRF keeps the sum identical), which would silently serve a stale
+        curve. But it is O(n) with a copy, and it runs on every model evaluation
+        to guard a rebuild that the cache means almost never happens -- 14 % of a
+        decay evaluation spent deciding that nothing had changed.
+
+        Neither the instrument response nor the data is a fit parameter, so
+        inside a
+        :func:`~chisurf.core.fitting.factorgraph.frozen_structure` run neither
+        can change and the hash is computed once. The array's *identity* is still
+        checked, so swapping in a different array is picked up immediately, and
+        outside a run the full hash is taken exactly as before.
+        """
+        from chisurf.core.fitting import factorgraph
+        epoch = factorgraph.frozen_epoch()
+        if epoch is not None:
+            cached = self.__dict__.get("_array_fingerprint_cache")
+            if cached is not None and cached[0] == epoch and cached[1] is y:
+                return cached[2]
+        fingerprint = (y.shape, y.dtype.str, hash(y.tobytes()))
+        if epoch is not None:
+            object.__setattr__(
+                self, "_array_fingerprint_cache", (epoch, y, fingerprint)
+            )
+        return fingerprint
+
     def _irf_cache_key(self, normalize: bool):
         """Fingerprint of everything ``_process_irf`` depends on except the timeshift.
 
@@ -599,15 +629,12 @@ class Convolve(FittingParameterGroup):
         src = self._irf
         if isinstance(src, chisurf.core.curve.Curve):
             y = np.ascontiguousarray(src.y)
-            # Hash the bytes rather than a summary statistic: a reduction like
-            # sum() is blind to in-place reordering (np.roll on the IRF keeps
-            # the sum identical), which would silently serve a stale curve.
-            fingerprint = (y.shape, y.dtype.str, hash(y.tobytes()))
+            fingerprint = self._array_fingerprint(y)
         else:
             # synthetic IRF: derived from the data and the width/shape parameters
             dy = np.ascontiguousarray(self.data.y)
-            fingerprint = (dy.shape, dy.dtype.str, hash(dy.tobytes()),
-                           float(self._iw.value), float(self._ik.value))
+            fingerprint = self._array_fingerprint(dy) + (
+                float(self._iw.value), float(self._ik.value))
         return (
             bool(normalize),
             float(self.lamp_background),
@@ -752,9 +779,13 @@ class Convolve(FittingParameterGroup):
                 start=start,
                 stop=stop
             )
-            self._n0.fixed = False
+            # ``Parameter.value`` already writes past the port's fixed guard
+            # (it unfixes the *port*, writes, restores). Toggling ``fixed`` on
+            # the parameter to achieve the same thing announced a structure
+            # change twice per model evaluation -- invalidating every cached
+            # free-parameter list in the program for a free set that does not
+            # actually change, since ``_n0`` is fixed before and after.
             self._n0.value = n0
-            self._n0.fixed = True
         decay *= self.n0
 
         return decay
