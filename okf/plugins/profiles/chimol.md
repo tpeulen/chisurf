@@ -75,33 +75,11 @@ Implemented tiers:
   outlier-rejection Kabsch, with typed `cutoff`/`cycles` keyword args) are present.
 - **Object lifecycle** — `delete`/`reinitialize`/`copy`/`split_chains`, plus
   `set_name` (rename) and `count_atoms` (selection → atom count).
-- **Settings** — `set`/`get`/`unset`/`toggle`/`help_setting` over the registry in
-  `chimol/settings.py` (see below).
-- **Secondary structure** — `dss` recomputes H/E/C from the backbone, discarding
-  the deposited `HELIX`/`SHEET` annotation a PDB load adopts by default.
 
-Known remaining gaps (higher PyMOL tiers): chemistry-light editing
-(`bond`/`h_add`), volume/map objects, and the movie keyframe system
-(`mdo`/`mview` are stubbed). Keep unimplemented command names registered so the
-CLI emits a friendly "not yet implemented" message.
-
-## Settings (`chimol/settings.py`)
-
-PyMOL exposes one flat namespace (`cartoon_loop_radius`, `ray_shadow`,
-`field_of_view`); chimol stores its tunables nested by subsystem in
-`_DISPLAY_CONFIG`. `settings.py` is the single table mapping one onto the other,
-and `set`/`get`/`unset`/`toggle` resolve through it — exact name, unambiguous
-prefix (`cartoon_oval_w`), or a dotted config path (`metaball.alpha`) for entries
-with no PyMOL equivalent.
-
-Two invariants make the table trustworthy, both pinned by tests:
-
-1. **Every entry is live** — a setting is registered only if some code reads the
-   path it names, so an unknown or dead name is *reported* rather than silently
-   accepted. The config previously carried a second, flat copy of ~36 PyMOL names
-   that nothing read; it is gone, and a test keeps it from returning.
-2. **The config is the storage** — nothing is cached in the settings layer, so an
-   open viewer sees a change on its next redraw.
+Known remaining gaps (higher PyMOL tiers): boolean-rich per-object `set`/`get`
+coverage, chemistry-light editing (`bond`/`h_add`), volume/map objects, and the
+movie keyframe system (`mdo`/`mview` are stubbed). Keep unimplemented command
+names registered so the CLI emits a friendly "not yet implemented" message.
 
 # Renderer abstraction (design contract)
 
@@ -370,24 +348,8 @@ marker scene (+X red, +Y green, +Z blue) under a lopsided rotation, not with an
 identity view, which cannot tell the two readings apart. The rest of the layout
 matters too: slots 9-11 are the camera position in camera space `(0, 0, −distance)`
 (chimol's older tuples put a positive distance in slot 9, which is what makes the
-two unambiguous on input), and slot 17 is the field of view.
-
-**The sign of slot 17 reads backwards from the obvious guess.** PyMOL writes a
-**negative** field of view for its default *perspective* camera and a positive
-one when `orthoscopic` is on — measured from `cmd.get_view()` with the setting
-toggled both ways, and pinned by a test carrying a real PyMOL tuple. The older
-chimol layouts predate the flag and always wrote a positive value, so the sign
-is only honoured in the PyMOL branch. `ray` honours the field of view rather than
-assuming a fixed lens.
-
-**Framing follows the field of view.** `view_state.distance_for_radius` is
-PyMOL's rule, `d = radius / tan(fov / 2)` — verified against `cmd.zoom` for radii
-5/10/20 Å at 20° and 45°, agreeing to 5 significant figures. `fit_to_radius` uses
-it, so widening the lens pulls the camera in instead of shrinking the molecule.
-The default field of view is **20°**, PyMOL's, which is what makes a `set_view`
-tuple copied from PyMOL frame the molecule the same way here; it was previously a
-hardcoded 45° with a `distance = 3 × radius` framing rule that matched no lens in
-particular.
+two unambiguous on input), and slot 17 is the field of view with a negative sign
+meaning orthoscopic. `ray` honours that field of view rather than assuming 45°.
 
 **Navigation (`renderer/qtgl.py`).** The camera orientation is a **3×3
 world→camera rotation matrix** (a virtual trackball), not a turntable. Left-drag

@@ -69,8 +69,6 @@ class MockViewer(_get_qobject_base()):
             0.0, 0.0, 0.0,
             0.1, 1000.0, 45.0,
         ]
-        self._field_of_view = 20.0
-        self._ss_recomputes = 0
         self._show_atoms = True
         self._show_cartoon = True
         self._reps: dict[str, bool] = {
@@ -100,16 +98,6 @@ class MockViewer(_get_qobject_base()):
 
     def set_background_color(self, color: str):
         self._background_color = color
-
-    def set_field_of_view(self, fov: float):
-        self._field_of_view = float(fov)
-
-    def recompute_secondary_structure(self) -> int:
-        """Stand in for the real assignment; reports how many residues it saw."""
-        self._ss_recomputes += 1
-        entry = self._objects.get(self._active_object_id or "")
-        atoms = getattr(entry.state, "atoms", None) if entry is not None else None
-        return 0 if atoms is None else int(len(atoms))
 
     def set_structure(self, structure: Any):
         if self._active_object_id is None:

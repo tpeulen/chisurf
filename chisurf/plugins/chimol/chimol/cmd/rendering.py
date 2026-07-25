@@ -364,38 +364,6 @@ class RenderingMixin(BaseCmd):
             pass
         self._emit_message(f"Cartoon type set to {mode}")
 
-    @command("dss")
-    def dss(self) -> None:
-        """Recompute the secondary structure from the coordinates (PyMOL ``dss``).
-
-        Loading a PDB file adopts its deposited ``HELIX``/``SHEET`` records; this
-        throws those away and derives H/E/C from the backbone geometry instead,
-        which is what you want when the records are missing, stale, or describe a
-        conformation the model has since left.
-        """
-        _, viewer = self._require_window_and_viewer()
-        if viewer is None:
-            return
-
-        assign = getattr(viewer, "recompute_secondary_structure", None)
-        if not callable(assign):
-            self._emit_error("This viewer cannot recompute secondary structure")
-            return
-        try:
-            n_assigned = int(assign())
-        except Exception as exc:
-            self._emit_error(f"dss failed: {exc}")
-            return
-
-        if not n_assigned:
-            self._emit_error("dss: no backbone to assign from")
-            return
-        try:
-            viewer._update_view()
-        except Exception:
-            pass
-        self._emit_message(f"dss: assigned secondary structure for {n_assigned} residues")
-
     @command("get_view")
     def get_view(self) -> str:
         """Return a copy/pasteable PyMOL-style set_view command."""

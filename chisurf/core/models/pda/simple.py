@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """PDA model classes for fluorescence photon distribution analysis.
 
 This module contains discrete and Gaussian-distance PDA models that
@@ -12,6 +10,8 @@ containers such as :class:`ProbCh0`, and
 Only a subset of the functionality is exercised in doctests; all
 examples avoid real TTTR files and heavy computation.
 """
+
+from __future__ import annotations
 
 import math
 
@@ -26,7 +26,11 @@ from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGro
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.pda.nusiance import Background, PdaPhotonRange
 
-from .common import mask_zero_photon_bins, pda_1d_residuals_from_s1s2
+from .common import (
+    mask_zero_photon_bins,
+    pda_1d_residuals_from_s1s2,
+    resolve_fit_settings,
+)
 
 
 class ProbCh0(FittingParameterGroup):
@@ -358,15 +362,9 @@ class PdaSimpleModel(ModelCurve):
         if len(self.pch0) == 0:
             self.pch0.append()
 
-        if kw_hist is None:
-            kw_hist = {
-                "x_max": 500.0,
-                "x_min": 0.05,
-                "log_x": True,
-                "n_bins": 81,
-                "n_min": 10
-            }
-        self.kw_hist = kw_hist
+        # Which 1D projection of the S1S2 matrix the fit runs on, how it is
+        # binned, and under which counting statistic (see PdaFitSettings).
+        self.fit_settings = resolve_fit_settings(None, kw_hist)
 
         kw_pda = {
             "hist2d_nmax": fit.data.pda['maximum_number_of_photons'],
@@ -440,6 +438,7 @@ class PdaSimpleModel(ModelCurve):
             fit=fit,
             pda_obj=self.pda,
             nuisance=getattr(self, "nuisance", None),
+            settings=self.fit_settings,
         )
         try:
             self._last_1d_residual_size = int(wres.size)

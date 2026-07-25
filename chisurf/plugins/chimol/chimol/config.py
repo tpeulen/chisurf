@@ -13,7 +13,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 3
+DISPLAY_CONFIG_VERSION: int = 2
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed so that users
@@ -122,11 +122,6 @@ def _load_display_config() -> dict:
             "oval_length": 1.35,
             "oval_quality": 20,
             "arrow_sampling": 2,
-            # Guide-path conditioning, matching the PyMOL settings of the same
-            # name (cartoon_flat_sheets / cartoon_round_helices).
-            "flat_sheets": True,
-            "flat_cycles": 4,
-            "round_helices": True,
             # Legacy ss_shapes kept for backward compatibility
             "ss_shapes": {
                 "helix": {"width": 0.5, "thickness": 1.35, "profile_power": 1.6},
@@ -309,11 +304,6 @@ def _load_display_config() -> dict:
             "min_near_clip": 0.005,
             "max_near_clip": 5.0,
             "clip_wheel_scale": 0.85,
-            # Vertical field of view in degrees. 20 is PyMOL's default, and
-            # matching it is what makes a view tuple copied from PyMOL frame
-            # the molecule the same way here.
-            "field_of_view": 20.0,
-            "orthoscopic": False,
             # Mouse interaction style: "pymol" rotates and pans the object in
             # the camera view (intuitive, follows the cursor); "chimol"
             # rotates and pans the camera/plane so the object moves opposite
@@ -347,10 +337,56 @@ def _load_display_config() -> dict:
                 [0.5, 0.3, 1.0]
             ],
         },
-        # NOTE: PyMOL's flat setting names (cartoon_loop_radius, ray_shadow,
-        # field_of_view, ...) are not stored here. They are aliases onto the
-        # nested entries above, defined once in settings.py, which is what the
-        # set/get/unset commands resolve against.
+        # PyMOL Global Settings (flat namespace)
+        # Category: General / Viewport / Camera / Fog
+        "bg_rgb": [0.0, 0.0, 0.0],  # Background color of the viewer window.
+        "orthoscopic": False,  # Controls whether perspective projection (False) or orthoscopic projection (True) is used.
+        "field_of_view": 20.0,  # Vertical field of view in degrees.
+        "depth_cue": True,  # Controls whether or not a depth-cue fog effect is used.
+        "fog": 1.0,  # Fog density level.
+        "fog_start": 0.45,  # Depth coordinate where fog begins.
+
+        # Category: Cartoon Representation
+        "cartoon_color": -1,  # Color index of cartoons (-1 = default to atom colors).
+        "cartoon_transparency": 0.0,  # Transparency level of cartoons (0.0 = opaque, 1.0 = invisible).
+        "cartoon_loop_radius": 0.2,  # Radius of loop segments.
+        "cartoon_tube_radius": 0.5,  # Radius of tube segments.
+        "cartoon_oval_width": 0.25,  # Width/thickness of oval cartoon profiles (used for alpha helices).
+        "cartoon_oval_length": 1.35,  # Length/width of oval cartoon profiles.
+        "cartoon_rect_width": 0.4,  # Thickness of rectangular cartoon profiles (used for beta sheets).
+        "cartoon_rect_length": 1.4,  # Width of rectangular cartoon profiles.
+        "cartoon_fancy_helices": False,  # Whether or not dumbbell/fancy helices are drawn.
+        "cartoon_fancy_sheets": False,  # Whether or not beta strands end in fancy arrows.
+        "cartoon_flat_sheets": True,  # Whether or not beta strands are flattened.
+        "cartoon_smooth_loops": False,  # Whether or not loops are smoothed.
+        "cartoon_trace_atoms": False,  # Whether or not cartoons trace through all guide C-alpha atoms.
+
+        # Category: Sphere / Ball Representation
+        "sphere_color": -1,  # Color index of sphere representations (-1 = default to atom colors).
+        "sphere_scale": 1.0,  # Scale multiplier for sphere representation radii.
+
+        # Category: Stick / Bond Representation
+        "stick_color": -1,  # Color index of stick representation (-1 = default to atom/bond colors).
+        "stick_radius": 0.25,  # Radius of cylinders used for stick representation.
+        "stick_transparency": 0.0,  # Transparency level of sticks.
+
+        # Category: Line Representation
+        "line_color": -1,  # Color index of line representation (-1 = default to atom colors).
+        "line_width": 1.4,  # Width in pixels of lines.
+
+        # Category: Ribbon Representation
+        "ribbon_color": -1,  # Color index of ribbon representation (-1 = default to atom colors).
+        "ribbon_width": 0.75,  # Width of ribbons.
+
+        # Category: Raytracing / Lighting
+        "ray_trace_mode": 0,  # Raytracing outline mode: 0=normal, 1=outlines, 2=outlines only.
+        "ray_trace_frames": 0,  # Controls whether frames are ray-traced during movie compilation.
+        "ray_shadow": True,  # Controls whether shadows are cast during raytracing.
+        "specular": 0.5,  # Intensity of specular highlights.
+        "shininess": 55.0,  # Exponent/power of specular reflections.
+        "ambient": 0.2,  # Strength of ambient lighting.
+        "direct": 0.45,  # Camera direct light source strength.
+        "light_count": 2,  # Number of active light sources.
     }
 
     # Prefer a JSON file in the global chisurf settings folder so the user

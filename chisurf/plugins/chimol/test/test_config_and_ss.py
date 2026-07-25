@@ -139,41 +139,6 @@ def test_records_after_the_coordinates_are_not_read(tmp_path):
     assert ("E", 90) not in records
 
 
-def test_dss_recomputes_and_reports(tmp_path):
-    """``dss`` must reach the viewer's assignment, not just redraw."""
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer, MockWindow
-
-    viewer = MockViewer()
-    cmd = Cmd(MockWindow(viewer))
-    messages: list[str] = []
-    errors: list[str] = []
-    cmd.set_message_callback(messages.append)
-    cmd.set_error_callback(errors.append)
-
-    oid = viewer._create_object(name="m")
-    viewer.set_active_object(oid)
-    viewer._objects[oid].state.atoms = _build_minimal_atoms(5)
-
-    cmd.do("dss")
-    assert errors == []
-    assert viewer._ss_recomputes == 1
-    assert "20 residues" in messages[-1]  # 5 residues x 4 backbone atoms
-
-
-def test_dss_without_a_backbone_reports_an_error():
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer, MockWindow
-
-    viewer = MockViewer()
-    cmd = Cmd(MockWindow(viewer))
-    errors: list[str] = []
-    cmd.set_error_callback(errors.append)
-
-    cmd.do("dss")
-    assert errors and "no backbone" in errors[-1]
-
-
 def test_mismatched_chain_span_is_skipped(tmp_path):
     from chisurf.plugins.chimol.chimol.io.structure import parse_pdb_secondary_structure
 

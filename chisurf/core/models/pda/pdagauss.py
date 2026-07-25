@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Gaussian-distance PDA models.
 
 This module contains PDA models that use Gaussian distance distributions
@@ -8,6 +6,8 @@ for donor–acceptor separations. The core classes
 were previously defined in :mod:`cs.core.models.pda.simple` and have
 been moved here for clarity.
 """
+
+from __future__ import annotations
 
 
 import numpy as np
@@ -20,7 +20,11 @@ import chisurf.core.models.tcspc.fret
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fluorescence.general import distance_to_fret_efficiency
 from chisurf.core.models.model import ModelCurve
-from chisurf.core.models.pda.common import mask_zero_photon_bins, pda_1d_residuals_from_s1s2
+from chisurf.core.models.pda.common import (
+    mask_zero_photon_bins,
+    pda_1d_residuals_from_s1s2,
+    resolve_fit_settings,
+)
 from chisurf.core.models.pda.nusiance import PdaFretNuisance
 
 
@@ -252,15 +256,10 @@ class PdaGaussianDistanceModel(ModelCurve):
             enable_fret_efficiency=False
         )
 
-        if kw_hist is None:
-            kw_hist = {
-                "x_max": 500.0,
-                "x_min": 0.05,
-                "log_x": True,
-                "n_bins": 81,
-                "n_min": 10,
-            }
-        self.kw_hist = kw_hist
+        # Which 1D projection of the S1S2 matrix the fit runs on, how it is
+        # binned, and under which counting statistic. Editable in the model
+        # editor ("Fit histogram & statistic" panel of pdagauss.view.json).
+        self.fit_settings = resolve_fit_settings(None, kw_hist)
 
         kw_pda = {
             "hist2d_nmax": fit.data.pda["maximum_number_of_photons"],
@@ -466,6 +465,7 @@ class PdaGaussianDistanceModel(ModelCurve):
             fit=fit,
             pda_obj=self.pda,
             nuisance=getattr(self, "nuisance", None),
+            settings=self.fit_settings,
         )
         try:
             self._last_1d_residual_size = int(wres.size)

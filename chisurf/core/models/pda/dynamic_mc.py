@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Dynamic three-state PDA model via Monte-Carlo (Gillespie) simulation.
 
 Port of PAM's arbitrary-state dynamic PDA
@@ -28,6 +26,8 @@ that change only distances/corrections, so the simulation reruns only when the
 rate matrix, ``sim_time`` or ``n_windows`` change.
 """
 
+from __future__ import annotations
+
 import numpy as np
 import tttrlib
 
@@ -41,6 +41,7 @@ from chisurf.core.models.pda.common import (
     green_probability_from_efficiency,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
+    resolve_fit_settings,
 )
 from chisurf.core.models.pda.nusiance import PdaFretNuisance
 
@@ -230,6 +231,9 @@ class PdaDynamicThreeStateModel(ModelCurve):
             "pF": fit.data.pda["ps"],
         }
         self.pda = tttrlib.Pda(**kw_pda)
+        # Which 1D projection of the S1S2 matrix the fit runs on, how it is
+        # binned, and under which counting statistic (see PdaFitSettings).
+        self.fit_settings = resolve_fit_settings(None, None)
         self.residual_mode = "1D"
 
     def _time_fractions(self) -> np.ndarray:
@@ -321,7 +325,10 @@ class PdaDynamicThreeStateModel(ModelCurve):
     def _get_1d_residuals(self, fit) -> np.ndarray:
         """Compute 1D weighted residuals from the S1S2 histogram."""
         wres = pda_1d_residuals_from_s1s2(
-            fit=fit, pda_obj=self.pda, nuisance=getattr(self, "nuisance", None)
+            fit=fit,
+            pda_obj=self.pda,
+            nuisance=getattr(self, "nuisance", None),
+            settings=self.fit_settings,
         )
         try:
             self._last_1d_residual_size = int(wres.size)

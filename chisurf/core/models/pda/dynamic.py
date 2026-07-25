@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Dynamic two-state PDA model (dual-color).
 
 This model describes single-molecule FRET Photon Distribution Analysis of a
@@ -43,6 +41,8 @@ Limiting behaviour (used as the headless acceptance test):
   giving a single averaged population at ``p1 pG1 + p2 pG2``.
 """
 
+from __future__ import annotations
+
 import numpy as np
 import tttrlib
 from scipy.special import i0, i1
@@ -57,6 +57,7 @@ from chisurf.core.models.pda.common import (
     green_probability_from_efficiency,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
+    resolve_fit_settings,
 )
 from chisurf.core.models.pda.nusiance import PdaFretNuisance
 
@@ -166,6 +167,9 @@ class PdaDynamicTwoStateModel(ModelCurve):
             "pF": fit.data.pda["ps"],
         }
         self.pda = tttrlib.Pda(**kw_pda)
+        # Which 1D projection of the S1S2 matrix the fit runs on, how it is
+        # binned, and under which counting statistic (see PdaFitSettings).
+        self.fit_settings = resolve_fit_settings(None, None)
         self.residual_mode = "1D"
 
     # -- helpers ------------------------------------------------------------
@@ -257,7 +261,10 @@ class PdaDynamicTwoStateModel(ModelCurve):
     def _get_1d_residuals(self, fit) -> np.ndarray:
         """Compute 1D weighted residuals from the S1S2 histogram."""
         wres = pda_1d_residuals_from_s1s2(
-            fit=fit, pda_obj=self.pda, nuisance=getattr(self, "nuisance", None)
+            fit=fit,
+            pda_obj=self.pda,
+            nuisance=getattr(self, "nuisance", None),
+            settings=self.fit_settings,
         )
         try:
             self._last_1d_residual_size = int(wres.size)
