@@ -214,8 +214,56 @@ class ParseFormulaWidget(QtWidgets.QWidget):
         self.actionLoadModelFile.triggered.connect(self.onLoadModelFile, QtCore.Qt.QueuedConnection)
         self.actionEdit_model_file.triggered.connect(self.onEdit_model_file, QtCore.Qt.QueuedConnection)
 
+        # Replace the raw text box with the validated expression editor (safe
+        # engine, ✓/✗ feedback, function/name reference). The plain text box is
+        # kept, hidden, as the backing store the rest of this widget reads.
+        self._install_expression_input()
+
         # Connect to the destroyed signal to clean up temp files
         self.destroyed.connect(self.cleanup_temp_files)
+
+    def _install_expression_input(self) -> None:
+        """Swap in an :class:`ExpressionInput` for the raw formula text box."""
+        try:
+            from chisurf.gui.widgets.expression_input import ExpressionInput
+
+            self.expr_input = ExpressionInput(reserved_names=("x",), show_preview=False)
+            lay = self.plainTextEdit.parentWidget().layout()
+            idx = lay.indexOf(self.plainTextEdit)
+            if idx >= 0 and hasattr(lay, "getItemPosition"):
+                row, col, rspan, cspan = lay.getItemPosition(idx)
+                lay.addWidget(self.expr_input, row, col, rspan, cspan)
+            else:  # non-grid layout: just append
+                lay.addWidget(self.expr_input)
+            self.plainTextEdit.setVisible(False)
+            self.plainTextEdit.setMaximumHeight(0)
+            self.expr_input.set_text_silently(self.plainTextEdit.toPlainText())
+            self.expr_input.edited.connect(self._on_expr_edited)
+            self.expr_input.committed.connect(self._on_expr_committed)
+        except Exception:
+            # On any failure keep the original text box fully usable.
+            self.expr_input = None
+            self.plainTextEdit.setVisible(True)
+            self.plainTextEdit.setMaximumHeight(16777215)
+
+    def _sync_expr(self, text: str) -> None:
+        """Mirror a programmatic formula change into the expression editor."""
+        if getattr(self, "expr_input", None) is not None:
+            self.expr_input.set_text_silently(text or "")
+
+    def _on_expr_edited(self, text: str) -> None:
+        """Keep the hidden text box in step so existing readers see live text."""
+        self.plainTextEdit.blockSignals(True)
+        self.plainTextEdit.setPlainText(text)
+        self.plainTextEdit.blockSignals(False)
+
+    def _on_expr_committed(self, text: str) -> None:
+        """Apply the formula (Return in the editor) through the normal pipeline."""
+        self._on_expr_edited(text)
+        try:
+            self.onEquationChanged()
+        except Exception:
+            pass
 
     def load_model_file(self, filename: pathlib.Path):
         """Load a YAML model definition file.
@@ -311,6 +359,7 @@ class ParseFormulaWidget(QtWidgets.QWidget):
         """Handle selection of a different model from the combo box."""
         func = self.models[self.model_name]['equation']
         self.plainTextEdit.setPlainText(func)
+        self._sync_expr(func)
 
         # Format the equation
         formatted_equation = self.format_equation(func)
@@ -707,6 +756,14 @@ class ParseFormulaWidget(QtWidgets.QWidget):
                 (obj is self.textEdit or obj is getattr(self, "_textedit_viewport", None))
                 and event.type() == QtCore.QEvent.MouseButtonDblClick
             ):
+                # The validated expression editor is always visible; double-click
+                # on the formatted equation just focuses it for editing.
+                if getattr(self, "expr_input", None) is not None:
+                    try:
+                        self.expr_input._edit.setFocus()
+                    except Exception:
+                        pass
+                    return True
                 try:
                     self.toolButton_3.setChecked(True)
                     self.toolButton_4.setChecked(False)
@@ -824,6 +881,7 @@ class ParseFormulaWidget(QtWidgets.QWidget):
                 self.plainTextEdit.blockSignals(False)
             except Exception:
                 pass
+        self._sync_expr(text)
 
     def _apply_yaml_defaults_if_match(self, func: str) -> None:
         """Apply YAML default initial values if func matches the selected model's equation."""

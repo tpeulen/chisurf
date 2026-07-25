@@ -226,6 +226,24 @@ widget when ChiSurf is importable (injecting its own `equation_graph`
 validator + a `(columns, constants)`→mapping names adapter), and falls back to a
 local table when ChiSurf is absent.
 
+`chisurf/gui/widgets/expression_input.py::ExpressionInput` is the **single-**
+expression counterpart used where a model is *one* formula rather than a table of
+named outputs. It is a compact one-line editor with the same live ✓/✗ validation,
+a names/functions reference, an optional inline LaTeX preview, and automatic
+**parameter discovery**: `PARSE_MODEL_POLICY` (bare names, rich maths, unknown
+names allowed via `validate_expression(..., allow_unknown=True)`) treats every
+name that is not the independent variable, a function, or a constant as a free
+fitting parameter, read back with `expressions.discover_parameters`. Note the
+engine deliberately omits `tau` from its constants — `tau` is the universal
+lifetime-parameter name and binding it to 2π would silently corrupt decay
+formulas. The parse-model formula widget
+(`gui/widgets/models/parse/widget.py::ParseFormulaWidget`, shared by the TCSPC,
+FCS and PCF parse models) hosts an `ExpressionInput` in place of its raw text box
+— the box is kept hidden as the backing store the rest of the widget reads — so a
+mistyped or unsafe formula is caught with a clear message instead of failing at
+`eval`. (ParseModel's own evaluation is unchanged; the engine drives editing and
+validation, not model math.)
+
 When touching GUI code, prefer porting hand-built widgets to AutoForm + a
 JSON view scheme.
 

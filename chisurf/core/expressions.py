@@ -48,9 +48,11 @@ __all__ = [
     "DEFAULT_CONSTANTS",
     "DEFAULT_POLICY",
     "NDX_POLICY",
+    "PARSE_MODEL_POLICY",
     "compile_expression",
     "validate_expression",
     "evaluate_expression",
+    "discover_parameters",
     "resolve_name",
     "function_signatures",
 ]
@@ -109,11 +111,13 @@ DEFAULT_FUNCTIONS: dict[str, Callable[..., Any]] = {
 # Drop any names numpy does not actually provide on this build.
 DEFAULT_FUNCTIONS = {k: v for k, v in DEFAULT_FUNCTIONS.items() if v is not None}
 
-#: Named numeric constants offered by :data:`DEFAULT_POLICY`.
+#: Named numeric constants offered by :data:`DEFAULT_POLICY`. Deliberately does
+#: *not* include ``tau`` — ``tau`` is the near-universal name for a fluorescence
+#: lifetime parameter, and binding it to 2π would silently corrupt parse-model
+#: formulas. Write ``2*pi`` for the circle constant.
 DEFAULT_CONSTANTS: dict[str, float] = {
     "pi": float(np.pi),
     "e": float(np.e),
-    "tau": float(2.0 * np.pi),
     "inf": float(np.inf),
     "nan": float(np.nan),
 }
@@ -189,6 +193,23 @@ NDX_POLICY = ExpressionPolicy(
     split_on_pipe=True,
     allow_comparisons=False,
     allow_bitops=False,
+)
+
+#: Parse-model convention (`ParseModel`, TCSPC/FCS/PCF formula catalogues): a
+#: single ``y = f(x, …)`` expression in bare identifiers over the rich maths
+#: library, where any name that is not the independent variable, a function or a
+#: constant is a **free fitting parameter**. Callers validate with
+#: ``allow_unknown=True`` (unknown names are parameters, not errors) and read the
+#: parameters back with :func:`discover_parameters`.
+PARSE_MODEL_POLICY = ExpressionPolicy(
+    functions=DEFAULT_FUNCTIONS,
+    constants=DEFAULT_CONSTANTS,
+    quoted_names=False,
+    bare_names=True,
+    case_insensitive=False,
+    split_on_pipe=False,
+    allow_comparisons=True,
+    allow_bitops=True,
 )
 
 
@@ -427,12 +448,13 @@ def validate_expression(
     known_names: Sequence[str] = (),
     policy: ExpressionPolicy = DEFAULT_POLICY,
     extra_names: Sequence[str] = (),
+    allow_unknown: bool = False,
 ) -> ValidationResult:
     """Validate a single expression for a GUI editor.
 
-    Checks the expression parses under ``policy`` and that every reference
-    resolves to a name in ``known_names`` or ``extra_names`` (e.g. earlier
-    equation outputs).
+    Checks the expression parses under ``policy`` and (unless ``allow_unknown``)
+    that every reference resolves to a name in ``known_names`` or ``extra_names``
+    (e.g. earlier equation outputs).
 
     Parameters
     ----------
@@ -445,6 +467,10 @@ def validate_expression(
     extra_names
         Additional valid names not in ``known_names`` (e.g. forward references
         to other outputs the caller will provide).
+    allow_unknown
+        When True, only the safe-parse check runs; unresolved names are *not* an
+        error (they are free parameters, as in a parse model). ``refs`` still
+        reports every referenced name.
 
     Returns
     -------
@@ -458,14 +484,39 @@ def validate_expression(
         return ValidationResult(False, str(exc))
 
     pool = list(known_names) + list(extra_names)
-    unresolved = [r for r in compiled.refs if resolve_name(r, pool, policy) is None]
-    if unresolved:
-        seen = tuple(dict.fromkeys(unresolved))
-        pretty = ", ".join(repr(u) for u in seen)
+    unresolved = tuple(
+        dict.fromkeys(r for r in compiled.refs if resolve_name(r, pool, policy) is None)
+    )
+    if unresolved and not allow_unknown:
+        pretty = ", ".join(repr(u) for u in unresolved)
         return ValidationResult(
-            False, f"unknown name(s): {pretty}", refs=compiled.refs, unresolved=seen
+            False, f"unknown name(s): {pretty}", refs=compiled.refs, unresolved=unresolved
         )
-    return ValidationResult(True, None, refs=compiled.refs)
+    return ValidationResult(True, None, refs=compiled.refs, unresolved=unresolved)
+
+
+def discover_parameters(
+    expr: str,
+    reserved: Sequence[str] = (),
+    policy: ExpressionPolicy = PARSE_MODEL_POLICY,
+) -> list[str]:
+    """Return the free names in ``expr`` (its fitting parameters).
+
+    Every reference that is not a function, a named constant, or listed in
+    ``reserved`` (e.g. the independent variable ``x``) is a parameter. Names are
+    returned in first-appearance order; an unparseable expression yields ``[]``.
+    """
+    try:
+        compiled = compile_expression(expr, policy)
+    except ExpressionError:
+        return []
+    reserved_set = {str(r) for r in reserved}
+    out: list[str] = []
+    for ref in compiled.refs:
+        if ref in reserved_set or ref in out:
+            continue
+        out.append(ref)
+    return out
 
 
 def evaluate_expression(

@@ -5,8 +5,10 @@ import pytest
 from chisurf.core.expressions import (
     DEFAULT_POLICY,
     NDX_POLICY,
+    PARSE_MODEL_POLICY,
     ExpressionError,
     compile_expression,
+    discover_parameters,
     evaluate_expression,
     function_signatures,
     resolve_name,
@@ -155,6 +157,40 @@ def test_resolve_name_exact_default():
 def test_function_signatures_lists_defaults():
     sigs = function_signatures(DEFAULT_POLICY)
     assert "sqrt" in sigs and "where" in sigs
+
+
+# -- parse-model policy --------------------------------------------------------
+
+def test_allow_unknown_accepts_free_parameters():
+    # A parse-model formula: x is reserved, a1/tau1 are free parameters.
+    res = validate_expression(
+        "a1 * exp(-x / tau1)", known_names=["x"], policy=PARSE_MODEL_POLICY,
+        allow_unknown=True,
+    )
+    assert res.ok
+    assert set(res.unresolved) == {"a1", "tau1"}
+
+
+def test_allow_unknown_still_rejects_unsafe():
+    res = validate_expression(
+        "a.__class__", policy=PARSE_MODEL_POLICY, allow_unknown=True
+    )
+    assert not res.ok
+
+
+def test_discover_parameters_real_fcs_formula():
+    params = discover_parameters(
+        "b+1/abs(N)*(1+x/td)**(-1)/sqrt(1+1/s**2*x/td)", reserved=["x"]
+    )
+    assert params == ["b", "N", "td", "s"]
+
+
+def test_discover_parameters_reserved_excludes_x():
+    assert "x" not in discover_parameters("a1*exp(-x/tau1)", reserved=["x"])
+
+
+def test_discover_parameters_bad_expr_empty():
+    assert discover_parameters("a +", reserved=["x"]) == []
 
 
 if __name__ == "__main__":  # pragma: no cover
