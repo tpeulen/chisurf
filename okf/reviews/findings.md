@@ -644,11 +644,35 @@ another instance); the symbol names are given so they stay findable.
 - **Fix note:**
 
 ### RF-043
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (removed NumPy alias; blocks the whole multi-run ALV path)
 - **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:571` (`mysplit`, `lensplit = np.int(np.ceil(N/n))`)
 - **Finding:** `np.int` was removed in NumPy 1.24; the project env runs NumPy 2.4.6, where the attribute raises. `mysplit` returns early only for `n <= 1`, so every ALV-5000/6000 file with more than one run reaches it and dies with `AttributeError: module 'numpy' has no attribute 'int'` before any data is produced. Reproduced end-to-end: `read_asc('junk/quickfit3/plugins/fccsfit/examples/NUNC3_dil_050p_025_ccf.ASC')` → `AttributeError` from `openASC_old:239 → mysplit:571`; patching `np.int = int` lets the same call return 7 datasets. Per the CLAUDE.md dependency rule this is a pure rename and belongs in `chisurf/core/compat.py`, not a local rewrite — but the call site here can simply use the builtin `int`. Grep the tree for other `np.int`/`np.float`/`np.bool` survivors while fixing.
-- **Fix note:**
+- **Fix note:** `mysplit` now computes the piece length with the builtin
+  (`int(np.ceil(N/n))`). No `compat.py` alias was added: `np.int` was never an
+  API of its own, only a spelling of the builtin, so the builtin is the one form
+  that runs unchanged on NumPy 1 and 2 — `compat.py` is for names that moved
+  (`np.trapz` → `np.trapezoid`), not for names that were always redundant.
+  Reproduced against `HEAD` on the project's NumPy 2.4.6: `mysplit(trace, 3)`
+  raised `AttributeError: module 'numpy' has no attribute 'int'`; it now returns
+  the three pieces. The tree-wide grep found **no other survivor** — because the
+  existing guardrail `test/agent/test_reader_failures.py::test_no_numpy_aliases_removed_in_numpy_2_remain`
+  had `int` missing from its pattern, which is exactly how this one line
+  survived the earlier `np.float`/`np.float_` sweep; `int` is now in that pattern
+  (with a comment on why `bool` and `long`, both reinstated in NumPy 2, are not),
+  and it flags the old line. Pinned by the new
+  `test/fio/test_asc_alv_mysplit.py` (4 tests: the multi-run split itself — the
+  case that raised — the piece shapes, the average-preserving contract from the
+  docstring, the `n <= 1` early-out, and an uneven split). `test/fio` FCS suites
+  + `test/agent/test_reader_failures.py` green (20 passed / 6 skipped, then 8
+  passed); `ruff check` on `asc_alv.py` reports the same 113 pre-existing
+  findings as `HEAD` and none new, and both test files are `ruff check` +
+  `ruff format` clean. Two defects on the same path are deliberately **left
+  open**: [RF-042](#rf-042) (`data = [[]]*len(curvelist)`), which this fix
+  unmasks, and a Python-2 remnant next to it — `openASC_old:272,287,307,308`
+  pass `len(curvelist)/2-nav`, a *float*, as `mysplit`'s `n`, which
+  `np.linspace`/`np.split` reject; both belong to RF-042's multi-run path and
+  neither is verifiable without fixing it.
 
 ### RF-044
 - **Status:** OPEN

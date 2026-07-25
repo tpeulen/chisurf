@@ -2,6 +2,23 @@
 
 ## 2026-07-26
 
+* **The multi-run ALV reader ran into a NumPy alias removed four versions ago
+  ([RF-043](/reviews/findings.md#rf-043)).** `mysplit` — which cuts the single
+  recorded intensity trace into one piece per run, and is therefore on the path
+  of *every* ALV-5000/6000 file with more than one run — sized its pieces with
+  `np.int`, which raises on the project's NumPy 2.4.6. The call site now uses
+  the builtin; no `compat.py` alias, because `np.int` was only ever a spelling
+  of the builtin and not an API that moved, so the builtin is the form that runs
+  unchanged on both majors. The interesting part is *why* the earlier
+  `np.float`/`np.float_` sweep missed it: the guardrail that scans the tree for
+  removed aliases had `int` missing from its pattern. It is there now, with a
+  note on why `bool` and `long` — both reinstated in NumPy 2 — are not. New
+  `test/fio/test_asc_alv_mysplit.py` pins the split itself, the
+  average-preserving contract from the docstring, and the `n <= 1` early-out.
+  The two remaining defects on that path stay open under
+  [RF-042](/reviews/findings.md#rf-042): the shared-list `[[]]*n`, and a
+  Python-2 remnant beside it that hands `mysplit` a *float* run count.
+
 * **The server's two long-running jobs stopped inventing their own job systems
   ([INC-08](/specs/assessment.md#inc-08)).** `fit.sample.*` and
   `fit.parameter_scan.*` each kept a bare module-level `dict` of job state,

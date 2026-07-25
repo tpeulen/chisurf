@@ -573,7 +573,7 @@ def mysplit(a, n):
         return [np.array(a)]
     a = np.array(a)
     N = len(a)
-    lensplit = np.int(np.ceil(N/n))
+    lensplit = int(np.ceil(N/n))
 
     # xp is actually rounded -> recalculate
     xp = np.linspace(a[:, 0][0], a[:, 0][-1], N,  endpoint=True)

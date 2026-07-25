@@ -107,7 +107,12 @@ def test_no_numpy_aliases_removed_in_numpy_2_remain():
 
     import chisurf
 
-    removed = re.compile(r"\bnp\.(float|complex|unicode|object|str|bool8|NaN|Inf|infty)(?![\w.])")
+    # ``int`` belongs here too — it went with the rest in NumPy 1.24 and, unlike
+    # ``bool`` and ``long``, was never reinstated in NumPy 2. Leaving it out of
+    # this pattern is what let ``np.int`` survive in the ALV reader.
+    removed = re.compile(
+        r"\bnp\.(float|complex|int|unicode|object|str|bool8|NaN|Inf|infty)(?![\w.])"
+    )
     offenders: list[str] = []
     root = pathlib.Path(chisurf.__file__).parent
     # The compatibility shim exists to restore these names, so its prose names
