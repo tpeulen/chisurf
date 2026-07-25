@@ -361,7 +361,8 @@ class Plot(QtWidgets.QWidget):
             y, orientation=H.Orientation.HORIZONTAL, movable=movable, pen=S.to_pen(pen), label=label
         )
 
-    def text(self, text, pos, *, color="w", anchor=(0, 0), draggable=False) -> H.Text:
+    def text(self, text, pos, *, color="w", anchor=(0, 0), draggable=False,
+             fill=None, border=None) -> H.Text:
         """Add a text label in data coordinates.
 
         Parameters
@@ -376,6 +377,10 @@ class Plot(QtWidgets.QWidget):
             Text anchor within its bounding box (``(0, 0)`` = top-left).
         draggable : bool
             If ``True`` the label can be dragged with the mouse.
+        fill : brush-like, optional
+            Background fill for the label box (``None`` = transparent).
+        border : pen-like, optional
+            Border pen for the label box (``None`` = no border).
 
         Returns
         -------
@@ -387,6 +392,8 @@ class Plot(QtWidgets.QWidget):
             color=S.to_color(color),
             anchor=tuple(anchor),
             draggable=draggable,
+            fill=S.to_brush(fill) if fill is not None else None,
+            border=S.to_pen(border) if border is not None else None,
         )
 
     def legend(self, *, offset=(30, 30)) -> None:
@@ -633,6 +640,20 @@ class Plot(QtWidgets.QWidget):
         for side, vis in (("left", left), ("bottom", bottom), ("right", right), ("top", top)):
             if vis is not None:
                 self._canvas.set_axis_visible(side, bool(vis))
+        return self
+
+    def link_x(self, other: "Plot") -> Plot:
+        """Link this panel's x-axis to ``other``'s so they pan/zoom together.
+
+        Used for stacked diagnostic panels (e.g. residuals above the data) that
+        must share a time axis. Returns ``self``.
+        """
+        self._canvas.link_x(other._canvas)
+        return self
+
+    def link_y(self, other: "Plot") -> Plot:
+        """Link this panel's y-axis to ``other``'s so they pan/zoom together. Returns ``self``."""
+        self._canvas.link_y(other._canvas)
         return self
 
     @property

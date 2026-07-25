@@ -592,16 +592,21 @@ class _PgCanvas(base.Canvas):
         self._pi.addItem(item)
         return _Marker(item, self._pi)
 
-    def add_text(self, text, pos, *, color, anchor, draggable) -> H.Text:
+    def add_text(self, text, pos, *, color, anchor, draggable, fill=None, border=None) -> H.Text:
         """Draw a text label.
 
         Added with ``ignoreBounds=True`` so the annotation never drives the
         view's auto-range — a text placed at a data coordinate (especially on a
         log axis, where a raw coordinate lands far off the log scale) must not
-        blow the range out.
+        blow the range out. Optional ``fill``/``border`` draw a background box.
         """
         cls = _DraggableTextItem if draggable else pg.TextItem
-        item = cls(text=text, color=color.as_tuple(), anchor=anchor)
+        kw = {"text": text, "color": color.as_tuple(), "anchor": anchor}
+        if fill is not None:
+            kw["fill"] = _brush(fill)
+        if border is not None:
+            kw["border"] = _pen(border)
+        item = cls(**kw)
         item.setPos(*pos)
         self._pi.addItem(item, ignoreBounds=True)
         return _Text(item, self._pi)
@@ -691,6 +696,14 @@ class _PgCanvas(base.Canvas):
     def set_axis_visible(self, side, visible) -> None:
         """Show or hide one axis."""
         self._pi.showAxis(side, bool(visible))
+
+    def link_x(self, other) -> None:
+        """Link this panel's x-axis to ``other``'s (shared pan/zoom)."""
+        self._pi.getViewBox().setXLink(other._pi.getViewBox())
+
+    def link_y(self, other) -> None:
+        """Link this panel's y-axis to ``other``'s (shared pan/zoom)."""
+        self._pi.getViewBox().setYLink(other._pi.getViewBox())
 
     def set_menu_enabled(self, enabled) -> None:
         """Enable/disable pyqtgraph's own right-click viewbox menu."""

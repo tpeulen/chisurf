@@ -568,6 +568,20 @@ screenshot/qtbot verification after each cluster.
   isolated repro of the exact draw calls plus a module import-clean check.
   (`fcs_filter_calculator/test/test_widgets.py` still imports pyqtgraph — a
   separate test-only entry.)
+- **Seam capabilities for the linked-panel family** (prep for `lineplot`/
+  `distribution`/`residual_image`, no allow-list change yet): added
+  **`Plot.link_x`/`link_y`** (shared pan/zoom across stacked panels — the
+  residuals-above-data view) and **`fill`/`border` on `Plot.text`** (a boxed,
+  optionally-draggable label — the fit-quality overlay). Both screenshot-verified
+  against the pyqtgraph originals (zoom propagates across the 3 panels; the yellow
+  χ²ᵣ/τ label draws with a blue fill + white border). Tests:
+  `test_link_x_shares_range`, `test_text_fill_border`.
+  **Finding — `lineplot` needs more than these:** its `_apply_curve_style` and
+  per-fit transparency logic are deeply pyqtgraph-internal (`setSymbol`/
+  `setSymbolBrush`/`setOpacity`/`setGraphicsEffect`/`opts['pen']`/`current_pen.width()`),
+  so a clean port needs a larger `Curve`-handle API (symbol/opacity/pen-introspection)
+  rather than `.native` passthroughs on the core TCSPC plot — deferred to a
+  dedicated pass that grows that handle surface first.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

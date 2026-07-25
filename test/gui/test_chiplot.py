@@ -160,6 +160,36 @@ def test_set_menu_enabled_returns_self(qapp):
     assert plot.set_menu_enabled(True) is plot
 
 
+def test_link_x_shares_range(qapp):
+    """link_x makes two panels share their x-range (PRD-64 linked-panel family).
+
+    Stacked TCSPC diagnostics (residuals above data) must pan/zoom together.
+    """
+    a = cp.Plot()
+    b = cp.Plot()
+    a.line([0, 1, 2], [0, 1, 0])
+    b.line([0, 1, 2], [1, 0, 1])
+    assert a.link_x(b) is a
+    b.native.getViewBox().setXRange(0.4, 0.6)
+    ax0, ax1 = a.native.getViewBox().viewRange()[0]
+    assert ax0 < 0.7 and ax1 > 0.3  # a followed b's zoom, not its own autorange
+
+
+def test_text_fill_border(qapp):
+    """text() accepts a background fill + border box (PRD-64 Batch 29).
+
+    The lineplot fit-quality overlay is a boxed, draggable label.
+    """
+    plot = cp.Plot()
+    t = plot.text(
+        "chi2 = 1.0", (1.0, 1.0), color="#FF0", anchor=(0, 0),
+        draggable=True, fill=(0, 0, 255, 100), border="w",
+    )
+    assert isinstance(t, cp.handles.Text)
+    t.text = "chi2 = 2.0"
+    assert "2.0" in t.text
+
+
 def test_set_axis_visible_returns_self(qapp):
     """``set_axis_visible`` toggles individual axes and chains (returns self).
 

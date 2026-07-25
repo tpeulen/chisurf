@@ -228,6 +228,15 @@ class Canvas(abc.ABC):
         Default no-op; backends with axis chrome override it.
         """
 
+    def link_x(self, other: "Canvas") -> None:
+        """Link this panel's x-axis to ``other`` so they pan/zoom together.
+
+        Default no-op; backends with a shared view model override it.
+        """
+
+    def link_y(self, other: "Canvas") -> None:
+        """Link this panel's y-axis to ``other`` so they pan/zoom together."""
+
     def set_menu_enabled(self, enabled: bool) -> None:
         """Enable/disable the backend's own right-click menu (default no-op)."""
 
