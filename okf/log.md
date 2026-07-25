@@ -2,6 +2,29 @@
 
 ## 2026-07-26
 
+* **GUI test: raw photons → fittable decay, the step before every TCSPC fit.**
+  Drove `chisurf.plugins.tttr.microtime_histogram` headlessly against the SPC-130
+  sample with the shipped `BS` detector setup, standalone and with a real `Main`
+  window up. New use case
+  [TTTR micro-time histogram](/usecases/tttr-microtime-histogram.md); this is the
+  first entry covering the *channel definition + micro-time histogram* half of the
+  "Correlation / TTTR tools" area. The maths is sound — the stream splits
+  correctly into parallel `[8, 3]` / perpendicular `[0]` and stacks to 2 × 4096 —
+  but almost everything around it leaks: **Transfer to ChiSurf** is dead in both
+  plugins that use it, because `setup.params.set` reads a `cs.cs.current_setup`
+  that no main window has, and Qt swallows the `AttributeError` out of the slot
+  (RF-090); **Compute** auto-saves a `.dat` into the user's raw-data folder
+  despite a separate **Save** button (RF-091); the *FWHM* readout is noise-driven
+  and swings 0.27 → 9.12 ns purely by changing the binning (RF-092); the
+  *Parallel*/*Perpendicular* boxes are ignored but still rewrite the output
+  filename (RF-093); the documented `--bid-folder` CLI still calls
+  `PathListWidget.add_file`, removed in the path-list migration (RF-094); the
+  saved decay bypasses `write_vv_vh` and so records neither the G-factor the user
+  just typed nor the stacked layout (RF-095); and the plot is pinned at exactly
+  93 px from 1000 to 2200 px of window width by a splitter with no stretch
+  factors (RF-096, RF-097). Findings RF-090..RF-097 in the
+  [findings queue](/reviews/findings.md).
+
 * **`align`/`super` fitted scene units and called them Angstrom (RF-079).** The
   sibling of the `rms` unit bug that `119a63e46` fixed 280 lines above it, left
   behind in the command the [guide](../docs/guides/44_molecular_viewer.md) presents

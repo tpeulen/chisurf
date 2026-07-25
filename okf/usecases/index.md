@@ -51,6 +51,11 @@ The workflows a first pass should cover — expand as the tester discovers more:
   pick a detector setup, find and filter bursts, read the proximity-ratio
   histogram, then carry the burst folder into BVA, 2CDE, burst-MLE and the
   Burst Browser. *(last driven 2026-07-25; RF-052..RF-056)*
+- [TTTR micro-time histogram](/usecases/tttr-microtime-histogram.md) — turn a raw
+  photon stream into a fittable decay: pick a detector setup and colour, drop the
+  TTTR file, build the polarization-resolved micro-time histogram, read its width,
+  save the stacked VV/VH curve and push it into ChiSurf. The step before every
+  TCSPC fit. *(last driven 2026-07-26; RF-090..RF-097)*
 - [FRET calculators](/usecases/fret-calculators.md) — open the Calculators hub,
   convert a measured efficiency into a donor–acceptor distance, bound the κ²
   orientation error, and generate a static FRET line to overlay on an smFRET

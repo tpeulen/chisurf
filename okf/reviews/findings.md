@@ -1147,3 +1147,71 @@ its getter's `__dict__` lookup. Findings RF-083..RF-089.
 - **Location:** `chisurf/core/project/project.py:174-184` (`Project.load`'s `except (ImportError, AttributeError, KeyError)`) against `modules/chinet/chinet/session.py:164-176` (`Session.load`'s bare `except:` → `json.load`)
 - **Finding:** The chinet session is optional — a missing entry (`KeyError`) and an empty file (`Session.load` returns `None`) are both tolerated, and the save side is wrapped in the same kind of guard. A *malformed* `session.jsonl` is not: `Session.load` falls back to `json.load` on the whole file and raises `json.JSONDecodeError`, which is a `ValueError` and escapes the guard. Verified by rewriting the `session.jsonl` entry of a valid `.csp` to `{not json at all`: `Project.load` raises `JSONDecodeError: Expecting property name enclosed in double quotes`, so the datasets and fits in `project.json` — all intact — become unreachable, over a graph that is empty in practice (RF-085). The same archive with an *empty* session entry loads fine. Catch `ValueError`/`OSError` there too and log the skipped restore.
 - **Fix note:**
+
+### GUI test 2026-07-26 — TTTR micro-time histogram (raw photons → fittable decay)
+
+Workflow: [TTTR micro-time histogram](/usecases/tttr-microtime-histogram.md) —
+`chisurf.plugins.tttr.microtime_histogram`, driven headlessly against
+`test/data/tttr/BH/132/BH_SPC132.spc` (SPC-130, 183 657 photons) with the shipped
+`BS` detector setup, both standalone and with a real `chisurf.gui.main.Main`
+window booted. What checks out: the stream is split correctly into parallel
+`[8, 3]` / perpendicular `[0]`, the stacked result is 2 × 4096 values totalling
+135 967 counts, `_apply_setup_lut` and the polarization gating behave, and the
+plot — once given room — carries a correct legend and a *Micro Time (ns)* axis.
+Findings RF-090..RF-097.
+
+### RF-090
+- **Status:** OPEN
+- **Severity:** S1 (the "Transfer to ChiSurf" button does nothing and reports nothing, in two plugins)
+- **Location:** `chisurf/core/actions/project_actions.py:60` (`set_setup_params`, `setup = cs.cs.current_setup`), reached from `chisurf/plugins/tttr/microtime_histogram/wizard.py:820` and `chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py:1058`
+- **Finding:** The `setup.params.set` action reads `cs.cs.current_setup`, an attribute that exists on no main window — `grep` finds the name nowhere else in the tree except an unrelated `_current_setup_idx` and per-plugin locals. Verified both ways: standalone (`cs.cs is None`) it raises `AttributeError: 'NoneType' object has no attribute 'current_setup'`, and with `Main()` constructed and assigned to `cs.cs` it raises `AttributeError: 'Main' object has no attribute 'current_setup'. Did you mean: 'current_fit'?`. Because the dispatch happens inside a Qt slot the exception is swallowed to stderr, so clicking **Transfer to ChiSurf** after a successful compute yields no dialog, no dataset and no error — `chisurf.imported_datasets` goes 0 → 0 — and the following `dataset.add` never runs. The same three-dispatch sequence (`experiment.set` → `setup.params.set` → `dataset.add`) is the IRF estimator's hand-off, so that path is dead too. Either give the main window a `current_setup` property over the active reader or route the action through the reader the way `setup.select` does, and add a smoke test that dispatches the action.
+- **Fix note:**
+
+### RF-091
+- **Status:** OPEN
+- **Severity:** S2 (a preview action writes an unrequested file into the user's raw-data directory)
+- **Location:** `chisurf/plugins/tttr/microtime_histogram/wizard.py:1532-1539` (the "Auto-save the histogram" tail of `compute_microtime_histogram`) with `:957-1015` (`update_output_filename`, which defaults the path to the input file's directory)
+- **Finding:** `compute_microtime_histogram` ends by calling `save_cumulative_histogram` on whatever is in the *Output* box, which defaults to the folder the TTTR file came from. The panel has a separate **Save** button, so pressing **Compute** to look at a decay silently persists it as well. Verified by copying the sample into a scratch folder and pressing **Compute** exactly once, never **Save**: `sample_A_green_(8,3)-(0).dat` appeared beside `sample_A.spc`. Driving the repo sample the same way dropped a stray `.dat` into `test/data/tttr/BH/132/`. Every parameter sweep (binning, timeshift, detector) leaves another differently-named file behind, since the proposed filename encodes the channels. Drop the auto-save, or default the path to a scratch/output directory and tell the user a file was written.
+- **Fix note:**
+
+### RF-092
+- **Status:** OPEN
+- **Severity:** S2 (a displayed physical width tracks the display setting, not the data)
+- **Location:** `chisurf/plugins/tttr/microtime_histogram/wizard.py:1159-1192` (`calculate_fwhm`), displayed at `:1329` as *FWHM (VV + 2G*VH)*
+- **Finding:** `calculate_fwhm` takes the global `argmax` and walks out to the *first* bin at or below half-max on each side. On shot-noise counting data the nearest sub-half-max bin is a random dip a few channels from the peak, so the result measures the noise realisation rather than the pulse width — and coarser binning averages the noise away, letting the walk run further. Verified on one file, one detector, changing only *Binning*: 1 → **0.27 ns** (82 ch), 2 → **1.07 ns** (162 ch), 4 → **8.94 ns** (678 ch), 8 → **9.12 ns** (346 ch) — a 34× swing in a quantity that must be binning-invariant, shown to two decimals with no caveat. (At binning 4 the "FWHM" of 8.94 ns exceeds two thirds of the 13.5 ns window.) Estimate the half-max crossings from a smoothed or interpolated curve and search outward from a baseline-relative maximum, and pin it with a test that computes the width at two binnings and asserts they agree.
+- **Fix note:**
+
+### RF-093
+- **Status:** OPEN
+- **Severity:** S2 (two enabled input boxes are ignored, while the filename they drive claims otherwise)
+- **Location:** `chisurf/plugins/tttr/microtime_histogram/wizard.py:70-133` (`_get_interleaved_channels`) with `:531-532` (their only signal connections)
+- **Finding:** The *Parallel* and *Perpendicular* channel line edits (`lineEdit_2` / `lineEdit`) are enabled and editable, but `_get_interleaved_channels` returns the detector-wizard page's channels first and only falls back to parsing the boxes when no setup supplies any — and a setup always does (`BS` ships and is auto-selected). Verified: with `green` selected the channels are `[8, 0, 3]`; setting the boxes to `0` and `8` leaves `_get_interleaved_channels()` at `[8, 0, 3]` and `parallel_channels` at `[8, 3]`. Their `textChanged` is wired only to `update_output_filename`, so the proposed output filename *does* change to encode channels the computation never uses, which is worse than doing nothing. Make them read-only while a setup drives them (they are already repopulated from it on every detector change), or add an explicit override that `_get_interleaved_channels` honours.
+- **Fix note:**
+
+### RF-094
+- **Status:** OPEN
+- **Severity:** S2 (the documented CLI entry point crashes on its primary argument)
+- **Location:** `chisurf/plugins/tttr/microtime_histogram/__main__.py:106` (`widget.listWidget_BID.add_file(str(bst_file))`) against `chisurf/gui/autoform/sections/path_list_section.py:316-330` (`add_paths` / `set_paths`)
+- **Finding:** The BID lists were migrated from the hand-rolled `FileListWidget` to the unified `PathListWidget`, which has no `add_file`; the CLI's call site was not updated. Verified: `PathListWidget` exposes `add_paths`, `set_paths`, `paths`, `checked_paths`, `selected_paths` and no `add_file`, and calling it raises `AttributeError: 'PathListWidget' object has no attribute 'add_file'`. So `microtime-histogram --bid-folder …` — the entry point the plugin README documents, and the same hand-off NDXplorer uses after saving burst IDs — fails for every `.bst` it finds, inside a `QTimer.singleShot` slot where the traceback goes to stderr and the window is simply left empty. One `add_paths([str(f) for f in bst_files])` call replaces the loop. (The README additionally names the command `csc_microtime_histogram` while the manifest registers `microtime-histogram`.)
+- **Fix note:**
+
+### RF-095
+- **Status:** OPEN
+- **Severity:** S2 (the house VV/VH writer is bypassed, so the saved decay carries no G-factor, layout or version)
+- **Location:** `chisurf/plugins/tttr/microtime_histogram/wizard.py:752` (`np.savetxt(str(path_obj), self.cumulative_ps.astype(int), fmt="%d")`) against `chisurf/core/fio/vv_vh.py:51-66` (`write_vv_vh`) and [the VV/VH format](/references/vv-vh-decay-format.md)
+- **Finding:** `save_cumulative_histogram` hand-rolls the write instead of calling the canonical `write_vv_vh`, so the output is a bare column of 8192 integers with no `#`-footer. Verified: setting *G-Factor* to 1.25 and saving produced a file whose lines are all bare counts and which contains the string "1.25" nowhere, while `write_vv_vh(..., g_factor=1.25)` on the same shape emits `#format_version: 1.0`, `#channels: VV, VH` and `#g_factor: 1.25`. Nothing in the saved file records the G-factor the user typed in this very panel, the `dt`, or the fact that it is two stacked 4096-bin channels rather than one 8192-bin decay — so the file cannot be re-read without the operator remembering the settings, and the value is lost for anisotropy work downstream. Call `write_vv_vh(path, vv=..., vh=..., g_factor=self.g_factor, metadata={"dt": self.time_step})`. Note that `write_vv_vh` itself currently doubles the comment marker (`# #g_factor: 1.25`), because a `#`-prefixed footer is passed to `numpy.savetxt`, which prefixes it again — worth fixing in the same pass.
+- **Fix note:**
+
+### RF-096
+- **Status:** OPEN
+- **Severity:** S3 (the tool's only output is a 93-pixel sliver at every window size)
+- **Location:** `chisurf/plugins/tttr/microtime_histogram/wizard.ui` (`QSplitter` named `splitter`, no `stretch`/`sizes` property) with `wizard.py:515-519` (the plot added to `verticalLayout` on the right pane)
+- **Finding:** The `Histogram` tab is a two-pane splitter whose stretch factors and initial sizes are never set, so Qt sizes it from size hints and the form pane wins outright. Verified offscreen: `splitter.sizes()` is `[899, 93]` at 1000 px of window width, `[1179, 93]` at 1280, `[1499, 93]` at 1600 and `[2099, 93]` at 2200 — the plot is pinned at **exactly 93 px** and every additional pixel goes to the form, so enlarging the window makes the plot relatively worse. At that width the x axis degenerates to a "5 10" tick pair, the axis label clips from "Micro Time (ns)" to "Micro Time", and the legend the code explicitly creates is entirely off-screen; two mostly-empty file-drop lists meanwhile hold ~570 px of height. A single `setSizes`/`setStretchFactor` call in `__init__` restores the readable plot (verified: `setSizes([700, 900])` yields the full labelled decay with its three-entry legend).
+- **Fix note:**
+
+### RF-097
+- **Status:** OPEN
+- **Severity:** S3 (a no-op action leaves the previous result on screen as though it were fresh)
+- **Location:** `chisurf/plugins/tttr/microtime_histogram/wizard.py:1362` (`compute_microtime_histogram`, which has no empty-`selected_files` guard) against `:790-792` and `:849-852`, where `add_to_chisurf` and `open_save_dialog` both do warn
+- **Finding:** **Compute** with no files ticked logs "Computing microtime histogram…", iterates an empty list and returns, without clearing the plot, the FWHM box or `original_histograms`. Verified: after computing a decay, clearing the file list and pressing **Compute** again, the previous curves stay drawn and the FWHM box still reads `0.27 ns (82.0 channels)` — no dialog, no status line, nothing disabled. Pressing it on a freshly opened tool is equally silent. A user who swaps datasets and re-computes cannot distinguish a stale result from a new one. The sibling actions in the same class already raise a "No Files" warning; do the same here (and clear the display) before the loop.
+- **Fix note:**
