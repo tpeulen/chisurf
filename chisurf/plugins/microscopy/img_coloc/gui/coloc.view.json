@@ -13,14 +13,15 @@
           "collapsed": false,
           "n_col": 1,
           "sections": [
-            {"type": "custom", "key": "help",
-             "options": {"title": "Colocalization — help", "label": "?",
-                         "resource": "help.md"}},
             {"type": "custom", "key": "setup_selector",
              "options": {"attr": "setup_name", "call": "apply_setup_settings",
-                         "placeholder": "— raw detector channels —"}},
-            {"type": "value", "attr": "filename", "label": "Image", "kind": "file", "call": "set_filename",
-             "description": "The image to analyse. Either a TIFF stack (or any imageio-readable image), or a photon-stream file (PTU/HT3/…) which is reconstructed into a confocal-scan image — one channel per detector window of the setup above, or per raw routing channel when no setup is picked. Files can also be dropped on the window."},
+                         "label": "Setup", "placeholder": "— raw detector channels —",
+                         "description": "Detector setup whose named windows (green, red, …) become the pickable image channels — the same vocabulary as the rest of ChiSurf. Setups are created in the Detector Def tool. Leave it empty to use the raw detector channels stored in the file; it does not apply to camera images."}},
+            {"type": "custom", "key": "data_source",
+             "options": {"attr": "filename", "call": "set_filename", "label": "Image",
+                         "filter": "Images and photon streams (*.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
+                         "mmfdb_kinds": ["raw_data", "raw_measurement"],
+                         "description": "The image to analyse: a TIFF stack (or any imageio-readable image), or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image — one channel per detector window of the setup above, or per raw routing channel when no setup is picked. Browse the disk, load a dataset registered in the database, or drop a file here."}},
             {"type": "choice", "attr": "channel_a", "label": "Channel A", "options_source": "channel_names", "call": "refresh_display",
              "description": "First channel of the pair. With a detector setup this lists its named windows (green, red, …); otherwise the channels found in the file (available after the first run)."},
             {"type": "choice", "attr": "channel_b", "label": "Channel B", "options_source": "channel_names", "call": "refresh_display",
@@ -94,8 +95,7 @@
                 {"type": "toggle", "attr": "log_histogram", "label": "Log histogram",
                  "description": "Show the intensity scatter on a logarithmic count scale, so the sparse bright tail stays visible next to the dense background cloud."}
               ]
-            },
-            {"type": "info", "source": "results_html", "height": 48, "max_height": 84}
+            }
           ]
         },
         {

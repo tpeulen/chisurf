@@ -139,6 +139,19 @@ capability, authored in JSON and available to every plugin:
   next to the view spec that declares it (the model's `_view_json`, else the
   model's module directory), so a plugin ships its `?` modal text beside its
   `view.json` instead of inlining Markdown into JSON.
+- **`data_source` section** — the one-file counterpart of `path_list`: a path
+  field plus **browse**, **database** (the shared MMFDB dataset picker, which
+  resolves the artifact to a *local* path so object-store/S3 access stays inside
+  the database) and drag-and-drop, bound to one model attribute. Every tool's
+  "which measurement do I analyse?" control is now one declarative section rather
+  than a plain file field that can only see the local disk.
+- **`ChisurfDockTool.add_toolbar_help()`** — a right-aligned `?` in the tool's own
+  toolbar opening the same modal. Long help never occupies panel space, and live
+  status goes to the status bar rather than an inline text block.
+
+The plugin-catalogue generator was taught to document bound custom sections
+(their `attr`/`label`/`description` live in `options`), so a tool that uses these
+sections keeps a complete per-parameter table.
 
 ## Workflow: setup → file → channels → coefficients
 

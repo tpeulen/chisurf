@@ -10,6 +10,7 @@ from __future__ import annotations
 from . import (
     builtin,  # noqa: F401  (side effect: populate the registry)
     chimol_section,  # noqa: F401  (registers the "chimol" section)
+    data_source_section,  # noqa: F401  (registers the "data_source" section)
     decay_conv_section,  # noqa: F401  (registers the "decay_conv" section)
     embed_section,  # noqa: F401  (registers the "embed" section)
     global_parameter_table,  # noqa: F401  (registers the "global_parameter_table" section)

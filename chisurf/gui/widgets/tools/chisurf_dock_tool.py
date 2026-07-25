@@ -166,6 +166,60 @@ class ChisurfDockTool(QtWidgets.QMainWindow):
         if callable(add_paths):
             add_paths(paths)
 
+    # -- toolbar help ----------------------------------------------------------
+
+    def add_toolbar_help(
+        self,
+        toolbar: QtWidgets.QToolBar,
+        *,
+        resource: str = "",
+        text: str = "",
+        title: str = "Help",
+        model: Any | None = None,
+    ) -> QtWidgets.QWidget:
+        """Right-align a ``?`` button in *toolbar* that opens the help modal.
+
+        The house rule is that long help lives behind a small ``?`` button, not in
+        an inline text block that eats panel space. This puts that button where it
+        belongs — the far right of the tool's own toolbar — reusing the same modal
+        the AutoForm ``help`` section uses.
+
+        Parameters
+        ----------
+        toolbar : QtWidgets.QToolBar
+            Toolbar to append the spacer + button to.
+        resource : str
+            Help file (``.md``/``.txt``/``.html``). A *relative* path is resolved
+            next to the model's view spec, so a plugin ships it beside its
+            ``view.json``.
+        text : str
+            Inline help body; wins over ``resource`` when given.
+        title : str
+            Modal window title.
+        model : object, optional
+            Model used to resolve a relative ``resource`` (defaults to
+            ``self.model``).
+
+        Returns
+        -------
+        QtWidgets.QWidget
+            The button widget added to the toolbar.
+        """
+        from chisurf.gui.autoform.sections.help_section import HelpButton
+
+        spacer = QtWidgets.QWidget()
+        spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
+        toolbar.addWidget(spacer)
+        button = HelpButton(
+            model if model is not None else getattr(self, "model", None),
+            resource=resource,
+            text=text,
+            title=title,
+            align="right",
+        )
+        toolbar.addWidget(button)
+        return button
+
     # -- MMFDB connectivity (lazy; never on construction) ----------------------
 
     def acquire_mmfdb_connection(self) -> Any | None:

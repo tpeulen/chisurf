@@ -274,10 +274,7 @@ class ColocViewModel:
         self.compute()
 
     # ── AutoForm accessors ──
-    def results_html(self) -> str:
-        """Return the status/summary line for the info panel."""
-        return f"<pre>{self.results_text}</pre>"
-
+    # (:attr:`results_text` is shown in the host's status bar, not in a panel.)
     def metric_rows(self) -> list[dict]:
         """Return the coefficient table rows (``name`` / ``value``)."""
         return _core.metric_rows(self._metrics) if self._metrics else []

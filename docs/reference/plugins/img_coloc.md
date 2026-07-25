@@ -22,7 +22,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Image | `filename` | file |  |  | The image to analyse. Either a TIFF stack (or any imageio-readable image), or a photon-stream file (PTU/HT3/…) which is reconstructed into a confocal-scan image — one channel per detector window of the setup above, or per raw routing channel when no setup is picked. Files can also be dropped on the window. |
+| Setup | `setup_name` | setup_selector |  |  | Detector setup whose named windows (green, red, …) become the pickable image channels — the same vocabulary as the rest of ChiSurf. Setups are created in the Detector Def tool. Leave it empty to use the raw detector channels stored in the file; it does not apply to camera images. |
+| Image | `filename` | data_source |  |  | The image to analyse: a TIFF stack (or any imageio-readable image), or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image — one channel per detector window of the setup above, or per raw routing channel when no setup is picked. Browse the disk, load a dataset registered in the database, or drop a file here. |
 | Channel A | `channel_a` | choice |  | choices: `channel_names` | First channel of the pair. With a detector setup this lists its named windows (green, red, …); otherwise the channels found in the file (available after the first run). |
 | Channel B | `channel_b` | choice |  | choices: `channel_names` | Second channel of the pair. Manders M1 answers 'how much of A sits with B', M2 the mirror question, so the A/B order matters for those two coefficients. |
 | Frame | `frame` | int |  | -1 … 100000 (step 1) | Which frame of the stack to analyse. -1 (default) sums every frame, which maximises the signal-to-noise of the coefficients; pick a single frame to follow a time series. |

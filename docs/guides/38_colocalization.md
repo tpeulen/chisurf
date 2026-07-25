@@ -30,7 +30,10 @@ Leave the setup empty to work with the raw detector channels stored in the file
 
 ### 2. Load an image
 
-Use the **Image** field or drop the file on the window. Photon streams are
+Use the **Image** row: **📂** browses the disk, **🗄** loads a dataset registered
+in the database (the database resolves it to a local file, wherever its object
+store keeps the data — local disk or an S3-compatible endpoint), and a file
+dropped on the window works too. Photon streams are
 reconstructed into a confocal-scan image (frame/line/pixel markers are read from
 the header); TIFFs are read with the axis order the file declares — ImageJ
 hyperstack and OME metadata are honoured, so a `TCYX` stack loads correctly. For

@@ -619,6 +619,26 @@
   offscreen platform refuses a GL context (grab GL viewports under `cocoa` with
   an offscreen surface), and interactive behaviour is verified by emitting the
   signal programmatically and asserting on the model, not by looking.
+* **One data-loading control for every tool: the `data_source` AutoForm
+  section.** Loading an input file was a plain `value`/`file` field that could
+  only see the local disk, while datasets registered in MMFDB (possibly on an
+  S3-backed object store) needed a separate flow that only the `path_list`
+  section had. `data_source` is that flow for a *single* file: path field +
+  **browse** + **database** (the shared `mmfdb.picker`, which resolves the chosen
+  artifact to a local path — object-store access stays inside the database) +
+  drag-and-drop, bound to one model attribute with an optional setter method.
+  New tools declare their input in JSON and get database loading for free.
+* **No inline status/help text in forms.** The colocalization settings panel lost
+  its `info` block (live status belongs in the status bar) and its inline `?`
+  section; `ChisurfDockTool.add_toolbar_help()` now right-aligns the `?` in the
+  tool's own toolbar, opening the same modal. Both are general: any dock tool gets
+  the toolbar help with one call.
+* **The catalogue generator documents bound custom sections.** `data_source` /
+  `setup_selector` / `path_list` keep their `attr`/`label`/`description` in
+  `options`, which the generator skipped — a tool using them silently lost rows
+  from its parameter table. It now flattens those options into a documented row,
+  so the [docs rule](/workflows/change-tracking.md) keeps holding as sections move
+  from plain fields to custom ones.
 
 * **The LLM agent got a real harness: `chisurf/core/agent/`.** The old one
   (`code_editor/agent_runtime.py`) handed the model a bare list of 23 RPC

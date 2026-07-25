@@ -72,6 +72,8 @@ class ImgColocTool(ChisurfDockTool):
         a_csv = toolbar.addAction("💾 Export CSV")
         a_csv.setToolTip("Write the coefficient table to a CSV file.")
         a_csv.triggered.connect(self._export_csv)
+        # Long help behind a ? at the far right of the toolbar — never inline text.
+        self.add_toolbar_help(toolbar, resource="help.md", title="Colocalization — help")
         self.toolbar = toolbar
         self.addToolBar(toolbar)
 

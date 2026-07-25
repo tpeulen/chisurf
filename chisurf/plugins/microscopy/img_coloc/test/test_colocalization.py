@@ -262,25 +262,56 @@ def test_view_spec_parses_and_binds_every_attribute():
 
 
 def test_help_resource_ships_next_to_the_view_spec():
-    """The ? modal's help file resolves relative to the view spec and covers the method."""
-    from chisurf.core.dataspec import CustomSection
+    """The ? modal's help file sits next to the view spec and covers the method.
+
+    The button itself lives in the tool's toolbar (``add_toolbar_help``), not in a
+    panel, so only the shipped resource is checked here — Qt-free.
+    """
     from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
 
     vm = ColocViewModel()
+    help_md = vm._view_json.parent / "help.md"
+    assert help_md.is_file()
+    text = help_md.read_text()
+    for expected in ("Workflow", "Pearson", "Manders", "Costes", "van Steensel"):
+        assert expected in text
+
+
+def test_settings_panel_has_no_inline_text_blocks():
+    """Status/help never occupy panel space — no `info` section in the spec.
+
+    Live status goes to the host's status bar and long help behind the toolbar's
+    ``?`` modal; an inline text block would just eat the form.
+    """
+    from chisurf.core.dataspec import InfoSection
+    from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
 
     def walk(sections):
         for section in sections:
             yield section
             yield from walk(getattr(section, "sections", ()) or ())
 
-    help_sections = [
-        s for s in walk(vm.view_spec().sections) if isinstance(s, CustomSection) and s.key == "help"
+    spec = ColocViewModel().view_spec()
+    assert not [s for s in walk(spec.sections) if isinstance(s, InfoSection)]
+
+
+def test_data_source_section_is_used_for_the_input_file():
+    """The input file uses the shared data-source control (disk + database + drop)."""
+    from chisurf.core.dataspec import CustomSection
+    from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
+
+    def walk(sections):
+        for section in sections:
+            yield section
+            yield from walk(getattr(section, "sections", ()) or ())
+
+    spec = ColocViewModel().view_spec()
+    sources = [
+        s for s in walk(spec.sections) if isinstance(s, CustomSection) and s.key == "data_source"
     ]
-    assert help_sections, "no ? help button declared"
-    resource = str(help_sections[0].options.get("resource", ""))
-    # Resolved the way HelpButton resolves a relative resource: next to the spec.
-    help_md = vm._view_json.parent / resource
-    assert help_md.is_file()
-    text = help_md.read_text()
-    for expected in ("Workflow", "Pearson", "Manders", "Costes", "van Steensel"):
-        assert expected in text
+    assert len(sources) == 1
+    options = sources[0].options
+    assert options["attr"] == "filename"
+    assert options["call"] == "set_filename"
+    assert options.get("mmfdb_kinds"), "the database picker must be offered"
+    assert options.get("description")

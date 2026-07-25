@@ -33,6 +33,9 @@ OUT_DIR = REPO_ROOT / "docs" / "reference"
 
 # view.json section types that describe a user-editable parameter.
 PARAM_TYPES = {"value", "choice", "toggle", "toggle_row", "table"}
+#: Custom-section keys that *are* a bound parameter (their ``attr``/``label``/
+#: ``description`` live in ``options``), so they still get a documented row.
+CUSTOM_PARAM_KEYS = {"data_source", "setup_selector", "path_list"}
 
 # Curated fallback descriptions for common fit/model parameters that the
 # auto-generated parameter registry leaves blank. Kept here (not in the model
@@ -129,6 +132,12 @@ def _iter_view_params(section, panel: str = ""):
         next_panel = title if (stype in {"panel", "dock_area"} and title) else panel
         if stype in PARAM_TYPES and section.get("attr"):
             yield panel, section
+        elif stype == "custom" and section.get("key") in CUSTOM_PARAM_KEYS:
+            # A bound custom section (file/setup pickers): its attr, label and
+            # description sit in ``options``; flatten so it documents like a field.
+            options = section.get("options") or {}
+            if options.get("attr"):
+                yield panel, {"type": "custom", "kind": section.get("key", "custom"), **options}
         for value in section.values():
             yield from _iter_view_params(value, next_panel)
     elif isinstance(section, list):

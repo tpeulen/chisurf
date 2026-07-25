@@ -12,8 +12,9 @@ question.
    vocabulary as the rest of ChiSurf. Leave it empty to use the raw detector
    channels stored in the file.
 2. **Load an image.** Either a TIFF stack (camera data) or a photon-stream file
-   (PTU/HT3/…), which is reconstructed into a confocal-scan image. You can also
-   drop the file on the window.
+   (PTU/HT3/…), which is reconstructed into a confocal-scan image. **📂** browses
+   the disk, **🗄** loads a dataset registered in the database, and dropping a
+   file on the window works too.
 3. **Choose channel A and B.**
 4. **Set background and thresholds** — see below; this is where reproducibility
    is won or lost.
