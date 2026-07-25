@@ -36,6 +36,7 @@ class ModelWidget(Model, QtWidgets.QWidget, metaclass=_ModelWidgetMeta):
             ),
             (cs.gui.plots.FitInfo, {}),
             (cs.gui.plots.ParameterScanPlot, {}),
+            (cs.gui.plots.PosteriorGraphPlot, {}),
             (cs.gui.plots.ResidualPlot, {})
         ]
     except Exception:

@@ -394,6 +394,49 @@ names are prefixed (`3:tau`) and a member only knows its own. `approx_grad`,
 `covariance_matrix`, `lnprior`/`lnprob`/`lnprob_parts` and every sampler take an
 optional `model=`, so an engine over a group's global model works throughout.
 
+# Seeing the structure, not only reading it
+
+`FactorGraph.describe()` reports the structure as text, and the questions it
+answers are the ones text answers worst: *which* dataset constrains *which*
+parameter, whether the fit separates, and which parameters are really one
+measurement. `chisurf/core/fitting/graphview.py` turns the same graph into
+drawable data (`GraphNode`/`GraphEdge` with coordinates — Qt-free, so the layout
+is testable headlessly), and `chisurf/gui/plots/posterior_graph.py` paints it.
+The vocabulary is borrowed from probabilistic-graphical-model toolkits:
+
+| their idea | here |
+| --- | --- |
+| the network | **Structure** — parameters against the datasets that constrain them |
+| node shaded by entropy | node shaded by *relative uncertainty* (`sd/\|value\|`, scale-free) |
+| arc weighted by mutual information | **Correlation** — edge weighted by `\|r\|`, which for a Gaussian posterior *is* the mutual information up to a monotone transform |
+| the junction tree | **Junction tree** — cliques, with each edge labelled by the separator |
+
+Correlation comes from a stored chain when there is one and the curvature
+otherwise, so it reuses `sampling_chain` and `covariance_matrix` rather than
+computing anything new. Findings are stated in words under the plot, not left
+for the reader to infer: a pair above 0.95 is reported as *"one measurement, not
+two"*, a graph in several components as *"this is N separate fits"*, and a
+parameter with no error estimate as one the model may not respond to at all —
+which the factor graph cannot see by itself, because a likelihood factor's scope
+is the model's whole parameter list rather than the subset it depends on.
+
+**Layout is semantic, not generic.** Three columns — private parameters |
+datasets | shared parameters — with each private parameter on its own dataset's
+row. A generic bipartite layout orders each side by whatever the graph dict
+yields, which drew `c(2), c(1), a, c(3)` against `data 2, data 3, data 1`, every
+edge crossing every other. Datasets go in the *middle* so that no edge ever
+crosses a column of nodes; with parameters on one side only, every shared-parameter
+edge is drawn straight through the private parameters' labels. Shared parameters
+sit half a row off, because on a row their edge passes through that row's private
+parameter and reads as a chain. These are not cosmetic: an edge through an
+unrelated node asserts a connection that does not exist.
+
+Two general rules fell out and are worth reusing: labels drop the group's
+`fit:` prefix **only where the short form is unique** (three nodes all called
+`c` say the fit has one parameter three times over), and layouts are rotated so
+their widest direction is horizontal (a junction tree is often a chain, which a
+force layout will happily draw down the middle of a wide canvas).
+
 # Reusing a chain under a different prior
 
 `chisurf/core/fitting/reweight.py` answers "what would this look like under a

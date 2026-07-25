@@ -2,6 +2,51 @@
 
 ## 2026-07-25
 
+* **The posterior's structure is now a picture, not a paragraph.** `describe()`
+  reported the factor graph as text, which is the worst medium for the questions
+  it answers: which dataset constrains which parameter, whether the fit
+  separates, which parameters are really one measurement. New
+  `chisurf/core/fitting/graphview.py` turns the same graph into drawable data
+  (Qt-free, laid out, so it is testable headlessly) and
+  `chisurf/gui/plots/posterior_graph.py` paints three tabs, borrowing the
+  vocabulary probabilistic-graphical-model toolkits settled on: the **network**
+  (parameters against the datasets that constrain them, nodes shaded by relative
+  uncertainty where those tools shade by entropy), **correlation** (edges
+  weighted by |r|, which for a Gaussian posterior *is* the mutual information
+  their arcs are weighted by), and the **junction tree** (cliques, each edge
+  labelled with its separator). Correlation comes from a stored chain when there
+  is one and the curvature otherwise, so it reuses `sampling_chain` and
+  `covariance_matrix` rather than computing anything new. Findings are stated in
+  words under the plot: a pair above 0.95 is "one measurement, not two", several
+  components are "N separate fits", and a parameter with no error estimate is one
+  the model may not respond to -- which the factor graph cannot see alone,
+  because a likelihood factor's scope is the model's whole parameter list rather
+  than the subset it depends on. Registered in the default plot list, so it is
+  reachable rather than merely importable.
+  Rendered headlessly and inspected at every step, which is the only reason the
+  following were caught -- none of them fail a construction test. Three local
+  parameters all drawn as `c` (the group's `fit:` prefix was stripped
+  unconditionally, so the picture said the fit had one parameter three times
+  over); datasets labelled `L0..L2` beside parameters labelled `c(1)..c(3)`, an
+  off-by-one the eye makes instantly because both labels look authoritative
+  (factor keys are 0-based, parameter prefixes 1-based); a generic bipartite
+  layout ordering each side by graph-dict order so every edge crossed every
+  other; shared-parameter edges drawn straight *through* the private parameters'
+  labels, fixed by putting the datasets in the middle column so no edge ever
+  crosses a column of nodes; a shared parameter on a dataset's row having its
+  edge drawn through that row's private parameter, reading as a chain
+  `a -> c(2) -> data 2` rather than two independent constraints; a junction tree
+  (a chain) drawn vertically down a wide canvas using a twentieth of it; label
+  offsets in layout units that flew off their nodes once the frame was fitted to
+  content, because the aspect is deliberately not locked; and a near-degenerate
+  correlation graph collapsing to a line because every distance was ~0.005 and
+  Kamada-Kawai was ill-conditioned. 18 tests assert the ones that are assertable
+  -- unique labels, no edge within 0.08 of an unrelated node, no two nodes on the
+  same point, everything inside the frame, a stable layout across redraws.
+  Two general rules fell out: drop a name's prefix only where the short form is
+  unique, and rotate a layout so its widest direction is horizontal.
+
+
 * **`pair_fit`, and superposition now actually moves things.** `align` finds its own
   correspondence between two structures; `pair_fit` takes one you state, matching
   atoms *in order* within each pair — which is what you need when the two are not
