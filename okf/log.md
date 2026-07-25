@@ -2,6 +2,38 @@
 
 ## 2026-07-25
 
+* **Finite-difference HMC: measured, and the folklore is half wrong — but it
+  still does not ship.** The standing answer to "can we not just use a numerical
+  gradient?" was an argument rather than a number, so it was measured on a
+  collinear polynomial posterior with the mass matrix taken from the curvature
+  at the optimum. Effective samples per 1000 model evaluations:
+  **3 parameters — HMC 83 (hand-tuned), `de` 73, `blocked` 53**;
+  5 — HMC 19, `de` 30, `blocked` 40;
+  8 — HMC **0.09 at zero acceptance**, `de` 4, `blocked` 18.
+  At three parameters it produced *independent* draws (τ = 1.0) and beat
+  everything, which does contradict the received wisdom. It is still not
+  shippable. Dual averaging — Stan's step-size adaptation, noted earlier as
+  worth taking — actively **degrades** it: it reads finite-difference-induced
+  rejections as "step too big" and shrinks ε, but shrinking ε does not reduce
+  the *noise* contribution, so it shrinks without limit. Adapted, HMC managed 68
+  at three parameters, i.e. below `de`; the 83 was one lucky configuration
+  (two leapfrog steps, ε ≈ 0.8) that an exhaustive sweep found and no adaptive
+  scheme reproduces. It collapses with dimension for two compounding reasons —
+  the gradient costs *d* extra evaluations while no other sampler pays that, and
+  finite-difference error accumulates along a trajectory until the leapfrog
+  stops conserving energy — and the failure is quiet, since zero acceptance
+  looks like a short converged chain. Two leapfrog steps is barely Hamiltonian
+  anyway; it is essentially MALA. So a gradient buys, in the one regime where it
+  works, nothing `de` does not already provide without one. The implementation
+  was written, benchmarked and **removed** rather than kept as an option that
+  could only mislead. Recorded with the numbers in
+  [references/autodiff-assessment.md](/references/autodiff-assessment.md),
+  including the one thing that would change the answer: a decay model is
+  *linear in its amplitudes*, so those Jacobian columns are convolutions the
+  forward pass already computes — exact and free rather than *d* extra
+  evaluations, no new dependency, but a model-layer hook rather than a sampler
+  change.
+
 * **Ratiometric FRET ported (MIA `Do_FRET`): the A/D trace and the A/D map.**
   `chisurf/core/fluorescence/imaging/ratio_fret.py`. The reference does two
   things, not one: a per-frame acceptor/donor ratio over a region, normalised to

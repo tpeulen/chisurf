@@ -139,6 +139,56 @@ here:
   Pareto-`k` that says when it is not. The chain already stores `lnprior`
   separately, so this is the missing half. Not yet taken.
 
+# Numerical gradients and HMC — tried, measured, not shipped
+
+The obvious follow-up to "no autodiff" is "then use a numerical gradient", and
+the folklore answer -- a gradient costing *d* extra evaluations makes HMC
+pointless -- is an argument, not a measurement. So it was measured, on a
+collinear polynomial posterior, with the mass matrix taken from the curvature at
+the optimum (which makes the target isotropic for the integrator).
+
+Effective samples per 1000 model evaluations:
+
+| parameters | HMC (FD gradient) | `de` | `blocked` |
+| --- | --- | --- | --- |
+| 3 | **83** *(hand-tuned)* / 68 *(adapted)* | 73 | 53 |
+| 5 | 19 → 0.25 *(adapted)* | 30 | **40** |
+| 8 | 0.09, acceptance 0.00 | 4 | **18** |
+
+**At three parameters it produced genuinely independent draws** — an
+autocorrelation time of 1.0 — and with hand-tuning beat everything. That is a
+real result and it contradicts the folklore. It is also not shippable, for three
+reasons:
+
+1. **Adaptation makes it worse.** Dual averaging (as Stan adapts its step size)
+   reads finite-difference-induced rejections as "the step is too big" and
+   shrinks ε — but shrinking ε does not reduce the *noise* contribution, so it
+   shrinks without limit. Adapted, HMC reached 68 at three parameters, i.e.
+   **below `de`**. The 83 came from an exhaustive sweep finding one lucky
+   configuration (two leapfrog steps, ε ≈ 0.8) that no adaptive scheme
+   reproduces.
+2. **It collapses with dimension.** By five parameters it is behind both
+   alternatives; by eight, acceptance is zero. Two compounding causes: the
+   gradient's cost grows with *d* while no other sampler pays that, and
+   finite-difference error accumulates along a trajectory until the leapfrog
+   stops conserving energy, so every proposal is rejected.
+3. **The failure is quiet.** Zero acceptance produces a chain that looks like a
+   short converged one. Only the effective sample size gives it away.
+
+Two leapfrog steps is barely Hamiltonian — it is essentially MALA. So the honest
+summary is that a gradient buys, in the one regime where it works at all,
+nothing that `de` does not already provide without one. The implementation was
+written, measured and removed rather than kept as an option that could only
+mislead.
+
+**What would change this:** an *analytic* gradient. Not autodiff over the
+existing Python path (see above), but the observation that a decay model is
+**linear in its amplitudes** — so those Jacobian columns are convolutions the
+forward pass already computes, and are exact and free rather than *d* extra
+evaluations. That would cut both the LM Jacobian cost and the HMC gradient cost
+for the linear block, and it needs no new dependency. It does need a per-model
+hook, so it is a model-layer change, not a sampler one.
+
 # When to revisit
 
 - If a model's forward pass moves substantially into C++ (so the differentiable
