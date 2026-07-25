@@ -9,7 +9,9 @@ even about colocalization until you have fixed a threshold.
 
 This page explains what each coefficient measures, why background and thresholds
 dominate the numbers, and why a coefficient alone is never evidence. For the
-step-by-step workflow in ChiSurf, see the {doc}`guide </guides/38_colocalization>`.
+step-by-step workflow in ChiSurf, see the {doc}`guide </guides/38_colocalization>`;
+for runnable code, `examples/notebooks/Colocalization.ipynb` walks through every
+section below on data whose answer is known by construction.
 
 ## The two questions hiding inside "colocalization"
 

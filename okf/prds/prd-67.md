@@ -234,6 +234,14 @@ Headless (`plugins/microscopy/img_coloc/test/`, 16 tests):
 - The Qt-free view-model computes, populates the channel list, produces the maps
   and histogram, and applies a gate.
 
+The **headless surfaces are covered too**: `click`'s test runner exercises the CLI
+(table output, `--json`, `-o`, every analysis flag, the single-channel rejection and
+the no-pixel-passes warning), and `examples/scripts/colocalization.py` runs as a
+test node through the [PRD-46](prd-46.md) script runner with assertions on values
+that are known by construction. `examples/notebooks/Colocalization.ipynb` (with its
+`.py` cell-script twin) is the tutorial form of the same material and executes
+end-to-end without errors.
+
 Additionally, the view spec is checked structurally: every attribute it binds
 exists on the view-model **and carries a tooltip**, and the `?` modal's help file
 resolves next to the spec and covers every coefficient family. A detector setup's

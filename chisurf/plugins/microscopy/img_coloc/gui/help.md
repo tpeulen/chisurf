@@ -132,4 +132,5 @@ img-coloc IMAGE.ptu -a green -b red --auto-background --costes-threshold \
           --costes-test --ccf-shift 12 --json
 ```
 
-See the plugin's documentation page for the full option list and the Python API.
+See the plugin's documentation page for the full option list and the Python API,
+and `examples/notebooks/Colocalization.ipynb` for a runnable walk-through.

@@ -173,9 +173,8 @@ def _grab_coloc_tool():
     """Grab the colocalization workspace and its intensity scatter (guide 38)."""
     # Import the tool first: it pulls the GUI packages in the order the app does
     # (importing ``autoform`` cold trips a circular import in the widget layer).
-    from chisurf.plugins.microscopy.img_coloc.gui.tool import ImgColocTool
-
     from chisurf.gui.autoform.sections.builtin import ImageMapWidget
+    from chisurf.plugins.microscopy.img_coloc.gui.tool import ImgColocTool
 
     source = pathlib.Path("test/data/clsm/PQ_Olympus_MFIS.ht3")
     if not source.is_file():
@@ -208,6 +207,60 @@ def _grab_coloc_tool():
             _grab(widget, "coloc_scatter.png")
             break
 
+    # Object regime: synthetic puncta, because the real confocal test image is one
+    # continuous cell and would segment into a single object.
+    _grab_coloc_objects(tool)
+
+
+def _grab_coloc_objects(tool):
+    """Grab the object map + distance histogram on synthetic puncta (guide 38)."""
+    import tempfile
+
+    import tifffile
+
+    from chisurf.gui.autoform.sections.builtin import ImageMapWidget, PlotWidget
+
+    shape = (160, 160)
+    yy, xx = np.mgrid[: shape[0], : shape[1]]
+
+    def puncta(centres, sigma=2.2, amplitude=120.0):
+        """Return an image with Gaussian puncta at *centres*."""
+        image = np.zeros(shape, dtype=float)
+        for cy, cx in centres:
+            image += amplitude * np.exp(-((yy - cy) ** 2 + (xx - cx) ** 2) / (2 * sigma**2))
+        return image
+
+    rng = np.random.default_rng(3)
+    centres = [tuple(p) for p in rng.integers(12, 148, size=(28, 2))]
+    partners = [(cy + 1, cx) for cy, cx in centres[:18]]
+    strangers = [tuple(p) for p in rng.integers(12, 148, size=(6, 2))]
+    a = puncta(centres) + rng.normal(0, 2, shape)
+    b = puncta(partners + strangers) + rng.normal(0, 2, shape)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = pathlib.Path(tmp) / "puncta.tif"
+        tifffile.imwrite(
+            str(path), np.stack([a, b]).astype(np.float32), imagej=True, metadata={"axes": "CYX"}
+        )
+        tool.model.object_analysis = True
+        tool.model.object_distance = 3.0
+        tool.model.filename = str(path)
+        tool.model.channel_a, tool.model.channel_b = "ch0", "ch1"
+        tool.model.compute()
+        QApplication.instance().processEvents()
+        for widget in tool.findChildren(ImageMapWidget):
+            if getattr(widget, "_target", "") == "object_map_image":
+                widget.refresh()
+                widget.resize(520, 480)
+                _grab(widget, "coloc_objects.png")
+                break
+        for widget in tool.findChildren(PlotWidget):
+            if getattr(getattr(widget, "_section", None), "source", "") == "object_distance_series":
+                widget.refresh()
+                widget.resize(620, 380)
+                _grab(widget, "coloc_object_distances.png")
+                break
+
 
 def _grab_accurate_fret_tool():
     """Grab the accurate-FRET workspace and its E-S / E-lifetime plots (guide 39)."""
@@ -215,9 +268,8 @@ def _grab_accurate_fret_tool():
 
     import pyqtgraph as pg
 
-    from chisurf.plugins.burst.accurate_fret.gui.tool import AccurateFretTool
-
     from chisurf.core.fluorescence.fret.lines import static_fret_line
+    from chisurf.plugins.burst.accurate_fret.gui.tool import AccurateFretTool
 
     gamma, alpha, beta, delta = 0.65, 0.08, 1.4, 0.06
     tau_d0, r0 = 4.0, 52.0
@@ -228,24 +280,32 @@ def _grab_accurate_fret_tool():
         photons = rng.poisson(400, n).astype(float)
         dd.append(rng.poisson((1 - efficiency) * photons))
         aa.append(rng.poisson(beta * gamma * photons))
-        da.append(rng.poisson(gamma * efficiency * photons
-                              + alpha * (1 - efficiency) * photons
-                              + delta * beta * gamma * photons))
+        da.append(
+            rng.poisson(
+                gamma * efficiency * photons
+                + alpha * (1 - efficiency) * photons
+                + delta * beta * gamma * photons
+            )
+        )
         tau.append(rng.normal(float(line.lifetime_at(efficiency)), 0.15, n))
-    photons = rng.poisson(400, 500).astype(float)          # donor-only
-    dd.append(rng.poisson(photons)); da.append(rng.poisson(alpha * photons))
-    aa.append(rng.poisson(2.0, 500)); tau.append(rng.normal(tau_d0, 0.15, 500))
-    photons = rng.poisson(400, 500).astype(float)          # acceptor-only
-    dd.append(rng.poisson(2.0, 500)); aa.append(rng.poisson(beta * gamma * photons))
-    da.append(rng.poisson(delta * beta * gamma * photons)); tau.append(np.full(500, np.nan))
+    photons = rng.poisson(400, 500).astype(float)  # donor-only
+    dd.append(rng.poisson(photons))
+    da.append(rng.poisson(alpha * photons))
+    aa.append(rng.poisson(2.0, 500))
+    tau.append(rng.normal(tau_d0, 0.15, 500))
+    photons = rng.poisson(400, 500).astype(float)  # acceptor-only
+    dd.append(rng.poisson(2.0, 500))
+    aa.append(rng.poisson(beta * gamma * photons))
+    da.append(rng.poisson(delta * beta * gamma * photons))
+    tau.append(np.full(500, np.nan))
 
     table = pathlib.Path(tempfile.gettempdir()) / "accurate_fret_demo_bursts.csv"
     np.savetxt(
         table,
         np.column_stack([np.concatenate(c).astype(float) for c in (dd, da, aa, tau)]),
-        delimiter=",", comments="",
-        header="Green Count Rate (KHz),Red Count Rate (KHz),"
-               "S delayed yellow (kHz),Tau (green)",
+        delimiter=",",
+        comments="",
+        header="Green Count Rate (KHz),Red Count Rate (KHz),S delayed yellow (kHz),Tau (green)",
     )
 
     tool = AccurateFretTool()

@@ -552,3 +552,123 @@ def test_view_model_exposes_the_object_views():
     assert set(np.unique(label_map)) <= {0.0, 1.0, 2.0, 3.0}
     assert 3.0 in np.unique(label_map)  # coincident pixels are marked
     assert vm.object_distance_series()
+
+
+# --- CLI (the headless surface) ----------------------------------------------
+
+
+@pytest.fixture
+def cli_runner():
+    """Return a click test runner."""
+    from click.testing import CliRunner
+
+    return CliRunner()
+
+
+def test_cli_reports_the_coefficients(cli_runner, two_channel_tiff):
+    """The default CLI run prints a readable coefficient table."""
+    from chisurf.plugins.microscopy.img_coloc.cli import cli
+
+    path, _, _ = two_channel_tiff
+    result = cli_runner.invoke(cli, [str(path), "-a", "0", "-b", "1", "--auto-background"])
+    assert result.exit_code == 0, result.output
+    assert "Pearson PCC (thresholded)" in result.output
+    assert "channels ['ch0', 'ch1']" in result.output
+
+
+def test_cli_json_output_is_machine_readable(cli_runner, two_channel_tiff):
+    """``--json`` emits the full metric mapping."""
+    import json
+
+    from chisurf.plugins.microscopy.img_coloc.cli import cli
+
+    path, _, _ = two_channel_tiff
+    result = cli_runner.invoke(cli, [str(path), "-a", "0", "-b", "1", "--json"])
+    assert result.exit_code == 0, result.output
+    metrics = json.loads(result.output)
+    assert metrics["pearson"] == pytest.approx(1.0, abs=1e-4)
+    assert "manders_m1" in metrics
+
+
+def test_cli_writes_a_results_file(cli_runner, two_channel_tiff, tmp_path):
+    """``-o`` writes the metrics as JSON next to whatever the user asked for."""
+    import json
+
+    from chisurf.plugins.microscopy.img_coloc.cli import cli
+
+    path, _, _ = two_channel_tiff
+    out = tmp_path / "metrics.json"
+    result = cli_runner.invoke(cli, [str(path), "-a", "0", "-b", "1", "-o", str(out)])
+    assert result.exit_code == 0, result.output
+    assert out.is_file()
+    assert "pearson" in json.loads(out.read_text())
+
+
+def test_cli_exposes_every_analysis(cli_runner, tmp_path):
+    """Costes, the shift profile, the 2-D plane, profiles and objects are all reachable."""
+    import json
+
+    tifffile = pytest.importorskip("tifffile")
+    from chisurf.plugins.microscopy.img_coloc.cli import cli
+
+    a = _puncta_image([(30, 30), (70, 70), (100, 40)])
+    b = _puncta_image([(30, 31), (70, 71)])
+    path = tmp_path / "puncta.tif"
+    tifffile.imwrite(
+        str(path), np.stack([a, b]).astype(np.float32), imagej=True, metadata={"axes": "CYX"}
+    )
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            str(path),
+            "-a",
+            "0",
+            "-b",
+            "1",
+            "--auto-background",
+            "--costes-threshold",
+            "--costes-test",
+            "--randomizations",
+            "20",
+            "--ccf-shift",
+            "6",
+            "--ccf-2d",
+            "--profiles",
+            "--objects",
+            "--object-distance",
+            "3",
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    metrics = json.loads(result.output)
+    assert "costes_p_value" in metrics
+    assert "ccf_peak_shift" in metrics and "ccf2d_peak_dx" in metrics
+    assert metrics["n_objects_a"] == 3
+    assert metrics["object_fraction_a_near_b"] == pytest.approx(2 / 3)
+
+
+def test_cli_rejects_a_single_channel_image(cli_runner, tmp_path):
+    """A one-channel file fails loudly instead of reporting nonsense."""
+    tifffile = pytest.importorskip("tifffile")
+    from chisurf.plugins.microscopy.img_coloc.cli import cli
+
+    path = tmp_path / "one.tif"
+    tifffile.imwrite(str(path), _blob_image().astype(np.float32))
+    result = cli_runner.invoke(cli, [str(path)])
+    assert result.exit_code != 0
+    assert isinstance(result.exception, ValueError)
+    assert "needs two" in str(result.exception)
+
+
+def test_cli_warns_when_no_pixel_passes(cli_runner, two_channel_tiff):
+    """An impossible threshold produces the warning rather than a silent 'n/a' table."""
+    from chisurf.plugins.microscopy.img_coloc.cli import cli
+
+    path, _, _ = two_channel_tiff
+    result = cli_runner.invoke(
+        cli, [str(path), "-a", "0", "-b", "1", "--threshold-a", "1e9", "--threshold-b", "1e9"]
+    )
+    assert result.exit_code == 0, result.output
+    assert "warning:" in result.output

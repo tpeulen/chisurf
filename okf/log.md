@@ -1317,6 +1317,23 @@
   1 = A only / 2 = B only / 3 = both, and the *Object distances* tab shows the
   textbook shape — a spike at ~1 px from the real partners beside a flat tail at
   chance spacing. [PRD-67](/prds/prd-67.md)'s parity table now has no ✖ left.
+* **Colocalization gets its headless coverage and its examples.** The CLI is now
+  exercised by `click`'s test runner (table output, `--json`, `-o`, every analysis
+  flag, the single-channel rejection, the no-pixel-passes warning) — it is a
+  first-class surface, so it needed first-class tests rather than manual runs.
+  Two runnable examples ship: `examples/scripts/colocalization.py` (headless,
+  `# !chisurf: process`, so the [PRD-46](/prds/prd-46.md) runner picks it up as a
+  test node automatically — with assertions on values known by construction) and
+  `examples/notebooks/Colocalization.ipynb` plus its `.py` cell-script twin, a
+  linear tutorial through both regimes with plots, executed end-to-end without
+  errors before committing.
+* **The notebook demonstrates the 1-D blind spot rather than asserting it.** Its
+  registration section rolls one channel *purely vertically*: the van Steensel
+  profile keeps peaking at 0 — the channels look perfectly registered — while the
+  2-D plane reports `dy = 4`. Same data, two conclusions; that is the argument for
+  the plane in one cell. Guide 38 gained the object-map and object-distance
+  figures, both grabbed from the real widget on synthetic puncta (the confocal
+  test image is one continuous cell and would segment into a single object).
 
 * **The LLM agent got a real harness: `chisurf/core/agent/`.** The old one
   (`code_editor/agent_runtime.py`) handed the model a bare list of 23 RPC

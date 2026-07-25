@@ -122,6 +122,22 @@ The **Objects** tab maps the result — 1 = channel A only, 2 = channel B only,
 spike at short distance next to a flat tail is exactly what a mix of coincident
 and independent puncta looks like.
 
+```{figure} figures/coloc_objects.png
+:name: fig-coloc-objects
+:width: 65%
+
+Segmented objects of both channels: 1 = channel A only, 2 = channel B only,
+3 = both. Coincidence is read straight off the map.
+```
+
+```{figure} figures/coloc_object_distances.png
+:name: fig-coloc-object-distances
+:width: 75%
+
+Nearest-neighbour distances in both directions. The spike near 1 px are the real
+partners; the flat tail is what chance looks like.
+```
+
 ### 10. Gate a population in the scatter
 
 The **Intensity scatter** tab is the joint histogram (A horizontal, B vertical).
@@ -153,6 +169,18 @@ img-coloc IMAGE.ptu -a green -b red \
 
 `--json` prints the full metric dictionary (`-o results.json` writes it). For a
 TIFF, pass channel indices: `-a 0 -b 1`.
+
+## Worked examples
+
+Two runnable examples ship with ChiSurf:
+
+* `examples/scripts/colocalization.py` — headless script covering both regimes on
+  synthetic data whose answer is known by construction, with assertions (it runs
+  as part of the test suite).
+* `examples/notebooks/Colocalization.ipynb` (plus its `.py` cell-script twin) — the
+  same material as a linear tutorial with plots: coefficients, the randomization
+  test, the 1-D versus 2-D registration check, intensity-resolved PCC, and the
+  object regime.
 
 ## Python API
 
