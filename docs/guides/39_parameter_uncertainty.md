@@ -222,6 +222,28 @@ exactly the identifiability claim a global fit is making.
 `components > 1` means the "global" fit is really several unrelated fits, and
 nothing is being shared.
 
+## 9. In the GUI
+
+The **Sampling** button on the fit controller runs the same code on the server.
+The backend comes from `optimization.sampling.method` in the settings
+(`blocked` by default); `n_runs` and `steps` come from the controller.
+
+When the job finishes, its **convergence verdict is written to the log** — the
+warnings if the chain is not usable, otherwise a one-line all-clear. A finished
+job is not the same as a trustworthy one, so do not treat the progress bar
+reaching 100 % as a result. The full report is in `diagnostics.json` in the
+output folder either way.
+
+Programmatically the same verdict comes back from the job status:
+
+```python
+status = client.sampling_status(job_id)
+status['status']      # 'completed'
+status['converged']   # False if R-hat / ESS checks failed
+status['warnings']    # what went wrong, per parameter
+status['diagnostics'] # the full per-parameter report
+```
+
 ## Checklist
 
 - [ ] Priors reflect knowledge you actually have, not a convenience.

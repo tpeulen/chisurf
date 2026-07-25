@@ -512,13 +512,72 @@ class FittingControllerWidget(Controller):
         
         fc = get_fitting_client()
         if fc is not None:
-            fc.start_sampling(
+            # Forward the configured backend (``method``: blocked / collapsed /
+            # emcee / mcmc) and the rest of ``optimization.sampling``. These used
+            # to be assembled here and then dropped, so the choice of sampler
+            # never left the GUI.
+            extra = {
+                k: v for k, v in kw.items()
+                if k not in ('steps', 'n_runs')
+            }
+            result = fc.start_sampling(
                 fit_uid=str(getattr(self.fit, "unique_identifier", "") or ""),
                 n_steps=self.n_steps,
                 n_runs=self.n_runs,
                 target_directory=target_dir_str,
+                **extra,
             )
-            cs.logging.info("Sampling started on server.")
+            method = extra.get('method', 'emcee')
+            cs.logging.info(f"Sampling started on server (method={method}).")
+            job_id = (result or {}).get("job_id")
+            if job_id:
+                self._watch_sampling_job(fc, str(job_id))
+
+    def _watch_sampling_job(self, fitting_client, job_id: str, interval_ms: int = 1500):
+        """Poll a server sampling job and report its convergence verdict.
+
+        A finished run is not the same as a trustworthy one: a chain that never
+        left its starting point completes just as happily as one that explored
+        the posterior. The job carries the R-hat / effective-sample-size verdict,
+        so the outcome is logged rather than left in ``diagnostics.json`` for
+        someone to find later.
+
+        Parameters
+        ----------
+        fitting_client : object
+            Client exposing ``sampling_status(job_id)``.
+        job_id : str
+            Job to poll.
+        interval_ms : int, optional
+            Polling interval in milliseconds.
+        """
+        def _poll():
+            try:
+                status = fitting_client.sampling_status(job_id) or {}
+            except Exception:
+                cs.logging.warning("Sampling: lost contact with the job; stopping polling.")
+                return
+            state = str(status.get("status", ""))
+            if state in ("starting", "running"):
+                QtCore.QTimer.singleShot(interval_ms, _poll)
+                return
+            if state == "failed":
+                cs.logging.error(f"Sampling failed: {status.get('error')}")
+                return
+            warnings = status.get("warnings") or []
+            if warnings:
+                cs.logging.warning("Sampling finished, but the chain is not usable:")
+                for message in warnings:
+                    cs.logging.warning(f"  {message}")
+            else:
+                report = status.get("diagnostics") or {}
+                cs.logging.info(
+                    "Sampling finished; no convergence problems detected "
+                    f"({report.get('n_chains', '?')} chains x "
+                    f"{report.get('n_draws', '?')} draws)."
+                )
+
+        QtCore.QTimer.singleShot(interval_ms, _poll)
 
     def _run_fit_impl(self):
         if self._proteinmc_model_widget() is not None:

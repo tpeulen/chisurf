@@ -236,6 +236,16 @@ per 1000 model evaluations — 7.8× the ESS for 40% fewer evaluations. A group
 whose datasets share a parameter is one component and falls back to a single
 joint chain.
 
+**The verdict reaches the caller.** `fit.sample.start` merges its keyword
+arguments over `optimization.sampling` (so `method` and `global_posterior` are
+per-job selectable) and keeps the report `sample_fit` returns;
+`fit.sample.status` exposes `converged`, `warnings` and the full `diagnostics`
+alongside `status`/`progress`. The server used to discard the return value, so a
+chain that never left its start reported `completed` exactly like one that
+explored the posterior. The GUI forwards the configured method (it previously
+assembled the settings and dropped them) and polls the job, logging the verdict.
+Default backend is now `blocked`.
+
 **Linking lowers the dimension and makes sampling harder.** Measured on six
 datasets, linking one parameter took the dimension 12 → 7 and cost ~50× in ESS
 per model evaluation (τ of the shared parameter 1 → 20). Dimension is the wrong

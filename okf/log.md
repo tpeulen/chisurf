@@ -436,6 +436,25 @@
   evaluations), so `blocked` stays right for that case and this is reported as
   such rather than sold as a universal win. 8 tests.
 
+* **A finished sampling job is not a trustworthy one — now it says which
+  (PRD-69).** All of PRD-69's machinery was reachable only from Python. The GUI
+  assembled `optimization.sampling` into a `kw` dict and then dropped it, so the
+  configured backend never left the widget; the server ran `sample_fit` in a
+  thread and discarded its return value, so `fit.sample.status` reported
+  `completed` for a chain that never left its starting point exactly as for one
+  that explored the posterior; and nothing polled the job at all, so even a
+  *failed* run was invisible. `fit.sample.start` now merges its keyword arguments
+  over the settings (making `method` and `global_posterior` per-job selectable)
+  and keeps the convergence report; `fit.sample.status` carries `converged`,
+  `warnings` and the full `diagnostics` alongside `status`/`progress`. The fit
+  controller forwards the configured backend and polls the job, logging the
+  verdict — the warnings when the chain is unusable, a one-line all-clear
+  otherwise. `optimization.sampling.method` now defaults to `blocked`, since it
+  beat the previous default ~2.5x and the old `mcmc` walker ~160x on a collinear
+  posterior. 4 headless tests over the service layer, including one asserting
+  that a deliberately frozen chain completes *and* reports `converged: False`.
+  PRD-68 and PRD-69 are done.
+
 * **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
   The posterior of a group already factorises over its datasets, but
   `GlobalFitModel` flattened every local model's free parameters plus the

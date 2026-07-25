@@ -3,7 +3,7 @@ type: PRD
 prd: "69"
 title: "PRD-69: Trustworthy and structure-aware posterior sampling"
 description: Make a ChiSurf MCMC run report whether it converged (R-hat, ESS, autocorrelation time, Monte-Carlo error, burn-in) instead of silently returning a chain, and replace the isotropic full-dimensional random walk with a blocked sampler whose blocks and per-block covariance come from the fit's factor graph.
-status: in-progress
+status: done
 phase: "unassigned"
 resource: chisurf/core/fitting/diagnostics.py
 tags: [prd, fitting, sampling, bayesian, mcmc, diagnostics, global-analysis]

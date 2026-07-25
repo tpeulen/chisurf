@@ -1089,6 +1089,15 @@ def fit_sample_start(
     Launches ``sample_fit`` in a background thread and returns
     immediately with a ``job_id``. Poll ``fit.sample.status`` for
     progress and call ``fit.sample.cancel`` to request cancellation.
+
+    Extra keyword arguments are merged over the ``optimization.sampling``
+    settings and forwarded to
+    :func:`chisurf.core.fitting.fit.sample_fit` -- notably ``method``
+    (``blocked`` / ``collapsed`` / ``emcee`` / ``mcmc``) and
+    ``global_posterior``.
+
+    ``fit.sample.status`` reports the resulting convergence verdict, so a caller
+    can tell a finished job from a trustworthy one.
     """
     import uuid
     fit, idx = _resolve_fit(state, fit_index, fit_uid)
@@ -1128,15 +1137,26 @@ def fit_sample_start(
             settings_kw.update(kw)
 
             from chisurf.core.fitting.fit import sample_fit
-            sample_fit(
+            report = sample_fit(
                 fit,
                 target_directory=target_dir_val,
                 progress_callback=_progress_callback,
                 check_cancel=_check_cancel,
                 **settings_kw,
             )
+            # A finished job is not the same as a trustworthy one. The
+            # convergence report is the only thing that distinguishes a chain
+            # worth quoting from one that never left its starting point, so it
+            # travels with the job rather than being discarded.
             _SAMPLING_JOBS[job_id]["status"] = "completed"
             _SAMPLING_JOBS[job_id]["progress"] = 100
+            if isinstance(report, dict):
+                _SAMPLING_JOBS[job_id]["diagnostics"] = report
+                _SAMPLING_JOBS[job_id]["warnings"] = list(report.get("warnings") or [])
+                _SAMPLING_JOBS[job_id]["converged"] = not report.get("warnings")
+            else:
+                _SAMPLING_JOBS[job_id]["warnings"] = []
+                _SAMPLING_JOBS[job_id]["converged"] = None
         except Exception as e:
             _SAMPLING_JOBS[job_id]["status"] = "failed"
             _SAMPLING_JOBS[job_id]["error"] = str(e)
@@ -1167,7 +1187,14 @@ def fit_sample_status(
     state: SessionState,
     job_id: str,
 ) -> ServiceResult:
-    """Get the status of a sampling job."""
+    """Get the status of a sampling job.
+
+    Besides ``status`` and ``progress`` this reports whether the finished chain
+    is worth believing: ``converged`` (``None`` while running, ``False`` when
+    the chain failed its R-hat / effective-sample-size checks), the human
+    readable ``warnings``, and the full per-parameter ``diagnostics`` report
+    that was also written to ``diagnostics.json``.
+    """
     job = _SAMPLING_JOBS.get(job_id)
     if job is None:
         return service_error(f"job {job_id} not found", error_code=NOT_FOUND)
@@ -1177,6 +1204,12 @@ def fit_sample_status(
         "status": job.get("status"),
         "progress": job.get("progress", 0),
         "error": job.get("error"),
+        # ``converged`` is None until the job finishes, then False when the
+        # chain failed its own R-hat / effective-sample-size checks. A caller
+        # that only looks at ``status`` cannot tell those apart.
+        "converged": job.get("converged"),
+        "warnings": job.get("warnings", []),
+        "diagnostics": job.get("diagnostics"),
     }
 
 
