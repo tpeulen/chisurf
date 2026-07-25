@@ -1,15 +1,16 @@
-"""Build & install the local ``tttrlib`` source into the active pixi env.
+"""Build & install the ``tttrlib`` source into the active pixi env.
 
-ChiSurf pins ``tttrlib`` as a conda dependency (bioconda) so CI and fresh
-installs get a working baseline. That published package can lag the local
-development tree, though — e.g. the photon-simulation subsystem (``SimEngine``)
-lands in the unreleased ``0.27.0`` source before it reaches bioconda. This task
-overrides the conda package with a fresh build of the local source so
-``pixi run chisurf`` always uses the most recent tttrlib.
+This is tttrlib's *only* provider: ChiSurf deliberately does not depend on the
+published conda/PyPI package. Both are capped at ``0.26.2``, which lags the
+source by enough to be wrong rather than merely old — it predates the
+photon-simulation subsystem (``SimEngine``) and still carries a ``compute_ics``
+defect that segfaults any image correlation using frame lags. Depending on it
+meant a fresh environment silently got a broken correlator.
 
-It is a no-op when the local source is not present (the ``modules/tttrlib``
-symlink is a gitignored, developer-local pointer to the tttrlib checkout), so on
-CI / other machines the conda ``tttrlib`` package is used unchanged.
+The source is reached through the tracked ``modules/tttrlib`` symlink, which
+points at a sibling checkout (the same arrangement as ``modules/mmfdb``). When
+it does not resolve this script fails loudly: with no conda package behind it,
+silently continuing would leave the environment with no tttrlib at all.
 
 macOS note: the SWIG module must link ``libomp`` explicitly, otherwise it builds
 but fails to load with ``symbol not found in flat namespace '___kmpc_barrier'``.
@@ -38,10 +39,20 @@ _BUILD_DIR = _REPO / "build" / "tttrlib"
 def main() -> int:
     if not (_SRC / "pyproject.toml").is_file():
         print(
-            f"build-tttrlib: {_SRC} not present — keeping the conda tttrlib package.",
+            f"build-tttrlib: no tttrlib source at {_SRC}.\n"
+            "\n"
+            "  ChiSurf builds tttrlib from source and has no conda/PyPI package\n"
+            "  to fall back on, so this is fatal rather than skippable.\n"
+            "\n"
+            "  modules/tttrlib is a symlink to a sibling checkout. Clone it next\n"
+            "  to the ChiSurf repository:\n"
+            "\n"
+            "      git clone https://github.com/Fluorescence-Tools/tttrlib.git \\\n"
+            f"          {_REPO.parent / 'tttrlib'}\n",
+            file=sys.stderr,
             flush=True,
         )
-        return 0
+        return 1
 
     prefix = os.environ.get("CONDA_PREFIX") or sys.prefix
     lib = Path(prefix) / "lib"

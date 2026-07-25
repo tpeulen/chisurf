@@ -109,9 +109,6 @@ chisurf/plugins/core/acq/tcspc_devices/simulation/*.dll
 # stray generated test images
 /irf_*.png
 /modules/imp-tricks
-# Local tttrlib source symlink (built by the build-tttrlib task; CI uses the
-# conda tttrlib package instead).
-/modules/tttrlib
 
 # Fluorophore staging database (relocated from _dev/fluorophore_db) — operational data, not tracked
 chisurf/plugins/spectra_downloader/spectra.db

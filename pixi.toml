@@ -151,15 +151,15 @@ hdf5 = "*"
 cmake = "<4"
 ninja = "*"
 
+# tttrlib is NOT a conda dependency. The published package (bioconda/PyPI, both
+# capped at 0.26.2) lags the source by enough to be wrong rather than merely old:
+# it predates the photon simulator (SimEngine) and still carries a compute_ics
+# defect that segfaults any image correlation using frame lags. Depending on it
+# meant a fresh environment silently got a broken correlator. tttrlib is built
+# from source by the `build-tttrlib` task instead, via the tracked
+# `modules/tttrlib` symlink (the same sibling-checkout pattern as modules/mmfdb).
 [target.linux-64.dependencies]
 hdf5 = "*"
-tttrlib = "*"
-
-[target.osx-64.dependencies]
-tttrlib = "*"
-
-[target.osx-arm64.dependencies]
-tttrlib = "*"
 
  [tasks]
  test-chinet = { cmd = "python -m pytest modules/chinet/test -x -q" }
@@ -177,9 +177,9 @@ tttrlib = "*"
      "modules/chinet/pyproject.toml",
      "modules/chinet/chinet/**",
      ] }
- # Build the local tttrlib source over the conda package so pixi always uses the
- # most recent tttrlib (e.g. the unreleased SimEngine photon simulator). No-op
- # when the gitignored modules/tttrlib dev symlink is absent (CI keeps conda's).
+ # tttrlib's only provider: there is no conda package dependency to fall back on,
+ # so this builds the source under the modules/tttrlib symlink and fails loudly
+ # when it is missing rather than leaving the environment without tttrlib.
  build-tttrlib = { cmd = "python build_tools/build_tttrlib.py", inputs = [
      "build_tools/build_tttrlib.py",
      "modules/tttrlib/pyproject.toml",

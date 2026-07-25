@@ -2,6 +2,31 @@
 
 ## 2026-07-25
 
+* **Dropped the conda `tttrlib` dependency; the source build is now its only
+  provider.** The published packages (bioconda *and* PyPI, both capped at
+  `0.26.2`) lag the source by enough to be **wrong rather than merely old**: they
+  predate the photon simulator (`SimEngine`) and still carry the `compute_ics`
+  defect that segfaults any image correlation using a frame lag. Keeping them as
+  a dependency meant a fresh `pixi` environment silently got a broken
+  correlator — and, because `build-tttrlib` overrode the package only when the
+  developer-local symlink happened to exist, whether you had a working tttrlib
+  depended on an untracked file. Removed `tttrlib = "*"` from the `linux-64` /
+  `osx-64` / `osx-arm64` target dependencies (the `osx-*` sections held nothing
+  else and are gone; the wheel metadata and the rattler recipe never declared
+  tttrlib, so nothing else changed). `modules/tttrlib` is now a **tracked**
+  symlink to a sibling checkout, exactly like `modules/mmfdb`, and the three
+  workflows clone the sibling repo with the same step they already use for mmfdb
+  (`TTTRLIB_REPO`/`TTTRLIB_REF`, default `development`). `build_tools/build_tttrlib.py`
+  no longer no-ops when the source is missing — with no package behind it that
+  would leave the environment with no tttrlib at all — but exits non-zero and
+  prints the clone command. The lint/typecheck job needs no checkout
+  (`ignore_missing_imports = true`). **Not done:** `pixi.lock` still lists
+  tttrlib; it needs a `pixi lock` refresh, deliberately left alone because
+  another in-flight change owns a large concurrent re-solve of that file, and CI
+  passes `locked: false` so it re-solves regardless. See
+  [compiled modules](/subsystems/compiled-modules.md) and
+  [build & env](/workflows/build-and-env.md).
+
 * **chimol: losing the core reader no longer costs the cartoon.** The warning
   added earlier did its job and named the real problem: a fetched 1DG3 reported
   "loaded as raw coordinates (reader unavailable)", i.e. the GUI process failed to
@@ -429,13 +454,21 @@
   `(n + tauT_s)^2`, adding a *time* to a particle number; and the anisotropic
   Gaussian used `(+xr*sin, +yr*cos)` for its second axis — a shear, not a
   rotation (the same non-orthogonal form appears in PAM's `Standard_MIA`).
-  **Upstream bug found, worked around here:** `tttrlib 0.27`'s
-  `CLSMImage::compute_ics` allocates `calloc(pairs * pixels)` but sets
-  `*dim1 = nf` (input frame count), so for any lag > 0 the returned array
-  over-declares its first axis and touching the tail segfaults; `ics_core.py`
-  slices to `len(pairs)` before any data access (`src/CLSMImage.cpp:3774` needs
-  `*dim1 = frames_index_pairs.size()`). Non-contiguous ROI views are now
-  materialised before the backend reads the buffer. **Retired:** the dead
+  **Upstream bug found and fixed at the root:** `CLSMImage::compute_ics`
+  allocated `calloc(pairs * pixels)` but set `*dim1 = nf` (input frame count),
+  so for any lag > 0 the returned array over-declared its first axis and
+  touching the tail (an `arr.mean(axis=0)` suffices) walked off the allocation
+  and segfaulted the interpreter — which made the whole spatiotemporal side of
+  image correlation unusable from Python. Fixed in the photon-library repo
+  (`fix(clsm): compute_ics declared more frames than it allocated`): `*dim1` is
+  now the pair count, and frame pairs are bounds-checked against the ROI and
+  dropped when out of range, closing a second out-of-bounds read in the
+  correlation loop, which indexed `roi[frame * pixel_in_roi]` unchecked.
+  Regression test `test/python/clsm/test_clsm_ics.py` (5) there; the local CLSM
+  suite is 135 passed / 5 skipped. `ics_core.py` keeps its defensive slice to
+  `len(pairs)` because the released package still carries the old behaviour.
+  Non-contiguous ROI views are also materialised before the backend reads the
+  buffer. **Retired:** the dead
   pre-PRD-38 `chisurf/gui/widgets/models/rics/` widget layer and the five
   per-variant `rics_*.view.json` specs. Tests: new
   `test/experiments/test_ics_unification.py` (15) pins the identities — lag-time

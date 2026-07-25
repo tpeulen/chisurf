@@ -41,11 +41,19 @@ pixi run fmt                # ruff format + ruff check --fix
 pixi run typecheck          # mypy chisurf/
 ```
 
-`build-extensions` also runs `build-tttrlib`, which builds the developer-local
-tttrlib source (the gitignored `modules/tttrlib` symlink) over the conda
-`tttrlib` package so pixi always uses the newest build (needed for e.g. the
-unreleased `SimEngine` photon simulator); it no-ops when that symlink is absent,
-so CI uses the conda package. See [compiled modules](/subsystems/compiled-modules.md).
+`build-extensions` also runs `build-tttrlib`. `tttrlib` is **not** a conda
+dependency — the published package lags the source by enough to be wrong, not
+merely old — so this task is its only provider. It builds the source reached
+through the tracked `modules/tttrlib` symlink, which points at a **sibling
+checkout** next to the ChiSurf repository (the same arrangement as
+`modules/mmfdb`; CI clones it the same way). Clone it once with:
+
+```bash
+git clone https://github.com/Fluorescence-Tools/tttrlib.git ../tttrlib
+```
+
+The task fails loudly if that source is missing, since there is no package to
+fall back on. See [compiled modules](/subsystems/compiled-modules.md).
 
 # Installer bundles
 
