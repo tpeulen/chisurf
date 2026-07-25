@@ -2244,7 +2244,14 @@ def approx_grad(
         grad[k] = (f(xk + d) - f0) / step
         ei[k] = 0.0
 
+    # Restore *and* recompute. Assigning the values alone leaves the model's
+    # arrays holding the last perturbation, and a later evaluation at these same
+    # values then correctly concludes that nothing changed and skips the update
+    # -- serving residuals that belong to a different parameter vector. That is
+    # latent whenever anything caches on "did a value change", which the
+    # selective global update and the residual cache both do.
     model.parameter_values = p0
+    model.update_model()
     return f0, grad
 
 

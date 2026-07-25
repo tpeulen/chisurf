@@ -52,6 +52,7 @@ __all__ = [
     "Joint",
     "PosteriorEngine",
     "LaplaceEngine",
+    "GaussianEngine",
     "ProfileEngine",
     "SamplingEngine",
     "StoredEngine",
@@ -554,6 +555,209 @@ class LaplaceEngine(PosteriorEngine):
             return float("nan")
 
 
+class GaussianEngine(PosteriorEngine):
+    r"""The quadratic approximation, held in canonical form so queries are free.
+
+    :class:`LaplaceEngine` computes the covariance at the optimum and slices it,
+    and answers ``condition`` by fixing the parameter and running the optimiser
+    again -- one full re-fit per conditional query. That is the right answer, but
+    for a Gaussian it is also an expensive way to get it: the constrained minimum
+    of a quadratic is exactly its conditional mode, so conditioning is
+    :math:`h_A \mapsto h_A - K_{AB}v` and marginalising is a Schur complement.
+
+    This engine builds the canonical form :math:`(K, h, g)` **once** and then
+    answers every marginal, joint and conditional in closed form. Ask for twenty
+    conditionals and it costs one curvature evaluation, not twenty fits.
+
+    The approximation is the Gaussian, not the algebra. Where the posterior is
+    not close to quadratic this is wrong in exactly the way ``laplace`` is wrong,
+    and a chain remains the way to find out -- but the two now disagree only
+    about the *model*, never about the arithmetic.
+
+    See :mod:`chisurf.core.fitting.canonical`.
+    """
+
+    method = "gaussian"
+
+    def __init__(self, fit, model=None):
+        """Bind the engine and clear the cached form."""
+        super().__init__(fit, model=model)
+        self._form = None
+
+    def form(self, **options):
+        """Return the posterior's canonical form, building it once.
+
+        Parameters
+        ----------
+        **options
+            Passed to :func:`chisurf.core.fitting.fit.covariance_matrix`.
+
+        Returns
+        -------
+        chisurf.core.fitting.canonical.CanonicalForm or None
+            The form, or ``None`` when the curvature is unusable.
+        """
+        if self._form is not None:
+            return self._form
+        from chisurf.core.fitting import factorgraph
+        from chisurf.core.fitting.canonical import CanonicalForm
+
+        with factorgraph.frozen_structure(self.fit, self.model):
+            names = self.parameter_names
+            values = np.asarray(self.model.parameter_values, dtype=np.float64)
+            try:
+                cov, used = cs.core.fitting.fit.covariance_matrix(
+                    self.fit, model=self.model, **options
+                )
+            except Exception as e:
+                cs.logging.warning(f"gaussian engine: no covariance ({e})")
+                return None
+            cov = np.atleast_2d(np.asarray(cov, dtype=np.float64))
+            used = [int(u) for u in used]
+            if cov.size == 0 or len(used) != cov.shape[0]:
+                return None
+            # ``covariance_matrix`` drops parameters the model does not respond
+            # to; those directions carry no information and simply are not in
+            # the form's scope.
+            keep = [k for k, u in enumerate(used) if 0 <= u < len(names)]
+            if not keep:
+                return None
+            sub = cov[np.ix_(keep, keep)]
+            scope = [names[used[k]] for k in keep]
+            mean = np.array([values[used[k]] for k in keep], dtype=np.float64)
+            try:
+                self._form = CanonicalForm.from_moments(
+                    scope, mean, sub, log_mass=self._log_evidence_at(mean, sub)
+                )
+            except np.linalg.LinAlgError as e:
+                cs.logging.warning(f"gaussian engine: covariance not usable ({e})")
+                return None
+        return self._form
+
+    def _log_evidence_at(self, mean: np.ndarray, cov: np.ndarray) -> float:
+        r"""Return the Laplace evidence, so ``g`` carries the right mass.
+
+        ``-chi2/2 + (d/2) ln(2 pi) + (1/2) ln det Sigma`` at the optimum. With
+        this as the form's mass, marginalising variables out leaves
+        :attr:`~chisurf.core.fitting.canonical.CanonicalForm.log_mass`
+        unchanged, which is what makes it the evidence rather than a bookkeeping
+        constant.
+        """
+        try:
+            chi2 = float(
+                (np.asarray(self.model.weighted_residuals, dtype=np.float64) ** 2).sum()
+            )
+            sign, logdet = np.linalg.slogdet(cov)
+            if sign <= 0 or not np.isfinite(logdet):
+                return 0.0
+            d = cov.shape[0]
+            return -0.5 * chi2 + 0.5 * (d * math.log(2.0 * math.pi) + logdet)
+        except Exception:
+            return 0.0
+
+    def run(self, **options) -> GaussianEngine:
+        """Build the form and answer every declared target from it.
+
+        Parameters
+        ----------
+        **options
+            ``p_value`` sets the interval coverage (default 0.68); the rest go
+            to the curvature evaluation.
+
+        Returns
+        -------
+        GaussianEngine
+            ``self``.
+        """
+        p_value = float(options.pop("p_value", 0.68))
+        self._form = None
+        form = self.form(**options)
+        if form is None:
+            self._marginals = {n: Marginal(name=n) for n in self._targets}
+            self._joints, self._log_evidence, self._ran = {}, float("nan"), True
+            return self
+
+        # Conditioning is a closed-form update, so the evidence is applied here
+        # rather than by re-fitting the model.
+        if self._evidence:
+            known = {k: v for k, v in self._evidence.items() if k in form.names}
+            if known:
+                form = form.condition(known)
+
+        self._marginals = {}
+        for name in self._targets:
+            if name not in form.names:
+                # Either unknown, or conditioned -- a held parameter has no
+                # marginal of its own, which is the correct answer.
+                self._marginals[name] = Marginal(name=name, p_value=p_value)
+                continue
+            single = form.marginal([name])
+            mean = float(single.mean[0])
+            sd = float(math.sqrt(single.covariance[0, 0]))
+            z = _normal_quantile(0.5 + 0.5 * p_value)
+            self._marginals[name] = Marginal(
+                name=name, value=mean, sd=sd, method=self.method,
+                low=mean - z * sd, high=mean + z * sd, p_value=p_value,
+            )
+
+        self._joints = {}
+        for key in self._joint_targets:
+            if any(n not in form.names for n in key):
+                continue
+            block = form.marginal(list(key))
+            self._joints[key] = Joint(
+                names=key, mean=block.mean, covariance=block.covariance,
+                method=self.method,
+            )
+
+        self._log_evidence = form.log_mass
+        self._ran = True
+        return self
+
+    def conditional(
+            self,
+            assignments: typing.Dict[str, float],
+            targets: typing.Sequence[str] = None
+    ) -> typing.List[Marginal]:
+        """Return marginals under an arbitrary conditioning, without re-running.
+
+        The reason to hold the posterior in canonical form: a conditional query
+        is a matrix update, so a sweep over many held values -- which is what a
+        profile scan *is* -- costs one curvature evaluation in total.
+
+        Parameters
+        ----------
+        assignments : dict
+            Variable name to held value.
+        targets : sequence of str, optional
+            Which marginals to return; defaults to everything left.
+
+        Returns
+        -------
+        list of Marginal
+            The conditional marginals.
+        """
+        form = self.form()
+        if form is None:
+            return []
+        known = {k: v for k, v in assignments.items() if k in form.names}
+        conditioned = form.condition(known) if known else form
+        wanted = list(targets) if targets else list(conditioned.names)
+        out = []
+        for name in wanted:
+            if name not in conditioned.names:
+                out.append(Marginal(name=name))
+                continue
+            single = conditioned.marginal([name])
+            mean = float(single.mean[0])
+            sd = float(math.sqrt(single.covariance[0, 0]))
+            out.append(Marginal(
+                name=name, value=mean, sd=sd, method=self.method,
+                low=mean - sd, high=mean + sd, p_value=0.68,
+            ))
+        return out
+
+
 class ProfileEngine(PosteriorEngine):
     """A chi² scan that re-optimises everything else at each point.
 
@@ -892,7 +1096,7 @@ class AutoEngine(PosteriorEngine):
     method = "auto"
 
     #: Engines in decreasing order of fidelity.
-    ORDER = ("mcmc", "profile", "laplace")
+    ORDER = ("mcmc", "profile", "gaussian", "laplace")
 
     def __init__(self, fit, model=None, use=("laplace",)):
         """Bind the engine and choose which estimators may be run.
@@ -953,6 +1157,7 @@ class AutoEngine(PosteriorEngine):
 #: Engine tag -> class, for :func:`get_engine` and the ``auto`` merge.
 ENGINES: typing.Dict[str, typing.Type[PosteriorEngine]] = {
     "laplace": LaplaceEngine,
+    "gaussian": GaussianEngine,
     "profile": ProfileEngine,
     "mcmc": SamplingEngine,
     "stored": StoredEngine,
@@ -965,7 +1170,7 @@ def get_engine(name: str, fit, model=None, **kwargs) -> PosteriorEngine:
 
     Parameters
     ----------
-    name : {"laplace", "profile", "mcmc", "stored", "auto"}
+    name : {"laplace", "gaussian", "profile", "mcmc", "stored", "auto"}
         Which estimator to use.
     fit : chisurf.core.fitting.fit.Fit
         Fit to query.

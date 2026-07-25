@@ -254,6 +254,37 @@ per 1000 model evaluations — 7.8× the ESS for 40% fewer evaluations. A group
 whose datasets share a parameter is one component and falls back to a single
 joint chain.
 
+# Gaussians in canonical form
+
+`chisurf/core/fitting/canonical.py` holds a Gaussian as `(K, h, g)` with
+`K = Σ⁻¹` and `h = Kμ` — the information parameterisation — because the two
+operations an engine performs are linear in it:
+
+- **conditioning** on `x_B = v` drops those rows/columns and shifts
+  `h_A ↦ h_A − K_AB v`. Nothing is inverted, nothing is re-optimised: for a
+  Gaussian this *is* the answer that fixing those parameters and re-minimising
+  gives, because the constrained minimum of a quadratic is its conditional mode;
+- **marginalising** `x_B` out is the Schur complement `K_A − K_AB K_BB⁻¹ K_BA`,
+  and it preserves `log_mass`, so a form built with the evidence as its mass
+  keeps reporting the evidence;
+- **multiplying** two forms adds `(K, h, g)` on the union scope, which is what
+  makes a factorised posterior composable — a global fit's form is the *sum* of
+  its per-dataset ones and eliminating a variable touches only the factors it
+  appears in.
+
+`GaussianEngine` builds the form once and answers every marginal, joint and
+conditional from it. `LaplaceEngine.condition` costs a full re-fit *per query*;
+`GaussianEngine.conditional` costs a matrix update, so 25 conditional queries
+add **zero** model evaluations. The approximation is the Gaussian, not the
+algebra: the two engines now disagree only about the model, never the
+arithmetic, and there is a test pinning that the closed-form conditional matches
+the re-fit it replaces.
+
+This is the representation graphical-model toolkits use for continuous
+linear-Gaussian networks. [PRD-68](/prds/prd-68.md) claimed their inference
+kernels "do not transfer to a continuous fluorescence posterior"; that was wrong,
+and this is the part that does.
+
 # One query API over the estimators
 
 `chisurf/core/fitting/engine.py` ([PRD-70](/prds/prd-70.md)) puts the covariance,
