@@ -2,6 +2,38 @@
 
 ## 2026-07-25
 
+* **chimol: real ambient occlusion, in the interactive viewport, without
+  raytracing.** PyMOL has no ambient occlusion at all, so this is the first place
+  chimol is deliberately ahead rather than at parity.
+  **What was there measured the wrong thing.** `_estimate_ambient_occlusion`
+  counts neighbours inside a radius and never looks at the surface normal, so it
+  reports *crowding*, not *concavity* — a bulge in the middle of a crowd came out
+  as dark as the pit beside it, which is why cartoons read flat.
+  **New `occlusion_from_spheres`** accumulates, per vertex, the fraction of its
+  hemisphere blocked by nearby spheres: `1 - cos(alpha)` with
+  `sin(alpha) = r/d`, weighted by `cos(theta)` against the vertex normal, and
+  combined as `1 - exp(-strength * sum)` so a dense neighbourhood deepens without
+  ever saturating to black. Numba cell list over the occluders plus a chunked
+  NumPy fallback; the two agree to 1e-12. Validated against hand-computed cases:
+  the analytic single-occluder solid angle, zero behind the normal, zero on the
+  horizon, a ring darker than one overhang, and a vertex inside an occluder not
+  shadowing itself.
+  **Baked into vertex colours at build time**, so the live GL viewport gets it
+  with no raytrace, no framebuffer object and no second shader pass — and, since
+  the occlusion of a rigid molecule does not depend on the camera, it costs
+  nothing while the view moves and cannot shimmer the way a screen-space estimate
+  does. Rebuild on 1DG3 (540 residues, ~67k cartoon vertices): 0.139 s -> 0.25 s.
+  **Occluding with the right set matters more than the estimator.** A first
+  attempt shading the cartoon against all 4698 atoms buried the molecule in
+  shadow: a ribbon threads through its own side chains, which are not drawn.
+  `occlusion.occluders` defaults to `"residues"` (backbone trace, residue-sized
+  radius), which darkens the grooves between helices as it should; space-filling
+  spheres pass `"atoms"` explicitly, because there the atoms are the picture.
+  Tunables under `occlusion.*`, reachable as `set occlusion.strength, 2.0`. With
+  it on, the old per-residue shading in `_update_cartoon` is skipped so the
+  cartoon is not darkened twice.
+  Suite: 268 passed, 1 skipped (24 new).
+
 * **The agent can now produce a decay fit that is actually right, and knows
   when it has not.** The harness landed the day before could drive the
   session; it could not do fluorescence. On the sample donor decay a language
