@@ -86,11 +86,32 @@ degenerate-radius case does not. Findings RF-001..RF-006 below.
 - **Fix note:** `CanonicalForm.__post_init__` now rejects a scope that repeats a name (`ValueError`, listing the repeats), which covers `from_moments`, direct construction and `marginal(keep)` with a duplicated entry alike; `from_moments` and `marginal` document the new `ValueError`. Pinned by `test/fitting/test_canonical_form.py::test_a_repeated_name_is_refused`, which exercises all three routes. Reproduced against `HEAD` first: scope `('tau','tau','x')` with variances `(0.01, 4.0, 1.0)` silently returned `mean 5.0, var 4.0` from `marginal(['tau'])` and left `'tau'` in scope after `condition({'tau': 2.0})`. `test/fitting/test_canonical_form.py` (16), `test_posterior_engine.py` (16), `test_factor_graph.py` (13), `test_posterior_api.py` (8), `test_collapsed_sampler.py` (8), `test_independent_components.py` (11), `test_covariance_errors.py` (11) and `test_frozen_structure.py` (14) all green; `ruff check` clean.
 
 ### RF-004
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (correctness trap)
 - **Location:** `chisurf/core/expressions.py:113` (`DEFAULT_CONSTANTS`) and `expressions.py:273` (`_RefRewriter.visit_Name`)
 - **Finding:** `visit_Name` resolves a bare identifier against `policy.constants` **before** treating it as a reference, so a caller symbol whose name collides with a built-in constant is unreachable and silently replaced by the constant — with `validate_expression` reporting `ok=True`. `DEFAULT_CONSTANTS` contains `tau`, which in a time-resolved-fluorescence code base is *the* name for a lifetime. Verified: `evaluate_expression('tau * 2', {'tau': 5.0})` returns `12.566…` (= 4π), not `10.0`; `evaluate_expression('e + 0', {'e': 100.0})` returns `2.718…`. There is no escape hatch — quoting (`'tau'`) is the only workaround and it is undocumented. Either prefer the symbol table over constants when the name is present, or drop/rename `tau` and `e` in `DEFAULT_CONSTANTS` and warn on a shadowed name.
-- **Fix note:**
+- **Fix note:** Fixed the general trap rather than the one name: a caller symbol
+  now always wins over a named constant. The `tau` half of the finding was
+  already stale — `9faa62b52` dropped `tau` from `DEFAULT_CONSTANTS` — but the
+  structural hole was still live for `e`, `pi`, `inf` and `nan` (verified
+  against `HEAD`: `evaluate_expression('e + 0', {'e': 100.0})` returned
+  `2.718…`, and `validate_expression('e * 2', ['e'])` reported `ok=True` with
+  `refs=()`, so the equation editor marked the row ✓ while ignoring the user's
+  column). The decision cannot be taken in `visit_Name`, which runs at compile
+  time and is cached per `(text, policy)` with no symbol table in sight, so a
+  constant name is now rewritten to a `_c{j}` slot (deduplicated per name)
+  alongside the existing `_r{i}` reference slots, and `evaluate_expression`
+  fills it from the symbol table when a symbol of that name resolves and from
+  `policy.constants` otherwise. `refs` is deliberately unchanged, so a constant
+  is still neither an unresolved name in `validate_expression` nor a free
+  parameter in `discover_parameters`. Pinned by
+  `test/core/test_expressions.py::test_a_symbol_shadows_a_constant_of_the_same_name`,
+  `::test_constants_still_apply_without_a_symbol` (including the
+  repeated-constant case) and `::test_a_shadowed_constant_is_not_a_free_parameter`.
+  `test/core/test_expressions.py` (33) plus `test/gui/test_equation_editor.py`,
+  `test_expression_input.py` and `test_parse_widget_expression_editor.py` (23)
+  all green; `ruff check` clean on both touched files (their `ruff format` drift
+  is pre-existing at `HEAD` and was left alone).
 
 ### RF-005
 - **Status:** OPEN

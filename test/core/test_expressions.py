@@ -32,6 +32,32 @@ def test_functions_and_constants_resolve():
     assert r == pytest.approx(2.0 + np.pi)
 
 
+def test_a_symbol_shadows_a_constant_of_the_same_name():
+    # A caller symbol wins over a named constant: 'e' is the user's column, not
+    # Euler's number (RF-004 — the constant used to be substituted silently).
+    assert evaluate_expression("e + 0", {"e": 100.0}) == pytest.approx(100.0)
+    assert evaluate_expression("pi * 2", {"pi": 3.0}) == pytest.approx(6.0)
+    assert evaluate_expression("nan", {"nan": 1.0}) == pytest.approx(1.0)
+    e = np.array([1.0, 2.0, 3.0])
+    np.testing.assert_allclose(evaluate_expression("e * 2", {"e": e}), [2.0, 4.0, 6.0])
+
+
+def test_constants_still_apply_without_a_symbol():
+    # ... and the constant is used whenever no symbol of that name exists, also
+    # when the same constant appears more than once.
+    assert evaluate_expression("pi * pi + e", {}) == pytest.approx(np.pi**2 + np.e)
+    assert np.isnan(evaluate_expression("nan", {}))
+    c = compile_expression("pi * pi + e")
+    assert c.refs == () and c.constants == ("pi", "e")
+
+
+def test_a_shadowed_constant_is_not_a_free_parameter():
+    # Shadowing must not leak into validation/discovery: a constant is neither an
+    # unresolved name nor a fitting parameter.
+    assert validate_expression("pi * r**2", ["r"]).ok
+    assert discover_parameters("a * exp(-x / tau1) + pi", reserved=["x"]) == ["a", "tau1"]
+
+
 def test_arrays_evaluate_elementwise():
     x = np.array([1.0, 4.0, 9.0])
     r = evaluate_expression("sqrt(x)", {"x": x})

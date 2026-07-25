@@ -19,6 +19,9 @@ The engine does three things, all governed by an :class:`ExpressionPolicy`:
    so names may contain spaces) and **bare** identifiers (``tau`` — a normal
    Python name). Matching is optionally case-insensitive and optionally on the
    part of a name left of a ``|`` (column-header ``"Name | unit"`` convention).
+   A caller symbol always wins over a named constant of the same name: a column
+   called ``e`` is that column, not Euler's number, and the constant is only the
+   fallback when no such symbol exists.
 3. **Evaluate on scalars or NumPy arrays.** References resolve to their values
    once and the compiled code runs against them.
 
@@ -133,8 +136,9 @@ class ExpressionPolicy:
         Mapping of allowed function name to a callable. A call to any other name
         is rejected at parse time.
     constants
-        Named numeric constants that resolve to a fixed value (``pi``, ``e``, …)
-        rather than to a caller symbol.
+        Named numeric constants (``pi``, ``e``, …) that resolve to a fixed value
+        when the caller's symbol table has no symbol of that name. A symbol
+        always shadows the constant, so a data column called ``e`` is reachable.
     quoted_names
         Allow string literals (``'name'``) as references. Enables names that are
         not valid Python identifiers (spaces, punctuation).
@@ -269,18 +273,30 @@ class _RefRewriter(ast.NodeTransformer):
     """Rewrite reference names to ``_r{i}`` variables, collecting their originals.
 
     Quoted string literals and (optionally) bare identifiers become numbered
-    variables; function names and named constants are left in place. A call to a
-    non-whitelisted function raises :class:`ExpressionError`.
+    ``_r{i}`` variables; a named constant becomes a ``_c{j}`` variable so that a
+    caller symbol of the same name can shadow it at evaluation time. Function
+    names are left in place. A call to a non-whitelisted function raises
+    :class:`ExpressionError`.
     """
 
     def __init__(self, policy: ExpressionPolicy) -> None:
         self.policy = policy
         self.refs: list[str] = []
+        self.constants: list[str] = []
 
     def _add_ref(self, name: str, node: ast.AST) -> ast.AST:
         idx = len(self.refs)
         self.refs.append(name)
         return ast.copy_location(ast.Name(id=f"_r{idx}", ctx=ast.Load()), node)
+
+    def _add_constant(self, name: str, node: ast.AST) -> ast.AST:
+        """Bind a named constant to a ``_c{j}`` slot filled at evaluation time."""
+        if name in self.constants:
+            idx = self.constants.index(name)
+        else:
+            idx = len(self.constants)
+            self.constants.append(name)
+        return ast.copy_location(ast.Name(id=f"_c{idx}", ctx=ast.Load()), node)
 
     def visit_Constant(self, node: ast.Constant):  # noqa: N802 (ast naming)
         if isinstance(node.value, str):
@@ -291,8 +307,10 @@ class _RefRewriter(ast.NodeTransformer):
 
     def visit_Name(self, node: ast.Name):  # noqa: N802
         name = node.id
-        if name in self.policy.functions or name in self.policy.constants:
-            return node  # a function or a named constant — leave as-is
+        if name in self.policy.functions:
+            return node  # a whitelisted function — leave as-is
+        if name in self.policy.constants:
+            return self._add_constant(name, node)  # shadowable by a caller symbol
         if not self.policy.bare_names:
             raise ExpressionError(f"unknown name: {name!r} (quote it as '{name}'?)")
         return self._add_ref(name, node)
@@ -317,14 +335,19 @@ class CompiledExpression:
         The original expression text.
     code
         The compiled code object (evaluated with ``_r{i}`` reference variables
-        plus the policy's functions/constants in scope).
+        and ``_c{j}`` constant variables plus the policy's functions in scope).
     refs
         The ordered original reference names; index ``i`` maps to ``_r{i}``.
+    constants
+        The ordered named constants the expression uses; index ``j`` maps to
+        ``_c{j}``. Each resolves to the caller's symbol of that name when there
+        is one and to the policy's constant value otherwise.
     """
 
     source: str
     code: Any
     refs: tuple[str, ...]
+    constants: tuple[str, ...] = ()
 
 
 # expr text + policy identity -> compiled result. Parsing/compiling is the
@@ -392,7 +415,12 @@ def compile_expression(
             raise ExpressionError(f"disallowed expression element: {type(node).__name__}")
 
     code = compile(new_tree, "<expression>", "eval")
-    result = CompiledExpression(source=text, code=code, refs=tuple(rewriter.refs))
+    result = CompiledExpression(
+        source=text,
+        code=code,
+        refs=tuple(rewriter.refs),
+        constants=tuple(rewriter.constants),
+    )
     with _CACHE_LOCK:
         _CACHE[cache_key] = result
     return result
@@ -532,7 +560,8 @@ def evaluate_expression(
         The expression text (or a :class:`CompiledExpression`).
     symbols
         Mapping of reference name to value (scalar or NumPy array). Resolution
-        honours the policy's case-insensitivity / ``|`` matching.
+        honours the policy's case-insensitivity / ``|`` matching. A symbol whose
+        name is also a named constant shadows that constant.
     policy
         The expression policy.
 
@@ -549,12 +578,14 @@ def evaluate_expression(
     compiled = expr if isinstance(expr, CompiledExpression) else compile_expression(expr, policy)
     keys = list(symbols.keys())
     ns: dict[str, Any] = dict(policy.functions)
-    ns.update(policy.constants)
     for i, ref in enumerate(compiled.refs):
         key = resolve_name(ref, keys, policy)
         if key is None:
             raise ExpressionError(f"unresolved name: {ref!r}")
         ns[f"_r{i}"] = symbols[key]
+    for j, name in enumerate(compiled.constants):
+        key = resolve_name(name, keys, policy)
+        ns[f"_c{j}"] = symbols[key] if key is not None else policy.constants[name]
     with np.errstate(all="ignore"):
         return eval(compiled.code, {"__builtins__": {}}, ns)  # noqa: S307 (whitelisted AST)
 

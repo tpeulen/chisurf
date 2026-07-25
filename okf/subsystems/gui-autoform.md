@@ -200,10 +200,18 @@ codebase's ad-hoc alternatives — `eval` under `from numpy import *`, a
 feedback. Everything is governed by an `ExpressionPolicy`: which node kinds are
 allowed (arithmetic, optional comparisons/bit-ops), the whitelisted function set
 (`DEFAULT_POLICY` ships a rich NumPy library — `sin/cos/exp/log/sqrt/where/clip/
-minimum/maximum/…`), the named constants (`pi/e/tau/inf/nan`), and how names
+minimum/maximum/…`), the named constants (`pi/e/inf/nan`), and how names
 resolve: **quoted** references (`'Green Count Rate'`, so names may contain
 spaces) vs **bare** identifiers (`tau`), optionally case-insensitive and matched
-on the part left of a `|` (the `"Name | unit"` column convention). Public surface:
+on the part left of a `|` (the `"Name | unit"` column convention). A caller
+symbol always **shadows** a constant of the same name — a column called `e` is
+that column, and the constant only fills in when no such symbol exists — so the
+engine can never silently swap a user's data for a number. (The rewriter cannot
+decide this: it runs at compile time and its result is cached per
+`(text, policy)`, with no symbol table in sight. A constant name is therefore
+rewritten to a `_c{j}` slot next to the `_r{i}` reference slots and resolved at
+evaluation time. `refs` stays free of constants, so a constant is neither an
+unresolved name nor a discovered fitting parameter.) Public surface:
 `validate_expression(expr, known_names, policy) -> ValidationResult(ok, message,
 refs)` for GUI ✓/✗, plus `compile_expression`/`evaluate_expression`. Two presets:
 `DEFAULT_POLICY` (rich, Python-like, bare names) and `NDX_POLICY` (ndXplorer
@@ -236,7 +244,9 @@ name that is not the independent variable, a function, or a constant as a free
 fitting parameter, read back with `expressions.discover_parameters`. Note the
 engine deliberately omits `tau` from its constants — `tau` is the universal
 lifetime-parameter name and binding it to 2π would silently corrupt decay
-formulas. The parse-model formula widget
+formulas — and that any remaining constant is shadowed by a symbol of the same
+name, so a collision costs at most the constant, never the data. The parse-model
+formula widget
 (`gui/widgets/models/parse/widget.py::ParseFormulaWidget`, shared by the TCSPC,
 FCS and PCF parse models) hosts an `ExpressionInput` in place of its raw text box
 — the box is kept hidden as the backing store the rest of the widget reads — so a
