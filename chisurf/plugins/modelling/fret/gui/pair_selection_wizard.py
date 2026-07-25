@@ -6,10 +6,10 @@ from typing import Optional
 
 import mdtraj as md
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
+from chisurf.gui import chiplot as cp
 import chisurf.gui.widgets
 
 try:
@@ -133,10 +133,9 @@ class FRETPairSelectionWindow(QtWidgets.QMainWindow):
 
         plot_container = QtWidgets.QWidget()
         plot_layout = QtWidgets.QVBoxLayout(plot_container)
-        self.plot = pg.PlotWidget()
-        self.plot.setLabel("bottom", "Pairs added")
-        self.plot.setLabel("left", "<<RMSD>> (Å)")
-        self.plot.showGrid(x=True, y=True)
+        self.plot = cp.Plot()
+        self.plot.set_labels(bottom="Pairs added", left="<<RMSD>> (Å)")
+        self.plot.grid(x=True, y=True)
         plot_layout.addWidget(self.plot)
         splitter.addWidget(plot_container)
         splitter.setSizes([650, 450])
@@ -299,7 +298,7 @@ class FRETPairSelectionWindow(QtWidgets.QMainWindow):
             self.table.setItem(i, 2, QtWidgets.QTableWidgetItem(f"{float(decay[i]):.2f}"))
 
         x = np.arange(1, len(decay) + 1, dtype=float)
-        self.plot.plot(x, decay.astype(float), pen=pg.mkPen(width=2))
+        self.plot.line(x, decay.astype(float), width=2)
 
     def _export(self):
         if self._last_selected is None or self._last_decay is None:

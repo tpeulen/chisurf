@@ -15,10 +15,10 @@ import threading
 import time
 import traceback
 
-import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core.dataspec import load_view_spec
+from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 
 
@@ -343,10 +343,9 @@ class FretDockingTool(QtWidgets.QWidget):
             "Per-trial results — click a column header to sort (e.g. by Score); "
             "select a row to show that structure.")
 
-        self._plot = pg.PlotWidget()
-        self._plot.setLabel("bottom", "Step")
-        self._plot.setLabel("left", "Total score")
-        self._plot.showGrid(x=True, y=True)
+        self._plot = cp.Plot()
+        self._plot.set_labels(bottom="Step", left="Total score")
+        self._plot.grid(x=True, y=True)
         self._plot.setToolTip(
             "Total restraint score vs step (CG iteration or MC frame; one curve per trial).")
 
@@ -538,11 +537,11 @@ class FretDockingTool(QtWidgets.QWidget):
                 continue
             curve = self._curves.get(sf)
             if curve is None:
-                pen = pg.mkPen(pg.intColor(i, hues=max(1, int(self._model.n_repeats))), width=2)
-                curve = self._plot.plot(frames, scores, pen=pen)
+                color = cp.int_color(i, count=max(1, int(self._model.n_repeats)))
+                curve = self._plot.line(frames, scores, pen=color, width=2)
                 self._curves[sf] = curve
             else:
-                curve.setData(frames, scores)
+                curve.set_data(frames, scores)
 
     def _fill_table(self, rows: list, best_trial=None, kind="dock") -> None:
         """Append ``[(trial, score, n_dist, pdb)]`` rows to the results table.

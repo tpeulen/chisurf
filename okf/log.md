@@ -487,6 +487,13 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot Batch 15 — FRET-docking plot widgets off pyqtgraph (allow-list
+  37 → 35).** Migrated `plugins/modelling/fret/gui/dock_tool.py` (per-trial
+  score-vs-step curves; `pg.intColor`→`cp.int_color`, `plot`→`line`,
+  `setData`→`set_data`) and `pair_selection_wizard.py` (⟨RMSD⟩-vs-pairs curve).
+  Plain `PlotWidget`→`cp.Plot` + `set_labels`/`grid`/`line`. Import-clean extended.
+  See [PRD-64](prds/prd-64.md).
+
 * **chiplot Batch 14 — decay_conv section + FCS-merger wizard off pyqtgraph
   (allow-list 40 → 37).** Migrated `gui/autoform/sections/decay_conv_section.py`
   (decay+IRF plot with three draggable conv/IRF/BG regions) and the FCS-merger

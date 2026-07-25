@@ -233,6 +233,9 @@ def test_migrated_modules_import(qapp):
         "chisurf.gui.autoform.sections.decay_conv_section",
         "chisurf.gui.widgets.wizard.fcs_merger.fcs_merger_ui",
         "chisurf.gui.widgets.wizard.fcs_merger.fcs_merger",
+        # Batch 15
+        "chisurf.plugins.modelling.fret.gui.dock_tool",
+        "chisurf.plugins.modelling.fret.gui.pair_selection_wizard",
     ):
         assert importlib.import_module(name) is not None
 

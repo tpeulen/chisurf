@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 37):*
+*Landed so far (allow-list 76 → 35):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -417,6 +417,11 @@ screenshot/qtbot verification after each cluster.
   `fcs_merger` maps its per-curve `mkPen` (incl. the dashed grey "unused" pen) to
   `line(pen=…, width=…, style=…)`. Import-clean test extended to all three;
   `DecayConvWidget` constructed headless with its three region drags exercised.
+- **Batch 15** (allow-list 37 → 35) — migrated the FRET-docking plugin's two
+  plot widgets: `plugins/modelling/fret/gui/dock_tool.py` (per-trial score-vs-step
+  curves; `pg.intColor`→`cp.int_color`, `plot`→`line`, `setData`→`set_data`) and
+  `pair_selection_wizard.py` (a single ⟨RMSD⟩-vs-pairs curve). Both plain
+  `PlotWidget`→`cp.Plot` + `set_labels`/`grid`/`line` maps. Import-clean extended.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,
