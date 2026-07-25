@@ -25,8 +25,11 @@ from .model import (  # noqa: F401
 from .physics import (  # noqa: F401
     ThreeColorSetup,
     blue_channel_probabilities,
+    channel_probabilities,
+    distances_to_matrix,
     green_channel_probabilities,
     transfer_efficiencies,
+    transfer_matrix,
 )
 from .species import (  # noqa: F401
     cholesky_to_statistics,
@@ -44,10 +47,12 @@ __all__ = [
     "blue_channel_probabilities",
     "burst_log_likelihood",
     "burst_log_likelihood_reference",
+    "channel_probabilities",
     "cholesky_to_statistics",
     "collapse_bursts",
     "covariance_from_statistics",
     "covariance_to_cholesky",
+    "distances_to_matrix",
     "gauss_hermite_grid",
     "green_channel_probabilities",
     "log_background_correction",
@@ -56,4 +61,5 @@ __all__ = [
     "simulate_bursts",
     "total_log_likelihood",
     "transfer_efficiencies",
+    "transfer_matrix",
 ]

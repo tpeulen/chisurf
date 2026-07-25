@@ -1,71 +1,78 @@
-r"""Three-colour FRET: distances to per-photon detection probabilities.
+r"""Multi-colour FRET as three matrices: excitation, transfer, emission.
 
-Turns a triple of inter-dye distances into the channel probabilities the
-burst likelihood in :mod:`~chisurf.core.fluorescence.pda3c.likelihood` consumes.
-
-Three dyes — blue (B), green (G), red (R) — give three distances
-$R_{BG}$, $R_{BR}$, $R_{GR}$ with their own Förster radii. The essential
-difference from two colours is that the transfer pathways **compete and
-cascade**, so no channel probability is a function of one distance alone.
-
-Blue excitation
----------------
-An excited blue dye has three fates, competing as rates, so with
-$x_{BG}=(R_{0,BG}/R_{BG})^6$ and $x_{BR}=(R_{0,BR}/R_{BR})^6$,
+Turns inter-dye distances into the per-channel photon probabilities the burst
+likelihood in :mod:`~chisurf.core.fluorescence.pda3c.likelihood` consumes, by
+composing three linear maps in the orientation the rest of ChiSurf already uses
+(``(sources, detectors)``, see :mod:`chisurf.core.fluorescence.crosstalk`):
 
 .. math::
 
-    E_{BG} = \frac{x_{BG}}{1 + x_{BG} + x_{BR}}, \qquad
-    E_{BR} = \frac{x_{BR}}{1 + x_{BG} + x_{BR}}.
+    p(\text{laser } \ell) \;\propto\;
+        \underbrace{X_{\ell,\cdot}}_{\text{excitation}}\;
+        \underbrace{T(R)}_{\text{transfer}}\;
+        \underbrace{M}_{\text{emission}}
 
-Note the shared denominator: opening a B→R pathway *reduces* $E_{BG}$ even
-though $R_{BG}$ has not moved. Reading a two-colour formula off the blue-green
-pair of a three-colour construct is therefore wrong, and wrong in a direction
-that mimics the molecule getting longer.
+============ ================== ==============================================
+matrix       shape              meaning
+============ ================== ==============================================
+``excitation`` ``(lasers, dyes)`` probability that a pulse of laser ``ℓ``
+                                 deposits its excitation on dye ``d``. **Rows
+                                 sum to one** — a pulse excites exactly one dye,
+                                 so direct excitation of the redder dyes
+                                 *partitions* the excitation rather than adding
+                                 to it. Off-diagonals are direct excitation.
+``transfer``   ``(dyes, dyes)``   probability that an excitation deposited on
+                                 dye ``i`` is finally emitted by dye ``j``.
+                                 Built from the distances; see below.
+``emission``   ``(dyes, chans)``  probability that a photon emitted by dye ``d``
+                                 is counted in channel ``c``. Folds quantum
+                                 yield, filter transmission, detector efficiency
+                                 and spectral bleed-through. Off-diagonals are
+                                 emission crosstalk.
+============ ================== ==============================================
 
-Energy delivered to green may then continue to red, so the emitting dye is
+``excitation`` and ``emission`` are exactly the two matrices
+``lightpath_simulator``'s ``get_crosstalk_matrices()`` produces (``laser × dye``
+and ``dye × detector``), so a simulated light path can be dropped straight in
+via :meth:`ThreeColorSetup.from_crosstalk_matrices`. The two-colour PDA nuisance
+group spells the same quantities out as scalars — ``ExDG``/``ExAG`` are one
+excitation row, ``gG``/``gR`` the emission diagonal, ``cGD``/``cGA``/``cRD``/
+``cRA`` its off-diagonals.
+
+The transfer matrix
+-------------------
+This is the part that is genuinely multi-colour. With
+$x_{ij} = (R_{0,ij}/R_{ij})^6$, an excited dye $i$ distributes its excitation
+over the dyes below it in energy, and the pathways **compete** — they are rates
+out of one excited state, so they share a denominator:
 
 .. math::
 
-    P(B) = 1 - E_{BG} - E_{BR}, \quad
-    P(G) = E_{BG}(1 - E_{GR}), \quad
-    P(R) = E_{BR} + E_{BG} E_{GR}.
+    E_{i \to j} = \frac{x_{ij}}{1 + \sum_{k>i} x_{ik}}.
 
-The red channel is fed by two distinguishable routes — direct B→R transfer and
-the two-step B→G→R relay — which is exactly why the three distances are
-identifiable from the count statistics at all.
+Opening a second acceptor therefore *reduces* transfer to the first even though
+that distance has not moved; reading a two-colour formula off one pair of a
+three-colour construct overestimates its distance, in the direction that mimics
+the molecule getting longer.
 
-Green excitation
-----------------
-Under green (PIE/ALEX) excitation the blue dye is a spectator and the system is
-two-colour: $P(G) = 1 - E_{GR}$, $P(R) = E_{GR}$, with $E_{GR}$ the ordinary
-Förster efficiency. $R_{GR}$ therefore appears in *both* excitation periods,
-which is what ties the two halves of a burst together.
+Energy may then **cascade** onward, so $T$ is the upper-triangular matrix
+accumulating every route from $i$ to $j$ — for three dyes,
 
-Detection
----------
-Emission is mapped to counted channels by one matrix,
-``detection[c, d]`` = probability that a photon emitted by dye ``d`` is counted
-in channel ``c``. It folds quantum yield, filter transmission, detector
-efficiency and spectral crosstalk into a single object — the same quantity
-``lightpath_simulator``'s ``get_crosstalk_matrices()`` already builds. The
-incumbent suite carries the same information as loose scalars (``cr_bg``,
-``cr_br``, ``cr_gr`` crosstalk; ``gamma_bg``, ``gamma_br``, ``gamma_gr``
-relative brightness); the matrix form is lower triangular, since a redder dye
-never leaks into a bluer channel, and it enforces ``gamma_bg = gamma_br /
-gamma_gr`` structurally instead of storing two and deriving the third.
+.. math::
 
-Direct excitation
------------------
-A laser pulse excites **exactly one** dye, so the direct-excitation
-probabilities *partition* the excitation rather than adding to it: with ``de_bg``
-and ``de_br`` the chances that a blue pulse lands on G or R, the blue dye gets
-the remainder ``1 - de_bg - de_br``, and every B-excitation pathway is scaled by
-it. Treating direct excitation as extra weight on top instead leaves the donor's
-share at one; because the channel probabilities are normalised afterwards, that
-error is invisible at zero direct excitation and grows with it — a silent bias
-in exactly the correction meant to remove one. Verified against the incumbent in
-``test/models/test_pda3c_pam_ab.py``.
+    T = \begin{pmatrix}
+        1 - E_{BG} - E_{BR} & E_{BG}(1-E_{GR}) & E_{BR} + E_{BG}E_{GR} \\
+        0 & 1 - E_{GR} & E_{GR} \\
+        0 & 0 & 1
+    \end{pmatrix}.
+
+The red entry of the first row carries two distinguishable routes — direct
+$B\to R$ and the $B\to G\to R$ relay — and that redundancy is exactly why three
+distances are identifiable from count statistics at all.
+
+Writing it as a matrix rather than by hand generalises for free: $T$ is built by
+a downhill recursion over any number of dyes, so a four-colour construct needs
+no new algebra here.
 """
 
 from __future__ import annotations
@@ -74,164 +81,382 @@ import dataclasses
 
 import numpy as np
 
+from chisurf.core.fluorescence.crosstalk import apply_mixing, matrix_from_payload
+
 __all__ = [
     "ThreeColorSetup",
     "blue_channel_probabilities",
+    "channel_probabilities",
     "green_channel_probabilities",
     "transfer_efficiencies",
+    "transfer_matrix",
 ]
+
+#: Dye order used throughout: blue, green, red (increasing wavelength).
+DYES = ("B", "G", "R")
+#: Laser order: the blue and green (PIE/ALEX) excitation periods.
+LASERS = ("blue", "green")
+#: Detection channel order.
+CHANNELS = ("blue", "green", "red")
+
+
+def _symmetric_radii(value) -> np.ndarray:
+    """Coerce Förster radii to a symmetric ``(n_dyes, n_dyes)`` matrix."""
+    array = np.asarray(value, dtype=float)
+    if array.ndim == 2:
+        return 0.5 * (array + array.T)
+    raise ValueError("forster_radii must be a square matrix")
 
 
 @dataclasses.dataclass
 class ThreeColorSetup:
-    """Instrument and dye description shared by both excitation periods.
+    """Dye pair radii plus the excitation and emission probability matrices.
 
     Attributes
     ----------
-    r0_bg, r0_br, r0_gr : float
-        Förster radii in Angstrom for the three dye pairs.
-    detection : numpy.ndarray
-        ``(3, 3)`` matrix; ``detection[c, d]`` is the probability that a photon
-        emitted by dye ``d`` (order B, G, R) is counted in channel ``c`` (order
-        blue, green, red). Defaults to the identity — perfect, crosstalk-free
-        detection with unit quantum yield.
-    direct_excitation_blue : tuple of float
-        Probability that a blue-laser excitation lands directly on (G, R). The
-        blue dye receives the **remainder**, ``1 - de_bg - de_br`` — the laser's
-        excitation is partitioned, not topped up. Adding direct excitation as
-        extra weight instead would leave the donor's share untouched and shift
-        every channel probability.
-    direct_excitation_green : float
-        Probability that a green-laser excitation lands directly on R; G
-        receives ``1 - de_gr``.
+    forster_radii : numpy.ndarray
+        Symmetric ``(n_dyes, n_dyes)`` Förster radii in Angstrom; only the
+        strictly upper triangle is read (a pair, not a direction).
+    excitation : numpy.ndarray
+        ``(n_lasers, n_dyes)``; row ``ℓ`` is how laser ``ℓ`` distributes its
+        excitation over the dyes. Rows are normalised on construction, because a
+        pulse excites exactly one dye.
+    emission : numpy.ndarray
+        ``(n_dyes, n_channels)``; ``emission[d, c]`` is the probability that a
+        photon emitted by dye ``d`` is counted in channel ``c``.
     """
 
-    r0_bg: float = 50.0
-    r0_br: float = 50.0
-    r0_gr: float = 50.0
-    detection: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(3))
-    direct_excitation_blue: tuple = (0.0, 0.0)
-    direct_excitation_green: float = 0.0
+    forster_radii: np.ndarray = dataclasses.field(
+        default_factory=lambda: np.full((3, 3), 50.0)
+    )
+    excitation: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(2, 3))
+    emission: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(3))
 
     def __post_init__(self):
-        """Coerce the detection matrix to a ``(3, 3)`` float array."""
-        self.detection = np.asarray(self.detection, dtype=float).reshape(3, 3)
+        """Coerce the matrices to arrays and row-normalise the excitation."""
+        self.forster_radii = _symmetric_radii(self.forster_radii)
+        self.excitation = np.atleast_2d(np.asarray(self.excitation, dtype=float))
+        self.emission = np.atleast_2d(np.asarray(self.emission, dtype=float))
+
+        # A pulse excites exactly one dye. Normalising here is what makes direct
+        # excitation partition rather than top up -- getting this wrong is
+        # invisible at zero direct excitation and grows with it.
+        totals = self.excitation.sum(axis=1, keepdims=True)
+        self.excitation = np.divide(
+            self.excitation,
+            np.where(totals > 0.0, totals, 1.0),
+            out=np.zeros_like(self.excitation),
+            where=totals > 0.0,
+        )
+
+    @property
+    def n_dyes(self) -> int:
+        """Number of dyes."""
+        return self.emission.shape[0]
+
+    @classmethod
+    def from_scalars(
+            cls,
+            r0_bg: float = 50.0,
+            r0_br: float = 50.0,
+            r0_gr: float = 50.0,
+            crosstalk_bg: float = 0.0,
+            crosstalk_br: float = 0.0,
+            crosstalk_gr: float = 0.0,
+            gamma_bg: float = 1.0,
+            gamma_br: float = 1.0,
+            direct_excitation_blue=(0.0, 0.0),
+            direct_excitation_green: float = 0.0,
+    ) -> ThreeColorSetup:
+        """Build a setup from the scalar corrections the field usually quotes.
+
+        A convenience over the matrix form for the common triangular case, and
+        the bridge to the two-colour nuisance group's vocabulary. ``crosstalk_xy``
+        is emission of dye ``x`` leaking into channel ``y``; ``gamma_xy`` is the
+        detection efficiency of dye ``y`` relative to dye ``x``.
+
+        Parameters
+        ----------
+        r0_bg, r0_br, r0_gr : float
+            Förster radii of the three pairs, in Angstrom.
+        crosstalk_bg, crosstalk_br, crosstalk_gr : float
+            Emission bleed-through B→green, B→red and G→red channels.
+        gamma_bg, gamma_br : float
+            Detection efficiency of G and R relative to B.
+        direct_excitation_blue : tuple of float
+            Chance a blue pulse lands directly on (G, R).
+        direct_excitation_green : float
+            Chance a green pulse lands directly on R.
+
+        Returns
+        -------
+        ThreeColorSetup
+        """
+        de_bg, de_br = direct_excitation_blue
+        radii = np.array(
+            [
+                [0.0, r0_bg, r0_br],
+                [r0_bg, 0.0, r0_gr],
+                [r0_br, r0_gr, 0.0],
+            ]
+        )
+        excitation = np.array(
+            [
+                [1.0 - de_bg - de_br, de_bg, de_br],
+                [0.0, 1.0 - direct_excitation_green, direct_excitation_green],
+            ]
+        )
+        # dye -> channel; a redder dye does not leak into a bluer channel.
+        emission = np.array(
+            [
+                [1.0, crosstalk_bg, crosstalk_br],
+                [0.0, gamma_bg, gamma_bg * crosstalk_gr],
+                [0.0, 0.0, gamma_br],
+            ]
+        )
+        return cls(forster_radii=radii, excitation=excitation, emission=emission)
+
+    @classmethod
+    def from_crosstalk_matrices(
+            cls,
+            payload,
+            forster_radii,
+            dyes=DYES,
+            lasers=LASERS,
+            detectors=CHANNELS,
+    ) -> ThreeColorSetup:
+        """Build a setup from a light-path simulator's crosstalk payload.
+
+        ``get_crosstalk_matrices()`` already emits a ``laser × dye`` excitation
+        matrix and a ``dye × detector`` emission matrix — the same two objects
+        this model wants — so a simulated optical path can be used directly
+        instead of hand-entered correction factors.
+
+        Parameters
+        ----------
+        payload : dict
+            The ``get_crosstalk_matrices()`` return value.
+        forster_radii : array_like
+            Symmetric ``(n_dyes, n_dyes)`` Förster radii; not part of the light
+            path, so supplied separately.
+        dyes, lasers, detectors : sequence of str
+            Label ordering to select from the payload.
+
+        Returns
+        -------
+        ThreeColorSetup
+        """
+        excitation, _, _ = matrix_from_payload(
+            payload["excitation"], rows=lasers, columns=dyes
+        )
+        emission, _, _ = matrix_from_payload(
+            payload["emission"], rows=dyes, columns=detectors
+        )
+        return cls(forster_radii=forster_radii, excitation=excitation, emission=emission)
 
 
-def transfer_efficiencies(r_bg, r_br, r_gr, setup: ThreeColorSetup):
-    """Return the three transfer efficiencies for the given distances.
+def transfer_efficiencies(distances, setup: ThreeColorSetup) -> np.ndarray:
+    """Return the pairwise transfer efficiencies out of each excited dye.
+
+    ``result[..., i, j]`` is the probability that an excitation on dye ``i``
+    transfers to dye ``j`` in one step. The competition is in the shared
+    denominator: every downhill pathway out of ``i`` is a rate leaving the same
+    excited state.
 
     Parameters
     ----------
-    r_bg, r_br, r_gr : array_like
-        Inter-dye distances in Angstrom; broadcast against each other.
+    distances : array_like
+        ``(..., n_dyes, n_dyes)`` symmetric inter-dye distances in Angstrom.
+        Use :func:`distances_to_matrix` to build this from pair distances — the
+        matrix form is required rather than inferred, because with three dyes
+        the pair count equals the dye count and a ``(3, 3)`` array is genuinely
+        ambiguous between "three pair-vectors" and "one distance matrix".
     setup : ThreeColorSetup
-        Förster radii.
+        Supplies the Förster radii.
 
     Returns
     -------
-    tuple of numpy.ndarray
-        ``(E_BG, E_BR, E_GR)``. The first two share a denominator — the B→G and
-        B→R pathways compete for the same excited blue dye.
+    numpy.ndarray
+        ``(..., n_dyes, n_dyes)`` one-step transfer efficiencies, zero on and
+        below the diagonal.
     """
-    r_bg = np.asarray(r_bg, dtype=float)
-    r_br = np.asarray(r_br, dtype=float)
-    r_gr = np.asarray(r_gr, dtype=float)
+    distances = np.asarray(distances, dtype=float)
+    n = setup.n_dyes
+    radii = setup.forster_radii
+    if distances.shape[-2:] != (n, n):
+        raise ValueError(
+            f"distances must be (..., {n}, {n}); use distances_to_matrix() for pairs"
+        )
 
-    with np.errstate(divide="ignore", over="ignore"):
-        x_bg = np.where(r_bg > 0.0, (setup.r0_bg / np.maximum(r_bg, 1e-12)) ** 6, np.inf)
-        x_br = np.where(r_br > 0.0, (setup.r0_br / np.maximum(r_br, 1e-12)) ** 6, np.inf)
-        x_gr = np.where(r_gr > 0.0, (setup.r0_gr / np.maximum(r_gr, 1e-12)) ** 6, np.inf)
+    upper = np.triu(np.ones((n, n), dtype=bool), k=1)
+    with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+        x = np.where(
+            upper & (distances > 0.0),
+            (radii / np.where(distances > 0.0, distances, 1.0)) ** 6,
+            0.0,
+        )
+        # A zero distance is infinitely fast transfer.
+        x = np.where(upper & (distances <= 0.0), np.inf, x)
+        denominator = 1.0 + x.sum(axis=-1, keepdims=True)
+        efficiencies = np.where(np.isfinite(denominator), x / denominator, 0.0)
 
-    # A clipped-to-zero distance makes x infinite, so the ratios below evaluate
-    # to nan before the guards replace them; the guards are the definition, the
-    # errstate just stops numpy narrating the intermediate.
-    denominator = 1.0 + x_bg + x_br
-    with np.errstate(invalid="ignore"):
-        e_bg = np.where(np.isfinite(denominator), x_bg / denominator, 0.0)
-        e_br = np.where(np.isfinite(denominator), x_br / denominator, 0.0)
-        e_gr = np.where(np.isinf(x_gr), 1.0, x_gr / (1.0 + x_gr))
-    # A zero distance sends its own pathway to 1 and starves the other.
-    e_bg = np.where(np.isinf(x_bg) & ~np.isinf(x_br), 1.0, e_bg)
-    e_br = np.where(np.isinf(x_br) & ~np.isinf(x_bg), 1.0, e_br)
-    return e_bg, e_br, e_gr
+    # With an infinite rate present, it takes the whole excitation (split evenly
+    # if several are infinite, which only happens at coincident dyes).
+    infinite = np.isinf(x)
+    any_infinite = infinite.any(axis=-1, keepdims=True)
+    if np.any(any_infinite):
+        share = infinite / np.maximum(infinite.sum(axis=-1, keepdims=True), 1)
+        efficiencies = np.where(any_infinite, share, efficiencies)
+    return efficiencies
 
 
-def _normalise(weights):
-    """Normalise emission weights to per-photon channel probabilities."""
-    total = weights.sum(axis=-1, keepdims=True)
-    return np.where(total > 0.0, weights / np.where(total > 0.0, total, 1.0), 0.0)
+def transfer_matrix(distances, setup: ThreeColorSetup) -> np.ndarray:
+    """Return ``T[..., i, j]``: excitation on dye ``i`` finally emitted by ``j``.
+
+    Accumulates every downhill route, so it includes relays: the ``B→R`` entry
+    for three dyes is ``E_BR + E_BG·E_GR``. Built by a recursion from the reddest
+    dye upward, which works for any number of dyes.
+
+    Parameters
+    ----------
+    distances : array_like
+        ``(..., n_dyes, n_dyes)`` symmetric inter-dye distances in Angstrom.
+    setup : ThreeColorSetup
+        Supplies the Förster radii.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(..., n_dyes, n_dyes)`` upper-triangular row-stochastic matrix.
+    """
+    efficiencies = transfer_efficiencies(distances, setup)
+    n = setup.n_dyes
+    shape = efficiencies.shape[:-2]
+    matrix = np.zeros(shape + (n, n), dtype=float)
+
+    # Reddest dye emits itself; work upward, each dye either emitting or handing
+    # its excitation to a redder one which then follows its own row.
+    matrix[..., n - 1, n - 1] = 1.0
+    for i in range(n - 2, -1, -1):
+        matrix[..., i, i] = 1.0 - efficiencies[..., i, :].sum(axis=-1)
+        for j in range(i + 1, n):
+            matrix[..., i, :] += efficiencies[..., i, j, None] * matrix[..., j, :]
+    return matrix
+
+
+def distances_to_matrix(pairs, n_dyes: int = 3) -> np.ndarray:
+    """Return a symmetric distance matrix from upper-triangular pair distances.
+
+    Parameters
+    ----------
+    pairs : array_like
+        ``(..., n_pairs)`` distances in row-major upper-triangular order; for
+        three dyes that is ``(R_BG, R_BR, R_GR)``.
+    n_dyes : int
+        Number of dyes.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(..., n_dyes, n_dyes)`` symmetric matrix with zeros on the diagonal.
+    """
+    pairs = np.asarray(pairs, dtype=float)
+    rows, cols = np.triu_indices(n_dyes, k=1)
+    out = np.zeros(pairs.shape[:-1] + (n_dyes, n_dyes), dtype=float)
+    out[..., rows, cols] = pairs
+    out[..., cols, rows] = pairs
+    return out
+
+
+def channel_probabilities(distances, setup: ThreeColorSetup, laser: int = 0) -> np.ndarray:
+    """Per-photon channel probabilities for one excitation period.
+
+    Composes the three matrices: the laser's excitation row, the distance
+    dependent transfer matrix, and the emission matrix — the last through
+    :func:`chisurf.core.fluorescence.crosstalk.apply_mixing`, so this model
+    mixes spectra the same way the rest of ChiSurf does.
+
+    Parameters
+    ----------
+    distances : array_like
+        ``(..., n_dyes, n_dyes)`` symmetric distances (see
+        :func:`distances_to_matrix`).
+    setup : ThreeColorSetup
+        Excitation, emission and Förster radii.
+    laser : int
+        Row of the excitation matrix to use.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(M, n_channels)`` probabilities, rows summing to one.
+    """
+    transfer = transfer_matrix(np.asarray(distances, dtype=float), setup)
+    # excitation row (n_dyes,) through T -> emitting-dye weights (..., n_dyes)
+    emitting = np.einsum("d,...dj->...j", setup.excitation[laser], transfer)
+    # ... then dye -> channel, in the shared (sources, detectors) convention.
+    channels = apply_mixing(setup.emission, emitting.reshape(-1, setup.n_dyes).T).T
+
+    totals = channels.sum(axis=-1, keepdims=True)
+    return np.atleast_2d(
+        np.divide(
+            channels,
+            np.where(totals > 0.0, totals, 1.0),
+            out=np.zeros_like(channels),
+            where=totals > 0.0,
+        )
+    )
 
 
 def blue_channel_probabilities(r_bg, r_br, r_gr, setup: ThreeColorSetup) -> np.ndarray:
-    """Per-photon channel probabilities under blue excitation.
+    """Channel probabilities under blue excitation, from the three distances.
 
     Parameters
     ----------
     r_bg, r_br, r_gr : array_like
         Distances in Angstrom, shape ``(M,)`` or scalar.
     setup : ThreeColorSetup
-        Förster radii, detection matrix and direct-excitation terms.
+        Excitation, emission and Förster radii.
 
     Returns
     -------
     numpy.ndarray
-        Shape ``(M, 3)``, rows summing to one, in channel order (blue, green,
-        red) — the trinomial parameter of a blue-excitation burst.
+        ``(M, 3)``, channel order (blue, green, red) — the trinomial parameter.
     """
-    e_bg, e_br, e_gr = transfer_efficiencies(r_bg, r_br, r_gr, setup)
-    dex_g, dex_r = setup.direct_excitation_blue
-    # The laser excites exactly one dye: B with the remaining probability.
-    p_excite_b = 1.0 - dex_g - dex_r
-
-    # Emission weight per dye: which dye ends up carrying the excitation.
-    emission = np.stack(
-        [
-            p_excite_b * (1.0 - e_bg - e_br),
-            p_excite_b * e_bg * (1.0 - e_gr) + dex_g * (1.0 - e_gr),
-            p_excite_b * (e_br + e_bg * e_gr) + dex_g * e_gr + dex_r,
-        ],
-        axis=-1,
-    )
-    emission = np.clip(emission, 0.0, None)
-    # Always 2-D, so a scalar distance and an array of them index alike.
-    return np.atleast_2d(_normalise(emission @ setup.detection.T))
+    pairs = np.stack(np.broadcast_arrays(r_bg, r_br, r_gr), axis=-1)
+    return channel_probabilities(distances_to_matrix(pairs, setup.n_dyes), setup, laser=0)
 
 
 def green_channel_probabilities(r_gr, setup: ThreeColorSetup) -> np.ndarray:
-    """Per-photon channel probabilities under green excitation.
+    """Channel probabilities under green excitation, restricted to (green, red).
 
-    The blue dye is a spectator here, so this is the ordinary two-colour
-    partition — but over the *same* ``r_gr`` the blue period sees, which is what
-    lets the two excitation periods constrain each other.
+    The blue dye is a spectator, so nothing emits into the blue channel and its
+    probability is zero — dropping it and renormalising is therefore exact, not
+    an approximation, whenever the emission matrix has no green/red leakage into
+    the blue channel. When it does, the renormalisation accounts for it.
 
     Parameters
     ----------
     r_gr : array_like
         Green–red distance in Angstrom, shape ``(M,)`` or scalar.
     setup : ThreeColorSetup
-        Förster radii, detection matrix and direct-excitation term.
+        Excitation, emission and Förster radii.
 
     Returns
     -------
     numpy.ndarray
-        Shape ``(M, 2)``, rows summing to one, in channel order (green, red).
+        ``(M, 2)``, channel order (green, red).
     """
     r_gr = np.asarray(r_gr, dtype=float)
-    _, _, e_gr = transfer_efficiencies(r_gr, r_gr, r_gr, setup)
-    dex_r = setup.direct_excitation_green
-    p_excite_g = 1.0 - dex_r
-
-    emission = np.stack(
-        [
-            np.broadcast_to(p_excite_g * (1.0 - e_gr), e_gr.shape),
-            p_excite_g * e_gr + dex_r,
-        ],
-        axis=-1,
+    far = np.full_like(r_gr, 1e12, dtype=float)
+    pairs = np.stack(np.broadcast_arrays(far, far, r_gr), axis=-1)
+    full = channel_probabilities(
+        distances_to_matrix(pairs, setup.n_dyes), setup, laser=1
+    )[..., 1:]
+    totals = full.sum(axis=-1, keepdims=True)
+    return np.divide(
+        full,
+        np.where(totals > 0.0, totals, 1.0),
+        out=np.zeros_like(full),
+        where=totals > 0.0,
     )
-    emission = np.clip(emission, 0.0, None)
-
-    # Only the green and red detection channels are open under green excitation,
-    # so drop the blue row and the blue emitter column of the detection matrix.
-    detection_gr = setup.detection[1:, 1:]
-    return np.atleast_2d(_normalise(emission @ detection_gr.T))

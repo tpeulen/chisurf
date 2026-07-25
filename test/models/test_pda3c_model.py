@@ -21,11 +21,15 @@ def test_pathways_compete_for_the_same_excited_donor():
     three-colour construct overestimates the distance, because the second
     acceptor is quietly draining the donor.
     """
-    from chisurf.core.fluorescence.pda3c import ThreeColorSetup, transfer_efficiencies
+    from chisurf.core.fluorescence.pda3c import (
+        ThreeColorSetup,
+        distances_to_matrix,
+        transfer_efficiencies,
+    )
 
-    setup = ThreeColorSetup(r0_bg=50.0, r0_br=50.0, r0_gr=50.0)
-    alone = transfer_efficiencies(50.0, 1e9, 60.0, setup)[0]
-    competing = transfer_efficiencies(50.0, 50.0, 60.0, setup)[0]
+    setup = ThreeColorSetup.from_scalars(r0_bg=50.0, r0_br=50.0, r0_gr=50.0)
+    alone = transfer_efficiencies(distances_to_matrix([50.0, 1e9, 60.0]), setup)[0, 1]
+    competing = transfer_efficiencies(distances_to_matrix([50.0, 50.0, 60.0]), setup)[0, 1]
 
     assert alone == pytest.approx(0.5)  # ordinary two-colour result at R = R0
     assert competing == pytest.approx(1.0 / 3.0)
@@ -33,12 +37,16 @@ def test_pathways_compete_for_the_same_excited_donor():
 
 
 def test_two_colour_limit_of_the_green_red_pair():
-    from chisurf.core.fluorescence.pda3c import ThreeColorSetup, transfer_efficiencies
+    from chisurf.core.fluorescence.pda3c import (
+        ThreeColorSetup,
+        distances_to_matrix,
+        transfer_efficiencies,
+    )
 
-    setup = ThreeColorSetup(r0_gr=52.0)
-    assert transfer_efficiencies(1e9, 1e9, 52.0, setup)[2] == pytest.approx(0.5)
-    assert transfer_efficiencies(1e9, 1e9, 1e9, setup)[2] == pytest.approx(0.0, abs=1e-9)
-    assert transfer_efficiencies(1e9, 1e9, 1.0, setup)[2] == pytest.approx(1.0, abs=1e-9)
+    setup = ThreeColorSetup.from_scalars(r0_gr=52.0)
+    assert transfer_efficiencies(distances_to_matrix([1e9, 1e9, 52.0]), setup)[1, 2] == pytest.approx(0.5)
+    assert transfer_efficiencies(distances_to_matrix([1e9, 1e9, 1e9]), setup)[1, 2] == pytest.approx(0.0, abs=1e-9)
+    assert transfer_efficiencies(distances_to_matrix([1e9, 1e9, 1.0]), setup)[1, 2] == pytest.approx(1.0, abs=1e-9)
 
 
 def test_channel_probabilities_are_distributions():
@@ -48,7 +56,7 @@ def test_channel_probabilities_are_distributions():
         green_channel_probabilities,
     )
 
-    setup = ThreeColorSetup(r0_bg=49.0, r0_br=55.0, r0_gr=52.0)
+    setup = ThreeColorSetup.from_scalars(r0_bg=49.0, r0_br=55.0, r0_gr=52.0)
     r = np.linspace(20.0, 90.0, 25)
     blue = blue_channel_probabilities(r, r[::-1], r, setup)
     green = green_channel_probabilities(r, setup)
@@ -67,7 +75,7 @@ def test_red_channel_is_fed_by_both_routes():
     """
     from chisurf.core.fluorescence.pda3c import ThreeColorSetup, blue_channel_probabilities
 
-    setup = ThreeColorSetup(r0_bg=50.0, r0_br=50.0, r0_gr=50.0)
+    setup = ThreeColorSetup.from_scalars(r0_bg=50.0, r0_br=50.0, r0_gr=50.0)
     relay_closed = blue_channel_probabilities(50.0, 50.0, 1e9, setup)
     relay_open = blue_channel_probabilities(50.0, 50.0, 30.0, setup)
 
@@ -80,8 +88,8 @@ def test_red_channel_is_fed_by_both_routes():
 def test_detection_crosstalk_moves_counts_between_channels():
     from chisurf.core.fluorescence.pda3c import ThreeColorSetup, blue_channel_probabilities
 
-    clean = ThreeColorSetup(detection=np.eye(3))
-    leaky = ThreeColorSetup(detection=np.array([[1.0, 0.0, 0.0], [0.2, 1.0, 0.0], [0.0, 0.1, 1.0]]))
+    clean = ThreeColorSetup.from_scalars()
+    leaky = ThreeColorSetup.from_scalars(crosstalk_bg=0.2, crosstalk_gr=0.1)
     args = (50.0, 60.0, 55.0)
     assert blue_channel_probabilities(*args, leaky)[..., 1] > (
         blue_channel_probabilities(*args, clean)[..., 1]
@@ -154,6 +162,7 @@ def test_quadrature_beats_a_uniform_grid_at_equal_node_count():
     """
     from chisurf.core.fluorescence.pda3c import (
         covariance_from_statistics,
+        distances_to_matrix,
         gauss_hermite_grid,
         transfer_efficiencies,
     )
@@ -165,10 +174,9 @@ def test_quadrature_beats_a_uniform_grid_at_equal_node_count():
     cholesky = covariance_to_cholesky(covariance)
 
     def mean_efficiency(points, weights):
-        e_bg, e_br, e_gr = transfer_efficiencies(
-            points[:, 1], points[:, 2], points[:, 0], setup
-        )
-        return float(weights @ np.stack([e_bg, e_br, e_gr], axis=1).sum(axis=1))
+        pairs = np.stack([points[:, 1], points[:, 2], points[:, 0]], axis=1)
+        e = transfer_efficiencies(distances_to_matrix(pairs), setup)
+        return float(weights @ (e[:, 0, 1] + e[:, 0, 2] + e[:, 1, 2]))
 
     reference = mean_efficiency(*gauss_hermite_grid(means, cholesky, n_nodes=40))
     quadrature = mean_efficiency(*gauss_hermite_grid(means, cholesky, n_nodes=5))
@@ -205,7 +213,7 @@ def test_truncation_drops_corner_nodes_without_moving_the_mean():
 def _setup():
     from chisurf.core.fluorescence.pda3c import ThreeColorSetup
 
-    return ThreeColorSetup(r0_bg=49.0, r0_br=52.0, r0_gr=51.0)
+    return ThreeColorSetup.from_scalars(r0_bg=49.0, r0_br=52.0, r0_gr=51.0)
 
 
 def test_collapsing_joins_both_excitation_periods():

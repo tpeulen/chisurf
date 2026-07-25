@@ -108,11 +108,49 @@ term for term.
   *likelihoods* agree; this only concerns what the burst-size distribution
   means, and each is self-consistent.
 
-Octave was considered for executing the reference directly and rejected on
-inspection: the expressions live inline in a 6.9k-line GUI reading a global
-struct with no callable entry point, and the shipped MEX binaries are x86_64
-MATLAB-ABI objects that Octave cannot load on arm64. Transcription is the
-faithful route here as well as the reviewable one.
+**The reference's own C kernel, executed (2026-07-25).** The surrounding MATLAB
+is inline in a GUI reading a global struct and has no callable entry point, and
+the shipped MEX binaries are x86_64 MATLAB-ABI objects — but the kernel itself is
+a self-contained MEX function with a plain numeric signature, so Octave's
+`mkoctfile` compiles it from source on arm64 and it can be driven directly.
+`test/models/test_pda3c_octave_ab.py` does exactly that and finds ChiSurf's
+factorised likelihood agrees with the reference's nested-sum C to a **maximum
+relative difference of 1.7e-14** — machine precision, on two genuinely different
+algorithms for the same quantity. It skips cleanly when Octave or the reference
+checkout is absent, so it is a bonus check on a developer machine rather than a
+suite dependency.
+
+Together the two A/B files cover both halves: the transcription checks the
+*expressions* (which is where the excitation-partition bug was), the compiled
+kernel checks the *arithmetic* (which is where a shared transcription mistake
+would have hidden).
+
+## Three matrices, not a pile of scalars
+
+The physics is expressed as a composition of three linear maps in the
+`(sources, detectors)` orientation the rest of ChiSurf already uses
+(`chisurf/core/fluorescence/crosstalk.py`):
+
+| matrix | shape | meaning |
+|---|---|---|
+| `excitation` | (lasers, dyes) | how a laser pulse distributes its excitation over the dyes. **Rows sum to one** — direct excitation is an off-diagonal, and the partition that the A/B caught is now structural rather than a special case. |
+| `transfer` | (dyes, dyes) | probability that an excitation on dye *i* is finally emitted by dye *j*; built from the distances, upper triangular, accumulating relays. |
+| `emission` | (dyes, channels) | probability that a photon from dye *d* is counted in channel *c*; quantum yield, filters, detector efficiency and bleed-through in one object. |
+
+`excitation` and `emission` are **exactly** the two matrices the light-path
+simulator's `get_crosstalk_matrices()` already emits (`laser × dye` and
+`dye × detector`), so `ThreeColorSetup.from_crosstalk_matrices()` ingests a
+simulated optical path directly instead of asking for hand-entered factors —
+the light-path bridge that PRD-50 built for two colours, reused rather than
+re-invented. The two-colour nuisance group spells the same quantities as scalars
+(`ExDG`/`ExAG` are one excitation row; `gG`/`gR` the emission diagonal;
+`cGD`/`cGA`/`cRD`/`cRA` its off-diagonals), and `from_scalars()` keeps that
+vocabulary available.
+
+Writing the transfer step as a matrix also removes the three-colour hard-coding:
+it is built by a downhill recursion over any number of dyes, so a four-colour
+construct needs no new algebra. Verified by the A/B: the matrix form reproduces
+the incumbent's scalar-correction model to 1e-12.
 
 Remaining: the ChiSurf model + view spec, the burst-table reader, and stages
 3–7 (priors/MCMC, labelling and brightness corrections, global 2c+3c fits,

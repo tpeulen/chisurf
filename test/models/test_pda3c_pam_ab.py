@@ -112,19 +112,15 @@ def _setup_from_corrections(corrections):
 
     gamma_br = corrections["gamma_br"]
     gamma_gr = corrections["gamma_gr"]
-    gamma_bg = gamma_br / gamma_gr
-    detection = np.array(
-        [
-            [1.0, 0.0, 0.0],
-            [corrections["cr_bg"], gamma_bg, 0.0],
-            [corrections["cr_br"], corrections["cr_gr"] * gamma_bg, gamma_br],
-        ]
-    )
-    return ThreeColorSetup(
+    return ThreeColorSetup.from_scalars(
         r0_bg=corrections["R0_bg"],
         r0_br=corrections["R0_br"],
         r0_gr=corrections["R0_gr"],
-        detection=detection,
+        crosstalk_bg=corrections["cr_bg"],
+        crosstalk_br=corrections["cr_br"],
+        crosstalk_gr=corrections["cr_gr"],
+        gamma_bg=gamma_br / gamma_gr,
+        gamma_br=gamma_br,
         direct_excitation_blue=(corrections["de_bg"], corrections["de_br"]),
         direct_excitation_green=corrections["de_gr"],
     )
@@ -161,7 +157,7 @@ def test_competing_pathway_efficiencies_agree():
     the equivalence is not obvious by inspection and a future edit to either
     side would break it silently.
     """
-    from chisurf.core.fluorescence.pda3c import transfer_efficiencies
+    from chisurf.core.fluorescence.pda3c import distances_to_matrix, transfer_efficiencies
 
     rng = np.random.default_rng(101)
     for _ in range(200):
@@ -174,9 +170,9 @@ def test_competing_pathway_efficiencies_agree():
         pam_ebg = E1 * (1 - E2) / (1 - E1 * E2)
         pam_ebr = E2 * (1 - E1) / (1 - E1 * E2)
 
-        e_bg, e_br, _ = transfer_efficiencies(r_bg, r_br, r_gr, setup)
-        assert float(e_bg) == pytest.approx(pam_ebg, rel=1e-12)
-        assert float(e_br) == pytest.approx(pam_ebr, rel=1e-12)
+        e = transfer_efficiencies(distances_to_matrix([r_bg, r_br, r_gr]), setup)
+        assert float(e[0, 1]) == pytest.approx(pam_ebg, rel=1e-12)
+        assert float(e[0, 2]) == pytest.approx(pam_ebr, rel=1e-12)
 
 
 def test_blue_channel_probabilities_match_the_incumbent():
@@ -237,10 +233,12 @@ def test_the_excitation_partition_is_what_the_incumbent_does():
     # The un-partitioned variant (direct excitation added on top) is a different
     # answer, so the test above is actually discriminating.
     naive = ThreeColorSetup(
-        r0_bg=49.0, r0_br=52.0, r0_gr=51.0,
-        detection=setup.detection,
-        direct_excitation_blue=(0.0, 0.0),
+        forster_radii=setup.forster_radii,
+        excitation=np.array([[1.0, 0.08, 0.06], [0.0, 0.9, 0.1]]),  # NOT normalised
+        emission=setup.emission,
     )
+    # __post_init__ normalises, so build the un-partitioned variant explicitly.
+    naive.excitation = np.array([[1.0, 0.08, 0.06], [0.0, 0.9, 0.1]])
     assert not np.allclose(blue_channel_probabilities(50.0, 60.0, 55.0, naive)[0], reference)
 
 
