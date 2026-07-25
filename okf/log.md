@@ -2,6 +2,28 @@
 
 ## 2026-07-25
 
+* **The sampler was throwing away every prior the user set (PRD-68, phase 1).**
+  `lnprior` had two branches: given `bounds` it returned the flat box prior and
+  never looked at the parameters; only with `bounds=None` did it sum
+  `prior.lnpdf`. Both samplers pass `bounds` unconditionally, and they are the
+  only two call sites of `lnprob` in the tree — so the informative branch was
+  dead code and every `NormalPrior`/`LogNormalPrior`/`GammaPrior`/`BetaPrior`
+  from [PRD-61](/prds/prd-61.md) was silently dropped from the MCMC posterior
+  while MAP (`_prior_residuals`) still honoured it. Optimiser and sampler were
+  targeting different distributions. `bounds` is now an *additional* cheap box
+  rejection evaluated before any model call, not a replacement: the parameter
+  priors are always summed, and parameters whose only prior is that box are
+  skipped so the hot path allocates nothing. Split out `_smooth_prior` as the
+  one "is this more than a bound?" test shared with `_prior_residuals`.
+  Added `lnprob_parts -> (lnlike, lnprior, chi2)`; `walk_mcmc` and
+  `sample_emcee` (via emcee blobs) now record the data misfit and the prior
+  apart, so `chi2r` is a goodness-of-fit number again instead of `-2·lnpost/dof`
+  and a stored chain can be reweighted under a different prior without
+  resampling. Chain files gained an `lnprior` column. 6 tests in
+  `test/fitting/test_prior_posterior_sampling.py`, including a dominant-prior
+  test verified to fail against the old behaviour. See
+  [PRD-68](/prds/prd-68.md).
+
 * **Saved projects were dropping every fitted parameter uncertainty.**
   `fit_state.fit_to_state` serialized `value`, `fixed`, `bounds`, `bounds_on`
   and the parameter links — but not `error_estimate`. So a project saved after

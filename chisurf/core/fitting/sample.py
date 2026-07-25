@@ -61,8 +61,9 @@ def walk_mcmc(
     Returns
     -------
     dict
-        ``chi2r``, ``parameter_values``, ``parameter_names`` and the
-        ``acceptance_rate`` of the recorded chain.
+        ``chi2r`` (the *data* misfit, priors excluded), ``lnprior``,
+        ``parameter_values``, ``parameter_names`` and the ``acceptance_rate``
+        of the recorded chain.
 
     Notes
     -----
@@ -80,8 +81,11 @@ def walk_mcmc(
     state_initial = np.asarray(fit.model.parameter_values, dtype=np.float64)
     thin = max(1, int(thin))
     n_samples = max(1, int(steps) // thin)
-    # initialize arrays
-    lnp = np.empty(n_samples)
+    # initialize arrays. The data misfit and the prior are recorded apart so the
+    # reported chi2 stays a pure goodness-of-fit number even with informative
+    # priors in play (and so the chain can be reweighted under another prior).
+    lnprior = np.empty(n_samples)
+    chi2 = np.empty(n_samples)
     parameter = np.empty((n_samples, dim))
     n_recorded = 0
     n_accepted = 0
@@ -94,35 +98,35 @@ def walk_mcmc(
     proposal_scale[proposal_scale < 1e-15] = step_size
 
     def _lnprob(state):
-        """Return the log-posterior of a parameter vector."""
-        return float(
-            cs.core.fitting.fit.lnprob(
-                parameter_values=state,
-                fit=fit,
-                chi2max=chi2max,
-                bounds=bounds
-            )
+        """Return ``(lnpost, lnprior, chi2)`` of a parameter vector."""
+        lnlike, lnpr, c2 = cs.core.fitting.fit.lnprob_parts(
+            parameter_values=state,
+            fit=fit,
+            chi2max=chi2max,
+            bounds=bounds
         )
+        return lnlike + lnpr, lnpr, c2
 
-    def _metropolis_step(state, lnp_state, width):
+    def _metropolis_step(state, parts, width):
         """Take one Metropolis step.
 
-        Returns the (possibly unchanged) state, its log-posterior, whether the
-        proposal was accepted, and the acceptance probability of the proposal.
+        Returns the (possibly unchanged) state, its ``(lnpost, lnprior, chi2)``
+        parts, whether the proposal was accepted, and the acceptance probability
+        of the proposal.
         """
         proposal = state + np.random.normal(0.0, 1.0, dim) * width
-        lnp_proposal = _lnprob(proposal)
-        if not np.isfinite(lnp_proposal):
-            return state, lnp_state, False, 0.0
-        delta = (lnp_proposal - lnp_state) / temp
+        parts_proposal = _lnprob(proposal)
+        if not np.isfinite(parts_proposal[0]):
+            return state, parts, False, 0.0
+        delta = (parts_proposal[0] - parts[0]) / temp
         alpha = 1.0 if delta >= 0.0 else float(np.exp(delta))
         # Moves towards a higher posterior (a lower chi2) are always taken,
         # downhill moves only with probability exp(delta).
         if delta > np.log(np.random.rand()):
-            return proposal, lnp_proposal, True, alpha
-        return state, lnp_state, False, alpha
+            return proposal, parts_proposal, True, alpha
+        return state, parts, False, alpha
 
-    lnp_prev = _lnprob(state_prev)
+    parts_prev = _lnprob(state_prev)
 
     n_steps = n_samples * thin
     if n_adapt is None:
@@ -135,8 +139,8 @@ def walk_mcmc(
         log_scale = 0.0
         n_warm = 0
         for i in range(n_adapt):
-            state_prev, lnp_prev, _, alpha = _metropolis_step(
-                state_prev, lnp_prev, proposal_scale * np.exp(log_scale)
+            state_prev, parts_prev, _, alpha = _metropolis_step(
+                state_prev, parts_prev, proposal_scale * np.exp(log_scale)
             )
             warmup[i] = state_prev
             n_warm += 1
@@ -162,8 +166,8 @@ def walk_mcmc(
         if cancelled:
             break
 
-        state_prev, lnp_prev, accepted, _ = _metropolis_step(
-            state_prev, lnp_prev, proposal_scale
+        state_prev, parts_prev, accepted, _ = _metropolis_step(
+            state_prev, parts_prev, proposal_scale
         )
         n_accepted += int(accepted)
 
@@ -172,7 +176,8 @@ def walk_mcmc(
         # according to the posterior.
         if i_step % thin == 0:
             parameter[n_recorded] = state_prev
-            lnp[n_recorded] = lnp_prev
+            lnprior[n_recorded] = parts_prev[1]
+            chi2[n_recorded] = parts_prev[2]
             n_recorded += 1
             if callback:
                 callback(n_recorded, n_samples)
@@ -181,11 +186,13 @@ def walk_mcmc(
             break
 
     parameter = parameter[:n_recorded]
-    lnp = lnp[:n_recorded]
-    chi2 = -2. * lnp / float(fit.model.n_points - fit.model.n_free - 1.0)
+    lnprior = lnprior[:n_recorded]
+    chi2 = chi2[:n_recorded]
+    dof = float(fit.model.n_points - fit.model.n_free - 1.0)
 
     return {
-        'chi2r': chi2,
+        'chi2r': chi2 / dof,
+        'lnprior': lnprior,
         'parameter_values': parameter,
         'parameter_names': fit.model.parameter_names,
         'acceptance_rate': n_accepted / float(max(1, i_step))
@@ -212,7 +219,8 @@ def sample_emcee(
     :param nwalkers: the number of walkers
     :param chi2max: maximum allowed chi2
     :param std: the standard deviation of the parameters used to randomize the initial set of the walkers
-    :return: a list containing the chi2 and the parameter values
+    :return: a dict with the *data* ``chi2r``, the ``lnprior``, the sampled
+        ``parameter_values`` and the ``parameter_names``
 
     Notes
     -----
@@ -238,10 +246,27 @@ def sample_emcee(
         'bounds': fit.model.parameter_bounds,
         'chi2max': chi2max
     }
+
+    def _log_prob(parameter_values, fit, bounds=None, chi2max=np.inf):
+        """Log-posterior plus ``(lnprior, chi2)`` blobs for one walker state.
+
+        Returning the two terms as emcee *blobs* keeps the data misfit and the
+        prior separable in the stored chain, instead of only their sum.
+        """
+        lnlike, lnpr, c2 = cs.core.fitting.fit.lnprob_parts(
+            parameter_values=parameter_values,
+            fit=fit,
+            chi2max=chi2max,
+            bounds=bounds
+        )
+        if not np.isfinite(lnpr):
+            return -np.inf, -np.inf, np.inf
+        return lnlike + lnpr, lnpr, c2
+
     sampler = emcee.EnsembleSampler(
         nwalkers=nwalkers,
         ndim=ndim,
-        log_prob_fn=cs.core.fitting.fit.lnprob,
+        log_prob_fn=_log_prob,
         args=[fit],
         kwargs=kw
     )
@@ -314,9 +339,47 @@ def sample_emcee(
         if check_cancel and check_cancel():
             break
 
-    chi2 = -2. * sampler.get_log_prob(flat=True) / float(model.n_points - model.n_free - 1.0)
+    return emcee_result(sampler, fit)
+
+
+def emcee_result(sampler, fit: cs.core.fitting.fit.Fit) -> dict:
+    """Extract the flattened chain of an ensemble sampler as a result dict.
+
+    Shared by :func:`sample_emcee` and the intermediate-save callback in
+    :func:`chisurf.core.fitting.fit.sample_fit`, so a partially written chain
+    has exactly the same columns as a finished one.
+
+    Parameters
+    ----------
+    sampler : emcee.EnsembleSampler
+        Sampler to read the chain from.
+    fit : chisurf.core.fitting.fit.Fit
+        Fit the sampler was built for; supplies the degrees of freedom and the
+        parameter names.
+
+    Returns
+    -------
+    dict
+        ``chi2r`` (data misfit only), ``lnprior``, ``parameter_values`` and
+        ``parameter_names``.
+    """
+    model = fit.model
+    dof = float(model.n_points - model.n_free - 1.0)
+    chain = sampler.get_chain(flat=True)
+    blobs = sampler.get_blobs(flat=True)
+    if blobs is None:
+        # No blobs (e.g. a sampler built elsewhere): fall back to the summed
+        # log-probability and report no prior contribution.
+        lnpost = sampler.get_log_prob(flat=True)
+        lnprior = np.zeros_like(lnpost)
+        chi2 = -2.0 * lnpost
+    else:
+        blobs = np.asarray(blobs, dtype=np.float64).reshape(len(chain), -1)
+        lnprior = blobs[:, 0]
+        chi2 = blobs[:, 1]
     return {
-        'chi2r': chi2,
-        'parameter_values': sampler.get_chain(flat=True),
-        'parameter_names': fit.model.parameter_names
+        'chi2r': chi2 / dof,
+        'lnprior': lnprior,
+        'parameter_values': chain,
+        'parameter_names': model.parameter_names
     }

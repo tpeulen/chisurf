@@ -77,8 +77,19 @@ optimiser's hard bounds, so a hard bound and a soft prior are one concept
   `2I*` residuals, so the LM engine minimises `χ² − 2·ln p(θ)` unchanged.
   `Fit.run`/`FitGroup.run` pass `include_priors=True`; `get_chi2` stays
   data-only so reported χ² remains the data misfit.
-- **MCMC.** `lnprior` sums `prior.lnpdf` over the free parameters (falling back
-  to the uniform box prior when none is set); `lnprob = lnprior − 0.5·chi2`.
+- **MCMC.** `lnprior` sums `prior.lnpdf` over the free parameters;
+  `lnprob = lnprior − 0.5·chi2`. Its `bounds` argument is an *additional* cheap
+  box rejection checked before any model evaluation, **not** a replacement for
+  the priors — it used to short-circuit, which silently dropped every
+  informative prior from the sampled posterior while MAP still honoured it
+  ([PRD-68](/prds/prd-68.md)). `_smooth_prior` is the shared "more than a
+  bound?" test that lets both the MAP and MCMC hot paths skip parameters
+  carrying only a box.
+- **Likelihood and prior stay separable.** `lnprob_parts` returns
+  `(lnlike, lnprior, chi2)`; `walk_mcmc` and `sample_emcee` (via emcee blobs)
+  record them apart, so a chain's `chi2r` is the data misfit alone and the
+  stored posterior can be reweighted under a different prior without
+  resampling. Chain files carry `chi2r`, `lnprior`, then the parameters.
 - **Families.** `UniformPrior` (bounds), `NormalPrior`, `TruncatedNormalPrior`,
   `HalfNormalPrior`, `LogNormalPrior`, `ExponentialPrior`, `GammaPrior`,
   `BetaPrior`, plus `CallablePrior` — the most general form wrapping any
@@ -170,7 +181,7 @@ makes a real component look negligible.
 | Covariance | `covariance_matrix`, `update_error_estimates` | `scipy.linalg.pinvh` of the curvature from `approx_grad` finite differences |
 | chi² scan | `Fit.chi2_scan` | brute scan of one parameter (`support_plane.scan_parameter`) |
 | Support plane | `Fit.adaptive_chi2_scan` | adaptive scan to the `scipy.stats` F-test threshold → CI crossings |
-| MCMC | `sample.walk_mcmc` | Metropolis on `lnprob` (`−0.5·chi2` + uniform-bounds `lnprior`) |
+| MCMC | `sample.walk_mcmc` | Metropolis on `lnprob` (`−0.5·chi2` + `lnprior`) |
 | Ensemble | `sample.sample_emcee`, `sample_fit` | `emcee.EnsembleSampler` over free params; chains saved to disk |
 
 Per-parameter `error_estimate` records whether it came from `cov` or the

@@ -1838,21 +1838,31 @@ def sample_fit(
     def save_chain_to_file(r, fn_target):
         """Save a sampling result dict to a tab-separated text file.
 
+        The data misfit and the prior are written as separate columns: mixing
+        them would make ``chi2r`` unusable as a goodness-of-fit number whenever
+        an informative prior is attached, and keeping ``lnprior`` lets the
+        stored posterior be reweighted under a different prior afterwards
+        without resampling.
+
         Parameters
         ----------
         r : dict
             Result dict with keys ``'chi2r'``, ``'parameter_values'``,
-            and ``'parameter_names'``.
+            ``'parameter_names'`` and optionally ``'lnprior'``.
         fn_target : str
             Target file path.
         """
-        chi2 = r['chi2r']
-        parameter_values = r['parameter_values']
+        chi2 = np.asarray(r['chi2r'], dtype=np.float64)
+        parameter_values = np.asarray(r['parameter_values'], dtype=np.float64)
         parameter_names = r['parameter_names']
+        lnprior = r.get('lnprior')
+        if lnprior is None:
+            lnprior = np.zeros_like(chi2)
+        lnprior = np.asarray(lnprior, dtype=np.float64)
 
         mask = np.where(np.isfinite(chi2))
-        scan = np.vstack([chi2[mask], parameter_values[mask].T])
-        header = "chi2r\t"
+        scan = np.vstack([chi2[mask], lnprior[mask], parameter_values[mask].T])
+        header = "chi2r\tlnprior\t"
         header += "\t".join(parameter_names)
         cs.core.fio.ascii.Csv().save(
             scan,
@@ -1893,11 +1903,7 @@ def sample_fit(
             if sampler is not None:
                 # emcee intermediate save
                 try:
-                    r_partial = {
-                        'chi2r': -2. * sampler.get_log_prob(flat=True) / float(fit.model.n_points - fit.model.n_free - 1.0),
-                        'parameter_values': sampler.get_chain(flat=True),
-                        'parameter_names': fit.model.parameter_names
-                    }
+                    r_partial = cs.core.fitting.sample.emcee_result(sampler, fit)
                     save_chain_to_file(r_partial, fn_partial)
                 except Exception:
                     pass
@@ -2136,6 +2142,39 @@ def _apply_fit_mask(
     return wres
 
 
+def _smooth_prior(parameter) -> typing.Optional[cs.core.fitting.priors.Prior]:
+    """Return a parameter's prior, but only when it is more than its bounds.
+
+    A *bounded* parameter reports a
+    :class:`~chisurf.core.fitting.priors.UniformPrior` synthesised from its
+    bounds, which contributes nothing beyond the hard box that the optimiser
+    (and the sampler's cheap bound check) already enforces. Building that object
+    for every bounded parameter on every objective evaluation is pure overhead,
+    so this helper returns ``None`` unless a genuine prior is stored.
+
+    Both stores must be consulted: a distribution prior mirrors a serialisable
+    spec onto the chinet port, but a *callback* prior is runtime-only and
+    deliberately leaves ``port.prior`` as ``None`` while keeping the live object
+    on the parameter. Checking only the port silently drops callback priors.
+
+    Parameters
+    ----------
+    parameter : chisurf.core.fitting.parameter.FittingParameter
+        Parameter to inspect.
+
+    Returns
+    -------
+    chisurf.core.fitting.priors.Prior or None
+        The stored prior, or ``None`` when the parameter only carries bounds.
+    """
+    live = getattr(parameter, "_prior", None)
+    port = getattr(parameter, "_port", None)
+    spec = getattr(port, "prior", None) if port is not None else None
+    if live is None and spec is None:
+        return None
+    return getattr(parameter, "prior", None)
+
+
 def _prior_residuals(
         model: cs.core.models.Model
 ) -> np.array:
@@ -2160,23 +2199,7 @@ def _prior_residuals(
     """
     pieces = []
     for p in getattr(model, "parameters", []):
-        # A *bounded* parameter reports a UniformPrior, whose residuals() is
-        # empty by construction because the box is enforced as a hard optimiser
-        # bound instead. Constructing that object for every bounded parameter on
-        # every residual evaluation is pure overhead, so skip when there is no
-        # smooth prior to contribute.
-        #
-        # Both stores must be consulted: a distribution prior mirrors a
-        # serialisable spec onto the port, but a *callback* prior is runtime-only
-        # and deliberately leaves ``port.prior`` as None while keeping the live
-        # object on the parameter. Checking only the port silently drops
-        # callback priors from the objective.
-        live = getattr(p, "_prior", None)
-        port = getattr(p, "_port", None)
-        spec = getattr(port, "prior", None) if port is not None else None
-        if live is None and spec is None:
-            continue
-        prior = getattr(p, "prior", None)
+        prior = _smooth_prior(p)
         if prior is None:
             continue
         try:
@@ -2265,9 +2288,9 @@ def get_chi2(
     ...     def update_model(self):
     ...         pass
     >>> m = _DummyModel()
-    >>> round(get_chi2([], m, reduced=False), 1)
+    >>> float(round(get_chi2([], m, reduced=False), 1))
     2.0
-    >>> round(get_chi2([], m, reduced=True), 1)
+    >>> float(round(get_chi2([], m, reduced=True), 1))
     2.0
     """
     chi2 = (get_wres(parameter_values, model)**2.0).sum()
@@ -2288,13 +2311,20 @@ def lnprior(
 ) -> float:
     """Log-prior probability of a set of parameter values.
 
-    When ``bounds`` is given (or the fit's free parameters carry no priors),
-    the prior is the uniform box prior: ``0`` inside the bounds and ``-inf``
-    for any violated bound -- the historical behaviour. Otherwise the prior is
-    the sum of the per-parameter log densities
-    :meth:`chisurf.core.fitting.priors.Prior.lnpdf` over the free parameters
-    (bounds are the :class:`~chisurf.core.fitting.priors.UniformPrior` special
-    case, so they are included automatically).
+    The prior is the sum of the per-parameter log densities
+    :meth:`chisurf.core.fitting.priors.Prior.lnpdf` over the fit's free
+    parameters. Bounds are the
+    :class:`~chisurf.core.fitting.priors.UniformPrior` special case of a prior,
+    so ``bounds`` is an *additional*, cheap box rejection rather than a
+    replacement: it is checked first and short-circuits to ``-inf`` before any
+    parameter prior (or, via :func:`lnprob`, any model evaluation) is touched.
+    Parameters whose only prior is that box are then skipped, because the box
+    has already been enforced.
+
+    ``bounds`` used to suppress the parameter priors entirely, which silently
+    dropped every informative prior from the sampled posterior while
+    maximum-a-posteriori estimation (:func:`_prior_residuals`) still honoured
+    them -- optimiser and sampler targeted different distributions.
 
     Parameters
     ----------
@@ -2302,11 +2332,11 @@ def lnprior(
         Parameter values to be tested, in the order of the fit's free
         parameters.
     fit : Fit
-        Fit providing the free parameters and their priors. May be *None* only
-        when explicit ``bounds`` are supplied.
+        Fit providing the free parameters and their priors. May be *None*, in
+        which case only ``bounds`` contributes.
     bounds : list of (float, float), optional
-        Explicit bounds. When provided, only this uniform box prior is used and
-        ``fit`` is not consulted.
+        Explicit box bounds, checked before the priors. When omitted, the box
+        arrives through each parameter's own uniform prior instead.
 
     Examples
     --------
@@ -2323,15 +2353,17 @@ def lnprior(
                 return -np.inf
             if ub is not None and value > ub:
                 return -np.inf
+
+    if fit is None:
         return 0.0
 
     params = list(getattr(fit.model, "parameters", []))
-    priors = [getattr(p, "prior", None) for p in params]
-    if not any(pr is not None for pr in priors):
-        # No explicit priors: fall back to the uniform box prior from bounds.
-        return lnprior(
-            parameter_values, fit, bounds=fit.model.parameter_bounds
-        )
+    if bounds is None:
+        # No box was applied above, so every prior -- including the uniform ones
+        # standing in for bounds -- has to contribute.
+        priors = [getattr(p, "prior", None) for p in params]
+    else:
+        priors = [_smooth_prior(p) for p in params]
 
     lp = 0.0
     for pr, value in zip(priors, parameter_values):
@@ -2341,6 +2373,46 @@ def lnprior(
         if not np.isfinite(lp):
             return -np.inf
     return lp
+
+
+def lnprob_parts(
+        parameter_values: typing.List[float],
+        fit: Fit,
+        chi2max: float = float("inf"),
+        bounds: typing.List[
+            typing.Tuple[float, float]
+        ] = None
+) -> typing.Tuple[float, float, float]:
+    """Return the log-likelihood, log-prior and chi² of a parameter vector.
+
+    The three terms that :func:`lnprob` adds up, kept apart. Samplers record
+    them separately so that a chain carries the *data* misfit (``chi2``) rather
+    than a mixture of misfit and prior, and so that the posterior can afterwards
+    be reweighted under a different prior without resampling.
+
+    Parameters
+    ----------
+    parameter_values : list of float
+        Parameter values at which to evaluate the posterior.
+    fit : Fit
+        Fit providing the model, the parameter priors and the default bounds.
+    chi2max : float, optional
+        Hard cutoff on chi²; above it the log-likelihood is ``-inf``.
+    bounds : list of (float, float), optional
+        Explicit box bounds, checked before the model is evaluated.
+
+    Returns
+    -------
+    tuple of float
+        ``(lnlike, lnprior, chi2)``. When the prior rejects the vector the
+        model is never evaluated and ``(-inf, -inf, inf)`` is returned.
+    """
+    lp = lnprior(parameter_values, fit, bounds=bounds)
+    if not np.isfinite(lp):
+        return float("-inf"), float("-inf"), float("inf")
+    chi2 = get_chi2(parameter_values, model=fit.model, reduced=False)
+    lnlike = -0.5 * chi2 if chi2 < chi2max else -np.inf
+    return float(lnlike), float(lp), float(chi2)
 
 
 def lnprob(
@@ -2358,18 +2430,20 @@ def lnprob(
 
     ``lnlikelihood = -0.5 * chi2``
 
-    and ``chi2`` is obtained from :func:`get_chi2`.
+    and ``chi2`` is obtained from :func:`get_chi2`. Use :func:`lnprob_parts`
+    when the two terms are needed separately.
 
     Parameters
     ----------
     parameter_values : list of float
         Parameter values at which to evaluate the posterior.
     fit : Fit
-        Fit providing the model and default bounds.
+        Fit providing the model, the parameter priors and default bounds.
     chi2max : float, optional
         Hard cutoff on chi²; values above this threshold return ``-inf``.
     bounds : list of (float, float), optional
-        Explicit bounds to use for the prior.
+        Explicit box bounds, checked before the model is evaluated. This does
+        *not* replace the parameter priors -- see :func:`lnprior`.
 
     Examples
     --------
@@ -2396,24 +2470,18 @@ def lnprob(
     >>> fit = _DummyFit()
     >>> bounds = [(0.0, 2.0)]
     >>> val = lnprob([1.0], fit, chi2max=10.0, bounds=bounds)
-    >>> isinstance(val, float) and np.isfinite(val)
+    >>> bool(isinstance(val, float) and np.isfinite(val))
     True
     >>> lnprob([10.0], fit, chi2max=10.0, bounds=bounds)
     -inf
     """
-    lp = lnprior(
+    lnlike, lp, _ = lnprob_parts(
         parameter_values,
         fit,
+        chi2max=chi2max,
         bounds=bounds
     )
     if not np.isfinite(lp):
         return float("-inf")
-    else:
-        chi2 = get_chi2(
-            parameter_values,
-            model=fit.model,
-            reduced=False
-        )
-        lnlike = -0.5 * chi2 if chi2 < chi2max else -np.inf
-        return lnlike + lp
+    return lnlike + lp
 
