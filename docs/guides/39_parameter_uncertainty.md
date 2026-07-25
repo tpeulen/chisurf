@@ -263,6 +263,32 @@ that actually worked — labelled with which one that was. `laplace` costs
 nothing, `profile` costs a re-fit per scan point, `mcmc` costs a sampling run;
 `stored` costs nothing at all and reports only what is already there.
 
+## 11. From a script, a macro or the server
+
+The same query is on the stable API facade, so it works from the QtConsole, a
+macro, a plugin, the CLI, and over RPC:
+
+```python
+from chisurf.core.api import ChiSurfAPI
+api = ChiSurfAPI()
+
+r = api.posterior(engine='stored')          # what is already known — free
+for m in r['marginals']:
+    print(m['name'], m['value'], m['low'], m['high'], m['method'])
+
+r = api.posterior(engine='laplace', joint=['tau1', 'x1'])
+print(r['joint']['correlation'])
+print(r['log_evidence'])
+
+# Fix a parameter and re-optimise the rest, then ask about another.
+r = api.posterior(engine='laplace', condition={'tau2': 4.0}, targets=['tau1'])
+```
+
+Over the wire it is the `fit.posterior` RPC with the same arguments. `stored`
+and `laplace` return immediately; `profile` and `mcmc` block for as long as they
+take, so use the `fit.sample.*` / `fit.parameter_scan.*` job endpoints when you
+need to poll progress.
+
 ## Checklist
 
 - [ ] Priors reflect knowledge you actually have, not a convenience.

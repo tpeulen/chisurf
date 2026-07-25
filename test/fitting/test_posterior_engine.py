@@ -168,9 +168,22 @@ def test_conditioning_fixes_a_parameter_and_refits_the_rest():
     before = dict(zip(names, model.parameter_values))
     target = names[0]
 
+    unconditioned = E.LaplaceEngine(fit).add_target(names[1]).run().marginal(names[1])
+
     eng = E.LaplaceEngine(fit)
-    eng.condition(target, before[target] + 0.05).add_target(names[1]).run()
-    assert np.isfinite(eng.marginal(names[1]).sd)
+    eng.condition(target, before[target] + 0.1).add_target(names[1]).run()
+    conditioned = eng.marginal(names[1])
+    assert np.isfinite(conditioned.sd)
+    # Conditioning is not pinning a value and leaving everything else alone:
+    # the rest must be re-optimised given it. These two are correlated, so the
+    # answer has to move.
+    assert conditioned.value != pytest.approx(unconditioned.value, abs=1e-9)
+
+    # A conditioned parameter is fixed, so it leaves the free vector entirely
+    # and correctly has no marginal of its own.
+    held = E.LaplaceEngine(fit)
+    held.condition(target, before[target]).add_target(target).run()
+    assert held.marginal(target).method == 'none'
 
     # Everything is restored: value and fixed-state. Group parameter names are
     # prefixed, so resolve through the engine rather than matching q.name.

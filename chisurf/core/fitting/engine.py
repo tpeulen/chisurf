@@ -411,24 +411,58 @@ class PosteriorEngine(abc.ABC):
                     return local, str(q.name)
         return self.fit, str(getattr(parameter, "name", ""))
 
-    def _apply_evidence(self) -> typing.List[typing.Tuple[typing.Any, bool, float]]:
-        """Fix every conditioned parameter, returning what to restore."""
-        restore = []
+    def _apply_evidence(self):
+        """Fix every conditioned parameter and re-optimise the rest.
+
+        Conditioning is not just pinning a value: the remaining parameters have
+        to move to their best position *given* it, or the answer is the
+        unconditioned one with a parameter overwritten. That re-fit is what a
+        profile scan does at each of its points, and doing it here is what makes
+        ``condition`` mean the same thing for every engine.
+
+        A conditioned parameter is ``fixed``, so it leaves the free-parameter
+        vector entirely -- and therefore has no marginal, which is the correct
+        answer for something held at a known value.
+
+        Returns
+        -------
+        tuple or None
+            Opaque restore token for :meth:`_restore_evidence`.
+        """
+        if not self._evidence:
+            return None
+        # Snapshot every free value *before* fixing anything, so the re-fit can
+        # be undone whatever it moves.
+        before = [(p, float(p.value)) for p in self.model.parameters_all
+                  if hasattr(p, "value")]
+        fixed = []
         for name, value in self._evidence.items():
             p = self._parameter(name)
             if p is None:
                 continue
-            restore.append((p, bool(p.fixed), float(p.value)))
+            fixed.append((p, bool(p.fixed)))
             p.value = value
             p.fixed = True
-        return restore
+        if fixed:
+            try:
+                self.fit.run()
+            except Exception as e:
+                cs.logging.warning(f"conditioning: re-fit failed ({e})")
+        return before, fixed
 
     @staticmethod
     def _restore_evidence(restore) -> None:
-        """Undo :meth:`_apply_evidence`."""
-        for p, was_fixed, value in restore:
+        """Undo :meth:`_apply_evidence`, including the re-fit it performed."""
+        if restore is None:
+            return
+        before, fixed = restore
+        for p, was_fixed in fixed:
             p.fixed = was_fixed
-            p.value = value
+        for p, value in before:
+            try:
+                p.value = value
+            except Exception:
+                pass
 
 
 class LaplaceEngine(PosteriorEngine):

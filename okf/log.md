@@ -645,6 +645,30 @@
   [PRD-69](/prds/prd-69.md) the inference, this the query. See
   [PRD-70](/prds/prd-70.md) and the [fitting subsystem](/subsystems/fitting.md).
 
+* **The posterior query reaches the API and the wire (PRD-70).** Applying the
+  lesson from [PRD-69](/prds/prd-69.md) immediately rather than a phase later:
+  machinery only Python can reach benefits nobody. The three estimators were
+  still exposed over RPC as three separate job protocols (`fit.sample.*`,
+  `fit.parameter_scan.*`, error estimates riding along on a fit) even though the
+  in-process fragmentation was gone. Added `fits.fit_posterior` +
+  the `fit.posterior` RPC and `ChiSurfAPI.posterior(...)`, carrying the whole
+  query vocabulary — `engine`, `targets`, `joint`, `condition`, `p_value`,
+  `global_posterior` — and returning a JSON-safe payload (marginals, joint
+  covariance and correlation, log evidence). `stored`/`laplace` answer
+  immediately; `profile`/`mcmc` block, so the job endpoints stay for polled
+  progress. Writing the smoke test exposed that **`condition` did not do what it
+  documented**: it pinned the value and computed the answer *there*, so the
+  reported marginal was the unconditioned one with a parameter overwritten — the
+  conditioned answer for a correlated pair was identical to the unconditioned
+  one, which is exactly what conditioning should never produce. The remaining
+  parameters are now re-fitted given the conditioned value (what a profile scan
+  does at each of its points), and a conditioned parameter leaves the free
+  vector entirely so it correctly has no marginal of its own. Pinning `c` at
+  +0.1 now moves `a` from 1.20086 to 1.19387, consistent with their −0.74
+  correlation. 8 tests in `test/fitting/test_posterior_api.py`, including one
+  asserting the RPC is actually registered — an unregistered service function is
+  unreachable however good it is.
+
 * **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
   The posterior of a group already factorises over its datasets, but
   `GlobalFitModel` flattened every local model's free parameters plus the

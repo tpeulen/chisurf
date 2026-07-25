@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import threading
+
+import numpy as np
+
 from typing import Any, Dict, List, Optional
 
 from chisurf.server.services import (
@@ -1164,6 +1167,106 @@ def fit_sample_start(
     t = threading.Thread(target=_run, daemon=True, name=f"sampling-{job_id[:8]}")
     t.start()
     return {"ok": True, "job_id": job_id}
+
+
+def fit_posterior(
+    state: SessionState,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
+    engine: str = "stored",
+    targets: list[str] | None = None,
+    joint: list[str] | None = None,
+    condition: dict[str, float] | None = None,
+    p_value: float = 0.68,
+    options: dict[str, Any] | None = None,
+    global_posterior: bool = False,
+) -> ServiceResult:
+    """Ask one question of any uncertainty estimator.
+
+    The three estimators reach RPC as three separate job protocols
+    (``fit.sample.*``, ``fit.parameter_scan.*``, and error estimates riding
+    along on a fit) even though they answer the same question. This is the one
+    query surface over :mod:`chisurf.core.fitting.engine`.
+
+    Parameters
+    ----------
+    state : SessionState
+        Server session.
+    fit_index, fit_uid : int or str, optional
+        Which fit to query.
+    engine : {"stored", "laplace", "profile", "mcmc", "auto"}, optional
+        Which estimator. ``stored`` reports what has already been computed and
+        costs nothing; ``laplace`` is a covariance evaluation. ``profile`` and
+        ``mcmc`` **block** for as long as they take -- use the existing
+        ``fit.sample.*`` / ``fit.parameter_scan.*`` job endpoints when the
+        caller needs to poll.
+    targets : list of str, optional
+        Parameters to report. Defaults to every free parameter.
+    joint : list of str, optional
+        Parameters to report a joint answer over.
+    condition : dict, optional
+        Parameters to hold fixed (``name -> value``) while the rest are
+        re-optimised.
+    p_value : float, optional
+        Interval coverage.
+    options : dict, optional
+        Engine options, e.g. ``steps`` and ``n_runs`` for ``mcmc``.
+    global_posterior : bool, optional
+        Query a group's *joint* posterior rather than its selected member's.
+
+    Returns
+    -------
+    ServiceResult
+        ``marginals`` (one entry per target), ``joint`` when requested,
+        ``log_evidence``, and the ``engine`` that answered.
+    """
+    fit, idx = _resolve_fit(state, fit_index, fit_uid)
+    if fit is None:
+        return service_error("fit not found", error_code=NOT_FOUND)
+
+    from chisurf.core.fitting import engine as engine_module
+    from chisurf.core.fitting import factorgraph
+
+    model = factorgraph.posterior_model(fit) if global_posterior else getattr(fit, "model", None)
+    try:
+        eng = engine_module.get_engine(str(engine), fit, model=model)
+    except ValueError as e:
+        return service_error(str(e), error_code=INVALID_INPUT)
+
+    for name, value in (condition or {}).items():
+        eng.condition(str(name), float(value))
+    if targets:
+        for name in targets:
+            eng.add_target(str(name))
+    else:
+        eng.add_all_targets()
+    if joint:
+        eng.add_joint_target([str(n) for n in joint])
+
+    try:
+        eng.run(p_value=float(p_value), **(options or {}))
+    except Exception as e:
+        return service_error(f"{engine} engine failed: {e}")
+
+    payload: dict[str, Any] = {
+        "ok": True,
+        "fit_index": idx,
+        "engine": str(engine),
+        "p_value": float(p_value),
+        "marginals": [m.as_dict() for m in eng.marginals()],
+    }
+    evidence = eng.log_evidence()
+    payload["log_evidence"] = float(evidence) if np.isfinite(evidence) else None
+    if joint:
+        j = eng.joint([str(n) for n in joint])
+        payload["joint"] = None if j is None else {
+            "names": list(j.names),
+            "mean": [float(v) for v in np.asarray(j.mean).ravel()],
+            "covariance": [[float(v) for v in row] for row in np.asarray(j.covariance)],
+            "correlation": [[float(v) for v in row] for row in np.asarray(j.correlation)],
+            "method": j.method,
+        }
+    return payload
 
 
 def fit_sample_cancel(

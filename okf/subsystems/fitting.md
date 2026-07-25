@@ -262,6 +262,19 @@ them, so a report or a plot consumes one without knowing its origin.
 `Joint.correlation` is what a global fit is usually really after: a pair at ±1 is
 one measurement, not two.
 
+**Reachable, not just importable.** `ChiSurfAPI.posterior(...)` and the
+`fit.posterior` RPC (`fits.fit_posterior`) expose the whole query vocabulary --
+`engine`, `targets`, `joint`, `condition`, `p_value`, `global_posterior` --
+returning a JSON-safe payload. `stored`/`laplace` are immediate; `profile` and
+`mcmc` block, so the existing `fit.sample.*` / `fit.parameter_scan.*` job
+endpoints remain for polled progress.
+
+**`condition` re-optimises.** Pinning a value and leaving the rest alone would
+return the unconditioned answer with one parameter overwritten. The remaining
+parameters are re-fitted given the conditioned value -- which is what a profile
+scan does at each of its points -- and a conditioned parameter leaves the free
+vector entirely, so it correctly has no marginal of its own.
+
 `ProfileEngine` routes each scan to the *member* that owns the parameter — group
 names are prefixed (`3:tau`) and a member only knows its own. `approx_grad`,
 `covariance_matrix`, `lnprior`/`lnprob`/`lnprob_parts` and every sampler take an

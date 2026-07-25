@@ -384,6 +384,80 @@ class ChiSurfAPI:
             },
         }
 
+    def posterior(
+        self,
+        fit_index: int | None = None,
+        fit_uid: str | None = None,
+        engine: str = "stored",
+        targets: list[str] | None = None,
+        joint: list[str] | None = None,
+        condition: dict[str, float] | None = None,
+        p_value: float = 0.68,
+        global_posterior: bool = False,
+        **options: Any,
+    ) -> dict[str, Any]:
+        """Ask what the data supports for a fit's parameters.
+
+        One question, whichever estimator answers it. See
+        :mod:`chisurf.core.fitting.engine`.
+
+        Parameters
+        ----------
+        fit_index, fit_uid : int or str, optional
+            Which fit to query; defaults to the current one.
+        engine : {"stored", "laplace", "profile", "mcmc", "auto"}, optional
+            Which estimator. ``stored`` reports what has already been computed
+            and costs nothing -- the right choice for a summary table.
+            ``profile`` and ``mcmc`` **block** for as long as they take.
+        targets : list of str, optional
+            Parameters to report; defaults to every free parameter.
+        joint : list of str, optional
+            Parameters to report a joint answer (covariance, correlation) over.
+            Only a sampled posterior has a real one.
+        condition : dict, optional
+            Parameters to hold fixed (``name -> value``) while the rest are
+            re-optimised -- what a profile scan does, available to every engine.
+        p_value : float, optional
+            Interval coverage.
+        global_posterior : bool, optional
+            Query a group's *joint* posterior rather than its selected member's.
+        **options
+            Engine options, e.g. ``steps`` and ``n_runs`` for ``mcmc``.
+
+        Returns
+        -------
+        dict
+            ``marginals`` (``name``, ``value``, ``sd``, ``low``, ``high``,
+            ``method``, ``quantiles``, ``diagnostics``), ``joint`` when
+            requested, ``log_evidence``, and the ``engine`` that answered.
+
+        Examples
+        --------
+        >>> api = ChiSurfAPI()                              # doctest: +SKIP
+        >>> api.posterior(engine='laplace')['marginals'][0]['method']
+        'laplace'
+        """
+        if self.mode == "server" and self.client is not None:
+            return self.client.fit__posterior(
+                fit_index=fit_index, fit_uid=fit_uid, engine=engine,
+                targets=targets, joint=joint, condition=condition,
+                p_value=p_value, options=options or None,
+                global_posterior=global_posterior,
+            )
+        from chisurf.server.services import fits as _fits
+
+        class _State:
+            """Adapter presenting the process-local fits to the service layer."""
+
+            fits = property(lambda self: _local_fits())
+
+        return _fits.fit_posterior(
+            _State(), fit_index=fit_index, fit_uid=fit_uid, engine=engine,
+            targets=targets, joint=joint, condition=condition,
+            p_value=p_value, options=options or None,
+            global_posterior=global_posterior,
+        )
+
     def run_fit(self, fit_index: Optional[int] = None, fit_uid: Optional[str] = None) -> Dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.fit__run(fit_index=fit_index, fit_uid=fit_uid)

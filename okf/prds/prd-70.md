@@ -112,6 +112,16 @@ fell out of this: an engine over a group's *global* model otherwise silently got
 the selected member's 2x2 covariance and reported `nan` for every other
 parameter.
 
+Reachability landed with it, because the lesson from
+[PRD-69](prd-69.md) was that machinery only Python can reach benefits nobody:
+`ChiSurfAPI.posterior(...)` plus the `fit.posterior` RPC expose the full query
+vocabulary with a JSON-safe payload.
+
+`condition` also had to be made to mean what it says -- pinning a value and
+leaving everything else alone returns the unconditioned answer with one
+parameter overwritten. The remaining parameters are now re-fitted given the
+conditioned value, as a profile scan does at each of its points.
+
 # Non-goals
 
 Expectation propagation, gradient-based samplers, and a GUI surface for the

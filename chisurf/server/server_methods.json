@@ -126,6 +126,7 @@
     {"rpc": "fit.sample.start", "service": "fits.fit_sample_start"},
     {"rpc": "fit.sample.cancel", "service": "fits.fit_sample_cancel"},
     {"rpc": "fit.sample.status", "service": "fits.fit_sample_status"},
+    {"rpc": "fit.posterior", "service": "fits.fit_posterior"},
     {"rpc": "fit.parameter_scan.start", "service": "fits.fit_parameter_scan_start"},
     {"rpc": "fit.parameter_scan.cancel", "service": "fits.fit_parameter_scan_cancel"},
     {"rpc": "fit.parameter_scan.result", "service": "fits.fit_parameter_scan_result"},
