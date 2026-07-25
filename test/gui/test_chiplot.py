@@ -123,6 +123,17 @@ def test_set_menu_enabled_returns_self(qapp):
     assert plot.set_menu_enabled(True) is plot
 
 
+def test_set_interactive_returns_self(qapp):
+    """``set_interactive`` toggles mouse+menu on a Plot and chains.
+
+    Regression guard for PRD-64 Batch 16 (lightpath node thumbnails), which
+    build static preview plots with neither pan/zoom nor a context menu.
+    """
+    plot = cp.Plot()
+    assert plot.set_interactive(mouse=False, menu=False) is plot
+    assert plot.set_interactive(mouse=True, menu=True) is plot
+
+
 def test_programmatic_set_bounds_is_signal_safe(qapp):
     """A programmatic ``set_bounds`` must not re-enter the on_change callback.
 
@@ -236,6 +247,8 @@ def test_migrated_modules_import(qapp):
         # Batch 15
         "chisurf.plugins.modelling.fret.gui.dock_tool",
         "chisurf.plugins.modelling.fret.gui.pair_selection_wizard",
+        # Batch 16
+        "chisurf.plugins.core.lightpath_simulator.gui.node_types",
     ):
         assert importlib.import_module(name) is not None
 

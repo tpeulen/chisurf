@@ -8,7 +8,6 @@ from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import WAVELENGT
 
 if TYPE_CHECKING:
     from qtpy import QtWidgets, QtCore, QtGui
-    import pyqtgraph as pg
 
 logger = logging.getLogger(__name__)
 
@@ -87,16 +86,16 @@ def finish_node_container(w: 'QtWidgets.QWidget'):
 def add_spectral_plot(container, layout, config):
     """Adds the 3-layer spectral plot section to a node."""
     from qtpy import QtWidgets, QtCore
-    import pyqtgraph as pg
-    
-    plot_w = pg.PlotWidget(container)
+    from chisurf.gui import chiplot as cp
+
+    plot_w = cp.Plot(container, background=None)
     plot_w.setMinimumWidth(50)
     plot_w.setFixedHeight(100)
-    plot_w.setBackground(None)
-    plot_w.getPlotItem().setMenuEnabled(False)
-    plot_w.getPlotItem().setMouseEnabled(x=False, y=False)
-    plot_w.hideAxis('left')
-    ax = plot_w.getAxis('bottom')
+    plot_w.set_interactive(mouse=False, menu=False)
+    # pyqtgraph-specific axis cosmetics for the compact node thumbnail — reached
+    # via the backend escape hatch (chiplot has no native verb yet; a gap).
+    plot_w.native.hideAxis('left')
+    ax = plot_w.native.getAxis('bottom')
     ax.setPen((200, 200, 200))
     ax.setHeight(20)
     ax.setStyle(tickTextOffset=2)
@@ -131,7 +130,7 @@ def add_spectral_plot(container, layout, config):
         if in_spec is not None and isinstance(in_spec, np.ndarray) and np.any(in_spec > 0):
             norm = np.max(in_spec)
             if norm > 0: in_spec = in_spec / norm
-            plot_w.plot(WAVELENGTHS, in_spec, pen=pg.mkPen((100, 100, 100), style=QtCore.Qt.DotLine))
+            plot_w.line(WAVELENGTHS, in_spec, pen=(100, 100, 100), style="dot")
             
         out_spec_dict = config.get("_output_spectra", {})
         out_spec = None
@@ -147,7 +146,7 @@ def add_spectral_plot(container, layout, config):
         if out_spec is not None and isinstance(out_spec, np.ndarray) and np.any(out_spec > 0):
             norm = np.max(out_spec)
             if norm > 0: out_spec = out_spec / norm
-            plot_w.plot(WAVELENGTHS, out_spec, pen=pg.mkPen((255, 255, 255), width=2.0))
+            plot_w.line(WAVELENGTHS, out_spec, pen=(255, 255, 255), width=2.0)
             
         # Draw node characteristic last so it overlays the white spectra
         node_char = config.get("_node_char")
@@ -156,11 +155,11 @@ def add_spectral_plot(container, layout, config):
                 # Normalize sample characteristics independently
                 c_abs = node_char[0] / max(np.max(node_char[0]), 1e-12)
                 c_em = node_char[1] / max(np.max(node_char[1]), 1e-12)
-                plot_w.plot(WAVELENGTHS, c_abs, pen=pg.mkPen((0, 200, 255), width=1.5))
-                plot_w.plot(WAVELENGTHS, c_em, pen=pg.mkPen((255, 180, 0), width=1.5))
+                plot_w.line(WAVELENGTHS, c_abs, pen=(0, 200, 255), width=1.5)
+                plot_w.line(WAVELENGTHS, c_em, pen=(255, 180, 0), width=1.5)
             else:
                 c_y = node_char / max(np.max(node_char), 1e-12)
-                plot_w.plot(WAVELENGTHS, c_y, pen=pg.mkPen((0, 255, 0), width=1.2))
+                plot_w.line(WAVELENGTHS, c_y, pen=(0, 255, 0), width=1.2)
 
     def on_toggle():
         visible = toggle_btn.isChecked()

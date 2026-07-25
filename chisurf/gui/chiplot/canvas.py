@@ -610,6 +610,15 @@ class Plot(QtWidgets.QWidget):
         self._canvas.set_aspect_locked(lock, ratio)
         return self
 
+    def set_interactive(self, *, mouse: bool = True, menu: bool = True) -> Plot:
+        """Enable/disable mouse pan-zoom and the right-click menu. Returns ``self``.
+
+        A convenience for static preview plots (e.g. node thumbnails) that want
+        neither pan/zoom nor a context menu.
+        """
+        self._canvas.set_interactive(mouse=mouse, menu=menu)
+        return self
+
     def invert_y(self, invert=True) -> Plot:
         """Invert the y-axis direction. Returns ``self``."""
         self._canvas.invert_y(invert)

@@ -683,6 +683,14 @@ class _PgCanvas(base.Canvas):
         except Exception:
             pass
 
+    def set_interactive(self, *, mouse=True, menu=True) -> None:
+        """Enable/disable mouse pan-zoom and the right-click menu."""
+        try:
+            self._pi.getViewBox().setMouseEnabled(x=mouse, y=mouse)
+        except Exception:
+            pass
+        self.set_menu_enabled(menu)
+
     def provides_native_menu(self) -> bool:
         """Pyqtgraph ships its own rich Export/CSV/image right-click menu."""
         return True

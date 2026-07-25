@@ -225,6 +225,9 @@ class Canvas(abc.ABC):
     def set_menu_enabled(self, enabled: bool) -> None:
         """Enable/disable the backend's own right-click menu (default no-op)."""
 
+    def set_interactive(self, *, mouse: bool = True, menu: bool = True) -> None:
+        """Enable/disable mouse pan-zoom and the right-click menu (default no-op)."""
+
     def provides_native_menu(self) -> bool:
         """Whether the backend already shows its own rich right-click menu.
 

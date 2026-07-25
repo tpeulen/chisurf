@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 35):*
+*Landed so far (allow-list 76 → 34):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -422,6 +422,16 @@ screenshot/qtbot verification after each cluster.
   curves; `pg.intColor`→`cp.int_color`, `plot`→`line`, `setData`→`set_data`) and
   `pair_selection_wizard.py` (a single ⟨RMSD⟩-vs-pairs curve). Both plain
   `PlotWidget`→`cp.Plot` + `set_labels`/`grid`/`line` maps. Import-clean extended.
+- **Batch 16** (allow-list 35 → 34) — migrated the lightpath-simulator node
+  spectral thumbnail (`plugins/core/lightpath_simulator/gui/node_types.py`): a
+  compact per-node preview plot. Grew the seam with **`Plot.set_interactive(mouse=,
+  menu=)`** (the backend already implemented it for `ImageView`; now on the Plot
+  canvas too), so the thumbnail disables pan/zoom + menu in one call rather than
+  reaching for the viewbox. Also removed a `TYPE_CHECKING`-only `import pyqtgraph`
+  (the seam regex counts it) that no annotation used. The compact-axis cosmetics
+  (`hideAxis`, bottom-axis pen/height/style) have no chiplot verb yet and stay as
+  flagged `.native` passthroughs. New `test_set_interactive_returns_self`;
+  `add_spectral_plot` exercised headless.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

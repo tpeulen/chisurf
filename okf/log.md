@@ -571,6 +571,16 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot Batch 16 — lightpath node thumbnail off pyqtgraph (allow-list
+  35 → 34).** Migrated `plugins/core/lightpath_simulator/gui/node_types.py`
+  (compact per-node spectral preview plot). Grew the seam with
+  `Plot.set_interactive(mouse=, menu=)` (backend already had it for ImageView; now
+  on the Plot canvas), so the thumbnail kills pan/zoom + menu in one call. Removed
+  a `TYPE_CHECKING`-only `import pyqtgraph` the seam regex counts. Compact-axis
+  cosmetics (`hideAxis`, bottom-axis pen/height/style) stay flagged `.native`
+  passthroughs. New `test_set_interactive_returns_self`; `add_spectral_plot`
+  exercised headless. See [PRD-64](prds/prd-64.md).
+
 * **chiplot Batch 15 — FRET-docking plot widgets off pyqtgraph (allow-list
   37 → 35).** Migrated `plugins/modelling/fret/gui/dock_tool.py` (per-trial
   score-vs-step curves; `pg.intColor`→`cp.int_color`, `plot`→`line`,
