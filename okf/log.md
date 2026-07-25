@@ -1508,6 +1508,15 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot Batch 18 — node-editor PT preview plot off pyqtgraph (allow-list
+  33 → 32).** Migrated `gui/widgets/node_editor/widgets/pt_plot_widget.py` (a small
+  themed PT plot, optional-pyqtgraph). `pg is None` guard → `_plotting_available()`
+  backend probe; viewbox bg via `set_background(to_color(bg).with_alpha(a))`;
+  grid/line/set_data native; themed axis pens stay a flagged `.native`
+  passthrough. First batch **verified by GUI screenshot** (offscreen `grab()`,
+  damped-sine, inspected: white curve on themed dark bg, foreground title/axes,
+  grid, correct ranges). New `test_pt_plot_widget_renders`. See [PRD-64](prds/prd-64.md).
+
 * **chiplot Batch 17 — burst 2CDE tool off pyqtgraph (allow-list 34 → 33).**
   Migrated `plugins/burst/burst_2cde/gui/tool.py` (2CDE-vs-E scatter / histogram
   fallback): `PlotWidget`→`cp.Plot`, the `plot(pen=None, symbol="o")` scatter →
