@@ -20,6 +20,11 @@ _PKG = _ROOT / "chisurf"
 _ALLOWLIST = _ROOT / "test" / "pyqtgraph_import_allowlist.txt"
 _SANCTIONED = "chisurf/gui/chiplot/backends/pyqtgraph_backend.py"
 _IMPORT_RE = re.compile(r"^\s*(?:import\s+pyqtgraph|from\s+pyqtgraph)", re.MULTILINE)
+_DOCKAREA_RE = re.compile(
+    r"^\s*(?:import\s+pyqtgraph\.dockarea|from\s+pyqtgraph\.dockarea\s+import|"
+    r"from\s+pyqtgraph\s+import\s+dockarea)",
+    re.MULTILINE,
+)
 
 
 def _load_allowlist() -> set[str]:
@@ -59,4 +64,22 @@ def test_allowlist_has_no_stale_entries():
     assert not stale, (
         "Allow-list entries no longer import pyqtgraph — remove them from "
         "test/pyqtgraph_import_allowlist.txt:\n  " + "\n  ".join(stale)
+    )
+
+
+def test_no_pyqtgraph_dockarea():
+    """``pyqtgraph.dockarea`` is deprecated repo-wide — use the chisurf DockArea.
+
+    Replaced by ``chisurf.gui.widgets.dock_area.dock_area`` (DockArea /
+    DockSplitter). This guard forbids reintroducing the pyqtgraph dock system
+    anywhere, including the sanctioned chiplot backend.
+    """
+    offenders = sorted(
+        path.relative_to(_ROOT).as_posix()
+        for path in _PKG.rglob("*.py")
+        if _DOCKAREA_RE.search(path.read_text(encoding="utf-8", errors="ignore"))
+    )
+    assert not offenders, (
+        "pyqtgraph.dockarea is deprecated — use chisurf.gui.widgets.dock_area "
+        "(DockArea / DockSplitter) instead:\n  " + "\n  ".join(offenders)
     )

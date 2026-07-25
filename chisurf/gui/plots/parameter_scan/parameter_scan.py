@@ -6,7 +6,7 @@ import re
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtWidgets, QtCore
-from pyqtgraph.dockarea import DockArea, Dock
+from chisurf.gui.widgets.dock_area.dock_area import DockArea
 
 import chisurf as cs
 import chisurf.gui.decorators
@@ -269,15 +269,11 @@ class ParameterScanPlot(
 
         area = DockArea()
         self.layout.addWidget(area)
-        hide_title = plot_settings['hideTitle']
-        d2 = Dock("Chi2-Surface", hideTitle=hide_title)
 
         self.p1 = QtWidgets.QPlainTextEdit()
         p2 = pg.PlotWidget()
 
-        d2.addWidget(p2)
-
-        area.addDock(d2, 'top')
+        area.addTab(p2, "Chi2-Surface")
 
         distribution_plot = p2.getPlotItem()
 

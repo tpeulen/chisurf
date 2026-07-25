@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 from qtpy import QtWidgets
-from pyqtgraph.dockarea import DockArea, Dock
 import pyqtgraph.opengl as gl
 from matplotlib import cm
+
+from chisurf.gui.widgets.dock_area.dock_area import DockArea
 
 import chisurf.core.math
 import chisurf.core.fitting
@@ -66,19 +67,12 @@ class AvPlot(
         area = DockArea()
         self.layout.addWidget(area)
 
-        hide_title = chisurf.core.settings.gui['plot']['hideTitle']
-        d1 = Dock("quenching", size=(300, 300), hideTitle=hide_title)
-        d2 = Dock("diffusion", size=(300, 300), hideTitle=hide_title)
-        d3 = Dock("equilibrium", size=(300, 300), hideTitle=hide_title)
-
-        area.addDock(d1, 'top')
-        area.addDock(d2, 'right', d1)
-        area.addDock(d3, 'bottom')
-
         self.quenching_widget = gl.GLViewWidget()
         self.quenching_widget.opts['distance'] = 100
 
-        d1.addWidget(self.quenching_widget)
+        # Only the quenching (3-D) view carries content; the former empty
+        # "diffusion"/"equilibrium" docks are dropped.
+        area.addTab(self.quenching_widget, "quenching")
 
     def update(
             self,

@@ -12,8 +12,9 @@ from chisurf import typing
 from chisurf.gui import QtWidgets, QtCore, QtGui
 
 import pyqtgraph as pg
-import pyqtgraph.dockarea
 import matplotlib.colors
+
+from chisurf.gui.widgets.dock_area.dock_area import DockSplitter
 try:
     from qtpy import sip
 except ImportError:
@@ -930,30 +931,15 @@ class LinePlot(plotbase.Plot):
         plots['top_left_plot'].hideAxis('bottom')
         plots['top_right_plot'].hideAxis('bottom')
 
-        hide_dock_title = cs.core.settings.gui['plot']['hideTitle']
-        d1 = pyqtgraph.dockarea.Dock(
-            "Residuals",
-            size=(250, 80),
-            hideTitle=hide_dock_title
-        )
-        d2 = pyqtgraph.dockarea.Dock(
-            "A.corr. residuals",
-            size=(250, 80),
-            hideTitle=hide_dock_title
-        )
-        d3 = pyqtgraph.dockarea.Dock(
-            "Data",
-            size=(250, 250),
-            hideTitle=hide_dock_title
-        )
-        d1.addWidget(p1)
-        d2.addWidget(p2)
-        d3.addWidget(p3)
-
-        area = pyqtgraph.dockarea.DockArea()
-        area.addDock(d1, 'top')
-        area.addDock(d2, 'top', d1)
-        area.addDock(d3, 'bottom', d1)
+        # Vertical stack (chisurf dock impl): A.corr. residuals, residuals, data
+        # — matching the former pyqtgraph DockArea arrangement. Titles are hidden
+        # by default (settings gui.plot.hideTitle), so a plain DockSplitter is a
+        # faithful replacement; the panels' x-axes are linked below.
+        area = DockSplitter(QtCore.Qt.Vertical)
+        area.addWidget(p2)  # A.corr. residuals
+        area.addWidget(p1)  # Residuals
+        area.addWidget(p3)  # Data
+        area.setSizes([80, 80, 250])
         self.layout.addWidget(area)
 
         # Labels - using draggable text item for quality parameters

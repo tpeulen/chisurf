@@ -514,6 +514,16 @@ screenshot/qtbot verification after each cluster.
   stay flagged `.native` passthroughs. Screenshot-verified (blue decay + cyan
   dashed BG-corrected + green IRF on a log-y axis, three-entry legend). Imports IMP
   transitively → verified standalone, kept out of the shared import-clean sweep.
+- **`pyqtgraph.dockarea` deprecated repo-wide** — every `Dock`/`DockArea` usage now
+  goes through the chisurf dock implementation
+  (`chisurf.gui.widgets.dock_area.dock_area`): `plots/parameter_scan` and
+  `plots/av_plot` (single-panel) use `DockArea.addTab`; `plots/lineplot`'s vertical
+  residuals/a-corr/data stack uses a `DockSplitter` (titles are hidden by default,
+  so it matches exactly). A new `test_no_pyqtgraph_dockarea` seam guard forbids
+  reintroducing `pyqtgraph.dockarea` anywhere (incl. the sanctioned backend).
+  Before/after screenshots confirmed the layouts are unchanged. (These files still
+  import pyqtgraph for plots / `pyqtgraph.opengl`, so they remain allow-listed —
+  only the dock system moved.)
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,
