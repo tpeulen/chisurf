@@ -76,6 +76,41 @@
   that asserts the model reaches a `good`/`acceptable` verdict on its own.
   98 non-live agent tests, 47 panel tests, 5 live tests — all green.
 
+* **An MCMC run now reports whether it converged, and proposes along the
+  posterior instead of across it (PRD-69).** Two halves of "the sampling
+  framework is not ideal". *Diagnostics:* new
+  `chisurf/core/fitting/diagnostics.py` — FFT autocovariance, Stan-style
+  multi-chain ESS with Geyer initial-positive-sequence truncation, integrated
+  autocorrelation time, split Gelman-Rubin, Monte-Carlo error, a `2·τ` burn-in
+  suggestion and a warning list. Pinned against AR(1), whose
+  `τ = (1+φ)/(1-φ)` is closed-form, so the tests validate the estimator rather
+  than a reimplementation of it. Samplers return per-chain structure and an
+  acceptance rate; `sample_fit` pools the `n_runs` *independent* runs (previously
+  written to separate files and forgotten, discarding exactly what a cross-run
+  R-hat is computed from), writes `diagnostics.json`, logs the warnings and
+  returns the report. Chain files keep every draw. `Fit.posterior_summary` gained
+  an `mcmc` method outranking `profile` and `laplace`, and **omits** a chain that
+  failed its own checks rather than quoting a quantile that has no meaning.
+  *Proposal:* `walk_mcmc_blocked` proposes from a per-block **covariance** seeded
+  by `Fit.covariance_matrix` — the curvature at the optimum, computed for error
+  bars since forever and never used by the sampler — refined during warm-up and
+  frozen before recording. Blocks come from `FactorGraph.sampling_blocks()`:
+  variables grouped by identical likelihood-factor neighbourhood, a true
+  partition, cheapest first, one block for a single fit. Measured on a
+  deliberately collinear three-parameter fit (correlations ≈ 0.99), effective
+  samples per 1000 model evaluations: **`blocked` 64, `emcee` 26, `mcmc` 0.4** —
+  the historical diagonal walker returned 4 effective samples out of 8000 draws.
+  The win is the covariance, not the blocking: on a 6-dataset star-linked global
+  fit blocking gave 2.6× the ESS for 2.9× the evaluations, a wash when the local
+  model is cheap. Reachable as `sample_fit(method='blocked')`. Also found and
+  documented: **sampling a `FitGroup` samples the selected member, not the joint
+  posterior** — `lnprior`/`lnprob`/`lnprob_parts` and the blocked sampler now take
+  an optional `model=` so `factorgraph.posterior_model(fit)` can be targeted
+  explicitly; the default is unchanged. Docs:
+  `docs/concepts/parameter_uncertainty.md` +
+  `docs/guides/39_parameter_uncertainty.md` (every snippet executed). 28 tests.
+  See [PRD-69](/prds/prd-69.md) and the [fitting subsystem](/subsystems/fitting.md).
+
 * **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
   The posterior of a group already factorises over its datasets, but
   `GlobalFitModel` flattened every local model's free parameters plus the

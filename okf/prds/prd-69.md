@@ -126,10 +126,32 @@ recording, so the recorded chain stays a homogeneous Markov chain.
       returns the report.
 - [x] `Fit.posterior_summary` reports an `mcmc` interval from a converged
       chain, and refuses to quote one from a chain that failed its checks.
-- [ ] `FactorGraph.sampling_blocks()` — partition by likelihood neighbourhood.
-- [ ] Blocked Metropolis with per-block adapted covariance, off by default until
-      measured; measured against the current sampler in ESS per model evaluation.
-- [ ] Tests, `okf/subsystems/fitting.md` updated, `okf/log.md` appended.
+- [x] `FactorGraph.sampling_blocks()` — partition by likelihood neighbourhood,
+      plus `block_cost()`.
+- [x] Blocked Metropolis with per-block adapted covariance, reachable as
+      `sample_fit(method='blocked')`, measured in ESS per model evaluation.
+- [x] Tests (28 across three files), `docs/concepts/parameter_uncertainty.md` +
+      `docs/guides/39_parameter_uncertainty.md`, `okf/subsystems/fitting.md`
+      updated, `okf/log.md` appended.
+
+## Measured
+
+A deliberately collinear three-parameter fit (parameter correlations ≈ 0.99),
+effective samples per 1000 local-model evaluations:
+
+| Sampler | Proposal | τ | ESS / 1000 evaluations |
+| --- | --- | --- | --- |
+| `mcmc` | diagonal | 2024 | 0.4 |
+| `emcee` | affine-invariant ensemble | 39 | 26 |
+| `blocked` | per-block covariance | 12 | **64** |
+
+The historical diagonal walker returned **4** effective samples out of 8000
+draws — the case this PRD exists for. The win is the *covariance*, not the
+blocking: on a 6-dataset star-linked global fit the block partition gave 2.6×
+the ESS for 2.9× the evaluations, i.e. a wash on a model whose evaluation is
+cheap. Blocking pays where a local model is expensive relative to the
+bookkeeping, and it is what lets a shared parameter be scaled separately from
+the private ones.
 
 # Non-goals
 

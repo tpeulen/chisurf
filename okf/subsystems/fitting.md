@@ -186,6 +186,44 @@ any free parameter the graph cannot connect to data.
 `Parameter.link`, `Parameter.fixed`, `FittingParameterGroup.find_parameters` and
 the `GlobalFitModel` membership mutators.
 
+# Posterior sampling and its diagnostics
+
+`chisurf/core/fitting/diagnostics.py` ([PRD-69](/prds/prd-69.md)) supplies the
+evidence a chain needs to be believed: FFT autocovariance, Stan-style multi-chain
+ESS (Geyer initial-positive-sequence truncation), integrated autocorrelation
+time, split Gelman–Rubin, Monte-Carlo standard error, a `2·τ` burn-in
+suggestion, a per-parameter `summarize` and `convergence_warnings`. Pinned
+against AR(1), whose `τ = (1+φ)/(1−φ)` is closed-form. Thresholds:
+`RHAT_THRESHOLD = 1.01`, `ESS_THRESHOLD = 400`.
+
+- All samplers return `chains` (per-chain, not only flattened) and
+  `acceptance_rate`. `sample_fit` pools the `n_runs` **independent** runs, writes
+  `diagnostics.json` beside `chains/`, logs the warnings and returns the report.
+  Chain files keep every draw — the burn-in is reported, not applied to the data.
+- An ensemble sampler's walkers are not independent chains, so a cross-walker
+  R̂ is optimistic; the decisive one is cross-run.
+- `Fit.posterior_summary` gained an `mcmc` method that outranks `profile` and
+  `laplace`. A chain failing its own checks is **omitted**, not quoted.
+
+| `method` | Proposal | ESS / 1000 evaluations, collinear posterior |
+| --- | --- | --- |
+| `mcmc` (`walk_mcmc`) | diagonal | 0.4 |
+| `emcee` (`sample_emcee`) | affine-invariant ensemble | 26 |
+| `blocked` (`walk_mcmc_blocked`) | per-block covariance | **64** |
+
+`walk_mcmc_blocked` seeds each block's proposal covariance from
+`Fit.covariance_matrix` (the curvature at the optimum — previously computed for
+error bars and never used by the sampler), refines it from the empirical
+covariance during warm-up, then **freezes** it so the recorded chain stays
+time-homogeneous. Blocks come from `FactorGraph.sampling_blocks()`: variables
+grouped by identical likelihood-factor neighbourhood — a true partition, cheapest
+block first, degenerating to one block for a single `Fit`.
+
+**Sampling a group samples one member.** `lnprior`/`lnprob`/`lnprob_parts` and
+`walk_mcmc_blocked` take an optional `model=`; without it they use `fit.model`,
+which for a `FitGroup` is the *selected member's* model. Pass
+`factorgraph.posterior_model(fit)` to sample the joint posterior.
+
 # Fitting a bare array through the real models
 
 `chisurf/core/fluorescence/decay_fit_model.py` builds a runnable `Fit` +

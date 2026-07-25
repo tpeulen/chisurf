@@ -511,6 +511,76 @@ class FactorGraph:
         """
         return self.cliques()
 
+    def sampling_blocks(self) -> typing.List[typing.Tuple[str, ...]]:
+        """Return a partition of the variables for block-wise sampling.
+
+        Variables are grouped by their **likelihood-factor neighbourhood**: two
+        variables land in the same block exactly when the same set of datasets
+        depends on both. Unlike :meth:`cliques` this is a true partition, which
+        is what a block sampler needs, and it is the right one on two counts at
+        once:
+
+        *Cost.* Every block move costs exactly the datasets in its shared
+        neighbourhood, so under the selective update of
+        :class:`~chisurf.core.models.global_model.globalfit.GlobalFitModel` a
+        star-shaped global fit yields one cheap block per dataset (one local
+        model each) plus one expensive block for the shared parameters, instead
+        of every proposal paying for every dataset.
+
+        *Statistics.* Variables constrained by the same data are the ones that
+        are actually correlated, and are therefore the ones that should move
+        together.
+
+        A single :class:`~chisurf.core.fitting.fit.Fit` has one neighbourhood
+        and so one block, and a block sampler over it degenerates gracefully to
+        an ordinary full-vector random walk.
+
+        Returns
+        -------
+        list of tuple of str
+            Disjoint blocks covering every variable, cheapest (fewest datasets)
+            first so that a sweep front-loads the inexpensive moves. Variables
+            no likelihood touches are grouped last.
+        """
+        groups: typing.Dict[typing.FrozenSet[int], typing.List[str]] = {}
+        for key in self.variables:
+            neighbourhood = frozenset(
+                self.factors[f].fit_index
+                for f in self.factors_of(key)
+                if self.factors[f].kind == LIKELIHOOD
+                and self.factors[f].fit_index is not None
+            )
+            groups.setdefault(neighbourhood, []).append(key)
+        ordered = sorted(
+            groups.items(),
+            # Cheap blocks first; ties broken on vector position so the
+            # partition is deterministic. An empty neighbourhood costs nothing
+            # to evaluate but explains nothing either, so it sorts last.
+            key=lambda kv: (
+                len(kv[0]) if kv[0] else len(self.likelihood_factors()) + 1,
+                min(self._index_of.get(k, 0) for k in kv[1]),
+            ),
+        )
+        return [
+            tuple(sorted(keys, key=lambda k: self._index_of.get(k, 0)))
+            for _, keys in ordered
+        ]
+
+    def block_cost(self, block: typing.Iterable[str]) -> int:
+        """Return how many local fits a move of ``block`` must recompute.
+
+        Parameters
+        ----------
+        block : iterable of str
+            Variable keys moved together.
+
+        Returns
+        -------
+        int
+            Number of likelihood factors that would have to be re-evaluated.
+        """
+        return len(self.affected_fits(block))
+
     def separators(self) -> typing.List[typing.Tuple[str, ...]]:
         """Return the distinct separators of the junction tree.
 

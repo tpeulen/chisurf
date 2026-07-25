@@ -16,6 +16,7 @@ ordering below runs from the physical fundamentals to the specific methods.
    tcspc_lifetime
    anisotropy
    fcs_correlation
+   parameter_uncertainty
 
 .. rubric:: Correlation methods
 

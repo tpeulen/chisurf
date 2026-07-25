@@ -202,6 +202,331 @@ def walk_mcmc(
     }
 
 
+def _seed_block_covariances(
+        fit: cs.core.fitting.fit.Fit,
+        blocks: list[np.ndarray],
+        state: np.ndarray,
+        step_size: float
+) -> list[np.ndarray]:
+    """Return an initial proposal covariance for each block.
+
+    The curvature of the objective at the optimum is very nearly the ideal
+    preconditioner, and :attr:`chisurf.core.fitting.fit.Fit.covariance_matrix`
+    already computes it for the error bars -- it was simply never used by the
+    sampler. Where it is unavailable or not positive definite for a block, fall
+    back to a diagonal scaled by the parameter values, which is what the
+    unblocked sampler has always done.
+
+    Parameters
+    ----------
+    fit : Fit
+        Fit supplying the covariance at the current parameters.
+    blocks : list of numpy.ndarray
+        Index arrays into the free-parameter vector, one per block.
+    state : numpy.ndarray
+        Current parameter vector, used for the fallback scale.
+    step_size : float
+        Relative proposal width used by the fallback.
+
+    Returns
+    -------
+    list of numpy.ndarray
+        One ``(k, k)`` covariance per block.
+    """
+    full = None
+    try:
+        cov, used = fit.covariance_matrix
+        cov = np.asarray(cov, dtype=np.float64)
+        used = list(used)
+        if cov.ndim == 2 and cov.shape[0] == len(used) == cov.shape[1]:
+            full = np.zeros((state.size, state.size), dtype=np.float64)
+            # ``covariance_matrix`` drops parameters the model does not respond
+            # to, so scatter the sub-matrix back into full-vector coordinates.
+            idx = np.array(used, dtype=int)
+            keep = idx < state.size
+            idx = idx[keep]
+            sub = cov[np.ix_(keep.nonzero()[0], keep.nonzero()[0])]
+            full[np.ix_(idx, idx)] = sub
+    except Exception:
+        full = None
+
+    fallback = np.abs(state) * step_size
+    fallback[fallback < 1e-15] = step_size
+
+    out = []
+    for block in blocks:
+        k = block.size
+        cov_b = None
+        if full is not None:
+            candidate = full[np.ix_(block, block)]
+            if np.all(np.isfinite(candidate)) and np.all(np.diag(candidate) > 0.0):
+                try:
+                    np.linalg.cholesky(
+                        candidate + 1e-12 * np.eye(k) * np.trace(candidate) / k
+                    )
+                    cov_b = candidate
+                except np.linalg.LinAlgError:
+                    cov_b = None
+        if cov_b is None:
+            cov_b = np.diag(fallback[block] ** 2)
+        out.append(cov_b)
+    return out
+
+
+def _cholesky_or_diagonal(cov: np.ndarray) -> np.ndarray:
+    """Return a Cholesky factor of ``cov``, falling back to its diagonal.
+
+    An adapted empirical covariance can be singular early in a warm-up (fewer
+    samples than dimensions, or a parameter that has not moved). Rather than
+    fail, ridge it and, if that still fails, drop the correlations -- a diagonal
+    proposal is worse but always valid.
+    """
+    k = cov.shape[0]
+    scale = float(np.trace(cov)) / max(1, k)
+    for ridge in (0.0, 1e-10, 1e-6, 1e-3):
+        try:
+            return np.linalg.cholesky(cov + ridge * scale * np.eye(k))
+        except np.linalg.LinAlgError:
+            continue
+    return np.diag(np.sqrt(np.maximum(np.diag(cov), 1e-30)))
+
+
+def walk_mcmc_blocked(
+        fit: cs.core.fitting.fit.Fit,
+        steps: int,
+        step_size: float = 0.1,
+        temp: float = 1.0,
+        thin: int = 1,
+        chi2max: float = np.inf,
+        callback: typing.Callable = None,
+        check_cancel: typing.Callable = None,
+        n_adapt: int = None,
+        blocks: typing.Sequence[typing.Sequence[int]] = None,
+        model: cs.core.models.Model = None
+) -> dict:
+    """Sample a fit block by block, with a per-block correlated proposal.
+
+    Two things separate this from :func:`walk_mcmc`. The proposal is a **full
+    covariance** per block rather than a diagonal, seeded from the curvature at
+    the optimum and then adapted, so correlated parameters (amplitude/lifetime
+    pairs, and anything a global fit shares) are proposed along the directions
+    the posterior actually extends in. And a move touches **one block** rather
+    than the whole vector, so under the selective update of
+    :class:`~chisurf.core.models.global_model.globalfit.GlobalFitModel` a block
+    confined to one dataset costs one local model evaluation instead of all of
+    them.
+
+    Blocks come from the fit's factor graph
+    (:meth:`~chisurf.core.fitting.factorgraph.FactorGraph.sampling_blocks`):
+    variables are grouped by the set of datasets that depend on them. For a
+    single-dataset fit that is one block, and this reduces to an ordinary
+    random walk with a correlated proposal.
+
+    Parameters
+    ----------
+    fit : chisurf.core.fitting.fit.Fit
+        Fit whose free parameters are sampled.
+    steps : int
+        Number of recorded sweeps (a sweep proposes every block once). Warm-up
+        sweeps are additional.
+    step_size : float
+        Relative proposal width used when no usable covariance is available.
+    temp : float, optional
+        Sampling temperature; values above one flatten the posterior.
+    thin : int, optional
+        Record the chain state only every ``thin`` sweeps.
+    chi2max : float, optional
+        Hard cutoff on chi²; proposals above it are always rejected.
+    callback : callable, optional
+        Called as ``callback(n_recorded, n_samples)`` after each recorded state.
+    check_cancel : callable, optional
+        Polled once per sweep; sampling stops early when it returns ``True``.
+    n_adapt : int, optional
+        Warm-up sweeps used to adapt the block covariances. Defaults to half the
+        chain (bounded to ``[200, 2000]``); ``0`` disables adaptation.
+    blocks : sequence of sequence of int, optional
+        Explicit blocks as index arrays into the free-parameter vector. Defaults
+        to the factor graph's partition.
+    model : chisurf.core.models.Model, optional
+        Model to sample. Defaults to ``fit.model``, which for a
+        :class:`~chisurf.core.fitting.fit.FitGroup` is the *selected member's*
+        model. Pass
+        :func:`chisurf.core.fitting.factorgraph.posterior_model` to sample a
+        group's joint posterior, which is where the blocking actually pays.
+
+    Returns
+    -------
+    dict
+        ``chi2r``, ``lnprior``, ``parameter_values``, ``parameter_names``,
+        ``chains``, ``acceptance_rate``, plus ``block_acceptance`` and
+        ``block_sizes`` per block.
+
+    Notes
+    -----
+    Adaptation happens entirely within the warm-up and is frozen before
+    recording, so the recorded chain is a time-homogeneous Markov chain whose
+    stationary distribution is the posterior. Adapting while recording would
+    break that guarantee.
+    """
+    if model is None:
+        model = fit.model
+    dim = model.n_free
+    state = np.asarray(model.parameter_values, dtype=np.float64)
+    thin = max(1, int(thin))
+    n_samples = max(1, int(steps) // thin)
+    bounds = model.parameter_bounds
+
+    if blocks is None:
+        blocks = _default_blocks(fit, dim, model)
+    block_idx = [np.asarray(b, dtype=int) for b in blocks if len(b)]
+    if not block_idx:
+        block_idx = [np.arange(dim, dtype=int)]
+
+    def _lnprob(vector):
+        """Return ``(lnpost, lnprior, chi2)`` of a parameter vector."""
+        lnlike, lnpr, c2 = cs.core.fitting.fit.lnprob_parts(
+            parameter_values=vector, fit=fit, chi2max=chi2max,
+            bounds=bounds, model=model
+        )
+        return lnlike + lnpr, lnpr, c2
+
+    cov = _seed_block_covariances(fit, block_idx, state, step_size)
+    factor = [_cholesky_or_diagonal(c) for c in cov]
+    # The optimal scaling of a random-walk Metropolis falls with the dimension
+    # of the move, so each block gets the target appropriate to its own size.
+    log_scale = [0.0] * len(block_idx)
+    target = [
+        0.44 if idx.size == 1 else max(0.234, 0.44 / np.sqrt(idx.size))
+        for idx in block_idx
+    ]
+
+    parts = _lnprob(state)
+    accepted = np.zeros(len(block_idx), dtype=np.int64)
+    proposed = np.zeros(len(block_idx), dtype=np.int64)
+
+    def _sweep(current, current_parts, adapt_step=None):
+        """Propose every block once; return the new state and its parts."""
+        for b, idx in enumerate(block_idx):
+            trial = current.copy()
+            draw = factor[b] @ np.random.normal(0.0, 1.0, idx.size)
+            trial[idx] = current[idx] + np.exp(log_scale[b]) * draw
+            trial_parts = _lnprob(trial)
+            proposed[b] += 1
+            if np.isfinite(trial_parts[0]):
+                delta = (trial_parts[0] - current_parts[0]) / temp
+                alpha = 1.0 if delta >= 0.0 else float(np.exp(delta))
+                if delta > np.log(np.random.rand()):
+                    current, current_parts = trial, trial_parts
+                    accepted[b] += 1
+            else:
+                alpha = 0.0
+            if adapt_step is not None:
+                # Robbins-Monro on the log scale: shrink while proposals are
+                # rejected too often, widen while they are accepted too often.
+                log_scale[b] += (alpha - target[b]) / adapt_step
+        return current, current_parts
+
+    cancelled = False
+    if n_adapt is None:
+        n_adapt = min(2000, max(200, (n_samples * thin) // 2))
+    n_adapt = max(0, int(n_adapt))
+
+    if n_adapt > 0:
+        warmup = np.empty((n_adapt, dim))
+        n_warm = 0
+        for i in range(n_adapt):
+            state, parts = _sweep(state, parts, adapt_step=(i + 1) ** 0.6)
+            warmup[i] = state
+            n_warm += 1
+            # Once the chain has explored, the empirical covariance of where it
+            # has been beats any a-priori guess -- including the curvature at
+            # the optimum, which only describes the posterior locally.
+            if i == n_adapt // 2 and n_warm > 2 * dim:
+                visited = warmup[:n_warm]
+                for b, idx in enumerate(block_idx):
+                    empirical = np.cov(visited[:, idx], rowvar=False)
+                    empirical = np.atleast_2d(empirical)
+                    if np.all(np.isfinite(empirical)) and np.all(np.diag(empirical) > 0):
+                        factor[b] = _cholesky_or_diagonal(empirical)
+                        log_scale[b] = 0.0
+            if check_cancel and check_cancel():
+                cancelled = True
+                break
+        accepted[:] = 0
+        proposed[:] = 0
+
+    parameter = np.empty((n_samples, dim))
+    lnprior = np.empty(n_samples)
+    chi2 = np.empty(n_samples)
+    n_recorded = 0
+
+    n_sweeps = n_samples * thin
+    for i_sweep in range(1, n_sweeps + 1):
+        if cancelled:
+            break
+        state, parts = _sweep(state, parts)
+        if i_sweep % thin == 0:
+            parameter[n_recorded] = state
+            lnprior[n_recorded] = parts[1]
+            chi2[n_recorded] = parts[2]
+            n_recorded += 1
+            if callback:
+                callback(n_recorded, n_samples)
+        if check_cancel and check_cancel():
+            break
+
+    parameter = parameter[:n_recorded]
+    lnprior = lnprior[:n_recorded]
+    chi2 = chi2[:n_recorded]
+    dof = float(model.n_points - model.n_free - 1.0)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        per_block = np.where(proposed > 0, accepted / np.maximum(proposed, 1), np.nan)
+
+    return {
+        'chi2r': chi2 / dof,
+        'lnprior': lnprior,
+        'parameter_values': parameter,
+        'parameter_names': model.parameter_names,
+        'chains': parameter[np.newaxis, :, :],
+        'acceptance_rate': float(accepted.sum() / max(1, proposed.sum())),
+        'block_acceptance': per_block,
+        'block_sizes': [int(idx.size) for idx in block_idx],
+    }
+
+
+def _default_blocks(
+        fit: cs.core.fitting.fit.Fit,
+        dim: int,
+        model: cs.core.models.Model = None
+) -> list[np.ndarray]:
+    """Return the factor graph's sampling blocks as parameter-vector indices.
+
+    Falls back to a single block covering every parameter -- i.e. an ordinary
+    full-vector random walk -- when no graph can be built.
+    """
+    try:
+        from chisurf.core.fitting import factorgraph
+        graph = factorgraph.build_factor_graph(
+            fit, model=model if model is not None else fit.model
+        )
+        out = []
+        for block in graph.sampling_blocks():
+            idx = [graph.index_of(k) for k in block]
+            idx = [i for i in idx if i is not None and 0 <= i < dim]
+            if idx:
+                out.append(np.array(sorted(idx), dtype=int))
+        covered = sorted(int(i) for b in out for i in b)
+        if covered == list(range(dim)):
+            return out
+        cs.logging.warning(
+            "blocked sampling: factor graph covers %d of %d parameters; "
+            "falling back to a single block", len(covered), dim
+        )
+    except Exception as e:
+        cs.logging.warning(f"blocked sampling: no factor graph ({e})")
+    return [np.arange(dim, dtype=int)]
+
+
 def sample_emcee(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
