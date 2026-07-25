@@ -193,6 +193,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{name}\n    {skill.description.strip()}")
             if skill.triggers:
                 print(f"    triggers: {', '.join(skill.triggers)}")
+            if skill.uses:
+                # A composed skill is unreadable without knowing what it is
+                # composed of: on its own it is only the joins between steps.
+                print(f"    uses: {', '.join(skill.uses)}")
         return 0
 
     if arguments.list_examples:
