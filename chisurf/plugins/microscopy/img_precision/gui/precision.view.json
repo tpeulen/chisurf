@@ -107,7 +107,7 @@
                 {
                   "type": "value", "attr": "n_lags", "label": "Lags fitted",
                   "kind": "int", "minimum": 1, "maximum": 15,
-                  "description": "Largest lag included on each axis. Cost grows as the fourth power of this, so raising it is expensive; the reference implementation uses 15."
+                  "description": "Largest lag included on each axis. Cost grows as the fourth power of this, so raising it is expensive; the reference implementation uses 15. It must stay below half the smaller image dimension — a lag is averaged over the pixel pairs that realise it, and a small image holds too few."
                 },
                 {
                   "type": "value", "attr": "n_repeats", "label": "Repeats",

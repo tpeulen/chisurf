@@ -106,6 +106,21 @@ def test_the_estimator_rejects_unphysical_settings():
         rics_precision(0.0, **base)
 
 
+def test_a_request_no_acquisition_satisfies_takes_the_sweep_down():
+    """An impossible *request* is reported; only an impossible scan is skipped.
+
+    ``n_lags`` too large for the image is the case that motivates the split: it
+    fails at every dwell time alike, so letting the per-point recovery swallow
+    it would return a curve of NaNs, which the panel then blames on the waists
+    and the pixel size. It has to reach the caller with its own message.
+    """
+    with pytest.raises(ValueError, match="too large for a 8x8 image"):
+        core.sweep_dwell(
+            10.0, core.default_dwell_range(3), nx=8, ny=8, n_lags=8,
+            n_repeats=5, pixel_size=0.05,
+        )
+
+
 def test_summary_is_json_friendly():
     """``to_dict`` survives a round trip through a *strict* JSON reader.
 

@@ -18,6 +18,7 @@ import pytest
 
 from chisurf.core.experiments.ics.precision import (
     RicsPrecision,
+    UnrealisableScan,
     correlation_covariance,
     correlation_grid,
     gamma_factors,
@@ -175,8 +176,42 @@ def test_a_slow_sample_gains_far_more_from_a_long_dwell():
 
 def test_an_impossible_scan_timing_is_rejected():
     """A line cannot be shorter than the pixels it contains."""
-    with pytest.raises(ValueError, match="cannot fit"):
+    with pytest.raises(UnrealisableScan, match="cannot fit"):
         rics_precision(10.0, pixel_time=1e-3, line_time=1e-4, **FAST)
+
+
+def test_a_lag_the_image_cannot_hold_is_rejected():
+    """More lags than the image has pixels is a setting, not a division by zero.
+
+    Every entry is divided by the number of pixel pairs that realise its lag,
+    and the triple-product term counts the positions where the pair fits twice
+    over, so both vanish once the lag approaches the image size. The estimator
+    used to run into that as ``ZeroDivisionError`` from four loops down, and
+    the fitted range is a spin box: ``nx`` starts at 8 while ``n_lags`` goes up
+    to 15, so the two can be set against each other from the panel.
+
+    The failure has to stay a plain ``ValueError`` and *not* an
+    ``UnrealisableScan``: no acquisition satisfies it, so a caller sweeping
+    acquisitions must be told rather than skip every point in silence.
+    """
+    with pytest.raises(ValueError, match="too large for a 8x8 image") as raised:
+        rics_precision(10.0, pixel_time=4e-6, line_time=2e-3, pixel_size=0.05,
+                       nx=8, ny=8, n_lags=8, n_repeats=5)
+    assert not issubclass(raised.type, UnrealisableScan)
+
+    # The same guard on the covariance itself, which is public and divides by
+    # the pair counts directly.
+    with pytest.raises(ValueError, match=r"at most n_lags=2"):
+        correlation_covariance(
+            6, 6, 6, 10.0, 0.05, 0.25, 5.0, 4e-6, 2e-3, 0.05, 1.0, 0.1,
+            gamma_factors(),
+        )
+
+    # The largest lag the guard allows still predicts.
+    assert rics_precision(
+        10.0, pixel_time=4e-6, line_time=2e-3, pixel_size=0.05,
+        nx=8, ny=8, n_lags=3, n_repeats=5,
+    ).relative_error > 0.0
 
 
 def test_a_focus_that_is_not_elongated_is_an_ordinary_acquisition():

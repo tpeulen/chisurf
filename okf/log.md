@@ -4268,6 +4268,39 @@
   guard green, both widgets construct headless and refresh cleanly. See
   [PRD-64](prds/prd-64.md).
 
+* **A lag range the image cannot hold is now a message, not a division by
+  zero** ([RF-057](reviews/findings.md), closing [RF-009](reviews/findings.md)
+  with it). `correlation_covariance` divides each entry by the number of pixel
+  pairs that realise its lag, so at `n_lags >= nx` that count is zero and the
+  scan-precision estimator died as `ZeroDivisionError` from four loops down —
+  reachable straight from the *Plan* panel, whose spin boxes let `nx` start at 8
+  while `n_lags` goes to 15. Guarded at the root, in `correlation_covariance`
+  itself, so the public function and `rics_precision` are both covered:
+  `2 * n_lags < min(nx, ny)` (the strict form, because the triple-product term
+  counts `nx - 2*xi` positions and goes *negative* above half). With the guard in
+  place that count can no longer be negative, so the clamp the finding also
+  suggested would be dead code and was left out.
+  Turning it into a `ValueError` created the second half of the problem:
+  `sweep_dwell` swallows `ValueError` per point on purpose, so the fix would
+  have converted a loud crash into a silent curve of NaNs blamed on the waists.
+  The recovery is therefore narrowed to a new
+  `precision.UnrealisableScan(ValueError)`, which marks settings describing an
+  acquisition that could not be performed (a zero dwell or waist, a line shorter
+  than its pixels) — the ones where the *next* dwell time may still work. A
+  request no acquisition satisfies stays a plain `ValueError` and takes the
+  sweep down with its own message: the panel now reads *"n_lags=8 is too large
+  for a 8x8 image … so at most n_lags=3"* instead of *"float division by zero"*.
+  The constraint is documented where it is set (the `n_lags` `description` in
+  `precision.view.json`, hence tooltip and generated docs cell) and in
+  [guide 45](../docs/guides/45_scan_precision.md).
+  Pinned by `test/experiments/test_ics_precision.py::test_a_lag_the_image_cannot_hold_is_rejected`
+  (both entry points, the error type, and that the largest allowed lag still
+  predicts) and
+  `img_precision/test/test_img_precision.py::test_a_request_no_acquisition_satisfies_takes_the_sweep_down`.
+  All three fail at `HEAD` with `ZeroDivisionError`. `test/experiments/` +
+  `img_precision/test/` green (84); `ruff check` findings on the four touched
+  files are identical to `HEAD`.
+
 ## 2026-07-24
 
 * **All guide images converted to numbered `{figure}` directives.** 29 of the 44

@@ -14,7 +14,11 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.core.experiments.ics.precision import RicsPrecision, rics_precision
+from chisurf.core.experiments.ics.precision import (
+    RicsPrecision,
+    UnrealisableScan,
+    rics_precision,
+)
 
 
 def _or_none(value: float) -> float | None:
@@ -175,7 +179,16 @@ def sweep_dwell(
     Returns
     -------
     PrecisionSweep
-        The curve, and the prediction at the current settings.
+        The curve, and the prediction at the current settings. A dwell time the
+        estimator cannot realise is left as NaN rather than taking the sweep
+        down with it.
+
+    Raises
+    ------
+    ValueError
+        If no acquisition in the sweep could satisfy the request — an image
+        that cannot hold the requested lags. Reported rather than left as a
+        gap, because the alternative is a curve of NaNs with no explanation.
     """
     dwell = np.asarray(list(dwell_times), dtype=float)
     errors = np.full(dwell.shape, np.nan)
@@ -189,10 +202,11 @@ def sweep_dwell(
                 diffusion_coefficient, pixel_time=float(d), line_time=float(lt),
                 nx=nx, **kwargs
             ).relative_error
-        except ValueError:
-            # An unusable *combination* -- a line shorter than the pixels it
-            # holds -- is left as NaN so the rest of the sweep still runs.
-            # Only ValueError: anything else is a bug in the call, and
+        except UnrealisableScan:
+            # An acquisition that cannot be performed -- a line shorter than the
+            # pixels it holds -- is left as NaN so the rest of the sweep still
+            # runs. Only that: a request no acquisition satisfies (an n_lags
+            # larger than the image can hold) fails at every point alike, and
             # swallowing it would turn a clear error into a curve of NaNs.
             errors[i] = np.nan
 
@@ -204,9 +218,9 @@ def sweep_dwell(
                 diffusion_coefficient, pixel_time=float(current_dwell),
                 line_time=float(lt), nx=nx, **kwargs
             )
-        except ValueError:
-            # The user's own settings may be inconsistent; the sweep is still
-            # worth showing, so this one point is simply absent.
+        except UnrealisableScan:
+            # The user's own settings may describe no realisable acquisition;
+            # the sweep is still worth showing, so this one point is absent.
             current = None
 
     if progress:

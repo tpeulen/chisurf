@@ -171,11 +171,23 @@ which is what exposed RF-007. Findings RF-007..RF-011 below.
   green (60 tests); `ruff check` adds no findings on the touched files.
 
 ### RF-009
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (validation hole)
 - **Location:** `chisurf/core/experiments/ics/precision.py:485` (`rics_precision`), via `precision.py:385` (`correlation_covariance`, `denom`)
 - **Finding:** Scan timing is validated (`pixel_time * nx > line_time` raises a clear `ValueError`), but the two other inputs that can only fail are not. `n_lags >= min(nx, ny)` makes `denom = (nx - xi) * … * f**4` zero: verified `rics_precision(10.0, …, nx=6, ny=6, n_lags=6)` → `ZeroDivisionError: float division by zero`, and `correlation_covariance(6, 6, 6, …)` the same, while `nx=8` still returns a matrix (whose smallest eigenvalue is -0.22, so `nearest_spd` is doing real work there rather than mopping up round-off). `diffusion_coefficient=0` divides by zero in `tau_c = w_r**2 / (4*d)`. Both are one-line guards next to the existing timing check; the defaults (`n_lags=6`, `nx=ny=64`) are safe, so this only bites a caller that shrinks the image or sweeps `D` down to zero.
-- **Fix note:**
+- **Fix note:** Both halves are closed, neither by this entry. The
+  `diffusion_coefficient=0` half was fixed earlier by the positivity block now
+  at `precision.py:583` (it rejects `pixel_time`, `line_time`, `pixel_size`,
+  `w_r`, `w_z` and `D` alike) and is pinned by
+  `img_precision/test/test_img_precision.py::test_the_estimator_rejects_unphysical_settings`.
+  The `n_lags` half is the same defect as the later, sharper
+  [RF-057](#rf-057), which supersedes this one — it identifies the negative
+  position count below `n_lags >= min(nx, ny)` and the `sweep_dwell`
+  interaction that a bare `ValueError` would create — and was fixed there.
+  Recorded as FIXED rather than WONTFIX because the behaviour the finding
+  describes is genuinely gone: `rics_precision(10.0, …, nx=6, ny=6, n_lags=6)`
+  and `correlation_covariance(6, 6, 6, …)` now both raise a `ValueError`
+  naming the pair.
 
 ### RF-010
 - **Status:** OPEN
@@ -783,11 +795,46 @@ through and below a spherical focus, the master-grid slice bounds in
 docstring) was checked numerically and is sound. Findings RF-057..RF-063.
 
 ### RF-057
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (`ZeroDivisionError` from a GUI-reachable setting; silently negative variance below it)
 - **Location:** `chisurf/core/experiments/ics/precision.py:415` (`correlation_covariance`, `denom`) and `:402` (`term1`, `2 * (nx - 2 * xi) * (ny - 2 * psi)`), unguarded by the validation block at `:521-535`
 - **Finding:** `rics_precision` validates the times, the sizes and `D`, but never `n_lags` against `nx`/`ny`, and both are user-facing spin boxes: `precision.view.json:87` gives `nx` a **minimum of 8** while `:109` gives `n_lags` a **maximum of 15**. At `n_lags >= nx` the loop reaches `xi == nx`, `denom = (nx - xi) * … = 0`, and the call dies with `ZeroDivisionError: float division by zero` — verified through the GUI view model (`nx = ny = 8`, `n_lags = 8` → `compute()` returns False with status `Prediction failed: float division by zero`). That contradicts the documented contract (`Raises ValueError …`) *and* defeats `sweep_dwell`'s per-point recovery, which catches `ValueError` only, by deliberate comment (`core.py:175-179`) — so one bad *global* setting takes the whole curve down rather than one point. Below that, for `2 * n_lags > nx`, `2 * (nx - 2 * xi)` — a count of pixel positions where the triple product fits — goes **negative** (nx=16 → −4 at xi=9) and subtracts from a variance with no error at all. One guard fixes both: reject `2 * n_lags >= min(nx, ny)` with a `ValueError` naming the offending pair, and clamp the overlap count at 0. Pin it with a test that asserts the raise for `nx=8, n_lags=8` and that `sweep_dwell` propagates it rather than returning a curve of NaNs.
-- **Fix note:**
+- **Fix note:** Guarded at the root — in `correlation_covariance` itself, which
+  owns the division, so the public function and `rics_precision` are both
+  covered by one check: `2 * n_lags >= min(nx, ny)` raises a `ValueError` naming
+  the pair and the largest lag that would fit (*"n_lags=8 is too large for a
+  8x8 image … so at most n_lags=3"*). The strict form is deliberate, as the
+  finding argues: above half, the triple-product term's position count goes
+  negative. The **clamp was deliberately not added**: with the guard in place
+  `xi <= n_lags` and `2 * n_lags < nx`, so `nx - 2 * xi > 0` always and a
+  `max(…, 0)` would be unreachable code.
+  The second half of the finding is the trap the first half creates.
+  `sweep_dwell` swallows `ValueError` per point on purpose, so simply turning
+  the `ZeroDivisionError` into a `ValueError` would have converted a loud crash
+  into a silent curve of NaNs, which the panel then blames on the waists and the
+  pixel size. The recovery is therefore narrowed to a new
+  `precision.UnrealisableScan(ValueError)`, which marks settings describing an
+  acquisition that could not be performed (a zero dwell or waist, a line shorter
+  than the pixels it holds) — the cases where the *next* dwell time may still
+  work. A request no acquisition satisfies stays a plain `ValueError` and takes
+  the sweep down with its own message; the GUI view model, which already catches
+  `Exception`, now reports `Prediction failed: n_lags=8 is too large for a 8x8
+  image …` instead of `Prediction failed: float division by zero`. The finer
+  line (per-point = *timing only*, so a zero waist would also propagate) was
+  tried first and rejected: it changes the total-failure message `RF-060`'s fix
+  settled on, which is beyond this finding.
+  Reproduced against `HEAD` first — `ZeroDivisionError: float division by zero`
+  from `correlation_covariance(6, 6, 6, …)`, from `rics_precision(…, nx=8,
+  ny=8, n_lags=8)` and out of `sweep_dwell`. Pinned by
+  `test/experiments/test_ics_precision.py::test_a_lag_the_image_cannot_hold_is_rejected`
+  (both entry points, that the error is *not* an `UnrealisableScan`, and that the
+  largest allowed lag still predicts) and by
+  `img_precision/test/test_img_precision.py::test_a_request_no_acquisition_satisfies_takes_the_sweep_down`;
+  all three fail at `HEAD`. The constraint is documented where it is set — the
+  `n_lags` `description` in `precision.view.json` (tooltip *and* generated docs
+  cell) and `docs/guides/45_scan_precision.md`. `test/experiments/` +
+  `img_precision/test/` green (84 passed); `ruff check` findings on the four
+  touched Python files are identical to `HEAD` (all pre-existing).
 
 ### RF-058
 - **Status:** OPEN

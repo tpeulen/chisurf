@@ -54,7 +54,10 @@ sweep scales the line time with the dwell, because a line cannot stay short as
 its pixels grow.
 
 **Estimator** (collapsed; the defaults are fine). *Lags fitted* costs as the
-fourth power, so raising it is expensive. *Repeats* sets how many Monte-Carlo
+fourth power, so raising it is expensive, and it must stay below half the
+smaller image dimension — each lag is averaged over the pixel pairs that
+realise it, and a small image holds too few, so the prediction is refused with
+a message rather than computed from nothing. *Repeats* sets how many Monte-Carlo
 realisations stand behind each point. *Seed* makes a quoted prediction
 reproducible.
 

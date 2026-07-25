@@ -54,6 +54,23 @@ from typing import Optional, Sequence, Tuple
 import numpy as np
 
 
+class UnrealisableScan(ValueError):
+    """Settings that do not describe an acquisition that could be performed.
+
+    Raised for the quantities that make up the scan itself — its timings and
+    its optics — when one of them cannot exist: a zero dwell, a zero waist, a
+    line shorter than the pixels it holds. A caller sweeping acquisitions can
+    treat these as a gap in its curve, because the next acquisition may well be
+    realisable.
+
+    Anything else :func:`rics_precision` rejects stays a plain
+    :class:`ValueError`, because it is not a property of the acquisition and no
+    other point of a sweep will fare better: a fitted lag range the image
+    cannot hold is the case that exists today. Swallowing that as a gap would
+    return a curve of NaNs with the wrong explanation attached.
+    """
+
+
 @dataclasses.dataclass
 class RicsPrecision:
     """Predicted precision of a RICS diffusion measurement.
@@ -368,6 +385,15 @@ def correlation_covariance(
     numpy.ndarray
         The symmetric covariance matrix.
 
+    Raises
+    ------
+    ValueError
+        If ``n_lags`` is too large for the image. Every term is a sum over the
+        pixel pairs that realise a lag, so a lag the image cannot hold has no
+        meaning: ``nx - xi`` pairs divide each entry, and the triple-product
+        term counts ``nx - 2 * xi`` positions. Both require
+        ``2 * n_lags < min(nx, ny)``.
+
     Notes
     -----
     Every two-point correlation needed here is the same function evaluated at a
@@ -376,6 +402,13 @@ def correlation_covariance(
     inside the innermost of four nested loops, which is what makes the literal
     algorithm impractical for realistic image sizes.
     """
+    if 2 * n_lags >= min(nx, ny):
+        raise ValueError(
+            f"n_lags={n_lags} is too large for a {nx}x{ny} image: the covariance "
+            f"needs 2 * n_lags < min(nx, ny), so at most n_lags="
+            f"{(min(nx, ny) - 1) // 2}"
+        )
+
     size = n_lags + 1
     cov = np.zeros((size * size, size * size), dtype=float)
     g1, g2, g3, g4 = (float(v) for v in gamma)
@@ -532,10 +565,15 @@ def rics_precision(
 
     Raises
     ------
+    UnrealisableScan
+        If the acquisition could not be performed: the scan timing is
+        inconsistent (a line cannot be shorter than the pixels it contains), or
+        a quantity that must describe a real scan is not positive.
     ValueError
-        If the scan timing is inconsistent (a line cannot be shorter than the
-        pixels it contains), or if a quantity that must describe a real
-        acquisition is not positive.
+        If ``n_lags`` is too large for the image (the fit needs
+        ``2 * n_lags < min(nx, ny)``). Deliberately *not* an
+        :class:`UnrealisableScan`: no acquisition satisfies it, so a caller
+        sweeping acquisitions has to be told rather than shown a gap.
     """
     from scipy.optimize import least_squares
 
@@ -551,10 +589,10 @@ def rics_precision(
         ("diffusion_coefficient", diffusion_coefficient),
     ):
         if not float(value) > 0.0:
-            raise ValueError(f"{name} must be positive, got {value!r}")
+            raise UnrealisableScan(f"{name} must be positive, got {value!r}")
 
     if pixel_time * nx > line_time:
-        raise ValueError(
+        raise UnrealisableScan(
             f"a line of {nx} pixels at {pixel_time} s each cannot fit in {line_time} s"
         )
 
