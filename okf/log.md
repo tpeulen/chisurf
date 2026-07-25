@@ -2,6 +2,39 @@
 
 ## 2026-07-26
 
+* **The accurate-FRET button in ndXplorer computed the right answer and then
+  threw it away.** Checking whether accurate FRET is reachable from inside ndx
+  meant driving the real window head-lessly rather than reading the code, and
+  the toolbar action turned out to be correct in its physics and broken in its
+  effect. On simulated bursts with known factors it recovers alpha 0.0807 (0.080),
+  delta 0.0579 (0.060), gamma 0.6621 (0.650), beta 1.3835 (1.400) and writes
+  accurate E of 0.2961 / 0.7473 against a truth of 0.30 / 0.75 — and then, on the
+  next turn of the event loop, every constant it had pushed reverted to the
+  shipped defaults (alpha 0.015, beta 0.005, gG/gR 0.6).
+  The cause is that ndx's parameter *table* is the source of truth:
+  `_schedule_parameter_recompute` re-seeds `constants` from
+  `parameter_control.dict` on any parameter event, so writing the mapping alone
+  is undone as soon as anything happens. This is exactly why it passed its tests
+  — nothing turns the event loop in a head-less stub, so the values were correct
+  for as long as the process did nothing. The push now writes the table through a
+  new `ParameterEditor.apply_values()` (committed in the ndXplorer repository as
+  `0c4bd88`, on both editor implementations so the caller need not know which is
+  in use).
+  A second defect surfaced next to it: the push guarded with
+  `isinstance(constants, dict)` and, when false, **replaced** `ndx.constants`
+  with a plain dict. In the chisurf-table mode that attribute is a live
+  `ConstantsMapping` view over the fitting-parameter group — a `Mapping`, not a
+  `dict` — so the push severed every Global-View crosslink while leaving the
+  numbers looking right. It is now updated in place through its own `update`,
+  and never replaced.
+  Both are pinned by tests that fail without the fix: one drives the throttle's
+  re-seed and asserts the calibration is still in force afterwards, the other
+  asserts a non-dict mapping is written through rather than swapped out. Verified
+  end-to-end on the real window after the fix — the table holds alpha 0.0794,
+  beta (direct excitation) 0.0567, r 0.7241 (beta_Hellenkamp 1.381) and
+  gG/gR 0.6053, which with the table's own PhiA/PhiD = 0.4 is an effective
+  gamma of 0.661. See [references/fret-calibration](/references/fret-calibration.md).
+
 * **GUI test: raw photons → fittable decay, the step before every TCSPC fit.**
   Drove `chisurf.plugins.tttr.microtime_histogram` headlessly against the SPC-130
   sample with the shipped `BS` detector setup, standalone and with a real `Main`

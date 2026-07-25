@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import collections.abc
+
 import pytest
 
 from chisurf.core.fluorescence.fret.calibration import (
@@ -301,3 +303,96 @@ def test_optimize_reports_unusable_data():
     ndx.data_source.data = {"foo": [1.0, 2.0], "bar": [3.0, 4.0]}
     result = optimize_calibration_from_ndx(ndx)
     assert not result["ok"] and "i_dd" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# the push has to reach the parameter table, and must not replace a live mapping
+# ---------------------------------------------------------------------------
+
+
+class _ConstantsMapping(collections.abc.Mapping):
+    """Stand-in for ndx's live mapping over the fitting-parameter group.
+
+    It is a ``Mapping`` with an ``update``, deliberately **not** a ``dict``:
+    writing through it is what keeps a constant's crosslink to a fit parameter
+    alive.
+    """
+
+    def __init__(self, values):
+        self._values = dict(values)
+
+    def __getitem__(self, key):
+        return self._values[key]
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __len__(self):
+        return len(self._values)
+
+    def update(self, other=None, **kwargs):
+        self._values.update(other or {})
+        self._values.update(kwargs)
+
+
+class _ParameterEditor:
+    """Stand-in for ndx's constants table."""
+
+    def __init__(self, values):
+        self.dict = dict(values)
+
+    def apply_values(self, values):
+        self.dict.update({str(k): float(v) for k, v in dict(values).items()})
+
+
+class _TableBackedNdx(_StubNdx):
+    """An ndx whose constants are a live mapping fed by a parameter table."""
+
+    def __init__(self):
+        super().__init__()
+        defaults = {"gG/gR": 0.6, "alpha": 0.015, "beta": 0.005, "tauD0": 4.0}
+        self.parameter_control = _ParameterEditor(defaults)
+        self.constants = _ConstantsMapping(defaults)
+
+    def settle(self):
+        """What ndx's recompute throttle does on any parameter event.
+
+        ``_schedule_parameter_recompute`` resets ``constants`` from the table,
+        so anything the push wrote only into ``constants`` is reverted here.
+        """
+        self.constants = _ConstantsMapping(self.parameter_control.dict)
+
+
+def test_push_writes_the_parameter_table_so_it_survives_a_recompute():
+    """A calibration must still be in force after ndx's throttle fires.
+
+    Writing only ``ndx.constants`` looked correct right up until the event loop
+    turned: ndx re-seeds that mapping from the parameter table, so the pushed
+    calibration was silently replaced by the table's defaults and every derived
+    column went back to the old numbers.
+    """
+    ndx = _TableBackedNdx()
+    mapping = push_calibration_to_ndx(ndx, _calib())
+
+    assert ndx.parameter_control.dict["alpha"] == pytest.approx(mapping["alpha"])
+    assert ndx.parameter_control.dict["gG/gR"] == pytest.approx(mapping["gG/gR"])
+
+    ndx.settle()
+    assert ndx.constants["alpha"] == pytest.approx(mapping["alpha"])
+    assert ndx.constants["gG/gR"] == pytest.approx(mapping["gG/gR"])
+    assert ndx.constants["tauD0"] == 4.0     # unrelated constants survive
+
+
+def test_push_updates_a_live_mapping_in_place_instead_of_replacing_it():
+    """A non-dict ``Mapping`` must be written through, not swapped for a dict.
+
+    ndx's ``ConstantsMapping`` is a view over the fitting-parameter group;
+    replacing it with a plain dict severs every Global-View crosslink while
+    leaving the numbers looking right.
+    """
+    ndx = _TableBackedNdx()
+    before = ndx.constants
+    push_calibration_to_ndx(ndx, _calib())
+
+    assert ndx.constants is before, "the live mapping was replaced"
+    assert isinstance(ndx.constants, _ConstantsMapping)

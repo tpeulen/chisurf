@@ -154,6 +154,15 @@ back to the physically-motivated light-path prior.
   `chisurf/plugins/ndxplorer/calibration_bridge.py::push_calibration_to_ndx`
   writes them into an in-process ndxplorer window and recomputes, so ndx's
   derived FRET uses the data-optimized calibration.
+  The write goes to the **parameter table** (`parameter_control.apply_values`),
+  not just to `ndx.constants`: ndx re-seeds that mapping from the table on every
+  parameter event, so a calibration written only into the mapping is reverted as
+  soon as the event loop turns — correct until anything happens, which is
+  invisible to a head-less stub. And when the chisurf fitting table is in use
+  `ndx.constants` is a live `ConstantsMapping` over the parameter group (a
+  `Mapping`, not a `dict`); it is updated through its own `update` and never
+  replaced, or the Global-View crosslinks are severed while the numbers still
+  look right.
 - Tests: `test/fitting/test_fret_calibration.py` (unit), `test_calibration_shared.py`
   (pseudo-fit registration + linking), `test_calibration_ndx_bridge.py` (mapping +
   push), `test_multi_chromophore.py` (scalar N-cube), `test_general_correction.py`

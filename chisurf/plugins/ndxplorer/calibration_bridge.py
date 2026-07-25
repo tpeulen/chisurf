@@ -64,17 +64,38 @@ def push_calibration_to_ndx(ndx, calibration, *, recompute: bool = True) -> dict
     """
     mapping = calibration_to_ndx_constants(calibration)
 
-    constants = getattr(ndx, "constants", None)
-    if not isinstance(constants, dict):
-        constants = {}
-        ndx.constants = constants
-    constants.update(mapping)
-
-    # Best-effort: keep the parameter-editor UI in sync if it exposes a setter.
+    # The parameter *table* is the source of truth, not ``ndx.constants``.
+    # ndxplorer's recompute throttle resets ``constants`` from
+    # ``parameter_control.dict`` on every parameter event, so a calibration
+    # written only into the mapping is reverted the moment the event loop turns
+    # — the values were correct for as long as nothing happened, which is why
+    # this looked like it worked outside a running GUI.
     editor = getattr(ndx, "parameter_control", None)
-    if editor is not None:
+    applied_to_table = False
+    apply_values = getattr(editor, "apply_values", None)
+    if callable(apply_values):
+        apply_values(mapping)
+        applied_to_table = True
+
+    # ``constants`` is a plain dict in the legacy path and a live
+    # ``ConstantsMapping`` over the fitting-parameter group when the chisurf
+    # table is in use. The latter is a Mapping, *not* a dict, and writing
+    # through it is what keeps Global-View crosslinks alive — so update it in
+    # place and never replace it.
+    constants = getattr(ndx, "constants", None)
+    update = getattr(constants, "update", None)
+    if callable(update):
+        update(mapping)
+    else:
+        constants = dict(constants or {})
+        constants.update(mapping)
+        ndx.constants = constants
+
+    if applied_to_table:
+        # Keep the throttle's diff baseline consistent with what the table now
+        # holds, so the push does not read back as an edit of every constant.
         try:
-            editor.update(mapping)  # ParameterEditor accepting a dict update
+            ndx._prev_constants = dict(editor.dict)
         except Exception:
             pass
 
