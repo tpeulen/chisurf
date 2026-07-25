@@ -222,7 +222,71 @@ exactly the identifiability claim a global fit is making.
 `components > 1` means the "global" fit is really several unrelated fits, and
 nothing is being shared.
 
-## 9. In the GUI
+## 9. Reusing a chain under a different prior
+
+Sampling is the expensive part, and "what if I had assumed a tighter prior?" is
+the question that usually follows it. You do not have to run it again: the
+likelihood is identical under both priors and cancels, so the draws can be
+*reweighted*. No model is evaluated.
+
+```python
+from chisurf.core.api import ChiSurfAPI
+
+api = ChiSurfAPI()
+r = api.reweight_prior(
+    {'tau1': {'kind': 'normal', 'mu': 4.0, 'sigma': 0.2}},
+    fit_index=0,
+)
+r['reliable']                    # True if the answer can be used
+r['pareto_k']                    # the diagnostic; above 0.7 means it cannot
+[e['mean'] for e in r['parameters']]
+```
+
+Only the parameters you name enter the ratio — every other prior cancels too.
+Pass `None` to *remove* a prior and see the likelihood-only posterior.
+
+**Always read `reliable` before the numbers.** If the new prior favours a region
+the chain never explored, a handful of draws carry all the weight and the result
+is noise wearing a confident face. That is what `pareto_k` detects:
+
+| `pareto_k` | what to do |
+| --- | --- |
+| below 0.5 | use it |
+| 0.5 – 0.7 | use it, but treat the tail quantiles with caution |
+| above 0.7 | **discard it and sample again** under the new prior |
+
+The same is available over RPC as `fit.reweight_prior`. It needs a stored chain,
+so run a sampling job first; a fit that has never been sampled returns an error
+rather than an invented answer.
+
+## 10. Looking at the posterior instead of reading about it
+
+Two plots are attached to every fit.
+
+**Posterior graph** shows the structure — which datasets constrain which
+parameters, whether the fit separates, and which parameters are really one
+measurement.
+
+![The structure tab of the posterior graph for a four-dataset global fit](../images/posterior_graph_structure.png)
+
+Four datasets, each with its own private `c`, all sharing `a`. Node shade is
+relative uncertainty: `a` is pale because four datasets constrain it, the `c`s
+are red because one each does. The other two tabs show the posterior
+*correlation* (a pair at ±1 is one measurement, not two) and the *junction tree*.
+
+**Chain diagnostics** shows whether the chain can be believed.
+
+![The rank tab of the chain diagnostics, showing eight converged chains](../images/chain_diagnostics_rank.png)
+
+Each row is a chain, each column a rank bin, and the colour is the departure
+from flat. An even field means the chains sample the same distribution; a chain
+favouring one end of the range appears as a coloured band across its row. The
+verdict underneath is calibrated against what noise alone produces for a
+histogram of that size *and* the chain's own autocorrelation — so "consistent
+with noise" means it, and a warning is worth acting on. The second tab plots
+effective sample size against draws, which should grow in a straight line.
+
+## 11. In the GUI
 
 The **Sampling** button on the fit controller runs the same code on the server.
 The backend comes from `optimization.sampling.method` in the settings
@@ -244,7 +308,7 @@ status['warnings']    # what went wrong, per parameter
 status['diagnostics'] # the full per-parameter report
 ```
 
-## 10. Asking directly, without picking an estimator first
+## 12. Asking directly, without picking an estimator first
 
 ```python
 from chisurf.core.fitting import engine
@@ -263,7 +327,7 @@ that actually worked — labelled with which one that was. `laplace` costs
 nothing, `profile` costs a re-fit per scan point, `mcmc` costs a sampling run;
 `stored` costs nothing at all and reports only what is already there.
 
-## 11. From a script, a macro or the server
+## 13. From a script, a macro or the server
 
 The same query is on the stable API facade, so it works from the QtConsole, a
 macro, a plugin, the CLI, and over RPC:
@@ -295,4 +359,6 @@ need to poll progress.
 - [ ] `n_runs >= 2`.
 - [ ] Every parameter R-hat < 1.01 and ESS > 400.
 - [ ] `warnings` empty.
+- [ ] Rank plot even, and ESS growing in a straight line.
 - [ ] Intervals quoted with their `method`.
+- [ ] Any reweighted answer checked for `reliable` / `pareto_k` before use.

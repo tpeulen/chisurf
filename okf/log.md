@@ -143,6 +143,24 @@
 
 ## 2026-07-25
 
+* **Docs caught up with the three fitting changes.** Prior reweighting, the
+  posterior-graph views and the chain-diagnostics plots are all user-visible, and
+  the last three commits updated OKF but not `docs/` -- which the project rule
+  requires in the *same* change, so this closes a gap I left rather than adding
+  anything new. `docs/concepts/parameter_uncertainty.md` gains the theory: why
+  reweighting works (the likelihood cancels, so only the changed priors enter the
+  ratio), what Pareto-`k` means with a table of what to do at each level, why a
+  rank plot beats a trace plot, and why the "is it flat?" verdict has to be
+  calibrated for both the number of cells and the chain's autocorrelation. It
+  also records the warm-up rule -- a curvature-seeded block adapts only its
+  scale, because a not-yet-mixed chain is biased narrow and cannot improve on the
+  curvature. `docs/guides/39_parameter_uncertainty.md` gains two numbered
+  sections with the API calls and **two real screenshots**, rendered headlessly
+  in a realistic state (a four-dataset global fit sharing one parameter; eight
+  converged chains) and inspected before shipping. Both indexes updated;
+  image links verified to resolve.
+
+
 * **The ROI subsystem's own cleanup pass: three coercions, one loader, one
   `find_objects`.** Migrating nine consumers onto the subsystem left the same
   small pieces copied around, and copies drift.

@@ -278,6 +278,79 @@ transition rule keeps changing is not a homogeneous Markov chain and is not
 guaranteed to converge to the posterior. Only the frozen, post-warm-up draws are
 recorded.
 
+What the warm-up may change is deliberately limited. The curvature at the
+optimum *is* the posterior covariance for a near-Gaussian posterior, and a short
+chain cannot improve on it — a warm-up chain that has not yet mixed spreads
+*less* than the posterior it is exploring, so its empirical covariance is biased
+narrow. Replacing a good curvature seed with it makes the sampler dramatically
+worse. So a block seeded from the curvature adapts only its **scale**; only a
+block with no usable curvature (a global model, where the curvature's indices do
+not apply) adapts its **shape**.
+
+## Changing your mind about a prior, without sampling again
+
+A prior changes the posterior but not the likelihood. Two posteriors that differ
+only in their prior therefore have draws in common up to a reweighting:
+
+$$w_s \;\propto\; \frac{p_{\text{new}}(\theta_s)}{p_{\text{old}}(\theta_s)}
+  \;=\; \exp\!\big[\ln\pi_{\text{new}}(\theta_s) - \ln\pi_{\text{old}}(\theta_s)\big],$$
+
+because the likelihood — the expensive part — is identical in both and cancels
+exactly. Every prior that did *not* change cancels too, so the ratio is a
+difference of two scalar densities per draw. **No model is evaluated**, and a
+chain that took minutes to produce answers a new question in milliseconds.
+
+The catch is the one every importance sampler has: if the new prior puts its
+mass where the old chain has few draws, a handful of samples carry almost all
+the weight, and the estimate is noise — silently, because the numbers still look
+like numbers. **Pareto-smoothed importance sampling** addresses both halves. It
+replaces the largest weights with the order statistics of a generalised Pareto
+distribution fitted to them, which caps their variance without the bias of plain
+truncation; and it returns the fitted shape $\hat k$, which *diagnoses* the
+failure:
+
+| $\hat k$ | meaning |
+| --- | --- |
+| below 0.5 | behaves like ordinary Monte Carlo |
+| 0.5 – 0.7 | usable, converging slowly; treat tail quantiles with caution |
+| above 0.7 | **not usable** — the weight variance is infinite; sample again |
+
+That diagnostic is the reason to prefer this over raw importance sampling: it
+gives an honest refusal instead of a confident wrong answer. Reweighting shares
+the draws of *one* chain, so it can only reshape a posterior within the region
+that chain explored; a prior that moves the mass somewhere it never visited is
+exactly the case $\hat k$ flags.
+
+## Reading a chain's convergence from a picture
+
+$\hat R$ and the effective sample size are single numbers, and a threshold
+cannot show you *how* a chain failed. Two plots do.
+
+A **rank plot** ranks the draws across all chains together and histograms each
+chain's ranks. If the chains sample the same distribution, each holds an equal
+share of the low, middle and high ranks, so every histogram is flat. A chain
+that lingers somewhere the others do not shows as a slope or a spike. This is
+recommended over the traditional trace plot because a trace plot's resolution
+collapses as the chain lengthens — it becomes an unreadable smear exactly when
+there are finally enough draws to judge.
+
+Reading one requires a calibrated eye, which is why ChiSurf states the verdict
+rather than leaving it to be guessed. A rank histogram is *never* exactly flat:
+under the null each bin count is $\mathrm{Binomial}(n, 1/b)$, and the largest of
+$N$ standardised deviations is about $\sqrt{2\ln N}$ even when nothing is wrong.
+Autocorrelation inflates that further, since no chain produces independent
+draws. Both are accounted for, and the correction uses the **within-chain**
+autocorrelation rather than the pooled effective sample size — the pooled figure
+collapses precisely *because* chains disagree, so using it would let a badly
+split run explain its own fault away.
+
+An **ESS-growth** plot shows the effective sample size against the number of
+draws taken. A converged sampler's grows linearly: twice the effort buys twice
+the information. One that is stuck — in a mode, or with an autocorrelation time
+longer than the run — flattens, and the flattening is visible long before any
+single number crosses a threshold. A final ESS on its own cannot show this,
+being one point on that curve with the shape discarded.
+
 ## References
 
 - Gelman, A. & Rubin, D. B. *Inference from iterative simulation using multiple
@@ -293,3 +366,7 @@ recorded.
   Communications in Applied Mathematics and Computational Science **5**, 65–80
   (2010).
 - Foreman-Mackey, D. *et al.* *emcee: the MCMC hammer.* PASP **125**, 306 (2013).
+- Vehtari, A., Simpson, D., Gelman, A., Yao, Y. & Gabry, J. *Pareto smoothed
+  importance sampling.* Journal of Machine Learning Research **25**, 1–58 (2024).
+- Zhang, J. & Stephens, M. A. *A new and efficient estimation method for the
+  generalized Pareto distribution.* Technometrics **51**, 316–325 (2009).
