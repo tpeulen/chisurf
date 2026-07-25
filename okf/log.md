@@ -2,6 +2,45 @@
 
 ## 2026-07-25
 
+* **What Stan has that works without a gradient, and confirmation that aGrUM's
+  inference core is harvested.** Cloned both into `junk/` and read the source
+  rather than the docs.
+  *Stan.* Every one of its algorithms — NUTS, ADVI, Pathfinder, L-BFGS — needs
+  the gradient ChiSurf cannot supply. Its **post-processing** needs nothing, and
+  is better than what was here: `analyze/mcmc/rank_normalization.hpp`,
+  `split_rank_normalized_rhat.hpp`, `split_rank_normalized_ess.hpp`
+  ([Vehtari et al. 2021](https://doi.org/10.1214/20-BA1221)). Harvested.
+  `rank_normalize` maps draws onto normal scores of pooled average ranks (ties
+  averaged), which is what makes R̂ and ESS *defined* on a heavy-tailed target —
+  both are built from variances, so on a Cauchy the plain versions are not
+  imprecise but undefined, and report a comfortable number regardless. There is
+  a test on Cauchy chains. `rank_normalized_rhat` returns `max(bulk, tail)` with
+  *tail* the statistic of `|x − median|`: two chains sharing a centre but not a
+  spread agree perfectly on their mean, so location-based R̂ is blind to them —
+  also tested, and the plain statistic does miss it (1.02 vs 1.05+).
+  `bulk_tail_ess` splits the effective sample size governing the posterior
+  *mean* from the one governing the *quantiles a credible interval is made of*;
+  the warnings now name which failed, because "ESS is low" is not actionable.
+  Both robust and plain values are reported so a disagreement stays visible.
+  Not yet taken from Stan: windowed adaptation with dual averaging (applies to
+  the blocked warm-up) and Pareto-smoothed importance sampling (would make
+  reweighting a stored chain under a different prior reliable, and reports the
+  Pareto-`k` that says when it is not — the chain already stores `lnprior`
+  separately, so PSIS is the missing half).
+  *aGrUM.* Read `src/agrum` and `wrappers/pyagrum/pyLibs/clg`. The inference core
+  **is** harvested: model/engine separation, moralisation + triangulation +
+  junction tree + separators + treewidth, relevance pruning, targets, evidence,
+  elimination orders, incremental caching, and now canonical forms — whose
+  `marginalize`/`reduce`/`__mul__` formulas match
+  [the ones just implemented](/subsystems/fitting.md) exactly, independently
+  arrived at (ChiSurf uses `solve`/`slogdet` where aGrUM uses `inv`/`det`, which
+  is numerically better). What remains is superseded (Gibbs/importance/weighted
+  sampling — DE and the collapsed sampler are better here), not applicable
+  (structure learning, PRM, FMDP — ChiSurf's structure comes from the user's
+  linking, not from data), or a new feature rather than a port (influence
+  diagrams for experiment design; credal networks for prior-robustness
+  intervals, partially covered already by storing `lnprior` apart).
+
 * **FCS calculator re-pointed at the centralised diffusion physics; the
   duplication is now actually gone.** Completes the previous entry, whose shim
   was deferred while `algorithms.py` was being edited by the dye-table

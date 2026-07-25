@@ -196,6 +196,20 @@ suggestion, a per-parameter `summarize` and `convergence_warnings`. Pinned
 against AR(1), whose `τ = (1+φ)/(1−φ)` is closed-form. Thresholds:
 `RHAT_THRESHOLD = 1.01`, `ESS_THRESHOLD = 400`.
 
+- **Rank-normalised statistics decide the verdict**
+  ([Vehtari et al. 2021](https://doi.org/10.1214/20-BA1221), as Stan computes
+  them). `rank_normalize` maps draws onto normal scores of their pooled average
+  ranks, which is what makes both statistics defined on a heavy-tailed or
+  infinite-variance target — they are built from variances, so on a Cauchy the
+  plain versions are not merely imprecise but undefined, and report a
+  comfortable number anyway. `rank_normalized_rhat` returns `max(bulk, tail)`
+  where *tail* is the statistic of `|x − median|`: two chains with the same
+  centre and different spread agree perfectly on their mean, so a location-based
+  R̂ cannot see them. `bulk_tail_ess` separates the effective sample size that
+  governs the posterior *mean* from the one that governs the *quantiles a
+  credible interval is made of* — a chain can be trustworthy about the first and
+  not the second. Both the robust and the plain values are reported, so a
+  disagreement is visible rather than silently resolved.
 - All samplers return `chains` (per-chain, not only flattened) and
   `acceptance_rate`. `sample_fit` pools the `n_runs` **independent** runs, writes
   `diagnostics.json` beside `chains/`, logs the warnings and returns the report.

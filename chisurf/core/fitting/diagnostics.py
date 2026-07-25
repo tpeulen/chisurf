@@ -38,6 +38,9 @@ __all__ = [
     "effective_sample_size",
     "autocorrelation_time",
     "split_rhat",
+    "rank_normalize",
+    "rank_normalized_rhat",
+    "bulk_tail_ess",
     "mcse",
     "suggest_burn_in",
     "summarize",
@@ -220,6 +223,187 @@ def autocorrelation_time(samples: np.ndarray) -> np.ndarray:
         return np.where(ess > 0.0, total / ess, np.inf)
 
 
+def rank_normalize(samples: np.ndarray) -> np.ndarray:
+    r"""Replace draws by the normal scores of their pooled average ranks.
+
+    :math:`z = \Phi^{-1}\!\left(\frac{r - 3/8}{N + 1/4}\right)` over the
+    draws of *all* chains together, with tied values sharing their average rank.
+
+    This is what makes :math:`\hat{R}` and the effective sample size usable on
+    a posterior that is not nicely behaved. Both are defined through variances,
+    so on a heavy-tailed -- or infinite-variance -- target they are not merely
+    imprecise but undefined, and will happily report a comfortable number.
+    Ranks exist whatever the tail does.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray
+        ``(n_chains, n_draws)`` for one parameter.
+
+    Returns
+    -------
+    numpy.ndarray
+        Normal scores, same shape.
+    """
+    a = np.asarray(samples, dtype=np.float64)
+    flat = a.ravel()
+    n = flat.size
+    order = np.argsort(flat, kind="mergesort")
+    ranks = np.empty(n, dtype=np.float64)
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and flat[order[j + 1]] == flat[order[i]]:
+            j += 1
+        # Ranks are 1-based; ties share their average.
+        average = 0.5 * ((i + 1) + (j + 1))
+        ranks[order[i:j + 1]] = average
+        i = j + 1
+    return _normal_ppf((ranks - 0.375) / (n + 0.25)).reshape(a.shape)
+
+
+def _normal_ppf(p: np.ndarray) -> np.ndarray:
+    """Return the standard-normal quantile, vectorised (Acklam's approximation).
+
+    Accurate to ~1e-9 relative, which is far beyond what a rank transform needs,
+    and avoids a SciPy import on a hot path.
+    """
+    p = np.asarray(p, dtype=np.float64)
+    a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+         1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00]
+    b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+         6.680131188771972e+01, -1.328068155288572e+01]
+    c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+         -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00]
+    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
+         3.754408661907416e+00]
+    out = np.empty_like(p)
+    lo, hi = p < 0.02425, p > 1 - 0.02425
+    mid = ~(lo | hi)
+
+    q = np.sqrt(-2.0 * np.log(np.where(lo, p, 0.5)))
+    out = np.where(lo, (((((c[0]*q + c[1])*q + c[2])*q + c[3])*q + c[4])*q + c[5])
+                   / ((((d[0]*q + d[1])*q + d[2])*q + d[3])*q + 1), out)
+    q = np.sqrt(-2.0 * np.log(np.where(hi, 1.0 - p, 0.5)))
+    out = np.where(hi, -(((((c[0]*q + c[1])*q + c[2])*q + c[3])*q + c[4])*q + c[5])
+                   / ((((d[0]*q + d[1])*q + d[2])*q + d[3])*q + 1), out)
+    q = np.where(mid, p, 0.5) - 0.5
+    r = q * q
+    out = np.where(mid, (((((a[0]*r + a[1])*r + a[2])*r + a[3])*r + a[4])*r + a[5]) * q
+                   / (((((b[0]*r + b[1])*r + b[2])*r + b[3])*r + b[4])*r + 1), out)
+    return out
+
+
+def _split(chains: np.ndarray) -> np.ndarray:
+    """Halve every chain, doubling their number.
+
+    Splitting is what lets a *single* drifting chain be caught: its two halves
+    disagree even when there is no second chain to disagree with.
+    """
+    m, n = chains.shape
+    half = n // 2
+    if half < 2:
+        return chains
+    return np.concatenate([chains[:, :half], chains[:, n - half:]], axis=0)
+
+
+def _rhat_1d(chains: np.ndarray) -> float:
+    """Plain Gelman-Rubin on already-split chains."""
+    m, n = chains.shape
+    within = float(np.mean(np.var(chains, axis=1, ddof=1)))
+    if not (within > 0.0):
+        means = chains.mean(axis=1)
+        return 1.0 if np.allclose(means, means[0]) else float("inf")
+    between = n * float(np.var(chains.mean(axis=1), ddof=1))
+    var_plus = (n - 1) / n * within + between / n
+    return math.sqrt(var_plus / within)
+
+
+def rank_normalized_rhat(samples: np.ndarray) -> np.ndarray:
+    r"""Return ``max(bulk, tail)`` split :math:`\hat{R}` per parameter.
+
+    Two failures are reported, and the worse one wins:
+
+    - **bulk** -- :math:`\hat{R}` of the rank-normalised draws. Chains sitting
+      in different *places*.
+    - **tail** -- :math:`\hat{R}` of the rank-normalised
+      :math:`|x - \mathrm{median}|`. Chains with the same centre but different
+      *spread*, which the location statistic cannot see at all: two chains, one
+      twice as wide as the other, agree perfectly on their mean.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray
+        Chains, in any shape accepted by :func:`as_chains`.
+
+    Returns
+    -------
+    numpy.ndarray
+        One value per parameter; ``nan`` when the chains are too short.
+
+    References
+    ----------
+    Vehtari et al., *Rank-normalization, folding, and localization: an improved
+    R-hat for assessing convergence of MCMC*, Bayesian Analysis 16, 667 (2021).
+    """
+    chains = as_chains(samples)
+    n_par = chains.shape[2]
+    out = np.empty(n_par, dtype=np.float64)
+    for k in range(n_par):
+        block = _split(chains[:, :, k])
+        if block.shape[1] < 2 or not np.all(np.isfinite(block)):
+            out[k] = np.nan
+            continue
+        if np.ptp(block) == 0.0:
+            means = block.mean(axis=1)
+            out[k] = 1.0 if np.allclose(means, means[0]) else np.inf
+            continue
+        bulk = _rhat_1d(rank_normalize(block))
+        folded = np.abs(block - np.median(block))
+        tail = _rhat_1d(rank_normalize(folded)) if np.ptp(folded) > 0 else 1.0
+        out[k] = max(bulk, tail)
+    return out
+
+
+def bulk_tail_ess(samples: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray]:
+    """Return the bulk and tail effective sample sizes per parameter.
+
+    **bulk** is the effective sample size of the rank-normalised draws, and
+    governs the posterior *mean*. **tail** is the smaller of the effective
+    sample sizes of the 5 % and 95 % tail-indicator sequences, and governs the
+    *quantiles* -- which are what a credible interval is actually made of. A
+    chain can have a perfectly good bulk ESS and a tail ESS an order of
+    magnitude smaller, and it is the tail one that says whether the interval
+    can be quoted.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray
+        Chains, in any shape accepted by :func:`as_chains`.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(bulk, tail)``, one entry per parameter.
+    """
+    chains = as_chains(samples)
+    n_par = chains.shape[2]
+    bulk = np.empty(n_par, dtype=np.float64)
+    tail = np.empty(n_par, dtype=np.float64)
+    for k in range(n_par):
+        block = _split(chains[:, :, k])
+        if block.shape[1] < 4 or not np.all(np.isfinite(block)) or np.ptp(block) == 0.0:
+            bulk[k] = tail[k] = np.nan
+            continue
+        bulk[k] = _ess_1d(rank_normalize(block))
+        flat = block.ravel()
+        low = _ess_1d((block <= np.quantile(flat, 0.05)).astype(np.float64))
+        high = _ess_1d((block >= np.quantile(flat, 0.95)).astype(np.float64))
+        candidates = [v for v in (low, high) if np.isfinite(v)]
+        tail[k] = min(candidates) if candidates else np.nan
+    return bulk, tail
+
+
 def split_rhat(samples: np.ndarray) -> np.ndarray:
     r"""Return the split Gelman–Rubin statistic of each parameter.
 
@@ -366,7 +550,13 @@ def summarize(
         names += [f"p{k}" for k in range(len(names), n_par)]
 
     ess = effective_sample_size(kept)
-    rhat = split_rhat(kept)
+    # The rank-normalised statistics are what the verdict keys off: the plain
+    # ones are undefined on a heavy-tailed target and blind to two chains that
+    # share a centre but not a spread. Both are reported, so a disagreement
+    # between them is visible rather than silently resolved.
+    rhat = rank_normalized_rhat(kept)
+    plain_rhat = split_rhat(kept)
+    bulk, tail = bulk_tail_ess(kept)
     tau = autocorrelation_time(kept)
     err = mcse(kept)
     flat = kept.reshape(-1, n_par)
@@ -385,7 +575,10 @@ def summarize(
             "sd": float(finite.std(ddof=1)) if finite.size > 1 else float("nan"),
             "quantiles": qs,
             "ess": float(ess[k]),
+            "ess_bulk": float(bulk[k]),
+            "ess_tail": float(tail[k]),
             "rhat": float(rhat[k]),
+            "rhat_plain": float(plain_rhat[k]),
             "tau": float(tau[k]),
             "mcse": float(err[k]),
             "n_chains": int(kept.shape[0]),
@@ -428,21 +621,37 @@ def convergence_warnings(
     if bad_rhat:
         worst = max(bad_rhat, key=lambda e: e["rhat"])
         messages.append(
-            f"{len(bad_rhat)} parameter(s) have split R-hat > {rhat_threshold} "
-            f"(worst: {worst['name']} at {worst['rhat']:.3f}) -- the chains have "
-            "not mixed; sample longer or improve the proposal."
+            f"{len(bad_rhat)} parameter(s) have rank-normalised split R-hat > "
+            f"{rhat_threshold} (worst: {worst['name']} at {worst['rhat']:.3f}) -- "
+            "the chains have not mixed in location or in spread; sample longer "
+            "or improve the proposal."
         )
-    low_ess = [
-        e for e in summary
-        if np.isfinite(e.get("ess", np.nan)) and e["ess"] < ess_threshold
-    ]
-    if low_ess:
-        worst = min(low_ess, key=lambda e: e["ess"])
+    for key, what in (("ess_bulk", "bulk"), ("ess_tail", "tail")):
+        low = [
+            e for e in summary
+            if np.isfinite(e.get(key, np.nan)) and e[key] < ess_threshold
+        ]
+        if not low:
+            continue
+        worst = min(low, key=lambda e: e[key])
+        governs = ("the posterior mean" if what == "bulk"
+                   else "the quantiles a credible interval is made of")
         messages.append(
-            f"{len(low_ess)} parameter(s) have an effective sample size below "
-            f"{ess_threshold:g} (worst: {worst['name']} at {worst['ess']:.0f}) -- "
-            "the reported quantiles are dominated by sampling noise."
+            f"{len(low)} parameter(s) have a {what} effective sample size below "
+            f"{ess_threshold:g} (worst: {worst['name']} at {worst[key]:.0f}) -- "
+            f"{governs} are dominated by sampling noise."
         )
+    if not any("effective sample size" in m for m in messages):
+        low_ess = [
+            e for e in summary
+            if np.isfinite(e.get("ess", np.nan)) and e["ess"] < ess_threshold
+        ]
+        if low_ess:
+            worst = min(low_ess, key=lambda e: e["ess"])
+            messages.append(
+                f"{len(low_ess)} parameter(s) have an effective sample size below "
+                f"{ess_threshold:g} (worst: {worst['name']} at {worst['ess']:.0f})."
+            )
     stuck = [e for e in summary if not np.isfinite(e.get("rhat", np.nan))]
     if stuck:
         messages.append(

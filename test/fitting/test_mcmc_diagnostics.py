@@ -187,3 +187,99 @@ def test_short_chains_degrade_instead_of_raising():
     assert np.all(np.isnan(dg.split_rhat(tiny)))
     assert dg.suggest_burn_in(tiny) == 0
     assert len(dg.summarize(tiny, names=['a', 'b'])) == 2
+
+
+# -- rank-normalised statistics (Vehtari et al. 2021, as Stan computes them) --
+
+def test_rank_normalisation_produces_normal_scores():
+    """The transform must map any distribution onto standard normal scores."""
+    rng = np.random.default_rng(0)
+    heavy = rng.standard_cauchy(size=(4, 2000))       # no finite variance
+    z = dg.rank_normalize(heavy)
+    assert z.shape == heavy.shape
+    assert np.all(np.isfinite(z))
+    # Pooled scores are standard normal by construction.
+    assert float(z.mean()) == pytest.approx(0.0, abs=0.02)
+    assert float(z.std()) == pytest.approx(1.0, rel=0.05)
+    # Order is preserved: it is a monotone transform.
+    order_before = np.argsort(heavy.ravel())
+    assert np.all(np.diff(z.ravel()[order_before]) >= -1e-12)
+
+
+def test_ties_share_their_average_rank():
+    """Otherwise the transform depends on the order the draws arrived in."""
+    x = np.array([[1.0, 2.0, 2.0, 3.0]])
+    z = dg.rank_normalize(x)
+    assert z[0, 1] == pytest.approx(z[0, 2])
+    assert z[0, 0] < z[0, 1] < z[0, 3]
+
+
+def test_rank_normalised_rhat_survives_an_infinite_variance_target():
+    """The plain statistic is undefined on a Cauchy; the rank one is not."""
+    rng = np.random.default_rng(1)
+    chains = rng.standard_cauchy(size=(4, 4000))[:, :, np.newaxis]
+    robust = dg.rank_normalized_rhat(chains)[0]
+    assert np.isfinite(robust)
+    # Four chains from the same Cauchy have converged, and it says so.
+    assert robust < 1.05
+
+
+def test_the_folded_statistic_catches_a_difference_in_spread():
+    """Two chains with the same centre and different width.
+
+    A location-based R-hat compares means, and these agree perfectly -- so the
+    plain statistic sees nothing wrong. Folding about the median is what makes
+    the difference in scale visible.
+    """
+    rng = np.random.default_rng(2)
+    narrow = rng.normal(0.0, 1.0, size=(2, 4000))
+    wide = rng.normal(0.0, 4.0, size=(2, 4000))
+    chains = np.concatenate([narrow, wide], axis=0)[:, :, np.newaxis]
+
+    plain = dg.split_rhat(chains)[0]
+    robust = dg.rank_normalized_rhat(chains)[0]
+    assert plain < 1.02, "the location statistic is expected to miss this"
+    assert robust > 1.05, "the folded statistic must catch it"
+
+
+def test_tail_ess_is_reported_separately_from_bulk():
+    """The quantiles a credible interval is made of are governed by the tail."""
+    rng = np.random.default_rng(3)
+    chains = _ar1(0.5, n=4000, n_chains=4, seed=4)
+    bulk, tail = dg.bulk_tail_ess(chains)
+    assert np.all(np.isfinite(bulk)) and np.all(np.isfinite(tail))
+    assert bulk[0] > 1000 and tail[0] > 100
+
+    # ``summarize`` discards a burn-in first, so compare on the same draws.
+    summary = dg.summarize(chains, names=['x'], burn_in=0)[0]
+    assert summary['ess_bulk'] == pytest.approx(bulk[0])
+    assert summary['ess_tail'] == pytest.approx(tail[0])
+    # Both the robust and the plain R-hat are reported, so a disagreement is
+    # visible rather than silently resolved.
+    assert 'rhat_plain' in summary
+
+
+def test_a_poor_tail_is_reported_even_when_the_bulk_is_fine():
+    """A chain can be trustworthy about its mean and not about its interval."""
+    rng = np.random.default_rng(4)
+    # Bulk mixes well; the tails are visited in long, rare excursions.
+    base = rng.normal(size=(4, 4000))
+    spikes = np.zeros_like(base)
+    for c in range(4):
+        start = rng.integers(0, 3500)
+        spikes[c, start:start + 400] = 8.0
+    chains = (base + spikes)[:, :, np.newaxis]
+
+    bulk, tail = dg.bulk_tail_ess(chains)
+    assert tail[0] < bulk[0]
+    messages = dg.convergence_warnings(dg.summarize(chains, names=['x']))
+    assert any('tail' in m for m in messages)
+
+
+def test_the_warnings_name_which_effective_sample_size_failed():
+    """"ESS is low" is not actionable; which one it is, is."""
+    chains = _ar1(0.99, n=600, n_chains=2, seed=5)
+    messages = dg.convergence_warnings(dg.summarize(chains, names=['tau1']))
+    assert messages
+    assert any('bulk' in m or 'tail' in m for m in messages)
+    assert any('tau1' in m for m in messages)

@@ -120,6 +120,25 @@ collinear one, and 0.77× where the covariance proposal is at its best (converge
 near-Gaussian). It is the robust choice precisely because it has nothing to
 mis-estimate.
 
+# What Stan has that is usable here
+
+Stan is the reference implementation of NUTS, and every one of its *algorithms*
+— NUTS, ADVI, Pathfinder, L-BFGS — needs the gradient ChiSurf cannot supply. Its
+**post-processing**, though, needs nothing at all, and is better than what was
+here:
+
+- `analyze/mcmc/rank_normalization.hpp`, `split_rank_normalized_rhat.hpp`,
+  `split_rank_normalized_ess.hpp` — rank-normalised split :math:`\hat R` with a
+  folded variant, and bulk/tail effective sample sizes
+  ([Vehtari et al. 2021](https://doi.org/10.1214/20-BA1221)). Harvested; see the
+  [fitting subsystem](/subsystems/fitting.md).
+- Windowed adaptation with dual averaging — applicable to the blocked sampler's
+  warm-up, not yet taken.
+- Pareto-smoothed importance sampling (in `loo`, not `stan` proper) — would make
+  reweighting a stored chain under a different prior reliable, and reports a
+  Pareto-`k` that says when it is not. The chain already stores `lnprior`
+  separately, so this is the missing half. Not yet taken.
+
 # When to revisit
 
 - If a model's forward pass moves substantially into C++ (so the differentiable
