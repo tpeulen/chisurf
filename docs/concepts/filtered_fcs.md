@@ -96,6 +96,30 @@ The condition number of $D^{\mathsf T} W D$ is a cheap diagnostic: if it is $\gg
 the patterns are too similar to separate cleanly and no amount of correlation time
 will fix it.
 
+**Worked numbers.** Two mono-exponential patterns on a 25 ns window with 32 ps
+bins, mixed 50:50, with $\tau_1 = 2$ ns fixed and $\tau_2$ varied
+(`filter_condition_number` and `calc_ffcs_filters`):
+
+| $\tau_2$ | $\tau_2/\tau_1$ | condition number | largest filter value |
+|---|---|---|---|
+| 6.0 ns | 3.0 | 4.9 | 3.0 |
+| 4.0 ns | 2.0 | 10.2 | 5.6 |
+| 3.0 ns | 1.5 | 26.6 | 13.2 |
+| 2.5 ns | 1.25 | 82.9 | 34.3 |
+| 2.2 ns | 1.1 | 443 | 107 |
+
+The two columns move together, which is the whole story: halving the lifetime
+*contrast* from a factor 2 to a factor 1.1 inflates the condition number by ~40×
+and the filter amplitudes with it. Because the variance of a filtered correlation grows with the *mean square*
+filter amplitude, going from a factor-3 to a factor-1.1 lifetime contrast — a
+~35× rise in filter magnitude — costs roughly **three orders of magnitude in
+photons** for the same precision.
+
+The practical rule: aim for a lifetime ratio of **at least 1.5** (condition number
+in the tens). Below a ratio of ~1.25, regularise (`rcond` or `tikhonov`) and treat
+species amplitudes as semi-quantitative; below ~1.1, add a genuinely independent
+contrast — polarisation or a spectral channel — rather than pushing the inversion.
+
 ## 2D-FLCS: a lifetime–lifetime correlation map
 
 **2D-FLCS** (Ishii & Tahara 2013) drops the requirement of *known* patterns and

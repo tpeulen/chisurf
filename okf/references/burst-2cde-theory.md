@@ -13,7 +13,7 @@ timestamp: '2026-07-24T00:00:00Z'
 photon streams of a single-molecule FRET burst into a single per-burst number
 that reports either **within-burst FRET dynamics** (FRET-2CDE) or **within-burst
 brightness heterogeneity / impurity** (ALEX-2CDE). It is model-free and
-bin-free: it operates directly on photon macro times inside each burst slice.
+bin-free: it operates directly on photon macro times.
 This note records the algebra and how it maps onto the ChiSurf implementation;
 the user-facing counterpart is `docs/concepts/burst_2cde.md` and its workflow
 guide `docs/guides/01_fret_2cde.md`. See the sibling reference
@@ -54,8 +54,12 @@ Kernel choice and its consequences (from the FRETBursts reference notes):
 $\tau$ is the kernel time constant: short enough to resolve intra-burst change,
 long enough to gather several photons per kernel; default in ChiSurf is
 $100\ \mu\mathrm{s}$, and $\sim 40\ \mu\mathrm{s}$ is a common tighter choice.
-All KDE/nbKDE terms are computed on each burst's photon slice so densities never
-leak across bursts.
+The KDE is evaluated over the **full photon stream** (`_kde_reference(ts, tau,
+axis=macro, kernel)`) and only the resulting per-photon densities are sliced per
+burst — restricting the KDE to the burst slice would starve edge photons of
+legitimate neighbours and inflate 2CDE for short bursts. The burst enters through
+the $(E)_D$ / $(1-E)_A$ averages and the small-$N$ factors, which use the burst's
+own photon counts.
 
 ## FRET-2CDE (dynamics)
 

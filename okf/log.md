@@ -2,6 +2,43 @@
 
 ## 2026-07-25
 
+* **Concept pages: worked numbers and failure modes for the five thinnest.**
+  Continued the docs refinement into `docs/concepts/`, taking the new bottom five
+  (`fret`, `burst_2cde`, `filtered_fcs`, `pch_fida`, `anisotropy`) from
+  structurally-complete-but-thin to the QuickFit3-style depth already given to
+  `fcs_correlation`/`bva`/`smfret_bursts`/`recurrence`/`tcspc_lifetime`. Every
+  number is computed, not asserted. **fret** — new "How precise is the distance?":
+  the propagation rule `dR/R = dE/(6E(1-E))` with a table showing a 2 % efficiency
+  error costs 1.3 % in distance at E=0.5 but 7 % at E=0.95 (this *is* the
+  0.5-1.5 R0 working window), the sixth-root forgiveness of J/Q_D (x2 error ->
+  +12 % in R0) versus the punishing kappa2 range (-37 %..+35 %), and the unit trap
+  that `forster_radius()` returns Angstrom while the 0.02108 prefactor gives nm.
+  **anisotropy** — Perrin worked through to the rule of thumb rho ~ 0.4 ns/kDa,
+  a table of r/r0 vs size showing why a 4 ns dye cannot distinguish 100 from
+  300 kDa, plus pitfalls (G is not optional; fitted r0 > 0.4 means bad G, channel
+  IRF shift or polarized scatter; fast rho hides under the IRF). **filtered_fcs**
+  — real `filter_condition_number` / `calc_ffcs_filters` output for two
+  mono-exponentials: a lifetime ratio of 3.0 gives cond 4.9, ratio 1.1 gives cond
+  443 with filters reaching +/-107, i.e. ~3 orders of magnitude more photons for
+  the same precision; hence the "aim for a ratio >= 1.5" rule. **pch_fida** — a
+  worked pair of samples with *identical* mean intensity but 2x different
+  brightness, and a bin-time section (T << tau_D or epsilon biases low silently;
+  refit at two or three bin times as a check). **burst_2cde** — the timescale
+  window, the shot-noise dependence of the static baseline on burst size, and that
+  2CDE is a flag, not a rate.
+* **Corrected a wrong claim about how 2CDE evaluates its KDE (docs + OKF).** Both
+  `docs/concepts/burst_2cde.md` and
+  [references/burst-2cde-theory.md](/references/burst-2cde-theory.md) stated that
+  the KDE/nbKDE terms are computed "on each burst's photon slice so densities never
+  leak across bursts". The implementation does the opposite, deliberately:
+  `_kde_reference(ts, tau, axis=macro, kernel)` evaluates over the **full photon
+  stream** and only the per-photon densities are sliced per burst — confining the
+  KDE to the slice would deny edge photons their legitimate neighbours and inflate
+  2CDE for short bursts. The burst enters only through the (E)_D / (1-E)_A averages
+  and the small-N factors. Documented the defaults while there (tau = 100 us,
+  Laplace kernel truncated at 5*tau / Gaussian at 3*tau,
+  `dynamic_fraction(threshold=12.0)`, NaN when either stream is empty in a burst).
+
 * **Anisotropy: `vm_rt_to_vv_vh` silently dropped every rotation component after
   the first.** The time-domain VV/VH helper computed
   `n_anisotropies = len(spectrum)//2` and then iterated

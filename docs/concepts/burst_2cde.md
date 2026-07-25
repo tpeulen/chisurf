@@ -49,8 +49,16 @@ $$
 $$
 
 where $N_{CHX}$ is the number of channel-$X$ photons in the current burst.
-Both quantities are evaluated on each burst's photon slice, so the density
-estimates only see photons belonging to the same molecule transit.
+
+A subtlety worth knowing: the kernel density itself is evaluated over the
+**entire photon stream**, and only the resulting per-photon densities are sliced
+per burst. Restricting the KDE to the burst slice would put an artificial cliff
+at each burst boundary — photons near the edge would lose the neighbours that
+legitimately contribute to their local rate, biasing their density downward and
+inflating 2CDE for short bursts. Evaluating globally and slicing afterwards
+keeps every photon's rate estimate honest. The burst enters only through the
+averages $(E)_D$, $(1-E)_A$ and the small-$N$ factors, which use the burst's own
+photon counts.
 
 The kernel time constant $\tau$ sets the timescale over which brightness is
 averaged. It should be short enough to resolve within-burst changes yet long
@@ -130,6 +138,44 @@ dynamics** (state switching), ALEX-2CDE reports **within-burst brightness
 heterogeneity** (impurity / photophysics). Both are single numbers per burst,
 computed from the same KDE primitive, and both live as columns you can gate on in
 the burst browser or in ndXplorer.
+
+## Settings, and what 2CDE cannot tell you
+
+ChiSurf's defaults are $\tau = 100\ \mu\mathrm{s}$ with the Laplace kernel
+(Tomov's original), and `dynamic_fraction(threshold=12.0)` for the
+static/dynamic split. The kernels are truncated for speed — at $5\tau$ (Laplace)
+and $3\tau$ (Gaussian) — which is far enough out that the neglected tail is
+negligible.
+
+**2CDE has a timescale window, and it is set by $\tau$ and the burst duration.**
+Exchange much faster than $\tau$ is averaged inside the kernel and the burst
+looks static; exchange much slower than the ~1 ms transit means the molecule
+simply never switches during the burst, and it *also* looks static. Only
+dynamics roughly between $\tau$ and the burst duration raise the score. A
+FRET-2CDE near baseline therefore means "no dynamics **in this window**", never
+"no dynamics".
+
+**The baseline is a statistical quantity, not a constant.** The $\approx 10$
+static value emerges from averaging noisy per-photon ratios, so bursts with few
+photons scatter around it much more widely than photon-rich bursts. A fixed
+cutoff of 12 consequently flags a larger fraction of *dim* bursts as dynamic
+purely by shot noise. Apply a photon-count threshold before interpreting the
+dynamic fraction, and treat that fraction as comparative between similarly
+filtered datasets rather than as an absolute number.
+
+**It is a flag, not a rate.** 2CDE scores that a burst changed; it does not
+estimate how fast, how many states, or in which direction. Use it to *select*
+dynamic bursts, then hand them to a method that models kinetics —
+{ref}`concept-h2mm` for photon-by-photon rates, {ref}`concept-pda` for
+distributions, or the FRET-line analysis in {ref}`concept-fret`.
+
+**Other things move the score.** Acceptor blinking or bleaching mid-burst is a
+genuine brightness anticorrelation and raises FRET-2CDE exactly like a
+conformational transition; so can a second molecule entering the volume. Screen
+with ALEX-2CDE first where ALEX/PIE data are available. Finally, donor-only and
+acceptor-only bursts have no meaningful two-colour ratio at all — ChiSurf returns
+`NaN` when either stream is empty in a burst, so those rows must be dropped, not
+read as zeros.
 
 ## See also
 

@@ -130,6 +130,69 @@ The three forms of $E$ map onto three experimental routes:
   reports the microsecond-to-millisecond exchange between FRET states rather than
   a static distance.
 
+## How precise is the distance?
+
+Because $R$ depends on $E$ through a sixth root, the two error budgets behave
+very differently — and knowing which one dominates tells you whether to spend
+effort on better statistics or on better photophysics.
+
+**Statistical error in $E$.** Differentiating $E = 1/(1+(R/R_0)^6)$ gives a
+compact propagation rule,
+
+$$
+\frac{\Delta R}{R} = \frac{\Delta E}{6\,E\,(1-E)} .
+$$
+
+The factor $6E(1-E)$ peaks at $E = 0.5$, so the *same* uncertainty in efficiency
+buys very different distance precision depending on where you sit:
+
+| $E$ | $6E(1-E)$ | $\Delta R/R$ for $\Delta E = 0.02$ |
+|---|---|---|
+| 0.05 / 0.95 | 0.285 | 7.0 % |
+| 0.1 / 0.9 | 0.54 | 3.7 % |
+| 0.3 / 0.7 | 1.26 | 1.6 % |
+| 0.5 | 1.50 | 1.3 % |
+
+This is the quantitative version of "most informative near $R_0$": a 2 %
+efficiency error is a 1.3 % distance error mid-range but a 7 % error out in the
+tails, where $E$ is also hardest to measure accurately. In practice it sets the
+usable window at roughly $0.5\,R_0 < R < 1.5\,R_0$ ($E \approx 0.98$ down to
+$0.08$).
+
+**Systematic error in $R_0$.** Here the sixth root works *for* you. $R_0$
+scales as $(\kappa^2 Q_D n^{-4} J)^{1/6}$, so an error factor $f$ in any input
+moves $R_0$ — and hence every distance — by only $f^{1/6}$:
+
+| error in $J$ or $Q_D$ | effect on $R_0$ |
+|---|---|
+| ×1.2 (20 %) | +3.1 % |
+| ×1.4 (40 %) | +5.8 % |
+| ×2.0 (100 %) | +12.2 % |
+
+A doubling of the overlap integral costs only 12 % in distance. The one input
+that is *not* forgiving is $\kappa^2$, because its plausible range is far wider
+than a factor of two. Relative to the isotropic $\langle\kappa^2\rangle = 2/3$:
+
+| $\kappa^2$ | $R$ scaled by | situation |
+|---|---|---|
+| 0.04 | 0.63 (−37 %) | both dyes strongly immobilized, unfavourable geometry |
+| 1/3 | 0.89 (−11 %) | one dye hindered |
+| 2/3 | 1.00 | free isotropic rotation (assumed) |
+| 4/3 | 1.12 (+12 %) | one dye hindered, favourable geometry |
+| 4 | 1.35 (+35 %) | both dipoles aligned head-to-tail |
+
+So a two-fold error in $\kappa^2$ is a tolerable ~11 % distance error, but the
+pathological immobilized cases reach ±35 %, dwarfing every other term. That
+asymmetry — statistics cheap, $\kappa^2$ expensive — is why anisotropy is
+measured routinely and why $Q_D$ and $J$ rarely need to be known to better than
+10 %.
+
+:::{note}
+ChiSurf defaults to $\kappa^2 = 2/3$ and $n = 1.33$. Note the unit convention in
+`chisurf/core/fluorescence/fret/forster.py`: the prefactor 0.02108 yields $R_0$ in
+**nm**, but `forster_radius()` returns **Ångström** (it multiplies by 10).
+:::
+
 ## FRET as a molecular ruler
 
 Because $E$ is a steep, calibrated function of $R/R_0$ and $R_0$ is computable

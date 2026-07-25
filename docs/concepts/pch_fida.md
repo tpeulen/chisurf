@@ -26,19 +26,37 @@ molecules sit at random *positions* in a non-uniform detection volume. The
 excess width over Poisson is precisely the brightness information:
 
 $$
-\langle k\rangle = \epsilon\,N\,T,\qquad
-\mathrm{Var}(k) - \langle k\rangle = \epsilon^2\,\gamma_2\,N\,T ,
+\langle k\rangle = N\,\epsilon\,T,\qquad
+\mathrm{Var}(k) - \langle k\rangle = \gamma_2\,N\,(\epsilon\,T)^2 ,
 $$
 
-where $T$ is the bin time and $\gamma_2$ is a shape factor of the detection
-volume (for a 3-D Gaussian, $\gamma_2 = 1/2^{3/2}$). The first equation is just
-the mean; the second — the **excess variance** — is quadratic in $\epsilon$ and
-only linear in $N$, so mean and variance together solve for both. This is the
-**moment / Number & Brightness (N&B)** route (Qian & Elson 1990): from the raw
-apparent brightness $B = \mathrm{Var}(k)/\langle k\rangle$ a photon-counting
-detector gives $\epsilon = B - 1$ and $N = \langle k\rangle/\epsilon$. Moments
+where $T$ is the bin time, $\epsilon$ the molecular brightness in counts per
+second per molecule (so $\epsilon T$ is counts per molecule per bin), and
+$\gamma_2$ a shape factor of the detection volume (for a 3-D Gaussian,
+$\gamma_2 = 1/2^{3/2} \approx 0.354$). The first equation is just the mean; the
+second — the **excess variance** — is quadratic in $\epsilon T$ and only linear
+in $N$, so mean and variance together solve for both. This is the **moment /
+Number & Brightness (N&B)** route (Qian & Elson 1990): from the apparent
+brightness $B = \mathrm{Var}(k)/\langle k\rangle$ a photon-counting detector
+gives $\epsilon T = B - 1$ and $N = \langle k\rangle/(\epsilon T)$, the classic
+N&B convention that folds $\gamma_2$ into the reported brightness (so N&B
+brightnesses are *apparent* and compare only within one instrument). Moments
 are fast but throw away the shape of $P(k)$; PCH and FIDA fit the *whole*
 histogram and so tolerate multiple species and background far better.
+
+**Worked numbers — why intensity alone is not enough.** Two samples, both giving
+the *same* mean count rate at $T = 50\ \mu\mathrm{s}$:
+
+| sample | $\epsilon$ | $N$ | $\epsilon T$ | $\langle k\rangle$ | $\mathrm{Var}-\langle k\rangle$ | $B$ |
+|---|---|---|---|---|---|---|
+| few, bright | 20 kHz | 2 | 1.0 | 2.0 | 0.71 | 1.35 |
+| many, dim | 10 kHz | 4 | 0.5 | 2.0 | 0.35 | 1.18 |
+
+Halving the brightness and doubling the concentration leaves the intensity
+trace *identical* — no intensity measurement can tell these apart. The excess
+variance differs by exactly the factor 2 in $\epsilon T$, and the full histogram
+differs even more distinctly in shape. That separation of $\epsilon$ from $N$ is
+the entire reason to build the histogram.
 
 ## Single-species PCH
 
@@ -117,7 +135,7 @@ concentration, at different levels of detail:
 
 - **N&B** uses only the first two moments (mean and variance) of $P(k)$;
   it is the low-order truncation of PCH/FIDA and maps to it via
-  $\epsilon = B-1$, $N=\langle k\rangle/\epsilon$.
+  $\epsilon T = B-1$, $N=\langle k\rangle/(\epsilon T)$.
 - **FCS** reads brightness through the **zero-lag amplitude**: the ACF
   extrapolates to $G(0)\propto 1/N$, so FCS gives $N$ (hence concentration) and,
   combined with the mean intensity, the counts-per-molecule
@@ -131,6 +149,41 @@ The practical payoff is stoichiometry. Two samples with identical FCS curves —
 same $N$, same $\tau_D$ — can differ in PCH if one has half as many particles
 each twice as bright: monomer-versus-dimer, ligand binding, aggregation. That
 brightness axis is what PCH and FIDA add on top of FCS.
+
+## Choosing the bin time, and where PCH breaks
+
+**The bin time is the one setting that can invalidate the result.** PCH assumes
+each molecule holds a *fixed* brightness for the whole bin, which is only true
+if the molecule barely moves in time $T$. The requirement is therefore
+$T \ll \tau_D$. As $T$ approaches the diffusion time, each molecule samples both
+bright and dim regions of the PSF within one bin, its effective brightness
+averages toward the mean, the histogram narrows toward Poisson, and the fitted
+$\epsilon$ is **biased low** while $N$ is biased high — smoothly, with no
+warning sign in the fit quality.
+
+Pushing $T$ down has its own limit: once $\langle k\rangle \ll 1$ the histogram
+is almost all zeros and ones and carries little shape, so precision comes only
+from very many bins. With a typical confocal $\tau_D \approx 200\ \mu\mathrm{s}$
+for a small dye, $T \approx \tau_D/10 = 20\ \mu\mathrm{s}$ with
+$\langle k\rangle$ of order 0.1–5 is a reasonable working point. Fitting the same
+data at two or three bin times is the cheapest sanity check available: a
+brightness that drifts systematically with $T$ means the assumption is being
+violated.
+
+**Brightness resolution is coarse.** Separating two species by brightness alone
+is far harder than separating them by lifetime. Below a brightness ratio of
+roughly 1.5–2 the mixture fit becomes badly conditioned and the amplitudes trade
+against each other; fix what you can independently ($N$ from FCS, or one species'
+$\epsilon$ from a pure sample) rather than floating everything.
+
+**Other systematics.** Uncorrelated **background** must be modelled explicitly —
+absorbed into the signal it dilutes the apparent brightness. Detector **dead
+time** truncates the high-$k$ tail (pushing the histogram sub-Poissonian) and
+**afterpulsing** adds spurious low-$k$ pairs; both matter at high count rates.
+**Triplet blinking** in the microsecond range sits squarely in the PCH bin window
+and lowers apparent brightness. Finally, the **3-D Gaussian PSF is an
+idealization** — real volumes have wings, which is why FIDA carries an explicit
+volume-shape correction (`dvdx_gaussian`) rather than assuming the ideal profile.
 
 ## See also
 

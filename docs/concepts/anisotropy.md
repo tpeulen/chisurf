@@ -129,6 +129,74 @@ rotational time $\rho$ governs the measured depolarization: only motions on the
 scale of $\tau$ are visible in the anisotropy. ChiSurf reports this
 steady-state anisotropy directly from the fitted lifetime and rotation spectra.
 
+**Worked numbers.** Take a globular protein of mass $M = 25$ kDa in water at
+20 °C ($\eta = 1.00$ mPa·s, $k_\mathrm{B}T = 4.04 \times 10^{-21}$ J). With a
+typical specific volume plus hydration ($\approx 1.0\ \mathrm{cm^3\,g^{-1}}$,
+i.e. $V \approx M/N_A \approx 4.2 \times 10^{-26}\ \mathrm{m^3}$),
+
+$$
+\rho = \frac{\eta V}{k_\mathrm{B}T}
+\approx \frac{(1.0\times10^{-3})(4.2\times10^{-26})}{4.04\times10^{-21}}
+\approx 10\ \mathrm{ns}.
+$$
+
+A useful rule of thumb follows: **$\rho \approx 0.4$ ns per kDa** for a hydrated
+globular protein in water at room temperature. So a 10 kDa domain gives
+$\rho \approx 4$ ns, a 100 kDa complex $\approx 40$ ns.
+
+Now compare that with a dye lifetime of $\tau = 4$ ns. The Perrin equation gives
+the steady-state anisotropy as a fraction of $r_0$:
+
+| system | $\rho$ | $\tau/\rho$ | $r/r_0$ |
+|---|---|---|---|
+| free dye | 0.3 ns | 13.3 | 0.07 |
+| 25 kDa protein | 10 ns | 0.4 | 0.71 |
+| 100 kDa complex | 40 ns | 0.1 | 0.91 |
+
+This is the practical content of "only motions on the scale of $\tau$ are
+visible": a free dye depolarizes almost completely within its lifetime, while a
+100 kDa complex barely rotates and retains 91 % of $r_0$. It also shows the
+sensitivity limit — once $\rho \gg \tau$ the anisotropy saturates near $r_0$ and
+becomes nearly independent of size, so a 4 ns dye cannot distinguish a 100 kDa
+from a 300 kDa assembly. Measuring large complexes needs a longer-lived probe.
+
+## Practical notes and pitfalls
+
+**Calibration first.** The $G$ factor is not optional. It corrects the unequal
+transmission/detection of the two polarizations, and an uncorrected $G$ biases
+$r(t)$ at *every* time point — including $r_0$ and $r_\infty$, the two numbers
+usually of interest. ChiSurf defaults to $G = 1$ and $l_1 = l_2 = 0$, i.e. an
+ideal instrument; these are placeholders to be replaced with measured values, not
+safe defaults. $l_1, l_2$ describe polarization mixing from the high-aperture
+objective and matter most in confocal geometries.
+
+**$r_0$ is a ceiling, and fitted values above it signal a problem.** The
+theoretical maximum for one-photon excitation is $r_0 = 0.4$ (collinear
+absorption and emission dipoles); real dyes give 0.35–0.39. A fit returning
+$r_0 > 0.4$ means something else is wrong — usually a bad $G$, an IRF shift
+between the polarized channels, or scattered excitation light leaking into VV
+(scatter is fully polarized and drives the apparent $r_0$ up).
+
+**Fast components hide under the IRF.** A sub-100 ps $\rho$ from local linker
+wobble is comparable to the IRF width and is recoverable only through the joint
+reconvolution fit, and only with good signal — a short $\rho$ that "improves"
+$\chi^2$ marginally is often absorbing IRF mismatch instead. Fit VV and VH
+jointly rather than forming the ratio $r(t)$, which is undefined in the tail
+where both channels approach background.
+
+**Distinguishing $r_\infty$ from a slow $\rho$ needs range.** A rotational
+component much slower than the observation window is indistinguishable from a
+true constant offset, so the split between "slow tumbling" and "hindered" is a
+modelling choice as much as a measurement, and depends on how many lifetimes of
+decay you actually recorded.
+
+:::{note}
+Multi-component rotation spectra $[\beta_1, \rho_1, \beta_2, \rho_2, \dots]$ are
+honoured in full — the amplitudes sum to $r(0) = r_0$. (A long-standing indexing
+bug made the time-domain simulation helper `vm_rt_to_vv_vh` use only the first
+$(\beta,\rho)$ pair; it is fixed, and the fitting path was never affected.)
+:::
+
 ## Coupling to the intensity decay (VV/VH combined fit)
 
 The anisotropy cannot be observed on its own — it rides on the intensity decay.
