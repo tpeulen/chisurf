@@ -205,14 +205,6 @@
     "protein_atoms": ["CA"],
     "nucleic_atoms": ["P", "O5'", "C5'", "C4'", "C3'", "O3'", "C1'", "C1*"]
   },
-  "occlusion": {
-    "enabled": true,
-    "strength": 1.4,
-    "darkness": 0.7,
-    "max_distance": 10.0,
-    "occluders": "residues",
-    "residue_radius": 3.2
-  },
   "lighting": {
     "light_direction": [0.0, 0.0, 1.0],
     "ambient_strength": 0.45,

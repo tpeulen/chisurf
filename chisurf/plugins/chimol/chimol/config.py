@@ -298,26 +298,6 @@ def _load_display_config() -> dict:
             "protein_atoms": ["CA"],
             "nucleic_atoms": ["P", "O5'", "C5'", "C4'", "C3'", "O3'", "C1'", "C1*"],
         },
-        "occlusion": {
-            # Per-vertex ambient occlusion baked into the mesh colours at build
-            # time. Normal-aware, so crevices darken and convex surfaces stay
-            # bright; costs nothing per frame and cannot shimmer as the camera
-            # moves. PyMOL has no equivalent.
-            "enabled": True,
-            # Scales the accumulated coverage before the exponential; higher
-            # deepens the shading without ever passing full occlusion.
-            "strength": 1.4,
-            # How far the darkest crevice is taken toward black.
-            "darkness": 0.7,
-            # Occluders further than this (in Angstrom) are ignored.
-            "max_distance": 10.0,
-            # "residues" occludes with the backbone trace, "atoms" with every
-            # atom. A ribbon threads through its own side chains, so the
-            # all-atom set buries a cartoon in shadow; it suits space-filling.
-            "occluders": "residues",
-            # Radius standing in for a whole residue, in Angstrom.
-            "residue_radius": 3.2,
-        },
         "lighting": {
             "light_direction": [0.0, 0.0, 1.0],
             "ambient_strength": 0.45,

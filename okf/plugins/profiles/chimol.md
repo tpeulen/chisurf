@@ -414,41 +414,6 @@ view and the offscreen raytrace cannot drift apart.
 `reset_view(distance,elevation,azimuth)` keeps its signature (builds the matrix
 internally).
 
-# Ambient occlusion (the one place chimol is ahead)
-
-PyMOL has no ambient occlusion at all, so this is where chimol can look better
-rather than merely the same. `geometry/ambient.py` holds two estimators and they
-answer different questions:
-
-- `_estimate_ambient_occlusion` counts neighbours inside a radius. Cheap and
-  **normal-agnostic**, so it measures *crowding*, not *concavity* — a bulge in
-  the middle of a crowd came out as dark as the pit beside it.
-- `occlusion_from_spheres` is real AO. For each vertex it accumulates the
-  fraction of its **hemisphere** blocked by nearby spheres,
-  `1 − cos α` with `sin α = r / d`, weighted by `cos θ` against the vertex
-  normal, and combines contributions as `1 − exp(−strength · Σ)` so a dense
-  neighbourhood deepens without ever saturating to black. Numba cell list over
-  the occluders, with a chunked NumPy fallback that agrees to 1e-12.
-
-**Baked into vertex colours at build time, not computed per frame.** The
-occlusion of a rigid molecule does not depend on the camera, so this costs
-nothing while the view moves and cannot shimmer the way a screen-space estimate
-does — and it needs no `ray`, no FBO and no second shader pass. Rebuild cost on
-1DG3 (540 residues, ~67 k cartoon vertices): 0.139 s → 0.25 s.
-
-**Occlude with the right thing.** A cartoon ribbon threads straight through its
-own side chains, so shading it against every atom buries the molecule in shadow —
-it is surrounded by geometry that is not drawn. `occlusion.occluders` therefore
-defaults to `"residues"` (the backbone trace with a residue-sized radius), which
-darkens the grooves between helices as it should. Space-filling spheres pass
-`occluders="atoms"` explicitly, because there the atoms *are* the picture.
-
-Tunables live under `occlusion.*` in the display config and are reachable via
-the settings layer's dotted-path form (`set occlusion.strength, 2.0`): `enabled`,
-`strength`, `darkness`, `max_distance`, `occluders`, `residue_radius`. When it is
-on, the per-residue neighbour-count shading in `_update_cartoon` is skipped —
-running both darkens the cartoon twice.
-
 # Structure loading (fallback contract)
 
 `io/structure.py:load_structure_payload` tries the core `Structure` reader first

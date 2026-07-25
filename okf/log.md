@@ -2,69 +2,6 @@
 
 ## 2026-07-25
 
-* **The GUI log handler was quadratic; a data load spent seconds logging.**
-  `QTextEditLogger` is installed on the *root* logger (status bar + log console),
-  so every record from every subsystem paid its cost. Beyond the thread-safety
-  and filter-debounce fix already landed, three per-record costs remained:
-  one queued signal *per record*, one table insert plus `scrollToBottom` *per
-  record*, and — because the debounced pass still walked every row — an O(rows)
-  filter over a console that grew without bound.
-  **Records are now buffered and applied in batches.** `emit()` appends to a
-  lock-guarded deque and wakes the GUI thread once per batch, not once per
-  record; the GUI side flushes immediately when idle (no added latency for an
-  isolated message) and otherwise at most every 50 ms. `set` mode applies only
-  the newest message — a status bar cannot show the other 399. `LogListWidget`
-  gained `add_entries()` (updates disabled, one `scrollToBottom` for the whole
-  batch) and a `max_rows` cap (5000, oldest trimmed), so filter and style passes
-  stay bounded no matter how long the session runs.
-  **The remaining O(rows) walk is skipped when it cannot do anything.** With no
-  filter text and hiding off there is nothing to highlight and the previous idle
-  pass already cleared leftover styling, so `filter_log_content` returns early —
-  the common case, and the one that made a burst quadratic. Also cached the
-  filter-owner lookup (it walked the parent chain per record), the level
-  QBrushes, and replaced a `strptime`/`strftime` round trip per record with a
-  string slice.
-  **Measured** headlessly with 400 records logged from a worker thread into a
-  real console (`test/gui`-style offscreen Qt, so paint cost is *understated*):
-  empty console 1454 ms -> 17 ms; with 500 rows already present 4278 ms -> 15 ms
-  (the ~290x is the quadratic term disappearing). Covered by
-  `test/gui/test_log_handler_gui.py` (500 records arrive in <=5 widget updates;
-  a status-bar burst ends on the newest message in <=5 `setText` calls) and
-  `test/gui/settings/test_log_filter.py` (row cap keeps the newest rows; a second
-  idle filter pass does no row walk, a real filter still applies). 15 passed.
-
-* **chimol: real ambient occlusion, in the interactive viewport, without
-  raytracing.** PyMOL has no ambient occlusion at all, so this is the first place
-  chimol is deliberately ahead rather than at parity.
-  **What was there measured the wrong thing.** `_estimate_ambient_occlusion`
-  counts neighbours inside a radius and never looks at the surface normal, so it
-  reports *crowding*, not *concavity* — a bulge in the middle of a crowd came out
-  as dark as the pit beside it, which is why cartoons read flat.
-  **New `occlusion_from_spheres`** accumulates, per vertex, the fraction of its
-  hemisphere blocked by nearby spheres: `1 - cos(alpha)` with
-  `sin(alpha) = r/d`, weighted by `cos(theta)` against the vertex normal, and
-  combined as `1 - exp(-strength * sum)` so a dense neighbourhood deepens without
-  ever saturating to black. Numba cell list over the occluders plus a chunked
-  NumPy fallback; the two agree to 1e-12. Validated against hand-computed cases:
-  the analytic single-occluder solid angle, zero behind the normal, zero on the
-  horizon, a ring darker than one overhang, and a vertex inside an occluder not
-  shadowing itself.
-  **Baked into vertex colours at build time**, so the live GL viewport gets it
-  with no raytrace, no framebuffer object and no second shader pass — and, since
-  the occlusion of a rigid molecule does not depend on the camera, it costs
-  nothing while the view moves and cannot shimmer the way a screen-space estimate
-  does. Rebuild on 1DG3 (540 residues, ~67k cartoon vertices): 0.139 s -> 0.25 s.
-  **Occluding with the right set matters more than the estimator.** A first
-  attempt shading the cartoon against all 4698 atoms buried the molecule in
-  shadow: a ribbon threads through its own side chains, which are not drawn.
-  `occlusion.occluders` defaults to `"residues"` (backbone trace, residue-sized
-  radius), which darkens the grooves between helices as it should; space-filling
-  spheres pass `"atoms"` explicitly, because there the atoms are the picture.
-  Tunables under `occlusion.*`, reachable as `set occlusion.strength, 2.0`. With
-  it on, the old per-residue shading in `_update_cartoon` is skipped so the
-  cartoon is not darkened twice.
-  Suite: 268 passed, 1 skipped (24 new).
-
 * **The agent can now produce a decay fit that is actually right, and knows
   when it has not.** The harness landed the day before could drive the
   session; it could not do fluorescence. On the sample donor decay a language

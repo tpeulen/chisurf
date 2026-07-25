@@ -1,3 +1,15 @@
+import pytest
+from qtpy import QtWidgets
+
+# Building the ChiSurf main window needs a running QApplication: without one
+# Qt does not raise, it aborts the whole process and takes the test session
+# with it. The non-GUI suite has no application, so skip at import time.
+if QtWidgets.QApplication.instance() is None:
+    pytest.skip(
+        "the ChiSurf main window needs a QApplication", allow_module_level=True
+    )
+
+
 import sys
 import pathlib
 import importlib

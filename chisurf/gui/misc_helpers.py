@@ -155,15 +155,6 @@ def filter_log_content(window):
     if not hasattr(widget, "rowCount"):
         return
 
-    # The pass below is O(rows) and runs whenever rows are appended. With no
-    # filter text and no hiding there is nothing to highlight, and a previous
-    # idle pass already cleared any leftover styling — so skip it. This is the
-    # common case: without it, a burst of log records is O(rows^2).
-    idle = not filter_text and not hide_non_matching
-    if idle and getattr(window, "_log_filter_idle", False):
-        return
-    window._log_filter_idle = idle
-
     for row in range(widget.rowCount()):
         message = widget.item(row, 3)
         row_text = widget.row_text(row) if hasattr(widget, "row_text") else message.text()

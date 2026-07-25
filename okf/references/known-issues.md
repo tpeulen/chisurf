@@ -64,16 +64,6 @@ These are the patterns; each caused more than one bug.
 - **Keep hot-path logging at DEBUG.** Logging a full DataFrame repr / per-redraw
   traces at INFO on every recompute was itself a major interactive slowdown.
   `resizeEvent` should rescale cached data (debounced), never re-bin/recompute.
-- **A GUI log handler must batch, be bounded, and never touch the widget per
-  record.** `QTextEditLogger` sits on the root logger, so *any* subsystem's
-  logging pays its cost. Writing to the widget from the logging thread is
-  undefined behaviour (`QBasicTimer` warnings, crashes); inserting one row per
-  record pays a relayout plus `scrollToBottom` each; and running the O(rows)
-  console filter per record makes a burst O(rows^2) — a data load logging a few
-  hundred records took seconds. Records are queued and applied in batches on the
-  GUI thread (one wake-up per batch, ~50 ms rate limit, newest-only for the
-  status bar), the console is capped at `LogListWidget.max_rows`, and the filter
-  pass is debounced and skipped entirely while no filter is active.
 - **File-save dialogs seed from the data location.** Default the save dir to the
   loaded data file's folder / `cs.working_path` (not Qt's last-used dir) and
   update `cs.working_path` after save. `chisurf/gui/main.py` "Save Fit" is the
