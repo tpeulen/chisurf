@@ -285,6 +285,17 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot Batch 12 — LUT compute section off pyqtgraph (allow-list 42 → 41).**
+  Migrated `plugins/tttr/tttr_lut_tools/gui/sections.py`. Its
+  `_ComputePlotSection` subclassed `pg.GraphicsLayoutWidget` (two stacked plots +
+  a draggable region and offset/threshold `InfiniteLine`s); it now subclasses
+  `cp.Grid`, building panels via `add_plot(...)` and the interactive items via
+  `panel.region`/`panel.vline`/`panel.hline`. Redraw replaces only the tracked
+  data curve (`remove` + re-`line`) so the draggable items survive, and the
+  model→plot sync uses signal-safe `set_bounds`/`set_value`, dropping the bespoke
+  `_syncing` guard. New `test_grid_panel_region_and_markers` + import-clean entry.
+  See [PRD-64](prds/prd-64.md).
+
 * **chiplot Batch 11 — decay/anisotropy tools off pyqtgraph (allow-list 45 → 42).**
   Migrated `plugins/fcs/fcs_lfcs_sim`, `plugins/fluorescence_decay/tr_anisotropy`
   (IRF background-region selector) and `plugins/vv_vh_anisotropy` (dual decay +
