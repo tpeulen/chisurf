@@ -33,6 +33,7 @@ ordering below runs from the physical fundamentals to the specific methods.
    :maxdepth: 1
 
    smfret_bursts
+   accurate_fret
    burst_2cde
    bva
    recurrence

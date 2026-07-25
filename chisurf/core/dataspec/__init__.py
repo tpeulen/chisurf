@@ -483,6 +483,11 @@ class PlotSection(Section):
     legend: bool = True
     #: Right-click context menu (per-axis log/linear, autoscale, export).
     context_menu: bool = True
+    #: Fixed axis ranges ``[min, max]``; empty means autoscale. Use them when the
+    #: quantity has a natural domain (an efficiency lives in 0…1) that a few
+    #: divide-by-almost-zero outliers would otherwise blow up.
+    x_range: typing.Tuple[float, ...] = ()
+    y_range: typing.Tuple[float, ...] = ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -719,6 +724,9 @@ def _section_from_dict(d: typing.Mapping[str, typing.Any]) -> Section:
             kwargs["options"] = dict(kwargs["options"])
         else:
             kwargs["options"] = tuple(kwargs["options"])
+    for key in ("x_range", "y_range"):
+        if kwargs.get(key) is not None:
+            kwargs[key] = tuple(float(v) for v in kwargs[key])
     if "labels" in kwargs and kwargs["labels"] is not None:
         # Choice option display strings — localize each.
         kwargs["labels"] = tuple(

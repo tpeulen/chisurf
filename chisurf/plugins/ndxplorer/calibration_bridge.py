@@ -15,7 +15,7 @@ import numpy as np
 
 from chisurf.core.fluorescence.fret.calibration import calibration_to_ndx_constants
 
-__all__ = ["push_calibration_to_ndx", "push_unmixed_columns_to_ndx"]
+__all__ = ["push_calibration_to_ndx", "push_unmixed_columns_to_ndx", "find_ndx_windows"]
 
 
 def push_calibration_to_ndx(ndx, calibration, *, recompute: bool = True) -> dict:
@@ -81,6 +81,36 @@ def push_calibration_to_ndx(ndx, calibration, *, recompute: bool = True) -> dict
                 pass
 
     return mapping
+
+
+def find_ndx_windows() -> list:
+    """Return the open in-process ndXplorer windows.
+
+    ndXplorer runs inside the ChiSurf process, so a tool that wants to push a
+    calibration (or read burst columns) only has to find the window among the
+    top-level Qt widgets. Returns an empty list when Qt is not running — the
+    callers stay usable head-less.
+
+    Returns
+    -------
+    list
+        Every ndXplorer-like top-level window, newest last.
+    """
+    try:
+        from qtpy import QtWidgets
+    except Exception:  # pragma: no cover - head-less
+        return []
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return []
+    windows = []
+    for widget in app.topLevelWidgets():
+        looks_like_ndx = type(widget).__name__ == "NDXplorer" or (
+            hasattr(widget, "constants") and hasattr(widget, "data_source")
+        )
+        if looks_like_ndx:
+            windows.append(widget)
+    return windows
 
 
 def _column(data, name):

@@ -164,13 +164,71 @@ back to the physically-motivated light-path prior.
   (end-to-end on simulated bursts). Example notebook:
   `chisurf/plugins/burst/burst_analysis/examples/FRET_Calibration.ipynb`.
 
+- **Accurate FRET with error bars, and automatic factors** —
+  `chisurf/core/fluorescence/fret/accurate.py` closes the loop from "apply the
+  factors" to "find the factors":
+  - `classify_es_populations` fits a **Gaussian mixture** (dependency-free 1-D EM,
+    `gaussian_mixture_1d`, BIC-selected) to the stoichiometry and assigns each
+    *component* to donor-only / acceptor-only / FRET by its centre, placing the
+    cuts where neighbouring components meet — no hand-drawn gates;
+    `split_fret_subpopulations` does the same over the efficiency, which is what
+    makes `gamma` identifiable from one measurement.
+  - `auto_calibrate(...)` iterates classification → `alpha` (donor-only) →
+    `delta` (acceptor-only) → `gamma`/`beta` (E-S fit) to self-consistency
+    (the gates depend on the factors and vice versa; 2–3 passes in practice),
+    bootstraps a σ per factor with the split held fixed, and returns an
+    `AutoCalibration` with a printable `report()` naming the route each factor
+    came from.
+  - **The optics are the prior for every factor, not just gamma.**
+    `_combine_with_optics_priors` precision-weights `gamma`, `alpha` *and*
+    `delta` against the light-path priors (`lightpath=` seeds them via
+    `set_priors_from_lightpath`), and reports the posterior σ. A factor the data
+    cannot identify (no donor-only bursts) falls back to the optical value **with
+    the optical uncertainty** instead of to a fitted illusion.
+  - `beta_from_stoichiometry` is the documented single-population fallback
+    (centre a 1:1 species at `S = 0.5`); it never touches `E`.
+  - `accurate_fret(...)` returns per-burst E/S/distance plus propagated errors
+    (`efficiency_uncertainty`: `∂E/∂γ = −E(1−E)/γ`, `∂E/∂α = −(1−E)²/γ`,
+    `∂E/∂δ = −(1−E)²·F_AA/(γ·F_DD)` — the δ term was derived wrong first and is
+    pinned by a finite-difference test; `distance_from_efficiency`:
+    `σ_R/R = √((σ_R0/R0)² + (σ_E/(6E(1−E)))²)`).
+- **Analytic FRET lines (the lifetime route)** —
+  `chisurf/core/fluorescence/fret/lines.py` is a model-free, Qt-free generator of
+  the E–τ lines: `static_fret_line` (Gaussian linker distribution swept over the
+  mean distance), `dynamic_fret_line` (two-state fast exchange), `no_linker_line`
+  (the `E = 1 − τ/τ_D0` diagonal), each a `FretLine` with `efficiency_at`,
+  `lifetime_at`, `deviation` and the shared `as_overlay()` contract. It agrees
+  with the model-driven `fret_line.py` generator to |ΔE| < 0.002 **at matched
+  τ_f** (`test/models/test_fret_lines_analytic.py`) — compare at matched lifetime,
+  not matched mean distance, because the model discretizes P(R) on its own
+  logarithmic axis. `gamma_from_lifetime(...)` reads the line backwards
+  (`γ = (F_DA/F_DD)·(1−E_line)/E_line`), which identifies `gamma` from a **single**
+  population and **without ALEX**; populations outside `efficiency_window`
+  (default 0.05…0.95) are refused because the line is flat there. Same comparison
+  after calibration = the sub-burst-dynamics test.
+- **`accurate_fret` plugin** (`chisurf/plugins/burst/accurate_fret/`) — AutoForm
+  tool (`accurate_fret.view.json` + `AccurateFretViewModel`) over the core:
+  reads a burst table (delimited text/`.npz`, columns auto-mapped from the
+  ndX/`.bur`/API naming conventions via `COLUMN_HINTS`) **or the live columns of
+  an open ndXplorer window**, shows the factor/population tables and the E-S and
+  E-τ scatter plots with the static and dynamic lines, and can share the
+  calibration in the session (`register_calibration`) or push it to ndX. Headless
+  `csc accurate-fret`, RPC `accurate_fret.calibrate{,_file}`. Light paths saved by
+  the light-path simulator are listed as prior sources (`lightpath_prior` reads
+  their stored `crosstalk_matrices` artifact).
+- **ndX window locator** — `calibration_bridge.find_ndx_windows()` finds the
+  in-process ndXplorer windows among the top-level Qt widgets (empty head-less),
+  which is what the tool's push/pull buttons use.
+- **AutoForm plot ranges** — `PlotSection` gained `x_range`/`y_range`; without
+  them one acceptor-only burst (no donor signal → unbounded "efficiency") squeezes
+  an entire E-S plot into a pixel column.
+
 ## What is missing (later phases)
 
-- **ndx toolbar push button** — the headless `push_calibration_to_ndx` is done and
-  the parameter-link surface auto-wires; a one-click GUI action (mirroring the
-  MMFDB toolbar in the ndxplorer plugin) to push the session calibration is the
-  only remaining Qt convenience. Editor-tree sync inside the push is best-effort
-  (derived columns already update via `ndx.constants`).
+- **ndx toolbar push button** — resolved: the `accurate_fret` tool's
+  *📤 To ndXplorer* action (plus `find_ndx_windows`) is the one-click push. A
+  button inside ndX's own toolbar is still absent; editor-tree sync inside the
+  push stays best-effort (derived columns already update via `ndx.constants`).
 - **Multi-acceptor cross-leakage** — resolved: `corrected_es_general` un-mixes
   the emission crosstalk matrix (including acceptor↔acceptor bleed) as the first
   step of the correction. `corrected_es_matrix` remains the scalar fast path for
@@ -178,7 +236,9 @@ back to the physically-motivated light-path prior.
 
 ## Pointers
 
-- Core: `chisurf/core/fluorescence/fret/calibration.py`,
+- Core: `chisurf/core/fluorescence/fret/accurate.py` (automatic factors,
+  uncertainties), `chisurf/core/fluorescence/fret/lines.py` (analytic E–τ lines),
+  `chisurf/core/fluorescence/fret/calibration.py`,
   `chisurf/core/fluorescence/burst/es.py`,
   `chisurf/core/fluorescence/crosstalk.py`.
 - Priors: `chisurf/core/fitting/priors.py`, `chisurf/core/fitting/fit.py`
@@ -186,5 +246,8 @@ back to the physically-motivated light-path prior.
 - Factor algebra reused from `chisurf/core/models/pda/nusiance.py::PdaFretNuisance`.
 - Simulation: `chisurf/plugins/burst/burst_analysis/api/workflow.py`
   (`simulate`, `GroundTruth`, `select_bursts`).
-- User-facing guide: `docs/FRET calibration.md` (in the Sphinx toctree); runnable
-  notebook `chisurf/plugins/burst/burst_analysis/examples/FRET_Calibration.ipynb`.
+- Plugin: `chisurf/plugins/burst/accurate_fret/` (GUI + CLI + RPC).
+- User-facing: theory in `docs/concepts/accurate_fret.md`, workflow in
+  `docs/guides/41_accurate_fret.md`, API how-to in
+  `docs/guides/fret_calibration.md`; runnable notebook
+  `chisurf/plugins/burst/burst_analysis/examples/FRET_Calibration.ipynb`.

@@ -68,7 +68,18 @@ E, S = cor["E"], cor["S"]
 
 ## Where the factors come from
 
-ChiSurf offers two complementary routes; use either or both.
+ChiSurf offers three complementary routes; use any or all of them.
+
+:::{admonition} Want this done for you?
+:class: tip
+The **Accurate FRET** tool determines all four factors automatically from a
+single burst table — it finds the donor-only, acceptor-only and FRET populations
+itself, combines the estimates with the light-path prior, and adds a third route
+via the donor lifetime and the static FRET line. See the
+{doc}`tutorial </guides/41_accurate_fret>`; this page describes the underlying
+API, which remains the right choice when the reference samples were measured
+separately.
+:::
 
 ### 1. Light-path prior → data-optimized posterior
 
@@ -113,6 +124,45 @@ out = calibrate_from_samples(
     acceptor_only=(acc_i_da, acc_i_aa, acc_i_dd),  # delta
 )
 ```
+
+### 3. The donor lifetime and the static FRET line
+
+The two routes above need either reference samples or at least two FRET
+populations of different efficiency. A single-population sample identifies
+$\gamma$ neither way — but its **donor lifetime** does. A static population must
+lie on the static FRET line, so the detection factor is whatever makes the
+intensity-based efficiency agree with the lifetime-based one:
+
+```python
+from chisurf.core.fluorescence.fret.accurate import gamma_from_lifetime
+from chisurf.core.fluorescence.fret.lines import static_fret_line
+
+line = static_fret_line(4.0, r0=52.0, sigma=6.0)   # tau_D(0), R0, linker width
+est = gamma_from_lifetime(i_dd, i_da, tau_f, line=line, alpha=0.08, delta=0.05)
+```
+
+This works without acceptor excitation (ALEX) altogether. Running it *after*
+calibration turns the same comparison into a dynamics test — see
+{ref}`concept-accurate-fret`.
+
+### All three at once
+
+```python
+from chisurf.core.fluorescence.fret.accurate import auto_calibrate
+
+result = auto_calibrate(i_dd, i_da, i_aa, tau_f=tau_f, line=line,
+                        lightpath={"matrices": matrices, "donor": "Alexa488",
+                                   "acceptor": "Alexa647",
+                                   "green_detector": "green",
+                                   "red_detector": "red"},
+                        n_bootstrap=100)
+print(result.report())
+```
+
+`auto_calibrate` finds the populations itself (a Gaussian mixture over the
+stoichiometry, iterated to self-consistency), takes each factor from whichever
+route identifies it, and returns the precision-weighted posterior together with
+bootstrap uncertainties.
 
 ## The general case: crosstalk matrices
 

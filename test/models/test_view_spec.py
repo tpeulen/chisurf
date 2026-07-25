@@ -319,3 +319,21 @@ def test_mix_model_view_spec_file_exists():
     src = inspect.getfile(LifetimeMixtureNewModel)
     json_path = pathlib.Path(src).parent / "mix_model.view.json"
     assert json_path.exists(), f"mix_model.view.json not found at {json_path}"
+
+
+def test_plot_section_axis_ranges_are_parsed():
+    """A plot section can pin its axes to the quantity's natural domain.
+
+    Without it a single divide-by-almost-zero burst (an acceptor-only molecule
+    has no donor signal, so its "efficiency" is unbounded) squeezes an entire
+    E-S plot into one pixel column.
+    """
+    from chisurf.core.dataspec import _section_from_dict
+
+    section = _section_from_dict({
+        "type": "plot", "source": "es_series", "x_range": [-0.1, 1.1], "y_range": [-0.1, 1.1],
+    })
+    assert section.x_range == (-0.1, 1.1)
+    assert section.y_range == (-0.1, 1.1)
+    # absent by default -> the renderer autoscales
+    assert _section_from_dict({"type": "plot", "source": "s"}).x_range == ()

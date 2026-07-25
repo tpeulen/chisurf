@@ -2,6 +2,45 @@
 
 ## 2026-07-25
 
+* **Accurate FRET (Hellenkamp) determines its own correction factors, and the
+  optics are the prior.** The calibration machinery could *apply* α/β/γ/δ and
+  hold them as prior-regularized fitting parameters, but finding them still meant
+  hand-gated reference samples and hand-typed labels, and nothing used the donor
+  lifetime. Three things landed. (1) `chisurf/core/fluorescence/fret/lines.py` —
+  model-free analytic **static/dynamic FRET lines** in the E–τ plane
+  (`static_fret_line`, `dynamic_fret_line`, `no_linker_line`, each a `FretLine`
+  with `efficiency_at`/`lifetime_at`/`deviation`/`as_overlay`). They agree with
+  the model-driven `fret_line.py` generator to |ΔE| < 0.002 **at matched τ_f** —
+  compare at matched *lifetime*, not matched mean distance, since the model
+  discretizes P(R) on its own logarithmic axis. (2)
+  `chisurf/core/fluorescence/fret/accurate.py` — `auto_calibrate` fits a Gaussian
+  mixture (dependency-free 1-D EM, BIC-selected) to the stoichiometry, assigns
+  each *component* to donor-only/acceptor-only/FRET and cuts where components
+  meet, takes α and δ from the reference populations and γ/β from the 1/S-vs-E
+  fit, and **iterates to self-consistency** because the gates depend on the
+  factors that depend on the gates (2–3 passes). `gamma_from_lifetime` reads the
+  static line backwards (`γ = (F_DA/F_DD)(1−E_line)/E_line`), which identifies γ
+  from a **single** population and with no ALEX channel at all — the case the E-S
+  route simply cannot do. Every optics-derived factor (γ **and** α **and** δ, not
+  just γ as before) is then precision-weighted against its light-path prior, so a
+  factor the data cannot identify keeps the optical value *with the optical
+  uncertainty* instead of a fitted illusion. Verified on simulated bursts with
+  known factors (α 0.080→0.0799, δ 0.060→0.0596, γ 0.650→0.653, β 1.400→1.399).
+  (3) `chisurf/plugins/burst/accurate_fret/` — AutoForm tool (+ `csc
+  accurate-fret`, + `accurate_fret.calibrate{,_file}` RPC) that reads a burst
+  table or the live columns of an open ndXplorer window, shows the E–S and E–τ
+  plots with both lines, and shares or pushes the calibration.
+  **Two bugs the tests caught:** the ∂E/∂δ derivative was `(1−E)·F_AA/(γ·F_DD)`
+  and must be `(1−E)²·F_AA/(γ·F_DD)` (finite-difference test), and a factor whose
+  bootstrap σ came back NaN poisoned every downstream error bar. Also general:
+  `PlotSection` gained `x_range`/`y_range` (one acceptor-only burst has no donor
+  signal, so its unbounded "efficiency" flattened the whole E-S plot), and
+  `calibration_bridge.find_ndx_windows()` locates in-process ndX windows.
+  Docs: `docs/concepts/accurate_fret.md` + `docs/guides/41_accurate_fret.md`
+  (real screenshots + figure), `docs/guides/fret_calibration.md` updated;
+  [FRET calibration reference](/references/fret-calibration.md) and
+  [burst plugins](/plugins/burst.md) updated.
+
 * **chimol: PyMOL's object-panel A/S/H/L/C menus, transcribed 1:1.** The object
   panel is how most people actually drive PyMOL, so the five per-molecule menus
   are now reproduced entry for entry in `app/object_menus.py` -- same entries,

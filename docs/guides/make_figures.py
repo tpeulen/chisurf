@@ -771,6 +771,56 @@ def fig_nsalex_etau():
     save(fig, "nsalex_etau.png")
 
 
+def fig_accurate_fret():
+    """Static/dynamic FRET lines and what a wrong gamma does to a population."""
+    from chisurf.core.fluorescence.fret.accurate import gamma_from_lifetime
+    from chisurf.core.fluorescence.fret.lines import (
+        dynamic_fret_line,
+        no_linker_line,
+        static_fret_line,
+    )
+
+    tau0, r0, sigma = 4.0, 52.0, 6.0
+    static = static_fret_line(tau0, r0=r0, sigma=sigma)
+    sharp = no_linker_line(tau0)
+    dynamic = dynamic_fret_line(tau0, r0=r0, sigma=sigma, distance_1=38.0, distance_2=72.0)
+
+    rng = np.random.default_rng(11)
+    e_true = 0.55
+    tau_pop = float(static.lifetime_at(e_true))
+    tau = rng.normal(tau_pop, 0.12, 600)
+    e_ok = rng.normal(e_true, 0.045, 600)
+    # the same bursts corrected with a 40 % too large gamma: E = F/(F + gamma*D)
+    ratio = e_true / (1 - e_true)
+    e_bad = rng.normal(ratio / (ratio + 1.4), 0.045, 600)
+
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(10.5, 4.2))
+    ax.plot(sharp.tau_f, sharp.efficiency, "k--", lw=1.2, label=r"no linker: $E=1-\tau/\tau_0$")
+    ax.plot(static.tau_f, static.efficiency, "k-", lw=2, label="static FRET line")
+    ax.plot(dynamic.tau_f, dynamic.efficiency, "-", color="#d62728", lw=2,
+            label="dynamic FRET line")
+    ax.set_xlabel(r"$\langle\tau_{D(A)}\rangle_F$ (ns)")
+    ax.set_ylabel("FRET efficiency E")
+    ax.set_xlim(0, tau0 * 1.05); ax.set_ylim(0, 1)
+    ax.set_title("FRET lines (linker width 6 Å)"); ax.legend(fontsize=8)
+
+    bx.plot(static.tau_f, static.efficiency, "k-", lw=2, label="static FRET line")
+    bx.scatter(tau, e_ok, s=8, alpha=0.35, color="#1f77b4", label=r"correct $\gamma$")
+    bx.scatter(tau, e_bad, s=8, alpha=0.35, color="#ff7f0e", label=r"$\gamma$ 40 % too large")
+    bx.set_xlabel(r"$\langle\tau_{D(A)}\rangle_F$ (ns)")
+    bx.set_ylabel("FRET efficiency E")
+    bx.set_xlim(0, tau0 * 1.05); bx.set_ylim(0, 1)
+    bx.set_title(r"a wrong $\gamma$ pushes the population off the line")
+    bx.legend(fontsize=8)
+    save(fig, "accurate_fret_lines.png")
+
+    # the same relation read backwards: the line recovers gamma from the lifetime
+    f_dd = np.full(600, 1.0)
+    f_da = f_dd * ratio            # intensity ratio of the true population
+    recovered = gamma_from_lifetime(f_dd, f_da, tau, line=static)["gamma"]
+    print(f"  gamma recovered from the static line: {recovered:.3f} (expected 1.000)")
+
+
 def fig_combining_repeats():
     rng = np.random.default_rng(33)
     fig, ax = plt.subplots(figsize=(5.8, 4.0))
@@ -1179,7 +1229,7 @@ if __name__ == "__main__":
     fig_fret_fcs(); fig_filtered_fcs(); fig_simulation(); fig_h2mm(); fig_mcs()
     fig_alex_workflow(); fig_e_hist_fit(); fig_population_selection()
     fig_h2mm_dashboard(); fig_h2mm_recovery()
-    fig_nsalex_etau(); fig_combining_repeats(); fig_multispot()
+    fig_nsalex_etau(); fig_accurate_fret(); fig_combining_repeats(); fig_multispot()
     fig_ebfret(); fig_burst_lifetime(); fig_clsm()
     fig_rcm_alex(); fig_2d_peak_fit(); fig_timestamps()
     print("all figures written to", FIG)

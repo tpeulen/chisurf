@@ -2,7 +2,7 @@
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **99 plugins**, **41** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **100 plugins**, **42** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -11,7 +11,7 @@ Of the **99 plugins**, **41** build their interface from declarative AutoForm sp
 *
 ```
 
-**99 plugins** across 25 categories.
+**100 plugins** across 25 categories.
 
 ## Core
 
@@ -99,6 +99,7 @@ Of the **99 plugins**, **41** build their interface from declarative AutoForm sp
 
 | Plugin | Summary |
 | --- | --- |
+| [Accurate FRET](accurate_fret.md) | Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst populations, the optics prior of a saved light path and the static FRET line, with E-S and E-lifetime views. |
 | [FRET Line Generator](fret_line.md) *(hidden)* | Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndxplorer. |
 
 ## Spectroscopy → Fluorescence Correlation Spectroscopy

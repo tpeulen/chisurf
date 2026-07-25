@@ -1300,6 +1300,7 @@ class PlotWidget(QtWidgets.QWidget):
                 self.plot.addLegend(offset=(-5, 5))
             except Exception:
                 pass
+        self._apply_ranges()
         try:
             # Right-click menu (per-axis log/linear toggle, autoscale, export) is
             # on by default; a section can opt out with "context_menu": false.
@@ -1312,6 +1313,22 @@ class PlotWidget(QtWidgets.QWidget):
         if getattr(section, "description", ""):
             self.setToolTip(section.description)
         self.refresh()
+
+    def _apply_ranges(self) -> None:
+        """Pin the axes to the ranges the spec declares (if any).
+
+        A declared range keeps the view on the quantity's natural domain — an
+        efficiency lives in 0…1 — so a few divide-by-almost-zero outliers cannot
+        squeeze the interesting data into a line.
+        """
+        for axis, bounds in (("x", getattr(self._section, "x_range", ())),
+                             ("y", getattr(self._section, "y_range", ()))):
+            if bounds and len(bounds) == 2:
+                try:
+                    setter = self.plot.setXRange if axis == "x" else self.plot.setYRange
+                    setter(float(bounds[0]), float(bounds[1]), padding=0.0)
+                except Exception:
+                    pass
 
     def refresh(self) -> None:
         """Re-read the section's source method and redraw all series."""
@@ -1340,6 +1357,7 @@ class PlotWidget(QtWidgets.QWidget):
                 if s.get("no_line"):
                     kw["pen"] = None
             self.plot.plot(s.get("x", []), s.get("y", []), **kw)
+        self._apply_ranges()
 
 
 class LCurveWidget(QtWidgets.QWidget):

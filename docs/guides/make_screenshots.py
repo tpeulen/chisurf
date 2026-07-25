@@ -209,6 +209,65 @@ def _grab_coloc_tool():
             break
 
 
+def _grab_accurate_fret_tool():
+    """Grab the accurate-FRET workspace and its E-S / E-lifetime plots (guide 39)."""
+    import tempfile
+
+    import pyqtgraph as pg
+
+    from chisurf.plugins.burst.accurate_fret.gui.tool import AccurateFretTool
+
+    from chisurf.core.fluorescence.fret.lines import static_fret_line
+
+    gamma, alpha, beta, delta = 0.65, 0.08, 1.4, 0.06
+    tau_d0, r0 = 4.0, 52.0
+    line = static_fret_line(tau_d0, r0=r0, sigma=6.0)
+    rng = np.random.default_rng(7)
+    dd, da, aa, tau = [], [], [], []
+    for efficiency, n in ((0.28, 1500), (0.72, 1500)):
+        photons = rng.poisson(400, n).astype(float)
+        dd.append(rng.poisson((1 - efficiency) * photons))
+        aa.append(rng.poisson(beta * gamma * photons))
+        da.append(rng.poisson(gamma * efficiency * photons
+                              + alpha * (1 - efficiency) * photons
+                              + delta * beta * gamma * photons))
+        tau.append(rng.normal(float(line.lifetime_at(efficiency)), 0.15, n))
+    photons = rng.poisson(400, 500).astype(float)          # donor-only
+    dd.append(rng.poisson(photons)); da.append(rng.poisson(alpha * photons))
+    aa.append(rng.poisson(2.0, 500)); tau.append(rng.normal(tau_d0, 0.15, 500))
+    photons = rng.poisson(400, 500).astype(float)          # acceptor-only
+    dd.append(rng.poisson(2.0, 500)); aa.append(rng.poisson(beta * gamma * photons))
+    da.append(rng.poisson(delta * beta * gamma * photons)); tau.append(np.full(500, np.nan))
+
+    table = pathlib.Path(tempfile.gettempdir()) / "accurate_fret_demo_bursts.csv"
+    np.savetxt(
+        table,
+        np.column_stack([np.concatenate(c).astype(float) for c in (dd, da, aa, tau)]),
+        delimiter=",", comments="",
+        header="Green Count Rate (KHz),Red Count Rate (KHz),"
+               "S delayed yellow (kHz),Tau (green)",
+    )
+
+    tool = AccurateFretTool()
+    tool.model.donor_lifetime = tau_d0
+    tool.model.forster_radius = r0
+    tool.model.n_bootstrap = 20
+    tool.model.set_filename(str(table))
+    tool.model.compute()
+    tool._refresh()
+    tool.resize(1500, 900)
+    _grab(tool, "accurate_fret_tool.png")
+
+    # The two diagnostic plots on their own, large enough to read.
+    for name, plot in zip(
+        ("accurate_fret_es.png", "accurate_fret_etau.png"),
+        tool.findChildren(pg.PlotWidget),
+    ):
+        plot.resize(820, 560)
+        _grab(plot, name)
+    table.unlink(missing_ok=True)
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -220,6 +279,7 @@ def main():
         _grab_burst_browser,
         _grab_2cde_tool,
         _grab_coloc_tool,
+        _grab_accurate_fret_tool,
     ):
         try:
             grab()
