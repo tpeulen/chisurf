@@ -320,3 +320,92 @@ def test_geometry_without_occlusion_is_still_valid():
 
     geom = Geometry(kind="mesh", positions=np.zeros((3, 3)))
     assert geom.occlusion is None
+
+
+# --------------------------------------------------------------------------- #
+# Cast shadows: a different cue from occlusion
+# --------------------------------------------------------------------------- #
+# Ambient occlusion says how *enclosed* a point is; this says whether anything
+# stands between it and the light. PyMOL casts shadows only when raytracing, so
+# having them in the interactive view is chimol going further rather than
+# matching.
+
+from chisurf.plugins.chimol.chimol.geometry.ambient import (  # noqa: E402
+    directional_occlusion,
+)
+
+_LIGHT = np.array([0.0, 0.0, 1.0])
+
+
+def _shadow(normals, centers, radii, **kw) -> float:
+    result = directional_occlusion(
+        _ORIGIN, normals, np.atleast_2d(centers), np.atleast_1d(radii),
+        _LIGHT, **kw
+    )
+    if result is None:
+        pytest.skip("numba unavailable; directional shadowing is numba-only")
+    return float(result[0])
+
+
+def test_an_open_sky_casts_no_shadow():
+    assert _shadow(_UP, [0.0, 0.0, -5.0], 2.0, max_distance=20.0) == 0.0
+
+
+def test_an_occluder_on_the_light_ray_shadows():
+    assert _shadow(_UP, [0.0, 0.0, 5.0], 2.0, max_distance=20.0) > 0.8
+
+
+def test_an_occluder_beside_the_ray_does_not():
+    assert _shadow(_UP, [9.0, 0.0, 5.0], 2.0, max_distance=20.0) == 0.0
+
+
+def test_a_graze_gives_a_soft_edge():
+    """A hard in/out test would stair-step at this scale."""
+    full = _shadow(_UP, [0.0, 0.0, 5.0], 2.0, max_distance=20.0)
+    graze = _shadow(_UP, [2.6, 0.0, 5.0], 2.0, max_distance=20.0)
+    assert 0.0 < graze < full
+
+
+def test_softness_widens_the_penumbra():
+    tight = _shadow(_UP, [2.6, 0.0, 5.0], 2.0, max_distance=20.0, softness=1.2)
+    wide = _shadow(_UP, [2.6, 0.0, 5.0], 2.0, max_distance=20.0, softness=2.5)
+    assert wide > tight
+
+
+def test_a_surface_facing_away_is_left_to_the_diffuse_term():
+    assert _shadow(_DOWN, [0.0, 0.0, 5.0], 2.0, max_distance=20.0) == 0.0
+
+
+def test_a_shadow_ray_does_not_start_inside_its_own_occluder():
+    assert _shadow(_UP, [0.0, 0.0, 1.0], 2.0, max_distance=20.0) == 0.0
+
+
+def test_occluders_beyond_the_reach_are_ignored():
+    assert _shadow(_UP, [0.0, 0.0, 30.0], 2.0, max_distance=20.0) == 0.0
+
+
+def test_a_degenerate_light_direction_is_rejected():
+    assert directional_occlusion(
+        _ORIGIN, _UP, np.array([[0.0, 0.0, 5.0]]), 2.0, np.zeros(3)
+    ) is None
+
+
+def test_shadowing_reaches_the_mesh_colours(view):
+    """Off vs on must actually change what is drawn."""
+    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+
+    cfg = _DISPLAY_CONFIG.setdefault("occlusion", {})
+    previous = cfg.get("shadows", True)
+    try:
+        cfg["shadows"] = False
+        view._update_view()
+        unshadowed = _cartoon_colors(view)
+        cfg["shadows"] = True
+        view._update_view()
+        shadowed = _cartoon_colors(view)
+    finally:
+        cfg["shadows"] = previous
+
+    assert shadowed.shape == unshadowed.shape
+    assert (shadowed[:, :3] <= unshadowed[:, :3] + 1e-9).all()
+    assert shadowed[:, :3].min() < unshadowed[:, :3].min()

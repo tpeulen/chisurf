@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from .primitives import _compute_center_radius, _build_sphere_mesh, _build_stick_mesh
-from .ambient import _estimate_ambient_occlusion, occlusion_from_spheres
+from .ambient import (
+    _estimate_ambient_occlusion,
+    directional_occlusion,
+    occlusion_from_spheres,
+)
 from .cartoon import (
     _build_trace_ups,
     _generate_cartoon_tube_arrays,
@@ -23,6 +27,7 @@ __all__ = [
     "_compute_center_radius",
     "_estimate_ambient_occlusion",
     "occlusion_from_spheres",
+    "directional_occlusion",
     "_build_sphere_mesh",
     "_build_stick_mesh",
     "_build_trace_ups",

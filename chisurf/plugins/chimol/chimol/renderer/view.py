@@ -29,6 +29,7 @@ from ..geometry import (
     _build_trace_ups,
     _compute_center_radius,
     _estimate_ambient_occlusion,
+    directional_occlusion,
     occlusion_from_spheres,
     _extract_ca_trace,
     _generate_cartoon_tube_arrays,
@@ -2952,7 +2953,56 @@ class MolView(QtWidgets.QWidget):
 
         shaded = np.array(cols, dtype=float, copy=True)
         shaded[:, :3] *= (1.0 - darkness * occ)[:, None]
+
+        # Ambient occlusion says how *enclosed* a point is; a cast shadow says
+        # whether anything stands between it and the light. They are different
+        # cues and the second is what PyMOL's interactive view has no equivalent
+        # of at all -- it casts shadows only when raytracing.
+        shadow = self._directional_shadow(verts, norms, centres, radii, cfg, scale)
+        if shadow is not None:
+            shadow_darkness = float(cfg.get("shadow_darkness", 0.45))
+            shaded[:, :3] *= (1.0 - shadow_darkness * shadow)[:, None]
+            # Fold the shadow into the occlusion channel the backend damps its
+            # non-surface lighting by, so a shadowed crevice does not get its
+            # ambient and rim light back.
+            occ = np.clip(occ + (1.0 - occ) * shadow, 0.0, 1.0)
+
         return np.clip(shaded, 0.0, 1.0), occ
+
+    def _directional_shadow(
+        self,
+        verts: np.ndarray,
+        norms: np.ndarray,
+        centres: np.ndarray,
+        radii: np.ndarray,
+        cfg: dict,
+        scale: float,
+    ) -> np.ndarray | None:
+        """Per-vertex shadowing of the key light, or ``None`` when disabled."""
+        if not bool(cfg.get("shadows", True)):
+            return None
+        # PyMOL's `light` default is (-0.4, -0.4, -1): the direction the light
+        # *travels*, so the shadow ray runs the other way, toward the source. A
+        # pure headlight casts almost nothing the camera can see, which is why
+        # this is off-axis rather than reusing the viewport's light direction.
+        light = cfg.get("shadow_direction", [0.4, 0.4, 1.0])
+        try:
+            shadow = directional_occlusion(
+                verts,
+                norms,
+                centres,
+                radii,
+                np.asarray(light, dtype=float),
+                max_distance=float(cfg.get("shadow_distance", 20.0)) * scale,
+                softness=float(cfg.get("shadow_softness", 1.6)),
+                strength=float(cfg.get("shadow_strength", 1.0)),
+            )
+        except Exception:
+            logger.warning("Directional shadowing failed", exc_info=True)
+            return None
+        if shadow is None or shadow.shape[0] != verts.shape[0]:
+            return None
+        return shadow
 
     def _update_cartoon(
         self, coords: np.ndarray, n_points: int, config: dict, colors: np.ndarray | None

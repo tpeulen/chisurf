@@ -289,6 +289,120 @@ if _HAVE_NUMBA and nb is not None:
         return occ
 
 
+    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    def _directional_occlusion_nb(
+        points: np.ndarray,
+        normals: np.ndarray,
+        centers: np.ndarray,
+        radii: np.ndarray,
+        direction: np.ndarray,
+        max_distance: float,
+        softness: float,
+        strength: float,
+    ) -> np.ndarray:
+        """How much of the key light each vertex loses to the geometry.
+
+        A ray is cast from the vertex toward the light and each nearby sphere is
+        asked how close it comes to that ray. A sphere the ray passes straight
+        through blocks fully; one it grazes blocks partly, which is what gives a
+        soft edge rather than the hard stair-step of a shadow map at this scale.
+
+        Occluders behind the vertex, or that the vertex sits inside, are skipped:
+        the first are irrelevant and the second is the surface itself.
+        """
+        n = points.shape[0]
+        shadow = np.zeros(n, dtype=np.float64)
+        m = centers.shape[0]
+        if n == 0 or m == 0 or max_distance <= 0.0:
+            return shadow
+
+        lx, ly, lz = direction[0], direction[1], direction[2]
+
+        minx = miny = minz = 1.0e30
+        maxx = maxy = maxz = -1.0e30
+        for j in range(m):
+            if centers[j, 0] < minx:
+                minx = centers[j, 0]
+            if centers[j, 0] > maxx:
+                maxx = centers[j, 0]
+            if centers[j, 1] < miny:
+                miny = centers[j, 1]
+            if centers[j, 1] > maxy:
+                maxy = centers[j, 1]
+            if centers[j, 2] < minz:
+                minz = centers[j, 2]
+            if centers[j, 2] > maxz:
+                maxz = centers[j, 2]
+
+        inv = 1.0 / max_distance
+        nx = int((maxx - minx) * inv) + 1
+        ny = int((maxy - miny) * inv) + 1
+        nz = int((maxz - minz) * inv) + 1
+        head = np.full(nx * ny * nz, -1, dtype=np.int64)
+        nxt = np.empty(m, dtype=np.int64)
+        for j in range(m):
+            jx = int((centers[j, 0] - minx) * inv)
+            jy = int((centers[j, 1] - miny) * inv)
+            jz = int((centers[j, 2] - minz) * inv)
+            c = (jx * ny + jy) * nz + jz
+            nxt[j] = head[c]
+            head[c] = j
+
+        # The ray only ever moves toward the light, so walking cells along it
+        # visits far fewer than a full neighbourhood search would.
+        steps = int(max_distance / max_distance) + 2
+        for i in range(n):
+            px = points[i, 0]
+            py = points[i, 1]
+            pz = points[i, 2]
+            if normals[i, 0] * lx + normals[i, 1] * ly + normals[i, 2] * lz <= 0.0:
+                # Facing away: the diffuse term already darkens this.
+                continue
+
+            total = 0.0
+            for s in range(steps):
+                cx = px + lx * max_distance * s
+                cy = py + ly * max_distance * s
+                cz = pz + lz * max_distance * s
+                ix = int((cx - minx) * inv)
+                iy = int((cy - miny) * inv)
+                iz = int((cz - minz) * inv)
+                for dx in range(-1, 2):
+                    jx = ix + dx
+                    if jx < 0 or jx >= nx:
+                        continue
+                    for dy in range(-1, 2):
+                        jy = iy + dy
+                        if jy < 0 or jy >= ny:
+                            continue
+                        for dz in range(-1, 2):
+                            jz = iz + dz
+                            if jz < 0 or jz >= nz:
+                                continue
+                            j = head[(jx * ny + jy) * nz + jz]
+                            while j != -1:
+                                vx = centers[j, 0] - px
+                                vy = centers[j, 1] - py
+                                vz = centers[j, 2] - pz
+                                along = vx * lx + vy * ly + vz * lz
+                                if along > 0.0 and along < max_distance:
+                                    r = radii[j]
+                                    ox = vx - along * lx
+                                    oy = vy - along * ly
+                                    oz = vz - along * lz
+                                    perp2 = ox * ox + oy * oy + oz * oz
+                                    reach = r * softness
+                                    if perp2 < reach * reach:
+                                        d2 = vx * vx + vy * vy + vz * vz
+                                        if d2 > r * r:
+                                            blocked = 1.0 - math.sqrt(perp2) / reach
+                                            total += blocked * blocked
+                                j = nxt[j]
+            shadow[i] = 1.0 - math.exp(-strength * total)
+
+        return shadow
+
+
 def occlusion_from_spheres(
     points: np.ndarray,
     normals: np.ndarray,
@@ -401,6 +515,94 @@ def _occlusion_from_spheres_numpy(
     return np.clip(occ, 0.0, 1.0)
 
 
+
+def directional_occlusion(
+    points: np.ndarray,
+    normals: np.ndarray,
+    centers: np.ndarray,
+    radii: np.ndarray | float,
+    direction: np.ndarray,
+    *,
+    max_distance: float = 20.0,
+    softness: float = 1.6,
+    strength: float = 1.0,
+) -> np.ndarray | None:
+    """Shadowing of the key light, baked per vertex.
+
+    Ambient occlusion says how enclosed a point is; this says whether anything
+    stands between it and the light, which is a different and complementary cue.
+    Together they give the interactive viewport something PyMOL's has no
+    equivalent of at all -- PyMOL casts shadows only when raytracing.
+
+    Like the ambient term this is computed once per rebuild and baked into the
+    vertex colours, so it costs nothing per frame. The trade is that it is fixed
+    to one light direction: moving the camera does not move the shadows, which is
+    correct for a headlight and is what a molecular viewer wants anyway, since
+    shadows that swim as you orbit are worse than none.
+
+    Parameters
+    ----------
+    points, normals : numpy.ndarray
+        ``(N, 3)`` vertices and their normals.
+    centers : numpy.ndarray
+        ``(M, 3)`` occluder centres.
+    radii : numpy.ndarray or float
+        Occluder radii.
+    direction : numpy.ndarray
+        Unit vector pointing **toward** the light.
+    max_distance : float, optional
+        How far along the ray to look, in the same units as ``points``.
+    softness : float, optional
+        Multiplies each occluder's radius when deciding how near a graze counts,
+        so values above 1 blur the shadow edge.
+    strength : float, optional
+        Scales the accumulated blockage before the exponential.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``(N,)`` shadowing in ``[0, 1)``, 0 being fully lit.
+    """
+    pts = np.ascontiguousarray(points, dtype=np.float64)
+    nrm = np.ascontiguousarray(normals, dtype=np.float64)
+    ctr = np.ascontiguousarray(centers, dtype=np.float64)
+    if pts.ndim != 2 or pts.shape[1] != 3 or pts.shape[0] == 0:
+        return None
+    if nrm.shape != pts.shape or ctr.ndim != 2 or ctr.shape[0] == 0:
+        return None
+
+    lengths = np.linalg.norm(nrm, axis=1)
+    lengths[lengths <= 0.0] = 1.0
+    nrm = nrm / lengths[:, None]
+
+    light = np.asarray(direction, dtype=np.float64).reshape(3)
+    norm = float(np.linalg.norm(light))
+    if norm <= 1e-12:
+        return None
+    light = light / norm
+
+    if np.isscalar(radii):
+        rad = np.full(ctr.shape[0], float(radii), dtype=np.float64)
+    else:
+        rad = np.ascontiguousarray(radii, dtype=np.float64).reshape(-1)
+        if rad.shape[0] != ctr.shape[0]:
+            return None
+
+    if not (_HAVE_NUMBA and nb is not None):
+        # No numba: the ambient term alone still gives depth, and a pure-NumPy
+        # ray march over every vertex would cost more than it is worth here.
+        return None
+
+    try:
+        shadow = _directional_occlusion_nb(  # type: ignore[name-defined]
+            pts, nrm, ctr, rad, light,
+            float(max_distance), float(softness), float(strength),
+        )
+    except Exception:
+        return None
+    return np.clip(shadow, 0.0, 1.0)
+
+
 def _estimate_ambient_occlusion(
     points: np.ndarray,
     radius: float = 4.0,
@@ -486,5 +688,9 @@ def _estimate_ambient_occlusion(
     return np.clip(occ, 0.0, 1.0)
 
 
-__all__ = ["_estimate_ambient_occlusion", "occlusion_from_spheres"]
+__all__ = [
+    "_estimate_ambient_occlusion",
+    "occlusion_from_spheres",
+    "directional_occlusion",
+]
 

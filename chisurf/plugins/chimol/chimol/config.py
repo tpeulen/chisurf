@@ -317,6 +317,18 @@ def _load_display_config() -> dict:
             "occluders": "residues",
             # Radius standing in for a whole residue, in Angstrom.
             "residue_radius": 3.2,
+            # Cast shadows for the key light, baked per vertex. Ambient
+            # occlusion says how enclosed a point is; this says whether anything
+            # stands between it and the light. PyMOL casts shadows only when
+            # raytracing, so this is the interactive view going further.
+            "shadows": True,
+            "shadow_darkness": 0.45,
+            "shadow_softness": 1.6,
+            "shadow_distance": 20.0,
+            "shadow_strength": 1.0,
+            # Toward the light source; PyMOL's `light` default (-0.4, -0.4,
+            # -1) is the direction it travels, so this is its negation.
+            "shadow_direction": [0.4, 0.4, 1.0],
         },
         "lighting": {
             "light_direction": [0.0, 0.0, 1.0],

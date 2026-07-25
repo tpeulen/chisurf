@@ -2,6 +2,29 @@
 
 ## 2026-07-25
 
+* **chimol: cast shadows in the interactive viewport.** Ambient occlusion says
+  how *enclosed* a point is; a cast shadow says whether anything stands between
+  it and the light. They are different cues, and PyMOL has the second only when
+  raytracing -- so this is the live view going further rather than matching.
+  `geometry/ambient.py:directional_occlusion` casts a ray from each vertex toward
+  the light and asks every nearby sphere how close it comes to that ray: one the
+  ray passes through blocks fully, one it grazes blocks partly, which gives a
+  soft edge instead of the stair-step a shadow map would show at this scale.
+  Occluders behind the vertex, or that it sits inside, are skipped. Baked per
+  rebuild like the ambient term, so it costs nothing per frame -- 20k vertices
+  against 4700 atoms in **0.175 s**, and the whole 148L cartoon rebuild goes
+  0.48 s -> 0.64 s.
+  **The light is deliberately off-axis.** A headlight casts almost nothing the
+  camera can see, so the default shadow direction is PyMOL's own `light`
+  (-0.4, -0.4, -1) negated, since that setting is the direction light *travels*
+  while the shadow ray runs toward the source. The shadow is also folded into the
+  occlusion channel the GL shader damps its non-surface lighting by, so a
+  shadowed crevice does not get its ambient and rim light handed back.
+  Effect on a cartoon is a subtle depth cue (148L lit-pixel contrast 34.5 ->
+  35.7); on space-filling, where a sphere actually blocks a ray, it is much
+  stronger. Tunables under `occlusion.shadow_*`.
+  10 new tests. Suite: 369 passed, 1 skipped.
+
 * **The photon library's Python extension never linked OpenMP; fixed there, so
   ChiSurf's build task stops patching around it.** Root cause found while
   looking at whether tttrlib could simply be a pip dependency: the top-level
