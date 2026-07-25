@@ -588,3 +588,93 @@ has no GUI/CLI caller yet, so these are cheap to fix now. Findings RF-036..RF-04
 - **Location:** `chisurf/core/fluorescence/imaging/ratio_fret.py:68-75` (`RatioTrace.to_dict`)
 - **Finding:** `to_dict` is documented as returning "a JSON-friendly dictionary" but `ratio` is `a_mean / d_mean` computed under `errstate(divide="ignore", invalid="ignore")` (`:162`), so a frame whose donor region mean is 0 puts `inf` (or `nan` for 0/0) in the list. Verified: `json.dumps(ratio_trace(d, a).to_dict())` on a stack with one all-zero donor frame emits `"ratio": [1.0, 1.0, Infinity, 1.0]`, which `json.loads(..., parse_constant=raise)` and every strict/JS parser rejects. `response` is not affected — it filters non-finite values — but that filtering means the same frame is also silently dropped from the summary. Map non-finite entries to `None` in `to_dict` (and mention that dark frames yield `None`).
 - **Fix note:**
+
+### Review 2026-07-25 — FCS file readers and the noise/weight model
+
+Slice: `chisurf/core/fio/fluorescence/fcs/` (the ALV, ConfoCor and Kristine
+readers/writers) plus the `noise()` weight model in
+`chisurf/core/fluorescence/fcs/__init__.py` that all of them call. Picked because
+two of these files carry in-flight count-rate fixes and the subsystem had no
+findings on record. Every claim below was reproduced in the `arm64` env against
+files already committed under `test/data/fcs/` (or, for RF-042/RF-043, the ALV
+multi-run examples under `junk/quickfit3/plugins/fccsfit/examples/`).
+
+The slice is in worse shape than the in-flight count-rate work suggests: **three
+of the reader's file formats cannot be loaded at all** (multi-run ALV-5000/6000,
+dual-channel ALV-7004 AC+CC, single-curve ConfoCor), the Kristine **writer cannot
+produce a file its own reader can read**, and the shared noise model computes its
+baseline from a slice that is empty of meaning under its own default arguments —
+so *every* FCS weight in the program is derived from a wrong amplitude. Findings
+RF-042..RF-051. Note the line numbers for `asc_alv.py` / `confocor3.py` refer to
+the working tree at review time (both have uncommitted count-rate edits by
+another instance); the symbol names are given so they stay findable.
+
+### RF-042
+- **Status:** OPEN
+- **Severity:** S1 (every curve in a multi-run ALV file is the same interleaved garbage)
+- **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:187` (`openASC_old`, `data = [[]]*len(curvelist)`)
+- **Finding:** `[[]]*n` builds `n` references to **one** list, so `data[i].append(...)` in the row loop at `:190-192` appends every column of every row to a single shared list; all `np.array(data[t])` at `:245-332` are then the identical, row-major-interleaved array. Verified on the real ALV-5000 multi-run file `junk/quickfit3/plugins/fccsfit/examples/NUNC3_dil_050p_025_ccf.ASC` (183 lag times × 7 curves): `read_asc` returns 7 datasets that are **byte-identical**, each with 1281 points instead of 183, whose `correlation_times` begin `[0.0002, 0.0002, 0.0002, …]` — the same lag repeated once per curve. Duplicated lag times then make `np.diff(times)` zero inside `noise()`, which is where the `divide by zero encountered in divide` warnings from `chisurf/core/fluorescence/fcs/__init__.py:147` come from. Fix: `data = [[] for _ in curvelist]`. (RF-043 currently masks this by crashing first.) No test covers a multi-run ALV file.
+- **Fix note:**
+
+### RF-043
+- **Status:** OPEN
+- **Severity:** S1 (removed NumPy alias; blocks the whole multi-run ALV path)
+- **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:571` (`mysplit`, `lensplit = np.int(np.ceil(N/n))`)
+- **Finding:** `np.int` was removed in NumPy 1.24; the project env runs NumPy 2.4.6, where the attribute raises. `mysplit` returns early only for `n <= 1`, so every ALV-5000/6000 file with more than one run reaches it and dies with `AttributeError: module 'numpy' has no attribute 'int'` before any data is produced. Reproduced end-to-end: `read_asc('junk/quickfit3/plugins/fccsfit/examples/NUNC3_dil_050p_025_ccf.ASC')` → `AttributeError` from `openASC_old:239 → mysplit:571`; patching `np.int = int` lets the same call return 7 datasets. Per the CLAUDE.md dependency rule this is a pure rename and belongs in `chisurf/core/compat.py`, not a local rewrite — but the call site here can simply use the builtin `int`. Grep the tree for other `np.int`/`np.float`/`np.bool` survivors while fixing.
+- **Fix note:**
+
+### RF-044
+- **Status:** OPEN
+- **Severity:** S1 (a committed test file cannot be opened at all)
+- **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:553` (`openASC_ALV_7004`, `dictionary["Trace"] = np.array(tracelist)`)
+- **Finding:** In the four-curve ALV-7004 mode `a-ch0+1  c-ch0/1+1/0`, `tracelist` mixes single traces (`trace1`, shape `(n, 2)`) with *pairs* for the cross-correlations (`[trace1, trace2]`, shape `(2, n, 2)`) — see `:482-497`. `np.array` on that ragged list raises since NumPy 1.24. Verified on the committed sample `test/data/fcs/asc/ALV-7004USB_ac01_cc01_10.ASC` (header `Mode : "A-CH0+1  C-CH0/1+1/0"`, `MeanCR0 152.07`, `MeanCR1 85.07`): `openASC(...)` → `ValueError: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (4,) + inhomogeneous part.` So every dual-channel FCCS measurement from this instrument is unreadable. `dictionary["Correlation"]` at `:552` is fine (all curves share a shape); the trace list must stay a plain Python list — `openASC_old` already returns it as one (`:342`), and `read_asc:650` explicitly branches on `isinstance(d['Trace'][i], list)`, so the consumer expects it.
+- **Fix note:**
+
+### RF-045
+- **Status:** OPEN
+- **Severity:** S1 (the noise model's baseline is the mean of nearly the whole curve)
+- **Location:** `chisurf/core/fluorescence/fcs/__init__.py:131` (`noise`, `correlation_offset = np.mean(correlation[-lb:-ub])`)
+- **Finding:** With the default `correlation_amplitude_range = (0, 16)` this is `correlation[-0:-16]`, i.e. `correlation[0:-16]` — everything *except* the last 16 points, not the last 16 points. The offset is meant to be the long-lag baseline (the next line subtracts it from `mean(correlation[0:16])`, the short-lag amplitude), but it instead averages the amplitude region into the baseline. Verified on `test/data/fcs/asc/ALV-7004.ASC` (231 points): as coded the slice takes 215 points and gives `offset = 1.215952`; the intended tail `correlation[-16:]` gives `1.000315`. The derived amplitude is therefore `A = 0.152` instead of `0.368` — a factor 2.4. `A` enters `suren` quadratically (`S ∝ A²/ns`) and `starchev` as `N = 1/A` cubed, and it also shifts the half-amplitude crossing used to estimate `diffusion_time` at `:138`, so this biases **every** weight ChiSurf computes for FCS. No caller ever overrides `correlation_amplitude_range` (only three references tree-wide, all in this file), so the default is the only path. Fix the slice (`correlation[-ub:]` or an explicit `(baseline_lb, baseline_ub)` pair) and pin the offset with a test on a synthetic `G = 1 + A/(1+t/τ)`, where the answer is known exactly.
+- **Fix note:**
+
+### RF-046
+- **Status:** OPEN
+- **Severity:** S1 (the Kristine writer emits a transposed file, or crashes)
+- **Location:** `chisurf/core/fio/fluorescence/fcs/kristine.py:46-64` (`write_kristine`) — the `.T` at `:53`, the `np.vstack` at `:63`, the second `.T` at `:64`
+- **Finding:** The branch that includes uncertainties transposes to `(n, 4)` at `:53` and is then transposed **again** at `:64`, so `np.savetxt` writes 4 rows of `n` columns; the no-uncertainty branch does not transpose at `:61` and comes out correct. Verified with a 20-point curve: without `mask`, the file is `(4, 20)` and `read_kristine` reads it back as **4** correlation points with `acquisition_time = 0.0043 s` (was 10.0) and `mean_count_rate = 1.50` (was 50.0) — silent, total corruption of a saved dataset. With a `mask` array it is worse: `np.vstack([(n,4), (n,)])` raises `ValueError: all the input array dimensions except for the concatenation axis must match exactly, but along dimension 1, the array at index 0 has size 4 and the array at index 1 has size 20`. Both paths are live: `write_single_fcs` (`fcs/__init__.py:337`) always passes `data_set.ey` as an ndarray and passes `mask` whenever the curve has one, and the `fcs_convert` CLI plugin (`chisurf/plugins/fcs/fcs_convert/cli.py:100`) routes user conversions through it. The reader is fine — both committed `test/data/fcs/kristine/*.cor` files round-trip correctly — so the fix is to build the column stack once, in `(n, ncol)` order, and drop the second transpose. A writer→reader round-trip test (4-column and 5-column-with-mask) is the guardrail; there is none today.
+- **Fix note:**
+
+### RF-047
+- **Status:** OPEN
+- **Severity:** S1 (Python-2 method; every single-curve ConfoCor file fails to load)
+- **Location:** `chisurf/core/fio/fluorescence/fcs/confocor3.py:360` and `:379` (`openFCS_Single`, `Alldata.__getslice__(i, i+length)`)
+- **Finding:** `list.__getslice__` was removed in Python 3 (`hasattr([], '__getslice__')` is `False` on the project interpreter), so both the trace and the correlation import raise `AttributeError` the moment they are reached. `openFCS` dispatches here for every `.fcs` file whose first line is not `Carl Zeiss ConfoCor3` — i.e. ConfoCor2 and older AIM single-curve exports. All 15 committed ConfoCor test files carry the multi-curve header, so the whole function is untested and has been dead since the Python 3 port. Replace with ordinary slicing (`Alldata[i:i+length]`, as `openFCS_Multiple` already uses at `:143` and `:173`). While there: `newtrace` (`:371`) and `corr` (`:387`) are assigned only inside `if length != 0`, so a zero-length section makes `:392`/`:396` raise `NameError`/`UnboundLocalError` instead of reporting a malformed file.
+- **Fix note:**
+
+### RF-048
+- **Status:** OPEN
+- **Severity:** S2 (per-channel count rates indexed by curve number)
+- **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:674` (`read_asc`, `mean_count_rate = d["Count rates"][i]`)
+- **Finding:** `openASC_ALV_7004` collects one `MeanCR<k>` entry per **detector** in file order (`:422-425`), but `read_asc` indexes that list with `i`, the index of the curve in the *filtered* `corrlist` — and `openASC_ALV_7004` drops all-zero correlations (`:479-498`) and emits only the curves the mode selects, so the two indices coincide only for channel 0. Verified on the committed `test/data/fcs/asc/ALV-7004USB_ac3.ASC` (mode `a-ch3`, `Count rates = [0.0, 0.0, 0.0, 27.70182]`): the single curve is channel 3 but the code reads `count_rates[0] = 0.0`. It escapes visible damage only by accident — the zero trips the `mean_count_rate == 0.0` fallback at `:687`, which recovers 27.6899 from the trace mean but *also* overwrites the file's recorded `Duration` of 300.0 s with `intensity_time[-1] = 297.66 s`. A file whose misindexed slot holds a different non-zero rate would silently weight the curve with another detector's count rate and no fallback at all. Carry the channel index alongside each curve in `openASC_ALV_7004` (it already knows it — `corr1..corr4` map to `MeanCR0..3`) and look the rate up by channel; and do not clobber a known `Duration`.
+- **Fix note:**
+
+### RF-049
+- **Status:** OPEN
+- **Severity:** S2 (a `None` trace is arithmetically multiplied)
+- **Location:** `chisurf/core/fio/fluorescence/fcs/confocor3.py:249` (`openFCS_Multiple`, `tracelist.append(1*traces[actids[0]])`)
+- **Finding:** `traces` is deliberately padded with `None` for curves that carry correlation data but no `CountRateArray` (`:172` and `:194`), and the single-AC branch guards only the *correlation* (`if ac_correlations[actids[0]] is not None`) before evaluating `1*traces[actids[0]]` — which raises `TypeError: unsupported operand type(s) for *: 'int' and 'NoneType'` for exactly the case the padding exists to represent. The two-AC branch at `:275`/`:280` has the mirror problem without the crash: it appends the `None` straight into `tracelist`, and `read_zeiss_fcs:440` then calls `len(trace)` on it (`TypeError: object of type 'NoneType' has no len()`). The `1*` is also just a stale copy idiom — use `np.array(..., copy=True)` or nothing. Decide the contract (skip such curves, or carry a `None` trace through to an `FCSDataset` with no `intensity_trace`) and apply it in both branches.
+- **Fix note:**
+
+### RF-050
+- **Status:** OPEN
+- **Severity:** S3 (an exception generic handlers cannot catch)
+- **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:17` (`class LoadALVError(BaseException)`)
+- **Finding:** The reader's own error type derives from `BaseException`, not `Exception`, so it passes straight through every `except Exception` in the import path and through `pytest.raises(Exception)` — the same class of escape as a `KeyboardInterrupt`. It is raised four times in `openASC_ALV_7004` (`:471, :478, :506, …`) for ordinary malformed-file conditions, right next to a `NotImplementedError` at `:549` that *is* an `Exception`, so two failures of the same kind in the same function behave differently for callers. Change the base to `Exception` (or to a shared `chisurf` IO error).
+- **Fix note:**
+
+### RF-051
+- **Status:** OPEN
+- **Severity:** S3 (documented writer that writes nothing)
+- **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:724-755` (`write_asc`)
+- **Finding:** `write_asc` carries a full NumPy-style docstring describing eight parameters and an output file, and its body is `pass`. It has no callers tree-wide (`write_fcs` only knows `kristine` and `yaml`), so nothing breaks today — but a stub that silently succeeds is the worst failure mode to leave in an IO module, and the docstring makes it look implemented. Either implement it against the `openASC_ALV_7004` format that `read_asc` parses (with a round-trip test) or delete it and drop ALV from the writer surface.
+- **Fix note:**
