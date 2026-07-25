@@ -1567,6 +1567,19 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot Batch 20 — burst background sections off pyqtgraph + log-aware
+  scatter fix (allow-list 31 → 30).** Migrated
+  `plugins/burst/burst_background/gui/sections.py` (log-log inter-photon-time
+  points + tail fit, and a per-detector rate bar chart). **GUI-screenshot
+  inspection caught a real chiplot bug:** `scatter()` used a raw
+  `pg.ScatterPlotItem` that ignores log mode, so log-plot points landed at linear
+  positions and blew auto-range to ~500 decades (10²⁷³ axis labels). `add_scatter`
+  now uses a log-aware `PlotDataItem` (no line + symbol) — also fixes
+  `filter_panel`'s log-y dt-scatter from Batch 10. Bar chart: one `bars()` per
+  detector for per-bar colour + `.native` `setTicks` for detector-name labels. New
+  `test_scatter_is_log_aware`; both sections screenshot-verified. See
+  [PRD-64](prds/prd-64.md).
+
 * **chiplot Batch 19 — reusable spectrum viewer off pyqtgraph (allow-list
   32 → 31).** Migrated `gui/widgets/spectrum_view.py` (absorption/emission
   overlay, also an AutoForm section). Trace dicts → `line(pen=color, width=,
