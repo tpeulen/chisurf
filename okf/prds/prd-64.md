@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 34):*
+*Landed so far (allow-list 76 → 33):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -432,6 +432,10 @@ screenshot/qtbot verification after each cluster.
   (`hideAxis`, bottom-axis pen/height/style) have no chiplot verb yet and stay as
   flagged `.native` passthroughs. New `test_set_interactive_returns_self`;
   `add_spectral_plot` exercised headless.
+- **Batch 17** (allow-list 34 → 33) — migrated `plugins/burst/burst_2cde/gui/tool.py`
+  (2CDE-vs-E scatter / histogram fallback). Plain `PlotWidget`→`cp.Plot`; the
+  `plot(pen=None, symbol="o")` scatter becomes `scatter(...)` and the histogram
+  `plot(stepMode=False)` becomes `line(...)`. Import-clean extended.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

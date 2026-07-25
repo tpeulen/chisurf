@@ -249,6 +249,8 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.modelling.fret.gui.pair_selection_wizard",
         # Batch 16
         "chisurf.plugins.core.lightpath_simulator.gui.node_types",
+        # Batch 17
+        "chisurf.plugins.burst.burst_2cde.gui.tool",
     ):
         assert importlib.import_module(name) is not None
 

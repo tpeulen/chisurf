@@ -12,7 +12,7 @@ import logging
 import pathlib
 
 import numpy as np
-import pyqtgraph as pg
+from chisurf.gui import chiplot as cp
 from qtpy import QtWidgets
 
 from chisurf.gui.widgets.tool_buttons import TOOLBAR_STYLE, action_button
@@ -81,9 +81,8 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         layout.addLayout(form)
 
         # --- plot -------------------------------------------------------------
-        self._plot = pg.PlotWidget()
-        self._plot.setLabel("bottom", "FRET efficiency (proximity ratio)")
-        self._plot.setLabel("left", "2CDE")
+        self._plot = cp.Plot()
+        self._plot.set_labels(bottom="FRET efficiency (proximity ratio)", left="2CDE")
         layout.addWidget(self._plot, 1)
 
         self._status = QtWidgets.QLabel("")
@@ -157,12 +156,12 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         if e is not None:
             e = np.asarray(e, dtype=float)
             m = finite & np.isfinite(e)
-            self._plot.plot(e[m], vals[m], pen=None, symbol="o", symbolSize=3,
-                            symbolBrush=(31, 119, 180, 80))
-            self._plot.setLabel("bottom", "FRET efficiency (proximity ratio)")
+            self._plot.scatter(e[m], vals[m], size=3, brush=(31, 119, 180, 80),
+                               pen=None, symbol="o")
+            self._plot.set_labels(bottom="FRET efficiency (proximity ratio)")
         else:
             y, x = np.histogram(vals[finite], bins=40)
-            self._plot.plot(0.5 * (x[:-1] + x[1:]), y, stepMode=False)
-            self._plot.setLabel("bottom", column)
+            self._plot.line(0.5 * (x[:-1] + x[1:]), y)
+            self._plot.set_labels(bottom=column)
         self._set_status(
             f"{column}: {int(finite.sum())} / {len(df)} bursts valid")
