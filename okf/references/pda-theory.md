@@ -88,6 +88,50 @@ Model hierarchy under `chisurf/core/models/pda/`:
   (`math.functions.rdf.saw_nu`, params `Rrms`, `nu`); for disordered/unfolded
   chains.
 
+# What is actually fitted: the projection and the statistic
+
+The forward model is a 2-D **S1S2 count matrix**, but the fit runs on a 1-D
+projection of it. Both halves of that sentence are modelling choices, and both
+live in `common.py::PdaFitSettings` (one instance per model, `model.fit_settings`,
+rendered by the "Fit histogram / statistic" panel of every `*.view.json`).
+
+**Which projection** — `PDA_AXES`, built by `build_pda_histogram_function`:
+
+| axis | meaning | needs the model? |
+| --- | --- | --- |
+| `S1/(S0+S1)` | raw proximity ratio (default) | no |
+| `E` | $\gamma$-corrected efficiency, $E=\mathrm{PR}/(\mathrm{PR}+\gamma(1-\mathrm{PR}))$ | yes ($\gamma$) |
+| `S0/S1` | intensity ratio, log-binned; spreads out the donor-only / low-FRET overlap | no |
+| `R` | distance, inverting Förster on $E$ | yes ($\gamma$, $R_0$) |
+
+Selecting an axis resets the binning to that axis' `PDA_AXIS_RANGES` entry — a
+0–1 linear range is meaningless in Ångström. The corrected axes bin *through*
+$\gamma$ and $R_0$, so the cached data histogram in
+`pda_1d_residuals_from_s1s2` keys on them and re-bins when a correction factor
+moves. The same builder serves the distribution plot, so the plotted and the
+fitted histogram cannot drift apart.
+
+**Which statistic** — `PDA_STATISTICS`, applied by `pda_weighted_residuals`
+after rescaling the model (a normalised probability distribution) to the data's
+total counts:
+
+- `poisson` (default) — deviance / likelihood-ratio,
+  $r=\mathrm{sign}(d-m)\sqrt{2[m-d+d\ln(d/m)]}$. Empty bins still contribute
+  $2m$.
+- `neyman` — $(d-m)/\sqrt{\max(d,1)}$, the familiar data-weighted $\chi^2$.
+- `pearson` — $(d-m)/\sqrt{\max(m,1)}$, model-weighted.
+
+The three agree at high counts and disagree exactly where PDA operates: a PDA
+histogram is a projection of a *sparse* S1S2 matrix, so many bins hold a handful
+of bursts. There the Gaussian approximations are biased — a bin that fluctuated
+low is handed a small $\sigma$ and therefore a large weight, which drags the
+`neyman` estimate. Measured on twenty Poisson realisations of an 800-count
+histogram (`test/models/test_pda_statistics.py`), recovering one Gaussian mean
+distance: `poisson` $-0.02$ Å, `neyman` $+0.28$ Å, `pearson` $-0.17$ Å, against a
+per-fit scatter of $0.27$ Å — i.e. `neyman`'s offset is a full standard deviation
+of systematic error, and the deviance is unbiased. Prefer the default; select a
+$\chi^2$ only to reproduce a $\chi^2$-based analysis.
+
 # Dynamic PDA (interconversion within the window)
 
 Kalinin et al. 2008: when a molecule switches states *during* the integration

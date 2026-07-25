@@ -56,7 +56,87 @@
           "append_method": "append",
           "remove_method": "pop",
           "min_rows": 1,
-          "collapsible": false
+          "collapsible": false,
+          "style": "table"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Fit histogram / statistic",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "Which 1D projection of the S1S2 count matrix the fit runs on, how it is binned, and how bins are weighted. Changing the axis resets the range to that axis' defaults.",
+      "sections": [
+        {
+          "type": "choice",
+          "target": "fit_settings",
+          "attr": "axis",
+          "label": "Axis",
+          "options": [
+            "S1/(S0+S1)",
+            "E",
+            "S0/S1",
+            "R"
+          ],
+          "labels": [
+            "Proximity ratio S1/(S0+S1)",
+            "FRET efficiency E (γ-corrected)",
+            "Intensity ratio S0/S1 (log)",
+            "Distance R [Å]"
+          ],
+          "rebuild_on_change": true,
+          "description": "Corrected axes (E, R) bin through the model's γ and R0, so they move with the correction factors; the raw ratios do not."
+        },
+        {
+          "type": "choice",
+          "target": "fit_settings",
+          "attr": "statistic",
+          "label": "Statistic",
+          "options": [
+            "poisson",
+            "neyman",
+            "pearson"
+          ],
+          "labels": [
+            "Poisson deviance (MLE)",
+            "Neyman χ² (data-weighted)",
+            "Pearson χ² (model-weighted)"
+          ],
+          "description": "PDA histograms are sparse, where the χ² approximations are biased: Neyman pulls amplitudes low, Pearson high. The Poisson deviance is the likelihood-ratio statistic and is unbiased there — leave it selected unless reproducing a χ²-based analysis."
+        },
+        {
+          "type": "custom",
+          "key": "scalar_table",
+          "target": "fit_settings",
+          "options": {
+            "title": "Binning",
+            "rows": [
+              {
+                "attr": "n_bins",
+                "label": "Bins",
+                "kind": "int"
+              },
+              {
+                "attr": "x_min",
+                "label": "x<sub>min</sub>"
+              },
+              {
+                "attr": "x_max",
+                "label": "x<sub>max</sub>"
+              },
+              {
+                "attr": "log_x",
+                "label": "log x",
+                "kind": "bool"
+              },
+              {
+                "attr": "n_min",
+                "label": "N<sub>min</sub> photons",
+                "kind": "int"
+              }
+            ]
+          }
         }
       ]
     }

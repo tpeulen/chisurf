@@ -112,7 +112,7 @@ incomplete) · **ENGINE-ONLY** (compute core present, no ChiSurf model/UI) ·
 ### Three-color PDA (tcPDA)
 | Incumbent capability | Status | ChiSurf location / note |
 |---|---|---|
-| 1D/2D/3D three-color distance-distribution PDA, time-binned, Bayesian | ABSENT | → PRD-50 (later stage) |
+| 1D/2D/3D three-color distance-distribution PDA, time-binned, Bayesian | ABSENT | → PRD-65 |
 
 ### Phasor / phasor-image (phasor-FLIM)
 | Incumbent capability | Status | ChiSurf location / note |
@@ -186,7 +186,7 @@ implementer builds on.
 | Static distance-distribution PDA | E-histogram shot-noise model, Gaussian/Lorentzian | `tttrlib.Pda` engine, `models/fcs` template | M | PRD-50 |
 | Dynamic / N-state kinetic PDA | 2-3 state kinetic-network PDA | above + kinetic scheme spec | L | PRD-50 |
 | PDA error surfaces (SPA/MCMC) | support-plane, MCMC, Hessian | `fitting/sample.py` | M | PRD-50 |
-| Three-color tcPDA | 1/2/3D 3c distance distributions | PDA core once built | L | PRD-50 |
+| Three-color tcPDA | 1/2/3D 3c distance distributions | burst tables, PRD-61 priors, sampler | L | PRD-65 |
 | Kinetic consistency check | dynamic-state burst resampling | burst tables + kinetic-PDA sim | M | PRD-50 |
 | N&B | brightness/aggregation from image fluctuations | `clsm`, RICS core | M | PRD-51 |
 | tICS / STICS | temporal / spatiotemporal ICS | RICS/ICS core | M | PRD-51 |
@@ -208,8 +208,9 @@ implementer builds on.
 
 1. **Phase 1 — PDA family** (PRD-50) *(first target)*. Highest reuse: `tttrlib.Pda`
    already computes the histograms. Static PDA model → dynamic/N-state kinetic PDA →
-   SPA/MCMC errors → three-color tcPDA → kinetic-consistency-check. Core smFRET
-   differentiator; unblocks burst-dynamics analysis.
+   SPA/MCMC errors → kinetic-consistency-check. Core smFRET differentiator; unblocks
+   burst-dynamics analysis. Three-color tcPDA follows as PRD-65, on its own
+   burst-likelihood core rather than the two-channel histogram engine.
 2. **Phase 2 — Imaging correlation** (PRD-51). Biggest single ABSENT cluster; extends
    the existing RICS/clsm core: N&B, tICS/STICS, iMSD, spectral RICS.
 3. **Phase 3 — Phasor-FLIM imaging** (PRD-52). Per-pixel phasor, universal circle, ROI
@@ -224,7 +225,8 @@ implementer builds on.
 
 | PRD | Scope | First acceptance signal |
 |---|---|---|
-| PRD-50 | PDA family (static → kinetic → tcPDA → consistency check) | headless fit of synthetic 2-Gaussian E-histogram recovers input distances |
+| PRD-50 | PDA family (static → kinetic → consistency check) | headless fit of synthetic 2-Gaussian E-histogram recovers input distances |
+| PRD-65 | Three-color PDA (burst likelihood, correlated distances, Bayesian) | synthetic 3c burst set recovers three distances **and** their correlation |
 | PRD-51 | Imaging correlation: N&B, tICS/STICS, iMSD, spectral RICS | N&B recovers brightness on simulated stack |
 | PRD-52 | Phasor-FLIM imaging + particle tracking | per-pixel phasor of synthetic FLIM lands on universal circle |
 | PRD-53 | Simulation workflow (diffusion+FRET+photon+camera) | headless sim → burst table reproduces set E |

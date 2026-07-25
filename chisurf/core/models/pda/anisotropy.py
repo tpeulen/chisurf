@@ -7,7 +7,11 @@ import chisurf as cs
 import chisurf.core.math.datatools
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.model import ModelCurve
-from chisurf.core.models.pda.common import mask_zero_photon_bins, pda_1d_residuals_from_s1s2
+from chisurf.core.models.pda.common import (
+    mask_zero_photon_bins,
+    pda_1d_residuals_from_s1s2,
+    resolve_fit_settings,
+)
 
 
 class PdaAnisotropyNuisance(FittingParameterGroup):
@@ -321,16 +325,9 @@ class PdaAnisotropyModel(ModelCurve):
                     pass
         self.species = species
 
-        # Histogram / PDA settings from the dataset
-        if kw_hist is None:
-            kw_hist = {
-                "x_max": 500.0,
-                "x_min": 0.05,
-                "log_x": True,
-                "n_bins": 81,
-                "n_min": 10,
-            }
-        self.kw_hist = kw_hist
+        # Which 1D projection of the S_par/S_perp matrix the fit runs on, how it
+        # is binned, and under which counting statistic (see PdaFitSettings).
+        self.fit_settings = resolve_fit_settings(None, kw_hist)
 
         kw_pda = {
             "hist2d_nmax": fit.data.pda["maximum_number_of_photons"],
@@ -427,6 +424,7 @@ class PdaAnisotropyModel(ModelCurve):
             fit=fit,
             pda_obj=self.pda,
             nuisance=getattr(self, "nuisance", None),
+            settings=self.fit_settings,
         )
         try:
             self._last_1d_residual_size = int(wres.size)
