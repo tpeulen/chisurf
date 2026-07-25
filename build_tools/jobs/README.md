@@ -10,6 +10,7 @@ upkeep that needs judgement — currently:
 | Self-improvement | `com.chisurf.improve-prds` | every 30 min | pick ONE small roadmap item (`okf/prds/` + assessment backlog) → implement → **run tests + lint (mandatory gate)** → commit only if green; else knowledge-only update |
 | Code review | `com.chisurf.review-code` | every 30 min (:00/:30) | critically review a focused code slice → append verified findings to `okf/reviews/findings.md` (OPEN). **Reviews only — never edits source.** |
 | Issue fixing | `com.chisurf.fix-issues` | every 30 min (:15/:45) | fix ONE OPEN finding from the queue → **tests + lint gate** → flip it FIXED and commit, only if green |
+| GUI tester (QA) | `com.chisurf.gui-tester` | hourly (:07) | *drive the real GUI headlessly* through one user workflow (burst / TCSPC / FCS / …) → record the use case in `okf/usecases/` → file bugs into the findings queue + note UX/UI suggestions. **Tests only — never edits source.** |
 
 **The review → fix pipeline.** `review-code` runs at :00/:30 and *produces*
 findings into `okf/reviews/findings.md`; `fix-issues` runs 15 min later (:15/:45)
@@ -44,7 +45,7 @@ is logged — run `claude` once interactively to re-authenticate.
 ```bash
 cd /Users/tpeulen/dev/chisurf
 cp build_tools/jobs/launchagents/com.chisurf.*.plist ~/Library/LaunchAgents/
-for j in translate-ui build-docs improve-prds review-code fix-issues; do
+for j in translate-ui build-docs improve-prds review-code fix-issues gui-tester; do
   launchctl load ~/Library/LaunchAgents/com.chisurf.$j.plist
 done
 ```

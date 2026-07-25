@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ChiSurf: GUI-tester (QA) job. Every hour (:07 past) it drives the real Qt GUI
+  headlessly through one typical user workflow (burst analysis / TCSPC fitting /
+  FCS / …), records the use case as text in okf/usecases/, files concrete defects
+  into okf/reviews/findings.md, and notes UX/UI suggestions. Reviews/tests only —
+  never edits application source. Install: build_tools/jobs/README.md.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.chisurf.gui-tester</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/claude_job.sh</string>
+        <string>gui-tester</string>
+        <string>build_tools/jobs/prompts/gui_tester.md</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/tpeulen/dev/chisurf</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>QT_QPA_PLATFORM</key>
+        <string>offscreen</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Minute</key>
+        <integer>7</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/gui-tester.launchd.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tpeulen/dev/chisurf/build_tools/jobs/logs/gui-tester.launchd.err</string>
+</dict>
+</plist>

@@ -43,10 +43,17 @@ The prompts read at runtime, so editing a prompt changes the next run's behaviou
 | `com.chisurf.review-code` | every 30 min (:00/:30) | critically review a focused code slice and append verified findings to [`okf/reviews/findings.md`](/reviews/findings.md) (OPEN). **Reviews only — never edits source.** |
 | `com.chisurf.fix-issues` | every 30 min (:15/:45) | fix ONE OPEN finding from the queue behind the **test + lint gate**, flip it FIXED, and commit only if green. |
 
-The last two form a **review → fix pipeline**: `review-code` *produces* findings
-into the queue at :00/:30, `fix-issues` *consumes* them one at a time 15 min later
-at :15/:45. The queue file `okf/reviews/findings.md` is the hand-off, keeping the
-two decoupled and distinct from the human-curated [cleanup backlog](/specs/assessment.md).
+| `com.chisurf.gui-tester` | hourly (:07) | *drive the real Qt GUI headlessly* (offscreen) through one typical user workflow, record the use case in [`okf/usecases/`](/usecases/index.md), file concrete defects into the [findings queue](/reviews/findings.md), and note UX/UI suggestions. **Tests only — never edits source.** |
+
+The middle pair forms a **review → fix pipeline**: `review-code` *produces*
+findings into the queue at :00/:30, `fix-issues` *consumes* them one at a time
+15 min later at :15/:45. The queue file `okf/reviews/findings.md` is the hand-off,
+keeping the two decoupled and distinct from the human-curated
+[cleanup backlog](/specs/assessment.md). The **`gui-tester`** feeds the same queue
+from a different angle — instead of reading source it *uses* the software, so bugs
+that only show up in a live workflow (bad defaults, dead controls, broken layout,
+wrong results on real data) also reach the fixer, while its durable output is the
+growing set of use-case / manual-test docs under [`okf/usecases/`](/usecases/index.md).
 
 ## Rules the jobs inherit
 
