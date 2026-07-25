@@ -48,6 +48,7 @@ dependencies = [
     "numpy",
     "numexpr",
     "scipy",
+    "networkx",
     "labellib",
     "deprecation",
     "emcee",

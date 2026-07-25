@@ -15,6 +15,24 @@ import chisurf.core.decorators
 T = typing.TypeVar('T', bound='Parameter')
 
 
+def _bump_fit_structure_version() -> None:
+    """Invalidate cached fit factor graphs after a structural change.
+
+    Linking, unlinking, fixing and freeing a parameter all change *which*
+    variables a fit has and which datasets they reach, so any
+    :class:`~chisurf.core.fitting.factorgraph.FactorGraph` built earlier no
+    longer describes the fit. The import is deferred because the fitting package
+    imports this module.
+    """
+    try:
+        from chisurf.core.fitting import factorgraph
+    except Exception:
+        # Parameters are usable without the fitting stack (bare tools, tests);
+        # nothing caches a graph in that case, so there is nothing to invalidate.
+        return
+    factorgraph.bump_structure_version()
+
+
 def _owning_class_name() -> typing.Optional[str]:
     """Best-effort class name of the object constructing the current ``Parameter``.
 
@@ -305,6 +323,9 @@ class Parameter(chisurf.core.base.Base):
             self._port.unlink()
             if self.controller is not None:
                 self.controller.set_linked(False)
+        # Linking rewires which datasets a parameter reaches, so every cached
+        # factor graph describing this fit is now stale.
+        _bump_fit_structure_version()
 
     @property
     def is_linked(self) -> bool:
@@ -408,7 +429,12 @@ class Parameter(chisurf.core.base.Base):
     @fixed.setter
     def fixed(self, v: bool):
         """Freeze or unfreeze the parameter value."""
+        was = bool(self._port.fixed)
         self._port.fixed = bool(v)
+        if was != bool(v):
+            # Freezing or freeing a parameter adds or removes a variable, so
+            # cached factor graphs no longer describe this fit.
+            _bump_fit_structure_version()
 
     def __add__(self, other: T) -> T:
         """Return a new parameter whose value is ``self + other``."""

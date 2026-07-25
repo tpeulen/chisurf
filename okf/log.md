@@ -2,6 +2,48 @@
 
 ## 2026-07-25
 
+* **A global fit is a factor graph, not a flat vector (PRD-68, phases 2–3).**
+  The posterior of a group already factorises over its datasets, but
+  `GlobalFitModel` flattened every local model's free parameters plus the
+  globals into one dense vector and recomputed **all** local models on **every**
+  objective evaluation — so a proposal touching one dataset's local parameter
+  cost N model evaluations. New `chisurf/core/fitting/factorgraph.py` makes the
+  factorisation explicit: variables are the free parameters, factors are the
+  per-dataset likelihoods (scope = that fit's non-fixed parameters resolved
+  through their `link` chains) and the informative priors. On top of that sit
+  moralisation, a greedy min-fill elimination order, maximal cliques, a
+  max-weight-spanning-tree junction tree, treewidth, connected components and
+  the relevance query `affected_fits`. Only numpy + networkx; networkx is now a
+  declared dependency (it was already present transitively and used by the
+  globalview plugin). The architecture is borrowed from probabilistic
+  graphical-model toolkits — model object separate from engine, triangulation to
+  expose blocks, relevance pruning per query — but none of their discrete
+  sum-product kernels, which do not transfer to a continuous posterior.
+  `GlobalFitModel.update_model` now recomputes only the local models a change
+  reached. The dirty set is armed **solely** by the `parameter_values` setter —
+  the one moment the model knows exactly what moved — and consumed by the very
+  next `update_model`, so a GUI edit of a single value, a second update, or a
+  structure change all fall back to a full pass. `get_wres` already uses exactly
+  that pattern, so the optimiser and both samplers benefit with no call-site
+  change. Two guards the equivalence test forced out: nothing may be skipped
+  until every local model has been evaluated once since the last structural
+  change (`_current_at_version`), and a free parameter no likelihood factor
+  depends on (`unexplained_variables`) forces the conservative path rather than
+  being read as "reaches nothing". `STRUCTURE_VERSION` invalidates cached graphs
+  from `Parameter.link`, `Parameter.fixed`, `find_parameters` and the group
+  membership mutators; `optimization.global_structure_aware_update` is the
+  escape hatch. Measured on 16 star-linked datasets over 300 one-parameter
+  moves: 4800 → 555 local-model evaluations, exactly the predicted
+  `300·(16/17 + 16/17)`; wall time 158 → 101 ms, limited by fixed per-call
+  overhead because the benchmark model is trivial. Also documented that
+  `FitGroup.model` is the *selected member's* model and the global one is
+  `_model` — the graph builder gets this from `posterior_model` and would
+  otherwise have described a single dataset. 24 tests in
+  `test/fitting/test_factor_graph.py` and
+  `test/fitting/test_global_structure_aware_update.py`, including a
+  selective-vs-full residual equivalence sweep. See [PRD-68](/prds/prd-68.md)
+  and the [fitting subsystem](/subsystems/fitting.md).
+
 * **The sampler was throwing away every prior the user set (PRD-68, phase 1).**
   `lnprior` had two branches: given `bounds` it returned the flat box prior and
   never looked at the parameters; only with `bounds=None` did it sum

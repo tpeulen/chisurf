@@ -192,7 +192,157 @@ class GlobalFitModel(model.Model, Curve):
         self.fits = fits
         self.fit = fit
         self._global_parameters = dict()
+        self._factor_graph = None
+        # Set by the ``parameter_values`` setter to the local fits a complete
+        # vector assignment actually touched, and consumed by the next
+        # ``update_model``. ``None`` means "recompute everything".
+        self._pending_dirty_fits = None
+        # Recomputing only what changed is valid only if everything *else* is
+        # already up to date. A freshly built group, or one whose membership or
+        # parameter structure just changed, has not been evaluated at all, so
+        # skipping a local model there would leave stale residuals in the
+        # objective. This records the structure version at which every local
+        # model was last brought up to date; selective updating is admissible
+        # exactly while it still matches the current one.
+        self._current_at_version = None
         super().__init__(fit, *args, **kwargs)
+
+    # -- posterior structure ----------------------------------------------
+
+    @property
+    def factor_graph(self) -> cs.core.fitting.factorgraph.FactorGraph:
+        """Factor graph of this global fit, rebuilt when the structure changes.
+
+        Variables are the free parameters of :attr:`parameters`, factors are the
+        per-dataset likelihoods and the informative parameter priors. See
+        :mod:`chisurf.core.fitting.factorgraph`; the graph is what lets
+        :meth:`update_model` recompute only the local models a change actually
+        reached, and what exposes the group's blocks, separators and treewidth.
+        """
+        from chisurf.core.fitting import factorgraph
+        version = factorgraph.structure_version()
+        graph = self._factor_graph
+        if graph is None or graph.version != version:
+            graph = factorgraph.build_factor_graph(self.fit, model=self)
+            self._factor_graph = graph
+        return graph
+
+    @property
+    def parameter_values(self) -> typing.List[float]:
+        """Values of all free parameters (local variable + global variable)."""
+        return [p.value for p in self.parameters]
+
+    @parameter_values.setter
+    def parameter_values(self, vs: typing.List[float]):
+        """Assign the whole free-parameter vector and note what it moved.
+
+        Assigning the complete vector is the one moment at which the model knows
+        exactly which parameters changed, so it is also the only moment from
+        which selective recomputation can be armed safely. The dirty set is
+        derived from the factor graph and consumed by the very next
+        :meth:`update_model`; anything else -- a GUI edit of a single value, a
+        structure change, a second `update_model` -- falls back to recomputing
+        every local model.
+
+        Parameters
+        ----------
+        vs : list of float
+            New parameter values, in the order of :attr:`parameters`.
+        """
+        ps = self.parameters
+        changed = []
+        for i, v in enumerate(vs):
+            if i >= len(ps):
+                break
+            p = ps[i]
+            try:
+                before = float(p.value)
+            except (TypeError, ValueError):
+                before = None
+            p.value = v
+            # Compare the *readback*, not the requested value: a bound or a
+            # transform can leave the effective value where it was, and a
+            # parameter that did not move needs no work.
+            try:
+                after = float(p.value)
+            except (TypeError, ValueError):
+                after = None
+            if before is None or after is None or before != after:
+                changed.append(i)
+
+        self._pending_dirty_fits = self._dirty_fits_for(changed)
+
+    def _dirty_fits_for(self, changed_indices) -> typing.Optional[typing.List[int]]:
+        """Map changed parameter positions onto the local fits to recompute.
+
+        Parameters
+        ----------
+        changed_indices : sequence of int
+            Positions in :attr:`parameter_values` whose value moved.
+
+        Returns
+        -------
+        list of int or None
+            Indices of the local fits to recompute, or ``None`` meaning "all of
+            them" -- returned whenever selective updating is disabled, the graph
+            cannot be built, or a changed parameter reaches no likelihood factor
+            (see
+            :meth:`~chisurf.core.fitting.factorgraph.FactorGraph.unexplained_variables`),
+            which would otherwise be mistaken for "reaches nothing".
+        """
+        try:
+            enabled = cs.core.settings.cs_settings['optimization'].get(
+                'global_structure_aware_update', True
+            )
+        except (KeyError, TypeError, AttributeError):
+            enabled = True
+        if not enabled:
+            return None
+        try:
+            from chisurf.core.fitting import factorgraph
+            if self._current_at_version != factorgraph.structure_version():
+                # Nothing may be skipped until every local model has been
+                # evaluated at least once since the last structural change.
+                return None
+            graph = self.factor_graph
+            keys = [graph.key_at(i) for i in changed_indices]
+            keys = [k for k in keys if k is not None]
+            if len(keys) != len(changed_indices):
+                # A changed position is not in the graph: it is out of date.
+                return None
+            if set(keys) & graph.unexplained_variables():
+                return None
+            return graph.affected_fits(keys)
+        except Exception as e:
+            cs.logging.warning(
+                f"GlobalFitModel: falling back to a full model update ({e})"
+            )
+            return None
+
+    def _invalidate_structure(self) -> None:
+        """Drop the cached factor graph after the group's membership changed.
+
+        Adding or removing a local fit, or declaring a global parameter, changes
+        which datasets and variables exist. The global counter is bumped as well
+        so that any other holder of a graph over this fit rebuilds too.
+        """
+        from chisurf.core.fitting import factorgraph
+        self._factor_graph = None
+        self._pending_dirty_fits = None
+        self._current_at_version = None
+        factorgraph.bump_structure_version()
+
+    def structure_report(self) -> str:
+        """Return a short report of how this global fit decomposes.
+
+        Returns
+        -------
+        str
+            The output of :meth:`~chisurf.core.fitting.factorgraph.FactorGraph.describe`
+            — variable and dataset counts, treewidth, independent components and
+            the shared (separator) parameters.
+        """
+        return self.factor_graph.describe()
 
 
     def get_wres(
@@ -247,6 +397,7 @@ class GlobalFitModel(model.Model, Curve):
             pass
         if fit not in self.fits:
             self.fits.append(fit)
+            self._invalidate_structure()
             try:
                 cs.logging.info(
                     f"GlobalFitModel.append_fit: appended successfully; total_fits={len(self.fits)}; names={getattr(self, 'fit_names', [])}"
@@ -308,6 +459,7 @@ class GlobalFitModel(model.Model, Curve):
         variable_name = parameter.name
         if variable_name not in list(self._global_parameters.keys()):
             self._global_parameters[parameter.name] = parameter
+            self._invalidate_structure()
 
     def autofitrange(self, fit: FitGroup):
         """Reset auto-fit range to cover all data.
@@ -328,6 +480,7 @@ class GlobalFitModel(model.Model, Curve):
     def clear_local_fits(self) -> None:
         """Remove all local fits from the global model."""
         self.fits = list()
+        self._invalidate_structure()
 
     def remove_local_fit(self, fit_index: int):
         """Remove a local fit by index.
@@ -338,6 +491,7 @@ class GlobalFitModel(model.Model, Curve):
             Index of the fit to remove.
         """
         del self.fits[fit_index]
+        self._invalidate_structure()
 
     def __str__(self):
         """Return a string summary of the global model."""
@@ -410,21 +564,48 @@ class GlobalFitModel(model.Model, Curve):
         super().update()
         for f in self.fits:
             f.model.update()
+        # Every local model has just been rebuilt from its current parameters,
+        # so selective updating is admissible again.
+        from chisurf.core.fitting import factorgraph
+        self._current_at_version = factorgraph.structure_version()
 
     def update_model(self, **kwargs) -> None:
-        """Recompute all local-fit models, optionally in parallel threads.
+        """Recompute the local-fit models, optionally in parallel threads.
+
+        Only the models a parameter change actually reached are recomputed, as
+        determined by the fit's :attr:`factor_graph`. The dirty set is armed by
+        the :attr:`parameter_values` setter and consumed here, so an
+        ``update_model`` that does not directly follow a complete vector
+        assignment recomputes every local model. This is what makes a global
+        objective cost what moved rather than the number of datasets: a proposal
+        touching one dataset's local parameter used to cost N model evaluations.
 
         Parameters
         ----------
         **kwargs
             Forwarded to each local model's ``update_model``.
         """
+        dirty = self._pending_dirty_fits
+        # One-shot: whatever happens next must not inherit this dirty set.
+        self._pending_dirty_fits = None
+
+        if dirty is None:
+            targets = list(self.fits)
+            # A full pass re-establishes the invariant the selective path needs.
+            from chisurf.core.fitting import factorgraph
+            self._current_at_version = factorgraph.structure_version()
+        else:
+            targets = [self.fits[i] for i in dirty if 0 <= i < len(self.fits)]
+        if not targets:
+            # Nothing moved, so every local model is already current.
+            return
+
         if cs.core.settings.cs_settings['optimization']['global_threaded_model_update']:
-            threads = [threading.Thread(target=f.model.update_model) for f in self.fits]
+            threads = [threading.Thread(target=f.model.update_model) for f in targets]
             for thread in threads:
                 thread.start()
             for thread in threads:
                 thread.join()
         else:
-            for f in self.fits:
+            for f in targets:
                 f.model.update_model()

@@ -320,13 +320,19 @@ class FitTests(unittest.TestCase):
             nwalkers=5,
             thin=10
         )
+        # ``lnprior`` is reported next to ``chi2r`` so the data misfit and the
+        # prior stay separable in the stored chain (PRD-68).
         self.assertSetEqual(
-            {'chi2r', 'parameter_values', 'parameter_names'},
+            {'chi2r', 'lnprior', 'parameter_values', 'parameter_names'},
             set(r.keys())
         )
         self.assertEqual(
             len(r['chi2r']),
             50
+        )
+        self.assertEqual(
+            len(r['lnprior']),
+            len(r['chi2r'])
         )
 
         # There is an alternative sampler that directly saves to files. It

@@ -102,6 +102,7 @@ requirements:
     - deprecation
     - pandas
     - scipy
+    - networkx
     - numba
     - boost-cpp
     - mdtraj

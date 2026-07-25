@@ -149,8 +149,9 @@ The selective path is **armed only by a complete parameter-vector assignment and
 consumed once**:
 
 1. `GlobalFitModel.parameter_values` setter diffs the incoming vector against
-   the current values, maps the changed indices to variable keys, and stores
-   `_pending_dirty_fits = graph.affected_fits(changed)`.
+   the current values — comparing the *readback*, since a bound or transform can
+   leave the effective value where it was — maps the changed indices to variable
+   keys, and stores `_pending_dirty_fits = graph.affected_fits(changed)`.
 2. `update_model` consumes and clears `_pending_dirty_fits`; if it is `None` it
    recomputes **all** local fits.
 
@@ -159,6 +160,24 @@ GUI edit of a single `p.value`, a direct model poke, a structure change — fall
 back to a full recompute. The optimiser and both samplers already use exactly
 the `parameter_values = v; update_model()` pattern (`get_wres`), so they get the
 speedup for free with no call-site changes and no way to silently desynchronise.
+
+Two further guards, both found by the equivalence test rather than by design:
+
+- **Nothing may be skipped until everything is current.** Skipping a local model
+  that has *never* been evaluated leaves its stale residuals in the objective. A
+  `_current_at_version` stamp records the structure version at which the last
+  full pass ran; selective updating is admissible only while it matches
+  `structure_version()`. So the first evaluation of a fresh or restructured
+  group is always a full one.
+- **An unexplained variable forces the conservative path.**
+  `FactorGraph.unexplained_variables()` reports free parameters no likelihood
+  factor depends on. Either they genuinely do nothing, or a model couples them
+  to its data by a route the graph does not model; an empty `affected_fits`
+  answer must not be mistaken for the former, so a change to one of them
+  recomputes everything.
+
+`optimization.global_structure_aware_update` (default true) disables the whole
+selective path for custom global models coupled by something other than links.
 
 ## Prior fix
 
@@ -188,8 +207,15 @@ data and prior terms separately; `lnprob` remains their sum. Chains gain
 - [x] Tests: prior round-trip, graph structure for a star-shaped global fit
       (treewidth, blocks, separators), relevance correctness, and an
       equivalence test showing selective and full updates give identical
-      residuals.
-- [ ] `okf/subsystems/fitting.md` updated; `okf/log.md` appended.
+      residuals. 30 tests across three files.
+- [x] `okf/subsystems/fitting.md` updated; `okf/log.md` appended.
+
+Measured on a 16-dataset star-linked group (512 points each, 300 one-parameter
+moves through `get_wres`): **4800 → 555 local-model evaluations**, exactly the
+predicted `300·(16/17·1 + 1/17·16)`. Wall time fell 158 ms → 101 ms only because
+the toy model's evaluation is trivial and fixed per-call overhead dominates; for
+a real convolution model the wall-clock ratio approaches the evaluation-count
+ratio.
 
 # Non-goals (deferred)
 

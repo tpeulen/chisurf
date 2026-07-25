@@ -45,6 +45,11 @@ pillow = "*"
 deprecation = "*"
 pandas = "*"
 scipy = "*"
+# Graph container + spanning trees for the fit factor graph
+# (chisurf/core/fitting/factorgraph.py). Already pulled in transitively by
+# scikit-image and used by the globalview plugin; declared so core can rely on
+# it. Everything else in that module is plain numpy.
+networkx = "*"
 numba = "*"
 boost-cpp = "*"
 mdtraj = "*"

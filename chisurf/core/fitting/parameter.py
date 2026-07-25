@@ -376,6 +376,11 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         seen = set()
         self._parameters = [x for x in (mp + ap) if not (x in seen or seen.add(x))]
 
+        # Rediscovery can change the parameter vector (order, membership), which
+        # is exactly what a cached factor graph is indexed by.
+        from chisurf.core.fitting import factorgraph
+        factorgraph.bump_structure_version()
+
     def append_parameter(self, p: parameter.Parameter):
         """Append a new :class:`FittingParameter` to this group."""
         self._parameters.append(p)

@@ -22,6 +22,7 @@ and [parameters](/subsystems/parameters.md).
 | `FittingParameter` | Free/fixed/linked model parameter (`fitting/parameter.py`) |
 | `sample_fit` / `sample.py` | MCMC / emcee parameter sampling |
 | `support_plane.py` | chi² scans + F-test confidence intervals |
+| `factorgraph.py` | posterior factor structure: relevance, blocks, treewidth |
 
 # Fitting flow
 
@@ -139,6 +140,51 @@ plugins in place of duplicated raw-tttrlib boilerplate.
   least-squares problem.
 - `FitGroup.run()` optionally fits each member locally first
   (`global_optimize_local_first`) then runs the joint `leastsqbound`.
+- **`FitGroup.model` is the *selected member's* model; the global one is
+  `FitGroup._model`.** Anything reasoning about the joint parameter vector must
+  use `_model` (or `factorgraph.posterior_model`) — reaching for `.model`
+  silently describes one dataset instead of the group.
+
+# Posterior structure — the fit factor graph
+
+`chisurf/core/fitting/factorgraph.py` makes the factorisation
+`p(θ|D) ∝ ∏ₖ Lₖ(θ_Sₖ) · ∏ᵢ πᵢ(θᵢ)` explicit ([PRD-68](/prds/prd-68.md)).
+Variables are the free parameters of the global parameter vector (indexed by
+their position in it); factors are one likelihood per local fit plus one per
+informative prior. A likelihood factor's scope is that fit's non-fixed
+parameters resolved through their `link` chains (`resolve_root`), so linking is
+what couples datasets in the graph. A bare box bound adds no factor — it is a
+support constraint, not a coupling.
+
+| Query | Answers |
+| --- | --- |
+| `affected_fits(keys)` | which local models a change must recompute |
+| `connected_components()` | independent sub-problems |
+| `cliques()` / `blocks()` | variables that must move jointly |
+| `junction_tree()` / `separators()` | the parameters the datasets actually share |
+| `treewidth` | structural difficulty; a star-shaped global fit stays small |
+| `describe()` | the identifiability report, via `GlobalFitModel.structure_report()` |
+
+Cliques come from a greedy `min_fill` (or `min_degree`) elimination order; the
+clique tree is the maximum-weight spanning tree over shared-variable counts.
+Only `numpy` and `networkx` are involved.
+
+**Selective updates.** `GlobalFitModel.update_model` recomputes only the local
+models a change reached. The dirty set is armed *solely* by the
+`parameter_values` setter — the one moment the model knows exactly what moved —
+and consumed by the very next `update_model`; anything else (a GUI edit of a
+single value, a second update, a structure change) recomputes everything. A
+`_current_at_version` stamp additionally forbids skipping until every local
+model has been evaluated at least once since the last structural change, since
+skipping past a never-evaluated model would leave stale residuals in the
+objective. `optimization.global_structure_aware_update` is the escape hatch for
+a custom global model whose datasets are coupled by something other than links;
+`FactorGraph.unexplained_variables()` already forces the conservative path for
+any free parameter the graph cannot connect to data.
+
+`factorgraph.STRUCTURE_VERSION` invalidates cached graphs; it is bumped by
+`Parameter.link`, `Parameter.fixed`, `FittingParameterGroup.find_parameters` and
+the `GlobalFitModel` membership mutators.
 
 # Fitting a bare array through the real models
 
