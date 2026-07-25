@@ -252,6 +252,7 @@ def frozen_structure(*targets):
             model.__dict__.pop("_frozen_structure", None)
         for q in frozen_parameters:
             q.__dict__.pop("_frozen_flags", None)
+            q.__dict__.pop("_frozen_value", None)
         if structure_version() != structure_at_entry:
             import chisurf.logging
             chisurf.logging.warning(

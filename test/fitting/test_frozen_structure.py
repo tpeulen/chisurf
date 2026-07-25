@@ -238,3 +238,72 @@ def test_a_frozen_read_still_writes_a_clamped_value_back():
         # Persisted, so repeated reads agree and match the unfrozen rule.
         assert float(p.value) == 1.0
     assert float(p.value) == 1.0
+
+
+def test_a_write_inside_a_freeze_is_seen_by_the_next_read():
+    """The read cache is only sound if every write drops it."""
+    from chisurf.core.fitting.parameter import FittingParameter
+
+    p = FittingParameter(name="p", value=1.0)
+
+    class _Model:
+        parameters_all = [p]
+        parameters = parameters_all
+        parameter_names = ['p']
+        parameter_bounds = [p.bounds]
+
+    with factorgraph.frozen_structure(_Model()):
+        assert float(p.value) == 1.0          # populates the cache
+        p.value = 2.0
+        assert float(p.value) == 2.0          # and the write dropped it
+        p.value = 3.5
+        assert float(p.value) == 3.5
+    assert float(p.value) == 3.5
+
+
+def test_a_frozen_follower_tracks_its_master():
+    """A follower is written through its port, which never reaches its Parameter."""
+    from chisurf.core.fitting.parameter import FittingParameter
+
+    master = FittingParameter(name="master", value=1.0)
+    follower = FittingParameter(name="follower", value=0.0)
+    follower.link = master
+
+    class _Model:
+        parameters_all = [master, follower]
+        parameters = parameters_all
+        parameter_names = ['master', 'follower']
+        parameter_bounds = [master.bounds, follower.bounds]
+
+    with factorgraph.frozen_structure(_Model()):
+        assert float(follower.value) == 1.0
+        master.value = 6.25
+        # Moving the master must move the follower -- a cached follower would
+        # keep answering 1.0, which is why followers are never cached.
+        assert float(follower.value) == 6.25
+        assert float(master.value) == 6.25
+
+
+def test_a_fit_gives_the_same_answer_with_and_without_the_freeze():
+    """End to end: the caches must be invisible in the result."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "T", "test/fitting/test_tcspc_fit_convergence.py")
+    T = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(T)
+    import chisurf.core.fitting.fit as F
+
+    fit, m = T._build(start=[(1.0, 8.0), (1.0, 0.4)])
+    fit.run()
+    optimum = list(m.parameter_values)
+    reference = np.asarray(F.get_wres(optimum, m), dtype=float).copy()
+
+    with factorgraph.frozen_structure(fit):
+        frozen = np.asarray(F.get_wres(optimum, m), dtype=float).copy()
+        # And a *changed* vector, so the cache is exercised across writes.
+        moved = [v * 1.05 for v in optimum]
+        frozen_moved = np.asarray(F.get_wres(moved, m), dtype=float).copy()
+    plain_moved = np.asarray(F.get_wres(moved, m), dtype=float).copy()
+
+    assert np.array_equal(frozen, reference)
+    assert np.array_equal(frozen_moved, plain_moved)

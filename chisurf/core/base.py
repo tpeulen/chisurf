@@ -201,6 +201,14 @@ def clean_string(
     return r
 
 
+#: Sentinel distinguishing "not looked up yet" from "looked up, not a property".
+_UNRESOLVED = object()
+
+#: ``(class, attribute) -> property or None`` for :meth:`Base.__setattr__`,
+#: which would otherwise walk the whole MRO on every attribute write.
+_SETATTR_PROPERTY_CACHE: dict = {}
+
+
 def find_objects(
         search_iterable: Iterable,
         searched_object_type: typing.Type,
@@ -638,9 +646,22 @@ class Base(object):
         self.from_dict(j)
 
     def __setattr__(self, key: str, value: object):
-        """Route property assignments through their setter; store others in ``__dict__``."""
-        propobj = getattr(self.__class__, key, None)
-        if isinstance(propobj, property):
+        """Route property assignments through their setter; store others in ``__dict__``.
+
+        The class lookup is memoised per ``(class, attribute)``. It runs on every
+        attribute write, and for a key that is *not* a class attribute --
+        ordinary instance state, which is most writes -- ``getattr`` walks the
+        whole MRO before failing. Classes and their properties do not change at
+        runtime, so the answer is stable.
+        """
+        cls = self.__class__
+        cache_key = (cls, key)
+        propobj = _SETATTR_PROPERTY_CACHE.get(cache_key, _UNRESOLVED)
+        if propobj is _UNRESOLVED:
+            found = getattr(cls, key, None)
+            propobj = found if isinstance(found, property) else None
+            _SETATTR_PROPERTY_CACHE[cache_key] = propobj
+        if propobj is not None:
             if propobj.fset is None:
                 raise AttributeError("can't set attribute")
             propobj.fset(self, value)

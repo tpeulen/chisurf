@@ -228,12 +228,23 @@ class Parameter(chisurf.core.base.Base):
         if frozen is not None:
             linked, callable_, bounded, lb, ub = frozen
             if linked:
+                # A follower is written through its *port* when the master
+                # moves, which never reaches this object, so it is read fresh.
                 pv = self._port.value
                 return pv if type(pv) is float else float(np.atleast_1d(pv)[0])
             if callable_ is None:
+                # Most of a model's parameters -- instrument response, detection
+                # geometry, background, everything not being optimised -- hold
+                # the same value for the entire run and are re-read on every
+                # evaluation. The value setter drops this entry, so a cached
+                # read can only ever be one nothing has written since.
+                cached = self.__dict__.get("_frozen_value")
+                if cached is not None:
+                    return cached
                 pv = self._port.value
                 v = pv if type(pv) is float else float(np.atleast_1d(pv)[0])
                 if not bounded:
+                    self.__dict__["_frozen_value"] = v
                     return v
                 raw = v
                 if lb == lb and v < lb:
@@ -245,6 +256,10 @@ class Parameter(chisurf.core.base.Base):
                     self._port.fixed = False
                     self._port.value = v
                     self._port.fixed = f
+                    # The write-back cleared the entry; the clamped value is
+                    # what every later read must see.
+                    self.__dict__["_frozen_flags"] = frozen
+                self.__dict__["_frozen_value"] = v
                 return v
 
         # If linked, defer entirely to linked parameter's port value.
@@ -305,6 +320,12 @@ class Parameter(chisurf.core.base.Base):
         ignored to ensure that the callable remains the single source of
         truth.
         """
+        # Any write invalidates the read cache a freeze may have populated. This
+        # is the single point at which a parameter's value changes -- models
+        # write through here, never into the backing port -- which is what makes
+        # caching reads inside a run sound.
+        if "_frozen_value" in self.__dict__:
+            del self.__dict__["_frozen_value"]
         if self._callable:
             return
         

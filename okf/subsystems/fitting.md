@@ -284,17 +284,19 @@ optional `model=`, so an engine over a group's global model works throughout.
 
 Profiling a global-fit sweep found the model evaluation itself was **6 %** of
 the time; the rest was Python overhead re-deriving things that cannot change
-during a run. 2000 evaluations over 12 datasets went **1.46 s → 0.53 s (2.8×)**
-and 3.84 M → 1.15 M calls, after which the model evaluation is the top cost.
+during a run. 2000 evaluations over 12 datasets went **1.46 s → 0.45 s (3.2×)** and
+3.84 M → 0.95 M calls, after which the model evaluation is the top cost. A
+two-exponential TCSPC fit runs in ~37 ms.
 
 - **Frozen parameter flags.** Reading a parameter costs six property dispatches
   -- three at the `Parameter` level, three more into the port -- purely to decide
   *how* to read it (linked? callable? bounded?), and none of those answers can
   change during a run either. The freeze stamps them, so a read is one dict
   lookup and one port access: a further **1.36×** on decay model evaluations,
-  with byte-identical residuals. This matters because `Parameter.value` costs
-  roughly ten times what the C++ convolution does in a 1024-channel decay --
-  see the [autodiff assessment](/references/autodiff-assessment.md).
+  with byte-identical residuals. Together with the value cache below this is
+  **1.46-1.49x** on a decay evaluation. It matters because `Parameter.value`
+  costs roughly ten times what the C++ convolution does in a 1024-channel decay
+  -- see the [autodiff assessment](/references/autodiff-assessment.md).
 - **`factorgraph.frozen_structure(...)`** — nothing about a fit's structure
   changes while it is optimised or sampled, so the free-parameter list, names,
   bounds and `n_free` are resolved once per run and served with no version check
@@ -317,8 +319,19 @@ and 3.84 M → 1.15 M calls, after which the model evaluation is the top cost.
   were recomputed anyway (24 000 → 7 054 calls).
 - **`parameter_values` setter** skips writing a value a parameter already has,
   and `Parameter.value` tests the float compare before the port read.
-- **`ParameterGroup.__setattr__`** memoises its MRO property lookup per
-  `(class, attribute)`.
+- **Frozen parameter values.** Most of a model's parameters -- instrument
+  response, detection geometry, background, everything not being optimised --
+  hold the same value for a whole run and are re-read on every evaluation. Inside
+  a freeze a read is memoised on the parameter and dropped by the value setter,
+  which is the *single* point at which a value changes: models write through
+  `Parameter.value`, never into the backing port, and there are no computed
+  (chinet-node) ports in these models. Linked parameters are never cached -- a
+  follower is written through its *port* when its master moves, which never
+  reaches the follower object.
+- **`Base.__setattr__` and `ParameterGroup.__setattr__`** memoise their class
+  property lookup per `(class, attribute)`. Both ran on every attribute write,
+  and for a key that is not a class attribute -- ordinary instance state, most
+  writes -- `getattr` walked the whole MRO before failing.
 
 **The verdict reaches the caller.** `fit.sample.start` merges its keyword
 arguments over `optimization.sampling` (so `method` and `global_posterior` are
