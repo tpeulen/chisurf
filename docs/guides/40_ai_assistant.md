@@ -115,6 +115,7 @@ even sees it, so the right method is in play from the first turn.
 | `report-results` | exporting, saving, plotting, writing up |
 | `write-analysis-script` | custom calculations and scripts |
 | `use-the-computer` | unpacking, converting, running other software |
+| `program-chisurf` | writing plugins, models or patches to ChiSurf itself |
 
 `python -m chisurf.core.agent --list-skills` prints them with the phrases that
 trigger each one.
@@ -143,6 +144,24 @@ tools: [load_data, create_fit, set_irf, run_fit]
 Give it the same `name` as a built-in skill and yours replaces it. A plugin
 can ship skills the same way, in an `agent_skills/` directory next to its
 `manifest.json`.
+
+## Asking it to write ChiSurf code
+
+The assistant can also work *on* ChiSurf — a plugin, a fitting model, a
+script that uses the API. It does not know the codebase from memory, so it
+looks things up instead of guessing: `search_api` gives it the real
+signatures and docstrings straight from the source tree, `read_api_source`
+the implementation, `search_docs` the architecture concepts and guides, and
+`list_plugins` the nearest existing example to follow. `check_python` runs a
+syntax and lint check before anything is written to disk.
+
+Asked for *"a standalone script that loads a TCSPC file, fits it with its
+IRF, and prints the lifetimes"*, it produces a script that runs and reports
+chi2r 1.03 with three lifetimes and their uncertainties.
+
+Code it writes still needs review — it is a competent stranger to your
+codebase, not a maintainer of it — but it will be written against the API
+that exists.
 
 ## What it is good at, and what to check
 

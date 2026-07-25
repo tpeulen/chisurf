@@ -2,6 +2,67 @@
 
 ## 2026-07-25
 
+* **The agent can program ChiSurf, because it can now look it up.** Driving
+  the program through tools needs no knowledge of the codebase; writing
+  against it does, and that is precisely what a general-purpose model lacks —
+  left to guess it invents plausible module paths, class names and keyword
+  arguments, none of them real.
+  New `chisurf/core/agent/knowledge.py` answers that from two sources,
+  because they answer different questions. An **AST index of the source tree**
+  (every public class, function and method with signature, docstring, file and
+  line; cached under the settings directory, rebuilt when the tree changes)
+  says *what exists and what it takes* — derived from the code, so never
+  stale. The **prose** (OKF concepts and the guides) says *why it is that way
+  and what the conventions are*, which signatures never carry. Changelogs are
+  excluded from the prose search: they mention everything and answer nothing,
+  and by raw hit count `okf/log.md` won every query until the score was
+  normalised by document length.
+  The `codebase` tool group exposes it: `search_api`, `read_api_source`,
+  `search_docs`, `read_doc`, `list_plugins`, `check_python` — all read-tier,
+  because looking something up is free and guessing is expensive. The
+  `program-chisurf` skill carries the conventions: core stays Qt-free, state
+  goes through the action layer, every function takes a NumPy-style
+  docstring, a material change updates its OKF concept.
+  **Verified by having it write real code.** Asked for a standalone script
+  that loads a TCSPC file, fits it with its IRF and prints the lifetimes,
+  Mistral produced one that runs and reports chi2r 1.027, Durbin-Watson 2.012
+  and three lifetimes with uncertainties. It failed on the first run — and
+  the fault was **ours**: `auto_fit_decay` reported `fit` where `create_fit`
+  reports `fit_indices`, so a script written against one shape died with "no
+  fit was created". Inconsistent result shapes are invisible in interactive
+  use and fatal in generated code; both now report both, pinned by a test.
+  36 tools, 11 skills, 38 tests in `test/agent/test_codebase_tools.py`.
+
+* **chimol: `save` -- structures can leave the viewer again.** The largest hole in
+  replacing PyMOL, ahead of any representation: chimol could show a structure but
+  not hand one back, so every transform, deleted water and renumbering was trapped
+  inside it.
+  New `io/export.py` writes **PDB and mmCIF**, and deliberately serialises *what
+  the viewer holds* rather than the source file -- re-exporting the input would
+  discard exactly the work worth keeping. Format follows the extension with
+  PyMOL's own fallback ("if the file format is not recognized, then a PDB file is
+  written by default"), so a mistyped extension still leaves a usable file. mmCIF
+  is there for one concrete reason: PDB has four columns for a residue number and
+  mmCIF has none, so a large-numbered structure survives.
+  **Verified by loading the output back into PyMOL**, which is the only test of a
+  writer that means anything: 1363 atoms, both chains E and S, 163 CA, 63 hetero
+  atoms, and `dss` finds H/L/S on it -- so the backbone ordering is intact. PDB
+  and mmCIF agree to 0.0000 A. Round-trip through chimol's own reader is exact.
+  **Two real bugs it exposed.**
+  `unscale_coordinates` had to exist at all because the viewer holds scene units;
+  writing those into a PDB gives a file that loads at the wrong size and place.
+  And a test asserting a transform reaches the file caught that **`translate` was
+  off by the scale factor** -- `translate [100,0,0]` moved the molecule **10 A**,
+  because PyMOL's translate is in Angstrom while
+  `apply_transform_to_object` works on the renderer's scene-unit arrays. Invisible
+  on screen, obvious the moment anything was written out. Fixed and pinned; the
+  parity tracker now carries "any new command taking a length must convert" as a
+  rule.
+  Also recorded: PyMOL keeps every **altloc** as a separate atom (148L 1385) where
+  chimol keeps only the first (1363), so atom counts will not agree on structures
+  with altlocs.
+  33 new tests. Suite: 427 passed, 1 skipped.
+
 * **New plugin `img_drift`: drift correction for TIFF stacks *and* photon-stream
   images, correcting confocal data photon by photon.** Follow-up to the MIA
   drift port, which only handled NumPy stacks. **The key addition is the
@@ -182,95 +243,6 @@
   `git show HEAD:okf/log.md` **immediately** before committing, never from a copy
   read earlier in the session, and check `git diff --cached --stat` shows only
   what you intend before every commit.
-
-
-* **Two more things a run cannot change: parameter values and class
-  properties.** Continuing down the same seam. (1) Most of a model's parameters
-  — instrument response, detection geometry, background, everything not being
-  optimised — hold the same value for an entire run and are re-read on every
-  evaluation. Inside a freeze a read is now memoised on the parameter and
-  dropped by the value setter, which is the *single* point at which a value
-  changes: models write through `Parameter.value`, never into the backing port
-  (verified), and these models have no computed chinet-node ports. Linked
-  parameters are deliberately never cached — a follower is written through its
-  *port* when its master moves, which never reaches the follower object, so a
-  cached follower would keep answering the old value; there is a test for
-  exactly that. (2) `Base.__setattr__` walked the whole MRO via
-  `getattr(self.__class__, key, None)` on **every** attribute write, and for a
-  key that is not a class attribute — ordinary instance state, i.e. most writes
-  — that walk runs to completion before failing. Memoised per
-  `(class, attribute)`, the same fix already applied to
-  `ParameterGroup.__setattr__`; verified against HEAD that the three `test/core`
-  failures it touches are pre-existing, since this one sits on the write path of
-  every `Base` subclass in the program.
-  Cumulative: a global objective sweep is **1.46 s → 0.45 s (3.2×)** with
-  3.84 M → 0.95 M calls, a decay model evaluation is **1.46–1.49×** faster under
-  a freeze with byte-identical residuals, and a two-exponential TCSPC fit runs in
-  ~37 ms. Further gains now need the model layer to read its parameters into
-  vectors once rather than one attribute at a time — invasive across many models
-  for a smaller return, so stopping here.
-
-* **Recovered nine log entries dropped by a stale-base commit.** `a87fa24a`
-  rewrote `okf/log.md` from a copy that predated nine entries (two chimol, one
-  agent, six fitting/sampling), removing them from history. They are restored
-  verbatim below, in their original relative order. The log is a shared,
-  append-mostly file in a tree several instances work at once: rebuild the index
-  blob from `git show HEAD:okf/log.md` immediately before staging, never from a
-  copy read earlier in a session.
-
-* **chimol: the "unattributed +0.700 A" was not padding -- `zoom` centres on the
-  centroid.** Closed, and the earlier inference was wrong twice over.
-  It looked like a constant pad over the reported extent. It is not constant: it
-  is **+0.700 A on globular 148L but +11.65 A on the long coiled coil of 1DG3**,
-  and exactly **zero** on symmetric pseudoatom pairs at *every* van-der-Waals
-  radius -- so the "vdW-related" reading from the earlier session was also wrong,
-  since a `vdw=5` pair shows no residual at all.
-  **The cause is the `weighted` flag** `ExecutiveWindowZoom` passes to
-  `ExecutiveGetExtent`. With it set, PyMOL averages the atom coordinates and
-  rebuilds the box **symmetric about that centroid**::
-
-      op2.v1 /= op2.i1;                  // centroid
-      f1 = op2.v1[a] - op.v1[a];  f2 = op.v2[a] - op2.v1[a];
-      fmx = max(f1, f2);
-      op.v1[a] = op2.v1[a] - fmx;  op.v2[a] = op2.v1[a] + fmx;
-
-  So the framing is centred on where the atoms *are*, not on the middle of their
-  bounding box, and the box grows to stay symmetric about it. A symmetric object
-  is unaffected -- which is exactly why the pseudoatom probes said zero and sent
-  the earlier diagnosis off course. `cmd.get_extent` reports the *unweighted*
-  box, which is what made the two disagree.
-  Both the radius **and the zoom centre** were wrong in chimol. Now
-  `view_state.framing_centre` returns the centroid and `framing_radius` measures
-  the centroid-symmetric half-width. Against PyMOL: 148L **24.4661 vs 24.4662**,
-  1DG3 **79.4825 vs 79.4825**, 148L `complete` **30.4871 vs 30.487** -- exact,
-  where before 1DG3 was off by 11.6 A.
-  6 new tests, including the lopsided-mass case that makes the rule visible.
-  Suite: 374 passed, 1 skipped.
-
-
-* **chimol: cast shadows in the interactive viewport.** Ambient occlusion says
-  how *enclosed* a point is; a cast shadow says whether anything stands between
-  it and the light. They are different cues, and PyMOL has the second only when
-  raytracing -- so this is the live view going further rather than matching.
-  `geometry/ambient.py:directional_occlusion` casts a ray from each vertex toward
-  the light and asks every nearby sphere how close it comes to that ray: one the
-  ray passes through blocks fully, one it grazes blocks partly, which gives a
-  soft edge instead of the stair-step a shadow map would show at this scale.
-  Occluders behind the vertex, or that it sits inside, are skipped. Baked per
-  rebuild like the ambient term, so it costs nothing per frame -- 20k vertices
-  against 4700 atoms in **0.175 s**, and the whole 148L cartoon rebuild goes
-  0.48 s -> 0.64 s.
-  **The light is deliberately off-axis.** A headlight casts almost nothing the
-  camera can see, so the default shadow direction is PyMOL's own `light`
-  (-0.4, -0.4, -1) negated, since that setting is the direction light *travels*
-  while the shadow ray runs toward the source. The shadow is also folded into the
-  occlusion channel the GL shader damps its non-surface lighting by, so a
-  shadowed crevice does not get its ambient and rim light handed back.
-  Effect on a cartoon is a subtle depth cue (148L lit-pixel contrast 34.5 ->
-  35.7); on space-filling, where a sphere actually blocks a ray, it is much
-  stronger. Tunables under `occlusion.shadow_*`.
-  10 new tests. Suite: 369 passed, 1 skipped.
-
 
 * **The agent can now produce a decay fit that is actually right, and knows
   when it has not.** The harness landed the day before could drive the
@@ -496,15 +468,6 @@
   link-following and the write-back of a clamped value exactly.
 
 
-
-* **chiplot Batch 23 — legacy burst selector off pyqtgraph (allow-list
-  28 → 27).** Migrated `plugins/burst/burst_selection/gui/legacy/burst_selector.py`
-  (per-feature histogram + overlaid GMM fit). `pg.PlotWidget`→`cp.Plot`;
-  `pg.BarGraphItem(alpha=0.7)`→`bars(brush=(0,0,255,178))`; GMM sum + dashed
-  per-component lines via `line(style="dash")` + `cp.int_color`. Screenshot-
-  verified (bimodal blue histogram, red fit, dashed components, legend). See
-  [PRD-64](prds/prd-64.md).
-
 * **Global analysis reached the agent, which is what ChiSurf is for.** The
   harness could fit measurements one at a time; it could not tie them
   together — so the one thing the program is named for was out of reach.
@@ -538,6 +501,25 @@
   removes exactly one degree of freedom and that the follower tracks the
   source's value. 30 tools, 10 skills.
 
+* **chimol: `cartoon_smooth_loops` implemented, and the whole curve exposed as
+  settings.** The last unimplemented step of PyMOL's cartoon pipeline is in, so
+  nothing in the chain is missing now. It is **off by default as in PyMOL** --
+  rounding the coil pulls it away from the real backbone -- but a setting that
+  silently does nothing is worse than one that is off.
+  Two details separate it from the sheet pass, both from `RepCartoonSmoothLoops`:
+  the run is **widened by one residue into the flanking element**, so smoothing
+  does not stop dead at the junction and crease there; and the orientations are
+  renormalised but **not** re-orthogonalised against the tangent, since a loop
+  has no face to keep flat. Verified on a kinked coil between two helices: second
+  difference along the loop 30.0 -> 2.0, with both helices untouched.
+  **Seven more PyMOL settings registered** -- `cartoon_throw`, `cartoon_power`,
+  `cartoon_power_b`, `cartoon_refine_tips`, `cartoon_refine_normals`,
+  `cartoon_smooth_loops`, `cartoon_smooth_cycles` -- so the curve and the
+  guide-frame conditioning are reachable as `set cartoon_throw, 2.0` rather than
+  only by dotted path. The "every entry is live" test covers them, so each one
+  had to name a config path the builder actually reads.
+  Suite: 379 passed, 1 skipped.
+
 * **The correlation path, verified rather than assumed.** The FCS reader
   became usable again after the schema fix, so the `fit-correlation` skill
   could finally be checked against the software instead of against memory —
@@ -561,6 +543,58 @@
   has neither. Live against Mistral the agent fitted the curve, judged it
   poor, tried a second model, and **asked what to do instead of presenting the
   number** — which is the behaviour the assessment exists to produce.
+
+* **chimol: the "unattributed +0.700 A" was not padding -- `zoom` centres on the
+  centroid.** Closed, and the earlier inference was wrong twice over.
+  It looked like a constant pad over the reported extent. It is not constant: it
+  is **+0.700 A on globular 148L but +11.65 A on the long coiled coil of 1DG3**,
+  and exactly **zero** on symmetric pseudoatom pairs at *every* van-der-Waals
+  radius -- so the "vdW-related" reading from the earlier session was also wrong,
+  since a `vdw=5` pair shows no residual at all.
+  **The cause is the `weighted` flag** `ExecutiveWindowZoom` passes to
+  `ExecutiveGetExtent`. With it set, PyMOL averages the atom coordinates and
+  rebuilds the box **symmetric about that centroid**::
+
+      op2.v1 /= op2.i1;                  // centroid
+      f1 = op2.v1[a] - op.v1[a];  f2 = op.v2[a] - op2.v1[a];
+      fmx = max(f1, f2);
+      op.v1[a] = op2.v1[a] - fmx;  op.v2[a] = op2.v1[a] + fmx;
+
+  So the framing is centred on where the atoms *are*, not on the middle of their
+  bounding box, and the box grows to stay symmetric about it. A symmetric object
+  is unaffected -- which is exactly why the pseudoatom probes said zero and sent
+  the earlier diagnosis off course. `cmd.get_extent` reports the *unweighted*
+  box, which is what made the two disagree.
+  Both the radius **and the zoom centre** were wrong in chimol. Now
+  `view_state.framing_centre` returns the centroid and `framing_radius` measures
+  the centroid-symmetric half-width. Against PyMOL: 148L **24.4661 vs 24.4662**,
+  1DG3 **79.4825 vs 79.4825**, 148L `complete` **30.4871 vs 30.487** -- exact,
+  where before 1DG3 was off by 11.6 A.
+  6 new tests, including the lopsided-mass case that makes the rule visible.
+  Suite: 374 passed, 1 skipped.
+
+* **chimol: cast shadows in the interactive viewport.** Ambient occlusion says
+  how *enclosed* a point is; a cast shadow says whether anything stands between
+  it and the light. They are different cues, and PyMOL has the second only when
+  raytracing -- so this is the live view going further rather than matching.
+  `geometry/ambient.py:directional_occlusion` casts a ray from each vertex toward
+  the light and asks every nearby sphere how close it comes to that ray: one the
+  ray passes through blocks fully, one it grazes blocks partly, which gives a
+  soft edge instead of the stair-step a shadow map would show at this scale.
+  Occluders behind the vertex, or that it sits inside, are skipped. Baked per
+  rebuild like the ambient term, so it costs nothing per frame -- 20k vertices
+  against 4700 atoms in **0.175 s**, and the whole 148L cartoon rebuild goes
+  0.48 s -> 0.64 s.
+  **The light is deliberately off-axis.** A headlight casts almost nothing the
+  camera can see, so the default shadow direction is PyMOL's own `light`
+  (-0.4, -0.4, -1) negated, since that setting is the direction light *travels*
+  while the shadow ray runs toward the source. The shadow is also folded into the
+  occlusion channel the GL shader damps its non-surface lighting by, so a
+  shadowed crevice does not get its ambient and rim light handed back.
+  Effect on a cartoon is a subtle depth cue (148L lit-pixel contrast 34.5 ->
+  35.7); on space-filling, where a sphere actually blocks a ray, it is much
+  stronger. Tunables under `occlusion.shadow_*`.
+  10 new tests. Suite: 369 passed, 1 skipped.
 
 * **The photon library's Python extension never linked OpenMP; fixed there, so
   ChiSurf's build task stops patching around it.** Root cause found while
@@ -2537,6 +2571,25 @@
   confidence), which is what caught the orientation error. Also made
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
+
+* **chiplot Batch 23 — legacy burst selector off pyqtgraph (allow-list
+  28 → 27).** Migrated `plugins/burst/burst_selection/gui/legacy/burst_selector.py`
+  (per-feature histogram + overlaid GMM fit). `pg.PlotWidget`→`cp.Plot`;
+  `pg.BarGraphItem(alpha=0.7)`→`bars(brush=(0,0,255,178))`; GMM sum + dashed
+  per-component lines via `line(style="dash")` + `cp.int_color`. Screenshot-
+  verified (bimodal blue histogram, red fit, dashed components, legend). See
+  [PRD-64](prds/prd-64.md).
+
+* **chiplot Batch 22 — burst FCS-correlator wizard off pyqtgraph + text
+  autorange fix (allow-list 29 → 28).** Migrated the self-contained
+  `plugins/burst/burst_fcs_correlator/wizard.py` (log-x correlation plot w/ data
+  markers + fit + diffusion-time inset, and a P(τ_D) distribution plot). Curves →
+  `line`/`set_data`; `pg.TextItem` inset → `plot.text(...)` (`_Text.text` property
+  + `set_position`). **Second real bug found by screenshot:** the inset label at a
+  raw data coord on a log-x axis blew auto-range to ~10¹⁷³ (I'd dropped the
+  original's `ignoreBounds=True`). Fixed at the seam — `add_text` now uses
+  `ignoreBounds=True`, so annotations never drive the range. New
+  `test_text_does_not_drive_autorange`; screenshot-verified. See [PRD-64](prds/prd-64.md).
 
 * **chiplot Batch 21 — burst browser histogram off pyqtgraph (allow-list
   30 → 29).** Migrated `plugins/burst/burst_browser/gui/sections.py` (per-column

@@ -144,6 +144,36 @@ Assistant turns are therefore normalised to the fields every provider accepts
 before being re-sent, and `test/agent/test_provider_dialects.py` replays each
 provider's reply shape through the loop to keep that true.
 
+# Programming ChiSurf, not just driving it
+
+Operating the program through tools needs no knowledge of the codebase;
+writing against it does, and that is exactly what a general-purpose model
+lacks. Left to guess it invents an API — plausible names, plausible
+arguments, none of them real.
+
+`knowledge.py` answers that from two sources, because they answer different
+questions. An **AST index of the source tree** (every public class, function
+and method with signature, docstring, file and line, cached under the
+settings directory and rebuilt when the tree changes) says *what exists and
+what does it take*; it is derived from the code, so it cannot be stale. The
+**prose** — OKF concepts and the guides — says *why it is like that and what
+the right way is*, which signatures never carry. Changelogs are excluded from
+the prose search: they mention everything and answer nothing, and by raw hit
+count they win every query.
+
+The `codebase` tool group exposes this as `search_api`, `read_api_source`,
+`search_docs`, `read_doc`, `list_plugins` and `check_python`, all read-tier —
+looking something up is free, guessing is expensive. The `program-chisurf`
+skill carries the conventions: core stays Qt-free, state goes through the
+action layer, every function takes a NumPy-style docstring, a material change
+updates its OKF concept.
+
+Having the agent write code is also a good way to find defects in the tools
+it writes against: an agent-authored script failed because `auto_fit_decay`
+reported `fit` where `create_fit` reports `fit_indices`. Inconsistent result
+shapes are invisible in interactive use and fatal in generated code; both now
+report both.
+
 # Safety tiers
 
 | Tier | Contains | GUI mode |

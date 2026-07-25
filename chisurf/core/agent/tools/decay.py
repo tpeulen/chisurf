@@ -558,6 +558,10 @@ def auto_fit_decay(
     return {
         "ok": True,
         "fit": fit_index,
+        # ``create_fit`` reports ``fit_indices``; a caller that has learned
+        # that shape reasonably expects it here too, and a script written
+        # against the wrong one fails with "no fit was created".
+        "fit_indices": [fit_index],
         "n_components": accepted,
         "trace": steps,
         "notes": notes,

@@ -13,6 +13,9 @@ The catalogue is assembled from three groups:
     global analysis: sharing a parameter's value between fits
 ``scripting``
     running Python in the live session and reading/writing text files
+``codebase``
+    knowledge for *writing* ChiSurf code: the source API index, the
+    documentation, the plugin catalogue, and a syntax/lint check
 ``skills``
     listing and loading the procedures in :mod:`chisurf.core.agent.skills`
 ``system``
@@ -27,6 +30,7 @@ from __future__ import annotations
 
 from chisurf.core.agent.spec import ToolRegistry
 from chisurf.core.agent.tools import (
+    codebase,
     data,
     decay,
     fitting,
@@ -38,6 +42,7 @@ from chisurf.core.agent.tools import (
 
 __all__ = [
     "build_default_registry",
+    "codebase",
     "data",
     "decay",
     "fitting",
@@ -66,6 +71,7 @@ def build_default_registry() -> ToolRegistry:
     registry = ToolRegistry()
     for group in (
         data.registry,
+        codebase.registry,
         fitting.registry,
         decay.registry,
         linking.registry,

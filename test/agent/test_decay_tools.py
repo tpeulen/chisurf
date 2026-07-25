@@ -223,6 +223,18 @@ def test_auto_fit_decay_refuses_when_only_references_are_loaded(context):
         decay_tools.auto_fit_decay(context)
 
 
+def test_auto_fit_decay_reports_the_fit_the_same_way_create_fit_does(context):
+    """Inconsistent result shapes break code written against the tools.
+
+    An agent-written script read ``fit_indices`` — what create_fit returns —
+    and failed with "no fit was created".
+    """
+    data_tools.load_data(context, paths=[DECAY_FILE, IRF_FILE])
+    result = decay_tools.auto_fit_decay(context)
+
+    assert result["fit_indices"] == [result["fit"]]
+
+
 def test_auto_fit_decay_honours_a_component_ceiling(decay_fit):
     result = decay_tools.auto_fit_decay(decay_fit, fit=0, max_components=1)
     assert result["n_components"] == 1
