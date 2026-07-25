@@ -1,8 +1,8 @@
 ---
 type: Reference
 title: "FCS model catalogue & FLCS filters: PAM port status and gaps"
-description: What ChiSurf's FCS fit-model catalogue and FLCS lifetime-filter code gained from porting PAM as reference (A/B verified), and what is still missing.
-tags: [reference, fcs, flcs, diffusion, roadmap]
+description: PAM parity status — what ChiSurf's FCS fit-model catalogue, FLCS lifetime filters and image correlation (MIA) gained from using PAM as reference (A/B verified), what is deliberately out of scope, and what is still missing.
+tags: [reference, fcs, flcs, mia, image-correlation, diffusion, roadmap]
 timestamp: '2026-07-15T00:00:00Z'
 ---
 
@@ -87,34 +87,63 @@ and a new **PCF experiment type** (pair-correlation distribution fits:
 `PCF_LogNormal/LogGaussian/Gamma`) — see the PCF catalogue
 `chisurf/core/models/pcf/`.
 
+## Image correlation (PAM's MIA module)
+
+MIA's analysis core is covered, and by a different route than PAM takes: rather
+than separate RICS / TICS / iMSD analyses, ChiSurf computes **one spatiotemporal
+correlation carpet** and reads the named methods off it. See
+[image correlation](/references/image-correlation-theory.md) for the unifying
+lag-time identity.
+
+| MIA analysis | ChiSurf |
+| --- | --- |
+| `Do_1D/2D/3D_XCor` | `compute_ics_carpet` — the 3-D case *is* the carpet |
+| `Do_RICS`, `Fit_RICS`, `Calc_RICS_Fit`, `RICSMap` | the `Δ = 0` slice + `ImageCorrelationModel` |
+| `Do_TICS`, `Fit_TICS`, `Save_TICS` | `tics_curve()`; fitted jointly with the rest of the carpet |
+| `Do_iMSD`, `Fit_iMSD` | model width is `w_r² + 4Dτ^α`; release `alpha` |
+| `Do_NB`, `NB_2DHist_BG` | `img_pixel_nb` |
+| `Do_Coloc` | `img_coloc` (PRD-67) |
+| `Do_Gaussian`, `Fit_Gaussian` | `IcsGaussian2DModel`, `psf_determination` |
+| `Do_FLIM` and friends | `img_pixel_phasor`, `img_pixel_mle`, `sm_image_mle` |
+
+What MIA still has and ChiSurf does not is **not correlation science** — it is
+acquisition-adjacent I/O and ROI ergonomics: `MIA_Drift` (inter-frame drift
+correction), freehand / arbitrary-region / Cellpose ROI import (ChiSurf has
+rectangular and intensity-threshold masks only), `Read_CZI`, and FRAP. `Do_FRET`
+(ratiometric pixel FRET) is half-built: the crosstalk inversion core exists
+(`core/fluorescence/crosstalk.py`) but no `img_pixel_rfret` consumer.
+
 ## What is missing (not implemented)
 
-- **Correlator GUI file-picker.** The lifetime-filter weight source is wired into
-  the correlator *model* (`set_lifetime_filters` + `correlate_data` branch) and a
-  Qt-free entrypoint; the `correlator.view.json` filter-file/species-pair picker
-  UI is the remaining GUI surface.
-- **Channel-aware (par/perp / multi-PIE) weighting** — *done* (see above via the
-  `{channel: matrix}` / 3-D table). The only unimplemented variant is PAM's
-  stacked single-micro-time-axis layout (multiple PIE windows concatenated onto
-  one axis), which the per-channel table supersedes for most uses.
 - **Automatic scatter/IRF and donor-only pattern species.** PAM can auto-append a
-  measured scatter/IRF column and a donor-only column; ChiSurf requires the user
-  to add such a pattern manually as a generic species file.
-- **Model-generated patterns.** Patterns are file-loaded empirical decays only;
-  no option to build a species pattern from a fitted multi-exponential model
-  reconvolved with the IRF.
+  measured scatter/IRF column and a donor-only column as filter species. ChiSurf
+  has the pieces — `uniform_pattern` for the flat afterpulsing species, and the
+  Filter Calculator fits scatter and background as nuisance columns
+  (`decay_fit.py`, `include_scatter`/`include_background`) — but nothing wires a
+  fitted scatter or donor-only component back in as a filter species; the user
+  adds it manually as a generic pattern file.
+- **Model-generated patterns.** Related: `synthetic_decay` can build a decay from
+  fitted lifetimes reconvolved with the IRF, but the filter species themselves
+  are still file-loaded empirical decays.
+- **PAM's stacked single-micro-time-axis PIE layout.** Channel-aware par/perp
+  weighting is done via the `{channel: matrix}` / 3-D table, which supersedes the
+  stacked layout for most uses; the stacked variant itself is unimplemented.
 - **Dertinger non-Gaussian MDF two-focus model.** The ported two-focus model is
   the Gaussian form (as in PAM). The fully accurate Dertinger model needs a
   numerically-integrated non-Gaussian detection function (`erf`/quadrature) and
   would be a coded FCS model, not a `models.yaml` string.
-- **Remaining PAM models not yet ported:** pair-correlation distributions
-  (`PCF_LogNormal`, `PCF_LogGaussian`, `PCF_GammaDistribution`), the
-  space-cross-correlation anomalous family (`FCS_SCCF_*`), `fullFCS_*` pulsed
-  models, and `nsFCS_PDA23_Gauss5` / MIA image-correlation. (ChiSurf already has
-  RICS and 2D-FLCS natively.)
 - **Guided global-fit preset for absolute-D two-focus.** Fitting the two-focus
   auto+cross curves with shared D/w_r/w_z (diam fixed) is possible through the
   existing global-fit machinery but has no dedicated GUI preset.
+
+## Deliberately not ported
+
+Four of PAM's 26 `Models/fcs` entries are **out of scope by decision**, not
+backlog: `fullFCS_pulsed_linear` (needs a coded pulse-train model),
+`nsFCS_PDA23_Gauss5`, and `FRET_Gauss4` / `FRET_Beta4` — the last two fit
+4-component Gaussian/Beta distributions to **E histograms**, so they belong with
+the burst tools rather than in the correlation-curve catalogue. The FCS model
+catalogue is considered complete at 22 of 26 (19 FCS + 3 PCF).
 
 ## Pointers
 
@@ -125,6 +154,10 @@ and a new **PCF experiment type** (pair-correlation distribution fits:
   `chisurf/plugins/fcs/flc_2d/fit/dynamics.py`.
 - PAM reference: `junk/PAM/Models/fcs/*.m`,
   `junk/PAM/functions/BurstBrowser/Calc_fFCS_Filters.m`.
+- Image correlation: `chisurf/core/experiments/ics/`,
+  `chisurf/core/models/ics/`; MIA reference `junk/PAM/functions/MIA/`,
+  `junk/PAM/Models/miafit/*.miafit`.
 - Tests: `test/fitting/test_fcs_pam_ab.py`, `test_fcs_2ffcs.py`,
-  `test_fcs_filters.py`.
+  `test_fcs_filters.py`; `test/experiments/test_ics_unification.py`,
+  `test_ics_vs_pam.py`.
 - FCS plugin group overview: [/plugins/fcs.md](/plugins/fcs.md).
