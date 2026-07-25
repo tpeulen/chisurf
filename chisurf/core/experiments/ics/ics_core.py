@@ -223,11 +223,13 @@ def compute_ics_carpet(
         }
         ics_kwargs.update(kwargs)
         raw = tttrlib.CLSMImage.compute_ics(**ics_kwargs)  # type: ignore[call-arg]
-        # The backend allocates one map per frame *pair* but declares the first
-        # dimension as the number of input *frames*. For any lag > 0 there are
-        # fewer pairs than frames, so the returned array over-declares its
-        # length and touching the tail reads past the allocation. Slice to the
-        # pair count first -- slicing only touches shape metadata.
+        # Correlator builds before the compute_ics fix allocate one map per frame
+        # *pair* but declare the first dimension as the number of input *frames*.
+        # For any lag > 0 there are fewer pairs than frames, so the returned
+        # array over-declares its length and touching the tail reads past the
+        # allocation. Fixed upstream and ChiSurf builds that source, so this is
+        # belt-and-braces against an older local build; slicing to the pair count
+        # first only touches shape metadata, never the data.
         raw = np.asarray(raw)[:len(pairs)]
         raw = np.asarray(raw, dtype=float)
         if raw.ndim == 2:
