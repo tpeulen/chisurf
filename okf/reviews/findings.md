@@ -963,3 +963,55 @@ captured with a polling `QTimer`). Use case:
 - **Location:** `chisurf/plugins/calculator/phasor_calculator/gui/tool.py` (the phasor plot's left axis)
 - **Finding:** The phasor plot's `s` axis is handed to pyqtgraph's automatic SI scaling, so it renders as `s (x0.001)` with ticks running 0…600 — the apex of the universal semicircle, `s = 0.5`, displays as "500". `s = Im(phasor)` is dimensionless and bounded above by 0.5 by construction, and the `g` axis beside it is correctly 0…1.0, so the two axes of a semicircle are drawn on scales that differ by 1000×. Disable the auto-multiplier (`axis.enableAutoSIPrefix(False)`) for both phasor axes and fix the range to `g ∈ [0, 1]`, `s ∈ [0, 0.5]`. The same auto-multiplier appears on the FRET calculator's distribution plots (`p(R) (x0.001)`, and `p(k) (x0.` clipped mid-label).
 - **Fix note:**
+
+### Review 2026-07-25 (6) — chimol's two coordinate arrays, and the new `scene` store
+
+Slice: commit `119a63e46` — `renderer/view.py` (`_apply_rigid_transform`,
+`apply_transform_to_object`), the length-reporting commands in
+`cmd/measurements.py` (`rms`, `align`/`super`, `pair_fit`), and the new
+`renderer/scenes.py` + `cmd/rendering.py::scene`. Every finding below was
+reproduced in the `arm64` env against 148L, the same fixture the new
+`test_transform_sync.py` uses. What checks out: `translate` now moves both arrays
+by exactly the same distance in their own units (10 Å and 100 scene units);
+`rms` reports Å in **both** its branches, since `all_atom_coords` is in scene
+units too, so the single division by `_scale_factor` is right for the all-atom
+path as well as the CA path; `pair_fit` reads Angstrom, reports Angstrom and
+scales its translation into scene units correctly; every name in
+`_REPRESENTATION_FIELDS`/`_COLOR_FIELDS` exists on `_MolViewObjectState`;
+`SceneStore.step` wraps correctly from either end and from an unknown key.
+Findings RF-078..RF-082.
+
+### RF-078
+- **Status:** OPEN
+- **Severity:** S1 (a rotation still leaves the two coordinate arrays describing different geometries)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/view.py:583-586` (`apply_transform_to_object`, the atom-array branch) against `:743-764` (`_transform_world_coords_to_scene`), with `chisurf/plugins/chimol/test/test_transform_sync.py:113-125`
+- **Finding:** Scene coordinates are `(atom_xyz - raw_center) * scale`, so a render-space transform `(R, t)` corresponds to `x' = R·(x - c) + c + t/s` in atom space. The new code applies `x' = R·x + t/s` — it rotates the atom array about the **PDB coordinate origin** while the render arrays rotate about the molecule's centre. The error is `(I - R)·c`, which vanishes only for a pure translation, and a pure translation is the only case the new tests cover. Verified on 148L (`raw_center = [8.30, 45.17, 34.63]`, ‖c‖ = 57.5 Å, `_scale_factor` = 10): the invariant `(atoms["xyz"] - raw_center) * scale == all_atom_coords` holds to **0.0 Å** at load and after `translate`, and breaks by **53.5 Å** after `rotate z, 90`. Across two objects it is worse — after `copy mob, ref` and `rotate z, 90, mob` the mean per-atom mob↔ref separation is **15.8 Å as drawn** (and as `save` writes it, since `save` unscales `all_atom_coords`) but **66.1 Å in the atom array** that `get_area`, `alter_state`, `pair_fit`/`_selection_coordinates` and every `within`/distance selection read. That is precisely the "one geometry, not two" defect the commit set out to remove, still live for rotations. `test_a_rotation_reaches_the_atom_array` misses it because it re-centres each side on its own mean before comparing distances, which is invariant to the pivot. Rotate the atom array about `state.raw_center`, and pin it with the invariant above rather than a centred-distance check.
+- **Fix note:**
+
+### RF-079
+- **Status:** OPEN
+- **Severity:** S1 (`align`/`super` print a length ten times too large with an Angstrom sign on it)
+- **Location:** `chisurf/plugins/chimol/chimol/cmd/measurements.py:708` (`f"(RMSD: {final_rmsd:.3f} Å)"`) against `:426-432` (the identical bug fixed in `rms` by the same commit)
+- **Finding:** `_align_or_super` measures `get_residue_positions`, which returns `state.coords` in **scene units**, and prints the Kabsch RMSD straight out labelled Å — exactly the defect `119a63e46` corrected 280 lines above in `rms`, left untouched in the sibling command the guide presents beside it (`docs/guides/44_molecular_viewer.md:141-149`). Verified: a copy of 148L carrying 0.5 Å Gaussian noise on its CA coordinates (true CA RMSD 0.87 Å) is reported by `align mob, ref, cutoff=100` as **8.728 Å** — `_scale_factor` (10) times too large, and ten times what `rms` and `pair_fit` say about the same pair. Divide by `_scale_factor` as `rms` now does. No test can catch this today: `test_transform_sync.py` only aligns a *rigidly displaced* copy, where the answer is 0.000 in either unit.
+- **Fix note:**
+
+### RF-080
+- **Status:** OPEN
+- **Severity:** S2 (the outlier cutoff is compared in the wrong unit, so the documented default never applies)
+- **Location:** `chisurf/plugins/chimol/chimol/cmd/measurements.py:682` (`new_mask = dists <= cutoff`) with `:447-451`/`:580-583` (`cutoff: float = 2.0`) and `:690-694` (the keep-half fallback)
+- **Finding:** `dists` are distances between `get_residue_positions` outputs, i.e. **scene units**, but `cutoff` is PyMOL's parameter, defaulted and understood as 2.0 **Å**. At the shipped scale of 10 the default therefore rejects everything beyond **0.2 Å**, so on any genuinely non-identical pair the mask collapses, `np.sum(new_mask) < 3` fires, and the code silently substitutes "keep the best half" — a quantile the user never asked for. Verified on the 0.5 Å-noise copy above: `align mob, ref` reports "using **82/165** atoms", which is exactly `max(3, count // 2)` (the emergency branch), while `cutoff=100` — i.e. 10 Å — keeps 165/165. Scale the cutoff into scene units once before the loop, and emit a message when the fallback fires instead of silently changing what the cutoff means.
+- **Fix note:**
+
+### RF-081
+- **Status:** OPEN
+- **Severity:** S2 (renaming a scene onto an existing name destroys it and corrupts the order list)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/scenes.py:275-284` (`rename`) with `:100-102` (`names`), `:262-273` (`delete`) and `:286-306` (`step`)
+- **Finding:** `rename` never checks whether `new_name` is taken. `self._scenes[new_key] = scene` overwrites the existing scene, while `self._order[self._order.index(key)] = new_key` leaves the target's original entry in place — so `_order` holds the key twice and carries more entries than `_scenes`. Verified: storing `a` then `b` and calling `rename("b", "a")` returns `True`, after which `names()` reports `['a', 'a']` while `len(store)` is `1`; `delete("a")` then removes only the first occurrence, leaving an empty store whose `names()` still lists `'a'`. `step()` hands that ghost key on, and `SceneStore.recall` raises `KeyError` for it (the `scene` command's `if name not in store` guard converts that into a misleading "no scene named 'a'"). Refuse the rename when `new_key` is already stored and return `False` so `cmd.scene` reports it. `test_scenes.py` has no collision case.
+- **Fix note:**
+
+### RF-082
+- **Status:** OPEN
+- **Severity:** S2 (the camera is held across the rebuild only when the caller passes `view=0`, not when the scene has no view)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/scenes.py:216-221` (`keep_view`, captured only `if "view" not in aspects`) with `:244-258` and `:147-151`
+- **Finding:** `recall` restores representations, calls `viewer._update_view()`, then puts the view back **last**, because "the camera's offset is stored relative to the scene centre, and changing what is drawn moves that centre" (the module's own comment at `:249-252`). But `keep_view` is captured only when the caller *excludes* view. A scene stored with `view=0` — the colour-only or rep-only scene the module docstring advertises as the whole reason the flags exist — has `scene.view is None`, so recalling it with the command's default flags takes the `"view" in aspects` branch, `wanted` is `None`, and nothing is restored after the rebuild. Verified: with two objects 80 Å apart, `scene s1, store, view=0` then `disable mob` then `scene s1, recall` moves the camera state by **398.9**, while the same recall with an explicit `view=0` holds it to **0.0000** — the protection is present but unreachable for exactly the scenes it was written for. The same hole opens when `store` silently swallows a `get_view_state` failure at `:148-151`. Capture `keep_view` whenever no view will be restored: `if "view" not in aspects or scene.view is None`.
+- **Fix note:**
