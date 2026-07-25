@@ -2,10 +2,11 @@
 
 These relations were living inside the FCS calculator plugin, where the imaging
 side could not reach them — so image-correlation calibration would have grown a
-second copy. The tests below fix the behaviour of the shared version, and one of
-them checks it still agrees with the plugin implementation it replaces, since a
-silent disagreement about "D of a dye at 23 °C" between two tools is exactly the
-failure this centralisation exists to prevent.
+second copy. The plugin now delegates here, so the tests below both fix the
+behaviour of the shared version and pin it against values the plugin produced
+*before* the move: a silent disagreement about "D of a dye at 23 °C" between two
+tools is exactly the failure this centralisation exists to prevent, and a silent
+*change* to existing FCS results would be just as bad.
 """
 from __future__ import annotations
 
@@ -155,38 +156,47 @@ def test_combined_waist_lies_between_the_two_channels():
     assert combined_waist(0.22, 0.22) == pytest.approx(0.22, rel=1e-12)
 
 
-# --- agreement with the implementation being replaced ----------------------
-def test_agrees_with_the_fcs_calculator_it_centralises():
-    """The shared version reproduces the plugin's numbers exactly.
+# --- agreement with the implementation it replaced -------------------------
+#: Values produced by the FCS calculator *before* it was re-pointed at this
+#: module (commit b4bb8bc8's parent). Frozen here rather than computed from the
+#: plugin, which now delegates and would make the comparison vacuous.
+_FROZEN = {
+    # temperature (°C): (water viscosity Pa·s, D of a 470 µm²/s dye at that T)
+    5.0: (0.0015012041732283725, 259.9515145686295),
+    20.0: (0.0010017487594089526, 410.56709156248945),
+    25.0: (0.0008904389816146542, 469.768292535314),
+    37.0: (0.0006903976417629262, 630.2684055878373),
+    50.0: (0.0005441600052149268, 833.1641842854701),
+}
 
-    The whole point of moving this into the core is that FCS and imaging cannot
-    disagree; if the plugin is ever re-pointed at this module, these values must
-    not shift.
+
+@pytest.mark.parametrize("t_c", sorted(_FROZEN))
+def test_matches_the_values_the_fcs_calculator_produced_before_centralisation(t_c):
+    """Centralising must not move a single existing FCS number.
+
+    These are the plugin's own outputs from before it delegated here. Comparing
+    against the live plugin would prove nothing now that it forwards to this
+    module, so the reference is frozen instead.
     """
+    eta_expected, d_expected = _FROZEN[t_c]
+    t_k = celsius_to_kelvin(t_c)
+    assert water_viscosity(t_k) == pytest.approx(eta_expected, rel=1e-12)
+    assert diffusion_at_temperature(470.0, t_c) == pytest.approx(d_expected, rel=1e-12)
+
+
+def test_the_plugin_now_forwards_here():
+    """The FCS calculator keeps its API but no longer owns the physics."""
     plugin = pytest.importorskip(
         "chisurf.plugins.fcs.fcs_calculator.core.algorithms",
         reason="FCS calculator plugin not importable",
     )
-
-    for t_c in (5.0, 20.0, 25.0, 37.0, 50.0):
-        t_k = celsius_to_kelvin(t_c)
-        assert water_viscosity(t_k) == pytest.approx(
-            plugin.water_viscosity_Pa_s(t_k), rel=1e-12
-        )
-        assert diffusion_at_temperature(470.0, t_c) == pytest.approx(
-            plugin.scale_D_from_25C(470.0, t_k, water_viscosity(t_k)), rel=1e-12
-        )
-
     t_k = celsius_to_kelvin(25.0)
-    eta = water_viscosity(t_k)
-    assert stokes_einstein_diffusion(t_k, eta, 1e-9) == pytest.approx(
-        plugin.stokes_einstein_D(t_k, eta, 1e-9), rel=1e-12
+    assert plugin.water_viscosity_Pa_s(t_k) == water_viscosity(t_k)
+    assert plugin.veff_from_tau_D_S(30e-6, 470e-12, 5.0) == effective_volume(
+        30e-6, 470e-12, 5.0
     )
-    assert effective_volume(30e-6, 470e-12, 5.0) == pytest.approx(
-        plugin.veff_from_tau_D_S(30e-6, 470e-12, 5.0), rel=1e-12
-    )
-    assert diffusion_from_volume(30e-6, 1e-15, 5.0) == pytest.approx(
-        plugin.D_from_tau_Veff_S(30e-6, 1e-15, 5.0), rel=1e-12
+    assert plugin.scale_D_from_25C(470.0, t_k, water_viscosity(t_k)) == pytest.approx(
+        diffusion_at_temperature(470.0, 25.0), rel=1e-12
     )
 
 

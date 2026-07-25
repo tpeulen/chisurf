@@ -1,15 +1,23 @@
 """Qt-free core for the FCS confocal (diffusion/volume) calculator.
 
-Unit conversions, the water-viscosity model, Stokes-Einstein relations,
-effective-volume relations, the reference-dye table and the shape diffusion
-models. Lifted from the legacy ``wizard.py`` (which now imports from here) and
-extended with a single ``compute_confocal`` solver used by the backend RPC.
+Unit conversions, the shape diffusion models, and a single ``compute_confocal``
+solver used by the backend RPC.
+
+The temperature/viscosity/Stokes-Einstein physics and the effective-volume
+relations are **not** implemented here: they live in
+:mod:`chisurf.core.fluorescence.diffusion`, shared with image-correlation
+waist calibration, which needs exactly the same relations. The wrappers below
+keep this module's historical API while delegating to that one, so the two
+cannot disagree about what "D of a dye at 23 °C" is. The reference-dye table
+moved to :mod:`chisurf.core.fluorescence.dyes` for the same reason.
 """
 
 from __future__ import annotations
 
 import math
 from typing import Any, Dict, List
+
+from chisurf.core.fluorescence import diffusion as _diffusion
 
 # ========= Constants & conversions =========
 KB = 1.380649e-23  # J/K
@@ -169,101 +177,35 @@ def fL_to_m3(v_fL: float) -> float:
 
 
 def water_viscosity_Pa_s(T_K: float) -> float:
-    """Water viscosity (Pa·s), Kapusta 2010 app note: η(T)=A·10^(B/(T−C))."""
-    A, B, C = 2.414e-5, 247.8, 140.0
-    if T_K <= C:
-        raise ValueError("Temperature must be > 140 K for the viscosity model.")
-    return A * 10.0 ** (B / (T_K - C))
+    """Water viscosity (Pa·s). Delegates to the shared diffusion physics."""
+    return _diffusion.water_viscosity(T_K)
 
 
 def stokes_einstein_D(T_K: float, eta_Pa_s: float, r_h_m: float) -> float:
-    """Translational diffusion coefficient of a sphere.
-
-    Implements :math:`D = k_B T / (6 \pi \eta r_h)` from standard
-    Stokes–Einstein theory for Brownian motion of spherical particles.
-
-    Parameters
-    ----------
-    T_K : float
-        Absolute temperature in kelvin.
-    eta_Pa_s : float
-        Dynamic viscosity of the solution in Pa·s.
-    r_h_m : float
-        Hydrodynamic radius of the particle in meters.
-    """
-    return KB * T_K / (6.0 * math.pi * eta_Pa_s * r_h_m)
+    """Translational diffusion coefficient of a sphere (m²/s)."""
+    return _diffusion.stokes_einstein_diffusion(T_K, eta_Pa_s, r_h_m)
 
 
 def stokes_einstein_rh(T_K: float, eta_Pa_s: float, D_m2_s: float) -> float:
-    """Hydrodynamic radius from a known diffusion coefficient.
-
-    Inverse of :func:`stokes_einstein_D`, returning :math:`r_h` for a given
-    translational diffusion coefficient :math:`D`.
-    """
-    return KB * T_K / (6.0 * math.pi * eta_Pa_s * D_m2_s)
+    """Hydrodynamic radius (m) from a known diffusion coefficient."""
+    return _diffusion.stokes_einstein_radius(T_K, eta_Pa_s, D_m2_s)
 
 
 def veff_from_tau_D_S(tau_s: float, D_m2_s: float, S: float) -> float:
-    """Compute the effective focal volume from diffusion time, ``D`` and structure parameter.
-
-    Implements :math:`V_{eff} = \pi^{3/2} \cdot S \cdot (4 D \tau)^{3/2}`.
-
-    Parameters
-    ----------
-    tau_s : float
-        Diffusion time in seconds.
-    D_m2_s : float
-        Diffusion coefficient in m²/s.
-    S : float
-        Structure parameter (wz/wxy).
-
-    Returns
-    -------
-    float
-        Effective volume in m³.
-    """
-    # Veff = π^(3/2) * S * (4 D τ)^(3/2)
-    return (math.pi ** 1.5) * S * (4.0 * D_m2_s * tau_s) ** 1.5
+    """Effective focal volume (m³) from diffusion time, D and structure parameter."""
+    return _diffusion.effective_volume(tau_s, D_m2_s, S)
 
 
 def D_from_tau_Veff_S(tau_s: float, Veff_m3: float, S: float) -> float:
-    """Compute the diffusion coefficient ``D`` from ``Veff`` and structure parameter ``S``.
-
-    Parameters
-    ----------
-    tau_s : float
-        Diffusion time in seconds.
-    Veff_m3 : float
-        Effective focal volume in m³.
-    S : float
-        Structure parameter (wz/wxy).
-
-    Returns
-    -------
-    float
-        Diffusion coefficient in m²/s, or NaN for invalid input.
-    """
-    denom = (math.pi ** 1.5) * S
-    if denom <= 0 or tau_s <= 0: return float('nan')
-    inner = Veff_m3 / denom
-    if inner <= 0: return float('nan')
-    return (inner ** (2.0 / 3.0)) / (4.0 * tau_s)
+    """Diffusion coefficient (m²/s) from the effective volume and S."""
+    return _diffusion.diffusion_from_volume(tau_s, Veff_m3, S)
 
 
 def scale_D_from_25C(D25_um2_s: float, T_K: float, eta_Pa_s: float) -> float:
-    """Scale diffusion coefficient from 25 °C water to arbitrary (T, η).
-
-    Uses the common scaling relation for diffusion coefficients at different
-    temperatures and viscosities, taking 25 °C water as the reference state:
-
-    .. math::
-
-        D(T, \eta) = D_{25,W} \cdot \frac{T}{298.15\,\text{K}} \cdot
-        \frac{\eta_{25,W}}{\eta(T)}.
-    """
-    if T_K <= 0 or eta_Pa_s <= 0: return float('nan')
-    eta_25 = 8.9e-4  # Pa·s (water @ 25 °C)
-    return D25_um2_s * (T_K / 298.15) * (eta_25 / eta_Pa_s)
+    """Scale a 25 °C water diffusion coefficient to arbitrary (T, eta)."""
+    return _diffusion.diffusion_at_temperature(
+        D25_um2_s, T_K - 273.15, viscosity=eta_Pa_s
+    )
 
 
 def perrin_friction_ellipsoid(p: float) -> float:

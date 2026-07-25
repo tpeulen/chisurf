@@ -1,6 +1,22 @@
 # Update Log
 
 ## 2026-07-25
+
+* **FCS calculator re-pointed at the centralised diffusion physics; the
+  duplication is now actually gone.** Completes the previous entry, whose shim
+  was deferred while `algorithms.py` was being edited by the dye-table
+  extraction. The six physics functions (`water_viscosity_Pa_s`,
+  `stokes_einstein_D`/`_rh`, `veff_from_tau_D_S`, `D_from_tau_Veff_S`,
+  `scale_D_from_25C`) keep their historical signatures but now forward to
+  [`chisurf/core/fluorescence/diffusion.py`](/subsystems/roi.md) — 84 lines of
+  physics replaced by 26 lines of delegation. **Verified bit-identical:** the
+  pre-shim module was extracted from git and every function compared against the
+  new one across 5–60 °C — worst relative difference **0.0**. The regression
+  test was then rewritten, because comparing the plugin against the core module
+  became vacuous once the plugin delegates: it now pins five frozen
+  (viscosity, D) pairs *measured from the pre-shim implementation*, so a future
+  change to the shared physics that would move an existing FCS result fails
+  loudly. Plugin suite 5 pass, diffusion suite 24, calibration 13.
 * **Six chimol commands were reporting success while doing nothing.** Closing
   Tier 1 of the parity tracker turned up four "implemented but silent" defects in a
   row, so rather than start Tier 2 the whole registered command surface was run
