@@ -144,6 +144,72 @@ timescale, and its shape yields the interconversion rates. ChiSurf provides
 two- and three-state dynamic models, and a polarization-resolved variant for
 anisotropy PDA.
 
+## How much heterogeneity can PDA actually detect?
+
+The shot-noise floor is set entirely by burst size. At $E = 0.5$, where it is
+widest, $\sigma_\text{shot} = \sqrt{E(1-E)/N}$ gives
+
+| $N$ (photons/burst) | 20 | 50 | 100 | 200 | 500 |
+|---|---|---|---|---|---|
+| $\sigma_\text{shot}$ | 0.112 | 0.071 | 0.050 | 0.035 | 0.022 |
+
+Real width adds in quadrature, $\sigma_\text{obs}^2 = \sigma_\text{shot}^2 +
+\sigma_\text{het}^2$, so heterogeneity is detectable only once it is comparable
+to the floor. With $N = 50$ bursts, a genuine $\sigma_\text{het} = 0.05$ widens
+the peak from 0.071 to 0.087 — a 23 % change that is easy to miss if the
+background or $\gamma$ is even slightly off. The same heterogeneity at $N = 200$
+widens 0.035 to 0.061, a 74 % change that is unmistakable. **Photon budget, not
+fit quality, sets what PDA can resolve.**
+
+:::{tip}
+This yields a model-free diagnostic that costs nothing. Split the bursts into
+size classes and re-measure the width: pure shot noise shrinks as $1/\sqrt{N}$,
+while genuine distance heterogeneity does not shrink at all.
+
+| $\sigma_\text{het}$ | $\sigma_\text{obs}$ at $N=50$ | at $N=200$ | ratio |
+|---|---|---|---|
+| 0 (pure shot noise) | 0.071 | 0.035 | **2.00** |
+| 0.05 | 0.087 | 0.061 | 1.41 |
+| 0.10 | 0.122 | 0.106 | 1.15 |
+
+A four-fold increase in burst size must narrow a shot-noise-limited peak by
+exactly $\sqrt{4} = 2$. Anything less is real width, and you have established
+that before fitting a single model.
+:::
+
+**Reading the dynamic parameter.** $K = (k_1+k_2)T$ is the mean number of
+transitions per observation window, so it is fixed by the experiment as much as
+by the molecule. With a $T = 1$ ms window, $K = 1$ corresponds to
+$k_1 + k_2 = 10^3\ \mathrm{s^{-1}}$. Sensitivity is limited to roughly
+$0.1 \lesssim K \lesssim 10$: below that the boundary masses dominate and the
+result is indistinguishable from two static states; above it $w(f)$ has already
+collapsed onto the average and only the mixing fraction is recoverable, not the
+rates. Because $K$ scales with $T$, changing the burst-size (i.e. time) window
+shifts the accessible rate range — analysing two windows is the way to confirm
+that a fitted $K$ is real.
+
+## Pitfalls
+
+**The burst-size distribution is data, not a parameter.** $P(N)$ must be taken
+from the measurement. Letting it float, or borrowing it from another dataset,
+silently converts the shot-noise prediction into a free width and destroys the
+entire basis of the method.
+
+**Correction factors propagate straight into the fitted distance.** $\alpha$,
+$\delta$ and especially $\gamma$ enter through $p_G(E)$, so an error there
+shifts the peak position and is absorbed by the fit as a distance change.
+Determine them independently ({ref}`concept-smfret-bursts`) rather than fitting
+them alongside the model.
+
+**Background rates must be measured, not assumed.** The background convolution
+uses $B_D$, $B_R$ as fixed Poisson rates; underestimating them makes a peak look
+narrower than it is, which PDA then reports as spurious homogeneity.
+
+**A wide peak has more than one explanation.** A static Gaussian $p(R)$, a
+two-state mixture, and slow exchange can all reproduce a broadened peak. Prefer
+the burst-size diagnostic above and, for dynamics, the characteristic valley
+*bridge* — a width alone does not identify its cause.
+
 ## Reading a PDA fit
 
 - A histogram that is well described by a **single distance** with no extra

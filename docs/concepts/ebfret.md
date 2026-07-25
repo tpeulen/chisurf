@@ -138,6 +138,51 @@ model but sit at opposite ends of a **binning trade-off**:
 Choose ebFRET when your data are already binned camera/TIRF trajectories with a
 fixed frame rate; choose H2MM for confocal free-diffusion photon records.
 
+## Practical limits
+
+**The frame time is a hard ceiling, and violating it invents states.** A
+transition faster than one frame is *averaged within* that frame, so the frame
+lands at an intermediate FRET value. A scattering of such frames looks exactly
+like a sparsely populated middle state, and the ELBO will happily accept it —
+the Occam penalty guards against fitting noise, not against a systematically
+wrong observation model. With 100 ms frames, rates much above ~10 s⁻¹ are
+suspect; a "state" whose population is concentrated in single isolated frames
+between two others is the signature. Re-binning at two frame rates, or checking
+that intermediate-state dwells last more than one frame, distinguishes the two.
+
+**Dwell counts, not frame counts, determine rate precision.** A rate estimated
+from $n$ observed transitions carries a relative uncertainty of roughly
+$1/\sqrt{n}$, so ~100 transitions are needed for 10 % precision. A trace that
+bleaches after 200 frames while sitting in a state with a 50-frame dwell time
+contributes only a handful of transitions — which is precisely the regime the
+empirical-Bayes pooling exists to rescue. Pooling fixes the *prior*, not the
+information content: 500 traces with one transition each still constrain the
+rate far less well than the frame count suggests.
+
+**Photobleaching censors the slowest state.** A state whose dwell time is
+comparable to the bleaching lifetime is systematically under-observed — its long
+dwells are truncated, biasing its exit rate upward. Trace lengths are set by the
+dye, not the molecule, so the slowest resolvable rate is bounded by bleaching
+regardless of how long you record.
+
+**Gaussian emissions are an approximation that degrades at low counts.** FRET
+efficiency is bounded to $[0,1]$, but a Gaussian is not; at few photons per
+frame the true per-frame distribution is a skewed ratio of small counts, and the
+fitted Gaussians can place appreciable mass outside the physical range. States
+near $E = 0$ or $E = 1$ are the most affected, and their fitted widths absorb the
+mismatch.
+
+**The ELBO is a bound, so model selection is approximate.** Comparing
+$\sum_n \mathcal{L}_n$ across $K$ compares *lower bounds*, not evidences, and the
+tightness of the bound need not be equal at every $K$. In practice the scan is
+reliable when one $K$ wins clearly; a near-tie between $K$ and $K+1$ should be
+resolved on physical grounds — do the extra state's dwells and level make sense —
+rather than by a small ELBO difference. ChiSurf's `analyse()` scans
+`min_states=2` to `max_states=4` by default and runs from a fixed `seed`, so
+repeat runs reproduce exactly; that reproducibility is determinism, not evidence
+that a global optimum was found. Widen the scan range when the best model sits
+at either end of it.
+
 ## See also
 
 - Guide: {doc}`/guides/20_ebfret_binned_hmm`; photon-by-photon alternative

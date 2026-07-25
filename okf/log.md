@@ -2,6 +2,32 @@
 
 ## 2026-07-25
 
+* **Concept depth batch 3 (pda, ebfret): detection limits rather than more
+  theory.** Both pages already derived their models correctly and both cite files
+  that all exist (verified `chisurf/core/models/pda/*` and
+  `burst_ebfret/core/{vbem,ebayes,viterbi,analysis}.py`), so this batch adds what
+  neither had — the quantitative limits on what the method can *see*. **PDA**: a
+  shot-noise floor table (sigma = sqrt(E(1-E)/N) at E=0.5, N=20..500), the point
+  that heterogeneity adds in quadrature so a genuine sigma_het=0.05 is a 23 %
+  width change at N=50 but 74 % at N=200 ("photon budget, not fit quality, sets
+  what PDA can resolve"), and a model-free burst-size diagnostic: a 4x increase in
+  N must narrow a purely shot-noise-limited peak by exactly sqrt(4)=2, so the
+  measured ratio (2.00 / 1.41 / 1.15 for sigma_het = 0 / 0.05 / 0.10) separates
+  counting noise from real width *before* fitting anything. Plus the sensitivity
+  band of the dynamic parameter K=(k1+k2)T (~0.1..10, and it scales with the
+  window, so two windows confirm it) and four pitfalls (P(N) is data not a
+  parameter; alpha/delta/gamma errors are absorbed as distance shifts; background
+  rates must be measured; a wide peak has several explanations). **ebFRET**: the
+  frame time as a hard ceiling — sub-frame transitions average *within* a frame
+  and masquerade as a sparse intermediate state, which the ELBO does not guard
+  against (it penalises complexity, not a wrong observation model); rate precision
+  set by transition count (~1/sqrt(n), so ~100 transitions for 10 %) not frame
+  count; bleaching censoring the slowest state; Gaussian emissions leaking outside
+  [0,1] at low counts; and that the ELBO is a *bound*, so a near-tie between K and
+  K+1 is settled on physics, not on a small difference. Noted the real defaults
+  (`analyse()` scans min_states=2..max_states=4 from a fixed `seed`, so
+  reproducibility across runs is determinism, not evidence of a global optimum).
+
 * **Parameter tables: three more edit-path defects (found while auditing the
   stale-spin-box fix).** (1) *Any* mouse button toggled a `fixed` / `bounds_on`
   checkbox cell, because `_BooleanToggleDelegate.editorEvent` acted on every
