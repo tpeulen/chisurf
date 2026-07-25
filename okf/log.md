@@ -2,6 +2,23 @@
 
 ## 2026-07-25
 
+* **Saved projects were dropping every fitted parameter uncertainty.**
+  `fit_state.fit_to_state` serialized `value`, `fixed`, `bounds`, `bounds_on`
+  and the parameter links — but not `error_estimate`. So a project saved after
+  fitting reloaded with its values intact and **no error bars at all**, forcing
+  a re-fit to recover numbers the fit had already computed. Both the `.csp`
+  path and MMFDB archival serialize through this function, so both lost them;
+  it is also a round-trip loss in [PRD-01](/prds/prd-01.md)'s own terms
+  ("identical to the original"). `apply_state_to_fit` now restores the value,
+  guarded on the key being present so older projects keep loading unchanged.
+  Found while verifying a claim in the PRD-03 commit message rather than by
+  reading the code — the end-to-end probe showed no `standard_error` reaching
+  MMFDB, which turned out to be this, one layer up. Three tests in
+  `test/fitting/test_fit_state.py`; the real-fit case builds its own fittable
+  curve because the shared `DummyLinearModel` fixture has no uncertainties and
+  therefore no residuals to minimise.
+
+
 * **chimol: `zoom` frames the molecule the way PyMOL frames it, and a degraded
   load says so.** Two follow-ups to the camera work, both measured against a
   running PyMOL.
