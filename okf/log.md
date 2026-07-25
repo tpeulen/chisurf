@@ -2,6 +2,35 @@
 
 ## 2026-07-25
 
+* **chimol: the "unattributed +0.700 A" was not padding -- `zoom` centres on the
+  centroid.** Closed, and the earlier inference was wrong twice over.
+  It looked like a constant pad over the reported extent. It is not constant: it
+  is **+0.700 A on globular 148L but +11.65 A on the long coiled coil of 1DG3**,
+  and exactly **zero** on symmetric pseudoatom pairs at *every* van-der-Waals
+  radius -- so the "vdW-related" reading from the earlier session was also wrong,
+  since a `vdw=5` pair shows no residual at all.
+  **The cause is the `weighted` flag** `ExecutiveWindowZoom` passes to
+  `ExecutiveGetExtent`. With it set, PyMOL averages the atom coordinates and
+  rebuilds the box **symmetric about that centroid**::
+
+      op2.v1 /= op2.i1;                  // centroid
+      f1 = op2.v1[a] - op.v1[a];  f2 = op.v2[a] - op2.v1[a];
+      fmx = max(f1, f2);
+      op.v1[a] = op2.v1[a] - fmx;  op.v2[a] = op2.v1[a] + fmx;
+
+  So the framing is centred on where the atoms *are*, not on the middle of their
+  bounding box, and the box grows to stay symmetric about it. A symmetric object
+  is unaffected -- which is exactly why the pseudoatom probes said zero and sent
+  the earlier diagnosis off course. `cmd.get_extent` reports the *unweighted*
+  box, which is what made the two disagree.
+  Both the radius **and the zoom centre** were wrong in chimol. Now
+  `view_state.framing_centre` returns the centroid and `framing_radius` measures
+  the centroid-symmetric half-width. Against PyMOL: 148L **24.4661 vs 24.4662**,
+  1DG3 **79.4825 vs 79.4825**, 148L `complete` **30.4871 vs 30.487** -- exact,
+  where before 1DG3 was off by 11.6 A.
+  6 new tests, including the lopsided-mass case that makes the rule visible.
+  Suite: 374 passed, 1 skipped.
+
 * **chimol: cast shadows in the interactive viewport.** Ambient occlusion says
   how *enclosed* a point is; a cast shadow says whether anything stands between
   it and the light. They are different cues, and PyMOL has the second only when

@@ -18,6 +18,7 @@ import pytest
 
 from chisurf.plugins.chimol.chimol.renderer.view_state import (
     distance_for_radius,
+    framing_centre,
     framing_radius,
 )
 
@@ -142,16 +143,11 @@ def test_a_selection_still_fits_only_the_selection(view):
         (True, 172.899),
     ],
 )
-def test_camera_distance_is_within_a_few_percent_of_pymol(view, complete, pymol_distance):
-    """Angstrom for Angstrom, allowing PyMOL's representation padding.
-
-    PyMOL measures the extent of what it draws rather than of the atom centres,
-    which puts its camera ~3-4% further back on 148L. That padding depends on
-    which representations are shown, so it is not modelled here.
-    """
+def test_camera_distance_matches_pymol(view, complete, pymol_distance):
+    """Angstrom for Angstrom, now that the centroid box is accounted for."""
     view.zoom(complete=complete)
     scale = _scene_scale(view)
-    assert _distance(view) / scale == pytest.approx(pymol_distance, rel=0.05)
+    assert _distance(view) / scale == pytest.approx(pymol_distance, rel=0.01)
 
 
 def _scene_scale(view) -> float:
@@ -232,3 +228,59 @@ def test_a_tiny_fragment_does_not_swallow_the_camera():
 def test_the_floor_does_not_disturb_a_real_molecule():
     xyz = np.array([[0.0, 0.0, 0.0], [0.0, 40.0, 0.0]])
     assert framing_radius(xyz) == pytest.approx(20.0)
+
+
+# --------------------------------------------------------------------------- #
+# The box is symmetric about the centroid, not about itself
+# --------------------------------------------------------------------------- #
+# ExecutiveWindowZoom asks ExecutiveGetExtent for a *weighted* extent, and that
+# flag makes it average the atom coordinates and rebuild the box symmetrically
+# about that average:
+#     op2.v1 /= op2.i1;  f1 = op2.v1[a] - op.v1[a];  f2 = op.v2[a] - op2.v1[a];
+#     fmx = max(f1, f2);  op.v1[a] = op2.v1[a] - fmx;  op.v2[a] = op2.v1[a] + fmx;
+#
+# This accounted for what had looked like a mystery constant: a radius +0.70 A
+# over the reported extent on globular 148L, but +11.65 A on the long coiled coil
+# of 1DG3, and exactly zero on symmetric pseudoatom pairs. It is not padding at
+# all -- it is the box being re-centred on where the atoms actually are.
+
+
+def test_the_centre_is_the_centroid():
+    """Lopsided mass: the centroid is nowhere near the box centre."""
+    pts = np.array([[0.0, 0.0, 0.0]] * 9 + [[90.0, 0.0, 0.0]])
+    assert framing_centre(pts)[0] == pytest.approx(9.0)
+    assert (pts.min(axis=0)[0] + pts.max(axis=0)[0]) / 2 == pytest.approx(45.0)
+
+
+def test_lopsided_mass_widens_the_fit():
+    """The box stays symmetric about the centroid, so it has to grow."""
+    pts = np.array([[0.0, 0.0, 0.0]] * 9 + [[90.0, 0.0, 0.0]])
+    # Centroid at x = 9, far atom 81 away: the half-width is 81, not 45.
+    assert framing_radius(pts) == pytest.approx(81.0)
+
+
+def test_a_symmetric_object_is_unaffected():
+    """Which is exactly why pseudoatom pairs showed no residual."""
+    pair = np.array([[0.0, -30.0, 0.0], [0.0, 30.0, 0.0]])
+    assert framing_radius(pair) == pytest.approx(30.0)
+
+
+def test_an_empty_set_has_no_centre():
+    assert np.allclose(framing_centre(np.zeros((0, 3))), 0.0)
+
+
+def _pdb_coords(path) -> np.ndarray:
+    return np.array(
+        [
+            [float(line[30:38]), float(line[38:46]), float(line[46:54])]
+            for line in path.read_text().splitlines()
+            if line.startswith(("ATOM", "HETATM"))
+        ]
+    )
+
+
+def test_the_radius_now_matches_pymol_exactly():
+    """148L, against PyMOL's own zoom -- previously off by 0.70 A."""
+    xyz = _pdb_coords(_PDB_148L)
+    assert framing_radius(xyz) == pytest.approx(24.4662, abs=1e-3)
+    assert framing_radius(xyz, complete=True) == pytest.approx(30.487, abs=1e-3)

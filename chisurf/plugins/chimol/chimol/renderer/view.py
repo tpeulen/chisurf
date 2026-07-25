@@ -46,7 +46,7 @@ from .base import Renderer
 from .chimol_state import _MolViewObjectEntry, _MolViewObjectState, _StateField
 from .qtgl import QtGLRenderer
 from .scene import Geometry, Scene, SceneObject
-from .view_state import framing_radius
+from .view_state import framing_centre, framing_radius
 
 logger = logging.getLogger(__name__)
 
@@ -2140,8 +2140,10 @@ class MolView(QtWidgets.QWidget):
             self.reset_view()
             return
 
-        mn, mx = coords.min(axis=0), coords.max(axis=0)
-        center = (mn + mx) * 0.5
+        # The centroid, not the box centre: PyMOL asks for a *weighted* extent
+        # and re-centres the box on the average of the atom coordinates. See
+        # view_state.framing_centre.
+        center = framing_centre(coords)
         radius = framing_radius(
             coords, complete=complete,
             scale=float(getattr(self, '_scale_factor', 1.0) or 1.0),

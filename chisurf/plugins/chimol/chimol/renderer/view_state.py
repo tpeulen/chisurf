@@ -55,6 +55,7 @@ __all__ = [
     "rotation_from_angles",
     "distance_for_radius",
     "framing_radius",
+    "framing_centre",
     "MIN_FRAMING_RADIUS",
 ]
 
@@ -140,20 +141,54 @@ def distance_for_radius(
 MIN_FRAMING_RADIUS = 2.5
 
 
+def framing_centre(points: np.ndarray) -> np.ndarray:
+    """Return the point ``zoom`` orbits: the **centroid**, not the box centre.
+
+    ``ExecutiveWindowZoom`` asks for a *weighted* extent, and with that flag
+    ``ExecutiveGetExtent`` first averages the atom coordinates and then rebuilds
+    the box symmetrically about that average::
+
+        op2.v1 /= op2.i1;                  // centroid
+        f1 = op2.v1[a] - op.v1[a];         // centroid to min
+        f2 = op.v2[a] - op2.v1[a];         // centroid to max
+        fmx = max(f1, f2);
+        op.v1[a] = op2.v1[a] - fmx;        // symmetric about the centroid
+        op.v2[a] = op2.v1[a] + fmx;
+
+    So the framing is centred on where the atoms *are*, not on the middle of
+    their bounding box, and the box is grown to stay symmetric about it.
+
+    Parameters
+    ----------
+    points : numpy.ndarray
+        ``(N, 3)`` coordinates.
+
+    Returns
+    -------
+    numpy.ndarray
+        The centroid, or the origin when there is nothing to average.
+    """
+    pts = np.asarray(points, dtype=float)
+    if pts.ndim != 2 or pts.shape[0] == 0 or pts.shape[1] != 3:
+        return np.zeros(3, dtype=float)
+    return pts.mean(axis=0)
+
+
 def framing_radius(
     points: np.ndarray, *, complete: bool = False, scale: float = 1.0
 ) -> float:
     """Radius that ``zoom`` should fit, following PyMOL's two modes.
 
-    PyMOL's default (``complete=0``) frames on the **largest half-extent of the
-    axis-aligned bounding box**, which is smaller than the bounding sphere and so
-    fills the window better while occasionally clipping a corner. ``complete=1``
-    guarantees nothing is clipped, and frames on the bounding sphere instead.
+    PyMOL's default (``complete=0``) frames on the largest half-extent of a box
+    that is **symmetric about the centroid** — see :func:`framing_centre` for why
+    the centroid rather than the box centre, which is the single most
+    consequential detail here. ``complete=1`` guarantees nothing is clipped and
+    frames on the bounding sphere about that same centroid instead.
 
     The box is measured on the **world** axes, not the camera's. That looks like
     an oversight but is deliberate and worth preserving: it makes the zoom level
     independent of the current orientation, so turning the molecule does not make
-    it breathe. Verified by zooming a 30x5 A bar at 0/30/45/90 degrees of roll —
+    it breathe. Verified by zooming a 30x5 A bar at 0/30/45/90 degrees of roll --
     PyMOL returns the same distance every time, matching the world-axis extent
     (30 A) rather than the camera-space one (which falls to 21 A at 45 degrees).
 
@@ -171,25 +206,20 @@ def framing_radius(
     -------
     float
         Radius in the same units as ``points``; 0.0 when there is nothing to fit.
-
-    Notes
-    -----
-    PyMOL measures the extent of the *rendered representation*, not of the atom
-    centres, so its radius runs a little larger than this one — about 0.7 A on
-    148L with a cartoon shown. That padding is representation-dependent and is
-    not modelled here; pass ``buffer`` if you want room to spare.
     """
     pts = np.asarray(points, dtype=float)
     if pts.ndim != 2 or pts.shape[0] == 0 or pts.shape[1] != 3:
         return 0.0
 
-    lo = pts.min(axis=0)
-    hi = pts.max(axis=0)
+    centre = pts.mean(axis=0)
     if complete:
-        centre = (lo + hi) * 0.5
         radius = float(np.max(np.linalg.norm(pts - centre, axis=1)))
     else:
-        radius = float(np.max(hi - lo) * 0.5)
+        # Per axis, whichever side of the centroid reaches further; the box is
+        # symmetric about the centroid, so that half-width is what must fit.
+        lo = centre - pts.min(axis=0)
+        hi = pts.max(axis=0) - centre
+        radius = float(np.max(np.maximum(lo, hi)))
     return max(radius, MIN_FRAMING_RADIUS * float(scale))
 
 
