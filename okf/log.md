@@ -2,6 +2,41 @@
 
 ## 2026-07-25
 
+* **chimol is documented — and making the figure found two more defects.** The
+  plugin had no user documentation at all; `docs/` carried only development notes.
+  Now `docs/guides/44_molecular_viewer.md` covers loading, selecting, drawing,
+  measuring, colouring by a computed quantity, getting data in and out, images, and
+  headless use, cross-linked with the surfaces concept. Every command and Python
+  snippet in both pages was executed rather than trusted: 43 of 44 command lines
+  pass, the exception being `png`, which the guide itself documents as needing a
+  display. Both figures regenerate from `make_screenshots.py`.
+
+  **`ray` was tracing the molecule, not the scene.** Discovered because the first
+  figure came out as spheres after `show cartoon`: `ray` called
+  `get_atom_sphere_data`, whose contract is explicitly "all atoms regardless of
+  representation", so `hide everything` and `show spheres, resn NAG` produced the
+  identical picture of the whole structure. Now filtered through a new
+  `sphere_visible_mask`. The rule that took two attempts: the per-atom mask is the
+  authority where one exists and the boolean flag is only the whole-object fallback
+  — `show spheres, resn NAG` sets `_ball_mask` and leaves `_show_atoms` alone, so
+  reading the flag alone sees nothing. The tracer still draws spheres only; asked
+  to render a cartoon it now says so and points at `show spheres`, rather than
+  emitting a picture that quietly omits the molecule.
+
+  **GUI grabs are unreliable**, which matters because the "never implement a GUI
+  blind" rule depends on them. Grabbing the objects-panel widget alone crashes
+  under the offscreen platform, as does `mapTo` on it; grabbing the whole window
+  works until the panel holds two molecule rows, then that crashes too. Painting is
+  fine in every case — only `grab()` fails. Offscreen also clamps the window to
+  640×603, and `QOpenGLWidget` content never appears in a grab
+  (`grabFramebuffer` returns black without a display session), so the ray tracer is
+  the only way to capture the 3D view headlessly. All recorded in the tracker; the
+  guide figure is a window grab cropped afterwards with PIL.
+
+  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md) — the documentation
+  gap recorded earlier today is closed.
+
+
 * **An unreadable ALV file failed like a `KeyboardInterrupt`, and the ALV
   writer wrote nothing (RF-050, RF-051).** `LoadALVError` derived from
   `BaseException`, so the five malformed-file conditions `openASC_ALV_7004`

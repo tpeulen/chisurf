@@ -117,7 +117,8 @@ than the sampling does.
 ## Doing it in ChiSurf
 
 The molecular viewer computes areas with `get_area`, which follows PyMOL's
-settings exactly:
+settings exactly. For the viewer itself — loading, selecting, drawing and the
+rest — see the guide {doc}`/guides/44_molecular_viewer`.
 
 ```text
 set dot_solvent, on          # accessible surface; off gives van der Waals

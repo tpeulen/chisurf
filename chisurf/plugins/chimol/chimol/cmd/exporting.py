@@ -267,6 +267,12 @@ class ExportMixin(BaseCmd):
             return
 
         try:
+            # What is *drawn*, not every atom: `ray` used to trace the whole
+            # molecule in every state, so `hide everything` and
+            # `show spheres, resn NAG` gave the identical picture.
+            positions, colors_rgb, radii = sphere_data(visible_only=True)
+            view = view_state_func()
+        except TypeError:
             positions, colors_rgb, radii = sphere_data()
             view = view_state_func()
         except Exception as exc:
@@ -274,7 +280,17 @@ class ExportMixin(BaseCmd):
             return
 
         if positions.shape[0] == 0:
-            self._emit_message("ray: no atom spheres visible; nothing to trace")
+            # Distinguish "nothing is shown" from "what is shown cannot be
+            # traced", because only the second is a limitation of the tracer and
+            # the user can act on either.
+            if bool(getattr(viewer, "_show_cartoon", False)):
+                self._emit_error(
+                    "ray: the ray tracer draws spheres, and cannot yet trace the "
+                    "cartoon. Use 'show spheres' (or 'show sticks') for a "
+                    "ray-traced image, or 'png' for the cartoon as displayed."
+                )
+            else:
+                self._emit_message("ray: nothing is shown; nothing to trace")
             return
 
         from ..config import _DISPLAY_CONFIG

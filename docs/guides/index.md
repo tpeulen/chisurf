@@ -64,6 +64,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 41 | [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `fret.accurate`, `fret.lines` |
 | 42 | [Three-colour PDA (tcPDA)](42_tcpda.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |
 | 43 | [Drift correction](43_drift_correction.md) | `img_drift` plugin, `imaging.drift` |
+| 44 | [The molecular viewer (ChiMOL)](44_molecular_viewer.md) | `chimol` plugin, PyMOL-compatible commands, `get_area` |
 
 ## Running
 

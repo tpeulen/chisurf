@@ -25,7 +25,7 @@ from observation alone; see [the log](/log.md) for three cases where a measured
 | --- | --- | --- |
 | Code | 515 823 lines C++ + 52 154 Python | 29 442 Python |
 | Commands | 303 | 81 |
-| Settings | 769 | 44 registered |
+| Settings | 769 | 47 registered |
 | Representations | 16 | 11 |
 | Selection keywords | 85 canonical | 85 canonical, 169 spellings |
 
@@ -227,14 +227,50 @@ makes labelling the surface without saying which one nearly meaningless.
 Every atom occludes even when only a selection is reported, which is the whole
 point: the area of a residue *in* a protein is not its area in isolation.
 
-# Documentation gap
+# Documentation
 
-chimol has **no user documentation** — `docs/` carries only development notes for
-it. The theory half for surfaces now exists
-(`docs/concepts/molecular_surfaces.md`, cross-linked from the accessible-volume
-concept), but there is no numbered guide for the viewer as a whole, which the
-project's documentation rule requires for a plugin. That is a piece of work in its
-own right and is not started.
+**Closed.** Theory in `docs/concepts/molecular_surfaces.md`, application in
+`docs/guides/44_molecular_viewer.md`, each registered in its index and
+cross-linked. Both figures regenerate from `docs/guides/make_screenshots.py`
+(`_grab_chimol_viewer`), and every command and Python snippet in both pages was
+executed to confirm it runs — 43 of 44 command lines pass, the exception being
+`png`, which the guide itself documents as needing a display.
+
+# `ray` renders the scene, not the molecule
+
+Found while making the guide's figure: `ray` traced **every atom in every state**.
+`hide everything` and `show spheres, resn NAG` produced the identical picture of
+the whole molecule, because it called `get_atom_sphere_data`, whose contract is
+explicitly "all atoms regardless of representation".
+
+Now filtered by `sphere_visible_mask`. The rule that matters: the per-atom mask is
+the authority where one exists and the boolean flag is only the whole-object
+fallback — `show spheres, resn NAG` sets `_ball_mask` and leaves `_show_atoms`
+alone, so reading the flag alone sees nothing.
+
+The tracer still draws **spheres only** and cannot render a cartoon. Rather than
+silently omitting the molecule it now says so and points at `show spheres`.
+Cartoon ray-tracing needs ribbon primitives in the tracer and is not started.
+
+# Known GUI defects
+
+Both found while screenshotting, both confined to `QWidget.grab()` paths and not
+to normal painting — but they block automated GUI capture, which the project's
+"never implement a GUI blind" rule depends on:
+
+* **Grabbing the objects panel widget alone crashes** under the offscreen
+  platform (hard crash, no traceback). So does `panel.mapTo(window, ...)`.
+  Grabbing the whole window works, so the guide figure is a window grab cropped
+  afterwards with PIL.
+* **Grabbing the window crashes once the panel holds two molecule rows.** One row
+  is fine. Painting with two rows is fine — only the grab fails.
+* Offscreen clamps the window to 640×603 whatever `resize` asks for, so grabs are
+  small; and `QOpenGLWidget` content never appears in a grab at all
+  (`grabFramebuffer` returns black without a display session). The ray tracer is
+  the only way to capture the 3D view headlessly.
+* `ray` driven through `MolViewPluginWindow` hands the trace to a worker and
+  reports `ray: cancelled` in a script with no event loop of its own. Driving a
+  bare `MolView` traces synchronously and works.
 
 # Tier 3 — specialised or superseded here
 

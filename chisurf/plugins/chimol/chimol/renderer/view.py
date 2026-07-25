@@ -4103,11 +4103,15 @@ class MolView(QtWidgets.QWidget):
 
         return scene_objects if scene_objects else None
 
-    def get_atom_sphere_data(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Extract all atom positions, colors (RGB), and radii for ray tracing.
+    def get_atom_sphere_data(
+        self, *, visible_only: bool = False
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Extract atom positions, colors (RGB), and radii for ray tracing.
 
-        Works regardless of the current representation mode (cartoon, sticks,
-        etc.) — always returns ALL atoms in the active object.  Radii are
+        By default returns ALL atoms of the active object regardless of
+        representation, which is what the atom-gaussian overlay wants. Pass
+        ``visible_only`` for what is actually *drawn* as spheres -- ``ray`` needs
+        that, or it traces a hidden molecule.  Radii are
         estimated from the ``radius`` field or the bounding sphere when per-atom
         radii are unavailable.
 
@@ -4182,7 +4186,55 @@ class MolView(QtWidgets.QWidget):
 
         colors_rgb = np.clip(colors_4[:, :3], 0.0, 1.0)
 
+        if visible_only:
+            shown = self.sphere_visible_mask()
+            if shown is not None and shown.shape[0] == n_atoms_total:
+                return pts[shown], colors_rgb[shown], radii_arr[shown]
+
         return pts, colors_rgb, radii_arr
+
+    def sphere_visible_mask(self) -> np.ndarray | None:
+        """Which atoms are currently drawn as something the ray tracer can trace.
+
+        The tracer knows spheres, so this covers the representations built out of
+        them -- spheres/atoms, sticks and nonbonded -- and deliberately not the
+        cartoon, whose ribbon geometry the tracer has no primitive for.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Boolean per-atom mask, or ``None`` when the object has no atoms.
+
+        Notes
+        -----
+        Without this, ``ray`` traced every atom in every state: ``hide
+        everything`` and ``show spheres, resn NAG`` produced the identical
+        picture of the whole molecule.
+        """
+        coords = self._all_atom_coords
+        if coords is None:
+            return None
+        n_atoms = int(np.asarray(coords).shape[0])
+        mask = np.zeros(n_atoms, dtype=bool)
+
+        # The per-atom mask is the authority where one exists, and the boolean
+        # flag is the whole-object fallback. `show spheres, resn NAG` sets the
+        # mask and leaves the flag alone, so reading only the flag sees nothing.
+        for flag, mask_attr in (
+            ("_show_atoms", "_ball_mask"),
+            ("_show_sticks", "_sticks_mask"),
+            ("_show_nonbonded", None),
+        ):
+            selected = getattr(self, mask_attr, None) if mask_attr else None
+            if selected is not None:
+                selected = np.asarray(selected)
+                if selected.shape[0] == n_atoms:
+                    mask |= selected.astype(bool)
+                    continue
+            if bool(getattr(self, flag, False)):
+                mask[:] = True
+                break
+        return mask
 
     def get_ray_view_state(self) -> list[float]:
         """Return the current 18-float view tuple for ray-traced camera setup."""

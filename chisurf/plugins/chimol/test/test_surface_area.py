@@ -384,3 +384,66 @@ def test_get_title_names_the_source(session):
     cmd.do("get_title")
     assert errors == []
     assert "148l" in messages[-1]
+
+
+# --------------------------------------------------------------------------- #
+# `ray` traces what is shown
+# --------------------------------------------------------------------------- #
+def test_ray_traces_only_what_is_shown(session):
+    """`ray` used to trace every atom in every state.
+
+    It called ``get_atom_sphere_data``, whose contract is explicitly "all atoms
+    regardless of representation", so ``hide everything`` and
+    ``show spheres, resn NAG`` produced the identical picture of the molecule.
+    """
+    cmd, view, _, _ = session
+
+    cmd.do("hide everything")
+    assert view.get_atom_sphere_data(visible_only=True)[0].shape[0] == 0
+
+    cmd.do("show spheres, resn NAG")
+    assert view.get_atom_sphere_data(visible_only=True)[0].shape[0] == 14
+
+    cmd.do("hide everything")
+    cmd.do("show spheres, all")
+    assert view.get_atom_sphere_data(visible_only=True)[0].shape[0] == len(view._atoms)
+
+
+def test_the_mask_beats_the_flag(session):
+    """`show spheres, <sel>` sets the per-atom mask and leaves the flag alone.
+
+    Reading only the boolean flag therefore sees nothing, which is how the first
+    attempt at this filter came out empty for every selection.
+    """
+    cmd, view, _, _ = session
+    cmd.do("hide everything")
+    cmd.do("show spheres, resn NAG")
+    assert not bool(view._show_atoms)          # the flag says no...
+    assert int(view.sphere_visible_mask().sum()) == 14   # ...the mask says which
+
+
+def test_the_default_view_traces_its_hetero_balls(session):
+    """A freshly loaded structure draws its ligands as balls over a cartoon."""
+    cmd, view, _, _ = session
+    shown = int(view.sphere_visible_mask().sum())
+    assert 0 < shown < len(view._atoms)
+
+
+def test_ray_says_it_cannot_trace_a_cartoon(session, tmp_path):
+    """Better than emitting a picture that quietly omits the molecule."""
+    cmd, _, _, errors = session
+    cmd.do("hide everything")
+    cmd.do("show cartoon")
+    errors.clear()
+    cmd.do(f"ray {tmp_path / 'x.png'}, 80, 60")
+    assert errors and "cannot yet trace the cartoon" in errors[-1]
+
+
+def test_ray_with_nothing_shown_says_that_instead(session, tmp_path):
+    """The two are different problems and only one is the tracer's limitation."""
+    cmd, _, messages, errors = session
+    cmd.do("hide everything")
+    errors.clear()
+    messages.clear()
+    cmd.do(f"ray {tmp_path / 'x.png'}, 80, 60")
+    assert messages and "nothing is shown" in messages[-1]

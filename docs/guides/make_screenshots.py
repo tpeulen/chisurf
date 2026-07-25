@@ -224,6 +224,25 @@ def _grab_drift_tool():
             _grab(widget, name)
 
 
+def _grab_precision_tool():
+    """Grab the scan-precision planner (guide 45).
+
+    The tool needs no data at all -- it answers from the settings alone -- so
+    this is simply the default acquisition, predicted. The default deliberately
+    sits *beside* the optimum rather than on it, so the figure shows the marker
+    off the minimum, which is the thing the tool exists to tell you.
+    """
+    from chisurf.plugins.microscopy.img_precision.gui.tool import ImgPrecisionTool
+
+    tool = ImgPrecisionTool()
+    tool.model.compute()
+    tool.resize(1400, 760)
+    tool.show()
+    tool._refresh()
+    QApplication.instance().processEvents()
+    _grab(tool, "precision_workspace.png")
+
+
 def _grab_coloc_tool():
     """Grab the colocalization workspace and its intensity scatter (guide 38)."""
     # Import the tool first: it pulls the GUI packages in the order the app does
@@ -383,6 +402,98 @@ def _grab_accurate_fret_tool():
     table.unlink(missing_ok=True)
 
 
+def _grab_chimol_viewer():
+    """Figures for the molecular-viewer guide: a ray-traced render and the panel.
+
+    Two mechanisms, because neither covers both:
+
+    * the **render** goes through chimol's own ray tracer, which needs no GPU and
+      no display -- the same path the plugin's visual tests use. A GL grab is not
+      an option here: ``QWidget.grab()`` reads the backing store and never sees
+      OpenGL content, and ``grabFramebuffer`` returns black without a display
+      session;
+    * the **panel** comes from a whole-window grab, cropped afterwards. Grabbing
+      the panel widget on its own crashes under the offscreen platform, as does
+      ``mapTo`` on it -- see the parity tracker.
+    """
+    import pathlib as _pathlib
+
+    from PIL import Image
+
+    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+        MolViewPluginWindow,
+    )
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+    pdb = _pathlib.Path(
+        "test/data/atomic_coordinates/pdb_files/148l.pdb"
+    ).resolve()
+
+    window = MolViewPluginWindow()
+    window.resize(1180, 700)
+    window.show()
+    app = QApplication.instance()
+    for _ in range(20):
+        app.processEvents()
+    window._load_structure_from_path(pdb)
+    for _ in range(30):
+        app.processEvents()
+
+    # -- the object panel, cropped out of a full-window grab ------------------
+    full = FIG / "_chimol_window_full.png"
+    window.grab().save(str(full))
+    image = Image.open(full)
+    image.crop((262, 58, 640, 190)).resize((756, 264), Image.LANCZOS).save(
+        str(FIG / "chimol_objects_panel.png")
+    )
+    full.unlink(missing_ok=True)
+    print("wrote chimol_objects_panel.png")
+
+    # -- a ray-traced render, coloured by solvent accessibility ---------------
+    # Driven through a bare MolView rather than the plugin window: inside the
+    # window `ray` hands the trace to a worker, which a script with no event loop
+    # of its own never lets finish ("ray: cancelled").
+    import chisurf.core.structure as cs_struct
+    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
+    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+
+    view = MolView()
+    view.resize(900, 650)
+    view.add_structure(
+        _read_full_model(cs_struct.Structure, pdb),
+        name="148l",
+        source_path=str(pdb),
+    )
+
+    class _Host:
+        viewer = view
+
+        def _refresh_objects_from_viewer(self):
+            pass
+
+        def windowTitle(self):
+            return "chimol"
+
+    cmd = Cmd(_Host())
+    cmd.set_message_callback(lambda _m: None)
+    cmd.set_error_callback(lambda m: print("  chimol:", m))
+    for line in (
+        "hide everything",
+        "show spheres, all",
+        "set dot_solvent, on",
+        "set dot_density, 3",
+        "get_area all, 1, 1",
+        # An explicit range rather than the data's own: the most exposed atom is
+        # an outlier, so an automatic range leaves the whole surface reading blue.
+        "spectrum b, blue_white_red, all, 0, 25",
+        "orient",
+        "zoom",
+        f"ray {FIG / 'chimol_accessibility.png'}, 900, 650",
+    ):
+        cmd.do(line)
+    print("wrote chimol_accessibility.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -395,7 +506,9 @@ def main():
         _grab_2cde_tool,
         _grab_coloc_tool,
         _grab_drift_tool,
+        _grab_precision_tool,
         _grab_accurate_fret_tool,
+        _grab_chimol_viewer,
     ):
         try:
             grab()
