@@ -2,6 +2,36 @@
 
 ## 2026-07-25
 
+* **chimol: `save` -- structures can leave the viewer again.** The largest hole in
+  replacing PyMOL, ahead of any representation: chimol could show a structure but
+  not hand one back, so every transform, deleted water and renumbering was trapped
+  inside it.
+  New `io/export.py` writes **PDB and mmCIF**, and deliberately serialises *what
+  the viewer holds* rather than the source file -- re-exporting the input would
+  discard exactly the work worth keeping. Format follows the extension with
+  PyMOL's own fallback ("if the file format is not recognized, then a PDB file is
+  written by default"), so a mistyped extension still leaves a usable file. mmCIF
+  is there for one concrete reason: PDB has four columns for a residue number and
+  mmCIF has none, so a large-numbered structure survives.
+  **Verified by loading the output back into PyMOL**, which is the only test of a
+  writer that means anything: 1363 atoms, both chains E and S, 163 CA, 63 hetero
+  atoms, and `dss` finds H/L/S on it -- so the backbone ordering is intact. PDB
+  and mmCIF agree to 0.0000 A. Round-trip through chimol's own reader is exact.
+  **Two real bugs it exposed.**
+  `unscale_coordinates` had to exist at all because the viewer holds scene units;
+  writing those into a PDB gives a file that loads at the wrong size and place.
+  And a test asserting a transform reaches the file caught that **`translate` was
+  off by the scale factor** -- `translate [100,0,0]` moved the molecule **10 A**,
+  because PyMOL's translate is in Angstrom while
+  `apply_transform_to_object` works on the renderer's scene-unit arrays. Invisible
+  on screen, obvious the moment anything was written out. Fixed and pinned; the
+  parity tracker now carries "any new command taking a length must convert" as a
+  rule.
+  Also recorded: PyMOL keeps every **altloc** as a separate atom (148L 1385) where
+  chimol keeps only the first (1363), so atom counts will not agree on structures
+  with altlocs.
+  33 new tests. Suite: 427 passed, 1 skipped.
+
 * **The example prompts are the tests.** "chato" had no documented way in: a
   user faced an empty box with no idea what to type, and nothing checked that
   the things we claimed it could do still worked.
