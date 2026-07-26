@@ -2,6 +2,44 @@
 
 ## 2026-07-26
 
+* **ChiMOL target: the rendering design, and what else ChimeraX is worth reading
+  for.** Two additions to [specs/chimol](/specs/chimol.md) and
+  [pymol-parity](/plugins/pymol-parity.md), both surveys rather than
+  implementations — recorded so the next round starts from the design.
+
+  **Silhouettes, transcribed but not built.** From ChimeraX's
+  `USE_DEPTH_OUTLINE` shader and `Silhouette._draw_depth_outline`: a full-screen
+  pass that takes the minimum depth over a disc around each fragment and draws
+  where the gap exceeds a threshold. The part that is not guessable is the
+  `(1 - nf1*ds)(1 - nf1*d0)` factor, which **linearises the non-linear depth
+  buffer** so `depth_jump` means a fraction of *scene* depth; without it the
+  outline thickness varies with distance. Under orthographic projection it
+  collapses to a plain depth difference, so that case can be checked first.
+
+  **The real first task is scaffolding, and it is shared.** `qtgl.py` renders
+  straight to the default framebuffer: no FBO, no depth texture, no full-screen
+  quad, no second shader program. Silhouettes, multishadow occlusion *and* depth
+  cue all need that, so it gets built once — FBO with colour+depth texture sized
+  to the viewport, `paintGL` rendering into it, then a texture-window helper the
+  post-process passes reuse. Bolting one pass into `paintGL` is what would make
+  the second and third expensive. Not started: it rewrites the one function that
+  draws everything, and it can only be verified in a real window.
+
+  **Beyond rendering**, on the user's steer that ChimeraX's UI and plugin system
+  are worth taking from:
+
+  - **typed command arguments** (`core/src/commands/cli.py`): each argument is an
+    `Annotation` that parses itself and says what went wrong. ChiMOL's layer takes
+    strings and does ad-hoc conversion with a hand-written message per site.
+    Compatible with keeping PyMOL's syntax — the grammar stays, the diagnostics
+    improve;
+  - **the bundle system**: 193 bundles declaring **Providers against named
+    Managers**, so a capability is declared and discovered rather than registered
+    by import. ChiSurf's `manifest.json` is the analogue and this generalises it —
+    a **ChiSurf-wide** question, not a ChiMOL one;
+  - **the UI**: noted as worth reading and *not yet read*. No conclusions drawn,
+    deliberately.
+
 * **The ChiMOL target, written down.** New target spec
   [specs/chimol](/specs/chimol.md): a PyMOL clone that is **command-compatible
   with PyMOL and better than it**, built by reading both sources. The two answer

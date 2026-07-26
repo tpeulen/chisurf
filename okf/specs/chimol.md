@@ -31,8 +31,9 @@ The two sources are read, not guessed at:
   command does, what its defaults are, which table it consults. When ChiMOL and
   PyMOL disagree about what `orient` means, PyMOL is right by definition.
 * **ChimeraX** (`junk/ChimeraX`) is a reference for **how to do it well**:
-  rendering, geometry, session design, command-argument typing. It is not the
-  compatibility authority and its command language is explicitly *not* a target.
+  rendering, geometry, session design, command-argument typing, the UI, and the
+  bundle system. It is not the compatibility authority and its command *language*
+  is explicitly not a target — ChiMOL's commands stay PyMOL's.
 
 ## Principles
 
@@ -112,6 +113,34 @@ Concretely, and in priority order:
    structures: a documented container that cannot execute code when opened.
 4. **Verifiable behaviour.** Every carried table and transcribed algorithm has a
    test that would fail if it were wrong, not merely one that runs it.
+
+## What to take from ChimeraX beyond rendering
+
+Surveyed, not yet adopted. Recorded here so the ideas are not rediscovered.
+
+**Typed command arguments.** `core/src/commands/cli.py` gives each argument an
+`Annotation` subclass that knows how to parse itself and say what went wrong —
+`BoolArg`, `OnOffArg`, `IntArg`, `FloatArg`, `FloatOrDeltaArg`, `StringArg`,
+`AttrNameArg`, `OpenFileNameArg` and a couple of dozen more. ChiMOL's command
+layer takes everything as a string and does ad-hoc `int()`/`float()` conversion
+with a hand-written message at each site — which is why "window must be at least
+size 2" and "order must be a whole number" are separately worded. The annotations
+are the fix, and they are compatible with keeping PyMOL's *syntax*: the grammar
+stays PyMOL's, only the parsing and the diagnostics improve.
+
+**The bundle system.** 193 bundles, each a `bundle_info.xml` declaring its
+dependencies, categories, and — the interesting part — **Providers registered
+against named Managers**: a bundle states "I provide *define attribute* for the
+*open command* manager" rather than importing something and calling a
+registration function. Capabilities are declared, discovered and lazily loaded,
+so nothing has to import a bundle to learn what it offers. ChiSurf's
+`manifest.json` plugins are the analogue and already declare RPC methods; the
+providers/managers idea generalises that to every extension point. This is a
+**ChiSurf-wide** question, not a ChiMOL one — see [plugins](plugins.md).
+
+**The UI.** Noted as worth reading and *not yet read* — the panel/tool layout and
+the log/command-line integration are the parts to look at first. No conclusions
+drawn here yet, deliberately.
 
 ## Compatibility contract
 

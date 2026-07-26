@@ -794,6 +794,57 @@ for ~90 px of content, leaving a band of dead grey under the letters.
 A guard test now rejects any `sizes` entry below 20, since a ratio and a very
 small pixel count are indistinguishable by inspection.
 
+# Rendering: the next front, and what it needs
+
+The target ([specs/chimol](/specs/chimol.md)) puts rendering first, because it is
+where "better than PyMOL" is actually won. ChimeraX's model is surveyed there.
+This section is the *implementation* finding, so the next round starts from the
+design rather than rediscovering it.
+
+## Silhouettes — the algorithm, transcribed
+
+From `graphics/src/fragmentShader.txt` (`USE_DEPTH_OUTLINE`) and
+`opengl.py::Silhouette._draw_depth_outline`. A full-screen pass over the **depth
+texture**:
+
+1. sample this fragment's depth `d0`;
+2. take `ds` = the **minimum** depth over a disc of radius `thickness` around it,
+   excluding the centre;
+3. discard unless
+   `nf*(d0 - ds) >= jump * (1 - nf1*ds) * (1 - nf1*d0)`, where `nf` is the
+   perspective near/far ratio and `nf1 = 1 - nf`;
+4. otherwise write the silhouette colour.
+
+The `(1 - nf1*ds)(1 - nf1*d0)` factor is the part that is not guessable: it
+**linearises the non-linear depth buffer**, so `depth_jump` is a fraction of
+*scene* depth rather than of buffer values. Without it the outline thickness
+varies with distance and the setting means nothing consistent. Under an
+orthographic projection `nf = 1`, the factor collapses to 1, and the test is a
+plain depth difference — so a first implementation can be checked against the
+simple case before trusting the general one.
+
+Defaults: `thickness = 1` px, `color` black, `depth_jump = 0.03`.
+
+## What chimol lacks
+
+`qtgl.py` renders straight to the default framebuffer: there is **no
+framebuffer-object scaffolding, no depth texture, no full-screen-quad pass and no
+second shader program**. Silhouettes, multishadow occlusion and depth cue all
+need that scaffolding, so it is the real first task and it is shared:
+
+1. an FBO with a colour **and depth texture**, sized to the viewport and rebuilt
+   on resize;
+2. `paintGL` renders into it, then blits colour to the default framebuffer;
+3. a texture-window helper — quad VAO plus a shader program taking the depth
+   texture — for post-process passes to reuse.
+
+Only then is the silhouette pass a small addition. Doing it the other way round —
+bolting one pass into `paintGL` — is what makes the second and third effects
+expensive.
+
+**This must be verified in a real window.** Offscreen Qt creates no GL context, so
+none of it is exercised by the offscreen suite; see the capture notes above.
+
 # Tier 3 — specialised or superseded here
 
 Volume rendering, `isomesh`/`isosurface`/`map_*` (ChiSurf has its own map
