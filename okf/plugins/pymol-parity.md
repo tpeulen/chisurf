@@ -264,6 +264,18 @@ file (exact, whatever the group), then PyMOL's table, then **nothing** — in wh
 case the space group is named and the command declines. A mate built from guessed
 operators looks entirely plausible and would be believed.
 
+**Reading them out of an mmCIF is parsing, not line-shaping.** The file source
+outranks the verified table, so a misread there beats everything the table
+guarantees. The first version took the whole `_symmetry_equiv` loop row as the
+operator; a PDBx loop carries `_symmetry_equiv.id` beside `pos_as_xyz`, so
+`3 x+1/2,y+1/2,z` became a rotation with **determinant 3** — a threefold
+*scaling*, moving that mate by up to 19.6 Å — and the quoted form RCSB writes
+raised out of `symexp`. So the loop *header* is parsed, the column of
+`pos_as_xyz` is taken (either tag order, either tag spelling), quotes are honoured
+per field, and the non-loop `tag value` form is read too. All four layouts are
+pinned, twice: same operators out of each, and every operator an isometry — the
+check the det-3 row failed.
+
 **A transcription can fail silently, so the whole table is verified
 mathematically.** All 547 groups are closed under composition modulo lattice
 translations, every rotation is an isometry (determinant exactly ±1 — 4355 proper

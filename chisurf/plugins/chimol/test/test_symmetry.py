@@ -39,6 +39,7 @@ from chisurf.plugins.chimol.chimol.analysis.symmetry import (
     cell_corners,
     cell_line_segments,
     read_cryst1,
+    read_file_operators,
     symmetry_mates,
 )
 
@@ -282,6 +283,126 @@ def test_a_file_without_cryst1_reads_as_none():
 
 def test_a_missing_file_reads_as_none():
     assert read_cryst1(_DATA / "definitely_not_here.pdb") is None
+
+
+# --------------------------------------------------------------------------- #
+# Reading the operators an mmCIF carries
+# --------------------------------------------------------------------------- #
+#: The same four C222-style operators written the four ways a CIF is allowed to
+#: write them. All four must read identically: an operator taken out of the wrong
+#: field parses without complaint into a plausible mate in the wrong place -- an
+#: id column read as part of ``x+1/2,y+1/2,z`` makes a *threefold scaling*.
+_C222_OPERATORS = ["x,y,z", "-x,y,-z", "x+1/2,y+1/2,z", "-x+1/2,y+1/2,-z"]
+
+_CIF_LAYOUTS = {
+    "loop, id first": """data_test
+#
+loop_
+_symmetry_equiv.id
+_symmetry_equiv.pos_as_xyz
+1 x,y,z
+2 -x,y,-z
+3 x+1/2,y+1/2,z
+4 -x+1/2,y+1/2,-z
+#
+""",
+    "loop, operator first": """data_test
+loop_
+_symmetry_equiv.pos_as_xyz
+_symmetry_equiv.id
+x,y,z 1
+-x,y,-z 2
+x+1/2,y+1/2,z 3
+-x+1/2,y+1/2,-z 4
+#
+""",
+    "loop, quoted as RCSB writes it": """data_test
+loop_
+_symmetry_equiv.id
+_symmetry_equiv.pos_as_xyz
+1 'X,Y,Z'
+2 '-X,Y,-Z'
+3 'X+1/2,Y+1/2,Z'
+4 '-X+1/2,Y+1/2,-Z'
+#
+""",
+    "loop, CIF-core tag with rows packed onto one line": """data_test
+loop_
+_symmetry_equiv_pos_as_xyz
+x,y,z -x,y,-z
+x+1/2,y+1/2,z -x+1/2,y+1/2,-z
+""",
+}
+
+
+def _written(tmp_path, text, name="test.cif"):
+    path = tmp_path / name
+    path.write_text(text)
+    return path
+
+
+@pytest.mark.parametrize("layout", sorted(_CIF_LAYOUTS))
+def test_every_cif_layout_reads_the_same_operators(tmp_path, layout):
+    operators = read_file_operators(_written(tmp_path, _CIF_LAYOUTS[layout]))
+    assert [o.replace(" ", "").lower() for o in operators] == _C222_OPERATORS
+
+
+@pytest.mark.parametrize("layout", sorted(_CIF_LAYOUTS))
+def test_every_cif_layout_parses_to_an_isometry(tmp_path, layout):
+    """The failure the id column caused: ``3 x+1/2,...`` has determinant 3."""
+    for operator in read_file_operators(_written(tmp_path, _CIF_LAYOUTS[layout])):
+        rotation, translation = parse_symmetry_operator(operator)
+        assert abs(abs(np.linalg.det(rotation)) - 1.0) < 1e-9
+        assert np.all(np.abs(translation) < 1.0)
+
+
+def test_a_tag_and_its_value_on_one_line_are_read(tmp_path):
+    """The non-loop form: a single operator written beside its tag."""
+    text = "data_test\n_symmetry_equiv_pos_as_xyz  'x, y, z'\n#\n"
+    assert read_file_operators(_written(tmp_path, text)) == ["x, y, z"]
+
+
+def test_a_tag_with_its_value_on_the_next_line_is_read(tmp_path):
+    text = "data_test\n_symmetry_equiv.pos_as_xyz\n-x,y,-z\n#\n"
+    assert read_file_operators(_written(tmp_path, text)) == ["-x,y,-z"]
+
+
+def test_an_unrelated_loop_contributes_nothing(tmp_path):
+    """A file's other loops must not be mistaken for operators."""
+    text = """data_test
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+ATOM 1 N
+ATOM 2 C
+#
+loop_
+_symmetry_equiv.id
+_symmetry_equiv.pos_as_xyz
+1 x,y,z
+#
+"""
+    assert read_file_operators(_written(tmp_path, text)) == ["x,y,z"]
+
+
+def test_a_file_without_operators_reads_as_empty(tmp_path):
+    assert read_file_operators(_written(tmp_path, "data_test\n_cell.length_a 20\n")) == []
+    assert read_file_operators(tmp_path / "definitely_not_here.cif") == []
+
+
+def test_the_operators_read_from_a_file_place_the_same_mates(tmp_path):
+    """End to end: file operators must move a molecule like the table's do."""
+    coords = _cube_of_points()
+    cell = UnitCell(a=20.0, b=20.0, c=20.0)
+    operators = read_file_operators(
+        _written(tmp_path, _CIF_LAYOUTS["loop, id first"])
+    )
+    from_file = symmetry_mates(coords, cell, operators, cutoff=0.0, shells=0)
+    from_text = symmetry_mates(coords, cell, _C222_OPERATORS, cutoff=0.0, shells=0)
+    assert len(from_file) == len(from_text) == 3
+    for one, other in zip(from_file, from_text):
+        assert np.allclose(one["coords"], other["coords"])
 
 
 # --------------------------------------------------------------------------- #

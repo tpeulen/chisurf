@@ -351,6 +351,30 @@ def read_cryst1(path) -> tuple[UnitCell, str] | None:
     return None
 
 
+#: One field of a CIF data row: single-quoted, double-quoted, or bare. Quotes are
+#: not decoration here -- ``1 'X,Y,Z'`` is two fields, and stripping the quotes off
+#: the whole row instead would leave the id glued to the operator.
+_CIF_FIELD = re.compile(r"'([^']*)'|\"([^\"]*)\"|(\S+)")
+
+#: The tags an operator can be written under, in the PDBx (dotted) and the older
+#: CIF-core (underscored) spelling. Compared lower-cased: CIF tags are
+#: case-insensitive.
+_SYMOP_TAGS = frozenset({
+    "_symmetry_equiv.pos_as_xyz",
+    "_symmetry_equiv_pos_as_xyz",
+})
+
+
+def _cif_fields(text: str) -> list[str]:
+    """Split one CIF data row into its fields, honouring and removing quotes."""
+    return [
+        # Exactly one of the three alternatives matched; an empty quoted field is
+        # a field, so "first group that is not None" and not "first truthy one".
+        next(group for group in match.groups() if group is not None)
+        for match in _CIF_FIELD.finditer(text)
+    ]
+
+
 def read_file_operators(path) -> list[str]:
     """Symmetry operators carried by the file itself, if any.
 
@@ -363,27 +387,88 @@ def read_file_operators(path) -> list[str]:
     wrong yields operators that look valid and place mates incorrectly -- exactly
     the failure this module refuses to risk elsewhere.
 
+    The value is located by parsing the loop header rather than by taking the
+    whole data row: a PDBx loop nearly always carries ``_symmetry_equiv.id``
+    beside the operator, and a row read whole turns ``3 x+1/2,y+1/2,z`` into a
+    threefold *scaling* (the id digit becomes the coefficient of ``x``) that
+    :func:`parse_symmetry_operator` has no way to recognise as wrong. The tags may
+    come in either order, and the non-loop form -- one tag with its value on the
+    same line or the next -- is read too.
+
     Returns
     -------
     list of str
         Operators in ``x,y,z`` form; empty when the file carries none.
     """
-    found: list[str] = []
     try:
         with open(path, "r", errors="replace") as handle:
-            in_loop = False
-            for line in handle:
-                stripped = line.strip()
-                if stripped.startswith("_symmetry_equiv") and "pos_as_xyz" in stripped:
-                    in_loop = True
-                    continue
-                if in_loop:
-                    if not stripped or stripped.startswith(("_", "#", "loop_")):
-                        break
-                    found.append(stripped.strip("'\""))
+            lines = [line.strip() for line in handle]
     except OSError:
         return []
+
+    found: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        index += 1
+        if line.lower() == "loop_":
+            index, operators = _read_symop_loop(lines, index)
+            found.extend(operators)
+        elif line.startswith("_") and line.split()[0].lower() in _SYMOP_TAGS:
+            index, operator = _read_symop_item(lines, index, line)
+            found.extend(operator)
     return [f for f in found if f.count(",") == 2]
+
+
+def _read_symop_loop(lines: list[str], index: int) -> tuple[int, list[str]]:
+    """Read the operator column out of the loop whose header starts at ``index``.
+
+    Returns the index just past the loop and the operators found, which is empty
+    when the loop is some other loop.
+    """
+    tags: list[str] = []
+    while index < len(lines) and lines[index].startswith("_"):
+        tags.append(lines[index].split()[0].lower())
+        index += 1
+
+    column = next((i for i, tag in enumerate(tags) if tag in _SYMOP_TAGS), None)
+    fields: list[str] = []
+    while index < len(lines):
+        row = lines[index]
+        if row.startswith("#"):
+            index += 1
+            continue
+        if not row or row.startswith(("_", ";")) or row.lower() in ("loop_", "stop_"):
+            break
+        if row.lower().startswith("data_"):
+            break
+        # Fields are collected across rows rather than per row: CIF allows a row
+        # to be packed onto one line or wrapped over several, and chunking by the
+        # tag count reads both the same way. Only for the loop that is wanted --
+        # splitting the rows of an ``atom_site`` loop would cost a regex pass over
+        # every atom of the structure for nothing.
+        if column is not None:
+            fields.extend(_cif_fields(row))
+        index += 1
+
+    if column is None:
+        return index, []
+    return index, fields[column::len(tags)][:len(fields) // len(tags)]
+
+
+def _read_symop_item(lines: list[str], index: int, line: str) -> tuple[int, list[str]]:
+    """Read a non-loop ``tag value`` item whose tag line is ``line``.
+
+    The value may sit on the tag line or on the next one; ``index`` points just
+    past the tag line. Returns the new index and a one- or zero-item list.
+    """
+    fields = _cif_fields(line)[1:]
+    while not fields and index < len(lines):
+        candidate = lines[index]
+        index += 1
+        if candidate and not candidate.startswith("#"):
+            fields = _cif_fields(candidate)
+    return index, fields[:1]
 
 
 # --------------------------------------------------------------------------- #

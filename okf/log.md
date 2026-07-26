@@ -2,6 +2,22 @@
 
 ## 2026-07-26
 
+* **chimol: an mmCIF's own symmetry operators were read out of the wrong field**
+  (RF-286). `read_file_operators` took the whole `_symmetry_equiv` loop row, but a
+  PDBx loop carries `_symmetry_equiv.id` beside `pos_as_xyz`, so `3 x+1/2,y+1/2,z`
+  parsed to a rotation with **determinant 3** — a threefold scaling, not an
+  isometry, placing that mate up to 19.6 Å out — and the quoted form RCSB writes
+  raised out of `symexp` instead. Two further layouts (the non-loop
+  `tag value` form, and a loop whose tags are ordered the other way) returned
+  nothing at all. Since file operators outrank the mathematically verified table,
+  the one wrong case won. The reader now parses the loop header and takes the
+  *column* of `pos_as_xyz`, honouring per-field quotes, and reads the non-loop
+  form; rows of other loops are skipped without being split, so the scan costs
+  nothing on an `atom_site` loop. Nine tests pin all four layouts — the function
+  previously had none, which is why none of this showed. See
+  [pymol-parity](/plugins/pymol-parity.md).
+
+
 * **chimol: render-to-texture scaffolding, and silhouettes on top of it.** The
   first thing from the [ChiMOL target](/specs/chimol.md)'s rendering roadmap.
 

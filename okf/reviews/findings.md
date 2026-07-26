@@ -3372,11 +3372,31 @@ ever read from a PDB `CRYST1` record although chimol loads (and `fetch_ihm`
 downloads) `.cif`. RF-286..RF-290 below.
 
 ### RF-286
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (correctness — an mmCIF's own operators are read wrong, and file operators outrank the verified table)
 - **Location:** `chisurf/plugins/chimol/chimol/analysis/symmetry.py:354-386` (`read_file_operators`), consumed at `chisurf/plugins/chimol/chimol/cmd/symmetry.py:66-69` (`_symmetry_for`)
 - **Finding:** the reader takes the whole `_symmetry_equiv` loop row as the operator, but a PDBx loop always carries `_symmetry_equiv.id` beside `pos_as_xyz`, so the id digits are glued onto the first component once `parse_symmetry_operator` strips spaces. Verified on a four-operator C2-style loop (`1 x,y,z` / `2 -x,y,-z` / `3 x+1/2,y+1/2,z` / `4 -x+1/2,y+1/2,-z`): row 3 parses to a rotation with `R[0,0] = 3.0`, **det = 3.0** — a threefold *scaling*, not an isometry — and row 4 to a translation of `4.5` along x. Feeding those to `symmetry_mates` moves that mate by up to **19.6 Å** against the same operators written without the id column (integer-only errors cancel in the re-centring step, the fractional ones do not). Three further layouts fail differently, each verified: the RCSB quoted form (`1 'X,Y,Z'`) survives the `strip("'\"")` as `1 'X,Y,Z` and raises `ValueError: could not convert string to float: "1'"` out of `symexp`; the single-item form `_symmetry_equiv_pos_as_xyz  'x, y, z'` returns `[]` because the value sits on the tag line; and a loop whose tags are ordered `pos_as_xyz` then `id` returns `[]` because the second tag line trips the `startswith("_")` break. `_symmetry_for` prefers file operators over the table, so the one wrong case wins over the verified one. `grep -n read_file_operators chisurf/plugins/chimol/test/test_symmetry.py` → no hits: the function has **zero** tests, which is why none of this showed. Parse the loop header to find the column index of `pos_as_xyz` and take that field (honouring quotes), handle the tag-and-value-on-one-line form, and pin all four layouts.
-- **Fix note:**
+- **Fix note:** All four layouts reproduced against `HEAD` first (det = 3.0 and a
+  4.5-cell translation from the id-first loop; `ValueError: could not convert
+  string to float: "1'"` from the RCSB quoted form; `[]` from both the
+  tag-and-value-on-one-line form and the operator-first loop). `read_file_operators`
+  now reads CIF structurally instead of by line shape: `_cif_fields` splits a data
+  row into fields honouring single/double quotes, `_read_symop_loop` parses the
+  loop header, takes the *column* of `_symmetry_equiv.pos_as_xyz` (either tag
+  order, PDBx or CIF-core spelling) and chunks the collected fields by the tag
+  count — so a row packed onto one line or wrapped over several reads the same —
+  and `_read_symop_item` handles the non-loop `tag value` form on one line or two.
+  Rows of a loop that does not carry the tag are skipped without being split, so
+  the scan does not cost a regex pass over every `atom_site` row of the structure.
+  Pinned by nine new tests in `chisurf/plugins/chimol/test/test_symmetry.py`: the
+  four layouts are parametrised twice (same operators out of each, and every
+  operator an isometry with a sub-cell translation — the check the det-3 row
+  failed), plus both non-loop forms, an unrelated `atom_site` loop contributing
+  nothing, the empty/missing-file cases, and an end-to-end check that operators
+  read from a file place the same mates as the same operators passed as text.
+  Whole `chisurf/plugins/chimol/test/` suite green (1332 passed); `ruff check`
+  adds no new findings on either touched file (the `ruff format` drift of both is
+  pre-existing at `HEAD`).
 
 ### RF-287
 - **Status:** OPEN
