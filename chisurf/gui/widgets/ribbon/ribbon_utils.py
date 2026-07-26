@@ -7,10 +7,10 @@ This module contains utility functions and convenience methods for the ribbon in
 
 from qtpy.QtCore import QTimer
 from qtpy.QtGui import QFont
-from qtpy.QtWidgets import QMessageBox
 
 import chisurf as cs
 from chisurf import logging
+from chisurf.gui import dialogs
 
 
 class UtilityMethodsMixin:
@@ -44,7 +44,7 @@ class UtilityMethodsMixin:
 
     def _check_updates(self):
         """Check for ChiSurf updates"""
-        QMessageBox.information(
+        dialogs.information(
             self.main_window,
             'Check Updates',
             'Update check functionality would be implemented here.\n\n'
@@ -108,7 +108,7 @@ class UtilityMethodsMixin:
 
     def _switch_theme(self, theme_name):
         """Switch application theme"""
-        QMessageBox.information(
+        dialogs.information(
             self.main_window,
             'Theme Switch',
             f'Theme switching to {theme_name} would be implemented here.\n\n'
@@ -143,8 +143,7 @@ class UtilityMethodsMixin:
 
         except Exception as e:
             self.logger.error(f"Failed to switch to menu: {e}")
-            from qtpy.QtWidgets import QMessageBox
-            QMessageBox.warning(
+            dialogs.warning(
                 self.main_window,
                 "Error",
                 f"Failed to switch back to menu bar: {str(e)}"
@@ -185,7 +184,7 @@ class UtilityMethodsMixin:
 
     def _show_plugin_manager(self):
         """Show plugin manager dialog"""
-        QMessageBox.information(
+        dialogs.information(
             self.main_window,
             'Plugin Manager',
             'Plugin manager functionality would be implemented here.\n\n'
@@ -203,7 +202,7 @@ class UtilityMethodsMixin:
             from chisurf.gui.misc_helpers import run_plugin_from_dir
             run_plugin_from_dir(self.main_window, code_editor_dir)
         except Exception as e:
-            QMessageBox.warning(
+            dialogs.warning(
                 self.main_window,
                 'Code Editor',
                 f'Failed to open code editor: {e}'

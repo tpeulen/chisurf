@@ -31,7 +31,6 @@ from qtpy.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
-    QMessageBox,
     QSizePolicy,
     QSpinBox,
     QTextEdit,
@@ -51,6 +50,7 @@ from ..api.models import H2mmSettings, StreamSettings
 from ..backend.services import run_analysis
 from ..core.engines import ENGINE_LABELS
 from ..core.engines import ENGINES as H2mmEngines
+from chisurf.gui import dialogs
 
 
 class _FitCancelled(Exception):
@@ -833,7 +833,7 @@ class H2mmTool(QMainWindow):
             self._status("Fit cancelled")
             return
         message = str(tb).strip().splitlines()[-1] if tb else "unknown error"
-        QMessageBox.critical(self, "H2MM error", message)
+        dialogs.error(self, "H2MM error", message)
         logging.error(f"H2MM analysis failed: {tb}")
 
     # ── uncertainty (bootstrap) ──────────────────────────────────────
@@ -906,7 +906,7 @@ class H2mmTool(QMainWindow):
             self._status("Uncertainty cancelled")
             return
         message = str(tb).strip().splitlines()[-1] if tb else "unknown error"
-        QMessageBox.critical(self, "H2MM uncertainty error", message)
+        dialogs.error(self, "H2MM uncertainty error", message)
         logging.error(f"H2MM bootstrap failed: {tb}")
 
     def _uncert_ranks(self, fret: np.ndarray) -> np.ndarray:
@@ -982,7 +982,7 @@ class H2mmTool(QMainWindow):
             self._status("Likelihood scan cancelled")
             return
         message = str(tb).strip().splitlines()[-1] if tb else "unknown error"
-        QMessageBox.critical(self, "H2MM likelihood scan error", message)
+        dialogs.error(self, "H2MM likelihood scan error", message)
         logging.error(f"H2MM likelihood scan failed: {tb}")
 
     def _plot_scan_live(self, fits):

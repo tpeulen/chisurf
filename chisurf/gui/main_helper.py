@@ -12,7 +12,8 @@ import chisurf as cs
 import chisurf.gui.widgets as _gw
 from chisurf.history import replay as _hr
 from qtpy import QtCore, QtWidgets
-from chisurf.gui.dialogs import report_error, report_information, report_warning
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 
 if typing.TYPE_CHECKING:
@@ -124,13 +125,13 @@ class ProjectMixin:
             )
         except Exception as exc:
             cs.logging.exception("Failed to save project to MMFDB")
-            report_warning(self, "Save Failed", str(exc))
+            dialogs.warning(self, "Save Failed", str(exc))
 
     def onExportProject(self: Main, event: QtCore.QEvent = None):
         """Export the current project as a .csp archive file."""
         version_id = getattr(self, "_current_project_version_id", None)
         if version_id:
-            result = QtWidgets.QMessageBox.question(
+            result = dialogs.question(
                 self, "Export Project",
                 "Export the current project version as .csp?\n\n"
                 "This creates a portable archive file that can be imported on another system.",
@@ -155,7 +156,7 @@ class ProjectMixin:
                 self.add_recent_project(pathlib.Path(path_str))
             except Exception as exc:
                 cs.logging.exception("Export failed")
-                report_warning(self, "Export Failed", str(exc))
+                dialogs.warning(self, "Export Failed", str(exc))
             return
 
         working = cs.working_path if getattr(cs, "working_path", None) else pathlib.Path.home()
@@ -169,7 +170,7 @@ class ProjectMixin:
         if project_path.suffix.lower() != ".csp":
             project_path = project_path.with_suffix(".csp")
         if project_path.exists():
-            result = QtWidgets.QMessageBox.question(
+            result = dialogs.question(
                 self, "Overwrite?",
                 f"Overwrite existing file?\n{project_path}",
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
@@ -199,7 +200,7 @@ class ProjectMixin:
         try:
             self.load_and_show_plugin("chisurf.plugins.core.project_browser")
         except Exception as exc:
-            report_error(
+            dialogs.error(
                 self, "Open Project Failed",
                 f"Could not open projects from MMFDB:\n{exc}"
             )
@@ -217,7 +218,7 @@ class ProjectMixin:
 
             preview = client.import_preview(file_path=file_path)
             if not preview.get("ok", True):
-                report_warning(self, "Import Failed", preview.get("error", "Unknown error"))
+                dialogs.warning(self, "Import Failed", preview.get("error", "Unknown error"))
                 return
             collisions = preview.get("collisions", {})
             has_collisions = any(v for v in collisions.values())
@@ -228,7 +229,7 @@ class ProjectMixin:
                 if dlg.exec() != QtWidgets.QDialog.Accepted:
                     return
             else:
-                ok = QtWidgets.QMessageBox.question(
+                ok = dialogs.question(
                     self, "Confirm Import",
                     f"No collisions detected.\n"
                     f"Original: {preview.get('origin', {}).get('project_id', '?')}\n"
@@ -242,16 +243,16 @@ class ProjectMixin:
             if result.get("ok"):
                 self._current_project_id = result.get("project_id")
                 self._current_project_version_id = result.get("version_id")
-                report_information(
+                dialogs.information(
                     self, "Import Complete",
                     f"Project imported.\n"
                     f"ID: {result.get('project_id', '?')} v{result.get('version_number', '?')}",
                 )
             else:
-                report_warning(self, "Import Failed", result.get("error", "Unknown error"))
+                dialogs.warning(self, "Import Failed", result.get("error", "Unknown error"))
         except Exception as exc:
             cs.logging.exception("Import failed")
-            report_warning(self, "Import Failed", str(exc))
+            dialogs.warning(self, "Import Failed", str(exc))
 
     def onCloseProject(self: Main, event: QtCore.QEvent = None):
         try:
@@ -329,19 +330,19 @@ class ProjectMixin:
                 self._current_project_version_id = res.get("version_id")
                 self._current_project_name = project_name
                 self._current_project_visibility = res.get("visibility", "private")
-                report_information(
+                dialogs.information(
                     self,
                     "Project Archived",
                     f"Project successfully archived to database.\nProject ID: {res.get('project_id', project_id)}"
                 )
             else:
-                report_warning(
+                dialogs.warning(
                     self,
                     "Archive Failed",
                     res.get("error", "Failed to archive project to database."),
                 )
         except Exception as exc:
-            report_error(
+            dialogs.error(
                 self,
                 "Archive Failed",
                 f"Failed to archive project to database: {exc}"
@@ -697,33 +698,29 @@ class SetupMixin:
                     except Exception:
                         diff_summary = ""
 
-                    msg = QtWidgets.QMessageBox(self)
-                    msg.setWindowTitle("Experiment configuration update available")
-                    msg.setIcon(QtWidgets.QMessageBox.Information)
-                    msg.setText("The experiment configuration file in your settings folder differs from the latest shipped version.")
                     base_info = (
                         "Do you want to update your experiment configuration to the new default?\n\n"
                         "This will overwrite your current user experiment configuration file."
                     )
                     if diff_summary:
-                        msg.setInformativeText(
-                            base_info + "\n\nChanges detected compared to your current configuration:\n" +
-                            diff_summary
+                        base_info += (
+                            "\n\nChanges detected compared to your current configuration:\n"
+                            + diff_summary
                         )
-                    else:
-                        msg.setInformativeText(base_info)
-                    yes_button = msg.addButton("Update", QtWidgets.QMessageBox.YesRole)
-                    msg.addButton("Skip", QtWidgets.QMessageBox.NoRole)
-                    try:
-                        checkbox = QtWidgets.QCheckBox("Don't check experiment configuration updates on startup")
-                        msg.setCheckBox(checkbox)
-                    except Exception:
-                        checkbox = None
+                    answer = dialogs.choice(
+                        self,
+                        "Experiment configuration update available",
+                        "The experiment configuration file in your settings folder "
+                        "differs from the latest shipped version.",
+                        {"update": "Update", "skip": "Skip"},
+                        default="skip",
+                        kind="information",
+                        informative=base_info,
+                        checkbox="Don't check experiment configuration updates on startup",
+                    )
 
-                    msg.exec_()
-
                     try:
-                        if checkbox is not None and checkbox.isChecked():
+                        if answer.checked:
                             from chisurf.core.settings.settings_utils import set_check_experiment_config_updates_on_startup as _set_exp_flag
                             _set_exp_flag(False)
                             try:
@@ -734,7 +731,7 @@ class SetupMixin:
                         pass
 
                     try:
-                        if msg.clickedButton() is yes_button:
+                        if answer.key == "update":
                             shutil.copyfile(source_config_file, user_config_file)
                     except Exception:
                         pass
@@ -819,23 +816,22 @@ class SetupMixin:
             if check_for_display_config_update():
                 user_path = get_user_display_config_path()
                 package_path = get_package_display_config_path()
-                msg = QtWidgets.QMessageBox(self)
-                msg.setWindowTitle("Chimol display configuration update")
-                msg.setIcon(QtWidgets.QMessageBox.Information)
-                msg.setText(
+                answer = dialogs.choice(
+                    self,
+                    "Chimol display configuration update",
                     "The Chimol display configuration in your settings folder "
-                    "is outdated."
+                    "is outdated.",
+                    {"update": "Update", "skip": "Skip"},
+                    default="skip",
+                    kind="information",
+                    informative=(
+                        f"Your version is older than the current version "
+                        f"(v{DISPLAY_CONFIG_VERSION}) shipped with the package.\n\n"
+                        "Do you want to update? This will overwrite your current "
+                        "user configuration."
+                    ),
                 )
-                msg.setInformativeText(
-                    f"Your version is older than the current version "
-                    f"(v{DISPLAY_CONFIG_VERSION}) shipped with the package.\n\n"
-                    "Do you want to update? This will overwrite your current "
-                    "user configuration."
-                )
-                yes_button = msg.addButton("Update", QtWidgets.QMessageBox.YesRole)
-                msg.addButton("Skip", QtWidgets.QMessageBox.NoRole)
-                msg.exec_()
-                if msg.clickedButton() is yes_button:
+                if answer.key == "update":
                     if package_path.is_file() and user_path is not None:
                         try:
                             user_path.parent.mkdir(parents=True, exist_ok=True)
@@ -868,7 +864,7 @@ class SetupMixin:
             Whether to show a completion message after reinitialization.
         """
         if show_confirmation:
-            reply = QtWidgets.QMessageBox.question(
+            reply = dialogs.question(
                 self,
                 "Confirm Reinitialization",
                 "This will completely reset ChiSurf and clear all data:\n\n"
@@ -884,9 +880,7 @@ class SetupMixin:
             if reply != QtWidgets.QMessageBox.Yes:
                 return
 
-        progress_dialog = QtWidgets.QProgressDialog(
-            "Reinitializing ChiSurf...", "Cancel", 0, 10, self
-        )
+        progress_dialog = ChiSurfProgress(self, "Reinitializing ChiSurf...", 10)
         progress_dialog.setWindowTitle("Reinitializing")
         progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
         progress_dialog.setMinimumDuration(0)
@@ -905,14 +899,14 @@ class SetupMixin:
 
             progress_dialog.close()
             if show_success:
-                report_information(
+                dialogs.information(
                     self,
                     "Reinitialization Complete",
                     "ChiSurf has been successfully reinitialized.\nAll data has been cleared, memory freed, and the application reset to initial state."
                 )
         except Exception as e:
             progress_dialog.close()
-            report_error(
+            dialogs.error(
                 self,
                 "Reinitialization Error",
                 f"An error occurred during reinitialization:\n{str(e)}"
@@ -2047,7 +2041,7 @@ class DevMixin:
             )
             result = resolve_focused_widget_source()
             if result is None:
-                report_information(
+                dialogs.information(
                     self,
                     "No Source Target",
                     "Could not resolve a source file for the currently focused widget.",
@@ -2057,13 +2051,13 @@ class DevMixin:
             path, line = result
             open_in_editor(self, path, line)
         except ImportError:
-            report_warning(
+            dialogs.warning(
                 self,
                 "Dev Mode Error",
                 "Source jump module not available.",
             )
         except Exception as e:
-            report_warning(
+            dialogs.warning(
                 self,
                 "Dev Mode Error",
                 f"Could not open source: {e}",
@@ -2089,7 +2083,7 @@ class DevMixin:
                 )
             self._dev_settings_editor.show()
         except Exception as e:
-            report_warning(
+            dialogs.warning(
                 self,
                 "Dev Mode Settings",
                 f"Could not open settings: {e}",

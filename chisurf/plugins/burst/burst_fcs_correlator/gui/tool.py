@@ -22,6 +22,8 @@ from chisurf.gui.widgets.wizard.tttr_correlator import WizardTTTRCorrelator
 from ..core.algorithms import BurstFcsSettings, PairConfig, parse_channel_list
 from ..file_list import make_burst_file_list
 from .client import BurstFcsClient
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 _GUI_DIR = pathlib.Path(__file__).parent
 
@@ -313,12 +315,12 @@ class BurstFcsTool(QtWidgets.QMainWindow):
     def _on_run(self) -> None:
         pairs = self._selected_pairs()
         if not pairs:
-            QtWidgets.QMessageBox.warning(self, "Burst-wise FCS",
+            dialogs.warning(self, "Burst-wise FCS",
                                           "Select a detector setup and at least one FCS pair.")
             return
         files = self._resolve_files()
         if not files:
-            QtWidgets.QMessageBox.information(self, "Burst-wise FCS",
+            dialogs.information(self, "Burst-wise FCS",
                                              "No burst folders or BUR/BST files selected.")
             return
 
@@ -326,8 +328,7 @@ class BurstFcsTool(QtWidgets.QMainWindow):
         pair_dicts = [{"pair_name": p.pair_name, "chs_a": p.chs_a, "chs_b": p.chs_b,
                        "micro_a": p.micro_a, "micro_b": p.micro_b} for p in pairs]
 
-        progress = QtWidgets.QProgressDialog("Computing burst-wise FCS…", "Cancel",
-                                             0, len(files), self)
+        progress = ChiSurfProgress(self, "Computing burst-wise FCS…", len(files))
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setWindowTitle("Burst-wise FCS")
         progress.show()
@@ -349,7 +350,7 @@ class BurstFcsTool(QtWidgets.QMainWindow):
 
         self._refresh_browser_list()
         if not self._curves:
-            QtWidgets.QMessageBox.information(self, "Burst-wise FCS",
+            dialogs.information(self, "Burst-wise FCS",
                                              "No correlation curves were produced.")
 
     def to_settings_dict(self) -> Dict[str, Any]:
@@ -390,7 +391,7 @@ class BurstFcsTool(QtWidgets.QMainWindow):
         try:
             pathlib.Path(path).write_text(json.dumps(self.to_settings_dict(), indent=2))
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Save settings", str(e))
+            dialogs.error(self, "Save settings", str(e))
 
     def _on_load_settings(self) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -400,7 +401,7 @@ class BurstFcsTool(QtWidgets.QMainWindow):
         try:
             cfg = json.loads(pathlib.Path(path).read_text())
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Load settings", str(e))
+            dialogs.error(self, "Load settings", str(e))
             return
         for k in ("n_bins", "n_casc", "make_fine", "padding_ms", "fit_mode",
                   "maxent_td_min", "maxent_td_max", "tmin_fit", "tmax_fit"):

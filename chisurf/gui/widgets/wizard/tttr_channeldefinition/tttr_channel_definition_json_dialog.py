@@ -1,6 +1,7 @@
 import json
 
-from qtpy.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QMessageBox
+from qtpy.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton
+from chisurf.gui import dialogs
 
 
 class JsonEditorDialog(QDialog):
@@ -24,7 +25,7 @@ class JsonEditorDialog(QDialog):
             self.edited_data = json.loads(self.json_editor.toPlainText())
             self.accept()
         except json.JSONDecodeError:
-            QMessageBox.critical(self, "Error", "Invalid JSON format.")
+            dialogs.error(self, "Error", "Invalid JSON format.")
 
     def get_edited_data(self):
         return getattr(self, "edited_data", None)

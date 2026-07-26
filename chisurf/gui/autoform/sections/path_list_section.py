@@ -35,6 +35,7 @@ from qtpy import QtCore, QtWidgets
 from chisurf.gui.widgets.tools.chisurf_dock_tool import PathDropListWidget
 
 from .registry import register_section
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -285,7 +286,7 @@ class PathListWidget(QtWidgets.QWidget):
 
         client = picker.inprocess_client()
         if client is None:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "MMFDB",
                 "No MMFDB database is available in this session.",

@@ -19,6 +19,7 @@ from chisurf.core.fluorescence.anisotropy.kappa2 import s2delta
 
 from .client import Kappa2DistClient
 from .help_dialog import Kappa2DistHelpDialog
+from chisurf.gui import dialogs
 
 _GUI_DIR = pathlib.Path(__file__).parent
 
@@ -288,7 +289,7 @@ class Kappa2Dist(QtWidgets.QWidget):
         k2scale = self._model._k2scale
         k2hist = self._model._k2hist
         if k2scale is None or k2hist is None:
-            QtWidgets.QMessageBox.warning(self, "Save", "Nothing to save.")
+            dialogs.warning(self, "Save", "Nothing to save.")
             return
 
         bins = k2scale[1:]
@@ -310,11 +311,11 @@ class Kappa2Dist(QtWidgets.QWidget):
                 f.write("\n".join(header) + "\n")
                 for x, y in zip(bins, k2hist):
                     f.write(f"{x:.6f},{y:.6f}\n")
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "Save Successful", f"Saved to:\n{file_path}"
             )
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Save Error", f"An error occurred:\n{exc}"
             )
 

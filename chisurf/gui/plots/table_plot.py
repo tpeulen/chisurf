@@ -31,6 +31,7 @@ from chisurf.gui.widgets.chitable import (
     edit_dataframe,
 )
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+from chisurf.gui import dialogs
 
 #: Curves that already have a dedicated column and must not be repeated.
 _SUPPORT_EXCLUSIONS = {"data", "model", "weighted residuals", "autocorrelation"}
@@ -446,7 +447,7 @@ class FitTablePlot(plotbase.Plot):
 
         df = self._parameter_frame(param_dict)
         if df.empty:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "No parameters", "Model exposes no editable parameters."
             )
             return

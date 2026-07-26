@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from chisurf.gui import LoginDialog, QtWidgets, _format_login_error
+from chisurf.gui import LoginDialog, QtWidgets, _format_login_error, dialogs
 
 
 def test_format_login_error_extracts_jsonrpc_message() -> None:
@@ -38,7 +38,7 @@ def test_handle_login_sends_string_to_warning(monkeypatch) -> None:
     def fake_warning(parent, title, text):
         warning_calls.append((parent, title, text))
 
-    monkeypatch.setattr(QtWidgets.QMessageBox, "warning", fake_warning)
+    monkeypatch.setattr(dialogs.ChiSurfMessageBox, "warning", fake_warning)
     dialog = SimpleNamespace(
         user_combo=SimpleNamespace(currentData=lambda: "user_default"),
         password_edit=SimpleNamespace(text=lambda: "bad-password"),
@@ -64,7 +64,7 @@ def test_handle_login_accepts_an_editable_username(monkeypatch) -> None:
     def fake_warning(*_args):
         return None
 
-    monkeypatch.setattr(QtWidgets.QMessageBox, "warning", fake_warning)
+    monkeypatch.setattr(dialogs.ChiSurfMessageBox, "warning", fake_warning)
     dialog = SimpleNamespace(
         user_combo=SimpleNamespace(
             currentData=lambda: None,

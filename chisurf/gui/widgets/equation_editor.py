@@ -39,6 +39,7 @@ from chisurf.core.expressions import (
     function_signatures,
     validate_expression,
 )
+from chisurf.gui import dialogs
 
 _OK = "✓"   # ✓
 _BAD = "✗"  # ✗
@@ -428,7 +429,7 @@ class EquationTableEditor(QtWidgets.QWidget):
                 self.setText(fp.read())
             self.filename = filename
         except OSError as exc:  # pragma: no cover - UI path
-            QtWidgets.QMessageBox.warning(self, "Equations", f"Could not load:\n{exc}")
+            dialogs.warning(self, "Equations", f"Could not load:\n{exc}")
 
     def save_text(self, _event=None) -> None:
         """Write the equations to ``filename`` (prompt if unset) + call save_callback."""
@@ -442,7 +443,7 @@ class EquationTableEditor(QtWidgets.QWidget):
             with open(self.filename, "w", encoding="utf-8") as fp:
                 fp.write(self.text())
         except OSError as exc:  # pragma: no cover - UI path
-            QtWidgets.QMessageBox.warning(self, "Equations", f"Could not save:\n{exc}")
+            dialogs.warning(self, "Equations", f"Could not save:\n{exc}")
             return
         if callable(self.save_callback):
             self.save_callback()

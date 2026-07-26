@@ -114,8 +114,50 @@ in the parameter details popup) — this is the default specifically so a
 `dynamic_group` table's paired Lo/Hi/Bounds/Error columns (doubled per slot)
 don't force horizontal scrolling in a narrow dock. The
 `CollapsibleBox` header gained `add_header_widget` to host such per-section
-controls with no extra vertical space), `help` (a `?` modal button), and
+controls with no extra vertical space), `help` (a `?` modal button),
+`progress` (the one inline progress bar — see below), and
 `wizard`/`info`/`embed`.
+
+# Reporting to the user: one message box, one progress bar
+
+Two things every long-running or fallible tool must do — say that something went
+wrong, and show how far the work has got — were each done four different ways,
+so the same operation looked different depending on which window started it, and
+head-lessly either popped a modal nobody could close or went silent. Both are now
+single classes, and both follow one rule: **the caller says what happened, not
+where it is shown.**
+
+`chisurf/gui/dialogs.py` — `ChiSurfMessageBox`, used as `dialogs.error` /
+`warning` / `information` / `question` / `confirm` / `choice` / `about` /
+`report_exception`. It logs every box whether or not it is shown, raises the
+window only when a person could dismiss it, and otherwise returns the answer the
+caller declared **safe** (so an unattended run declines a deletion rather than
+hanging on a click that never comes). `choice` covers what used to justify a
+hand-built box — custom-labelled buttons plus an optional tick box, returning
+`Answer(key, checked)` — and `informative` / `detail` / `text_format` cover the
+rest. `auto_answer` scripts answers in tests. A guard test bans a raw
+`QMessageBox` anywhere outside that module; the former per-file allow-list is
+empty and the parallel `MyMessageBox` class is gone.
+
+`chisurf/gui/progress.py` — `ChiSurfProgress`. The constructor takes the widget
+the work was started from and resolves the display nearest-first: an inline
+`progress` section in the same panel → the navigation shell's shared status bar
+→ a modal dialog when standalone → the log when there is no GUI. The handle
+duck-types both `QProgressDialog` and the status-bar task, so migrating a call
+site is a one-line change. `iterate()` wraps a loop (range from `len`, stops on
+Cancel, closes on exit); `maximum=0` is a busy indicator; cancellation is
+cooperative.
+
+The `progress` **AutoForm section** (`{"type": "custom", "key": "progress"}`) is
+what makes this wiring-free: the widget itself is a progress host, so a run
+button in the same form is found by walking up from it. Note the bar is normally
+a *sibling* of the button, never an ancestor — resolution therefore looks inside
+each ancestor as it climbs, which is exactly the run-button-plus-bar row four
+plugins had each hand-rolled. Options: `cancellable`, `hide_when_idle`,
+`show_text`, `handle` (publish the widget on the model), and `target` (a model
+attribute holding a fraction 0–1 or percent, polled on refresh) for progress a
+model owns rather than a GUI loop drives; a live task always wins over a stale
+model value.
 
 A `panel`'s (or `parameter_group_table`'s / `dynamic_group`'s)
 `collapsed_when: {target?, attr, equals|not_equals}` folds it based on a bound

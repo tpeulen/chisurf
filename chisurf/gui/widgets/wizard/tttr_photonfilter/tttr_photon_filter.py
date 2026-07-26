@@ -36,6 +36,7 @@ from .tttr_photon_filter_plots import create_plots, place_plots
 from .tttr_photon_filter_connections import setup_connections as _setup_connections
 from chisurf.gui.widgets.progress import EnhancedProgressDialog
 from chisurf.core.fluorescence.burst.utils import create_array_with_ones
+from chisurf.gui import dialogs
 
 
 colors = chisurf.core.settings.gui['plot']['colors']
@@ -129,7 +130,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         setup_name = self.comboBox.currentText()
         if not setup_name or setup_name == "No setups available":
             # Display warning message if no setup is selected
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "No Setup Selected",
                 "Please define a setup first in the Detector Configuration page."
@@ -1174,7 +1175,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             except Exception as e:
                 # If there's an error accessing the TTTR object's properties,
                 # display an error message and exit early
-                QtWidgets.QMessageBox.critical(
+                dialogs.error(
                     self,
                     "Error Reading File",
                     f"Failed to read file '{p.name}' with the selected setup.\n\n"
@@ -1737,7 +1738,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                 time.sleep(2)  # Give user time to see the error
             else:
                 # Only show message box if we created our own progress dialog and it's not enhanced
-                QtWidgets.QMessageBox.critical(
+                dialogs.error(
                     self,
                     "Error Creating ZIP",
                     f"Failed to create ZIP archive: {str(e)}"

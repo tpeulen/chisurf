@@ -6,6 +6,8 @@ import pytest
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QMessageBox
 
+from chisurf.gui import dialogs
+
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
     DetectorWizard,
     load_detector_setups,
@@ -82,7 +84,7 @@ def test_auto_save_after_g_factor(qtbot, monkeypatch, setups_file, initial_data)
     page.current_setups_file = setups_file
     page.current_setup_name = "test_setup"
 
-    monkeypatch.setattr(QMessageBox, "information", mock_information)
+    monkeypatch.setattr(dialogs.ChiSurfMessageBox, "information", mock_information)
 
     import chisurf.plugins.vv_vh_g_factor as vv_vh_mod
 

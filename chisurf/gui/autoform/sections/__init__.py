@@ -19,6 +19,7 @@ from . import (
     image_browser_section,  # noqa: F401  (registers the "image_browser" section)
     path_list_section,  # noqa: F401  (registers the "path_list" section)
     phasor_section,  # noqa: F401  (registers the "phasor" section)
+    progress_section,  # noqa: F401  (registers the "progress" section)
     rate_matrix_section,  # noqa: F401  (registers the "rate_matrix" section)
     region_list_section,  # noqa: F401  (registers the "region_list" section)
     scalar_table_section,  # noqa: F401  (registers the "scalar_table" section)

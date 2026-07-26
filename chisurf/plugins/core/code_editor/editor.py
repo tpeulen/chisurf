@@ -33,6 +33,7 @@ from chisurf.plugins.core.code_editor.text_editor import (
     save_editor_settings,
 )
 from chisurf.plugins.icon_utils import create_emoji_icon
+from chisurf.gui import dialogs
 
 
 def _async_raise(tid: int, exc_type: type) -> None:
@@ -737,7 +738,7 @@ class CodeEditor(QtWidgets.QWidget):
         try:
             new_path.write_text("", encoding="utf-8")
         except OSError as exc:
-            QtWidgets.QMessageBox.warning(self, "Error", f"Cannot create file:\n{exc}")
+            dialogs.warning(self, "Error", f"Cannot create file:\n{exc}")
             return
         self.open_file(str(new_path))
 
@@ -1018,18 +1019,19 @@ class CodeEditor(QtWidgets.QWidget):
             return True
 
         name = tab_text[:-2] if tab_text.endswith(" *") else tab_text
-        msg = QtWidgets.QMessageBox(self)
-        msg.setWindowTitle("Unsaved Changes")
-        msg.setText(f"Save changes to {name} before closing?")
-        msg.setInformativeText("Choose Discard to close without saving.")
-        msg.setIcon(QtWidgets.QMessageBox.Question)
-        msg.setStandardButtons(
-            QtWidgets.QMessageBox.Save
-            | QtWidgets.QMessageBox.Discard
-            | QtWidgets.QMessageBox.Cancel
+        reply = dialogs.question(
+            self,
+            "Unsaved Changes",
+            f"Save changes to {name} before closing?",
+            buttons=(
+                QtWidgets.QMessageBox.Save
+                | QtWidgets.QMessageBox.Discard
+                | QtWidgets.QMessageBox.Cancel
+            ),
+            # Headless the tab keeps its unsaved content rather than losing it.
+            default=QtWidgets.QMessageBox.Cancel,
+            informative="Choose Discard to close without saving.",
         )
-        msg.setDefaultButton(QtWidgets.QMessageBox.Save)
-        reply = msg.exec_()
         if reply == QtWidgets.QMessageBox.Save:
             return self._save_tab(editor, name, index)
         return reply == QtWidgets.QMessageBox.Discard

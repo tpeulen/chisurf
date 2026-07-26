@@ -11,6 +11,7 @@ from chisurf.gui.widgets.progress import EnhancedProgressDialog
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 from chisurf.macros import core_data as core_data_macros
+from chisurf.gui import dialogs
 
 _TTTR_INDEX_CACHE = {}
 
@@ -1449,7 +1450,7 @@ class PdaTTTRWidget(
                 pass
             if not files:
                 logging.warning("PDA: No dropped files are checked to load.")
-                QtWidgets.QMessageBox.information(self, "No files", "No dropped files are checked to load.")
+                dialogs.information(self, "No files", "No dropped files are checked to load.")
                 return
 
             progress_dialog = None
@@ -1550,7 +1551,7 @@ class PdaTTTRWidget(
                         "PDA: Too many BUR files selected (%d); aborting load.",
                         len(bur_files)
                     )
-                    QtWidgets.QMessageBox.warning(
+                    dialogs.warning(
                         self,
                         "Too many BUR files",
                         f"You selected {len(bur_files)} BUR files. "
@@ -1562,7 +1563,7 @@ class PdaTTTRWidget(
                         "PDA: Too many TTTR files selected (%d); limiting to first %d.",
                         len(tttr_files), max_tttr_files
                     )
-                    QtWidgets.QMessageBox.warning(
+                    dialogs.warning(
                         self,
                         "Too many files",
                         f"You selected {len(tttr_files)} TTTR files. "
@@ -1572,7 +1573,7 @@ class PdaTTTRWidget(
                     tttr_files = tttr_files[:max_tttr_files]
                 if not bur_files and not tttr_files:
                     logging.warning("PDA: Dropped items contain neither BUR nor TTTR files to load.")
-                    QtWidgets.QMessageBox.warning(
+                    dialogs.warning(
                         self, "No files", "Please drop .bur burst files or TTTR files "
                                           "(e.g., .ptu, .ht3, .spc, .sdt, .t3r, .t2r, .phu, .phd) to load.")
                     return
@@ -1737,7 +1738,7 @@ class PdaTTTRWidget(
                             "PDA: Too many TTTR files resolved from BUR tables (%d); limiting to first %d.",
                             len(tttr_files), max_tttr_files
                         )
-                        QtWidgets.QMessageBox.warning(
+                        dialogs.warning(
                             self,
                             "Too many files",
                             f"Burst tables reference {len(tttr_files)} TTTR files. "
@@ -1749,7 +1750,7 @@ class PdaTTTRWidget(
                             burst_slices = {k: v for k, v in burst_slices.items() if k in keep}
                     if not tttr_files:
                         logging.warning("PDA: No TTTR files could be resolved from selected BUR files.")
-                        QtWidgets.QMessageBox.warning(self, "No TTTR files found", "Could not resolve any TTTR files from the selected BUR files.")
+                        dialogs.warning(self, "No TTTR files found", "Could not resolve any TTTR files from the selected BUR files.")
                         return
                 else:
                     if progress_bar is not None:
@@ -1872,4 +1873,4 @@ class PdaTTTRWidget(
         except Exception as e:
             # Show error message and log warning
             logging.warning(f"PDA: Failed to load files: {e}")
-            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to load files: {e}")
+            dialogs.error(self, "Error", f"Failed to load files: {e}")

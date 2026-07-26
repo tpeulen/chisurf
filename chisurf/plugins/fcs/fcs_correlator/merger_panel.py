@@ -12,6 +12,7 @@ from qtpy import QtCore, QtWidgets
 import chisurf as cs
 from chisurf.core.dataspec import load_view_spec
 from chisurf.gui.autoform import register_section
+from chisurf.gui import dialogs
 
 _GUI_DIR = pathlib.Path(__file__).resolve().parent
 
@@ -137,7 +138,7 @@ class MergerSettingsModel:
         from chisurf.core.fluorescence.fcs.merge import save_mean_correlation
         mean = self.compute_mean()
         if mean is None:
-            QtWidgets.QMessageBox.warning(None, "No Data", "No correlations to save.")
+            dialogs.warning(None, "No Data", "No correlations to save.")
             return
         if filename is None:
             filename = self.target_filepath()
@@ -148,7 +149,7 @@ class MergerSettingsModel:
         if not filepath.exists():
             self.save_mean(filepath)
         if not filepath.exists():
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 None,
                 "No Correlation File",
                 "No correlation file available.",

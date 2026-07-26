@@ -16,6 +16,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class _ActionsSection(QtWidgets.QWidget):
         if not path:
             return
         if not pathlib.Path(path).is_file():
-            QtWidgets.QMessageBox.warning(self, "Invalid file", f"'{path}' is not a valid file.")
+            dialogs.warning(self, "Invalid file", f"'{path}' is not a valid file.")
             return
         try:
             from chisurf.gui.widgets.staged_loading import load_with_progress
@@ -120,12 +121,12 @@ class _ActionsSection(QtWidgets.QWidget):
             self._model.set_tttr(tttr, str(path))
             self._model.notify("plot")
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Error", f"Cannot load file:\n{exc}")
+            dialogs.error(self, "Error", f"Cannot load file:\n{exc}")
 
     def _save(self) -> None:
         reason = self._model.can_save()
         if reason is not None:
-            QtWidgets.QMessageBox.warning(self, "Cannot save", reason)
+            dialogs.warning(self, "Cannot save", reason)
             return
         start = str(pathlib.Path(self._model.input_file).with_name(self._model.default_save_name()))
         path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save ALEX file", start)
@@ -133,9 +134,9 @@ class _ActionsSection(QtWidgets.QWidget):
             return
         try:
             self._model.save(path)
-            QtWidgets.QMessageBox.information(self, "Saved", f"Saved to:\n{path}")
+            dialogs.information(self, "Saved", f"Saved to:\n{path}")
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Error", f"Cannot save:\n{exc}")
+            dialogs.error(self, "Error", f"Cannot save:\n{exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -199,18 +200,18 @@ class _BatchRunSection(QtWidgets.QWidget):
             return
         reason = self._model.can_run_batch()
         if reason is not None:
-            QtWidgets.QMessageBox.warning(self, "Cannot run batch", reason)
+            dialogs.warning(self, "Cannot run batch", reason)
             return
         self._running = True
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         try:
             outputs = self._model.run_batch()
             self._status.setText(f"Wrote {len(outputs)} file(s).")
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "Batch complete", f"Wrote {len(outputs)} file(s)."
             )
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Batch failed", str(exc))
+            dialogs.error(self, "Batch failed", str(exc))
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()
             self._running = False

@@ -1,6 +1,7 @@
 import chisurf.gui.widgets.general
 from chisurf import logging
 import chisurf as cs
+from chisurf.gui import dialogs
 
 
 class MenuSwitchWidget:
@@ -87,22 +88,14 @@ class MenuSwitchWidget:
     def _show_message(self, message):
         """Show an info message to the user."""
         try:
-            cs.gui.widgets.general.MyMessageBox(
-                label="Menu Switch",
-                info=message,
-                show_fortune=False
-            )
+            dialogs.information(None, "Menu Switch", message)
         except Exception:
             pass
     
     def _show_error(self, error_message):
         """Show an error message to the user."""
         try:
-            cs.gui.widgets.general.MyMessageBox(
-                label="Menu Switch Error",
-                info=error_message,
-                show_fortune=False
-            )
+            dialogs.information(None, "Menu Switch Error", error_message)
         except Exception:
             pass
 
@@ -125,11 +118,7 @@ def run():
                           "instead of the plugin auto-execution.")
             cs.logging.error(f"Menu Switch plugin failed: {detailed_msg}")
             try:
-                cs.gui.widgets.general.MyMessageBox(
-                    label="Menu Switch Error",
-                    info=f"Failed to run menu switch: {detailed_msg}",
-                    show_fortune=False
-                )
+                dialogs.information(None, "Menu Switch Error", f"Failed to run menu switch: {detailed_msg}")
             except Exception:
                 pass
         else:
@@ -138,10 +127,6 @@ def run():
     except Exception as e:
         cs.logging.error(f"Menu Switch plugin failed: {e}")
         try:
-            cs.gui.widgets.general.MyMessageBox(
-                label="Menu Switch Error",
-                info=f"Failed to run menu switch: {e}",
-                show_fortune=False
-            )
+            dialogs.information(None, "Menu Switch Error", f"Failed to run menu switch: {e}")
         except Exception:
             pass

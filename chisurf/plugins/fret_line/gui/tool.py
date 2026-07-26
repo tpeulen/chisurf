@@ -35,6 +35,7 @@ from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.gui.widgets.models.model_editor import build_model_editor
 
 from ..core.algorithms import compute_fret_line_for_models, sweep_targets_for_models
+from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -552,7 +553,7 @@ class FRETLineTool(QtWidgets.QWidget):
         self._refresh_sweep_targets()
         sweep = self._sweep_combo.currentData()
         if not sweep:
-            QtWidgets.QMessageBox.information(self, "Sweep", "No sweep target selected.")
+            dialogs.information(self, "Sweep", "No sweep target selected.")
             return
         fractions = [c["weight"] for c in self._components]
         tau_d0 = self._tau_d0_spin.value() or None
@@ -568,7 +569,7 @@ class FRETLineTool(QtWidgets.QWidget):
             log_scale=self._log_check.isChecked(),
         )
         if not result.get("ok"):
-            QtWidgets.QMessageBox.warning(self, "Compute error", result.get("error", "?"))
+            dialogs.warning(self, "Compute error", result.get("error", "?"))
             return
 
         self._line_seq += 1
@@ -711,11 +712,11 @@ class FRETLineTool(QtWidgets.QWidget):
                             f"{ln['name']},{sweep},{ln['log']},{comps},"
                             f"{p:.8g},{tf:.8g},{tx:.8g},{e:.8g}\n"
                         )
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "Saved", f"Saved {len(self._lines)} line(s) to:\n{path}"
             )
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "Save error", str(exc))
+            dialogs.error(self, "Save error", str(exc))
 
     def _on_push(self) -> None:
         if not self._lines:
@@ -723,7 +724,7 @@ class FRETLineTool(QtWidgets.QWidget):
         try:
             from ndxplorer.plotting.curve_overlay import CurveOverlayWidget
         except ImportError:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "ndxplorer not found",
                 "The ndxplorer package is not installed or not importable.",
@@ -735,7 +736,7 @@ class FRETLineTool(QtWidgets.QWidget):
             if isinstance(w, CurveOverlayWidget) and w.isVisible()
         ]
         if not overlays:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "Push to ndxplorer", "No visible ndxplorer Overlay panel found."
             )
             return
@@ -754,7 +755,7 @@ class FRETLineTool(QtWidgets.QWidget):
             curve = _make_curve(ln)
             for ov in overlays:
                 ov.add_curve(curve, is_function=True, base_name=label)
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             self,
             "Pushed",
             f"Added {len(self._lines)} line(s) to {len(overlays)} ndxplorer panel(s).",

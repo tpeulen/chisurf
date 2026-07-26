@@ -21,6 +21,7 @@ import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.wizard
 from chisurf import logging
+from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -196,7 +197,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
         n = self.list_widget.count()
         logger.info("BatchProcessingDialog: starting process for %d folder(s)", n)
         if n == 0:
-            QtWidgets.QMessageBox.information(self, "No items", "No folders to process.")
+            dialogs.information(self, "No items", "No folders to process.")
             return
 
         progress = EnhancedProgressDialog(
@@ -285,7 +286,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
                 except Exception:
                     pass
                 logger.exception("Error processing folder '%s' with files=%s: %s", folder_str, files, e)
-                QtWidgets.QMessageBox.warning(self, "Error", f"Error processing folder:\n{folder_str}\n\n{e}")
+                dialogs.warning(self, "Error", f"Error processing folder:\n{folder_str}\n\n{e}")
 
             progress.update_progress(i + 1)
 
@@ -348,7 +349,7 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         If the user accepts, replace current_df and refresh the UI.
         """
         if self.current_df is None:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self, "No Data", "No burst data loaded—nothing to show."
             )
             return

@@ -17,7 +17,6 @@ from qtpy.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
-    QMessageBox,
     QScrollArea,
     QSizePolicy,
     QSpinBox,
@@ -33,6 +32,7 @@ from chisurf.gui.glyphs import Glyphs
 
 from ..api.models import FitResult, PchResult
 from .client import PCHClient
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -341,11 +341,11 @@ class PCHApp(QMainWindow):
                 f"Loaded: {path} ({info.get('n_photons', 0):,} photons)"
             )
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            dialogs.error(self, "Error", str(e))
 
     def _on_compute(self):
         if not self._filename:
-            QMessageBox.warning(self, "No File", "Load a TTTR file first.")
+            dialogs.warning(self, "No File", "Load a TTTR file first.")
             return
         try:
             txt = self.le_ch.text().strip()
@@ -373,11 +373,11 @@ class PCHApp(QMainWindow):
                 f"{len(self._result.k_vals)} k-values"
             )
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            dialogs.error(self, "Error", str(e))
 
     def _on_fit(self):
         if self._result is None:
-            QMessageBox.warning(self, "No Data", "Compute PCH first.")
+            dialogs.warning(self, "No Data", "Compute PCH first.")
             return
         try:
             n_comp = self.spin_comp.value()
@@ -411,11 +411,11 @@ class PCHApp(QMainWindow):
                 f"red. χ²={self._fit_result.reduced_chi2:.3f}"
             )
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            dialogs.error(self, "Error", str(e))
 
     def _on_save(self):
         if self._result is None:
-            QMessageBox.warning(self, "No Data", "Compute PCH first.")
+            dialogs.warning(self, "No Data", "Compute PCH first.")
             return
 
         fname_base, _ = QFileDialog.getSaveFileName(
@@ -426,7 +426,7 @@ class PCHApp(QMainWindow):
 
         try:
             self._save_outputs(fname_base)
-            QMessageBox.information(
+            dialogs.information(
                 self,
                 "Saved",
                 f"Results saved as:\n{fname_base}.npz\n"
@@ -437,7 +437,7 @@ class PCHApp(QMainWindow):
             )
             self.statusBar().showMessage(f"Saved results to {fname_base}.*")
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            dialogs.error(self, "Error", str(e))
 
     def _on_region_changed(self, *args):
         if self._fit_result is not None and self._result is not None:

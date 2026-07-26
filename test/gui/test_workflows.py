@@ -13,7 +13,7 @@ utils.set_search_paths(TOPDIR)
 import pytest
 from unittest.mock import patch
 
-from qtpy.QtWidgets import QMessageBox
+from chisurf.gui import dialogs
 
 import chisurf as cs
 import chisurf.gui
@@ -23,8 +23,10 @@ cs_app = cs.gui.get_app()
 if hasattr(cs, "api") and cs.core.api is not None:
     cs.core.api.mode = "local"
 
-# Auto-confirm dataset removals (avoids QMessageBox blocking in offscreen mode)
-_patcher = patch.object(QMessageBox, "question", return_value=QMessageBox.Yes)
+# Auto-confirm dataset removals. Head-lessly `dialogs.confirm` already declines
+# rather than blocking, so this says Yes on purpose — the workflow under test is
+# the one where the user confirms.
+_patcher = patch.object(dialogs.ChiSurfMessageBox, "confirm", return_value=True)
 _patcher.start()
 
 

@@ -27,8 +27,11 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.autoform.sections.progress_section import InlineProgressWidget
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -223,7 +226,7 @@ class _SetupSection(QtWidgets.QWidget):
         if self._editor is None:
             self._rebuild_editor()
         if self._editor is None:
-            QtWidgets.QMessageBox.warning(self, "No potential", "No potential type is available.")
+            dialogs.warning(self, "No potential", "No potential type is available.")
             return
         self._model.add_potential(
             self._editor,
@@ -265,21 +268,18 @@ class _RunSection(QtWidgets.QWidget):
         self._btn.clicked.connect(self._run)
         layout.addWidget(self._btn)
 
-        self._progress = QtWidgets.QProgressBar()
-        self._progress.setRange(0, 0)  # busy indicator until a frame count is known
-        self._progress.setValue(0)
+        self._progress = InlineProgressWidget()
         layout.addWidget(self._progress, 1)
-        self._progress.reset()
-        self._progress.setRange(0, 100)
+        self._task = None
 
     def _run(self) -> None:
         if self._running:
             return
         if not self._model.trajectory_file:
-            QtWidgets.QMessageBox.information(self, "No trajectory", "Open a trajectory first.")
+            dialogs.information(self, "No trajectory", "Open a trajectory first.")
             return
         if not self._model.universe.potentials:
-            QtWidgets.QMessageBox.information(self, "No potentials", "Add at least one potential.")
+            dialogs.information(self, "No potentials", "Add at least one potential.")
             return
         energy_file, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Save energies", "", "CSV-name file (*.txt)"
@@ -290,25 +290,25 @@ class _RunSection(QtWidgets.QWidget):
             return
         self._running = True
         self._btn.setEnabled(False)
-        self._progress.setRange(0, 0)
-        try:
-            count = self._model.process(energy_file, progress_cb=self._on_progress)
-            self._progress.setRange(0, 100)
-            self._progress.setValue(100)
-            QtWidgets.QMessageBox.information(
-                self, "Processing complete", f"Processed {count} frame(s)."
-            )
-        except Exception as exc:  # noqa: BLE001
-            self._progress.setRange(0, 100)
-            self._progress.setValue(0)
-            QtWidgets.QMessageBox.critical(self, "Processing failed", str(exc))
-        finally:
-            self._running = False
-            self._btn.setEnabled(True)
+        # The frame count is not known up front, so this starts as a busy
+        # indicator; ChiSurfProgress renders it in the bar beside the button.
+        with ChiSurfProgress(self._btn, "Scoring frames…", 0, cancellable=False) as self._task:
+            try:
+                count = self._model.process(energy_file, progress_cb=self._on_progress)
+                dialogs.information(
+                    self, "Processing complete", f"Processed {count} frame(s)."
+                )
+            except Exception as exc:  # noqa: BLE001
+                dialogs.error(self, "Processing failed", str(exc))
+            finally:
+                self._running = False
+                self._btn.setEnabled(True)
+        self._task = None
         _refresh_host_form(self)
 
     def _on_progress(self, frames_done: int) -> None:
-        QtWidgets.QApplication.processEvents()
+        if self._task is not None:
+            self._task.set_text(f"Scoring frames… ({frames_done} done)")
 
 
 # ---------------------------------------------------------------------------

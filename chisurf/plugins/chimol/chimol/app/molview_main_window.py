@@ -11,6 +11,7 @@ from typing import Optional, Any, Sequence
 import numpy as np
 
 from qtpy import QtWidgets, QtCore, QtGui
+from chisurf.gui import dialogs
 
 # These are imported independently on purpose: the structure reader is pure
 # core code, while `open_files` drags in the whole Qt widget stack. Sharing one
@@ -613,7 +614,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 except Exception:
                     pass
                 try:
-                    QtWidgets.QMessageBox.warning(
+                    dialogs.warning(
                         self,
                         "Failed to load structure",
                         f"Could not load structure from:\n{path}\n\n{e}",
@@ -1621,10 +1622,10 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 self.hierarchy.set_hierarchy(hierarchy)
                 return object_id
             except RmfNotAvailableError as e:
-                QtWidgets.QMessageBox.warning(self, "RMF Not Available", str(e))
+                dialogs.warning(self, "RMF Not Available", str(e))
                 raise
             except Exception as e:
-                QtWidgets.QMessageBox.warning(self, "RMF Load Error", f"Failed to load RMF: {e}")
+                dialogs.warning(self, "RMF Load Error", f"Failed to load RMF: {e}")
                 raise
 
         # First try the standard IMP/Structure-based loader for static files.

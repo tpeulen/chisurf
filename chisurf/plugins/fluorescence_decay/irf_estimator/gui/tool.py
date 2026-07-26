@@ -16,6 +16,7 @@ from chisurf.gui.widgets.dock_area.dock_area import DockArea, DockSplitter
 
 from ..api.models import IRFEstimationSettings
 from ..core.estimation import estimate_irf as _estimate_irf
+from chisurf.gui import dialogs
 
 
 class HelpDialog(QtWidgets.QDialog):
@@ -588,7 +589,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
             self._update_control_states()
 
         except Exception as e:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Error Loading File",
                 f"Failed to load decay file:\n{str(e)}",
             )
@@ -607,7 +608,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
             )
             self.dataset_selector.show()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Error",
                 f"Failed to open dataset selector:\n{str(e)}",
             )
@@ -619,7 +620,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
             if selected is not None:
                 self._load_dataset(selected)
         except Exception as e:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Error",
                 f"Failed to load selected dataset:\n{str(e)}",
             )
@@ -675,7 +676,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
                     "Expected 'x' and 'y' or 'data' attributes."
                 )
         except Exception as e:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Error",
                 f"Failed to load dataset:\n{str(e)}",
             )
@@ -723,7 +724,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
     def estimate_irf(self) -> None:
         """Estimate IRF from loaded decay data with full iterations."""
         if self.decay_data is None:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self, "No Data", "Please load a decay file first."
             )
             return
@@ -763,7 +764,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
                 "IRF estimation completed", timeout=5000
             )
         except Exception as e:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Estimation Error", str(e)
             )
             self._status_bar.showMessage(
@@ -977,7 +978,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
     def save_irf(self) -> None:
         """Save the estimated IRF in VV/VH format."""
         if self.irf_data is None or len(self.irf_data) == 0:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self, "No IRF", "Please estimate an IRF first."
             )
             return
@@ -1005,19 +1006,19 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
                 raise RuntimeError(
                     "Failed to save IRF file or file is empty"
                 )
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "Success",
                 f"IRF successfully saved to:\n{file_path}",
             )
         except Exception as e:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Save Error", str(e)
             )
 
     def add_to_chisurf(self) -> None:
         """Transfer the estimated IRF to ChiSurf as a dataset."""
         if self.irf_data is None or len(self.irf_data) == 0:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self, "No IRF", "Please estimate an IRF first."
             )
             return
@@ -1026,7 +1027,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
         if len(irf_data) == 0:
             return
         if not np.isfinite(irf_data).all():
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Error",
                 "IRF data contains NaN or infinite values."
             )
@@ -1078,18 +1079,18 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
                         "experiment_reader": None,
                     },
                 )
-                QtWidgets.QMessageBox.information(
+                dialogs.information(
                     self, "Success",
                     f"IRF '{filename}' has been transferred to ChiSurf.",
                 )
             else:
-                QtWidgets.QMessageBox.information(
+                dialogs.information(
                     self, "IRF Ready",
                     f"IRF saved to:\n{tmp_path}\n\n"
                     "You can now load this file as an IRF in your analysis.",
                 )
         except Exception as e:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Error",
                 f"Failed to transfer IRF:\n{str(e)}",
             )

@@ -45,6 +45,7 @@ from qtpy import QtCore, QtWidgets
 from chisurf.gui.glyphs import Glyphs
 
 from .registry import register_section
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,7 @@ class DataSourceSection(QtWidgets.QWidget):
 
         client = picker.inprocess_client()
         if client is None:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "Database", "No MMFDB database is available in this session."
             )
             return

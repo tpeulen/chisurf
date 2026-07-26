@@ -24,6 +24,7 @@ from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
 from chisurf.gui.widgets.general import Controller
 from chisurf.macros.core_fit import link_fit_group
+from chisurf.gui import dialogs
 
 parameter_settings = chisurf.core.settings.parameter
 
@@ -1035,11 +1036,10 @@ class ParameterActionsMixin:
 
                 # Check for recursion using the Parameter class method
                 if param_self.check_recursive_link(param_other, param_self):
-                    QtWidgets.QMessageBox.warning(
+                    dialogs.warning(
                         self,  # Parent widget
                         "Linking Error",
-                        "Recursion detected: Cannot link a parameter to itself or create a cyclic dependency.",
-                        QtWidgets.QMessageBox.Ok
+                        "Recursion detected: Cannot link a parameter to itself or create a cyclic dependency."
                     )
                 else:
                     tooltip = " linked to " + str(getattr(param_other, "name", "?"))
@@ -1653,11 +1653,10 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
                 )
             except Exception:
                 pass
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Support-plane analysis failed",
                 f"Could not run support-plane analysis for '{parameter_name}'.\n\n{exc}",
-                QtWidgets.QMessageBox.Ok,
             )
         finally:
             if not getattr(self, "_is_output_param", False):

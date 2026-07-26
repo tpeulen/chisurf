@@ -12,6 +12,7 @@ from chisurf.gui.widgets.dock_area import DockArea
 
 from .settings_panel import TTTRSettingsPanel
 from .tac_lut_panel import TACLinearizationPanel
+from chisurf.gui import dialogs
 
 _README = pathlib.Path(__file__).parents[1] / "README.md"
 
@@ -124,7 +125,7 @@ class TTRLutToolsWidget(QtWidgets.QMainWindow):
         model = self.tac_panel.model
         luts = model.compute_all_channels() if hasattr(model, "compute_all_channels") else {}
         if not luts:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "No LUTs yet",
                 "Load a uniform-illumination file in ‘① Compute LUT’ first — a LUT is "
                 "then computed for every routing channel it contains.",

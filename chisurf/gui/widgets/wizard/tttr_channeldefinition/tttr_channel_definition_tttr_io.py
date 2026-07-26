@@ -4,6 +4,7 @@ import logging
 
 import numpy as np
 import tttrlib
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +168,7 @@ def read_from_tttr_file(page):
             _auto_save_decay_to_setup(page)
 
     except Exception as e:
-        QMessageBox.critical(
+        dialogs.error(
             page,
             "Error",
             f"Failed to read file: {e}"
@@ -178,7 +179,7 @@ def on_calc_g_factor(page, row=None):
     if row is None:
         selected_rows = page.detectors_form.selectedIndexes()
         if not selected_rows:
-            QMessageBox.warning(
+            dialogs.warning(
                 page,
                 "Warning",
                 "Please select a detector row first."
@@ -214,7 +215,7 @@ def on_calc_g_factor(page, row=None):
         perpendicular_channels = all_channels[1::2]
 
         if len(all_channels) < 2 or len(parallel_channels) == 0 or len(perpendicular_channels) == 0:
-            QMessageBox.warning(
+            dialogs.warning(
                 page,
                 "Warning",
                 "Selected detector must contain at least two routing channels (parallel and perpendicular) to calculate G-Factor."
@@ -266,7 +267,7 @@ def on_calc_g_factor(page, row=None):
 
         run_headless = False
         if has_valid_range:
-            reply = QMessageBox.question(
+            reply = dialogs.question(
                 page,
                 "Headless Calculation",
                 f"A G-factor channel range '{gf_range_text}' is already defined.\n"
@@ -368,7 +369,7 @@ def on_calc_g_factor(page, row=None):
                         setups["last_used"] = page.current_setup_name
                         save_detector_setups(setups, page.current_setups_file)
 
-                        QMessageBox.information(
+                        dialogs.information(
                             page,
                             "Success",
                             f"Headless G-Factor calculation completed successfully!\n"
@@ -377,7 +378,7 @@ def on_calc_g_factor(page, row=None):
                             f"Setup '{page.current_setup_name}' saved automatically."
                         )
                     else:
-                        QMessageBox.information(
+                        dialogs.information(
                             page,
                             "Success",
                             f"Headless G-Factor calculation completed successfully!\n"
@@ -386,9 +387,9 @@ def on_calc_g_factor(page, row=None):
                             f"Note: No setup was selected, so changes were not saved automatically."
                         )
                 else:
-                    QMessageBox.critical(page, "Error", "Headless calculation returned None.")
+                    dialogs.error(page, "Error", "Headless calculation returned None.")
             except Exception as ex:
-                QMessageBox.critical(page, "Error", f"Headless calculation failed: {ex}")
+                dialogs.error(page, "Error", f"Headless calculation failed: {ex}")
             return
 
         VvVhGFactorCalculator = _load_vv_vh_gfactor_calculator_class()
@@ -575,7 +576,7 @@ def on_calc_g_factor(page, row=None):
                         if gf_range_text_new:
                             msg += f"G-Factor Channels: {gf_range_text_new}\n"
                         msg += f"Setup '{page.current_setup_name}' saved automatically."
-                        QMessageBox.information(page, "Success", msg)
+                        dialogs.information(page, "Success", msg)
                     else:
                         msg = (
                             f"G-Factor calculated: {g_factor_calculator.g_factor:.4f}\n"
@@ -584,7 +585,7 @@ def on_calc_g_factor(page, row=None):
                         if gf_range_text_new:
                             msg += f"G-Factor Channels: {gf_range_text_new}\n"
                         msg += "Note: No setup was selected, so changes were not saved automatically."
-                        QMessageBox.information(page, "Success", msg)
+                        dialogs.information(page, "Success", msg)
 
         g_factor_calculator.closeEvent = custom_close_event
         g_factor_calculator.show()
@@ -622,14 +623,14 @@ def on_calc_g_factor(page, row=None):
                 pass
 
         except Exception as e:
-            QMessageBox.critical(
+            dialogs.error(
                 page,
                 "Error",
                 f"Failed to load VV/VH file: {str(e)}"
             )
 
     except Exception as e:
-        QMessageBox.critical(
+        dialogs.error(
             page,
             "Error",
             f"Failed to calculate G-Factor: {str(e)}"

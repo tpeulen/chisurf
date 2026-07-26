@@ -16,7 +16,6 @@ from qtpy.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
-    QMessageBox,
     QPlainTextEdit,
     QSplitter,
     QTextBrowser,
@@ -33,6 +32,7 @@ from chisurf.core.info import help_url
 from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.core.help.api import review
 from chisurf.plugins.core.help.gui.client import HelpClient
+from chisurf.gui import dialogs
 
 #: Badge shown next to a page for each review status.
 REVIEW_BADGES = {
@@ -709,7 +709,7 @@ class HelpWidget(QMainWindow):
         if checked:
             result = self.client.read_doc(str(self.current_path))
             if result is None:
-                QMessageBox.critical(
+                dialogs.error(
                     self, "Error", f"Could not read {self.current_path}"
                 )
                 self.edit_btn.setChecked(False)
@@ -739,7 +739,7 @@ class HelpWidget(QMainWindow):
         text = self.editor.toPlainText()
         ok = self.client.save_doc(str(self.current_path), text)
         if not ok:
-            QMessageBox.critical(
+            dialogs.error(
                 self, "Error", f"Could not save {self.current_path}"
             )
             return
@@ -831,7 +831,7 @@ class HelpWidget(QMainWindow):
             str(self.current_path), status, reviewer
         )
         if not result:
-            QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Review status",
                 f"Could not record review status for {self.current_path.name}.",

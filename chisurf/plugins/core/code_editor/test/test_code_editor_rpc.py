@@ -6,6 +6,7 @@ from chisurf.plugins.core.code_editor import CodeEditor
 from chisurf.plugins.core.code_editor.context_retriever import retrieve_context
 from chisurf.plugins.core.code_editor.validation import validate_writes
 from chisurf.plugins.core.code_editor.wiki_indexer import build_api_index
+from chisurf.gui import dialogs
 
 
 def test_code_editor_syncs_open_document_to_store(qapp, tmp_path) -> None:
@@ -95,9 +96,9 @@ def test_close_dirty_tab_cancel_keeps_tab_open(qapp, monkeypatch) -> None:
     editor.document().setModified(True)
     widget.tab_widget.setTabText(widget.tab_widget.currentIndex(), "Untitled")
     monkeypatch.setattr(
-        QtWidgets.QMessageBox,
-        "exec_",
-        lambda self: QtWidgets.QMessageBox.Cancel,
+        dialogs.ChiSurfMessageBox,
+        "question",
+        lambda *a, **k: QtWidgets.QMessageBox.Cancel,
     )
 
     widget._close_tab(widget.tab_widget.currentIndex())
@@ -114,9 +115,9 @@ def test_close_dirty_untitled_save_cancel_keeps_tab_open(qapp, monkeypatch) -> N
     editor.document().setModified(True)
     widget.tab_widget.setTabText(widget.tab_widget.currentIndex(), "Untitled")
     monkeypatch.setattr(
-        QtWidgets.QMessageBox,
-        "exec_",
-        lambda self: QtWidgets.QMessageBox.Save,
+        dialogs.ChiSurfMessageBox,
+        "question",
+        lambda *a, **k: QtWidgets.QMessageBox.Save,
     )
     monkeypatch.setattr(
         "chisurf.plugins.core.code_editor.editor.cs.gui.widgets.save_file",

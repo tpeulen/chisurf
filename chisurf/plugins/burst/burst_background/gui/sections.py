@@ -18,6 +18,7 @@ from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.tool_buttons import styled_tool_button
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ class _RunSection(QtWidgets.QWidget):
             logging.getLogger(__name__).warning("%s", exc)
             self._status.setText(str(exc))
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Error", str(exc))
+            dialogs.error(self, "Error", str(exc))
 
     def _on_event(self, _event):
         self._status.setText(self._model.status)

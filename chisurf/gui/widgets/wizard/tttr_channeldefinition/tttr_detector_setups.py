@@ -251,30 +251,26 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
             pass
 
         if show_warning and is_default and app_running and not _module_warning_shown("detector_setups_file"):
-            from qtpy.QtWidgets import QCheckBox, QMessageBox
+            from chisurf.gui import dialogs
 
             _mark_warning_shown("detector_setups_file")
-            msg = QMessageBox()
-            msg.setWindowTitle("Detector setups file not found")
-            msg.setIcon(QMessageBox.Warning)
-            msg.setText(f"Detector setups file was not found:\n{str(path)}")
-            msg.setInformativeText(
-                "You can create it by saving a setup from the Detector Wizard.\n"
-                "Use the 'Save Settings' button to store your configuration.\n"
-                "Alternatively, choose an existing JSON with the '...' button."
+            answer = dialogs.choice(
+                None,
+                "Detector setups file not found",
+                f"Detector setups file was not found:\n{str(path)}",
+                {"wizard": "Open Detector Wizard", "ok": "OK"},
+                default="ok",
+                kind="warning",
+                informative=(
+                    "You can create it by saving a setup from the Detector Wizard.\n"
+                    "Use the 'Save Settings' button to store your configuration.\n"
+                    "Alternatively, choose an existing JSON with the '...' button."
+                ),
+                checkbox="Don't show this warning again",
             )
-            try:
-                cb = QCheckBox("Don't show this warning again")
-                msg.setCheckBox(cb)
-            except Exception:
-                cb = None
-
-            open_btn = msg.addButton("Open Detector Wizard", QMessageBox.ActionRole)
-            msg.addButton(QMessageBox.Ok)
-            msg.exec_()
 
             try:
-                if cb is not None and cb.isChecked():
+                if answer.checked:
                     from chisurf.core.settings.settings_utils import set_warn_missing_detector_setups as _set_w
                     _set_w(False)
                     try:
@@ -286,7 +282,7 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
                 pass
 
             try:
-                if msg.clickedButton() is open_btn:
+                if answer.key == "wizard":
                     from .tttr_channel_definition import DetectorWizard
                     wiz = DetectorWizard()
                     wiz.exec_()

@@ -22,6 +22,7 @@ from qtpy.QtWidgets import (
 import chisurf as cs
 import chisurf.core.settings
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -262,7 +263,7 @@ class StyleManagerWidget(QWidget):
             
             # Check if file already exists
             if file_path.exists():
-                reply = QMessageBox.question(
+                reply = dialogs.question(
                     self, "File exists", 
                     f"File {name} already exists. Overwrite?",
                     QMessageBox.Yes | QMessageBox.No
@@ -321,7 +322,7 @@ class StyleManagerWidget(QWidget):
             
     def on_clear_styles(self):
         """Clear all style files from the user's .cs folder."""
-        reply = QMessageBox.question(
+        reply = dialogs.question(
             self, "Clear Styles", 
             "Are you sure you want to clear all style files? This will reset them to defaults.",
             QMessageBox.Yes | QMessageBox.No

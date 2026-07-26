@@ -20,6 +20,8 @@ import tempfile
 from collections.abc import Callable
 
 from ..core import runner
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 logger = logging.getLogger(__name__)
 
@@ -199,10 +201,10 @@ class BatchViewModel:
         items = self.build_items()
         fit_index = self.fit_index()
         if not items:
-            QtWidgets.QMessageBox.warning(None, "No data", "Select datasets or add files first.")
+            dialogs.warning(None, "No data", "Select datasets or add files first.")
             return
         if fit_index < 0:
-            QtWidgets.QMessageBox.warning(None, "No fit", "Select a template fit first.")
+            dialogs.warning(None, "No fit", "Select a template fit first.")
             return
 
         save_path = (self.save_path or "").strip()
@@ -217,7 +219,7 @@ class BatchViewModel:
         exports_dir = tempfile.mkdtemp(prefix="chisurf_batch_fit_exports_")
         screenshot_dir = tempfile.mkdtemp(prefix="chisurf_batch_")
 
-        progress = QtWidgets.QProgressDialog("Running fits…", "", 0, len(items))
+        progress = ChiSurfProgress(None, "Running fits…", len(items), cancellable=False)
         progress.setWindowTitle("Batch Analysis")
         progress.setCancelButton(None)
         progress.setWindowModality(QtCore.Qt.WindowModal)
@@ -243,7 +245,7 @@ class BatchViewModel:
         except Exception as exc:
             progress.close()
             logger.warning("batch run failed", exc_info=True)
-            QtWidgets.QMessageBox.critical(None, "Batch failed", str(exc))
+            dialogs.error(None, "Batch failed", str(exc))
             return
         finally:
             progress.close()
@@ -271,7 +273,7 @@ class BatchViewModel:
             "<p style='color:#2e7d32'><b>Done.</b></p><pre>" + "\n".join(lines) + "</pre>"
         )
         self.notify("refresh")
-        QtWidgets.QMessageBox.information(None, "Batch complete", "\n".join(lines))
+        dialogs.information(None, "Batch complete", "\n".join(lines))
 
     # ── screenshot helper (Qt) ──────────────────────────────────────────
     def _capture_screenshot(self, out_dir: str, name: str, run_index: int) -> str:

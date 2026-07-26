@@ -26,6 +26,7 @@ When working with image spectroscopy data, ndXplorer allows pixel-by-pixel analy
 of multiparameter fluorescence information, enabling spatial correlation of 
 spectroscopic properties.
 """
+from chisurf.gui import dialogs
 
 name = "Main:Tools:ndXplorer"
 
@@ -132,7 +133,7 @@ if __name__ == "plugin":
             """Determine alpha/beta/gamma/delta from the loaded bursts and apply them."""
             result = optimize_calibration_from_ndx(ndx)
             if not result.get("ok"):
-                QtWidgets.QMessageBox.warning(
+                dialogs.warning(
                     ndx, "Accurate FRET", str(result.get("error", "calibration failed"))
                 )
                 return
@@ -147,11 +148,12 @@ if __name__ == "plugin":
             ]
             if result["injected"]:
                 lines += ["", "New columns: " + ", ".join(result["injected"])]
-            box = QtWidgets.QMessageBox(ndx)
-            box.setWindowTitle("Accurate FRET — calibration applied")
-            box.setText("The correction factors were optimized against the loaded data.")
-            box.setDetailedText("\n".join(lines))
-            box.exec_() if hasattr(box, "exec_") else box.exec()
+            dialogs.information(
+                ndx,
+                "Accurate FRET — calibration applied",
+                "The correction factors were optimized against the loaded data.",
+                detail="\n".join(lines),
+            )
 
         calibration_toolbar = ndx.addToolBar("Accurate FRET")
         calibration_toolbar.setObjectName("ndxplorerAccurateFretToolbar")

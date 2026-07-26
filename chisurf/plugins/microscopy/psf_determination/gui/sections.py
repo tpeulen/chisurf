@@ -19,6 +19,7 @@ import pathlib
 from qtpy import QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -143,19 +144,19 @@ class _ControlBar(QtWidgets.QWidget):
         try:
             self._model.load_stack(path)
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Load Error", f"Failed to read image stack:\n{exc}"
             )
 
     def _detect(self) -> None:
         if self._model.stack is None:
-            QtWidgets.QMessageBox.information(self, "No stack", "Load a stack first.")
+            dialogs.information(self, "No stack", "Load a stack first.")
             return
         self._model.detect_beads()
 
     def _fit_selected(self) -> None:
         if self._model.selected_bead is None:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "No bead", "Click a bead in the image or detect beads first."
             )
             return
@@ -163,13 +164,13 @@ class _ControlBar(QtWidgets.QWidget):
 
     def _fit_all(self) -> None:
         if not self._model.detected_beads:
-            QtWidgets.QMessageBox.information(self, "No beads", "Detect beads first.")
+            dialogs.information(self, "No beads", "Detect beads first.")
             return
         self._model.fit_all()
 
     def _export(self) -> None:
         if not self._model.detected_beads:
-            QtWidgets.QMessageBox.information(self, "No beads", "Detect beads first.")
+            dialogs.information(self, "No beads", "Detect beads first.")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,
@@ -182,7 +183,7 @@ class _ControlBar(QtWidgets.QWidget):
         try:
             self._model.export_csv(path)
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "CSV export error", f"Failed to export CSV:\n{exc}"
             )
 

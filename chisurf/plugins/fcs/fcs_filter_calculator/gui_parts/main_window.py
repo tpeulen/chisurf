@@ -18,11 +18,11 @@ from chisurf.core.fluorescence.decay import (
     sample_decay_shot_noise,
     scattered_light_decay_pattern,
 )
-from chisurf.gui.dialogs import report_error, report_information, report_warning
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
 
 from ..api import FilterResult, compute_filters, synthetic_component_decay, unmix_decay
+from chisurf.gui import dialogs
 
 
 def _build_filter_client():
@@ -988,7 +988,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self._micro_time_binning = max(1, int(getattr(ctx, "microtime_binning", 1) or 1))
         paths = [p for p in self._correlator_file_paths() if pathlib.Path(p).is_file()]
         if not paths:
-            report_information(
+            dialogs.information(
                 self, "No correlator data",
                 "No files are loaded in the Correlator (Files & Steps) step yet.",
             )
@@ -1119,7 +1119,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if current is not None and all(current is not fit for fit in fits):
             fits.append(current)
         if not fits:
-            report_information(parent, "No Fits", "No ChiSurf fits are open.")
+            dialogs.information(parent, "No Fits", "No ChiSurf fits are open.")
             return None
         labels = [str(getattr(fit, "name", None) or fit) for fit in fits]
         default = fits.index(current) if current in fits else 0
@@ -1133,7 +1133,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         try:
             spectrum = lifetime_spectrum_from_model(model)
         except Exception as error:
-            report_warning(parent, "Unsupported Fit", str(error))
+            dialogs.warning(parent, "Unsupported Fit", str(error))
             return None
         return spectrum, label, fit
 
@@ -1222,7 +1222,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             if irf is not None and not irf.is_file():
                 raise ValueError("The selected IRF file does not exist.")
         except ValueError as error:
-            report_warning(self, "Invalid Synthetic Decay", str(error))
+            dialogs.warning(self, "Invalid Synthetic Decay", str(error))
             return
 
         source = editor_model.component()
@@ -1258,7 +1258,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     source["patterns_by_detector"][key] = noisy_by_pattern[identity].tolist()
                 source["source_fit"] = editor_model.selected_fit_label
             except Exception as error:
-                report_warning(self, "Fit Pattern Error", str(error))
+                dialogs.warning(self, "Fit Pattern Error", str(error))
                 return
         if edit_item is not None:
             self.lw_species.replace_synthetic_source(edit_item, source)
@@ -1356,7 +1356,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 source, detector_names, n_bins, irf_for_detector=self._detector_irf,
             )
         except Exception as error:
-            report_warning(self, "FRET Species Error", str(error))
+            dialogs.warning(self, "FRET Species Error", str(error))
             return
         source["patterns_by_detector"] = {k: np.asarray(v, dtype=float).tolist()
                                           for k, v in patterns.items()}
@@ -1659,7 +1659,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         from chisurf.core.fluorescence.tcspc.irf import FWHM_TO_SIGMA
 
         if not self._has_total_decay():
-            report_warning(
+            dialogs.warning(
                 self, "Missing Total Decay", "Load a mixed total decay first."
             )
             return
@@ -1727,7 +1727,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 )
                 taus = result["lifetimes"]
         except Exception as error:
-            report_error(self, "Auto-fit Error", str(error))
+            dialogs.error(self, "Auto-fit Error", str(error))
             return
         if kind == "fret":
             # The FRET fit reports species fractions directly.
@@ -1925,7 +1925,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
     def _unmix_total(self) -> None:
         if not self._has_total_decay():
-            report_warning(self, "Missing Total Decay", "Load a mixed total decay first.")
+            dialogs.warning(self, "Missing Total Decay", "Load a mixed total decay first.")
             return
         try:
             chs = self.detector_selection.get_selected() if self.detector_selection.checkboxes else None
@@ -1985,7 +1985,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self._update_status(f"Unmixed total — {fractions}{suffix}")
         except Exception as error:
             cs.logging.error(f"Decay unmixing error: {error}")
-            report_error(self, "Unmixing Error", str(error))
+            dialogs.error(self, "Unmixing Error", str(error))
             self._update_status(f"Unmixing error: {error}")
 
     def _remove_selected_species(self) -> None:
@@ -2223,7 +2223,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Computation error: {e}\n{traceback.format_exc()}")
-            report_error(self, "Computation Error", str(e))
+            dialogs.error(self, "Computation Error", str(e))
             self._update_status(f"Error: {e}")
 
     def _invalidate_cache(self) -> None:
@@ -2518,7 +2518,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Anisotropy computation error: {e}\n{traceback.format_exc()}")
-            report_error(self, "Anisotropy Computation Error", str(e))
+            dialogs.error(self, "Anisotropy Computation Error", str(e))
             self._update_status(f"Anisotropy Error: {e}")
 
     def _compute_filters_multi_anisotropy(self, chs: List[str]) -> None:
@@ -2630,7 +2630,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Multi-Anisotropy computation error: {e}\n{traceback.format_exc()}")
-            report_error(self, "Multi-Anisotropy Computation Error", str(e))
+            dialogs.error(self, "Multi-Anisotropy Computation Error", str(e))
             self._update_status(f"Multi-Anisotropy Error: {e}")
 
     def _compute_filters_multi_detector(self, chs: List[str]) -> None:
@@ -2704,7 +2704,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Multi-detector computation error: {e}\n{traceback.format_exc()}")
-            report_error(self, "Multi-Detector Computation Error", str(e))
+            dialogs.error(self, "Multi-Detector Computation Error", str(e))
             self._update_status(f"Multi-Detector Error: {e}")
 
     def _compute_filters_stacked(self, chs: List[str]) -> None:
@@ -2808,7 +2808,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Stacked computation error: {e}\n{traceback.format_exc()}")
-            report_error(self, "Stacked Filter Computation Error", str(e))
+            dialogs.error(self, "Stacked Filter Computation Error", str(e))
             self._update_status(f"Stacked Filter Error: {e}")
 
     def _build_detector_setup_selector(self, layout) -> None:
@@ -2877,7 +2877,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if self._result is None:
             # We can still save the UI state if paths are present
             if not self._total_paths and self.lw_species.count() == 0:
-                report_warning(self, "Empty Project", "No data loaded to save.")
+                dialogs.warning(self, "Empty Project", "No data loaded to save.")
                 return
             
             # Filters are automatically computed, so we can proceed with saving
@@ -3049,7 +3049,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Error loading project: {e}\n{traceback.format_exc()}")
-            report_error(self, "Load Error", str(e))
+            dialogs.error(self, "Load Error", str(e))
 
     def _update_plots(self) -> None:
         # Keep the Info dock in sync with every recompute / data change.

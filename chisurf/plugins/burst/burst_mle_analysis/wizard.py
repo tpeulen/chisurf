@@ -4,13 +4,15 @@ import faulthandler
 from chisurf.plugins.burst.burst_mle_analysis.utils import \
     LazyTTTRDict, NumpyEncoder, FileListWidget, random_search_hpo
 from chisurf.plugins.burst.burst_mle_analysis.interpolate import interpolate_shift
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 faulthandler.enable(all_threads=True)
 
 from typing import Union
 
 from qtpy import QtWidgets, QtCore
-from qtpy.QtWidgets import QFileDialog, QMessageBox, QProgressDialog
+from qtpy.QtWidgets import QFileDialog, QProgressDialog
 import pyqtgraph as pg
 import numpy as np
 import pandas as pd
@@ -24,20 +26,14 @@ from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.widgets.tool_buttons import action_button
 
 
-def _mle_progress(widget, text: str, maximum: int):
+def _mle_progress(widget, text: str, maximum: int) -> ChiSurfProgress:
     """Return a progress handle for a long MLE loop.
 
-    Embedded in the Burst Analysis shell this drives the shared status bar (no
-    popup); standalone it is a modal ``QProgressDialog``. Both duck-type the
-    ``setValue`` / ``setLabelText`` / ``wasCanceled`` / ``close`` surface the loop
-    uses, so the call sites are otherwise unchanged.
+    Thin alias for :class:`~chisurf.gui.progress.ChiSurfProgress`, which decides
+    where the bar appears from *widget*: the Burst Analysis shell's status bar
+    when embedded, a modal dialog when standalone, the log when headless.
     """
-    from chisurf.gui.widgets.navigation import find_status_reporter
-
-    reporter = find_status_reporter(widget)
-    if reporter is not None:
-        return reporter.begin_task(text, maximum)
-    return QProgressDialog(text, "Cancel", 0, maximum, widget.window())
+    return ChiSurfProgress(widget, text, maximum)
 
 
 @register_section("host_widget")
@@ -4542,7 +4538,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if save_detector_setups(setups, setups_file):
             self._set_status(f"MLE settings for detector '{current_detector}' saved to setup '{setup_name}'.")
         else:
-            QMessageBox.critical(self, "Error", f"Could not save MLE settings to setup '{setup_name}'.")
+            dialogs.error(self, "Error", f"Could not save MLE settings to setup '{setup_name}'.")
 
     def optimize_hyperparameters(
             self,
@@ -4556,7 +4552,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             from chisurf.plugins.burst.burst_mle_analysis.utils import optimize_hyperparameters as _opt_hpo
             return _opt_hpo(self, n_iter=n_iter, bounds=bounds, seed=seed, weights=weights)
         except Exception as e:
-            QMessageBox.critical(self, "HPO error", f"{e}")
+            dialogs.error(self, "HPO error", f"{e}")
             return None
 
     def save_settings(self):

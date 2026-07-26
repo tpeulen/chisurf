@@ -21,20 +21,26 @@ class UncaughtHook(QtCore.QObject):
 
     @staticmethod
     def show_exception_box(log_msg):
-        """Checks if a QApplication instance is available and shows a messagebox with the exception message.
-        If unavailable (non-console application), log an additional notice.
+        """Report an uncaught exception to the user.
+
+        Routed through :mod:`chisurf.gui.dialogs`, which logs unconditionally
+        and raises the modal box only when someone can dismiss it — an
+        un-dismissable dialog on the crash path is how a headless run hangs
+        instead of reporting.
+
+        Parameters
+        ----------
+        log_msg : str
+            Formatted traceback and exception message.
         """
-        if QtWidgets.QApplication.instance() is not None:
-            errorbox = QtWidgets.QMessageBox()
-            errorbox.setWindowIcon(
-                QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MessageBoxCritical)
-            )
-            errorbox.setWindowTitle("Critical error occurred")
-            errorbox.setText(f"Oops. An unexpected error occurred:\n```\n{log_msg}\n```")
-            errorbox.setTextFormat(QtCore.Qt.TextFormat.MarkdownText)
-            errorbox.exec()
-        else:
-            log.debug("No QApplication instance available.")
+        from chisurf.gui import dialogs
+
+        dialogs.error(
+            None,
+            "Critical error occurred",
+            "Oops. An unexpected error occurred.",
+            detail=str(log_msg),
+        )
 
     def exception_hook(self, exc_type, exc_value, exc_traceback):
         """Function handling uncaught exceptions.

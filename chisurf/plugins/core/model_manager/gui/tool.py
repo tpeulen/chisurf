@@ -16,7 +16,6 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
-    QMessageBox,
     QPushButton,
     QSplitter,
     QTabWidget,
@@ -30,6 +29,7 @@ import chisurf.core.experiments
 import chisurf.core.models
 import chisurf.core.settings
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -445,7 +445,7 @@ class ModelManagerWidget(QWidget):
         try:
             with open(settings_file, 'w') as f:
                 yaml.dump(cs.core.settings.cs_settings, f, default_flow_style=False)
-            QMessageBox.information(
+            dialogs.information(
                 self,
                 "Settings Saved",
                 f"Model and experiment settings have been "
@@ -453,4 +453,4 @@ class ModelManagerWidget(QWidget):
                 f"of the software is required for the changes to take effect."
             )
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Could not save settings to {settings_file}: {e}")
+            dialogs.error(self, "Error", f"Could not save settings to {settings_file}: {e}")

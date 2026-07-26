@@ -25,7 +25,7 @@ import chisurf  # Ensure chisurf is available module-wide
 import chisurf.core.settings
 from chisurf import logging
 import chisurf.gui.decorators
-from chisurf.gui.dialogs import report_error, report_information, report_warning
+from chisurf.gui import dialogs
 
 
 plugin_menu_action: QtWidgets.QAction | None = None
@@ -573,8 +573,8 @@ def setup_gui(
         cs.cs = window
         import chisurf.core.base
         cs.core.base.set_safe_import_notify(
-            lambda title, text: QtWidgets.QMessageBox.information(
-                window, title, text, QtWidgets.QMessageBox.Ok
+            lambda title, text: dialogs.information(
+                window, title, text
             )
         )
         return window
@@ -708,7 +708,7 @@ def setup_gui(
                     parent = app.activeWindow()
                 except Exception:
                     parent = None
-                report_warning(
+                dialogs.warning(
                     parent,
                     "Theme not found",
                     (
@@ -1230,7 +1230,7 @@ def setup_gui(
                             )
                             + "Do you want to open the Updater now?"
                         )
-                        reply = QtWidgets.QMessageBox.question(
+                        reply = dialogs.question(
                             None,
                             "Update Available",
                             _msg,
@@ -2008,7 +2008,7 @@ class LoginDialog(QtWidgets.QDialog):
                 # Check if this user had NO password
                 user_data = next((u for u in self.users if u["user_id"] == user_id), None)
                 if user_data and not user_data.get("has_password", False):
-                    reply = QtWidgets.QMessageBox.question(
+                    reply = dialogs.question(
                         self,
                         "Set Password",
                         "You do not have a password set for this account.\nWould you like to set a password now to secure your account?",
@@ -2024,9 +2024,9 @@ class LoginDialog(QtWidgets.QDialog):
                         if dlg.exec() == QtWidgets.QDialog.Accepted:
                             try:
                                 self.client.change_password(user_id=user_id, password=dlg.password, requester_id=user_id)
-                                report_information(self, "Success", "Password successfully updated.")
+                                dialogs.information(self, "Success", "Password successfully updated.")
                             except Exception as e:
-                                report_error(self, "Error", f"Failed to save password:\n{e}")
+                                dialogs.error(self, "Error", f"Failed to save password:\n{e}")
                 
                 import chisurf.core.settings as cs_settings
                 from mmfdb.security.credentials import (
@@ -2082,7 +2082,7 @@ class LoginDialog(QtWidgets.QDialog):
 
                 saved = set_mmfdb_login_settings(mmfdb_settings)
                 if not saved:
-                    report_warning(
+                    dialogs.warning(
                         self,
                         "Settings Not Saved",
                         "Login succeeded, but ChiSurf could not store the MMFDB login settings.",
@@ -2108,7 +2108,7 @@ class LoginDialog(QtWidgets.QDialog):
                     if hasattr(cs_settings, "mmfdb"):
                         cs_settings.mmfdb["autologin"] = False
                     set_mmfdb_login_settings(mmfdb_settings)
-                    report_warning(
+                    dialogs.warning(
                         self,
                         "Autologin Not Saved",
                         "Login succeeded, but ChiSurf could not store the session token in the OS credential store.",
@@ -2116,9 +2116,9 @@ class LoginDialog(QtWidgets.QDialog):
                     
                 self.accept()
             else:
-                report_warning(self, "Login Failed", _format_login_error(res.get("error")))
+                dialogs.warning(self, "Login Failed", _format_login_error(res.get("error")))
         except Exception as e:
-            report_error(self, "Error", f"Login failed: {e}")
+            dialogs.error(self, "Error", f"Login failed: {e}")
 
 
 def _smoke_test_enabled() -> bool:
@@ -2322,7 +2322,7 @@ def get_app():
                     app.quit()
         except Exception as e:
             logging.warning(f"Could not perform startup authentication check: {e}")
-            report_error(
+            dialogs.error(
                 None,
                 "MMFDB Login Unavailable",
                 f"Could not start or reach the MMFDB JSON-RPC service:\n{e}",

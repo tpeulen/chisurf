@@ -20,6 +20,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 from chisurf.core.dataspec import load_view_spec
 from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 
 class _PdbListModel:
@@ -454,7 +455,7 @@ class FretDockingTool(QtWidgets.QWidget):
             from ..api.project import load_docking_project
             proj = load_docking_project(f)
         except Exception:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Load failed", traceback.format_exc()[-2000:])
             return
         m = self._model
@@ -504,7 +505,7 @@ class FretDockingTool(QtWidgets.QWidget):
                 pose_method=self._model.method,
             )
         except Exception:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "Save failed", traceback.format_exc()[-2000:])
             return
         self._set_status(f"saved {pathlib.Path(f).name}")
@@ -779,4 +780,4 @@ class FretDockingTool(QtWidgets.QWidget):
         self._set_status("error (see message)")
         self._form.sync_fields()
         self._act_run.setEnabled(True)
-        QtWidgets.QMessageBox.critical(self, "FRET docking failed", tb[-2000:])
+        dialogs.error(self, "FRET docking failed", tb[-2000:])

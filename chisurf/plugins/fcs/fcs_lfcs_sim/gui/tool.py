@@ -21,6 +21,7 @@ from qtpy import QtWidgets
 from chisurf.core.dataspec import load_view_spec
 from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform import AutoForm, register_section
+from chisurf.gui import dialogs
 
 _GUI_DIR = pathlib.Path(__file__).resolve().parent
 
@@ -121,7 +122,7 @@ class LifetimeFcsSimWidget(QtWidgets.QWidget):
             window.setCursor(window.cursor())
             datasets = self._model.run()
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Simulation failed", str(exc))
+            dialogs.error(self, "Simulation failed", str(exc))
             return
         self._refresh_plot(datasets)
 

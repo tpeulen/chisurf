@@ -43,6 +43,7 @@ from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.chitable import ChiTableWidget, TableFeature
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+from chisurf.gui import dialogs
 
 # ── column enumeration ──────────────────────────────────────────────────
 
@@ -397,7 +398,7 @@ def _warn(message: str) -> None:
         logging.warning(message)
         return
     try:
-        QtWidgets.QMessageBox.warning(
+        dialogs.warning(
             QtWidgets.QApplication.activeWindow(), "Linking", message
         )
     except Exception:

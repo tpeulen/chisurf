@@ -2,6 +2,40 @@
 
 ## 2026-07-26
 
+* **One message box and one progress bar, everywhere.** Telling the user
+  something went wrong, and showing how far the work has got, were each done
+  four different ways: 604 raw `QMessageBox` statics, 14 hand-built boxes, a
+  parallel `MyMessageBox` class, plus modal `QProgressDialog`s, hand-rolled
+  `QProgressBar`s wired into run buttons, the shell status bar, and nothing at
+  all. The same operation therefore looked different depending on which window
+  started it — and head-lessly a modal spins an event loop nobody can close, so
+  an error on an `except` branch did not report: it wedged the run, and the
+  answer a `question` never got was the one deciding whether a file was
+  overwritten. Both are now single classes that resolve *where* from context:
+  [`ChiSurfMessageBox`](/subsystems/gui-autoform.md) (`dialogs.error` /
+  `warning` / `information` / `question` / `confirm` / `choice`) always logs,
+  shows only to a user who can dismiss it, and otherwise returns the answer the
+  caller declared safe; `ChiSurfProgress` picks an inline AutoForm bar, the
+  shell's status bar, a modal dialog or the log, nearest-first from the widget
+  the work started from.
+* **The new AutoForm `progress` section is what makes it wiring-free.** It is
+  itself a progress host, so `ChiSurfProgress(self._button, …)` finds the bar in
+  the same panel with no reference passing — the run-button-plus-bar row four
+  plugins had each hand-rolled. The screenshot pass caught the design defect a
+  green test suite would not have: the bar is a *sibling* of the button, not an
+  ancestor, so climbing the parent chain alone found nothing and the work fell
+  back to the log. Resolution now looks inside each ancestor as it climbs.
+* **Guardrails and fixes found on the way.** The headless-dialog guard was
+  strengthened from "no blocking box on an `except` path" to "no raw
+  `QMessageBox` anywhere outside the one class", its 78-entry allow-list is
+  empty, and a companion test bans raw `QProgressDialog`. Four latent
+  `NameError`s surfaced and were fixed: `fcs_filter_calculator` called
+  `QtWidgets.QMessageBox.critical` in `except` branches of a module that never
+  imported `QtWidgets`, so every one of those error reports would itself have
+  raised. `chisurf/macros/` keeps its Qt imports function-local — macros run
+  head-lessly through the action layer and must not drag Qt in to be defined.
+
+
 * **chimol: `h_add`/`h_fill`, and why a template beats counting valences.** The
   geometry is transcribed from `layer2/HydrogenAdder.cpp`, where the trap is the
   control flow rather than the constants: the `switch` **falls through**, so one

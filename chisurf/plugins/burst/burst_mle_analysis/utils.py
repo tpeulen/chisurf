@@ -7,6 +7,8 @@ from typing import Dict, Callable, Iterator
 import numpy as np
 import tttrlib
 from qtpy import QtWidgets, QtCore, QtGui
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 
 class LazyTTTRDict(collections.abc.MutableMapping):
@@ -42,7 +44,7 @@ class LazyTTTRDict(collections.abc.MutableMapping):
                 if not self._warning_shown:
                     # Show a warning if a QApplication exists; otherwise, print to console.
                     if QtWidgets.QApplication.instance() is not None:
-                        QtWidgets.QMessageBox.warning(
+                        dialogs.warning(
                             None,
                             "Warning",
                             "The file type getter is None. This may cause issues with TTTR file loading."
@@ -430,7 +432,7 @@ def optimize_hyperparameters(
     # Ensure we have data to fit
     wizard.update_decay_of_detector()
     if getattr(wizard, 'decay_of_current_file', None) is None:
-        QtWidgets.QMessageBox.warning(wizard, "HPO", "No data/decay available. Load bursts and try again.")
+        dialogs.warning(wizard, "HPO", "No data/decay available. Load bursts and try again.")
         return
 
     # ---- Prepare sane defaults & merge user bounds ----
@@ -468,7 +470,7 @@ def optimize_hyperparameters(
 
     # ---- Progress dialog ----
     total_budget = int(max(1, n_iter))
-    progress = QtWidgets.QProgressDialog("Optimizing hyperparameters...", "Cancel", 0, total_budget, wizard.window())
+    progress = ChiSurfProgress(wizard.window(), "Optimizing hyperparameters...", total_budget)
     progress.setWindowModality(QtCore.Qt.WindowModal)
     progress.setAutoClose(True)
     progress.show()
@@ -638,7 +640,7 @@ def optimize_hyperparameters(
     progress.close()
 
     if best_cfg is None or not np.isfinite(best_loss):
-        QtWidgets.QMessageBox.information(wizard, "HPO", "Optimization could not find a valid configuration.")
+        dialogs.information(wizard, "HPO", "Optimization could not find a valid configuration.")
         return
 
     # ---- Apply best configuration to UI and refit once ----
@@ -675,4 +677,4 @@ def optimize_hyperparameters(
         f"Applied hyperparameters: {best_cfg}\n"
         f"Evaluations: {len(eval_cache)} / budget: {total_budget}"
     )
-    QtWidgets.QMessageBox.information(wizard, "HPO complete", summary)
+    dialogs.information(wizard, "HPO complete", summary)

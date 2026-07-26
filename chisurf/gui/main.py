@@ -48,6 +48,7 @@ from chisurf.gui.main_helper import (
     StateMixin,
     DevMixin,
 )
+from chisurf.gui import dialogs
 
 class Main(
     QtWidgets.QMainWindow,
@@ -180,11 +181,7 @@ class Main(
                 setup_found = True
                 break
         if not setup_found:
-            _gw.general.MyMessageBox(
-                label="Setup Not Found",
-                info=f"Setup '{name}' does not exist in the current experiment.",
-                show_fortune=False
-            )
+            dialogs.information(None, "Setup Not Found", f"Setup '{name}' does not exist in the current experiment.")
             return
         if j != i:
             self.current_setup_idx = j
@@ -282,7 +279,7 @@ class Main(
         except Exception:
             pass
         if cs.core.settings.gui['confirm_close_program']:
-            reply = _gw.general.MyMessageBox.question(
+            reply = dialogs.question(
                 self,
                 'Message',
                 "Are you sure to quit?",
@@ -532,11 +529,7 @@ class Main(
         try:
             self.open_context_help_for_reader(None)
         except Exception as e:
-            _gw.general.MyMessageBox(
-                label="Help Plugin Error",
-                info=f"Error loading help plugin: {str(e)}",
-                show_fortune=False
-            )
+            dialogs.information(None, "Help Plugin Error", f"Error loading help plugin: {str(e)}")
 
     def open_context_help_for_reader(self, topic: str | None = None) -> None:
         """Open the help plugin, optionally with a filter for a given topic.
@@ -620,11 +613,7 @@ class Main(
             except Exception:
                 pass
         except Exception as e:
-            _gw.general.MyMessageBox(
-                label="Help Plugin Error",
-                info=f"Error loading help plugin: {str(e)}",
-                show_fortune=False
-            )
+            dialogs.information(None, "Help Plugin Error", f"Error loading help plugin: {str(e)}")
 
     def onOpenUpdate(self):
         """Open the updater plugin."""
@@ -640,11 +629,7 @@ class Main(
             window.show()
         except Exception as e:
             # Show error message if plugin can't be loaded
-            _gw.general.MyMessageBox(
-                label="Updater Plugin Error",
-                info=f"Error loading updater plugin: {str(e)}",
-                show_fortune=False
-            )
+            dialogs.information(None, "Updater Plugin Error", f"Error loading updater plugin: {str(e)}")
 
     def onOpenAbout(self):
         """Open the about plugin."""
@@ -658,11 +643,7 @@ class Main(
             window = about_plugin.AboutDialog(parent=self)
             window.show()
         except Exception as e:
-            _gw.general.MyMessageBox(
-                label="About Plugin Error",
-                info=f"Error opening About dialog: {str(e)}",
-                show_fortune=False
-            )
+            dialogs.information(None, "About Plugin Error", f"Error opening About dialog: {str(e)}")
 
     def onClearLocalSettings(self):
         """Reset local settings and show a confirmation popup."""
@@ -670,11 +651,7 @@ class Main(
         cs.core.settings.clear_settings_folder()
 
         # Show a confirmation popup
-        _gw.general.MyMessageBox(
-            label="Settings Reset",
-            info="Local settings have been reset successfully.",
-            show_fortune=False
-        )
+        dialogs.information(None, "Settings Reset", "Local settings have been reset successfully.")
 
     def onClearUserStyles(self):
         """Clear user style files (QSS) and show a confirmation popup."""
@@ -691,18 +668,10 @@ class Main(
                     cs.logging.warning(f"Could not delete style file {file}: {e}")
 
             # Show a confirmation popup
-            _gw.general.MyMessageBox(
-                label="Styles Reset",
-                info="User style files have been cleared successfully. Restart the application to apply default styles.",
-                show_fortune=False
-            )
+            dialogs.information(None, "Styles Reset", "User style files have been cleared successfully. Restart the application to apply default styles.")
         else:
             # Show a message if the folder doesn't exist
-            _gw.general.MyMessageBox(
-                label="Styles Reset",
-                info="No user style files found.",
-                show_fortune=False
-            )
+            dialogs.information(None, "Styles Reset", "No user style files found.")
 
     def onClearUserPlugins(self):
         """Clear user plugin folder and show a confirmation popup."""
@@ -710,11 +679,7 @@ class Main(
         cs.core.settings.clear_user_plugins_folder()
 
         # Show a confirmation popup
-        _gw.general.MyMessageBox(
-            label="User Plugins Reset",
-            info="User plugins folder has been cleared successfully. Restart the application to apply changes.",
-            show_fortune=False
-        )
+        dialogs.information(None, "User Plugins Reset", "User plugins folder has been cleared successfully. Restart the application to apply changes.")
 
     def onDockWidgetPlotVisibilityChanged(self, visible):
         """Update the Plot Controller when the dockWidgetPlot becomes visible.
@@ -1411,9 +1376,8 @@ class Main(
             except Exception:
                 pass
             try:
-                from chisurf.gui.dialogs import report_warning
 
-                report_warning(
+                dialogs.warning(
                     self,
                     "FRET RDA axis settings",
                     (
