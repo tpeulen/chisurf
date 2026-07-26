@@ -1796,3 +1796,80 @@ and — for RF-138 — the real `csc` command. RF-138..RF-146.
 - **Location:** `chisurf/plugins/tttr/tttr_time_windows/cli.py` + `gui.py`, `chisurf/plugins/tttr/tttr_microtime_shifter/cli.py`, `chisurf/plugins/tttr/trace_browser/cli.py`, `chisurf/plugins/core/lightpath_simulator/cli.py`, `chisurf/plugins/core/globalview/gui.py`, `chisurf/plugins/burst/burst_selection/cli.py` + `gui.py` — each shadowed by a sibling package of the same name
 - **Finding:** All eight are single-import re-export shims ("Compatibility CLI entrypoint for …") sitting next to a regular package with the identical name, which always wins the import. Verified by importing each dotted path: every one resolves to the package's `__init__.py`, never to the `.py` file. Six are harmless because the package happens to re-export the same names, but two are not: `chisurf.plugins.tttr.trace_browser.cli` has no `cli` (the manifest depends on it — RF-138) and `chisurf.plugins.tttr.tttr_microtime_shifter.cli` has no `cli` either, so the compatibility path the shim advertises raises `ImportError` for any caller that uses it. Delete the dead files and, where the shim was the documented import path, re-export from the package `__init__.py` instead.
 - **Fix note:**
+
+### Review 2026-07-26 (10) — the three-colour PDA model (`chisurf/core/models/pda3c/`)
+
+Slice: `tcpda.py` (1027 lines, PRD-65 stage 2, last touched 2026-07-25) with its
+`tcpda.view.json`, read against the compute core in
+`chisurf/core/fluorescence/pda3c/` and the reader at
+`chisurf/core/experiments/pda/reader.py:195-307`. The likelihood core itself is
+in good order — the "mix once, not twice" factorisation, the untruncated
+`background_series` reference and the effective-rate cutoff in `_channel_boxes`
+all hold up, and the two-colour reduction and PAM/Octave A/B tests pin them.
+
+Everything below sits in the **model wrapper**, and it splits into two themes:
+(a) the objective and the displayed curve are computed by two different code
+paths that were never reconciled — background, exchange and the brightness
+correction reach one and not the other; (b) the three GUI toggles
+(`stochastic_labeling`, `brightness_correction`, `dynamic`) are each tested
+alone and never in combination, and the combination is where the species list
+stops meaning what the dynamic path assumes it means.
+
+All findings were verified by running the real model on the simulator reader
+(`Pda3cSimulatorReader`) in the `arm64` env; no source was changed.
+
+### RF-147
+- **Status:** OPEN
+- **Severity:** S1 (any failure inside the likelihood is reported as chi2r = 0.0 — a perfect fit — and then kills `fit.run()` with an unrelated `TypeError`)
+- **Location:** `chisurf/core/models/pda3c/tcpda.py:498-504` (`TcPdaModel.get_wres`, `except Exception: return np.zeros(0)`) and `:436-439` (`burst_counts`, `except Exception: return None`)
+- **Finding:** `get_wres` wraps the whole evaluation in a bare `except` and returns a **zero-length** residual, while `n_points` (`:471-487`) keeps reporting `3 * n_bursts` from the same cached counts. The two disagree, so `sum(wres**2) / (n_points - n_free)` evaluates to `0.0` — the best chi2r the GUI can show. Verified on an 800-burst simulated dataset: healthy `chi2r = 2.487` with `wres.size = 800`; after setting a rate matrix whose state count does not match the species list, `chi2r = 0.0`, `wres.size = 0`, `n_points = 2400` — no log line, no message. Pressing **Fit** then raises `TypeError: Improper input: N=7 must not exceed M=(0,)` from `chisurf/core/math/optimization/leastsqbound.py:436`, which names neither the model nor the real cause. A model that cannot evaluate must report that, not a zero residual: let the exception through (or log it and return `nan`s of the right length so the optimiser fails loudly at the right place).
+- **Fix note:**
+
+### RF-148
+- **Status:** OPEN
+- **Severity:** S1 (with two of the model's own toggles on, the "two exchanging states" are a species and its own mirror image; the multistate route raises and is swallowed by RF-147)
+- **Location:** `chisurf/core/models/pda3c/tcpda.py:732-733` (`exchanging, static = species[:2], species[2:]`) and `:652-653` (`_multistate_log_likelihood` stacking one row per species), against `TcPdaSpecies.as_species` at `:240-254`
+- **Finding:** `as_species` interleaves each population with its label-swapped mirror when `stochastic_labeling` is on and `F(labeling) < 1`, so the returned list is `[s1, s1_mirror, s2, s2_mirror, …]` — but `_per_burst_log_likelihood` still slices `species[:2]` as "the first two species", which the view-spec panel describes as *"Treat the first two species as two conformational states"*. Verified on a two-species model with `dynamic = True`, `K_ex = 2`, `F(labeling) = 0.8`: `as_species` returns four components and `species[:2]` is `(55, 50, 65)` and its mirror `(55, 65, 50)`, while the **real** second state `(52, 66, 48)` and its mirror are handed to the static branch; the log likelihood moves from -8241.8 to -7898.1 with no warning. Both toggles are user-reachable in `tcpda.view.json` (*Corrections* and *Exchange (dynamic)* panels). The same seam breaks the multistate route harder: with a 2x2 rate matrix and labelling on, `fractions @ blue` gets 4 rows for 2 states and raises `ValueError: matmul: … size 4 is different from 2`, which RF-147 turns into an empty residual. Either expand the mirrors *after* the exchanging pair is chosen, or carry the state identity on the component instead of relying on list position.
+- **Fix note:**
+
+### RF-149
+- **Status:** OPEN
+- **Severity:** S2 (the plotted model curve ignores the background parameters the objective fits with, so a converged fit shows a displaced curve and structured residuals)
+- **Location:** `chisurf/core/models/pda3c/tcpda.py:848-904` (`predicted_ratio_histograms`, which takes no background argument) called from `update_model` (`:802-805`) and `get_tcpda_ratio_curves` (`:958-961`)
+- **Finding:** The objective adds Poisson background per channel — `_species_log_likelihood` forwards `self.setup.background_blue` / `background_green` into `burst_log_likelihood`, which is the whole point of the factorisation in `pda3c/likelihood.py`. The display path builds its binomial marginals straight from `blue_channel_probabilities` / `green_channel_probabilities` and never sees a background at all; the parameters are only reachable as `TcPdaSetup` properties, and `ThreeColorSetup` (what `predicted_ratio_histograms` receives) does not carry them. Verified on 20 000 simulated bursts at 30/25 signal photons: with zero background, observed and predicted mean proximity ratios agree to <0.001 in all three panels; with 3 background photons per channel, the observed means move to 0.4073 / 0.3358 / 0.4235 while the prediction stays at 0.4281 / 0.3373 / 0.4052 — a 0.02 offset in two of the three panels, i.e. a visible systematic residual on a fit that is in fact converged. The five `BG(*)` parameters are exposed in the *Instrument / corrections* table, so this is the ordinary configuration, not a corner. Pass the two background vectors through and convolve them into the marginal.
+- **Fix note:**
+
+### RF-150
+- **Status:** OPEN
+- **Severity:** S2 (the plotted curve and residual panel of a dynamic fit show the static mixture; nothing on screen responds to `K_ex`)
+- **Location:** `chisurf/core/models/pda3c/tcpda.py:790-807` (`update_model`) and `:938-967` (`get_tcpda_ratio_curves`), both calling `predicted_ratio_histograms` with the plain species list
+- **Finding:** `update_model` calls `predicted_ratio_histograms(counts, species, setup, …)` unconditionally — an amplitude-weighted static mixture. Neither `dynamic` / `K_ex` (the `_dynamic_log_likelihood` and `_multistate_log_likelihood` routes) nor `brightness_correction` (the per-species photon-number pmfs of `_species_photon_number_pmfs`) has any way into that function. Verified on a two-species model: sweeping `K_ex` over 0, 5 and 50 moves the log likelihood from -7907.7 to -8836.9 to -11488.1 while `model.d[1]` is **bit-identical** at all three (`max|Δ| = 0.000e+00`). So the *Proximity ratios* plot, the residual panel that shares it, and chi2r describe different models, and the user has no visual signal that exchange is switched on. Either route the display through the same per-burst probabilities the likelihood uses, or state on the plot that it is the static projection.
+- **Fix note:**
+
+### RF-151
+- **Status:** OPEN
+- **Severity:** S2 (data and model curve are normalised differently whenever a burst has no photons in one excitation period — i.e. on every dataset with a donor-only population)
+- **Location:** `chisurf/core/models/pda3c/tcpda.py:907-925` (`observed_ratio_histograms`, which normalises the concatenation by its *joint* total over bursts with `sizes > 0`) against `:810-845` (`_binomial_marginal_histogram`, which `continue`s on `n <= 0` but keeps those bursts in `total_weight`) and `:904` (`return out / 3.0`)
+- **Finding:** The two normalisations agree only when every burst has photons under both excitation periods. `observed_ratio_histograms` divides by `stacked.sum()`, which counts each panel's *valid* bursts; `predicted_ratio_histograms` divides each panel by the *full* burst weight and then by three. A donor-only molecule contributes nothing under green excitation, so `n_green = 0` is the normal case, not a pathology — and the reader (`chisurf/core/experiments/pda/reader.py:278-307`) applies no such filter. Verified on 4000 simulated bursts with 30 % of them zeroed under green excitation: every panel's data area comes out **1.111x** the model area (1481.5 vs 1333.3, and 1037.0 vs 933.3), against exactly 1.000 when no burst is empty. The objective is unaffected (it is the burst likelihood), so this is purely the displayed curve — but an 11 % uniform offset reads as a badly wrong model. Normalise both sides the same way, per panel, over the bursts each panel actually uses.
+- **Fix note:**
+
+### RF-152
+- **Status:** OPEN
+- **Severity:** S2 (the P(R) plot is not a density: species weights are wrong by their width ratio, the grid is non-uniform and stops at 130 A while R is bounded at 200 A)
+- **Location:** `chisurf/core/models/pda3c/tcpda.py:970-996` (`get_tcpda_distance_distributions`), the accessor behind the *Distance P(R)* plot in `tcpda.view.json:152-162`
+- **Finding:** Three faults in one nine-line loop, all verified. (1) The Gaussian is summed as `amplitude * exp(-0.5 ((r-mu)/sigma)**2)` with **no `1/sigma`**, so a species' plotted area scales with `amplitude * sigma`: two species at amplitude 0.5 with `sigma = 2` and `sigma = 10` plot with areas 0.346 and 0.654 — a 1.89x weight the user never entered. (2) It borrows `cs.core.models.tcspc.fret.rda_axis`, which is **non-uniform** (96 points, 1-130 A, spacing 0.05 A at the bottom and 6.5 A at the top), and then normalises by the bare `density.sum()` — not an integral on that grid, so the curve's height depends on where the species sits. Near 50 A the spacing is 2.58 A while `s(*)` is bounded below at 0.5 A, so a narrow species is undersampled to the point that its peak height is decided by where the nodes happen to fall. (3) The axis stops at 130 A while the mean-distance parameters are bounded at 200 A: a species at 150 A plots as a flat 0.004 — an empty panel with no explanation. (4) The function reads `cs.core.models.tcspc.fret` without importing it; `chisurf/core/models/__init__.py` does not pull in `tcspc`, so on a headless path where no TCSPC model has been touched it raises `AttributeError: module 'chisurf.core.models' has no attribute 'tcspc'` (reproduced). Build a uniform axis spanning the species (mu +/- 5 sigma), normalise as a density, and import the module you use.
+- **Fix note:**
+
+### RF-153
+- **Status:** OPEN
+- **Severity:** S3 (`brightness_correction` truncates the stretched burst-size distribution at the reference grid, so a species brighter than the reference gets a 14 % low photon budget)
+- **Location:** `chisurf/core/models/pda3c/tcpda.py:999-1027` (`scale_photon_number_pmf`, `np.interp(grid / brightness, grid, pmf, …)` on the reference `grid`)
+- **Finding:** `P_scaled(n) = P(n / brightness)` is evaluated on the *reference* grid, whose length is the largest observed burst size + 1 (`_burst_size_pmfs` uses `np.bincount`). For `brightness > 1` the stretched distribution extends to `brightness * n_max` and everything past `n_max` is dropped, then the remainder is renormalised — so the correction moves the mean less than it should, by an amount that depends on where the observed maximum happened to fall. Verified on a Poisson(30) reference: on a grid ending at 60, `brightness = 1.5` gives mean 44.31 (want 45.00) and `brightness = 2.0` gives 51.75 (want 60.00, 14 % low); widening the same grid to 80 moves those to 45.00 and 59.06, i.e. the answer depends on the grid, not the physics. `relative_brightness` explicitly documents values above one ("above one larger"), which is what a gamma above unity produces, so this is reachable. Interpolate onto a grid extended to `ceil(brightness * (pmf.size - 1)) + 1`.
+- **Fix note:**
+
+### RF-154
+- **Status:** OPEN
+- **Severity:** S3 (the fast-exchange short-circuit fires at half its documented threshold when the rate matrix is spelled as a generator)
+- **Location:** `chisurf/core/models/pda3c/tcpda.py:682-683` (`transitions = float(np.abs(rates).sum(axis=0).max()) * window`) against `chisurf/core/fluorescence/kinetics.py:86-108` (`generator_from_rate_matrix`: *"The diagonal is ignored and rebuilt, so a matrix with arbitrary diagonal entries is accepted"*)
+- **Finding:** `_multistate_log_likelihood` measures transitions per window off the **raw** `rate_matrix`, including its diagonal — the one part every other consumer of that matrix explicitly discards. For a proper generator the diagonal is minus the column sum, so `np.abs(rates).sum(axis=0)` is exactly twice the escape rate. Verified on the same physical two-state system at 3e5 Hz and a 2 ms window: spelled off-diagonal-only it measures 600 transitions, spelled as a generator 1200, while `generator_from_rate_matrix` maps both to the identical generator. Since `dynamic_max_transitions = 500` decides whether the model samples trajectories or short-circuits to the equilibrium occupancy, two spellings of one system can take different code paths (and the documented meaning of the attribute, "transitions per window", is only right for one of them). Take the estimate from `generator_from_rate_matrix(rates)`'s diagonal.
+- **Fix note:**
