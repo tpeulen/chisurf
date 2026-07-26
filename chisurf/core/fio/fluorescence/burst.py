@@ -134,7 +134,8 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
     a header row with the expected columns.
 
     :param bur_filename: Output filename for the TSV summary.
-    :param start_stop: List of tuples (start_index, stop_index) defining bursts.
+    :param start_stop: List of tuples (start_index, stop_index) defining bursts,
+                       with stop_index the burst's last photon (inclusive).
     :param filename: String representing the file name.
     :param tttr: A TTTR-like object with:
                  - macro_times
@@ -202,19 +203,21 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
     # Iterate and build rows
     # ---------------------------------------------------------
     for start_idx, stop_idx in start_stop:
-        if stop_idx > n_ph or stop_idx < 0:
+        # ``stop_idx`` is the burst's last photon (inclusive), so it must be a
+        # valid index and every slice runs to ``stop_idx + 1``.
+        if stop_idx >= n_ph or stop_idx < 0:
             continue
 
-        burst_macro = macro_times[start_idx:stop_idx]
-        burst_micro = micro_times[start_idx:stop_idx]
-        burst_rout = routing_channels[start_idx:stop_idx]
+        burst_macro = macro_times[start_idx:stop_idx + 1]
+        burst_micro = micro_times[start_idx:stop_idx + 1]
+        burst_rout = routing_channels[start_idx:stop_idx + 1]
 
         if stop_idx <= start_idx:
             duration = mean_macro_time = n_photons = 0
         else:
             duration = (macro_times[stop_idx] - macro_times[start_idx]) * res
             mean_macro_time = ((macro_times[stop_idx] + macro_times[start_idx]) / 2.0) * res
-            n_photons = stop_idx - start_idx
+            n_photons = stop_idx - start_idx + 1
         count_rate = (n_photons / duration) if duration > 0 else np.nan
 
         # base row data
@@ -316,7 +319,10 @@ def generate_burst_dataframe(
     Parameters:
     -----------
     start_stop : list of tuples
-        List of (start_index, stop_index) tuples defining bursts.
+        List of (start_index, stop_index) tuples defining bursts. ``stop_index``
+        is the index of the burst's *last* photon (inclusive), the convention of
+        :func:`chisurf.core.math.signal.find_bursts` and of the .bur
+        "Last Photon" column.
     filename : str or pathlib.Path
         Path to the TTTR file.
     tttr : object
@@ -428,10 +434,11 @@ def generate_burst_dataframe(
         # allocate a fresh row
         row = zero_row.copy()
 
-        # static stats
+        # static stats — ``stop`` is the burst's last photon (inclusive), so the
+        # photon at ``stop`` counts and every slice below runs to ``stop + 1``.
         dur   = (macro[stop] - macro[start]) * res * 1e3
         meanm = ((macro[stop] + macro[start]) / 2) * res * 1e3
-        npix  = stop - start
+        npix  = stop - start + 1
         crate = (npix / dur)/1e3 if dur>0 else np.nan
 
         row[idx["First Photon"]]          = start
@@ -448,7 +455,7 @@ def generate_burst_dataframe(
         row[idx["Last File"]]             = file_name_only
 
         # slice views
-        sl = slice(start, stop)
+        sl = slice(start, stop + 1)
         for d in detectors:
             mask = det_global[d][sl]
             idxs = np.nonzero(mask)[0]
@@ -524,7 +531,10 @@ def write_bur_file_fast(bur_filename, start_stop, filename, tttr, windows, detec
     bur_filename : str or pathlib.Path
         Path to the output .bur file.
     start_stop : list of tuples
-        List of (start_index, stop_index) tuples defining bursts.
+        List of (start_index, stop_index) tuples defining bursts. ``stop_index``
+        is the index of the burst's *last* photon (inclusive), the convention of
+        :func:`chisurf.core.math.signal.find_bursts` and of the .bur
+        "Last Photon" column.
     filename : str or pathlib.Path
         Path to the TTTR file.
     tttr : object

@@ -2,6 +2,20 @@
 
 ## 2026-07-26
 
+* **Every burst was one photon short.** `generate_burst_dataframe` used both
+  conventions for the burst's `stop` index in the same four lines: the duration
+  and mean macro time read the photon *at* `stop`, while the photon count and
+  the slice that drives every per-detector and per-window count treated it as an
+  exclusive end. `find_bursts`, the producer for the burst-selection API, the
+  photon-filter wizard and the trace browser, documents its pairs as inclusive,
+  so the count side was the wrong one: every burst in every `.bur` lost its last
+  photon and its count rate was biased low by `N/(N+1)` — worst on the short,
+  dim bursts. The counting side now follows the producer, the legacy
+  `write_bur_file_old` was brought to the same convention (its guard admitted
+  `stop_idx == n_ph` and then indexed one past the end), and
+  `test/fio/test_burst_dataframe_bounds.py` pins it on the synthetic stream from
+  the review. `.bur` column semantics are unchanged. (RF-163)
+
 * **Spots become trajectories, and trajectories become a diffusion
   coefficient.** Detection was well served here (bead finding, segmentation)
   but **linking had no prior art at all** — `linear_sum_assignment` appeared

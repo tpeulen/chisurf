@@ -2010,11 +2010,29 @@ Everything below was verified by running the real code in the `arm64` env; no
 source was changed. Findings RF-163..RF-168.
 
 ### RF-163
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (every burst in every `.bur` loses its last photon: `Number of Photons` is one short and `Count Rate (KHz)` is biased low by `N/(N+1)`)
 - **Location:** `chisurf/core/fio/fluorescence/burst.py:432-435` and `:451` (`generate_burst_dataframe`), against its producer `chisurf/core/math/signal.py:436-498` (`find_bursts`)
 - **Finding:** `generate_burst_dataframe` uses **two different conventions for `stop` in the same four lines**. `dur = (macro[stop] - macro[start])` and `meanm = (macro[stop] + macro[start]) / 2` index the photon *at* `stop`, i.e. treat it as the inclusive last photon; `npix = stop - start` and `sl = slice(start, stop)` (which drives every per-detector and per-window count below) treat it as an exclusive end. `find_bursts` — the producer for the burst-selection API, the photon-filter wizard and the trace browser — documents and doctests its pairs as **inclusive** (`chisurf/core/math/signal.py:454`, `:497` "stop is exclusive, so subtract 1"), so the count side is the wrong one and the last photon of every burst is dropped from all counts. Verified on a synthetic 11-photon stream (10 burst photons 1 µs apart, then one background photon 1 ms later): `find_bursts` returns `[[0, 9]]` and the table reports `Number of Photons = 9`, `Number of Photons (g) = 9`, `Duration = 0.009 ms`, `Count Rate = 1.000 kHz` against the true 10 photons / 1.111 kHz. The bias is `1/N` per burst, so it is largest exactly where burst counts matter most — the short, dim bursts. Fixing it means `stop + 1` in the slice and `stop - start + 1` in the count (or normalising the producer), and it will move every existing burst table, so the fix must also re-baseline the counts asserted in `chisurf/plugins/burst/burst_selection/tests/test_real_data.py` — note that test compares two chisurf paths to each other, not to a reference implementation, so it never caught this. The now-unreachable `write_bur_file_old` (`:203-217`) carries the identical mix, plus a guard (`stop_idx > n_ph`) that admits `stop_idx == n_ph` and then indexes `macro_times[n_ph]`.
-- **Fix note:**
+- **Fix note:** The producer's convention won: `stop` is the burst's last photon
+  everywhere in `chisurf/core/fio/fluorescence/burst.py`. In
+  `generate_burst_dataframe`, `npix = stop - start + 1` and `sl = slice(start,
+  stop + 1)`, so the total, every per-detector and every per-window count now
+  include the photon the duration was already measured to. The legacy
+  `write_bur_file_old` got the same treatment plus its out-of-range guard
+  (`stop_idx >= n_ph`, which no longer admits `macro_times[n_ph]`), and all three
+  docstrings now state the convention. Pinned by
+  `test/fio/test_burst_dataframe_bounds.py`: the finding's own synthetic stream
+  (10 burst photons 1 µs apart + 1 background photon) asserts `find_bursts`
+  returns `[[0, 9]]` and that the table reports 10 photons globally, per detector
+  and per window at 1111.1 kHz; a burst ending on the last photon of the stream
+  is kept; and the legacy writer counts the same 10 while skipping a pair with
+  `stop_idx == n_ph`. The `.bur` "Last Photon" value is unchanged, so consumers
+  are unaffected — those that re-slice `macro[first:last]`
+  (`chisurf/core/fluorescence/burst/photons.py:219`,
+  `chisurf/plugins/burst/burst_2cde/core/computation.py`) drop the same photon as
+  before and need their own finding. The real-data burst-selection suite (176
+  tests) stays green: it compares two chisurf paths that both moved together.
 
 ### RF-164
 - **Status:** OPEN
