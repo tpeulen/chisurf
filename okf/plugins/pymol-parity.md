@@ -242,21 +242,32 @@ settings store and are deliberately not started.
 beside the original rather than an arbitrary number of cells away, convert back,
 and keep it only if some atom comes within the cutoff.
 
-**No space-group library is installed** — no `gemmi`, `spglib` or `cctbx` — so the
-operators come from three sources in order of trust: supplied explicitly or read
-from the file (exact, whatever the group), then a built-in table of the groups
-common in protein crystallography, then **nothing** — in which case the space
-group is named and the command declines. A mate built from guessed operators looks
-entirely plausible and would be believed, so declining is the honest answer.
+**The operators are PyMOL's own**, transcribed out of `modules/pymol/xray.py`
+(`sym_base` + `space_group_map`) into `analysis/space_groups.py` by a generator
+checked in beside the data: **547 names over 528 distinct operator sets**, up to
+192 operators each. No crystallography library is a dependency — no `gemmi`,
+`spglib` or `cctbx` — and none is wanted: sharing PyMOL's table is what makes a
+mate here *the same mate* PyMOL would build, rather than approximately the same.
 
-**The table is hand-entered, so it is verified mathematically rather than by
-inspection.** Each of the 27 groups must be closed under composition modulo
-lattice translations, every rotation must have determinant +1 (protein space
-groups are chiral, so a mirror or inversion is a typo), there must be exactly one
-identity, and no duplicates. Two realistic typos injected deliberately — a wrong
-fraction (`1/2` → `1/4` in P212121) and a flipped sign in P222 — fail 1 and 2
-tests respectively. That is what makes a data table trustworthy without a
-reference implementation to compare against.
+An earlier revision of this section described a 27-group table entered by hand.
+That was replaced: a hand table covers the common cases and diverges from PyMOL
+everywhere else, which is the wrong trade for a parity project.
+
+Operators are looked up in order of trust: supplied explicitly or read from the
+file (exact, whatever the group), then PyMOL's table, then **nothing** — in which
+case the space group is named and the command declines. A mate built from guessed
+operators looks entirely plausible and would be believed.
+
+**A transcription can fail silently, so the whole table is verified
+mathematically.** All 547 groups are closed under composition modulo lattice
+translations, every rotation is an isometry (determinant exactly ±1 — 4355 proper
+and 3303 improper, since the table covers all 230 groups and the centrosymmetric
+ones contain inversions), every group has exactly one identity, and none lists an
+operator twice. **7658 operators verified.** The chiral groups proteins
+crystallise in are checked separately for determinant +1 only, where an improper
+rotation would be an extraction error rather than a legitimate mirror. A size
+guard sits alongside, because a *truncated* extraction would pass every
+mathematical check — whatever survived would still be self-consistent.
 
 Two other checks worth keeping: a mate must be a **rigid** copy (symmetry is an
 isometry, so internal distances cannot change), and a pure lattice translation

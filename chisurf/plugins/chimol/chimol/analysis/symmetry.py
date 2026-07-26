@@ -5,23 +5,27 @@ crystal so a lattice contact can be looked at.
 
 Where the operators come from
 -----------------------------
-PyMOL gets them from a space-group table compiled into it. Nothing here can:
-neither ``gemmi`` nor ``spglib`` nor ``cctbx`` is installed. So there are three
-sources, in order of trust:
+From **PyMOL's own table**, transcribed out of ``modules/pymol/xray.py`` into
+:mod:`space_groups` by the generator checked in beside it -- 547 space-group names
+over 528 distinct operator sets, up to 192 operators each. No crystallography
+library is a dependency (no ``gemmi``, ``spglib`` or ``cctbx``), and none is
+wanted: sharing PyMOL's table is what makes the mates agree with PyMOL's rather
+than approximately agree.
+
+Three sources, in order of trust:
 
 1. **operators supplied explicitly** (``set_symmetry``), or read from the file --
-   mmCIF carries ``_symmetry_equiv.pos_as_xyz`` and a PDB may carry
-   ``REMARK 290   SMTRY``. Exact, whatever the space group;
-2. **a built-in table** of the space groups common in protein crystallography;
+   mmCIF carries ``_symmetry_equiv.pos_as_xyz``. Exact, whatever the space group;
+2. **PyMOL's table**, by space-group name;
 3. **nothing** -- in which case the space group is *named* and the command
    declines, rather than inventing operators. A wrong symmetry mate looks
    entirely plausible and would be believed.
 
-The table is hand-entered, which means it can be mistyped, so it is not trusted
-on inspection: a test checks each entry **mathematically** -- that the operators
-form a closed group under composition modulo lattice translations, that the count
-matches the expected multiplicity, and that every rotation has determinant +1
-(protein space groups are chiral; a mirror or an inversion would be a typo).
+The transcription is not trusted on inspection: a test checks **every** group
+mathematically -- that its operators are closed under composition modulo lattice
+translations, that each rotation is a proper rotation or a proper improper one for
+the centrosymmetric groups, and that there is exactly one identity. A bad
+extraction fails those rather than placing mates plausibly wrongly.
 """
 
 from __future__ import annotations
@@ -33,7 +37,9 @@ from dataclasses import dataclass
 import numpy as np
 
 __all__ = [
+    "SPACE_GROUP_ALIASES",
     "SPACE_GROUP_OPERATORS",
+    "operators_for",
     "UnitCell",
     "normalise_space_group",
     "parse_symmetry_operator",
@@ -163,87 +169,22 @@ def normalise_space_group(name: str) -> str:
     return "".join(str(name).upper().split())
 
 
-#: Operators for the space groups common in protein crystallography, keyed by
-#: :func:`normalise_space_group`. Verified by test rather than by inspection --
-#: see the module docstring.
-SPACE_GROUP_OPERATORS: dict[str, tuple[str, ...]] = {
-    "P1": ("x,y,z",),
-    "P2": ("x,y,z", "-x,y,-z"),
-    "P21": ("x,y,z", "-x,y+1/2,-z"),
-    "P1211": ("x,y,z", "-x,y+1/2,-z"),
-    "C2": ("x,y,z", "-x,y,-z", "x+1/2,y+1/2,z", "-x+1/2,y+1/2,-z"),
-    "C121": ("x,y,z", "-x,y,-z", "x+1/2,y+1/2,z", "-x+1/2,y+1/2,-z"),
-    "P222": ("x,y,z", "-x,-y,z", "-x,y,-z", "x,-y,-z"),
-    "P2221": ("x,y,z", "-x,-y,z+1/2", "-x,y,-z+1/2", "x,-y,-z"),
-    "P21212": (
-        "x,y,z", "-x,-y,z", "-x+1/2,y+1/2,-z", "x+1/2,-y+1/2,-z",
-    ),
-    "P212121": (
-        "x,y,z", "-x+1/2,-y,z+1/2", "-x,y+1/2,-z+1/2", "x+1/2,-y+1/2,-z",
-    ),
-    "C2221": (
-        "x,y,z", "-x,-y,z+1/2", "-x,y,-z+1/2", "x,-y,-z",
-        "x+1/2,y+1/2,z", "-x+1/2,-y+1/2,z+1/2",
-        "-x+1/2,y+1/2,-z+1/2", "x+1/2,-y+1/2,-z",
-    ),
-    "P4": ("x,y,z", "-x,-y,z", "-y,x,z", "y,-x,z"),
-    "P41": (
-        "x,y,z", "-x,-y,z+1/2", "-y,x,z+1/4", "y,-x,z+3/4",
-    ),
-    "P43": (
-        "x,y,z", "-x,-y,z+1/2", "-y,x,z+3/4", "y,-x,z+1/4",
-    ),
-    "P41212": (
-        "x,y,z", "-x,-y,z+1/2", "-y+1/2,x+1/2,z+1/4", "y+1/2,-x+1/2,z+3/4",
-        "-x+1/2,y+1/2,-z+1/4", "x+1/2,-y+1/2,-z+3/4", "y,x,-z", "-y,-x,-z+1/2",
-    ),
-    "P43212": (
-        "x,y,z", "-x,-y,z+1/2", "-y+1/2,x+1/2,z+3/4", "y+1/2,-x+1/2,z+1/4",
-        "-x+1/2,y+1/2,-z+3/4", "x+1/2,-y+1/2,-z+1/4", "y,x,-z", "-y,-x,-z+1/2",
-    ),
-    "P3": ("x,y,z", "-y,x-y,z", "-x+y,-x,z"),
-    "P31": ("x,y,z", "-y,x-y,z+1/3", "-x+y,-x,z+2/3"),
-    "P32": ("x,y,z", "-y,x-y,z+2/3", "-x+y,-x,z+1/3"),
-    "P321": (
-        "x,y,z", "-y,x-y,z", "-x+y,-x,z", "y,x,-z", "x-y,-y,-z", "-x,-x+y,-z",
-    ),
-    "P3121": (
-        "x,y,z", "-y,x-y,z+1/3", "-x+y,-x,z+2/3",
-        "y,x,-z", "x-y,-y,-z+2/3", "-x,-x+y,-z+1/3",
-    ),
-    "P3221": (
-        "x,y,z", "-y,x-y,z+2/3", "-x+y,-x,z+1/3",
-        "y,x,-z", "x-y,-y,-z+1/3", "-x,-x+y,-z+2/3",
-    ),
-    "P6": ("x,y,z", "-y,x-y,z", "-x+y,-x,z", "-x,-y,z", "y,-x+y,z", "x-y,x,z"),
-    "P61": (
-        "x,y,z", "-y,x-y,z+1/3", "-x+y,-x,z+2/3",
-        "-x,-y,z+1/2", "y,-x+y,z+5/6", "x-y,x,z+1/6",
-    ),
-    "P65": (
-        "x,y,z", "-y,x-y,z+2/3", "-x+y,-x,z+1/3",
-        "-x,-y,z+1/2", "y,-x+y,z+1/6", "x-y,x,z+5/6",
-    ),
-    "I222": (
-        "x,y,z", "-x,-y,z", "-x,y,-z", "x,-y,-z",
-        "x+1/2,y+1/2,z+1/2", "-x+1/2,-y+1/2,z+1/2",
-        "-x+1/2,y+1/2,-z+1/2", "x+1/2,-y+1/2,-z+1/2",
-    ),
-    "F222": (
-        "x,y,z", "-x,-y,z", "-x,y,-z", "x,-y,-z",
-        "x,y+1/2,z+1/2", "-x,-y+1/2,z+1/2",
-        "-x,y+1/2,-z+1/2", "x,-y+1/2,-z+1/2",
-        "x+1/2,y,z+1/2", "-x+1/2,-y,z+1/2",
-        "-x+1/2,y,-z+1/2", "x+1/2,-y,-z+1/2",
-        "x+1/2,y+1/2,z", "-x+1/2,-y+1/2,z",
-        "-x+1/2,y+1/2,-z", "x+1/2,-y+1/2,-z",
-    ),
-}
+#: PyMOL's table, keyed by :func:`normalise_space_group`. Re-exported here so
+#: callers have one import; the data and its generator live in `space_groups.py`.
+from .space_groups import (  # noqa: E402
+    SPACE_GROUP_ALIASES,
+    SPACE_GROUP_OPERATORS,
+    lookup_operators,
+)
 
 
 def operators_for(name: str) -> tuple[str, ...] | None:
-    """Built-in operators for a space group, or None when it is not tabulated."""
-    return SPACE_GROUP_OPERATORS.get(normalise_space_group(name))
+    """Operators for a space group, or None when the name is not in the table.
+
+    Aliases are followed, so a conventional symbol and PyMOL's alternative
+    spelling both resolve; ``P 21 21 21`` and ``P212121`` are the same key.
+    """
+    return lookup_operators(name)
 
 
 # --------------------------------------------------------------------------- #
@@ -443,3 +384,59 @@ def read_file_operators(path) -> list[str]:
     except OSError:
         return []
     return [f for f in found if f.count(",") == 2]
+
+
+# --------------------------------------------------------------------------- #
+# Drawing the cell
+# --------------------------------------------------------------------------- #
+#: The twelve edges of a parallelepiped, as pairs of corner indices. Corners are
+#: numbered by their fractional coordinates read as bits: corner ``i`` has
+#: ``x = i & 1``, ``y = (i >> 1) & 1``, ``z = (i >> 2) & 1``. Two corners share an
+#: edge exactly when their indices differ in one bit, which is where this list
+#: comes from -- it is not an arbitrary ordering to be checked by eye.
+CELL_EDGES = tuple(
+    (i, i ^ bit)
+    for bit in (1, 2, 4)
+    for i in range(8)
+    if not (i & bit)
+)
+
+
+def cell_corners(cell: UnitCell, origin=None) -> np.ndarray:
+    """The eight corners of the unit cell, in Cartesian coordinates.
+
+    Parameters
+    ----------
+    cell : UnitCell
+        The crystal cell.
+    origin : array-like, optional
+        Cartesian position of the cell's origin; the coordinate origin by
+        default.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(8, 3)`` corners, ordered so corner ``i`` has fractional coordinates
+        ``(i & 1, (i >> 1) & 1, (i >> 2) & 1)``.
+    """
+    fractional = np.array([
+        [i & 1, (i >> 1) & 1, (i >> 2) & 1] for i in range(8)
+    ], dtype=float)
+    corners = fractional @ cell.frac_to_real().T
+    if origin is not None:
+        corners = corners + np.asarray(origin, dtype=float)
+    return corners
+
+
+def cell_line_segments(cell: UnitCell, origin=None) -> np.ndarray:
+    """The cell box as line segments, ready for a ``line`` geometry.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(24, 3)`` -- twelve edges as consecutive vertex pairs.
+    """
+    corners = cell_corners(cell, origin)
+    return np.array(
+        [corners[a] for edge in CELL_EDGES for a in edge], dtype=float
+    )

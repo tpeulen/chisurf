@@ -95,16 +95,17 @@ you are working on.
 
 :::{note}
 The cell comes from the file's `CRYST1` record. The operators come from the file
-if it carries them, otherwise from a built-in table of the space groups common in
-protein crystallography. **When neither has them, the space group is named and the
-command declines** rather than guessing: a mate built from wrong operators looks
-entirely plausible and would be believed. Supply them with `set_symmetry` in that
-case.
+if it carries them, otherwise from **PyMOL's own space-group table** — all 547
+names it ships, up to 192 operators each — so a mate here is the same mate PyMOL
+would build. **When neither has them, the space group is named and the command
+declines** rather than guessing: a mate built from wrong operators looks entirely
+plausible and would be believed. Supply them with `set_symmetry` in that case.
 
-The built-in table is hand-entered, so it is checked mathematically rather than by
-eye — every group must be closed under composition modulo lattice translations,
-every rotation must be a proper rotation, and there must be exactly one identity.
-A wrong fraction or a flipped sign breaks closure and fails the test.
+The table is carried rather than computed (no crystallography library is a
+dependency), so it is checked mathematically rather than by eye: every one of the
+547 groups must be closed under composition modulo lattice translations, every
+rotation must be an isometry, and each group must have exactly one identity —
+7658 operators verified.
 :::
 
 ### Tidying and shielding

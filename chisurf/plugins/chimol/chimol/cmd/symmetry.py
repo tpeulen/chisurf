@@ -3,10 +3,11 @@
 ``symexp`` builds the neighbouring copies of a molecule in its crystal, so a
 lattice contact can be looked at and told apart from a biological interface.
 
-The cell comes from the file's ``CRYST1`` record, and the operators from the
-built-in table, from the file, or from ``set_symmetry``. When none of those has
-them the space group is **named** and the command declines: a symmetry mate built
-from guessed operators looks entirely plausible and would be believed.
+The cell comes from the file's ``CRYST1`` record, and the operators from **PyMOL's
+own space-group table** -- transcribed into ``analysis/space_groups.py``, all 547
+names it ships -- or from the file, or from ``set_symmetry``. When none of those
+has them the space group is **named** and the command declines: a symmetry mate
+built from guessed operators looks entirely plausible and would be believed.
 """
 
 from __future__ import annotations
@@ -33,9 +34,9 @@ class SymmetryMixin(BaseCmd):
         """Return ``(cell, space group, operators, source)`` for an object.
 
         Looked up in order of trust: what was set explicitly, then the file, then
-        the built-in table. ``source`` names which one answered, so a message can
-        say where the operators came from -- which matters when they might be a
-        table lookup rather than the depositor's own.
+        PyMOL's table. ``source`` names which one answered, so a message can say
+        where the operators came from -- which matters when they might be a table
+        lookup rather than the depositor's own.
         """
         entry = viewer._objects.get(object_id)
         state = getattr(entry, "state", None)
@@ -69,7 +70,7 @@ class SymmetryMixin(BaseCmd):
 
         tabulated = operators_for(space_group or "")
         if tabulated:
-            return cell, space_group or "", list(tabulated), "the built-in table"
+            return cell, space_group or "", list(tabulated), "PyMOL's space-group table"
         return cell, space_group or "", [], "none"
 
     @command("get_symmetry", aliases=("symmetry",))
@@ -112,8 +113,9 @@ class SymmetryMixin(BaseCmd):
             )
         else:
             self._emit_message(
-                f"get_symmetry: no operators for '{space_group}' -- not in the "
-                "built-in table and not in the file; supply them with set_symmetry"
+                f"get_symmetry: no operators for '{space_group}' -- not in "
+                "PyMOL's space-group table and not in the file; supply them with "
+                "set_symmetry"
             )
 
     @command("set_symmetry")
@@ -139,7 +141,7 @@ class SymmetryMixin(BaseCmd):
         alpha, beta, gamma : str, optional
             Cell angles in degrees; right angles by default.
         space_group : str, optional
-            Space-group name. Its operators are looked up in the built-in table.
+            Space-group name. Its operators are looked up in PyMOL's table.
         """
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
@@ -181,7 +183,7 @@ class SymmetryMixin(BaseCmd):
             + (
                 f"'{name}' with {len(operators)} operators"
                 if operators
-                else f"'{name}' has no operators in the built-in table"
+                else f"'{name}' is not in PyMOL's space-group table"
             )
         )
 
@@ -239,9 +241,9 @@ class SymmetryMixin(BaseCmd):
             return
         if not operators:
             self._emit_error(
-                f"symexp: no symmetry operators for '{space_group}'. It is not in "
-                "the built-in table and the file does not carry them -- supply "
-                "them rather than have mates built from a guess"
+                f"symexp: no symmetry operators for '{space_group}'. It is not "
+                "in PyMOL's space-group table and the file does not carry them -- "
+                "supply them rather than have mates built from a guess"
             )
             return
 

@@ -2,6 +2,40 @@
 
 ## 2026-07-26
 
+* **chimol: the space-group operators now come from PyMOL's own table, not a hand
+  table.** Yesterday's symmetry commit shipped 27 groups entered by hand, on the
+  reasoning that no crystallography library is installed. That was the wrong trade
+  for a parity project: a hand table covers the common cases and diverges from
+  PyMOL everywhere else.
+
+  PyMOL keeps the data in `modules/pymol/xray.py` as `sym_base` — a dict from a
+  *tuple of operator strings* to the names sharing them — plus `space_group_map`
+  for alternative spellings. Transcribed into `analysis/space_groups.py` by
+  `make_space_groups.py`, checked in beside it so the extraction can be redone and
+  diffed rather than trusted: **547 names over 528 distinct operator sets, up to
+  192 operators each**. Still no library dependency; the data is carried.
+
+  **The whole transcription is verified mathematically**, which is what catches a
+  bad extraction: all 547 groups closed under composition modulo lattice
+  translations, every rotation an isometry (determinant exactly ±1 — 4355 proper
+  and 3303 improper, since the table covers all 230 groups and the centrosymmetric
+  ones contain inversions), exactly one identity per group, no duplicates.
+  **7658 operators verified.** The chiral groups proteins crystallise in are
+  checked separately for +1 only, where an improper rotation would be an
+  extraction error rather than a legitimate mirror.
+
+  A size guard sits alongside the maths, because a *truncated* extraction would
+  pass every mathematical check — whatever survived would still be
+  self-consistent. That is the failure mode a "verify the properties" strategy
+  does not cover on its own.
+
+  Also added the unit-cell box geometry (`CELL_EDGES`, `cell_corners`,
+  `cell_line_segments`) toward `show cell`. The twelve edges are *derived* from the
+  corner bit pattern — two corners share an edge exactly when their indices differ
+  in one bit — so the tests check the derivation rather than a typed-out list.
+
+  40 tests.
+
 * **Nine dead test modules were hiding 250 live ones.** `test/settings`,
   `test/plugins` and `test/gui` did not *collect*: a module whose import fails
   aborts collection for its whole package, so one dead import silently costs

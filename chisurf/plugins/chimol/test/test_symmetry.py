@@ -1,20 +1,24 @@
 """Crystallographic symmetry: the cell, the operators, and ``symexp``.
 
-No space-group library is installed (no ``gemmi``, ``spglib`` or ``cctbx``), so
-the operators come from a hand-entered table. Hand-entered data can be mistyped,
-and a mistyped symmetry operator produces a mate that looks entirely plausible in
-the wrong place -- so the table is **verified mathematically** rather than by
-inspection:
+The operators are **PyMOL's own table**, transcribed out of
+``modules/pymol/xray.py`` by the generator checked in beside the data -- 547
+space-group names over 528 distinct operator sets, up to 192 operators each. No
+crystallography library is a dependency, and none is wanted: sharing PyMOL's table
+is what makes the mates agree with PyMOL's rather than approximately agree.
 
-* the operators must be **closed** under composition modulo lattice translations;
-* every rotation must have determinant **+1**, because protein space groups are
-  chiral and a mirror or inversion would be a typo;
-* exactly one identity, and no duplicates.
+A transcription can go wrong silently, and a wrong symmetry operator produces a
+mate that looks entirely plausible in the wrong place. So the whole table is
+checked **mathematically** rather than spot-checked:
 
-That turns a data table into a checked one. The rest of the file tests the cell
-transforms (a round trip, and a known volume), the operator parser, and the mate
-generation against a real crystal -- HIV reverse transcriptase, whose ``CRYST1``
-gives ``P 21 21 21`` in a 78.84 x 150.70 x 280.88 cell.
+* every group must be **closed** under composition modulo lattice translations;
+* every rotation must be an isometry -- determinant exactly +/-1. Both signs occur,
+  because PyMOL's table covers all 230 groups and the centrosymmetric ones contain
+  inversions; the chiral groups proteins crystallise in are checked separately for
+  +1 only;
+* exactly one identity per group, and no duplicates.
+
+That is 7658 operators verified, which is what makes a carried data table
+trustworthy without a reference implementation to compare against.
 """
 
 from __future__ import annotations
@@ -26,11 +30,14 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.chimol.chimol.analysis.symmetry import (
+    CELL_EDGES,
     SPACE_GROUP_OPERATORS,
     UnitCell,
     normalise_space_group,
     operators_for,
     parse_symmetry_operator,
+    cell_corners,
+    cell_line_segments,
     read_cryst1,
     symmetry_mates,
 )
@@ -55,63 +62,123 @@ def _key(rotation, translation):
 # --------------------------------------------------------------------------- #
 # The table, verified rather than inspected
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("name", sorted(SPACE_GROUP_OPERATORS))
-def test_each_space_group_is_a_closed_group(name):
-    """Composing any two operators must give another one in the set.
+def test_every_group_is_closed_under_composition():
+    """The check that catches a bad transcription.
 
-    This is the check that catches a typo: a wrong sign or a wrong fraction
-    almost always breaks closure, while looking perfectly reasonable on the page.
+    A wrong sign or a wrong fraction almost always breaks closure while looking
+    perfectly reasonable on the page. Run over all 547 names at once rather than
+    parametrised, so a broken extraction reports as one failure naming the groups
+    instead of hundreds.
     """
-    parsed = [parse_symmetry_operator(op) for op in SPACE_GROUP_OPERATORS[name]]
-    known = {_key(r, t) for r, t in parsed}
-    for (r1, t1), (r2, t2) in itertools.product(parsed, parsed):
-        composed = _key(r1 @ r2, r1 @ t2 + t1)
-        assert composed in known, f"{name} is not closed under composition"
+    broken = []
+    for name, operators in SPACE_GROUP_OPERATORS.items():
+        parsed = [parse_symmetry_operator(op) for op in operators]
+        known = {_key(r, t) for r, t in parsed}
+        for (r1, t1), (r2, t2) in itertools.product(parsed, parsed):
+            if _key(r1 @ r2, r1 @ t2 + t1) not in known:
+                broken.append(name)
+                break
+    assert not broken, f"{len(broken)} groups are not closed: {broken[:8]}"
 
 
-@pytest.mark.parametrize("name", sorted(SPACE_GROUP_OPERATORS))
-def test_every_rotation_is_chiral(name):
-    """Determinant +1. Protein space groups have no mirrors or inversions."""
-    for op in SPACE_GROUP_OPERATORS[name]:
-        rotation, _ = parse_symmetry_operator(op)
-        assert float(np.linalg.det(rotation)) == pytest.approx(1.0, abs=1e-9), (
-            f"{name}: {op} is not a proper rotation"
-        )
+def test_every_rotation_is_an_isometry():
+    """Determinant exactly +/-1.
+
+    Both signs occur: PyMOL's table covers all 230 space groups, and the
+    centrosymmetric ones contain inversions and mirrors.
+    """
+    wrong = []
+    for name, operators in SPACE_GROUP_OPERATORS.items():
+        for op in operators:
+            rotation, _ = parse_symmetry_operator(op)
+            if abs(abs(float(np.linalg.det(rotation))) - 1.0) > 1e-9:
+                wrong.append(f"{name}: {op}")
+    assert not wrong, wrong[:8]
 
 
-@pytest.mark.parametrize("name", sorted(SPACE_GROUP_OPERATORS))
-def test_each_group_has_exactly_one_identity(name):
-    identities = 0
-    for op in SPACE_GROUP_OPERATORS[name]:
-        rotation, translation = parse_symmetry_operator(op)
-        if np.allclose(rotation, np.eye(3)) and np.allclose(
-            np.mod(translation, 1.0), 0.0
-        ):
-            identities += 1
-    assert identities == 1, f"{name} has {identities} identity operators"
+def test_both_determinant_signs_are_present():
+    """A sanity check on the check: if everything were +1 the table would be
+    only the chiral groups, and the isometry test above would be weaker than it
+    looks."""
+    signs = set()
+    for operators in SPACE_GROUP_OPERATORS.values():
+        for op in operators:
+            rotation, _ = parse_symmetry_operator(op)
+            signs.add(int(round(float(np.linalg.det(rotation)))))
+    assert signs == {1, -1}
 
 
-@pytest.mark.parametrize("name", sorted(SPACE_GROUP_OPERATORS))
-def test_no_duplicate_operators(name):
-    operators = SPACE_GROUP_OPERATORS[name]
-    distinct = {
-        _key(*parse_symmetry_operator(op)) for op in operators
-    }
-    assert len(distinct) == len(operators), f"{name} lists an operator twice"
+def test_the_chiral_protein_groups_have_no_improper_rotations():
+    """A protein cannot crystallise in a centrosymmetric group.
+
+    So for the groups proteins actually use, an improper rotation would be a
+    transcription error rather than a legitimate mirror.
+    """
+    for name in ("P212121", "P21", "C2", "P43212", "P41212", "P3121",
+                 "P3221", "P6122", "P6522", "P1", "C2221", "I222", "P21212"):
+        operators = SPACE_GROUP_OPERATORS.get(name)
+        assert operators, f"{name} should be in the table"
+        for op in operators:
+            rotation, _ = parse_symmetry_operator(op)
+            assert float(np.linalg.det(rotation)) == pytest.approx(1.0, abs=1e-9), (
+                f"{name}: {op} is improper"
+            )
 
 
-def test_the_common_protein_groups_are_present():
-    """P 21 21 21 alone is a large share of the PDB."""
-    for name in ("P212121", "P21", "C2", "P43212", "P3121", "P1"):
-        assert name in SPACE_GROUP_OPERATORS
+def test_each_group_has_exactly_one_identity():
+    wrong = []
+    for name, operators in SPACE_GROUP_OPERATORS.items():
+        identities = 0
+        for op in operators:
+            rotation, translation = parse_symmetry_operator(op)
+            if np.allclose(rotation, np.eye(3)) and np.allclose(
+                np.mod(translation, 1.0), 0.0
+            ):
+                identities += 1
+        if identities != 1:
+            wrong.append(f"{name}: {identities}")
+    assert not wrong, wrong[:8]
 
 
-def test_the_multiplicity_is_right_for_the_groups_we_can_state():
+def test_no_group_lists_an_operator_twice():
+    wrong = []
+    for name, operators in SPACE_GROUP_OPERATORS.items():
+        distinct = {_key(*parse_symmetry_operator(op)) for op in operators}
+        if len(distinct) != len(operators):
+            wrong.append(name)
+    assert not wrong, wrong[:8]
+
+
+def test_the_table_is_the_size_pymol_ships():
+    """A guard on the extraction itself: a truncated run would still pass every
+    mathematical check above, because what survived would be self-consistent."""
+    assert len(SPACE_GROUP_OPERATORS) > 500
+    assert len({v for v in SPACE_GROUP_OPERATORS.values()}) > 500
+    assert max(len(v) for v in SPACE_GROUP_OPERATORS.values()) == 192
+
+
+def test_every_space_group_used_by_proteins_resolves():
+    """The 25 commonest, in the spellings a CRYST1 record actually carries."""
+    for name in (
+        "P 21 21 21", "P 1 21 1", "C 1 2 1", "P 21 21 2", "P 43 21 2",
+        "P 41 21 2", "P 32 2 1", "P 61 2 2", "P 1", "C 2 2 21", "I 2 2 2",
+        "P 31 2 1", "P 65 2 2", "P 6 2 2", "I 4 1 2 2", "F 2 2 2", "P 6 1",
+        "P 3 2 1", "P 6 3", "I 4", "H 3", "R 3", "P 2 21 21", "I 21 3",
+        "F 4 3 2",
+    ):
+        assert operators_for(name), f"{name} does not resolve"
+
+
+def test_a_spelling_without_spaces_resolves_the_same():
+    assert operators_for("P 21 21 21") == operators_for("P212121")
+    assert operators_for("p 21 21 21") == operators_for("P212121")
+
+
+def test_the_multiplicity_matches_the_symbol():
     """Order of the group, from the space-group symbol's own arithmetic."""
     expected = {
-        "P1": 1, "P2": 2, "P21": 2, "P222": 4, "P212121": 4,
-        "C2": 4, "C2221": 8, "P4": 4, "P43212": 8,
-        "P3": 3, "P321": 6, "P6": 6, "I222": 8, "F222": 16,
+        "P1": 1, "P21": 2, "P212121": 4, "C2": 4, "C2221": 8,
+        "P43212": 8, "P3121": 6, "P6122": 12, "I222": 8, "F222": 16,
     }
     for name, order in expected.items():
         assert len(SPACE_GROUP_OPERATORS[name]) == order, name
@@ -314,3 +381,68 @@ def test_mates_are_found_in_a_real_crystal():
     assert len(mates) < 4 * 27 - 1, "the cutoff must reject something"
     for mate in mates:
         assert mate["coords"].shape == coords.shape
+
+
+# --------------------------------------------------------------------------- #
+# The cell box, for drawing it
+# --------------------------------------------------------------------------- #
+def test_the_box_has_twelve_edges():
+    assert len(CELL_EDGES) == 12
+
+
+def test_every_corner_meets_three_edges():
+    """A parallelepiped's corners have degree three. Derived from the bit pattern
+    rather than typed out, so this checks the derivation, not a transcription."""
+    from collections import Counter
+
+    degree = Counter(i for edge in CELL_EDGES for i in edge)
+    assert set(degree) == set(range(8))
+    assert set(degree.values()) == {3}
+
+
+def test_the_corners_are_the_fractional_vertices():
+    cell = UnitCell(a=10.0, b=20.0, c=30.0)
+    corners = cell_corners(cell)
+    assert corners.shape == (8, 3)
+    # Corner i has fractional coordinates read off i's bits.
+    assert np.allclose(corners[0], [0.0, 0.0, 0.0])
+    assert np.allclose(corners[1], [10.0, 0.0, 0.0])
+    assert np.allclose(corners[2], [0.0, 20.0, 0.0])
+    assert np.allclose(corners[4], [0.0, 0.0, 30.0])
+    assert np.allclose(corners[7], [10.0, 20.0, 30.0])
+
+
+def test_the_box_edges_are_the_cell_edges():
+    """Twelve edges, four of each cell length -- the check that the edge list and
+    the corner numbering agree with each other."""
+    cell = UnitCell(a=10.0, b=20.0, c=30.0)
+    segments = cell_line_segments(cell)
+    assert segments.shape == (24, 3)
+    lengths = [
+        round(float(np.linalg.norm(segments[2 * k + 1] - segments[2 * k])), 6)
+        for k in range(12)
+    ]
+    from collections import Counter
+
+    assert Counter(lengths) == {10.0: 4, 20.0: 4, 30.0: 4}
+
+
+def test_a_triclinic_box_still_closes():
+    """Opposite edges of a parallelepiped are parallel and equal, whatever the
+    angles -- so the twelve lengths still come in three groups of four."""
+    cell = UnitCell(a=10.0, b=20.0, c=30.0, alpha=70.0, beta=80.0, gamma=100.0)
+    segments = cell_line_segments(cell)
+    lengths = [
+        round(float(np.linalg.norm(segments[2 * k + 1] - segments[2 * k])), 6)
+        for k in range(12)
+    ]
+    from collections import Counter
+
+    assert sorted(Counter(lengths).values()) == [4, 4, 4]
+
+
+def test_the_origin_shifts_the_whole_box():
+    cell = UnitCell(a=10.0, b=10.0, c=10.0)
+    at_origin = cell_corners(cell)
+    moved = cell_corners(cell, origin=[5.0, -2.0, 1.0])
+    assert np.allclose(moved - at_origin, [5.0, -2.0, 1.0])
