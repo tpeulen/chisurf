@@ -558,10 +558,11 @@ def test_fit_region_survives_replots(qapp, qtbot):
     widget._fit_region.set_bounds(30.0, 200.0)
     widget._fit_region_initialized = True
 
-    # Toggle a detector → recompute → the selector must still be there, at the
-    # range the user chose, and still drive the fit window.
-    names = list(widget.detector_selection.checkboxes.keys())
-    widget.detector_selection.checkboxes[names[0]].setChecked(False)
+    # Replot → the selector must still be there, at the range the user chose,
+    # and still drive the fit window. Driven directly rather than by toggling a
+    # detector: whether any detector exists depends on the machine's saved
+    # setups, and this is about surviving the replot.
+    widget._update_plots()
     qapp.processEvents()
 
     assert isinstance(widget._fit_region, H.Region), "region wiped by the recompute"
