@@ -164,8 +164,18 @@ diagonal.
   therefore delegates to the shared generator with **one explicit transpose at its
   boundary**, pinned by a test, rather than carrying a second implementation.
 
-The editable `n x n` grid is the AutoForm `rate_matrix` section bound to
-`rate_values`; see [gui-autoform.md](/subsystems/gui-autoform.md).
+**One editor, too.** The editable `n x n` grid is the AutoForm `rate_matrix`
+section bound to `rate_values` — the same widget for both PDA model editors and
+the acquisition simulator's `k_rad`/`k_nrad`, with the same reading (grid row
+*i*, column *j* is `k_ij`). A test drives the real widget against a real
+`RateMatrixParameters` and follows the whole chain — cell -> parameter ->
+`K[target, source]` -> flat order — because a divergence anywhere along it is
+invisible: a permuted scheme is still a valid scheme. See
+[gui-autoform.md](/subsystems/gui-autoform.md).
+
+Models do **not** subclass the group to configure it: `TcPdaKinetics` was a
+subclass whose entire body was `default_rate = 0.0`, which is a constructor
+argument.
 
 # Global analysis / parameter linking
 

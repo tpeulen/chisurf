@@ -75,11 +75,13 @@ for this objective, and it reproduces the corrected likelihood-ratio interval.
 
 Fitting a kinetic scheme
 ------------------------
-The exchange scheme is a group of ordinary fitting parameters
-(:class:`TcPdaKinetics`), one state per distance population, so a three-colour
-dynamic fit can *recover* a scheme rather than only be told one. All-zero means
-"no scheme", which is what keeps the static mixture and the two-state ``K_ex``
-route the defaults.
+The exchange scheme is the general
+:class:`~chisurf.core.fitting.kinetics.RateMatrixParameters` — one state per
+distance population, every ``k_ij`` an ordinary fitting parameter — so a
+three-colour dynamic fit can *recover* a scheme rather than only be told one.
+Nothing here is three-colour except the default: the rates start at zero, and
+an all-zero scheme reads as "no scheme", which keeps the static mixture and the
+two-state ``K_ex`` route the defaults.
 
 **The rates come out systematically fast.** On bursts simulated from a known
 two-state scheme by an independent forward route (a fresh distance triple per
@@ -283,26 +285,6 @@ class TcPdaSpecies(FittingParameterGroup):
         return out
 
 
-class TcPdaKinetics(RateMatrixParameters):
-    """The exchange scheme between the species, as fitting parameters.
-
-    One state per distance population, and every off-diagonal ``k_ij`` (state
-    *i* to *j*, Hz) an ordinary fitting parameter — so a three-colour dynamic
-    fit can *recover* a kinetic scheme rather than only being told one. All of
-    that is the general
-    :class:`~chisurf.core.fitting.kinetics.RateMatrixParameters`; the only thing
-    three-colour about it is the default.
-
-    Every rate starts at **zero**, and an all-zero scheme is what
-    :attr:`TcPdaModel.rate_matrix` reports as "no kinetics". That keeps the
-    static mixture, and the two-state ``K_ex`` route, exactly as they were for a
-    model nobody has entered rates into.
-    """
-
-    #: No kinetics until asked for -- see the class docstring.
-    default_rate = 0.0
-
-
 class TcPdaSetup(FittingParameterGroup):
     """Förster radii, spectral corrections and per-channel background.
 
@@ -451,8 +433,13 @@ class TcPdaModel(ModelCurve):
         #: until rates are entered, which is what keeps the static mixture and
         #: the two-state ``K_ex`` route the defaults; see
         #: :attr:`rate_matrix` for how the route is chosen.
-        self.kinetics = TcPdaKinetics(
-            name="tcpda_kinetics", n_states=max(2, len(self.species)), fit=fit
+        # Rates start at zero, and an all-zero scheme is what :attr:`rate_matrix`
+        # reports as "no kinetics" -- that is what keeps the static mixture and
+        # the two-state K_ex route the defaults for a model nobody has entered
+        # rates into.
+        self.kinetics = RateMatrixParameters(
+            name="tcpda_kinetics", n_states=max(2, len(self.species)),
+            default_rate=0.0, fit=fit,
         )
         #: Trajectories drawn per evaluation by the multistate route. The
         #: sampling cost grows with transitions per window, so fast exchange

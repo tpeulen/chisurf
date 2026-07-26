@@ -2,6 +2,28 @@
 
 ## 2026-07-26
 
+* **One kinetics class and one kinetics widget, after the generalization.**
+  Follow-through on moving the fittable rate scheme to
+  `chisurf/core/fitting/kinetics.py`: `TcPdaKinetics` was a subclass whose entire
+  body was `default_rate = 0.0` — a constructor argument — so tcPDA now owns a
+  plain `RateMatrixParameters` and the subclass is gone. A model configures the
+  general group; it does not specialise it.
+
+  `chisurf/core/math/reaction/stochastic.py` held a **second** Gillespie SSA
+  `Model` beside `_reaction.py`'s: same attributes, same constructor signature,
+  same `run`/`GSSA`/`getStats`/`CR` API. Two samplers answering the same question
+  differently is a coin toss, not a fallback — nothing imported the legacy one and
+  the module's own demo already reached past it into `_reaction`. `stochastic.py`
+  is now the public surface re-exporting the one implementation.
+
+  The **editor** was already single (the AutoForm `rate_matrix` section, shared by
+  both PDA model editors and the acquisition simulator's `k_rad`/`k_nrad`), so the
+  work there was to stop it drifting: `test/gui/test_rate_matrix.py` drives the
+  real widget against a real `RateMatrixParameters` and follows the whole chain —
+  cell -> parameter -> `K[target, source]` -> the shared flat order. A divergence
+  anywhere along it is invisible, because a permuted scheme is still a valid
+  scheme. See [subsystems/fitting.md](/subsystems/fitting.md).
+
 * **RF-183 fix — a data group could not be saved at all.** `Base.save` defaults
   to `file_type='yaml'` and calls `self.to_yaml(skip_qt_widgets=…)`, but
   `DataGroup.to_yaml` overrode the base signature without that keyword, so

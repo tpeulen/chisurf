@@ -127,7 +127,8 @@ would have hidden).
 
 **The exchange scheme became fitting parameters (2026-07-26).** The rate matrix
 was a plain array attribute on `TcPdaModel`, so three-colour dynamics could
-*use* an arbitrary scheme but never *recover* one. It is now `TcPdaKinetics`, a
+*use* an arbitrary scheme but never *recover* one. It is now the general
+`RateMatrixParameters`, a
 parameter group over the shared `RateMatrixMixin`
 (`chisurf/core/fitting/kinetics.py`) that [PRD-50](prd-50.md)'s two-colour
 `PdaDynamicNStates` was refactored onto — one implementation, not two copies.
