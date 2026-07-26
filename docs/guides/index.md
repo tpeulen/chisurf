@@ -62,7 +62,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 39 | [Parameter uncertainty: priors, sampling, convergence](39_parameter_uncertainty.md) | `fitting.priors`, `fitting.sample`, `fitting.diagnostics`, `fitting.reweight`, `fitting.graphview` |
 | 40 | [The AI assistant: operating ChiSurf in plain language](40_ai_assistant.md) | `chisurf.core.agent`, agent skills |
 | 41 | [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `fret.accurate`, `fret.lines` |
-| 42 | [Three-colour PDA (tcPDA)](42_tcpda.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |
+| 42 | [Three-colour PDA (c3PDA)](42_c3pda.md) | `core.models.c3pda`, `core.fluorescence.c3pda`, `core.fluorescence.kinetics` |
 | 43 | [Drift correction](43_drift_correction.md) | `img_drift` plugin, `imaging.drift` |
 | 44 | [The molecular viewer (ChiMOL)](44_molecular_viewer.md) | `chimol` plugin, PyMOL-compatible commands, `get_area` |
 | 45 | [Planning a scan: which dwell time measures D best?](45_scan_precision.md) | `img_precision` plugin, `experiments.ics.precision` |

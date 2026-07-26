@@ -2,6 +2,28 @@
 
 ## 2026-07-26
 
+* **tcPDA renamed to c3PDA, and the two spellings collapsed into one.** The
+  three-colour method was `tcPDA` in prose, classes and one module, and `pda3c`
+  in three package names — so the same thing had two names and neither said the
+  colour count the way the other did. It is now **c3PDA** throughout, pairing
+  with c2PDA for the two-colour method: `chisurf/core/{models,fluorescence,
+  experiments}/c3pda/`, `models/c3pda/c3pda.py` (+ `.view.json`), `C3PdaModel` /
+  `C3PdaSpecies` / `C3PdaSetup` / `C3PdaSimulatorReader`, the `c3pda` experiment
+  key, `get_c3pda_*` accessors, `docs/concepts/c3pda.md`,
+  `docs/guides/42_c3pda.md` (+ its figure), and the `concept-c3pda` label. 19
+  files moved, 360 identifier occurrences rewritten across 40 more.
+
+  Two things deliberately **not** rewritten: this log and
+  `okf/reviews/findings.md`. They are dated records of what was true when they
+  were written, and editing them to say `c3PDA` would make them claim a name
+  that did not exist yet. The concept page carries the pointer from the old name
+  instead, so a search for "tcPDA" still lands somewhere.
+
+  The two-colour side keeps its unmarked `Pda*` names for now: renaming it
+  reaches into `gui/widgets/models/pda/`, the experiment registry and twelve
+  reader call sites, which is a separate change and not one to start while those
+  files are being edited elsewhere.
+
 * **chimol: sessions.** `session_save` / `session_load` / `session_info`, with
   `save x.pse` and `load x.pse` routed by extension because that is what a PyMOL
   user types. Everything comes back: objects, representations, per-atom colours,

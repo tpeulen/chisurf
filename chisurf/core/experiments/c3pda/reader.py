@@ -1,17 +1,17 @@
 """Three-colour PDA experiment readers (PRD-65).
 
-A tcPDA dataset is a **burst table**, not a curve: five photon counts per burst,
+A c3PDA dataset is a **burst table**, not a curve: five photon counts per burst,
 ``F_BB``/``F_BG``/``F_BR`` under blue excitation and ``F_GG``/``F_GR`` under
 green. Two readers produce one:
 
-- :class:`Pda3cBurstTableReader` loads a table that upstream burst selection
+- :class:`C3PdaBurstTableReader` loads a table that upstream burst selection
   already produced (CSV or ``.npz``);
-- :class:`Pda3cSimulatorReader` generates one from a known model, so the model
+- :class:`C3PdaSimulatorReader` generates one from a known model, so the model
   and its editor can be exercised — and a fit validated against ground truth —
   without a three-colour measurement to hand.
 
 Both wrap the table in a :class:`~chisurf.core.data.DataCurve` whose
-``meta_data['pda3c']`` carries the counts. The curve's ``y`` is the measured
+``meta_data['c3pda']`` carries the counts. The curve's ``y`` is the measured
 proximity-ratio histograms the model plots against, so the standard plotting
 machinery works unchanged; the fit objective is the burst likelihood and does
 not read ``y``.
@@ -31,9 +31,9 @@ COLUMNS = ("F_BB", "F_BG", "F_BR", "F_GG", "F_GR")
 
 
 def _wrap(blue, green, name: str) -> chisurf.core.data.DataCurve:
-    """Wrap blue/green count tables into a DataCurve carrying ``pda3c`` metadata."""
-    from chisurf.core.fluorescence.pda3c import BurstCounts
-    from chisurf.core.models.pda3c.tcpda import observed_ratio_histograms
+    """Wrap blue/green count tables into a DataCurve carrying ``c3pda`` metadata."""
+    from chisurf.core.fluorescence.c3pda import BurstCounts
+    from chisurf.core.models.c3pda.c3pda import observed_ratio_histograms
 
     blue = np.atleast_2d(np.asarray(blue, dtype=float))
     green = np.atleast_2d(np.asarray(green, dtype=float))
@@ -55,12 +55,12 @@ def _wrap(blue, green, name: str) -> chisurf.core.data.DataCurve:
         "columns": list(COLUMNS),
     }
     try:
-        curve.meta_data["pda3c"] = payload
+        curve.meta_data["c3pda"] = payload
     except Exception:
         pass
     # Also as a plain attribute, mirroring how the two-colour reader exposes
     # its payload, so consumers can reach it either way.
-    curve.pda3c = payload
+    curve.c3pda = payload
     return curve
 
 
@@ -102,10 +102,10 @@ def load_burst_table(filename) -> tuple:
     return table[:, :3], table[:, 3:5]
 
 
-class Pda3cBurstTableReader(ExperimentReader):
+class C3PdaBurstTableReader(ExperimentReader):
     """Read a three-colour burst table produced by upstream burst selection."""
 
-    name = "tcPDA burst table"
+    name = "c3PDA burst table"
 
     def __init__(self, *args, **kwargs):
         """Initialize the burst-table reader.
@@ -142,15 +142,15 @@ class Pda3cBurstTableReader(ExperimentReader):
         return group
 
 
-class Pda3cSimulatorReader(ExperimentReader):
+class C3PdaSimulatorReader(ExperimentReader):
     """Generate a synthetic three-colour burst table from a known model.
 
     Three-colour data is scarce, and a model nobody can open is a model nobody
-    checks. This makes the tcPDA model immediately usable — and lets a fit be
+    checks. This makes the c3PDA model immediately usable — and lets a fit be
     validated against a truth the reader itself set.
     """
 
-    name = "tcPDA simulator"
+    name = "c3PDA simulator"
 
     def __init__(
             self,
@@ -214,7 +214,7 @@ class Pda3cSimulatorReader(ExperimentReader):
 
     def read(self, filename=None, *args, **kwargs):
         """Generate one simulated burst table."""
-        from chisurf.core.fluorescence.pda3c import (
+        from chisurf.core.fluorescence.c3pda import (
             ThreeColorSetup,
             ThreeColorSpecies,
             covariance_from_statistics,
@@ -239,7 +239,7 @@ class Pda3cSimulatorReader(ExperimentReader):
             photons_blue=self.photons_blue, photons_green=self.photons_green,
             seed=self.seed,
         )
-        curve = _wrap(counts.blue, counts.green, name=f"tcPDA-sim-{self.seed}")
+        curve = _wrap(counts.blue, counts.green, name=f"c3PDA-sim-{self.seed}")
         curve.experiment = getattr(self, "experiment", None)
         group = chisurf.core.data.ExperimentDataCurveGroup([curve])
         return group

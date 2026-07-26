@@ -1,7 +1,7 @@
 r"""Multi-colour FRET as three matrices: excitation, transfer, emission.
 
 Turns inter-dye distances into the per-channel photon probabilities the burst
-likelihood in :mod:`~chisurf.core.fluorescence.pda3c.likelihood` consumes, by
+likelihood in :mod:`~chisurf.core.fluorescence.c3pda.likelihood` consumes, by
 composing three linear maps in the orientation the rest of ChiSurf already uses
 (``(sources, detectors)``, see :mod:`chisurf.core.fluorescence.crosstalk`):
 

@@ -11,14 +11,14 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histogram of single-molecule bursts to recover inter-dye distance distributions and, in its dynamic form, kinetic exchange between conformational states. The `tttrlib.Pda` C++ engine already computes the histograms, but no ChiSurf model, `view.json`, or plugin wraps it. This PRD adds the model + schema + AutoForm UI + fit integration in staged scope: static (single/multi-Gaussian, Lorentzian) PDA, dynamic/N-state kinetic PDA, Support-Plane/MCMC error surfaces, and a kinetic consistency check; three-color PDA is split out into PRD-65. Dual-color models are already ported to the PRD-38 model/view-spec split with headless coverage, both error-surface routes (support-plane and MCMC) are validated against each other, the dynamic two-state criterion is met end to end (exchange rate recovered, nested static model rejected by F-test), and time-binned dynamic PDA is in: the reader can cut fixed-width bins, the models take their observation time from the data, and the exchange parameter is an absolute rate that a global fit shares across bin widths. Three-color tcPDA is now [PRD-65](prd-65.md).
+Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histogram of single-molecule bursts to recover inter-dye distance distributions and, in its dynamic form, kinetic exchange between conformational states. The `tttrlib.Pda` C++ engine already computes the histograms, but no ChiSurf model, `view.json`, or plugin wraps it. This PRD adds the model + schema + AutoForm UI + fit integration in staged scope: static (single/multi-Gaussian, Lorentzian) PDA, dynamic/N-state kinetic PDA, Support-Plane/MCMC error surfaces, and a kinetic consistency check; three-color PDA is split out into PRD-65. Dual-color models are already ported to the PRD-38 model/view-spec split with headless coverage, both error-surface routes (support-plane and MCMC) are validated against each other, the dynamic two-state criterion is met end to end (exchange rate recovered, nested static model rejected by F-test), and time-binned dynamic PDA is in: the reader can cut fixed-width bins, the models take their observation time from the data, and the exchange parameter is an absolute rate that a global fit shares across bin widths. Three-color c3PDA is now [PRD-65](prd-65.md).
 
 # Status
 Draft / unassigned (STATUS TABLE authoritative). Dual-color static plus a dynamic
 two-state model done under AutoForm; error surfaces work via both support-plane and
 MCMC; the dynamic acceptance criterion (rate recovery + F-test rejection of the static
 model) is met. Follow-ups closed: light-path hook and the consistency-check GUI surface both
-land on a shared Diagnostics panel. tcPDA split out into [PRD-65](prd-65.md).
+land on a shared Diagnostics panel. c3PDA split out into [PRD-65](prd-65.md).
 
 Parent: [PRD-49](prd-49.md) (Phase 1, first target). Related: PRD-38
 (model/view-spec split), PRD-40 (declarative editors), PRD-04 (burst pipeline),
@@ -240,7 +240,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   `chisurf.core.fluorescence.kinetics.occupation_time_fractions` drives it —
   one immobile, dark molecule per observation window, started from the
   equilibrium populations, which is PAM's independent-window scheme. It replaces
-  the Gillespie loop in `dynamic_mc.py` **and** the copy the tcPDA multistate path
+  the Gillespie loop in `dynamic_mc.py` **and** the copy the c3PDA multistate path
   was using, and absorbs the duplicate `equilibrium_populations` that had grown in
   `dynamic_mc.py` alongside the one in `kinetics.py`.
   The Python loop survives as `occupation_time_fractions_reference`: the readable
@@ -358,9 +358,9 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   side and [subsystems/fitting.md](/subsystems/fitting.md) for the module.
 
 **Follow-ups (not yet done):**
-- ~~tcPDA's rate matrix is a plain array attribute, not fitting parameters.~~
+- ~~c3PDA's rate matrix is a plain array attribute, not fitting parameters.~~
   Done — see [PRD-65](prd-65.md).
-- Three-color tcPDA — **split out into [PRD-65](prd-65.md)**; it shares neither
+- Three-color c3PDA — **split out into [PRD-65](prd-65.md)**; it shares neither
   the engine (`tttrlib.Pda` is two-channel by construction) nor the data object
   (burst table, not S1S2 matrix) nor the fit objective (burst likelihood, not a
   histogram statistic) with this PRD.
@@ -376,7 +376,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
    rates + state distances/populations.
 3. **Error surfaces.** Wire Support-Plane-Analysis, MCMC, and Hessian/covariance
    estimation to PDA parameters via `chisurf/core/fitting/sample.py`.
-4. ~~**Three-color tcPDA.**~~ Moved to [PRD-65](prd-65.md).
+4. ~~**Three-color c3PDA.**~~ Moved to [PRD-65](prd-65.md).
 5. **Kinetic consistency check.** Resample burst data from a fitted kinetic scheme and
    compare to the measured histogram (the incumbent's "consistency check"); reuses the
    dynamic-PDA simulator. *(Done — `consistency.py`, parametric bootstrap p-value.)*
@@ -425,14 +425,14 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - **UI:** model appears in the add-fit combobox, renders parameter groups and the
   histogram-overlay from `view.json` with no empty groups or crashes (model-editor
   headless checks).
-- tcPDA acceptance now lives in [PRD-65](prd-65.md).
+- c3PDA acceptance now lives in [PRD-65](prd-65.md).
 
 # Non-goals
 
 - No new bespoke Qt widgets (PRD-49 AutoForm mandate).
 - Not reimplementing PDA histogram math outside `tttrlib`.
 - Antibunching/nsFCS and FCCS models are PRD-54, not here.
-- Three-color tcPDA is [PRD-65](prd-65.md), not here.
+- Three-color c3PDA is [PRD-65](prd-65.md), not here.
 
 # Relationships
 - Child of [PRD-49](prd-49.md) (Phase 1, first target).

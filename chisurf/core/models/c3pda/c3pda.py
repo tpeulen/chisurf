@@ -1,9 +1,9 @@
 r"""Three-colour PDA fitting model (PRD-65 stage 2, GUI surface).
 
-Wraps the compute core in :mod:`chisurf.core.fluorescence.pda3c` as a ChiSurf
+Wraps the compute core in :mod:`chisurf.core.fluorescence.c3pda` as a ChiSurf
 fitting model, so three-colour PDA is reachable from the add-fit flow like any
 other model. The compute definition lives here; the editor layout is declared
-separately in ``tcpda.view.json`` (PRD-38 model/view-spec split).
+separately in ``c3pda.view.json`` (PRD-38 model/view-spec split).
 
 What is fitted
 --------------
@@ -69,7 +69,7 @@ real.
 The two errors push in opposite directions — the threshold too high, the scan
 too narrow — and their ratio drifts with `n`, which is what made the
 disagreement look mysterious. Both are in shared fitting code and affect any
-model whose `chi2r` sits far from one, not just tcPDA. Until they are fixed,
+model whose `chi2r` sits far from one, not just c3PDA. Until they are fixed,
 **quote the MCMC interval**: it samples `exp(-deviance/2)`, the actual posterior
 for this objective, and it reproduces the corrected likelihood-ratio interval.
 
@@ -118,8 +118,7 @@ import numpy as np
 import chisurf as cs
 from chisurf.core.fitting.kinetics import RateMatrixParameters
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
-from chisurf.core.fluorescence.kinetics import transitions_per_window
-from chisurf.core.fluorescence.pda3c import (
+from chisurf.core.fluorescence.c3pda import (
     BurstCounts,
     ThreeColorSetup,
     ThreeColorSpecies,
@@ -127,14 +126,15 @@ from chisurf.core.fluorescence.pda3c import (
     distances_to_matrix,
     relative_brightness,
 )
-from chisurf.core.fluorescence.pda3c.likelihood import log_multinomial_pmf
+from chisurf.core.fluorescence.c3pda.likelihood import log_multinomial_pmf
+from chisurf.core.fluorescence.kinetics import transitions_per_window
 from chisurf.core.models.model import ModelCurve
 
 #: Bin edges of each displayed proximity-ratio histogram.
 N_RATIO_BINS = 41
 
 
-class TcPdaSpecies(FittingParameterGroup):
+class C3PdaSpecies(FittingParameterGroup):
     """Trivariate-Gaussian distance populations of a three-colour sample.
 
     One component carries an amplitude, three mean distances with their widths,
@@ -147,7 +147,7 @@ class TcPdaSpecies(FittingParameterGroup):
     PAIRS = ("GR", "BG", "BR")
     CORRELATIONS = ("GR-BG", "GR-BR", "BG-BR")
 
-    def __init__(self, name: str = "tcpda_species", **kwargs):
+    def __init__(self, name: str = "c3pda_species", **kwargs):
         """Initialize an empty species list."""
         super().__init__(name=name, **kwargs)
         # Flat lists, three entries per species. Nesting the triples would read
@@ -244,7 +244,7 @@ class TcPdaSpecies(FittingParameterGroup):
             Fraction of molecules carrying the *intended* dye assignment. Below
             one, every population is accompanied by a mirror population in which
             the green and red labels have swapped sites — see
-            :meth:`TcPdaModel.stochastic_labeling` for why that is the right
+            :meth:`C3PdaModel.stochastic_labeling` for why that is the right
             correction and not a missing-dye one.
 
         Returns
@@ -285,16 +285,16 @@ class TcPdaSpecies(FittingParameterGroup):
         return out
 
 
-class TcPdaSetup(FittingParameterGroup):
+class C3PdaSetup(FittingParameterGroup):
     """Förster radii, spectral corrections and per-channel background.
 
     The scalar vocabulary the field quotes; the model turns it into the
     excitation / emission probability matrices the compute core composes (see
-    :class:`~chisurf.core.fluorescence.pda3c.ThreeColorSetup`). A simulated
+    :class:`~chisurf.core.fluorescence.c3pda.ThreeColorSetup`). A simulated
     light path can supply the same matrices directly instead.
     """
 
-    def __init__(self, name: str = "tcpda_setup", **kwargs):
+    def __init__(self, name: str = "c3pda_setup", **kwargs):
         """Initialize the instrument description with neutral defaults."""
         super().__init__(name=name, **kwargs)
 
@@ -384,31 +384,31 @@ class TcPdaSetup(FittingParameterGroup):
         return np.array([float(self._bg_gg.value), float(self._bg_gr.value)])
 
 
-class TcPdaModel(ModelCurve):
+class C3PdaModel(ModelCurve):
     """Three-colour photon-distribution-analysis model."""
 
-    name = "tcPDA (three-colour)"
+    name = "c3PDA (three-colour)"
 
     #: Declarative AutoForm layout (PRD-38 model/view-spec split).
-    view_spec_file = "tcpda.view.json"
+    view_spec_file = "c3pda.view.json"
 
-    def __init__(self, fit, species: TcPdaSpecies = None, setup: TcPdaSetup = None, **kwargs):
+    def __init__(self, fit, species: C3PdaSpecies = None, setup: C3PdaSetup = None, **kwargs):
         """Initialize the three-colour PDA model.
 
         Parameters
         ----------
         fit : chisurf.core.fitting.fit.Fit
-            Fit whose ``data.meta_data['pda3c']`` carries the burst table.
-        species : TcPdaSpecies, optional
+            Fit whose ``data.meta_data['c3pda']`` carries the burst table.
+        species : C3PdaSpecies, optional
             Distance-population group.
-        setup : TcPdaSetup, optional
+        setup : C3PdaSetup, optional
             Instrument description.
         **kwargs
             Forwarded to :class:`~chisurf.core.models.model.ModelCurve`.
         """
         super().__init__(fit, **kwargs)
-        self.species = species or TcPdaSpecies(fit=fit, **kwargs)
-        self.setup = setup or TcPdaSetup(fit=fit, **kwargs)
+        self.species = species or C3PdaSpecies(fit=fit, **kwargs)
+        self.setup = setup or C3PdaSetup(fit=fit, **kwargs)
         if len(self.species) == 0:
             self.species.append()
 
@@ -438,7 +438,7 @@ class TcPdaModel(ModelCurve):
         # the two-state K_ex route the defaults for a model nobody has entered
         # rates into.
         self.kinetics = RateMatrixParameters(
-            name="tcpda_kinetics", n_states=max(2, len(self.species)),
+            name="c3pda_kinetics", n_states=max(2, len(self.species)),
             default_rate=0.0, fit=fit,
         )
         #: Trajectories drawn per evaluation by the multistate route. The
@@ -565,9 +565,9 @@ class TcPdaModel(ModelCurve):
         data = getattr(self.fit, "data", None)
         meta = getattr(data, "meta_data", None)
         if isinstance(meta, dict):
-            payload = meta.get("pda3c")
+            payload = meta.get("c3pda")
         if payload is None:
-            payload = getattr(data, "pda3c", None)
+            payload = getattr(data, "c3pda", None)
         if not isinstance(payload, dict):
             return None
         try:
@@ -688,7 +688,7 @@ class TcPdaModel(ModelCurve):
         dynamic model makes: a molecule switching mid-burst is described by its
         time-averaged per-photon probability, not by an averaged distance.
         """
-        from chisurf.core.fluorescence.pda3c import (
+        from chisurf.core.fluorescence.c3pda import (
             blue_channel_probabilities,
             green_channel_probabilities,
         )
@@ -714,7 +714,7 @@ class TcPdaModel(ModelCurve):
         """
         from scipy.special import logsumexp
 
-        from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+        from chisurf.core.fluorescence.c3pda import burst_log_likelihood
         from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
 
         first, second = states
@@ -733,7 +733,7 @@ class TcPdaModel(ModelCurve):
         # averaged-probability treatment the interior needs. That is what makes
         # the static limit exact: at K_ex = 0 all the weight is on the atoms and
         # this reduces to the static mixture, term for term.
-        from chisurf.core.fluorescence.pda3c.model import _species_log_likelihood
+        from chisurf.core.fluorescence.c3pda.model import _species_log_likelihood
 
         pieces, weights = [], []
         for component, weight in ((second, fraction_weights[0]),
@@ -786,7 +786,7 @@ class TcPdaModel(ModelCurve):
         """
         from scipy.special import logsumexp
 
-        from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+        from chisurf.core.fluorescence.c3pda import burst_log_likelihood
 
         rates = np.asarray(self.rate_matrix, dtype=float)
         if rates.shape[0] != len(species):
@@ -869,7 +869,7 @@ class TcPdaModel(ModelCurve):
             # Said once, with both numbers: a bound that quietly changed the
             # quadrature is worse than one that refused.
             cs.logging.warning(
-                f"tcPDA: occupancy nodes exceeded dynamic_max_nodes={ceiling} at "
+                f"c3PDA: occupancy nodes exceeded dynamic_max_nodes={ceiling} at "
                 f"resolution {requested}; coarsened to {resolution} "
                 f"({index.size} nodes)"
             )
@@ -889,7 +889,7 @@ class TcPdaModel(ModelCurve):
         """Return the per-burst log likelihood under the current parameters."""
         from scipy.special import logsumexp
 
-        from chisurf.core.fluorescence.pda3c.model import _species_log_likelihood
+        from chisurf.core.fluorescence.c3pda.model import _species_log_likelihood
 
         setup = self.setup.as_setup()
         species = self.species.as_species(self._labeling_weight())
@@ -1038,7 +1038,7 @@ def predicted_ratio_histograms(counts: BurstCounts, species, setup, n_nodes=5,
     numpy.ndarray
         ``3 * N_RATIO_BINS`` normalised bin contents.
     """
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         blue_channel_probabilities,
         green_channel_probabilities,
     )
@@ -1103,7 +1103,7 @@ def _weighted_unique(values, weights):
     return unique, summed
 
 
-def get_tcpda_ratio_curves(fit) -> list:
+def get_c3pda_ratio_curves(fit) -> list:
     """Return data / model / residual curves for the AutoForm distribution plot.
 
     Qt-free accessor, so the plot stays authorable in ``view.json``.
@@ -1111,7 +1111,7 @@ def get_tcpda_ratio_curves(fit) -> list:
     Parameters
     ----------
     fit : chisurf.core.fitting.fit.Fit
-        Fit whose model is a :class:`TcPdaModel`.
+        Fit whose model is a :class:`C3PdaModel`.
 
     Returns
     -------
@@ -1135,13 +1135,13 @@ def get_tcpda_ratio_curves(fit) -> list:
     return [[data_y, x], [model_y, x], [(data_y - model_y) / sigma, x]]
 
 
-def get_tcpda_distance_distributions(fit) -> list:
+def get_c3pda_distance_distributions(fit) -> list:
     """Return the three marginal distance distributions P(R) for plotting.
 
     Parameters
     ----------
     fit : chisurf.core.fitting.fit.Fit
-        Fit whose model is a :class:`TcPdaModel`.
+        Fit whose model is a :class:`C3PdaModel`.
 
     Returns
     -------

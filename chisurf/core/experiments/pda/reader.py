@@ -195,14 +195,14 @@ class PdaReader(ExperimentReader):
     def _three_color_curve(self, blue, green, name, filename,
                            minimum_number_of_photons, minimum_time_window_length,
                            tttr_header_json=None, source_filenames=None):
-        """Wrap a three-colour burst table into a DataCurve the tcPDA model reads.
+        """Wrap a three-colour burst table into a DataCurve the c3PDA model reads.
 
         The curve's ``y`` is the measured proximity-ratio histograms, so the
         ordinary plotting machinery works; the payload the model actually fits
-        rides in ``meta_data['pda3c']``.
+        rides in ``meta_data['c3pda']``.
         """
-        from chisurf.core.fluorescence.pda3c import BurstCounts
-        from chisurf.core.models.pda3c.tcpda import observed_ratio_histograms
+        from chisurf.core.fluorescence.c3pda import BurstCounts
+        from chisurf.core.models.c3pda.c3pda import observed_ratio_histograms
 
         counts = BurstCounts(blue=blue, green=green)
         histogram = observed_ratio_histograms(counts.collapsed()) * max(blue.shape[0], 1)
@@ -220,7 +220,7 @@ class PdaReader(ExperimentReader):
             "minimum_time_window_length": float(minimum_time_window_length),
         }
         meta_all = {
-            "pda3c": payload,
+            "c3pda": payload,
             "tttr_header_json": tttr_header_json,
             "filenames": source_filenames,
             "reading_routine": self.reading_routine,
@@ -235,7 +235,7 @@ class PdaReader(ExperimentReader):
             y=y, x=x,
             ey=chisurf.core.fluorescence.tcspc.counting_noise(y),
         )
-        data.pda3c = payload
+        data.c3pda = payload
         return data
 
     def burst_count_table(self, tttr_data, minimum_number_of_photons: int,
@@ -624,7 +624,7 @@ class PdaReader(ExperimentReader):
             multi = len(configs) > 1
 
             if int(getattr(self, "n_colors", 2)) >= 3:
-                # Three-colour setups take the burst-table path: tcPDA fits a
+                # Three-colour setups take the burst-table path: c3PDA fits a
                 # per-burst photon partition, not an S1S2 histogram, so there is
                 # nothing to build a 2D grid from. Same file reading, same burst
                 # definition, different payload.
@@ -644,7 +644,7 @@ class PdaReader(ExperimentReader):
                     )
                     data_group.append(data)
                     logging.info(
-                        "tcPDA: %s -> %d bursts", name, int(blue.shape[0])
+                        "c3PDA: %s -> %d bursts", name, int(blue.shape[0])
                     )
                 return data_group
 

@@ -13076,8 +13076,8 @@ The GUI talks to the TTTR Image Browser backend through RPC for file listing, me
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="42"/>
-        <source>3 — tcPDA (burst table)</source>
-        <translation>3 – tcPDA (Burst-Tabelle)</translation>
+        <source>3 — c3PDA (burst table)</source>
+        <translation>3 – c3PDA (Burst-Tabelle)</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="49"/>
@@ -13336,8 +13336,8 @@ The GUI talks to the TTTR Image Browser backend through RPC for file listing, me
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="461"/>
-        <source>Defaults to the number of configured detection-channel groups, so a three-colour setup selects tcPDA on its own.</source>
-        <translation>Entspricht standardmäßig der Anzahl der konfigurierten Detektionskanal-Gruppen, sodass ein Dreifarben-Aufbau tcPDA von selbst wählt.</translation>
+        <source>Defaults to the number of configured detection-channel groups, so a three-colour setup selects c3PDA on its own.</source>
+        <translation>Entspricht standardmäßig der Anzahl der konfigurierten Detektionskanal-Gruppen, sodass ein Dreifarben-Aufbau c3PDA von selbst wählt.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="469"/>

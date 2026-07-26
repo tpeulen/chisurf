@@ -1,4 +1,4 @@
-"""Three-colour photon distribution analysis (tcPDA) — compute core.
+"""Three-colour photon distribution analysis (c3PDA) — compute core.
 
 Qt-free forward model for [PRD-65](../../../../okf/prds/prd-65.md): the
 burst-wise photon-partition likelihood that three-colour PDA fits, kept separate

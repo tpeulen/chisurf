@@ -137,9 +137,9 @@ def test_micro_time_gating_splits_the_excitation_periods(photons):
 
 
 def test_reading_a_file_as_three_colour_yields_a_fittable_dataset():
-    """End of the shared path: a real file becomes a tcPDA dataset."""
+    """End of the shared path: a real file becomes a c3PDA dataset."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
     reader = _reader(
         channels=([0], [1], [8]),
@@ -150,13 +150,13 @@ def test_reading_a_file_as_three_colour_yields_a_fittable_dataset():
     assert len(group) == 1
 
     curve = group[0]
-    payload = curve.meta_data["pda3c"]
+    payload = curve.meta_data["c3pda"]
     assert payload["blue"].shape[1] == 3
     assert payload["green"].shape[1] == 2
     assert payload["n_bursts"] > 100
     assert payload["columns"] == ["F_BB", "F_BG", "F_BR", "F_GG", "F_GR"]
 
-    fit = fit_mod.Fit(model_class=TcPdaModel, data=curve)
+    fit = fit_mod.Fit(model_class=C3PdaModel, data=curve)
     fit.model.update()
     assert np.all(np.isfinite(fit.model.y))
     wres = np.asarray(fit.model.get_wres(fit))

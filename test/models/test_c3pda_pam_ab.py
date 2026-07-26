@@ -1,4 +1,4 @@
-"""A/B verification of the tcPDA physics against the incumbent suite (PRD-65).
+"""A/B verification of the c3PDA physics against the incumbent suite (PRD-65).
 
 Follows the precedent of ``test/fitting/test_fcs_pam_ab.py`` and
 ``/references/fcs-pam-port.md``: the incumbent's MATLAB expressions are
@@ -108,7 +108,7 @@ def _setup_from_corrections(corrections):
     three relative brightnesses and derives the third, which the single matrix
     enforces structurally instead.
     """
-    from chisurf.core.fluorescence.pda3c import ThreeColorSetup
+    from chisurf.core.fluorescence.c3pda import ThreeColorSetup
 
     gamma_br = corrections["gamma_br"]
     gamma_gr = corrections["gamma_gr"]
@@ -157,7 +157,7 @@ def test_competing_pathway_efficiencies_agree():
     the equivalence is not obvious by inspection and a future edit to either
     side would break it silently.
     """
-    from chisurf.core.fluorescence.pda3c import distances_to_matrix, transfer_efficiencies
+    from chisurf.core.fluorescence.c3pda import distances_to_matrix, transfer_efficiencies
 
     rng = np.random.default_rng(101)
     for _ in range(200):
@@ -177,7 +177,7 @@ def test_competing_pathway_efficiencies_agree():
 
 def test_blue_channel_probabilities_match_the_incumbent():
     """Full A/B on PBB / PBG / PBR over randomised distances and corrections."""
-    from chisurf.core.fluorescence.pda3c import blue_channel_probabilities
+    from chisurf.core.fluorescence.c3pda import blue_channel_probabilities
 
     rng = np.random.default_rng(202)
     worst = 0.0
@@ -195,7 +195,7 @@ def test_blue_channel_probabilities_match_the_incumbent():
 
 def test_green_red_probability_matches_the_incumbent():
     """Full A/B on PGR, the green-excitation binomial parameter."""
-    from chisurf.core.fluorescence.pda3c import green_channel_probabilities
+    from chisurf.core.fluorescence.c3pda import green_channel_probabilities
 
     rng = np.random.default_rng(303)
     for _ in range(500):
@@ -218,7 +218,7 @@ def test_the_excitation_partition_is_what_the_incumbent_does():
     invisible at zero direct excitation and grew with it — a silent bias in
     exactly the correction meant to remove one.
     """
-    from chisurf.core.fluorescence.pda3c import ThreeColorSetup, blue_channel_probabilities
+    from chisurf.core.fluorescence.c3pda import ThreeColorSetup, blue_channel_probabilities
 
     corrections = {
         "R0_bg": 49.0, "R0_br": 52.0, "R0_gr": 51.0,
@@ -317,7 +317,7 @@ def test_burst_likelihood_matches_the_incumbent_kernel():
     n_bg)`` truncation is not what is being compared; ChiSurf truncates on an
     effective rate instead, which is strictly the more careful rule.
     """
-    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+    from chisurf.core.fluorescence.c3pda import burst_log_likelihood
 
     rng = np.random.default_rng(505)
     for _ in range(30):
@@ -345,7 +345,7 @@ def test_burst_likelihood_matches_the_incumbent_kernel():
 
 def test_agreement_holds_with_corrections_switched_off():
     """The clean-instrument limit must also agree, not just the messy one."""
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         blue_channel_probabilities,
         green_channel_probabilities,
     )

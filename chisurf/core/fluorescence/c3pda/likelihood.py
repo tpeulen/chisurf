@@ -73,7 +73,7 @@ is exactly the region a sampler or a support-plane scan explores.
 
 :func:`burst_log_likelihood_reference` implements the nested sum directly and
 :func:`background_series` is deliberately untruncated, so both stay independent
-of the fast path's cutoff heuristic; see ``test/models/test_pda3c_likelihood.py``.
+of the fast path's cutoff heuristic; see ``test/models/test_c3pda_likelihood.py``.
 
 Conventions
 -----------

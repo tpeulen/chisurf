@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from .reader import (  # noqa: F401
-    Pda3cBurstTableReader,
-    Pda3cSimulatorReader,
+    C3PdaBurstTableReader,
+    C3PdaSimulatorReader,
     load_burst_table,
 )
 
-__all__ = ["Pda3cBurstTableReader", "Pda3cSimulatorReader", "load_burst_table"]
+__all__ = ["C3PdaBurstTableReader", "C3PdaSimulatorReader", "load_burst_table"]

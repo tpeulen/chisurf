@@ -2,7 +2,7 @@ r"""Time-averaged observables of a multistate Markov system.
 
 A molecule that interconverts while it is being observed does not report its
 instantaneous state — it reports a **time average** over the observation window.
-Everything downstream (dynamic PDA, dynamic tcPDA) needs the distribution of
+Everything downstream (dynamic PDA, dynamic c3PDA) needs the distribution of
 that average, and this module supplies it for an arbitrary number of states.
 
 Two routes, with different costs and different exactness:

@@ -1,6 +1,6 @@
-"""Execute the incumbent's compiled tcPDA kernel and compare it to ChiSurf.
+"""Execute the incumbent's compiled c3PDA kernel and compare it to ChiSurf.
 
-The sibling ``test_pda3c_pam_ab.py`` transcribes the incumbent's *expressions*;
+The sibling ``test_c3pda_pam_ab.py`` transcribes the incumbent's *expressions*;
 this one runs its actual **C code**. The kernel is a self-contained MEX function
 with a plain numeric signature, so unlike the surrounding MATLAB — which is
 inline in a GUI reading a global struct — it can be compiled with Octave's
@@ -27,7 +27,7 @@ import pytest
 pytest.importorskip("scipy.io")
 
 #: Reference source tree; absent in a normal checkout.
-PAM_SRC = pathlib.Path("junk/PAM/functions/tcPDA/C Files/src")
+PAM_SRC = pathlib.Path("junk/PAM/functions/c3PDA/C Files/src")
 
 #: Sources the kernel needs, per the reference's own build notes.
 SOURCES = [
@@ -105,7 +105,7 @@ def compiled_kernel(tmp_path_factory):
     if not PAM_SRC.is_dir():
         pytest.skip(f"reference sources not present at {PAM_SRC}")
 
-    build = tmp_path_factory.mktemp("pda3c_mex")
+    build = tmp_path_factory.mktemp("c3pda_mex")
     result = subprocess.run(
         ["mkoctfile", "--mex", "-O", "-I.", "-o", str(build / "eval_prob_3c_bg_lib.mex"),
          *SOURCES],
@@ -127,7 +127,7 @@ def test_chisurf_matches_the_compiled_reference_kernel(compiled_kernel):
     """
     from scipy.io import loadmat, savemat
 
-    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+    from chisurf.core.fluorescence.c3pda import burst_log_likelihood
 
     rng = np.random.default_rng(4242)
     n_bursts, n_points = 12, 5

@@ -16,9 +16,9 @@
           ],
           "labels": [
             "2 \u2014 PDA (S1S2 histogram)",
-            "3 \u2014 tcPDA (burst table)"
+            "3 \u2014 c3PDA (burst table)"
           ],
-          "description": "Defaults to the number of configured detection-channel groups, so a three-colour setup selects tcPDA on its own.",
+          "description": "Defaults to the number of configured detection-channel groups, so a three-colour setup selects c3PDA on its own.",
           "rebuild_on_change": true
         }
       ]

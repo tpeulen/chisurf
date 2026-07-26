@@ -21,7 +21,7 @@ def test_pathways_compete_for_the_same_excited_donor():
     three-colour construct overestimates the distance, because the second
     acceptor is quietly draining the donor.
     """
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         ThreeColorSetup,
         distances_to_matrix,
         transfer_efficiencies,
@@ -37,7 +37,7 @@ def test_pathways_compete_for_the_same_excited_donor():
 
 
 def test_two_colour_limit_of_the_green_red_pair():
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         ThreeColorSetup,
         distances_to_matrix,
         transfer_efficiencies,
@@ -50,7 +50,7 @@ def test_two_colour_limit_of_the_green_red_pair():
 
 
 def test_channel_probabilities_are_distributions():
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         ThreeColorSetup,
         blue_channel_probabilities,
         green_channel_probabilities,
@@ -73,7 +73,7 @@ def test_red_channel_is_fed_by_both_routes():
     With the relay closed (G and R far apart) the red channel sees only direct
     transfer; opening it must add signal that the direct route cannot explain.
     """
-    from chisurf.core.fluorescence.pda3c import ThreeColorSetup, blue_channel_probabilities
+    from chisurf.core.fluorescence.c3pda import ThreeColorSetup, blue_channel_probabilities
 
     setup = ThreeColorSetup.from_scalars(r0_bg=50.0, r0_br=50.0, r0_gr=50.0)
     relay_closed = blue_channel_probabilities(50.0, 50.0, 1e9, setup)
@@ -86,7 +86,7 @@ def test_red_channel_is_fed_by_both_routes():
 
 
 def test_detection_crosstalk_moves_counts_between_channels():
-    from chisurf.core.fluorescence.pda3c import ThreeColorSetup, blue_channel_probabilities
+    from chisurf.core.fluorescence.c3pda import ThreeColorSetup, blue_channel_probabilities
 
     clean = ThreeColorSetup.from_scalars()
     leaky = ThreeColorSetup.from_scalars(crosstalk_bg=0.2, crosstalk_gr=0.1)
@@ -100,7 +100,7 @@ def test_detection_crosstalk_moves_counts_between_channels():
 
 
 def test_cholesky_round_trips_the_user_facing_statistics():
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         cholesky_to_statistics,
         covariance_from_statistics,
         covariance_to_cholesky,
@@ -117,7 +117,7 @@ def test_cholesky_round_trips_the_user_facing_statistics():
 
 def test_inconsistent_correlations_are_repaired_not_fatal():
     """Three pairwise correlations can be mutually impossible; don't crash on it."""
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         covariance_from_statistics,
         covariance_to_cholesky,
         nearest_positive_definite,
@@ -136,8 +136,8 @@ def test_inconsistent_correlations_are_repaired_not_fatal():
 
 def test_gauss_hermite_reproduces_the_gaussian_moments():
     """The quadrature must integrate the species it stands for, exactly."""
-    from chisurf.core.fluorescence.pda3c import covariance_from_statistics, gauss_hermite_grid
-    from chisurf.core.fluorescence.pda3c.species import covariance_to_cholesky
+    from chisurf.core.fluorescence.c3pda import covariance_from_statistics, gauss_hermite_grid
+    from chisurf.core.fluorescence.c3pda.species import covariance_to_cholesky
 
     means = np.array([55.0, 48.0, 62.0])
     covariance = covariance_from_statistics([6.0, 5.0, 7.0], [0.5, -0.2, 0.3])
@@ -160,13 +160,13 @@ def test_quadrature_beats_a_uniform_grid_at_equal_node_count():
     efficiency over the species and scores both schemes against a dense
     reference at the same node budget per axis.
     """
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         covariance_from_statistics,
         distances_to_matrix,
         gauss_hermite_grid,
         transfer_efficiencies,
     )
-    from chisurf.core.fluorescence.pda3c.species import covariance_to_cholesky
+    from chisurf.core.fluorescence.c3pda.species import covariance_to_cholesky
 
     setup = _setup()
     means = np.array([55.0, 48.0, 62.0])
@@ -196,7 +196,7 @@ def test_quadrature_beats_a_uniform_grid_at_equal_node_count():
 
 
 def test_truncation_drops_corner_nodes_without_moving_the_mean():
-    from chisurf.core.fluorescence.pda3c import gauss_hermite_grid
+    from chisurf.core.fluorescence.c3pda import gauss_hermite_grid
 
     cholesky = np.diag([6.0, 5.0, 7.0])
     means = np.array([55.0, 48.0, 62.0])
@@ -211,14 +211,14 @@ def test_truncation_drops_corner_nodes_without_moving_the_mean():
 
 
 def _setup():
-    from chisurf.core.fluorescence.pda3c import ThreeColorSetup
+    from chisurf.core.fluorescence.c3pda import ThreeColorSetup
 
     return ThreeColorSetup.from_scalars(r0_bg=49.0, r0_br=52.0, r0_gr=51.0)
 
 
 def test_collapsing_joins_both_excitation_periods():
     """Two bursts agreeing on blue but not green are different bursts."""
-    from chisurf.core.fluorescence.pda3c import BurstCounts
+    from chisurf.core.fluorescence.c3pda import BurstCounts
 
     counts = BurstCounts(
         blue=[[5, 3, 2], [5, 3, 2], [5, 3, 2]],
@@ -231,7 +231,7 @@ def test_collapsing_joins_both_excitation_periods():
 
 
 def test_collapsing_does_not_change_the_likelihood():
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         ThreeColorSpecies,
         simulate_bursts,
         total_log_likelihood,
@@ -257,7 +257,7 @@ def test_the_two_periods_are_mixed_jointly_not_separately():
     import numpy as np
     from scipy.special import logsumexp
 
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         ThreeColorSpecies,
         blue_channel_probabilities,
         burst_log_likelihood,
@@ -290,7 +290,7 @@ def test_the_two_periods_are_mixed_jointly_not_separately():
 
 
 def test_likelihood_peaks_at_the_truth():
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         ThreeColorSpecies,
         simulate_bursts,
         total_log_likelihood,
@@ -319,7 +319,7 @@ def test_recovers_three_distances_and_their_correlation():
     """
     from scipy.optimize import minimize
 
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         ThreeColorSpecies,
         covariance_from_statistics,
         simulate_bursts,

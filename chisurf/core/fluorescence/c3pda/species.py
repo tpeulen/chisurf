@@ -1,6 +1,6 @@
 r"""Correlated three-distance species and the quadrature that integrates them.
 
-A tcPDA species is a **trivariate Gaussian** over $(R_{GR}, R_{BG}, R_{BR})$
+A c3PDA species is a **trivariate Gaussian** over $(R_{GR}, R_{BG}, R_{BR})$
 with a full covariance matrix. The off-diagonal entries are the reason to do
 three-colour FRET at all: three separate two-colour experiments give three
 marginal distributions and can never say whether the distances move *together*.

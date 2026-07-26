@@ -1,4 +1,4 @@
-"""tcPDA reaches the GUI: reader, model, editor and fit (PRD-65).
+"""c3PDA reaches the GUI: reader, model, editor and fit (PRD-65).
 
 Exercises the seam the ``test-model-editor`` skill covers — a model is only
 usable if it is registered, its dataset loads, ``build_model_editor`` renders it
@@ -22,15 +22,15 @@ def qapp():
 def _simulated_fit(correlation: float = 0.0, n_bursts: int = 1500, seed: int = 3):
     """Return a Fit over a simulated three-colour burst table."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
+    from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
-    reader = Pda3cSimulatorReader(
+    reader = C3PdaSimulatorReader(
         n_bursts=n_bursts, correlation=correlation, seed=seed,
         r_gr=52.0, r_bg=46.0, r_br=68.0, sigma=6.0,
     )
     data = reader.read()[0]
-    return fit_mod.Fit(model_class=TcPdaModel, data=data)
+    return fit_mod.Fit(model_class=C3PdaModel, data=data)
 
 
 # ── registration ───────────────────────────────────────────────────────────
@@ -45,27 +45,27 @@ def test_the_experiment_type_and_model_are_registered():
     config = yaml.safe_load(
         pathlib.Path("chisurf/core/settings/experiment_configs.yaml").read_text()
     )
-    assert "pda3c" in config["experiment_types"]
-    assert config["experiment_types"]["pda3c"]["hidden"] is False
+    assert "c3pda" in config["experiment_types"]
+    assert config["experiment_types"]["c3pda"]["hidden"] is False
 
-    block = config["pda3c"]
+    block = config["c3pda"]
     readers = [r["reader_class"] for r in block["readers"]]
-    assert "chisurf.core.experiments.pda3c.Pda3cSimulatorReader" in readers
-    assert "chisurf.core.experiments.pda3c.Pda3cBurstTableReader" in readers
-    assert "chisurf.core.models.pda3c.tcpda.TcPdaModel" in block["models"]
+    assert "chisurf.core.experiments.c3pda.C3PdaSimulatorReader" in readers
+    assert "chisurf.core.experiments.c3pda.C3PdaBurstTableReader" in readers
+    assert "chisurf.core.models.c3pda.c3pda.C3PdaModel" in block["models"]
 
 
 # ── the reader ─────────────────────────────────────────────────────────────
 
 
 def test_the_simulator_reader_produces_a_usable_dataset():
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
+    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
 
-    group = Pda3cSimulatorReader(n_bursts=500, seed=7).read()
+    group = C3PdaSimulatorReader(n_bursts=500, seed=7).read()
     assert len(group) == 1
     curve = group[0]
 
-    payload = curve.meta_data["pda3c"]
+    payload = curve.meta_data["c3pda"]
     assert payload["blue"].shape == (500, 3)
     assert payload["green"].shape == (500, 2)
     assert payload["n_bursts"] == 500
@@ -75,23 +75,23 @@ def test_the_simulator_reader_produces_a_usable_dataset():
 
 
 def test_the_burst_table_reader_round_trips(tmp_path):
-    from chisurf.core.experiments.pda3c import Pda3cBurstTableReader, Pda3cSimulatorReader
+    from chisurf.core.experiments.c3pda import C3PdaBurstTableReader, C3PdaSimulatorReader
 
-    original = Pda3cSimulatorReader(n_bursts=300, seed=11).read()[0].meta_data["pda3c"]
+    original = C3PdaSimulatorReader(n_bursts=300, seed=11).read()[0].meta_data["c3pda"]
     path = tmp_path / "bursts.npz"
     np.savez(path, blue=original["blue"], green=original["green"])
 
-    loaded = Pda3cBurstTableReader().read(str(path))[0].meta_data["pda3c"]
+    loaded = C3PdaBurstTableReader().read(str(path))[0].meta_data["c3pda"]
     assert np.array_equal(loaded["blue"], original["blue"])
     assert np.array_equal(loaded["green"], original["green"])
 
 
 def test_a_text_burst_table_loads(tmp_path):
-    from chisurf.core.experiments.pda3c import Pda3cBurstTableReader
+    from chisurf.core.experiments.c3pda import C3PdaBurstTableReader
 
     path = tmp_path / "bursts.txt"
     path.write_text("10 5 3 8 4\n12 4 2 9 3\n7 6 5 6 6\n")
-    payload = Pda3cBurstTableReader().read(str(path))[0].meta_data["pda3c"]
+    payload = C3PdaBurstTableReader().read(str(path))[0].meta_data["c3pda"]
     assert payload["blue"].shape == (3, 3)
     assert payload["green"].shape == (3, 2)
     assert payload["blue"][0].tolist() == [10.0, 5.0, 3.0]
@@ -320,7 +320,7 @@ def test_a_symmetric_swap_is_invisible(qapp):
 
 def test_relative_brightness_is_one_without_transfer():
     """The reference case has to be exactly neutral, or every species shifts."""
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         ThreeColorSetup,
         distances_to_matrix,
         relative_brightness,
@@ -334,7 +334,7 @@ def test_relative_brightness_is_one_without_transfer():
 
 def test_transfer_towards_a_better_detected_dye_brightens():
     """Brightness is a consequence of the detection matrix, not a free knob."""
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         ThreeColorSetup,
         distances_to_matrix,
         relative_brightness,
@@ -349,7 +349,7 @@ def test_transfer_towards_a_better_detected_dye_brightens():
 
 
 def test_scaling_a_photon_number_distribution_moves_its_mean():
-    from chisurf.core.models.pda3c.tcpda import scale_photon_number_pmf
+    from chisurf.core.models.c3pda.c3pda import scale_photon_number_pmf
 
     counts = np.arange(200.0)
     pmf = np.exp(-0.5 * ((counts - 60.0) / 12.0) ** 2)
@@ -402,9 +402,9 @@ def _fit_one_distance(n_bursts=2500, seed=13, start=48.0):
 
 
 def test_a_prior_pulls_the_fit_and_is_reported(qapp):
-    """PRD-61 priors work on this model without anything tcPDA-specific.
+    """PRD-61 priors work on this model without anything c3PDA-specific.
 
-    The prior framework is general, so the check is that tcPDA parameters are
+    The prior framework is general, so the check is that c3PDA parameters are
     ordinary enough to use it — not that a new mechanism was built.
     """
     from chisurf.core.fitting.priors import NormalPrior
@@ -447,7 +447,7 @@ def test_a_prior_pulls_the_fit_and_is_reported(qapp):
 
 @pytest.mark.slow
 def test_both_error_surface_routes_bracket_the_truth(qapp):
-    """MCMC and the support plane must agree on a tcPDA parameter too.
+    """MCMC and the support plane must agree on a c3PDA parameter too.
 
     Same requirement PRD-50 placed on two-colour PDA. It matters more here: the
     objective is a likelihood deviance rather than a histogram chi-square, so
@@ -541,7 +541,7 @@ def test_fast_exchange_collapses_to_one_averaged_population(qapp):
     blue_2, green_2 = model._mean_channel_probabilities(species[1], setup)
     x1 = species[0].amplitude / (species[0].amplitude + species[1].amplitude)
 
-    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+    from chisurf.core.fluorescence.c3pda import burst_log_likelihood
 
     counts = model.burst_counts()
     averaged = burst_log_likelihood(
@@ -589,20 +589,20 @@ def test_dynamic_leaves_a_third_species_static(qapp):
 
 @pytest.mark.slow
 def test_the_guide_worked_example_still_produces_its_documented_numbers(qapp):
-    """docs/guides/42_tcpda.md prints numbers; they have to stay true.
+    """docs/guides/42_c3pda.md prints numbers; they have to stay true.
 
     A guide whose output has drifted is worse than no guide — it teaches the
     reader to distrust the page. This runs the published snippet verbatim.
     """
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
+    from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
-    reader = Pda3cSimulatorReader(
+    reader = C3PdaSimulatorReader(
         n_bursts=6000, r_gr=52.0, r_bg=46.0, r_br=68.0,
         sigma=6.0, correlation=0.8, photons_blue=40.0, photons_green=35.0, seed=11,
     )
-    fit = fit_mod.Fit(model_class=TcPdaModel, data=reader.read()[0])
+    fit = fit_mod.Fit(model_class=C3PdaModel, data=reader.read()[0])
     model = fit.model
 
     model.find_parameters()

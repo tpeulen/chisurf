@@ -173,7 +173,7 @@ the acquisition simulator's `k_rad`/`k_nrad`, with the same reading (grid row
 invisible: a permuted scheme is still a valid scheme. See
 [gui-autoform.md](/subsystems/gui-autoform.md).
 
-Models do **not** subclass the group to configure it: `TcPdaKinetics` was a
+Models do **not** subclass the group to configure it: `C3PdaKinetics` was a
 subclass whose entire body was `default_rate = 0.0`, which is a constructor
 argument.
 

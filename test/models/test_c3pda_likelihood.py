@@ -16,7 +16,7 @@ from scipy import stats
 
 
 def test_multinomial_matches_scipy():
-    from chisurf.core.fluorescence.pda3c import log_multinomial_pmf
+    from chisurf.core.fluorescence.c3pda import log_multinomial_pmf
 
     counts = np.array([7, 3, 5])
     p = np.array([0.5, 0.2, 0.3])
@@ -26,7 +26,7 @@ def test_multinomial_matches_scipy():
 
 def test_multinomial_broadcasts_to_the_full_grid():
     """The (points x bursts) grid comes out of one broadcast, not a loop."""
-    from chisurf.core.fluorescence.pda3c import log_multinomial_pmf
+    from chisurf.core.fluorescence.c3pda import log_multinomial_pmf
 
     counts = np.array([[7, 3, 5], [2, 2, 2], [0, 0, 9]])
     p = np.array([[0.5, 0.2, 0.3], [0.2, 0.5, 0.3]])
@@ -39,7 +39,7 @@ def test_multinomial_broadcasts_to_the_full_grid():
 
 def test_impossible_channel_is_finite_when_it_saw_nothing():
     """p=0 with a zero count is a channel that cannot fire and did not — not a nan."""
-    from chisurf.core.fluorescence.pda3c import log_multinomial_pmf
+    from chisurf.core.fluorescence.c3pda import log_multinomial_pmf
 
     assert np.isfinite(log_multinomial_pmf([4, 0], [1.0, 0.0]))
     assert log_multinomial_pmf([4, 1], [1.0, 0.0]) == -np.inf
@@ -59,7 +59,7 @@ def test_impossible_channel_is_finite_when_it_saw_nothing():
 )
 def test_convolution_equals_the_nested_sum(counts, background):
     """The whole point: collapsing the K-fold sum changes nothing but the cost."""
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         burst_log_likelihood,
         burst_log_likelihood_reference,
     )
@@ -74,7 +74,7 @@ def test_convolution_equals_the_nested_sum(counts, background):
 
 
 def test_convolution_equals_the_nested_sum_with_a_photon_number_distribution():
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         burst_log_likelihood,
         burst_log_likelihood_reference,
     )
@@ -94,7 +94,7 @@ def test_convolution_equals_the_nested_sum_with_a_photon_number_distribution():
 
 def test_zero_background_is_exactly_the_multinomial():
     """The fast path and the correction compose: no background, no correction."""
-    from chisurf.core.fluorescence.pda3c import burst_log_likelihood, log_multinomial_pmf
+    from chisurf.core.fluorescence.c3pda import burst_log_likelihood, log_multinomial_pmf
 
     counts = np.array([[6, 3, 1]])
     p = np.array([[0.6, 0.3, 0.1]])
@@ -110,7 +110,7 @@ def test_the_two_internal_background_paths_agree():
     enough for the nested sum to run. This compares them to each other on inputs
     where it cannot, which is where the fast path actually gets used.
     """
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         burst_log_likelihood,
         log_background_correction,
         log_multinomial_pmf,
@@ -132,7 +132,7 @@ def test_the_two_internal_background_paths_agree():
 
 def test_chunking_does_not_change_the_result(monkeypatch):
     """Peak memory is bounded by chunking bursts; the answer must not notice."""
-    from chisurf.core.fluorescence.pda3c import likelihood as lk
+    from chisurf.core.fluorescence.c3pda import likelihood as lk
 
     rng = np.random.default_rng(23)
     counts = rng.integers(0, 20, size=(37, 3))
@@ -146,7 +146,7 @@ def test_chunking_does_not_change_the_result(monkeypatch):
 
 
 def test_background_series_starts_at_one():
-    from chisurf.core.fluorescence.pda3c import background_series
+    from chisurf.core.fluorescence.c3pda import background_series
 
     u = background_series(count=5, rate=0.7, p=0.4)
     assert u[0] == pytest.approx(1.0)
@@ -155,7 +155,7 @@ def test_background_series_starts_at_one():
 
 def test_truncation_tolerance_does_not_move_the_answer():
     """Tightening the cutoff must not move a well-fitting burst's likelihood."""
-    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+    from chisurf.core.fluorescence.c3pda import burst_log_likelihood
 
     counts = np.array([[9, 6, 4]])
     p = np.array([[0.5, 0.3, 0.2]])
@@ -179,7 +179,7 @@ def test_truncation_survives_a_channel_the_model_says_is_nearly_impossible():
     It matters even though the absolute likelihood is tiny: MCMC and
     support-plane scans read the *shape* of the surface away from the optimum.
     """
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         burst_log_likelihood,
         log_background_correction,
         log_multinomial_pmf,
@@ -207,7 +207,7 @@ def test_the_likelihood_is_a_normalised_distribution_over_counts():
     the falling factorials would still pass the reference comparison (both
     implementations share the definition) but would break normalisation.
     """
-    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+    from chisurf.core.fluorescence.c3pda import burst_log_likelihood
 
     n_max = 14
     n = np.arange(n_max + 1)
@@ -232,7 +232,7 @@ def test_the_likelihood_is_a_normalised_distribution_over_counts():
 
 
 def test_collapsing_bursts_is_exact():
-    from chisurf.core.fluorescence.pda3c import burst_log_likelihood, collapse_bursts
+    from chisurf.core.fluorescence.c3pda import burst_log_likelihood, collapse_bursts
 
     rng = np.random.default_rng(7)
     counts = rng.integers(0, 5, size=(400, 3))
@@ -249,7 +249,7 @@ def test_collapsing_bursts_is_exact():
 
 def test_collapsing_actually_saturates():
     """The saving is the point: distinct vectors grow far slower than bursts."""
-    from chisurf.core.fluorescence.pda3c import collapse_bursts
+    from chisurf.core.fluorescence.c3pda import collapse_bursts
 
     rng = np.random.default_rng(11)
     small = collapse_bursts(rng.integers(0, 6, size=(500, 3)))[0].shape[0]
@@ -273,7 +273,7 @@ def test_two_channel_case_reproduces_the_pda_engine_s1s2():
     """
     import tttrlib
 
-    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+    from chisurf.core.fluorescence.c3pda import burst_log_likelihood
 
     n_max = 12
     n = np.arange(n_max + 1)

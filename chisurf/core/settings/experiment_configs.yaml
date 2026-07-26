@@ -21,8 +21,8 @@ experiment_types:
   pda:
     name: PDA
     hidden: false
-  pda3c:
-    name: tcPDA (3-colour)
+  c3pda:
+    name: c3PDA (3-colour)
     hidden: false
   deer:
     name: DEER
@@ -124,7 +124,7 @@ pda:
     - chisurf.core.models.pda.dynamic_mc.PdaDynamicNStateModel
     - chisurf.core.models.pda.anisotropy.PdaAnisotropyModel
 
-pda3c:
+c3pda:
   readers:
     # The *same* reader as two-colour PDA: three channel groups and two
     # excitation windows put it on the burst-table path instead of the S1S2 one,
@@ -144,19 +144,19 @@ pda3c:
       controller_params:
         name: PTU/HT3/SPC
     # A burst table someone else produced.
-    - reader_class: chisurf.core.experiments.pda3c.Pda3cBurstTableReader
+    - reader_class: chisurf.core.experiments.c3pda.C3PdaBurstTableReader
       reader_params:
         name: Burst table (CSV/NPZ)
       controller_class: null
     # Three-colour data is scarce; the simulator makes the model openable and
     # lets a fit be checked against a truth the reader itself set.
-    - reader_class: chisurf.core.experiments.pda3c.Pda3cSimulatorReader
+    - reader_class: chisurf.core.experiments.c3pda.C3PdaSimulatorReader
       reader_params:
         name: Simulator
       controller_class: null
   models:
     # AutoForm-rendered pure model (PRD-38 model/view-spec split).
-    - chisurf.core.models.pda3c.tcpda.TcPdaModel
+    - chisurf.core.models.c3pda.c3pda.C3PdaModel
 
 deer:
   readers:

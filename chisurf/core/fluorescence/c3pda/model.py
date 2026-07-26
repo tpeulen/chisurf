@@ -180,7 +180,7 @@ def total_log_likelihood(
         Mean background counts per channel, shapes ``(3,)`` and ``(2,)``.
     photon_number_pmf_blue, photon_number_pmf_green : array_like, optional
         Signal photon-number distributions; see
-        :mod:`~chisurf.core.fluorescence.pda3c.likelihood`.
+        :mod:`~chisurf.core.fluorescence.c3pda.likelihood`.
     n_nodes : int
         Gauss–Hermite nodes per distance axis.
     truncate : float

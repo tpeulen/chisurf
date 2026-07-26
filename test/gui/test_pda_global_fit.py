@@ -5,7 +5,7 @@ the same pair, so the two datasets constrain a common distance. Fitting them
 together is what turns "two experiments that roughly agree" into one number with
 one uncertainty.
 
-Nothing here is tcPDA-specific machinery: ChiSurf's global fit concatenates the
+Nothing here is c3PDA-specific machinery: ChiSurf's global fit concatenates the
 weighted residuals of its member fits and its parameter linking is generic, so
 this is a check that the PDA models are ordinary enough to use both — not a new
 implementation.
@@ -27,15 +27,15 @@ def qapp():
 
 
 def _three_colour_fit(n_bursts=2500, seed=31):
-    """A tcPDA fit over simulated bursts, only R(GR) free."""
+    """A c3PDA fit over simulated bursts, only R(GR) free."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
+    from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
-    reader = Pda3cSimulatorReader(
+    reader = C3PdaSimulatorReader(
         n_bursts=n_bursts, seed=seed, r_gr=TRUTH_GR, r_bg=46.0, r_br=68.0, sigma=6.0
     )
-    fit = fit_mod.Fit(model_class=TcPdaModel, data=reader.read()[0])
+    fit = fit_mod.Fit(model_class=C3PdaModel, data=reader.read()[0])
     model = fit.model
     model.find_parameters()
     for parameter in model.parameters_all:

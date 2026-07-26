@@ -1,5 +1,11 @@
-(concept-tcpda)=
-# Three-colour PDA (tcPDA)
+(concept-c3pda)=
+# Three-colour PDA (c3PDA)
+
+:::{note}
+Formerly **tcPDA**, and the packages were formerly `pda3c`. The name is now
+`c3PDA`, pairing with `c2PDA` for the two-colour method, so the colour count
+reads the same way in every spelling — module, class and prose.
+:::
 
 Two-colour FRET measures one distance per molecule. Label three sites and you
 measure three — **in the same molecule, at the same moment**. That is the only
@@ -14,7 +20,7 @@ bursts. It is the three-colour counterpart of {doc}`PDA <pda>`, and it shares
 that page's central idea — the noise is computed, not fitted — but almost
 nothing of its machinery.
 
-For the workflow in ChiSurf, see the guide {doc}`/guides/42_tcpda`.
+For the workflow in ChiSurf, see the guide {doc}`/guides/42_c3pda`.
 
 ## Three dyes, three distances, coupled pathways
 
@@ -84,9 +90,9 @@ L(F \mid p, B) = \sum_{b \le F}
    \mathrm{Multinom}(F - b;\, p).
 $$
 
-This is where tcPDA departs from two-colour PDA in kind, not degree. Two-colour
+This is where c3PDA departs from two-colour PDA in kind, not degree. Two-colour
 PDA builds an **S1S2 count matrix** and fits a one-dimensional projection of it;
-tcPDA fits the **per-burst likelihood** directly. There is no histogram to
+c3PDA fits the **per-burst likelihood** directly. There is no histogram to
 convolve, and correspondingly no photon-number distribution to supply — the
 likelihood conditions on each burst's own size.
 
@@ -262,4 +268,4 @@ parametric bootstrap.
 - {doc}`PDA <pda>` — the two-colour method this generalises.
 - {doc}`Accurate FRET <accurate_fret>` — the correction factors.
 - {doc}`Parameter uncertainty <parameter_uncertainty>` — error surfaces.
-- Guide: {doc}`/guides/42_tcpda`.
+- Guide: {doc}`/guides/42_c3pda`.

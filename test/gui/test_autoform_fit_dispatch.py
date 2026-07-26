@@ -19,11 +19,11 @@ import chisurf as cs
 def unregistered_fit():
     """Return a fit that was never added to ``chisurf.fits``."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
+    from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
-    data = Pda3cSimulatorReader(n_bursts=100, seed=5).read()[0]
-    fit = fit_mod.Fit(model_class=TcPdaModel, data=data)
+    data = C3PdaSimulatorReader(n_bursts=100, seed=5).read()[0]
+    fit = fit_mod.Fit(model_class=C3PdaModel, data=data)
     assert all(fit is not group and fit not in list(group) for group in cs.fits)
     return fit
 
@@ -35,7 +35,7 @@ def test_an_unregistered_fit_reports_no_index(qapp, unregistered_fit):
 
     form = AutoForm(unregistered_fit.model)
     bound = form.findChildren(_BoundControlMixin)
-    assert bound, "expected at least one bound control in the tcPDA editor"
+    assert bound, "expected at least one bound control in the c3PDA editor"
     assert all(widget._own_fit_index() < 0 for widget in bound)
 
 

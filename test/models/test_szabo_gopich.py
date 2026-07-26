@@ -306,13 +306,13 @@ def test_the_analytic_route_is_deterministic():
 
 
 def test_three_colour_model_takes_a_rate_matrix():
-    """TcPDA gets the same multistate route, driven by a rate matrix."""
+    """c3PDA gets the same multistate route, driven by a rate matrix."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
+    from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
-    data = Pda3cSimulatorReader(n_bursts=400, seed=17).read()[0]
-    fit = fit_mod.Fit(model_class=TcPdaModel, data=data)
+    data = C3PdaSimulatorReader(n_bursts=400, seed=17).read()[0]
+    fit = fit_mod.Fit(model_class=C3PdaModel, data=data)
     model = fit.model
     model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
     model.species.append(r_gr=70.0, r_bg=64.0, r_br=82.0)
@@ -349,11 +349,11 @@ def test_simulating_the_kinetics_agrees_where_the_approximation_is_valid():
     the only place the approximation claims to be right.
     """
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
+    from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
-    data = Pda3cSimulatorReader(n_bursts=600, seed=23).read()[0]
-    fit = fit_mod.Fit(model_class=TcPdaModel, data=data)
+    data = C3PdaSimulatorReader(n_bursts=600, seed=23).read()[0]
+    fit = fit_mod.Fit(model_class=C3PdaModel, data=data)
     model = fit.model
     model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
     model.species.append(r_gr=70.0, r_bg=64.0, r_br=82.0)
@@ -382,11 +382,11 @@ def test_simulating_the_kinetics_agrees_where_the_approximation_is_valid():
 def test_the_simulated_route_is_deterministic():
     """A fixed seed keeps the objective smooth for the optimiser."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
+    from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
-    data = Pda3cSimulatorReader(n_bursts=400, seed=29).read()[0]
-    fit = fit_mod.Fit(model_class=TcPdaModel, data=data)
+    data = C3PdaSimulatorReader(n_bursts=400, seed=29).read()[0]
+    fit = fit_mod.Fit(model_class=C3PdaModel, data=data)
     model = fit.model
     model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
     model.dynamic = True
@@ -407,11 +407,11 @@ def test_the_simulated_route_works_where_the_approximation_does_not():
     route exists for.
     """
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
+    from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
-    data = Pda3cSimulatorReader(n_bursts=600, seed=23).read()[0]
-    fit = fit_mod.Fit(model_class=TcPdaModel, data=data)
+    data = C3PdaSimulatorReader(n_bursts=600, seed=23).read()[0]
+    fit = fit_mod.Fit(model_class=C3PdaModel, data=data)
     model = fit.model
     model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
     model.species.append(r_gr=70.0, r_bg=64.0, r_br=82.0)

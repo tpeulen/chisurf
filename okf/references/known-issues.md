@@ -97,7 +97,7 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
-**Found 2026-07-26 while making the tcPDA rate matrix fittable.** A rate fitted
+**Found 2026-07-26 while making the c3PDA rate matrix fittable.** A rate fitted
 by the three-colour dynamic model comes out **systematically fast, by some tens
 of percent**, and more computation does not help. Measured on bursts simulated
 from a known two-state scheme by an independent forward route (a fresh distance
@@ -109,14 +109,14 @@ sampled trajectories and from an occupancy resolution of 24 to 192. So it is
 in distribution.
 
 The cause is the approximation made *outside* the sampling, in
-`TcPdaModel._mean_channel_probabilities`: each state is collapsed to its
+`C3PdaModel._mean_channel_probabilities`: each state is collapsed to its
 distance-averaged per-photon probability vector *before* the occupation-time
 mixing, so the intra-state distance spread contributes to the predicted
 burst-to-burst width differently than it does to real bursts. Fixing it properly
 means carrying the distance quadrature through the dynamic average (nodes x
 occupancy nodes x bursts), which is a real cost increase and a design decision
 about where to truncate — hence recorded rather than fixed in the change that
-found it. Until then, `tcpda.py`, the concept page and the guide all say to read
+found it. Until then, `c3pda.py`, the concept page and the guide all say to read
 a fitted rate as an exchange **timescale**, not a rate measurement; comparisons
 between conditions are sound.
 
@@ -134,7 +134,7 @@ distance-*averaged* probability vector where the static model integrates the
 likelihood over the distance distribution, and those differ by Jensen. A
 static-versus-dynamic comparison (an F-test, a model choice) is therefore
 meaningless in exactly the regime where the two models are nested.
-`test/models/test_tcpda_rates.py::test_the_multistate_route_nests_the_static_model`
+`test/models/test_c3pda_rates.py::test_the_multistate_route_nests_the_static_model`
 records this as a **strict xfail**, so it will fail loudly when fixed.
 
 **Two approaches tried and rejected, so nobody repeats them:**

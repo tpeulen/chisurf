@@ -1,11 +1,11 @@
 ---
 type: PRD
 prd: "65"
-title: "PRD-65: Three-Colour Photon Distribution Analysis (tcPDA)"
+title: "PRD-65: Three-Colour Photon Distribution Analysis (c3PDA)"
 description: A burst-wise three-colour PDA model — trinomial/binomial photon-partition likelihood with Poisson background, correlated trivariate distance distributions, labelling and brightness corrections, and MAP + MCMC inference with per-parameter priors, implemented in Python/numba with algorithmic rather than language-level speedups.
 status: in-progress
 phase: "unassigned"
-resource: chisurf/core/models/pda3c/
+resource: chisurf/core/models/c3pda/
 tags: [prd, fret, pda, three-colour, bayesian]
 timestamp: '2026-07-25T00:00:00Z'
 ---
@@ -14,7 +14,7 @@ timestamp: '2026-07-25T00:00:00Z'
 
 Three-colour smFRET measures three distances in the *same molecule at the same
 time*, which is the only way to tell a coordinated conformational change from
-three independent ones. Three-colour PDA (tcPDA) extracts those distances from
+three independent ones. Three-colour PDA (c3PDA) extracts those distances from
 the shot-noise-broadened photon-count statistics of individual bursts. This PRD
 adds it to ChiSurf as a new model family with its own compute core: a
 **burst-wise likelihood** in which blue-excitation photons follow a *trinomial*
@@ -40,11 +40,11 @@ In progress. Split out of [PRD-50](prd-50.md) scope item 4 because — see *Why
 not inside PRD-50* — it shares neither the compute engine, the data object, nor
 the fit objective with two-colour PDA.
 
-**Stage 1 landed (2026-07-25):** `chisurf/core/fluorescence/pda3c/likelihood.py`
+**Stage 1 landed (2026-07-25):** `chisurf/core/fluorescence/c3pda/likelihood.py`
 — the trinomial/binomial partition with Poisson background, as two matrix
 products (see *Performance strategy*), with an untruncated per-burst convolution
 and a literal nested sum kept beside it as independent references.
-`test/models/test_pda3c_likelihood.py` (18 tests) covers the factorisation
+`test/models/test_c3pda_likelihood.py` (18 tests) covers the factorisation
 against the nested sum, normalisation over the count lattice, burst collapsing,
 memory chunking, and the stage-1 acceptance criterion: **marginalised over the
 photon-number distribution, the two-channel case reproduces `tttrlib.Pda`'s S1S2
@@ -56,7 +56,7 @@ pathways → channel probabilities, with a single detection matrix carrying
 quantum yield, crosstalk and detector efficiency, plus direct excitation),
 `species.py` (trivariate Gaussian, Cholesky parameterisation, nearest-PD repair,
 Gauss–Hermite quadrature), and `model.py` (species mixture, burst table,
-simulator, total log likelihood). `test/models/test_pda3c_model.py` (15 tests).
+simulator, total log likelihood). `test/models/test_c3pda_model.py` (15 tests).
 
 The **stage-2 acceptance criterion is met**, including the part that matters:
 
@@ -72,7 +72,7 @@ matters as much as the fit: a method sold on measuring joint motion must be
 shown *not* inventing correlation when there is none.
 
 **A/B-verified against the incumbent (2026-07-25):**
-`test/models/test_pda3c_pam_ab.py` transcribes the incumbent's MATLAB
+`test/models/test_c3pda_pam_ab.py` transcribes the incumbent's MATLAB
 expressions verbatim and asserts equality over randomised distances and
 correction sets — the precedent set by
 [fcs-pam-port](/references/fcs-pam-port.md) and `test_fcs_pam_ab.py`.
@@ -113,7 +113,7 @@ is inline in a GUI reading a global struct and has no callable entry point, and
 the shipped MEX binaries are x86_64 MATLAB-ABI objects — but the kernel itself is
 a self-contained MEX function with a plain numeric signature, so Octave's
 `mkoctfile` compiles it from source on arm64 and it can be driven directly.
-`test/models/test_pda3c_octave_ab.py` does exactly that and finds ChiSurf's
+`test/models/test_c3pda_octave_ab.py` does exactly that and finds ChiSurf's
 factorised likelihood agrees with the reference's nested-sum C to a **maximum
 relative difference of 1.7e-14** — machine precision, on two genuinely different
 algorithms for the same quantity. It skips cleanly when Octave or the reference
@@ -126,7 +126,7 @@ kernel checks the *arithmetic* (which is where a shared transcription mistake
 would have hidden).
 
 **The exchange scheme became fitting parameters (2026-07-26).** The rate matrix
-was a plain array attribute on `TcPdaModel`, so three-colour dynamics could
+was a plain array attribute on `C3PdaModel`, so three-colour dynamics could
 *use* an arbitrary scheme but never *recover* one. It is now the general
 `RateMatrixParameters`, a
 parameter group over the shared `RateMatrixMixin`
@@ -139,7 +139,7 @@ topology is data — a linear chain is the fully connected scheme with `k13`/`k3
 at zero. An **all-zero scheme reads as "no scheme"**, which is what keeps the
 static mixture and the two-state `K_ex` route the defaults for a model nobody
 has entered rates into. The view spec gained the `rate_matrix` grid plus the
-parameter table; `test/models/test_tcpda_rates.py` (16).
+parameter table; `test/models/test_c3pda_rates.py` (16).
 
 Three things this uncovered:
 
@@ -191,14 +191,14 @@ it is built by a downhill recursion over any number of dyes, so a four-colour
 construct needs no new algebra. Verified by the A/B: the matrix form reproduces
 the incumbent's scalar-correction model to 1e-12.
 
-**Reachable from the GUI (2026-07-25).** `chisurf/core/models/pda3c/` +
-`tcpda.view.json` + `chisurf/core/experiments/pda3c/`, registered as the
-`pda3c` experiment type, so tcPDA appears in the add-fit flow like any other
+**Reachable from the GUI (2026-07-25).** `chisurf/core/models/c3pda/` +
+`c3pda.view.json` + `chisurf/core/experiments/c3pda/`, registered as the
+`c3pda` experiment type, so c3PDA appears in the add-fit flow like any other
 model. Two readers: a burst-table loader (`.npz`/`.npy`/text, five columns) and
 a **simulator** — three-colour data is scarce, and a model nobody can open is a
 model nobody checks, so the simulator makes the editor exercisable and lets a
 fit be scored against a truth the reader itself set.
-`test/gui/test_tcpda_model_editor.py` (10 tests) covers registration, both
+`test/gui/test_c3pda_model_editor.py` (10 tests) covers registration, both
 readers, editor rendering, and an end-to-end `fit.run()` that recovers
 (52.09, 46.10, 68.95) from a start of (47, 51, 62) against a truth of
 (52, 46, 68).
@@ -228,7 +228,7 @@ resampling.
 
 **One reader, two colour counts (2026-07-25).** Rather than a second TTTR
 reader, `PdaReader` gained an `n_colors` selector (defaulting to the number of
-configured detection-channel groups, so a three-colour setup selects tcPDA on
+configured detection-channel groups, so a three-colour setup selects c3PDA on
 its own) and a `detection_windows()` description of the physical
 excitation/detection combinations — two for dual colour, five for three, since
 the blue pulse is visible in all three detectors while the green pulse is only
@@ -259,7 +259,7 @@ Two things measurement decided, not convention:
 
 - **Priors and posteriors (stage 3)** — nothing built. [PRD-61](prd-61.md)
   already supplies per-parameter priors with a selector and modal, and
-  `fitting/sample.py` the samplers; what was missing was evidence that tcPDA
+  `fitting/sample.py` the samplers; what was missing was evidence that c3PDA
   parameters are ordinary enough to use them, since the objective is a
   likelihood deviance rather than a histogram chi-square. A Gaussian prior moves
   the estimate monotonically in its width and correctly does *not* enter the
@@ -290,7 +290,7 @@ Two things measurement decided, not convention:
 Looking at that law to build stage 6 turned up a defect in it — see
 [PRD-50](prd-50.md) and `test/models/test_two_state_occupation.py`.
 
-**Multistate dynamics (2026-07-25).** `TcPdaModel` takes an optional rate
+**Multistate dynamics (2026-07-25).** `C3PdaModel` takes an optional rate
 matrix, which switches its dynamic path from the exact two-state occupation law
 to the Szabo–Gopich multistate approximation in the shared
 `chisurf/core/fluorescence/kinetics.py` — the same module the two-colour
@@ -306,11 +306,11 @@ measurement of that pair, so the shared distance is over-determined and worth
 fitting jointly rather than averaging two answers afterwards. ChiSurf's global
 fit already concatenates its members' weighted residuals and its parameter
 linking is generic, so both PDA families drop in unchanged:
-`test/gui/test_pda_global_fit.py` puts a two-colour Gaussian fit and a tcPDA fit
+`test/gui/test_pda_global_fit.py` puts a two-colour Gaussian fit and a c3PDA fit
 in one `GlobalFitModel`, checks the residual vector and point count are the sum
 of the members', links the shared distance (and confirms the follower is not
 offered to the optimiser twice), and recovers it from a displaced start. No
-tcPDA-specific global machinery was needed.
+c3PDA-specific global machinery was needed.
 
 **Multistate kinetics are sampled, not approximated (2026-07-25).** The
 Szabo–Gopich moment match is exact for a *scalar* observable — which is what the
@@ -320,7 +320,7 @@ imposes a dependence the moments say nothing about. Pairing channels by quantile
 makes them perfectly correlated where they are physically **anti**-correlated:
 time in a high-FRET state raises one channel and lowers another. The two routes
 agreed on the mean vector to 1e-4 and disagreed on the likelihood by 5%, which
-is the joint being wrong rather than the marginals. tcPDA's multistate path
+is the joint being wrong rather than the marginals. c3PDA's multistate path
 therefore samples occupation times with the Gillespie the two-colour three-state
 model already uses (fixed seed, so the objective stays deterministic), and the
 moment match is kept only where it is valid.
@@ -342,7 +342,7 @@ costs O(1).
 
 chisurf consumes it through
 `chisurf.core.fluorescence.kinetics.occupation_time_fractions`, which replaces the
-Python Gillespie in both the two-colour three-state model and the tcPDA multistate
+Python Gillespie in both the two-colour three-state model and the c3PDA multistate
 path — one sampler, not three. Each window is one immobile, dark molecule started
 from the equilibrium populations, so rows are independent draws, matching PAM's
 scheme. Measured against the retained Python reference
@@ -372,7 +372,7 @@ precisely the **correlation** between them.
 Recovering that payload from burst data is hard for the reason PDA exists at
 all: with tens to hundreds of photons per burst, the observed count ratios are
 dominated by shot noise, and in three colours the noise is a *multivariate*
-partition. tcPDA computes that partition exactly and fits the underlying
+partition. c3PDA computes that partition exactly and fits the underlying
 distance distribution through it.
 
 **Current state.** ChiSurf has no three-colour analysis of any kind
@@ -390,7 +390,7 @@ PRD-50 wraps `tttrlib.Pda`, whose entire API is two-channel: `background_ch1` /
 and an `S1S2` matrix. There is no three-channel path and no meaningful way to add
 one — the S1S2 convolution *is* the two-channel assumption. Three things differ:
 
-| | two-colour PDA (PRD-50) | tcPDA (this PRD) |
+| | two-colour PDA (PRD-50) | c3PDA (this PRD) |
 |---|---|---|
 | compute core | probability convolution → S1S2 count matrix | per-burst likelihood over the photon counts |
 | data object | S1S2 histogram + `pF` | burst table of five per-burst counts |
@@ -459,7 +459,7 @@ Each stage is independently useful and independently testable.
 
 1. **Forward model + two-colour reduction.** Qt-free trinomial/binomial
    likelihood with background summation, plus the 1-D "GR only" mode. Acceptance
-   is the reduction itself: with blue switched off, tcPDA and the existing
+   is the reduction itself: with blue switched off, c3PDA and the existing
    two-colour PDA must agree on the same data.
 2. **Static 3-D fit.** *(Landed.)* Trivariate-Gaussian species
    (Cholesky-parameterised), multi-species mixtures, MAP fit against the burst
@@ -480,7 +480,7 @@ Each stage is independently useful and independently testable.
    the three-colour one, each carrying its own dye pair, γ, crosstalk, direct
    excitation, R0, backgrounds and time-bin, with optional likelihood
    normalisation so a large dataset does not swamp a small one.
-6. **Dynamic tcPDA.** Two-state exchange within the burst, by Monte-Carlo
+6. **Dynamic c3PDA.** Two-state exchange within the burst, by Monte-Carlo
    simulation of the occupation times (the three-colour analogue of
    `dynamic_mc.py`).
 7. **Performance.** Interleaved with the stages above rather than bolted on at
@@ -489,7 +489,7 @@ Each stage is independently useful and independently testable.
 
 # Design
 
-- **Compute core** — `chisurf/core/fluorescence/pda3c/`, Qt-free, **NumPy +
+- **Compute core** — `chisurf/core/fluorescence/c3pda/`, Qt-free, **NumPy +
   numba**, and that is the intended long-term home. Migrating to a tttrlib C++
   kernel is explicitly *not* the plan: the dynamic stage is simulation-driven, so
   a port would carry the Monte-Carlo machinery across the language boundary for a
@@ -497,7 +497,7 @@ Each stage is independently useful and independently testable.
   ships hand-threaded C plus a CUDA kernel because it evaluates the likelihood
   the expensive way; the answer here is to evaluate it a cheaper way. See
   *Performance strategy*.
-- **Model + view spec** — `chisurf/core/models/pda3c/` following the
+- **Model + view spec** — `chisurf/core/models/c3pda/` following the
   [PRD-38](prd-38.md) split: a pure model plus `*.view.json`, rendered by
   `build_model_editor` → AutoForm. Species are a `dynamic_group` in
   `"style": "table"` (ten columns per row); the covariance block gets a compact
@@ -509,7 +509,7 @@ Each stage is independently useful and independently testable.
   selector); what is missing is the *column*. Add prior columns to
   `parameter_table.COLUMN_META` as an opt-in set, so every model that wants a
   Bayesian workflow gets them — not just this one.
-- **Data** — a `pda3c` experiment reader producing the five-count burst table
+- **Data** — a `c3pda` experiment reader producing the five-count burst table
   from TTTR files given PIE micro-time windows and three detector channels,
   mirroring `chisurf/core/experiments/pda/reader.py` but emitting a burst table
   instead of an S1S2 matrix. Consume `burst_selection` tables and
@@ -595,7 +595,7 @@ Order of work: correctness first via (2) as the no-background reference, then
 timings in the PRD as each lands, so "it is too slow" is never an unmeasured
 claim.
 
-## Measured (2026-07-25, `chisurf/core/fluorescence/pda3c/`, levers 1–3)
+## Measured (2026-07-25, `chisurf/core/fluorescence/c3pda/`, levers 1–3)
 
 Pure NumPy, no numba, one core, on synthetic three-colour bursts (mean 25
 photons) against a 200-point model grid:
@@ -637,7 +637,7 @@ the table.
 
 Headless throughout, following the [PRD-50](prd-50.md) pattern.
 
-- **Reduction (stage 1).** With the blue channel disabled, the tcPDA likelihood
+- **Reduction (stage 1).** With the blue channel disabled, the c3PDA likelihood
   and the existing two-colour PDA agree on the same burst data to within
   numerical tolerance. This is the strongest available check on the forward
   model, because it tests it against an independently validated implementation.

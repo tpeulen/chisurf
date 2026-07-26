@@ -1,10 +1,10 @@
-# Three-colour PDA (tcPDA)
+# Three-colour PDA (c3PDA)
 
 :::{admonition} Theory
 :class: seealso
 Why three colours give more than three two-colour experiments, the coupled
 transfer pathways, the burst likelihood, correlated distance distributions and
-the multistate dynamics are explained in the concept page {ref}`concept-tcpda`.
+the multistate dynamics are explained in the concept page {ref}`concept-c3pda`.
 :::
 
 ## What it does
@@ -15,14 +15,14 @@ run it: three separate two-colour experiments give three marginal distributions
 and cannot say whether the distances move *together*, which is the difference
 between one conformational coordinate and three independent ones.
 
-Unlike two-colour {doc}`PDA <11_pda>`, which fits a histogram, tcPDA fits a
+Unlike two-colour {doc}`PDA <11_pda>`, which fits a histogram, c3PDA fits a
 **per-burst likelihood**: each burst's five photon counts are scored directly.
 There is no histogram to bin and no burst-size distribution to supply.
 
 ## In ChiSurf
 
-tcPDA is its own experiment type (`tcPDA (3-colour)`) with an AutoForm-rendered
-model in `chisurf/core/models/pda3c/`.
+c3PDA is its own experiment type (`c3PDA (3-colour)`) with an AutoForm-rendered
+model in `chisurf/core/models/c3pda/`.
 
 ### Loading data
 
@@ -36,7 +36,7 @@ Three readers, all under the same experiment:
 
 The TTTR reader picks its path from the **Colours** selector, which defaults to
 the number of configured detection-channel groups — so a three-channel setup
-selects tcPDA on its own. With three colours the micro-time ranges are the
+selects c3PDA on its own. With three colours the micro-time ranges are the
 **excitation periods** (the blue and green halves of the PIE cycle) rather than
 photon-selection windows.
 
@@ -90,16 +90,16 @@ data:
 
 ```python
 import chisurf.core.fitting.fit as fit_mod
-from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-from chisurf.core.models.pda3c.tcpda import TcPdaModel
+from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
+from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
 # Ground truth: three distances and a strong GR/BG correlation.
-reader = Pda3cSimulatorReader(
+reader = C3PdaSimulatorReader(
     n_bursts=6000, r_gr=52.0, r_bg=46.0, r_br=68.0,
     sigma=6.0, correlation=0.8, photons_blue=40.0, photons_green=35.0, seed=11,
 )
 data = reader.read()[0]
-fit = fit_mod.Fit(model_class=TcPdaModel, data=data)
+fit = fit_mod.Fit(model_class=C3PdaModel, data=data)
 model = fit.model
 
 # Free the three mean distances, start them away from the truth.
@@ -135,8 +135,8 @@ The exchange scheme is a matrix of ordinary fitting parameters, one state per
 distance population, so a scheme can be **recovered** and not only assumed.
 `k_ij` is the rate from state *i* to state *j* in Hz.
 
-```{figure} figures/tcpda_exchange.png
-:name: fig-tcpda-exchange
+```{figure} figures/c3pda_exchange.png
+:name: fig-c3pda-exchange
 :width: 90%
 
 The exchange panel with three species and a linear chain 1↔2↔3: `k13` and `k31`
@@ -220,4 +220,4 @@ resolved, so fit a static multi-species model instead.
 - {doc}`PDA <11_pda>` — the two-colour method.
 - {doc}`Burst identification <13_burst_identification>` — producing burst tables.
 - {doc}`Parameter uncertainty <39_parameter_uncertainty>` — error surfaces.
-- Concept: {ref}`concept-tcpda`.
+- Concept: {ref}`concept-c3pda`.

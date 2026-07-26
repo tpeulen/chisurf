@@ -14,13 +14,13 @@ WINDOW = 2e-3
 
 
 def _model(n_extra_species: int = 1, n_bursts: int = 200, seed: int = 3):
-    """Return a tcPDA model with ``1 + n_extra_species`` distance populations."""
+    """Return a c3PDA model with ``1 + n_extra_species`` distance populations."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
+    from chisurf.core.models.c3pda.c3pda import C3PdaModel
 
-    data = Pda3cSimulatorReader(n_bursts=n_bursts, seed=seed).read()[0]
-    model = fit_mod.Fit(model_class=TcPdaModel, data=data).model
+    data = C3PdaSimulatorReader(n_bursts=n_bursts, seed=seed).read()[0]
+    model = fit_mod.Fit(model_class=C3PdaModel, data=data).model
     for index in range(n_extra_species):
         model.species.append(r_gr=62.0 + 8 * index, r_bg=56.0 + 8 * index,
                              r_br=74.0 + 8 * index)
@@ -238,7 +238,7 @@ def test_the_burst_likelihood_chunks_over_bursts():
     ``K`` larger and carries several temporaries of that size. Chunked, the
     answer has to be identical to the unchunked one.
     """
-    from chisurf.core.fluorescence.pda3c import likelihood as lk
+    from chisurf.core.fluorescence.c3pda import likelihood as lk
 
     rng = np.random.default_rng(0)
     counts = rng.integers(0, 12, size=(400, 3)).astype(float)
@@ -267,15 +267,15 @@ def test_a_rate_is_recovered_from_a_wrong_start():
     state per burst, mixed by sampled occupation times, then split
     multinomially — so this tests the fit rather than restating the model's own
     factorisation. Only ``k1_2`` is asserted: see the module docstring of
-    ``tcpda.py`` for the measured bias in the recovered total rate, which is why
+    ``c3pda.py`` for the measured bias in the recovered total rate, which is why
     the tolerance here is generous and the other rate is not checked.
     """
-    from chisurf.core.fluorescence.kinetics import occupation_time_fractions
-    from chisurf.core.fluorescence.pda3c import (
+    from chisurf.core.fluorescence.c3pda import (
         BurstCounts,
         blue_channel_probabilities,
         green_channel_probabilities,
     )
+    from chisurf.core.fluorescence.kinetics import occupation_time_fractions
 
     truth = np.array([[0.0, 300.0], [200.0, 0.0]])       # k1_2 = 200, k2_1 = 300
     model = _model(n_extra_species=1)

@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the three-colour PDA model (TcPdaModel). PRD-65; compute stays in tcpda.py, this JSON is user-editable.",
+  "_comment": "Editor layout for the three-colour PDA model (C3PdaModel). PRD-65; compute stays in c3pda.py, this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",
@@ -153,7 +153,7 @@
         "distribution_options": {
           "Proximity ratios (BG | BR | GR)": {
             "attribute": "fit",
-            "accessor": "chisurf.core.models.pda3c.tcpda:get_tcpda_ratio_curves",
+            "accessor": "chisurf.core.models.c3pda.c3pda:get_c3pda_ratio_curves",
             "accessor_kwargs": {},
             "scale_x": "lin",
             "curve_options": {
@@ -174,7 +174,7 @@
           },
           "Distance P(R)": {
             "attribute": "fit",
-            "accessor": "chisurf.core.models.pda3c.tcpda:get_tcpda_distance_distributions",
+            "accessor": "chisurf.core.models.c3pda.c3pda:get_c3pda_distance_distributions",
             "accessor_kwargs": {},
             "scale_x": "lin",
             "curve_options": {
